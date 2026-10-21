@@ -344,14 +344,6 @@ const scenes = [
     }
   },
   {
-    name: 'wrapped-share',
-    note: '/wrapped/year/share - the foot over a poster',
-    go: async () => {
-      await settle('/wrapped/year/share');
-      await page.waitForTimeout(900);
-    }
-  },
-  {
     name: 'voice-benchmark',
     note: '/practice/voice, the record tab - the stacked arrangement (record, and skip)',
     go: async () => {

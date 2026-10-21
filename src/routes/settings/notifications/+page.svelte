@@ -53,10 +53,7 @@
   import Switch from '$lib/components/Switch.svelte';
   import RegistryRow from '$lib/unprompted/RegistryRow.svelte';
   import { isAndroid } from '$lib/platform';
-  import {
-    androidRetrospectiveNotifications,
-    type AndroidRetrospectiveNotificationStatus
-  } from '$lib/retrospective/android-bridge';
+  import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
   import { disclose } from '$lib/motion/reveal';
   import { watchStatus } from '$lib/permissions/watchStatus';
   import { UNPROMPTED_ROWS, type BooleanPrefKey, type UnpromptedRow } from '$lib/unprompted/registry';
@@ -71,17 +68,17 @@
 
   /* Every producer here posts through the same POST_NOTIFICATIONS
      permission, so one status/request pair covers the whole list. */
-  let notifyStatus = $state<AndroidRetrospectiveNotificationStatus | 'unreadable'>({ notifications: 'not-required' });
+  let notifyStatus = $state<AndroidReminderStatus | 'unreadable'>({ notifications: 'not-required', exactAlarms: 'not-required' });
 
   /* Re-read whenever the screen comes back to the front, because the way
      out of a refusal is Android's settings screen (last-audit UI ticket 41,
      U30). A read the bridge refuses says it could not check, rather than
      calling notifications either on or off. */
-  let statusWatch: ReturnType<typeof watchStatus<AndroidRetrospectiveNotificationStatus | 'unreadable'>> | null = null;
+  let statusWatch: ReturnType<typeof watchStatus<AndroidReminderStatus | 'unreadable'>> | null = null;
 
   async function requestNotifications() {
     try {
-      await androidRetrospectiveNotifications.requestNotificationPermission();
+      await androidReminders.requestNotificationPermission();
     } catch (error) {
       console.error('Could not request notification permission', error);
     }
@@ -90,8 +87,8 @@
 
   $effect(() => {
     if (isWeb) return;
-    const watch = watchStatus<AndroidRetrospectiveNotificationStatus | 'unreadable'>({
-      read: () => androidRetrospectiveNotifications.getStatus(),
+    const watch = watchStatus<AndroidReminderStatus | 'unreadable'>({
+      read: () => androidReminders.getStatus(),
       unreadable: 'unreadable',
       apply: (next) => {
         notifyStatus = next;
@@ -138,7 +135,6 @@
   }
 
   const PROMPTS: PromptRow[] = [
-    { key: 'entry-nudges', prefKey: 'entryNudges', title: () => m.entry_nudges(), subtitle: () => m.entry_nudges_sub() },
     { key: 'guided-prompts', prefKey: 'guidedPromptsEnabled', title: () => m.guided_prompts(), subtitle: () => m.guided_prompts_sub() },
     {
       key: 'wear-duration-cue',

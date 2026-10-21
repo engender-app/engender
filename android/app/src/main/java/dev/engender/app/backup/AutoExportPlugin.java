@@ -767,8 +767,8 @@ public class AutoExportPlugin extends Plugin {
     }
 
     /* Recreated on every notice rather than only when missing, the way
-       RemindersPlugin.ensureChannels and RetrospectiveNotificationsPlugin
-       already do it: cheap, and it keeps the channel's displayed name in the
+       RemindersPlugin.ensureChannels
+       already does it: cheap, and it keeps the channel's displayed name in the
        app's current language instead of freezing it at whatever it was the
        first time a backup failed. */
     private void ensureFailureChannel(String channelName) {

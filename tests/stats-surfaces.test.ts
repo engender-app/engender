@@ -118,15 +118,13 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     const rail = body.indexOf('<SpanTimeline');
     const facts = body.indexOf('data-lookback-fact');
     const picks = body.indexOf('key="lookback-quick"');
-    const readLine = body.indexOf('data-lookback-read');
     const grid = body.indexOf('<ReadingGrid');
     const pair = body.indexOf('<TileGrid');
     expect(header).toBeGreaterThan(-1);
     expect(rail).toBeGreaterThan(header);
     expect(facts).toBeGreaterThan(rail);
     expect(picks).toBeGreaterThan(facts);
-    expect(readLine).toBeGreaterThan(picks);
-    expect(grid).toBeGreaterThan(readLine);
+    expect(grid).toBeGreaterThan(picks);
     expect(pair).toBeGreaterThan(grid);
   });
 
@@ -207,13 +205,8 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).not.toContain('key="stats-range"');
   });
 
-  it('hands the span to /wrapped/range at the query the picker writes', () => {
-    expect(stats).toContain("href={`/wrapped/range${spanRangeQuery(span)}`}");
-    expect(stats).not.toContain('href="/wrapped/range"');
-  });
-
-  it('says why a span cannot draw, in the words the range view uses', () => {
-    expect(stats).toMatch(/\{:else if enoughEntries\}[\s\S]*?<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin"[^>]*data-lookback-thin[^>]*>\s*\{m\.wrapped_thin_body\(/);
+  it('keeps Wrapped on its three completed cadences', () => {
+    expect(stats).not.toContain('/wrapped/range');
   });
 
   /* Wrapped's second line is always mood; this one is deliberately not, so

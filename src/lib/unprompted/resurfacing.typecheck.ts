@@ -7,5 +7,4 @@ function registeredSurfaceRequired(journal: Journal) {
   void resurfacing(journal);
   // @ts-expect-error Unknown surfaces must join the registry before reading.
   void resurfacing('new-surface', journal);
-  void resurfacing('wrapped-share', journal);
 }

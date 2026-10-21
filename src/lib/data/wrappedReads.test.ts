@@ -2,7 +2,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './journal/test-support';
 import type { Journal } from './journal/journal';
-import { readWrappedEras, readWrappedPeriod } from './wrappedReads';
+import { readWrappedPeriod } from './wrappedReads';
 
 const TODAY = 20400;
 const START = 20000;
@@ -24,13 +24,6 @@ function recording(journal: Journal) {
 
 test('each read starts every journal call before its first await', async () => {
   const { journal } = await journalWithBuiltIns();
-
-  const eras = recording(journal);
-  const erasPending = readWrappedEras(eras.areas);
-  const erasBeforeAwait = [...eras.called];
-  await erasPending;
-  assert.deepEqual(eras.called, erasBeforeAwait);
-  assert.deepEqual(erasBeforeAwait, ['eras.getEras', 'eras.getJournalBounds', 'eraMutes.getMutedEraUuids']);
 
   for (const year of [true, false]) {
     const period = recording(journal);

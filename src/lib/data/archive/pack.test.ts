@@ -76,7 +76,7 @@ function everyPreferenceSet(): PreferenceValues {
     theme: 'dark',
     palette: 'lesbian',
     language: 'pl',
-    lastWrappedNotifiedPeriodKey: 'DEVICE-LOCAL-ENTRY-ID',
+    lastExportFailureNotifiedAt: 1706000000000,
     lockAfter: 'immediately',
     disguise: true,
     allowScreenCapture: true,
@@ -241,7 +241,7 @@ test('no device-local preference travels, in the archive or in its plaintext', a
     assert.ok(!plaintext.includes(`"${key}"`), `${key} is in the archive`);
   }
 
-  const deviceLocal = everyPreferenceSet().lastWrappedNotifiedPeriodKey!;
+  const deviceLocal = String(everyPreferenceSet().lastExportFailureNotifiedAt!);
   assert.ok(!plaintext.includes(deviceLocal), 'a device-local value is in the archive');
   assert.ok(
     !new TextDecoder('latin1').decode(archive).includes(deviceLocal),

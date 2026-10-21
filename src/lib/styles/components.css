@@ -1627,14 +1627,6 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    of this first-load sheet: only an editor ever draws one. */
 .dim-slider.is-unset .dim-value { font-style: italic; color: var(--text-2); }
 
-/* Inset to the lane, so the two endpoint words line up under the two
-   positions the thumb can actually reach. */
-.dim-ends {
-  display: flex; justify-content: space-between;
-  padding: 0 var(--slider-inset);
-  font-size: var(--text-xs); color: var(--text-2); margin-top: 2px;
-}
-
 /* ---------- tags ---------- */
 .tag-group { margin-bottom: var(--space-4); }
 /* A group's name over its chips, in the field label's own type (after-release
@@ -2587,7 +2579,6 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
    two things under the pad. */
 .pin-status { display: grid; align-items: center; min-height: 1.25rem; text-align: center; color: var(--danger); margin: var(--space-5) 0 var(--space-3); }
 .pin-status > span { grid-area: 1 / 1; }
-.pin-status-reserve { visibility: hidden; }
 .pin-wait + .pin-status { margin-top: var(--space-3); }
 
 /* A failed reset, inside the sheet that asked for it (after-release ticket

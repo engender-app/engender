@@ -1,11 +1,4 @@
-/* The two Android background schedulers - scheduled auto-export and the
-   wrapped / on-this-day notifications - and the one shape they share: a
-   foreground check that runs on start, every fifteen minutes after, and
-   whenever the app comes back to the foreground. Each module used to carry
-   its own copy of that start/stop and its own CHECK_EVERY_MS, and the layout
-   carried the same sixteen lines of starting one twice (final audit A8).
-   What each check decides stays in its own module; when a check runs, and
-   how long both live, is here. */
+/* Shared foreground check for scheduled auto-export. */
 
 export const CHECK_EVERY_MS = 15 * 60 * 1000;
 
@@ -30,11 +23,7 @@ export function periodicCheck(run: () => void): { start(): void; stop(): void } 
   };
 }
 
-/* Starts both and returns what stops both. Each module is imported
-   dynamically and on its own, as the layout always did: neither is in the
-   first-load chunk, and one failing to load does not keep the other from
-   starting. A stop that lands before a module arrives means it never
-   starts. */
+/* Import scheduler after startup. A stop before import prevents start. */
 export function startBackgroundSchedulers(): () => void {
   let stopped = false;
   const stops: (() => void)[] = [];
@@ -42,10 +31,6 @@ export function startBackgroundSchedulers(): () => void {
     import('./archive/auto-export-scheduler').then((m) => ({
       start: m.startAutoExportScheduler,
       stop: m.stopAutoExportScheduler
-    })),
-    import('./retrospective-notifications-scheduler').then((m) => ({
-      start: m.startRetrospectiveNotificationsScheduler,
-      stop: m.stopRetrospectiveNotificationsScheduler
     }))
   ];
   for (const scheduler of schedulers) {

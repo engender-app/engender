@@ -148,7 +148,7 @@ async function seedTargetLocalState(driver: SqliteDriver, journal: Journal, mark
   await journal.entries.upsertEntry({ epochDay: 20999, mood: 2, note: `target-only-${marker}` });
   const prefs = await openPreferences(driver);
   await prefs.set('onboarded', true);
-  await prefs.set('lastWrappedNotifiedPeriodKey', `wrapped-${marker}`);
+  await prefs.set('lastExportFailureNotifiedAt', 1706000000000);
   await prefs.set('lockAfter', 'immediately');
   await prefs.set('disguise', true);
   await prefs.set('hideNotificationTitles', true);
@@ -162,7 +162,7 @@ async function readLocalPrefs(driver: SqliteDriver) {
   const prefs = await openPreferences(driver);
   return {
     onboarded: prefs.get('onboarded'),
-    lastWrappedNotifiedPeriodKey: prefs.get('lastWrappedNotifiedPeriodKey'),
+    lastExportFailureNotifiedAt: prefs.get('lastExportFailureNotifiedAt'),
     lockAfter: prefs.get('lockAfter'),
     disguise: prefs.get('disguise'),
     hideNotificationTitles: prefs.get('hideNotificationTitles'),
@@ -184,7 +184,7 @@ function portableWith(marker: string) {
     metricDimension: 'femininity',
     checkInEnabled: true,
     checkInTime: '07:45',
-    lastWrappedNotifiedPeriodKey: `device-local-${marker}`
+    lastExportFailureNotifiedAt: 1706000000000
   };
 
   return {

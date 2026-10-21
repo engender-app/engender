@@ -1002,14 +1002,6 @@
   color: var(--text-2);
 }
 
-/* The two dates a custom range needs, inside the range sheet. */
-.wrapped-range-dates {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-2);
-  text-align: left;
-}
-
 /* ---------- On this day (phase 5 UX ticket 23) ----------
    The photos from the day that resurfaced, under the entries that mention
    them. A wrapping row rather than a scroller: a single day's photos are a
@@ -1019,21 +1011,4 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-top: var(--space-3);
-}
-
-/* ---------- The wrapped share card's screen ---------- */
-.share-stage { position: relative; margin-top: var(--space-4); }
-
-.share-preview {
-  margin-top: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-block);
-  padding: var(--space-4);
-}
-
-.share-note {
-  margin: var(--space-3) 0 0;
-  font-size: var(--text-sm);
-  color: var(--text-2);
 }

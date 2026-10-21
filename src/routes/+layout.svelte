@@ -451,8 +451,7 @@
     });
   }
 
-  /* Auto-export and the retrospective notifications, for as long as an
-     Android journal is open and unlocked (backgroundSchedulers.ts). */
+  /* Auto-export runs while an Android journal is open and unlocked. */
   $effect(() => {
     if (isReadyState(bootState) && !locked && isAndroid()) return startBackgroundSchedulers();
   });

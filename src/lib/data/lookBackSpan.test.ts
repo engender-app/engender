@@ -21,7 +21,6 @@ import {
   yearTicks
 } from './lookBackSpan';
 import { annotationsInRange, type ChartAnnotationSource } from '../charts/annotations';
-import { parseWrappedRangeParams } from './wrappedRange';
 
 const TODAY = 20700;
 
@@ -272,15 +271,9 @@ describe('the rail draws every dated history, not only the eras', () => {
   });
 });
 
-describe('spanRangeQuery: a picked span is read at the same URL the picker writes', () => {
-  it('round-trips through the wrapped range parser to the same two days', () => {
-    const span = { start: 20655, end: 20690 };
-    const query = spanRangeQuery(span);
-    expect(query.startsWith('?named=custom')).toBe(true);
-    const params = new URLSearchParams(query);
-    const parsed = parseWrappedRangeParams(params.get('named'), params.get('from'), params.get('to'), TODAY);
-    expect(parsed.choice).toBe('custom');
-    expect(parsed.range).toEqual(span);
+describe('spanRangeQuery', () => {
+  it('passes span dates to readings', () => {
+    expect(spanRangeQuery({ start: 20655, end: 20690 })).toBe('?from=2026-07-21&to=2026-08-25');
   });
 });
 

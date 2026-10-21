@@ -16,7 +16,7 @@ describe('a reading tile opens its screen at the door\'s span', () => {
   it('writes the span into the reading\'s address the way the body map and wrapped read it', () => {
     const span = { start: TODAY - 29, end: TODAY };
     expect(readingHref('day-by-day', span)).toBe(`/stats/day-by-day${spanRangeQuery(span)}`);
-    expect(readingHref('themes', span)).toMatch(/^\/stats\/themes\?named=custom&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/);
+    expect(readingHref('themes', span)).toBe(`/stats/themes${spanRangeQuery(span)}`);
   });
 
   it('knows its seven readings and refuses anything else', () => {

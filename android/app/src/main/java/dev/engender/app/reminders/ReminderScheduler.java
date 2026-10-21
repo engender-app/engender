@@ -370,9 +370,7 @@ public final class ReminderScheduler {
             }
             return route;
         }
-        // Wrapped and on-this-day notifications deep-link through this same
-        // allowlist, not a route-specific one of their own - see
-        // RetrospectiveNotificationsPlugin.
+        // Keep pinned launch routes for external shortcuts.
         if (route.equals("/wrapped/week") || route.equals("/wrapped/month") || route.equals("/wrapped/year")) {
             return route;
         }

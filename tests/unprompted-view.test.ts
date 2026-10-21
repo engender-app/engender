@@ -54,9 +54,9 @@ describe('what the merged screen is built from', () => {
     expect(editor).toContain('data-edit-tile={kind}');
   });
 
-  it('carries the four prompts that came off Settings, under a heading', () => {
+  it('carries remaining prompts under a heading', () => {
     expect(screenMarkup).toContain('m.notif_prompts_heading()');
-    for (const key of ['entry-nudges', 'guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
+    for (const key of ['guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
       expect(screen).toContain(`key: '${key}'`);
     }
     // A plain div for the same reason every other switch row here is one.
@@ -207,7 +207,7 @@ describe('the notifications permission notice', () => {
        was left and opened again. watchStatus owns the listener, its
        teardown and the refused-read rule (watchStatus.test.ts). */
     expect(screen).toContain("from '$lib/permissions/watchStatus'");
-    expect(screen).toMatch(/watchStatus<AndroidRetrospectiveNotificationStatus \| 'unreadable'>\(\{[\s\S]*?read: \(\) => androidRetrospectiveNotifications\.getStatus\(\)/);
+    expect(screen).toMatch(/watchStatus<AndroidReminderStatus \| 'unreadable'>\(\{[\s\S]*?read: \(\) => androidReminders\.getStatus\(\)/);
     expect(screen).toContain("unreadable: 'unreadable'");
     // A refused read says it could not check, not that notifications are off.
     const unknown = screenMarkup.slice(screenMarkup.indexOf("{#if notifyStatus === 'unreadable' && anyNotifyOn}"), screenMarkup.indexOf('key="notify-denied"'));

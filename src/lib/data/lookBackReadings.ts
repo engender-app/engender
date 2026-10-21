@@ -27,7 +27,7 @@ export function isReading(value: string | undefined): value is Reading {
 }
 
 /** Where a tile opens: the reading's screen, carrying the span in the same
-    query `/wrapped/range` and `/body-map` already read (`spanRangeQuery`),
+    query `/body-map` already reads (`spanRangeQuery`),
     so a person who bookmarks a reading gets the stretch they were looking
     at and not today's default. */
 export function readingHref(reading: Reading, span: Span): string {

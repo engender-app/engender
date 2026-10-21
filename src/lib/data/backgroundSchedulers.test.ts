@@ -1,21 +1,14 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-const { startExport, stopExport, startRetro, stopRetro } = vi.hoisted(() => ({
+const { startExport, stopExport } = vi.hoisted(() => ({
   startExport: vi.fn(),
   stopExport: vi.fn(),
-  startRetro: vi.fn(),
-  stopRetro: vi.fn()
 }));
 
 vi.mock('./archive/auto-export-scheduler', () => ({
   startAutoExportScheduler: startExport,
   stopAutoExportScheduler: stopExport
 }));
-vi.mock('./retrospective-notifications-scheduler', () => ({
-  startRetrospectiveNotificationsScheduler: startRetro,
-  stopRetrospectiveNotificationsScheduler: stopRetro
-}));
-
 import { CHECK_EVERY_MS, periodicCheck, startBackgroundSchedulers } from './backgroundSchedulers';
 
 const listeners = new Map<string, () => void>();
@@ -95,24 +88,21 @@ describe('a periodic check', () => {
   });
 });
 
-describe('the two background schedulers', () => {
-  test('start together and stop together', async () => {
+describe('the background scheduler', () => {
+  test('starts and stops export', async () => {
     const stop = startBackgroundSchedulers();
     await flush();
     expect(startExport).toHaveBeenCalledTimes(1);
-    expect(startRetro).toHaveBeenCalledTimes(1);
 
     stop();
     expect(stopExport).toHaveBeenCalledTimes(1);
-    expect(stopRetro).toHaveBeenCalledTimes(1);
   });
 
-  test('never start if stopped before their modules arrive', async () => {
+  test('never start if stopped before its module arrives', async () => {
     const stop = startBackgroundSchedulers();
     stop();
     await flush();
 
     expect(startExport).not.toHaveBeenCalled();
-    expect(startRetro).not.toHaveBeenCalled();
   });
 });

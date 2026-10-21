@@ -22,7 +22,7 @@
 
      Redesign ticket 05 took the screen's own 7d-to-365d range picker off
      it: the only way here is Look back's list, at the same span/query
-     shape /wrapped/range already reads (spanRangeQuery), so the range
+     shape the Look back readings already use (spanRangeQuery), so the range
      picker on this side would only ever disagree with the one the person
      just dragged. A direct visit with no query still gets a window - the
      door's own default of the last thirty days - rather than an empty
@@ -92,7 +92,7 @@
   let today = $derived(currentDay());
 
   /* The span, reached from Look back (redesign ticket 05) at the same query
-     /wrapped/range reads (stats/+page.svelte's spanRangeQuery) - this screen
+     Look back readings use (spanRangeQuery) - this screen
      only ever wants the two dates out of it. A direct visit with no query,
      or one that fails to parse, falls back to the door's own default
      window: the last DEFAULT_SPAN_DAYS days ending today. */

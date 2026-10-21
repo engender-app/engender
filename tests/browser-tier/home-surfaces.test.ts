@@ -240,18 +240,6 @@ export async function homeContracts(): Promise<Result[]> {
     return root().querySelector('a[href="/transition/milestones"]');
   });
   await screen.remove();
-  const promptEntry = (await f.journal.entries.entriesForDay(today))[0];
-  screen = await mountScreen(`/?quickLogDims=${promptEntry.id}`, f);
-  await until(() => root().querySelector('[data-home-log] [data-mood="4"]'), 'quick mood');
-  await check('Quick mood opens dimension prompt with add and skip handles', async () => {
-    await until(() => root().querySelector('[data-quick-log-dims]'), 'dimension prompt');
-    return (
-      root().querySelector('[data-qld-input]') &&
-      root().querySelector('[data-qld-add]') &&
-      root().querySelector('[data-qld-skip]')
-    );
-  });
-  await screen.remove();
   const fanTarget = document.createElement('div');
   document.querySelector('#screens')!.replaceChildren(fanTarget);
   const fan = mountInto(QuickAdd, {}, fanTarget);

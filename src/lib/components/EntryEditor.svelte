@@ -6,7 +6,6 @@
   import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { onDestroy, tick, untrack } from 'svelte';
-  import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
   import {
@@ -119,11 +118,6 @@
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
-  // A mood-only quick log offers the dimension follow-up instead of Home.
-  function offersDims(moodOnly: boolean) {
-    return seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
-  }
-
   // Route keys mount a new session for each entry or day.
   // epochDay is todayEpochDay() at mount on purpose, so a draft keeps its date across midnight; other day reads follow currentDay.
   // svelte-ignore state_referenced_locally
@@ -133,11 +127,7 @@
     draftStore: localStorageEntryDraft(journalDataKey),
     preparing: () => loaded.loading || mediaPreparing,
     creation: () => ({ debriefForAppointment }),
-    destination: (moodOnly) => {
-      const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
-      const offerDims = offersDims(moodOnly);
-      return (id) => target ?? (offerDims ? `/?quickLogDims=${id}` : '/');
-    },
+    destination: () => () => listReturnTo(page.url) ?? sourceReturnTo(page.url) ?? '/',
     navigate: async (destination) => {
       const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
       if (target) await smartBackSettled(target);
@@ -830,7 +820,6 @@
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
-    const offerDims = offersDims(entryDraft.hasMoodOnlyContent);
     let result;
     try { result = await session.save(); }
     catch (error) {
@@ -844,10 +833,7 @@
       document.querySelector<HTMLAnchorElement>('[data-entry-saved] a')?.focus();
     }
     if (!result?.navigated) return;
-    const { id, moodOnly } = result;
-    if (!offerDims && prefs.entryNudges && moodOnly) {
-      toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
-    } else toast(m.saved(), { kind: 'saved' });
+    toast(m.saved(), { kind: 'saved' });
   }
 
   async function confirmDelete() {

@@ -1,35 +1,10 @@
-/* The reads behind the wrapped screens (final-audit ticket 31).
-
-   Two calls, split the way comingBackReads.ts splits its own: the second is
-   asked about something the first decides. `readWrappedEras` is what a
-   picked era and the mute check need, and the screen resolves the range and
-   whether it touches a muted era from it (wrappedRange.ts,
-   resurfacingConsent.ts, both pure over what they are handed). Only then does
-   it ask `readWrappedPeriod` about that range - and not at all while wrapped
-   is off or the range is muted, which is the consent rule: nothing is read
-   for a period the person has kept out. */
+/* Journal reads for one completed Wrapped period. Muted eras are checked by
+   resurfacing consent before this read starts. */
 
 import type { Journal } from './journal/journal';
 import { wrappedLetters, LETTER_RETROSPECTIVE_LIMIT } from './letterRetrospective';
 import { wrappedTagInsights, wrappedTallyCounts } from './wrappedSections';
 
-/** The eras an `era` choice can name, the journal's own edges to clamp an
-    open one against (phase 6 ticket 03), and which eras are muted (phase 6
-    ticket 05). */
-export async function readWrappedEras(journal: Pick<Journal, 'eras' | 'eraMutes'>) {
-  const [eras, bounds, mutedEraUuids] = await Promise.all([
-    journal.eras.getEras(),
-    journal.eras.getJournalBounds(),
-    journal.eraMutes.getMutedEraUuids()
-  ]);
-  return { eras, bounds, mutedEraUuids };
-}
-
-/** One result for a wrapped period. Start every journal call before
-    awaiting so liveQuery observes every dependency on its first run. The
-    screen already held the period whole until every figure had landed; a
-    failed read now also fails it whole, rather than drawing a recap beside
-    sections that silently read as empty. */
 export async function readWrappedPeriod(
   journal: Pick<Journal, 'stats' | 'letters'>,
   period: {

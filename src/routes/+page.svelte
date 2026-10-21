@@ -76,7 +76,6 @@
   import TodayEditor from '$lib/components/TodayEditor.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
-  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import MoodChips from '$lib/components/kit/MoodChips.svelte';
@@ -93,7 +92,7 @@
   } from '$lib/data/stockProjection';
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { attempt, writer } from '$lib/stores/attempt.svelte';
+  import { attempt } from '$lib/stores/attempt.svelte';
   import { collapse, disclose, markScreenArrival, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
 
@@ -677,37 +676,13 @@
      (android/launch-routes.ts). Home no longer draws the two directions -
      quick add does - but it is still where the widget lands, so the write
      stays. No follow-up sheet and no confirmation: a widget tap gets no
-     further screen. The param is cleared the same way quickLogDims is
-     below, so reloading or going back never re-logs it. */
+     further screen. The param is cleared after logging, so reloading or going back never re-logs it. */
   $effect(() => {
     if (!doorActive() || page.url.pathname !== '/') return;
     const raw = page.url.searchParams.get('tally');
     if (!raw) return;
     const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
     if (kind) void attempt(() => journal.tally.log({ epochDay: todayEpochDay(), kind }), m.write_failed());
-    void replaceRoute('/', { noScroll: true, keepFocus: true });
-  });
-
-  /* Phase 4 ticket 13: a quick log's save already happened before this
-     sheet ever opens (EntryEditor.svelte), so declining it never delays or
-     blocks the quick log itself - it only decides whether the scale values
-     on the same entry get filled in too. `quickLogDims` arrives as a query
-     param because the save navigates here; the effect below reads it once
-     and replaces the URL so reloading or going back never reopens the
-     sheet. */
-  let dimsPromptEntryId = $state<number | null>(null);
-  // A `type="number"` input binds its value as a number, not a string.
-  let dimInputs = $state<Record<string, number | undefined>>({});
-
-  $effect(() => {
-    if (!doorActive() || page.url.pathname !== '/') return;
-    const raw = page.url.searchParams.get('quickLogDims');
-    if (!raw) return;
-    const id = Number(raw);
-    if (!Number.isNaN(id)) {
-      dimInputs = {};
-      dimsPromptEntryId = id;
-    }
     void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
@@ -719,8 +694,6 @@
     visit++;
     tilesExpanded = false;
     agendaExpanded = false;
-    dimsPromptEntryId = null;
-    dimInputs = {};
     letterDismissSheetOpen = false;
     stockDismissSheetOpen = false;
     editing = false;
@@ -729,23 +702,6 @@
     held = new Set();
   });
 
-  const dimsWrite = writer();
-  async function saveQuickLogDims() {
-    const id = dimsPromptEntryId;
-    if (id == null) return;
-    const savingVisit = visit;
-    const dims: Record<string, number> = {};
-    for (const dim of vocabulary.activeDimensions) {
-      const n = dimInputs[dim.key];
-      if (n == null || Number.isNaN(n)) continue;
-      dims[dim.key] = Math.min(dim.max, Math.max(dim.min, Math.round(n)));
-    }
-    const any = Object.keys(dims).length > 0;
-    // The sheet stays up with the numbers in it when the write fails.
-    if (any && !(await dimsWrite.run(() => journal.entries.upsertEntry({ id, dims }), m.write_failed()))) return;
-    if (doorActive() && savingVisit === visit) dimsPromptEntryId = null;
-    if (any) toast(m.saved(), { kind: 'record-saved' });
-  }
 </script>
 
 {#snippet cheer()}
@@ -1350,47 +1306,6 @@
   {/if}
 
   {#if doorActive()}
-  <Sheet busy={dimsWrite.busy}
-    open={dimsPromptEntryId !== null}
-    title={m.quick_log_dims_title()}
-    onClose={() => (dimsPromptEntryId = null)}
-  >
-    {#if dimsPromptEntryId !== null}
-      <div data-quick-log-dims>
-        <h3>{m.quick_log_dims_title()}</h3>
-        <p class="muted small" style="margin-bottom:var(--space-4)">{m.quick_log_dims_hint()}</p>
-        <!-- A number input rather than DimensionSlider (EntryEditor.svelte):
-             the ticket's acceptance detail is placeholder text that clears
-             on focus with nothing to delete first, which only a real
-             placeholder attribute gives for free - a slider has no such
-             concept, and it also can't tell "skipped" apart from "chosen the
-             midpoint" the way an empty input can. -->
-        {#each vocabulary.activeDimensions as dim (dim.key)}
-          <Field label={dim.name} id={`qld-${dim.key}`}>
-            {#snippet children(id)}
-              <input
-                class="input"
-                type="number"
-                {id}
-                data-qld-input={dim.key}
-                inputmode="decimal"
-                min={dim.min}
-                max={dim.max}
-                placeholder={m.dim_value_placeholder({ n: String(Math.round((dim.min + dim.max) / 2)) })}
-                bind:value={dimInputs[dim.key]}
-              />
-              <div class="dim-ends"><span>{dim.low}</span><span>{dim.high}</span></div>
-            {/snippet}
-          </Field>
-        {/each}
-        <div class="stack-3">
-          <button class="btn btn-primary" data-qld-add disabled={dimsWrite.busy} onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>
-          <button class="btn btn-ghost" data-qld-skip disabled={dimsWrite.busy} onclick={() => (dimsPromptEntryId = null)}><span>{m.not_now()}</span></button>
-        </div>
-      </div>
-    {/if}
-  </Sheet>
-
   <Sheet
     open={letterDismissSheetOpen}
     title={m.tile_letter_dismiss_title()}

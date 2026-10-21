@@ -1,14 +1,5 @@
 <script lang="ts">
-  /* The shared wrapped-card renderer (ticket 16), behind ticket 17's book
-     opening page and ticket 18's share card. One rendering path for both,
-     so the visual object they describe under two names is only built once.
-
-     Everything shown here was chosen by the caller before this component
-     ever mounts - `WrappedCardContent` has no field for journal text or a
-     photo, so there is nothing to opt back in accidentally. Picking what
-     goes into `content` is each call site's own concern (an inclusion
-     picker for one, an element picker for the other), not this
-     component's. */
+  /* Journal book opening card. The content type has no journal text or photo. */
   import type { WrappedCardContent } from '$lib/data/wrappedCard';
 
   let { content }: { content: WrappedCardContent } = $props();

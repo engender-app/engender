@@ -5,8 +5,8 @@
    static, and Switch is a button too. A switch in the trailing slot of a
    default row is a button inside a button: axe's nested-interactive, and a
    row that Tab stops on twice while only one of the two stops does
-   anything. The audit found it on the share picker and the onboarding
-   disguise step; this reads every screen rather than those two, so a new
+   anything. The audit found it on the onboarding disguise step; this
+   reads every screen, so a new
    row written the old way fails here before an audit has to find it.
 
    A source read, because which ListRows hold a switch is a fact about the
@@ -68,10 +68,10 @@ function svelteFiles(): string[] {
 describe('a ListRow holding a switch', () => {
   it('finds the rows it is about, so an empty scan cannot pass', () => {
     const holding = svelteFiles().flatMap((f) => listRows(f, readFileSync(f, 'utf8'))).filter((r) => r.holdsSwitch);
-    /* The share picker's two, the disguise step, Settings' security row,
-       the journal book's parts, the care curve's fit and Today's editor all
-       write one. A count this low means the parser stopped seeing them. */
-    expect(holding.length).toBeGreaterThanOrEqual(8);
+    /* The disguise step, Settings' security row, the journal book's parts,
+       the care curve's fit and Today's editor still write these rows. A
+       lower count means the parser stopped seeing them. */
+    expect(holding.length).toBeGreaterThanOrEqual(7);
   });
 
   it('is static everywhere, so the switch is the row\'s only control', () => {

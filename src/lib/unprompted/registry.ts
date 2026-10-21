@@ -35,19 +35,8 @@
    for a specific time, or that something failed. Everything else surfaces
    in the app and waits.**
 
-   Written down here because its whole value is that the next feature has to
-   argue with it: a kind that wants a `notify` below has to say which half
-   of the rule admits it. What the six firing rows claim today:
-
-   - `reminders`, `check-in`, `wear-elapsed` - scheduled, for a time the
-     person themselves set (a rule, a check-in time, an hour count on a wear
-     session).
-   - `export-failure` - something failed, and nothing was saved.
-   - `wrapped`, `on-this-day` - **grandfathered.** Neither passes the rule:
-     both are content offers the app decides are due. They keep their
-     existing opt-in toggles and behaviour because a milestone about consent
-     should not silently withdraw behaviour people already chose, not
-     because the rule admits them.
+   Current firing rows pass that rule: reminders, check-in and wear-elapsed
+   are scheduled by the person; export-failure reports a failed backup.
 
    Applied honestly to what phase 6 adds, the rule admits nothing new: the
    appointment debrief offer, insights and the flourish are all in-app. That
@@ -96,15 +85,8 @@ export type UnpromptedKind =
   | 'wear-elapsed'
   | 'export-failure';
 
-/** Which Android notification channel a firing kind uses. Reminders, the
-    check-in and a wear session's elapsed prompt share the two fixed channels
-    android-bridge.ts declares - a wear prompt is an ordinary Reminder row
-    (CONTEXT.md), so it arrives on the reminder channel rather than one of its
-    own. Wrapped and on-this-day each name a channel after their own title
-    (retrospective-notifications-scheduler.ts); `retrospective` covers both
-    here, since what varies between them is the channel's display name, not
-    its category. `exportFailure` is AutoExportPlugin's own. */
-type NotificationChannel = 'reminders' | 'checkIn' | 'retrospective' | 'exportFailure';
+/** Android channels used by remaining notification producers. */
+type NotificationChannel = 'reminders' | 'checkIn' | 'exportFailure';
 
 export interface UnpromptedRow {
   /** Stable handle for the walkthrough (ADR-0029) - never the title, which
@@ -124,9 +106,9 @@ export interface UnpromptedRow {
       `unpromptedQuiet` below is what reads it.
 
       Required, and nullable rather than optional, so a kind added here has to
-      decide. Null is a real answer for most of them: a letter unlocking, a
-      journaling pause, an export that failed and the two retrospectives are
-      about the journal as a whole, and `entries` is not finishable.
+      decide. Null is a real answer for most of them: a letter unlocking,
+      an export failure and the two retrospectives concern the journal as
+      a whole, and `entries` is not finishable.
 
       A row's `prefKey` is untouched by any of this. Whether a kind of prompt
       talks is a different question from whether an area is on, and this is a
@@ -274,12 +256,6 @@ const ROWS = [
     area: null,
     title: () => m.wrapped(),
     surface: { subtitle: () => m.wrapped_settings_sub(), prefKey: 'wrappedEnabled' },
-    notify: {
-      subtitle: () => m.wrapped_notify_sub(),
-      prefKey: 'wrappedNotificationsEnabled',
-      channel: 'retrospective',
-      disguised: true
-    }
   },
   {
     key: 'on-this-day',
@@ -287,12 +263,6 @@ const ROWS = [
     area: null,
     title: () => m.on_this_day(),
     surface: { subtitle: () => m.on_this_day_settings_sub(), prefKey: 'onThisDayEnabled' },
-    notify: {
-      subtitle: () => m.on_this_day_notify_sub(),
-      prefKey: 'onThisDayNotificationsEnabled',
-      channel: 'retrospective',
-      disguised: true
-    }
   },
   {
     key: 'revisit',

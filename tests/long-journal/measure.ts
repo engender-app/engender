@@ -455,36 +455,27 @@ export async function measureLongJournal(
   // measurement - one for form's sake would report nothing a budget could
   // ever fail.
 
-  // On-this-day (OnThisDayHomeCard.svelte) asks isGoodDay for a fixed three
-  // candidates - a month, six months and a year back - never more of them
-  // as the journal grows. What's new here is isGoodDay's body-region EXISTS
-  // clause (phase 5 ticket 44); this measurement is what tells us whether
-  // that clause stays as cheap as the rest of the check at decade scale.
+  // On-this-day checks month, six months, and each annual anniversary through
+  // the journal's first entry. The decade fixture must pay for those extra
+  // candidates, including isGoodDay's body-region EXISTS clause.
+  const lookbackStart = (await journal.eras.getJournalBounds())?.firstEpochDay ?? today;
+  const lookbackDays = onThisDayCandidates(today, lookbackStart);
   await measure('on-this-day-good-day', 'on-this-day, whether each lookback day clears the bar', async () => {
-    const candidates = onThisDayCandidates(today);
-    const results = await Promise.all(candidates.map((c) => journal.stats.isGoodDay(c.epochDay)));
+    const results = await Promise.all(lookbackDays.map((c) => journal.stats.isGoodDay(c.epochDay)));
     return {
       result: results,
       detail: `${results.filter(Boolean).length} of ${results.length} lookback days clear the bar`
     };
   });
 
-  /* On-this-day's own screen (phase 5 UX ticket 23, spec 05) reads
-     `entriesForDay` only for a lookback that already cleared the bar above
-     - but this measures all three unconditionally, the same way
-     `on-this-day-good-day` does, because the screen fires from a
-     notification (phase 4 features ticket 04): whichever day resurfaces is
-     not chosen by this run, so the worst case is that a decade-scale
-     journal makes every one of the three cost something. `entriesForDay`
-     replaced two one-day aggregates (`recap`, `dayAverages`) per candidate;
-     nothing here measures those, because they no longer run. */
+  /* The screen reads entriesForDay only for qualifying days. This measures
+     every candidate to retain a worst-case cost as the journal grows. */
   await measure('on-this-day-entries', 'on-this-day, entries and attachments for each lookback day', async () => {
-    const candidates = onThisDayCandidates(today);
-    const entries = await Promise.all(candidates.map((c) => journal.entries.entriesForDay(c.epochDay)));
+    const entries = await Promise.all(lookbackDays.map((c) => journal.entries.entriesForDay(c.epochDay)));
     const photos = entries.reduce((total, day) => total + day.reduce((n, e) => n + e.photos.length, 0), 0);
     return {
       result: entries,
-      detail: `${entries.map((day) => day.length).join('+')} entries across the three lookback days, ${photos} photos`
+      detail: `${entries.map((day) => day.length).join('+')} entries across ${lookbackDays.length} lookback days, ${photos} photos`
     };
   });
 
@@ -820,7 +811,6 @@ export async function measureLongJournal(
        other, and is one statement for every active tryout since phase 8
        audit ticket 13. */
     const wrappedPeriod = offeredWrappedPeriod(today);
-    const lookbackDays = onThisDayCandidates(today);
     const activeTryoutIds = journal.tryouts
       .getTryouts()
       .then((rows) => rows.filter((tryout) => spanCoversDay(tryout, today)).map((tryout) => tryout.id));

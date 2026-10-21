@@ -28,9 +28,6 @@ search-chips
 search-filter-dates
 search-filter-label
 settings-unit-row
-share-note
-share-preview
-share-stage
 starred-photo-cell
 starred-photo-unstar
 stats-interval
@@ -47,7 +44,6 @@ wrapped-cover-year
 wrapped-head
 wrapped-photo-strip
 wrapped-photos
-wrapped-range-dates
 wrapped-stat
 wrapped-stats
 wrapped-sub

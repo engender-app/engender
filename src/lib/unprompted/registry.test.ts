@@ -75,29 +75,17 @@ describe('the unprompted registry', () => {
 });
 
 describe('the notifications view (ticket 04)', () => {
-  it('lists all six producers, the export failure notice included', () => {
+  it('lists four producers, the export failure notice included', () => {
     /* The ticket's own count. Before this the four below decided for
        themselves: reminders and the check-in through AlarmManager, the wear
        prompt as a reminder row nobody had a switch for, and the failure
        notice with no settings home at all. */
     expect(NOTIFICATION_ROWS.map((row) => row.key)).toEqual([
-      'wrapped',
-      'on-this-day',
       'reminders',
       'check-in',
       'wear-elapsed',
       'export-failure'
     ]);
-  });
-
-  it('keeps wrapped and on-this-day on the preference keys they already had', () => {
-    // Grandfathered, per the admission rule: a milestone about consent does
-    // not silently withdraw behaviour people already chose.
-    const notifyKeyOf = (key: string) => NOTIFICATION_ROWS.find((row) => row.key === key)?.notify?.prefKey;
-    expect(notifyKeyOf('wrapped')).toBe('wrappedNotificationsEnabled');
-    expect(notifyKeyOf('on-this-day')).toBe('onThisDayNotificationsEnabled');
-    expect(PREFERENCE_DEFAULTS.wrappedNotificationsEnabled).toBe(false);
-    expect(PREFERENCE_DEFAULTS.onThisDayNotificationsEnabled).toBe(false);
   });
 
   it('reuses the check-in preference rather than stacking a second switch on it', () => {
@@ -111,8 +99,6 @@ describe('the notifications view (ticket 04)', () => {
     expect(
       NOTIFICATION_ROWS.map((row) => [row.key, row.notify?.channel])
     ).toEqual([
-      ['wrapped', 'retrospective'],
-      ['on-this-day', 'retrospective'],
       ['reminders', 'reminders'],
       // A wear prompt is an ordinary Reminder row (CONTEXT.md), so it
       // arrives on the reminder channel rather than one of its own.
@@ -131,7 +117,7 @@ describe('the notifications view (ticket 04)', () => {
     for (const row of NOTIFICATION_ROWS) expect(row.notify?.disguised, row.key).toBe(true);
   });
 
-  it('defaults the two scheduled-by-you kinds on and the two retrospectives off', () => {
+  it('defaults the two scheduled-by-you kinds on and the check-in opt-in', () => {
     /* Reminders and the wear prompt already fire today for anyone who set
        one up, so a switch defaulting to off would silently stop them on
        update. The failure notice defaults on for the other half of the

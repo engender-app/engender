@@ -2110,8 +2110,6 @@ const HYDRATION_SCENES = [
   { name: 'wrapped-week', at: '/wrapped/week', when: 'persona', is: 'a wrapped week' },
   { name: 'wrapped-month', at: '/wrapped/month', when: 'persona', is: 'a wrapped month' },
   { name: 'wrapped-year', at: '/wrapped/year', when: 'persona', is: 'a wrapped year' },
-  { name: 'wrapped-range', at: '/wrapped/range', is: 'the wrapped range picker' },
-  { name: 'wrapped-share', at: '/wrapped/month/share', needs: 'entry', when: 'persona', is: 'the share card builder' },
   /* More hub and the Body group */
   { name: 'more', at: '/more', is: 'the hub itself' },
   { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged against the published scale' },
@@ -2202,7 +2200,6 @@ const HYDRATION_SCENES = [
      are right to ignore. The quick-log dims sheet is a query param, so it
      opens over Home's own cold mount - the after-save state a real quick
      log lands in. */
-  { name: 'quick-log-dims', at: '/?quickLogDims={entry}', coldOutcome: { consumedQuery: 'quickLogDims', selector: '[data-sheet] [data-quick-log-dims]' }, needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
   { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', after: { selector: '[data-fan]' }, is: 'the quick add fan opening' },
   { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet' },
   { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet' },

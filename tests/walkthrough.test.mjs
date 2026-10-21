@@ -453,101 +453,6 @@ try {
 } catch (e) { fail('star before save', e); }
 });
 
-/* 2b. mood-only save nudges, via the full editor. Ticket 13 gives the
-   quick-log entry point its own unconditional scale prompt instead (see
-   flow 24), so this preference's remaining domain is a mood-only save
-   started from the full editor - the entry point ticket 13 explicitly
-   leaves alone. */
-await flow('nudge flow', async () => {
-try {
-  await fresh('/');
-  /* The switch is on /settings/notifications since phase 11 ticket 04, with
-     the three other prompts that used to float under no heading in
-     Settings' Tracking section. Reached through the row rather than by a
-     deep link, which is also what proves Settings still reaches it, and
-     opened inside `setNudges` rather than once before it: the flow goes to
-     the editor and back between the two calls, so a locator bound to a
-     screen it has since left is what the old shape left behind. */
-  const openPrompts = async () => {
-    await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-    await booted();
-    await page.locator('[data-list-row="notifications"]').click();
-    await page.waitForFunction(() => location.pathname === '/settings/notifications');
-    await page.waitForSelector('[data-prompt="entry-nudges"]');
-  };
-  const nudgeSwitch = page.locator('[data-prompt="entry-nudges"] [role="switch"]');
-  const setNudges = async (enabled) => {
-    const expected = enabled ? 'true' : 'false';
-    await openPrompts();
-    await nudgeSwitch.scrollIntoViewIfNeeded();
-    if ((await nudgeSwitch.getAttribute('aria-checked')) !== expected) {
-      await nudgeSwitch.click();
-      await page.waitForFunction(
-        (want) =>
-          document.querySelector('[data-prompt="entry-nudges"] [role="switch"]')?.getAttribute('aria-checked') === want,
-        expected
-      );
-    }
-  };
-  await setNudges(true);
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await booted();
-
-  /* Straight to the unseeded editor, which is the state this flow is about.
-     It used to get here through quick add's "Today", and phase 5 ticket 18
-     merged that row into the mood row - so every entry quick add starts now
-     carries a seedMood, and a seedMood is precisely what makes the editor
-     offer the scale sheet *instead of* this nudge (EntryEditor.svelte). The
-     flow's own note above already says its remaining domain is a mood-only
-     save started from the full editor; this is that, with the one step that
-     no longer produces it removed. */
-  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
-  await booted();
-  await page.waitForSelector('#ed-note');
-  await page.locator('[data-mood="2"]').click();
-  await page.locator('[data-save]').click();
-  // Waits for a toast whose own kind is the save confirmation, not just
-  // any new toast: the no-persistent-storage boot warning (boot.svelte.ts)
-  // can already be on screen, so counting toasts or taking ".last()" before
-  // the save toast lands can pick that one up instead and see no action.
-  await page.waitForFunction(() => document.querySelectorAll('[data-toast-kind="saved"]').length > 0);
-  const nudgeToast = page.locator('[data-toast-kind="saved"]').last();
-  if ((await nudgeToast.locator('[data-toast-action]').count()) === 0) {
-    throw new Error('nudge action missing while nudges are enabled');
-  }
-
-  await setNudges(false);
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await booted();
-
-  /* Straight to the unseeded editor, which is the state this flow is about.
-     It used to get here through quick add's "Today", and phase 5 ticket 18
-     merged that row into the mood row - so every entry quick add starts now
-     carries a seedMood, and a seedMood is precisely what makes the editor
-     offer the scale sheet *instead of* this nudge (EntryEditor.svelte). The
-     flow's own note above already says its remaining domain is a mood-only
-     save started from the full editor; this is that, with the one step that
-     no longer produces it removed. */
-  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
-  await booted();
-  await page.waitForSelector('#ed-note');
-  await page.locator('[data-mood="3"]').click();
-  await page.locator('[data-save]').click();
-  /* Ticket 09: counting toasts before/after used to race the earlier save's
-     toast, which auto-dismisses on its own 4-second timer - whether it was
-     still on screen when "before" was captured depended on exactly how much
-     wall-clock time the preceding steps happened to take, not on nudges
-     actually being quiet. Waiting for a Saved toast with no action present
-     asserts the actual behavior under test instead of a timing accident. */
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('[data-toast-kind="saved"]')].some(
-      (t) => !t.querySelector('[data-toast-action]')
-    )
-  );
-  ok('mood-only save nudges when enabled and stays quiet when disabled');
-} catch (e) { fail('nudge flow', e); }
-});
-
 /* 3. slider keyboard interaction */
 await flow('slider', async () => {
 try {
@@ -1806,40 +1711,7 @@ try {
     throw new Error('the divider did not move on a key press');
   }
 
-  /* The on-demand recap this flow used to step through is gone (ticket 23,
-     spec 07): its period picker is a wrapped, and what used to be a
-     carousel over a range is now /wrapped/range. Checked here rather than
-     dropped, because "nothing links to the deleted route" is the half of
-     that spec a unit test cannot see. */
-  await fresh('/wrapped/range');
-  await page.waitForSelector('[data-list-row="range-picker"]');
-  await page.locator('[data-list-row="range-picker"]').click();
-  await page.waitForSelector('[data-list-row="range-d90"]');
-  await page.locator('[data-list-row="range-d90"]').click();
-  await page.waitForFunction(() => location.search.includes('named=d90'));
-  if (await page.getByRole('button', { name: /share|export/i }).count()) {
-    throw new Error('a picked range is not shareable, since the share card is built from a cadence');
-  }
-
-  /* Redesign ticket 11: a span pointed at on the Look back door's rail is
-     read at the same URL the picker writes for those two days - proven by
-     opening it from the rail, then typing the same query, and comparing what
-     the two renders say. The door opens on the last thirty days, which the
-     persona clears. */
-  await fresh('/stats');
-  await page.waitForSelector('[data-lookback-read]');
-  const spanHref = await page.locator('[data-lookback-read]').getAttribute('href');
-  if (!/^\/wrapped\/range\?named=custom&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/.test(spanHref ?? '')) {
-    throw new Error('the span opens at ' + spanHref);
-  }
-  await page.locator('[data-lookback-read]').click();
-  await page.waitForSelector('[data-wrapped-stats]');
-  const fromRail = await page.locator('[data-wrapped-stats]').textContent();
-  await fresh(spanHref);
-  await page.waitForSelector('[data-wrapped-stats]');
-  const fromPicker = await page.locator('[data-wrapped-stats]').textContent();
-  if (fromRail !== fromPicker) throw new Error('the rail and the picker read two different wrappeds for one span');
-  ok('timeline, progress-photo compare, the wrapped range that replaced recap, and the span read from the rail');
+  ok('timeline and progress-photo compare');
 } catch (e) { fail('ticket 18 view-only screens', e); }
 });
 
@@ -4128,28 +4000,10 @@ try {
    construction and the screen could not be reviewed at all). So the year has
    entries and the flow adds a handful more to a known month.
 
-   The floor is asserted first, because it is worth proving before anything
-   is rendered on top of it - and against a period that is genuinely thin
-   rather than one that happens to be. A picked range can address any window,
-   so it addresses one nobody could have logged in: the floor applying to
-   those on the same terms as a completed cadence is one of spec 07's own
-   acceptance boxes. */
+   The floor is asserted against a completed period with too few entries
+   before either presentation is checked. */
 await flow('wrapped', async () => {
 try {
-  const emptyWindow = await page.evaluate(() => {
-    const day = (d) => new Date(d * 86400000).toISOString().slice(0, 10);
-    const start = Math.floor(Date.UTC(2019, 0, 1) / 86400000);
-    return { from: day(start), to: day(start + 40) };
-  });
-  await fresh(`/wrapped/range?named=custom&from=${emptyWindow.from}&to=${emptyWindow.to}`);
-  await page.waitForSelector('[data-wrapped-thin], [data-wrapped-stats]');
-  if (!(await page.locator('[data-wrapped-thin]').count())) {
-    throw new Error('a window nobody logged in should be below the entry floor');
-  }
-  if (await page.locator('[data-wrapped-stats]').count()) {
-    throw new Error('a suppressed range still drew its figures');
-  }
-
   const lastJune = await page.evaluate(() => Math.floor(Date.UTC(new Date().getFullYear() - 1, 5, 10) / 86400000));
   for (let offset = 0; offset < 5; offset++) {
     await fresh(`/entry/new/${lastJune + offset}`);
@@ -4217,9 +4071,7 @@ try {
   /* All three cadences reachable without typing a URL: Home offers one, and
      the switcher is what makes the other two anything but orphans (SH-001). */
   const tabs = page.locator('[data-segmented="wrapped-cadences"] a');
-  /* Four: the three completed cadences plus the arbitrary range wrapped
-     absorbed from recap (ticket 23, spec 07). */
-  if ((await tabs.count()) !== 4) throw new Error('the cadence switcher offers ' + (await tabs.count()));
+  if ((await tabs.count()) !== 3) throw new Error('the cadence switcher offers ' + (await tabs.count()));
   await tabs.nth(2).click();
   await page.waitForSelector('[data-wrapped-cover-year]', { timeout: 15000 });
   const activeTab = await page
@@ -4227,30 +4079,9 @@ try {
     .getAttribute('href');
   if (activeTab !== '/wrapped/year') throw new Error('the switcher marks ' + activeTab + ' as current');
 
-  /* The share picker opens with an honest, private empty preview. Selecting
-     and clearing an item changes that same preview; neither state sends
-     anything, and the arbitrary range keeps sharing unavailable. */
-  await fresh('/wrapped/month/share');
-  await page.waitForSelector('[data-empty-preview]');
-  const emptyPreview = await page.locator('[data-empty-preview]').innerText();
-  if (!/Choose what to include|Wybierz zawartość/i.test(emptyPreview)) {
-    throw new Error('the empty share preview does not explain what to do');
-  }
-  if (await page.locator('[data-share]').count()) throw new Error('an empty share preview can share automatically');
-  const countSwitch = page.getByRole('switch', { name: /entries|wpis/i }).first();
-  await countSwitch.click();
-  await page.waitForSelector('[data-wrapped-stat]');
-  if (await page.locator('[data-empty-preview]').count()) throw new Error('selecting content left the empty preview message');
-  if (await page.locator('[data-share]').count()) throw new Error('selecting content shared automatically');
-  await countSwitch.click();
-  await page.waitForSelector('[data-empty-preview]');
-  await fresh('/wrapped/range/share');
-  if (!(await page.locator('[data-notice-title]').count())) throw new Error('range sharing became available');
-
-  await fresh('/wrapped/nonsense');
-  if (!(await page.locator('[data-notice-title]').count())) throw new Error('an unknown cadence should say so');
-  if (await page.locator('[data-segmented="wrapped-cadences"]').count()) {
-    throw new Error('an unknown cadence still drew a switcher');
+  for (const oldPath of ['/wrapped/range', '/wrapped/month/share', '/wrapped/nonsense']) {
+    await fresh(oldPath);
+    await page.waitForSelector('[data-error-screen="not-found"]');
   }
 
   /* The Look back door offers exactly one card, for whichever cadence is
@@ -4457,7 +4288,7 @@ try {
   await card.click();
   await page.waitForSelector('[data-lookback-day] [data-lookback]');
   if (!page.url().endsWith('/stats')) throw new Error('opening on-this-day left the door for ' + page.url());
-  /* And the route still answers, for the notification deep link. */
+  /* The separate route still answers. */
   await fresh('/on-this-day');
   await page.waitForSelector('[data-lookback]');
 
@@ -4571,68 +4402,7 @@ try {
 } catch (e) { fail('same-process background/resume', e); }
 });
 
-/* 24. quick log offers to fill in the active preset's scales too (phase 4
-   features ticket 13, beta B2), unconditionally - unlike the "Add details"
-   toast (flow 2b), this prompt does not depend on the entry-nudges
-   preference. The prompt's inputs carry only placeholder text, never a
-   real prefilled value, so there is nothing to delete before typing - and
-   filling them in writes onto the entry the quick log already saved. */
-await flow('quick log dims prompt (save)', async () => {
-try {
-  await fresh('/');
-  await page.locator('[data-mood="4"]').click();
-  await page.waitForSelector('#ed-note');
-  await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-quick-log-dims]');
-
-  const firstInput = page.locator('[data-qld-input]').first();
-  if (!(await firstInput.getAttribute('placeholder'))) throw new Error('dimension input has no placeholder text');
-  if ((await firstInput.inputValue()) !== '') {
-    throw new Error('dimension input starts with a real value instead of just a placeholder');
-  }
-
-  for (const input of await page.locator('[data-qld-input]').all()) await input.fill('7');
-  await page.locator('[data-qld-add]').click();
-  await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
-
-  await openNewestEntry();
-  await page.waitForSelector('[data-dim-value]');
-  // Asserted as "is this a number", not against the unset marker's wording:
-  // that marker is ordinary UI copy and changed once already (ticket 31).
-  const values = await page.locator('[data-dim-value]').allTextContents();
-  if (values.some((v) => !Number.isFinite(Number(v.trim())))) {
-    throw new Error('a scale value from the prompt did not save: ' + JSON.stringify(values));
-  }
-  ok('quick log dims prompt saves typed scale values onto the just-saved entry');
-} catch (e) { fail('quick log dims prompt (save)', e); }
-});
-
-/* 24b. declining the prompt must never block or delay the quick log itself
-   - the entry is already saved by the time the prompt appears, so skipping
-   it leaves that entry exactly as it was. */
-await flow('quick log dims prompt (decline)', async () => {
-try {
-  await fresh('/');
-  await page.locator('[data-mood="3"]').click();
-  await page.waitForSelector('#ed-note');
-  await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-quick-log-dims]');
-  await page.locator('[data-qld-skip]').click();
-  await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
-
-  await openNewestEntry();
-  await page.waitForSelector('[data-dim-value]');
-  const values = await page.locator('[data-dim-value]').allTextContents();
-  if (values.some((v) => Number.isFinite(Number(v.trim())))) {
-    throw new Error('declining the prompt still wrote a scale value: ' + JSON.stringify(values));
-  }
-  ok('declining the quick log dims prompt leaves the saved entry untouched');
-} catch (e) { fail('quick log dims prompt (decline)', e); }
-});
-
-/* 25. ticket 18's compare-two-periods stats screen (phase 4 features): two
-   independently picked ranges show their own core figures side by side,
-   with no computed delta rendered between them. */
+/* 25. Compare two periods on the same screen. */
 await flow('compare two periods', async () => {
 try {
   await fresh('/compare');
@@ -8026,14 +7796,14 @@ try {
       throw new Error(key + ' is still switched here as well as in Today\'s editor');
     }
   }
-  /* The four prompts that came off Settings' Tracking section. */
-  for (const key of ['entry-nudges', 'guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
+  /* Remaining prompts that came off Settings' Tracking section. */
+  for (const key of ['guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
     if (!(await page.locator(`[data-prompt="${key}"]`).count())) {
       throw new Error('the ' + key + ' prompt did not arrive with the rest');
     }
   }
 
-  ok('one screen over one registry: notify column absent on web, the show column holds what Today does not arrange, and the four prompts are under their heading');
+  ok('one screen over one registry: notify column absent on web, the show column holds what Today does not arrange, and the remaining prompts are under their heading');
 } catch (e) { fail('the unprompted registry view', e); }
 });
 

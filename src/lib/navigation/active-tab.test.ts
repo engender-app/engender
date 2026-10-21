@@ -22,7 +22,7 @@ describe('activeTabKey', () => {
     /* The arbitrary range recap used to own is a wrapped now (phase 5 UX
        ticket 23, spec 07), so the tab it lights comes from the /wrapped
        prefix rather than from a prefix of the deleted route's own. */
-    expect(activeTabKey('/wrapped/range')).toBe('stats');
+    expect(activeTabKey('/wrapped/month')).toBe('stats');
     expect(activeTabKey('/wrapped/month')).toBe('stats');
   });
 
