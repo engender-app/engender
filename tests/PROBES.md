@@ -76,8 +76,14 @@ Archive validation tests cover single-read export length changes, malformed
 payloads, empty files and trailing plaintext (`codec.test.ts`), refusal kinds,
 positive header fields and exact JSON/chunk ceilings (`container.test.ts`),
 and v1 preset migration without a presets section (`payload.test.ts`). The
-existing `kdf-cost-cap.test.ts` and `archive-row-validation.test.ts` keep the
-KDF refusal and row identity proofs with their production owners.
+existing `kdf-cost-cap.test.ts` keeps the KDF refusal proof.
+`archive-row-validation.test.ts` checks corrupt classification before storage
+access for missing references, invalid stored values, repeated identities and
+template tags. In Merge and Replace it checks unchanged row counts, content
+hash and file bytes. `restore.test.ts` injects a failure before commit with
+valid rows to keep rollback coverage. Strict typed runs in
+`tests/fuzz/fuzz.test.ts` exercise encrypted Archive mutations with Node SQLite
+and a fake file store; they do not cover Android drivers or the browser flow.
 
 `src/lib/data/archive/header-shape.test.ts` sends the retained JSON `null`
 header frame and other non-object headers through `openArchive`. Corrupt-file
