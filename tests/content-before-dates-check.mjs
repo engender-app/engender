@@ -248,7 +248,7 @@ try {
   await page.locator(`[data-side-effect=\"${side.id}\"]`).click();
   await page.locator('[data-add-to-appointment-prep]').click();
   await close();
-  await settlePage(page, server.resolvedUrls.local[0], 'health/appointment-prep', 'light');
+  await settlePage(page, server.resolvedUrls.local[0], 'health/appointments', 'light');
   await page.getByText('Fixture headache', { exact: false }).waitFor();
   console.log('PASS side effect remains owned by Changes; appointment preparation receives its name');
 
