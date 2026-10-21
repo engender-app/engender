@@ -34,36 +34,12 @@ import {
   type DaylioPreview
 } from '../archive/daylio';
 import { daylioBackupPreview, type DaylioBackupPreview } from '../archive/daylioBackup';
-import { dayonePreview, type DayOnePreview } from '../archive/dayone';
-import { transTracksPreview, type TransTracksPreview } from '../archive/transtracks';
-import { trackAndGraphPreview, type TrackAndGraphPreview } from '../archive/trackAndGraph';
-import { pixelsPreview, type PixelsPreview } from '../archive/pixels';
 import type { ArchiveFile, ArchiveImportLogRecord, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { NormalizedPhoto } from './photos';
 import { readImportLog, readRowContext } from './archiveRead';
 import { readArchiveJournal } from './archiveSections';
-
-interface TransTracksCommitResult {
-  milestonesAdded: number;
-  photosAdded: number;
-}
-
-interface DayOneCommitResult {
-  entriesAdded: number;
-  photosAdded: number;
-}
-
-interface TrackAndGraphCommitResult {
-  measurementsAdded: number;
-  typesAdded: number;
-}
-
-interface PixelsCommitResult {
-  entriesAdded: number;
-  tagsAdded: number;
-}
 
 export interface ArchiveSnapshot {
   journal: ArchiveJournal;
@@ -107,40 +83,6 @@ export interface ArchiveArea {
     normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>,
     onProgress?: OnRestoreProgress
   ): Promise<DaylioBackupCommitResult>;
-  /** Parses and resolves a TransTracks `.ttbackup` zip without writing. */
-  previewTransTracksImport(bytes: Uint8Array): Promise<TransTracksPreview>;
-  /** Always Merge. `normalize` turns each raw photo the zip carried into
-      stored JPEG bytes plus a thumbnail - normalizePhoto() needs a canvas
-      and stays a caller's job, the same division photoPicking.ts already
-      draws for every other photo-writing area (photos.ts's attach,
-      hairProgress.ts, tryouts.ts, ...). Writes one import_log record on
-      success (ticket 03), the same as commitDaylioImport. */
-  commitTransTracksImport(
-    preview: TransTracksPreview,
-    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
-  ): Promise<TransTracksCommitResult>;
-  /** Parses and resolves a Day One JSON export (a zip) without writing. */
-  previewDayOneImport(bytes: Uint8Array, naming: DaylioNaming): Promise<DayOnePreview>;
-  /** Always Merge. `normalize` turns each raw photo the zip carried into
-      stored JPEG bytes plus a thumbnail, the same division
-      commitTransTracksImport draws and for the same reason. Writes one
-      import_log record on success (ticket 03), the same as
-      commitDaylioImport. */
-  commitDayOneImport(
-    preview: DayOnePreview,
-    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
-  ): Promise<DayOneCommitResult>;
-  /** Parses and resolves a Track & Graph CSV export without writing. */
-  previewTrackAndGraphImport(csv: string): Promise<TrackAndGraphPreview>;
-  /** Always Merge. Writes one import_log record on success (ticket 03), the
-      same as commitDaylioImport and commitTransTracksImport. */
-  commitTrackAndGraphImport(preview: TrackAndGraphPreview): Promise<TrackAndGraphCommitResult>;
-  /** Parses and resolves a Pixels backup JSON without writing. */
-  previewPixelsImport(file: Uint8Array): Promise<PixelsPreview>;
-  /** Always Merge. An unrecognised `type` is skipped by pixelsPreview and
-      never blocks a commit. Writes one import_log record on success
-      (ticket 03), the same as commitDaylioImport/commitTransTracksImport. */
-  commitPixelsImport(preview: PixelsPreview): Promise<PixelsCommitResult>;
   /** The import history, most recent first, for the settings screen
       (ticket 03). Its own read rather than a slice of `snapshot()`: every
       other archive read costs the whole journal, and a settings screen
@@ -320,80 +262,6 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         tagsAdded: added.tags,
         attachmentsAdded: added.attachments
       };
-    },
-
-    async previewTransTracksImport(bytes) {
-      return transTracksPreview(bytes, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))));
-    },
-
-    async commitTransTracksImport(preview, normalize) {
-      const added = await commitImport(
-        driver,
-        files,
-        {
-          journal: preview.journal,
-          files: (async function* () {
-            for (const [fileName, raw] of preview.rawPhotos) {
-              const normalized = await normalize(raw);
-              yield { name: fileName, bytes: normalized.full };
-              yield { name: thumbFileName(fileName), bytes: normalized.thumb };
-            }
-          })()
-        },
-        { source: 'transtracks', counting: { milestones: ['milestone'], photos: ['photo'] } }
-      );
-      return { milestonesAdded: added.milestones, photosAdded: added.photos };
-    },
-
-    async previewDayOneImport(bytes, naming) {
-      return dayonePreview(bytes, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))), naming);
-    },
-
-    async commitDayOneImport(preview, normalize) {
-      const added = await commitImport(
-        driver,
-        files,
-        {
-          journal: preview.journal,
-          files: (async function* () {
-            for (const [fileName, raw] of preview.rawPhotos) {
-              const normalized = await normalize(raw);
-              yield { name: fileName, bytes: normalized.full };
-              yield { name: thumbFileName(fileName), bytes: normalized.thumb };
-            }
-          })()
-        },
-        { source: 'dayone', counting: { entries: ['entry'], photos: ['photo'] } }
-      );
-      return { entriesAdded: added.entries, photosAdded: added.photos };
-    },
-
-    async previewTrackAndGraphImport(csv) {
-      return trackAndGraphPreview(csv, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))));
-    },
-
-    async commitTrackAndGraphImport(preview) {
-      const added = await commitImport(
-        driver,
-        files,
-        { journal: preview.journal, files: noFiles() },
-        { source: 'trackAndGraph', counting: { measurements: ['measurement'], types: ['measurement_type'] } }
-      );
-      return { measurementsAdded: added.measurements, typesAdded: added.types };
-    },
-
-    async previewPixelsImport(file) {
-      return pixelsPreview(file, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))));
-    },
-
-    async commitPixelsImport(preview) {
-      const added = await commitImport(
-        driver,
-        files,
-        { journal: preview.journal, files: noFiles() },
-        { source: 'pixels', counting: { entries: ['entry'], tags: ['tag'] } }
-      );
-      return { entriesAdded: added.entries, tagsAdded: added.tags };
     },
 
     async snapshot() {

@@ -5,7 +5,7 @@
      list, so this is one `{#each}` with two toggle columns rather than two
      screens each running their own - ADR-0039's amendment argues for
      exactly this consolidation. `/settings/live-tiles` used to be the first
-     question's own screen; it now redirects here.
+     question's own screen; that address was removed.
 
      **Minus Today's own thirteen** (phase 11 ticket 04). A live tile is
      arranged where it draws, in Today's editor, so this screen is every

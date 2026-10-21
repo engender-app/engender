@@ -2177,8 +2177,6 @@ const HYDRATION_SCENES = [
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
   { name: 'words-ignored', at: '/settings/words', is: 'the words the reading skips' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
-  { name: 'entry-templates', at: '/settings?raise=templates', coldOutcome: { consumedQuery: 'raise', selector: '[data-sheet]:has([data-entry-template])' }, is: 'editable entry templates' },
-  { name: 'presentations', at: '/settings?raise=modes', coldOutcome: { consumedQuery: 'raise', selector: '[data-sheet]:has([data-presentation], [data-notice="presentations-empty"])' }, is: 'the presentation catalogue' },
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
   { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },

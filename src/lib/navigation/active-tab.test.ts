@@ -34,17 +34,6 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/recap')).toBe(activeTabKey('/nothing-here'));
   });
 
-  /* Redesign ticket 43: /timeline is a redirect to /transition/milestones
-     now, and the two have to light the same tab. They did not - the rail
-     was Look back's and the list is the Transition door's - so a person
-     opening an old link would have watched the tab indicator travel from
-     Look back to Transition while the redirect landed. The old address
-     keeps working and lights where it now leads. */
-  it('lights the same tab for the old timeline address as for the screen it redirects to', () => {
-    expect(activeTabKey('/timeline')).toBe('settings');
-    expect(activeTabKey('/timeline')).toBe(activeTabKey('/transition/milestones'));
-  });
-
   it('lights more, but borrows its origin for settings chrome (audit item 4)', () => {
     expect(activeTabKey('/more')).toBe('settings');
     expect(activeTabKey('/care/regimen')).toBe('settings');
@@ -89,8 +78,7 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/care')).toBe('settings');
   });
 
-  it('lights settings for doses, even though its route sits outside /settings', () => {
-    expect(activeTabKey('/doses')).toBe('settings');
+  it('lights settings for the care screens', () => {
     expect(activeTabKey('/care/doses')).toBe('settings');
     expect(activeTabKey('/care/labs')).toBe('settings');
   });
@@ -103,7 +91,6 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/body/measurements')).toBe('settings');
     expect(activeTabKey('/health/surgery')).toBe('settings');
     expect(activeTabKey('/transition/milestones')).toBe('settings');
-    expect(activeTabKey('/practice/voice')).toBe('settings');
     expect(activeTabKey('/media/photos')).toBe('settings');
   });
 

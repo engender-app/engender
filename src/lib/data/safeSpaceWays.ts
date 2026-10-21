@@ -21,9 +21,8 @@
    same unlocked letters `/transition/letters` shows in its Open section,
    one door apart, so it points at that section directly; the readings were
    a Look back page sitting on this door, so they point at Look back. Both
-   old addresses redirect, but a way down is a row somebody taps rather than
-   a bookmark, and a row that lands on a redirect is a row that costs a hop
-   on the screen least able to afford one. The rows keep their own words -
+   retired addresses now show the unknown-address screen, so the rows
+   point straight at the screens that own them. The rows keep their own words -
    `moments` still says "Letters and photos", and `readings` is worded as
    Look back words it rather than as the deleted screen did.
 

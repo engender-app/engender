@@ -372,30 +372,6 @@ it('rejects a PIN gate whose prepared journal or theme does not match', async ()
 });
 
 describe('query-driven cold surfaces', () => {
-  const proof = async (name, { search = '', surface = true, extraQuery = '' } = {}) => {
-    const { coldLoadProofExpression, hydrationScreensFor } = await import('./yank-sweep-core.mjs');
-    const { runInNewContext } = await import('node:vm');
-    const scene = hydrationScreensFor({ only: [name] })[0];
-    return runInNewContext(coldLoadProofExpression(scene.at + extraQuery, 'persona', 'light', scene.coldOutcome), {
-      URL,
-      location: { origin: 'https://journal.test', pathname: new URL(scene.at, 'https://journal.test').pathname, search },
-      localStorage: { getItem: (key) => key === 'engender-has-entries' ? '1' : key === 'engender-boot-prefs' ? JSON.stringify({ theme: 'light' }) : 'persona' },
-      document: {
-        documentElement: { dataset: { theme: 'light' } },
-        querySelectorAll: () => [{ textContent: 'Light', classList: { contains: () => true } }],
-        querySelector: (selector) => selector === '[data-app-root]' ? { dataset: { boot: 'ready' } }
-          : selector === scene.coldOutcome?.selector && surface ? { checkVisibility: () => true } : null
-      }
-    });
-  };
-  for (const name of ['entry-templates', 'presentations']) {
-    it(`${name} proves its intended surface after consuming only its trigger query`, async () => {
-      expect(await proof(name)).toMatchObject({ surface: true });
-      await expect(proof(name, { surface: false })).rejects.toThrow('surface');
-      await expect(proof(name, { search: '?unrelated=lost' })).rejects.toThrow('route');
-      await expect(proof(name, { extraQuery: '&keep=1' })).rejects.toThrow('route');
-    });
-  }
   it('ordinary query routes still require their exact query', async () => {
     const { coldLoadProofExpression } = await import('./yank-sweep-core.mjs');
     const { runInNewContext } = await import('node:vm');

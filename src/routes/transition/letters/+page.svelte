@@ -27,7 +27,7 @@
      the open letters were a screen of their own under Safe space,
      `/doubt/moments`, showing the same two letters this screen already
      showed one door away - two surfaces for one set of things somebody put
-     aside on purpose. That screen is a redirect here now, and its photo
+     aside on purpose. That old route was removed, and its photo
      half sits in the Open section under the words it already had. Safe
      space still has its way down: the row points at `#opened`, so a person
      arriving from their worst day lands on what is open rather than on

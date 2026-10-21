@@ -1649,13 +1649,10 @@ try {
    step-able, and the on-demand recap sequence with its Rive fallback.
 
    The first of them is no longer a screen: redesign ticket 43 merged the
-   rail into /transition/milestones and left /timeline as a 307. Loading
-   the old address is how the redirect is proved end to end - the rail's
-   own handles have to answer on the screen it lands on. */
+   rail into /transition/milestones. The rail's own handles have to answer there. */
 await flow('ticket 18 view-only screens', async () => {
 try {
-  await fresh('/timeline');
-  await page.waitForURL('**/transition/milestones');
+  await fresh('/transition/milestones');
   await page.waitForSelector('[data-milestone-rail]');
   const milestoneNames = await page.locator('[data-tl-name]').allTextContents();
   const expectedMilestones = [
@@ -4803,21 +4800,20 @@ try {
 });
 
 /* Characterization pass for the More hub (phase 5 ticket 03): every route
-   Settings used to link, directly or by way of the new /more hub, still
-   answers at its own address - ADR-0036 moves who links to a route, never
-   the route itself, and this is the thing that would catch a slip. */
+   Settings links, directly or by way of the /more hub. Retired addresses
+   are covered by old-addresses-check.mjs. */
 await flow('More hub route characterization', async () => {
 try {
   const SETTINGS_AREA_ROUTES = [
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
     '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
-    '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
-    '/settings/journaling-pause', '/settings/entry-templates', '/settings/presentations', '/media/photos',
-    '/body/measurements', '/body/sizes', '/body/hair-progress',
+    '/settings/affirmations', '/settings/body-regions',
+    '/settings/journaling-pause', '/media/photos',
+    '/body/measurements', '/body/hair-progress',
     '/body/hair-removal', '/care/labs', '/care/regimen',
-    '/health/cycle-events', '/health/side-effects', '/health/surgery',
+    '/health/cycle-events', '/health/surgery',
     '/health/dilation',
-    '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
+    '/health/appointments', '/health/clinician-summary', '/transition/milestones',
     '/transition/roadmap', '/transition/letters', '/transition/tryouts',
     '/settings/eras',
     '/voice', '/body/wear', '/care/changes', '/support/resources',
@@ -5140,12 +5136,8 @@ try {
      here: a benchmark needs a microphone this browser does not have, so
      the link itself is asserted in the browser tier against a mounted
      list (tests/browser-tier/voice-metrics-probe.ts). What only a built
-     app can say is that the route boots at all - `/doses` sticks at
-     "booting" in a production build while every test in the node tier
-     passes - so this walks to the old address by URL, which redirects to
-     `/voice?metric=pitch` and opens the sheet there, and reads
-     what it drew. */
-  await page.goto(BASE + '/practice/voice/metrics', { waitUntil: 'networkidle' });
+     app can say is that `/voice?metric=pitch` boots and opens the sheet. */
+  await page.goto(BASE + '/voice?metric=pitch', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-sheet] [data-metric="pitch"]');
   const explained = await page.locator('[data-metric]').count();
   if (explained !== 7) {
@@ -5608,9 +5600,8 @@ try {
   // Modes, entry templates and the words the reading skips are Settings
   // rows now (redesign tickets 51 and 62, ADR-0084), never on the hub at
   // all. Words has no row anywhere any more - the reading draws on Look
-  // back itself - so the old address is walked as a redirect instead.
-  await page.goto(BASE + '/transition/words', { waitUntil: 'networkidle' });
-  await page.waitForURL('**/stats');
+  // back itself.
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="words"]').click();
@@ -6818,9 +6809,7 @@ try {
   await page.waitForURL('**/health/appointments');
   await page.waitForSelector('[data-appointment]');
 
-  /* The stale address still lands on the visit, one hop (ADR-0036). */
-  await page.goto(BASE + '/health/appointment-prep', { waitUntil: 'networkidle' });
-  await page.waitForURL('**/health/appointments');
+  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-appointment-item]');
 

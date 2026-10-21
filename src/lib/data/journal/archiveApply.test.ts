@@ -3,10 +3,8 @@
    wrong merge fails by naming its own section rather than as "the golden
    archive differs" (archive-golden.test.ts's whole-journal round trip).
 
-   Two of the file's 31 exports are not here: `applyFlatTable` already has
-   its own tests in archiveTable.test.ts, and `aliasLegacyConsults` in
-   archive-legacy-consults.test.ts. A third, the `Restoring` type itself, is
-   not a runtime export a test can drive at all - every function below is
+   `applyFlatTable` has its own tests in archiveTable.test.ts. The
+   `Restoring` type is not a runtime export a test can drive - every function below is
    checked against it by the type checker on every call, which is the whole
    of what testing a type means. */
 

@@ -509,7 +509,7 @@
          after starting a regimen, and having them as two screens made the
          reader classify their own symptom before they could write it down.
          Its own heading, list, editor sheet and empty state - moved here
-         whole from /health/side-effects, which is a redirect stub now. -->
+         whole from /health/side-effects, whose route was removed. -->
     <!-- The wrapper names nothing but the crop: a sign-off render needs one
          stable box around the heading and the list, the way `data-noticed-axis`
          already gives the axis one. -->

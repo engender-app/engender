@@ -21,7 +21,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { MOVED_ADDRESSES } from '../src/lib/navigation/movedAddresses.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -30,7 +29,6 @@ const stripScript = (source: string) => source.replace(/<script[\s\S]*?<\/script
 const screen = read('src/routes/settings/notifications/+page.svelte');
 const screenMarkup = stripScript(screen);
 const row = read('src/lib/unprompted/RegistryRow.svelte');
-const redirect = read('src/routes/settings/live-tiles/+page.ts');
 const editor = read('src/lib/components/TodayEditor.svelte');
 
 describe('what the merged screen is built from', () => {
@@ -185,18 +183,6 @@ describe('what only Android carries', () => {
       expect(text).not.toMatch(/Hide sensitive titles|Ukryj wrażliwe tytuły/);
       expect(text).not.toMatch(/delet|clear|eras|remov|usuw|usun|kasuj|czyś|czyszcz/i);
     }
-  });
-});
-
-describe('the old address', () => {
-  it('redirects rather than 404s (ADR-0043\'s bookmark precedent)', () => {
-    /* An ordinary movedAddresses.ts row since ticket 04 (audit item A3
-       reduced the stub to a re-export), so where it points is
-       settings-route-redirects.test.ts's to assert with the other rows.
-       What is left here is that the screen itself is gone. */
-    expect(MOVED_ADDRESSES['/settings/live-tiles']).toBe('/settings/notifications');
-    expect(redirect).not.toContain('UNPROMPTED_ROWS');
-    expect(redirect).not.toContain('RegistryRow');
   });
 });
 

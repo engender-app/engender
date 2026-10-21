@@ -45,8 +45,8 @@
 
   let templates = $derived(vocabulary.entryTemplates);
 
-  /* A cold navigation straight to this sheet (`?raise=templates`, ticket
-     231) mounts this component's own tree - Field, TagPicker,
+  /* A cold navigation to this sheet (ticket 231) mounts this component's
+     own tree - Field, TagPicker,
      DimensionSlider and the rest RecordSheet's fields snippet pulls in -
      which is enough synchronous work that `vocabulary.ready` can flip true
      within the same narrow window `use:resize`'s own `painted` guard uses
