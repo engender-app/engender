@@ -1,5 +1,16 @@
 import type { ArchiveJournal } from '../archive/payload';
 import { CorruptArchiveError } from '../archive/container';
+import { GARMENT_CATEGORIES } from '../garmentCategories';
+import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
+import { isHairStaging } from '../hairStageScales';
+import {
+  AFFIRMATION_LANGUAGES, CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
+  EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
+  REMINDER_TYPES, TALLY_KINDS, TRYOUT_KINDS
+} from '../rowValues';
+import {
+  BUILT_IN_DIMENSIONS, BUILT_IN_EFFECT_CATEGORIES, BUILT_IN_TAG_GROUPS
+} from '../vocabulary/builtins';
 import { columnsOf, identityFieldOf, type FlatTable } from './archiveTable';
 
 type Check = (value: unknown) => boolean;
@@ -10,10 +21,16 @@ const numeric: Check = (value) => typeof value === 'number' && Number.isFinite(v
   (!Number.isInteger(value) || Number.isSafeInteger(value));
 const nullable = (check: Check): Check => (value) => value === null || check(value);
 const optional = (check: Check): Check => (value) => value === undefined || check(value);
+const oneOf = (values: readonly string[]): Check => (value) => typeof value === 'string' && values.includes(value);
+const integerBetween = (min: number, max: number): Check => (value) =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
 const list = (check: Check): Check => (value) => Array.isArray(value) && value.every(check);
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const numericRecord: Check = (value) => record(value) && Object.values(value).every(numeric);
+const bodyRegionValue = integerBetween(0, 100);
+const bodyRegionValues: Check = (value) => record(value) && Object.values(value).every((v) =>
+  bodyRegionValue(v) && v !== 50);
 const object = (fields: Record<string, Check>): Check => (value) =>
   record(value) && Object.entries(fields).every(([field, check]) => check(value[field]));
 
@@ -104,7 +121,7 @@ const ROWS = {
   },
   affirmations: {
     id: identity,
-    language: nullable(text),
+    language: nullable(oneOf(AFFIRMATION_LANGUAGES)),
     text: text,
     builtIn: optional(bool),
     hidden: optional(bool)
@@ -126,7 +143,7 @@ const ROWS = {
     photos: list(photo),
     recordings: optional(list(voiceRecording)),
     videos: optional(list(videoNote)),
-    bodyRegions: optional(numericRecord),
+    bodyRegions: optional(bodyRegionValues),
     starred: optional(bool),
     presentationId: optional(nullable(text))
   },
@@ -170,7 +187,7 @@ const ROWS = {
   sizeRecords: {
     id: identity,
     epochDay: numeric,
-    category: text,
+    category: oneOf(GARMENT_CATEGORIES),
     size: text,
     brand: text,
     fitNote: text
@@ -189,12 +206,12 @@ const ROWS = {
   sideEffects: {
     id: identity,
     name: text,
-    severity: nullable(numeric),
+    severity: nullable(integerBetween(1, 5)),
     epochDay: numeric
   },
   cycleEvents: {
     id: identity,
-    kind: text,
+    kind: oneOf(CYCLE_EVENT_KINDS),
     epochDay: numeric
   },
   journalingPauses: {
@@ -227,7 +244,7 @@ const ROWS = {
     builtIn: optional(bool),
     hidden: optional(bool),
     categoryKey: nullable(text),
-    direction: nullable(text)
+    direction: nullable(oneOf(EFFECT_DIRECTIONS_STORED))
   },
   hairStages: {
     id: identity,
@@ -244,9 +261,9 @@ const ROWS = {
   hairRemovalSessions: {
     id: identity,
     epochDay: numeric,
-    area: text,
-    method: text,
-    painRating: numeric,
+    area: oneOf(HAIR_REMOVAL_AREAS),
+    method: oneOf(HAIR_REMOVAL_METHODS),
+    painRating: integerBetween(1, 5),
     cost: text,
     provider: text,
     photos: list(hairRemovalPhoto)
@@ -273,9 +290,9 @@ const ROWS = {
   reminders: {
     id: identity,
     title: text,
-    type: text,
+    type: oneOf(REMINDER_TYPES),
     time: text,
-    recurrence: nullable(text),
+    recurrence: nullable(oneOf(REMINDER_RECURRENCES)),
     interval: nullable(numeric),
     anchorEpochDay: nullable(numeric),
     epochDay: nullable(numeric),
@@ -285,7 +302,7 @@ const ROWS = {
   tallyEvents: {
     id: identity,
     epochDay: numeric,
-    kind: text
+    kind: oneOf(TALLY_KINDS)
   },
   counterevidenceSnapshots: {
     id: identity,
@@ -357,9 +374,9 @@ const ROWS = {
   doseSchedules: {
     id: identity,
     episodeId: text,
-    recurrenceKind: text,
+    recurrenceKind: oneOf(DOSE_RECURRENCE_KINDS),
     everyNDays: nullable(numeric),
-    weekdays: nullable(list(numeric)),
+    weekdays: nullable(list(integerBetween(0, 6))),
     dosesPerDay: numeric,
     doseAmounts: nullable(list(object({ dose: numeric, doseUnit: text }))),
     autoLogFromEpochDay: optional(nullable(numeric))
@@ -387,7 +404,7 @@ const ROWS = {
   },
   tryouts: {
     id: identity,
-    kind: text,
+    kind: oneOf(TRYOUT_KINDS),
     label: text,
     description: nullable(text),
     startEpochDay: numeric,
@@ -399,7 +416,7 @@ const ROWS = {
     tryoutId: nullable(text),
     milestoneId: nullable(text),
     epochDay: numeric,
-    mood: numeric,
+    mood: integerBetween(1, 5),
     note: nullable(text)
   },
   checklists: {
@@ -502,10 +519,19 @@ const ROWS = {
     epochDay: numeric,
     title: text,
     fileName: text,
-    targetKind: nullable(text),
+    targetKind: nullable(oneOf(DOCUMENT_TARGET_KINDS)),
     targetId: nullable(text)
   }
 } satisfies { [Name in keyof ArchiveJournal]: { [Field in keyof ArchiveJournal[Name][number]]-?: Check } };
+
+const NON_FLAT_IDENTITY: Partial<Record<keyof ArchiveJournal, string>> = {
+  dimensions: 'key',
+  tagGroups: 'key',
+  entries: 'uuid',
+  measurementTypes: 'key',
+  effectCategories: 'key',
+  personalEffectTypes: 'key'
+};
 
 /** Refuse unreadable rows before restore touches a file store or admits a transaction.
  * Flat descriptors remain the authority for natural identity and absent-field defaults. */
@@ -519,10 +545,46 @@ export function assertArchiveRows(
     .filter((column) => column.bool || column.whenAbsent !== undefined).map((column) => column.field) : []);
   const naturalIdentity = flatTable ? identityFieldOf(flatTable) : undefined;
   const revisitOwners = new Set<unknown>();
+  const identities = new Set<string>();
   for (const [index, row] of rows.entries()) {
     if (!record(row) || (naturalIdentity && !identity(row[naturalIdentity])) ||
         !Object.entries(fields).every(([field, check]) =>
           row[field] === undefined && defaults.has(field) || check(row[field]))) {
+      throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
+    }
+    // Stock folds legacy duplicate drug names, but its UUID must still be unique.
+    const identityFields = name === 'roadmapChecks' ? ['packKey', 'goalKey'] :
+      [name === 'medicationStock' ? 'id' : naturalIdentity ?? NON_FLAT_IDENTITY[name] ?? 'id'];
+    const rowIdentity = JSON.stringify(identityFields.map((field) => row[field]));
+    if (identities.has(rowIdentity)) {
+      throw new CorruptArchiveError(`the archive's ${name} has a repeated identity`);
+    }
+    identities.add(rowIdentity);
+    if (name === 'presets' && new Set((row.dims as string[] | undefined) ?? []).size !==
+        ((row.dims as string[] | undefined) ?? []).length) {
+      throw new CorruptArchiveError('the archive has a repeated preset dimension');
+    }
+    if (name === 'hairStages') {
+      const scale = (row.scale as string | undefined) ?? 'norwood_hamilton';
+      if (!isHairStaging(scale, row.stage as string) ||
+          (scale !== 'other' && row.description !== undefined && row.description !== '')) {
+        throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
+      }
+    }
+    if (name === 'reminders') {
+      const oneOff = row.recurrence === null && row.epochDay !== null && row.interval === null && row.anchorEpochDay === null;
+      const everyN = row.recurrence === 'EVERY_N_DAYS' && row.interval !== null && row.anchorEpochDay !== null && row.epochDay === null;
+      const plain = (row.recurrence === 'DAILY' || row.recurrence === 'WEEKLY') &&
+        row.interval === null && row.anchorEpochDay === null && row.epochDay === null;
+      if (!oneOff && !everyN && !plain) throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
+    }
+    if (name === 'doseSchedules' && (row.recurrenceKind === 'everyNDays') !== (row.everyNDays !== null)) {
+      throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
+    }
+    if (name === 'documents' && (row.targetKind === null) !== (row.targetId === null)) {
+      throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
+    }
+    if (name === 'checklists' && (row.ownerKind === null) !== (row.ownerId === null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
     if (name === 'revisits') {
@@ -531,5 +593,62 @@ export function assertArchiveRows(
       }
       revisitOwners.add(row.entryId);
     }
+  }
+}
+
+/** Resolve references from Archive rows and built-ins before SQLite or template lookup. */
+export function assertArchiveReferences(journal: ArchiveJournal, externalImport = false): void {
+  const unique = (ids: string[], section: string) => {
+    if (new Set(ids).size !== ids.length) {
+      throw new CorruptArchiveError(`the archive's ${section} has a repeated identity`);
+    }
+  };
+  unique(journal.tagGroups.flatMap((group) => (group.tags ?? []).map((tag) => tag.id)), 'tags');
+  unique([...journal.entries.flatMap((entry) => entry.photos.map((photo) => photo.id)),
+    ...journal.milestones.flatMap((milestone) => milestone.photo ? [milestone.photo.id] : [])], 'photos');
+  unique(journal.entries.flatMap((entry) => (entry.recordings ?? []).map((row) => row.id)), 'recordings');
+  unique(journal.entries.flatMap((entry) => (entry.videos ?? []).map((row) => row.id)), 'videos');
+  unique(journal.tryouts.flatMap((row) => row.photos.map((photo) => photo.id)), 'tryout photos');
+  unique(journal.procedures.flatMap((row) => row.photos.map((photo) => photo.id)), 'procedure photos');
+  unique(journal.hairRemovalSessions.flatMap((row) => row.photos.map((photo) => photo.id)), 'hair removal photos');
+  unique(journal.checklists.flatMap((row) => row.items.map((item) => item.id)), 'checklist items');
+  if (!Array.isArray(journal.appointments)) {
+    unique(journal.procedures.flatMap((row) => (row.consults ?? []).map((consult) => consult.id)), 'legacy consults');
+  }
+  for (const template of journal.entryTemplates) unique(template.tags ?? [], 'template tags');
+  for (const schedule of journal.doseSchedules) {
+    const weekdays = schedule.weekdays ?? [];
+    if (new Set(weekdays).size !== weekdays.length) {
+      throw new CorruptArchiveError('the archive has a repeated schedule weekday');
+    }
+  }
+  const dimensions = new Set([...BUILT_IN_DIMENSIONS.map((row) => row.key), ...journal.dimensions.map((row) => row.key)]);
+  const tags = new Set([...BUILT_IN_TAG_GROUPS.flatMap((group) => group.tags),
+    ...journal.tagGroups.flatMap((group) => (group.tags ?? []).map((tag) => tag.id))]);
+  const categories = new Set([...BUILT_IN_EFFECT_CATEGORIES.map((row) => row.key),
+    ...journal.effectCategories.map((row) => row.key)]);
+  const procedures = new Set(journal.procedures.map((row) => row.id));
+  const tryouts = new Set(journal.tryouts.map((row) => row.id));
+  const presentations = new Set(journal.presentations.map((row) => row.id));
+  const referenced = (value: string, known: Set<string>, section: string) => {
+    if (!known.has(value)) throw new CorruptArchiveError(`the archive's ${section} reference is not readable`);
+  };
+  for (const preset of journal.presets) for (const key of preset.dims ?? []) referenced(key, dimensions, 'preset dimension');
+  for (const template of journal.entryTemplates) {
+    for (const key of Object.keys(template.dims ?? {})) referenced(key, dimensions, 'template dimension');
+    for (const id of template.tags ?? []) referenced(id, tags, 'template tag');
+  }
+  for (const entry of journal.entries) {
+    for (const key of Object.keys(entry.dims ?? {})) referenced(key, dimensions, 'entry dimension');
+    // External previews reuse tags already on the destination, outside their row-only payload.
+    if (!externalImport) for (const id of entry.tags ?? []) referenced(id, tags, 'entry tag');
+    if (entry.presentationId) referenced(entry.presentationId, presentations, 'entry presentation');
+  }
+  for (const type of journal.personalEffectTypes) {
+    if (type.categoryKey !== null) referenced(type.categoryKey, categories, 'effect category');
+  }
+  for (const milestone of journal.milestones) {
+    if (milestone.procedureId) referenced(milestone.procedureId, procedures, 'milestone procedure');
+    if (milestone.tryoutId) referenced(milestone.tryoutId, tryouts, 'milestone tryout');
   }
 }

@@ -428,10 +428,12 @@ Journal text fields now disable browser autofill and session restoration on
 the web. Android keeps its existing keyboard suggestions. Text already kept
 in browser profiles is not removed.
 
-Archive restore and verification now refuse rows with missing identity,
-wrong scalar types or unsafe integers. Merge and Replace reject these rows
-before touching journal files or starting a transaction, so a malformed
-Archive cannot leave new rows that prevent later exports.
+Archive restore and verification now reject known malformed rows as corrupt
+before Merge or Replace touches destination files or starts a transaction.
+Checks include missing identities and references, wrong scalar types, unsafe
+integers, invalid stored categories or directions, repeated identities and
+unknown template tags. SQLite still enforces remaining constraints inside the
+transaction; storage failures keep their own errors.
 
 Archive restore and verification also refuse attachments that share physical
 file names across different owners, including thumbnails and document previews.

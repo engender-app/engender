@@ -7,7 +7,7 @@
    about a restore. */
 
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import { thumbFileName } from '../photos/names.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
@@ -15,7 +15,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_DIMENSIONS } from '../vocabulary/builtins.ts';
 import { attributeDose } from '../regimenEpisode.ts';
 import { epochDayFromTimestamp } from '../epochDay.ts';
-import { collect } from '../archive/container.ts';
+import { CorruptArchiveError, collect } from '../archive/container.ts';
 import { packArchive } from '../archive/pack.ts';
 import { portablePreferences } from '../archive/payload.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
@@ -43,6 +43,15 @@ async function device() {
   const journal = openJournal(db, files);
   await journal.reconcileBuiltIns();
   return { db, files, journal };
+}
+
+function refuseCommit(driver: SqliteDriver) {
+  const transaction = driver.transaction.bind(driver);
+  return vi.spyOn(driver, 'transaction').mockImplementation((work) =>
+    transaction(async (inside) => {
+      await work(inside);
+      throw new Error('injected failure before commit');
+    }));
 }
 
 /** A device with something on it worth losing: a custom dimension in a
@@ -739,16 +748,12 @@ test('a failure after the files are written and before the commit leaves the jou
   const target = await populated();
   const before = await target.journal.archive.snapshot();
 
-  /* The injected failure is a row the schema refuses, reached after every
-     photo file has been written: the last thing a restore does is insert
-     rows, so this is the window ADR-0011 exists for. */
   const contents = await exported(source.journal);
-  contents.journal.reminders = [
-    ...contents.journal.reminders,
-    { ...contents.journal.reminders[0], id: 'a-reminder-of-no-known-type', type: 'nonsense' }
-  ];
+  const transaction = refuseCommit(target.db);
 
-  await assert.rejects(target.journal.archive.replace(contents));
+  await assert.rejects(target.journal.archive.replace(contents), /injected failure before commit/);
+  assert.equal(transaction.mock.calls.length, 1);
+  transaction.mockRestore();
 
   const after = await target.journal.archive.snapshot();
   assert.deepEqual(after.journal, before.journal);
@@ -758,19 +763,18 @@ test('a failure after the files are written and before the commit leaves the jou
   assert.deepEqual(await target.files.read(`${source.photo}.jpg`), bytes('full-photo'));
 });
 
-test('a schema-refused row rolls the whole restore back in both replace and merge', async () => {
+test('a refused commit rolls the whole restore back in both replace and merge', async () => {
   const source = await populated();
 
   for (const mode of ['replace', 'merge'] as const) {
     const target = await populated();
     const before = await target.journal.archive.snapshot();
     const contents = await exported(source.journal);
-    contents.journal.reminders = [
-      ...contents.journal.reminders,
-      { ...contents.journal.reminders[0], id: `a-reminder-of-no-known-type-${mode}`, type: 'nonsense' }
-    ];
+    const transaction = refuseCommit(target.db);
 
-    await assert.rejects(target.journal.archive[mode](contents));
+    await assert.rejects(target.journal.archive[mode](contents), /injected failure before commit/);
+    assert.equal(transaction.mock.calls.length, 1);
+    transaction.mockRestore();
     const after = await target.journal.archive.snapshot();
     assert.deepEqual(after.journal, before.journal, `${mode} applied part of a refused restore`);
   }
@@ -795,9 +799,11 @@ test('a failed import into a journal that has never been seeded leaves it empty,
   const target = openJournal(db, fakeFileStore());
 
   const contents = await exported(source.journal);
-  contents.journal.reminders = [{ ...contents.journal.reminders[0], type: 'nonsense' }];
+  const transaction = refuseCommit(db);
 
-  await assert.rejects(target.archive.replace(contents));
+  await assert.rejects(target.archive.replace(contents), /injected failure before commit/);
+  assert.equal(transaction.mock.calls.length, 1);
+  transaction.mockRestore();
 
   // Seeding is inside the same transaction as the swap, so a rollback takes
   // the built-ins with it: "exactly as it was" and not "as the next boot
@@ -819,7 +825,7 @@ test('an entry naming a gender dimension the archive does not carry fails the wh
 
   // Loudly, rather than quietly dropping the value: a restore that silently
   // loses part of an entry is worse than one that refuses to run.
-  await assert.rejects(target.journal.archive.merge(contents), /unknown dimension/);
+  await assert.rejects(target.journal.archive.merge(contents), CorruptArchiveError);
   assert.deepEqual((await target.journal.archive.snapshot()).journal, before.journal);
 });
 
