@@ -5,7 +5,7 @@ import { serveBuild } from '../serve-build.mjs';
 import { tinyPhoto } from '../photo-fixture.mjs';
 import { mediaFixtures } from '../media-fixtures.mjs';
 import { makePdf } from '../pdf-fixture.mjs';
-import { firstRun, reachAccessSetup, choosePassphrase, unlock, clientRoute, openSection, pickFile, trackTransitions, saveEntryAndReturn } from './built-flow.mjs';
+import { JOURNAL_SECRET, firstRun, reachAccessSetup, choosePassphrase, unlock, clientRoute, openSection, pickFile, trackTransitions, saveEntryAndReturn } from './built-flow.mjs';
 
 const engine = browserEngine();
 const server = await serveBuild(process.cwd());
@@ -160,18 +160,31 @@ try {
       hasResidentKey: true, hasUserVerification: true, isUserVerified: true,
       automaticPresenceSimulation: true, hasPrf: false
     } });
+    await page.evaluate(() => {
+      const create = navigator.credentials.create.bind(navigator.credentials);
+      window.biometricCredentialAttempts = 0;
+      navigator.credentials.create = (...args) => {
+        window.biometricCredentialAttempts++;
+        return create(...args);
+      };
+    });
     await clientRoute(page, '/settings');
     await clientRoute(page, '/settings/access-mode');
     await page.locator('[data-list-row="biometric"]').waitFor();
     await page.locator('[data-list-row="biometric"]').click();
     await page.locator('[data-access-submit]').click();
-    await page.waitForFunction(() => document.querySelector('[data-access-status]')?.textContent.trim().length > 0);
+    await page.locator('#current-protection-secret').fill(JOURNAL_SECRET);
+    await page.locator('[data-confirm-current-protection]').click();
+    await page.waitForFunction(() => document.querySelector('[data-protection-status]')?.textContent.trim().length > 0);
+    assert.equal(await page.evaluate(() => window.biometricCredentialAttempts), 1);
+    const refusal = (await page.locator('[data-protection-status]').innerText()).trim();
+    assert.equal(refusal, JSON.parse(await readFile('messages/en.json', 'utf8')).protection_biometric_failed);
     assert.ok(await page.locator('[data-access-submit]').isEnabled());
     await page.reload();
     await unlock(page);
     await readNote();
     await cdp.detach();
-    return { fixture: 'Chromium virtual authenticator without PRF', oldPassphraseStillUnlocks: true, contentPreserved: true };
+    return { fixture: 'Chromium virtual authenticator without PRF', credentialAttempts: 1, refusal, oldPassphraseStillUnlocks: true, contentPreserved: true };
   });
   else results.push({ capability: 'biometric-negotiation-refusal', status: 'not-run', evidence: 'No engine authenticator automation. Actual advertisement tested separately.' });
   await check('quota-failure-preserves-data', async () => {
