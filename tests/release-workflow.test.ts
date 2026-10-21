@@ -42,6 +42,14 @@ describe('release publication contract', () => {
     expect(step).not.toContain('if:');
   });
 
+  it('warns about reviewed content past its limit before anything is built or published', () => {
+    const check = workflow.indexOf('node scripts/check-reviewed-content.mjs');
+    expect(check).toBeGreaterThan(workflow.indexOf('- run: npm ci'));
+    expect(check).toBeLessThan(workflow.indexOf('- name: Build unsigned Android release artifacts'));
+    const step = workflow.slice(workflow.lastIndexOf('\n      - ', check), workflow.indexOf('\n      - ', check));
+    expect(step).not.toContain('if:');
+  });
+
   it('deploys stable web releases only after publication, with isolated credentials and serialized switches', () => {
     const deploy = workflow.slice(workflow.indexOf('\n  deploy-web:'));
     expect(deploy).toContain('needs: publish');

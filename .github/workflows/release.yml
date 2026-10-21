@@ -87,6 +87,12 @@ jobs:
           fi
           node scripts/check-progressive-release.mjs --target "$target" --publication-version "$ENGENDER_VERSION"
 
+      # Warns, never fails: helplines, legal steps and literature figures the
+      # app ships, past their review limit (src/lib/reviewedContent.ts). The
+      # warnings land as annotations on this run.
+      - name: Reviewed content within its limits
+        run: node scripts/check-reviewed-content.mjs
+
       # Before anything is built, so a tag cut without notes fails while
       # nothing has been published.
       - name: Release notes

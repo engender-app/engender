@@ -125,7 +125,8 @@ export const POLISH_PACK = {
     session's scope decision (Q14): the structure holds a second country's
     content without a schema change, but populating one is separate content
     work. */
-/* ROADMAP_PACKS stays exported only for its own test (AU-09 test-only review). */
+/* Exported for its own test and for the reviewed-on guard in
+   reviewedContent.ts, which reads each pack's reviewedOn. */
 export const ROADMAP_PACKS = [POLISH_PACK] as const satisfies readonly RoadmapPack[];
 
 /** Every goal key any bundled pack holds - what roadmapLabels.ts has to
