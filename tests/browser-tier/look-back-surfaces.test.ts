@@ -2,7 +2,9 @@
    the constellation plots with no mode, Tags carries the share ring with an
    "on good days" filter, Words and Highest days are gone, Look back offers
    one way into Wrapped and none while Wrapped is off, and the two "is off"
-   notices open the screen where their switches live. */
+   notices open the screen where their switches live. Since Alicja's
+   sign-off note, the mood strip draws on the door itself rather than
+   behind a "Mood across days" tile, which leaves an even number of tiles. */
 import { mountScreen, until } from './mount-screen';
 import { fixture, assertions, today, type Result } from './screen-contracts/fixture';
 import { startOfDayTimestamp } from '$lib/data/epochDay';
@@ -28,9 +30,13 @@ export async function lookBackContracts(): Promise<Result[]> {
       mood: good ? 5 : 1,
       dims: { femininity: 40 + (i % 30), masculinity: 60 - (i % 30) },
       tags: [good ? 'e-calm' : 'g-misgendered'],
+      ...(i % 10 === 0 ? { bodyRegions: { chest: 30 } } : {}),
       note: `Look back contract ${i}`
     });
   }
+  /* A body map mark and a tally tap, so every tile the door has is drawn
+     and the count below is the whole door's. */
+  await f.journal.tally.log({ epochDay: today - 3, kind: 'misgendered' });
   const span = spanRangeQuery({ start: today - 80, end: today });
   let screen = await mountScreen(`/stats/plane${span}`, f);
   const root = () => screen.target;
@@ -62,7 +68,7 @@ export async function lookBackContracts(): Promise<Result[]> {
   });
   await screen.remove();
 
-  for (const gone of ['words', 'highest', 'themes']) {
+  for (const gone of ['words', 'highest', 'themes', 'days']) {
     screen = await mountScreen(`/stats/${gone}${span}`, f);
     await check(`/stats/${gone} is no reading any more`, () =>
       until(() => root().querySelector('[data-notice="stats-reading-unknown"]'), `${gone} unknown`));
@@ -75,6 +81,13 @@ export async function lookBackContracts(): Promise<Result[]> {
   await settle(400);
   await check('Look back has no Words, Highest days or affirming themes tile', () =>
     !root().querySelector('[data-reading="words"],[data-reading="highest"],[data-reading="themes"]'));
+  const tiles = () => [...root().querySelectorAll('[data-lookback-readings] [data-reading]')].map((t) => t.getAttribute('data-reading'));
+  await check('Look back draws an even number of tiles, none of them Mood across days', () => {
+    const drawn = tiles();
+    return drawn.length === 6 && !drawn.includes('days');
+  });
+  await check('the mood strip draws on Look back itself, all five steps', () =>
+    until(() => root().querySelectorAll('[data-chart-card="mood-days"] [data-strip-step]').length === 5, 'mood strip on the door'));
   await check('Look back draws exactly one way into Wrapped', () =>
     until(() => wrappedLinks() === 1, 'one Wrapped link'));
   await screen.remove();

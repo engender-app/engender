@@ -33,17 +33,21 @@
      never empty"), so the count varies with the span and the grid rewraps.
      Every reading component here draws itself twice - as its tile and, on
      its own route, as its card - so the figure on the door and the card
-     behind it are one read, never two.
+     behind it are one read, never two. The mood strip is the exception:
+     it has no tile, only its card, drawn on the door.
 
      Three cards left the door for good in this ticket rather than becoming
      tiles: "Each scale, this period" draws under the day-by-day chart on
      that reading's screen, since it reads the same series; "Days at each
-     mood" and "What you write about" are one tile, "How the days fell",
+     mood" and "What you write about" were one tile, "How the days fell",
      since both ask what the span was made of; and the journey anchor's
      caption is wrapped's own line now, not a fourth thing on this door.
      Functional audit ticket 12 then took the share by tag out of that tile
      and into Tags, which is where every other tag reading on the door
-     lives, and cut Words and Highest days.
+     lives, and cut Words and Highest days. What was left behind the tile
+     was the mood strip alone, so on Alicja's sign-off the tile and its
+     screen went and the strip draws here under the grid, which leaves six
+     tiles, three rows of two.
 
      Redesign ticket 11: one span drives every read on this screen. The rail
      runs from the earliest day the person authored anything dated to today
@@ -670,8 +674,11 @@
     <!-- The readings, as tiles. Each component draws its own tile off its
          own read and stays absent where the span holds nothing for it;
          the grid draws the hairlines between whatever is there. In the
-         ticket's order: the two over the scales first, then what the span
-         was made of, then the two screens that were screens already.
+         ticket's order: the two over the scales first, then tags, then
+         the three screens that were screens already. Under the grid, in
+         the same group, the mood strip draws in full: it was one chart
+         behind a tile of its own until Alicja's sign-off on functional
+         audit ticket 12, and a single chart needs no screen.
 
          Drawn as one group once every tile has decided whether it exists
          (ticket 190): drawn as each answered, a tile landing a tick after
@@ -693,12 +700,12 @@
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
-      <DaysReading span={resolvedSpan} view="tile" {enoughEntries} />
       <TagsReading span={resolvedSpan} view="tile" />
       <BodyMapTile span={resolvedSpan} />
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
       <TallyTile span={resolvedSpan} />
     </ReadingGrid>
+    <DaysReading span={resolvedSpan} {enoughEntries} />
     </ReadGroup>
     </div>
     {/key}

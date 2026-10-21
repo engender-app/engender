@@ -60,7 +60,7 @@ describe('the summary panels wait for the floor', () => {
   });
 
   it('draws no mood strip under the floor', () => {
-    expect(readings.days).toMatch(/\{:else if enoughEntries\}\s*<OrderedStrip steps=\{moodSteps\} \/>/);
+    expect(readings.days).toMatch(/\{#if !moodQuery\.loading && enoughEntries && anyDays\}\s*<ChartCard[^>]*>\s*<OrderedStrip steps=\{moodSteps\} \/>/);
   });
 
   /* Cards hand BarRows a position between 0 and 1 in something's own
@@ -281,7 +281,6 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     const order = [
       '<DayByDayReading span={resolvedSpan}',
       '<PlaneReading span={resolvedSpan}',
-      '<DaysReading span={resolvedSpan}',
       '<TagsReading span={resolvedSpan}',
       '<BodyMapTile span={resolvedSpan}',
       '<CompareTile span={resolvedSpan}',
@@ -293,12 +292,12 @@ describe('the readings are tiles, each opening its own screen at the span', () =
       expect(at, tag).toBeGreaterThan(last);
       last = at;
     }
-    expect((body.match(/view="tile"/g) ?? []).length).toBe(4);
+    expect((body.match(/view="tile"/g) ?? []).length).toBe(3);
     for (const gone of ['WordsReading', 'HighestReading', 'ThemesReading']) expect(stats).not.toContain(gone);
   });
 
   it('opens each reading at /stats/<reading> carrying the span, through one address rule', () => {
-    for (const key of ['dayByDay', 'plane', 'days', 'tags'] as const) {
+    for (const key of ['dayByDay', 'plane', 'tags'] as const) {
       expect(readings[key], key).toMatch(/href=\{readingHref\('[a-z-]+', span\)\}/);
     }
     expect(readings.bodyMap).toContain('href={`/body-map${spanRangeQuery(span)}`}');
@@ -322,7 +321,6 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   it('has a tile only where the span holds data for it', () => {
     expect(readings.dayByDay).toMatch(/\{#if !seriesQuery\.loading && plotted\.points\.length\}\s*<ReadingTile/);
     expect(readings.plane).toMatch(/\{#if canPlot && !constellationQuery\.loading && points\.length\}\s*<ReadingTile/);
-    expect(readings.days).toMatch(/\{#if !moodQuery\.loading && enoughEntries && top\}\s*<ReadingTile/);
     expect(readings.tags).toMatch(/\{#if !correlationCardsQuery\.loading && topRow && topCard\}\s*<ReadingTile/);
     expect(readings.bodyMap).toMatch(/\{#if !mapQuery\.loading && region\}\s*<ReadingTile/);
     expect(readings.compare).toMatch(/\{#if !short\}\s*<ReadingTile/);
@@ -334,7 +332,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   it('gives the plane\'s tile no headline and every other tile one', () => {
     const planeTile = markup(readings.plane).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
     expect(planeTile).not.toContain('headline=');
-    for (const key of ['dayByDay', 'days', 'tags', 'bodyMap', 'compare', 'tally'] as const) {
+    for (const key of ['dayByDay', 'tags', 'bodyMap', 'compare', 'tally'] as const) {
       const tile = markup(readings[key]).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
       expect(tile, key).toContain('headline=');
     }
@@ -352,7 +350,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     for (const source of Object.values(readings)) expect(source).not.toMatch(/\(from, today\)/);
   });
 
-  it('has one route for the four readings, which reads the span back and refuses a key it does not know', () => {
+  it('has one route for the three readings, which reads the span back and refuses a key it does not know', () => {
     // Every reading has a title on the route: quoted where the key has a
     // hyphen, bare where it does not.
     for (const key of READINGS) expect(route, key).toMatch(new RegExp(`(?:'${key}'|\\b${key}): \\(\\) =>`));
@@ -429,6 +427,19 @@ describe('Look back says each thing once', () => {
     expect(readings.tags).toContain('kind="tag-share"');
     expect(readings.tags).toContain('key="tag-share-days"');
     expect(readings.days).not.toContain('<Donut');
+  });
+
+  /* Alicja's sign-off on the ticket: the mood strip was one chart behind
+     a tile of its own, and "if it's just a single chart, it should display
+     a screen before". It draws on the door under the grid, in the tiles'
+     own read group, and has no tile, no screen and no title on the route. */
+  it('draws the mood strip on the door, with no tile and no screen of its own', () => {
+    const body = markup(stats);
+    expect(body).toMatch(/<\/ReadingGrid>\s*<DaysReading span=\{resolvedSpan\} \{enoughEntries\} \/>\s*<\/ReadGroup>/);
+    expect(readings.days).not.toContain('ReadingTile');
+    expect(readings.days).not.toContain('readingHref');
+    expect(route).not.toContain('DaysReading');
+    expect(READINGS).not.toContain('days');
   });
 
   it('drops the Settings row for the ignored words', () => {

@@ -3,7 +3,7 @@
      ticket 07). The door is a grid of tiles, each stating one figure for
      the span; this is where the full card draws, with its controls - the
      second scale, the metric picker, the share ring's days filter, the
-     constellation's scrub and play. Four readings share the route,
+     constellation's scrub and play. Three readings share the route,
      since they are one screen showing a different card and nothing about
      the header, the span or the floor differs between them.
 
@@ -13,7 +13,8 @@
      what it is a reading of. A direct visit with no query, or a key no
      reading answers to, says so rather than drawing the wrong thing.
      `words`, `highest` and `themes` are such keys since functional audit
-     ticket 12 cut those readings.
+     ticket 12 cut those readings, and so is `days`, whose one chart, the
+     mood strip, draws on the door itself since Alicja's sign-off on it.
 
      `page.params.reading` is read as a derived value and not captured
      once: SvelteKit reuses this component across a same-route navigation
@@ -32,14 +33,12 @@
   import ReadGroup from '$lib/components/kit/ReadGroup.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import DayByDayReading from '$lib/components/readings/DayByDayReading.svelte';
-  import DaysReading from '$lib/components/readings/DaysReading.svelte';
   import PlaneReading from '$lib/components/readings/PlaneReading.svelte';
   import TagsReading from '$lib/components/readings/TagsReading.svelte';
 
   const TITLE: Record<Reading, () => string> = {
     'day-by-day': () => m.stats_day_by_day(),
     plane: () => m.stats_constellation(),
-    days: () => m.stats_reading_days(),
     tags: () => m.stats_tags_moved()
   };
 
@@ -99,8 +98,6 @@
     <DayByDayReading {span} {today} {enoughEntries} />
   {:else if reading === 'plane'}
     <PlaneReading {span} />
-  {:else if reading === 'days'}
-    <DaysReading {span} {enoughEntries} />
   {:else}
     <TagsReading {span} spanLabel={label} {enoughEntries} />
   {/if}

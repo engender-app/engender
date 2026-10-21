@@ -589,9 +589,9 @@ try {
   const changedKeys = new Set(changedSql.filter(tileAverages).map(metricKey));
   scopeCheck(changedKeys.has(selectedMetric) && [...changedKeys].every((key) => key === selectedMetric || initialTileKeys.has(key)), 'Look back tile follows changed active scale');
 
-  await page.goto(`${base}/stats/days`, { waitUntil: 'networkidle' });
+  await page.goto(`${base}/stats/tags`, { waitUntil: 'networkidle' });
   await waitFor(`!!document.querySelector('[data-chart="donut"]')`);
-  scopeCheck((await page.evaluate(() => window.__scopeQueries)).some(tagShare), 'Days screen retains tag shares and donut');
+  scopeCheck((await page.evaluate(() => window.__scopeQueries)).some(tagShare), 'Tags screen retains tag shares and donut');
 
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
   await waitFor(TILES['/']);

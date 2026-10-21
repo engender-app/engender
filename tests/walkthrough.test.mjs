@@ -1452,15 +1452,15 @@ try {
   }
   /* How the days fell: five mood steps, always - a step nothing landed on
      holds its place at zero width rather than sliding the rest under the
-     wrong part of the scale. */
+     wrong part of the scale. Drawn on the door itself since functional
+     audit ticket 12's sign-off, with no tile of its own. */
   await fresh('/stats');
-  await page.locator('[data-reading="days"]').click();
-  await page.waitForURL('**/stats/days?**');
-  await page.waitForSelector('[data-strip-step]', { state: 'attached' });
-  if ((await page.locator('[data-strip-step]').count()) !== 5) {
+  await page.waitForSelector('[data-chart-card="mood-days"] [data-strip-step]', { state: 'attached' });
+  if ((await page.locator('[data-chart-card="mood-days"] [data-strip-step]').count()) !== 5) {
     throw new Error('the mood strip should always draw its five steps');
   }
-  ok('stats: the span drives every tile, day by day and the days open at the span');
+  if (await page.locator('[data-reading="days"]').count()) throw new Error('the mood strip still has a tile of its own');
+  ok('stats: the span drives every tile, day by day opens at the span, the mood strip draws on the door');
 } catch (e) { fail('stats', e); }
 });
 
