@@ -90,7 +90,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
-  import { collapse, crossfade } from '$lib/motion/reveal';
+  import { collapse, crossfade, resize } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { rowWriter, writer } from '$lib/stores/attempt.svelte';
@@ -472,11 +472,18 @@
           <!-- Each line crosses when the visit under it changes - a wait
                given a day sooner than the booked one takes the block over
                (ticket 26) - the new words fading in and the old ones off
-               where they stood, rather than cutting. -->
-          <span class="visit-lead-kind">{#key titleOf(nextVisit)}<span transition:leadLine>{titleOf(nextVisit)}</span>{/key}</span>
-          <span class="visit-lead-gap" data-visit-gap>{#key gapLabel(nextVisit.epochDay)}<span transition:leadLine>{gapLabel(nextVisit.epochDay)}</span>{/key}</span>
-          <span class="visit-lead-when">{#key leadDay(nextVisit.epochDay)}<span transition:leadLine>{leadDay(nextVisit.epochDay)}</span>{/key}</span>
-          {#if leadWhere(nextVisit)}<span class="visit-lead-where">{#key leadWhere(nextVisit)}<span transition:leadLine>{leadWhere(nextVisit)}</span>{/key}</span>{/if}
+               where they stood, rather than cutting. The lines' own box
+               travels its height (`resize`) when the new words take more or
+               fewer lines; its own box rather than the button's, which
+               `collapse` already animates on arrival. The place line stays
+               mounted when the new visit has none, so its old words fade
+               like the rest instead of leaving with their line. -->
+          <span class="visit-lead-lines" use:resize>
+            <span class="visit-lead-kind">{#key titleOf(nextVisit)}<span transition:leadLine>{titleOf(nextVisit)}</span>{/key}</span>
+            <span class="visit-lead-gap" data-visit-gap>{#key gapLabel(nextVisit.epochDay)}<span transition:leadLine>{gapLabel(nextVisit.epochDay)}</span>{/key}</span>
+            <span class="visit-lead-when">{#key leadDay(nextVisit.epochDay)}<span transition:leadLine>{leadDay(nextVisit.epochDay)}</span>{/key}</span>
+            <span class="visit-lead-where" class:none={!leadWhere(nextVisit)}>{#key leadWhere(nextVisit)}<span transition:leadLine>{leadWhere(nextVisit)}</span>{/key}</span>
+          </span>
         </button>
       {:else}
         <!-- Nothing booked is an ordinary state, not an empty journal: the
@@ -931,7 +938,6 @@
   .visit-lead {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
     width: 100%;
     padding: var(--space-4);
     background: var(--role-draw);
@@ -982,9 +988,21 @@
     font-size: var(--text-sm);
   }
 
-  /* The anchor each line's leaving words are pinned to (leadLineOut). */
-  .visit-lead > span {
+  .visit-lead-lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  /* The anchor each line's leaving words are pinned to (leadLine). */
+  .visit-lead-lines > span {
     position: relative;
+  }
+
+  /* A visit with no place: the line is empty and takes no height, and this
+     hands back the gap in front of it. */
+  .visit-lead-where.none {
+    margin-top: calc(var(--space-1) * -1);
   }
 
   /* Same checkbox-square treatment roadmap's page uses for its ticks, and

@@ -229,7 +229,7 @@ try {
     return {
       body: face('var(--font-body)'),
       display: face('var(--font-display)'),
-      lines: [...lead.children].filter((line) => !line.hasAttribute('data-visit-gap'))
+      lines: [...lead.querySelector('.visit-lead-lines').children].filter((line) => !line.hasAttribute('data-visit-gap'))
         .map((line) => getComputedStyle(line).fontFamily),
       gap: getComputedStyle(lead.querySelector('[data-visit-gap]')).fontFamily
     };
