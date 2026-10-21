@@ -1355,7 +1355,6 @@
   "home_count_since": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "home_edit_add": {"owner":38,"sources":["src/lib/components/TodayEditor.svelte"]},
   "home_edit_add_heading": {"owner":38,"sources":["src/lib/components/TodayEditor.svelte"]},
-  "home_edit_agenda_heading": {"owner":38,"sources":["src/lib/components/TodayEditor.svelte"]},
   "home_edit_done": {"owner":38,"sources":["src/lib/components/TodayEditor.svelte"]},
   "home_edit_heading": {"owner":38,"sources":["src/lib/components/TodayEditor.svelte"]},
   "home_edit_hint": {"owner":38,"sources":["src/lib/components/TodayEditor.svelte"]},

@@ -23,7 +23,7 @@
    `await`) is not this one's. */
 
 import { agenda, agendaPassedWindow, agendaWindow, type Agenda, type AgendaInput } from './agenda';
-import { DAY_AHEAD_MARK_KINDS, type DayAheadArea, type DayAheadMarkKind } from './journal/dayAhead';
+import type { DayAheadArea } from './journal/dayAhead';
 import type { DosesArea } from './journal/doses';
 import type { AppointmentsArea } from './journal/appointments';
 
@@ -58,17 +58,18 @@ export async function readAgenda(
   return { todayEpochDay, marks, doses, todayAppointments };
 }
 
-/** Apply the current switches and dose-panel coverage to the same facts.
-    Filter before capping, so a withheld dose never takes another row's room.
-    Coverage includes every regimen producing dose-slot marks. A second
-    such regimen preserves the marks; daily or unscheduled regimens do not. */
+/** Apply the dose panel's coverage to the same facts. Filter before
+    capping, so a withheld dose never takes another row's room. Coverage
+    includes every regimen producing dose-slot marks. A second such regimen
+    preserves the marks; daily or unscheduled regimens do not.
+
+    Every other kind is drawn: the five per-kind switches went in
+    functional-audit ticket 14. */
 export function projectAgenda(
   facts: AgendaInput | null | undefined,
-  kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS,
   dosePanelCoversEveryDose = false
 ): Agenda | null {
   if (!facts) return null;
-  const on = new Set<DayAheadMarkKind>(kinds);
-  if (dosePanelCoversEveryDose) on.delete('doseSlot');
-  return agenda({ ...facts, marks: facts.marks.filter((mark) => on.has(mark.kind)) });
+  if (!dosePanelCoversEveryDose) return agenda(facts);
+  return agenda({ ...facts, marks: facts.marks.filter((mark) => mark.kind !== 'doseSlot') });
 }

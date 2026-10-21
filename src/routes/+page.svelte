@@ -64,7 +64,7 @@
   import { roleAttrs } from '$lib/components/kit/role';
   import { readAgenda, projectAgenda } from '$lib/data/agendaReads';
   import { passedSlotSentence, type AgendaItem } from '$lib/data/agenda';
-  import { fallbackReading, pinnedRows, pinReadScope, shownAgendaKinds, type PinnedRow } from '$lib/data/pinnedRows';
+  import { fallbackReading, pinnedRows, pinReadScope, type PinnedRow } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { readRowForward } from '$lib/data/rowForwardReads';
   import { crossesOnArrival, rememberCrossed } from '$lib/data/gettingStartedMemory';
@@ -267,13 +267,13 @@
 
   /* Read the facts alongside the tiles. Only the projection needs the
      dose panel's coverage; waiting for all tiles before issuing SQL adds
-     their round trips to the agenda's own. Switches and coverage changes
+     their round trips to the agenda's own. Coverage changes
      project these same facts without another read. */
   let dosePanelCoversEveryDose = $derived(liveTiles.dosePanelCoversEveryRegimen);
   let agendaQuery = liveQuery((j) => readAgenda(j, today));
   let agenda = $derived(
     liveTiles.ready
-      ? projectAgenda(agendaQuery.value, shownAgendaKinds(prefs), dosePanelCoversEveryDose)
+      ? projectAgenda(agendaQuery.value, dosePanelCoversEveryDose)
       : null
   );
   let agendaExpanded = $state(false);

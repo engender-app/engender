@@ -211,7 +211,6 @@ function portableWith(marker: string) {
     voiceComfortHighHz: values.voiceComfortHighHz,
     areaFinishOfferDeclined: values.areaFinishOfferDeclined,
     pinnedRows: values.pinnedRows,
-    agendaKinds: values.agendaKinds,
     onboardingAreas: values.onboardingAreas
   };
 }

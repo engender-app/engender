@@ -1078,14 +1078,12 @@ try {
     return keys[keys.length - 2] === 'doubt';
   }, null, { timeout: 8000 });
 
-  /* A kind switched off stays off, which is the whole reason it is a switch
-     rather than a dismissal. */
-  await page.locator('[data-edit-kind="doseSlot"] [role="switch"]').click();
-  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
+  /* The agenda has no kind switches since functional-audit ticket 14. */
+  if (await page.locator('[data-edit-kind]').count()) throw new Error('the editor still offers agenda kind switches');
 
   /* The tiles, here since phase 11 ticket 04 rather than two taps away
      under Settings. Whichever tile the persona is actually being shown,
-     rather than a named one: which of the thirteen qualifies is the
+     rather than a named one: which of the tiles qualifies is the
      persona's business and changes with the fixture, and what this flow is
      about is that the switch beside the pins takes it off the page it is
      on. In place, with the editor still open - that is the acceptance. */
@@ -1098,7 +1096,7 @@ try {
 
   /* And back on by the same switch, which is the other half of the
      acceptance and not the same path as the reset below: one is a write to
-     one preference, the other is thirteen written from the catalogue. */
+     one preference, the other is every tile written from the catalogue. */
   await tileSwitch.click();
   await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="true"]`);
   await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`, { timeout: 8000 });
@@ -1128,10 +1126,8 @@ try {
      set and the switches back - one edit mode, one reset. */
   await page.locator('[data-edit-today]').click();
   await page.waitForSelector('[data-today-editor]');
-  /* The switch is still off after the reload, which is the difference
-     between a switch and a dismissal. */
-  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
-  /* And so is the tile, for the same reason. */
+  /* The tile switch is still off after the reload, which is the
+     difference between a switch and a dismissal. */
   await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
   await page.locator('[data-edit-unpin="doubt"]').click();
   await page.waitForSelector('[data-edit-pinned-row="doubt"]', { state: 'detached', timeout: 8000 });
@@ -1140,8 +1136,7 @@ try {
      the one that throws away work somebody did. */
   await page.waitForSelector('[data-confirm-edit-reset]');
   await page.locator('[data-confirm-edit-reset]').click();
-  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="true"]');
-  /* One reset, every switch: the tile comes back with the agenda kind. */
+  /* One reset, every switch: the tile comes back. */
   await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="true"]`);
   await page.locator('[data-edit-done]').click();
   await page.waitForSelector('[data-pinned-row]');

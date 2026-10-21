@@ -54,6 +54,14 @@ describe('what the merged screen is built from', () => {
     expect(editor).toContain('data-edit-tile={kind}');
   });
 
+  it('offers no agenda kind switches beside the tiles (functional-audit ticket 14)', () => {
+    /* The agenda draws every kind ADR-0067 admits; the five switches and
+       the preference behind them are gone. */
+    expect(editor).not.toContain('data-edit-kind');
+    expect(editor).not.toContain('agendaKinds');
+    expect(editor).not.toContain('DAY_AHEAD_MARK_KINDS');
+  });
+
   it('carries the four prompts that came off Settings, under a heading', () => {
     expect(screenMarkup).toContain('m.notif_prompts_heading()');
     for (const key of ['entry-nudges', 'guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {

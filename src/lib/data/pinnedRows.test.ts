@@ -1,7 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { HUB_ROWS, type HubReading } from './hubRows.ts';
-import { DAY_AHEAD_MARK_KINDS } from './journal/dayAhead.ts';
 import {
   addablePins,
   DEFAULT_ONBOARDING_AREAS,
@@ -11,8 +10,6 @@ import {
   pinArrangement,
   pinnedRows,
   pinReadScope,
-  shownAgendaKinds,
-  withAgendaKind,
   withoutPin,
   withPin,
   type PinPreferences
@@ -190,28 +187,6 @@ test('the default set answers to a hidden area the same way any other pin does',
   assert.ok(!keysOf(rows).includes('milestones'));
 });
 
-// --- the agenda's switches --------------------------------------------------
-
-test('every one of the five kinds is on until somebody switches one off', () => {
-  assert.deepEqual(shownAgendaKinds({ agendaKinds: null }), [...DAY_AHEAD_MARK_KINDS]);
-});
-
-test('a switched-off kind stays off, and the rest keep the ADR order', () => {
-  assert.deepEqual(shownAgendaKinds({ agendaKinds: ['doseSlot', 'appointment'] }), ['appointment', 'doseSlot']);
-});
-
-test('switching every kind off leaves no agenda at all', () => {
-  assert.deepEqual(shownAgendaKinds({ agendaKinds: [] }), []);
-});
-
-test('a stored kind that is not one of the five cannot switch anything on', () => {
-  /* ADR-0067's six refusals - a run-out day, a reminder, a daily dose slot,
-     a taper session, the next hair photo, a revisit - are refusals about
-     what earns a mark. A switch list is a person's answer about the five
-     that do, and cannot be the back door that adds a sixth. */
-  assert.deepEqual(shownAgendaKinds({ agendaKinds: ['appointment', 'runOut', 'reminder'] }), ['appointment']);
-});
-
 // --- the editing surface's own rules (ticket 14) ----------------------------
 
 test('a person who has never arranged anything starts editing from the default set', () => {
@@ -338,31 +313,6 @@ test('a finished area can still be added, and says the day it ended', () => {
   const wear = offered.find((row) => row.spec.key === 'wear');
 
   assert.deepEqual(wear?.line, { kind: 'finished', epochDay: TODAY - 20 });
-});
-
-// --- the switches, written back ---------------------------------------------
-
-test('switching one kind off writes the other four down', () => {
-  /* Null is "nobody has switched anything off", so the first switch has to
-     materialise the five the way the first pin materialises the default
-     set. */
-  assert.deepEqual(withAgendaKind({ agendaKinds: null }, 'doseSlot', false), [
-    'appointment',
-    'surgery',
-    'milestone',
-    'letterUnlock'
-  ]);
-});
-
-test('switching a kind back on keeps the ADR order rather than the order it was switched in', () => {
-  assert.deepEqual(withAgendaKind({ agendaKinds: ['letterUnlock'] }, 'surgery', true), [
-    'surgery',
-    'letterUnlock'
-  ]);
-});
-
-test('switching the last kind off leaves an empty list, not a null', () => {
-  assert.deepEqual(withAgendaKind({ agendaKinds: ['surgery'] }, 'surgery', false), []);
 });
 
 // --- what the default pins say facing forwards ------------------------------

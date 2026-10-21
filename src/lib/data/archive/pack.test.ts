@@ -20,7 +20,7 @@ import {
   unframeArchive
 } from './container.ts';
 import { packArchive, openArchive, type ArchiveContents } from './pack.ts';
-import { pinnedRows, shownAgendaKinds } from '../pinnedRows.ts';
+import { pinnedRows } from '../pinnedRows.ts';
 import { portablePreferences, type ArchiveJournal } from './payload.ts';
 
 /* The archive parameters take about a second per derivation by design
@@ -88,7 +88,6 @@ function everyPreferenceSet(): PreferenceValues {
     lastBackupAt: 1_700_000_000_000,
     backupNoticeDismissed: true,
     pinnedRows: ['wear', 'measurements', 'care'],
-    agendaKinds: ['appointment', 'letterUnlock'],
     onboardingAreas: ['measurements']
   };
 }
@@ -187,10 +186,9 @@ test('an archive made with a password under the floor still opens', async () => 
 });
 
 test('the front page somebody arranged survives an archive, in their order', async () => {
-  /* The claim is not that three keys are present - `payload.test.ts` covers
+  /* The claim is not that two keys are present - `payload.test.ts` covers
      the allowlist. It is that a restore lands somebody back on the front
-     page they built: the same rows, in the same order, with the same
-     agenda kinds switched on. So the round trip is asserted through the
+     page they built: the same rows, in the same order. So the round trip is asserted through the
      resolution the screen itself calls, over the preferences as the archive
      hands them back.
 
@@ -208,7 +206,6 @@ test('the front page somebody arranged survives an archive, in their order', asy
     pinnedRows(restored, reading).map((row) => row.spec.key),
     ['wear', 'measurements', 'care']
   );
-  assert.deepEqual(shownAgendaKinds(restored), ['appointment', 'letterUnlock']);
 });
 
 test('a wrong password is rejected cleanly, and says only that', async () => {

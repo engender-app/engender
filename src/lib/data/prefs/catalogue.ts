@@ -436,16 +436,6 @@ export interface PreferenceValues {
       page to be on. A stale key resolves to nothing rather than to a
       guess. */
   pinnedRows: string[] | null;
-  /** Which of ADR-0067's five mark kinds the agenda draws, by kind (phase 10
-      redesign ticket 05). Null while the person has switched none of them
-      off, which is every kind; a list is exactly the kinds left on.
-
-      A switch rather than a dismissal, which is the whole of why it is
-      stored: a kind somebody does not want is one they would otherwise
-      dismiss every week for the life of the journal. A stored kind
-      `DAY_AHEAD_MARK_KINDS` does not name resolves to nothing, the same way
-      a stale pin does. */
-  agendaKinds: string[] | null;
   /** Which areas the person said they were keeping track of, when
       onboarding asked (phase 10 redesign ticket 05; the step itself is its
       own ticket). `hubRows.ts` row keys.
@@ -548,7 +538,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   clinicianSummaryDrugExcluded: {},
   adherenceRegimenPick: null,
   pinnedRows: null,
-  agendaKinds: null,
   onboardingAreas: null
 };
 
@@ -576,7 +565,7 @@ export const PORTABLE_KEYS = [
   'voiceComfortLowHz',
   'voiceComfortHighHz',
   'areaFinishOfferDeclined',
-  /* All three of phase 10's front-page preferences travel, on
+  /* Both of phase 10's remaining front-page preferences travel, on
      `areaFinishOfferDeclined`'s own argument next door: each is something
      the person said about their own journal rather than something this
      installation happens to be showing, and a restore that handed somebody
@@ -585,7 +574,6 @@ export const PORTABLE_KEYS = [
      choice about what one screen shows right now - and stays device-local
      for it. */
   'pinnedRows',
-  'agendaKinds',
   'onboardingAreas'
 ] as const satisfies readonly PreferenceKey[];
 

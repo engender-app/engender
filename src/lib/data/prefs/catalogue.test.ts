@@ -97,6 +97,24 @@ test('every live-tile kind is switchable and defaults to on (ticket 51)', () => 
   }
 });
 
+/* Functional-audit ticket 14 cut four tiles and the agenda's kind
+   switches. Their preferences go with them rather than lingering as keys
+   nothing reads; a stored row for one is skipped on load
+   (`isPreferenceKey`) and an archive's copy is never read back. */
+test('the cut tiles and the agenda kind switches leave no preference behind', () => {
+  for (const key of [
+    'activeTryoutTileEnabled',
+    'voiceBenchmarkNudgeEnabled',
+    'hairRemovalRecoveryEnabled',
+    'appointmentTodayEnabled',
+    'agendaKinds'
+  ]) {
+    expect(isPreferenceKey(key), key).toBe(false);
+    expect(DEVICE_LOCAL_KEYS as readonly string[]).not.toContain(key);
+    expect(PORTABLE_KEYS as readonly string[]).not.toContain(key);
+  }
+});
+
 test('every entry contextual card is switchable and defaults to on', () => {
   for (const key of [
     'entryTryoutPromptEnabled',

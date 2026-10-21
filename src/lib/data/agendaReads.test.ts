@@ -6,16 +6,11 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readAgenda as readFacts, projectAgenda, type AgendaAreas } from './agendaReads.ts';
 import { AGENDA_DAYS, AGENDA_PASSED_DAYS } from './agenda.ts';
-import { DAY_AHEAD_MARK_KINDS, type DayAheadMark, type DayAheadMarkKind } from './journal/dayAhead.ts';
+import type { DayAheadMark } from './journal/dayAhead.ts';
 import type { AppointmentDayRecord } from './journal/appointments.ts';
 
-async function readAgenda(
-  areas: AgendaAreas,
-  today: number,
-  kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS,
-  covered = false
-) {
-  return projectAgenda(await readFacts(areas, today), kinds, covered);
+async function readAgenda(areas: AgendaAreas, today: number, covered = false) {
+  return projectAgenda(await readFacts(areas, today), covered);
 }
 
 const TODAY = 20000;
@@ -67,24 +62,21 @@ test('the forward read is dayAhead, asked for the thirty days from today', async
   ]);
 });
 
-test('a kind switched off never reaches the projection, and the cap counts only what is on', async () => {
-  /* Four marks; with appointments switched off three are left, which is
-     exactly the cap, so nothing folds - a switched-off kind must not be
-     what pushes a shown row into the fold (ticket 13 over ADR-0073). */
+test('every kind reaches the projection, and the cap folds the fourth', async () => {
+  /* Functional-audit ticket 14 removed the per-kind switches, so all five
+     kinds ADR-0067 admits are drawn and only the cap decides what folds. */
   const { areas } = recordingAreas([
     { kind: 'appointment', epochDay: TODAY + 1 },
     { kind: 'milestone', epochDay: TODAY + 2 },
     { kind: 'letterUnlock', epochDay: TODAY + 3 },
     { kind: 'surgery', epochDay: TODAY + 4 }
   ]);
-  const projection = await readAgenda(areas, TODAY, ['surgery', 'milestone', 'letterUnlock', 'doseSlot']);
+  const projection = await readAgenda(areas, TODAY);
   assert.deepEqual(
     projection?.shown.map((item) => item.kind),
-    ['milestone', 'letterUnlock', 'surgery']
+    ['appointment', 'milestone', 'letterUnlock']
   );
-  assert.deepEqual(projection?.folded, []);
-  const none = await readAgenda(areas, TODAY, []);
-  assert.equal(none, null);
+  assert.deepEqual(projection?.folded.map((item) => item.kind), ['surgery']);
 });
 
 /* Phase 11 ticket 03. Today draws a dose panel whenever a regimen is
@@ -102,13 +94,13 @@ test('the dose kind is withheld while the panel accounts for every dose', async 
     { kind: 'appointment', epochDay: TODAY + 12 }
   ];
 
-  const withPanel = await readAgenda(recordingAreas(marks).areas, TODAY, DAY_AHEAD_MARK_KINDS, true);
+  const withPanel = await readAgenda(recordingAreas(marks).areas, TODAY, true);
   assert.deepEqual(
     withPanel?.shown.map((item) => item.kind),
     ['appointment']
   );
 
-  const withoutPanel = await readAgenda(recordingAreas(marks).areas, TODAY, DAY_AHEAD_MARK_KINDS, false);
+  const withoutPanel = await readAgenda(recordingAreas(marks).areas, TODAY, false);
   assert.deepEqual(
     withoutPanel?.shown.map((item) => item.kind),
     ['doseSlot', 'appointment']
@@ -117,7 +109,7 @@ test('the dose kind is withheld while the panel accounts for every dose', async 
 
 test('a month whose only mark is a dose the panel states is absent, not empty', async () => {
   const marks: DayAheadMark[] = [{ kind: 'doseSlot', epochDay: TODAY + 6 }];
-  assert.equal(await readAgenda(recordingAreas(marks).areas, TODAY, DAY_AHEAD_MARK_KINDS, true), null);
+  assert.equal(await readAgenda(recordingAreas(marks).areas, TODAY, true), null);
 });
 
 test('the schedule is asked about the week behind, ending yesterday', async () => {
@@ -195,10 +187,10 @@ test('dose-panel coverage changes project the same facts without another read', 
     { kind: 'letterUnlock', epochDay: TODAY + 4 }
   ]);
   const facts = await readFacts(areas, TODAY);
-  assert.equal(projectAgenda(facts, DAY_AHEAD_MARK_KINDS, false)?.folded.length, 1);
-  const covered = projectAgenda(facts, DAY_AHEAD_MARK_KINDS, true);
+  assert.equal(projectAgenda(facts, false)?.folded.length, 1);
+  const covered = projectAgenda(facts, true);
   assert.deepEqual(covered?.shown.map((row) => row.kind), ['appointment', 'milestone', 'letterUnlock']);
   assert.deepEqual(covered?.folded, []);
-  assert.equal(projectAgenda(facts, DAY_AHEAD_MARK_KINDS, false)?.shown[0].kind, 'doseSlot');
+  assert.equal(projectAgenda(facts, false)?.shown[0].kind, 'doseSlot');
   assert.deepEqual(asked, ['dayAhead', 'doses', 'appointments']);
 });
