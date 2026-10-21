@@ -6,7 +6,9 @@ import {
   effectTier,
   effectWindowShape,
   isHrtOnsetWindowCurrent,
+  LITERATURE_SOURCES,
   literatureCovers,
+  literatureReviews,
   literatureWindow,
   literatureWindowDays
 } from './personalEffectWindow.ts';
@@ -52,20 +54,17 @@ const ORIGINAL_EIGHT = [
   'cycle_cessation'
 ] as const;
 
-/* Ticket 41's tier-1 widening: nine new feminizing-direction keys and four
-   new masculinizing-direction keys, read out of GenderGP's WPATH-sourced
-   tables (personalEffectWindow.ts's header). Masculinising scalp hair loss
-   is deliberately absent - its completion figure is "variable", no range,
-   so it sits at tier 2 instead - it is catalogued in
-   vocabulary/builtins.ts and listed here nowhere. */
+/* Ticket 41's tier-1 widening, and the one row ticket 22 added from SOC8
+   (scalp hair loss on testosterone). Hair loss ceasing on estradiol left
+   tier 1 in ticket 22: SOC8 gives it no figure. */
 const NEW_FEMINIZING_TIER_1 = [
   'decreased_muscle_mass_strength',
   'decreased_libido',
   'decreased_spontaneous_erections',
-  'decreased_testicular_volume',
-  'male_pattern_baldness_ceasing'
+  'decreased_testicular_volume'
 ] as const;
 const NEW_MASCULINIZING_TIER_1 = [
+  'scalp_hair_loss_masculinizing',
   'skin_oiliness_acne_masculinizing',
   'increased_muscle_mass_strength_masculinizing',
   'clitoral_enlargement_masculinizing',
@@ -78,12 +77,82 @@ test('every tier-1 effect - the original eight plus ticket 41s widening - has a 
   for (const effect of ALL_TIER_1) assert.ok(literatureWindow(effect), `expected a window for ${effect}`);
 });
 
+/* Functional audit ticket 22: every band follows WPATH SOC8 Appendix C
+   Table 1 (p. S254), cell for cell, in months. SOC8 writes years for the
+   long figures; 2-5 y is 24-60 here, and ">5 y" is an open completion from
+   60. `null` is SOC8's "unknown" or "variable": no completion is drawn.
+   The research behind this table, and the nine cells where SOC8 departs
+   from the Hembree 2017 tables it says it adapts, are in the docs repo
+   (docs/research/onset-bands-soc8.md, ADR
+   draft-onset-bands-follow-soc8-table-1). */
+const SOC8_TABLE_1: Record<string, [onsetMin: number, onsetMax: number, completion: [number, number | null] | null]> = {
+  // Feminizing (estradiol)
+  breast_development: [3, 6, [24, 60]],
+  fat_redistribution: [3, 6, [24, 60]],
+  skin_softening: [3, 6, null],
+  hair_changes: [6, 12, [36, null]],
+  decreased_muscle_mass_strength: [3, 6, [12, 24]],
+  decreased_libido: [1, 3, null],
+  decreased_spontaneous_erections: [1, 3, [3, 6]],
+  decreased_testicular_volume: [3, 6, null],
+  // Masculinizing (testosterone)
+  voice_drop: [1, 6, [12, 24]],
+  facial_body_hair: [6, 12, [60, null]],
+  scalp_hair_loss_masculinizing: [6, 12, [60, null]],
+  masculinizing_fat_redistribution: [1, 6, [24, 60]],
+  cycle_cessation: [1, 6, [12, 24]],
+  skin_oiliness_acne_masculinizing: [1, 6, [12, 24]],
+  increased_muscle_mass_strength_masculinizing: [6, 12, [24, 60]],
+  clitoral_enlargement_masculinizing: [1, 6, [12, 24]],
+  vaginal_atrophy_masculinizing: [1, 6, [12, 24]]
+};
+
+test('every band is SOC8 Appendix C Table 1, cell for cell', () => {
+  for (const [effect, [onsetMin, onsetMax, completion]] of Object.entries(SOC8_TABLE_1)) {
+    const window = literatureWindow(effect);
+    assert.ok(window, `expected a window for ${effect}`);
+    assert.deepEqual(window.onsetMonths, { min: onsetMin, max: onsetMax }, `${effect} onset`);
+    assert.deepEqual(
+      window.completionMonths,
+      completion === null ? null : { min: completion[0], max: completion[1] },
+      `${effect} completion`
+    );
+  }
+});
+
+test('tier 1 is exactly the rows SOC8 Table 1 gives an onset for', () => {
+  // Hair loss ceasing on estradiol is "variable / variable" in SOC8, so it
+  // has no band any more. Scalp hair loss on testosterone gained one.
+  assert.deepEqual([...ALL_TIER_1].sort(), Object.keys(SOC8_TABLE_1).sort());
+  assert.equal(literatureWindow('male_pattern_baldness_ceasing'), undefined);
+  assert.equal(effectTier({ key: 'male_pattern_baldness_ceasing', builtIn: true }), 2);
+});
+
+test('every band cites its source and carries a reviewed-on date', () => {
+  for (const effect of ALL_TIER_1) {
+    const window = literatureWindow(effect)!;
+    assert.equal(window.source, 'soc8-appendix-c-table-1', `${effect} source`);
+    assert.match(window.reviewedOn, /^\d{4}-\d{2}-\d{2}$/, `${effect} reviewed-on`);
+    assert.equal(window.reviewedOn, '2026-10-21');
+    assert.ok(LITERATURE_SOURCES[window.source].citation.includes('Standards of Care'), `${effect} citation`);
+  }
+});
+
+test('the review list covers every band, for the release-time staleness guard', () => {
+  const reviews = literatureReviews();
+  assert.deepEqual(reviews.map((review) => review.effect).sort(), [...ALL_TIER_1].sort());
+  for (const review of reviews) {
+    assert.equal(review.source, 'soc8-appendix-c-table-1');
+    assert.equal(review.reviewedOn, '2026-10-21');
+  }
+});
+
 test('onset and completion are counted forward from the anchor in calendar months', () => {
   const days = bandOf('breast_development', ON_E);
   assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
   assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-  assert.equal(days.completion?.end, epochDayFromLocalDate(new Date(2027, 0, 1))); // +36 months
+  assert.equal(days.completion?.end, epochDayFromLocalDate(new Date(2029, 0, 1))); // +60 months
 });
 
 test('skin softening has no defined completion window at all', () => {
@@ -98,93 +167,12 @@ test('hair changes has an open-ended completion window - a start with no end', (
   assert.equal(days.completion?.end, null);
 });
 
-test('masculinizing fat redistribution onset and completion count forward from the anchor', () => {
-  const days = bandOf('masculinizing_fat_redistribution', ON_T);
-  assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
-  assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
-  assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-  assert.equal(days.completion?.end, epochDayFromLocalDate(new Date(2029, 0, 1))); // +60 months
-});
-
-test('voice drop and facial/body hair windows match the masculinizing time-course table', () => {
+test('voice drop starts in the first month on testosterone', () => {
   const voice = bandOf('voice_drop', ON_T);
-  assert.equal(voice.onset.start, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
-  assert.equal(voice.onset.end, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
+  assert.equal(voice.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
+  assert.equal(voice.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
   assert.equal(voice.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
   assert.equal(voice.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-
-  const hair = bandOf('facial_body_hair', ON_T);
-  assert.equal(hair.onset.start, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
-  assert.equal(hair.onset.end, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
-  assert.equal(hair.completion?.start, epochDayFromLocalDate(new Date(2028, 0, 1))); // +48 months
-  assert.equal(hair.completion?.end, epochDayFromLocalDate(new Date(2029, 0, 1))); // +60 months
-});
-
-test('cycle cessation has no defined completion ceiling, like skin softening', () => {
-  const days = bandOf('cycle_cessation', ON_T);
-  assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
-  assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
-  assert.equal(days.completion, null);
-});
-
-/* Ticket 41's new tier-1 windows, all bounded (no open ends among them). */
-
-test('decreased muscle mass and strength (feminizing) matches GenderGPs table', () => {
-  const days = bandOf('decreased_muscle_mass_strength', ON_E);
-  assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
-  assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
-  assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
-  assert.equal(days.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-});
-
-test('decreased libido, decreased spontaneous erections and decreased testicular volume (feminizing) match GenderGPs table', () => {
-  const libido = bandOf('decreased_libido', ON_E);
-  assert.equal(libido.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
-  assert.equal(libido.onset.end, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
-  assert.equal(libido.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
-  assert.equal(libido.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-
-  const erections = bandOf('decreased_spontaneous_erections', ON_E);
-  assert.equal(erections.completion?.start, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
-  assert.equal(erections.completion?.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
-
-  const testes = bandOf('decreased_testicular_volume', ON_E);
-  assert.equal(testes.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-  assert.equal(testes.completion?.end, epochDayFromLocalDate(new Date(2027, 0, 1))); // +36 months
-});
-
-test('male pattern baldness ceasing to progress (feminizing) matches GenderGPs table', () => {
-  const days = bandOf('male_pattern_baldness_ceasing', ON_E);
-  assert.equal(days.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
-  assert.equal(days.onset.end, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
-  assert.equal(days.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
-  assert.equal(days.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-});
-
-test('skin oiliness/acne and increased muscle mass (masculinizing) match GenderGPs table', () => {
-  const skin = bandOf('skin_oiliness_acne_masculinizing', ON_T);
-  assert.equal(skin.onset.start, epochDayFromLocalDate(new Date(2024, 1, 1))); // +1 month
-  assert.equal(skin.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
-  assert.equal(skin.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
-  assert.equal(skin.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-
-  const muscle = bandOf('increased_muscle_mass_strength_masculinizing', ON_T);
-  assert.equal(muscle.onset.start, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
-  assert.equal(muscle.onset.end, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
-  assert.equal(muscle.completion?.start, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-  assert.equal(muscle.completion?.end, epochDayFromLocalDate(new Date(2029, 0, 1))); // +60 months
-});
-
-test('clitoral enlargement and vaginal atrophy (masculinizing) match GenderGPs table', () => {
-  const clitoral = bandOf('clitoral_enlargement_masculinizing', ON_T);
-  assert.equal(clitoral.onset.start, epochDayFromLocalDate(new Date(2024, 3, 1))); // +3 months
-  assert.equal(clitoral.onset.end, epochDayFromLocalDate(new Date(2024, 6, 1))); // +6 months
-  assert.equal(clitoral.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
-  assert.equal(clitoral.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
-
-  const vaginal = bandOf('vaginal_atrophy_masculinizing', ON_T);
-  assert.equal(vaginal.completion?.start, epochDayFromLocalDate(new Date(2025, 0, 1))); // +12 months
-  assert.equal(vaginal.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
 });
 
 /* Phase 5 ticket 27: the drug gate. Still exhaustive over every tier-1 key,
@@ -243,12 +231,11 @@ test('the gate reads hormone drug names in both catalogue languages', () => {
 });
 
 test('a tier-2 or tier-3 key - no literature window at all - never gets a band', () => {
-  // scalp_hair_loss_masculinizing is a real tier-2 catalogue key
-  // (vocabulary/builtins.ts): GenderGP names it but gives no usable
-  // completion range, so ticket 41 catalogues it at tier 2 rather than
-  // stretching this file's tier-1 map to cover it. A minted custom key
-  // behaves identically - absence from the map is what "no band" means.
-  for (const effect of ['scalp_hair_loss_masculinizing', 'a1b2c3d4-custom-uuid']) {
+  // male_pattern_baldness_ceasing is a real tier-2 catalogue key
+  // (vocabulary/builtins.ts): SOC8 names it but gives "variable" for both
+  // figures, so ticket 22 dropped its band. A minted custom key behaves
+  // identically - absence from the map is what "no band" means.
+  for (const effect of ['male_pattern_baldness_ceasing', 'a1b2c3d4-custom-uuid']) {
     assert.equal(literatureWindow(effect), undefined);
     assert.equal(literatureCovers(effect, 'estradiol'), false);
     assert.equal(literatureCovers(effect, 'testosterone'), false);
@@ -264,7 +251,7 @@ test("an effect's source tier is derived from whether this file lists it", () =>
   // tier 1, and un-listing it would make it tier 2 with no second edit.
   assert.equal(effectTier({ key: 'breast_development', builtIn: true }), 1);
   assert.equal(effectTier({ key: 'voice_drop', builtIn: true }), 1);
-  assert.equal(effectTier({ key: 'scalp_hair_loss_masculinizing', builtIn: true }), 2);
+  assert.equal(effectTier({ key: 'male_pattern_baldness_ceasing', builtIn: true }), 2);
   assert.equal(effectTier({ key: 'a1b2c3d4-custom-uuid', builtIn: false }), 3);
 });
 
@@ -279,10 +266,12 @@ test("the window's three shapes are enumerated here, not re-derived by a caption
   // this is rather than reading the nullable fields a second time.
   assert.equal(effectWindowShape('skin_softening'), 'no-completion');
   assert.equal(effectWindowShape('hair_changes'), 'open-completion');
-  assert.equal(effectWindowShape('cycle_cessation'), 'no-completion');
+  assert.equal(effectWindowShape('decreased_libido'), 'no-completion');
+  assert.equal(effectWindowShape('facial_body_hair'), 'open-completion');
+  assert.equal(effectWindowShape('cycle_cessation'), 'bounded');
   assert.equal(effectWindowShape('breast_development'), 'bounded');
   assert.equal(effectWindowShape('voice_drop'), 'bounded');
-  assert.equal(effectWindowShape('scalp_hair_loss_masculinizing'), 'none');
+  assert.equal(effectWindowShape('male_pattern_baldness_ceasing'), 'none');
 });
 
 test('every tier-1 window has a shape that is not none, and no other key does', () => {
@@ -388,36 +377,37 @@ test('isHrtOnsetWindowCurrent handles testosterone and unclassified drugs', () =
 test('an open episode draws exactly the bands it always drew', () => {
   // The regression guard on the clip: `endEpochDay` null is the ordinary
   // case and nothing about it moves.
-  const open = bandOf('voice_drop', ON_T);
+  const open = bandOf('increased_muscle_mass_strength_masculinizing', ON_T);
   assert.equal(open.onset.start, epochDayMonthsAgo(ANCHOR, -6));
   assert.equal(open.onset.end, epochDayMonthsAgo(ANCHOR, -12));
-  assert.equal(open.completion?.start, epochDayMonthsAgo(ANCHOR, -12));
-  assert.equal(open.completion?.end, epochDayMonthsAgo(ANCHOR, -24));
+  assert.equal(open.completion?.start, epochDayMonthsAgo(ANCHOR, -24));
+  assert.equal(open.completion?.end, epochDayMonthsAgo(ANCHOR, -60));
 });
 
 test('an episode that ended before the onset could begin gets no band at all', () => {
-  // voice_drop's onset opens at 6 months; three months of testosterone is
+  // Muscle mass's onset opens at 6 months; three months of testosterone is
   // over before the literature has anything to say, so there is nothing to
   // report rather than a band whose every day is unreachable.
-  assert.equal(literatureWindowDays('voice_drop', endedAfter(ON_T, 3)), null);
-  assert.equal(literatureWindowDays('voice_drop', endedAfter(ON_T, 5)), null);
+  const muscle = 'increased_muscle_mass_strength_masculinizing';
+  assert.equal(literatureWindowDays(muscle, endedAfter(ON_T, 3)), null);
+  assert.equal(literatureWindowDays(muscle, endedAfter(ON_T, 5)), null);
 });
 
 test("a band's onset stops at the day the episode ended", () => {
-  const days = bandOf('voice_drop', endedAfter(ON_T, 9));
+  const days = bandOf('increased_muscle_mass_strength_masculinizing', endedAfter(ON_T, 9));
   assert.equal(days.onset.start, epochDayMonthsAgo(ANCHOR, -6));
   assert.equal(days.onset.end, epochDayMonthsAgo(ANCHOR, -9), 'clipped from 12 months to the end day');
 });
 
 test('a completion window entirely past the end day is dropped, not drawn in the past', () => {
   // Nine months of testosterone: the onset window is real and half-run, and
-  // completion (12-24 months) never started.
-  const days = bandOf('voice_drop', endedAfter(ON_T, 9));
+  // completion (24-60 months) never started.
+  const days = bandOf('increased_muscle_mass_strength_masculinizing', endedAfter(ON_T, 9));
   assert.equal(days.completion, null);
 });
 
 test('a completion window the episode ran into is clipped at the end day', () => {
-  // breast_development completes at 24-36 months; thirty months of
+  // breast_development completes at 24-60 months; thirty months of
   // estradiol reaches into it and stops there.
   const days = bandOf('breast_development', endedAfter(ON_E, 30));
   assert.equal(days.completion?.start, epochDayMonthsAgo(ANCHOR, -24));
