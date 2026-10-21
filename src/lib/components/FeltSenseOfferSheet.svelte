@@ -7,17 +7,15 @@
   import Field from './kit/Field.svelte';
   import Sheet from './Sheet.svelte';
 
-  /* Offering a felt-sense entry on a milestone (phase 5 ticket 24, CONTEXT:
-     "Felt-sense entry") - at its own creation and again on each anniversary
-     showing (both on transition/milestones) - never required, so the
-     open/close state stays with whichever screen is offering it, the same
-     shape a delete-confirmation sheet already uses there: `onSkip` is what
-     resets it, not a bindable `open` this component owns itself.
+  /* Offering a felt-sense entry (phase 5 ticket 24, CONTEXT: "Felt-sense
+     entry"), now on a tryout only: milestones stopped asking in functional
+     audit ticket 32. Never required, so the open/close state stays with
+     whichever screen is offering it, the same shape a delete-confirmation
+     sheet already uses: `onSkip` is what resets it, not a bindable `open`
+     this component owns itself.
 
      Its words arrive as one `copy` object rather than as a title the screen
-     types out (phase 8 features ticket 22). The two showings are two
-     entries in the offer registry, and what an offer says lives beside what
-     it writes.
+     types out (phase 8 features ticket 22).
 
      `subject` names what is being asked about. An anniversary offer can
      come up for two milestones on one day, and a sheet that only asks "How

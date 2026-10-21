@@ -133,14 +133,11 @@ export const TABLE_NAMES = [
   /* The person's own comfort list (phase 6 ticket 14). */
   'comfortItem',
   /* A tryout's own fields (phase 4 ticket 16). Its felt-sense history is
-     'feltSense' instead, below: once a milestone could own one too (phase
-     5 ticket 24), folding it into 'tryout' would make every milestone read stale whenever a
-     tryout's felt-sense history changed, and vice versa. */
+     'feltSense' instead, below, so a screen that reads only the tryout's
+     own fields is not made stale by every reading logged against it. */
   'tryout',
-  /* A felt-sense entry's own name, the same reason 'photo' gets one
-     instead of folding into 'entry'/'milestone': either owner's screen
-     has to invalidate on a write to this table, and which one is a
-     property of the call, not of the method (phase 5 ticket 24). */
+  /* A felt-sense entry's own name (phase 5 ticket 24): the tryout screens
+     and the day view invalidate on a write to this table. */
   'feltSense',
   /* Time-capsule letters (phase 4 ticket 19). */
   'letter',
@@ -387,9 +384,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       // A milestone save can preserve, remove or replace its photo.
       upsertMilestone: ['milestone', 'photo'],
-      // Takes its felt-sense history along too (phase 5 ticket 24), and
-      // nulls a document's link to it (ticket 56).
-      deleteMilestone: ['milestone', 'photo', 'feltSense', 'document']
+      // Nulls a document's link to it (ticket 56).
+      deleteMilestone: ['milestone', 'photo', 'document']
     },
     // A milestone is read back with its photos on it, the same way an entry
     // is, and with the name of the procedure, tryout or custom goal it links
@@ -727,7 +723,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteTryout: ['tryout', 'feltSense', 'milestone'],
       addPhoto: ['tryout'],
       deletePhoto: ['tryout'],
-      adoptTryout: ['tryout', 'milestone', 'feltSense']
+      adoptTryout: ['tryout', 'milestone']
     },
     reads: {
       getTryouts: ['tryout'],
@@ -737,12 +733,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     }
   }),
   feltSense: classify<Journal['feltSense']>()({
-    /* Which owner a felt-sense write belongs to is a property of the call,
-       not of the method, so both `feltSense` and the owner's own name are
-       announced - the same reasoning `photos` gives for `entry`/`milestone`. */
+    /* A reading is read back on its tryout, so a write announces the
+       tryout's name as well as its own. */
     writes: {
-      add: ['feltSense', 'tryout', 'milestone'],
-      remove: ['feltSense', 'tryout', 'milestone']
+      add: ['feltSense', 'tryout'],
+      remove: ['feltSense', 'tryout']
     },
     // A read knows its owner, unlike a write: the history is joined to the
     // one record it hangs off.
@@ -752,10 +747,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // `forTryout` joins it.
       // The same join, every tryout at once (ticket 53).
       byTryout: ['feltSense', 'tryout'],
-      forMilestone: ['feltSense', 'milestone'],
-      // Both owners' names travel on a day's rows, so both tables are read.
-      onDay: ['feltSense', 'tryout', 'milestone'],
-      // No owner join: the registry wants the date across both owners.
+      // The tryout's label travels on a day's rows.
+      onDay: ['feltSense', 'tryout'],
+      // No join: the registry wants the date alone.
       lastWriteEpochDay: ['feltSense']
     }
   }),

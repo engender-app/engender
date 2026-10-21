@@ -252,14 +252,13 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['name']
   }),
-  /* A felt sense hangs off a tryout or off a milestone (feltSense.ts), and
-     the hit has to go back to whichever one - so the tryout's travelling id
-     is the context, and a null one means the owner is a milestone. */
+  /* A felt sense hangs off a tryout (feltSense.ts), and the hit goes back
+     to it, so the tryout's travelling id is the context. */
   area({
     key: 'feltSense',
     covers: ['feltSenseEntries'],
     tables: ['feltSense', 'tryout'],
-    from: 'felt_sense fs LEFT JOIN tryout t ON t.id = fs.tryout_id',
+    from: 'felt_sense fs JOIN tryout t ON t.id = fs.tryout_id',
     uuid: 'fs.uuid',
     date: { kind: 'epochDay', column: 'fs.epoch_day' },
     columns: ['fs.note'],

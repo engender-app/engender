@@ -439,10 +439,16 @@ export async function homeContracts(): Promise<Result[]> {
     );
   });
   await screen.remove();
-  screen = await mountScreen('/?celebrate=1', {
+  /* A milestone landing today, not `?celebrate=1`: this tier builds with
+     __DEMO__ off, where the parameter does nothing (functional audit
+     ticket 32). */
+  await f.journal.milestones.upsertMilestone({ name: 'Started HRT', epochDay: today });
+  screen = await mountScreen('/', {
     ...f,
     preferences: { ...f.preferences, a11yMotionReduce: false }
   });
+  // Held for the anniversary consent read, which answers after the mount.
+  await until(() => root().querySelector('.home-cheer i'), 'milestone celebration');
   await check('Milestone celebration plays once and stops under reduced motion', () => {
     const particles = [...root().querySelectorAll('.home-cheer i')];
     const once =

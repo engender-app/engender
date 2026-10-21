@@ -863,10 +863,10 @@ beforeAll(async () => {
   await drive('tryouts', 'deletePhoto', () => journal.tryouts.deletePhoto(tryoutPhotoId));
   await drive('tryouts', 'addPhoto', () => journal.tryouts.addPhoto(tryoutId, 19906, photo('presenting again')));
   await drive('feltSense', 'add', () => journal.feltSense.add({ tryoutId }, { epochDay: 19910, mood: 4, note: 'felt right' }));
-  const milestoneFeltSense = (await drive('feltSense', 'add', () =>
-    journal.feltSense.add({ milestoneId }, { epochDay: 19911, mood: 5, note: 'a year on' })
+  const secondFeltSense = (await drive('feltSense', 'add', () =>
+    journal.feltSense.add({ tryoutId }, { epochDay: 19911, mood: 5, note: 'still right' })
   )) as string;
-  await drive('feltSense', 'remove', () => journal.feltSense.remove(milestoneFeltSense));
+  await drive('feltSense', 'remove', () => journal.feltSense.remove(secondFeltSense));
   await drive('tryouts', 'adoptTryout', () =>
     journal.tryouts.adoptTryout(tryoutId, { createMilestone: true, milestoneTitle: 'adopted: layered look' })
   );
@@ -1072,7 +1072,6 @@ beforeAll(async () => {
   await driveRead('tryouts', 'getPhotosOnDay', () => journal.tryouts.getPhotosOnDay(19906));
   await driveRead('tryouts', 'lastWriteEpochDay', () => journal.tryouts.lastWriteEpochDay(19906));
   await driveRead('feltSense', 'forTryout', () => journal.feltSense.forTryout(tryoutId));
-  await driveRead('feltSense', 'forMilestone', () => journal.feltSense.forMilestone(milestoneId));
   await driveRead('feltSense', 'onDay', () => journal.feltSense.onDay(19910));
   await driveRead('feltSense', 'lastWriteEpochDay', () => journal.feltSense.lastWriteEpochDay(19910));
   // With an id, since the empty case short-circuits before any SQL runs.

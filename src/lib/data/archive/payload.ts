@@ -161,6 +161,10 @@ export interface ArchiveMilestone {
   roadmapGoalKey: string | null;
   procedureId: string | null;
   tryoutId: string | null;
+  /** Present, and false, only on a milestone the person set not to be
+      celebrated (functional audit ticket 32). Absent reads as true, which
+      is also what every milestone in an older archive was. */
+  celebrate?: false;
   photo: ArchivePhoto | null;
 }
 
@@ -629,17 +633,14 @@ export interface ArchiveTryout {
   photos: ArchiveTryoutPhoto[];
 }
 
-/** One point in a tryout's or a milestone's felt-sense history (phase 4
-    ticket 16, widened to milestones by phase 5 ticket 24). Exactly one of
-    `tryoutId`/`milestoneId` is set, each named by that owner's own
-    travelling uuid rather than its rowid, which means nothing on the
-    device importing this (ADR-0002) - the same rule ArchiveDosePause's
-    `episodeId` follows, and the same flat, always-both-fields shape
-    ArchiveDoseEvent's own header gives for a forward-compatible union. */
+/** One point in a tryout's felt-sense history (phase 4 ticket 16), named
+    by the tryout's own travelling uuid rather than its rowid, which means
+    nothing on the device importing this (ADR-0002). Phase 5 ticket 24 let a
+    milestone own readings too; functional audit ticket 32 cut them, and an
+    older archive's milestone readings are dropped on restore (restore.ts). */
 export interface ArchiveFeltSenseEntry {
   id: string;
-  tryoutId: string | null;
-  milestoneId: string | null;
+  tryoutId: string;
   epochDay: number;
   mood: number;
   note: string | null;

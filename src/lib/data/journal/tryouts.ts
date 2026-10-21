@@ -10,10 +10,8 @@
    only owns what it alone writes - the tryout's own fields and its photos.
 
    A tryout's felt-sense history lives in feltSense.ts instead (CONTEXT:
-   "Felt-sense entry"), phase 5 ticket 24: once a milestone could own one
-   too, felt-sense stopped being a fact about tryouts alone, the same
-   reasoning photos.ts gives for owning entry and milestone photos in one
-   place rather than each in the module that happens to use them.
+   "Felt-sense entry"), which the entry editor writes as well as the
+   tryout screens.
 
    Tryout photos are their own table (tryout_photo) rather than a third
    owner arm on `photo`, the same reasoning procedures.ts gives for
@@ -29,9 +27,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { Tryout, TryoutKind, TryoutPhoto } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { makeMilestonesArea } from './milestones';
-import { makeFeltSenseArea } from './feltSense';
 import { todayEpochDay } from '../epochDay';
-import { adoptionMood } from '../adoptionMood';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now, rowidByUuid } from './support';
 
@@ -94,8 +90,9 @@ export interface TryoutsArea {
   /** Idempotent. */
   deletePhoto(id: string): Promise<void>;
   /** Adopts a tryout permanently: closes it on `endEpochDay` (defaults to
-      today) and optionally mints a timeline milestone with the tryout's
-      felt-sense summary attached. */
+      today) and optionally mints a timeline milestone linked to it. The
+      milestone carries no felt-sense reading: a milestone holds none
+      (functional audit ticket 32). */
   adoptTryout(id: string, options?: AdoptTryoutOptions): Promise<AdoptTryoutResult>;
 }
 
@@ -245,14 +242,6 @@ export function makeTryoutsArea(
 
         const endEpochDay = options?.endEpochDay ?? todayEpochDay();
         assertSpanOrdered({ startEpochDay: tryout.startEpochDay, endEpochDay });
-        const feltSenseRows = options?.createMilestone
-          ? await driver.query<{ mood: number; note: string | null }>(
-            `SELECT f.mood, f.note FROM felt_sense f JOIN tryout t ON t.id = f.tryout_id
-             WHERE t.uuid = ? ORDER BY f.epoch_day DESC, f.id DESC`, [id])
-          : [];
-        const majorityMood = adoptionMood(feltSenseRows);
-        const summaryNote = feltSenseRows.find((f) => f.note?.trim())?.note ?? null;
-
         const result = await driver.run(
           'UPDATE tryout SET end_epoch_day = ?, updated_at = ? WHERE uuid = ?',
           [endEpochDay, now(), id]
@@ -266,11 +255,6 @@ export function makeTryoutsArea(
             epochDay: milestoneEpochDay,
             tryoutId: id
           });
-          if (majorityMood !== null) {
-            await makeFeltSenseArea(driver).add(
-              { milestoneId }, { epochDay: milestoneEpochDay, mood: majorityMood, note: summaryNote }
-            );
-          }
         }
         return { tryoutId: id, milestoneId };
       });

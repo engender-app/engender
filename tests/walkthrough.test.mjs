@@ -1900,24 +1900,19 @@ try {
 } catch (e) { fail('accessibility tuning', e); }
 });
 
-/* 9. milestone shuffle */
-await flow('shuffle', async () => {
+/* 9. milestone templates */
+await flow('milestone templates', async () => {
 try {
   await fresh('/transition/milestones');
-  /* The templates are a sheet off the header now (phase 5 UX ticket 25):
-     the screen opened on a picker for a fifteenth milestone rather than on
-     the milestones. The shuffle went with them. */
+  /* The templates are a sheet off the header (phase 5 UX ticket 25). It
+     lists all eight in one order, with no shuffle (functional audit ticket
+     32): three at a time behind a dice hid five of them. */
   await page.locator('[data-add]').click();
-  await page.waitForSelector('[data-shuffle]');
-  const first = await page.locator('[data-template]').allTextContents();
-  let changed = false;
-  for (let i = 0; i < 6 && !changed; i++) {
-    await page.locator('[data-shuffle]').click();
-    changed = JSON.stringify(await page.locator('[data-template]').allTextContents()) !== JSON.stringify(first);
-  }
-  if (!changed) throw new Error('shuffle never changed');
-  ok('milestone template shuffle');
-} catch (e) { fail('shuffle', e); }
+  await page.waitForSelector('[data-template]');
+  const keys = await page.locator('[data-template]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-template')));
+  if (keys.length !== 8) throw new Error('templates listed: ' + JSON.stringify(keys));
+  ok('every milestone template is listed');
+} catch (e) { fail('milestone templates', e); }
 });
 
 /* 10. custom scale: the live preview, then saving it, then finding it in the

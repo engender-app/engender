@@ -751,6 +751,7 @@
       "roadmapGoalKey": null,
       "procedureId": null,
       "tryoutId": null,
+      "celebrate": false,
       "photo": {
         "id": "9e473a4a-887d-4d59-a1db-aad610d58465",
         "fileName": "9e473a4a-887d-4d59-a1db-aad610d58465.jpg",
@@ -1721,17 +1722,8 @@
   ],
   "feltSenseEntries": [
     {
-      "id": "3618209d-32f1-4f0f-983b-98d93201d898",
-      "tryoutId": null,
-      "milestoneId": "0ff33b62-5fd4-494d-b3fb-adf0add9707d",
-      "epochDay": 19365,
-      "mood": 5,
-      "note": "a year on"
-    },
-    {
       "id": "29aafda1-7e75-4d7c-8740-b61a82dcfab4",
       "tryoutId": "f8ef59db-823f-4c23-ab07-36e9678a1b52",
-      "milestoneId": null,
       "epochDay": 19910,
       "mood": 4,
       "note": "felt right"

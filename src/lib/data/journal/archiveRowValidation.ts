@@ -143,6 +143,7 @@ const ROWS = {
     roadmapGoalKey: optional(nullable(text)),
     procedureId: optional(nullable(text)),
     tryoutId: optional(nullable(text)),
+    celebrate: optional((value) => value === false),
     photo: optional(nullable(photo))
   },
   labResults: {
@@ -378,8 +379,7 @@ const ROWS = {
   },
   feltSenseEntries: {
     id: identity,
-    tryoutId: nullable(text),
-    milestoneId: nullable(text),
+    tryoutId: text,
     epochDay: numeric,
     mood: integerBetween(1, 5),
     note: nullable(text)

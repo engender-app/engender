@@ -250,15 +250,12 @@ const SECTION_ROWS: Record<
   feltSense: (day) =>
     day.feltSense.map((felt) => ({
       key: `felt-sense-${felt.id}`,
-      ...iconOf(felt.owner.kind === 'tryout' ? 'tryouts' : 'milestones'),
+      ...iconOf('tryouts'),
       title: felt.owner.name,
       // The note if there is one, and the felt sense itself if not: a row
       // saying only a name would not say what it was doing on this day.
       subtitle: felt.note || moodName(felt.mood),
-      href:
-        felt.owner.kind === 'tryout'
-          ? `${hubRow('tryouts').href}/${felt.owner.id}`
-          : hubRow('milestones').href
+      href: `${hubRow('tryouts').href}/${felt.owner.id}`
     })),
 
   /* What the staging says, in the person's words (functional audit ticket

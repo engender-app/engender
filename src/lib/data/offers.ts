@@ -1,13 +1,15 @@
 /* Every in-flow offer the app makes, in one list (phase 8 features ticket
    22, ADR-0045, ADR-0044).
 
-   Eight places in the app are the same sentence: something the person just
-   did implies a record they might want, so the app asks. Ticking a
+   Several places in the app are the same sentence: something the person
+   just did implies a record they might want, so the app asks. Ticking a
    transition goal on the roadmap. Reaching surgery day in the procedure
-   hub. Adopting a tryout. Creating a milestone, and meeting one again on
-   its anniversary. Deciding an area is finished. And, since ticket 05, the
-   two the return surface makes: one dose slot that passed unlogged, and a
-   wear session left running through a gap.
+   hub. Adopting a tryout. Deciding an area is finished. And, since ticket
+   05, the two the return surface makes: one dose slot that passed
+   unlogged, and a wear session left running through a gap. Creating a
+   milestone, and meeting one again on its anniversary, used to offer a
+   felt-sense reading too, until functional audit ticket 32 cut milestone
+   readings: they were asked for and never shown.
 
    ADR-0045 governs all of them: an automatic trigger never mints a record
    without confirmation. Before ticket 22 that rule lived in five
@@ -44,12 +46,6 @@
    value is that the list is auditable cannot leave an existing offer off
    it, so it is registered.
 
-   **The felt-sense offer is two entries, not one.** It is made at two
-   different moments - right after a milestone is created, and again on
-   each anniversary of one - and each moment says a different sentence
-   (`ms_feeling_new_title`, `ms_feeling_anniv_title`). One entry with two
-   titles would be an optional field standing in for the distinction.
-
    **"Start an era here" is not an offer, and is not registered.** The day
    view's link (`day/[day]/+page.svelte`, phase 6 ticket 01) mints nothing
    and pre-fills nothing on the person's behalf: it navigates to the era
@@ -75,7 +71,7 @@
    The middle answer is a decline of this offer that still writes the
    adoption, so the screen calls `answerOffer` with `createMilestone` false
    rather than with `'decline'` - it is not a refusal of the gesture, only
-   of the record. `adoptTryout` commits the closure and any milestone and summary together.
+   of the record. `adoptTryout` commits the closure and any milestone together.
 
    **Not offering twice is each source's own check, not a rule here.**
    ADR-0045's second half is about a source that already holds the record
@@ -88,10 +84,6 @@
    enforce nothing, so each asks its own question and this file holds only
    the one rule that genuinely is shared.
 
-   The anniversary offer asks no such question, on purpose: a felt-sense
-   entry is how the person feels about a milestone today, and last year's
-   does not answer this year's, so it recurs.
-
    Relative imports rather than `$lib`, and no runtime import that is not
    pure: offers.test.ts reads this file on the Node tier, where no alias
    exists (see vitest.config.ts). Every area arrives as a type. */
@@ -101,7 +93,6 @@ import { startOfDayTimestamp } from './epochDay';
 import type { FinishableArea, SuspendableArea } from './areaState';
 import type { AreaStatesArea } from './journal/areaStates';
 import type { DoseEventInput, DosesArea } from './journal/doses';
-import type { FeltSenseArea, FeltSenseOwner } from './journal/feltSense';
 import type { MilestonesArea } from './journal/milestones';
 import type { NormalizedPhoto } from './journal/photos';
 import type { ProceduresArea } from './journal/procedures';
@@ -117,8 +108,6 @@ export type OfferKey =
   | 'roadmap-goal-milestone'
   | 'surgery-day-milestone'
   | 'tryout-adoption-milestone'
-  | 'new-milestone-felt-sense'
-  | 'milestone-anniversary-felt-sense'
   | 'area-finished'
   | 'area-suspended'
   | 'returning-dose'
@@ -127,7 +116,7 @@ export type OfferKey =
 /** What the person is being offered. One record, named by the archive
     section that holds it, so an offer cannot claim to write something the
     journal has no home for. */
-type OfferedRecord = 'milestones' | 'feltSenseEntries' | 'areaStates' | 'doseEvents' | 'wearSessions';
+type OfferedRecord = 'milestones' | 'areaStates' | 'doseEvents' | 'wearSessions';
 
 /** How the person answered. `'decline'` is a real answer and not the
     absence of one: it closes the offer and writes nothing. */
@@ -153,7 +142,6 @@ export interface OfferJournal {
   milestones: MilestonesArea;
   procedures: ProceduresArea;
   tryouts: TryoutsArea;
-  feltSense: FeltSenseArea;
   doses: DosesArea;
   wearSessions: WearSessionsArea;
 }
@@ -198,14 +186,6 @@ export interface SuspendedArea {
   epochDay: number;
 }
 
-/** What a felt-sense offer writes: whose it is, when, and how it felt. */
-export interface OfferedFeltSense {
-  owner: FeltSenseOwner;
-  epochDay: number;
-  mood: number;
-  note: string | null;
-}
-
 /** What adopting a tryout writes. `createMilestone` false is the middle
     answer described in the header: the adoption still commits, the
     milestone does not. */
@@ -248,17 +228,6 @@ export interface ReturningWearSession {
   startTimestamp: number;
   endEpochDay: number;
 }
-
-const FELT_SENSE_COPY: Pick<OfferCopy, 'confirm' | 'decline'> = {
-  confirm: () => m.tryout_feeling_save(),
-  decline: () => m.skip()
-};
-
-/** Both felt-sense offers write the same row through the same method; only
-    the moment they are made at, and so the sentence they say, differ. */
-const writeFeltSense = async ({ feltSense }: OfferJournal, subject: OfferedFeltSense) => {
-  await feltSense.add(subject.owner, { epochDay: subject.epochDay, mood: subject.mood, note: subject.note });
-};
 
 /** Every offer, keyed by itself. A `Record` over `OfferKey` rather than an
     array, so an offer added to the union with no entry here is a
@@ -318,22 +287,6 @@ export const OFFERS = {
         milestoneEpochDay: subject.milestoneEpochDay
       });
     }
-  },
-
-  'new-milestone-felt-sense': {
-    key: 'new-milestone-felt-sense',
-    trigger: 'a milestone is created - never when an existing one is edited',
-    offers: 'feltSenseEntries',
-    copy: { title: () => m.ms_feeling_new_title(), ...FELT_SENSE_COPY },
-    write: writeFeltSense
-  },
-
-  'milestone-anniversary-felt-sense': {
-    key: 'milestone-anniversary-felt-sense',
-    trigger: 'a milestone shown on an anniversary of its own day',
-    offers: 'feltSenseEntries',
-    copy: { title: () => m.ms_feeling_anniv_title(), ...FELT_SENSE_COPY },
-    write: writeFeltSense
   },
 
   /* Phase 8 features ticket 04. The sixth, and the first whose trigger is

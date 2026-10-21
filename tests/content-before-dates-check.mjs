@@ -25,7 +25,7 @@ const flows = [
   { handle: 'milestone', path: 'transition/milestones', date: 'ms-date', area: 'milestones', operation: 'upsertMilestone',
     add: '[data-add]', row: '[data-milestone]', text: 'Fixture milestone',
     values: { 'ms-name': 'Fixture milestone', 'ms-description': 'A day to remember', 'ms-date': '2024-03-12' },
-    change: 'ms-description', controls: () => [page.locator('#ms-name'), page.locator('#ms-description'), page.locator('#ms-date'), sheet().locator('.photo-remove'), sheet().getByRole('switch')],
+    change: 'ms-description', controls: () => [page.locator('#ms-name'), page.locator('#ms-description'), page.locator('#ms-date'), sheet().locator('.photo-remove'), sheet().locator('[data-milestone-celebrate] [role="switch"]'), sheet().locator('[data-milestone-anchor] [role="switch"]')],
     labels: { 'ms-name': 'ms_name_label', 'ms-description': 'ms_description_label', 'ms-date': 'ms_date_label' } },
   { handle: 'side-effect', path: 'care/changes', date: 'side-effect-date', area: 'sideEffects', operation: 'upsertSideEffect',
     add: '[data-add]', row: '[data-side-effect]', text: 'Fixture headache',
@@ -90,7 +90,7 @@ async function valuesMatch(flow) {
   if (flow.handle === 'cycle-event') assert.equal(await radio().getAttribute('data-segment'), 'spotting');
     if (flow.handle === 'milestone') {
       await sheet().locator('.photo-wrap img').waitFor();
-      assert.equal(await sheet().getByRole('switch').getAttribute('aria-checked'), 'true');
+      assert.equal(await sheet().locator('[data-milestone-anchor] [role="switch"]').getAttribute('aria-checked'), 'true');
   }
 }
 async function capture(name, zoom, flow) {
@@ -124,9 +124,6 @@ async function capture(name, zoom, flow) {
 }
 async function save(flow) {
   await page.locator(`[data-save-${flow.handle}]`).click();
-  if (flow.handle === 'milestone') {
-    await page.locator('[data-skip-feeling-offer]').click();
-  }
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
 }
 
@@ -183,7 +180,7 @@ try {
       await row.click();
       flow.id = await row.getAttribute(flow.row.slice(1, -1));
     }
-    if (flow.handle === 'milestone') await sheet().getByRole('switch').click();
+    if (flow.handle === 'milestone') await sheet().locator('[data-milestone-anchor] [role="switch"]').click();
     if (flow.handle === 'milestone') flow.photo = await page.evaluate(async (id) => {
       const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
       return (await journal.milestones.getMilestones()).find((milestone) => milestone.id === id).photo;

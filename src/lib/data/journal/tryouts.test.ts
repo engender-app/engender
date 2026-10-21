@@ -234,7 +234,7 @@ test('the sweep leaves a referenced tryout photo alone and reclaims an orphaned 
 
 /* Phase 5 deepening ticket 11: adopt a tryout permanently. */
 
-test('adoptTryout closes the tryout and optionally creates a timeline milestone with felt-sense summary', async () => {
+test('adoptTryout closes the tryout and optionally creates a timeline milestone, writing no reading onto it', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alicja', startEpochDay: 100, endEpochDay: null });
   await journal.feltSense.add({ tryoutId: id }, { epochDay: 100, mood: 4, note: 'felt great' });
@@ -264,24 +264,10 @@ test('adoptTryout closes the tryout and optionally creates a timeline milestone 
   assert.equal(created?.tryoutId, id);
   assert.equal(created?.tryoutLabel, 'Alicja');
 
-  // Felt-sense summary attached to the milestone (majority mood was 5)
-  const milestoneFeltSense = await journal.feltSense.forMilestone(res.milestoneId!);
-  assert.equal(milestoneFeltSense.length, 1);
-  assert.equal(milestoneFeltSense[0].mood, 5);
-});
-
-test('a tied felt sense stamps the adopted milestone with the most recent reading', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', startEpochDay: 100, endEpochDay: null });
-  await journal.feltSense.add({ tryoutId: id }, { epochDay: 101, mood: 5 });
-  await journal.feltSense.add({ tryoutId: id }, { epochDay: 102, mood: 1 });
-  await journal.feltSense.add({ tryoutId: id }, { epochDay: 103, mood: 1 });
-  await journal.feltSense.add({ tryoutId: id }, { epochDay: 104, mood: 5 });
-
-  const res = await journal.tryouts.adoptTryout(id, { endEpochDay: 110, createMilestone: true, milestoneEpochDay: 110 });
-
-  const [summary] = await journal.feltSense.forMilestone(res.milestoneId!);
-  assert.equal(summary.mood, 5);
+  // A milestone holds no felt-sense readings (functional audit ticket 32):
+  // the tryout keeps its three and nothing else is written.
+  assert.equal((await journal.feltSense.forTryout(id)).length, 3);
+  assert.equal((await journal.feltSense.byTryout()).size, 1);
 });
 
 test('deleting an adopted tryout unlinks its milestone rather than orphaning the reference', async () => {

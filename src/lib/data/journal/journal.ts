@@ -286,11 +286,9 @@ export interface Journal {
       (ADR-0010) - this area owns only what it alone writes. Its
       felt-sense history lives in `feltSense` instead (phase 5 ticket 24). */
   tryouts: TryoutsArea;
-  /** One table for a tryout's felt-sense history and a milestone's alike
-      (phase 5 ticket 24, CONTEXT: "Felt-sense entry"), the same shape
-      `photos` already has for an entry's and a milestone's photos. Never
-      required - offering one is `tryouts`' and `milestones`' screens'
-      business, not this area's. */
+  /** A tryout's felt-sense history (phase 5 ticket 24, CONTEXT:
+      "Felt-sense entry"). Never required - offering one is the tryout
+      screens' and the entry editor's business, not this area's. */
   feltSense: FeltSenseArea;
   /** Free-write letters to the person's future self, sealed until a
       chosen unlock day (phase 4 ticket 19). Stores the text and the

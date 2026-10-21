@@ -86,10 +86,16 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
         continue;
       }
       const [row] = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${table.replaceAll('"', '""')}"`);
-      const droppedAreaRows = table === 'area_state'
+      /* Rows a cut dropped from a table it kept: area states naming a
+         dropped section, and the felt-sense readings that hung off a
+         milestone (functional audit ticket 32, migration 98). The archive
+         is the same journal, so it says how many those were. */
+      const droppedRows = table === 'area_state'
         ? opened.payload.journal.areaStates.filter((state) => DROPPED_ARCHIVE_SECTION_NAMES.includes(state.area)).length
-        : 0;
-      assert.equal(row.n, expected - droppedAreaRows, `released SQLite table ${table}`);
+        : table === 'felt_sense'
+          ? opened.payload.journal.feltSenseEntries.filter((entry) => (entry as { milestoneId?: string | null }).milestoneId != null).length
+          : 0;
+      assert.equal(row.n, expected - droppedRows, `released SQLite table ${table}`);
     }
     assert.deepEqual(await driver.query('PRAGMA integrity_check'), [{ integrity_check: 'ok' }]);
     assert.deepEqual(await driver.query('PRAGMA foreign_key_check'), []);

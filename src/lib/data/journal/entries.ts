@@ -743,7 +743,7 @@ export function makeEntriesArea(
   ) => {
     if (input.tryoutFeltSense && resolved.tryoutRowId != null) {
       await driver.run(
-        'INSERT INTO felt_sense (uuid, tryout_id, milestone_id, epoch_day, mood, note, updated_at) VALUES (?, ?, NULL, ?, ?, ?, ?)',
+        'INSERT INTO felt_sense (uuid, tryout_id, epoch_day, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
         [
           mintUuid(),
           resolved.tryoutRowId,

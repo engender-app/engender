@@ -285,19 +285,6 @@ export const vocabulary = {
   presentation(id: string): Presentation | null {
     return this.presentations.find((p) => p.id === id) ?? null;
   },
-  /** A few templates to offer, picked at random so the suggestions differ
-      between visits and the shuffle button has something to do (PRD F6).
-      Which `n` get picked stays random - lean only orders the ones that
-      land in the draw (phase 5 ticket 43, ADR-0030), matching the active
-      preset first. */
-  randomTemplates(n = 3): MilestoneTemplate[] {
-    const pool = [...milestoneTemplates];
-    const picked: MilestoneTemplate[] = [];
-    while (picked.length < n && pool.length) {
-      picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-    }
-    return rankByLean(picked.map(localizeTemplate), this.activeLean);
-  },
   /** Every entry template, built-in and authored, hidden ones included, in
       the wording the current language gives a built-in (phase 6 ticket 07)
       - what the editing screen manages. */

@@ -255,9 +255,9 @@ const SECTIONS = [
   section({
     key: 'feltSense',
     covers: ['feltSenseEntries'],
-    // Its owners' tables as well as its own: a row says which tryout or
-    // milestone it belongs to, so renaming either changes what it reads.
-    tables: ['feltSense', 'tryout', 'milestone'],
+    // Its tryout's table as well as its own: a row says which tryout it
+    // belongs to, so renaming one changes what it reads.
+    tables: ['feltSense', 'tryout'],
     read: ({ feltSense, epochDay }) => feltSense.onDay(epochDay)
   }),
   section({

@@ -11,7 +11,6 @@ import {
   BUILT_IN_TAG_GROUPS,
   ENTRY_TEMPLATES,
   MILESTONE_TEMPLATE_KEYS,
-  MILESTONE_TEMPLATE_LEAN,
   REGIMEN_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_LEAN,
   milestoneTemplateRows,
@@ -173,15 +172,11 @@ test('regimen templates seed with no display text, because wording is resolved b
   expect(rows.every((t) => t.name === '' && t.drug === '' && t.ester === null && t.route === '')).toBe(true);
 });
 
-/* Acceptance box 2 (phase 5 ticket 43): every milestone and regimen
-   template carries a hand-authored lean, and it survives into the row a
-   picker actually renders. */
-test('every milestone template carries a lean of femme, masc, or neutral', () => {
-  const rows = milestoneTemplateRows();
-  MILESTONE_TEMPLATE_KEYS.forEach((key, i) => {
-    expect(['femme', 'masc', 'neutral']).toContain(MILESTONE_TEMPLATE_LEAN[key]);
-    expect(rows[i].lean).toBe(MILESTONE_TEMPLATE_LEAN[key]);
-  });
+/* Acceptance box 2 (phase 5 ticket 43): every regimen template carries a
+   hand-authored lean. Milestone templates carry none since functional
+   audit ticket 32: all eight were neutral, so the lean ordered nothing. */
+test('milestone templates are a key and a name, in the order the picker lists them', () => {
+  expect(milestoneTemplateRows()).toEqual(MILESTONE_TEMPLATE_KEYS.map((key) => ({ key, name: '' })));
 });
 
 test('every regimen template carries a lean matching the hormone it starts', () => {

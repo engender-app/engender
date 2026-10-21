@@ -317,17 +317,14 @@ test('a milestone that matches on both name and description shows its name', asy
   assert.deepEqual(await found(journal, 'zolc'), ['żółć day']);
 });
 
-test('a felt sense carries the tryout it belongs to, and a milestone one carries nothing', async () => {
+test('a felt sense carries the tryout it belongs to', async () => {
   const { journal } = await journalWithBuiltIns();
   const tryoutId = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Marta', startEpochDay: DAY, endEpochDay: null });
   await journal.feltSense.add({ tryoutId }, { epochDay: DAY, mood: 4, note: 'żółć one' });
-  const milestoneId = await journal.milestones.upsertMilestone({ name: 'first day', epochDay: DAY });
-  await journal.feltSense.add({ milestoneId }, { epochDay: DAY, mood: 4, note: 'żółć two' });
 
   const results = await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 30 });
   const contexts = new Map(results.hits.map((hit) => [hit.value, hit.context]));
   assert.equal(contexts.get('żółć one'), tryoutId);
-  assert.equal(contexts.get('żółć two'), null);
 });
 
 test('the limit bounds the page, and the count is of every match', async () => {

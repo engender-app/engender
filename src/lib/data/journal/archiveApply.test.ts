@@ -612,7 +612,6 @@ test('applyFeltSenseEntries resolves its tryout owner, and drops an entry whose 
   const entry: ArchiveFeltSenseEntry = {
     id: 'fs1',
     tryoutId: 't1',
-    milestoneId: null,
     epochDay: 20000,
     mood: 3,
     note: 'felt right'

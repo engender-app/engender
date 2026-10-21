@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
 describe('tryout-to-milestone adoption pipeline', () => {
-  it('adopts an active name tryout, closes the date range and mints a timeline milestone with felt-sense majority rating', async () => {
+  it('adopts an active name tryout, closes the date range and mints a timeline milestone, leaving the readings on the tryout', async () => {
     const { journal } = await journalWithBuiltIns();
 
     const tryoutId = await journal.tryouts.upsertTryout({
@@ -45,11 +45,10 @@ describe('tryout-to-milestone adoption pipeline', () => {
     expect(createdMilestone?.name).toBe('Adopted name Alicja');
     expect(createdMilestone?.epochDay).toBe(19042);
 
-    // Verify majority felt-sense rating (5) is attached to the milestone
-    const milestoneFeelings = await journal.feltSense.forMilestone(result.milestoneId!);
-    expect(milestoneFeelings).toHaveLength(1);
-    expect(milestoneFeelings[0].mood).toBe(5);
-    expect(milestoneFeelings[0].epochDay).toBe(19042);
+    // A milestone holds no felt-sense readings (functional audit ticket
+    // 32): the tryout's stay where they were, and nothing else is written.
+    const readings = await journal.feltSense.byTryout();
+    expect([...readings.keys()]).toEqual([tryoutId]);
   });
 
   it('adopts a pronoun tryout without creating a milestone when requested', async () => {
