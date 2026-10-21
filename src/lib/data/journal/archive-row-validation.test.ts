@@ -24,7 +24,7 @@ for (const mode of ['replace', 'merge'] as const) {
       const id = `legacy-${kind}`;
       incoming.tryouts.push({ id, kind, label: kind, description: null, startEpochDay: 10, endEpochDay: null, photos: [] });
       incoming.milestones.push({ ...incoming.milestones[0], id: `${id}-milestone`, name: kind, tryoutId: id, photo: null });
-      incoming.feltSenseEntries.push({ id: `${id}-felt`, tryoutId: id, milestoneId: null, epochDay: 10, mood: 3, note: null });
+      incoming.feltSenseEntries.push({ id: `${id}-felt`, tryoutId: id, epochDay: 10, mood: 3, note: null });
     }
     const driver = await migratedDb();
     try {
