@@ -11,7 +11,7 @@
    is nothing to filter by, so nothing is hidden. */
 
 import { foldText } from './fold';
-import { resolveCurveDrug } from './hormoneDrug';
+import { resolveHormoneDrug } from './hormoneDrug';
 import type { PersonalEffectCatalogEntry } from './types';
 
 export interface EffectPickerGroup {
@@ -42,7 +42,7 @@ interface EffectPickerInput {
 }
 
 export function buildEffectPicker(input: EffectPickerInput): EffectPicker {
-  const hormones = new Set(input.drugs.map(resolveCurveDrug).filter((d) => d !== null));
+  const hormones = new Set(input.drugs.map(resolveHormoneDrug).filter((d) => d !== null));
   const wanted = new Set<string>();
   if (hormones.has('estradiol')) wanted.add('feminizing');
   if (hormones.has('testosterone')) wanted.add('masculinizing');

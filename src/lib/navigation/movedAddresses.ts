@@ -38,7 +38,6 @@ export const MOVED_ADDRESSES: Record<string, MovedTarget> = {
   '/settings/exposure': '/care',
   '/settings/hair-progress': '/body/hair-progress',
   '/settings/hair-removal': '/body/hair-removal',
-  '/settings/hormone-curve': '/care/curve',
   '/settings/journey-anchor': '/transition/milestones',
   '/settings/labs': '/care/labs',
   '/settings/letters': '/transition/letters',

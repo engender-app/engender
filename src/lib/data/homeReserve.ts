@@ -24,7 +24,6 @@ export type ReserveSlot =
   | 'care-changes'
   | 'wear'
   | 'doses'
-  | 'curve'
   | 'cycle-events'
   | 'words-ignored'
   | 'tally'

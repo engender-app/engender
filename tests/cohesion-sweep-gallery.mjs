@@ -155,7 +155,6 @@ const ROUTES = [
   { path: '/care/doses' },
   { path: '/care/regimen' },
   { path: '/care/labs' },
-  { path: '/care/curve' },
   { path: '/doubt' },
   { path: '/day/today', name: 'day' },
   { path: '/health/appointments' },

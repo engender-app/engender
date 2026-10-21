@@ -4944,8 +4944,7 @@ try {
    38): two episodes for different drugs can both be active without one
    reading as ended, logging a dose while both are active prompts for
    which drug it was, and ending one drops it out of the active set again
-   - the disambiguation this ticket exists to force before a dose can be
-   drawn into the wrong drug's curve. */
+   - the disambiguation this ticket requires before a dose is saved. */
 await flow('concurrent regimen episodes and dose attribution', async () => {
 try {
   await fresh('/care/regimen');
@@ -5074,7 +5073,7 @@ try {
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
     '/settings/journaling-pause', '/settings/entry-templates', '/settings/presentations', '/media/photos',
     '/body/measurements', '/body/sizes', '/body/hair-progress',
-    '/body/hair-removal', '/care/labs', '/care/regimen', '/care/curve',
+    '/body/hair-removal', '/care/labs', '/care/regimen',
     '/health/cycle-events', '/health/side-effects', '/health/surgery',
     '/health/dilation',
     '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
@@ -5246,7 +5245,6 @@ try {
     ['/body/hair-removal', 'hair-removal-empty'],
     ['/care/labs', 'labs-empty'],
     ['/care/regimen', 'regimen-empty'],
-    ['/care/curve', 'curve-empty'],
     ['/care/doses', 'doses-empty'],
     ['/health/cycle-events', 'cycle-events-empty'],
     // The merged screen (ticket 13) - side effects keep their own
@@ -7649,7 +7647,7 @@ try {
      anchoring episode has ended"), so an episode this flow adds afterward
      can never become current while that one is still on record - correct,
      tested app behavior this flow is not the place to relitigate. Nothing
-     later in this file reads regimen, dose, hormone-curve or injection-map
+     later in this file reads regimen, dose or injection-map
      state, so resetting here does not cost any flow after it. */
   await fresh('/body/measurements'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-reset-demo]');

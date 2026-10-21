@@ -44,7 +44,7 @@ describe('Care return identity', () => {
 
 describe('entry links in mixed source lists', () => {
   it('carries route filters and record identity without changing non-entry links', () => {
-    for (const source of ['/voice?tab=recordings', '/search?starred=1', '/search/questions/abc', '/', '/care/curve?days=30']) {
+    for (const source of ['/voice?tab=recordings', '/search?starred=1', '/search/questions/abc', '/']) {
       expect(listReturnTo(at(withEntryListReturn('/entry/7', at(source))))).toBe(source);
       expect(withEntryListReturn('/care/doses?date=20000', at(source))).toBe('/care/doses?date=20000');
     }

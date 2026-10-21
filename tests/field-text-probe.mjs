@@ -100,7 +100,7 @@ const COLD_ROUTES = (ALL_ROUTES ? (x) => x : (x) => x.slice(0, 4))([
   ['settings', '/more'],
   ...[
     '/body/hair-progress', '/body/hair-removal', '/body-map', '/body/measurements', '/body/wear',
-    '/care', '/care/changes', '/care/curve', '/care/doses', '/care/labs', '/care/regimen',
+    '/care', '/care/changes', '/care/doses', '/care/labs', '/care/regimen',
     '/coming-back', '/compare', '/doubt', '/doubt/comfort', '/doubt/evidence',
     '/health/appointments', '/health/appointments/in-the-room', '/health/clinician-summary',
     '/health/cycle-events', '/health/dilation', '/health/surgery', '/media/documents',

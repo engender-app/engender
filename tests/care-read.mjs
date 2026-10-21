@@ -6,9 +6,9 @@ import { createServer } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
-async function verifyEmptyTimeline(page, { gallery }) {
+async function verifyEmptyTimeline(page, { gallery, out }) {
   const evidence = [];
-  await mkdir('.claude/care-read-shots', { recursive: true });
+  await mkdir(out, { recursive: true });
   await page.evaluate(async () => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     const { clearJournal } = await import('/src/lib/data/demo/journal-seed.ts');
@@ -19,12 +19,12 @@ async function verifyEmptyTimeline(page, { gallery }) {
   await rail.waitFor({ state: 'detached' });
   await page.locator('[data-care-regimen-block]').waitFor({ state: 'detached' });
   assert.equal(await empty.count(), 0, 'Empty Care has no timeline notice');
-  for (const key of ['labs', 'hormone-curve', 'stock', 'clinician-summary']) {
+  for (const key of ['labs', 'stock', 'clinician-summary']) {
     assert.equal(await page.locator(`[data-list-row="${key}"]`).isVisible(), true, `${key} remains reachable`);
   }
   assert.equal(await page.locator('[data-care-fold="interval"]').count(), 1);
   assert.equal(await page.locator('[data-hub-host="care"]').count(), 1);
-  if (gallery) await page.screenshot({ path: '.claude/care-read-shots/empty-en-no-regimen.png', fullPage: true });
+  if (gallery) await page.screenshot({ path: `${out}/empty-en-no-regimen.png`, fullPage: true });
 
   await page.evaluate(async () => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
@@ -108,7 +108,7 @@ async function verifyEmptyTimeline(page, { gallery }) {
       assert.equal(await empty.count(), 0);
       if (reducedMotion === 'no-preference') assertTravel(opening, `${kind} arrival`);
       if (gallery && kind === 'lab' && reducedMotion === 'no-preference') {
-        await page.screenshot({ path: '.claude/care-read-shots/first-lab.png', fullPage: true });
+        await page.screenshot({ path: `${out}/first-lab.png`, fullPage: true });
       }
       const closing = await changeRecord(kind, true);
       assert.equal(await rail.count(), 0, `Last ${kind} removal hides timeline despite running schedule`);
@@ -118,7 +118,7 @@ async function verifyEmptyTimeline(page, { gallery }) {
       evidence.push({ kind, reducedMotion, opening, closing });
     }
   }
-  await writeFile('.claude/care-read-shots/timeline-motion.json', JSON.stringify(evidence, null, 2));
+  await writeFile(`${out}/timeline-motion.json`, JSON.stringify(evidence, null, 2));
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.waitForFunction(() => document.documentElement.dataset.a11yMotion === 'normal');
   await changeRecord('lab');
@@ -170,14 +170,14 @@ async function verifyEmptyTimeline(page, { gallery }) {
           prefs.palette = palette; prefs.theme = theme;
         }, { palette, theme });
         await page.waitForTimeout(100);
-        await page.screenshot({ path: `.claude/care-read-shots/empty-${locale}-${palette}-${theme}.png`, fullPage: true });
+        await page.screenshot({ path: `${out}/empty-${locale}-${palette}-${theme}.png`, fullPage: true });
       }
     }
     for (const locale of ['en', 'pl']) {
       await galleryLocale(locale);
       await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
       await page.waitForTimeout(100);
-      await page.screenshot({ path: `.claude/care-read-shots/empty-${locale}-200-percent.png`, fullPage: true });
+      await page.screenshot({ path: `${out}/empty-${locale}-200-percent.png`, fullPage: true });
     }
     await page.evaluate(async () => {
       document.documentElement.style.zoom = '1';
@@ -185,11 +185,11 @@ async function verifyEmptyTimeline(page, { gallery }) {
       prefs.disguise = true;
     });
     await page.waitForTimeout(100);
-    await page.screenshot({ path: '.claude/care-read-shots/empty-disguise.png', fullPage: true });
+    await page.screenshot({ path: `${out}/empty-disguise.png`, fullPage: true });
   }
 }
 
-export async function verifyCareRead({ gallery = false } = {}) {
+export async function verifyCareRead({ gallery = false, out = '.claude/care-read-shots' } = {}) {
   const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
   await server.listen();
   const browser = await launchChromium();
@@ -277,7 +277,7 @@ export async function verifyCareRead({ gallery = false } = {}) {
     assert.match(await page.getByRole('status').filter({ has: retry }).innerText(), /Showing the last result/);
 
     if (gallery) {
-      await mkdir('.claude/care-read-shots', { recursive: true });
+      await mkdir(out, { recursive: true });
       await page.evaluate(async () => {
         document.querySelector('.demo-bar').style.display = 'none';
         document.querySelector('#care-proof-link').remove();
@@ -291,7 +291,7 @@ export async function verifyCareRead({ gallery = false } = {}) {
           prefs.palette = palette; prefs.theme = theme;
         }, { palette, theme });
         await page.waitForTimeout(100);
-        await page.screenshot({ path: `.claude/care-read-shots/${palette}-${theme}.png`, fullPage: true });
+        await page.screenshot({ path: `${out}/${palette}-${theme}.png`, fullPage: true });
       }
     }
 
@@ -315,7 +315,7 @@ export async function verifyCareRead({ gallery = false } = {}) {
       lockState.unlocked = true;
     });
     await lane.waitFor();
-    await verifyEmptyTimeline(page, { gallery });
+    await verifyEmptyTimeline(page, { gallery, out });
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();
@@ -324,6 +324,7 @@ export async function verifyCareRead({ gallery = false } = {}) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await verifyCareRead({ gallery: process.argv.includes('--gallery') });
+  const outAt = process.argv.indexOf('--out');
+  await verifyCareRead({ gallery: process.argv.includes('--gallery'), out: outAt >= 0 ? process.argv[outAt + 1] : undefined });
   console.log('PASS Care read timing, failures, write refresh, lock concealment and empty timeline motion');
 }

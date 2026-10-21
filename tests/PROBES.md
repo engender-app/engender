@@ -678,7 +678,7 @@ To run one on its own, use
 | `entry-editor-return` | The entry editor's Save keeps an accessible name, its date line clears the header, save and delete return to Calendar, Search (query kept), a day, and delete says Moved to trash with Restore or says it failed; the header field spans the same box as Care's and Day's, an opened Photos, Voice or Video section lands above the foot, and an untouched scale draws no thumb or fill and saves no value |
 | `calendar-month-a11y-check` | the open calendar month is a list named by its month with one item per day, every day says its date, axe finds nothing in it, Tab walks the date links in order, and every link is 48px or more without overlapping at 360, 390 and 411px phones and the 390px desktop page (320 is printed only) |
 | `quick-add-focus-check` | Enter on the add button puts focus in the quick-add fan, a labelled modal dialog over an inert screen; Tab stays in it and Escape gives focus back to the button, also after a slide onto a target; arrows on Today's mood faces move focus and open nothing; a keyboard screen change and quick add's mood land focus on the new screen's h1 with the tab title unchanged; each onboarding step's question takes focus and names the name field |
-| `chart-a11y-check` | every screen that places a chart card has an unbroken heading order and no axe target-size, nested-interactive or heading-order finding; the changes line's marks meet 24px and each has a 48px row, the Look back rail's reachable controls are its two 48px handles and its list holds every fact it draws, and the hormone curve's image holds no control while a list beside it names every marked thing and opens its record by keyboard, at 320 and 390px |
+| `chart-a11y-check` | every screen that places a chart card has an unbroken heading order and no axe target-size, nested-interactive or heading-order finding; the changes line's marks meet 24px and each has a 48px row, the Look back rail's reachable controls are its two 48px handles and its list holds every fact it draws at 320 and 390px |
 | `tally-chip-row-yank` | Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after |
 | `changes-methodology-check` | the changes screen's methodology disclosure and record action |
 | `words-reading-scope-check` | the words reading's scope and baseline on stats, stats/words and settings/words |
@@ -1166,27 +1166,14 @@ lock cleanup through the shared content-forgetting boundary.
 
 `entry-source-return-check.mjs` drives the real router and editor through
 Save and Delete from Voice recordings, ordinary and margin-note Search
-results, a saved question, Today's revisit tile, a hormone-curve annotation
-and an ordinary day list. It checks the selected Voice tab, curve range,
-Search query and starred filter on return. Repeated saved-question visits
+results, a saved question, Today's revisit tile and an ordinary day
+list. It checks the selected Voice tab, Search query and starred filter on return. Repeated saved-question visits
 reuse warm answers, while changed criteria discard the previous hits.
 It also checks that Search spends
 its in-memory snapshot and that typed queries stay out of return URLs,
 history state and Web Storage. The existing `entry-editor-return` guard also
 checks that reloading the editor drops the in-memory Search query while
 keeping its return route. Run with `node tests/entry-source-return-check.mjs`.
-
-## Curve dose-count wording
-
-`node tests/curve-dose-count-check.mjs` checks the compiled English and Polish
-catalogue functions at zero, one and multiple counts, including Polish few
-and many forms. It seeds real dose records and checks the note on both empty
-and populated curve screens. Zero stays hidden; the curve owner supplies the
-count and chart presence. `CURVE_COPY_SIGNOFF=/absolute/path` saves the
-one-dose note in the trans palette, light and dark.
-
-`tests/curve-dose-count.test.ts` guards the shared numeric plural contract.
-The curve model and journal tests continue to cover curve results and counts.
 
 ### Safari storage notice
 

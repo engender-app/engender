@@ -1,7 +1,7 @@
 /* Putting a regimen episode away (after-release 07, the promise phase 4
    ticket 01 made): a mistaken or duplicate episode is hidden rather than
    deleted, and every read that draws on the episode history stops seeing
-   it - Care, the curve, dose attribution, the clinician summary - until it
+   it - Care, dose attribution, the clinician summary - until it
    is shown again. */
 
 import { test } from 'vitest';
@@ -66,20 +66,16 @@ test('hasAny does not count an episode that was put away', async () => {
   assert.equal(await journal.regimen.hasAny(), false);
 });
 
-test('a hidden episode draws no curve, counts no exposure and is missing from the clinician summary', async () => {
+test('a hidden episode counts no exposure and is missing from the clinician summary', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await valerate(journal, FROM - 30);
   await injectWeekly(journal, 12);
 
-  const before = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
-  assert.equal(before.injectable.charts.length, 1);
   assert.equal((await journal.clinicianSummary.getSummary(FROM, TO)).sections.regimen!.history.length, 1);
   assert.equal((await journal.exposure.getCounters(FROM, TO)).regimenDays.length, 1);
 
   await journal.regimen.setEpisodeHidden(id, true);
 
-  const after = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
-  assert.equal(after.injectable.charts.length, 0);
   const summary = await journal.clinicianSummary.getSummary(FROM, TO);
   assert.deepEqual(summary.sections.regimen!.history, []);
   const counters = await journal.exposure.getCounters(FROM, TO);
@@ -87,10 +83,6 @@ test('a hidden episode draws no curve, counts no exposure and is missing from th
   assert.deepEqual(counters.doseTotals, []);
 
   await journal.regimen.setEpisodeHidden(id, false);
-  assert.equal(
-    (await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false })).injectable.charts.length,
-    1
-  );
   assert.equal((await journal.clinicianSummary.getSummary(FROM, TO)).sections.regimen!.history.length, 1);
 });
 

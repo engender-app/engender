@@ -3,11 +3,9 @@
      04). Two independent series sharing an x axis (day) but never a y
      scale: wear time is hours and intensity is 0-100, so forcing them onto
      one axis would either flatten the hours line or blow the intensity one
-     off the top. Left axis is hours, right is intensity - the same "two
-     series, two edges" shape HormoneBandChart's band-plus-lab-points takes,
-     just as two lines instead of a band and marks.
+     off the top. Left axis is hours, right is intensity.
 
-     A dumb renderer, like HormoneBandChart beside it: it
+     A dumb renderer: it
      takes numbers and formatters and knows nothing about wear sessions or
      body regions. The wording, and paraglide, stay with the caller. */
 

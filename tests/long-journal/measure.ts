@@ -575,28 +575,6 @@ export async function measureLongJournal(
   // sizes, wear and the overlapping-episode fan-out were surveyed too and
   // found not to need a line here - see ticket 05's Comments for why.
 
-  // Hormone curve (care/curve/+page.svelte): the one call the
-  // screen makes, at its widest window (180 days) - the injectable band model
-  // plus one qualitative model per hormone this app curves (estradiol,
-  // testosterone), over one read of the dose log and one read per analyte any
-  // of them can be drawn against. It used to be the screen's three concurrent
-  // queries, which read the dose log three times between them and asked for
-  // the used analytes three times (phase 5 deepening ticket 17).
-  const curveFrom = today - 179;
-  await measure('hormone-curve', 'hormone curve, injectable plus qualitative models, 180 days', async () => {
-    const view = await journal.hormoneCurve.getCurves({
-      fromEpochDay: curveFrom,
-      toEpochDay: today,
-      fitToOwnLabs: true
-    });
-    const qualCurves = view.qualitative.sections.reduce((n, section) => n + section.charts.length, 0);
-    const qualPoints = view.qualitative.sections.reduce((n, section) => n + section.labPoints.length, 0);
-    return {
-      result: view,
-      detail: `${view.injectable.charts.length} injectable curves + ${qualCurves} qualitative curves, ${view.injectable.labPoints.length + qualPoints} lab points`
-    };
-  });
-
   // Labs (care/labs/+page.svelte): the screen's own five concurrent
   // queries for whichever analyte is selected, none date-bounded or LIMITed
   // (labs.ts:136-179).

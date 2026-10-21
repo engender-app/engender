@@ -25,7 +25,7 @@
    Descriptive throughout, the rule the whole chart family holds to: a
    position says where days fell and stops. Nothing here draws an expected
    trajectory, a modelled curve or a shaded window on a re-keyed axis - the
-   same refusal the qualitative hormone curve makes, and for the same
+   same refusal other modelled readings make, and for the same
    reason, that a re-keyed axis makes a shape look predicted when it was
    only rearranged. */
 

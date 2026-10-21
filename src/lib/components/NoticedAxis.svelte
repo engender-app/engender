@@ -31,8 +31,7 @@
      marks stand off a date axis on stems, and Clue's cycle history, where
      one axis carries every symptom at once.
 
-     Marks are controls, the way CurveMarkers' are and unlike
-     ProcedurePhaseRail's: each one stands for a record with an editor, so a
+     Marks are controls, unlike ProcedurePhaseRail's: each one stands for a record with an editor, so a
      tap opens that change's sheet - the same sheet its row in the list
      opens. Which makes the accessible name the whole of what a screen
      reader gets from here, since the drawing itself is decoration; the list
@@ -157,7 +156,7 @@
       : m.effects_axis_calendar()
   );
 
-  /* Hoisted out of the markup the way CurveMarkers hoists its own: a
+  /* Hoisted out of the markup: a
      message call with an object argument inside `{...}` is the shape
      kit-surfaces.test.ts's copy regex misreads, and it is worth staying out
      of that trap everywhere.
@@ -330,7 +329,7 @@
   }
 
   /* A mark is a control and carries its own tap target, which is smaller
-     than the app's 48px floor for the reason CurveMarkers' own targets are:
+     than the app's 48px floor because:
      at 48px two changes noticed a fortnight apart steal each other's taps,
      and the row for this record is on the same screen at full size - that
      row is the floor's answer, and the list under the line holds one for

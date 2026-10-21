@@ -1103,12 +1103,6 @@ beforeAll(async () => {
   await driveRead('stock', 'getEntries', () => journal.stock.getEntries());
   await driveRead('stock', 'getProjections', () => journal.stock.getProjections(20000));
   await driveRead('exposure', 'getCounters', () => journal.exposure.getCounters(0, 30000));
-  await driveRead('hormoneCurve', 'getCurves', () =>
-    journal.hormoneCurve.getCurves({ fromEpochDay: 0, toEpochDay: 30000, fitToOwnLabs: false })
-  );
-  await driveRead('hormoneCurve', 'getCurveDirection', () =>
-    journal.hormoneCurve.getCurveDirection({ drug: 'estradiol', epochDay: 20000 })
-  );
   await driveRead('sideEffects', 'getSideEffects', () => journal.sideEffects.getSideEffects());
   await driveRead('sideEffects', 'getSideEffectsInRange', () => journal.sideEffects.getSideEffectsInRange(0, 30000));
   await driveRead('sideEffects', 'lastWriteEpochDay', () => journal.sideEffects.lastWriteEpochDay(20000));
@@ -1132,9 +1126,6 @@ beforeAll(async () => {
   await driveRead('documents', 'lastWriteEpochDay', () => journal.documents.lastWriteEpochDay(20000));
   await driveRead('chartAnnotations', 'getAnnotations', () =>
     journal.chartAnnotations.getAnnotations(0, 30000, 20000)
-  );
-  await driveRead('chartAnnotations', 'getCurveMarkers', () =>
-    journal.chartAnnotations.getCurveMarkers(0, 30000, 20000)
   );
   await driveRead('wearSessions', 'getSessions', () => journal.wearSessions.getSessions(0, 30000));
   await driveRead('wearSessions', 'getRunningSession', () => journal.wearSessions.getRunningSession());
@@ -1230,7 +1221,6 @@ beforeAll(async () => {
   await driveRead('stats', 'bodyRegionBreakdown', () => journal.stats.bodyRegionBreakdown('chest'));
   await driveRead('stats', 'wearTimeTrend', () => journal.stats.wearTimeTrend(0, 30000));
   await driveRead('stats', 'tallyTrend', () => journal.stats.tallyTrend('misgendered', 0, 30000));
-  await driveRead('stats', 'bodyRegionReadings', () => journal.stats.bodyRegionReadings('dysphoria', 19000, 21000));
   await driveRead('stats', 'bodyRegionMap', () => journal.stats.bodyRegionMap(19000, 21000));
   await driveRead('stats', 'entryCountsByDay', () => journal.stats.entryCountsByDay(19000, 21000));
   await driveRead('stats', 'presentationDays', () => journal.stats.presentationDays(femme.id, 19000, 21000));

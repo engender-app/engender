@@ -252,21 +252,6 @@ export interface StatsArea {
       chart (ticket 10). `value` and `count` are both the day's tap count:
       there is nothing to average, only how many times it happened. */
   tallyTrend(kind: TallyKind, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
-  /** Every body-region reading on one axis in the range, both ends
-      inclusive, oldest first (phase 8 features ticket 15).
-
-      Not bodyRegionTrend: that answers "how did one region go", averaging a
-      day's entries into a point, and this answers "which single readings
-      stood out", which needs the reading itself and the entry it was logged
-      on. A day where a region was logged twice is two readings here and one
-      point there, and the marker they feed stands for the entry somebody
-      taps through to.
-
-      Every region at once rather than one call each, because the caller has
-      no list of regions to iterate and a hidden region's readings still
-      chart (bodyRegions.ts). Unfiltered by presentation: a hormone curve is
-      not a per-presentation surface (ADR-0048). */
-  bodyRegionReadings(axis: BodyRegionAxis, fromEpochDay: number, toEpochDay: number): Promise<RegionReading[]>;
   /** Every distinct day in the range on which at least one untrashed entry
       carried `presentationId` (ADR-0048), oldest first. The presentation
       chip on tally, wear, voice and calendar reads this to highlight a
@@ -292,17 +277,6 @@ export interface StatsArea {
       tag is out of every place a person picks things (CONTEXT: Hidden), and a
       slice of the ring is a place it would be back. */
   tagShare(fromEpochDay: number, toEpochDay: number): Promise<{ id: string; count: number }[]>;
-}
-
-/** One body-region reading, as the day that stood out is judged and drawn.
-    `region` is the region's domain id and not its name: a built-in's words
-    live in paraglide and this tier does not import it (ADR-0016, ADR-0024),
-    so whoever draws it resolves the name. */
-export interface RegionReading {
-  region: string;
-  entryId: number;
-  epochDay: number;
-  value: number;
 }
 
 /** The mood scale is 1 to 5 (CONTEXT: Mood); 3 is its midpoint and the bar
@@ -578,22 +552,6 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         [kind, fromEpochDay, toEpochDay]
       );
       return rows.map((r) => ({ day: r.day, value: r.n, count: r.n }));
-    },
-
-    async bodyRegionReadings(axis, fromEpochDay, toEpochDay) {
-      // The axis picks a range and a projection, the same closed-union
-      // trick bodyRegionValues' axisFilter uses above: nothing a caller
-      // supplies reaches the SQL.
-      const { where, select } = axisFilter(axis);
-      const rows = await driver.query<{ region: string; entry_id: number; epoch_day: number; value: number }>(
-        `SELECT ebr.region AS region, e.id AS entry_id, e.epoch_day AS epoch_day, ${select} AS value
-         FROM entry e
-         JOIN entry_body_region ebr ON ebr.entry_id = e.id
-         WHERE ${where} AND e.trashed_at IS NULL AND e.epoch_day BETWEEN ? AND ?
-         ORDER BY e.epoch_day, e.id`,
-        [fromEpochDay, toEpochDay]
-      );
-      return rows.map((r) => ({ region: r.region, entryId: r.entry_id, epochDay: r.epoch_day, value: r.value }));
     },
 
     async tagShare(fromEpochDay, toEpochDay) {

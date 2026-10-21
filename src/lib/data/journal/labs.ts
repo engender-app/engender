@@ -3,7 +3,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DoseRoute, LabResult, LabTiming } from '../types';
-import { resolveCurveDrug } from '../hormoneDrug';
+import { resolveHormoneDrug } from '../hormoneDrug';
 import { drugSpans } from '../regimenEpisode';
 import { FIRST_EPOCH_DAY, epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { drawUpperBound, labTimingFor, selectTimingDose, type CandidateDose, type LabDraw } from '../labTiming';
@@ -183,13 +183,13 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       and changed both mean something went in.
 
       Candidates are also filtered to the ones that attribute, through
-      episodes, to the draw analyte's own curve drug (selectTimingDose,
+      episodes, to the draw analyte's hormone (selectTimingDose,
       hormoneDrug.ts) - a concurrent dose of an unrelated drug is skipped
       over exactly as if it weren't there, rather than reported as this
       draw's context (phase 8 features ticket 37). */
   const deriveTiming = async (draw: LabDraw, analyte: string): Promise<LabTiming | null> => {
-    const curveDrug = resolveCurveDrug(analyte);
-    if (curveDrug === null) return null;
+    const hormoneDrug = resolveHormoneDrug(analyte);
+    if (hormoneDrug === null) return null;
     const upper = drawUpperBound(draw);
     const [names, episodes] = await Promise.all([
       driver.query<{ drug: string | null }>(
@@ -198,9 +198,9 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       ),
       regimen.getEpisodes()
     ]);
-    const drugs = names.filter((row) => row.drug && resolveCurveDrug(row.drug) === curveDrug).map((row) => row.drug);
+    const drugs = names.filter((row) => row.drug && resolveHormoneDrug(row.drug) === hormoneDrug).map((row) => row.drug);
     const spans = drugSpans(episodes, FIRST_EPOCH_DAY, epochDayFromTimestamp(upper)).filter((span) =>
-      !span.ambiguous && (span.drug === null || resolveCurveDrug(span.drug) === curveDrug)
+      !span.ambiguous && (span.drug === null || resolveHormoneDrug(span.drug) === hormoneDrug)
     );
     const clauses: string[] = [];
     const params: unknown[] = [upper];

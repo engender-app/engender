@@ -8,9 +8,9 @@
 
      What this screen does NOT do is the point of it. The ticket it comes
      from used to ask for an interactive care canvas - a pharmacokinetic
-     curve, computed draw context, an exposure counter, a stock horizon -
-     and every one of those had already shipped: /care/curve, labTiming.ts,
-     journal/exposure.ts, stockProjection.ts. So there is no modelling here
+     computed draw context, an exposure counter, a stock horizon -
+     and those had already shipped: labTiming.ts, journal/exposure.ts,
+     stockProjection.ts. So there is no modelling here
      and no second calculation of anything. Every figure on this screen is a
      live read of a module that already owned it, and the only arithmetic in
      the diff is careSpine.ts working out where a set of days sit on one
@@ -29,7 +29,7 @@
      Nothing here judges. A lane says when things happened and when the
      schedule expects the next one; no mark is late, no interval is the right
      one, no lane is ranked against another, and no lab value is read as
-     anything (PRODUCT.md:109, and labTiming.ts and /care/curve as the worked
+     anything (PRODUCT.md:109, and labTiming.ts as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
   import { disclose, maskHeight } from '$lib/motion/reveal';
@@ -67,7 +67,6 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { readCare, CARE_DOSE_TOTAL_WINDOW_DAYS } from '$lib/data/careReads';
   import { fmtDay } from '$lib/data/dates';
-  import { resolveCurveDrug } from '$lib/data/hormoneDrug';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import type { RegimenEpisode } from '$lib/data/types';
   import { sameDrug } from '$lib/data/regimenEpisode';
@@ -461,50 +460,6 @@
     return route === null ? null : routeLabel(route);
   };
 
-  /* Which lane the hormone curve is drawn for: the first, which is a curve
-     drug whenever one is running (railEpisodes puts them first). The row
-     below states that curve's own reading. */
-  let curveEpisode = $derived(lanes.find((lane) => resolveCurveDrug(lane.episode.drug) !== null) ?? null);
-  let curveDrug = $derived(curveEpisode ? resolveCurveDrug(curveEpisode.episode.drug) : null);
-  let curveDirectionQuery = liveQuery((j) =>
-    curveDrug ? j.hormoneCurve.getCurveDirection({ drug: curveDrug, epochDay: today }) : Promise.resolve(null)
-  );
-
-  /** Where today sits between that lane's own two doses - "day 6 of 7" -
-      or null where the pair is not both there to count between. A count of
-      days off two days this screen already states, not a reading of a
-      schedule: a rhythm that skipped a slot has a longer gap this way and
-      says so, rather than restating the interval the schedule was set to. */
-  let curveDay = $derived.by(() => {
-    const last = curveEpisode?.lastDoseEpochDay ?? null;
-    const next = curveEpisode?.nextDoseEpochDay ?? null;
-    if (last === null || next === null || next <= last) return null;
-    return { day: today - last + 1, span: next - last };
-  });
-
-  /* The curve's current reading in words: which way the curve this app
-     draws is going today (journal/hormoneCurve.ts owns that question), and
-     where today falls between the two doses either side of it. Never a
-     level and never a number the app has interpreted - the height of a
-     curve is on /care/curve, with everything that qualifies it. */
-  let curveReading = $derived.by(() => {
-    const direction = curveDirectionQuery.value ?? null;
-    /* The curve screen's own words for the same silence, rather than a
-       second sentence about it. Both silences read alike on purpose: no
-       curve drug running at all, and one running with nothing logged inside
-       the model's reach yet - a regimen started this week - are the same
-       sentence from this row's side, and the row may never fall back to a
-       title and a chevron, which is the defect this whole ticket is about
-       (code review, spec axis). */
-    if (!direction) return m.curve_empty_title();
-    const word = { rising: m.care_curve_rising(), level: m.care_curve_level(), falling: m.care_curve_falling() }[
-      direction
-    ];
-    return curveDay === null
-      ? word
-      : m.care_row_curve_reading({ direction: word, day: String(curveDay.day), span: String(curveDay.span) });
-  });
-
   /* What the clinician summary would print if it were opened now: its own
      default range and the sections it has (the screen's own
      `ongoingWindowRange(today, 90)` and every registered section, which is
@@ -868,9 +823,6 @@
         })}
       href="/care/labs"
     />
-    <!-- The reading lands once from curveDirectionQuery, replacing the row's
-         own silence with the curve's direction: faded, not cut. -->
-    <ListRow key="hormone-curve" icon="curve" title={m.curve_title()} subtitle={curveReading} href="/care/curve" fadeSwap />
     {#if unlanedStock.length > 0}
       <!-- Only what no lane above already states (ADR-0084 kept this row for
            the entry point that asks for no regimen to be running first: a

@@ -22,9 +22,7 @@ export const ALLOWED_PREFERRED_UNITS: Record<PreferredUnitAnalyte, readonly stri
 
 /** The unit an analyte's allowlist is written around: the first of its allowed
     units, which every factor table below is expressed relative to. Named rather
-    than indexed at each call site, because "[0] means base" is a convention two
-    unrelated readers had to know - the canonicalizer and the hormone curve,
-    which draws in whatever unit its parameters were published in. */
+    than indexed at each call site, so "[0] means base" stays in one place. */
 export function baseUnitFor(analyte: PreferredUnitAnalyte): string {
   return ALLOWED_PREFERRED_UNITS[analyte][0];
 }

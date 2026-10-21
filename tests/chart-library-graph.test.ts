@@ -68,8 +68,6 @@ const LOADERS = [
   'src/lib/charts/areaPath.ts',
   'src/lib/components/CycleEventChart.svelte',
   'src/lib/components/EffectsTimeline.svelte',
-  'src/lib/components/HormoneBandChart.svelte',
-  'src/lib/components/QualitativeCurveChart.svelte',
   'src/lib/components/WearTrendChart.svelte'
 ];
 

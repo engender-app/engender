@@ -425,22 +425,22 @@ test('one episode yields one lane, over the same span and positions as three wou
 
 /* Which order the lanes are drawn in (phase 11 ticket 10) */
 
-test('every running episode gets a lane, curve drugs first', () => {
+test('every running episode gets a lane, oldest first', () => {
   const curve = episode({ id: 'ep-curve', drug: 'estradiol', startEpochDay: TODAY - 10 });
   const other = episode({ id: 'ep-other', drug: 'sertraline', startEpochDay: TODAY - 300 });
   assert.deepEqual(
     railEpisodes([other, curve]).map((e) => e.id),
-    ['ep-curve', 'ep-other']
+    ['ep-other', 'ep-curve']
   );
 });
 
-test('two curve episodes both get a lane rather than cancelling each other out', () => {
+test('two hormone episodes both get a lane rather than cancelling each other out', () => {
   const first = episode({ id: 'ep-1', drug: 'estradiol', startEpochDay: TODAY - 400 });
   const second = episode({ id: 'ep-2', drug: 'testosterone', startEpochDay: TODAY - 40 });
   assert.deepEqual(
     railEpisodes([second, first]).map((e) => e.id),
     ['ep-1', 'ep-2'],
-    'the older of the two curve drugs is drawn first; neither is primary'
+    'the older episode is drawn first; neither is primary'
   );
 });
 

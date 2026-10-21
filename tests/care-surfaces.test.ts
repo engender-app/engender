@@ -74,7 +74,7 @@ describe('the two folds read the whole journal, said once, and only when they dr
    the same reason the block above is: every one of these is a fact about
    which branch a piece of the template sits in, not a function with an
    answer to call. The arithmetic itself is tested where it lives
-   (src/lib/data/careSpine.test.ts, src/lib/data/journal/hormoneCurve.test.ts). */
+   (src/lib/data/careSpine.test.ts). */
 describe('the spine draws one lane per running regimen', () => {
   it('draws every running episode, in railEpisodes order', () => {
     expect(care).toContain('careQuery.value?.lanes ?? []');
@@ -140,13 +140,6 @@ describe('every row on Care states a current value', () => {
     });
   }
 
-  it('states the curve as a word about the drawing, never a level the app has read', () => {
-    expect(care).toContain('j.hormoneCurve.getCurveDirection({ drug: curveDrug, epochDay: today })');
-    expect(care).toContain('m.care_row_curve_reading(');
-    expect(care).not.toContain('latestQualitativeValue');
-    expect(care).not.toContain('bandMidpointAt');
-  });
-
   it('states the summary row off the summary screen’s own two modules', () => {
     expect(care).toContain('ongoingWindowRange(today, 90)');
     expect(care).toContain('CLINICIAN_SUMMARY_SECTION_KEYS.length');
@@ -155,17 +148,5 @@ describe('every row on Care states a current value', () => {
   it('keeps the stock row for what no lane already names', () => {
     expect(care).toContain('let unlanedStock = $derived(');
     expect(care).toContain('sameDrug(lane.episode.drug, row.entry.drug)');
-  });
-});
-
-describe('the curve row never falls back to a title and a chevron', () => {
-  /* The spec axis of this ticket's own code review: a curve drug running
-     with nothing logged inside the model's reach yet - a regimen started
-     this week - left `curveReading` null, and ListRow drops a falsy
-     subtitle, so the row came back as the bare title the ticket exists to
-     get rid of. Both silences take the curve screen's own words now. */
-  it('states the curve screen’s own empty words whenever there is no direction', () => {
-    expect(care).toContain('if (!direction) return m.curve_empty_title();');
-    expect(care).not.toMatch(/if \(!direction\).*curveDrug === null \? /);
   });
 });

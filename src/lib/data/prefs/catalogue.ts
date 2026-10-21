@@ -324,12 +324,6 @@ export interface PreferenceValues {
       its onset bands and the hair anchor count from it. Portable, for the
       reason `hairAnchorEpochDay` is: it is a fact about the journal. */
   hrtStartEpochDay: number | null;
-  /** Whether the hormone curve is fitted to the user's own lab results
-      (phase 4 ticket 10). Off by default: the published band is what the
-      literature says, and moving it onto someone's own points is a thing
-      they ask for rather than a thing that happens to them. Not portable -
-      it says how one device draws a chart, not anything about the journal. */
-  hormoneCurveFitToOwnLabs: boolean;
   /** The milestone id that durations, stats ranges and wrapped figures are
       measured from (phase 5 ticket 25), or null when none is chosen - a
       resting state the app never nags about. Mirrors `activeScales`: one
@@ -546,7 +540,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   spanRailHintDismissed: false,
   hairAnchorEpochDay: null,
   hrtStartEpochDay: null,
-  hormoneCurveFitToOwnLabs: false,
   journeyAnchorMilestoneId: null,
   cycleTrackingEnabled: false,
   cycleTrackingChoice: null,
@@ -662,7 +655,6 @@ export const DEVICE_LOCAL_KEYS = [
   'measurementProtocolDismissed',
   'hairPhotoProtocolDismissed',
   'spanRailHintDismissed',
-  'hormoneCurveFitToOwnLabs',
   'comingBackSeenSince',
   'clinicianSummaryDrugExcluded',
   'adherenceRegimenPick'

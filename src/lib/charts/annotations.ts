@@ -54,10 +54,6 @@
                                    the last month, and a screen someone opens
                                    on a bad night is not where those should
                                    arrive unasked.
-     /care/curve                   its x axis is hours since a dose, not a
-                                   calendar. A date has no position on it,
-                                   and its own dose marks already say what a
-                                   chart there needs to say.
      /stats, interval mood         same reason: x is a position in the dosing
                                    interval.
      /body/measurements            a time chart, and it would fit - but it is
@@ -82,20 +78,6 @@ import { spanOverlapsRange } from '../data/span';
     `surgery` and `recovery` both come from one Procedure - the day, and the
     stretch after it - because a chart wants to show the operation and the
     weeks it was recovered through as two different marks.
-
-    The last six are the hormone curve's alone - `getCurveMarkers` rather
-    than `getAnnotations`
-    (journal/chartAnnotations.ts), so no chart picks them up by having opted
-    into annotations. They split finer than the record types behind them for
-    one reason: a kind is the only thing a mark is worded from
-    (kit/chartAnnotation.ts's KIND_WORD), and a tally that stood out on the
-    misgendering counter means the opposite of one on the other. Same for a
-    region's dysphoria against its euphoria.
-
-    `tallyMisgendered`, `tallyCorrectlyGendered`, `bodyRegionDysphoria` and
-    `bodyRegionEuphoria` are the days that stood out against the person's own
-    recent spread and not every day with a count or a reading on it: the
-    threshold, and the reason for it, are in data/ownSpread.ts.
 
     `finishedArea` is a point on the day somebody said a stream of theirs
     ended. It belongs in
@@ -122,12 +104,6 @@ export type ChartAnnotationKind =
   | 'tryout'
   | 'era'
   | 'appointment'
-  | 'sideEffect'
-  | 'injection'
-  | 'tallyMisgendered'
-  | 'tallyCorrectlyGendered'
-  | 'bodyRegionDysphoria'
-  | 'bodyRegionEuphoria'
   | 'finishedArea'
   | 'suspendedArea';
 
@@ -148,12 +124,6 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   tryout: 'span',
   era: 'point',
   appointment: 'point',
-  sideEffect: 'point',
-  injection: 'point',
-  tallyMisgendered: 'point',
-  tallyCorrectlyGendered: 'point',
-  bodyRegionDysphoria: 'point',
-  bodyRegionEuphoria: 'point',
   finishedArea: 'point',
   /* A point, the same reason `finishedArea` is one: the day the pause
      started is what a flat stretch after it needs explaining with, not a
@@ -170,20 +140,11 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
     are both words the catalogue owns. kit/chartAnnotation.ts turns each of
     these into the line a reader sees.
 
-    A union rather than three optional fields, because exactly one of them
-    applies to any tick and a `severity` sitting beside a `text` would be a
-    shape no record can produce. The kinds that carry none are the ones with
-    nothing written behind them - a tally that stood out is a day, not a
-    record somebody typed into. */
+    Only text written behind a record reaches this field. */
 export type ChartAnnotationDetail =
   /** A milestone's description, a procedure's notes, an appointment's note:
       the person's own words, already known to be non-empty. */
-  | { type: 'note'; text: string }
-  /** A side effect's 1-5 grade, where it was given one. */
-  | { type: 'severity'; severity: number }
-  /** An injection's amount and where it went. `site` is null on a dose
-      imported without one, and is an INJECTION_SITES key otherwise. */
-  | { type: 'dose'; amount: number; unit: string; site: string | null };
+  | { type: 'note'; text: string };
 
 /** One dated thing, as the query hands it over: stored days, untouched.
 
@@ -199,29 +160,11 @@ export interface ChartAnnotationSource {
   name: string | null;
   startEpochDay: number;
   endEpochDay: number | null;
-  /** Where the record this stands for is read, for a mark somebody can tap
-      through. Absent on the seven kinds that had none: a journaling pause
-      is a stretch nothing owns a screen for, and a milestone mark on a
-      chart was never meant to be a way out of the chart. */
-  href?: string;
-  /** Which of a screen's several charts this belongs on, or absent for all
-      of them.
-
-      The hormone curve screen draws a chart per ester and a chart per
-      illustrative shape, and each one is built from only the doses that
-      resolve to it. An injection therefore belongs under exactly one of
-      them, and a tick under a band that did not count that dose is the
-      chart disagreeing with itself. Everything else on that screen - a side
-      effect, a day that stood out - is about the person rather than about
-      one drug, and belongs under all of them. */
-  series?: string;
   /** Why a `regimen` episode ended. Absent on every other kind, and null
       on a `regimen` source that is still open or that ended before this
       field existed. */
   endReason?: EpisodeEndReason | null;
-  /** What this tick says beyond its name. Absent where the record behind it
-      has nothing written on it, which is what an empty description, an
-      ungraded side effect and every derived mark all are. */
+  /** What this tick says beyond its name, when the record has text. */
   detail?: ChartAnnotationDetail;
 }
 
@@ -241,10 +184,6 @@ export interface ChartAnnotation {
   /** The same for its end, and false for a stretch that has not ended: there
       is no day to draw an edge at. */
   endsInRange: boolean;
-  /** The source's, carried through unchanged. */
-  href?: string;
-  /** The source's, carried through unchanged. */
-  series?: string;
   /** The source's, carried through unchanged. */
   endReason?: EpisodeEndReason | null;
   /** The source's, carried through unchanged. */
@@ -303,8 +242,6 @@ export function annotationsInRange(
       shape,
       fromEpochDay: Math.max(start, range.from),
       toEpochDay: Math.min(end, range.to),
-      href: source.href,
-      series: source.series,
       startsInRange: start >= range.from,
       // A moment ends on the day it happened, and a moment outside the range
       // never got this far. A stretch that has not ended has no day to draw

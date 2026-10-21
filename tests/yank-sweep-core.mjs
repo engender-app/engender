@@ -2135,7 +2135,6 @@ const HYDRATION_SCENES = [
   { name: 'cycle-events', at: '/health/cycle-events', is: 'cycle events' },
   { name: 'dilation', at: '/health/dilation', is: 'the dilation taper' },
   { name: 'surgery', at: '/health/surgery', is: 'the surgery journal' },
-  { name: 'hormone-curve', at: '/care/curve', is: 'the hormone curve' },
   { name: 'doses', at: '/care/doses', is: 'the dose log' },
   { name: 'labs', at: '/care/labs', is: 'lab results' },
   { name: 'regimen', at: '/care/regimen', is: 'the regimen editor' },

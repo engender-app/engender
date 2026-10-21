@@ -671,7 +671,6 @@ describe('the field and the fills (phase 10)', () => {
   describe('essential chart graphics (WCAG 1.4.11)', () => {
     const pitchCss = readFileSync('src/lib/components/PitchFigure.svelte', 'utf8');
     const kitCss = readFileSync('src/lib/styles/kit.css', 'utf8');
-    const bandCss = readFileSync('src/lib/components/HormoneBandChart.svelte', 'utf8');
 
     /** The N in a rule's `color-mix(... N%, transparent)`, read out of the
         component so a change to the wash is a change to what is measured. */
@@ -735,27 +734,7 @@ describe('the field and the fills (phase 10)', () => {
       });
     });
 
-    it("edges the hormone curve's band at 3:1 against the page and the card", () => {
-      const rule = /\.band-edge\s*\{([^}]*)\}/.exec(bandCss)?.[1] ?? '';
-      const opacity = Number(/opacity:\s*([\d.]+)/.exec(rule)?.[1] ?? 1);
-      /* The band is drawn in --chart-line, which palettes.css points at the
-         accent; read rather than assumed, so a new chart colour is measured. */
-      expect(rule).toMatch(/stroke:\s*var\(--chart-line\)/);
-      expect(rawDeclaration(blockBody(':root'), 'chart-line')).toBe('var(--accent)');
-      for (const palette of PALETTES) {
-        for (const theme of THEMES) {
-          const t = tokenMap(palette, theme);
-          for (const surface of ['bg', 'surface', 'surface-2']) {
-            const edge = washOver(t.accent, opacity * 100, t[surface]);
-            const ratio = contrast(edge, t[surface]);
-            expect(
-              ratio,
-              `${palette}/${theme}: the band's edge ${edge} on ${surface} (${t[surface]}) has ${ratio.toFixed(2)}:1`
-            ).toBeGreaterThanOrEqual(3);
-          }
-        }
-      }
-    });
+
   });
 
   /* The day bar is a block of ink (ux-carpet ticket 282): its 13px date

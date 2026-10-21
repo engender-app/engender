@@ -36,7 +36,6 @@ import { makeEffectCategoriesArea, type EffectCategoriesArea } from './effectCat
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
-import type { HormoneCurveArea } from './hormoneCurve';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
 import type { IntervalMoodPatternArea } from './intervalMoodPattern';
@@ -180,13 +179,6 @@ export interface Journal {
       purely descriptive (phase 4 ticket 05). A view over rows `doses` and
       `regimen` own, not a third owner for either one. */
   exposure: ExposureArea;
-  /** Every hormone curve the screen draws, in one read (phase 4 tickets 10
-      and 11): estradiol level bands per injectable ester where a published
-      posterior exists, illustrative rise/plateau/fall shapes per hormone
-      where none does, and the user's own lab results placed against both. A
-      view over rows `doses`, `regimen` and `labs` own, computed on every
-      read - nothing here is a stored estimate. */
-  hormoneCurve: HormoneCurveArea;
   sideEffects: SideEffectsArea;
   /** Period occurred, spotting or nothing this month (phase 5 ticket 03,
       CONTEXT: "Cycle event"). No episode reference of its own, the same
@@ -478,12 +470,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     doses,
     stock: makeStockArea(driver, doses, regimen),
     exposure,
-    /* Deferred (ticket 03): the curve models are 2,600 lines of
-       pharmacokinetics, the largest thing in the first-load graph, and only
-       the curve screen ever asks for them. */
-    hormoneCurve: deferredArea<HormoneCurveArea>(async () =>
-      (await import('./hormoneCurve')).makeHormoneCurveArea(doses, regimen, labs)
-    )(['getCurves', 'getCurveDirection']),
     sideEffects,
     cycleEvents,
     journalingPauses,
@@ -506,11 +492,9 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
         journalingPauses,
         tryouts,
         procedures,
-        eras,
-        sideEffects,
-        stats
+        eras
       })
-    )(['getAnnotations', 'getCurveMarkers']),
+    )(['getAnnotations']),
     wearSessions,
     clinicianSummary: deferredArea<ClinicianSummaryArea>(async () =>
       (await import('./clinicianSummary')).makeClinicianSummaryArea({

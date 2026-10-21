@@ -43,7 +43,7 @@ type Method<Area> = Extract<
  * implementation on the first call to any of them.
  *
  * Curried so the area's type is fixed before the names are checked against
- * it: `deferredArea<HormoneCurveArea>(load)(['getCurves'])`. A name the
+ * it: `deferredArea<ArchiveArea>(load)(['getArchive'])`. A name the
  * interface does not have is rejected by `Names`; one it has and the list
  * does not arrives as a required `missing` property naming it, which is the
  * only way to get TypeScript to say *which* method was forgotten - the same
@@ -59,8 +59,7 @@ export function deferredArea<Area extends object>(load: () => Promise<Area>) {
     /* The area rather than the import is what is remembered here. A repeated
        `import()` of one specifier already resolves from the module loader's
        own cache, but calling the factory twice would hand back a second area
-       with empty caches, and hormoneCurve's two model memos (ticket 04) are
-       exactly that. Cleared when the load rejects so the next call runs `load()`
+       with empty caches. Cleared when the load rejects so the next call runs `load()`
        again rather than holding a rejected promise for the life of the tab.
        Chromium caches a failed dynamic `import()`, so a retry through the
        same specifier may not refetch the chunk; this only stops the failure

@@ -26,7 +26,6 @@ vi.mock('$lib/data/dates', async () => await import('../../data/dates.ts'));
 vi.mock('$lib/data/areaGroups', async () => await import('../../data/areaGroups.ts'));
 vi.mock('$lib/data/vocabulary/areaLabels', async () => await import('../../data/vocabulary/areaLabels.ts'));
 vi.mock('$lib/data/vocabulary/doseLabels', async () => await import('../../data/vocabulary/doseLabels.ts'));
-vi.mock('$lib/data/vocabulary/labels', async () => await import('../../data/vocabulary/labels.ts'));
 const { annotationReadout } = await import('./chartAnnotation.ts');
 const { m } = await import('../../paraglide/messages.js');
 
@@ -73,37 +72,17 @@ test('a record with nothing written behind it draws no line at all', () => {
   assert.ok(entry.label);
 });
 
-test('a side effect reads its severity in the existing words', () => {
-  assert.equal(only(tick('sideEffect', 'headache', { type: 'severity', severity: 3 })).note, m.severity_3());
-  assert.equal(only(tick('sideEffect', 'headache')).note, undefined);
-});
-
-test('an injection reads the dose and its site, and the dose alone without one', () => {
-  const sited = only(tick('injection', 'estradiol', { type: 'dose', amount: 5, unit: 'mg', site: 'thigh-left' }));
-  assert.equal(sited.note, `5 mg, ${m.dose_site_thigh_left()}`);
-  const siteless = only(tick('injection', 'estradiol', { type: 'dose', amount: 5, unit: 'mg', site: null }));
-  assert.equal(siteless.note, '5 mg');
-});
-
 test('an era states its boundary as one line instead of the name and kind pair', () => {
   const entry = only(tick('era', 'First year'));
   assert.equal(entry.label, undefined);
   assert.equal(entry.note, m.chart_annotation_era_started({ name: 'First year' }));
 });
 
-test('the four derived marks and the two area marks read exactly as they did', () => {
-  const kinds: ChartAnnotationKind[] = [
-    'tallyMisgendered',
-    'tallyCorrectlyGendered',
-    'bodyRegionDysphoria',
-    'bodyRegionEuphoria',
-    'finishedArea',
-    'suspendedArea'
-  ];
-  for (const kind of kinds) {
-    const entry = only(tick(kind, kind === 'finishedArea' || kind === 'suspendedArea' ? 'hair' : null));
-    assert.equal(entry.note, undefined, `${kind} grew a line with nothing behind it`);
-    assert.ok(entry.label, `${kind} lost its own words`);
+test('the two area marks keep their labels', () => {
+  for (const kind of ['finishedArea', 'suspendedArea'] as const) {
+    const entry = only(tick(kind, 'hair'));
+    assert.equal(entry.note, undefined);
+    assert.ok(entry.label);
   }
 });
 

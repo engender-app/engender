@@ -10,7 +10,7 @@
    stayed empty, which is the gap ticket 25's sign-off review ran into
    (Alicja, 2026-08-26: "add a ticket for expanding the long journal
    fixture so that all features can be checked before final sign off of
-   redesign - regimens, curves, everything needs to be filled out").
+   redesign - regimens, labs, everything needs to be filled out").
 
    Layered on top of the persona rather than replacing it, through a second
    demo-bar control (controls.ts's resetDemoFull) - the persona's own reset
@@ -51,7 +51,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // Regimen: two concurrently active episodes, an injectable estradiol run
   // and an oral progesterone one overlapping it - the shape ticket 38's
   // concurrent-episode handling exists for, with real doses on both so the
-  // adherence view and the hormone curve both have something to read.
+  // adherence view has something to read.
   const estradiolStart = today - 500;
   const estradiolEpisodeId = await journal.regimen.upsertEpisode({
     drug: 'Estradiol valerate',
@@ -124,7 +124,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // track touches (labs timing, the care spine, the clinician summary
   // toggle, quick add's picker) has a real non-hormone branch to render
   // during a demo, not only a unit test (phase 8 features ticket 42).
-  // resolveCurveDrug returns null for it: neither ester vocabulary names it.
+  // resolveHormoneDrug returns null for it.
   const sertralineStart = today - 250;
   const sertralineEpisodeId = await journal.regimen.upsertEpisode({
     drug: 'Sertraline',
