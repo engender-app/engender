@@ -15,7 +15,7 @@ function failStatement(driver: SqliteDriver, refused: RegExp): SqliteDriver {
   };
 }
 
-test.each(['adoption', 'procedure', 'snapshot', 'trash', 'restore', 'wear'] as const)(
+test.each(['adoption', 'procedure', 'trash', 'restore', 'wear'] as const)(
   '%s rolls back every write when its final statement fails', async (operation) => {
     const db = await migratedDb();
     const files = fakeFileStore();
@@ -35,10 +35,6 @@ test.each(['adoption', 'procedure', 'snapshot', 'trash', 'restore', 'wear'] as c
       await journal.documents.setDocumentTarget(document, { kind: 'procedure', id });
       refused = /DELETE FROM checklist WHERE/;
       act = (target) => target.procedures.deleteProcedure(id);
-    } else if (operation === 'snapshot') {
-      const id = await journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19999, mood: 4, note: 'good day' }]);
-      refused = /DELETE FROM doubt_snapshot WHERE/;
-      act = (target) => target.doubtJournal.deleteSnapshot(id);
     } else if (operation === 'wear') {
       refused = /INSERT INTO reminder/;
       act = (target) => target.wearSessions.upsertSession({ kind: 'binder', startTimestamp: Date.now(), durationMs: null, reminderHoursAfterStart: 2, reminderTitle: 'Pause' });

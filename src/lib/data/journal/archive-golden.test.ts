@@ -80,7 +80,6 @@ const SECTIONS = [
   'appointments',
   'reminders',
   'tallyEvents',
-  'counterevidenceSnapshots',
   'letters',
   'voicePracticeTakes',
   'roadmapChecks',

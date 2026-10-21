@@ -72,7 +72,7 @@ async function insertRows(
 
 async function rowidsByUuid(
   driver: SqliteDriver,
-  table: 'entry' | 'milestone' | 'regimen_episode' | 'doubt_snapshot' | 'tryout',
+  table: 'entry' | 'milestone' | 'regimen_episode' | 'tryout',
   uuids: string[]
 ): Promise<Map<string, number>> {
   const ids = new Map<string, number>();
@@ -688,41 +688,6 @@ export async function applyMeasurementTypes({ driver, mode, journal, ts }: Resto
       [type.builtIn ? null : type.key, type.key, type.name, flag(type.builtIn), flag(type.hidden), ts]
     );
   }
-}
-
-/* Matched by uuid, like applyEntries: a snapshot's items are inserted
-   right after it, against the rowid the insert above just produced - the
-   same owner-then-detail-rows order applyEntries uses for photos. */
-export async function applyCounterevidenceSnapshots({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM doubt_snapshot');
-
-  const inserting = journal.counterevidenceSnapshots.filter((snapshot) => !present.has(snapshot.id));
-  if (inserting.length === 0) return;
-
-  await insertRows(
-    driver,
-    'INSERT INTO doubt_snapshot (uuid, epoch_day, timestamp, updated_at)',
-    inserting.map((snapshot) => [snapshot.id, snapshot.epochDay, snapshot.timestamp, ts])
-  );
-
-  const snapshotIds = await rowidsByUuid(
-    driver,
-    'doubt_snapshot',
-    inserting.map((snapshot) => snapshot.id)
-  );
-
-  const itemRows: unknown[][] = [];
-  for (const snapshot of inserting) {
-    const snapshotId = snapshotIds.get(snapshot.id);
-    if (snapshotId === undefined) {
-      throw new Error(`counterevidence snapshot row id missing after restore insert: ${snapshot.id}`);
-    }
-    for (const [orderIndex, item] of (snapshot.items ?? []).entries()) {
-      itemRows.push([snapshotId, orderIndex, item.epochDay, item.mood, item.note]);
-    }
-  }
-
-  await insertRows(driver, 'INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note)', itemRows);
 }
 
 /* Bundled goals match by pack/goal rather than uuid. A missing incoming

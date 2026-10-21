@@ -75,12 +75,6 @@ const procedurePhoto = object({
   fileName: text
 });
 
-const counterevidenceEntry = object({
-  epochDay: numeric,
-  mood: nullable(numeric),
-  note: text
-});
-
 const tryoutPhoto = object({
   id: identity,
   epochDay: numeric,
@@ -302,12 +296,6 @@ const ROWS = {
     id: identity,
     epochDay: numeric,
     kind: oneOf(TALLY_KINDS)
-  },
-  counterevidenceSnapshots: {
-    id: identity,
-    epochDay: numeric,
-    timestamp: numeric,
-    items: optional(list(counterevidenceEntry))
   },
   letters: {
     id: identity,

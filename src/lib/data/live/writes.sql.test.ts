@@ -65,8 +65,7 @@
    it. For a read that over-declaration costs a needless re-query, not stale
    data, which is why it is the half left open. Second, a read only proves
    what this fixture makes it run: getSchedules reads dose_schedule_weekday
-   only for a weekday schedule and getSnapshots reads doubt_snapshot_entry
-   only when a snapshot exists, so the scenario above leaves one of each
+   only for a weekday schedule, so the scenario above leaves one
    standing, and a branch no fixture row reaches is not checked. Third, a
    composing read's narrowing (test-support/composing-reads.ts) is let
    through: chartAnnotations and dayAhead read photos and linked names
@@ -919,17 +918,6 @@ beforeAll(async () => {
   );
   await drive('checklists', 'deleteChecklist', () => journal.checklists.deleteChecklist(ownedChecklist!.id));
 
-  // --- doubtJournal -----------------------------------------------------
-  const snapshotId = (await drive('doubtJournal', 'saveSnapshot', () =>
-    journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }])
-  )) as string;
-  await drive('doubtJournal', 'deleteSnapshot', () => journal.doubtJournal.deleteSnapshot(snapshotId));
-  // One left standing, because getSnapshots only reads its entries when
-  // there is a snapshot to read them for.
-  await drive('doubtJournal', 'saveSnapshot', () =>
-    journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19600, mood: 4, note: 'a good week' }])
-  );
-
   // --- areaStates ---------------------------------------------------------
   await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['sizeRecords'], true));
   await drive('areaStates', 'setAreasFinished', () =>
@@ -1196,7 +1184,6 @@ beforeAll(async () => {
   await driveRead('checklists', 'getStandaloneChecklist', () => journal.checklists.getStandaloneChecklist());
   await driveRead('checklists', 'getDebriefState', () => journal.checklists.getDebriefState('appt-1'));
   await driveRead('checklists', 'getDebriefEntryId', () => journal.checklists.getDebriefEntryId('appt-1'));
-  await driveRead('doubtJournal', 'getSnapshots', () => journal.doubtJournal.getSnapshots(10));
   await driveRead('areaStates', 'getAreaStates', () => journal.areaStates.getAreaStates());
   await driveRead('comfortItems', 'getItems', () => journal.comfortItems.getItems());
   await driveRead('tryouts', 'getTryouts', () => journal.tryouts.getTryouts());

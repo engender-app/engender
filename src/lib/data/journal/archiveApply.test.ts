@@ -17,7 +17,6 @@ import type {
   ArchiveAppointment,
   ArchiveBodyRegion,
   ArchiveChecklist,
-  ArchiveCounterevidenceSnapshot,
   ArchiveDimension,
   ArchiveDoseSchedule,
   ArchiveDosePause,
@@ -48,7 +47,6 @@ import {
   applyAppointments,
   applyBodyRegions,
   applyChecklists,
-  applyCounterevidenceSnapshots,
   applyDimensions,
   applyDosePauses,
   applyDoseSchedules,
@@ -509,33 +507,6 @@ test('applyMeasurementTypes inserts and merge leaves a matched key alone, replac
 
   await applyMeasurementTypes(restoring(driver, { measurementTypes: [{ ...t, name: 'Renamed' }] }, 'replace', 5));
   assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM measurement_type'))[0].name, 'Renamed');
-});
-
-// applyCounterevidenceSnapshots ------------------------------------------------
-
-test('applyCounterevidenceSnapshots inserts a snapshot with its items, and leaves a matched uuid alone', async () => {
-  const driver = await migratedDb();
-  const snapshot: ArchiveCounterevidenceSnapshot = {
-    id: 's1',
-    epochDay: 20000,
-    timestamp: 20000 * 86400000,
-    items: [{ epochDay: 19990, mood: 4, note: 'felt good' }]
-  };
-
-  await applyCounterevidenceSnapshots(restoring(driver, { counterevidenceSnapshots: [snapshot] }, 'merge', 3));
-
-  assert.deepEqual(await select(driver, 'SELECT uuid, epoch_day, timestamp, updated_at FROM doubt_snapshot'), [
-    { uuid: 's1', epoch_day: 20000, timestamp: snapshot.timestamp, updated_at: 3 }
-  ]);
-  assert.deepEqual(await select(driver, 'SELECT order_index, epoch_day, mood, note FROM doubt_snapshot_entry'), [
-    { order_index: 0, epoch_day: 19990, mood: 4, note: 'felt good' }
-  ]);
-
-  await applyCounterevidenceSnapshots(
-    restoring(driver, { counterevidenceSnapshots: [{ ...snapshot, items: [] }] }, 'merge', 9)
-  );
-  assert.equal((await select(driver, 'SELECT * FROM doubt_snapshot')).length, 1);
-  assert.equal((await select(driver, 'SELECT * FROM doubt_snapshot_entry')).length, 1);
 });
 
 // applyRoadmapChecks ------------------------------------------------------------

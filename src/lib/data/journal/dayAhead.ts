@@ -321,7 +321,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   roadmapGoals: 'no date of its own',
   checklists: 'no date of its own',
 
-  counterevidenceSnapshots: 'a Safe Space artefact, not a day still to come',
   comfortItems: 'a Safe Space artefact with no date of its own',
   // A letter's own mark is what "sealed until its unlock day" earns
   // (letterUnlock above); a practice take stays sealed with no forward

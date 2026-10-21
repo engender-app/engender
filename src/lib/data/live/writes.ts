@@ -135,18 +135,11 @@ export const TABLE_NAMES = [
      name shared with 'procedure' would give in one direction only. The
      procedure screen's own reads name both. */
   'appointment',
-  /* Counterevidence snapshots (phase 4 ticket 11; the doubt-entry half of
-     this screen's writes retired by phase 5 ticket 16). */
-  'doubtJournal',
-  /* The person's own comfort list (phase 6 ticket 14). Its own name and not
-     folded into 'doubtJournal': the two live on the same screen but neither
-     reads the other's table, so a write to one must not re-run the other's
-     query. */
+  /* The person's own comfort list (phase 6 ticket 14). */
   'comfortItem',
   /* A tryout's own fields (phase 4 ticket 16). Its felt-sense history is
      'feltSense' instead, below: once a milestone could own one too (phase
-     5 ticket 24), folding it into 'tryout' the way 'doubtJournal' folds
-     its own two tables would make every milestone read stale whenever a
+     5 ticket 24), folding it into 'tryout' would make every milestone read stale whenever a
      tryout's felt-sense history changed, and vice versa. */
   'tryout',
   /* A felt-sense entry's own name, the same reason 'photo' gets one
@@ -157,7 +150,7 @@ export const TABLE_NAMES = [
   /* Time-capsule letters (phase 4 ticket 19). */
   'letter',
   /* Voice recordings (phase 4 ticket 24). Its own name rather than folded
-     into 'entry' the way `hairProgress`/`doubtJournal`/`tryout` fold two
+     into 'entry' the way `hairProgress`/`tryout` fold two
      tables into one name: unlike those, a screen elsewhere - a future
      voice-notes browsing view, or ticket 25's compare mode - could read
      recordings without reading the rest of an entry, the same reason
@@ -781,13 +774,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   reminders: classify<Journal['reminders']>()({
     writes: { upsertReminder: ['reminder'], deleteReminder: ['reminder'], setEnabled: ['reminder'] },
     reads: { getReminders: ['reminder'] }
-  }),
-  doubtJournal: classify<Journal['doubtJournal']>()({
-    writes: {
-      saveSnapshot: ['doubtJournal'],
-      deleteSnapshot: ['doubtJournal']
-    },
-    reads: { getSnapshots: ['doubtJournal'] }
   }),
   areaStates: classify<Journal['areaStates']>()({
     writes: {

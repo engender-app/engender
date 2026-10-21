@@ -53,5 +53,15 @@ CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT N
      CHECK policy (vocabularies live in code, drugClass.ts reads anything but
      'hrt' as 'other'). */
   { version: 93, sql: "ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other';", apply: migrateDrugClass },
-  { version: 94, sql: CLOSED_LISTS_REBUILD }
+  { version: 94, sql: CLOSED_LISTS_REBUILD },
+  /* Functional audit ticket 09: counterevidence snapshots are cut. They
+     copied a good-moment entry's note with no link back, so the text
+     outlived the entry once it was deleted. Rows are dropped, not
+     converted; archives that still carry the section skip it on restore
+     (DROPPED_ARCHIVE_SECTION_NAMES). The child goes first so no foreign key
+     points at a dropped parent. */
+  { version: 95, sql: `
+DROP TABLE doubt_snapshot_entry;
+DROP TABLE doubt_snapshot;
+` }
 ];

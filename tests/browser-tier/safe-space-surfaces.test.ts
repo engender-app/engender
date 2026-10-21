@@ -22,7 +22,7 @@ export async function safeSpaceContracts(): Promise<Result[]> {
   held.release();
   await new Promise((resolve) => setTimeout(resolve, 100));
   await check('resolved empty pool omits only Good moments', () =>
-    !evidence() && root().querySelectorAll('[data-list-row]').length === 3 &&
+    !evidence() && root().querySelectorAll('[data-list-row]').length === 1 &&
     root().querySelector('a[href="/doubt/comfort"]'));
 
   const id = await journal.entries.upsertEntry({ epochDay: today, mood: 2, note: 'Quiet afternoon' });
@@ -54,7 +54,7 @@ export async function safeSpaceContracts(): Promise<Result[]> {
   await check('Good moments remains a direct link in the stated order', () =>
     evidence()?.getAttribute('href') === '/doubt/evidence' &&
     [...root().querySelectorAll('[data-list-row]')].map((row) => row.getAttribute('data-list-row')).join() ===
-      'resources,moments,evidence,readings');
+      'resources,evidence');
   await check('unstarring the last qualifying entry collapses Good moments through several frames', () =>
     movement(() => journal.entries.setEntryStarred(id, false), false));
   const taggedId = await journal.entries.upsertEntry({ epochDay: today - 1, mood: 4, tags: ['g-body-eu'], note: 'Felt right' });
@@ -91,18 +91,6 @@ export async function safeSpaceContracts(): Promise<Result[]> {
   await check('direct empty Good moments retains explanation and both ways forward', () =>
     root().querySelector('[data-notice="no-counterevidence"]')?.textContent?.trim() &&
     root().querySelector('a[href="/calendar"]') && root().querySelector('a[href="/doubt/comfort"]'));
-  await screen.remove();
-  const snapshotId = await journal.doubtJournal.saveSnapshot(today, [
-    { epochDay: today, mood: 2, note: 'Quiet afternoon' }
-  ]);
-  screen = await mountScreen('/doubt', f);
-  await check('saved Good moments remain reachable after source entries disappear', async () => {
-    await until(evidence, 'saved Good moments link');
-    return evidence()?.getAttribute('href') === '/doubt/evidence';
-  });
-  await new Promise((resolve) => setTimeout(resolve, 650));
-  await check('deleting the last snapshot collapses Good moments through several frames', () =>
-    movement(() => journal.doubtJournal.deleteSnapshot(snapshotId), false));
   await screen.remove();
   return results;
 }

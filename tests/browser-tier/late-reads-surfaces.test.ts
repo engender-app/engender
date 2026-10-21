@@ -1,11 +1,12 @@
 /* Late reads on Good moments and Tryouts (last-audit UI ticket 20).
 
-   Each screen gates a second read beside its list: Good moments' snapshot
-   history, Tryouts' felt-sense readings. Both reads used to sit outside
-   the gate, so the screen painted without them and they landed afterwards
-   - the snapshot panels popping in under a settled screen, a running
-   tryout saying "No felt sense recorded yet" until its readings arrived.
-   The held reads below make that order certain rather than a race.
+   Tryouts gates a second read beside its list, the felt-sense readings.
+   It used to sit outside the gate, so the screen painted without it and
+   it landed afterwards - a running tryout saying "No felt sense recorded
+   yet" until its readings arrived. Good moments had the same shape with
+   its snapshot history until functional audit ticket 09 cut the
+   snapshots; its one read is still held here so the pool's reveal is
+   measured. The held reads make that order certain rather than a race.
 
    The motion clause is measured, not judged: every animation frame
    records how much of each tracked element is painted (its opacity times
@@ -16,7 +17,6 @@ import { flushSync } from 'svelte';
 import { m } from '$lib/paraglide/messages';
 import { mountScreen, until } from './mount-screen';
 import { fixture, assertions, heldReads, today, type Result } from './screen-contracts/fixture';
-import { navigating } from './screen-router.svelte';
 import type { ScreenFixture } from './mount-screen';
 
 type Sample = { opacity: number; visible: number; reach: number; text: string };
@@ -104,15 +104,6 @@ const settle = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 function arrivedSmoothly(track: Track): boolean {
   return track.first > 0 && track.firstShare < 0.5 && track.ramp >= 3;
 }
-/** Neither arriving nor leaving: whole on every frame. */
-function stayedWhole(track: Track): boolean {
-  return track.shares.every((share) => share > 0.95);
-}
-/** A departure: gone before the run ended, under half on its last
-    painted frame, and fading or closing through at least three. */
-function leftSmoothly(track: Track): boolean {
-  return track.last < track.end && track.lastShare < 0.5 && track.ramp >= 3;
-}
 
 export async function lateReadsContracts(theme: 'light' | 'dark' = 'light'): Promise<Result[]> {
   const results: Result[] = [];
@@ -121,150 +112,47 @@ export async function lateReadsContracts(theme: 'light' | 'dark' = 'light'): Pro
   const runs: Record<string, Frame[]> = {};
 
   /* ---------- Good moments ---------- */
+  /* The snapshot history and its save left with functional audit ticket
+     09, so the pool is the screen's one read again. It still arrives in one
+     reveal, out of the gate's skeleton, and a refused read still says so. */
   const f = await fixture('late-reads', 6);
   f.preferences!.a11yMotionReduce = false;
   f.preferences!.theme = theme;
-  await f.journal.doubtJournal.saveSnapshot(today - 3, [{ epochDay: today - 3, mood: 4, note: 'Kept from a good week' }]);
-  await f.journal.doubtJournal.saveSnapshot(today - 2, [{ epochDay: today - 2, mood: 5, note: 'Kept the day after' }]);
 
-  const heldSnapshots = heldReads(f, ['doubtJournal'], (method) => method === 'getSnapshots');
-  /* Each snapshot is one surface; the pool is the entry days above them. */
-  const panels = () => [...document.querySelectorAll('#screens .kit-panel[data-kit-surface]')];
+  const heldPool = heldReads(f, ['entries'], (method) => method === 'counterevidencePool');
   const pool = () => document.querySelector('#screens .entry-days');
   const skeleton = () => document.querySelector('#screens [data-gate-skeleton]');
-  /* Everything the screen draws once its reads answer: each block of the
-     gate's answer (the pool, the save control), the history's heading
-     and its panels. */
-  const answer = () => [
-    ...document.querySelectorAll('#screens .screen > .screen-part > :not([data-gate-skeleton])'),
-    ...document.querySelectorAll('#screens [data-section-heading]'),
-    ...panels()
-  ];
+  /* Everything the screen draws once its read answers: each block of the
+     gate's answer. */
+  const answer = () => [...document.querySelectorAll('#screens .screen > .screen-part > :not([data-gate-skeleton])')];
   let stop = sampler(answer);
-  let screen = await mountScreen('/doubt/evidence', heldSnapshots.fixture);
+  let screen = await mountScreen('/doubt/evidence', heldPool.fixture);
   await settle(700);
   flushSync();
-  await check('Good moments holds its skeleton while the snapshot history is still being read', () =>
-    !pool() && panels().length === 0 && skeleton());
-  heldSnapshots.release();
-  await until(() => panels().length === 2 && !skeleton(), 'snapshot panels');
+  await check('Good moments holds its skeleton while the pool is still being read', () => !pool() && skeleton());
+  heldPool.release();
+  await until(() => pool() && !skeleton(), 'good moments pool');
   await settle(700);
   let frames = (runs.evidenceCold = stop());
   let tracked = tracks(frames);
-  await check('the pool, its control, the history heading and both panels arrive in one reveal, none whole on its first frame', () => {
+  await check('the pool arrives in one reveal, nothing whole on its first frame', () => {
     const arrivals = [...tracked.values()].filter((track) => track.first > 0);
     const firsts = new Set(arrivals.map((track) => track.first));
-    return arrivals.length === 5 && firsts.size === 1 && arrivals.every(arrivedSmoothly);
+    return arrivals.length >= 1 && firsts.size === 1 && arrivals.every(arrivedSmoothly);
   });
-
-  stop = sampler(panels);
-  /* A few frames of the panels at rest first, so the new one is counted
-     as arriving rather than as there from the start. */
-  await settle(50);
-  const save = [...document.querySelectorAll<HTMLButtonElement>('#screens button')].find((button) =>
-    button.textContent?.includes(m.doubt_save_snapshot())
-  )!;
-  save.click();
-  await until(() => panels().length === 3, 'saved snapshot panel');
-  await settle(700);
-  frames = runs.evidenceSave = stop();
-  tracked = tracks(frames);
-  await check('a saved snapshot opens into the history through several frames', () => {
-    const arrivals = [...tracked.values()].filter((track) => track.first > 0);
-    return arrivals.length === 1 && arrivals.every(arrivedSmoothly);
-  });
-  /* The panels already there move down whole. Inside the gate, its
-     `resize` clipped the one under the new panel to a fifth of itself in
-     one frame while it lagged behind the growth. */
-  await check('the panels a save moves down stay whole on every frame', () => {
-    const stayed = [...tracked.values()].filter((track) => track.first === 0);
-    return stayed.length === 2 && stayed.every(stayedWhole);
-  });
-
-  const heading = () =>
-    [...document.querySelectorAll('#screens [data-section-heading]')].find(
-      (box) => box.querySelector('h2')?.textContent === m.doubt_snapshots_title()
-    );
-  async function deleteFirstPanel(run: string) {
-    stop = sampler(() => [...panels(), ...(heading() ? [heading()!] : [])]);
-    const before = panels().length;
-    await settle(50);
-    panels()[0].querySelector<HTMLButtonElement>('.icon-btn')!.click();
-    const confirm = await until(
-      () => document.querySelector<HTMLButtonElement>('[data-confirm-delete-doubt-snapshot]'),
-      'delete confirmation'
-    );
-    confirm.click();
-    await until(() => panels().length === before - 1, 'deleted snapshot panel');
-    await settle(900);
-    return (runs[run] = stop());
-  }
-  frames = await deleteFirstPanel('evidenceDelete');
-  tracked = tracks(frames);
-  await check('a deleted snapshot closes up through several frames rather than vanishing', () => {
-    const departures = [...tracked.values()].filter((track) => track.last < track.end);
-    const stayed = [...tracked.values()].filter((track) => track.last === track.end);
-    /* The two panels left and the heading over them. */
-    return departures.length === 1 && departures.every(leftSmoothly) && stayed.length === 3 && stayed.every(stayedWhole);
-  });
-  /* Down to the last one, then the last: the section closes as one box,
-     heading and panel together, so it is the box that is measured - the
-     panel at its bottom is covered before the heading at its top, which
-     is a mask moving, not either of them cut. */
-  await deleteFirstPanel('evidenceDeleteSecond');
-  frames = await deleteFirstPanel('evidenceDeleteLast');
-  await check('deleting the last snapshot closes its whole section through several frames', () => {
-    const painted = frames.map((frame) =>
-      [...frame.samples.values()].reduce((sum, sample) => sum + sample.opacity * sample.visible, 0)
-    );
-    const start = painted[0];
-    const between = painted.filter((px) => px > start * 0.02 && px < start * 0.95).length;
-    const steepest = Math.max(...painted.slice(1).map((px, i) => painted[i] - px));
-    return !heading() && start > 0 && painted.at(-1) === 0 && between >= 3 && steepest < start * 0.5;
-  });
-
-  /* Leaving is not a delete. Svelte can run an out-transition when the
-     page itself unmounts (reveal.ts, `disclose`), and a history closing
-     on the way out would read as the snapshots going. */
-  save.click();
-  await until(() => panels().length === 1, 'snapshot saved again');
-  await settle(900);
-  await check('leaving Good moments leaves its history standing on the way out', async () => {
-    const stopLeaving = sampler(() => [...panels(), ...(heading() ? [heading()!] : [])]);
-    await settle(50);
-    Object.assign(navigating, { to: { url: new URL('/doubt', location.origin) } });
-    try {
-      await screen.remove(true);
-      await settle(100);
-    } finally {
-      Object.assign(navigating, { to: null });
-    }
-    const left = tracks(stopLeaving());
-    return left.size === 2 && [...left.values()].every(stayedWhole);
-  });
-
-  /* A snapshot outlives the pool it was taken from. */
-  const e = await fixture('late-reads-empty', 0);
-  e.preferences!.a11yMotionReduce = false;
-  e.preferences!.theme = theme;
-  await e.journal.doubtJournal.saveSnapshot(today - 5, [{ epochDay: today - 5, mood: 3, note: 'Kept before the pool emptied' }]);
-  screen = await mountScreen('/doubt/evidence', e);
-  await check('an empty pool still shows the snapshots kept from it', async () =>
-    until(() => document.querySelector('#screens [data-notice="no-counterevidence"]') && panels().length === 1, 'empty pool with history'));
   await screen.remove();
 
-  /* A history that could not be read is a failure, not an empty history:
-     the screen says so and offers the retry rather than drawing the pool
-     with nothing under it. */
+  /* A pool that could not be read is a failure, not an empty pool: the
+     screen says so and offers the retry rather than the empty notice. */
   const refusing: ScreenFixture = {
-    ...e,
-    journal: new Proxy(e.journal, {
+    ...f,
+    journal: new Proxy(f.journal, {
       get(target, key, receiver) {
         const area = Reflect.get(target, key, receiver);
-        if (key !== 'doubtJournal') return area;
+        if (key !== 'entries') return area;
         return new Proxy(area, {
           get(operations, method) {
-            return method === 'getSnapshots'
+            return method === 'counterevidencePool'
               ? async () => {
                   throw new Error('refused for the contract');
                 }
@@ -275,11 +163,11 @@ export async function lateReadsContracts(theme: 'light' | 'dark' = 'light'): Pro
     })
   };
   screen = await mountScreen('/doubt/evidence', refusing);
-  await check('a refused snapshot read says so instead of drawing no history', async () => {
+  await check('a refused pool read says so instead of drawing an empty pool', async () => {
     const status = await until(() => document.querySelector('#screens [role="status"]'), 'read failure notice');
     return (
       status.textContent?.includes(m.read_failed()) &&
-      panels().length === 0 &&
+      !pool() &&
       !document.querySelector('#screens [data-notice="no-counterevidence"]')
     );
   });

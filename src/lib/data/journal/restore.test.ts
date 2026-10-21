@@ -160,10 +160,6 @@ async function populated() {
     reason: 'planned'
   });
 
-  const counterevidenceSnapshot = await journal.doubtJournal.saveSnapshot(20000, [
-    { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
-  ]);
-
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
   await journal.roadmap.addCustomGoal('social', 'Tell my sister');
 
@@ -194,7 +190,6 @@ async function populated() {
     dose,
     schedule,
     dosePause,
-    counterevidenceSnapshot,
     tryout,
     feltSense
   };
@@ -338,8 +333,6 @@ test('merge adds what this device does not have and leaves what it has alone', a
   const episodes = await target.journal.regimen.getEpisodes();
   assert.equal(episodes.length, 1);
   assert.equal(episodes[0].drug, 'estradiol valerate');
-  const snapshots = await target.journal.doubtJournal.getSnapshots(10);
-  assert.deepEqual(snapshots[0].items, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]);
   const tryouts = await target.journal.tryouts.getTryouts();
   assert.equal(tryouts.length, 1);
   assert.equal(tryouts[0].label, 'Alex');
@@ -583,7 +576,6 @@ test("replace installs the archive's journal and discards this device's", async 
   assert.equal((await target.journal.milestones.getMilestones()).map((m) => m.name).includes('mine'), false);
   assert.equal((await target.journal.tally.getEvents('correctly_gendered')).length, 0, "this device's tally event is gone");
   assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1, "the archive's tally event is here");
-  assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
   const tryouts = await target.journal.tryouts.getTryouts();
   assert.equal(tryouts.some((t) => t.id === myTryout), false, "this device's tryout is gone");
   assert.ok(tryouts.some((t) => t.label === 'Alex'), "the archive's tryout is here");
@@ -885,24 +877,31 @@ test('a milestone from an archive written before descriptions existed still impo
 });
 
 /* An archive packed before ticket 16 (ADR-0037) still names a `doubtEntries`
-   section on the wire - this build's registry has no entry for it any more
-   (archiveSections.ts). The payload type says otherwise, but it is a cast
-   over JSON.parse output, so the importer sees the same extra key a real
-   pre-ticket archive would carry: absent from `ARCHIVE_SECTION_NAMES`, and
-   therefore never read, never applied, and never the reason a restore
-   fails. */
-test('an archive naming the retired doubtEntries section restores without erroring, and simply drops it', async () => {
+   section on the wire, and one packed before functional audit ticket 09 a
+   `counterevidenceSnapshots` section - this build's registry has no entry
+   for either any more (archiveSections.ts). The payload type says
+   otherwise, but it is a cast over JSON.parse output, so the importer sees
+   the same extra keys a real older archive would carry: on the dropped
+   list, and therefore never read, never applied, and never the reason a
+   restore fails. */
+test('an archive naming the retired doubtEntries and counterevidenceSnapshots sections restores, and drops them', async () => {
   const source = await populated();
   const contents = await exported(source.journal);
-  const withRetiredSection = {
+  const withRetiredSections = {
     ...contents.journal,
-    doubtEntries: [{ id: 'a-pre-ticket-16-doubt-entry', epochDay: 20000, timestamp: 1_700_000_000_000, text: 'am I even trans enough for this' }]
+    doubtEntries: [{ id: 'a-pre-ticket-16-doubt-entry', epochDay: 20000, timestamp: 1_700_000_000_000, text: 'am I even trans enough for this' }],
+    counterevidenceSnapshots: [
+      { id: 'a-pre-fa-09-snapshot', epochDay: 20000, timestamp: 1_700_000_000_000, items: [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }] }
+    ]
   };
 
   const target = await device();
-  await assert.doesNotReject(target.journal.archive.replace({ ...contents, journal: withRetiredSection }));
+  await assert.doesNotReject(target.journal.archive.replace({ ...contents, journal: withRetiredSections }));
 
-  assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
+  assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1, "the archive's other rows are here");
+  const snapshot = await target.journal.archive.snapshot();
+  assert.equal('counterevidenceSnapshots' in snapshot.journal, false);
+  assert.equal(JSON.stringify(snapshot.journal).includes('euphoric at the appointment'), false);
 });
 
 test('importing into a journal that has never been through a boot works', async () => {

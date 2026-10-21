@@ -567,7 +567,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // ADR-0037 and ADR-0040. A snapshot holds copies of entry notes, so its
   // text is already searchable where it was written; matching it here would
   // show the same words twice and file a bad hour into an ordinary search.
-  counterevidenceSnapshots: 'a Safe Space artefact, and its text is the entries’ own',
 
   // A template's name and note scaffold are the person's own words for an
   // authored one, but they name a creation aid rather than journal

@@ -409,7 +409,6 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // when they need it, and a snapshot is the evidence it showed them. Listing
   // it among a day's records files a bad hour into the ordinary diary, and
   // rereading it is the counterevidence screen's own business.
-  counterevidenceSnapshots: 'a Safe Space artefact, not a diary record',
   // Phase 6 ticket 14: the same reason, and it also carries no date at all -
   // a comfort item is a standing line in a list, not something that
   // happened on a day.

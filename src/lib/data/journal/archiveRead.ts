@@ -21,7 +21,6 @@ import type {
   ArchiveBodyRegion,
   ArchiveChecklist,
   ArchiveChecklistItem,
-  ArchiveCounterevidenceSnapshot,
   ArchiveDimension,
   ArchiveDosePause,
   ArchiveDoseSchedule,
@@ -338,26 +337,6 @@ export async function readMeasurementTypes({ driver }: SectionRead): Promise<Arc
     'SELECT key, name, is_built_in, hidden FROM measurement_type ORDER BY id'
   );
   return rows.map((r) => ({ key: r.key, name: r.name, builtIn: bool(r.is_built_in), hidden: bool(r.hidden) }));
-}
-
-export async function readCounterevidenceSnapshots({ driver }: SectionRead): Promise<ArchiveCounterevidenceSnapshot[]> {
-  const rows = await driver.query<{ id: number; uuid: string; epoch_day: number; timestamp: number }>(
-    'SELECT id, uuid, epoch_day, timestamp FROM doubt_snapshot ORDER BY epoch_day, timestamp, id'
-  );
-  const itemRows = await driver.query<{ snapshot_id: number; epoch_day: number; mood: number | null; note: string }>(
-    'SELECT snapshot_id, epoch_day, mood, note FROM doubt_snapshot_entry ORDER BY snapshot_id, order_index'
-  );
-  const items = groupBy(
-    itemRows,
-    (r) => r.snapshot_id,
-    (r) => ({ epochDay: r.epoch_day, mood: r.mood, note: r.note })
-  );
-  return rows.map((r) => ({
-    id: r.uuid,
-    epochDay: r.epoch_day,
-    timestamp: r.timestamp,
-    items: items.get(r.id) ?? []
-  }));
 }
 
 export async function readRoadmapChecks({ driver }: SectionRead): Promise<ArchiveRoadmapCheck[]> {

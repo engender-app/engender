@@ -30,7 +30,6 @@ import { makeDayArea, type DayArea } from './day';
 import { makeDayAheadArea, type DayAheadArea } from './dayAhead';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDocumentsArea, type DocumentsArea } from './documents';
-import type { DoubtJournalArea } from './doubtJournal';
 import { makeDosesArea, type DosesArea } from './doses';
 import { makeEffectCategoriesArea, type EffectCategoriesArea } from './effectCategories';
 import { makeEntriesArea, type EntriesArea } from './entries';
@@ -309,14 +308,6 @@ export interface Journal {
       body-region vocabulary (bodyRegions.ts). No episode reference, the
       same reason sideEffects has none. */
   hairRemoval: HairRemovalArea;
-  /** Saved counterevidence snapshots (phase 4 ticket 11; its free-write
-      doubt entries retired by phase 5 ticket 16, ADR-0037). Reads the
-      counterevidence itself through
-      entries.counterevidencePool(EUPHORIA_TAG_KEYS, …) (phase 5 ticket 14: a
-      union of those tags and starred entries; ticket 32 widened the tag
-      list itself from 'g-euphoria' alone to all three euphoria tags) -
-      this area owns only what it alone writes. */
-  doubtJournal: DoubtJournalArea;
   /** The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort
       list"): who to text, which walk, which playlist, entirely their own
       words. Reachable only from inside Safe space; nothing seeds it and
@@ -587,9 +578,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     hairRemoval,
     procedures,
     appointments,
-    doubtJournal: deferredArea<DoubtJournalArea>(async () =>
-      (await import('./doubtJournal')).makeDoubtJournalArea(driver)
-    )(['getSnapshots', 'saveSnapshot', 'deleteSnapshot']),
     comfortItems: deferredArea<ComfortItemsArea>(async () =>
       (await import('./comfortItems')).makeComfortItemsArea(driver)
     )(['getItems', 'addItem', 'editItem', 'deleteItem', 'reorder']),

@@ -45,6 +45,12 @@ test('rc.1 archive without a writer stamp still verifies and restores', async ()
     await driver.close();
   }
 });
+/* Tables a functional-audit cut dropped after the release that wrote the
+   fixture (spec: "a cut removes"). The fixture keeps counting their rows,
+   since it is never regenerated; after migrating, each must be gone rather
+   than counted. Their archive sections are on DROPPED_ARCHIVE_SECTION_NAMES. */
+const DROPPED_TABLES: readonly string[] = ['doubt_snapshot', 'doubt_snapshot_entry'];
+
 interface ReleasedCounts {
   archiveSections: Record<string, number>;
   sqliteTables: Record<string, number>;
@@ -74,6 +80,11 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
     await runMigrations(driver, noopFileOps(), chain);
     assert.equal(await driver.getUserVersion(), Math.max(...chain.map((migration) => migration.version)));
     for (const [table, expected] of Object.entries(counts.sqliteTables)) {
+      if (DROPPED_TABLES.includes(table)) {
+        const present = await driver.query('SELECT name FROM sqlite_master WHERE type = ? AND name = ?', ['table', table]);
+        assert.deepEqual(present, [], `dropped SQLite table ${table} is gone`);
+        continue;
+      }
       const [row] = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${table.replaceAll('"', '""')}"`);
       assert.equal(row.n, expected, `released SQLite table ${table}`);
     }
