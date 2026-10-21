@@ -29,8 +29,10 @@ tests/*-20??-??-??.md
 .claude/
 CLAUDE.md
 
-# Docs stay out of the repo entirely.
+# Docs stay out of the repo entirely. `docs/` matches folders; `/docs` also matches
+# the symlink that `npm run docs:link` puts at the root (see scripts/link-docs.mjs).
 docs/
+/docs
 
 # The same rule for the other assistants, listed ahead of anyone using one, since
 # the repo is public and these files carry working notes rather than product
