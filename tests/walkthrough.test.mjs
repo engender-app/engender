@@ -5597,35 +5597,23 @@ try {
     throw new Error('the return surface asks about more than one dose slot');
   }
 
-  /* Closing the running wear session: the end day is picked, never assumed,
-     so the confirm is refused until the field has one. */
-  await page.locator('[data-coming-back-yes="wear-session"]').click();
-  await page.waitForSelector('[data-coming-back-wear-confirm]');
-  if (!(await page.locator('[data-coming-back-wear-confirm]').isDisabled())) {
-    throw new Error('the wear session could be closed without naming the day it ended');
+  for (const kind of ['letter', 'milestone', 'era', 'wear-session', 'dose']) {
+    for (const row of await page.locator(`[data-coming-back-item="${kind}"]`).all()) {
+      if (!(await row.getAttribute('href'))) throw new Error(`the ${kind} return row does not link to its screen`);
+    }
   }
-  const endedOn = await page.evaluate(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 20);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  });
-  await fillDate(page, '#coming-back-wear-end', endedOn);
-  await page.locator('[data-coming-back-wear-confirm]').click();
-  /* The row goes because the session stopped running, not because the screen
-     hid it: the read re-runs on the write and getRunningSession answers with
-     nothing. Asserted on the state after the write rather than on the sheet
-     closing, which is transient. */
-  await page.waitForSelector('[data-coming-back-item="wear-session"]', { state: 'detached' });
-
-  /* Backfilling one item asks nothing about any other: the dose row is still
-     exactly where it was, unanswered, after a wear session was closed. */
-  if ((await page.locator('[data-coming-back-item="dose"]').count()) !== 1) {
-    throw new Error('closing the wear session changed what the surface asks about doses');
+  if ((await page.locator('[data-coming-back-item] button, [data-sheet]').count()) !== 0) {
+    throw new Error('the return screen still offers an inline editor');
   }
-
-  // And a no takes the row away without writing anything.
-  await page.locator('[data-coming-back-no="dose"]').click();
-  await page.waitForSelector('[data-coming-back-item="dose"]', { state: 'detached' });
+  await page.locator('[data-coming-back-item="wear-session"]').click();
+  await page.waitForURL('**/body/wear');
+  await page.goto(BASE + '/coming-back', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-coming-back-item="dose"]');
+  await page.locator('[data-coming-back-item="dose"]').click();
+  await page.waitForURL('**/care/doses*');
+  await page.waitForSelector('[data-sheet]');
+  await page.locator('[data-close-record]').click();
 
   /* The moment is over. Home is where a return is noticed, so this is the
      navigation that would open it again if the gap had not been marked met -

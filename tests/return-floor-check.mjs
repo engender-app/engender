@@ -37,13 +37,13 @@ const READ = () => {
   const foot = document.querySelector('.return-foot');
   const controls = [
     ...document.querySelectorAll(
-      '.return-foot .btn, [data-coming-back-yes], [data-coming-back-no], [data-list-card] a.kit-row'
+      '.return-foot .btn, [data-list-card] a.kit-row'
     )
   ];
   /* A box whose content is wider or taller than the box itself is copy
      being clipped, which the floor calls a bug wherever it happens. */
   const clipped = [
-    ...document.querySelectorAll('.kit-row-title, .kit-row-sub, .return-yes, .return-no, [data-screen-subtitle], .screen-title')
+    ...document.querySelectorAll('.kit-row-title, .kit-row-sub, [data-screen-subtitle], .screen-title')
   ]
     .filter((el) => el.scrollWidth > el.clientWidth + 1)
     .map((el) => (el.textContent || '').trim().slice(0, 40));
@@ -56,16 +56,9 @@ const READ = () => {
     small: controls
       .map((c) => {
         const r = c.getBoundingClientRect();
-        return { h: Math.round(r.height), w: Math.round(r.width), what: c.dataset.comingBackYes ?? c.dataset.comingBackNo ?? c.dataset.listRow ?? 'foot' };
+        return { h: Math.round(r.height), w: Math.round(r.width), what: c.dataset.listRow ?? 'foot' };
       })
       .filter((c) => c.h < 48),
-    /* The two answers on one offer, and the space between them. */
-    gap: (() => {
-      const yes = document.querySelector('[data-coming-back-yes]');
-      const no = yes?.parentElement?.querySelector('[data-coming-back-no]');
-      if (!yes || !no) return null;
-      return Math.round(no.getBoundingClientRect().left - yes.getBoundingClientRect().right);
-    })(),
     clipped
   };
 };
@@ -90,8 +83,9 @@ for (const c of CASES) {
   await settle('/settings');
   await page.locator('[data-palette-pick="trans"]').click();
   await page.locator('[data-segment="light"]').click();
+  await page.locator('[data-list-row="language"]').click();
   await page.locator(`[data-segment="${c.locale}"]`).click();
-  await page.waitForTimeout(900);
+  await page.keyboard.press('Escape');
   await settle('/');
   await page.locator('[data-fill-coming-back]').dispatchEvent('click');
   await page.waitForURL('**/coming-back', { timeout: 180000 });
@@ -106,12 +100,11 @@ for (const c of CASES) {
   const issues = [];
   if (r.bodyOverflowX > 0) issues.push(`body scrolls sideways by ${r.bodyOverflowX}px`);
   if (r.small.length) issues.push(`under 48px: ${JSON.stringify(r.small)}`);
-  if (r.gap !== null && r.gap < 8) issues.push(`answers ${r.gap}px apart`);
   if (r.clipped.length) issues.push(`clipped: ${JSON.stringify(r.clipped)}`);
   if (r.footBottom !== null && r.footBottom > r.windowH + 1) issues.push(`foot below the window by ${r.footBottom - r.windowH}px`);
   if (issues.length) bad++;
   console.log(
-    `${c.w}x${c.h} ${c.locale}: region overflow ${r.overflow}px · foot ${r.footTop}-${r.footBottom} of ${r.windowH} · answers ${r.gap}px apart` +
+    `${c.w}x${c.h} ${c.locale}: region overflow ${r.overflow}px · foot ${r.footTop}-${r.footBottom} of ${r.windowH}` +
       (issues.length ? `\n    ${issues.join('\n    ')}` : '  OK')
   );
   await page.close();

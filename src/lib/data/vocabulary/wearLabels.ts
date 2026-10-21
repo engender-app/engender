@@ -96,10 +96,8 @@ const REMINDER_TITLES: Record<WearKind, () => string> = {
   compression: m.wear_session_reminder_title_compression
 };
 
-/* The return surface's row for a session left running through a gap
-   (offers.ts's `returning-wear-session`). The offer's own sheet copy says
-   "this session" throughout and needs no kind; the row that opens it is
-   naming a record in a list of other records, so it does. */
+/* The return surface names the kind of a session still running through a
+   gap, then links to Wear to close it. */
 const RETURNING_ROW_TITLES: Record<WearKind, () => string> = {
   binder: m.coming_back_wear_row_binder,
   tucking: m.coming_back_wear_row_tucking,
