@@ -1,10 +1,10 @@
 /* Home's live-tile grid, as one read (phase 8 deepening ticket 07).
 
-   The eighteen queries behind the twelve tiles, the preference each tile
-   answers to, its snooze, and the writes its controls make. What comes out
-   is the ordered list Home draws and nothing else - the composition, the
-   order and the twelve tiles' own content are liveTiles.ts's, which is a
-   plain module so the Node tier can test them (ADR-0016, ADR-0017).
+   The queries behind the tiles, the preference each tile answers to, its
+   snooze, and the writes its controls make. What comes out is the ordered
+   list Home draws and nothing else - the composition, the order and the
+   tiles' own content are liveTiles.ts's, which is a plain module so the
+   Node tier can test them (ADR-0016, ADR-0017).
 
    A `.svelte.ts` because the reads are runes: `liveQuery`/`liveList` are
    effects, and an effect has to be created while a component is
@@ -26,7 +26,7 @@
    sixteen wide ones, which is what this architecture actually pays for
    (tests/long-journal, `mount-home`). */
 
-import { liveList, liveQuery, journal } from './live/journal.svelte';
+import { liveList, liveQuery, liveQueryWhen, journal } from './live/journal.svelte';
 import { AREA_STATES_BEFORE_READ } from './areaState';
 import { prefs } from './prefs/store.svelte';
 import { fmtDay, fmtTime, fmtNumber } from './dates';
@@ -34,6 +34,7 @@ import { SPINE_FORWARD_DAYS } from './careSpine';
 import { todayEpochDay as clockDay } from './epochDay';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
 import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
+import { UNPROMPTED_ROWS, unpromptedQuiet } from '../unprompted/registry';
 import {
   LIVE_TILE_ORDER,
   LIVE_TILE_PREF_KEY,
@@ -87,40 +88,89 @@ export function homeTiles(
         off for the ready-letter tile. */
     onLetterDismiss: () => void;
   },
-  active: () => boolean = () => true
+  active: () => boolean = () => true,
+  /** Whether something else on the screen counts seconds and needs the
+      clock to tick every second even when the wear tile reads nothing -
+      Home's pinned wear row, which rides this clock (ADR-0051). */
+  secondHand: () => boolean = () => false
 ): HomeTileGrid {
   const todayEpochDay = $derived(today());
   let nowTick = $state(Date.now());
   let snoozeRevision = $state(0);
   const snoozeMinute = $derived(Math.floor(nowTick / 60_000));
-  const runningWear = liveQuery((j) => j.wearSessions.getRunningSession());
-  $effect(() => {
-    if (!active()) return;
-    nowTick = Date.now();
-    const interval = runningWear.value ? 1000 : 60_000;
-    const id = setInterval(() => (nowTick = Date.now()), interval);
-    return () => clearInterval(id);
-  });
 
-  const episodes = liveList((j) => j.regimen.getEpisodes());
-  const procedures = liveList((j) => j.procedures.getProcedures());
-  const letters = liveList((j) => j.letters.getLetterSeals(100));
-  const dueRevisits = liveList((j) => j.revisits.getDueRevisits(todayEpochDay));
-  const latestBadEntryId = liveQuery((j) => j.entries.latestBadMomentEntryId());
-  const schedules = liveList((j) => j.doses.getSchedules());
-  const dosePauses = liveList((j) => j.doses.getPauses());
-  const scheduleDoses = liveList((j) => j.doses.getDosesForSlots(todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS));
-  const yesterdayDoses = liveList((j) => j.doses.getDoses(todayEpochDay - 1, todayEpochDay - 1));
-  const journalingPauses = liveList((j) => j.journalingPauses.getPauses());
   /* Which areas are hidden or finished (phase 8 features ticket 04). One
      query for the whole grid rather than one per tile: the cascade is a
      property of the grid, and `unpromptedQuiet` is what spends this. */
   const areaStates = liveQuery((j) => j.areaStates.getAreaStates());
+
+  /* A tile whose kind is switched off, or whose area is hidden or
+     finished, issues no read at all (functional-audit ticket 14, the
+     audit's architecture item 9). Each read below asks whether any tile it
+     feeds is wanted before it touches the journal, and answers an empty
+     value otherwise. The question is asked synchronously, before the
+     read's first await, so switching a tile back on or unhiding its area
+     re-runs the read (journal.svelte.ts: what a run reads before its first
+     await is a dependency).
+
+     A kind with an area waits for the area states to answer before its
+     first run (`liveQueryWhen`): run early it would read a hidden area once
+     and then go quiet, and run as "not wanted" it would answer empty and
+     then arrive a round trip after the rest of the grid - a tile painting
+     late on a cold open, which is what ticket 146's `composable` exists to
+     prevent. Kinds with no area never read the states, so an area being
+     hidden does not re-run them. */
+  const AREA_OF = new Map(UNPROMPTED_ROWS.map((row) => [row.key, row.area]));
+  const areaStatesAnswered = () => !areaStates.loading;
+  function wanted(...kinds: LiveTileKind[]): boolean {
+    return kinds.some((kind) => {
+      if (!prefs[LIVE_TILE_PREF_KEY[kind]]) return false;
+      if (AREA_OF.get(kind) == null) return true;
+      return !unpromptedQuiet(kind, areaStates.value ?? AREA_STATES_BEFORE_READ, todayEpochDay);
+    });
+  }
+  const none = <T,>(value: T) => Promise.resolve(value);
+
+  const runningWear = liveQueryWhen(areaStatesAnswered, (j) =>
+    wanted('wear-timer') ? j.wearSessions.getRunningSession() : none(null)
+  );
+  $effect(() => {
+    if (!active()) return;
+    nowTick = Date.now();
+    const interval = runningWear.value || secondHand() ? 1000 : 60_000;
+    const id = setInterval(() => (nowTick = Date.now()), interval);
+    return () => clearInterval(id);
+  });
+
+  /* The dose panel and the patch tile share the regimen and schedule
+     reads; yesterday's doses are the panel's alone. */
+  const episodes = liveList((j) => (wanted('dose-panel', 'patch-schedule-tile') ? j.regimen.getEpisodes() : none([])));
+  const procedures = liveList((j) => (wanted('surgery-countdown') ? j.procedures.getProcedures() : none([])));
+  const letters = liveList((j) => (wanted('ready-letter') ? j.letters.getLetterSeals(100) : none([])));
+  const dueRevisits = liveList((j) => (wanted('revisit') ? j.revisits.getDueRevisits(todayEpochDay) : none([])));
+  const latestBadEntryId = liveQuery((j) =>
+    wanted('safe-space-nudge') ? j.entries.latestBadMomentEntryId() : none(null)
+  );
+  const schedules = liveList((j) => (wanted('dose-panel', 'patch-schedule-tile') ? j.doses.getSchedules() : none([])));
+  const dosePauses = liveList((j) => (wanted('dose-panel', 'patch-schedule-tile') ? j.doses.getPauses() : none([])));
+  const scheduleDoses = liveList((j) =>
+    wanted('dose-panel', 'patch-schedule-tile')
+      ? j.doses.getDosesForSlots(todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS)
+      : none([])
+  );
+  const yesterdayDoses = liveList((j) =>
+    wanted('dose-panel') ? j.doses.getDoses(todayEpochDay - 1, todayEpochDay - 1) : none([])
+  );
+  const journalingPauses = liveList((j) => (wanted('pause-active-banner') ? j.journalingPauses.getPauses() : none([])));
   /* Two scalars asked as two scalars. The nudge wants how many measurements
      there are and the latest day, and the read used to fetch every
      measurement ever stored to reduce to exactly that. */
-  const measurementCount = liveQuery((j) => j.measurements.countAll());
-  const latestMeasurementDay = liveQuery((j) => j.measurements.lastWriteEpochDay(todayEpochDay));
+  const measurementCount = liveQueryWhen(areaStatesAnswered, (j) =>
+    wanted('measurements-nudge') ? j.measurements.countAll() : none(0)
+  );
+  const latestMeasurementDay = liveQueryWhen(areaStatesAnswered, (j) =>
+    wanted('measurements-nudge') ? j.measurements.lastWriteEpochDay(todayEpochDay) : none(null)
+  );
 
   function snooze(kind: LiveTileKind): void {
     snoozeStoreOf(kind).snooze();

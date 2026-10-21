@@ -9,6 +9,7 @@ import {
   style,
   today,
   heldReads,
+  countedReads,
   type Result
 } from './screen-contracts/fixture';
 import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
@@ -18,6 +19,7 @@ import QuickAdd from '$lib/components/QuickAdd.svelte';
 import { ui } from '$lib/stores/ui.svelte';
 import { HOME_AREA_ROLE, tileRoleAt } from '$lib/theme/roles';
 import { activeFlag } from '$lib/theme/activeFlag.svelte';
+import { LIVE_TILE_ORDER, LIVE_TILE_PREF_KEY } from '$lib/data/liveTiles';
 
 export async function homeContracts(): Promise<Result[]> {
   const results: Result[] = [];
@@ -364,6 +366,57 @@ export async function homeContracts(): Promise<Result[]> {
     );
   });
   await screen.remove();
+
+  /* Functional-audit ticket 14: a tile whose kind is switched off, or whose
+     area is hidden, issues no read at all - not a read whose answer is then
+     ignored. Each pair is a read only the tile grid makes on Home. */
+  const TILE_READS = [
+    'wearSessions.getRunningSession',
+    'regimen.getEpisodes',
+    'procedures.getProcedures',
+    'letters.getLetterSeals',
+    'revisits.getDueRevisits',
+    'entries.latestBadMomentEntryId',
+    'doses.getSchedules',
+    'doses.getPauses',
+    'doses.getDosesForSlots',
+    'doses.getDoses',
+    'journalingPauses.getPauses',
+    'measurements.countAll',
+    'measurements.lastWriteEpochDay'
+  ];
+  const settledHome = async () => {
+    await until(() => root().querySelector('[data-home-log]'), 'counted Home');
+    await until(() => !root().querySelector('[data-read-reserve-hold]') || null, 'counted Home reads');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  };
+  /* No pinned rows, because a pinned wear or letters row asks two of the
+     same questions for its own line (rowForwardReads.ts). */
+  const unpinned = { ...f.preferences, pinnedRows: [] };
+  const allTilesOff = Object.fromEntries(LIVE_TILE_ORDER.map((kind) => [LIVE_TILE_PREF_KEY[kind], false]));
+  let counted = countedReads({ ...f, preferences: { ...unpinned, ...allTilesOff } });
+  screen = await mountScreen('/', counted.fixture);
+  await settledHome();
+  await check('Home issues no tile read while every tile is switched off', () => {
+    const asked = TILE_READS.filter((name) => counted.calls.has(name));
+    if (asked.length) throw new Error(`asked ${asked.map((name) => `${name} x${counted.calls.get(name)}`).join(', ')}`);
+    return !root().querySelector('[data-live-tile]');
+  });
+  await screen.remove();
+  await f.journal.areaStates.setAreasHidden(['wearSessions', 'measurements'], true);
+  counted = countedReads({ ...f, preferences: unpinned });
+  screen = await mountScreen('/', counted.fixture);
+  await settledHome();
+  await check('Home issues no read for a tile whose area is hidden', () => {
+    const hiddenReads = ['wearSessions.getRunningSession', 'measurements.countAll', 'measurements.lastWriteEpochDay'];
+    const asked = hiddenReads.filter((name) => counted.calls.has(name));
+    if (asked.length) throw new Error(`asked ${asked.join(', ')}`);
+    /* The other tiles still read: the gate is per tile, not a switch on
+       the whole grid. */
+    return counted.calls.has('procedures.getProcedures') && !root().querySelector('[data-live-tile="wear-timer"]');
+  });
+  await screen.remove();
+  await f.journal.areaStates.setAreasHidden(['wearSessions', 'measurements'], false);
   await f.journal.journalingPauses.upsertPause({
     startEpochDay: today - 2,
     endEpochDay: null

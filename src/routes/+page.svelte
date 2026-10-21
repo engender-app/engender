@@ -128,7 +128,11 @@
   let letterDismissSheetOpen = $state(false);
   const liveTiles = homeTiles(() => today, {
     onLetterDismiss: () => (letterDismissSheetOpen = true)
-  }, doorActive);
+  }, doorActive,
+  /* A pinned wear row counts up on the grid's clock, so the clock keeps
+     its second hand for it even while the wear tile is switched off and
+     reads nothing (functional-audit ticket 14). */
+  () => pinned.some((row) => row.line.kind === 'running' && row.line.what.area === 'wear'));
 
   /* Three at a time, the rest folded in place (phase 8 UX ticket 01,
      ADR-0055). Expanding raises the cap rather than appending the folded
