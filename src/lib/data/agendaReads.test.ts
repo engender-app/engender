@@ -141,7 +141,9 @@ const endo: AppointmentDayRecord = {
   kind: 'Endocrinologist',
   place: 'City clinic',
   procedureId: null,
-  procedureName: null
+  procedureName: null,
+  event: 'visit',
+  status: null
 };
 
 test("today's appointment row names the appointment and its place", async () => {
@@ -178,6 +180,19 @@ test("today's appointment row counts a second appointment on the same day", asyn
   assert.deepEqual(projection?.shown[0].appointment, { title: 'Endocrinologist', place: 'City clinic', more: 1 });
 });
 
+
+/* FA 26 put a wait's referral day and its dated updates into the same day
+   records. They are things that happened about an appointment, not a visit
+   booked for today, so today's row names neither and counts neither. */
+test("today's appointment row skips a referral and an update logged today", async () => {
+  const marks: DayAheadMark[] = [{ kind: 'appointment', epochDay: TODAY }];
+  const referred: AppointmentDayRecord = { ...endo, id: 'wait-1', kind: 'Gender clinic', event: 'referred' };
+  const update: AppointmentDayRecord = { ...endo, id: 'wait-1', kind: 'Gender clinic', event: 'status', status: 'Letter came' };
+  const withVisit = await readAgenda(recordingAreas(marks, [referred, update, endo]).areas, TODAY);
+  assert.deepEqual(withVisit?.shown[0].appointment, { title: 'Endocrinologist', place: 'City clinic', more: 0 });
+  const withoutVisit = await readAgenda(recordingAreas(marks, [referred, update]).areas, TODAY);
+  assert.equal(withoutVisit?.shown[0].appointment, undefined);
+});
 
 test('dose-panel coverage changes project the same facts without another read', async () => {
   const { areas, asked } = recordingAreas([

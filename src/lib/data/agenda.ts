@@ -152,9 +152,10 @@ export interface AgendaInput {
 
 /** Today's appointment row's own words, or undefined with nothing booked
     today. The first of the day is named and the rest are counted, the way
-    the tile it replaces did. */
+    the tile it replaces did. A wait's referral day and its dated updates
+    share these records (FA 26) but are not visits, so they are left out. */
 function todayAppointment(records: readonly AppointmentDayRecord[]): AgendaAppointment | undefined {
-  const [first, ...rest] = records;
+  const [first, ...rest] = records.filter((record) => record.event === 'visit');
   if (!first) return undefined;
   return { title: first.kind ?? first.procedureName, place: first.place, more: rest.length };
 }
