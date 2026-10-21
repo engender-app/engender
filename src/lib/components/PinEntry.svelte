@@ -32,8 +32,7 @@
   import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
   import { beginSessionUnlock } from '$lib/stores/lock.svelte';
   import { announce } from '$lib/stores/announcer.svelte';
-  import { crossfadeDuration } from '$lib/motion/tokens';
-  import { fade } from 'svelte/transition';
+  import { crossfadeDuration, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { Snippet } from 'svelte';
   import PinPad from './PinPad.svelte';
 
@@ -99,6 +98,16 @@
   function fail(message: string) {
     error = message;
     announce(message, true);
+  }
+
+  function enterStatus(_node: Element) {
+    const reduced = isReducedMotion();
+    return {
+      duration: reduced ? crossfadeDuration() : motionDuration('--dur-fast'),
+      css: (t: number) => reduced
+        ? `opacity: ${0.96 + 0.04 * t}`
+        : `transform: translateY(${(1 - t) * 4}px)`
+    };
   }
 
   function tickWait() {
@@ -234,7 +243,7 @@
   <span class="pin-status-reserve" aria-hidden="true">{m.pin_access_unavailable()}</span>
   <span class="pin-status-reserve" aria-hidden="true">{m.pin_storage_full()}</span>
   {#key authenticating ? 'busy' : waitMs > 0 ? 'throttled' : error ? lastOutcome : 'idle'}
-    <span in:fade={{ duration: authenticating ? 0 : crossfadeDuration() }} out:fade={{ duration: crossfadeDuration() }}>
+    <span in:enterStatus>
       {#if authenticating}
         {m.pp_decrypting()}
       {:else if waitMs > 0}
