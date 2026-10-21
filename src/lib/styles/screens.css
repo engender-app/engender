@@ -922,56 +922,6 @@
    ChartCard takes no prop for a paragraph and does not need one; this is
    body content, which is what its `children` slot is for. */
 
-/* The custom interval's length, as that chart's one control on the
-   heading's line - where the metric picker sits on the chart above it. It
-   was a labelled field in a block of its own, which is a form on a screen
-   that has no other form on it. The pill matches the picker's face; the
-   field itself carries the touch target.
-
-   Moved to /care whole by redesign ticket 05, along with the two folds it
-   controls - the class kept its name rather than taking a `care-` one,
-   since nothing about it is specific to either screen. */
-.stats-interval {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: 0 0 auto;
-}
-
-.stats-interval-input {
-  width: 4.5em;
-  min-height: var(--touch-target);
-  padding: 0 var(--space-3);
-  background: var(--surface-2);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-block);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  /* text-align: center only centres the text within whatever room is left
-     after the browser's own up/down spin buttons (ticket 99 item 35) - they
-     ate the right side of the pill, so the number sat left of the pill's
-     true centre. This is a plain digit count, not a value worth stepping
-     one at a time, so the buttons buy nothing here. */
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-.stats-interval-input::-webkit-inner-spin-button,
-.stats-interval-input::-webkit-outer-spin-button {
-  appearance: none;
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.stats-interval-input:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-
 /* The figures, as rows of a list card rather than a row of small tiles
    (phase 5 UX ticket 23). What the list buys is room for a supporting line
    under a figure, which a tile stating a bare number has nowhere to put. */

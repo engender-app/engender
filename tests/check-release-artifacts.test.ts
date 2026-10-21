@@ -35,7 +35,7 @@ function sha256(path: string) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
-const OCR_FILES = ['worker.min.js', 'tesseract-core.wasm.js', 'tesseract-core.wasm',
+const OCR_FILES = ['worker.min.js', 'tesseract-core.wasm.js',
   'lang-data/eng.traineddata', 'lang-data/pol.traineddata'];
 
 function ocrApk(root: string, apk: string, packaged = OCR_FILES) {

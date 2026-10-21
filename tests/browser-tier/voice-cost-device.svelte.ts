@@ -13,8 +13,7 @@
    is the pattern this repo already uses for on-device evidence.
 
    What is measured: the heaviest thing the figure ever draws, updated at
-   the real cadence. Both cited ranges, the region between them, four gutter
-   numbers, a comfort bracket, the run bar, the caption, and a 200-frame
+   the real cadence. A comfort bracket, the run bar, and a 200-frame
    trace - replaced wholesale every 100 ms, which is what one poll does.
    The trace is synthesized rather than captured: this is the cost of
    drawing a reading, and the microphone would only add noise to that

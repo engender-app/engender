@@ -669,7 +669,6 @@ describe('the field and the fills (phase 10)', () => {
      one and the stripe where there is not, and that boundary is what is
      measured here, on every role of every flag, both themes. */
   describe('essential chart graphics (WCAG 1.4.11)', () => {
-    const pitchCss = readFileSync('src/lib/components/PitchFigure.svelte', 'utf8');
     const kitCss = readFileSync('src/lib/styles/kit.css', 'utf8');
 
     /** The N in a rule's `color-mix(... N%, transparent)`, read out of the
@@ -699,16 +698,12 @@ describe('the field and the fills (phase 10)', () => {
       }
     }
 
-    /* The field is --surface on every theme (PitchFigure's .pf-field) and
-       carries no annotation band, so these three are every ground there. */
-    it("draws the voice figure's trace and contour at 3:1 against the bands they cross", () => {
-      const band = washPercent(pitchCss, String.raw`\.pf-band`);
-      const middle = washPercent(pitchCss, String.raw`\.pf-middle`);
+    /* The field is --surface on every theme (PitchFigure's .pf-field).
+       Population washes have been removed, leaving one ground. */
+    it("draws the voice figure's trace and contour at 3:1 against the field", () => {
       eachRole((where, role, t) =>
         expectBoundary(where, role.edge ?? role.stripe, [
-          ['the bare field', t.surface],
-          ['a reference band', washOver(role.stripe, band, t.surface)],
-          ['the middle band', washOver(role.stripe, middle, t.surface)]
+          ['the field', t.surface]
         ])
       );
     });

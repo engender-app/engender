@@ -183,7 +183,7 @@ await block('rendered screen contracts at 230px', 2, async () => {
   }
 });
 
-await block('release blockers 03 duplicate display values', 11, async () => {
+await block('release blockers 03 duplicate display values', 10, async () => {
   const result = await load('/duplicate-keys.html', 'duplicate-keys');
   for (const item of result.cases) {
     if (item.passed) ok(item.name);
@@ -1724,7 +1724,7 @@ try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
 
-  const { debounce, intervalLengthDebounce } = live;
+  const { debounce } = live;
 
   if (debounce.runsAfterTenKeystrokes === debounce.runsBeforeTyping + 1)
     ok('typing ten characters fires one debounced run rather than ten');
@@ -1737,14 +1737,6 @@ try {
   if (debounce.clearedWithoutWaitingTheDebounce) ok('clearing the query lands within a flush, without waiting out the debounce');
   else fail('clearing the query lands within a flush, without waiting out the debounce', 'debounced value was not cleared yet');
 
-  // --- Phase 8 audit ticket 16: the stats custom-interval-length field ----
-  if (intervalLengthDebounce.runsAfterThreeDigits === intervalLengthDebounce.runsBeforeTyping + 1)
-    ok('typing a three-digit interval length fires one debounced run rather than three');
-  else
-    fail(
-      'typing a three-digit interval length fires one debounced run rather than three',
-      `${intervalLengthDebounce.runsBeforeTyping} run(s) before, ${intervalLengthDebounce.runsAfterThreeDigits} after`
-    );
 } catch (e) {
   fail('phase 8 audit ticket 15 search waits for the typist', e.message ?? String(e));
 }
@@ -2071,7 +2063,7 @@ await block('phase 8 features ticket 28 capture chain', 2, async () => {
 
 // --- Phase 8 features ticket 09: the stored track, and the figure drawn on
 //     the absolute axis, both off a real recording -------------------------
-await block('phase 8 features ticket 09 voice figure', 8, async () => {
+await block('phase 8 features ticket 09 voice figure', 7, async () => {
   const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
   if (r.error) throw new Error(r.error);
   const f = r.figure;
@@ -2107,20 +2099,9 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
     ok(`the trace is drawn from the frames the microphone delivered (${f.tracePoints} points in ${f.traceRuns} run(s))`);
   else fail('the trace is drawn from the frames the microphone delivered', JSON.stringify(f));
 
-  /* Both cited ranges, the region between them with its own fill and its
-     own two bounds, and the comfort bracket's spine plus its two ticks. */
-  const bandsRight =
-    f.bands.join(',') === 'cisMan,cisWoman,between' &&
-    f.middleEdges === 2 &&
-    f.middleFills === 1 &&
-    f.comfortMarks === 3;
-  if (bandsRight)
-    ok('the figure carries both cited ranges, the region between them bounded and filled, and the comfort bracket');
-  else
-    fail(
-      'the figure carries both cited ranges, the region between them, and the comfort bracket',
-      `${JSON.stringify(f.bands)}, ${f.middleEdges} edges, ${f.middleFills} fills, ${f.comfortMarks} bracket marks`
-    );
+  if (f.populationBands === 0 && f.comfortMarks === 3)
+    ok('the figure draws the personal comfort bracket without population bands');
+  else fail('the figure draws the personal comfort bracket without population bands', JSON.stringify(f));
 
 
   /* The take drawn afterwards: the trace from the stored track, the median
@@ -2136,21 +2117,6 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
     ok('a benchmark from before the column says so instead of drawing an empty field');
   else fail('a benchmark from before the column says so rather than drawing an empty field', JSON.stringify(bare));
 
-  /* ADR-0059 permits these bands only with their figures, their source and
-     the sentence about averages. Checked on the rendered figure, because
-     that is where the permission has to hold. */
-  const cited =
-    f.bandFigures.length === 3 &&
-    f.bandFigures.every((count) => count === 2) &&
-    f.sourceText.length > 20 &&
-    f.caveatText.length > 20;
-  if (cited)
-    ok('every band prints its two Hz figures, and the source line and the caveat are both there');
-  else
-    fail(
-      'every band prints its two Hz figures, with the source line and the caveat',
-      `figures ${JSON.stringify(f.bandFigures)}, source ${f.sourceText.length} chars, caveat ${f.caveatText.length} chars`
-    );
 });
 
 await block('entry capture ownership', 14, async () => {
@@ -2309,27 +2275,15 @@ await block('ticket 27 browser tier', 7, async () => {
     );
 
   const pitch = sections.find((s) => s.key === 'pitch');
-  const banded = sections.filter((s) => s.bandedLanguages.length > 0).map((s) => s.key);
-  if (
-    pitch?.tier === 'referenced' &&
-    JSON.stringify(banded) === '["pitch"]' &&
-    JSON.stringify(pitch.bandedLanguages) === '["en","pl"]' &&
-    pitch.citations === 2
-  )
-    ok('only the Referenced figure states published ranges, one citation per language');
-  else
-    fail(
-      'only the Referenced figure states published ranges, one citation per language',
-      JSON.stringify({ banded, pitch })
-    );
+  if (sections.every((s) => s.populationBands === 0))
+    ok('metric explanations draw no population bands or citations');
+  else fail('metric explanations draw no population bands or citations', JSON.stringify(sections));
 
-  /* Read differently rather than merely both rendered: an own-series
-     section says in its own words that no dependable range exists and how
-     far its number travels, which is the whole point of field 7. */
+  /* Each section still explains its own measurement. */
   const spread = sections.find((s) => s.key === 'spread');
   if (
     spread?.tier === 'ownSeries' &&
-    spread.bandedLanguages.length === 0 &&
+    spread.populationBands === 0 &&
     spread.tierText.length > 20 &&
     spread.tierText !== pitch?.tierText &&
     spread.typicalText !== pitch?.typicalText
@@ -2360,8 +2314,7 @@ await block('redesign ticket 42 browser tier', 9, async () => {
     ok(`the median mark ends on the outline, not across the box (${on.markEndsAt.toFixed(1)} against ${on.outlineAt.toFixed(1)})`);
   else fail('the median mark ends on the outline, not across the box', JSON.stringify(on));
 
-  /* Rule 9's ink, and ADR-0083's "never a fill": a filled region in the
-     hue, beside two washes that are citations, would read as a third band. */
+  /* Rule 9's ink, and ADR-0083's "never a fill". */
   const outline = drawn.outlineInk;
   const spine = drawn.spineInk;
   if (
@@ -2384,12 +2337,11 @@ await block('redesign ticket 42 browser tier', 9, async () => {
     ok(`the trace, the outline and the history lines each sit on a casing in the role's edge (${drawn.edge})`);
   else fail("the trace, the outline and the history lines each sit on a casing in the role's edge", JSON.stringify({ edge: drawn.edge, cased }));
 
-  if (drawn.bandsBehindShape >= 2)
-    ok(`the cited bands run behind the shape as well as the plot (${drawn.bandsBehindShape})`);
-  else fail('the cited bands run behind the shape as well as the plot', JSON.stringify(drawn.bandsBehindShape));
+  if (drawn.bandsBehindShape === 0)
+    ok('the density draws no population band');
+  else fail('the density draws no population band', JSON.stringify(drawn.bandsBehindShape));
 
-  /* Every benchmark from before schema v58 kept no frames, and a shape
-     with bands and nothing on it looks like a take with no voice in it. */
+  /* Every benchmark from before schema v58 kept no frames. */
   if (trackless.densities === 0 && trackless.traces === 0 && trackless.said.length > 20)
     ok('a take with no stored track draws its sentence and no empty shape');
   else fail('a take with no stored track draws its sentence and no empty shape', JSON.stringify(trackless));
@@ -2398,9 +2350,7 @@ await block('redesign ticket 42 browser tier', 9, async () => {
     ok('a first benchmark draws six figures and no empty plot anywhere');
   else fail('a first benchmark draws six figures and no empty plot anywhere', JSON.stringify(first));
 
-  /* And no history plot carries a band: ADR-0059 allows the cited ranges
-     on the pitch figure and nowhere else, so a wash behind one of these
-     lines would be a published range for a figure that has none. */
+  /* No history plot carries a population band. */
   if (joined.lines >= 6 && joined.rings >= 6 && joined.stated === 6 && joined.bands === 0 && first.bands === 0)
     ok(`four joined takes draw a bandless history under every figure, ringed on this one (${joined.lines} lines)`);
   else fail('four joined takes draw a bandless history under every figure, ringed on this one', JSON.stringify(joined));

@@ -162,9 +162,7 @@ export interface PreferenceValues {
   voiceBenchmarkPassage: string;
   /** The two ends of the person's own comfort band on the pitch figure, in
       Hz, or null when they have not set one (phase 8 features ticket 09,
-      ADR-0059). Null is the shipped state and stays it: the reference bands
-      on that figure are a citation, and this one is a decision nobody but
-      the person can make, so there is no default and no table behind it.
+      ADR-0059). Null is the shipped state; no default or suggested range.
       Both are set and cleared together.
       Portable, like every other preference that is about the person rather
       than about this installation (ADR-0003). */

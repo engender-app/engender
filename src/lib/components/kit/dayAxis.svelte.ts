@@ -18,7 +18,7 @@
    range the screen happens to be showing. */
 
 import { liveList } from '$lib/data/live/journal.svelte';
-import { completedInjectionIntervals } from '$lib/data/intervalMoodPattern';
+import { completedInjectionIntervals } from '$lib/data/dayKeying';
 import { FIRST_EPOCH_DAY } from '$lib/data/epochDay';
 import { CALENDAR_AXIS, availableAxes, keyingFor, type DayAxis } from '$lib/charts/dayAxis';
 import type { Keying } from '$lib/data/dayKeying';

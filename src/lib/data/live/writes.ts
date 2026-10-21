@@ -1058,17 +1058,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {},
     reads: { getCards: ['entry', 'dimension', 'tag', 'dose'] }
   }),
-  // Read-only, the same reason correlationCards is: a pattern is
-  // recomputed from stats and the dose log on every read (phase 5 ticket 09).
-  intervalMoodPattern: classify<Journal['intervalMoodPattern']>()({
-    writes: {},
-    // The custom fold reads no dose log: it folds by the epoch day itself,
-    // which is the whole of its "no claim that a cycle exists".
-    reads: {
-      dayOfInterval: ['entry', 'dimension', 'dose'],
-      byCustomInterval: ['entry', 'dimension']
-    }
-  }),
   /* An import rewrites the journal (ticket 14), so it invalidates all of it -
      every query and every mirrored slice. Naming the tables one at a time
      would be a list to keep in step with what a restore happens to touch,

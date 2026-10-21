@@ -24,8 +24,8 @@
      the two runs are not a line.
 
      **Two numbers are two plots unless they are two ends of one range.**
-     The pitch band's top and bottom belong on one scale and read as a band
-     there. The two formants do not: F1 near 620 Hz against F2 near 1740
+     The pitch span's lower and upper ends belong on one scale. The two
+     formants do not: F1 near 620 Hz against F2 near 1740
      would draw F1 as a flat line on one scale, and placing each against
      its own bounds on one plot costs the value gutter (kit/AreaChart's own
      rule - one of two ranges printed beside both lines would have the

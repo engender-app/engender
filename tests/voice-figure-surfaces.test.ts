@@ -43,20 +43,7 @@ describe('the voice figure', () => {
   it('has been found at all, so a rename cannot make these rules vacuous', () => {
     expect(components.length).toBeGreaterThan(50);
     expect(components.map((c) => c.path)).toContain('lib/components/PitchFigure.svelte');
-    expect(components.map((c) => c.path)).toContain('lib/components/PitchBandsCaption.svelte');
     expect(components.map((c) => c.path)).toContain('lib/components/VoiceGauge.svelte');
-  });
-
-  it('draws no reference band without a caption under it', () => {
-    /* The other half of the rule: a figure that draws a band must be in
-       `pitch` reading, and the two components that pick a reading must send
-       a language with it. A bandless figure is only reachable through
-       `reading: 'steadiness'`, which is the vowel step's instrument. */
-    const gauge = components.find((c) => c.path === 'lib/components/VoiceGauge.svelte')!.source;
-    expect(gauge).toMatch(/language=\{steadiness \? null : language\}/);
-    const figure = components.find((c) => c.path === 'lib/components/PitchFigure.svelte')!.source;
-    // Bands are only ever drawn from the language, so null cannot draw one.
-    expect(figure).toMatch(/language === null\s*\?\s*\[\]/);
   });
 
   it('is drawn live by exactly one component', () => {
@@ -74,37 +61,6 @@ describe('the voice figure', () => {
   it('maps a frequency to a position in exactly one component', () => {
     const mappers = components.filter((c) => c.source.includes('axisFraction')).map((c) => c.path);
     expect(mappers).toEqual(['lib/components/PitchFigure.svelte']);
-  });
-
-  it('cannot draw a cited band without its source and its caveat', () => {
-    /* ADR-0059 permits the reference bands only with their figures, their
-       source and the averages sentence. The figure renders the caption
-       itself, so the only way to leave it off is `captionShared` - and
-       whoever passes that has to be rendering one for the pair. Two takes
-       side by side are the case: one caption each is the same three
-       paragraphs twice, in half the width. */
-    const figure = components.find((c) => c.path === 'lib/components/PitchFigure.svelte')!.source;
-    expect(figure).toContain('PitchBandsCaption');
-    /* The caption renders wherever bands do. There were briefly two ways to
-       silence it and this test asserted the expression containing both, so
-       it ratified the second one instead of catching it: `compact` drew the
-       washes with no gutter, no legend, no source and no caveat. There is
-       one way now, `captionShared`, and a bandless figure (language null)
-       cites nothing so there is nothing to caption. */
-    expect(figure).toMatch(/\{#if language !== null && !captionShared\}/);
-    expect(figure).not.toContain('compact');
-
-    for (const component of components) {
-      const markup = drawn(component.source);
-      if (!/captionShared(?!\?)/.test(markup)) continue;
-      // A component that only forwards the flag on is not the one that owes
-      // a caption; the one that turns it on is.
-      if (/\{captionShared\}/.test(markup)) continue;
-      // Against the markup rather than the whole file: a comment naming the
-      // caption satisfied an earlier version of this check, which is how a
-      // deliberately broken route passed it.
-      expect(markup, `${component.path} silences the caption`).toContain('<PitchBandsCaption');
-    }
   });
 
   it('never carries a verdict colour, on any of its marks', () => {

@@ -1155,12 +1155,6 @@ beforeAll(async () => {
   await driveRead('stats', 'recap', () => journal.stats.recap(19000, 21000));
   await driveRead('stats', 'isGoodDay', () => journal.stats.isGoodDay(20000));
   await driveRead('correlationCards', 'getCards', () => journal.correlationCards.getCards(19000, 21000));
-  await driveRead('intervalMoodPattern', 'dayOfInterval', () =>
-    journal.intervalMoodPattern.dayOfInterval(19000, 21000)
-  );
-  await driveRead('intervalMoodPattern', 'byCustomInterval', () =>
-    journal.intervalMoodPattern.byCustomInterval(28, 19000, 21000)
-  );
   await driveRead('archive', 'snapshot', () => journal.archive.snapshot());
   await driveRead('archive', 'importLog', () => journal.archive.importLog());
 

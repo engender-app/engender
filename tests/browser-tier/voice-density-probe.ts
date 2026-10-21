@@ -13,8 +13,7 @@
    - a change of capture chain takes the history off every figure at once
      (ADR-0061), not only off the ones the compare tab happens to draw;
    - the density carries the ink rule 9 gives a series, the spine the ink it
-     gives a guide, and the bands stay on the pitch figure and nowhere near
-     a figure block (ADR-0059, ADR-0060).
+     gives a guide, and no population band appears on any figure.
 
    Each of those is a question about the rendered tree or about a computed
    style, so they live here. */
@@ -91,9 +90,7 @@ function figuresIn(root: string) {
       .length,
     lines: document.querySelectorAll(`${root} .vf-run`).length,
     rings: document.querySelectorAll(`${root} .vf-ring`).length,
-    /* No history plot may carry a reference band: ADR-0059 allows those on
-       the pitch figure and on nothing else, and a band behind a sparkline
-       would be a published range for a figure that has none. */
+    /* No history plot carries a population range. */
     bands: document.querySelectorAll(`${root} .vf-line rect, ${root} .vf-line .pf-band`).length,
     against: [...document.querySelectorAll(`${root} .vf-against`)].map((line) =>
       (line.textContent ?? '').trim()
@@ -194,10 +191,7 @@ try {
         median: document.querySelectorAll('#drawn [data-density-median]').length,
         span: document.querySelectorAll('#drawn [data-density-span]').length
       },
-      /* The bands run across the plot and the shape as one ground, which is
-         what makes "where I sit against the published figures" one reading
-         rather than a lookup. */
-      bandsBehindShape: density?.querySelectorAll('.pf-band').length ?? 0,
+      bandsBehindShape: density?.querySelectorAll('.pf-band, [data-pitch-band], [data-pitch-middle]').length ?? 0,
       onOutline: markOnOutline(),
       outlineInk: ink(outline),
       spineInk: ink(spine),

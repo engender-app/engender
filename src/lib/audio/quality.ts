@@ -10,8 +10,6 @@
    Nothing here is a judgement about a voice (PRODUCT.md:109). Every check is
    about the recording - level, room, length, steadiness - and a take that
    fails one is a take to make again, never a voice that fell short. The
-   pitch graph's reference bands are the one narrowing of that rule, and
-   for nothing else: no check in here gained a range, and none will.
 
    Pure, like its siblings, and it takes the pitch track rather than
    recomputing it (see resonance.ts's header for why).
@@ -93,7 +91,7 @@ const SPEECH_CHECKS: readonly QualityCheck[] = ['clipping', 'noise'];
     Each number is 0.70 of what a brisk honest read measured, so an unhurried
     read clears it with room to spare and half the passage at the same pace
     does not. A language with no measured figure of its own reads English's,
-    the same fallback `bandsFor` makes. */
+    a custom passage uses the app locale as a fallback. */
 const VOICED_SECONDS_PER_WORD: Record<BandLanguage, number> = { en: 0.083, pl: 0.112 };
 
 /** How much voiced audio a passage of `wordCount` words has to carry before

@@ -35,7 +35,7 @@
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { analysePassage, analyseVowel } from '$lib/audio/benchmark';
-  import { bandsFor, comfortBand } from '$lib/audio/bands';
+  import { comfortBand, passageLanguage } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
   import {
     VOWEL_GATE,
@@ -202,11 +202,6 @@
     if (liveAdvice.length > 0) return liveAdvice;
     return frames.some((frame) => frame.hz !== null) ? [] : [m.vb_hearing_silent()];
   });
-  /* Whose typical ranges belong on the figure: the language of the passage
-     being read, not the app's (ADR-0059). A passage of somebody's own words
-     carries no language, so the app's is a guess and the caption says so. */
-  let bands = $derived(bandsFor(passageKey, getLocale()));
-
   /* What this take's figures are read against (redesign ticket 42). Six of
      the seven mean nothing except against the same person's earlier takes,
      so the summary needs the history behind them - and it needs it before
@@ -244,8 +239,9 @@
   /** The gate this step's take is judged by, and the same one the live
       readout is running - quality.ts's contract is that those cannot
       disagree, and passing one value to both is how that is kept. */
-  let passageFloorSeconds = $derived(readingFloorSeconds(wordCountOf(passageText), bands.language));
-  let gate = $derived(step === 'vowel' ? VOWEL_GATE : passageGate(wordCountOf(passageText), bands.language));
+  let language = $derived(passageLanguage(passageKey) ?? (getLocale() === 'pl' ? 'pl' : 'en'));
+  let passageFloorSeconds = $derived(readingFloorSeconds(wordCountOf(passageText), language));
+  let gate = $derived(step === 'vowel' ? VOWEL_GATE : passageGate(wordCountOf(passageText), language));
 
   /** How much of the reading the take has carried, against the floor it has
       to clear. It only ever fills: `voicedSeconds` is a running total and
@@ -378,7 +374,7 @@
         take.samples,
         ANALYSIS_SAMPLE_RATE,
         wordCountOf(passageText),
-        bands.language
+        language
       );
       if (!analysed.quality.passed || !analysed.figures) {
         failed = analysed.quality.failed;
@@ -549,8 +545,6 @@
           data-vb-take
           {role}
           {comfort}
-          language={bands.language}
-          languageGuessed={bands.guessed}
           pitchTrack={passageTake.pitchTrack}
           medianHz={figures.f0MedianHz}
           p10Hz={figures.f0P10Hz}
@@ -594,63 +588,15 @@
         <p class="muted small vb-hint">{m.vb_distance_hint()}</p>
       {/snippet}
 
-      <!-- The graph goes from the reading step and stays on the held note
-           (Alicja, 2026-09-04, in three passes: no live graph while reading
-           a passage; a benchmark's own picture is enough right after
-           finishing it; and steadiness "should still be there to guide the
-           user that their voice during the vowel recordings should be
-           stable").
-
-           Which is the distinction. Reading a passage has no shape to hit -
-           pitch moves by design, the numbers come afterwards, and watching
-           a curve while reading aloud is what the practise tab is for.
-           Holding a note has exactly one: flat. So the vowel step keeps a
-           figure and it is the one that measures the thing being asked for,
-           semitones around the note itself, with no bands on it because
-           where the note sits is not the question.
-
-           The reading step keeps what the figure's words carried: how long
-           the voice has been going, and anything to do differently about
-           the room or the level. -->
+      <!-- Reading shows live pitch on a fixed hertz axis. The vowel step
+           shows steadiness around its own note. -->
       {#if step === 'passage' && (phase === 'recording' || phase === 'retry')}
-        <!-- The pitch graph is back on the reading step (Alicja, 2026-09-14:
-             "reading the passage should display a graph with live pitch"),
-             which reverses her own call of 2026-09-04 that took it off. What
-             stood in for it there was a 6px voicing ribbon, invented for
-             "the one step that cannot show a graph"; the step can show one
-             again, so the stand-in has gone rather than sitting under a
-             trace that says the same thing with more in it - a break in the
-             line is a frame that was not voiced.
-
-             `pitch` rather than `steadiness`: reading has no note to hold,
-             so the question is where the voice is, on the absolute Hz axis
-             with the passage language's own reference bands behind it
-             (ADR-0059). The vowel step keeps `steadiness` for the opposite
-             reason - one shape to hit, and a flat line is the whole answer.
-
-             No run bar under it (`targetSeconds` null). That mark is the
-             hold task's and this task has no hold in it, which is the whole
-             of ticket 41; the coverage cue below is what a read is measured
-             by.
-
-             **No bands, and that is a measurement rather than a
-             preference.** ADR-0059's rule is that bands never appear
-             without their citation, and the citation is three paragraphs:
-             drawn here it came to 300px and pushed the passage itself off a
-             390x844 screen, so the words somebody was told to read aloud
-             were not on the screen while they read them. The bands and
-             their source are on the take's own figure a moment later, which
-             is where somebody can actually read them - ADR-0059 already
-             says that is the point of putting them there. What the live
-             figure keeps is the absolute Hz axis and the person's own
-             comfort bracket, which is line work rather than a citation. -->
         <div class="vb-live" data-vb-live in:wipe|global out:wipe|global>
           <VoiceGauge
             data-vb-gauge
             {role}
             {comfort}
             reading="pitch"
-            language={null}
             {frames}
             report={reading}
             targetSeconds={null}
@@ -720,8 +666,6 @@
           {role}
           {comfort}
           reading="steadiness"
-          language={bands.language}
-          languageGuessed={bands.guessed}
           {frames}
           report={reading}
           targetSeconds={VOWEL_SECONDS}
