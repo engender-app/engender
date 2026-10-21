@@ -361,7 +361,8 @@ export async function homeContracts(): Promise<Result[]> {
   const runningBefore = await availabilityFixture.journal.wearSessions.getRunningSession();
   availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="wear"]')!.click();
   let validWearWorked = false;
-  for (let attempt = 0; attempt < 100; attempt++) {
+  const wearDeadline = performance.now() + 4000;
+  while (performance.now() < wearDeadline) {
     const runningAfter = await availabilityFixture.journal.wearSessions.getRunningSession();
     if (!!runningAfter !== !!runningBefore) {
       validWearWorked = true;
