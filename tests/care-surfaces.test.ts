@@ -123,11 +123,11 @@ describe('every row on Care states a current value', () => {
      were a title and a chevron. A row here without a `subtitle` is that
      again, so the check is structural rather than a list of the rows that
      happen to exist today. */
-  const hormonesCard = care.slice(
-    care.indexOf('<SectionHeading text={m.care_group_hormones()} />'),
+  const labsStockCard = care.slice(
+    care.indexOf('<SectionHeading text={m.care_group_labs_stock()} />'),
     care.indexOf('<!-- Mood between injections')
   );
-  const rows = hormonesCard.split('<ListRow').slice(1);
+  const rows = labsStockCard.split('<ListRow').slice(1);
 
   it('finds the rows to check at all', () => {
     expect(rows.length).toBeGreaterThanOrEqual(3);
