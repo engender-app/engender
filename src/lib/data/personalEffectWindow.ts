@@ -14,9 +14,10 @@
    SOC8, and both tables call their figures clinical observation. SOC8
    departs from Hembree in nine cells without a stated reason (voice onset
    1-6 months, the 1-2 year maximum for cessation of menses, the unknown
-   maximum for decreased libido among them); the ADR that records this
-   ticket names all nine, and the research notes with the sources sit
-   beside it in the docs repo.
+   maximum for decreased libido among them). ADR
+   draft-onset-bands-follow-soc8-table-1 names all nine, and
+   docs/research/onset-bands-soc8.md has the sources and the independence
+   check.
 
    Following SOC8 exactly moved ten bands. Hair loss ceasing on estradiol
    left tier 1 because SOC8 gives it "variable" for both figures, and scalp

@@ -83,7 +83,8 @@ test('every tier-1 effect - the original eight plus ticket 41s widening - has a 
    60. `null` is SOC8's "unknown" or "variable": no completion is drawn.
    The research behind this table, and the nine cells where SOC8 departs
    from the Hembree 2017 tables it says it adapts, are in the docs repo
-   (docs/research/onset-bands-soc8.md). */
+   (docs/research/onset-bands-soc8.md, ADR
+   draft-onset-bands-follow-soc8-table-1). */
 const SOC8_TABLE_1: Record<string, [onsetMin: number, onsetMax: number, completion: [number, number | null] | null]> = {
   // Feminizing (estradiol)
   breast_development: [3, 6, [24, 60]],
