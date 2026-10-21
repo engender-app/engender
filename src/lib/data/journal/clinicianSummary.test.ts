@@ -321,7 +321,7 @@ test('the summary says which streams ended and when, whatever the range', async 
 
 test('an area that is only hidden says nothing to a clinician', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.areaStates.setAreasHidden(['measurements'], true);
+  await journal.areaStates.setAreasHidden(['wearSessions'], true);
 
   const summary = await journal.clinicianSummary.getSummary(19000, 19020);
 
@@ -330,8 +330,8 @@ test('an area that is only hidden says nothing to a clinician', async () => {
 
 test('un-finishing takes the line back off the page', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.areaStates.setAreasFinished(['measurements'], 19010);
-  await journal.areaStates.setAreasFinished(['measurements'], null);
+  await journal.areaStates.setAreasFinished(['wearSessions'], 19010);
+  await journal.areaStates.setAreasFinished(['wearSessions'], null);
 
   const summary = await journal.clinicianSummary.getSummary(19000, 19020);
 

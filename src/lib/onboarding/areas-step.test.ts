@@ -3,71 +3,21 @@ import { readFileSync } from 'node:fs';
 import { DEFAULT_ONBOARDING_AREAS, defaultPins } from '../data/pinnedRows';
 import { HUB_ROWS, hubSections } from '../data/hubRows';
 import { completeSetup, type SetupCompletion } from './complete';
-import { measurementsHiddenOnSetup } from './steps';
-import { journalWithBuiltIns } from '../data/journal/test-support';
-import { AREA_GROUPS } from '../data/areaGroups';
-import { areasHidden } from '../data/areaState';
 
 describe('onboarding areas step and Today pins', () => {
   it('keeps the previous default pins for older journals without a setup answer', () => {
     const pins = defaultPins(null);
-    expect(pins).toEqual(['measurements', ...DEFAULT_ONBOARDING_AREAS]);
+    expect(pins).toEqual(DEFAULT_ONBOARDING_AREAS);
   });
 
-  it('turns measurements off for a new journal unless explicitly selected', () => {
-    expect(measurementsHiddenOnSetup(null, false, false)).toBe(true);
-    expect(measurementsHiddenOnSetup(false, false, false)).toBe(true);
-    expect(measurementsHiddenOnSetup(true, false, false)).toBe(false);
-  });
-
-  it('preserves an existing or restored journal when the setup choice is skipped', () => {
-    expect(measurementsHiddenOnSetup(null, true, false)).toBeNull();
-    expect(measurementsHiddenOnSetup(null, false, true)).toBeNull();
-    expect(measurementsHiddenOnSetup(true, false, true)).toBe(false);
-    expect(measurementsHiddenOnSetup(false, false, true)).toBe(true);
-  });
-
-  it('keeps pin choice independent of feature visibility', () => {
-    expect(defaultPins(['measurements'])).toEqual(['measurements']);
-    expect(measurementsHiddenOnSetup(null, false, false)).toBe(true);
-    expect(defaultPins(['care'])).toEqual(['care']);
-    expect(measurementsHiddenOnSetup(true, false, false)).toBe(false);
-  });
-
-  it('keeps hidden feature entry points quiet while saved records remain', async () => {
-    const { journal } = await journalWithBuiltIns();
-    expect((await journal.effectCategories.getEffectCategories()).find((c) => c.key === 'genital_sexual')?.enabled).toBe(false);
-    const measurementId = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 80, unit: 'cm' });
-    await journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, true);
-    const states = await journal.areaStates.getAreaStates();
-    const hubKeys = hubSections({ todayEpochDay: 20000, lastWrites: {}, states, forward: {} })
-      .flatMap((section) => section.rows.map((row) => row.spec.key));
-    expect(hubKeys).not.toContain('measurements');
-    expect(areasHidden(AREA_GROUPS.measurements, states)).toBe(true);
-    expect((await journal.measurements.getMeasurements('waist')).map((m) => m.id)).toEqual([measurementId]);
-
-    await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
-    expect((await journal.effectCategories.getEffectCategories()).find((c) => c.key === 'genital_sexual')?.enabled).toBe(true);
-  });
-
-  it('keeps an upgraded journal’s feature choices during built-in reconciliation', async () => {
-    const { journal } = await journalWithBuiltIns();
-    await journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, false);
-    await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
-    await journal.reconcileBuiltIns();
-
-    expect(areasHidden(AREA_GROUPS.measurements, await journal.areaStates.getAreaStates())).toBe(false);
-    expect((await journal.effectCategories.getEffectCategories()).find((c) => c.key === 'genital_sexual')?.enabled).toBe(true);
-  });
-
-  it('pins exactly the chosen area when one area is selected', () => {
+    it('pins exactly the chosen area when one area is selected', () => {
     const pins = defaultPins(['care']);
     expect(pins).toEqual(['care']);
   });
 
   it('pins chosen areas in HUB_ROWS registry order without central ranking', () => {
-    const pins = defaultPins(['tryouts', 'measurements', 'care']);
-    const expected = HUB_ROWS.filter((r) => ['tryouts', 'measurements', 'care'].includes(r.key)).map((r) => r.key);
+    const pins = defaultPins(['tryouts', 'care']);
+    const expected = HUB_ROWS.filter((r) => ['tryouts', 'care'].includes(r.key)).map((r) => r.key);
     expect(pins).toEqual(expected);
   });
 
@@ -163,9 +113,7 @@ describe('onboarding areas step and Today pins', () => {
     expect(svelte).not.toContain('data-preview-pin');
     expect(svelte).toContain('class="setup-areas"');
     expect(svelte).toContain("step === 'features'");
-    expect(svelte).toContain('key="feature-measurements"');
     expect(svelte).toContain('key="feature-genital-effects"');
-    expect(svelte).toContain("row.spec.key !== 'measurements' || measurementsShown");
     expect(svelte).toContain('data-leave-setup');
     expect(svelte).toContain('data-skip-step');
   });

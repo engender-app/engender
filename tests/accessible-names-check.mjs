@@ -61,22 +61,11 @@ try {
       await contains(row.locator('.kit-row-main'), (await row.locator('[data-voice-row-pitch]').innerText()).trim(), 'benchmark pitch');
       await contains(row.locator('.kit-row-main'), (await row.locator('.kit-row-title').innerText()).trim(), 'benchmark date');
     }
-    await go('/body/measurements', '[data-chart-card^="measurements-"]');
-    const chart = page.locator('[data-chart-card^="measurements-"]');
-    const figure = chart.getByRole('img');
-    await figure.waitFor();
-    const name = await figure.getAttribute('aria-label');
-    const title = await chart.locator('h2').innerText();
-    try {
-      assert.ok(name.includes(title), `${locale} chart name includes measurement type`);
-      assert.match(name, locale === 'en' ? /chart/i : /wykres/i);
-      assert.doesNotMatch(name, /edit|edytuj/i);
-    } catch (error) { failures.push(`${locale} measurements: ${error.message}`); }
     await page.close();
   }
   assert.deepEqual(errors, [], 'No browser errors');
   assert.deepEqual(failures, [], 'Visible values remain in accessible names');
-  console.log('PASS EN/PL lab values, dates and analytes; crisis numbers and domains; voice pitch; descriptive measurement chart names');
+  console.log('PASS EN/PL lab values, dates and analytes; crisis numbers and domains; voice pitch');
 } finally {
   await browser.close();
   await server.close();

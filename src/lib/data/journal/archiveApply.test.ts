@@ -28,7 +28,6 @@ import type {
   ArchiveImportLogRecord,
   ArchiveJournal,
   ArchiveMarginNote,
-  ArchiveMeasurementType,
   ArchiveMilestone,
   ArchivePersonalEffectType,
   ArchivePreset,
@@ -58,7 +57,6 @@ import {
   applyHairRemovalSessions,
   applyImportLog,
   applyMarginNotes,
-  applyMeasurementTypes,
   applyMilestones,
   applyPersonalEffectTypes,
   applyPresets,
@@ -491,22 +489,6 @@ test('applyMilestones inserts a milestone with its photo, and leaves a matched u
 
   await applyMilestones(restoring(driver, { milestones: [{ ...milestone, name: 'Renamed', photo: null }] }, 'merge', 9));
   assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM milestone'))[0].name, 'Started HRT');
-});
-
-// applyMeasurementTypes -------------------------------------------------------
-
-test('applyMeasurementTypes inserts and merge leaves a matched key alone, replace updates it', async () => {
-  const driver = await migratedDb();
-  const t: ArchiveMeasurementType = { key: 'waist', name: 'Waist', builtIn: true, hidden: false };
-
-  await applyMeasurementTypes(restoring(driver, { measurementTypes: [t] }, 'merge', 2));
-  assert.deepEqual(await select(driver, 'SELECT key, name FROM measurement_type'), [{ key: 'waist', name: 'Waist' }]);
-
-  await applyMeasurementTypes(restoring(driver, { measurementTypes: [{ ...t, name: 'Renamed' }] }, 'merge', 5));
-  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM measurement_type'))[0].name, 'Waist');
-
-  await applyMeasurementTypes(restoring(driver, { measurementTypes: [{ ...t, name: 'Renamed' }] }, 'replace', 5));
-  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM measurement_type'))[0].name, 'Renamed');
 });
 
 // applyCounterevidenceSnapshots ------------------------------------------------

@@ -52,7 +52,6 @@ describe('where the finish control is mounted', () => {
     expect(mounts).toEqual([
       { route: 'body/hair-progress', group: 'hair-progress' },
       { route: 'body/hair-removal', group: 'hair-removal' },
-      { route: 'body/measurements', group: 'measurements' },
       { route: 'body/wear', group: 'wear' },
       { route: 'care/changes', group: 'effects' },
       { route: 'health/dilation', group: 'dilation' },
@@ -65,13 +64,13 @@ describe('where the finish control is mounted', () => {
     expect(new Set(groups).size).toBe(groups.length);
   });
 
-  it('covers every finishable area through those seven screens', () => {
-    /* The sections, not the groups: measurements, hair progress, effects and
+  it('covers every finishable area through those six screens', () => {
+    /* The sections, not the groups: hair progress, effects and
        voice are each one screen and two areas, so a count of screens would
-       not prove the eleven are reachable. */
+       not prove the nine are reachable. */
     const covered = mounts.flatMap((m) => [...AREA_GROUPS[m.group as keyof typeof AREA_GROUPS]]);
-    expect(covered.length).toBe(11);
-    expect(new Set(covered).size).toBe(11);
+    expect(covered.length).toBe(9);
+    expect(new Set(covered).size).toBe(9);
   });
 
   it('names groups the More hub has rows for, and the same screen owns both', () => {
@@ -89,7 +88,6 @@ describe('where the finish control is mounted', () => {
 
     const owner = Object.fromEntries(mounts.map((m) => [m.group, m.route]));
     expect(AREA_GROUP_ROW_KEYS).toEqual({
-      measurements: 'measurements',
       wear: 'wear',
       'hair-progress': 'hair-progress',
       'hair-removal': 'hair-removal',

@@ -53,7 +53,6 @@ export const RECONCILE_TABLES: TableName[] = [
   'dimension',
   'affirmation',
   'bodyRegion',
-  'measurementType',
   'effectCategory',
   'personalEffectType',
   'entryTemplate'
@@ -75,9 +74,6 @@ export const TABLE_NAMES = [
   'milestone',
   'photo',
   'lab',
-  'measurement',
-  /* The sizes-and-fit log (phase 5 ticket 23). */
-  'sizeRecord',
   /* The dilation taper's schedule and its session log alike (phase 8
      features ticket 12): nothing reads a session without knowing whether
      there is a schedule to compare it against, the same reasoning 'dose'
@@ -208,30 +204,24 @@ export const TABLE_NAMES = [
      is only the region rows themselves: built-in hide/unhide and a custom
      region being added. */
   'bodyRegion',
-  /* Measurement types (phase 5 ticket 29): the vocabulary a measurement's
-     `type` names, built-in and custom alike. Its own name rather than
-     folded into 'measurement': a screen adding or hiding a type has not
-     touched a single logged reading, and the reverse. */
-  'measurementType',
   /* The effect catalogue's toggleable categories (phase 5 ticket 41,
      CONTEXT: "Effect category") - tag_group's own semantics, over the
      effect vocabulary rather than tags. */
   'effectCategory',
   /* The effect vocabulary itself (phase 5 ticket 41): the open catalogue
-     'personalEffect' markers name, built-in and custom alike. Its own
-     name for the same reason 'measurementType' has one - hiding or adding
-     an effect type has not touched a single marker, and the reverse. */
+     'personalEffect' markers name, built-in and custom alike. Hiding or
+     adding an effect type has not touched a single marker, and the reverse. */
   'personalEffectType',
   /* The fluidity engine's named presentations (phase 5 deepening ticket 17,
      ADR-0048, CONTEXT: "Presentation"): a name and a flag-role colour, built
-     and hidden the way a tag or a measurement type is. An entry's own
+     and hidden the way a tag is. An entry's own
      `presentation_id` is announced under 'entry' instead, the same split
      'tag' and 'entry_tag' get - resolving which presentation an id names is
      this table's business, not the entry's. */
   'presentation',
   /* Entry templates (phase 6 ticket 07, ADR-0002): the folded-in guided
      prompts and the six original templates alike, built and hidden the way
-     a tag or a measurement type is. An entry created from one carries no
+     a tag is. An entry created from one carries no
      link back to it - applying a template only ever seeds the draft
      (types.ts) - so no read here depends on 'entry'. */
   'entryTemplate',
@@ -574,32 +564,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getResultById: ['lab'],
       getSeries: ['lab'],
       lastWriteEpochDay: ['lab']
-    }
-  }),
-  measurements: classify<Journal['measurements']>()({
-    writes: {
-      upsertMeasurement: ['measurement'],
-      deleteMeasurement: ['measurement'],
-      addCustomMeasurementType: ['measurementType'],
-      setMeasurementTypeHidden: ['measurementType']
-    },
-    reads: {
-      getMeasurements: ['measurement'],
-      getSeries: ['measurement'],
-      getMeasurementsInRange: ['measurement'],
-      countAll: ['measurement'],
-      getMeasurementTypes: ['measurementType'],
-      lastWriteEpochDay: ['measurement'],
-      latestMeasurement: ['measurement']
-    }
-  }),
-  sizeRecords: classify<Journal['sizeRecords']>()({
-    writes: { upsertRecord: ['sizeRecord'], deleteRecord: ['sizeRecord'] },
-    reads: {
-      getRecords: ['sizeRecord'],
-      getRecordsByCategory: ['sizeRecord'],
-      getRecordsOnDay: ['sizeRecord'],
-      lastWriteEpochDay: ['sizeRecord']
     }
   }),
   taper: classify<Journal['taper']>()({
@@ -1059,7 +1023,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
          renaming a mode has to reach it (ticket 19). */
       constellationReadings: ['entry', 'dimension', 'presentation'],
       bodyRegionTrend: ['entry'],
-      bodyRegionBreakdown: ['entry', 'measurement', 'photo', 'hairRemoval', 'hairProgress'],
+      bodyRegionBreakdown: ['entry', 'photo', 'hairRemoval', 'hairProgress'],
       wearTimeTrend: ['wearSession'],
       tallyTrend: ['tally'],
       bodyRegionMap: ['entry'],

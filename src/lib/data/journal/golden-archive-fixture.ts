@@ -73,8 +73,7 @@ export async function builtInsOnlyDevice(): Promise<{ driver: SqliteDriver; jour
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, a renamed and a hidden built-in tag, a hidden dimension, a
     hidden affirmation, a custom body region logged on the entry alongside a
-    built-in one, a custom measurement type alongside a hidden built-in one,
-    a disabled effect category, a custom effect type alongside a hidden
+    built-in one, a disabled effect category, a custom effect type alongside a hidden
     built-in one, and an authored entry template carrying a custom tag, a
     custom dimension value, a note scaffold and a presentation. Built by
     `everySectionDevice` below, which is the same thing with the connection

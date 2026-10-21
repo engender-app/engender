@@ -186,7 +186,7 @@
     retry: () => usedQuery.retry()
   };
 
-  /* Ten as the flat-run floor rather than measurements' one: an analyte's
+  /* Ten as the flat-run floor: an analyte's
      values run in the hundreds, so a whole unit either side would still
      draw as a flat line. */
   const chartFor = (s: LabSeries) =>
@@ -239,8 +239,7 @@
       /* Whatever the screen is already showing - itself the most
          recently logged analyte, or none - rather than a hormone
          (ticket 37). Unit likewise: a set preferred unit wins, then the
-         last unit this analyte was actually recorded in, the same
-         fallback the measurements screen uses for its own unit. */
+         last unit this analyte was actually recorded in. */
       analyte,
       customAnalyte: '',
       value: null,

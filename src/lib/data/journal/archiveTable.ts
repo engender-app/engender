@@ -1,7 +1,7 @@
 /* What a flat data area declares about its table, once (ADR-0027, phase 5
    ticket 13).
 
-   Before this, the column list of an area like `size_record` was written out
+   Before this, the column list of an area like `wear_session` was written out
    four times: the SELECT in archiveRead.ts, the row-to-field map right
    below it, the INSERT list in archiveApply.ts and the value list right
    below that - plus a DELETE in restore.ts naming the table a fifth time.

@@ -44,7 +44,6 @@ const SCREENS = [
   '/stats',
   '/care',
   '/care/labs',
-  '/body/measurements',
   '/body/wear',
   '/body-map',
   '/tally',

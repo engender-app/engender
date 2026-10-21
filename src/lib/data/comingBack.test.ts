@@ -104,7 +104,7 @@ test('a date somebody put on the calendar does not close the gap it sits in', ()
     assert.equal(returnGap({ entries: AWAY, [planned]: TODAY - 4 }, TODAY), AWAY);
   }
   // And an ordinary area, which is a record of something that happened, does.
-  assert.equal(returnGap({ entries: AWAY, measurements: TODAY - 4 }, TODAY), null);
+  assert.equal(returnGap({ entries: AWAY, wearSessions: TODAY - 4 }, TODAY), null);
 });
 
 test('a journal with too little history has no median, so the floor governs alone', () => {
@@ -124,7 +124,7 @@ test('duplicate and future writing days cannot alter the median', () => {
     rather than rebuilding it, and the newest write stays `since` no matter
     which day it lands on. */
 function journalEndingOn(since: number, gaps: readonly number[]) {
-  const areas = ['entries', 'doseEvents', 'measurements', 'sideEffects', 'labResults'] as const;
+  const areas = ['entries', 'doseEvents', 'wearSessions', 'sideEffects', 'labResults'] as const;
   let day = since;
   const lastWrites: Record<string, number> = {};
   areas.forEach((area, index) => {
@@ -164,7 +164,7 @@ test('the median only looks back roughly a year, so an old write from a dormant 
   const recent = {
     entries: TODAY - 5,
     doseEvents: TODAY - 12,
-    measurements: TODAY - 19,
+    wearSessions: TODAY - 19,
     sideEffects: TODAY - 26,
     labResults: TODAY - 33
   };
@@ -178,7 +178,7 @@ test("the demo persona's own journal is fitted against it too: near-daily entrie
   /* Alice (demo/persona.ts) writes an entry almost every day, but the
      last-write registry only ever sees three of her areas touched at all:
      milestones is excluded as planned, and the persona has no dose log, no
-     measurements, no wear sessions - "the demo seeds tags, entries,
+     no wear sessions - "the demo seeds tags, entries,
      milestones, reminders and labs, and nothing else" (persona.ts). Three
      distinct areas is short of a median's five, so this real journal's own
      rhythm is unknowable from the registry alone, and RETURN_GAP_DAYS keeps

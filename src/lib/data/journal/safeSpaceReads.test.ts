@@ -82,6 +82,6 @@ test('the pool Safe Space opens on refuses a bad day that was marked positively 
   assert.deepEqual(
     pool.map((e) => e.id),
     [chosen, named],
-    'the pool holds the day the person starred and the day they tagged, and not the one it read a chest measurement off'
+    'the pool holds the day the person starred and the day they tagged, and not the one it read a chest feeling off'
   );
 });

@@ -129,7 +129,6 @@ const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
   tag: 'tag',
   affirmation: 'affirmation',
   body_region: 'bodyRegion',
-  measurement_type: 'measurementType',
   effect_category: 'effectCategory',
   personal_effect_type: 'personalEffectType',
   entry_template: 'entryTemplate',

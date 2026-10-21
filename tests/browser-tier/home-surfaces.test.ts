@@ -285,8 +285,6 @@ export async function homeContracts(): Promise<Result[]> {
     ['journalingPauses', 'getPauses'],
     ['areaStates', 'getAreaStates'],
     ['hairRemoval', 'latestSession'],
-    ['measurements', 'countAll'],
-    ['measurements', 'lastWriteEpochDay'],
     ['appointments', 'getDayRecords']
   ];
   for (const [area, operation, day] of initialReads) {

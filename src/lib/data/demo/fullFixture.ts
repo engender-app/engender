@@ -4,7 +4,7 @@
    reminders, labs and tally events - which is what most of the app is
    reviewed against, and what the walkthrough asserts specific facts about
    (150 days of entries, five estradiol results, and so on). Everything else
-   the More hub links to - regimen, measurements, sizes, hair progress, hair
+   the More hub links to - regimen, hair progress, hair
    removal, roadmap, letters, tryouts, personal effects, wear sessions,
    cycle events, side effects, surgery, appointment prep, stock, voice -
    stayed empty, which is the gap ticket 25's sign-off review ran into
@@ -24,7 +24,6 @@ import { demoPhoto } from './journal-seed';
 import { demoNow } from './demoClock';
 import { demoAudioBytes, demoVideoBytes } from '../demoAudioBytes';
 import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
-import { GARMENT_CATEGORIES } from '../garmentCategories';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
 import { POLISH_PACK, ROADMAP_TRACKS } from '../roadmap';
 import { expectedSessionDays } from '../taperSchedule';
@@ -156,53 +155,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     });
   }
 
-  // Measurements, sizes, hair progress and hair removal: a year each, at
-  // an irregular cadence rather than an evenly spaced one - the one shape
-  // every chart already handles.
   const trackingStart = today - 365;
-  const measurementTypes = ['waist', 'hips', 'chest', 'underbust'] as const;
-  const measurementBase = { waist: 78, hips: 92, chest: 88, underbust: 74 };
-  for (let day = trackingStart; day <= today; day++) {
-    if (r() < 0.94) continue;
-    const type = pick(measurementTypes);
-    const unit = type === 'waist' && r() < 0.15 ? 'in' : 'cm';
-    const base = measurementBase[type];
-    const value = unit === 'in' ? Math.round(base / 2.54) : base + Math.round((r() - 0.5) * 6);
-    await journal.measurements.upsertMeasurement({ type, epochDay: day, value, unit });
-  }
-  // A guaranteed second unit on waist - the random 15% above makes it rare
-  // enough that a run can land on zero or one 'in' reading, which draws as
-  // "two measurements make a trend, add another" rather than a trend.
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 200, value: 31, unit: 'in' });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 40, value: 30, unit: 'in' });
-
-  /* One scale per category rather than one pool for all eight. A shuffle
-     across every size in the app puts "34" and "XS" in the same pair of
-     trousers, which the size log wore quietly and the change line
-     (redesign ticket 61) states out loud - so a demo of a screen whose
-     point is that it makes a statement was making a nonsense one. */
-  const SIZE_SCALE: Record<(typeof GARMENT_CATEGORIES)[number], string[]> = {
-    shirts: ['XS', 'S', 'M', 'L'],
-    pants: ['28', '30', '32', '34'],
-    dresses: ['6', '8', '10', '12'],
-    skirts: ['XS', 'S', 'M', 'L'],
-    bras: ['32A', '34A', '34B', '36B'],
-    underwear: ['XS', 'S', 'M', 'L'],
-    shoes: ['38', '39', '40', '41'],
-    outerwear: ['S', 'M', 'L', 'XL']
-  };
-  for (let day = trackingStart; day <= today; day++) {
-    if (r() < 0.97) continue;
-    const category = pick(GARMENT_CATEGORIES);
-    await journal.sizeRecords.upsertRecord({
-      epochDay: day,
-      category,
-      size: pick(SIZE_SCALE[category]),
-      brand: pick(['', 'Zara', "Levi's", 'H&M', 'Uniqlo']),
-      fitNote: pick(['', 'true to size', 'runs small', 'runs large'])
-    });
-  }
-
   const hairStages = ['1', '2', '2a', '3', '3v', '3a', '4', '4a'];
   let hairPhotoCount = 0;
   for (let day = trackingStart, i = 0; day <= today; day += between(60, 140), i++) {

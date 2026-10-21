@@ -198,15 +198,6 @@ test('it writes the fixture every More-hub area reads (ticket 36)', async () => 
   expect(injectable.length).toBeGreaterThan(0);
   expect(injectable.every((d) => d.drug === 'Estradiol valerate')).toBe(true);
 
-  expect(summary.measurements).toBeGreaterThan(0);
-  const types = await journal.measurements.getMeasurementTypes();
-  const loggedTypes = (
-    await Promise.all(types.map(async (t) => ((await journal.measurements.getSeries(t.key)).length > 0 ? t.key : null)))
-  ).filter(Boolean);
-  expect(loggedTypes.length).toBeGreaterThan(0);
-
-  expect(summary.sizeRecords).toBeGreaterThan(0);
-
   expect(summary.hairRemovalSessions).toBeGreaterThan(0);
   const hairRemovalSessions = await journal.hairRemoval.getSessions();
   expect(hairRemovalSessions).toHaveLength(summary.hairRemovalSessions);
@@ -280,7 +271,6 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'lastEpochDay',
       'lastSingleEpisodeEpochDay',
       'letters',
-      'measurements',
       'milestones',
       'personalEffects',
       'photos',
@@ -289,7 +279,6 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'regionEuphoriaEntries',
       'roadmapChecks',
       'sideEffects',
-      'sizeRecords',
       'stockEntries',
       'tagWord',
       'tagWordEntries',

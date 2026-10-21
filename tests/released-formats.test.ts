@@ -18,7 +18,7 @@ import { LATEST_SCHEMA_VERSION } from '../src/lib/data/sqlite/schema-version.ts'
 import { noopFileOps } from '../src/lib/data/sqlite/test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from '../src/lib/data/sqlite/test-support/node-sqlite-driver.ts';
 import { restoreArchive, verifyArchive } from '../src/lib/data/journal/restore.ts';
-import { emptyArchiveJournal } from '../src/lib/data/journal/archiveSections.ts';
+import { DROPPED_ARCHIVE_SECTION_NAMES, emptyArchiveJournal } from '../src/lib/data/journal/archiveSections.ts';
 import { fakeFileStore } from '../src/lib/data/photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../src/lib/data/sqlite/test-support/migrated-db.ts';
 
@@ -56,6 +56,7 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
   const opened = await openArchive(oneShot(new Uint8Array(readFileSync(join(directory, 'archive.ttbackup')))), GOLDEN_PASSWORD);
   const archiveCounts = countsOf(opened.payload.journal);
   for (const [section, expected] of Object.entries(counts.archiveSections)) {
+    if (DROPPED_ARCHIVE_SECTION_NAMES.includes(section)) continue;
     assert.equal(archiveCounts[section], expected, `released archive section ${section}`);
   }
   let filesRead = 0;
@@ -74,8 +75,12 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
     await runMigrations(driver, noopFileOps(), chain);
     assert.equal(await driver.getUserVersion(), Math.max(...chain.map((migration) => migration.version)));
     for (const [table, expected] of Object.entries(counts.sqliteTables)) {
+      if (['measurement', 'measurement_type', 'size_record'].includes(table)) continue;
       const [row] = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${table.replaceAll('"', '""')}"`);
-      assert.equal(row.n, expected, `released SQLite table ${table}`);
+      const droppedAreaRows = table === 'area_state'
+        ? opened.payload.journal.areaStates.filter((state) => DROPPED_ARCHIVE_SECTION_NAMES.includes(state.area)).length
+        : 0;
+      assert.equal(row.n, expected - droppedAreaRows, `released SQLite table ${table}`);
     }
     assert.deepEqual(await driver.query('PRAGMA integrity_check'), [{ integrity_check: 'ok' }]);
     assert.deepEqual(await driver.query('PRAGMA foreign_key_check'), []);

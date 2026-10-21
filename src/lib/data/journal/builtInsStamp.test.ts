@@ -12,7 +12,6 @@ import {
   BUILT_IN_BODY_REGIONS,
   BUILT_IN_DIMENSIONS,
   BUILT_IN_EFFECT_CATEGORIES,
-  BUILT_IN_MEASUREMENT_TYPES,
   BUILT_IN_PERSONAL_EFFECT_TYPES,
   BUILT_IN_TAG_GROUPS,
   ENTRY_TEMPLATES
@@ -29,7 +28,6 @@ function catalogueFingerprint(): string {
     tagGroups: BUILT_IN_TAG_GROUPS.map((g) => [g.key, [...g.tags]]),
     affirmations: [...BUILT_IN_AFFIRMATION_KEYS],
     bodyRegions: [...BUILT_IN_BODY_REGIONS],
-    measurementTypes: BUILT_IN_MEASUREMENT_TYPES.map((t) => t.key),
     effectCategories: BUILT_IN_EFFECT_CATEGORIES.map((c) => [c.key, c.defaultEnabled]),
     personalEffectTypes: BUILT_IN_PERSONAL_EFFECT_TYPES.map((e) => [e.key, e.category, e.direction]),
     templates: ENTRY_TEMPLATES.map((t) => [t.key, [...t.tags], Object.entries(t.dims), builtInTemplateHidden(t)])

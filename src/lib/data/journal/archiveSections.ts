@@ -454,45 +454,6 @@ const SECTIONS = [
       timing_day_of_interval: { field: 'timingDayOfInterval', whenAbsent: null }
     }
   }),
-  section({
-    name: 'measurementTypes',
-    /* Only the customs. A measurement references its type by key
-       (measurements.ts), not by rowid, so unlike a child table this needs no
-       companion statement for rows that named a custom type just removed
-       here - they simply keep a key nothing resolves any more, the same
-       forward-compatible treatment lab_result.analyte already gets. */
-    discard: ['DELETE FROM measurement_type WHERE is_built_in = 0'],
-    // Custom vocabulary, the same reasoning `dimensions` above gives.
-    travels: 'whole',
-    read: read.readMeasurementTypes,
-    apply: apply.applyMeasurementTypes
-  }),
-  // `type` names a measurement type by key rather than by rowid
-  // (measurements.ts), so there is nothing here to resolve against the
-  // section above and no `after` to declare.
-  flat({
-    name: 'measurements',
-    travels: 'none',
-    table: 'measurement',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: { uuid: 'id', type: 'type', epoch_day: 'epochDay', value: 'value', unit: 'unit' }
-  }),
-  flat({
-    name: 'sizeRecords',
-    travels: 'none',
-    table: 'size_record',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: {
-      uuid: 'id',
-      epoch_day: 'epochDay',
-      category: 'category',
-      size: 'size',
-      brand: 'brand',
-      fit_note: 'fitNote'
-    }
-  }),
   /* The dilation taper schedule (ticket 12) - a plan the person typed in,
      not a record of anything that happened to them, so `travels: 'none'`
      the same way a dose schedule would if it were archive-registered at
@@ -650,8 +611,7 @@ const SECTIONS = [
   }),
   section({
     name: 'personalEffectTypes',
-    // Only the customs, the same reasoning measurementTypes' own statement
-    // gives: a marker naming a custom effect just removed here simply keeps a
+    // Only custom rows. A marker naming a custom effect just removed here keeps a
     // key nothing resolves any more.
     discard: ['DELETE FROM personal_effect_type WHERE is_built_in = 0'],
     // Custom vocabulary, the same reasoning `dimensions` above gives. Not to
@@ -1152,7 +1112,9 @@ export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map((s) => s.name);
 
 /** Wire sections removed before 1.0. Their rows no longer have an owner here. */
-export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries'];
+export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
+  'doubtEntries', 'measurementTypes', 'measurements', 'sizeRecords'
+];
 
 /** A journal with every section present and empty - what an importer builds
     on and what a test that cares about one section starts from. */

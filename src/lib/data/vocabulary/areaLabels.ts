@@ -15,7 +15,6 @@ import { m } from '$lib/paraglide/messages';
 import { AREA_GROUPS, type AreaGroupKey } from '$lib/data/areaGroups';
 
 const GROUP_NAME: Record<AreaGroupKey, () => string> = {
-  measurements: m.measurements_and_sizes,
   wear: m.wear_log,
   'hair-progress': m.hair_progress,
   'hair-removal': m.hair_removal,

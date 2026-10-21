@@ -221,38 +221,13 @@ export function shouldShowHairRemovalRecovery(params: {
   return null;
 }
 
-interface MeasurementsNudgeResult {
-  daysSince: number;
-}
-
-/* shouldShowMeasurementsNudge stays exported only for its own test (AU-09
-   test-only review). */
-export function shouldShowMeasurementsNudge(params: {
-  measurementsCount: number;
-  latestMeasurementEpochDay: number | null;
-  todayEpochDay: number;
-  enabled: boolean;
-  snoozed: boolean;
-}): MeasurementsNudgeResult | null {
-  if (!params.enabled || params.snoozed) return null;
-  if (params.measurementsCount < 1 || params.latestMeasurementEpochDay == null) return null;
-
-  const daysSince = params.todayEpochDay - params.latestMeasurementEpochDay;
-  if (daysSince >= 30) {
-    return { daysSince };
-  }
-
-  return null;
-}
-
 /* ------------------------------------------------------------------------
    Home's grid (phase 8 deepening ticket 07)
 
    Eleven tiles used to be eleven `{#if}` blocks in a route, each holding its
    own reads, its own preference gate and its own answer to "how many
    siblings do I have" - which is how four of them ended up asking that
-   question of only the original five tiles, so a journal showing wear and
-   measurements slid one in and not the other. What follows is the same
+   question of only the original five tiles, so a journal showing several kinds could draw a partial count. What follows is the same
    eleven with one gate, one order and one count.
 
    No policy: no cap, no priority, no tier. The order below is the source
@@ -281,7 +256,6 @@ export type LiveTileKind =
   | 'voice-benchmark-nudge'
   | 'pause-active-banner'
   | 'hair-removal-recovery'
-  | 'measurements-nudge'
   | 'appointment-today';
 
 /** The order Home draws them in, and the only place that order is written.
@@ -303,7 +277,6 @@ export const LIVE_TILE_ORDER = [
   'voice-benchmark-nudge',
   'pause-active-banner',
   'hair-removal-recovery',
-  'measurements-nudge',
   /* Appended rather than slotted into the historical route order above:
      this kind never lived on the route (phase 8 features ticket 63), so
      there is no prior position to preserve - only where it lands in its own
@@ -357,7 +330,6 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'pause-active-banner': 'moment',
   'active-tryout-tile': 'dormant',
   'voice-benchmark-nudge': 'dormant',
-  'measurements-nudge': 'dormant',
   'appointment-today': 'today'
 };
 
@@ -503,7 +475,6 @@ export interface HomeTileReads {
   latestBenchmarkEpochDay: number | null;
   journalingPauses: readonly JournalingPause[];
   latestHairRemovalSession: HairRemovalSession | null;
-  measurements: { count: number; latestDay: number | null };
   /** Today's own appointment rows (phase 8 features ticket 63) - `getDayRecords`
       asked for today rather than the whole table, the same reason
       `scheduleDoses` above is bounded rather than every dose ever logged. */
@@ -944,33 +915,6 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         note: m.tile_hair_removal_guidance(),
         href: '/body/hair-removal',
         dismiss: dismissSnooze('hair-removal-recovery')
-      };
-    },
-
-    'measurements-nudge': (gate) => {
-      const qualifying = shouldShowMeasurementsNudge({
-        measurementsCount: reads.measurements.count,
-        latestMeasurementEpochDay: reads.measurements.latestDay,
-        todayEpochDay: today,
-        enabled: gate.enabled,
-        snoozed: gate.snoozed
-      });
-      if (!qualifying) return null;
-      return {
-        key: 'measurements-nudge',
-        tileKey: 'measurements-nudge',
-        attrs: { 'data-measurements-tile': true },
-        title: m.tile_measurements_title(),
-        value: m.tile_measurements_prompt(),
-        note: m.tile_measurements_note({ days: String(qualifying.daysSince) }),
-        href: '/body/measurements',
-        action: {
-          icon: 'plus',
-          text: m.tile_measurements_action(),
-          label: m.tile_measurements_action(),
-          href: '/body/measurements'
-        },
-        dismiss: dismissSnooze('measurements-nudge')
       };
     },
 

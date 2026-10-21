@@ -55,9 +55,6 @@ before the next scene. Their saved samples and compositor evidence remain.
 Cold recording still reloads the document, retains finite previous and
 current document identities, and keeps its camera-before-navigation order
 and existing ready-to-sampler window.
-The unit-switcher scene enables Measurements through its visible switch when
-needed, proves that state, and restores its original visibility after capture.
-This exposes the control in an empty journal without adding measurement data.
 Preparation closes existing overlays and restores inline edit modes before
 opening the state a scene requires. It does not change the recorded motion
 window or detector thresholds. Quick add opening, closing, choosing a mood,

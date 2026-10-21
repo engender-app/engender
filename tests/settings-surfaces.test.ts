@@ -175,7 +175,7 @@ describe('what Settings is built from', () => {
     expect(manager).toContain('title={m.features_to_show()}');
     expect(manager).toContain('m.features_to_show_sub()');
     expect(manager).toContain('data-features-close');
-    for (const handle of ['data-measurements-toggle', 'data-genital-effects-toggle', 'data-cycle-tracking-toggle']) {
+    for (const handle of ['data-genital-effects-toggle', 'data-cycle-tracking-toggle']) {
       expect(outsideSheets).not.toContain(handle);
       expect(manager.match(new RegExp(handle, 'g'))).toHaveLength(1);
     }

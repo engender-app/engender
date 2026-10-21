@@ -204,7 +204,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 94);
+  assert.equal(db.getUserVersion(), 95);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -228,8 +228,6 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'hair_photo',
     'hair_stage',
     'lab_result',
-    'measurement',
-    'measurement_type',
     'medication_stock',
     'milestone',
     'effect_category',
@@ -347,7 +345,7 @@ test('milestone drops kind, order_index and photo_path; reminder drops trigger_t
 
 test('user-owned tables carry uuid and updated_at', async () => {
   const db = await migratedDb();
-  for (const table of ['entry', 'photo', 'milestone', 'lab_result', 'measurement', 'side_effect', 'reminder', 'cycle_event']) {
+  for (const table of ['entry', 'photo', 'milestone', 'lab_result', 'side_effect', 'reminder', 'cycle_event']) {
     const columns = (db.raw.prepare(`PRAGMA table_info(${table})`).all() as Array<{
       name: string;
       notnull: number;
@@ -417,42 +415,6 @@ test('reminder shape: one-off needs epoch_day, EVERY_N_DAYS needs interval and a
   // Neither a recurrence nor a one-off day.
   assert.throws(() =>
     insert("INSERT INTO reminder (uuid, title, type, time, updated_at) VALUES ('r5', 'Nothing', 'other', '20:00', 1000)")
-  );
-});
-
-test('measurement carries no episode reference, and its type is open past the built-in four', async () => {
-  const db = await migratedDb();
-  const columns = (db.raw.prepare('PRAGMA table_info(measurement)').all() as Array<{ name: string }>).map(
-    (c) => c.name
-  );
-  assert.ok(!columns.some((name) => name.includes('episode')), 'measurement must not reference a regimen episode');
-
-  assert.doesNotThrow(() =>
-    db.raw.exec("INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m1', 100, 'waist', 79, 'cm', 1000)")
-  );
-  // The v5 CHECK enumerated four types; v34 drops it, so a custom type's
-  // minted uuid (or, as here, any other key) inserts cleanly.
-  assert.doesNotThrow(() =>
-    db.raw.exec("INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m2', 100, 'thigh', 50, 'cm', 1000)")
-  );
-});
-
-test('measurement_type has the same key NOT NULL / uuid nullable shape gender_dimension has', async () => {
-  const db = await migratedDb();
-  const columns = (db.raw.prepare('PRAGMA table_info(measurement_type)').all() as Array<{
-    name: string;
-    notnull: number;
-  }>).map((c) => ({ name: c.name, notnull: c.notnull }));
-  assert.ok(columns.some((c) => c.name === 'key' && c.notnull === 1), 'key must be NOT NULL');
-  assert.ok(columns.some((c) => c.name === 'uuid' && c.notnull === 0), 'uuid must be nullable');
-
-  assert.doesNotThrow(() =>
-    db.raw.exec("INSERT INTO measurement_type (key, name, is_built_in, updated_at) VALUES ('waist', '', 1, 1000)")
-  );
-  assert.doesNotThrow(() =>
-    db.raw.exec(
-      "INSERT INTO measurement_type (uuid, key, name, is_built_in, updated_at) VALUES ('u1', 'u1', 'Shoulders', 0, 1000)"
-    )
   );
 });
 
@@ -542,19 +504,6 @@ test('a body region outside the 0-100 scale is refused', async () => {
   );
   assert.throws(() =>
     db.raw.exec("INSERT INTO entry_body_region (entry_id, region, value) VALUES (1, 'chest', 101)")
-  );
-});
-
-test('measurement.type is open past the built-in four, with no CHECK to reopen', async () => {
-  const db = await migratedDb();
-
-  // The closed four became a reference-data vocabulary: a key outside them -
-  // including one shaped like a custom type's minted uuid - inserts cleanly,
-  // and what may be there is decided a layer up, by measurement_type.
-  assert.doesNotThrow(() =>
-    db.raw.exec(
-      "INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m2', 19180, 'a1b2c3d4-uuid', 30, 'cm', 1000)"
-    )
   );
 });
 

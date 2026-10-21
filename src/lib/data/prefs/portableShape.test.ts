@@ -97,7 +97,6 @@ describe('a valid archive', () => {
     expect(portablePreferencePatch({ palette: 'polish' })).toEqual({ palette: 'polish', cycleTrackingChoice: null });
     expect(portableValueForKey('moodPreset', 'plum')).toBe('plum');
     expect(portableValueForKey('checkInTime', '07:05')).toBe('07:05');
-    expect(portableValueForKey('measurementUnit', 'in')).toBe('in');
     expect(portableValueForKey('metricKind', 'dimension')).toBe('dimension');
   });
 

@@ -135,11 +135,6 @@ export async function seedCompleteArchiveJournal(
     drawTime: '07:40',
     provider: 'Diagnostyka'
   });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
-  const shoulders = await journal.measurements.addCustomMeasurementType('Shoulders');
-  await journal.measurements.setMeasurementTypeHidden('underbust', true);
-  await journal.measurements.upsertMeasurement({ type: shoulders.key, epochDay: 20000, value: 41, unit: 'cm' });
-  await journal.sizeRecords.upsertRecord({ epochDay: 20000, category: 'pants', size: '32', brand: 'Levi\'s', fitNote: 'true to size' });
   // Its own procedure (audit item 7, schema v83): the taper names which
   // procedure it dilates for rather than carrying a surgery day of its
   // own, and the checklist's own procedure above is `chest_reconstruction`
@@ -196,7 +191,6 @@ export async function seedCompleteArchiveJournal(
      shape for a suspended row. An area with a row saying nothing is not
      among them because there is no such row - a state that says nothing
      keeps no row. */
-  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
   await journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19250);
   await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19300);
   await journal.areaStates.setAreasSuspended(['voiceBenchmarks', 'voicePracticeTakes'], 19310);

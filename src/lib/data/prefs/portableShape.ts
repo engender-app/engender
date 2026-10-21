@@ -43,7 +43,6 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
   checkInTime: (v) => typeof v === 'string' && TIME_SHAPE.test(v),
   checkInAffirmationsEnabled: (v) => typeof v === 'boolean',
   preferredLabUnits: (v) => typeof v === 'object' && v !== null && !Array.isArray(v),
-  measurementUnit: (v) => v === 'cm' || v === 'in',
   journeyAnchorMilestoneId: (v) => v === null || typeof v === 'string',
   hairAnchorEpochDay: (v) => v === null || Number.isFinite(v),
   hrtStartEpochDay: (v) => v === null || Number.isFinite(v),

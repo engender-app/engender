@@ -122,7 +122,6 @@ const SCENES = [
     apart: true,
     narrow: true
   },
-  { key: 'measurements', path: '/body/measurements', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
   { key: 'in-the-room', path: '/health/appointments/in-the-room', targets: '[data-screen-back]', whole: '[data-room-question]', narrow: true },
   { key: 'words', path: '/stats/words', targets: '[data-cloud-word]', narrow: true },
   { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },

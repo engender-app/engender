@@ -18,7 +18,6 @@ import type {
   BuiltInBodyRegionKey,
   BuiltInDimensionKey,
   BuiltInEffectCategoryKey,
-  BuiltInMeasurementTypeKey,
   BuiltInPersonalEffectKey,
   BuiltInTagGroupKey,
   BuiltInTagKey,
@@ -28,7 +27,6 @@ import type {
 import type { CycleEventKind, HairRemovalMethod, ProcedureKind, TryoutKind } from '../types';
 import type { HairScale, NorwoodHamiltonStage, SinclairGrade } from '../hairStageScales';
 import type { HairRemovalAreaKey } from '../hairRemovalAreas';
-import type { GarmentCategoryKey } from '../garmentCategories';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -105,21 +103,9 @@ const MOOD_NAME: Message[] = [m.mood_1, m.mood_2, m.mood_3, m.mood_4, m.mood_5];
 /** The name of a mood, 1 to 5. */
 export const moodName = (value: number): string => MOOD_NAME[value - 1]?.() ?? String(value);
 
-/* A measurement type's four built-ins (phase 4 ticket 08, opened to a
-   custom one in phase 5 ticket 29) - keys only, the same "data lives in
-   builtins.ts, wording lives here" split every other built-in gets. A
-   custom type's name is never looked up here; it is the stored row's own
-   name, the same split GenderDimension's name gets (vocabulary.ts). */
-const MEASUREMENT_TYPE_NAME: Record<BuiltInMeasurementTypeKey, Message> = {
-  waist: m.measurement_type_waist,
-  hips: m.measurement_type_hips,
-  chest: m.measurement_type_chest,
-  underbust: m.measurement_type_underbust
-};
-
 /* The personal-effects catalogue (phase 4 ticket 07, widened well past its
    original eight by phase 5 ticket 41) is a built-in reference-data area
-   now, the same split MEASUREMENT_TYPE_NAME gives: a custom effect's name
+   now: a custom effect's name
    is never looked up here, it is the stored row's own name
    (vocabulary.ts). Never called for a custom effect - falls back to the
    raw key via `lookup` only for a built-in key a newer build seeded that
@@ -203,7 +189,7 @@ const PERSONAL_EFFECT_NAME: Record<BuiltInPersonalEffectKey, Message> = {
 
 /** The five effect categories (phase 5 ticket 41, CONTEXT: "Effect
     category") are a fixed set, not a built-in row, the same reasoning
-    MEASUREMENT_TYPE_NAME gives. */
+    fixed vocabulary requires. */
 const EFFECT_CATEGORY_NAME: Record<BuiltInEffectCategoryKey, Message> = {
   body_shape: m.effect_category_body_shape,
   skin_hair: m.effect_category_skin_hair,
@@ -214,7 +200,7 @@ const EFFECT_CATEGORY_NAME: Record<BuiltInEffectCategoryKey, Message> = {
 
 /* The published Norwood-Hamilton scale's twelve stage labels (phase 4
    ticket 09) are a fixed set, not a built-in row, the same reasoning
-   MEASUREMENT_TYPE_NAME gives - what changes with the language is the
+   fixed vocabulary requires - what changes with the language is the
    surrounding word ("Stage 3a"), not the stage code itself. */
 const NORWOOD_HAMILTON_STAGE_NAME: Record<NorwoodHamiltonStage, Message> = {
   '1': m.hair_stage_1,
@@ -302,7 +288,7 @@ export const severityName = (value: number | null): string | null =>
   value === null ? null : (SEVERITY_NAME[value - 1]?.() ?? String(value));
 
 /* Hair-removal treatment areas (phase 5 ticket 08) are a fixed set, not a
-   built-in row, the same reasoning MEASUREMENT_TYPE_NAME gives - and their
+   built-in row, with their
    own vocabulary, deliberately not BODY_REGION_NAME below. */
 const HAIR_REMOVAL_AREA_NAME: Record<HairRemovalAreaKey, Message> = {
   upper_lip: m.hair_removal_area_upper_lip,
@@ -333,25 +319,6 @@ const HAIR_REMOVAL_METHOD_NAME: Record<HairRemovalMethod, Message> = {
 export const hairRemovalMethodName = (method: string): string =>
   (HAIR_REMOVAL_METHOD_NAME as Record<string, Message | undefined>)[method]?.() ?? m.hair_removal_method_other();
 
-/* Garment categories (phase 5 ticket 23) are a fixed set, not a built-in
-   row, the same reasoning MEASUREMENT_TYPE_NAME gives - and their own
-   vocabulary, since a size record's category is unrelated to any other
-   closed list in the app. */
-const GARMENT_CATEGORY_NAME: Record<GarmentCategoryKey, Message> = {
-  shirts: m.size_log_category_shirts,
-  pants: m.size_log_category_pants,
-  dresses: m.size_log_category_dresses,
-  skirts: m.size_log_category_skirts,
-  bras: m.size_log_category_bras,
-  underwear: m.size_log_category_underwear,
-  shoes: m.size_log_category_shoes,
-  outerwear: m.size_log_category_outerwear
-};
-
-/** The name of a garment category, or the raw key for one an import carries
-    that this build's vocabulary no longer lists. */
-export const garmentCategoryName = (category: string): string => lookup(GARMENT_CATEGORY_NAME, category);
-
 /* A tryout's kind (phase 4 ticket 16, widened by phase 5 ticket 13) is a
    fixed set, not a built-in row, the same reasoning HAIR_REMOVAL_METHOD_NAME
    gives. */
@@ -370,7 +337,7 @@ export const tryoutKindName = (kind: string): string =>
 
 /* A cycle event's three kinds (phase 5 ticket 03, CONTEXT: "Cycle event")
    are a fixed set, not a built-in row, the same reasoning
-   MEASUREMENT_TYPE_NAME gives. */
+   fixed vocabulary requires. */
 const CYCLE_EVENT_KIND_NAME: Record<CycleEventKind, Message> = {
   period_occurred: m.cycle_event_kind_period_occurred,
   spotting: m.cycle_event_kind_spotting,
@@ -593,11 +560,6 @@ export const tagDescription = (key: string): string | null => {
   const message = (TAG_DESCRIPTION as Record<string, Message | undefined>)[key];
   return message ? message() : null;
 };
-/** The name of a built-in measurement type. Never called for a custom
-    one - vocabulary.ts reads a custom's name from its own stored row -
-    but falls back to the key like dimensionName does, for a built-in
-    key a newer build seeded that this one does not know the wording of. */
-export const measurementTypeName = (key: string) => lookup(MEASUREMENT_TYPE_NAME, key);
 /** The name of a built-in personal effect, or the raw key for one a newer
     build seeded that this one does not know the wording of. */
 export const personalEffectName = (key: string): string => lookup(PERSONAL_EFFECT_NAME, key);

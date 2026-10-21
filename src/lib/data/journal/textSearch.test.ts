@@ -412,7 +412,6 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     unit: 'pmol/L',
     note: `lab ${word}`
   });
-  await journal.sizeRecords.upsertRecord({ epochDay: DAY, category: 'shirts', size: 'M', fitNote: `fit ${word}` });
   await journal.taper.upsertSession({ epochDay: DAY, note: `taper ${word}` });
   await journal.wearSessions.upsertSession({
     kind: 'binder',

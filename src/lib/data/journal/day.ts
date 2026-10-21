@@ -63,11 +63,9 @@ import type {
   HairStage,
   JournalDocument,
   LabResult,
-  Measurement,
   Milestone,
   PersonalEffect,
   SideEffect,
-  SizeRecord,
   TallyEvent,
   TaperSession,
   VoiceBenchmark,
@@ -83,12 +81,10 @@ import type { FeltSenseArea, FeltSenseOnDay } from './feltSense';
 import type { HairProgressArea, HairPhoto } from './hairProgress';
 import type { HairRemovalArea } from './hairRemoval';
 import type { LabsArea } from './labs';
-import type { MeasurementsArea } from './measurements';
 import type { MilestonesArea } from './milestones';
 import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea, ProcedureDayRecord } from './procedures';
 import type { SideEffectsArea } from './sideEffects';
-import type { SizeRecordsArea } from './sizeRecords';
 import type { TaperArea } from './taper';
 import type { TallyArea } from './tally';
 import type { TryoutsArea, TryoutPhotoOnDay } from './tryouts';
@@ -106,8 +102,6 @@ export interface DayRecords {
   doses: DoseEvent[];
   labResults: LabResult[];
   voiceBenchmarks: VoiceBenchmark[];
-  measurements: Measurement[];
-  sizeRecords: SizeRecord[];
   taperSessions: TaperSession[];
   sideEffects: SideEffect[];
   personalEffects: PersonalEffect[];
@@ -136,8 +130,6 @@ interface DayAreas {
   doses: DosesArea;
   labs: LabsArea;
   voiceBenchmarks: VoiceBenchmarksArea;
-  measurements: MeasurementsArea;
-  sizeRecords: SizeRecordsArea;
   taper: TaperArea;
   sideEffects: SideEffectsArea;
   personalEffects: PersonalEffectsArea;
@@ -223,18 +215,6 @@ const SECTIONS = [
     covers: ['voiceBenchmarks'],
     tables: ['voiceBenchmark'],
     read: ({ voiceBenchmarks, epochDay }) => voiceBenchmarks.getBenchmarksOnDay(epochDay)
-  }),
-  section({
-    key: 'measurements',
-    covers: ['measurements'],
-    tables: ['measurement'],
-    read: ({ measurements, epochDay }) => measurements.getMeasurementsInRange(epochDay, epochDay)
-  }),
-  section({
-    key: 'sizeRecords',
-    covers: ['sizeRecords'],
-    tables: ['sizeRecord'],
-    read: ({ sizeRecords, epochDay }) => sizeRecords.getRecordsOnDay(epochDay)
   }),
   section({
     key: 'taperSessions',
@@ -386,7 +366,6 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   bodyRegions: 'reference data',
   presentations: 'reference data',
   entryTemplates: 'reference data',
-  measurementTypes: 'reference data',
   effectCategories: 'reference data',
   personalEffectTypes: 'reference data',
 

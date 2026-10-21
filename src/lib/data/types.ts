@@ -334,49 +334,6 @@ export interface LabResult {
   timing: LabTiming | null;
 }
 
-/* No episode reference (ticket 08 scope): a measurement stands alone and
-   has to work whether or not a regimen episode exists. `type` names a
-   MeasurementType by key - a built-in's stable key or a custom's minted
-   uuid (phase 5 ticket 29) - rather than a closed union: the CHECK that
-   once enforced the closed set lives in application code now, the same
-   free-text-but-matched-by-key treatment tag.label's group reference
-   never needed either, because nothing here resolves it to a rowid. */
-export interface Measurement {
-  id: string;
-  type: string;
-  epochDay: number;
-  value: number;
-  unit: string;
-}
-
-/* A measurement type (phase 5 ticket 29): user-supplied name, created from
-   the measurements screen, minted with a uuid that doubles as its key -
-   exactly addCustomDimension's pattern (dimensions.ts). Hides rather than
-   deletes, like a gender dimension or a tag (CONTEXT: "Hidden"): every
-   measurement logged against it survives a hide. `name` is '' for a
-   built-in - its wording is looked up at display time (vocabulary.ts),
-   the same split GenderDimension's name gets. */
-export interface MeasurementType {
-  key: string;
-  name: string;
-  builtIn: boolean;
-  hidden: boolean;
-}
-
-/* No episode reference either, the same reason Measurement has none: what
-   was bought and how it fit stands alone (phase 5 ticket 23). `category` is
-   loosened to string here the way HairRemovalSession['area'] is - the
-   closed vocabulary lives in garmentCategories.ts and its CHECK, not in
-   this type. */
-export interface SizeRecord {
-  id: string;
-  epochDay: number;
-  category: string;
-  size: string;
-  brand: string;
-  fitNote: string;
-}
-
 /** The two counters ticket 10 tracks. Fixed rather than user-defined, so it
     is a plain union rather than a keyed reference-data row. */
 export type TallyKind = (typeof TALLY_KINDS)[number];

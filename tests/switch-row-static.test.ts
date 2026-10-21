@@ -15,7 +15,7 @@
    change, is in tests/browser-tier/run.mjs. */
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 /** The end of an opening tag, skipping `>` inside `{...}` expressions. */
@@ -62,16 +62,15 @@ function listRows(file: string, source: string): Row[] {
 function svelteFiles(): string[] {
   return execFileSync('git', ['ls-files', 'src', 'tests'], { encoding: 'utf8' })
     .split('\n')
-    .filter((f) => f.endsWith('.svelte'));
+    .filter((f) => f.endsWith('.svelte') && existsSync(f));
 }
 
 describe('a ListRow holding a switch', () => {
   it('finds the rows it is about, so an empty scan cannot pass', () => {
     const holding = svelteFiles().flatMap((f) => listRows(f, readFileSync(f, 'utf8'))).filter((r) => r.holdsSwitch);
-    /* The disguise step, Settings' security row, the journal book's parts,
-       the care curve's fit and Today's editor still write these rows. A
-       lower count means the parser stopped seeing them. */
-    expect(holding.length).toBeGreaterThanOrEqual(7);
+    /* Disguise, Settings and Today still write these rows. A lower count
+       means the parser stopped seeing them. */
+    expect(holding.length).toBeGreaterThanOrEqual(6);
   });
 
   it('is static everywhere, so the switch is the row\'s only control', () => {

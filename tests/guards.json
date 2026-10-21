@@ -207,14 +207,6 @@
     ]
   },
   {
-    "name": "measurements-sizes-jump-check",
-    "tier": "dev",
-    "holds": "the Measurements/Sizes jump moves focus and keeps an open editor's input",
-    "diagnostics": [
-      ".claude/measurements-jump-shots/*"
-    ]
-  },
-  {
     "name": "roadmap-tick-motion-check",
     "tier": "dev",
     "holds": "ticking a roadmap step animates the box's fill, the tick and the strike rather than cutting them in"
@@ -286,11 +278,6 @@
     "name": "lab-entry-check",
     "tier": "dev",
     "holds": "lab result field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish"
-  },
-  {
-    "name": "measurements-entry-check",
-    "tier": "dev",
-    "holds": "measurement field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish"
   },
   {
     "name": "wear-entry-check",

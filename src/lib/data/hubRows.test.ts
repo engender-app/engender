@@ -197,7 +197,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('thirteen rows can report a reading and seven never can', () => {
+test('twelve rows can report a reading and six never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
@@ -214,7 +214,7 @@ test('thirteen rows can report a reading and seven never can', () => {
   // way. Six since phase 11 ticket 17 folded `voice` - also 'written' -
   // into `voice-benchmark`'s own Recordings tab rather than giving it a
   // row of its own.
-  assert.equal(reads.length, 13);
+  assert.equal(reads.length, 12);
   assert.equal(HUB_ROWS.length - reads.length, 6);
 });
 
@@ -238,11 +238,11 @@ test('a row whose areas have never been written to says what is behind it', () =
   /* Not nothing, and not "nothing yet": the spec's user story 13 wants each
      row to tell the person what is behind it, so a reading row with an empty
      area falls back to the same line a row that never reads shows. */
-  assert.deepEqual(rowLine(spec('measurements'), reading()), { kind: 'not-yet' });
+  assert.deepEqual(rowLine(spec('hair-progress'), reading()), { kind: 'not-yet' });
 });
 
 test('a row that was written to recently says when', () => {
-  assert.deepEqual(rowLine(spec('measurements'), reading({ lastWrites: { measurements: TODAY - 3 } })), {
+  assert.deepEqual(rowLine(spec('hair-progress'), reading({ lastWrites: { hairStages: TODAY - 3 } })), {
     kind: 'last',
     epochDay: TODAY - 3,
     daysAgo: 3
@@ -356,8 +356,8 @@ test('a row only reads the areas it fronts, and asks for nothing else', () => {
     has: () => true
   });
 
-  rowLine(spec('measurements'), reading({ lastWrites: watched }));
-  assert.deepEqual(asked, ['measurements', 'sizeRecords']);
+  rowLine(spec('hair-progress'), reading({ lastWrites: watched }));
+  assert.deepEqual(asked, ['hairStages', 'hairPhotos']);
 
   asked.length = 0;
   rowLine(spec('care'), reading({ lastWrites: watched }));
@@ -369,7 +369,7 @@ test('a row that can never read states what is behind it whatever the journal ho
      still cannot report a recency: a letter is sealed until its unlock day, so
      the registry has no entry for it - which is also why `lastWrites` cannot
      be handed a `letters` key to try it with. A full read changes nothing. */
-  const everything = reading({ lastWrites: { measurements: TODAY - 1, sizeRecords: TODAY - 1 } });
+  const everything = reading({ lastWrites: { hairStages: TODAY - 1, hairPhotos: TODAY - 1 } });
 
   assert.deepEqual(rowReads(spec('letters')), []);
   assert.deepEqual(rowLine(spec('letters'), everything), { kind: 'no-stream' });
@@ -430,18 +430,6 @@ test('a running span is drawn as it arrives, whatever was last written', () => {
   });
 });
 
-test('the measurements row states its last value rather than the age of it', () => {
-  const line = rowLine(
-    spec('measurements'),
-    reading({
-      lastWrites: { measurements: TODAY - 8 },
-      forward: { measurements: { kind: 'value', epochDay: TODAY - 8, type: 'waist', value: 77, unit: 'cm' } }
-    })
-  );
-
-  assert.deepEqual(line, { kind: 'value', epochDay: TODAY - 8, type: 'waist', value: 77, unit: 'cm' });
-});
-
 /* A row the person has said is over does not announce what is next in it:
    the statement they made about the practice outranks anything still dated
    inside it. */
@@ -464,9 +452,9 @@ test('finished and suspended still win over a forward fact', () => {
    carry a forward fact at all, and the other thirteen read exactly as they
    did before this ticket. */
 test('with nothing forward, every row falls through to the reading it had', () => {
-  const empty = reading({ lastWrites: { measurements: TODAY - 3 } });
+  const empty = reading({ lastWrites: { hairStages: TODAY - 3 } });
 
-  assert.deepEqual(rowLine(spec('measurements'), empty), { kind: 'last', epochDay: TODAY - 3, daysAgo: 3 });
+  assert.deepEqual(rowLine(spec('hair-progress'), empty), { kind: 'last', epochDay: TODAY - 3, daysAgo: 3 });
   assert.deepEqual(rowLine(spec('care'), empty), { kind: 'no-stream' });
   assert.deepEqual(rowLine(spec('milestones'), empty), { kind: 'not-yet' });
 });
@@ -477,7 +465,7 @@ test('with nothing forward, every row falls through to the reading it had', () =
    not silently empty, which a vacuous type assertion would also satisfy. */
 test('every row the forward registry answers for is a row on the hub', () => {
   const rows = new Set(HUB_ROWS.map((row) => row.key as string));
-  assert.equal(ROW_FORWARD_KEYS.length, 8);
+  assert.equal(ROW_FORWARD_KEYS.length, 7);
   for (const key of ROW_FORWARD_KEYS) assert.equal(rows.has(key), true, `${key} is not a hub row`);
 });
 
@@ -571,7 +559,7 @@ test('a row fronting two sections goes only when both are hidden', () => {
 });
 
 test('a row that fronts no area is a screen, and nothing hides it', () => {
-  assert.equal(rowHidden(spec('care'), { measurements: hidden, sizeRecords: hidden }), false);
+  assert.equal(rowHidden(spec('care'), { hairStages: hidden, hairPhotos: hidden }), false);
 });
 
 test('nothing in the area record can hide the cycle row (ADR-0043)', () => {
@@ -729,7 +717,7 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
 
   // `body` is gone and its one row opens Health (audit item 10).
   assert.deepEqual(group('body'), []);
-  assert.deepEqual(group('health'), ['measurements', 'care', 'surgery', 'appointments']);
+  assert.deepEqual(group('health'), ['care', 'surgery', 'appointments']);
   assert.deepEqual(group('transition'), [
     'milestones',
     'tryouts',
@@ -749,7 +737,7 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
    made-up title per key here, so these tests hold the matching rule and not
    the catalogue. */
 const TITLES: Record<string, string> = {
-  measurements: 'Body measurements',
+  'hair-progress': 'Hair progress',
   'hair-removal': 'Usuwanie włosów',
   wear: 'Wear log',
   photos: 'Progress photos',
@@ -763,11 +751,11 @@ test('an empty query matches nothing, since the grouped list is what an empty bo
 });
 
 test('a query matches an area by part of its name, whatever the case', () => {
-  const rows = hubRowsMatching(reading(), 'MEASURE', titleOf);
+  const rows = hubRowsMatching(reading(), 'HAIR PROGRESS', titleOf);
 
   assert.deepEqual(
     rows.map((row) => row.spec.key),
-    ['measurements']
+    ['hair-progress']
   );
 });
 
@@ -808,12 +796,10 @@ test('a match that has not ended names the group it belongs to', () => {
 });
 
 test('a hidden area cannot be searched up, hub row or hosted', () => {
-  /* Measurements fronts two sections since redesign ticket 61, and a row
-     goes only when every one of them is hidden - so hiding one half leaves
-     the row searchable, which is the same rule `rowHidden` states above. */
-  assert.equal(hubRowsMatching(reading({ states: { measurements: hidden } }), 'measure', titleOf).length, 1);
+  /* Hair progress fronts two sections. Hiding one keeps its row searchable. */
+  assert.equal(hubRowsMatching(reading({ states: { hairStages: hidden } }), 'hair progress', titleOf).length, 1);
   assert.deepEqual(
-    hubRowsMatching(reading({ states: { measurements: hidden, sizeRecords: hidden } }), 'measure', titleOf),
+    hubRowsMatching(reading({ states: { hairStages: hidden, hairPhotos: hidden } }), 'hair progress', titleOf),
     []
   );
   assert.deepEqual(hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf), []);
@@ -845,10 +831,10 @@ test('the hub rows come first and the hosted ones after, so a match list reads a
   const rows = hubRowsMatching(reading(), 'e', titleOf);
   const keys = rows.map((row) => row.spec.key);
 
-  assert.ok(keys.includes('measurements'), 'a hub row is missing');
+  assert.ok(keys.includes('care'), 'a hub row is missing');
   assert.ok(keys.includes('effects'), 'a hosted row is missing');
   assert.ok(
-    keys.indexOf('measurements') < keys.indexOf('effects'),
+    keys.indexOf('care') < keys.indexOf('effects'),
     'the hosted rows are not last'
   );
 });

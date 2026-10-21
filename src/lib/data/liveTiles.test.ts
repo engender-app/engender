@@ -11,7 +11,6 @@ import type {
 import {
   shouldShowActiveTryoutTile,
   shouldShowHairRemovalRecovery,
-  shouldShowMeasurementsNudge,
   shouldShowPatchScheduleTile,
   shouldShowPauseActiveBanner,
   shouldShowVoiceBenchmarkNudge
@@ -370,41 +369,4 @@ describe('liveTiles trigger predicates', () => {
     });
   });
 
-  describe('shouldShowMeasurementsNudge', () => {
-    it('triggers when count >= 1 and gap >= 30 days', () => {
-      const result = shouldShowMeasurementsNudge({
-        measurementsCount: 3,
-        latestMeasurementEpochDay: today - 30,
-        todayEpochDay: today,
-        enabled: true,
-        snoozed: false
-      });
-      expect(result).not.toBeNull();
-      expect(result?.daysSince).toBe(30);
-    });
-
-    it('suppresses when count is 0', () => {
-      expect(
-        shouldShowMeasurementsNudge({
-          measurementsCount: 0,
-          latestMeasurementEpochDay: null,
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: false
-        })
-      ).toBeNull();
-    });
-
-    it('suppresses when gap < 30 days', () => {
-      expect(
-        shouldShowMeasurementsNudge({
-          measurementsCount: 2,
-          latestMeasurementEpochDay: today - 29,
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: false
-        })
-      ).toBeNull();
-    });
-  });
 });

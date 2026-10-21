@@ -40,14 +40,13 @@ import type { PreferenceValues } from './prefs/catalogue';
 
     It is the one central guess in this module, and it is confined to a
     person who has not answered. Three rows: the transition's dated points,
-    medication, and what is being tried out. Measurements is available in
-    setup, but starts off because it can be triggering.
+    medication, and what is being tried out.
 
     Typed `readonly HubRowKey[]` rather than left as strings so a row renamed
     out from under it is a compile error rather than rows that quietly
     resolve to nothing. */
 export const DEFAULT_ONBOARDING_AREAS = ['care', 'milestones', 'tryouts'] as const satisfies readonly HubRowKey[];
-const LEGACY_UNANSWERED_AREAS = ['measurements', ...DEFAULT_ONBOARDING_AREAS] as const satisfies readonly HubRowKey[];
+const LEGACY_UNANSWERED_AREAS = DEFAULT_ONBOARDING_AREAS;
 
 /** What the person has stored about their front page.
 

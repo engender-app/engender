@@ -52,8 +52,6 @@ async function fillDay(journal: Journal, epochDay = DAY): Promise<void> {
     f2Hz: null,
     snrDb: null
   });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay, value: 78, unit: 'cm' });
-  await journal.sizeRecords.upsertRecord({ epochDay, category: 'bras', size: '70B' });
   await journal.taper.upsertSession({ epochDay });
   await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay });
   await journal.personalEffects.upsertMarker({ effect: 'skin_softening', firstNoticedEpochDay: epochDay });
@@ -234,14 +232,14 @@ test('a maximal day costs one pass per area, not one per row', async () => {
     sparse,
     `a busy day cost ${busy} queries against a sparse day's ${sparse}: something reads per row`
   );
-  /* 28 for 20 sections as this lands: entries hydrate their dimension
+  /* 26 for 18 sections as this lands: entries hydrate their dimension
      values, tags, body regions, photos, recordings and video notes,
      milestones read their photos, and procedures asks for consults and
      recovery photos separately. Held as a number rather than derived so
      that a section quietly gaining a query has to come back here and say
-     so. Documents is the twentieth and costs the one query a flat area
+     so. Documents is the eighteenth and costs the one query a flat area
      costs (phase 8 features ticket 52). */
-  assert.equal(busy, 28, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
+  assert.equal(busy, 26, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
 });
 
 test('a test may register a section of its own and read it back through the same path', async () => {
@@ -260,8 +258,6 @@ test('a test may register a section of its own and read it back through the same
       doses: journal.doses,
       labs: journal.labs,
       voiceBenchmarks: journal.voiceBenchmarks,
-      measurements: journal.measurements,
-      sizeRecords: journal.sizeRecords,
       taper: journal.taper,
       sideEffects: journal.sideEffects,
       personalEffects: journal.personalEffects,

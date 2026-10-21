@@ -75,7 +75,6 @@ export type UnpromptedKind =
   | 'voice-benchmark-nudge'
   | 'pause-active-banner'
   | 'hair-removal-recovery'
-  | 'measurements-nudge'
   | 'appointment-today'
   | 'wrapped'
   | 'on-this-day'
@@ -235,12 +234,6 @@ const ROWS = [
     area: 'hairRemovalSessions',
     title: () => m.tile_hair_removal_title(),
     surface: { subtitle: () => m.tile_hair_removal_sub(), prefKey: 'hairRemovalRecoveryEnabled' }
-  },
-  {
-    key: 'measurements-nudge',
-    area: 'measurements',
-    title: () => m.tile_measurements_title(),
-    surface: { subtitle: () => m.tile_measurements_sub(), prefKey: 'measurementsNudgeEnabled' }
   },
   {
     key: 'appointment-today',

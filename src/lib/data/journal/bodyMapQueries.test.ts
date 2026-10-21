@@ -1,5 +1,5 @@
 /* Somatic breakdown per body region queries (phase 5 deepening ticket 08).
-   Combines feelings trajectory, linked measurements, progress photos, and
+   Combines feelings trajectory, progress photos, and
    hair removal / staging records for an anatomical region. */
 
 import { test } from 'vitest';
@@ -7,7 +7,6 @@ import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './test-support.ts';
 import {
   getRegionSomaticBreakdown,
-  linkedMeasurementTypesForRegion,
   linkedHairRemovalAreasForRegion
 } from './bodyMapQueries.ts';
 
@@ -17,8 +16,6 @@ const photoShot = (full: string, thumb: string) => ({
 });
 
 test('linked mappings resolve correctly for built-in body regions', () => {
-  assert.deepEqual(linkedMeasurementTypesForRegion('chest'), ['chest', 'underbust']);
-  assert.deepEqual(linkedMeasurementTypesForRegion('hips_waist'), ['waist', 'hips']);
   assert.ok(linkedHairRemovalAreasForRegion('face_jaw').includes('chin'));
   assert.ok(linkedHairRemovalAreasForRegion('face_jaw').includes('upper_lip'));
   assert.ok(linkedHairRemovalAreasForRegion('chest').includes('chest'));
@@ -31,7 +28,6 @@ test('empty somatic breakdown when nothing is logged for a region', async () => 
   assert.equal(breakdown.region, 'chest');
   assert.equal(breakdown.isEmpty, true);
   assert.deepEqual(breakdown.trajectory, []);
-  assert.deepEqual(breakdown.measurements, []);
   assert.deepEqual(breakdown.photos, []);
   assert.deepEqual(breakdown.hairRemovalSessions, []);
   assert.deepEqual(breakdown.hairStages, []);
@@ -75,38 +71,6 @@ test('feelings trajectory aggregates for a region and excludes trashed entries',
   assert.equal(breakdown.averageEuphoria, 30);
   assert.equal(breakdown.latestDysphoria, 60);
   assert.equal(breakdown.latestEuphoria, 30);
-});
-
-test('linked measurements filter by region mapping', async () => {
-  const { journal, db } = await journalWithBuiltIns();
-
-  await journal.measurements.upsertMeasurement({
-    epochDay: 100,
-    type: 'chest',
-    value: 95,
-    unit: 'cm'
-  });
-  await journal.measurements.upsertMeasurement({
-    epochDay: 102,
-    type: 'underbust',
-    value: 80,
-    unit: 'cm'
-  });
-  await journal.measurements.upsertMeasurement({
-    epochDay: 104,
-    type: 'waist',
-    value: 70,
-    unit: 'cm'
-  });
-
-  const chestBreakdown = await getRegionSomaticBreakdown(db, 'chest');
-  assert.equal(chestBreakdown.measurements.length, 2);
-  assert.equal(chestBreakdown.measurements[0].type, 'underbust');
-  assert.equal(chestBreakdown.measurements[1].type, 'chest');
-
-  const hipsBreakdown = await getRegionSomaticBreakdown(db, 'hips_waist');
-  assert.equal(hipsBreakdown.measurements.length, 1);
-  assert.equal(hipsBreakdown.measurements[0].type, 'waist');
 });
 
 test('progress photos filter by region and exclude trashed entries', async () => {

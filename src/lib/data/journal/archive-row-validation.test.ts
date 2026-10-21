@@ -95,7 +95,6 @@ for (const mode of ['merge', 'replace'] as const) {
       (j) => { j.affirmations[0].hidden = 'false' as unknown as boolean; },
       (j) => { j.entries[0].timestamp = 2 ** 53; },
       (j) => { j.entries[0].timestamp = Infinity; },
-      (j) => { j.measurements[0].value = '4' as unknown as number; },
       (j) => { j.entries[0].dims = { femininity: 2 ** 53 }; },
       (j) => { j.entries[0].photos[0].id = null as unknown as string; },
       (j) => { j.checklists[0].items[0].id = ''; },
@@ -130,7 +129,6 @@ for (const mode of ['merge', 'replace'] as const) {
 
   test(`${mode} refuses constrained values before storage access`, async () => {
     const mutations: ((journal: ArchiveJournal) => void)[] = [
-      (j) => { j.sizeRecords[0].category = 'missing' as never; },
       (j) => { j.personalEffectTypes[0].direction = 'sideways' as never; },
       (j) => { j.documents[0].targetKind = 'missing' as never; },
       (j) => { j.hairRemovalSessions[0].area = 'missing' as never; },

@@ -96,7 +96,7 @@ describe('auto-export scheduler', () => {
       lastFailureAt: null,
       lastFailureReason: null
     });
-    snapshot.mockResolvedValue({ journal: { entries: [], dimensions: [], presets: [], tagGroups: [], milestones: [], labResults: [], measurements: [], sideEffects: [], reminders: [] }, files: [], readFile: async () => new Uint8Array() });
+    snapshot.mockResolvedValue({ journal: { entries: [], dimensions: [], presets: [], tagGroups: [], milestones: [], labResults: [], sideEffects: [], reminders: [] }, files: [], readFile: async () => new Uint8Array() });
     runAndroidAutoExport.mockResolvedValue({ outcome: 'ok', writtenAt: 10 });
     prefs.lastBackupAt = null;
     prefs.backupNoticeDismissed = true;

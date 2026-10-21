@@ -8,13 +8,11 @@
 
    Phase 5 ticket 41 widens the effect a marker names from a closed
    eight-key union to `personal_effect_type`, an open reference-data
-   vocabulary - the same move measurements.ts made for `measurement_type`
-   (phase 5 ticket 29), and this file bundles the two concerns the same
-   way that one does: marker values above, the vocabulary the `effect`
-   column is matched against below. Nothing here validates a marker's
+   vocabulary. This file bundles marker values with the vocabulary the
+   `effect` column is matched against. Nothing here validates a marker's
    `effect` against that vocabulary - the same free-text-but-matched-by-key
-   treatment measurement.type gets after v34 - so a marker logged under a
-   type since hidden still round-trips exactly as logged; only the picker
+   treatment, so a marker logged under a type since hidden still
+   round-trips exactly as logged; only the picker
    stops offering it. */
 
 import type { SqliteDriver } from '../sqlite/driver';
@@ -50,8 +48,7 @@ export interface PersonalEffectsArea {
       included - what the settings screen manages. Built-in first
       (insertion order), then customs in the order they were added. */
   getEffectTypes(): Promise<PersonalEffectCatalogEntry[]>;
-  /** The minted uuid doubles as the key, exactly
-      addCustomMeasurementType's pattern (measurements.ts). `categoryKey`
+  /** The minted uuid doubles as the key. `categoryKey`
       is optional - a custom effect may be left uncategorised. */
   addCustomEffectType(name: string, categoryKey?: string | null): Promise<PersonalEffectCatalogEntry>;
   /** Built-in and custom alike hide, never delete (CONTEXT: "Hidden") -

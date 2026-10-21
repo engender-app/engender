@@ -22,8 +22,6 @@ async function populated() {
   const tag = await journal.tags.addTag(group.key, 'endo');
   await journal.tags.setTagHidden('a-work', true);
   await journal.tags.renameTag('a-therapy', 'therapy session');
-  const measurementType = await journal.measurements.addCustomMeasurementType('Shoulders');
-  await journal.measurements.setMeasurementTypeHidden('hips', true);
 
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
@@ -50,7 +48,6 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
-  const measurement = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
   const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
   const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   const cycleEvent = await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
@@ -162,8 +159,6 @@ async function populated() {
     milestone,
     milestonePhoto,
     lab,
-    measurement,
-    measurementType,
     tally,
     contextLab,
     reminder,
@@ -248,20 +243,6 @@ test('built-in rows travel by key and custom rows by uuid (ADR-0002)', async () 
   assert.deepEqual(appointments.tags, [{ id: tag.id, label: 'endo', builtIn: false, hidden: false }]);
 });
 
-test('a custom measurement type travels by uuid and a hidden built-in travels hidden (phase 5 ticket 29)', async () => {
-  const { journal, measurementType } = await populated();
-
-  const snapshot = await journal.archive.snapshot();
-
-  const waist = snapshot.journal.measurementTypes.find((t) => t.key === 'waist')!;
-  assert.equal(waist.builtIn, true);
-  assert.equal(waist.hidden, false);
-  const hips = snapshot.journal.measurementTypes.find((t) => t.key === 'hips')!;
-  assert.equal(hips.hidden, true);
-  const custom = snapshot.journal.measurementTypes.find((t) => t.key === measurementType.key)!;
-  assert.deepEqual(custom, { key: measurementType.key, name: 'Shoulders', builtIn: false, hidden: false });
-});
-
 test('the state a user put on a built-in row travels with it', async () => {
   const { journal } = await populated();
 
@@ -273,14 +254,13 @@ test('the state a user put on a built-in row travels with it', async () => {
   assert.equal(activities.tags.find((t) => t.id === 'a-therapy')!.label, 'therapy session');
 });
 
-test('milestones, lab results, measurements, tally events, side effects, cycle events, journaling pauses, reminders and regimen episodes travel whole', async () => {
+test('milestones, lab results, tally events, side effects, cycle events, journaling pauses, reminders and regimen episodes travel whole', async () => {
   const {
     journal,
     milestone,
     milestonePhoto,
     lab,
     contextLab,
-    measurement,
     tally,
     sideEffect,
     cycleEvent,
@@ -335,9 +315,6 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       timingHours: null,
       timingDayOfInterval: null
     }
-  ]);
-  assert.deepEqual(snapshot.journal.measurements, [
-    { id: measurement, type: 'waist', epochDay: 20000, value: 79, unit: 'cm' }
   ]);
   assert.deepEqual(snapshot.journal.tallyEvents, [{ id: tally, epochDay: 20000, kind: 'misgendered' }]);
   assert.deepEqual(snapshot.journal.sideEffects, [
@@ -719,7 +696,7 @@ test('a photo row whose file is gone keeps its row and leaves the manifest alone
    would survive a boolean round trip that silently dropped the day. */
 test('an area\'s hidden, finished and suspended state travels, and a restore keeps the days it names', async () => {
   const { journal } = await populated();
-  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
+  await journal.areaStates.setAreasHidden(['wearSessions'], true);
   await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19300);
   await journal.areaStates.setAreasSuspended(['voiceBenchmarks'], 19310);
 
@@ -728,8 +705,8 @@ test('an area\'s hidden, finished and suspended state travels, and a restore kee
   assert.deepEqual(snapshot.journal.areaStates, [
     { area: 'hairPhotos', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
     { area: 'hairStages', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
-    { area: 'sizeRecords', hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
-    { area: 'voiceBenchmarks', hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 }
+    { area: 'voiceBenchmarks', hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 },
+    { area: 'wearSessions', hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
   ]);
 
   const target = openJournal(await migratedDb(), fakeFileStore());
@@ -741,7 +718,7 @@ test('an area\'s hidden, finished and suspended state travels, and a restore kee
   assert.deepEqual(await target.areaStates.getAreaStates(), {
     hairPhotos: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
     hairStages: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
-    sizeRecords: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
+    wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
     voiceBenchmarks: { hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 }
   });
 });
@@ -933,7 +910,6 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // Same update branch as gender_dimension.
   body_region: ['uuid', 'key', 'name', 'hidden'],
   // Same update branch as gender_dimension.
-  measurement_type: ['uuid', 'key', 'name', 'is_built_in', 'hidden'],
   // episode_id travels as the episode's uuid, the way preset_dimension's
   // rowids travel as keys (ADR-0002). Its own rowid is resolved against
   // regimenEpisodes, and dose_schedule_weekday/dose_schedule_dose_amount

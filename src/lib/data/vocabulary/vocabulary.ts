@@ -23,7 +23,6 @@ import type {
   EffectCategory,
   EntryTemplate,
   GenderDimension,
-  MeasurementType,
   Milestone,
   MilestoneTemplate,
   PersonalEffectCatalogEntry,
@@ -42,7 +41,6 @@ import {
   effectCategoryName,
   entryTemplateName,
   entryTemplateNoteScaffold,
-  measurementTypeName,
   milestoneTemplateName,
   moodName,
   personalEffectName,
@@ -74,10 +72,6 @@ function localizeTag(t: Tag): Tag {
 
 function localizeGroup(g: TagGroup): TagGroup {
   return { ...g, name: g.builtIn ? tagGroupName(g.key) : g.name, tags: g.tags.map(localizeTag) };
-}
-
-function localizeMeasurementType(t: MeasurementType): MeasurementType {
-  return t.builtIn ? { ...t, name: measurementTypeName(t.key) } : t;
 }
 
 function localizeEffectCategory(c: EffectCategory): EffectCategory {
@@ -181,25 +175,6 @@ export const vocabulary = {
       sees - which is what search matches typed text against (ADR-0005). */
   get tags(): Tag[] {
     return reference.tags.map(localizeTag);
-  },
-  /** Every measurement type, built-in and custom, hidden ones included -
-      what the measurements settings screen manages (phase 5 ticket 29). */
-  get measurementTypes(): MeasurementType[] {
-    return reference.measurementTypes.map(localizeMeasurementType);
-  },
-  /** What the type picker on the measurements screen offers - hiding a
-      type removes it from here without touching what it has logged
-      (CONTEXT: "Hidden"), the same "not hidden" filter `visibleDimensions`
-      already applies. */
-  get visibleMeasurementTypes(): MeasurementType[] {
-    return this.measurementTypes.filter((t) => !t.hidden);
-  },
-  /** What a measurement type is called, hidden or not - a chart or a row
-      for a type since hidden still needs its name. Falls back to the key
-      itself for a type this install has never heard of, the same
-      defensive fallback every `lookup` in labels.ts gives a key. */
-  measurementTypeName(key: string): string {
-    return this.measurementTypes.find((t) => t.key === key)?.name ?? key;
   },
   /** All five (or six) effect categories, in seed order, in the wording the
       current language gives them (phase 5 ticket 41, CONTEXT: "Effect

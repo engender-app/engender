@@ -69,7 +69,6 @@ function recordingAreas(held: Held = {}) {
         }));
       }
     },
-    measurements: { latestMeasurement: note('measurements', null) }
   } as unknown as RowForwardAreas;
 
   return { areas, asked, doseSlotCalls, sealPages };
@@ -84,14 +83,13 @@ test('every area is asked once, through its own method', async () => {
     'appointments',
     'doses',
     'letters',
-    'measurements',
     'milestones',
     'procedures',
     'stock',
     'tryouts',
     'wearSessions'
   ]);
-  assert.equal(asked.length, 9, 'nine reads, none of them twice');
+  assert.equal(asked.length, 8, 'eight reads, none of them twice');
 });
 
 /* The Care screen behind the row draws its rail over exactly this window, so

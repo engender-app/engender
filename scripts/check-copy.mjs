@@ -53,7 +53,7 @@
    catalogues, which rewrites the record. `--fix` rewrites a catalogue that
    is out of serializer order (scripts/catalogue.mjs) in place. */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'svelte/compiler';
@@ -229,7 +229,7 @@ export function collectReferenceSites(files) {
  * @param {string} root @returns {string[]} */
 export function copySourceFiles(root = process.cwd()) {
   return execFileSync('git', ['ls-files', '-z', 'src'], { cwd: root, encoding: 'utf8' })
-    .split('\0').filter((file) => /\.(svelte|ts|js)$/.test(file)).map((file) => resolve(root, file));
+    .split('\0').filter((file) => /\.(svelte|ts|js)$/.test(file)).map((file) => resolve(root, file)).filter(existsSync);
 }
 
 /**

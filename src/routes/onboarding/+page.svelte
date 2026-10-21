@@ -58,7 +58,6 @@
     stepBefore,
     stepIndex,
     sunGrowth,
-    measurementsHiddenOnSetup,
     type OnboardingStep
   } from '$lib/onboarding/steps';
   import type { PickedArchive } from '$lib/data/archive/pick';
@@ -75,9 +74,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { DEFAULT_ONBOARDING_AREAS } from '$lib/data/pinnedRows';
-  import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { areasHidden } from '$lib/data/areaState';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
@@ -150,17 +147,10 @@
      whatever it answered last time, not the app's own default. */
   let areas = $state<string[] | null>(null);
   let tickedAreas = $derived(areas ?? prefs.onboardingAreas ?? (DEFAULT_ONBOARDING_AREAS as readonly string[]));
-  let measurementsChoice = $state<boolean | null>(null);
   let genitalEffectsChoice = $state<boolean | null>(null);
   let cycleChoice = $state<boolean | null>(null);
   let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
   let cycleShown = $derived(cycleChoice ?? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
-  let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
-  let measurementsShown = $derived(
-    measurementsChoice ?? (prefs.onboarded && measurementStates.value !== undefined
-      ? !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
-      : false)
-  );
   let genitalEffectsShown = $derived(
     genitalEffectsChoice ?? vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
   );
@@ -483,7 +473,6 @@
   function beginRestore() {
     restoring = true;
     areas = null;
-    measurementsChoice = null;
     genitalEffectsChoice = null;
     cycleChoice = null;
     archiveError = '';
@@ -567,8 +556,7 @@
     else if (step === 'flag') prefs.palette = paletteOnEntry;
     else if (step === 'scales') scales = null;
     else if (step === 'features') {
-      measurementsChoice = null;
-      genitalEffectsChoice = null;
+        genitalEffectsChoice = null;
       cycleChoice = null;
     } else if (step === 'areas') areas = null;
     else if (step === 'lock') lockAfter = null;
@@ -624,8 +612,6 @@
          disguise can close the Android process. */
       await completeSetup({
         async writeAnswers() {
-          const hidden = measurementsHiddenOnSetup(measurementsChoice, wasOnboarded, restoring && archiveReady);
-          if (hidden !== null) await journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, hidden);
           if (genitalEffectsChoice !== null) {
             await journal.effectCategories.setCategoryEnabled('genital_sexual', genitalEffectsChoice);
           }
@@ -957,13 +943,6 @@
                      switched on here. -->
                 <ListCard>
                   <ListRow
-                    key="feature-measurements"
-                    title={m.measurements_and_sizes()}
-                    checked={measurementsShown}
-                    chevron={false}
-                    onclick={() => (measurementsChoice = !measurementsShown)}
-                  />
-                  <ListRow
                     key="feature-genital-effects"
                     title={m.feature_genital_effects()}
                     checked={genitalEffectsShown}
@@ -997,7 +976,7 @@
                   {#each sections as section (section.key)}
                     <p class="setup-caption" data-setup-caption>{hubGroupHeading(section.key)}</p>
                     <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
-                      {#each section.rows.filter((row) => row.spec.key !== 'measurements' || measurementsShown) as row (row.spec.key)}
+                      {#each section.rows as row (row.spec.key)}
                         <!-- The clock handed to `hubRowLine` is inert here: these rows are
                              drawn from an empty reading, so none of them can be counting
                              up and the one line that reads a clock is unreachable. Same

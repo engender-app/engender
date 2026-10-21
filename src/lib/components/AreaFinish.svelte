@@ -3,10 +3,8 @@
      features ticket 04, ADR-0052, ADR-0045).
 
      Not in Settings and not in a menu: the area is where the person is when
-     they decide they are done with it, and a decision about the size log
-     belongs on the size log. Eight screens mount this, one line each, and it
-     is one component rather than eight copies because the risk here is copy
-     and eight copies of a sentence drift.
+     they decide they are done with it. Six screens mount this, one line each,
+     and one component keeps those lines in step.
 
      ## The states, and why the middle ones are sheets
 

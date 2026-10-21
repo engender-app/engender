@@ -436,30 +436,6 @@ beforeAll(async () => {
   )) as string;
   await drive('labs', 'deleteResult', () => journal.labs.deleteResult(secondLabId));
 
-  // --- measurements -------------------------------------------------------
-  const shoulders = (await drive('measurements', 'addCustomMeasurementType', () =>
-    journal.measurements.addCustomMeasurementType('Shoulders')
-  )) as { key: string };
-  await drive('measurements', 'setMeasurementTypeHidden', () =>
-    journal.measurements.setMeasurementTypeHidden('underbust', true)
-  );
-  const measurementId = (await drive('measurements', 'upsertMeasurement', () =>
-    journal.measurements.upsertMeasurement({ type: shoulders.key, epochDay: 20000, value: 41, unit: 'cm' })
-  )) as string;
-  const secondMeasurementId = (await drive('measurements', 'upsertMeasurement', () =>
-    journal.measurements.upsertMeasurement({ type: shoulders.key, epochDay: 20001, value: 42, unit: 'cm' })
-  )) as string;
-  await drive('measurements', 'deleteMeasurement', () => journal.measurements.deleteMeasurement(secondMeasurementId));
-
-  // --- sizeRecords ----------------------------------------------------
-  const sizeRecordId = (await drive('sizeRecords', 'upsertRecord', () =>
-    journal.sizeRecords.upsertRecord({ epochDay: 20000, category: 'pants', size: '32', brand: "Levi's", fitNote: '' })
-  )) as string;
-  const secondSizeRecordId = (await drive('sizeRecords', 'upsertRecord', () =>
-    journal.sizeRecords.upsertRecord({ epochDay: 20001, category: 'shirts', size: 'M', brand: '', fitNote: '' })
-  )) as string;
-  await drive('sizeRecords', 'deleteRecord', () => journal.sizeRecords.deleteRecord(secondSizeRecordId));
-
   // --- reminders ------------------------------------------------------
   const reminderId = (await drive('reminders', 'upsertReminder', () =>
     journal.reminders.upsertReminder({
@@ -902,7 +878,7 @@ beforeAll(async () => {
   );
 
   // --- areaStates ---------------------------------------------------------
-  await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['sizeRecords'], true));
+  await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['hairStages'], true));
   await drive('areaStates', 'setAreasFinished', () =>
     journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19250)
   );
@@ -975,7 +951,7 @@ beforeAll(async () => {
 
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
-  void [labId, measurementId, sizeRecordId, taperSessionId, tallyId, doseId, stockId, sideEffectId, cycleEventId,
+  void [labId, taperSessionId, tallyId, doseId, stockId, sideEffectId, cycleEventId,
     journalingPauseId, savedQuestionId, wearSessionId, hairStageId, benchmarkId, takeId];
 
   // --- reads --------------------------------------------------------------
@@ -1030,19 +1006,6 @@ beforeAll(async () => {
   await driveRead('labs', 'getResultById', () => journal.labs.getResultById('11111111-1111-4111-8111-111111111111'));
   await driveRead('labs', 'getSeries', () => journal.labs.getSeries('estradiol'));
   await driveRead('labs', 'lastWriteEpochDay', () => journal.labs.lastWriteEpochDay(20004));
-  await driveRead('measurements', 'getMeasurements', () => journal.measurements.getMeasurements(shoulders.key));
-  await driveRead('measurements', 'getSeries', () => journal.measurements.getSeries(shoulders.key));
-  await driveRead('measurements', 'getMeasurementsInRange', () =>
-    journal.measurements.getMeasurementsInRange(19000, 21000)
-  );
-  await driveRead('measurements', 'getMeasurementTypes', () => journal.measurements.getMeasurementTypes());
-  await driveRead('measurements', 'lastWriteEpochDay', () => journal.measurements.lastWriteEpochDay(20000));
-  await driveRead('measurements', 'latestMeasurement', () => journal.measurements.latestMeasurement(20000));
-  await driveRead('measurements', 'countAll', () => journal.measurements.countAll());
-  await driveRead('sizeRecords', 'getRecords', () => journal.sizeRecords.getRecords());
-  await driveRead('sizeRecords', 'getRecordsByCategory', () => journal.sizeRecords.getRecordsByCategory('pants'));
-  await driveRead('sizeRecords', 'getRecordsOnDay', () => journal.sizeRecords.getRecordsOnDay(20000));
-  await driveRead('sizeRecords', 'lastWriteEpochDay', () => journal.sizeRecords.lastWriteEpochDay(20000));
   await driveRead('taper', 'getTaper', () => journal.taper.getTaper());
   await driveRead('taper', 'getSessions', () => journal.taper.getSessions());
   await driveRead('taper', 'getSessionsOnDay', () => journal.taper.getSessionsOnDay(19955));

@@ -36,7 +36,7 @@
    for a normalized value on a scale, never for a distance in time. */
 
 import { recoveryDay } from './recoveryDay';
-import type { Appointment, Measurement, Milestone, Procedure, Tryout, WearKind } from './types';
+import type { Appointment, Milestone, Procedure, Tryout, WearKind } from './types';
 
 /** The rows that can carry a forward fact.
 
@@ -46,12 +46,8 @@ import type { Appointment, Measurement, Milestone, Procedure, Tryout, WearKind }
     key renamed there is a compile error here rather than a row that
     silently stops speaking.
 
-    Eight rows, and the eight are not an arbitrary cut: they are every row
-    whose area holds either a dated future or a span that is running now,
-    plus `measurements`, which holds neither and states its last value
-    instead (see `RowValue`). */
+    Eight rows, each backed by a dated future or a running span. */
 export const ROW_FORWARD_KEYS = [
-  'measurements',
   'care',
   'surgery',
   'appointments',
@@ -109,26 +105,10 @@ export type NextWhat =
   /** Stock running out, where there is no dose slot to put it beside. */
   | { area: 'runOut' };
 
-/** The one row with neither a span nor a date: it states its last value
-    rather than the age of it, since a value is more of a reading than a
-    gap. Still carries the day, because the line says both ("Waist 77 cm, 8
-    days ago"). */
-export interface RowValue {
-  kind: 'value';
-  epochDay: number;
-  /** The measurement type's key. The name is looked up at display time
-      (`vocabulary.measurementTypeName`), the split every built-in
-      vocabulary keeps. */
-  type: string;
-  value: number;
-  unit: string;
-}
-
 /** What one row says, where it has something forward to say. */
 export type RowForward =
   | { kind: 'running'; what: RunningWhat }
-  | { kind: 'next'; epochDay: number; what: NextWhat }
-  | RowValue;
+  | { kind: 'next'; epochDay: number; what: NextWhat };
 
 /** Everything the projection needs, each piece from the read its own screen
     already makes (`rowForwardReads.ts`).
@@ -158,8 +138,6 @@ export interface RowForwardFacts {
       nothing projects one (`stockProjection.ts` returns null for a stock
       with no rate to project from). */
   runOutEpochDay: number | null;
-  /** The most recent measurement of any type, at or before today. */
-  latestMeasurement: Pick<Measurement, 'epochDay' | 'type' | 'value' | 'unit'> | null;
 }
 
 /** The soonest day at or after today in a list, or null. */
@@ -293,20 +271,12 @@ function wearFact(facts: RowForwardFacts): RowForward | null {
     : null;
 }
 
-function measurementFact(facts: RowForwardFacts): RowForward | null {
-  const latest = facts.latestMeasurement;
-  return latest
-    ? { kind: 'value', epochDay: latest.epochDay, type: latest.type, value: latest.value, unit: latest.unit }
-    : null;
-}
-
 /** One fact per row, for the rows that have one.
 
     Declared as a total record over `RowForwardKey` so a key added to the
     list above without a rule is a typecheck failure rather than a row that
     quietly keeps reporting its gap. */
 const FACTS: Record<RowForwardKey, (facts: RowForwardFacts) => RowForward | null> = {
-  measurements: measurementFact,
   care: careFact,
   surgery: surgeryFact,
   appointments: nextAppointment,

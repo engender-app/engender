@@ -2405,11 +2405,7 @@ try {
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
   await page.locator('[data-next]').click(); // scales -> features
-  /* After-release 17 (UX-09): features are their own step before the pins.
-     Measurements arrives off on a new journal. */
-  if ((await page.locator('[data-list-row="feature-measurements"]').getAttribute('aria-checked')) !== 'false') {
-    throw new Error('measurements is switched on by default');
-  }
+  // Features are their own step before pins.
   await page.locator('[data-next]').click(); // features -> areas
 
   /* Ticket 22: the hub's own groups and rows, met once here and once more on
@@ -2430,13 +2426,8 @@ try {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
-  // The default three arrive ticked. Measurements, switched off on the
-  // step before, is not offered as a pin at all.
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
   if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  if ((await page.locator('[data-list-row="area-measurements"]').count()) !== 0) {
-    throw new Error('measurements is offered as a pin while the feature is off');
-  }
   for (const key of ['care', 'milestones', 'tryouts']) {
     if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
       throw new Error(`${key} is not part of the default set on arrival`);
@@ -2524,74 +2515,6 @@ try {
   await heldOnHome('onboarding came back after finishing it');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
-});
-
-await flow('measurements opt-in switch', async () => {
-try {
-  await fresh('/');
-  await page.selectOption('#demo-jump', 'first-run');
-  await page.waitForSelector('[data-next]');
-  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
-  const choice = page.locator('[data-list-row="feature-measurements"]');
-  if ((await choice.getAttribute('aria-checked')) !== 'false') {
-    throw new Error('measurements starts selected in setup');
-  }
-  await page.locator('[data-skip-step]').click();
-  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
-  await page.locator('[data-finish]').click();
-  await page.waitForSelector('[data-home-hello]');
-
-  const visit = async (path) => {
-    await page.goto(BASE + path, { waitUntil: 'networkidle' });
-    await booted();
-  };
-  await visit('/settings');
-  const toggle = page.locator('[data-measurements-toggle] [role="switch"]');
-  await openFeatures();
-  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
-  if ((await toggle.getAttribute('aria-checked')) !== 'false') {
-    throw new Error('measurements is on after skipping setup');
-  }
-  if (await page.locator('[data-measurement-unit]').count()) throw new Error('measurement units stayed visible while off');
-  await page.addInitScript(() => {
-    window.measurementsRowSeen = false;
-    new MutationObserver(() => {
-      if (document.querySelector('[data-list-row="measurements"]')) window.measurementsRowSeen = true;
-    }).observe(document, { childList: true, subtree: true });
-  });
-  await visit('/more');
-  await page.waitForFunction(() => document.querySelector('[data-hub-index]') && !document.querySelector('[data-list-row="measurements"]'));
-  if (await page.evaluate(() => window.measurementsRowSeen)) throw new Error('hidden measurements flashed on More during load');
-
-  await visit('/settings');
-  await openFeatures();
-  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
-  await toggle.click();
-  await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true');
-  await page.locator('[data-features-close]').click();
-  await page.locator('[data-feature-visibility]').waitFor({ state: 'detached' });
-  await page.waitForSelector('[data-measurement-unit]');
-  await visit('/more');
-  await page.waitForSelector('[data-list-row="measurements"]');
-  await visit('/');
-  if (await page.locator('[data-pinned-row="measurements"]').count()) {
-    throw new Error('Settings added a Today pin that setup left unselected');
-  }
-
-  await visit('/settings');
-  await openFeatures();
-  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
-  await toggle.click();
-  await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'false');
-  await visit('/body/measurements');
-  if (!page.url().endsWith('/body/measurements')) throw new Error('the direct link stopped working while hidden');
-  await visit('/settings');
-  await openFeatures();
-  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
-  if ((await toggle.getAttribute('aria-checked')) !== 'false') throw new Error('the off state did not survive navigation');
-
-  ok('measurements starts off, returns through Settings, and keeps its records address and Today pins');
-} catch (e) { fail('measurements opt-in switch', e); }
 });
 
 /* 13z. no step scrolls, at every width rule 14 names and with a keyboard up
@@ -2852,11 +2775,6 @@ try {
   await waitingFor('the flag turning lesbian before the export', () =>
     page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian')
   );
-  await openFeatures();
-  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
-  await page.locator('[data-measurements-toggle] [role="switch"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true');
-
   /* Through the FAB, whose fan seeds the mood, so this needs no mood control
      of its own - the editor's and Home's log strip both answer to
      `[data-mood]` and picking between them is flow 2's problem, not this
@@ -2943,8 +2861,7 @@ try {
   }
 
   /* A setup draft from the new-journal path must not override the archive.
-     Changing another area gives the draft a value while measurements stays
-     unchecked, opposite to the archived module state. */
+     Changing another area gives the draft a value. */
   for (let i = 0; i < 5; i++) {
     restoreStage = `next to setup draft ${i + 1}/5`;
     await page.locator('[data-next]').click();
@@ -3065,13 +2982,6 @@ try {
      rule 13b0 above already follows. */
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
-  await openFeatures();
-  await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
-  if ((await page.locator('[data-measurements-toggle] [role="switch"]').getAttribute('aria-checked')) !== 'true') {
-    throw new Error('setup draft replaced archived measurements visibility');
-  }
-  await page.locator('[data-features-close]').click();
-  await page.locator('[data-feature-visibility]').waitFor({ state: 'detached' });
   await page.locator('[data-palette-pick="trans"]').click();
   await waitingFor('the flag going back to trans after the restore', () =>
     page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
@@ -4809,7 +4719,7 @@ try {
     '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
     '/settings/affirmations', '/settings/body-regions',
     '/settings/journaling-pause', '/media/photos',
-    '/body/measurements', '/body/hair-progress',
+    '/body/hair-progress',
     '/body/hair-removal', '/care/labs', '/care/regimen',
     '/health/cycle-events', '/health/surgery',
     '/health/dilation',
@@ -4875,43 +4785,6 @@ try {
 }
 });
 
-/* Carpet ticket 14: the measurements screen's capture-protocol notice is one
-   instance whose text follows the segmented type picker, not one notice per
-   type - so dismissing it on whichever type is showing has to dismiss it for
-   every other type of the same switcher too, not just the one on screen when
-   it was closed. */
-await flow('measurements protocol notice dedup and dismiss persistence', async () => {
-try {
-  await fresh('/body/measurements');
-
-  await page.waitForSelector('[data-notice="protocol"]');
-  if ((await page.locator('[data-notice="protocol"]').count()) !== 1) {
-    throw new Error('more than one protocol notice instance rendered');
-  }
-
-  await page.locator('[data-segment="hips"]').click();
-  await page.waitForSelector('[data-notice="protocol"][data-protocol="hips"]');
-
-  await page.locator('[data-notice="protocol"] [data-notice-dismiss]').click();
-  await page.waitForSelector('[data-notice="protocol"]', { state: 'detached' });
-
-  await page.locator('[data-segment="chest"]').click();
-  if (await page.locator('[data-notice="protocol"]').count()) {
-    throw new Error('dismissing on one type left the notice showing again on another');
-  }
-
-  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.goto(BASE + '/body/measurements', { waitUntil: 'networkidle' });
-  if (await page.locator('[data-notice="protocol"]').count()) {
-    throw new Error('dismissal did not survive leaving and returning to the screen');
-  }
-
-  ok('measurements protocol notice is a single instance and stays dismissed across every switcher value');
-} catch (e) {
-  fail('measurements protocol notice dedup and dismiss persistence', e);
-}
-});
-
 /* Ticket 135: a demo-bar state jump is a journal clear and a reseed through
    the worker, and the persona's seed writes presentations before the
    entries that name them. A second jump starting inside the first deletes
@@ -4968,16 +4841,12 @@ try {
    show. */
 await flow('fill every feature', async () => {
 try {
-  await fresh('/body/measurements'); // any settings-area route boots the shell before the demo bar is queried
+  await fresh('/body/hair-progress'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-fill-every-feature]');
   await page.waitForURL('**/more', { timeout: 120000 });
   await booted();
 
   const NOT_EMPTY_ROUTES = [
-    ['/body/measurements', 'measurements-empty'],
-    // Both halves of the merged screen (redesign ticket 61) - the size log
-    // keeps its own empty-state marker under the same roof.
-    ['/body/measurements', 'sizes-empty'],
     ['/body/hair-progress', 'hair-stages-empty'],
     ['/body/hair-removal', 'hair-removal-empty'],
     ['/care/labs', 'labs-empty'],
@@ -5469,9 +5338,6 @@ try {
 await flow('the hub reads its own data', async () => {
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  /* The Body row states the value it holds rather than the age of it, which
-     is the one row with neither a span nor a date (ticket 02). */
-  await page.waitForSelector('[data-list-row="measurements"][data-hub-line="value"]', { timeout: 8000 });
 
   /* Care fronts no archive section at all, so before this ticket it could
      only ever say what was behind it. It states its next dose and its
@@ -5656,7 +5522,7 @@ try {
 await flow("the Transition door's search", async () => {
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-hub-index] [data-list-row="measurements"]', { timeout: 8000 });
+  await page.waitForSelector('[data-hub-index] [data-list-row="wear"]', { timeout: 8000 });
 
   // The row that used to point at preferences, and the pointer with it, are
   // gone from this door for good (ADR-0036; tickets 09 and 15).
@@ -5672,7 +5538,7 @@ try {
      document while it does, and waiting for it to go is also what proves the
      collapse finishes rather than stalling. */
   await page.waitForSelector('[data-hub-index]', { state: 'detached', timeout: 8000 });
-  if (await page.locator('[data-hub-results] [data-list-row="measurements"]').count()) {
+  if (await page.locator('[data-hub-results] [data-list-row="surgery"]').count()) {
     throw new Error('a row nothing matched is in the results');
   }
 
@@ -7379,7 +7245,7 @@ try {
      tested app behavior this flow is not the place to relitigate. Nothing
      later in this file reads regimen, dose or injection-map
      state, so resetting here does not cost any flow after it. */
-  await fresh('/body/measurements'); // any settings-area route boots the shell before the demo bar is queried
+  await fresh('/body/hair-progress'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-reset-demo]');
   await page.waitForURL(BASE + '/');
   await booted();
@@ -8300,7 +8166,7 @@ try {
      top of this file: everything between the two - an archive round trip, a
      Daylio import, the discard flows - replaces the journal, so by this
      point it holds the persona's entry and milestone photographs alone. */
-  await page.goto(BASE + '/body/measurements', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/body/hair-progress', { waitUntil: 'networkidle' });
   await booted();
   await page.click('[data-fill-every-feature]');
   await page.waitForURL('**/more', { timeout: 120000 });

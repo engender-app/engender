@@ -2,7 +2,7 @@
    Starting states and the hosted timing baseline are documented in PROBES.md. */
 export const WALKTHROUGH_GROUPS = [
   { id: 'journal', first: 'quick log', last: 'plain export', state: 'alice' },
-  { id: 'setup', first: 'onboarding', last: 'measurements protocol notice dedup and dismiss persistence', state: 'alice' },
+  { id: 'setup', first: 'onboarding', last: 'permissions in Settings', state: 'alice' },
   { id: 'features', first: 'demo bar state jump overlap', last: 'span offer', state: 'alice' },
   { id: 'actions', first: 'quick add mood', last: 'the recovery key at the gate', state: 'full' }
 ];

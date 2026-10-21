@@ -27,7 +27,6 @@
      VITE_DEMO=1 npm run build
      node tests/cold-screen-moves.mjs [--runs 3] [--theme light|dark] [--routes /a,/b] [--dump <dir>] [--root <built tree>] */
 import { COLD_SCREEN_SAMPLER, COLD_SAMPLE_MS } from './cold-screen-sampler.mjs';
-import { measurementNoticeTravel, NOTICE_APPEAR_MS, NOTICE_OBSERVE_MS, NOTICE_SETTLE_MS, NOTICE_MAX_GAP_MS } from './measurement-notice-observation.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,7 +53,7 @@ const DUMP = flag('dump', '') && resolve(flag('dump', ''));
 const ROUTES = flag(
   'routes',
   '/transition/tryouts,/health/surgery,/transition/letters,/body/hair-removal,/media/photos/export,' +
-    '/body/measurements,/tally,/care/labs,/care/changes,/health/clinician-summary,/coming-back,' +
+    '/tally,/care/labs,/care/changes,/health/clinician-summary,/coming-back,' +
     '/more,/settings/tags,/body/hair-progress,/settings/access-mode,/settings/affirmations'
 ).split(',');
 const JUMP_PX = 24;
@@ -131,9 +130,7 @@ let failed = false;
 const failedSamples = [];
 for (const route of ROUTES) {
   for (let run = 1; run <= RUNS; run++) {
-    /* The first measurements run keeps the fresh persona's empty reserve;
-       later runs and other screens exercise a remembered height. */
-    if (route !== '/body/measurements' || run > 1) {
+    {
       await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
       await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 40000 });
       await page.waitForTimeout(800);
@@ -142,7 +139,7 @@ for (const route of ROUTES) {
     await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 40000 });
     let incomplete = '';
     try {
-      await page.waitForFunction(() => window.__coldSamplesComplete, null, { timeout: NOTICE_APPEAR_MS + NOTICE_OBSERVE_MS + 5000 });
+      await page.waitForFunction(() => window.__coldSamplesComplete, null, { timeout: COLD_SAMPLE_MS + 5000 });
     } catch (error) {
       if (error.name !== 'TimeoutError') throw error;
       incomplete = 'cold-load observation incomplete: sampler did not finish';
@@ -154,8 +151,8 @@ for (const route of ROUTES) {
     }
     const findings = [
       ...(incomplete ? [incomplete] : []),
-      ...analyse(samples),
-      ...(route === '/body/measurements' ? measurementNoticeTravel(samples) : [])
+      ...analyse(samples)
+
     ];
     if (findings.length) {
       failed = true;
@@ -179,8 +176,7 @@ if (failedSamples.length) {
       const output = `ci-logs/cold-screen-${Date.now()}-${process.pid}-${THEME}${result.route.replaceAll('/', '_')}-${result.run}.json`;
       await writeFile(output, JSON.stringify({
         theme: THEME, width: VIEWPORT_W, sampleMs: COLD_SAMPLE_MS,
-        noticeAppearanceBoundMs: NOTICE_APPEAR_MS, noticeObservationMs: NOTICE_OBSERVE_MS,
-        noticeSettleMs: NOTICE_SETTLE_MS, noticeMaxFrameGapMs: NOTICE_MAX_GAP_MS, firstScreenAtMs: firstScreen?.at ?? null,
+        firstScreenAtMs: firstScreen?.at ?? null,
         firstVisibleNoticeAtMs: firstNotice?.at ?? null,
         limits: 'Times start with the document sampler. These frames describe this attempt only. No SQL, parameters or content text is recorded.',
         ...result

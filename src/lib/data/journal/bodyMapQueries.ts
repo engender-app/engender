@@ -1,9 +1,9 @@
 /* Multi-track somatic breakdown per body region queries (phase 5 deepening ticket 08).
-   Aggregates dysphoria/euphoria trajectory, linked measurements, progress photos,
+   Aggregates dysphoria/euphoria trajectory, progress photos,
    and laser/hair removal sessions & staging for an anatomical zone. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { HairRemovalMethod, HairRemovalSession, HairStage, Measurement } from '../types';
+import type { HairRemovalMethod, HairRemovalSession, HairStage } from '../types';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
 import { bool, entryPresentationFilter } from './support';
 
@@ -31,28 +31,10 @@ export interface RegionSomaticBreakdown {
   averageEuphoria: number | null;
   latestDysphoria: number | null;
   latestEuphoria: number | null;
-  measurements: Measurement[];
   photos: RegionSomaticPhoto[];
   hairRemovalSessions: HairRemovalSession[];
   hairStages: HairStage[];
   isEmpty: boolean;
-}
-
-/* A measurement's type is one of the four built-in keys (waist, hips, chest,
-   underbust) or the uuid a custom type minted for itself, so those four are
-   the only names a region can link to. Other regions link to nothing. */
-const REGION_LINKED_MEASUREMENTS_MAP: Record<string, string[]> = {
-  chest: ['chest', 'underbust'],
-  hips_waist: ['waist', 'hips'],
-  whole_body: ['waist', 'hips', 'chest', 'underbust']
-};
-
-/* linkedMeasurementTypesForRegion stays exported only for its own test (AU-09
-   test-only review). */
-export function linkedMeasurementTypesForRegion(region: string): string[] {
-  const linked = REGION_LINKED_MEASUREMENTS_MAP[region];
-  if (linked) return linked;
-  return [region];
 }
 
 const REGION_HAIR_REMOVAL_AREAS_MAP: Record<string, string[]> = {
@@ -81,14 +63,6 @@ type TrajectoryRow = {
   dysphoria: number | null;
   euphoria: number | null;
   note: string;
-};
-
-type MeasurementRow = {
-  uuid: string;
-  epoch_day: number;
-  type: string;
-  value: number;
-  unit: string;
 };
 
 type EntryPhotoRow = {
@@ -134,7 +108,7 @@ export async function getRegionSomaticBreakdown(
   region: string,
   /** Filters the trajectory and its progress photos by presentation
       (ADR-0048, ticket 18) - the two tracks joined against `entry`.
-      Measurements, hair removal sessions and hair staging carry no
+      Hair removal sessions and hair staging carry no
       presentation of their own and are never filtered by this. */
   presentationId?: string | null
 ): Promise<RegionSomaticBreakdown> {
@@ -171,27 +145,6 @@ export async function getRegionSomaticBreakdown(
   const averageEuphoria = euValues.length > 0 ? euValues.reduce((a, b) => a + b, 0) / euValues.length : null;
   const latestDysphoria = dysValues[0] ?? null;
   const latestEuphoria = euValues[0] ?? null;
-
-  // 2. Linked measurements
-  const measurementTypes = linkedMeasurementTypesForRegion(region);
-  let measurements: Measurement[] = [];
-  if (measurementTypes.length > 0) {
-    const placeholders = measurementTypes.map(() => '?').join(', ');
-    const mRows = await driver.query<MeasurementRow>(
-      `SELECT uuid, epoch_day, type, value, unit
-       FROM measurement
-       WHERE type IN (${placeholders})
-       ORDER BY epoch_day DESC, id DESC`,
-      measurementTypes
-    );
-    measurements = mRows.map((r) => ({
-      id: r.uuid,
-      epochDay: r.epoch_day,
-      type: r.type,
-      value: r.value,
-      unit: r.unit
-    }));
-  }
 
   // 3. Progress photos
   const entryPhotoRows = await driver.query<EntryPhotoRow>(
@@ -292,7 +245,6 @@ export async function getRegionSomaticBreakdown(
 
   const isEmpty =
     trajectory.length === 0 &&
-    measurements.length === 0 &&
     photos.length === 0 &&
     hairRemovalSessions.length === 0 &&
     hairStages.length === 0;
@@ -304,7 +256,6 @@ export async function getRegionSomaticBreakdown(
     averageEuphoria,
     latestDysphoria,
     latestEuphoria,
-    measurements,
     photos,
     hairRemovalSessions,
     hairStages,

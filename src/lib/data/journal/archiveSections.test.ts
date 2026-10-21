@@ -306,9 +306,9 @@ test('the registry answers the spec\'s worked cases for what travels', () => {
      for this one asserted rather than left to the declaration. */
   assert.equal(travelsOf('documents'), 'none', 'nothing about a document belongs in a structure file');
 
-  /* "Entries, photos, doses, labs, measurements and every other record of
-     what happened" - one section standing in for each of those five. */
-  for (const record of ['entries', 'hairPhotos', 'doseEvents', 'labResults', 'measurements']) {
+  /* "Entries, photos, doses, labs and every other record of
+     what happened" - one section standing in for each of those four. */
+  for (const record of ['entries', 'hairPhotos', 'doseEvents', 'labResults']) {
     assert.equal(travelsOf(record), 'none', `${record} is a record of what happened and must not travel`);
   }
 });

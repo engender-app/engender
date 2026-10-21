@@ -66,12 +66,10 @@ import type { FeltSenseArea } from './feltSense';
 import type { HairProgressArea } from './hairProgress';
 import type { HairRemovalArea } from './hairRemoval';
 import type { LabsArea } from './labs';
-import type { MeasurementsArea } from './measurements';
 import type { MilestonesArea } from './milestones';
 import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea } from './procedures';
 import type { SideEffectsArea } from './sideEffects';
-import type { SizeRecordsArea } from './sizeRecords';
 import type { TaperArea } from './taper';
 import type { TallyArea } from './tally';
 import type { TryoutsArea } from './tryouts';
@@ -86,8 +84,6 @@ interface LastWriteAreas {
   doses: DosesArea;
   labs: LabsArea;
   voiceBenchmarks: VoiceBenchmarksArea;
-  measurements: MeasurementsArea;
-  sizeRecords: SizeRecordsArea;
   taper: TaperArea;
   sideEffects: SideEffectsArea;
   personalEffects: PersonalEffectsArea;
@@ -155,16 +151,6 @@ const ENTRIES = [
     key: 'voiceBenchmarks',
     tables: ['voiceBenchmark'],
     read: ({ voiceBenchmarks, todayEpochDay }) => voiceBenchmarks.lastWriteEpochDay(todayEpochDay)
-  }),
-  entry({
-    key: 'measurements',
-    tables: ['measurement'],
-    read: ({ measurements, todayEpochDay }) => measurements.lastWriteEpochDay(todayEpochDay)
-  }),
-  entry({
-    key: 'sizeRecords',
-    tables: ['sizeRecord'],
-    read: ({ sizeRecords, todayEpochDay }) => sizeRecords.lastWriteEpochDay(todayEpochDay)
   }),
   entry({
     key: 'taperSessions',
@@ -282,7 +268,6 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   bodyRegions: 'reference data, not a written stream',
   presentations: 'reference data, not a written stream',
   entryTemplates: 'reference data, not a written stream',
-  measurementTypes: 'reference data, not a written stream',
   effectCategories: 'reference data, not a written stream',
   personalEffectTypes: 'reference data, not a written stream',
 

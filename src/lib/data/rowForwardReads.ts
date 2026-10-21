@@ -4,17 +4,16 @@
    `agenda.ts` and `comingBackReads.ts` from `comingBack.ts`: the projection
    is where the rules are and it wants a Node test with no driver, so it
    takes rows. This is what fetches them, in one place, so the two surfaces
-   that draw rows ask the same nine questions rather than each assembling
+   that draw rows ask the same eight questions rather than each assembling
    its own idea of what is coming.
 
-   **Nine reads, none of them new as a question.** Every one is a method a
+   **Eight reads, none of them new as a question.** Every one is a method a
    screen already calls - the milestone list the milestones screen draws,
    the seals the letters tile reads, the running session the wear tile
    reads, the tryouts the tryout tile reads, the appointments Today already
    holds for its debrief offer, the procedures the surgery tile reads, the
    agenda's own forward read, the stock projections the Care screen draws,
-   and one bounded row of measurements. The ticket's own line: no new data,
-   no new read, no new screen.
+   The ticket's own line: no new data, no new read, no new screen.
 
    The dose owner supplies the next uncovered slot. Calendar marks remain
    raw expectations, so they cannot answer whether an early dose already
@@ -33,7 +32,6 @@ import { SPINE_FORWARD_DAYS } from './careSpine';
 import type { AppointmentsArea } from './journal/appointments';
 import type { DosesArea } from './journal/doses';
 import type { LettersArea } from './journal/letters';
-import type { MeasurementsArea } from './journal/measurements';
 import type { MilestonesArea } from './journal/milestones';
 import type { ProceduresArea } from './journal/procedures';
 import type { StockArea } from './journal/stock';
@@ -53,7 +51,6 @@ export interface RowForwardAreas {
   procedures: ProceduresArea;
   doses: DosesArea;
   stock: StockArea;
-  measurements: MeasurementsArea;
 }
 
 /** How far ahead the dose-slot read looks.
@@ -87,7 +84,7 @@ export async function readRowForward(
   rows?: readonly RowForwardKey[]
 ): Promise<RowForwardMap> {
   const includes = (row: RowForwardKey) => rows === undefined || rows.includes(row);
-  const [milestones, seals, runningWear, tryouts, appointments, procedures, nextDose, stock, latestMeasurement] =
+  const [milestones, seals, runningWear, tryouts, appointments, procedures, nextDose, stock] =
     await Promise.all([
       includes('milestones') ? areas.milestones.getMilestones() : [],
       includes('letters') ? areas.letters.getLetterSeals(LETTER_SEAL_PAGE) : [],
@@ -96,8 +93,7 @@ export async function readRowForward(
       includes('appointments') ? areas.appointments.getAppointments() : [],
       includes('surgery') ? areas.procedures.getProcedures() : [],
       includes('care') ? areas.doses.getNextUncoveredSlot(todayEpochDay, todayEpochDay + DOSE_SLOT_REACH_DAYS) : null,
-      includes('care') ? areas.stock.getProjections(todayEpochDay) : [],
-      includes('measurements') ? areas.measurements.latestMeasurement(todayEpochDay) : null
+      includes('care') ? areas.stock.getProjections(todayEpochDay) : []
     ]);
 
   /* The soonest run-out across every tracked drug, which is the one the row
@@ -117,8 +113,7 @@ export async function readRowForward(
     appointments,
     procedures,
     nextDoseEpochDay: nextDose?.epochDay ?? null,
-    runOutEpochDay: runOutDays.length === 0 ? null : Math.min(...runOutDays),
-    latestMeasurement
+    runOutEpochDay: runOutDays.length === 0 ? null : Math.min(...runOutDays)
   };
 
   return rowForward(facts);

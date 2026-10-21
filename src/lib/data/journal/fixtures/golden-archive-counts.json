@@ -12,9 +12,6 @@
   "documents": 1,
   "milestones": 1,
   "labResults": 1,
-  "measurementTypes": 5,
-  "measurements": 2,
-  "sizeRecords": 1,
   "taper": 1,
   "taperSessions": 2,
   "sideEffects": 1,
@@ -51,6 +48,6 @@
   "wearSessions": 1,
   "voiceBenchmarks": 1,
   "comfortItems": 2,
-  "areaStates": 6,
+  "areaStates": 5,
   "importLog": 1
 }

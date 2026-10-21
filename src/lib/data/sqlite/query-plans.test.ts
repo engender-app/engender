@@ -32,15 +32,7 @@ test('entry_tag.tag_id has an index a plain lookup by tag can use', async () => 
   assert.match(plan, /USING (?:COVERING )?INDEX idx_entry_tag_tag_id/);
 });
 
-test('measurement.epoch_day: lastWriteEpochDay uses idx_measurement_epoch_day, not the type index', async () => {
-  const db = await migratedDb();
-  const plan = await planOf(
-    db,
-    'SELECT uuid, epoch_day, type, value, unit FROM measurement WHERE epoch_day <= ? ORDER BY epoch_day DESC LIMIT 1',
-    [100]
-  );
-  assert.match(plan, /USING (?:COVERING )?INDEX idx_measurement_epoch_day/);
-});
+
 
 test('entry(presentation_id, timestamp): idx_entry_presentation_id widened to carry timestamp', async () => {
   const db = await migratedDb();

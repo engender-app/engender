@@ -115,7 +115,6 @@ try {
      persona. Routes rather than a registry, because a compact control is a
      choice a screen makes and nothing collects them. */
   const COMPACT_ROUTES = [
-    '/stats', '/tally', '/voice', '/body/hair-progress', '/body/measurements', '/body/wear',
     '/media/photos', '/settings', '/transition/roadmap', '/compare'
   ];
   let swept = 0;

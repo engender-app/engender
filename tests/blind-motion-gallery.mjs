@@ -94,19 +94,7 @@ const SCENES = [
     act: 'back',
     sun: true
   },
-  {
-    name: 'deep-push',
-    note: "A deep push, Transition into body measurements: the screens take their shared axis underneath while the blind slides, the search box leaves and the back control and title arrive on it.",
-    at: ROUTE.settings,
-    act: 'a[href="/body/measurements"]'
-  },
-  {
-    name: 'deep-back',
-    note: "The return, and the one that was broken. The field vanished for the whole transition because the hub it came back to had been scrolled to reach the row, so its field - and the blind hanging from it - sat above the window while the group held one box for both sides. A scrolled screen now contributes no blind at all and the other side closes to nothing, which is what that screen shows; this scene reaches its row without scrolling, so the blind slides as it should.",
-    at: ROUTE.settings,
-    enter: 'a[href="/body/measurements"]',
-    act: 'back'
-  }
+
 ];
 
 await rm(outDir, { recursive: true, force: true });
