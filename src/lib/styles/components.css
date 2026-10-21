@@ -1718,16 +1718,6 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    stayed here because three charts still draw one. */
 .legend-swatch { width: 16px; height: 16px; border-radius: var(--r-block); display: inline-block; }
 
-/* ---------- charts ---------- */
-.chart-gridline { stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 4; }
-/* Invisible tap targets over the dots. `fill: transparent` rather than
-   `fill: none`, which would make them ignore pointer events entirely. */
-/* No outline in any focus state: a rectangle drawn around a point on a
-   scaled viewBox lands nowhere near the point. The ring is a stroke on the
-   hit circle itself, which scales with everything else. */
-.chart-hit { fill: transparent; cursor: pointer; outline: none; }
-.chart-hit:focus-visible { stroke: var(--focus-ring); stroke-width: 2; }
-
 /* ---------- sheets, toasts ---------- */
 /* Fixed rather than absolute, and against the app frame rather than the
    real window: `.app-main` scrolls, and an `inset: 0` sized to a scrolling

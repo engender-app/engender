@@ -107,6 +107,12 @@
 {/if}
 
 <style>
+  .chart-gridline {
+    stroke: var(--chart-grid);
+    stroke-width: 1;
+    stroke-dasharray: 2 4;
+  }
+
   .wear-trend-chart {
     width: 100%;
     height: auto;
