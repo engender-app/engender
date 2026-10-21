@@ -69,7 +69,7 @@
   import type { RegimenEpisode } from '$lib/data/types';
   import { sameDrug } from '$lib/data/regimenEpisode';
   import { ROUTE_OPTIONS, routeLabel } from '$lib/data/vocabulary/doseLabels';
-  import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine } from '$lib/data/vocabulary/stockLabel';
+  import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine, stockSupplyLine } from '$lib/data/vocabulary/stockLabel';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
   import { CLINICIAN_SUMMARY_SECTION_KEYS } from '$lib/data/journal/clinicianSummary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -180,6 +180,8 @@
     windowMode: 'days' | 'end';
     windowDays: string;
     windowEndDate: string;
+    expiryDate: string;
+    pharmacyNote: string;
   } | null>(null);
 
   const STOCK_WINDOW_MODES = [
@@ -203,7 +205,9 @@
       openedDate: row.entry.openedEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.openedEpochDay),
       windowMode: row.entry.inUseEndEpochDay !== null ? 'end' : 'days',
       windowDays: row.entry.inUseWindowDays === null ? '' : String(row.entry.inUseWindowDays),
-      windowEndDate: row.entry.inUseEndEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.inUseEndEpochDay)
+      windowEndDate: row.entry.inUseEndEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.inUseEndEpochDay),
+      expiryDate: row.entry.expiryEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.expiryEpochDay),
+      pharmacyNote: row.entry.pharmacyNote ?? ''
     };
   }
 
@@ -218,7 +222,9 @@
       openedDate: '',
       windowMode: 'days',
       windowDays: '',
-      windowEndDate: ''
+      windowEndDate: '',
+      expiryDate: '',
+      pharmacyNote: ''
     };
   }
 
@@ -277,7 +283,9 @@
       leadTimeDays,
       openedEpochDay,
       inUseWindowDays,
-      inUseEndEpochDay
+      inUseEndEpochDay,
+      expiryEpochDay: stockEditor.expiryDate ? epochDayFromDateInputValue(stockEditor.expiryDate) : null,
+      pharmacyNote: stockEditor.pharmacyNote
     });
     if (stockEditor === editor) stockSavedId = id;
   }
@@ -920,6 +928,17 @@
         {/if}
       {/if}
 
+      <Field label={m.stock_expiry_label()} id="care-stock-expiry">
+        {#snippet children(id)}
+          <DatePicker name="stock-expiry" bind:value={stockEditor!.expiryDate} {id} />
+        {/snippet}
+      </Field>
+      <Field label={m.stock_pharmacy_note_label()} id="care-stock-pharmacy-note">
+        {#snippet children(id)}
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="stock-pharmacy-note" placeholder={m.stock_pharmacy_note_placeholder()} bind:value={stockEditor!.pharmacyNote} />
+        {/snippet}
+      </Field>
+
       <div class="stack-3">
         <button class="btn btn-primary" data-save-stock onclick={saveStockEntry}><span>{m.stock_save()}</span></button>
         {#if stockEditor.id}
@@ -945,7 +964,8 @@
                   date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
                 }),
                 rowRunOut.text,
-                stockOpenedWindowLine(row.entry, today)
+                stockOpenedWindowLine(row.entry, today),
+                stockSupplyLine(row.entry, today)
               ]}
               onclick={() => editStock(stockEditorFromRow(row))}
             >

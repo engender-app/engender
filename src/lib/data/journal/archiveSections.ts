@@ -164,7 +164,9 @@ const MEDICATION_STOCK = {
     in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
     in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
     lead_time_days: { field: 'leadTimeDays', whenAbsent: null },
-    doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null }
+    doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null },
+    expiry_epoch_day: { field: 'expiryEpochDay', whenAbsent: null },
+    pharmacy_note: { field: 'pharmacyNote', whenAbsent: null }
   }
 } as const satisfies FlatTable<ArchiveJournal['medicationStock'][number]>;
 

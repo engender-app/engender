@@ -125,7 +125,9 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       inUseWindowDays: null,
       inUseEndEpochDay: null,
       leadTimeDays: null,
-      dosesPerUnit: null
+      dosesPerUnit: null,
+      expiryEpochDay: null,
+      pharmacyNote: null
     };
     const stockB: MedicationStock = {
       id: 'stock-b',
@@ -139,7 +141,9 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       inUseWindowDays: null,
       inUseEndEpochDay: null,
       leadTimeDays: null,
-      dosesPerUnit: null
+      dosesPerUnit: null,
+      expiryEpochDay: null,
+      pharmacyNote: null
     };
     const stockC: MedicationStock = {
       id: 'stock-c',
@@ -153,7 +157,9 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       inUseWindowDays: null,
       inUseEndEpochDay: null,
       leadTimeDays: null,
-      dosesPerUnit: null
+      dosesPerUnit: null,
+      expiryEpochDay: null,
+      pharmacyNote: null
     };
 
     const rows = [

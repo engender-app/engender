@@ -475,9 +475,54 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
       inUseWindowDays: null,
       inUseEndEpochDay: null,
       leadTimeDays: null,
-      dosesPerUnit: null
+      dosesPerUnit: null,
+      expiryEpochDay: null,
+      pharmacyNote: null
     }
   ]);
+});
+
+/* Functional audit ticket 47: typed by a person and not derivable, so they
+   travel, and a restore keeps them. */
+test('a stock expiry day and pharmacy note travel, and a restore keeps them', async () => {
+  const { journal, stock } = await populated();
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    expiryEpochDay: 19400,
+    pharmacyNote: 'Batch 7, second pharmacy'
+  });
+
+  const snapshot = await journal.archive.snapshot();
+  const row = snapshot.journal.medicationStock.find((s) => s.id === stock);
+  assert.equal(row?.expiryEpochDay, 19400);
+  assert.equal(row?.pharmacyNote, 'Batch 7, second pharmacy');
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  const [restored] = await target.stock.getEntries();
+  assert.equal(restored.expiryEpochDay, 19400);
+  assert.equal(restored.pharmacyNote, 'Batch 7, second pharmacy');
+});
+
+test('an archive written before the stock expiry fields restores them as null', async () => {
+  const { journal } = await populated();
+  const snapshot = await journal.archive.snapshot();
+  const older = structuredClone(snapshot.journal) as unknown as { medicationStock: Record<string, unknown>[] };
+  for (const row of older.medicationStock) {
+    delete row.expiryEpochDay;
+    delete row.pharmacyNote;
+  }
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: older as unknown as typeof snapshot.journal, files: (async function* () {})() });
+  const [restored] = await target.stock.getEntries();
+  assert.equal(restored.expiryEpochDay, null);
+  assert.equal(restored.pharmacyNote, null);
 });
 
 /* Redesign phase 10 ticket 01: a lead time is a person's own typed figure,

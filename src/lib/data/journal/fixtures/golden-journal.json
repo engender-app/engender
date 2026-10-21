@@ -1687,7 +1687,9 @@
       "inUseWindowDays": null,
       "inUseEndEpochDay": null,
       "leadTimeDays": null,
-      "dosesPerUnit": null
+      "dosesPerUnit": null,
+      "expiryEpochDay": 20400,
+      "pharmacyNote": "Batch 7"
     }
   ],
   "tryouts": [

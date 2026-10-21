@@ -961,6 +961,13 @@ export interface MedicationStock {
   /** How many doses one unit holds - five to a vial, say (after-release
       ticket 01). Null means one dose per unit (stockProjection.ts). */
   dosesPerUnit: number | null;
+  /** The day the supply held now expires (functional audit ticket 47).
+      Logged and shown, never advised on: nothing reads it to warn. Null
+      until a person types one. */
+  expiryEpochDay: number | null;
+  /** Where the supply came from, in the person's words - a pharmacy, a
+      batch. Null when empty. */
+  pharmacyNote: string | null;
 }
 
 /** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind

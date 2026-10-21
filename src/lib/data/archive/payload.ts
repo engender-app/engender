@@ -692,6 +692,10 @@ interface ArchiveMedicationStock {
   /** Doses one unit holds (after-release ticket 01). Absent on an archive
       written before it, read as null the same way. */
   dosesPerUnit: number | null;
+  /** Functional audit ticket 47. Absent on an archive written before it,
+      read as null the same way. */
+  expiryEpochDay: number | null;
+  pharmacyNote: string | null;
 }
 
 /** A wear session as it travels (phase 5 ticket 04). No reminder-handoff
