@@ -68,10 +68,9 @@ function svelteFiles(): string[] {
 describe('a ListRow holding a switch', () => {
   it('finds the rows it is about, so an empty scan cannot pass', () => {
     const holding = svelteFiles().flatMap((f) => listRows(f, readFileSync(f, 'utf8'))).filter((r) => r.holdsSwitch);
-    /* The disguise step, Settings' security row, the journal book's parts,
-       the care curve's fit and Today's editor still write these rows. A
-       lower count means the parser stopped seeing them. */
-    expect(holding.length).toBeGreaterThanOrEqual(7);
+    /* Six switch-bearing rows remain after the affirmations screen goes.
+       A lower count means the parser stopped seeing them. */
+    expect(holding.length).toBeGreaterThanOrEqual(6);
   });
 
   it('is static everywhere, so the switch is the row\'s only control', () => {
