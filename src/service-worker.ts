@@ -2,11 +2,11 @@
    Everything the app needs to open without a network is precached under one
    key per release: the fallback document, the app's own chunks and CSS,
    the journal's SQLite worker and its WASM, the bundled woff2 faces
-   and whatever else sits in static/ - the manifest's icons today, a .riv
+   and static/ assets other than PDF fonts - the manifest's icons today, a .riv
    animation the moment one lands there.
 
    OCR's library, worker, core and both languages install as one immutable
-   generation. Recognition stays lazy. Only the PDF worker is added later.
+   generation. Recognition stays lazy. PDF worker and fonts are added later.
 
    This worker still never decides for itself when to take over (phase 2
    ticket 04, which owns that decision): a new release installs quietly and

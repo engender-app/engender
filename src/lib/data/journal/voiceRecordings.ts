@@ -13,6 +13,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';
+import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
 import type { VoiceRecording } from '../types';
 import { voiceFileName } from '../voiceRecordings/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -82,7 +83,7 @@ async function removeRecordingFiles(files: PhotoFileStore, rows: { file_path: st
 }
 
 export async function removeRecordingFilesOf(driver: SqliteDriver, files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
-  await afterCommit(driver, () => removeRecordingFiles(files, rows));
+  await afterCommit(driver, () => removeRecordingFiles(files, rows), markOrphanSweepDue);
 }
 
 /** Best-effort cleanup after an owner save has committed, the same reasoning
@@ -98,7 +99,7 @@ export async function removeRecordingFilesAfterCommit(
     try {
       await removeRecordingFiles(files, rows);
     } catch {
-      // sweepOrphanPhotos() owns retries.
+      markOrphanSweepDue();
     }
   });
 }

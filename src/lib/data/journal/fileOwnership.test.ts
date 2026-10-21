@@ -64,6 +64,8 @@ test('every attachment survives archive restore and cleanup removes only orphans
   }
   const expected = files.names();
   assert.equal(expected.length, 22);
+  const viewFiles = await db.query<{ file_name: string }>('SELECT file_name FROM media_file');
+  assert.equal(viewFiles.length, 14, 'view lists stored file references, including both benchmark columns');
   await files.write('orphan.jpg', audio);
   const snapshot = await journal.archive.snapshot();
   assert.deepEqual(snapshot.files.map((file) => file.name).sort(), expected);

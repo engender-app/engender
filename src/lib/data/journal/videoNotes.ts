@@ -26,6 +26,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';
+import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
 import type { VideoNote } from '../types';
 import { videoFileName } from '../videoNotes/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -79,7 +80,7 @@ async function removeVideoFiles(files: PhotoFileStore, rows: { file_path: string
 }
 
 export async function removeVideoFilesOf(driver: SqliteDriver, files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
-  await afterCommit(driver, () => removeVideoFiles(files, rows));
+  await afterCommit(driver, () => removeVideoFiles(files, rows), markOrphanSweepDue);
 }
 
 /** Best-effort cleanup after an owner save has committed, the same reasoning
@@ -95,7 +96,7 @@ export async function removeVideoFilesAfterCommit(
     try {
       await removeVideoFiles(files, rows);
     } catch {
-      // sweepOrphanPhotos() owns retries.
+      markOrphanSweepDue();
     }
   });
 }

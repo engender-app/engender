@@ -30,9 +30,9 @@ import { choosePassphrase, firstRun } from './built-flow.mjs';
 // The generation manifest comes from the same recipe as the worker and APK.
 const OCR_ASSETS = JSON.parse(readFileSync('build/tesseract/assets.json', 'utf8')).assets;
 
-/* The two built files the shell does not install (phase 14 pre-release ticket
-   13; shell-assets.ts has the reasoning). Named by pattern, as it does,
-   because their names carry a hash. */
+/* The emitted workers the shell does not install (phase 14 pre-release
+   ticket 13; shell-assets.ts has the reasoning). Named by pattern because
+   their names carry a hash. PDF fonts are checked by directory below. */
 const PDF_WORKER = /^\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/;
 const PHOTO_WORKER = /^\/_app\/immutable\/workers\/normalize\.worker-[^/]+\.js$/;
 const UNUSED_WORKER = /^\/_app\/immutable\/workers\/sqlite3-worker1-bundler-friendly-[^/]+\.js$/;
@@ -397,6 +397,14 @@ try {
   const pdfWorkerInShell = shell.paths.filter((path) => PDF_WORKER.test(path) || UNUSED_WORKER.test(path));
   if (pdfWorkerInShell.length === 0) ok('a fresh install stores neither the PDF worker nor the unused SQLite promiser worker');
   else fail('a fresh install stores neither the PDF worker nor the unused SQLite promiser worker', pdfWorkerInShell.join(', '));
+  const PDF_FONT_DIR = new URL('../../static/pdf-fonts/', import.meta.url);
+  const pdfFonts = readdirSync(PDF_FONT_DIR).map((name) => `/pdf-fonts/${name}`);
+  const pdfFontBytes = pdfFonts.reduce((sum, asset) =>
+    sum + statSync(new URL(asset.slice('/pdf-fonts/'.length), PDF_FONT_DIR)).size, 0);
+  const freshFonts = shell.paths.filter((path) => path.startsWith('/pdf-fonts/'));
+  if (freshFonts.length === 0) ok('fresh precache contains no PDF fonts');
+  else fail('fresh precache contains no PDF fonts', freshFonts.join(', '));
+  ok(`PDF font precache ${pdfFontBytes} to 0 bytes; same-build full manifest ${shell.bytes + pdfFontBytes} to ${shell.bytes} bytes`);
 
   await cold.evaluate(async () => {
     const registration = await navigator.serviceWorker.getRegistration();
@@ -409,6 +417,9 @@ try {
   }
   if (pdfWorkerCached.length === 1) ok('opening a document adds the PDF worker to the release cache');
   else fail('opening a document adds the PDF worker to the release cache', `${pdfWorkerCached.length} found`);
+  const cachedFonts = (await measureCache(cold)).paths.filter((path) => path.startsWith('/pdf-fonts/'));
+  if (cachedFonts.length === pdfFonts.length) ok('PDF request adds every standard font to the release cache');
+  else fail('PDF request adds every standard font to the release cache', `${cachedFonts.length} of ${pdfFonts.length} found`);
 
   /* The whole release, file by file, against what is actually in the cache.
      Four files are deliberately outside the shell: the fallback document,
@@ -426,7 +437,7 @@ try {
   const outsideShell = new Set(['/index.html', '/_app/version.json', '/service-worker.js', '/release.json']);
   const release = releasePaths().filter(
     (path) =>
-      !outsideShell.has(path) && !path.startsWith('/tesseract/') && !PDF_WORKER.test(path) && !UNUSED_WORKER.test(path)
+      !outsideShell.has(path) && !path.startsWith('/tesseract/') && !path.startsWith('/pdf-fonts/') && !PDF_WORKER.test(path) && !UNUSED_WORKER.test(path)
   );
   const missing = release.filter((path) => !shell.paths.includes(path));
   if (missing.length === 0 && shell.paths.includes('/'))
@@ -437,9 +448,8 @@ try {
       missing.length ? `missing ${missing.slice(0, 8).join(', ')}` : 'the fallback document is not cached under /'
     );
 
-  /* Named separately from the count above, which both sides of a mistake can
-     satisfy at once: fonts dropped from static/ would leave the release and
-     the cache agreeing with each other and nothing to load offline. */
+  /* Named separately from the count above: an absent required shell asset
+     can otherwise disappear from both sides of the count. */
   const kinds = {
     "SQLite's worker": shell.paths.some((path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.js')),
     // The encrypted driver loads one SQLite WASM asset from this release.
@@ -447,15 +457,6 @@ try {
       (path) => path.startsWith('/_app/immutable/assets/') && path.endsWith('.wasm')
     ).length === 1,
     'all four bundled woff2 faces': shell.paths.filter((path) => path.endsWith('.woff2')).length === 4,
-    /* The PDF renderer's fonts (phase 8 features ticket 55): the fourteen
-       standard faces a document may name without carrying. Without them a
-       page of an opened document draws blank, and it would draw blank
-       exactly when there is no network, which is when this store matters
-       most (ADR-0065). Its worker is not here any more: the first document
-       opened asks for it, and the block after the OCR check proves that. */
-    'every standard PDF font': readdirSync(new URL('../../static/pdf-fonts/', import.meta.url)).every((font) =>
-      shell.paths.includes(`/pdf-fonts/${font}`)
-    ),
     /* Both manifests, because either one can be the one a disguised install
        reads (ticket 25), and every icon either one names - counted off the
        files rather than written down here, so adding a purpose or a disguise
@@ -642,8 +643,6 @@ try {
      rather than off an earlier fetch: precache membership was already
      checked above, so what is new here is that the bytes come back whole
      from a browser process the origin is gone from. */
-  const PDF_FONT_DIR = new URL('../../static/pdf-fonts/', import.meta.url);
-  const pdfFonts = readdirSync(PDF_FONT_DIR).map((name) => `/pdf-fonts/${name}`);
   const offlineFonts = await deep.evaluate(async (assets) => {
     const sizes = {};
     for (const asset of assets) {
@@ -656,10 +655,10 @@ try {
     (asset) => offlineFonts[asset] !== statSync(new URL(asset.slice('/pdf-fonts/'.length), PDF_FONT_DIR)).size
   );
   if (shortFonts.length === 0)
-    ok(`with the network gone all ${pdfFonts.length} standard PDF faces still load whole from the shell`);
+    ok(`with the network gone all ${pdfFonts.length} standard PDF faces load after the PDF request`);
   else
     fail(
-      'with the network gone the standard PDF faces still load whole from the shell',
+      'with the network gone the standard PDF faces still load after the PDF request',
       shortFonts.map((asset) => `${asset}: ${offlineFonts[asset]} bytes`).join(', ')
     );
 

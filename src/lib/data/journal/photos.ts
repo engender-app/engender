@@ -25,7 +25,8 @@ import type { Photo } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
 import { watchJournalWrites } from '../journal-busy';
 import type { PhotoFileStore } from '../photos/photo-file-store';
-import { readFileOwnership } from './fileOwnership';
+import { readCleanupFileNames } from './fileOwnership';
+import { markOrphanSweepComplete, markOrphanSweepDue, orphanSweepRequestVersion } from '../sqlite/orphan-sweep-schedule';
 import { assertChanged, bool, mintUuid, now } from './support';
 
 /** A photo that has been through normalize() (ADR-0008/0015): JPEG bytes,
@@ -102,7 +103,7 @@ async function removePhotoFiles(
 }
 
 export async function removeFilesOf(driver: SqliteDriver, files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
-  await afterCommit(driver, () => removePhotoFiles(files, rows));
+  await afterCommit(driver, () => removePhotoFiles(files, rows), markOrphanSweepDue);
 }
 
 /** Best-effort cleanup after an owner save has committed. The rows are
@@ -117,7 +118,7 @@ export async function removeFilesAfterCommit(
     try {
       await removePhotoFiles(files, rows);
     } catch {
-      // A committed save stays successful; sweepOrphanPhotos() owns retries.
+      markOrphanSweepDue();
     }
   });
 }
@@ -176,12 +177,13 @@ export async function photosByMilestone(
   return byMilestone;
 }
 
-/* Deletes every file in the store that no photo row references, on boot,
-   after the database opens (ADR-0008). This is the other half of the
+/* Deletes every file in the store that no media_file row references, after
+   restore or a due housekeeping pass (ADR-0008). This is the other half of the
    ordering rule at the top of this file: attach, remove, deleteEntry and
    ticket 14's import are all free to leave a loose file behind, because
-   this reclaims it on the next start. It is the only code that deletes a
-   file nobody asked to delete, which is why it reads the rows itself
+   this reclaims it after restore, a failed delete, or at the weekly pass.
+   It is the only code that deletes a file nobody asked to delete, which is
+   why it reads the rows itself
    rather than trusting a caller's list.
 
    A row names only its full photo; the thumbnail's name is derived
@@ -192,25 +194,28 @@ export async function photosByMilestone(
    OPFS root: the database file lives in OPFS too, and no row references
    it.
 
-   fileOwnership.ts supplies every owner's names, including derived
-   thumbnails and optional benchmark recordings.
+   media_file supplies every owner's stored names; fileOwnership.ts adds
+   derived thumbnails. Optional benchmark recordings have their own view arm.
 
    Precondition: nothing may attach a photo while this runs. It reads the
    rows and then lists the files, so a photo whose files landed after the
    read but whose row landed before the list would look like an orphan.
 
    Enforced rather than assumed since phase 5 audit ticket 02 took this off
-   boot's critical path: boot is still the only caller, but it no longer runs
-   before any screen can write, so the guard every journal write raises is what
-   the precondition rests on now (watchJournalWrites, journal-busy.ts). A write
+   boot's critical path: the pass can run after a screen is live, so the
+   guard every journal write raises is what the precondition rests on now
+   (watchJournalWrites, journal-busy.ts). A write
    in flight at any point means this stops where it is and leaves the rest to
-   the next boot - the same outcome its failure path has always had, and the
+   a later pass, the same outcome its failure path has always had, and the
    right way round: losing a photo's bytes is not a price worth paying to
    reclaim a file nothing was reading. */
 export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
   const writes = watchJournalWrites();
+  const startedAt = orphanSweepRequestVersion();
   try {
-    await sweepUnreferencedFiles(driver, files, writes.sawWrite);
+    if (await sweepUnreferencedFiles(driver, files, writes.sawWrite)) {
+      markOrphanSweepComplete(Date.now(), undefined, startedAt);
+    }
   } finally {
     writes.stop();
   }
@@ -220,15 +225,16 @@ async function sweepUnreferencedFiles(
   driver: SqliteDriver,
   files: PhotoFileStore,
   sawWrite: () => boolean
-): Promise<void> {
-  if (sawWrite()) return;
-  const referenced = new Set((await readFileOwnership(driver, 'cleanup')).names);
+): Promise<boolean> {
+  if (sawWrite()) return false;
+  const referenced = new Set(await readCleanupFileNames(driver));
   for (const name of await files.list()) {
     // Asked per file rather than once: a write that starts halfway through
     // must not have the rest of the listing deleted out from under it.
-    if (sawWrite()) return;
+    if (sawWrite()) return false;
     if (!referenced.has(name)) await files.remove(name);
   }
+  return !sawWrite();
 }
 
 /* Both owner columns, resolved before anything is written: an unknown

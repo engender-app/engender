@@ -37,6 +37,7 @@ interface BootDeps {
   loadReferenceData?: (driver: SqliteDriver) => Promise<void>;
   purgeExpiredTrash?: (driver: SqliteDriver) => Promise<void>;
   sweepOrphanPhotos?: (driver: SqliteDriver) => Promise<void>;
+  shouldSweepOrphans?: () => boolean;
   /** The auto-log pass (phase 11 ticket 11, ADR-0086): each schedule the
       person switched on gets a `taken` dose per slot it still owes, up to
       yesterday. Last of the three, and here rather than on a clock of its
@@ -203,7 +204,7 @@ async function housekeep(deps: BootDeps, driver: SqliteDriver): Promise<void> {
 
   try {
     await waitForJournalIdle();
-    await deps.sweepOrphanPhotos?.(driver);
+    if (deps.shouldSweepOrphans?.() !== false) await deps.sweepOrphanPhotos?.(driver);
   } catch (error) {
     console.warn('photo orphan sweep failed; unreferenced files stay until the next boot', error);
   }

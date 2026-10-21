@@ -36,10 +36,8 @@ function owner<Row extends Record<string, unknown>>(
     table,
     fileColumns,
     archiveClaims,
-    async read(driver: SqliteReader, scope: 'archive' | 'cleanup') {
-      const rows = await driver.query<Row>(scope === 'archive'
-        ? archiveQuery
-        : `SELECT ${fileColumns.join(', ')} FROM ${table}`);
+    async read(driver: SqliteReader) {
+      const rows = await driver.query<Row>(archiveQuery);
       return { rows, names: rows.flatMap(names) };
     }
   };
@@ -51,7 +49,7 @@ const documentNames = (row: DocumentFileRow) => documentFilesOf(row.file_path);
 const benchmarkNames = (row: BenchmarkFileRow) =>
   row.vowel_file_path ? [row.passage_file_path, row.vowel_file_path] : [row.passage_file_path];
 
-// Archive reads omit trash; cleanup retains every current owner, including trash.
+// Archive reads omit trash; media_file retains every current owner for cleanup.
 export const FILE_OWNERS = {
   photos: owner<PhotoRow>(
     'photo', ['file_path'],
@@ -135,15 +133,28 @@ type OwnershipRead = {
   [Key in keyof typeof FILE_OWNERS]: Awaited<ReturnType<(typeof FILE_OWNERS)[Key]['read']>>['rows'];
 };
 
-export async function readFileOwnership(driver: SqliteReader, scope: 'archive' | 'cleanup') {
+export async function readFileOwnership(driver: SqliteReader) {
   const entries = await Promise.all(Object.entries(FILE_OWNERS).map(async ([key, owner]) => {
-    const result = await owner.read(driver, scope);
+    const result = await owner.read(driver);
     return { key, ...result };
   }));
   return {
     rows: Object.fromEntries(entries.map(({ key, rows }) => [key, rows])) as OwnershipRead,
     names: entries.flatMap(({ names }) => names)
   };
+}
+
+/** The view lists stored names; the store also holds derived thumbnails. */
+const PHOTO_SOURCES = new Set(['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure']);
+export async function readCleanupFileNames(driver: SqliteReader): Promise<string[]> {
+  const rows = await driver.query<{ source: string; file_name: string }>('SELECT source, file_name FROM media_file');
+  return rows.flatMap(({ source, file_name }) => {
+    if (source === 'document') return documentFilesOf(file_name);
+    if (PHOTO_SOURCES.has(source)) {
+      return filesOf(file_name);
+    }
+    return [file_name];
+  });
 }
 
 /** The row validator runs first. Missing files remain valid placeholders;

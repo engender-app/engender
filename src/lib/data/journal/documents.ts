@@ -57,6 +57,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';
+import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
 import type { DocumentTarget, JournalDocument } from '../types';
 import { filesOf, photoFileName, thumbFileName } from '../photos/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -227,7 +228,7 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
       await documents.delete(id);
       if (document) await afterCommit(driver, async () => {
         for (const name of documentFilesOf(document.fileName)) await files.remove(name);
-      });
+      }, markOrphanSweepDue);
     },
 
     getDocumentsLinkedTo: (kind, id) =>

@@ -60,7 +60,7 @@ import type { PhotoRow, RecordingRow, VideoRow } from './fileOwnership';
 export type SectionRead = Omit<Awaited<ReturnType<typeof readRowContext>>, 'fileNames'>;
 
 export async function readRowContext(driver: SqliteReader) {
-  const ownership = await readFileOwnership(driver, 'archive');
+  const ownership = await readFileOwnership(driver);
   return { driver, ...ownership.rows, fileNames: ownership.names };
 }
 

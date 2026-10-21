@@ -14,7 +14,7 @@ import { archiveFailureKind } from '../../src/lib/data/archive/failure.ts';
 import { DecryptionFailedError } from '../../src/lib/crypto/aesGcm.ts';
 import { deriveKey, randomSalt } from '../../src/lib/crypto/argon2id.ts';
 import { verifyArchive } from '../../src/lib/data/journal/restore.ts';
-import { readFileOwnership } from '../../src/lib/data/journal/fileOwnership.ts';
+import { readCleanupFileNames } from '../../src/lib/data/journal/fileOwnership.ts';
 import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { seedCompleteArchiveJournal } from '../../src/lib/data/journal/test-support/complete-archive-journal.ts';
@@ -207,7 +207,7 @@ export async function runOn(
       return { kind: 'untyped', sig: signature(error), errName: (error as Error)?.name, errMsg: String((error as Error)?.message).slice(0, 300), filesLeft, ms };
     }
     await sweepOrphanPhotos(d.driver, d.files);
-    const owned = new Set((await readFileOwnership(d.driver, 'cleanup')).names);
+    const owned = new Set(await readCleanupFileNames(d.driver));
     if (d.files.names().some(name => !owned.has(name))) return { kind: 'orphans-survive-sweep', sig: 'orphans-survive-sweep', filesLeft: d.files.names(), ms };
     const bad = integrity(d);
     if (bad) return { kind: 'invariant', sig: bad, ms };
