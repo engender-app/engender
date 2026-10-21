@@ -2,16 +2,14 @@
    ticket 09, second scale and escape hatch added by phase 5 ticket 33), and
    the grouping that keeps them apart.
 
-   Node-tier safe: no paraglide import (ADR-0016), the same rule
-   hairRemovalAreas.ts and garmentCategories.ts follow - journal's
+   Node-tier safe: no paraglide import (ADR-0016) - journal's
    hairProgress.ts validates an incoming scale and grade against this file
    and runs under the Node tier's tests.
 
    NORWOOD-HAMILTON is the twelve published stage labels, including the
    "vertex" and "a" (anterior) variants at stage 3 and beyond. Closed:
    there is no sixth or in-between stage to add, the scale itself is the
-   fixed vocabulary - unlike a measurement type, which opens to a custom one
-   (ticket 29).
+   fixed vocabulary.
 
    SINCLAIR is the second scale ticket 33 asks for, and it is a separate
    published classification, never a conversion target for the first. Five

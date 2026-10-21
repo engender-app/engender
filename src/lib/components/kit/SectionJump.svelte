@@ -14,9 +14,8 @@
      read.
 
      Not a Segmented (after-release 28, audit V12). Dose log's segmented
-     control swaps what the screen shows; Hair progress and Measurements
-     used the same pill to scroll to a section, so one look had two
-     behaviours. A jump now looks like what it is - names over a rule, the
+     control swaps what the screen shows; Hair progress used the same pill
+     to scroll to a section, so one look had two behaviours. A jump now looks like what it is - names over a rule, the
      page's own links - and a Segmented only ever swaps. The mark is the
      kit heading's 3px rule in small, travelling under the names.
 

@@ -225,10 +225,6 @@ describe('every row the hub carries', () => {
      entirely for a plain row on /settings, the same way tag groups and body
      regions were never on it at all. Twenty-five rows then, not twenty-seven.
 
-     Redesign ticket 61 folded `sizes` into `measurements` rather than moving
-     it: one row fronting two archive sections, which is `hair-progress`'s
-     own shape. Twenty-three rows then.
-
      Redesign ticket 62 took `words` off outright, and it is the first row to
      go without its screen going anywhere else: the reading it opened draws
      on the Look back door itself now, so there is nothing left for a row to
@@ -258,7 +254,6 @@ describe('every row the hub carries', () => {
      about the row itself moved - the same key, icon and address - so this
      table changes in one column. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
-    ['measurements', 'ruler', '/body/measurements', 'health', 'read'],
     ['care', 'timeline', '/care', 'health', 'written'],
     ['surgery', 'flag', '/health/surgery', 'health', 'read'],
     ['appointments', 'check', '/health/appointments', 'health', 'read'],

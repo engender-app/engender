@@ -9,7 +9,7 @@ describe('removed hormone curve', () => {
   it('sends both former addresses to the unknown-address screen', () => {
     expect(existsSync(root + 'src/routes/care/curve/+page.svelte')).toBe(false);
     expect(existsSync(root + 'src/routes/settings/hormone-curve/+page.ts')).toBe(false);
-    expect(read('src/lib/navigation/movedAddresses.ts')).not.toContain("'/settings/hormone-curve': '/care/curve'");
+    expect(existsSync(root + 'src/lib/navigation/movedAddresses.ts')).toBe(false);
     expect(read('src/routes/+error.svelte')).toContain("data-error-screen={notFound ? 'not-found' : 'failed'}");
   });
 

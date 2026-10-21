@@ -38,8 +38,7 @@ import type { TryoutKind } from '../../src/lib/data/types.ts';
 import type { InjectionSiteKey } from '../../src/lib/data/doseSchedule.ts';
 import { startOfDayTimestamp, weekdayOfEpochDay } from '../../src/lib/data/epochDay.ts';
 import { activeEpisodesAt } from '../../src/lib/data/regimenEpisode.ts';
-import { BUILT_IN_DIMENSIONS, BUILT_IN_MEASUREMENT_TYPES, BUILT_IN_PERSONAL_EFFECT_TYPES } from '../../src/lib/data/vocabulary/builtins.ts';
-import { GARMENT_CATEGORIES } from '../../src/lib/data/garmentCategories.ts';
+import { BUILT_IN_DIMENSIONS, BUILT_IN_PERSONAL_EFFECT_TYPES } from '../../src/lib/data/vocabulary/builtins.ts';
 import { HAIR_REMOVAL_AREAS } from '../../src/lib/data/hairRemovalAreas.ts';
 import { POLISH_PACK, ROADMAP_TRACKS } from '../../src/lib/data/roadmap.ts';
 import { demoAudioBytes, demoVideoBytes } from '../../src/lib/data/demoAudioBytes.ts';
@@ -101,8 +100,6 @@ export interface LongJournalSummary {
       the one above, so at least one stretch of the fixture has two
       concurrent episodes overlapping (ticket 38's shape). */
   additionalDoseEvents: number;
-  measurements: number;
-  sizeRecords: number;
   hairRemovalSessions: number;
   roadmapChecks: number;
   letters: number;
@@ -300,7 +297,6 @@ const TREND_PERIOD = 620;
    areas, and the rest follow the same proportionate spirit rather than
    multiplying the write count by ten for no reader-visible benefit. */
 
-const MEASUREMENT_TYPES = BUILT_IN_MEASUREMENT_TYPES.map((t) => t.key);
 const HAIR_REMOVAL_METHODS = ['laser', 'electrolysis', 'other'] as const;
 const INJECTABLE_SITES: InjectionSiteKey[] = [
   'thigh-left',
@@ -353,8 +349,6 @@ export async function generateLongJournal(
     hairStagings: 0,
     doseEvents: 0,
     additionalDoseEvents: 0,
-    measurements: 0,
-    sizeRecords: 0,
     hairRemovalSessions: 0,
     roadmapChecks: 0,
     letters: 0,
@@ -649,37 +643,8 @@ export async function generateLongJournal(
     summary.additionalDoseEvents++;
   }
 
-  // Measurements, sizes and hair-removal sessions: a year each, at an
-  // irregular cadence - an evenly spaced series is the one case every
-  // chart already handles, so this is deliberately not one.
+  // Hair-removal sessions cover one year at an irregular cadence.
   const trackingWindowStart = Math.max(firstEpochDay, lastEpochDay - 365);
-  for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
-    if (random() < 0.94) continue;
-    const type = pick(MEASUREMENT_TYPES);
-    const unit = type === 'waist' && random() < 0.15 ? 'in' : 'cm';
-    const base = { waist: 78, hips: 92, chest: 88, underbust: 74 }[type]!;
-    const value = unit === 'in' ? Math.round(base / 2.54) : base + Math.round((random() - 0.5) * 6);
-    await journal.measurements.upsertMeasurement({ type, epochDay: day, value, unit });
-    summary.measurements++;
-  }
-  // A guaranteed second unit on waist - the random 15% above makes it rare
-  // enough that a run can land on zero or one 'in' reading, which draws as
-  // "two measurements make a trend, add another" rather than a trend.
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - historicalOffset(200), value: 31, unit: 'in' });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - historicalOffset(40), value: 30, unit: 'in' });
-  summary.measurements += 2;
-  for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
-    if (random() < 0.97) continue;
-    const category = pick(GARMENT_CATEGORIES);
-    await journal.sizeRecords.upsertRecord({
-      epochDay: day,
-      category,
-      size: pick(['XS', 'S', 'M', 'L', '32', '34', '36', '8', '10']),
-      brand: pick(['', 'Zara', "Levi's", 'H&M', 'Uniqlo']),
-      fitNote: pick(['', 'true to size', 'runs small', 'runs large'])
-    });
-    summary.sizeRecords++;
-  }
   let hairRemovalPhotoIndex = 0;
   for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
     if (random() < 0.95) continue;

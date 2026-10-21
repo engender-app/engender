@@ -16,9 +16,8 @@
 
    WHAT IS NOT HERE. The reads. `read` takes whatever follows the FROM and
    nothing else - each area still writes its own WHERE and ORDER BY, because
-   the read set is not a bounded enum: measurements groups by unit in JS for
-   a correctness reason (cm and inches must not become one chart line), size
-   records need by-category, tally by-kind, journaling pauses all-only.
+   the read set is not a bounded enum: tally needs by-kind and journaling
+   pauses need all-only.
    Describing that declaratively is where a factory grows options, and
    ADR-0027 already refused a descriptor that is really a policy language.
 

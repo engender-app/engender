@@ -101,15 +101,7 @@ import { ROW_FORWARD_KEYS, type RowForward, type RowForwardKey, type RowForwardM
     that are about somebody needing help rather than tracking anything got a
     group that says so.
 
-    `body` is gone (audit item 10). It had been one row - measurements and
-    sizes - under a heading, so the door paid a heading's height and a
-    group's gap to say "Body" once and then say "Measurements and sizes",
-    which is the same fact at two sizes. The row is in `health` now, beside
-    the other readings somebody takes of themselves, and the door shows two
-    more rows on arrival for it. Four groups is the floor here rather than a
-    target: the audit's own warning is that the answer is not fewer, deeper
-    rows - /care earned its depth by opening on five live reads and no other
-    group has the equivalent. */
+    Four groups remain; Care owns its medication lanes and hosted rows. */
 /* hub_screen_title (messages/*.json) names these four by hand for the
    hub's own hidden screen title - add, rename or reorder a group here and
    that string goes stale until it's edited too (ticket 08). */
@@ -243,27 +235,6 @@ export interface HubRowSpec {
         reading what came off it. */
 const ROWS = [
   // --- Health --------------------------------------------------------------
-  {
-    /* Two areas behind one row since phase 10 redesign ticket 61, the
-       shape `hair-progress` has always had. Sizes were a row of their own
-       pointing at a purchase log with no reading on it, next door to the
-       one screen in Body that had a chart, a scrub and a protocol card -
-       two halves of one question about the same body, split. The row
-       reports whichever half was written last, and reads finished only
-       when both are.
-
-       In Health since audit item 10, and first in it: it was the whole of
-       the Body group, which cost a heading to say "Body" over a row that
-       says "Measurements and sizes". A reading somebody takes of their own
-       body sits among the other readings rather than in a group of one. */
-    key: 'measurements',
-    icon: 'ruler',
-    href: '/body/measurements',
-    home: 'health',
-    areas: ['measurements', 'sizeRecords'],
-    finishes: 'measurements',
-    line: 'read'
-  },
   {
     /* Deepening ticket 07 put labs, the regimen and the dose log behind
        this one row. /care opens on their live reads. It fronts no area of its own, so there is
@@ -916,8 +887,7 @@ const NOT_SEARCHABLE: readonly HubRowKey[] = ['cycle-events'];
     the labels a screen showed for exactly the same reason, and this matches
     the way that one does - a folded substring, over twenty-odd short strings
     already in memory. Not the entry index's whole-token prefix rule: an area
-    is found by any part of its name, so "log" reaches the size log and the
-    wear log both.
+    is found by any part of its name, so "wear" finds the wear log.
 
     An empty query matches nothing rather than everything, because the screen
     shows the grouped list for an empty box; a flat copy of every row would

@@ -27,11 +27,11 @@ test('a journal nobody has said anything about holds no rows and reads as restin
 test('hiding an area reads back, and hiding it does not finish it', async () => {
   const { journal } = await journalWithBuiltIns();
 
-  await journal.areaStates.setAreasHidden(['measurements'], true);
+  await journal.areaStates.setAreasHidden(['wearSessions'], true);
 
   const states = await journal.areaStates.getAreaStates();
-  assert.deepEqual(states.measurements, { hidden: true, finishedEpochDay: null, suspendedEpochDay: null });
-  assert.equal(areaHidden('measurements', states), true);
+  assert.deepEqual(states.wearSessions, { hidden: true, finishedEpochDay: null, suspendedEpochDay: null });
+  assert.equal(areaHidden('wearSessions', states), true);
 });
 
 test('one hub row fronting two sections finishes both, in one call', async () => {
@@ -155,10 +155,10 @@ test('a cycle row an archive carried in is not readable back out (ADR-0043)', as
      somewhere else is a way in. ADR-0043's rule is one-directional, and an
      imported row must not be what reverses it. */
   await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['cycleEvents', 1_700_000_000_000]);
-  await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['measurements', 1_700_000_000_000]);
+  await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['wearSessions', 1_700_000_000_000]);
 
   const states = await journal.areaStates.getAreaStates();
-  assert.deepEqual(Object.keys(states), ['measurements']);
+  assert.deepEqual(Object.keys(states), ['wearSessions']);
 
   // The row is still there: nothing was deleted, it is only unreadable
   // through the gate, so it travels on the way it travelled in.
@@ -168,12 +168,12 @@ test('a cycle row an archive carried in is not readable back out (ADR-0043)', as
 test('an area that goes back to saying nothing keeps no row saying so', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
-  await journal.areaStates.setAreasFinished(['sizeRecords'], 19500);
+  await journal.areaStates.setAreasHidden(['wearSessions'], true);
+  await journal.areaStates.setAreasFinished(['wearSessions'], 19500);
   assert.equal(await rowCount(db), 1);
 
-  await journal.areaStates.setAreasHidden(['sizeRecords'], false);
-  await journal.areaStates.setAreasFinished(['sizeRecords'], null);
+  await journal.areaStates.setAreasHidden(['wearSessions'], false);
+  await journal.areaStates.setAreasFinished(['wearSessions'], null);
 
   assert.deepEqual(await journal.areaStates.getAreaStates(), {});
   assert.equal(await rowCount(db), 0);

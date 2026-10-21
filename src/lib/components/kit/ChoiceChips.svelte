@@ -1,11 +1,8 @@
 <script lang="ts">
   /* One of a set, drawn as chips that wrap (phase 15 release-blockers
      ticket 05). For a choice whose labels do not fit a Segmented's equal
-     shares: a new tryout's kinds and the measurement types, where the
-     scrolling track cut "Garment" to "Gar" and "Underbust" to "U" at 390px,
-     with nothing but a chevron saying more was there. Measurement types
-     also grow with every custom type someone adds, which a fixed set of
-     shares was never sized for.
+     shares: a new tryout's kinds, where the scrolling track cut
+     "Garment" to "Gar" at 390px.
 
      The row wraps the way the photo library's chips do (PhotoChipRow), so
      every option is on screen and readable at 320px. A second line costs

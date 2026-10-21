@@ -66,5 +66,12 @@ CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT N
   { version: 96, sql: `
 DROP TABLE doubt_snapshot_entry;
 DROP TABLE doubt_snapshot;
+` },
+  { version: 97, sql: `
+DROP TABLE measurement;
+DROP TABLE measurement_type;
+DROP TABLE size_record;
+DELETE FROM area_state WHERE area IN ('measurementTypes', 'measurements', 'sizeRecords');
+DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed');
 ` }
 ];

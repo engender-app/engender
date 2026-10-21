@@ -119,7 +119,7 @@
 
      `use:resize` on the body below, not here, for the other half of the
      same finding: a notice that stays mounted and changes size under its
-     own title/text (the measurements screen's protocol tip, switched with
+     own title/text (a notice switched with
      the segmented control) used to jump the same way on the way in. One
      primitive per shape - `resize` cannot see a node arriving or leaving,
      which is `collapse`'s job, and `collapse` cannot see a node's own

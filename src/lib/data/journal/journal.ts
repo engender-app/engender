@@ -45,7 +45,6 @@ import { makeLabsArea, type LabsArea } from './labs';
 import { makeLastWriteArea, type LastWriteArea } from './lastWrite';
 import { makeLettersArea, type LettersArea } from './letters';
 import { makeRevisitsArea, type RevisitsArea } from './revisits';
-import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
 import { makePhotosArea, type PhotosArea } from './photos';
@@ -59,7 +58,6 @@ import { makeRemindersArea, type RemindersArea } from './reminders';
 import type { RoadmapArea } from './roadmap';
 import { makeMarginNotesArea, type MarginNotesArea } from './marginNotes';
 import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
-import { makeSizeRecordsArea, type SizeRecordsArea } from './sizeRecords';
 import { makeTaperArea, type TaperArea } from './taper';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeStockArea, type StockArea } from './stock';
@@ -146,12 +144,6 @@ export interface Journal {
       entries.ts owns the rows through attachVideos/removeVideoIds. */
   videos: VideoArea;
   labs: LabsArea;
-  measurements: MeasurementsArea;
-  /** What was bought and what fit - category, size, an optional brand and a
-      fit note (phase 5 ticket 23, CONTEXT: "Size record"). Pairs with
-      measurements above without duplicating it: no body-measurement math,
-      and no size normalized or converted across brands or systems. */
-  sizeRecords: SizeRecordsArea;
   /** The dilation taper schedule and its session log (phase 8 features
       ticket 12, CONTEXT: "Taper"). One name for both, the same reasoning
       `doses` gives for its schedule and its events: nothing reads a
@@ -275,8 +267,7 @@ export interface Journal {
       (personalEffectWindow.ts's hrtAnchor). No episode
       reference of its own, the same reason sideEffects has none. Bundles
       the effect vocabulary itself too - getEffectTypes/
-      addCustomEffectType/setEffectTypeHidden - the same shape
-      measurements.ts bundles measurement_type in. */
+      addCustomEffectType/setEffectTypeHidden. */
   personalEffects: PersonalEffectsArea;
   /** The toggleable groups the effect catalogue above is organised under
       (phase 5 ticket 41, CONTEXT: "Effect category") - tag_group's own
@@ -408,8 +399,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   );
   const feltSense = makeFeltSenseArea(driver);
   const tags = makeTagsArea(driver);
-  const measurements = makeMeasurementsArea(driver);
-  const sizeRecords = makeSizeRecordsArea(driver);
   const taper = makeTaperArea(driver);
   const personalEffects = makePersonalEffectsArea(driver);
   const cycleEvents = makeCycleEventsArea(driver);
@@ -447,8 +436,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     )(['getTakes', 'getTakesOnDay', 'lastWriteEpochDay', 'addTake', 'deleteTake']),
     videos: makeVideoArea(driver),
     labs,
-    measurements,
-    sizeRecords,
     taper,
     reminders,
     tally,
@@ -498,8 +485,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       doses,
       labs,
       voiceBenchmarks,
-      measurements,
-      sizeRecords,
       taper,
       sideEffects,
       personalEffects,
@@ -520,8 +505,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       doses,
       labs,
       voiceBenchmarks,
-      measurements,
-      sizeRecords,
       taper,
       sideEffects,
       personalEffects,

@@ -1,9 +1,8 @@
 <!-- Multi-track anatomical inspector sheet (phase 5 deepening ticket 08).
      Tapping any body region opens this somatic breakdown combining:
      1. Dysphoria/Euphoria trajectory
-     2. Linked physical measurements
-     3. Filtered progress photos
-     4. Laser & hair removal sessions & hair staging records -->
+     2. Filtered progress photos
+     3. Laser & hair removal sessions & hair staging records -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
@@ -123,31 +122,7 @@
         {/if}
       </section>
 
-      <!-- Track 2: Linked Measurements -->
-      <section class="inspector-section" data-track="measurements">
-        <SectionHeading text={m.body_region_track_measurements()} />
-        {#if breakdown.measurements.length > 0}
-          <ListCard>
-            {#each breakdown.measurements as mItem (mItem.id)}
-              <ListRow
-                icon="ruler"
-                title={vocabulary.measurementTypeName(mItem.type)}
-                subtitle={fmtDay(mItem.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-                static
-                chevron={false}
-              >
-                {#snippet trailing()}
-                  <span class="muted small">{mItem.value} {mItem.unit}</span>
-                {/snippet}
-              </ListRow>
-            {/each}
-          </ListCard>
-        {:else}
-          <p class="muted small inspector-empty-track">{m.body_region_measurements_empty()}</p>
-        {/if}
-      </section>
-
-      <!-- Track 3: Progress Photos -->
+      <!-- Track 2: Progress Photos -->
       <section class="inspector-section" data-track="photos">
         <SectionHeading text={m.body_region_track_photos()} />
         {#if breakdown.photos.length > 0}
@@ -164,7 +139,7 @@
         {/if}
       </section>
 
-      <!-- Track 4: Laser & Hair Removal Sessions and Norwood / Sinclair Hair Staging -->
+      <!-- Track 3: Laser & Hair Removal Sessions and Norwood / Sinclair Hair Staging -->
       <section class="inspector-section" data-track="hair-removal">
         <SectionHeading text={m.body_region_track_hair_removal()} />
         {#if breakdown.hairRemovalSessions.length > 0}

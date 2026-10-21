@@ -172,6 +172,18 @@
 {/if}
 
 <style>
+  .kit-entry-note {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
   /* No note. Italic, and nothing else: it reads as the row saying something
      about itself rather than as words somebody wrote. It keeps the note's
      own --text-2 rather than stepping quieter, because it is still text

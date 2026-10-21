@@ -163,21 +163,13 @@
        `maskHeight`'s `settle()` (its own `.finished` handler, a *JS*
        promise a busy main thread can leave queued) are two independent
        cleanups with no ordering between them: on a main thread busy with
-       ten parallel reads answering at once during boot, on Measurements'
-       empty state, the compositor's revert could land a frame before
-       `settle()` gets to run - the margin's compensation gone but the clip
-       still up, showing the wrong one of two otherwise-equivalent
-       positions for exactly one painted frame. A cast of
-       `/body/measurements` on an empty, previously-populated journal
-       (localStorage's `measurements-now` reserve carried a real height
-       over) caught the button's row 20px too high for one frame at ~400ms,
-       back on the next.
+       parallel reads answering during boot, the compositor's revert
+       can land before `settle()` runs. The margin compensation is then
+       gone while the clip remains, showing one wrong painted frame.
 
        `fill: 'forwards'` alone would trade that race for a standing one:
        held forever, a margin here would keep outranking a later plain CSS
-       change to the same property - this block's own content "has motion
-       of its own after it arrives" (a size record added or the last one
-       removed flips `.read-reserve:has(...)`), and nothing else re-runs
+       change to the same property - this block's own content can change after it arrives, and nothing else re-runs
        this effect to re-animate it. `releaseWhenDone` below cancels each animation
        after both the margin and height mask finish. Native start times can
        differ by a frame, so the margin's own promise may resolve while the

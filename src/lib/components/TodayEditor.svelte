@@ -510,11 +510,8 @@
     outline: 1px solid var(--outline);
   }
 
-  /* Under 350px the icon block goes. At 320 the title column left over is
-     about 100px and "measurements" is 118, so the word broke into
-     "measurement" and a stranded "s"; the block names the area a second
-     time and the title already does that, and dropping it hands the title
-     the 48px it needs to stay on one line. */
+  /* Under 350px the icon block goes. It repeats the area's title and takes
+     48px from text that may already need to wrap. */
   @media (max-width: 350px) {
     .today-editor-list :global(.kit-row-ico) {
       display: none;

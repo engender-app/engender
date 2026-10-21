@@ -55,8 +55,6 @@
     type PhotoChip
   } from '$lib/data/photos/library';
   import { photoOwnerLine, photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import type { Measurement } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoChipRow from '$lib/components/PhotoChipRow.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
@@ -66,11 +64,8 @@
   import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
-  import ListCard from '$lib/components/kit/ListCard.svelte';
   import PhotoWipe from '$lib/components/kit/PhotoWipe.svelte';
-  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { measureCells, pinnedOut, tileIn, travelCells } from '$lib/motion/narrow';
   import { scrollBehavior } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -131,35 +126,6 @@
     if (!pair) return '';
     const duration = calendarDuration(comparable[pair.left].epochDay, comparable[pair.right].epochDay);
     return `${fmtDuration(duration)} ${m.apart_suffix()}`;
-  });
-
-  /* The measurement combined view (ticket 08): the same date range the two
-     anchor photos span, so a number and an image answer "what changed"
-     side by side. */
-  let rangeQuery = liveList((j) =>
-    pair
-      ? j.measurements.getMeasurementsInRange(comparable[pair.left].epochDay, comparable[pair.right].epochDay)
-      : Promise.resolve([])
-  );
-  let rangeMeasurements = $derived(rangeQuery.rows);
-
-  let rangeSummaries = $derived.by(() => {
-    const byType = new Map<string, Measurement[]>();
-    for (const measurement of rangeMeasurements) {
-      const list = byType.get(measurement.type) ?? [];
-      list.push(measurement);
-      byType.set(measurement.type, list);
-    }
-    // Ordered by the vocabulary's own order, hidden types included: a
-    // range someone is comparing may still hold a measurement logged
-    // against a type since hidden, and this summary reads it back
-    // exactly as logged (CONTEXT: "Hidden").
-    return vocabulary.measurementTypes
-      .filter((t) => byType.has(t.key))
-      .map((t) => {
-        const list = byType.get(t.key)!;
-        return { type: t.key, first: list[0], last: list[list.length - 1] };
-      });
   });
 
   function toggle(id: string) {
@@ -501,22 +467,6 @@
       date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
       note={photoOwnerLine}
     />
-    {#if rangeSummaries.length}
-      <SectionHeading text={m.ph_measurements_title()} />
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each rangeSummaries as s (s.type)}
-          <ListRow
-            static
-            data-range-measurement={s.type}
-            title={vocabulary.measurementTypeName(s.type)}
-            subtitle={s.first.id === s.last.id
-              ? `${s.first.value} ${s.first.unit}`
-              : `${s.first.value} ${s.first.unit} → ${s.last.value} ${s.last.unit}`}
-          />
-        {/each}
-      </ListCard>
-    {/if}
-
     <div>
       <button class="btn btn-soft press" data-photos-back-to-all onclick={() => (comparing = false)}>
         <span>{m.ph_back_to_all()}</span>

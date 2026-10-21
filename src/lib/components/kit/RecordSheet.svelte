@@ -1,5 +1,5 @@
 <script lang="ts" generics="TRecord extends { id: string }, TDraft extends { id?: string }">
-  /* Adding or editing a record - a wear session, a size record, a cycle
+  /* Adding or editing a record - a wear session, a cycle
      event, a procedure - happens here, on every screen that logs one
      (phase 5 audit ticket 09).
 

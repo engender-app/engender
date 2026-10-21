@@ -3,7 +3,7 @@
 
    `areaState.ts` keys the record by `ArchiveSectionName`, because that is
    what is compile-checkable and wire-stable. Nobody meets an archive section.
-   What somebody meets is a screen - the hair progress screen, the size log -
+   What somebody meets is a screen, such as Hair progress, and
    and hair progress is two sections, `hairStages` and `hairPhotos`, which
    finish together in one transaction or not at all.
 
@@ -28,7 +28,6 @@ import { areaQuiet, type AreaStates, type FinishableArea, type SuspendableArea, 
 /** One finishable thing, as a person addresses it. Named after the More hub's
     own row keys, because that is what the screens behind them are called. */
 export type AreaGroupKey =
-  | 'measurements'
   | 'wear'
   | 'hair-progress'
   | 'hair-removal'
@@ -46,27 +45,15 @@ export type AreaGroupKey =
     `entries` (CONTEXT: "Area"), so the memos screen is not finishable and
     has no group here.
 
-    `measurements` is the third, from phase 10 redesign ticket 61: a number
-    off a tape and a size off a label are two halves of one question about
-    the same body, and they were two rows with the half that had a reading
-    not knowing about the half that had none. One row, one screen, one
-    group - so the row reads finished only when a person has stopped with
-    both, which is the rule hair progress has always followed. The old
-    `sizes` group is gone rather than renamed: `areaState.ts` keys what is
-    finished by `sizeRecords`, the archive section, so nothing a person has
-    already finished is disturbed by the navigation above it changing
-    (ADR-0052).
-
     `effects` is the fourth, from phase 11 all-four-doors ticket 13: a side
     effect and a change you were hoping for both landed on one screen and one
-    axis, and the group followed the screen the same way `measurements` did -
+    axis, and the group followed the screen -
     `personalEffects` and `sideEffects` finish together now, and the old
     `side-effects` group is gone rather than renamed, for the reason `sizes`
     was: `areaState.ts` keys what is finished by `sideEffects`, the archive
     section, so nothing already finished is disturbed by the screen above it
     merging. */
 export const AREA_GROUPS = {
-  measurements: ['measurements', 'sizeRecords'],
   wear: ['wearSessions'],
   'hair-progress': ['hairStages', 'hairPhotos'],
   'hair-removal': ['hairRemovalSessions'],
@@ -207,7 +194,7 @@ export function groupLastWrite(
 /** How long an area has to go unwritten before the app asks about it once.
 
     Half a year. The number itself is a judgement rather than a measurement:
-    the one cadence the tree actually pins is the measurements nudge's, which
+    the one cadence the tree actually pins is the voice benchmark nudge's, which
     speaks up after 30 days (`liveTiles.ts`), and 180 is six times that. The
     rest is plausibility - electrolysis runs on a four-to-six-week course, a
     wear session is a most-weeks thing, a benchmark happens when somebody

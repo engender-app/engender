@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import capacitorConfig, { JOURNAL_ORIGIN } from '../capacitor.config';
@@ -18,7 +18,7 @@ describe('release links', () => {
   it.each(['source and public docs', 'built output'])('keeps retired URLs out of %s', (surface) => {
     const paths = surface === 'built output' ? filesIn('build') : execFileSync('git', ['ls-files', '-z', '--', 'src', 'deploy', ':(top,glob)*.md', 'capacitor.config.ts'], {
       cwd: root, encoding: 'utf8'
-    }).split('\0').filter(Boolean);
+    }).split('\0').filter((path) => path && existsSync(new URL(path, root)));
     const retired = /engender\.dev|github\.com\/barankiewicz\/gender-diary/;
     const violations = paths.filter((path) => retired.test(readFileSync(new URL(path, root), 'utf8')));
     expect(violations).toEqual([]);

@@ -174,8 +174,6 @@ export interface PreferenceValues {
   pauseActiveBannerEnabled: boolean;
   /** Whether the hair-removal recovery live tile is ever shown (phase 5 deepening ticket 03). */
   hairRemovalRecoveryEnabled: boolean;
-  /** Whether the measurements nudge live tile is ever shown (phase 5 deepening ticket 03). */
-  measurementsNudgeEnabled: boolean;
   /** Whether the appointment-today live tile is ever shown (phase 8 features
       ticket 63), when today's date carries an appointment. Same shape and
       reasoning as `wearTimerEnabled`. */
@@ -246,29 +244,6 @@ export interface PreferenceValues {
   quietHoursEnd: string;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone', string>>;
-  /** The unit body measurements chart in (phase 5, "units should be
-      choosable in settings"). A measurement is still logged and stored in
-      whatever unit it was typed in, never converted (measurements.ts) -
-      this only decides what a chart converts every reading to for display,
-      which is what lets the chart be one line instead of one per unit
-      someone has ever logged in. */
-  measurementUnit: 'cm' | 'in';
-  /** Whether the measurements screen's capture-protocol guidance has been
-      dismissed (ticket 08; collapsed from a per-type record to one flag in
-      ticket 14 - the notice is one instance whose text follows the
-      selected type, so dismissing it dismisses it for every type, not just
-      the one on screen when it was closed). Guidance is opt-in, never
-      required to save a measurement, so this only ever hides a card - it
-      blocks nothing.
-
-      A row already on disk from before ticket 14 still reads correctly:
-      preferences.ts's `JSON.parse` on the raw column delivers whatever the
-      old writer left there rather than coercing it, so a stale
-      `{ waist: true }` shows up here as an object, not `false` - but every
-      truthy value, including any non-empty object, satisfies `!dismissed`
-      the same way `true` does, and the old writer never persisted an empty
-      one. `preferences.test.ts` locks this in. */
-  measurementProtocolDismissed: boolean;
   /** Whether the hair-photo capture-protocol guidance has been dismissed
       (phase 4 ticket 09). Hair progress has only the one photo kind, so
       this was already a single flag. Guidance is opt-in, never required to
@@ -488,7 +463,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   voiceComfortHighHz: null,
   pauseActiveBannerEnabled: true,
   hairRemovalRecoveryEnabled: true,
-  measurementsNudgeEnabled: true,
   appointmentTodayEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
@@ -501,8 +475,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
   preferredLabUnits: {},
-  measurementUnit: 'cm',
-  measurementProtocolDismissed: false,
   hairPhotoProtocolDismissed: false,
   spanRailHintDismissed: false,
   hairAnchorEpochDay: null,
@@ -541,7 +513,6 @@ export const PORTABLE_KEYS = [
   'checkInTime',
   'checkInAffirmationsEnabled',
   'preferredLabUnits',
-  'measurementUnit',
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
   'hrtStartEpochDay',
@@ -595,7 +566,6 @@ export const DEVICE_LOCAL_KEYS = [
   'voiceBenchmarkPassage',
   'pauseActiveBannerEnabled',
   'hairRemovalRecoveryEnabled',
-  'measurementsNudgeEnabled',
   'appointmentTodayEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
@@ -614,7 +584,6 @@ export const DEVICE_LOCAL_KEYS = [
   'storageNoticeDismissed',
   'lastVerifiedAt',
   'roadmapMilestoneSyncEnabled',
-  'measurementProtocolDismissed',
   'hairPhotoProtocolDismissed',
   'spanRailHintDismissed',
   'comingBackSeenSince',

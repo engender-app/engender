@@ -32,7 +32,6 @@ describe('the unprompted registry', () => {
       'voiceBenchmarkNudgeEnabled',
       'pauseActiveBannerEnabled',
       'hairRemovalRecoveryEnabled',
-      'measurementsNudgeEnabled',
       'appointmentTodayEnabled',
       'wrappedEnabled',
       'onThisDayEnabled',
@@ -154,17 +153,14 @@ describe('the notifications view (ticket 04)', () => {
       ['wear-timer', 'wearSessions'],
       ['voice-benchmark-nudge', 'voiceBenchmarks'],
       ['hair-removal-recovery', 'hairRemovalSessions'],
-      ['measurements-nudge', 'measurements'],
       ['appointment-today', 'appointments'],
       ['wear-elapsed', 'wearSessions']
     ]);
   });
 
   it('silences a kind when its area is finished, and leaves the others talking', () => {
-    const states: AreaStates = { measurements: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
-
-    expect(unpromptedQuiet('measurements-nudge', states, 20000)).toBe(true);
-    expect(unpromptedQuiet('wear-timer', states, 20000)).toBe(false);
+    const states: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
+    expect(unpromptedQuiet('wear-timer', states, 20000)).toBe(true);
     expect(unpromptedQuiet('ready-letter', states, 20000)).toBe(false);
   });
 

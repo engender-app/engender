@@ -120,7 +120,7 @@ async function closeDoseSheet(page) {
     (ticket 13). It resets the preferences too, so the look is set after
     this rather than before. */
 async function fillEveryFeature(page) {
-  await goto(page, '/settings/measurements');
+  await goto(page, '/body/hair-progress');
   await page.locator('[data-fill-every-feature]').click();
   await page.waitForURL('**/more');
   await page.waitForSelector('[data-app-root][data-boot="ready"]');

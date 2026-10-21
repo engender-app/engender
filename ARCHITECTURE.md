@@ -392,7 +392,7 @@ The rest, without SQL edges:
 
 | Area | Tables |
 |---|---|
-| Body | `measurement_type`, `measurement`, `size_record`, `hair_stage`, `hair_photo`, `personal_effect`, `side_effect` |
+| Body | `hair_stage`, `hair_photo`, `personal_effect`, `side_effect` |
 | Voice | `voice_benchmark`, `voice_practice_take` |
 | Logs | `tally_event`, `cycle_event` (ADR-0043), `wear_session` (ADR-0064), `journaling_pause` |
 | Self | `letter` (seal derived from dates), `document` (ADR-0065), `roadmap_check`, `roadmap_goal`, `roadmap_track` (ADR-0068) |
@@ -407,7 +407,8 @@ URLs. The interface requires a registered surface key; its type check rejects
 missing and unknown keys. Direct Journal reads remain possible; code review
 must check that resurfacing surfaces use this interface.
 
-Count the ordinary tables with `rg -c '^CREATE TABLE' src/lib/data/sqlite/schema.ts`; the FTS5 virtual table is separate.
+The current schema has 66 ordinary tables after migrations 95 through 97 drop
+six from the 72-table baseline. The FTS5 virtual table is separate.
 
 ### 6.3 The journal facade
 

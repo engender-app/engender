@@ -40,25 +40,25 @@ const keysOf = (rows: ReturnType<typeof pinnedRows>) => rows.map((row) => row.sp
 // --- the person's own order -------------------------------------------------
 
 test('rows come back in the order the person put them in, not the registry order', () => {
-  /* `wear` is declared after `measurements` on the hub, so a resolution
+  /* `wear` is declared after hair progress in the registry, so a resolution
      that quietly sorted by the registry would come back the other way
      round. That is the whole claim of the feature: the app ranks nothing. */
-  const rows = pinnedRows(arranged(['wear', 'measurements']), reading());
+  const rows = pinnedRows(arranged(['wear', 'hair-progress']), reading());
 
-  assert.deepEqual(keysOf(rows), ['wear', 'measurements']);
+  assert.deepEqual(keysOf(rows), ['wear', 'hair-progress']);
 });
 
 test('a pinned row carries its own reading and the day of that reading', () => {
   const rows = pinnedRows(
-    arranged(['measurements']),
-    reading({ lastWrites: { measurements: TODAY - 3 } })
+    arranged(['hair-progress']),
+    reading({ lastWrites: { hairStages: TODAY - 3 } })
   );
 
   assert.deepEqual(rows[0].line, { kind: 'last', epochDay: TODAY - 3, daysAgo: 3 });
 });
 
 test('a pinned row with nothing written yet says so rather than showing a blank', () => {
-  const rows = pinnedRows(arranged(['measurements']), reading());
+  const rows = pinnedRows(arranged(['hair-progress']), reading());
 
   assert.deepEqual(rows[0].line, { kind: 'not-yet' });
 });
@@ -73,11 +73,10 @@ test('a pinned row that can never report a reading says what is behind it', () =
 });
 
 test('a pin naming a finished area carries the day it ended', () => {
-  /* Both halves: the measurements row fronts two sections since redesign
-     ticket 61, and a group half-finished is not finished (areaGroups.ts). */
+  /* Hair progress fronts two sections. A group half-finished is not finished. */
   const rows = pinnedRows(
-    arranged(['measurements']),
-    reading({ states: { measurements: finished(TODAY - 40), sizeRecords: finished(TODAY - 40) } })
+    arranged(['hair-progress']),
+    reading({ states: { hairStages: finished(TODAY - 40), hairPhotos: finished(TODAY - 40) } })
   );
 
   assert.deepEqual(rows[0].line, { kind: 'finished', epochDay: TODAY - 40 });
@@ -88,34 +87,34 @@ test('a finished pin stays where the person put it rather than moving to the end
      row is somewhere the person put it, so finishing an area may not move
      it - the hub's grouping is the hub's, and this is not the hub. */
   const rows = pinnedRows(
-    arranged(['measurements', 'wear']),
-    reading({ states: { measurements: finished(TODAY - 40), sizeRecords: finished(TODAY - 40) } })
+    arranged(['hair-progress', 'wear']),
+    reading({ states: { hairStages: finished(TODAY - 40), hairPhotos: finished(TODAY - 40) } })
   );
 
-  assert.deepEqual(keysOf(rows), ['measurements', 'wear']);
+  assert.deepEqual(keysOf(rows), ['hair-progress', 'wear']);
 });
 
 // --- what resolves to nothing -----------------------------------------------
 
 test('a stale pin naming a hidden area resolves to nothing', () => {
   const rows = pinnedRows(
-    arranged(['measurements', 'wear']),
+    arranged(['hair-progress', 'wear']),
     reading({ states: { wearSessions: hidden } })
   );
 
-  assert.deepEqual(keysOf(rows), ['measurements']);
+  assert.deepEqual(keysOf(rows), ['hair-progress']);
 });
 
 test('a pin naming a row the registry has never held resolves to nothing', () => {
-  const rows = pinnedRows(arranged(['measurements', 'a-row-from-a-newer-build']), reading());
+  const rows = pinnedRows(arranged(['hair-progress', 'a-row-from-a-newer-build']), reading());
 
-  assert.deepEqual(keysOf(rows), ['measurements']);
+  assert.deepEqual(keysOf(rows), ['hair-progress']);
 });
 
 test('a row pinned twice is drawn once, at the first place it was put', () => {
-  const rows = pinnedRows(arranged(['measurements', 'wear', 'measurements']), reading());
+  const rows = pinnedRows(arranged(['hair-progress', 'wear', 'hair-progress']), reading());
 
-  assert.deepEqual(keysOf(rows), ['measurements', 'wear']);
+  assert.deepEqual(keysOf(rows), ['hair-progress', 'wear']);
 });
 
 test('pinning nothing shows nothing, which is not the same as never having arranged it', () => {
@@ -123,10 +122,10 @@ test('pinning nothing shows nothing, which is not the same as never having arran
      front page with none. Null is somebody who has never arranged it, and
      falls back to what onboarding chose - so unpinning the last row may not
      read as a fresh install. */
-  const chose: PinPreferences = { pinnedRows: [], onboardingAreas: ['measurements'] };
+  const chose: PinPreferences = { pinnedRows: [], onboardingAreas: ['hair-progress'] };
 
   assert.deepEqual(keysOf(pinnedRows(chose, reading())), []);
-  assert.deepEqual(keysOf(pinnedRows({ ...chose, pinnedRows: null }, reading())), ['measurements']);
+  assert.deepEqual(keysOf(pinnedRows({ ...chose, pinnedRows: null }, reading())), ['hair-progress']);
 });
 
 // --- the rule, run over a shortened registry --------------------------------
@@ -136,32 +135,32 @@ test('the resolution can be run over a shortened registry and seen to drop the r
      own output over a registry one row short, which is the same function
      the screen calls. A pin that resolved a line ago resolves to nothing
      here, which is what a renamed or retired row does to a stored pin. */
-  const pins = arranged(['measurements', 'wear']);
+  const pins = arranged(['hair-progress', 'wear']);
   const shortened = HUB_ROWS.filter((row) => row.key !== 'wear');
 
-  assert.deepEqual(keysOf(pinnedRows(pins, reading())), ['measurements', 'wear']);
-  assert.deepEqual(keysOf(pinnedRows(pins, reading(), shortened)), ['measurements']);
+  assert.deepEqual(keysOf(pinnedRows(pins, reading())), ['hair-progress', 'wear']);
+  assert.deepEqual(keysOf(pinnedRows(pins, reading(), shortened)), ['hair-progress']);
 });
 
 // --- the default set --------------------------------------------------------
 
 test('the default set is what onboarding chose', () => {
-  const rows = pinnedRows({ pinnedRows: null, onboardingAreas: ['tryouts', 'measurements'] }, reading());
+  const rows = pinnedRows({ pinnedRows: null, onboardingAreas: ['tryouts', 'hair-progress'] }, reading());
 
-  assert.deepEqual(keysOf(rows), ['measurements', 'tryouts']);
+  assert.deepEqual(keysOf(rows), ['tryouts', 'hair-progress']);
 });
 
 test('the default set is drawn in registry order rather than in ticking order', () => {
   /* Which order somebody happened to tick a list of checkboxes in is an
      artefact of reading down the page, not an arrangement. The hub's order
      is one they have already met; ticket 14 is where they change it. */
-  assert.deepEqual(defaultPins(['tryouts', 'measurements']), defaultPins(['measurements', 'tryouts']));
+  assert.deepEqual(defaultPins(['tryouts', 'hair-progress']), defaultPins(['tryouts', 'hair-progress']));
 });
 
 test('a skipped onboarding still produces a set', () => {
   const skipped = pinnedRows({ pinnedRows: null, onboardingAreas: null }, reading());
 
-  assert.deepEqual(keysOf(skipped), ['measurements', ...DEFAULT_ONBOARDING_AREAS]);
+  assert.deepEqual(keysOf(skipped), [...DEFAULT_ONBOARDING_AREAS]);
   assert.ok(skipped.length > 0);
 });
 
@@ -218,7 +217,7 @@ test('a person who has never arranged anything starts editing from the default s
   /* The default arrangement is resolved and never stored (ADR-0073), so the first edit
      has to write the whole set down: an arrangement that stored only the
      row somebody just added would silently unpin the others. */
-  assert.deepEqual(pinArrangement({ pinnedRows: null, onboardingAreas: null }), ['measurements', ...DEFAULT_ONBOARDING_AREAS]);
+  assert.deepEqual(pinArrangement({ pinnedRows: null, onboardingAreas: null }), [...DEFAULT_ONBOARDING_AREAS]);
   assert.deepEqual(pinArrangement({ pinnedRows: null, onboardingAreas: [...DEFAULT_ONBOARDING_AREAS] }), [...DEFAULT_ONBOARDING_AREAS]);
 });
 
@@ -227,24 +226,24 @@ test('an arrangement keeps a pin whose area is hidden and drops one the registry
      statement and survives an edit - it just draws nothing while the area
      is hidden. A key no row answers to is not a pin at all, and an edit is
      where the arrangement stops carrying it. */
-  const kept = pinArrangement(arranged(['measurements', 'wear', 'no-such-row']));
+  const kept = pinArrangement(arranged(['hair-progress', 'wear', 'no-such-row']));
 
-  assert.deepEqual(kept, ['measurements', 'wear']);
+  assert.deepEqual(kept, ['hair-progress', 'wear']);
 });
 
 test('a row added lands at the end rather than in registry order', () => {
   /* Where a new pin goes is the only answer that is not a ranking: last,
      because the app may not decide that a row somebody just asked for
      belongs above one they arranged earlier. */
-  assert.deepEqual(withPin(['tryouts', 'measurements'], 'wear'), ['tryouts', 'measurements', 'wear']);
+  assert.deepEqual(withPin(['tryouts', 'hair-progress'], 'wear'), ['tryouts', 'hair-progress', 'wear']);
 });
 
 test('adding a row that is already pinned changes nothing', () => {
-  assert.deepEqual(withPin(['wear', 'measurements'], 'wear'), ['wear', 'measurements']);
+  assert.deepEqual(withPin(['wear', 'hair-progress'], 'wear'), ['wear', 'hair-progress']);
 });
 
 test('removing a row takes it out and leaves the rest in place', () => {
-  assert.deepEqual(withoutPin(['wear', 'measurements', 'tryouts'], 'measurements'), ['wear', 'tryouts']);
+  assert.deepEqual(withoutPin(['wear', 'hair-progress', 'tryouts'], 'hair-progress'), ['wear', 'tryouts']);
 });
 
 test('removing the last row leaves an empty arrangement, which is not the default', () => {
@@ -288,9 +287,9 @@ const addable = (
 ) => addablePins(prefs, reading(over), { cycleVisible }).map((row) => row.spec.key as string);
 
 test('the add list offers every row the person has not pinned, in the hub order', () => {
-  const offered = addable(arranged(['measurements']));
+  const offered = addable(arranged(['hair-progress']));
   const expected = HUB_ROWS.map((row) => row.key).filter(
-    (key) => key !== 'measurements' && key !== 'cycle-events'
+    (key) => key !== 'hair-progress' && key !== 'cycle-events'
   );
 
   /* The hub's order rather than a ranking of its own: it is an order the
@@ -418,7 +417,7 @@ test('the add list carries the forward line too', () => {
     letters: { kind: 'next', epochDay: TODAY + 42, what: { area: 'letter', several: true } }
   } as const;
 
-  const addable = addablePins(arranged(['measurements']), reading({ forward }), { cycleVisible: false });
+  const addable = addablePins(arranged(['hair-progress']), reading({ forward }), { cycleVisible: false });
   const letters = addable.find((row) => row.spec.key === 'letters');
 
   assert.deepEqual(letters?.line, forward.letters);
@@ -429,7 +428,7 @@ test('the add list carries the forward line too', () => {
 test('fallbackReading supplies an empty reading for synchronous initial render', () => {
   assert.deepEqual(fallbackReading(TODAY).lastWrites, {});
   assert.deepEqual(fallbackReading(TODAY).forward, {});
-  assert.deepEqual(keysOf(pinnedRows(arranged(['measurements']), fallbackReading(TODAY))), []);
+  assert.deepEqual(keysOf(pinnedRows(arranged(['hair-progress']), fallbackReading(TODAY))), ['hair-progress']);
 });
 
 test('pinnedRows with fallbackReading renders all default pins with quiet lines', () => {
@@ -446,10 +445,10 @@ test('pinnedRows with fallbackReading respects an explicitly unpinned empty list
 });
 
 test('pin reads follow current arrangement, and editing expands to every available row', () => {
-  const prefs = { pinnedRows: null, onboardingAreas: ['measurements', 'care'] };
+  const prefs = { pinnedRows: null, onboardingAreas: ['care', 'hair-progress'] };
   const initial = pinReadScope(prefs, false);
-  assert.deepEqual(initial.rows, ['measurements', 'care']);
-  assert.deepEqual(initial.lastWrites, ['measurements', 'sizeRecords']);
+  assert.deepEqual(initial.rows, ['care', 'hair-progress']);
+  assert.deepEqual(initial.lastWrites, ['hairStages', 'hairPhotos']);
   assert.deepEqual(pinReadScope({ ...prefs, pinnedRows: [] }, false).rows, []);
   const wear = pinReadScope({ ...prefs, pinnedRows: ['wear', 'wear', 'old-row'] }, false);
   assert.deepEqual(wear.rows, ['wear']);

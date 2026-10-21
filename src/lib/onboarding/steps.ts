@@ -38,12 +38,9 @@ export type OnboardingStep =
      flag     the app's whole visual identity, and the one choice that
               shows its own result while it is being made
      scales   which sliders appear when logging, i.e. what the journal is
-     features which optional parts of the app show at all - measurements,
-              genital effects, cycle tracking (after-release 17, UX-09).
-              They shared the pins step until then, which asked two
-              questions in one paragraph and offered Measurements as both
-              a pin and a feature. Asked first, so the pins that follow
-              only offer what is switched on
+     features which optional parts of the app show at all - genital effects
+              and cycle tracking (after-release 17, UX-09). Asked before
+              pins, so the pins that follow offer only visible areas
      areas    which of the hub's areas the front page starts pinned with
               (phase 10 redesign ticket 22) - the one central guess left in
               `pinnedRows.ts`, and the cheapest moment to settle it: the
@@ -141,7 +138,7 @@ const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
   flag: ['palette'],
   scales: ['activeScales'],
   /* The one preference it writes. Its other two answers are journal rows
-     (the measurements area's state and the genital-effects category), and
+     (the genital-effects category), and
      those travel in an archive with the rest of the journal, so a restore
      already answers this step whole. */
   features: ['cycleTrackingChoice'],
@@ -249,17 +246,6 @@ export function isSkippable(step: OnboardingStep): boolean {
     the flow rather than after it. */
 export function onboardingDestination(): string {
   return '/';
-}
-
-/** A new journal starts without measurements. An untouched setup step must
-    leave an older journal or restored archive's visibility alone. */
-export function measurementsHiddenOnSetup(
-  chosenVisibility: boolean | null,
-  wasOnboarded: boolean,
-  restored: boolean
-): boolean | null {
-  if (chosenVisibility !== null) return !chosenVisibility;
-  return !wasOnboarded && !restored ? true : null;
 }
 
 /** How small the sun starts. Large enough to be plainly the flag from the

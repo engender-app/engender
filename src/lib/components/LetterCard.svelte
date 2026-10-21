@@ -4,8 +4,8 @@
 
      The screen used to draw all of them as the same list row: a lock glyph,
      the word "Sealed" and `Opens 19 Aug 2031` in secondary grey - five years
-     of waiting set in the same shape and the same weights as a size record
-     saying `XS - H&M`. This is the only feature in the app with a refusal
+     of waiting set in the same shape and the same weights as an ordinary
+     record. This is the only feature in the app with a refusal
      built into it, and the row said nothing about it.
 
      **Sealed.** The wait is the card's own number, on blocks of the area's

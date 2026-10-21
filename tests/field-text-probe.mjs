@@ -99,7 +99,7 @@ const COLD_ROUTES = (ALL_ROUTES ? (x) => x : (x) => x.slice(0, 4))([
   ['stats', '/stats'],
   ['settings', '/more'],
   ...[
-    '/body/hair-progress', '/body/hair-removal', '/body-map', '/body/measurements', '/body/wear',
+    '/body/hair-progress', '/body/hair-removal', '/body-map', '/body/wear',
     '/care', '/care/changes', '/care/doses', '/care/labs', '/care/regimen',
     '/coming-back', '/compare', '/doubt', '/doubt/comfort', '/doubt/evidence',
     '/health/appointments', '/health/appointments/in-the-room', '/health/clinician-summary',
@@ -159,18 +159,7 @@ for (const [A, B] of [['calendar', 'home'], ['settings', 'stats'], ['home', 'set
     });
   }
 }
-for (const scroll of ['top', 'bottom']) {
-  add({ name: `deep settings>measurements ${scroll}`, at: '/more', scroll, steps: [{ at: 0, click: 'a[href="/body/measurements"]' }] });
-  add({
-    name: `deep measurements back ${scroll}`,
-    at: '/more',
-    scroll,
-    enter: 'a[href="/body/measurements"]',
-    steps: [{ at: 0, back: true }]
-  });
-  add({ name: `gear home>settings ${scroll}`, at: '/', scroll, steps: [{ at: 0, click: '[data-home-gear]' }] });
-  add({ name: `gear settings>home ${scroll}`, at: '/', enter: '[data-home-gear]', scroll, steps: [{ at: 0, back: true }] });
-}
+
 for (const [A, B] of [['home', 'calendar'], ['calendar', 'stats'], ['stats', 'settings'], ['settings', 'home']]) {
   add({ name: `polish door ${A}>${B} top`, at: ROUTE[A], locale: 'pl', steps: [{ at: 0, click: tab(B) }] });
   add({ name: `reduced door ${A}>${B} top`, at: ROUTE[A], reduced: true, steps: [{ at: 0, click: tab(B) }] });

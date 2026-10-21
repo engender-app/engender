@@ -17,22 +17,22 @@ const TODAY = 20000;
 test('an area with no row is neither hidden nor quiet, and nothing had to say so', () => {
   const states: AreaStates = {};
 
-  assert.equal(areaHidden('measurements', states), false);
-  assert.equal(areaQuiet('measurements', states, TODAY), false);
+  assert.equal(areaHidden('wearSessions', states), false);
+  assert.equal(areaQuiet('wearSessions', states, TODAY), false);
   assert.deepEqual(Object.keys(states), []);
 });
 
 test('hidden and finished are independent: either one alone makes an area quiet', () => {
-  const onlyHidden: AreaStates = { measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
-  const onlyFinished: AreaStates = { measurements: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
+  const onlyHidden: AreaStates = { wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
+  const onlyFinished: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
 
-  assert.equal(areaHidden('measurements', onlyHidden), true);
-  assert.equal(areaQuiet('measurements', onlyHidden, TODAY), true);
+  assert.equal(areaHidden('wearSessions', onlyHidden), true);
+  assert.equal(areaQuiet('wearSessions', onlyHidden, TODAY), true);
 
   // The whole point of a finished area: it is still readable, so finishing
   // it did not hide it.
-  assert.equal(areaHidden('measurements', onlyFinished), false);
-  assert.equal(areaQuiet('measurements', onlyFinished, TODAY), true);
+  assert.equal(areaHidden('wearSessions', onlyFinished), false);
+  assert.equal(areaQuiet('wearSessions', onlyFinished, TODAY), true);
 });
 
 test('a finish day in the future has not happened yet', () => {
@@ -76,15 +76,13 @@ test('one area answering does not answer for another', () => {
   assert.equal(areaQuiet('hairPhotos', states, TODAY), false);
 });
 
-test('the eleven finishable areas are the nine that were approved plus ticket 10s practice take and ticket 12s dilation, voice fronting two of them', () => {
+test('finishable areas include practice takes and dilation, with voice fronting two sections', () => {
   assert.deepEqual([...FINISHABLE_AREAS].sort(), [
     'hairPhotos',
     'hairRemovalSessions',
     'hairStages',
-    'measurements',
     'personalEffects',
     'sideEffects',
-    'sizeRecords',
     'taperSessions',
     'voiceBenchmarks',
     'voicePracticeTakes',

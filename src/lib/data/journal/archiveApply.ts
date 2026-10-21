@@ -666,29 +666,6 @@ export async function applyMilestones({ driver, journal, ts }: Restoring): Promi
   );
 }
 
-export async function applyMeasurementTypes({ driver, mode, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT key AS id FROM measurement_type');
-
-  for (const type of journal.measurementTypes) {
-    if (present.has(type.key)) {
-      if (mode === 'merge') continue;
-      await driver.run('UPDATE measurement_type SET name = ?, hidden = ?, updated_at = ? WHERE key = ?', [
-        type.name,
-        flag(type.hidden),
-        ts,
-        type.key
-      ]);
-      continue;
-    }
-    // A custom type's key is its own uuid (measurements.ts): the column is
-    // NOT NULL for the built-ins' sake, and one identity is enough for a
-    // row the user made.
-    await driver.run(
-      'INSERT INTO measurement_type (uuid, key, name, is_built_in, hidden, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [type.builtIn ? null : type.key, type.key, type.name, flag(type.builtIn), flag(type.hidden), ts]
-    );
-  }
-}
 
 /* Bundled goals match by pack/goal rather than uuid. A missing incoming
    goal leaves local choices alone, and a locally recorded status wins.
@@ -1022,7 +999,7 @@ export async function applyPersonalEffectTypes({ driver, mode, journal, ts }: Re
 
 /* A hair photo owns no other row (its own table in schema.ts, not a
    third owner on `photo`), so it is matched and inserted directly by uuid
-   like applyMeasurements - unlike applyEntries/applyMilestones, there is no
+   unlike applyEntries/applyMilestones, there is no
    owner row to insert first and no owner id to resolve. */
 export async function applyHairPhotos({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM hair_photo');

@@ -88,7 +88,6 @@ describe('activeTabKey', () => {
      light for all of them - one case per new prefix, not per moved route,
      since the table matches on prefix rather than on the full path. */
   it('lights settings for every group the hub rows moved onto', () => {
-    expect(activeTabKey('/body/measurements')).toBe('settings');
     expect(activeTabKey('/health/surgery')).toBe('settings');
     expect(activeTabKey('/transition/milestones')).toBe('settings');
     expect(activeTabKey('/media/photos')).toBe('settings');

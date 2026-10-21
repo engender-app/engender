@@ -209,41 +209,6 @@ interface ArchiveLabResult {
   timingDayOfInterval: number | null;
 }
 
-export interface ArchiveMeasurement {
-  id: string;
-  /** Names an ArchiveMeasurementType by key - a built-in's stable key or a
-      custom's minted uuid - the same way an ArchiveEntry's dims name an
-      ArchiveDimension (phase 5 ticket 29). Nothing here resolves it to a
-      rowid on the way back in (restore.ts), the same free-text treatment
-      it always had. */
-  type: string;
-  epochDay: number;
-  value: number;
-  unit: string;
-}
-
-/** A measurement type (phase 5 ticket 29), the same `key` NOT NULL /
-    `uuid` nullable shape ArchiveDimension gives a gender dimension: a
-    built-in's own stable key, or a custom's minted uuid doubling as its
-    key. */
-export interface ArchiveMeasurementType {
-  key: string;
-  name: string;
-  builtIn: boolean;
-  hidden: boolean;
-}
-
-interface ArchiveSizeRecord {
-  id: string;
-  epochDay: number;
-  /** Loosened from GarmentCategoryKey, the way ArchiveMeasurement loosens
-      `type`: the schema's CHECK is the backstop on the way back in. */
-  category: string;
-  size: string;
-  brand: string;
-  fitNote: string;
-}
-
 /** The dilation taper schedule (phase 8 features ticket 12, CONTEXT:
     "Taper"). One row, since the app models one taper at a time; the array
     shape is only what a section travels as. `stagesJson` is the stage
@@ -813,9 +778,6 @@ export interface ArchiveJournal {
   entries: ArchiveEntry[];
   milestones: ArchiveMilestone[];
   labResults: ArchiveLabResult[];
-  measurementTypes: ArchiveMeasurementType[];
-  measurements: ArchiveMeasurement[];
-  sizeRecords: ArchiveSizeRecord[];
   taper: ArchiveTaper[];
   taperSessions: ArchiveTaperSession[];
   sideEffects: ArchiveSideEffect[];
@@ -1028,9 +990,6 @@ const postAlphaSections = [
   'marginNotes',
   'wordIgnore',
   'documents',
-  'measurementTypes',
-  'measurements',
-  'sizeRecords',
   'taper',
   'taperSessions',
   'sideEffects',

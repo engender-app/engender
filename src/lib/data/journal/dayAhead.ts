@@ -269,17 +269,14 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   bodyRegions: 'reference data, not a day still to come',
   presentations: 'reference data, not a day still to come',
   entryTemplates: 'reference data, not a day still to come',
-  measurementTypes: 'reference data, not a day still to come',
   effectCategories: 'reference data, not a day still to come',
   personalEffectTypes: 'reference data, not a day still to come',
 
   entries: 'written on the day it happened, never ahead of it',
   documents: 'added on the day it was imported, not scheduled ahead of time',
   labResults: 'recorded when drawn, not scheduled ahead of time',
-  measurements: 'recorded when taken, not scheduled ahead of time',
   taperSessions:
     "recorded when it happened - the taper's own future sessions are what taper above already excludes",
-  sizeRecords: 'recorded when taken, not scheduled ahead of time',
   sideEffects: 'noted when it started, not scheduled ahead of time',
   cycleEvents: 'logged when it happened, not scheduled ahead of time',
   personalEffects: 'noted when first seen, not scheduled ahead of time',

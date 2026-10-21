@@ -33,7 +33,6 @@ import { wearKindLabel } from '$lib/data/vocabulary/wearLabels';
 import type { Photo } from '$lib/data/types';
 import {
   cycleEventKindName,
-  garmentCategoryName,
   hairRemovalAreaName,
   hairRemovalMethodName,
   hairScaleName,
@@ -169,25 +168,6 @@ const SECTION_ROWS: Record<
       title: m.vb_hz({ value: Math.round(benchmark.f0MedianHz) }),
       subtitle: m.day_voice_benchmark(),
       href: `${hubRow('voice-benchmark').href}?tab=compare`
-    })),
-
-  measurements: (day) =>
-    day.measurements.map((measurement) => ({
-      key: `measurement-${measurement.id}`,
-      ...iconOf('measurements'),
-      title: `${vocabulary.measurementTypeName(measurement.type)} ${measurement.value} ${measurement.unit}`,
-      href: hubRow('measurements').href
-    })),
-
-  sizeRecords: (day) =>
-    day.sizeRecords.map((record) => ({
-      key: `size-${record.id}`,
-      // No screen of its own - a size record sits behind the measurements
-      // row - so this keeps its own.
-      icon: 'package',
-      title: `${garmentCategoryName(record.category)} ${record.size}`,
-      subtitle: record.brand || undefined,
-      href: '/body/measurements'
     })),
 
   taperSessions: (day) =>

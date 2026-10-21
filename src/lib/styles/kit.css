@@ -403,7 +403,7 @@
   display: block;
   /* A title breaks inside a word rather than running out of its own box.
      `min-width: 0` above lets the text column shrink, but a single word
-     longer than what is left of the row - "measurements" at 200% zoom -
+     longer than what is left of the row at 200% zoom
      has nowhere to wrap and overflows across whatever the row carries at
      its trailing edge (found on the edit mode's handle, redesign ticket
      14, where a row has two controls there rather than a chevron). */
@@ -501,8 +501,7 @@
 /* ---------- the filter line ----------
 
    A label and one control, sitting on the page rather than in a card:
-   which garment category the size log is showing, which measurement type
-   the chart plots, which area the hair-removal sessions came from.
+   which area the hair-removal sessions came from.
 
    The feature screens had this as a `.field` with a full-width `<select>`
    in it, which is the shape a form uses for something being *entered*.
@@ -902,17 +901,6 @@ a.kit-entry:active {
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
   line-height: 1.3;
-}
-
-.kit-entry-note {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 /* The fluidity engine's presentation, in its own colour (phase 5 deepening

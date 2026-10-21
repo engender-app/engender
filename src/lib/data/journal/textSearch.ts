@@ -345,15 +345,6 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['note', 'analyte', 'provider']
   }),
-  area({
-    key: 'sizeRecords',
-    covers: ['sizeRecords'],
-    tables: ['sizeRecord'],
-    from: 'size_record',
-    uuid: 'uuid',
-    date: { kind: 'epochDay', column: 'epoch_day' },
-    columns: ['fit_note', 'brand', 'size']
-  }),
   /* A dilation session's own note (ticket 12). The schedule that expects it
      carries no text of its own - opted out below, the same reason
      doseSchedules is. */
@@ -514,15 +505,15 @@ type Covered = (typeof AREAS)[number]['covers'][number];
     behind it, matched through it by the screen's own read (ADR-0005).
 
     *Reference data whose words live above this seam.* A built-in tag,
-    dimension, body region, measurement type or effect type stores a key,
+    dimension, body region or effect type stores a key,
     and the words it was shown under only exist in the message catalogue
     (ADR-0016) - which is exactly why tag labels have always been matched in
     memory over the mirrored vocabulary rather than in SQL (searchQuery.ts).
     Searching those is that mechanism's job, not this one's.
 
     *No text of its own.* A row of numbers, days or picked vocabulary. A
-    measurement is a value and a unit; a cycle event is one of three kinds;
-    a dose event's site and vehicle come from closed lists.
+    cycle event is one of three kinds; a dose event's site and vehicle come
+    from closed lists.
 
     *Its own reason*, for the two that need one. */
 /* SEARCH_OPT_OUTS stays exported only for its own test (AU-09 test-only
@@ -534,7 +525,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   presets: 'reference data: a built-in stores a key, and its words live above this seam',
   tagGroups: 'reference data: tag labels are matched in memory over the mirrored vocabulary',
   bodyRegions: 'reference data: a built-in stores a key, and its words live above this seam',
-  measurementTypes: 'reference data: a built-in stores a key, and its words live above this seam',
   effectCategories: 'reference data: a built-in stores a key, and its words live above this seam',
   personalEffectTypes: 'reference data: a built-in stores a key, and its words live above this seam',
   // The marker itself carries the effect's key rather than its name
@@ -542,7 +532,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // vocabulary's wording, one line above.
   personalEffects: 'no text of its own: the marker is a day and an effect key',
 
-  measurements: 'no text of its own: a type, a value and a unit',
   // Phase 8 features ticket 10: a min, a max, a median and a felt-sense
   // rating on the app's own mood scale, none of it text.
   voicePracticeTakes: 'no text of its own: three pitch figures and a felt-sense rating',

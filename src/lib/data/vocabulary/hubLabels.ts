@@ -14,28 +14,24 @@
    Every row has that line, which is the spec's user story 13 - "each row to
    tell me what is behind it, so that navigating is also reading" - and a
    reading replaces it wherever the row has one. Ten rows never get a
-   reading at all; the other fifteen show their line until something is
+   reading at all; the others show their line until something is
    written in them.
 
    The reading copy is three frames and no more, which is what keeps it
    translatable: a Polish noun dropped into a frame needs a case the English
    never asks for (docs/ui-copy.md), so none of them interpolates one, and the
    duration that does travel through them stays nominative in both languages.
-   The row's title is directly above and supplies the noun already - "Body
-   measurements" over "Last logged 3 days ago" says what was logged without
-   the line repeating it. */
+   The row's title is directly above and supplies the noun already. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay, fmtDuration } from '$lib/data/dates';
 import { calendarDuration } from '$lib/data/epochDay';
 import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
-import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 import { wearRunningCardTitle } from '$lib/data/vocabulary/wearLabels';
 import type { HubGroupKey, HubLine, HubRowKey } from '$lib/data/hubRows';
-import type { NextWhat, RowValue, RunningWhat } from '$lib/data/rowForward';
+import type { NextWhat, RunningWhat } from '$lib/data/rowForward';
 
 const ROW_TITLE: Record<HubRowKey, () => string> = {
-  measurements: m.measurements_and_sizes,
   'hair-progress': m.hair_progress,
   'hair-removal': m.hair_removal,
   care: m.care_title,
@@ -72,7 +68,6 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
     screen's own intro rather than new copy, so the row and the screen behind
     it say the same thing (ADR-0024). */
 const ROW_LINE: Record<HubRowKey, () => string> = {
-  measurements: m.hub_sub_measurements,
   'hair-progress': m.hub_sub_hair_progress,
   'hair-removal': m.hub_sub_hair_removal,
   care: m.hub_sub_care,
@@ -201,19 +196,6 @@ function nextLine(what: NextWhat, epochDay: number, todayEpochDay: number): stri
   }
 }
 
-/** The last value, and how long ago it was taken.
-
-    The type's name comes off the vocabulary mirror rather than the label
-    table, so a measurement type somebody made themselves reads as the name
-    they gave it rather than as its uuid - the same join `dayRows.ts` makes
-    for the same three fields. */
-function valueLine(line: RowValue, todayEpochDay: number): string {
-  const what = `${vocabulary.measurementTypeName(line.type)} ${line.value} ${line.unit}`;
-  return line.epochDay === todayEpochDay
-    ? m.hub_line_value_today({ what })
-    : m.hub_line_value({ what, gap: gapTo(line.epochDay, todayEpochDay) });
-}
-
 /** The row's second line. Never null: every row says something.
 
     Seven shapes. Three are phase 11 all-four-doors ticket 02's and come
@@ -237,8 +219,6 @@ export function hubRowLine(key: HubRowKey, line: HubLine, todayEpochDay: number,
       return runningLine(line.what, nowMs);
     case 'next':
       return nextLine(line.what, line.epochDay, todayEpochDay);
-    case 'value':
-      return valueLine(line, todayEpochDay);
     case 'no-stream':
     case 'not-yet':
       return ROW_LINE[key]();

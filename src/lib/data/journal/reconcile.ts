@@ -16,7 +16,6 @@ import {
   BUILT_IN_BODY_REGIONS,
   BUILT_IN_DIMENSIONS,
   BUILT_IN_EFFECT_CATEGORIES,
-  BUILT_IN_MEASUREMENT_TYPES,
   BUILT_IN_PERSONAL_EFFECT_TYPES,
   BUILT_IN_TAG_GROUPS,
   ENTRY_TEMPLATES
@@ -122,15 +121,6 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
   for (const key of BUILT_IN_BODY_REGIONS) {
     if (bodyRegionKeys.has(key)) continue;
     await driver.run(`INSERT INTO body_region (key, name, updated_at) VALUES (?, '', ?)`, [key, ts]);
-  }
-
-  const measurementTypeKeys = await presentKeys(driver, 'measurement_type');
-  for (const t of BUILT_IN_MEASUREMENT_TYPES) {
-    if (measurementTypeKeys.has(t.key)) continue;
-    await driver.run(`INSERT INTO measurement_type (key, name, is_built_in, updated_at) VALUES (?, '', 1, ?)`, [
-      t.key,
-      ts
-    ]);
   }
 
   const effectCategoryKeys = await presentKeys(driver, 'effect_category');

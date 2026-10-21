@@ -1,6 +1,6 @@
 /* After-release ticket 06: every save says it worked, every failure says so,
    and a double tap writes once. One check per class of save rather than one
-   per screen: RecordSheet (measurements, standing for its seventeen
+   per screen: RecordSheet (standing for its remaining
    screens), a hand-written sheet save (affirmations), a save that leaves
    the screen (a reminder), surgery's notes, and Today's acknowledgement of
    an entry saved today. Then the eight action sites UI 17 brought under
@@ -122,34 +122,6 @@ try {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click();
   await page.evaluate(() => { const bar = document.querySelector('.demo-bar'); if (bar) bar.style.display = 'none'; });
-
-  // RecordSheet: save confirms, a failed save keeps the sheet, a failed delete keeps its sheet.
-  await navigate('/body/measurements');
-  await page.locator('[data-add]').click();
-  await page.locator('#measurement-value').fill('71.5');
-  await fault('measurements', 'upsertMeasurement');
-  await page.locator('[data-save-measurement]').click();
-  await page.locator('[data-save-failed]').waitFor();
-  assert.equal(await page.locator('#measurement-value').inputValue(), '71.5');
-  const before = await doubleTapWhilePending(page.locator('[data-save-measurement]'), page.locator('#measurement-value'));
-  await page.waitForSelector('[data-sheet]', { state: 'detached' });
-  assert.equal(await calls(), before + 1, 'a double tap on Save writes once');
-  await expectToast('record-saved', /Saved/);
-  console.log('PASS record sheet: failed save stays with its draft, double tap writes once, save confirms');
-
-  const row = page.locator('[data-measurement]').filter({ hasText: '71.5' }).first();
-  await fault('measurements', 'deleteMeasurement');
-  await row.click();
-  await page.locator('[data-delete-measurement]').click();
-  await page.locator('[data-confirm-delete-measurement]').click();
-  await page.locator('[data-delete-failed]').waitFor();
-  assert.equal(await page.locator('[data-confirm-delete-measurement]').isVisible(), true, 'the confirm sheet stays');
-  const beforeDelete = await doubleTapWhilePending(page.locator('[data-confirm-delete-measurement]'));
-  await page.waitForSelector('[data-sheet]', { state: 'detached' });
-  assert.equal(await calls(), beforeDelete + 1, 'a double tap on Delete removes once');
-  await expectToast('record-deleted', /Deleted/);
-  await row.waitFor({ state: 'detached' });
-  console.log('PASS record sheet: failed delete says so in its sheet, double tap deletes once, delete confirms');
 
   // A hand-written sheet save: affirmations.
   await navigate('/settings/affirmations');

@@ -395,6 +395,7 @@ function restorableJournal(journal: ArchiveJournal, externalImport = false): Arc
   }
   const complete = emptyArchiveJournal();
   for (const section of ARCHIVE_SECTION_NAMES) (complete as unknown as Record<string, unknown[]>)[section] = journal[section] ?? [];
+  complete.areaStates = complete.areaStates.filter((row) => !DROPPED_ARCHIVE_SECTION_NAMES.includes(row.area));
   for (const { name, flatTable } of ARCHIVE_SECTIONS) {
     const section = name as keyof ArchiveJournal;
     assertArchiveRows(section, complete[section], flatTable);

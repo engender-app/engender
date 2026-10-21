@@ -10,9 +10,7 @@
   import { getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { areasHidden } from '$lib/data/areaState';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
-  import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { activateLanguagePreference, prefs, selectMetric, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -66,12 +64,8 @@
      count of the enabled ones - which only the Android build displays at all. */
   let reminders = liveList((j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.rows).filter((r) => r.enabled).length);
-  let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
   let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
   let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
-  let measurementsOn = $derived(
-    measurementStates.value !== undefined && !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
-  );
   let genitalEffectsOn = $derived(
     vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
   );
@@ -308,29 +302,6 @@
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
     </ListCard>
-    {#if measurementsOn}
-      <ListCard>
-        <div class="kit-row settings-unit-row" data-measurement-unit style="cursor:default">
-          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
-          </span>
-          <span class="kit-row-trail">
-            <Segmented
-              name={m.settings_measurement_unit_title()}
-              key="measurement-unit"
-              compact
-              options={[
-                { value: 'cm', label: m.measurement_unit_cm() },
-                { value: 'in', label: m.measurement_unit_in() }
-              ]}
-              value={prefs.measurementUnit}
-              onChange={(v) => (prefs.measurementUnit = v as typeof prefs.measurementUnit)}
-            />
-          </span>
-        </div>
-      </ListCard>
-    {/if}
   </div>
 
   <SectionHeading text={m.settings_reminders()} />
@@ -430,18 +401,6 @@
     <p class="muted small">{m.features_to_show_sub()}</p>
     <div data-feature-visibility role="group" aria-labelledby="settings-features-title">
       <ListCard>
-        <div class="kit-row" data-measurements-toggle>
-          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={measurementsOn}
-              disabled={measurementStates.value === undefined}
-              label={m.measurements_and_sizes()}
-              onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
-            />
-          </span>
-        </div>
         <div class="kit-row" data-genital-effects-toggle>
           <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
           <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>

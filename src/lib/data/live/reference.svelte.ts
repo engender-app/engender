@@ -33,7 +33,6 @@ import type {
   EffectCategory,
   EntryTemplate,
   GenderDimension,
-  MeasurementType,
   Milestone,
   PersonalEffectCatalogEntry,
   Presentation,
@@ -50,7 +49,6 @@ const mirror = $state<{
   milestones: Milestone[];
   affirmations: Affirmation[];
   bodyRegions: BodyRegion[];
-  measurementTypes: MeasurementType[];
   effectCategories: EffectCategory[];
   personalEffectTypes: PersonalEffectCatalogEntry[];
   presentations: Presentation[];
@@ -61,7 +59,6 @@ const mirror = $state<{
   milestones: [],
   affirmations: [],
   bodyRegions: [],
-  measurementTypes: [],
   effectCategories: [],
   personalEffectTypes: [],
   presentations: [],
@@ -74,7 +71,6 @@ type MirrorSlice =
   | 'milestones'
   | 'affirmations'
   | 'bodyRegions'
-  | 'measurementTypes'
   | 'effectCategories'
   | 'personalEffectTypes'
   | 'presentations'
@@ -94,7 +90,6 @@ const SLICE_READS: Record<MirrorSlice, [area: string, operation: string]> = {
   milestones: ['milestones', 'getMilestones'],
   affirmations: ['affirmations', 'getAffirmations'],
   bodyRegions: ['bodyRegions', 'getBodyRegions'],
-  measurementTypes: ['measurements', 'getMeasurementTypes'],
   effectCategories: ['effectCategories', 'getEffectCategories'],
   personalEffectTypes: ['personalEffects', 'getEffectTypes'],
   presentations: ['presentations', 'getPresentations'],
@@ -126,7 +121,6 @@ export async function hydrateReference(journal: Journal, current: () => void = (
     milestones,
     affirmations,
     bodyRegions,
-    measurementTypes,
     effectCategories,
     personalEffectTypes,
     presentations,
@@ -137,7 +131,6 @@ export async function hydrateReference(journal: Journal, current: () => void = (
     journal.milestones.getMilestones(),
     journal.affirmations.getAffirmations(),
     journal.bodyRegions.getBodyRegions(),
-    journal.measurements.getMeasurementTypes(),
     journal.effectCategories.getEffectCategories(),
     journal.personalEffects.getEffectTypes(),
     journal.presentations.getPresentations(),
@@ -149,7 +142,6 @@ export async function hydrateReference(journal: Journal, current: () => void = (
   mirror.milestones = milestones;
   mirror.affirmations = affirmations;
   mirror.bodyRegions = bodyRegions;
-  mirror.measurementTypes = measurementTypes;
   mirror.effectCategories = effectCategories;
   mirror.personalEffectTypes = personalEffectTypes;
   mirror.presentations = presentations;
@@ -193,7 +185,6 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('milestones')) mirror.milestones = await journal.milestones.getMilestones();
     if (slices.has('affirmations')) mirror.affirmations = await journal.affirmations.getAffirmations();
     if (slices.has('bodyRegions')) mirror.bodyRegions = await journal.bodyRegions.getBodyRegions();
-    if (slices.has('measurementTypes')) mirror.measurementTypes = await journal.measurements.getMeasurementTypes();
     if (slices.has('effectCategories')) mirror.effectCategories = await journal.effectCategories.getEffectCategories();
     if (slices.has('personalEffectTypes')) mirror.personalEffectTypes = await journal.personalEffects.getEffectTypes();
     if (slices.has('presentations')) mirror.presentations = await journal.presentations.getPresentations();
@@ -256,12 +247,6 @@ export const reference = {
       applies to tags. */
   get visibleBodyRegions(): BodyRegion[] {
     return mirror.bodyRegions.filter((r) => !r.hidden);
-  },
-
-  /** Every measurement type, hidden ones included - what the measurements
-      settings screen manages (phase 5 ticket 29, CONTEXT: "Hidden"). */
-  get measurementTypes(): MeasurementType[] {
-    return mirror.measurementTypes;
   },
 
   /** All five (or six) effect categories, in seed order (phase 5 ticket 41,

@@ -2,9 +2,9 @@
    milestone and regimen templates for the vocabulary mirror, entry templates
    for Today's debrief offer and the entry editor, the six dimension keys the
    first run's scales step offers before there is a journal, and the euphoria tag keys
-   the good-day rule and the doubt journal read. Split out of builtins.ts in
+   the good-day rule reads. Split out of builtins.ts in
    ux-carpet ticket 223 so the rest of the catalogue - dimensions, tag groups,
-   affirmations, body regions, measurement and effect types, which only the
+   affirmations, body regions and effect types, which only the
    reconcile, the archive and the demo read - stays out of the first-load
    graph. Same rule as builtins.ts: keys only, no display text, types only. */
 

@@ -252,10 +252,8 @@ test('an unfinished episode reaches to today and not to the end of the range', a
 
 test('a finished area marks the day it ended, on any chart covering it', async () => {
   const journal = await journalWith();
-  // Both halves of the row: since redesign ticket 61 `measurements` fronts
-  // the readings and the size log, and a group half-finished is not
-  // finished (areaGroups.ts).
-  await journal.areaStates.setAreasFinished(['measurements', 'sizeRecords'], 20100);
+  // Both halves of the hair-progress row must be finished.
+  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 20100);
 
   const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   const finished = marks.filter((a) => a.kind === 'finishedArea');
@@ -265,7 +263,7 @@ test('a finished area marks the day it ended, on any chart covering it', async (
   assert.equal(finished[0].fromEpochDay, 20100);
   // The group's key, not a section name: the words are the kit's
   // (kit/chartAnnotation.ts), and one hub row can front two sections.
-  assert.equal(finished[0].name, 'measurements');
+  assert.equal(finished[0].name, 'hair-progress');
 });
 
 test('a row fronting two areas marks once, and not at all until both are finished', async () => {
@@ -293,7 +291,7 @@ test('a finish day outside the range is not drawn, like everything else', async 
 
 test('hiding an area draws nothing: only a finish day is a day', async () => {
   const journal = await journalWith();
-  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
+  await journal.areaStates.setAreasHidden(['wearSessions'], true);
 
   const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   assert.equal(marks.filter((a) => a.kind === 'finishedArea').length, 0);

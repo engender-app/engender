@@ -56,11 +56,6 @@
                                    arrive unasked.
      /stats, interval mood         same reason: x is a position in the dosing
                                    interval.
-     /body/measurements            a time chart, and it would fit - but it is
-                                   not wired in yet, and doing so here would
-                                   be a decision made in the wrong place.
-                                   Named so the next person knows it was
-                                   looked at.
 
    One thing the app stores dates for and this deliberately does not draw:
    entries themselves - every logged day would be an annotation, which is

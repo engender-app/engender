@@ -362,9 +362,7 @@
   min-height: var(--touch-target);
 }
 /* A deep screen's actions go on the back control's line rather than the
-   title's. A title at 48 that wraps overflows its own column - "Body
-   measurements" sets 330px wide in a 254px cell - and ran straight under the
-   two controls on the measurements screen (Alicja, 2026-09-09). The back
+   title's. A large title can wrap into its action controls. The back
    row is empty to the right of a 48px control, which is where an app bar
    puts its actions anyway. Only where there is a back control to share the
    line with: a door that carries actions and no back keeps them beside its

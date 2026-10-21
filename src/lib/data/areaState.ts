@@ -7,8 +7,8 @@
    renders as absence, which every living tracker reads as a lapse. Three
    separate things are recorded here instead, per area:
 
-     hidden            take this out of the navigation, the way a tag or a
-                       measurement type is hidden - CONTEXT.md's own word
+     hidden            take this out of the navigation, the way a tag is
+                       hidden - CONTEXT.md's own word
      finishedEpochDay  the day the person says the stream ended, kept as a
                        date rather than a flag so `chartAnnotations.ts` can
                        draw it beside a regimen change and a clinician
@@ -82,12 +82,7 @@ export type HideableArea = Exclude<ArchiveSectionName, 'cycleEvents'>;
     reverse a one-directional rule through the back door. */
 export type AreaStates = Partial<Record<HideableArea, AreaState>>;
 
-/** Until SQLite answers, keep the opt-in body module out of navigation and
-    prompts. An empty fallback would briefly show it on a cold load. */
-export const AREA_STATES_BEFORE_READ: AreaStates = {
-  measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
-  sizeRecords: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
-};
+export const AREA_STATES_BEFORE_READ: AreaStates = {};
 
 /** The areas a person can declare finished: the original nine approved area
     by area by Alicja on 2026-09-03, plus `voicePracticeTakes` (phase 8
@@ -109,8 +104,6 @@ export const AREA_STATES_BEFORE_READ: AreaStates = {
    areaGroups.test.ts (AU-09 test-only review). */
 export const FINISHABLE_AREAS = [
   'hairRemovalSessions',
-  'measurements',
-  'sizeRecords',
   'wearSessions',
   'sideEffects',
   'personalEffects',
@@ -231,7 +224,6 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   bodyRegions: 'reference data, not a series (CONTEXT: "Reference data")',
   presentations: 'reference data, not a series (CONTEXT: "Reference data")',
   entryTemplates: 'reference data, not a series (CONTEXT: "Reference data")',
-  measurementTypes: 'reference data, not a series (CONTEXT: "Reference data")',
   effectCategories: 'reference data, not a series (CONTEXT: "Reference data")',
   personalEffectTypes: 'reference data, not a series (CONTEXT: "Reference data")',
   wordIgnore: 'reference data, not a series (CONTEXT: "Reference data")'

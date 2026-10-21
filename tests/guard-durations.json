@@ -78,7 +78,6 @@
     "hair-progress-photo-actions": 17.99,
     "hair-removal-entry-check": 17.37,
     "hair-removal-recency-handoff-check": 9.69,
-    "measurements-sizes-jump-check": 13.65,
     "roadmap-tick-motion-check": 9.95,
     "search-filter-scope": 19.56,
     "mark-edge-fringe": 4.18,
@@ -90,7 +89,6 @@
     "regimen-editor-check": 16.43,
     "document-import-check": 14.12,
     "lab-entry-check": 17.73,
-    "measurements-entry-check": 20.14,
     "wear-entry-check": 6,
     "leave-lock-check": 11.66,
     "date-picker-check": 260.39,
@@ -229,9 +227,6 @@
     "hair-removal-recency-handoff-check": [
       9.69
     ],
-    "measurements-sizes-jump-check": [
-      13.65
-    ],
     "roadmap-tick-motion-check": [
       9.95
     ],
@@ -264,9 +259,6 @@
     ],
     "lab-entry-check": [
       17.73
-    ],
-    "measurements-entry-check": [
-      20.14
     ],
     "wear-entry-check": [
       6

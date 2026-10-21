@@ -903,6 +903,17 @@
 </div>
 
 <style>
+  .search-count {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    margin: var(--space-3) 0 var(--space-3);
+    /* Crossfade lifts outgoing words out of flow over incoming words. */
+    position: relative;
+  }
+
+  /* The page control says how many results come next. */
+  .search-more { width: 100%; margin-top: var(--space-4); }
+
   /* Search's own hint lines; the screen is their one reader, so they live
      here rather than in screens.css (check-screens-classes). */
   .search-hint {

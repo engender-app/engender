@@ -303,7 +303,6 @@ const SCENES = [
   { name: 'settings-tag-groups', at: '/settings', act: '[data-list-row="tag-groups"]', after: {"selector": "[data-sheet]"}, is: 'the tag groups sheet opening' },
   { name: 'settings-theme-switcher', at: '/settings', act: '[data-segmented="theme"] [data-segment="dark"]', after: {"selector": "html", "attribute": "data-theme", "value": "dark"}, is: 'switching theme segmented control' },
   { name: 'settings-switch', at: '/settings', prepare: [{ act: '[data-list-row="features"]' }], act: '[data-cycle-tracking-toggle] button.switch', after: {"selector": "[data-cycle-tracking-toggle] button.switch", "attribute": "aria-checked"}, is: 'toggling a settings switch' },
-  { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', after: {"selector": "[data-segmented=\"measurement-unit\"] [data-segment=\"in\"]", "attribute": "aria-checked", "value": "true"}, is: 'switching measurement unit segmented control' },
   { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', after: {"selector": "[data-sheet]"}, is: 'the gender scales checklist sheet opening' },
   { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', after: {"selector": "[data-sheet]"}, is: 'the calendar colour metric sheet opening' },
   { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', after: {"selector": "[data-sheet]"}, is: 'the disguise preview sheet opening' },
@@ -554,30 +553,7 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   return evidence;
 }
 
-export const cleanupSceneExpression = (scene) => scene.name === 'settings-unit-switcher' ? `(async () => {
-  if (globalThis.__sweepPreparation?.measurementsOriginallyEnabled !== false) return null;
-  const act = '[data-measurements-toggle] button.switch';
-  document.querySelector('[data-list-row="features"]')?.click();
-  for (let i = 0; i < 60 && !document.querySelector(act); i++) await new Promise((resolve) => setTimeout(resolve, 50));
-  if (document.querySelector(act)?.getAttribute('aria-checked') === 'false') {
-    document.querySelector('[data-features-close]')?.click();
-    return null;
-  }
-  const cleanup = { cleanup: true, act, after: { selector: act, attribute: 'aria-checked', value: 'false' } };
-  const dispatch = ${dispatchSceneAction};
-  let ready = false;
-  for (let i = 0; i < 200 && !ready; i++) {
-    try { dispatch(cleanup, globalThis, true); ready = true; }
-    catch { await new Promise((resolve) => setTimeout(resolve, 50)); }
-  }
-  if (!ready) throw new Error('measurement feature cleanup control did not become ready');
-  const action = dispatch(cleanup);
-  for (let i = 0; i < 200 && document.querySelector(act).getAttribute('aria-checked') !== 'false'; i++) await new Promise((resolve) => setTimeout(resolve, 50));
-  const proof = (${verifySceneAction})(cleanup, action);
-  document.querySelector('[data-features-close]')?.click();
-  for (let i = 0; i < 60 && document.querySelector('[data-sheet-scrim]'); i++) await new Promise((resolve) => setTimeout(resolve, 50));
-  return proof;
-})()` : scene.name !== 'span-offer-appear' ? 'null' : `(async () => {
+export const cleanupSceneExpression = (scene) => scene.name !== 'span-offer-appear' ? 'null' : `(async () => {
   const cleanup = { cleanup: true, act: '[data-era-offer-dismiss]', after: { selector: '[data-era-offer]', absent: true } };
   const dispatch = ${dispatchSceneAction};
   let ready = false;
@@ -591,11 +567,7 @@ export const cleanupSceneExpression = (scene) => scene.name === 'settings-unit-s
   return (${verifySceneAction})(cleanup, action);
 })()`;
 
-export async function cleanupSceneFailure(scene, evaluate) {
-  if (scene.name !== 'settings-unit-switcher') return null;
-  try { return await evaluate(cleanupSceneExpression(scene)); }
-  catch (error) { return { error: String(error) }; }
-}
+
 
 export const actionPreparationExpression = (scene) => `(${dispatchSceneAction})(${JSON.stringify(scene)}, globalThis, true)`;
 
@@ -949,23 +921,7 @@ export const prepareSceneExpression = (scene) => `(async () => {
       }
     }
   }
-  if (scene.name === 'settings-unit-switcher') {
-    await dispatch({ act: '[data-list-row="features"]' });
-    const act = '[data-measurements-toggle] button.switch';
-    await prepare({ act });
-    const enabled = document.querySelector(act).getAttribute('aria-checked');
-    if (enabled !== 'true' && enabled !== 'false') throw new Error('measurement feature state is unknown');
-    globalThis.__sweepPreparation.measurementsOriginallyEnabled = enabled === 'true';
-    if (enabled === 'false') {
-      const step = { act, after: { selector: act, attribute: 'aria-checked', value: 'true' } };
-      const action = await dispatch(step);
-      for (let i = 0; i < 200 && document.querySelector(act).getAttribute('aria-checked') !== 'true'; i++) await sleep(50);
-      globalThis.__sweepPreparation.measurementsEnabled = (${verifySceneAction})(step, action);
-    }
-    await dispatch({ act: '[data-features-close]' });
-    for (let i = 0; i < 60 && document.querySelector('[data-sheet-scrim]'); i++) await sleep(50);
-    await dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
-  }
+
   if (document.querySelector('[data-edit-done]')) { await dispatch({ act: '[data-edit-done]' }); await sleep(500); }
   if (document.querySelector('[data-comfort-grip]')) { await dispatch({ act: '[data-comfort-arrange]' }); await sleep(500); }
   const attribution = document.querySelector('.doses-attribution-toggle[aria-expanded="true"]');
@@ -2114,7 +2070,6 @@ const HYDRATION_SCENES = [
   { name: 'more', at: '/more', is: 'the hub itself' },
   { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged against the published scale' },
   { name: 'hair-removal', at: '/body/hair-removal', is: 'electrolysis and laser sessions' },
-  { name: 'measurements', at: '/body/measurements', is: 'measurements over time and sizes' },
   /* Ticket 21: wear moved off the retired Practice prefix onto its own
      door. */
   { name: 'wear', at: '/body/wear', is: 'wear time tracked plainly' },

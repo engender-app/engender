@@ -37,7 +37,6 @@ const ROUTES = [
   '/transition/tryouts',
   '/health/appointments',
   '/media/documents',
-  '/body/measurements'
 ];
 
 const OPENS_KEYBOARD = `(() => {

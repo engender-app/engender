@@ -4,12 +4,11 @@
    a staging carries the scale it belongs to and the two are never merged
    (hairStageScales.ts).
 
-   Stages are a dated series like measurement (ticket 08) - a person
+   Stages are a dated series - a person
    re-stages over time, never replacing one date's value in place. No
    episode or anchor reference: what a screen reads staging and photos
    against is resolved above this seam (hairAnchor.ts's
-   hairAnchorEpochDay), the same reason personalEffects.ts and
-   measurements.ts carry none either.
+   hairAnchorEpochDay), the same reason personalEffects.ts carries none.
 
    Hair photos are their own table rather than a third owner on `photo`
    (schema.ts explains why: SQLite cannot widen that table's

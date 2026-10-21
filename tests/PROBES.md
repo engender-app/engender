@@ -633,7 +633,6 @@ To run one on its own, use
 | `hair-removal-entry-check` | session field order, failed save and retry, duplicate taps, saved-owner photo continuation, library day, editing, deletion and privacy; English and Polish at 390px and 200% zoom |
 | `hair-removal-recency-handoff-check` | the recency rows open their own area prefilled, and nothing saves before Save |
 | `hair-removal-interaction-check` | saved sessions and expanded regions survive Back and interrupted navigation; recovery hides journal and editor content in both themes and motion modes, with painted captures |
-| `measurements-sizes-jump-check` | the Measurements/Sizes jump moves focus and keeps an open editor's input |
 | `roadmap-tick-motion-check` | ticking a roadmap step animates the box's fill, the tick and the strike rather than cutting them in |
 | `search-filter-scope` | search says what its filter covers, and mode, body region and a scale range narrow it alone, with text and across a trip into an entry |
 | `mark-edge-fringe` | no pixel of the mark's corners is brighter than the ground, at every size |
@@ -648,7 +647,6 @@ To run one on its own, use
 | `document-import-check` | document import field order, saved values, owner links, draft dismissal, failures and privacy in English and Polish |
 | `accessible-names-check` | English and Polish accessible names retain lab analytes, values, units and dates, resource numbers and domains, and benchmark pitches and dates; measurement images describe their chart |
 | `lab-entry-check` | lab result field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish |
-| `measurements-entry-check` | measurement field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish |
 | `wear-entry-check` | a wear session duration typed key by key keeps decimals and a minus, saves the hours typed and reopens as typed; empty and negative durations stay refused |
 | `leave-lock-check` | leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open |
 | `milestone-era-handoff-check` | Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return |
@@ -717,7 +715,7 @@ To run one on its own, use
 | `roadmap-track-switch-motion` | Track changes retain outgoing and incoming opacity frames, row state, switcher focus and reduced-motion behavior. |
 | `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
 | `return-floor-check` (`npm run test:return-floor`) | Red on main. At 195px, the width 200% zoom leaves of a 390px phone, the English milestone subtitle "Its day was 4 September 2026." is wider than its row, and `.kit-row-sub` cannot break the word. Promote it once that is fixed. |
-| `a11y-targets-large-text` | Every control the 30 September and 5 October accessibility audits listed, plus opened letters' rows and the Words cloud (12 October U38/U39), reaches 48px at 320 and 390px with text at 100% and 200% (letters and Words also at 195px), Journal, Lab results, a saved question, Measurements and In the room do the same and at 195px in English and Polish too, where Journal's month and In the room's question show whole (not cut by the viewport or an ancestor that clips sideways) and no two of their listed controls overlap (12 October U51, U52, U54; red on the base with 36 failures), and every bottom-navigation name is whole in English and Polish at 100%, 130% and 200%; the calendar's date links at 320 are printed only. A target's size is its layout box joined with any `::before`/`::after` extension, and a walk with `elementFromPoint` from its centre cuts a side short only where something covers it; the walk alone is up to a pixel off and had passed a 47px control. The run stops unless planted 47px and 48px buttons read under and at the floor. It ran in about two and a half minutes over 14 screens on 15 October; after-release 18 measured six minutes and kept it out of CI shards for that reason (after-release 18, last-audit UI 25, 48). |
+| `a11y-targets-large-text` | Every control the 30 September and 5 October accessibility audits listed, plus opened letters' rows and the Words cloud (12 October U38/U39), reaches 48px at 320 and 390px with text at 100% and 200% (letters and Words also at 195px), Journal, Lab results, a saved question and In the room do the same and at 195px in English and Polish too, where Journal's month and In the room's question show whole (not cut by the viewport or an ancestor that clips sideways) and no two of their listed controls overlap (12 October U51, U52, U54; red on the base with 36 failures), and every bottom-navigation name is whole in English and Polish at 100%, 130% and 200%; the calendar's date links at 320 are printed only. A target's size is its layout box joined with any `::before`/`::after` extension, and a walk with `elementFromPoint` from its centre cuts a side short only where something covers it; the walk alone is up to a pixel off and had passed a 47px control. The run stops unless planted 47px and 48px buttons read under and at the floor. It ran in about two and a half minutes over 14 screens on 15 October; after-release 18 measured six minutes and kept it out of CI shards for that reason (after-release 18, last-audit UI 25, 48). |
 
 `browser-tier/run.mjs` also imports seven probes (`care-read`,
 `care-spine-links`, `read-failures`, `source-record-links`,
@@ -817,7 +815,7 @@ on this page ran green on 2026-09-23.
 Imported or read by the probes above, never run on their own:
 `browser-harness` (Chromium launch, reporting, `settlePage`), `serve-build` (build/ as production serves it),
 `build-requests` (context request observer for the build origin),
-`cold-screen-sampler` (shared frame capture), `measurement-notice-observation` (notice travel and observation completeness),
+`cold-screen-sampler` (shared frame capture),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
 `setup-flow`, `frame-band-distances`, `contrast-walk`, `yank-sweep-core`, `field-text-core`, `field-text-edge-series`, `device-evidence`, `picker-motion-yanks`.
@@ -855,7 +853,6 @@ available for the surface or device it measures.
 | `milestone-shuffle-motion` | sample each frame of milestone suggestion shuffles against a dev server |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
 | `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
-| `measurement-notice-proof` | prove delayed stationary appearance, missing content, incomplete observation, unsettled content and injected travel using the cold-load sampler; fresh and remembered reserves against a demo build |
 | `locale-build` | built production locale selection, isolated startup requests, both offline graphs, and online/offline language switches through Settings with localized passphrase gates |
 
 `guard-recovery-proof` runs disposable synthetic guards through the production runner

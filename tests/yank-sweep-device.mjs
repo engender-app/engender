@@ -110,7 +110,6 @@ import {
   documentProofExpression,
   actionPreparationExpression,
   cleanupSceneExpression,
-  cleanupSceneFailure,
   actionPostconditionExpression,
   coverageSummary,
   createReportRecorder,
@@ -1110,9 +1109,8 @@ if (hydration) {
                   : '')
             );
           } catch (err) {
-            const failureCleanup = await cleanupSceneFailure(scene, (expression) => ev(expression));
             const failedState = await ev(`({ action: globalThis.__sweepAction, preparation: globalThis.__sweepPreparation, themeProof: globalThis.__sweepThemeProof })`).catch((failure) => ({ evidenceError: String(failure) }));
-            report.push({ scene: scene.name, profile, theme, pass, ...(captureEvidence ? { evidence: captureEvidence } : {}), ...failedState, ...(failureCleanup ? { failureCleanup } : {}), action: failedState.action ?? { requested: scene.act }, error: String(err).slice(0, 300) });
+            report.push({ scene: scene.name, profile, theme, pass, ...(captureEvidence ? { evidence: captureEvidence } : {}), ...failedState, action: failedState.action ?? { requested: scene.act }, error: String(err).slice(0, 300) });
             console.log(`${label}: ERROR ${String(err).slice(0, 200)}`);
           }
         }

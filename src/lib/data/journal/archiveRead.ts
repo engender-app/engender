@@ -34,7 +34,6 @@ import type {
   ArchiveHairRemovalPhoto,
   ArchiveHairRemovalSession,
   ArchiveImportLogRecord,
-  ArchiveMeasurementType,
   ArchiveMilestone,
   ArchivePersonalEffectType,
   ArchiveProcedure,
@@ -332,12 +331,6 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
   }));
 }
 
-export async function readMeasurementTypes({ driver }: SectionRead): Promise<ArchiveMeasurementType[]> {
-  const rows = await driver.query<{ key: string; name: string; is_built_in: number; hidden: number }>(
-    'SELECT key, name, is_built_in, hidden FROM measurement_type ORDER BY id'
-  );
-  return rows.map((r) => ({ key: r.key, name: r.name, builtIn: bool(r.is_built_in), hidden: bool(r.hidden) }));
-}
 
 export async function readRoadmapChecks({ driver }: SectionRead): Promise<ArchiveRoadmapCheck[]> {
   const rows = await driver.query<{ pack_key: string; goal_key: string; status: string; hidden: number }>(

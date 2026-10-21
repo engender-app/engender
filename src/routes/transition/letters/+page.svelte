@@ -10,8 +10,8 @@
 
      What ticket 45 changes is what a letter looks like once it is here. All
      three states were one list row - a lock glyph, "Sealed", and `Opens 19
-     Aug 2031` in secondary grey - so five years of waiting read exactly like
-     a size record. They are three drawings now and `LetterCard` holds them;
+     Aug 2031` in secondary grey - so five years of waiting read like an
+     ordinary record. They are three drawings now and `LetterCard` holds them;
      opening one unfolds it in place rather than replacing it with a sheet
      of text.
 

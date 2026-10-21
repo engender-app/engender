@@ -131,11 +131,6 @@ export function homeTiles(
      property of the grid, and `unpromptedQuiet` is what spends this. */
   const areaStates = liveQuery((j) => j.areaStates.getAreaStates());
   const latestHairRemoval = liveQuery((j) => j.hairRemoval.latestSession(todayEpochDay));
-  /* Two scalars asked as two scalars. The nudge wants how many measurements
-     there are and the latest day, and the read used to fetch every
-     measurement ever stored to reduce to exactly that. */
-  const measurementCount = liveQuery((j) => j.measurements.countAll());
-  const latestMeasurementDay = liveQuery((j) => j.measurements.lastWriteEpochDay(todayEpochDay));
   const todayAppointments = liveList((j) => j.appointments.getDayRecords(todayEpochDay));
 
   function snooze(kind: LiveTileKind): void {
@@ -187,8 +182,6 @@ export function homeTiles(
     journalingPauses,
     areaStates,
     latestHairRemoval,
-    measurementCount,
-    latestMeasurementDay,
     todayAppointments
   ];
   /* Whether the grid may be composed yet (phase 11 ticket 146). Composed
@@ -232,7 +225,6 @@ export function homeTiles(
         latestBenchmarkEpochDay: latestBenchmarkDay.value ?? null,
         journalingPauses: journalingPauses.rows,
         latestHairRemovalSession: latestHairRemoval.value ?? null,
-        measurements: { count: measurementCount.value ?? 0, latestDay: latestMeasurementDay.value ?? null },
         todayAppointments: todayAppointments.rows
       },
       actions: {

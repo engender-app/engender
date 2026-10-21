@@ -115,11 +115,6 @@ const BENCHMARK_REGION = 'chest';
     getSeries both do real work. */
 const LABS_ANALYTE = 'Estradiol';
 
-/** The measurement type the measurements-screen measurement reads: the one
-    generate.ts also forces two 'in' readings onto, so getSeries splits into
-    two unit series rather than one. */
-const MEASUREMENT_TYPE = 'waist';
-
 /** What Home's letter tile pages and its recent-days strip takes - the
     literals `+page.svelte` and `liveTiles.svelte.ts` pass today. */
 const HOME_LETTER_PAGE = 100;
@@ -583,20 +578,6 @@ export async function measureLongJournal(
     };
   });
 
-  // Measurements (settings/measurements/+page.svelte): getMeasurements and
-  // getSeries for one type, both filtered only on type, no date bound
-  // (measurements.ts:98-110).
-  await measure('measurements-series', 'measurements screen, one type across both queries the screen runs', async () => {
-    const [measurements, series] = await Promise.all([
-      journal.measurements.getMeasurements(MEASUREMENT_TYPE),
-      journal.measurements.getSeries(MEASUREMENT_TYPE)
-    ]);
-    return {
-      result: [measurements, series],
-      detail: `${measurements.length} measurements for ${MEASUREMENT_TYPE} across ${series.length} unit series`
-    };
-  });
-
   // Hair removal (settings/hair-removal/+page.svelte): getSessions() is a
   // whole-table read with no LIMIT (hairRemoval.ts:109). generate.ts seeds
   // this area at a realistic cadence (its own "a year, irregular cadence"
@@ -820,8 +801,6 @@ export async function measureLongJournal(
       journalingPauses: journal.journalingPauses.getPauses(),
       areaStates: journal.areaStates.getAreaStates(),
       latestHairRemovalSession: journal.hairRemoval.latestSession(today),
-      measurementCount: journal.measurements.countAll(),
-      latestMeasurementDay: journal.measurements.lastWriteEpochDay(today),
       entryCount: journal.entries.countAll(),
       journalBounds: journal.eras.getJournalBounds(),
       debriefState: journal.checklists.getDebriefState(mostRecentPastAppointmentId),
@@ -844,7 +823,7 @@ export async function measureLongJournal(
     return {
       result: [reads, wrappedRecap, goodDays],
       detail:
-        `newest benchmark ${reads.latestBenchmarkDay ?? 'none'}, ${reads.measurementCount} measurements counted, ` +
+        `newest benchmark ${reads.latestBenchmarkDay ?? 'none'}, ` +
         `${reads.letters.length} letter seals, ${reads.tryouts.length} active tryouts asked at once, ` +
         `${reads.projections.length} stock projections, ${lookbackDays.length} lookback days asked one at a time, ` +
         `${reads.entryCount} entries counted, wrapped recap ${wrappedRecap ? 'read' : 'skipped as muted'}`

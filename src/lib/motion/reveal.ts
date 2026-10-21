@@ -1020,12 +1020,8 @@ export function crossfade(
  * fires when Svelte adds or removes the node. What this covers is the other
  * half: a node that stays mounted and changes size under its own content, the
  * shape neither `transition:` nor `in:`/`out:` can see, because nothing about
- * the node's presence changed. The measurements screen's protocol notice is
- * the case that named this - switching the segmented control swaps the
- * notice's text under it without unmounting anything, and the box resized in
- * one frame, 181px to 118px, with nothing in between (Alicja, 2026-08-26:
- * "when i switch the switcher the content of 'measuring consistently'
- * changes and the height of the box jumps").
+ * the node's presence changed. When mounted content changes height, this
+ * fills the frames between the old and new sizes.
  *
  * `interpolate-size: allow-keywords` with `transition: height` - the CSS-only
  * answer to an animated auto height - was tried first and does nothing on

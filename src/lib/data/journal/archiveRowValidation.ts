@@ -1,6 +1,5 @@
 import type { ArchiveJournal } from '../archive/payload';
 import { CorruptArchiveError } from '../archive/container';
-import { GARMENT_CATEGORIES } from '../garmentCategories';
 import { isHairStaging } from '../hairStageScales';
 import {
   AFFIRMATION_LANGUAGES, CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
@@ -158,27 +157,6 @@ const ROWS = {
     timingRoute: nullable(text),
     timingHours: nullable(numeric),
     timingDayOfInterval: nullable(numeric)
-  },
-  measurementTypes: {
-    key: identity,
-    name: text,
-    builtIn: optional(bool),
-    hidden: optional(bool)
-  },
-  measurements: {
-    id: identity,
-    type: text,
-    epochDay: numeric,
-    value: numeric,
-    unit: text
-  },
-  sizeRecords: {
-    id: identity,
-    epochDay: numeric,
-    category: oneOf(GARMENT_CATEGORIES),
-    size: text,
-    brand: text,
-    fitNote: text
   },
   taper: {
     id: identity,
@@ -498,7 +476,6 @@ const NON_FLAT_IDENTITY: Partial<Record<keyof ArchiveJournal, string>> = {
   dimensions: 'key',
   tagGroups: 'key',
   entries: 'uuid',
-  measurementTypes: 'key',
   effectCategories: 'key',
   personalEffectTypes: 'key'
 };

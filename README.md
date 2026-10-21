@@ -70,7 +70,7 @@ Transition brings the other tracking areas together:
 
 - Medication regimens, dose logs, lab results, appointments and a summary you
   can prepare for a clinician.
-- Measurements and sizes, surgery records, hair progress and changes you
+- Surgery records, hair progress and changes you
   notice during a regimen.
 - Milestones, named eras, a roadmap and letters you write now to read later.
 - Presentation tryouts, voice practice and recordings, binder or tucking

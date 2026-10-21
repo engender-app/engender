@@ -13,9 +13,8 @@ describe('BodyRegionInspectorSheet component contract', () => {
     expect(sheetFile).toContain('onClose');
   });
 
-  it('renders all four somatic breakdown tracks', () => {
+  it('renders surviving somatic breakdown tracks', () => {
     expect(sheetFile).toContain('data-track="trajectory"');
-    expect(sheetFile).toContain('data-track="measurements"');
     expect(sheetFile).toContain('data-track="photos"');
     expect(sheetFile).toContain('data-track="hair-removal"');
     expect(sheetFile).toContain('data-track="hair-staging"');

@@ -7,9 +7,9 @@
    and fails on a correct move that does not, which is what this ticket is.
    So everything here goes through `composeHomeTiles` instead.
 
-   One fixture qualifies all twelve at once, and each test switches off the
+   One fixture qualifies all eleven at once, and each test switches off the
    one thing it is about. That is the shape the ordering and the absence of a
-   cap need - both are claims about twelve tiles together - and it also means
+   cap need - both are claims about eleven tiles together - and it also means
    a tile that silently stops qualifying breaks every test rather than one. */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -176,7 +176,6 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       latestBenchmarkEpochDay: TODAY - 20,
       journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }],
       latestHairRemovalSession: hairRemovalSession,
-      measurements: { count: 3, latestDay: TODAY - 40 },
       todayAppointments: [todayAppointment]
     },
     actions: {
@@ -230,12 +229,11 @@ const TIERED: LiveTileKind[] = [
   // Dormant.
   'active-tryout-tile',
   'voice-benchmark-nudge',
-  'measurements-nudge'
 ];
 
 describe('which kinds the grid is for', () => {
   it('draws the twelve live tiles and none of the registry\'s other seven', () => {
-    /* The narrowing is the point: `UnpromptedKind` has nineteen members and
+    /* The narrowing is the point: `UnpromptedKind` has eighteen members and
        seven of them are a notice, a look-back card or a notification, so an
        ordering keyed off the whole union would demand an entry for
        `export-failure`. */
@@ -245,7 +243,6 @@ describe('which kinds the grid is for', () => {
         'appointment-today',
         'dose-panel',
         'hair-removal-recovery',
-        'measurements-nudge',
         'patch-schedule-tile',
         'pause-active-banner',
         'ready-letter',
@@ -274,8 +271,8 @@ describe('which kinds the grid is for', () => {
     /* The rule run over a shortened registry rather than asserted never to
        fail on the real one: filtering a row out and then checking it is
        absent would restate `filter`. */
-    const withoutMeasurements = SURFACE_ROWS.filter((row) => row.key !== 'measurements-nudge');
-    expect(() => liveTilePrefKeys(withoutMeasurements)).toThrow(/measurements-nudge/);
+    const withoutWear = SURFACE_ROWS.filter((row) => row.key !== 'wear-timer');
+    expect(() => liveTilePrefKeys(withoutWear)).toThrow(/wear-timer/);
   });
 });
 
@@ -305,8 +302,7 @@ describe('the tier every kind is in', () => {
     expect(byTier.dormant).toEqual([
       'active-tryout-tile',
       'voice-benchmark-nudge',
-      'measurements-nudge'
-    ]);
+        ]);
   });
 
   it('carries the tier on the tile, which is what Home draws the weight from', () => {
@@ -340,7 +336,7 @@ describe('the order, and the cap', () => {
 
   it('keeps the order when the ones before a tile drop out', () => {
     /* Order is the policy\'s, not the reads\': with the first six of the
-       tiered order gone the remaining six come out in the same relative
+       tiered order gone the remaining five come out in the same relative
        order. */
     const enabled = allOn(true);
     for (const kind of TIERED.slice(0, 6)) enabled[kind] = false;
@@ -358,16 +354,16 @@ describe('the order, and the cap', () => {
 
   it('folds nothing while the cap is not reached', () => {
     const enabled = allOn(false);
-    for (const kind of ['revisit', 'measurements-nudge'] as const) enabled[kind] = true;
+    for (const kind of ['revisit', 'active-tryout-tile'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
-    expect(shown.map((t) => t.key)).toEqual(['revisit', 'measurements-nudge']);
+    expect(shown.map((t) => t.key)).toEqual(['revisit', 'active-tryout-tile']);
     expect(folded).toEqual([]);
   });
 
   it('folds nothing at exactly the cap, so three never becomes two and a row', () => {
     const enabled = allOn(false);
-    for (const kind of ['wear-timer', 'revisit', 'measurements-nudge'] as const) enabled[kind] = true;
+    for (const kind of ['wear-timer', 'revisit', 'active-tryout-tile'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
     expect(shown).toHaveLength(HOME_TILE_CAP);
@@ -652,16 +648,7 @@ describe('what each tile says', () => {
     expect(tile.dismiss).toBeDefined();
   });
 
-  it('the measurements nudge counts the days since the last one', () => {
-    const tile = tileNamed('measurements-nudge')!;
-    expect(tile.tileKey).toBe('measurements-nudge');
-    expect(tile.attrs).toEqual({ 'data-measurements-tile': true });
-    expect(tile.note).toBe(m.tile_measurements_note({ days: '40' }));
-    expect(tile.href).toBe('/body/measurements');
-    expect(tile.action?.href).toBe('/body/measurements');
-  });
-
-  it('the appointment tile names the kind and place of today\'s appointment', () => {
+    it('the appointment tile names the kind and place of today\'s appointment', () => {
     const tile = tileNamed('appointment-today')!;
     expect(tile.tileKey).toBe('appointment-today');
     expect(tile.attrs).toEqual({ 'data-appointment-today-tile': true });
@@ -710,8 +697,7 @@ describe('the dismiss controls', () => {
     'voice-benchmark-nudge',
     'pause-active-banner',
     'hair-removal-recovery',
-    'measurements-nudge'
-  ] as const;
+    ] as const;
 
   it.each(SNOOZABLE)('%s snoozes itself and no other kind', (kind) => {
     const snooze = vi.fn();
@@ -731,7 +717,7 @@ describe('the dismiss controls', () => {
        Safe space, the ready letter and the revisit left this list in phase 9
        carpet ticket 04 (ADR-0071). All three were closable all along - each
        carried an `action` whose icon was an x - and only the registry field
-       said otherwise, which drew one job as two controls: a corner X on six
+       said otherwise, which drew one job as two controls: a corner X on five
        tiles and a soft button on these three. What each close does is
        unchanged: the letter opens Home's sheet, the revisit deletes its row,
        safe space forgets the entry it was about. */
@@ -748,7 +734,7 @@ describe('the dismiss controls', () => {
   it('draws every close as the tile\'s own dismiss, never as an action wearing an x', () => {
     /* The rule the three above were breaking, held over the whole registry
        so a fourth cannot quietly reintroduce it. An `action` is the tile's
-       other control - log this dose, stop this session, take a measurement -
+       other control - log this dose, stop this session, check an appointment -
        and none of those is a close. */
     for (const kind of LIVE_TILE_ORDER) {
       const tile = tileNamed(kind);
@@ -770,14 +756,14 @@ describe('the dismiss controls', () => {
     const areaStates: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY - 1, suspendedEpochDay: null } };
 
     expect(tileNamed('wear-timer', { areaStates })).toBeUndefined();
-    expect(tileNamed('measurements-nudge', { areaStates })).toBeDefined();
+    expect(tileNamed('revisit', { areaStates })).toBeDefined();
   });
 
   it('takes them off while it is hidden too, and puts them back when it is not', () => {
-    const hidden: AreaStates = { measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
+    const hidden: AreaStates = { wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
 
-    expect(tileNamed('measurements-nudge', { areaStates: hidden })).toBeUndefined();
-    expect(tileNamed('measurements-nudge', { areaStates: {} })).toBeDefined();
+    expect(tileNamed('wear-timer', { areaStates: hidden })).toBeUndefined();
+    expect(tileNamed('wear-timer', { areaStates: {} })).toBeDefined();
   });
 
   it('leaves a finish day that has not arrived alone', () => {

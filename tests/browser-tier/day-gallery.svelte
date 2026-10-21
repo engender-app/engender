@@ -64,8 +64,6 @@
     doses: [],
     labResults: [],
     voiceBenchmarks: [],
-    measurements: [],
-    sizeRecords: [],
     taperSessions: [],
     sideEffects: [],
     personalEffects: [],
@@ -112,7 +110,6 @@
         vehicle: 'oil'
       }
     ],
-    measurements: [{ id: 'm1', type: 'waist', epochDay: DAY, value: 78.5, unit: 'cm' }],
     wearSessions: [{ id: 'w1', kind: 'binder', startTimestamp: at(9), durationMs: 5_400_000, note: null }],
     tallyEvents: [{ id: 't1', epochDay: DAY, kind: 'correctly_gendered' }]
   };
@@ -123,7 +120,6 @@
   const maximal: DayRecords = {
     entries: typical.entries,
     milestones: [
-      { id: 'ms1', name: 'One year on HRT', epochDay: DAY, description: '', templateKey: null, photo: { id: 'p0', fileName: null, starred: false } }
     ],
     doses: [
       typical.doses[0],
@@ -185,11 +181,6 @@
         timing: null
       }
     ],
-    measurements: [
-      { id: 'm1', type: 'waist', epochDay: DAY, value: 78.5, unit: 'cm' },
-      { id: 'm2', type: 'hips', epochDay: DAY, value: 99, unit: 'cm' }
-    ],
-    sizeRecords: [{ id: 's1', epochDay: DAY, category: 'bras', size: '70B', brand: 'Triumph', fitNote: '' }],
     taperSessions: [{ id: 'ts1', epochDay: DAY, note: 'went fine' }],
     sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY }],
     personalEffects: [{ id: 'pe1', effect: 'skin_softening', firstNoticedEpochDay: DAY }],
