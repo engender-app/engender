@@ -28,3 +28,17 @@ test('a delete failure during a sweep keeps the retry due', () => {
   markOrphanSweepComplete(100, storage, started);
   expect(shouldSweepOrphans(100, storage)).toBe(true);
 });
+
+test('a retry written by another tab is not cleared by this sweep', () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); }
+  };
+  markOrphanSweepComplete(100, storage);
+  const started = orphanSweepRequestVersion(storage);
+  const [key] = values.keys();
+  storage.setItem(key, 'retry:other-tab');
+  markOrphanSweepComplete(101, storage, started);
+  expect(shouldSweepOrphans(101, storage)).toBe(true);
+});
