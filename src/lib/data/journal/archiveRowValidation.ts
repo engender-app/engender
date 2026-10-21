@@ -64,11 +64,6 @@ const hairRemovalPhoto = object({
   fileName: text
 });
 
-const procedureConsult = object({
-  id: identity,
-  epochDay: numeric
-});
-
 const procedurePhoto = object({
   id: identity,
   epochDay: numeric,
@@ -271,7 +266,6 @@ const ROWS = {
     id: identity,
     name: text,
     surgeryEpochDay: nullable(numeric),
-    consults: optional(list(procedureConsult)),
     notes: text,
     photos: list(procedurePhoto),
     kind: optional(text),
@@ -612,9 +606,6 @@ export function assertArchiveReferences(journal: ArchiveJournal, externalImport 
   unique(journal.procedures.flatMap((row) => row.photos.map((photo) => photo.id)), 'procedure photos');
   unique(journal.hairRemovalSessions.flatMap((row) => row.photos.map((photo) => photo.id)), 'hair removal photos');
   unique(journal.checklists.flatMap((row) => row.items.map((item) => item.id)), 'checklist items');
-  if (!Array.isArray(journal.appointments)) {
-    unique(journal.procedures.flatMap((row) => (row.consults ?? []).map((consult) => consult.id)), 'legacy consults');
-  }
   for (const template of journal.entryTemplates) unique(template.tags ?? [], 'template tags');
   for (const schedule of journal.doseSchedules) {
     const weekdays = schedule.weekdays ?? [];

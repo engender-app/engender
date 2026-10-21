@@ -3,9 +3,7 @@
    without any source's `preview` ever being reached.
 
    What each source itself does with a recognised file is not re-tested
-   here - that is daylio.test.ts's, transtracks.test.ts's,
-   daylioBackup.test.ts's, trackAndGraph.test.ts's and dayone.test.ts's
-   own. */
+   here - daylio.test.ts and daylioBackup.test.ts own those tests. */
 
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -14,11 +12,6 @@ import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import { daylioPreview, detectDaylio } from './daylio.ts';
 import { daylioBackupPreview } from './daylioBackup.ts';
 import { makeDaylioBackup } from './test-support/daylio-backup.ts';
-import { makeDayOneExport } from './test-support/dayone.ts';
-import { dayonePreview } from './dayone.ts';
-import { transTracksPreview } from './transtracks.ts';
-import { trackAndGraphPreview } from './trackAndGraph.ts';
-import { pixelsPreview } from './pixels.ts';
 import { ARCHIVE_SOURCES, UnrecognizedArchiveSourceError, recognizeSource, requireSource, type ArchiveSource } from './sources.ts';
 
 const fixtureText = (name: string) => readFile(new URL(`fixtures/${name}`, import.meta.url), 'utf8');
@@ -36,28 +29,22 @@ const stub = (name: string, detect: (bytes: Uint8Array) => boolean): ArchiveSour
 const entryFor = (name: ArchiveSource['name']) => ARCHIVE_SOURCES.find((source) => source.name === name)!;
 const daylioEntry = entryFor('daylio');
 const backupEntry = entryFor('daylio-backup');
-const dayoneEntry = entryFor('dayone');
 
 test('every source is registered, each carrying its own required fields', () => {
   assert.deepEqual(
     ARCHIVE_SOURCES.map((source) => source.name),
-    ['daylio', 'daylio-backup', 'dayone', 'transtracks', 'trackAndGraph', 'pixels']
+    ['daylio', 'daylio-backup']
   );
   assert.deepEqual(daylioEntry.requiredFields, ['full_date', 'time', 'mood', 'activities', 'note_title', 'note']);
   assert.deepEqual(backupEntry.requiredFields, ['metadata', 'customMoods', 'dayEntries']);
-  assert.deepEqual(dayoneEntry.requiredFields, ['metadata', 'entries']);
-  assert.deepEqual(entryFor('trackAndGraph').requiredFields, ['FeatureName', 'Timestamp', 'Value']);
-  assert.deepEqual(entryFor('pixels').requiredFields, []);
 });
 
-test('the two Daylio sources, and Day One, do not claim each other\'s files', async () => {
+test('the two Daylio sources do not claim each other\'s files', async () => {
   const csv = await fixtureBytes('daylio-edge-cases.csv');
   const backup = await makeDaylioBackup();
-  const dayOneZip = await makeDayOneExport();
 
   assert.equal(recognizeSource(csv), daylioEntry);
   assert.equal(recognizeSource(backup), backupEntry);
-  assert.equal(recognizeSource(dayOneZip), dayoneEntry);
 });
 
 test('the CSV entry reads a bounded head, so a header is found however long the journal is', async () => {
@@ -127,88 +114,5 @@ test('the backup entry maps to the same journal daylioBackupPreview itself resol
 
   // Identities are derived from content here rather than minted, so the
   // two runs are comparable whole.
-  assert.deepEqual(throughRegistry, direct.journal);
-});
-
-test('the dayone entry maps to the same journal dayonePreview itself resolves', async () => {
-  const zip = await makeDayOneExport();
-  const naming = { tagLabels: () => [] };
-
-  const direct = await dayonePreview(zip, emptyArchiveJournal(), naming);
-  const throughRegistry = await dayoneEntry.preview(zip, emptyArchiveJournal(), naming);
-
-  // Both tag ids and photo ids/file names are minted at random (mintUuid),
-  // so two independent preview calls resolve the same tags and photos
-  // under different ids - the same reason byLabel compares Daylio's tags
-  // by label rather than id.
-  const stable = (journal: typeof direct.journal) => {
-    const labelOf = new Map(journal.tagGroups.flatMap((group) => group.tags.map((tag) => [tag.id, tag.label] as const)));
-    return {
-      entries: journal.entries.map((entry) => ({
-        ...entry,
-        tags: entry.tags.map((id) => labelOf.get(id)).toSorted(),
-        photos: entry.photos.map((photo) => Boolean(photo.fileName))
-      })),
-      tagGroups: journal.tagGroups.map((group) => ({ ...group, tags: group.tags.map((tag) => tag.label).toSorted() }))
-    };
-  };
-  assert.deepEqual(stable(throughRegistry), stable(direct.journal));
-});
-
-test('the transtracks entry recognises a real backup and maps to the same journal transTracksPreview itself resolves', async () => {
-  const transtracksEntry = entryFor('transtracks');
-  const bytes = await readFile(new URL('fixtures/transtracks-edge-cases.ttbackup', import.meta.url));
-  const existing = emptyArchiveJournal();
-
-  assert.ok(transtracksEntry.detect(bytes));
-  assert.ok(!transtracksEntry.detect(await fixtureBytes('daylio-edge-cases.csv')));
-
-  const direct = await transTracksPreview(bytes, existing);
-  const throughRegistry = await transtracksEntry.preview(bytes, existing, undefined);
-
-  assert.deepEqual(throughRegistry, direct.journal);
-});
-
-// A new custom measurement type's key is minted at random (mintUuid), so
-// two independent preview calls resolve the same feature under different
-// keys - comparing by name is what proves the registry entry wires up
-// trackAndGraphPreview rather than reimplementing it, the same reasoning
-// `byLabel` above gives Daylio's randomly-minted tag ids.
-function byTypeName(journal: Awaited<ReturnType<typeof trackAndGraphPreview>>['journal']) {
-  const nameByKey = new Map(journal.measurementTypes.map((type) => [type.key, type.name]));
-  return {
-    types: journal.measurementTypes.map((type) => type.name).toSorted(),
-    measurements: journal.measurements.map((measurement) => ({ ...measurement, type: nameByKey.get(measurement.type) }))
-  };
-}
-
-test('the trackAndGraph entry recognises a CSV export and maps to the same journal trackAndGraphPreview itself resolves', async () => {
-  const trackAndGraphEntry = entryFor('trackAndGraph');
-  const csv = await fixtureText('track-and-graph-edge-cases.csv');
-  const bytes = new TextEncoder().encode(csv);
-  const existing = emptyArchiveJournal();
-
-  assert.ok(trackAndGraphEntry.detect(bytes));
-  assert.ok(!trackAndGraphEntry.detect(await fixtureBytes('daylio-edge-cases.csv')));
-
-  const direct = await trackAndGraphPreview(csv, existing);
-  const throughRegistry = await trackAndGraphEntry.preview(bytes, existing, undefined);
-
-  assert.deepEqual(byTypeName(throughRegistry), byTypeName(direct.journal));
-});
-
-test('the pixels entry recognises a bare JSON array and maps to the same journal pixelsPreview itself resolves', async () => {
-  const pixelsEntry = ARCHIVE_SOURCES.find((source) => source.name === 'pixels')!;
-  const bytes = new TextEncoder().encode(
-    JSON.stringify([{ date: '2026-01-01', type: 'MOOD', scores: [3], notes: '', tags: [] }])
-  );
-  const existing = emptyArchiveJournal();
-
-  assert.ok(pixelsEntry.detect(bytes));
-  assert.ok(!pixelsEntry.detect(await fixtureBytes('daylio-edge-cases.csv')));
-
-  const direct = await pixelsPreview(bytes, existing);
-  const throughRegistry = await pixelsEntry.preview(bytes, existing, undefined);
-
   assert.deepEqual(throughRegistry, direct.journal);
 });

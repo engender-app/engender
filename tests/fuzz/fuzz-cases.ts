@@ -22,13 +22,8 @@ import { archivePath, bytes as textBytes, CHEAP_KDF, GOLDEN_PASSWORD, oneShot } 
 import { fakeFileStore, type FakeFileStore } from '../../src/lib/data/photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../../src/lib/data/sqlite/test-support/migrated-db.ts';
 import { makeDaylioBackup } from '../../src/lib/data/archive/test-support/daylio-backup.ts';
-import { makeDayOneExport } from '../../src/lib/data/archive/test-support/dayone.ts';
 import { DaylioCsvError } from '../../src/lib/data/archive/daylio.ts';
 import { DaylioBackupError, detectDaylioBackup } from '../../src/lib/data/archive/daylioBackup.ts';
-import { DayOneImportError, detectDayOne } from '../../src/lib/data/archive/dayone.ts';
-import { TransTracksBackupError, detectTransTracks } from '../../src/lib/data/archive/transtracks.ts';
-import { TrackAndGraphCsvError, detectTrackAndGraph } from '../../src/lib/data/archive/trackAndGraph.ts';
-import { PixelsBackupError, detectPixels } from '../../src/lib/data/archive/pixels.ts';
 import { detectDaylio } from '../../src/lib/data/archive/daylio.ts';
 import { ZipTooLargeError } from '../../src/lib/data/archive/zipReader.ts';
 import { UnrecognizedArchiveSourceError, recognizeSource } from '../../src/lib/data/archive/sources.ts';
@@ -72,8 +67,7 @@ export interface Outcome {
 
 const TYPED = [
   DecryptionFailedError, UnsupportedArchiveError, CorruptArchiveError,
-  DaylioCsvError, DaylioBackupError, DayOneImportError, TransTracksBackupError,
-  TrackAndGraphCsvError, PixelsBackupError, ZipTooLargeError, UnrecognizedArchiveSourceError
+  DaylioCsvError, DaylioBackupError, ZipTooLargeError, UnrecognizedArchiveSourceError
 ];
 
 function typed(error: unknown): boolean {
@@ -312,11 +306,7 @@ export async function corpus(): Promise<Record<string, Uint8Array>> {
     bigBody,
     daylioCsv: fixture('daylio-edge-cases.csv'),
     daylioCsvMalformed: fixture('daylio-malformed.csv'),
-    daylioBackup: await makeDaylioBackup(),
-    dayone: await makeDayOneExport(),
-    transtracks: fixture('transtracks-edge-cases.ttbackup'),
-    trackAndGraph: fixture('track-and-graph-edge-cases.csv'),
-    pixels: fixture('pixels-edge-cases.json')
+    daylioBackup: await makeDaylioBackup()
   };
   return corpusCache;
 }
@@ -455,9 +445,6 @@ const daylioMember = memberJson(
   (d) => JSON.parse(strFromU8(Uint8Array.from(atob(strFromU8(d).replace(/\s+/g, '')), (c) => c.charCodeAt(0)))),
   (v) => strToU8(b64lines(strToU8(JSON.stringify(v))))
 );
-const dayoneMember = memberJson('Journal.json', (d) => JSON.parse(strFromU8(d)), (v) => strToU8(JSON.stringify(v)));
-const ttMember = memberJson('data.json', (d) => JSON.parse(strFromU8(d)), (v) => strToU8(JSON.stringify(v)));
-
 function csvTarget(name: string, key: string, run: (d: Device, csv: string) => Promise<void | 'guard'>): Target {
   return {
     name,
@@ -488,39 +475,13 @@ const TARGETS: Target[] = [
     if (p.unmappedMoodNames.length) return 'guard';
     await d.journal.archive.commitDaylioBackupImport(p, normalize);
   }, [daylioMember, daylioMember]),
-  zipTarget('dayone', 'dayone', async (d, f) => {
-    const p = await d.journal.archive.previewDayOneImport(f, naming);
-    await d.journal.archive.commitDayOneImport(p, normalize);
-  }, [dayoneMember, dayoneMember]),
-  zipTarget('transtracks', 'transtracks', async (d, f) => {
-    const p = await d.journal.archive.previewTransTracksImport(f);
-    await d.journal.archive.commitTransTracksImport(p, normalize);
-  }, [ttMember, ttMember]),
-  csvTarget('trackandgraph', 'trackAndGraph', async (d, csv) => {
-    const p = await d.journal.archive.previewTrackAndGraphImport(csv);
-    await d.journal.archive.commitTrackAndGraphImport(p);
-  }),
-  {
-    name: 'pixels',
-    async make(rng) {
-      const c = await corpus();
-      const m = mutate(c.pixels, JSON_MUTATIONS, rng);
-      return { input: m.bytes, mutations: m.names, meta: {} };
-    },
-    run(spec) {
-      return runOn(async (d) => {
-        const p = await d.journal.archive.previewPixelsImport(spec.input);
-        await d.journal.archive.commitPixelsImport(p);
-      });
-    }
-  },
   {
     // The sniffers are documented as non-throwing; feed them every corpus file, damaged.
     name: 'detect',
     async make(rng) {
       const c = await corpus();
-      const key = pick(rng, ['daylioCsv', 'daylioBackup', 'dayone', 'transtracks', 'trackAndGraph', 'pixels', 'goldenFile'] as const);
-      const menu = key.endsWith('Csv') || key === 'trackAndGraph' ? TEXT_MUTATIONS : key === 'pixels' ? JSON_MUTATIONS : [...ZIP_MUTATIONS, ...BYTE_MUTATIONS];
+      const key = pick(rng, ['daylioCsv', 'daylioBackup', 'goldenFile'] as const);
+      const menu = key.endsWith('Csv') ? TEXT_MUTATIONS : [...ZIP_MUTATIONS, ...BYTE_MUTATIONS];
       const m = mutate(c[key], menu, rng);
       return { input: m.bytes, mutations: [key, ...m.names], meta: {} };
     },
@@ -528,8 +489,7 @@ const TARGETS: Target[] = [
       return runDetection(() => {
         const f = spec.input;
         const head = new TextDecoder().decode(f.subarray(0, 4096));
-        detectDaylio(head); detectTrackAndGraph(head);
-        detectDaylioBackup(f); detectDayOne(f); detectTransTracks(f); detectPixels(f);
+        detectDaylio(head); detectDaylioBackup(f);
         recognizeSource(f); isPdf(f); isHeic(f);
       });
     }

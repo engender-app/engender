@@ -80,22 +80,9 @@
    a no-op is cheaper than asking it to report what it actually changed" -
    so reconcileBuiltIns is driven on a database nothing has reconciled yet,
    the one state where its SQL does touch everything it declares, rather
-   than opted out. `archive.replace`, `archive.merge`, `discardEverything`
-   and three of the six `commit*Import` operations (Daylio CSV, Track &
-   Graph, Pixels) are driven the same way `writes.test.ts` already drives
-   them - an in-memory snapshot, or an inline CSV/JSON payload, no external
-   file required - even though their own declaration is the same "every
-   table, by design" ceiling `archive`'s own comment states ("a Replace
-   touches everything by definition"). Declaring a ceiling is not a reason
-   to skip driving an operation that costs nothing to drive; it only matters
-   for what check 1 can prove about it, and check 1's subset test is
-   automatically satisfied by a maximal declaration regardless - the value
-   in driving these for real is what they contribute to check 2's per-table
-   union, `commitDaylioImport` being the cheapest real writer of
-   'importLog' among them. Only the three formats that parse an actual
-   archive container - a `.daylio` backup zip, a `.ttbackup` zip, a Day One
-   export zip - are named in WRITE_OPT_OUTS, because this sweep has no
-   fixture for one. */
+   than opted out. `archive.replace`, `archive.merge`,
+   `discardEverything` and the Daylio CSV import are driven here. The
+   Daylio backup needs a real zip and has a dedicated import test. */
 
 import assert from 'node:assert/strict';
 import { beforeAll, describe, test } from 'vitest';
@@ -111,28 +98,15 @@ import { COMPOSING_READS } from './test-support/composing-reads.ts';
 const bytes = (text: string): Uint8Array => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
 const photo = (seed: string) => ({ full: bytes(`full ${seed}`), thumb: bytes(`thumb ${seed}`) });
 
-/** Every write this sweep does not drive, with the reason - see the header.
-    Keyed `area.operation`. Only the three import formats that parse a real
-    archive container (a `.daylio` backup, a `.ttbackup` zip, a Day One
-    export zip) are here: `archive.replace`, `archive.merge`,
-    `commitDaylioImport`, `commitTrackAndGraphImport`, `commitPixelsImport`
-    and `discardEverything` all declare every table by design too, but
-    `writes.test.ts` already drives every one of those with nothing more
-    than an in-memory snapshot or an inline CSV/JSON payload, so this file
-    does the same below rather than opting out of what is genuinely
-    drivable. */
+/** The Daylio backup parser needs a real zip fixture, so this SQL sweep
+    leaves that operation to its dedicated import test. */
 const WRITE_OPT_OUTS: Record<string, string> = {
-  'archive.commitDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for',
-  'archive.commitTransTracksImport': 'parses a real .ttbackup zip, which this sweep has no fixture for',
-  'archive.commitDayOneImport': 'parses a real Day One export zip, which this sweep has no fixture for'
+  'archive.commitDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for'
 };
 
-/** The read half's own opt-outs, same reason and same shape: the three
-    preview reads for the archive containers WRITE_OPT_OUTS names above. */
+/** The Daylio backup preview has the same zip fixture requirement. */
 const READ_OPT_OUTS: Record<string, string> = {
-  'archive.previewDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for',
-  'archive.previewTransTracksImport': 'parses a real .ttbackup zip, which this sweep has no fixture for',
-  'archive.previewDayOneImport': 'parses a real Day One export zip, which this sweep has no fixture for'
+  'archive.previewDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for'
 };
 
 /** The two driven operations whose SQL wipes the journal for real - see
@@ -140,13 +114,10 @@ const READ_OPT_OUTS: Record<string, string> = {
 const WIPES_THE_JOURNAL = new Set(['archive.replace', 'discardEverything']);
 
 /** The read half's WIPES_THE_JOURNAL: the snapshot reads every table there
-    is, and each import preview takes one to match against, so any of the
-    four would satisfy the per-coarse-name read union on its own. */
+    is, and the Daylio preview takes one to match against, so either would satisfy the per-coarse-name read union on its own. */
 const READS_THE_JOURNAL = new Set([
   'archive.snapshot',
-  'archive.previewDaylioImport',
-  'archive.previewTrackAndGraphImport',
-  'archive.previewPixelsImport'
+  'archive.previewDaylioImport'
 ]);
 
 const declaredRead = (key: string): readonly TableName[] => {
@@ -1264,24 +1235,6 @@ beforeAll(async () => {
     )
   );
   await drive('archive', 'commitDaylioImport', () => journal.archive.commitDaylioImport(daylioPreview));
-
-  const trackAndGraphPreview = await driveRead('archive', 'previewTrackAndGraphImport', () =>
-    journal.archive.previewTrackAndGraphImport(
-      ['FeatureName,Timestamp,Value', 'Weight,2022-09-14T21:30:41.432+01:00,72.5'].join('\r\n')
-    )
-  );
-  await drive('archive', 'commitTrackAndGraphImport', () =>
-    journal.archive.commitTrackAndGraphImport(trackAndGraphPreview)
-  );
-
-  const pixelsPreview = await driveRead('archive', 'previewPixelsImport', () =>
-    journal.archive.previewPixelsImport(
-      new TextEncoder().encode(
-        JSON.stringify([{ date: '2026-9-1', type: 'MOOD', scores: [3], notes: 'from Pixels', tags: [] }])
-      )
-    )
-  );
-  await drive('archive', 'commitPixelsImport', () => journal.archive.commitPixelsImport(pixelsPreview));
 
   const replaceSnapshot = await journal.archive.snapshot();
   await drive('archive', 'replace', () =>

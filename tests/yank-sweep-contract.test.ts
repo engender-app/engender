@@ -388,7 +388,7 @@ describe('query-driven cold surfaces', () => {
       }
     });
   };
-  for (const name of ['entry-templates', 'presentations', 'quick-log-dims']) {
+  for (const name of ['quick-log-dims']) {
     it(`${name} proves its intended surface after consuming only its trigger query`, async () => {
       expect(await proof(name)).toMatchObject({ surface: true });
       await expect(proof(name, { surface: false })).rejects.toThrow('surface');

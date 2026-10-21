@@ -742,9 +742,7 @@ const SECTIONS = [
      Not `flat`: a descriptor maps columns, and this one's procedure link is
      a rowid on this device and a uuid on the wire.
 
-     An archive written before this section existed still restores -
-     `aliasLegacyConsults` (archiveApply.ts) lifts its nested consults up
-     here before anything reads the payload. */
+     Archives without this section restore with an empty appointment list. */
   section({
     name: 'appointments',
     after: ['procedures'],

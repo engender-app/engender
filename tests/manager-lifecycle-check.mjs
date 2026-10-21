@@ -105,25 +105,6 @@ try {
     }
   }
 
-  // Legacy addresses raise a manager, then consume ?raise on the same screen.
-  for (const path of ['/settings/presentations', '/settings/entry-templates']) {
-    await route('/');
-    await page.evaluate(path => {
-      const link = document.createElement('a');
-      link.href = path;
-      document.body.append(link);
-      link.click();
-      link.remove();
-    }, path);
-    await page.waitForURL(url => url.pathname === '/settings' && url.search === '');
-    await page.locator('[role="dialog"]').waitFor();
-    await settle();
-    assert.equal(await page.locator('[role="dialog"]').count(), 1, 'query cleanup preserves the raised manager');
-    await page.keyboard.press('Escape');
-    await closed();
-  }
-  console.log('PASS legacy manager links survive same-screen query cleanup');
-
   // Ordinary dismissal still returns focus to the actual launcher.
   await route(entry);
   await openManager('modes');

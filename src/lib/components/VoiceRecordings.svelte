@@ -6,8 +6,7 @@
      presentation merge and not a change of what a memo is: it stays entry
      content, recorded in the editor and attached to the entry
      (voiceRecordings.ts), and this component still owns no records,
-     registers no archive section, and deletes nothing. `/media/voice/memos`
-     redirects here.
+     registers no archive section, and deletes nothing.
 
      It reads back `journal.voice.inJournal()`, built for ticket 25's voice
      compare picker and never called until ticket 11 - that comparison was

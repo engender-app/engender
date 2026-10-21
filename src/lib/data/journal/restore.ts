@@ -74,7 +74,7 @@ import { documentFilesOf } from './documents';
 import { assertArchiveFileOwnership, readFileOwnership } from './fileOwnership';
 import { mintUuid } from './support';
 import { reconcileBuiltInsWithin } from './reconcile';
-import { aliasLegacyConsults, recordImport } from './archiveApply';
+import { recordImport } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS, DROPPED_ARCHIVE_SECTION_NAMES, emptyArchiveJournal } from './archiveSections';
 import { assertArchiveReferences, assertArchiveRows } from './archiveRowValidation';
 
@@ -387,8 +387,6 @@ function restorableJournal(journal: ArchiveJournal, externalImport = false): Arc
       throw new UnsupportedArchiveError('newer-version', 'the archive was made by a newer version of the app');
     }
   }
-  // Check shapes and rows before lifting legacy procedure consults. The lift
-  // reads procedures, so invalid rows must receive a typed refusal first.
   for (const { name } of ARCHIVE_SECTIONS) {
     const section = name as keyof ArchiveJournal;
     if (journal?.[section] !== undefined && !Array.isArray(journal[section])) {
@@ -400,10 +398,6 @@ function restorableJournal(journal: ArchiveJournal, externalImport = false): Arc
   for (const { name, flatTable } of ARCHIVE_SECTIONS) {
     const section = name as keyof ArchiveJournal;
     assertArchiveRows(section, complete[section], flatTable);
-  }
-  if (journal.appointments === undefined) {
-    complete.appointments = aliasLegacyConsults({ ...journal, procedures: complete.procedures }).appointments;
-    assertArchiveRows('appointments', complete.appointments);
   }
   assertArchiveReferences(complete, externalImport);
   assertArchiveFileOwnership(complete);

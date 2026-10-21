@@ -211,7 +211,7 @@ const entryUuid = (date: string, time: string, mood: string, note: string): Prom
 
 /** Every label a tag in this journal answers to, folded, so an imported
     activity resolves to a tag that is already here rather than a second one
-    beside it. The Day One and Daylio backup importers use it too. */
+    beside it. The Daylio backup importer uses it too. */
 export function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, string> {
   const matches = new Map<string, string>();
   for (const tag of journal.tagGroups.flatMap((group) => group.tags)) {

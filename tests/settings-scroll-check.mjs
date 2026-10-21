@@ -98,15 +98,6 @@ try {
   await navigate('/settings');
   await checkPosition(0, 'new visit after interrupted detail starts at top');
 
-  for (const path of ['/settings/presentations', '/settings/entry-templates']) {
-    await navigate(path, '/settings');
-    await page.locator('[role="dialog"]').waitFor();
-    if (serial) adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
-    else await page.keyboard.press('Escape');
-    await page.locator('[role="dialog"]').waitFor({ state: 'detached' });
-    await checkPosition(0, `${path}, legacy deep link starts at top`);
-  }
-
   if (process.argv.includes('--gallery')) {
     const out = '.claude/settings-scroll-shots';
     await mkdir(out, { recursive: true });

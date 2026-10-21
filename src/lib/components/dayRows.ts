@@ -187,7 +187,7 @@ const SECTION_ROWS: Record<
       icon: 'package',
       title: `${garmentCategoryName(record.category)} ${record.size}`,
       subtitle: record.brand || undefined,
-      href: '/body/sizes'
+      href: '/body/measurements'
     })),
 
   taperSessions: (day) =>

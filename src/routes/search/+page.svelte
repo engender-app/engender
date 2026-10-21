@@ -84,10 +84,7 @@
      already carried it, "reached from search"), so it is a toggle in the
      sheet below rather than a screen elsewhere, and the starred photo grid
      that page also drew moves in beside it, shown whenever the toggle is on.
-     The old starred route redirects here with the filter applied
-     (`?starred=1`) and the old questions route to the bare screen, whose
-     opening state carries the saved questions, so a bookmark still lands
-     somewhere real.
+     Old list addresses now show the unknown-address screen.
 
      Saved questions keep their own run (`/search/questions/[id]`, unmoved -
      rename and delete live there, on the one question being looked at) but
@@ -157,9 +154,7 @@
   let endDate = $state('');
   let hasNote = $state(false);
   let hasPhoto = $state(false);
-  /* On by default when the address itself asks for it - ticket 18's
-     `/search/starred` redirect stub, so a stale bookmark still lands on
-     the shelf it pointed at rather than on a bare, unfiltered screen. */
+  /* On when the current address asks for the starred filter. */
   let starredOnly = $state(page.url.searchParams.has('starred'));
   /* What the address asks for, which is also what a stale held search
      falls back to: `?starred=1` above, and `?q=` from the Transition door's
@@ -820,8 +815,7 @@
       >
         {m.search_filter_has_photo()}
       </button>
-      <!-- The starred shelf's one door now (ticket 18): `/search/starred`
-           redirects here with this already on. Entry-only like the three
+      <!-- The starred shelf's filter. Entry-only like the three
            beside it - a starred photo is the photo library's own read
            (photoLibrary.starred, below), not this filter's. -->
       <button

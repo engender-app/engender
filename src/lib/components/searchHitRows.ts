@@ -113,7 +113,7 @@ const AREA_ROWS: Record<
   presentations: {
     icon: 'palette',
     label: () => m.presentations_title(),
-    href: () => '/settings/presentations'
+    href: () => '/settings'
   },
   eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/settings/eras' },
   roadmapGoals: { ...iconOf('roadmap'), label: () => m.roadmap_title(), href: () => hubRow('roadmap').href },
@@ -134,7 +134,7 @@ const AREA_ROWS: Record<
      (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW), so there is no single
      screen's icon to read these off and they keep their own. */
   labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/care/labs' },
-  sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/body/sizes' },
+  sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/body/measurements' },
   taperSessions: { ...iconOf('dilation'), label: () => m.dilation(), href: () => hubRow('dilation').href },
   wearSessions: { ...iconOf('wear'), label: () => m.wear_log(), href: () => hubRow('wear').href },
   // The compare surface rather than the recorder: a hit is a take somebody

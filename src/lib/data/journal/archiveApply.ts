@@ -24,7 +24,7 @@
 import { foldText } from '../fold';
 import { drugNameKey } from '../regimenEpisode';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource';
-import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
+import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
 import { assertChanged, mintUuid, now, rowidWhere } from './support';
@@ -1230,45 +1230,6 @@ export async function applyAppointments({ driver, journal, ts }: Restoring): Pro
       ]
     );
   }
-}
-
-/** An archive written before ticket 57 carried its consults nested under
-    their procedures and has no `appointments` section at all, which
-    `assertRestorable` (restore.ts) would refuse outright - so this lifts
-    them out before anything reads the payload. The one thing in the rename
-    that could quietly turn somebody's backup away.
-
-    Both directions are left alone where they are already right: a payload
-    that carries `appointments` is returned untouched, and a procedure with
-    no `consults` contributes nothing. A consult becomes an appointment
-    carrying the same uuid and day, linked to its procedure, with no kind,
-    place or note - because there was nowhere for one to have been written.
-
-    Not a `PayloadMigration` (payload.ts): those are keyed on the archive's
-    format version, which this rename does not move.
-
-    The two shape checks below are not defensive coding against an
-    impossible state: `ArchiveJournal` is what a *file* claims to be, and
-    the whole reason this function exists is that a real file does not have
-    the key the type says it has. `assertRestorable` is the same check for
-    the same reason, one layer on. */
-export function aliasLegacyConsults(journal: ArchiveJournal): ArchiveJournal {
-  if (Array.isArray(journal?.appointments)) return journal;
-  if (!Array.isArray(journal?.procedures)) return journal;
-
-  const appointments = journal.procedures.flatMap((procedure) =>
-    (procedure.consults ?? []).map(
-      (consult): ArchiveAppointment => ({
-        id: consult.id,
-        epochDay: consult.epochDay,
-        procedureId: procedure.id,
-        kind: null,
-        place: null,
-        note: null
-      })
-    )
-  );
-  return { ...journal, appointments };
 }
 
 /** The column list import_log's insert shares with `recordImport` below -

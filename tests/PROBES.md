@@ -2,11 +2,15 @@
 
 `npm run build && node tests/manager-lifecycle-check.mjs` opens both entry
 managers, leaves through navigation and browser Back, and checks they stay
-closed. It also covers legacy manager links, ordinary focus return, Quick add
+closed. It also covers ordinary focus return, Quick add
 cleanup and web lock/unlock. Pass an emulator serial and an isolated
 `dev.engender.app.test.<suffix>` package to repeat the check in its production
 APK, including Android Home/resume and hidden retained doors. The web check
 also runs in the browser tier.
+
+`node tests/old-addresses-check.mjs` opens all 52 retired route addresses in
+the built app. After unlocking, each must render the unknown-address screen
+with a link to Today.
 
 `node tests/language-confirm-check.mjs` opens the real Settings Language sheet.
 Two Right presses must leave System selected and the English locale loaded,
@@ -160,8 +164,8 @@ Keystore, journal and gate remain production code. Resources name `serial`,
 clears only that package and removes its own forward when finished.
 
 `tests/fuzz/fuzz.test.ts` runs in `npm test` without a new dependency. Seed 1
-produces 40 cases for each of 12 targets: five Archive variants, Daylio CSV,
-Daylio backup, Day One, TransTracks, Track & Graph, Pixels and sniffers.
+produces 40 cases for each of 8 targets: five Archive variants, Daylio CSV,
+Daylio backup and sniffers.
 `FUZZ_LONG=1 FUZZ_SEED=7 npm test` runs 2,000 cases per target. To run only
 the harness, use `npx vitest run tests/fuzz/fuzz.test.ts`. `FUZZ_COUNT`,
 `FUZZ_LONG_COUNT` and comma-separated `FUZZ_TARGETS` narrow diagnostic runs.

@@ -22,12 +22,7 @@ const TAB_ROUTES: TabRoute[] = [
      the same reason as wrapped - it too is offered from Home
      (OnThisDayHomeCard) rather than from Stats (ticket 09).
 
-     `/recap` was in this list until phase 5 UX ticket 23 deleted the route
-     (spec 07). Its period picker is a wrapped now, so every URL that used
-     to land here still lights this tab - under /wrapped rather than under
-     a prefix of its own. `/timeline` was in it until redesign ticket 43
-     merged the rail into the milestones screen; it is below, with the
-     screen it redirects to. */
+     The former rail route was removed when the rail joined milestones. */
   {
     key: 'stats',
     prefixes: [
@@ -39,42 +34,18 @@ const TAB_ROUTES: TabRoute[] = [
       '/on-this-day'
     ]
   },
-  /* Doses sits outside /settings, but it is reached from More's health
-     group (regimen, hormone-curve) and joins that group's tab too
-     (ticket 09). The care overview is the same case one step on: it is the
-     health group's own row now (deepening ticket 07), and /doses is reached
-     through it.
-
-     The five prefixes below joined here in features ticket 33, when the 23
-     hub rows still living at /settings/<slug> moved to their own
-     HubGroupKey-named address. `/settings` itself is no longer one of
-     them: audit item 4 took it out of this group entirely, and the note
-     under this table says what it lights instead.
-
-     `/timeline` is a stub redirecting to /transition/milestones (redesign
-     ticket 43), and it is listed here rather than left to the fallback so
-     that the tab the old address lights is the tab it lands on. Left with
-     Look back, where the rail used to live, the indicator would have
-     travelled one tab and back while the redirect resolved.
-
-     `/support` and `/voice` joined in ticket 21, when the retired Practice
-     prefix's screens moved to addresses that say which door group holds
-     them (ADR-0072) - `/voice` alone got no door prefix, but the tab it
-     lights is unchanged. `/practice` itself stays, since the directory
-     still holds this ticket's redirect stubs. */
+  /* The More groups and the voice screen light the fourth tab. Settings
+     itself remains chrome and borrows its origin below. */
   {
     key: 'settings',
     prefixes: [
-      '/timeline',
       '/more',
-      '/doses',
       '/care',
       '/body',
       '/health',
       '/transition',
       '/support',
       '/voice',
-      '/practice',
       '/media'
     ]
   }

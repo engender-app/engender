@@ -426,18 +426,6 @@ export interface ArchiveProcedurePhoto {
   fileName: string;
 }
 
-/** One consult date, as an archive written before phase 8 features ticket
-    57 carried it: nested under its procedure, with its own uuid.
-
-    Kept because those archives have to keep restoring. `aliasLegacyConsults`
-    (archiveApply.ts) lifts them into `appointments` on the way in, which is
-    the whole of what an older backup costs. Nothing writes this shape any
-    more. */
-interface ArchiveProcedureConsult {
-  id: string;
-  epochDay: number;
-}
-
 /** One procedure and its recovery log (phase 5 ticket 07).
     `surgeryEpochDay` is null for a procedure with no date set yet. The
     recovery checklist is not here: it is an ordinary `checklist` row
@@ -445,10 +433,8 @@ interface ArchiveProcedureConsult {
     `checklists` section. Neither section has to apply before the other -
     an owner pair is matched by uuid, not resolved to a rowid.
 
-    Nor are its consults, since ticket 57: those are appointments, and they
-    travel in the `appointments` section naming this procedure. `consults`
-    survives as an optional field only so an older archive parses - see
-    `ArchiveProcedureConsult` above.
+    Consults became appointments in ticket 57, and travel in the
+    `appointments` section naming this procedure.
 
     `kind` and `dilationOptIn` are phase 9 carpet ticket 17. Both are
     optional only so an archive written before this ticket parses -
@@ -459,8 +445,6 @@ export interface ArchiveProcedure {
   id: string;
   name: string;
   surgeryEpochDay: number | null;
-  /** Only ever present on an archive written before ticket 57. */
-  consults?: ArchiveProcedureConsult[];
   notes: string;
   photos: ArchiveProcedurePhoto[];
   kind?: ProcedureKind;

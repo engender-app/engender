@@ -141,8 +141,7 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     13 put side effects on the same axis and the same screen as the changes
     somebody was hoping for (rule 16's new strip-versus-axis paragraph): the
     `side-effects` row is not hosted anywhere any more because it is not a
-    screen of its own to link to, and `/health/side-effects` is a redirect
-    stub. Three hosts for four rows now, keyed by the row key of the screen
+    screen of its own to link to, and `/health/side-effects` has been removed. Three hosts for four rows now, keyed by the row key of the screen
     that hosts them where there is one and by the tab otherwise. What this
     map is for is naming the one screen that owes each row its link, which is
     what `more-surfaces.test.ts` holds them to - a hosted row whose host
@@ -430,7 +429,7 @@ const ROWS = [
 
        Voice memos shared this shape and this group until ticket 17 folded
        their browse screen into the voice screen's own Recordings tab -
-       `/media/voice/memos` redirects there now, and what fronts a
+       `/media/voice/memos` has been removed, and what fronts a
        recording on the hub is `voice-benchmark`'s row on Transition. */
     key: 'photos',
     icon: 'image',

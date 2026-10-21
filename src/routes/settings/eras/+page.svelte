@@ -10,7 +10,7 @@
      managed in Settings now, the way modes and entry templates are, and the
      milestone rail is the one place under Transition an era is still drawn
      (as a band behind the marks, MilestoneRail.svelte). `/transition/eras`
-     stays a redirect stub for anyone who bookmarked it.
+     has been removed.
 
      The design problem this screen has and its neighbours do not: an era's
      bounds are optional, and the era people most want to name first is the

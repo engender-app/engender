@@ -27,8 +27,7 @@
      the screen (DIRECTION.md rule 16, an area screen opens by saying what
      is true now) and the list runs under it, because a compressed rail
      cannot be the place you edit or delete one specific milestone - the
-     editor, the photo prompt and the delete all live on the list. /timeline
-     is a redirect to here now. */
+     editor, the photo prompt and the delete all live on the list. */
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
   import { goto, afterNavigate } from '$app/navigation';

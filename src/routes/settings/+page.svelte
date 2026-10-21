@@ -6,7 +6,6 @@
      The rows that carry a Switch or a Segmented instead of a chevron stay
      hand-written in the kit's own row classes (ticket 16: `.kit-row.is-static`
      also drops the row's cursor and its :active wash). */
-  import { page } from '$app/state';
   import { appWordmark } from '$lib/disguise/identity';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
@@ -16,7 +15,6 @@
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { activateLanguagePreference, prefs, selectMetric, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
-  import { replaceRoute } from '$lib/navigation/smart-back';
   import { writer } from '$lib/stores/attempt.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -195,20 +193,6 @@
   const SOURCE_URL = 'https://github.com/engender-app/engender';
   let privacyUrl = $derived(`${SITE_URL}${getLocale() === 'pl' ? 'pl' : 'en'}/privacy/`);
 
-  /* The modes/entry-templates sheets raise from here (audit item 6):
-     `?raise=` is what their old standalone-screen addresses' redirects
-     hand off (settings/presentations, settings/entry-templates), since
-     only a mounted screen can reach ui.svelte.ts - a +page.ts load()
-     cannot. Read once and stripped straight back off, so the sheet's own
-     open state, not the URL, is what a later close answers to; a plain
-     visit to /settings carries no such param and this is a no-op. */
-  $effect(() => {
-    const raise = page.url.searchParams.get('raise');
-    if (raise === 'modes' || raise === 'templates') {
-      ui.raisedManager = raise;
-      void replaceRoute('/settings');
-    }
-  });
 </script>
 
 <div class="screen">

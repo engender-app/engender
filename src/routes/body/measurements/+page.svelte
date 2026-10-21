@@ -13,7 +13,7 @@
      one that lands before any number does.
 
      So: one row, one screen, one finishable group (`areaGroups.ts`), and
-     `/body/sizes` redirects. No `/body` index was added - that costs a
+     The old sizes address was removed. No `/body` index was added - that costs a
      route, a screen registry entry and the three contracts a new screen
      owes here for the same result the two-area row already gives, which is
      the shape `hair-progress` has had since phase 8.

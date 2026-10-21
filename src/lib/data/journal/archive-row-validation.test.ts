@@ -103,7 +103,6 @@ for (const mode of ['merge', 'replace'] as const) {
       (j) => { j.doseSchedules[0].weekdays = [2 ** 53]; },
       (j) => { j.importLog[0].counts = { entries: 2 ** 53 }; },
       (j) => { j.affirmations[0] = null as unknown as typeof j.affirmations[number]; },
-      (j) => { delete (j as Partial<ArchiveJournal>).appointments; j.procedures[0].consults = [{ id: null as unknown as string, epochDay: 20000 }]; },
       (j) => { delete (j as Partial<ArchiveJournal>).appointments; j.procedures[0] = null as unknown as typeof j.procedures[number]; }
     ];
     for (const mutate of mutations) {
@@ -159,12 +158,6 @@ for (const mode of ['merge', 'replace'] as const) {
       (j) => { j.dimensions.push({ ...j.dimensions[0], id: 'decoy' } as never); },
       (j) => { j.areaStates.push({ ...j.areaStates[0] }); },
       (j) => { j.entries[1].photos.push({ ...j.entries[0].photos[0] }); },
-      (j) => {
-        delete (j as Partial<ArchiveJournal>).appointments;
-        j.procedures[0].consults = [
-          { id: 'same_consult', epochDay: 20000 }, { id: 'same_consult', epochDay: 20001 }
-        ];
-      }
     ];
     for (const mutate of mutations) {
       const incoming = golden(); mutate(incoming);
