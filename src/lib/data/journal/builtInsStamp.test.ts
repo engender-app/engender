@@ -8,7 +8,6 @@ import { readFileSync } from 'node:fs';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import {
-  BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_BODY_REGIONS,
   BUILT_IN_DIMENSIONS,
   BUILT_IN_EFFECT_CATEGORIES,
@@ -26,7 +25,6 @@ function catalogueFingerprint(): string {
   const catalogue = {
     dimensions: BUILT_IN_DIMENSIONS.map((d) => [d.key, d.min, d.max]),
     tagGroups: BUILT_IN_TAG_GROUPS.map((g) => [g.key, [...g.tags]]),
-    affirmations: [...BUILT_IN_AFFIRMATION_KEYS],
     bodyRegions: [...BUILT_IN_BODY_REGIONS],
     effectCategories: BUILT_IN_EFFECT_CATEGORIES.map((c) => [c.key, c.defaultEnabled]),
     personalEffectTypes: BUILT_IN_PERSONAL_EFFECT_TYPES.map((e) => [e.key, e.category, e.direction]),

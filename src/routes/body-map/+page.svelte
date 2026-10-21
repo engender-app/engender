@@ -32,17 +32,14 @@
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { epochDayFromDateInputValue, FIRST_EPOCH_DAY } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { DEFAULT_SPAN_DAYS } from '$lib/data/lookBackSpan';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { plotDaySeriesGroup, type AxisPlot, type DayAxis } from '$lib/charts/dayAxis';
+  import { plotDaySeriesGroup, type AxisPlot } from '$lib/charts/dayAxis';
   import { PLOT_HEIGHT } from '$lib/charts/geometry';
-  import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
   import {
     dayAxisEnds,
-    dayAxisLabel,
-    dayAxisOptions,
     dayAxisScrubLabel
   } from '$lib/components/kit/dayAxisLabel';
   import { crossfade, resize } from '$lib/motion/reveal';
@@ -103,48 +100,23 @@
   let spanTo = $derived(hasSpan ? (queryTo as number) : today);
   let spanDays = $derived(spanTo - spanFrom + 1);
 
-  /* Which axis the two charts are read on (ticket 16). Both take the same
-     one: they are one region's two readings and a person switches axis to
-     ask a question of the region, not of one of its halves. The queries,
-     the fallback and the keying are the kit's (dayAxis.svelte.ts) - the
-     wear trend offers the same axis and had the same twenty-five lines. */
-  const readAxis = dayAxisState(() => today);
-
-  /* A re-keyed axis reads the whole journal and says so, which is the same
-     call Care's own interval folds make: the question needs every interval
-     and every day either side of a surgery available, and the span above
-     would otherwise hand it a slice that answers nothing. So the note below
-     swaps in instead of the span quietly doing nothing. */
-  let from = $derived(readAxis.keying ? FIRST_EPOCH_DAY : spanFrom);
-
-  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, spanTo, modeFilter));
-  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, spanTo, modeFilter));
-  /* Both axes of one region over one range, so both take the same
-     annotations (ticket 23) - and neither takes any on a re-keyed axis.
-     An annotation is a calendar date and a position is not one: several
-     calendar days collapse onto one position under the repeating rule, so
-     a mark drawn there would claim a coincidence the data does not carry. */
+  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', spanFrom, spanTo, modeFilter));
+  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', spanFrom, spanTo, modeFilter));
+  /* Both readings cover one calendar range and take the same annotations
+     (ticket 23). */
   let annotationsQuery = liveList((j) =>
-    readAxis.keying ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, spanTo, today)
+    j.chartAnnotations.getAnnotations(spanFrom, spanTo, today)
   );
   let dysphoria = $derived(dysphoriaQuery.rows);
   let euphoria = $derived(euphoriaQuery.rows);
 
-  /* One call for both series, so they fold onto one width and the two
-     cards' axes cannot disagree ($lib/charts/dayAxis). */
-  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], readAxis.keying, spanDays));
+  /* One call for both series, so the two cards share one calendar axis
+     ($lib/charts/dayAxis). */
+  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], null, spanDays));
   let plottedDysphoria = $derived(plotted[0]);
   let plottedEuphoria = $derived(plotted[1]);
 
-  let rangeEnds = $derived(dayAxisEnds(plottedDysphoria, from, spanTo));
-
-  /* A screen reader is told which axis a reading is on, and only when it is
-     not the one every chart starts on: ", read by Date" on the calendar
-     axis would be a phrase appended to every chart on the screen to say
-     nothing had changed. */
-  let axisName = $derived(dayAxisLabel(readAxis.axis, readAxis.anchors));
-  const withAxis = (reading: string) =>
-    readAxis.keying ? m.chart_axis_reading_aria({ reading, axis: axisName }) : reading;
+  let rangeEnds = $derived(dayAxisEnds(plottedDysphoria, spanFrom, spanTo));
 
   /* The figure's role, which is the two chart cards' own - `/stats` gives
      its charts area index 0 too, so the figure, the two charts here and
@@ -157,7 +129,7 @@
      range and the same presentation filter the charts below take, so the
      figure and the charts can never disagree about which entries are in
      view. */
-  let mapQuery = liveList((j) => j.stats.bodyRegionMap(from, spanTo, modeFilter));
+  let mapQuery = liveList((j) => j.stats.bodyRegionMap(spanFrom, spanTo, modeFilter));
 
   /* What the figure is saying about the region that is picked, in words
      (phase 11 pre-production UI/UX ticket 30). Before this the screen named
@@ -281,39 +253,6 @@
         </div>
       </div>
 
-      <!-- The axis sits above the range, because it decides whether there is
-           a range to pick. Absent for a journal that can only answer the
-           calendar - no dose log with a completed interval in it and no
-           procedure with a date - which is the same data gating the mode
-           filter below makes. -->
-      <div class="kit-reading-controls">
-        {#if readAxis.axes.length > 1}
-          <div class="kit-filter">
-            <label class="kit-filter-label" for="body-map-axis">{m.chart_axis_label()}</label>
-            <ChartPicker
-              key="body-map-axis"
-              id="body-map-axis"
-              labelledBy="body-map-axis"
-              value={readAxis.axis}
-              options={dayAxisOptions(readAxis.axes, readAxis.anchors)}
-              onPick={(value) => (readAxis.axis = value as DayAxis)}
-            />
-          </div>
-        {/if}
-
-      <!-- The range picker that used to sit in this slot is gone (redesign
-           ticket 05): the screen takes its span from Look back now, the same
-           way /compare takes its two. A re-keyed axis still reads all
-           history regardless of that span, so the note it says so with keeps
-           its own resize and crossfade - what used to swap out for the range
-           picker now just leaves. -->
-        <div class="kit-reading-slot" use:resize>
-          {#if readAxis.keying}
-            <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
-          {/if}
-        </div>
-      </div>
-
       {#if vocabulary.visiblePresentations.length > 0}
         <div class="kit-filter">
           <label class="kit-filter-label" for="body-map-mode-filter">{m.presentation_label()}</label>
@@ -367,7 +306,7 @@
               from={rangeEnds.from}
               to={rangeEnds.to}
               annotations={annotationsQuery.rows}
-              ariaLabel={withAxis(m.body_map_chart_aria({ region: regionName, first, second }))}
+              ariaLabel={m.body_map_chart_aria({ region: regionName, first, second })}
             />
           </div>
         {/key}

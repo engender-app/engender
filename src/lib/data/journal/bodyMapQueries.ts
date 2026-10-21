@@ -98,8 +98,6 @@ type HairRemovalSessionRow = {
 type HairStageRow = {
   uuid: string;
   epoch_day: number;
-  scale: string;
-  stage: string;
   description: string;
 };
 
@@ -228,19 +226,13 @@ export async function getRegionSomaticBreakdown(
     }));
   }
 
-  // 5. Hair Staging (Norwood / Sinclair)
+  // 5. Hair staging, in the person's own words
   let hairStages: HairStage[] = [];
   if (region === 'hairline' || region === 'whole_body') {
     const stageRows = await driver.query<HairStageRow>(
-      `SELECT uuid, epoch_day, scale, stage, description FROM hair_stage ORDER BY epoch_day DESC, id DESC`
+      `SELECT uuid, epoch_day, description FROM hair_stage ORDER BY epoch_day DESC, id DESC`
     );
-    hairStages = stageRows.map((r) => ({
-      id: r.uuid,
-      epochDay: r.epoch_day,
-      scale: r.scale,
-      stage: r.stage,
-      description: r.description
-    }));
+    hairStages = stageRows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, description: r.description }));
   }
 
   const isEmpty =

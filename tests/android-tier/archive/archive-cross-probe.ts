@@ -199,7 +199,6 @@ function portableWith(marker: string) {
     language: values.language,
     checkInEnabled: values.checkInEnabled,
     checkInTime: values.checkInTime,
-    checkInAffirmationsEnabled: values.checkInAffirmationsEnabled,
     preferredLabUnits: {},
     journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
     hairAnchorEpochDay: values.hairAnchorEpochDay,
@@ -210,7 +209,6 @@ function portableWith(marker: string) {
     voiceComfortHighHz: values.voiceComfortHighHz,
     areaFinishOfferDeclined: values.areaFinishOfferDeclined,
     pinnedRows: values.pinnedRows,
-    agendaKinds: values.agendaKinds,
     onboardingAreas: values.onboardingAreas
   };
 }

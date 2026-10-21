@@ -76,7 +76,7 @@ try {
   await handle.press('ArrowUp');
   await page.waitForTimeout(500);
   assert.deepEqual(await keys(), before);
-  for (const selector of ['[data-edit-tile] [role="switch"]', '[data-edit-kind] [role="switch"]']) {
+  for (const selector of ['[data-edit-tile] [role="switch"]']) {
     const control = page.locator(selector).first();
     const checked = await control.getAttribute('aria-checked');
     await control.click();

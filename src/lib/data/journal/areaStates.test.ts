@@ -58,7 +58,7 @@ test('one hub row fronting two sections suspends both, in one call', async () =>
 
 test('a finished area is not hidden by finishing, and stays readable and searchable', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sideEffects.upsertSideEffect({ name: 'dry skin', severity: 2, epochDay: 19800 });
+  await journal.sideEffects.upsertSideEffect({ name: 'dry skin', severity: 2, epochDay: 19800, resolvedEpochDay: null });
 
   await journal.areaStates.setAreasFinished(['sideEffects'], 19850);
 

@@ -20,8 +20,7 @@
   import {
     hairRemovalAreaName,
     hairRemovalMethodName,
-    hairScaleName,
-    hairStageName
+    hairStagingText
   } from '$lib/data/vocabulary/labels';
 
   let {
@@ -174,11 +173,8 @@
             {#each breakdown.hairStages as st (st.id)}
               <ListRow
                 icon="eye"
-                title={`${hairScaleName(st.scale)}: ${hairStageName(st.scale, st.stage)}`}
-                subtitle={[
-                  fmtDay(st.epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
-                  st.description || false
-                ]}
+                title={hairStagingText(st)}
+                subtitle={fmtDay(st.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
                 static
                 chevron={false}
               />

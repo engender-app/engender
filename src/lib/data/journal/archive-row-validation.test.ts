@@ -70,12 +70,6 @@ for (const mode of ['merge', 'replace'] as const) {
     await refusesWithoutChanges(mode, incoming);
   });
 
-  test(`${mode} refuses the original null-affirmation identity without changing counts or content`, async () => {
-    const contents = await goldenContents();
-    contents.journal.affirmations[1].id = null as unknown as string;
-    await refusesWithoutChanges(mode, contents.journal);
-  });
-
   test(`${mode} refuses missing identity in every current section`, async () => {
     for (const section of Object.keys(golden()) as (keyof ArchiveJournal)[]) {
       const incoming = golden();
@@ -91,8 +85,6 @@ for (const mode of ['merge', 'replace'] as const) {
   test(`${mode} refuses malformed nested rows, scalar types and unsafe numbers`, async () => {
     const mutations: ((journal: ArchiveJournal) => void)[] = [
       (j) => { j.tagGroups[0].tags[0].id = null as unknown as string; },
-      (j) => { j.affirmations[0].text = null as unknown as string; },
-      (j) => { j.affirmations[0].hidden = 'false' as unknown as boolean; },
       (j) => { j.entries[0].timestamp = 2 ** 53; },
       (j) => { j.entries[0].timestamp = Infinity; },
       (j) => { j.entries[0].dims = { femininity: 2 ** 53 }; },
@@ -101,7 +93,6 @@ for (const mode of ['merge', 'replace'] as const) {
       (j) => { j.roadmapChecks[0].goalKey = null as unknown as string; },
       (j) => { j.doseSchedules[0].weekdays = [2 ** 53]; },
       (j) => { j.importLog[0].counts = { entries: 2 ** 53 }; },
-      (j) => { j.affirmations[0] = null as unknown as typeof j.affirmations[number]; },
       (j) => { delete (j as Partial<ArchiveJournal>).appointments; j.procedures[0] = null as unknown as typeof j.procedures[number]; }
     ];
     for (const mutate of mutations) {
@@ -139,7 +130,6 @@ for (const mode of ['merge', 'replace'] as const) {
       (j) => { j.doseSchedules[0].recurrenceKind = 'weekdays'; },
       (j) => { j.entries[0].bodyRegions = { head: 50 }; },
       (j) => { j.sideEffects[0].severity = 6; },
-      (j) => { j.affirmations[0].language = 'fr' as never; },
       (j) => { j.checklists[0].ownerKind = 'appointment'; j.checklists[0].ownerId = null; }
     ];
     for (const mutate of mutations) {
@@ -167,7 +157,7 @@ for (const mode of ['merge', 'replace'] as const) {
 
 test('the backup drill refuses a validly encrypted null-identity body as corrupt', async () => {
   const journal = golden();
-  journal.affirmations[1].id = null as unknown as string;
+  journal.bodyRegions[0].id = null as unknown as string;
   const packed = await collect(packArchive({ journal, files: [], preferences: portablePreferences(PREFERENCE_DEFAULTS),
     readFile: async () => { throw new Error('the fixture has no files'); } }, GOLDEN_PASSWORD, CHEAP_KDF));
   await assert.rejects(verifyArchive(oneShot(packed), GOLDEN_PASSWORD), (error: unknown) => {
@@ -188,3 +178,32 @@ test('the backup drill refuses a validly encrypted broken template reference as 
     return true;
   });
 });
+
+for (const mode of ['merge', 'replace'] as const) {
+  test(`${mode} refuses an id holding a lone surrogate in every section`, async () => {
+    for (const section of ['entries', 'doseEvents', 'tagGroups'] as const) {
+      const incoming = golden();
+      const row = incoming[section][0] as unknown as Record<string, unknown>;
+      const field = section === 'entries' ? 'uuid' : section === 'tagGroups' ? 'key' : 'id';
+      row[field] = '\ud800';
+      await refusesWithoutChanges(mode, incoming);
+    }
+  });
+
+  test(`${mode} refuses auto-log fields the dose_event CHECK would reject`, async () => {
+    const shapes: Record<string, unknown>[] = [
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: null, autoLogIndex: null },
+      { autoLogEpisodeId: null, autoLogEpochDay: 20000, autoLogIndex: 0 },
+      { autoLogEpisodeId: ' ', autoLogEpochDay: 20000, autoLogIndex: 0 },
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: 20000, autoLogIndex: -1 },
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: 20000.5, autoLogIndex: 0 },
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: 20000, autoLogIndex: 0.5 },
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: 20000, autoLogIndex: 0, source: 'manual' }
+    ];
+    for (const shape of shapes) {
+      const incoming = golden();
+      Object.assign(incoming.doseEvents[0], shape);
+      await refusesWithoutChanges(mode, incoming);
+    }
+  });
+}

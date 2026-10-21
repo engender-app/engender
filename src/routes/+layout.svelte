@@ -490,7 +490,6 @@
     isReadyState(bootState);
     const checkInEnabled = prefs.checkInEnabled;
     const checkInTime = prefs.checkInTime;
-    const checkInAffirmationsEnabled = prefs.checkInAffirmationsEnabled;
     const hideNotificationTitles = prefs.hideNotificationTitles;
     /* Read here rather than inside platform-sync.ts for the same reason every
        preference above is: only a .svelte file has the reactivity that
@@ -519,10 +518,6 @@
       import('$lib/disguise/android-bridge'),
       import('$lib/lock/lock-timing-bridge'),
       import('$lib/lock/screen-capture-bridge'),
-      import('$lib/reminders/affirmations'),
-      // Loaded here rather than at the top: the shell itself draws no
-      // catalogue wording, and this callback is its only reader.
-      import('$lib/data/vocabulary/vocabulary')
     ]).then(
       ([
         { startAndroidPlatformSync },
@@ -530,9 +525,7 @@
         { androidReminders },
         { androidDisguise },
         { androidLockTiming },
-        { androidScreenCapture },
-        { affirmationLines },
-        { vocabulary }
+        { androidScreenCapture }
       ]) => {
         if (unmounted) return;
         cleanup = startAndroidPlatformSync({
@@ -542,7 +535,6 @@
           prefs: {
             checkInEnabled,
             checkInTime,
-            checkInAffirmationsEnabled,
             hideNotificationTitles,
             remindersEnabled,
             wearElapsedEnabled,
@@ -570,14 +562,6 @@
           androidBackButton,
           isGateActive: () => locked || needsPassphrase || needsAuthentication ||
             needsDeviceRecovery || needsAccessModeAfterRecovery,
-          // Hidden built-ins and this language's custom lines are read fresh on
-          // every call (phase 5 ticket 15) rather than captured once here, so a
-          // change lands on the next sync without needing this effect to restart.
-          affirmationLines: () =>
-            affirmationLines(
-              new Set(vocabulary.affirmations.filter((a) => a.builtIn && a.hidden).map((a) => a.id)),
-              vocabulary.customAffirmations(getLocale()).map((a) => a.text)
-            ),
           reminderTexts: () => ({
             channelReminders: m.reminders(),
             channelCheckIn: m.checkin_title(),

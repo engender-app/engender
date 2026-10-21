@@ -172,11 +172,7 @@ test('hair removal sessions and hair staging link to relevant regions', async ()
     painRating: 2
   });
 
-  await journal.hairProgress.upsertStage({
-    epochDay: 102,
-    scale: 'norwood_hamilton',
-    stage: '2'
-  });
+  await journal.hairProgress.upsertStage({ epochDay: 102, description: 'temples back a little' });
 
   const faceBreakdown = await getRegionSomaticBreakdown(db, 'face_jaw');
   assert.equal(faceBreakdown.hairRemovalSessions.length, 1);
@@ -185,5 +181,5 @@ test('hair removal sessions and hair staging link to relevant regions', async ()
 
   const hairlineBreakdown = await getRegionSomaticBreakdown(db, 'hairline');
   assert.equal(hairlineBreakdown.hairStages.length, 1);
-  assert.equal(hairlineBreakdown.hairStages[0].stage, '2');
+  assert.equal(hairlineBreakdown.hairStages[0].description, 'temples back a little');
 });

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { journalTextAutocomplete } from '$lib/platform';
+  import { untrack } from 'svelte';
+  import type { TransitionConfig } from 'svelte/transition';
   /* The visit (phase 8 features ticket 57, phase 11 all-four-doors ticket 12,
      ADR-0066): one screen for the next appointment, what you want to raise at
      it, and the ones already behind you.
@@ -52,16 +54,25 @@
      suggestion the person wrote themselves is the only kind the app is
      entitled to make: a built-in endocrinologist/psychologist/surgeon list
      would be a picture of a medical path. On an empty journal there are no
-     chips and the field is simply blank. */
+     chips and the field is simply blank.
+
+     WAITING LISTS (functional-audit ticket 26). An appointment with no day is
+     a wait: a referral to a clinic, an NFZ queue, a surgery list. The editor
+     is the same one with the day left empty, plus the day it was referred
+     on and, once saved, its dated updates. The waits sit right under the
+     opening block, because how long somebody has been on a list is as much
+     "what is true now" as the next visit is. Each says how long it has been,
+     from the referred-on day to today, and nothing about how long is left:
+     the app has nothing to predict a queue from (`waitingSince`). */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery, type LiveList } from '$lib/data/live/journal.svelte';
-  import type { Appointment, ChecklistItem } from '$lib/data/types';
-  import { fmtDay } from '$lib/data/dates';
-  import { epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import type { Appointment, AppointmentStatusUpdate, ChecklistItem, WaitingAppointment } from '$lib/data/types';
+  import { fmtDay, fmtDuration } from '$lib/data/dates';
+  import { epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { mostRecentPastAppointment, soonestFutureAppointment } from '$lib/data/journal/appointments';
+  import { mostRecentPastAppointment, soonestFutureAppointment, waitingSince } from '$lib/data/journal/appointments';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { gapTo } from '$lib/data/vocabulary/hubLabels';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -69,6 +80,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -78,7 +90,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
-  import { collapse } from '$lib/motion/reveal';
+  import { collapse, crossfade, resize } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { rowWriter, writer } from '$lib/stores/attempt.svelte';
@@ -95,6 +107,21 @@
 
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
   let appointments = $derived(appointmentsQuery.rows);
+
+  let waitingQuery = liveList((j) => j.appointments.getWaiting());
+  let waiting = $derived(waitingQuery.rows);
+  let statusQuery = liveList((j) => j.appointments.getStatusUpdates());
+  /* Each appointment's updates, newest first: the row states the latest,
+     the editor lists them all in the order somebody reads a log. */
+  let statusesOf = $derived.by(() => {
+    const byAppointment = new Map<string, AppointmentStatusUpdate[]>();
+    for (const update of statusQuery.rows) {
+      const found = byAppointment.get(update.appointmentId);
+      if (found) found.unshift(update);
+      else byAppointment.set(update.appointmentId, [update]);
+    }
+    return byAppointment;
+  });
 
   /* The procedure names, so a consult can say which journey it belongs to
      without this screen holding a second idea of what a procedure is. */
@@ -138,9 +165,12 @@
      either (stale, not loading) must not put either placeholder back. */
   let visitAndPrepAnswered = $state(false);
   $effect.pre(() => {
-    if (!appointmentsQuery.loading && !checklistQuery.loading) visitAndPrepAnswered = true;
+    if (!appointmentsQuery.loading && !waitingQuery.loading && !statusQuery.loading && !checklistQuery.loading)
+      visitAndPrepAnswered = true;
   });
-  function gateTogether<T>(list: LiveList<T>): LiveList<T> {
+  /* `alsoEmpty` for the opening's gate, which also draws the waits: a
+     journal holding only a wait is not an empty one. */
+  function gateTogether<T>(list: LiveList<T>, alsoEmpty: () => boolean = () => true): LiveList<T> {
     return {
       get rows() {
         return list.rows;
@@ -149,7 +179,7 @@
         return !visitAndPrepAnswered || list.loading;
       },
       get empty() {
-        return list.empty;
+        return list.empty && alsoEmpty();
       },
       get failed() {
         return list.failed;
@@ -160,10 +190,10 @@
       retry: () => list.retry()
     };
   }
-  const gatedAppointmentsQuery = gateTogether(appointmentsQuery);
+  const gatedAppointmentsQuery = gateTogether(appointmentsQuery, () => waitingQuery.empty);
   const gatedChecklistQuery = gateTogether(checklistQuery);
 
-  const titleOf = (appointment: Appointment) =>
+  const titleOf = (appointment: Appointment | WaitingAppointment) =>
     appointment.kind ??
     (appointment.procedureId ? procedureNames.get(appointment.procedureId) : undefined) ??
     m.appointments_untitled();
@@ -189,6 +219,28 @@
       states a gap, so nothing there can leave the year out. */
   const leadDay = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
 
+  /** The opening block's words cross when its visit changes: the new ones
+      fade in where they rest, the old ones fade off out of flow behind them
+      (`crossfade`), pinned to the top of their own line. Bidirectional, so
+      Svelte asks with 'both' and is handed a function to ask again with the
+      direction, the shape `crossfade` itself takes. */
+  function leadLine(
+    node: Element,
+    params?: unknown,
+    options?: { direction?: 'in' | 'out' | 'both' }
+  ): TransitionConfig {
+    if (options?.direction === 'both') {
+      return ((each?: { direction: 'in' | 'out' }) => leadLine(node, params, each)) as unknown as TransitionConfig;
+    }
+    const transition = crossfade(node, params, options);
+    if (options?.direction === 'out') {
+      const style = (node as HTMLElement).style;
+      style.top = '0';
+      style.left = '0';
+    }
+    return transition;
+  }
+
   /** Where the opening block's visit is, with the journey named where the
       kind has not already said it - or nothing, on a visit with neither.
 
@@ -203,11 +255,50 @@
       .join(' · ');
   }
 
-  type Draft = { id?: string; date: string; kind: string; place: string; note: string; procedureId: string | null };
+  /** How long a wait has been, as a fact: the elapsed time, then the
+      referred-on day it counts from, short so the line wraps once at most
+      at 390px. Nothing when that day is not known. */
+  function waitingLine(appointment: WaitingAppointment): string | undefined {
+    const since = waitingSince(appointment.referredEpochDay, today);
+    if (since === null || appointment.referredEpochDay === null) return undefined;
+    return appointment.referredEpochDay === today
+      ? m.appointments_waiting_since_today()
+      : m.appointments_waiting_since({
+          day: fmtDay(appointment.referredEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
+          duration: fmtDuration(since)
+        });
+  }
 
-  const record = recordEditor<Appointment, Draft>({
+  const updateLine = (update: AppointmentStatusUpdate) =>
+    m.appointments_update_line({ day: dayShort(update.epochDay), status: update.status });
+
+  function waitingSubtitle(appointment: WaitingAppointment): (string | undefined)[] {
+    const latest = statusesOf.get(appointment.id)?.[0];
+    return [waitingLine(appointment), appointment.place ?? undefined, latest ? updateLine(latest) : undefined];
+  }
+
+  type Draft = {
+    id?: string;
+    date: string;
+    referred: string;
+    kind: string;
+    place: string;
+    note: string;
+    procedureId: string | null;
+  };
+
+  /* A new wait opens with no day and today as the referred-on day; the
+     header's add keeps today as the day, which is what ui-copy.md asks of
+     an appointment. `waitingDraft` is read by `blank` at the moment the
+     sheet opens, and names the sheet: the title is fixed by how the sheet
+     opened rather than by the day field, so clearing or setting the day
+     mid-edit never swaps the heading's text in one frame. */
+  let waitingDraft = false;
+
+  const record = recordEditor<Appointment | WaitingAppointment, Draft>({
     blank: () => ({
-      date: dateInputValueFromEpochDay(today),
+      date: waitingDraft ? '' : dateInputValueFromEpochDay(today),
+      referred: waitingDraft ? dateInputValueFromEpochDay(today) : '',
       kind: '',
       place: '',
       note: '',
@@ -215,7 +306,8 @@
     }),
     fromRecord: (appointment) => ({
       id: appointment.id,
-      date: dateInputValueFromEpochDay(appointment.epochDay),
+      date: appointment.epochDay === null ? '' : dateInputValueFromEpochDay(appointment.epochDay),
+      referred: appointment.referredEpochDay === null ? '' : dateInputValueFromEpochDay(appointment.referredEpochDay),
       kind: appointment.kind ?? '',
       place: appointment.place ?? '',
       note: appointment.note ?? '',
@@ -227,7 +319,8 @@
     async upsert(draft) {
       await journal.appointments.upsertAppointment({
         id: draft.id,
-        epochDay: epochDayFromDateInputValueOrToday(draft.date),
+        epochDay: epochDayFromDateInputValue(draft.date),
+        referredEpochDay: epochDayFromDateInputValue(draft.referred),
         procedureId: draft.procedureId,
         kind: draft.kind,
         place: draft.place,
@@ -235,7 +328,40 @@
       });
     },
     remove: (id) => journal.appointments.deleteAppointment(id),
-    findById: (id) => appointments.find((appointment) => appointment.id === id)
+    findById: (id) =>
+      appointments.find((appointment) => appointment.id === id) ?? waiting.find((appointment) => appointment.id === id)
+  });
+
+  function openNew(asWait: boolean) {
+    waitingDraft = asWait;
+    record.openEditor(null);
+  }
+
+  /* A wait's updates are their own records, written as they are added
+     rather than held in the draft: an update is a fact on the day it is
+     typed, not part of an edit somebody might still discard. They are
+     offered once the appointment exists. */
+  let newUpdateText = $state('');
+  let newUpdateDate = $state('');
+  const updateWrite = writer();
+  async function addUpdate(appointmentId: string) {
+    const status = newUpdateText.trim();
+    if (!status) return;
+    const epochDay = epochDayFromDateInputValue(newUpdateDate) ?? today;
+    if (!(await updateWrite.run(() => journal.appointments.addStatusUpdate({ appointmentId, epochDay, status }), m.write_failed())))
+      return;
+    newUpdateText = '';
+  }
+  const updateDelete = rowWriter();
+  function deleteUpdate(update: AppointmentStatusUpdate) {
+    updateDelete(update.id, () => journal.appointments.deleteStatusUpdate(update.id), m.write_failed());
+  }
+  // A freshly opened editor starts its update field empty, dated today.
+  let editingId = $derived(record.editor ? (record.editor.id ?? '') : null);
+  $effect.pre(() => {
+    if (editingId === null) return;
+    newUpdateText = '';
+    newUpdateDate = dateInputValueFromEpochDay(untrack(() => today));
   });
 
   /* The prep item's own editor, for the one thing a prep row asks
@@ -315,7 +441,7 @@
         class="icon-btn"
         data-add
         aria-label={m.appointments_add_aria()}
-        onclick={() => record.openEditor(null)}
+        onclick={() => openNew(false)}
       >
         <Icon name="plus" size={22} />
       </button>
@@ -343,10 +469,21 @@
           transition:collapse
           {...roleAttrs(roleAt(activeFlag.roles, 0))}
         >
-          <span class="visit-lead-kind">{titleOf(nextVisit)}</span>
-          <span class="visit-lead-gap" data-visit-gap>{gapLabel(nextVisit.epochDay)}</span>
-          <span class="visit-lead-when">{leadDay(nextVisit.epochDay)}</span>
-          {#if leadWhere(nextVisit)}<span class="visit-lead-where">{leadWhere(nextVisit)}</span>{/if}
+          <!-- Each line crosses when the visit under it changes - a wait
+               given a day sooner than the booked one takes the block over
+               (ticket 26) - the new words fading in and the old ones off
+               where they stood, rather than cutting. The lines' own box
+               travels its height (`resize`) when the new words take more or
+               fewer lines; its own box rather than the button's, which
+               `collapse` already animates on arrival. The place line stays
+               mounted when the new visit has none, so its old words fade
+               like the rest instead of leaving with their line. -->
+          <span class="visit-lead-lines" use:resize>
+            <span class="visit-lead-kind">{#key titleOf(nextVisit)}<span transition:leadLine>{titleOf(nextVisit)}</span>{/key}</span>
+            <span class="visit-lead-gap" data-visit-gap>{#key gapLabel(nextVisit.epochDay)}<span transition:leadLine>{gapLabel(nextVisit.epochDay)}</span>{/key}</span>
+            <span class="visit-lead-when">{#key leadDay(nextVisit.epochDay)}<span transition:leadLine>{leadDay(nextVisit.epochDay)}</span>{/key}</span>
+            <span class="visit-lead-where" class:none={!leadWhere(nextVisit)}>{#key leadWhere(nextVisit)}<span transition:leadLine>{leadWhere(nextVisit)}</span>{/key}</span>
+          </span>
         </button>
       {:else}
         <!-- Nothing booked is an ordinary state, not an empty journal: the
@@ -359,6 +496,39 @@
           title={m.appointments_nothing_booked()}
         />
       {/if}
+      <!-- The waits, inside the opening's gate so they land in the same
+           resize as the block above rather than a frame after it. The
+           section opens and closes its own height when the first wait is
+           added or the last one is given a day, and each row does the same
+           inside it, so nothing under it is teleported. -->
+      {#if waiting.length}
+        <div data-waiting transition:collapse>
+          <SectionHeading text={m.appointments_waiting_heading()}>
+            {#snippet action()}
+              <button class="icon-btn" data-add-waiting aria-label={m.appointments_waiting_add_aria()} onclick={() => openNew(true)}>
+                <Icon name="plus" size={22} />
+              </button>
+            {/snippet}
+          </SectionHeading>
+          <div class="screen-part">
+            <ListCard role={roleAt(activeFlag.roles, 0)}>
+              {#each waiting as appointment (appointment.id)}
+                <div transition:collapse>
+                  <ListRow
+                    key={appointment.id}
+                    data-waiting-appointment={appointment.id}
+                    icon="clock"
+                    title={titleOf(appointment)}
+                    subtitle={waitingSubtitle(appointment)}
+                    chevron={false}
+                    onclick={() => record.openEditor(appointment)}
+                  />
+                </div>
+              {/each}
+            </ListCard>
+          </div>
+        </div>
+      {/if}
     {/snippet}
     {#snippet empty()}
       <Notice
@@ -367,7 +537,7 @@
         role={roleAt(activeFlag.roles, 0)}
         title={m.appointments_empty_title()}
         text={m.appointments_empty_body()}
-        action={{ label: m.appointments_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        action={{ label: m.appointments_empty_action(), primary: true, onclick: () => openNew(false) }}
       />
     {/snippet}
   </ReadGate>
@@ -489,65 +659,74 @@
        ticket 211): the later and past visits cut in at full opacity under
        the gate above when they did. -->
   <ReadReserve ready={visitsRevealed} estimate={visitsEstimate} onrest={visitsRemember}>
+    <!-- Each section and each row opens and closes its own height: a wait
+         given a day arrives in one of these lists (ticket 26), and a row
+         that appeared where it lands would be a yank. -->
     {#if later.length}
-      <SectionHeading text={m.appointments_later_heading()} />
-      <div class="screen-part" data-later>
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          {#each later as appointment (appointment.id)}{@render visitRow(appointment)}{/each}
-        </ListCard>
+      <div transition:collapse>
+        <SectionHeading text={m.appointments_later_heading()} />
+        <div class="screen-part" data-later>
+          <ListCard role={roleAt(activeFlag.roles, 0)}>
+            {#each later as appointment (appointment.id)}
+              <div transition:collapse>{@render visitRow(appointment)}</div>
+            {/each}
+          </ListCard>
+        </div>
       </div>
     {/if}
 
     {#if past.length}
-      <SectionHeading text={m.appointments_past_heading()} />
-      <div class="screen-part" data-past>
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          {#each past as appointment (appointment.id)}
-            {@render visitRow(appointment)}
-            <!-- The debrief belongs to the most recent visit and to no other:
-                 one entry is linked at a time (checklists.ts), and back-filling
-                 history is entering a record rather than living through a
-                 visit. Under that visit's own row rather than in a notice of
-                 its own, and carrying its day either way - adjacency alone
-                 would read as the debrief of whichever visit the eye lands on
-                 next, which is the reading ticket 58 already fixed once on the
-                 completed row. It opens and closes its height, so the offer
-                 arrives by moving (ADR-0078).
+      <div transition:collapse>
+        <SectionHeading text={m.appointments_past_heading()} />
+        <div class="screen-part" data-past>
+          <ListCard role={roleAt(activeFlag.roles, 0)}>
+            {#each past as appointment (appointment.id)}
+              <div transition:collapse>{@render visitRow(appointment)}</div>
+              <!-- The debrief belongs to the most recent visit and to no other:
+                   one entry is linked at a time (checklists.ts), and back-filling
+                   history is entering a record rather than living through a
+                   visit. Under that visit's own row rather than in a notice of
+                   its own, and carrying its day either way - adjacency alone
+                   would read as the debrief of whichever visit the eye lands on
+                   next, which is the reading ticket 58 already fixed once on the
+                   completed row. It opens and closes its height, so the offer
+                   arrives by moving (ADR-0078).
 
-                 Its own handle rather than Home's `data-debrief-offer`: Home
-                 draws the same offer as a Notice with a Notice's controls, and
-                 one selector over two shapes is a check that passes on the
-                 wrong surface. -->
-            {#if appointment.id === lastVisit?.id && showDebriefOffer}
-              <div transition:collapse>
-                <ListRow
-                  key="debrief-offer"
-                  data-visit-debrief-offer=""
-                  icon="book"
-                  title={m.debrief_offer_title()}
-                  subtitle={[dayShort(appointment.epochDay), m.debrief_offer_write()]}
-                  href={`/entry/new/today?debriefFor=${appointment.id}`}
-                  action={{
-                    icon: 'x',
-                    label: m.dismiss(),
-                    onclick: () => journal.checklists.setDebriefDismissed(appointment.id),
-                    attrs: { 'data-dismiss-debrief': '' }
-                  }}
-                />
-              </div>
-            {:else if appointment.id === lastVisit?.id && debriefEntryId !== null}
-              <div transition:collapse>
-                <ListRow
-                  key="debrief"
-                  icon="book"
-                  title={m.appointment_debrief_row()}
-                  subtitle={dayShort(appointment.epochDay)}
-                  href={`/entry/${debriefEntryId}`}
-                />
-              </div>
-            {/if}
-          {/each}
-        </ListCard>
+                   Its own handle rather than Home's `data-debrief-offer`: Home
+                   draws the same offer as a Notice with a Notice's controls, and
+                   one selector over two shapes is a check that passes on the
+                   wrong surface. -->
+              {#if appointment.id === lastVisit?.id && showDebriefOffer}
+                <div transition:collapse>
+                  <ListRow
+                    key="debrief-offer"
+                    data-visit-debrief-offer=""
+                    icon="book"
+                    title={m.debrief_offer_title()}
+                    subtitle={[dayShort(appointment.epochDay), m.debrief_offer_write()]}
+                    href={`/entry/new/today?debriefFor=${appointment.id}`}
+                    action={{
+                      icon: 'x',
+                      label: m.dismiss(),
+                      onclick: () => journal.checklists.setDebriefDismissed(appointment.id),
+                      attrs: { 'data-dismiss-debrief': '' }
+                    }}
+                  />
+                </div>
+              {:else if appointment.id === lastVisit?.id && debriefEntryId !== null}
+                <div transition:collapse>
+                  <ListRow
+                    key="debrief"
+                    icon="book"
+                    title={m.appointment_debrief_row()}
+                    subtitle={dayShort(appointment.epochDay)}
+                    href={`/entry/${debriefEntryId}`}
+                  />
+                </div>
+              {/if}
+            {/each}
+          </ListCard>
+        </div>
       </div>
     {/if}
   </ReadReserve>
@@ -583,14 +762,15 @@
   <RecordSheet
     {record}
     handle="appointment"
-    newTitle={m.appointments_new_sheet()}
-    editTitle={m.appointments_edit_sheet()}
+    newTitle={() => (waitingDraft ? m.appointments_waiting_new_sheet() : m.appointments_new_sheet())}
+    editTitle={(draft) =>
+      waiting.some((a) => a.id === draft.id) ? m.appointments_waiting_edit_sheet() : m.appointments_edit_sheet()}
     saveLabel={m.appointments_save()}
     deleteLabel={m.appointments_delete()}
     confirm={{
       title: m.appointments_delete_sheet(),
       question: () => m.appointments_delete_q(),
-      hint: (appointment) => dayLabel(appointment.epochDay),
+      hint: (appointment) => (appointment.epochDay === null ? titleOf(appointment) : dayLabel(appointment.epochDay)),
       confirmLabel: m.appointments_delete(),
       cancelLabel: m.keep_it()
     }}
@@ -655,16 +835,85 @@
           ></textarea>
         {/snippet}
       </Field>
-      <Field label={m.appointments_day_label()} id="appointment-date">
-        {#snippet children(id)}
-          <DatePicker name="appointment-date" bind:value={editor.date} {id} />
+      <Field label={m.appointments_day_label()} hint={m.appointments_day_hint()} id="appointment-date">
+        {#snippet children(id, describedBy)}
+          <DatePicker name="appointment-date" bind:value={editor.date} {id} {describedBy} />
         {/snippet}
       </Field>
+      <!-- The wait's own fields, only on a wait: an appointment with no day,
+           or one that began as a wait (it has a referred-on day or updates).
+           An ordinary booking is the four fields above and nothing more, and
+           clearing its day opens these by moving rather than appearing. -->
+      {#if !editor.date || editor.referred || (editor.id && statusesOf.has(editor.id))}
+        <div class="ap-wait" transition:collapse>
+          <Field label={m.appointments_referred_label()} id="appointment-referred">
+            {#snippet children(id)}
+              <DatePicker name="appointment-referred" bind:value={editor.referred} {id} />
+            {/snippet}
+          </Field>
+          {#if editor.id}
+            {@const appointmentId = editor.id}
+            {@const updates = statusesOf.get(appointmentId) ?? []}
+            <FieldGroupHeading legend={m.appointments_updates_heading()} />
+            {#if updates.length}
+              <div transition:collapse>
+                <ListCard>
+                  {#each updates as update (update.id)}
+                    <div transition:collapse>
+                      <ListRow
+                        key={`update-${update.id}`}
+                        data-status-update={update.id}
+                        static
+                        title={update.status}
+                        subtitle={dayLabel(update.epochDay)}
+                        action={{
+                          icon: 'trash',
+                          label: m.appointments_update_delete_aria({ status: update.status }),
+                          onclick: () => deleteUpdate(update),
+                          attrs: { 'data-delete-status-update': update.id }
+                        }}
+                      />
+                    </div>
+                  {/each}
+                </ListCard>
+              </div>
+            {/if}
+            <Field label={m.appointments_update_label()} id="appointment-update">
+              {#snippet children(id)}
+                <input autocomplete={journalTextAutocomplete()}
+                  class="input"
+                  {id}
+                  name="appointment-update"
+                  placeholder={m.appointments_update_placeholder()}
+                  bind:value={newUpdateText}
+                />
+              {/snippet}
+            </Field>
+            <Field label={m.appointments_update_day_label()} id="appointment-update-date">
+              {#snippet children(id)}
+                <DatePicker name="appointment-update-date" bind:value={newUpdateDate} {id} />
+              {/snippet}
+            </Field>
+            <button
+              class="btn btn-soft"
+              data-add-status-update
+              disabled={updateWrite.busy || !newUpdateText.trim()}
+              onclick={() => addUpdate(appointmentId)}
+            >
+              <span>{m.appointments_update_add()}</span>
+            </button>
+          {/if}
+        </div>
+      {/if}
     {/snippet}
     {#snippet extraActions(editor)}
+      <!-- Only for an appointment saved with a day: a wait has nothing to
+           put in a calendar yet, and the handoff uses the committed day. -->
+      {#if appointments.some((a) => a.id === editor.id)}
       <button class="btn btn-soft" data-add-to-calendar onclick={() => (calendarDay = appointments.find((a) => a.id === editor.id)?.epochDay ?? null)}>
         <span>{m.calendar_handoff_button()}</span>
       </button>
+      {/if}
     {/snippet}
   </RecordSheet>
 
@@ -689,7 +938,6 @@
   .visit-lead {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
     width: 100%;
     padding: var(--space-4);
     background: var(--role-draw);
@@ -738,6 +986,23 @@
   .visit-lead-when,
   .visit-lead-where {
     font-size: var(--text-sm);
+  }
+
+  .visit-lead-lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  /* The anchor each line's leaving words are pinned to (leadLine). */
+  .visit-lead-lines > span {
+    position: relative;
+  }
+
+  /* A visit with no place: the line is empty and takes no height, and this
+     hands back the gap in front of it. */
+  .visit-lead-where.none {
+    margin-top: calc(var(--space-1) * -1);
   }
 
   /* Same checkbox-square treatment roadmap's page uses for its ticks, and
@@ -800,5 +1065,11 @@
      keeps everywhere else. */
   .ap-kinds {
     margin-top: calc(var(--space-2) * -1);
+  }
+
+  /* The wait's fields keep the sheet's own field rhythm (RecordSheet's
+     fieldset spaces its direct children), one wrapper deeper. */
+  .ap-wait > :global(* + *) {
+    margin-top: var(--space-4);
   }
 </style>

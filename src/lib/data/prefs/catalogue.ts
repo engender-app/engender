@@ -76,15 +76,6 @@ export interface PreferenceValues {
   checkInEnabled: boolean;
   /** Wall-clock "HH:MM" in the device's timezone. */
   checkInTime: string;
-  /** Whether the daily check-in prompt carries an affirming line alongside
-      its question (phase 4 features ticket 22). Only ever adds a line to
-      the prompt - off leaves the check-in exactly as it was. Portable,
-      with `checkInEnabled` and `checkInTime` rather than with the wrapped
-      family: it configures the same ritual those two carry into an
-      archive, and someone who turned the line off should not get it back
-      by restoring on a new device. Weighed rather than defaulted -
-      ADR-0003's rule alone would have made it device-local. */
-  checkInAffirmationsEnabled: boolean;
   /** Whether the rotating reflection prompt shows on the entry-creation
       screen (phase 4 features ticket 17). Device-local because this controls
       one installation's entry screen, not anything the journal carries. */
@@ -128,10 +119,6 @@ export interface PreferenceValues {
       when a time-capsule letter has become readable. Same shape and
       reasoning as `wearTimerEnabled`. */
   readyLetterEnabled: boolean;
-  /** Whether the revisit live tile is ever shown (phase 8 features ticket
-      08, ADR-0045), when a day chosen to see an old entry again has
-      arrived. Same shape and reasoning as `wearTimerEnabled`. */
-  revisitEnabled: boolean;
   /** Whether the surgery-countdown live tile is ever shown (phase 5
       ticket 51), ahead of a scheduled procedure. Same shape and reasoning
       as `wearTimerEnabled`. */
@@ -148,12 +135,8 @@ export interface PreferenceValues {
       while an in-use regimen's stock is projected to run out. Same shape and
       reasoning as `wearTimerEnabled`. */
   stockNoticeEnabled: boolean;
-  /** Whether the active-tryout live tile is ever shown (phase 5 deepening ticket 03). */
-  activeTryoutTileEnabled: boolean;
   /** Whether the patch-schedule live tile is ever shown (phase 5 deepening ticket 03). */
   patchScheduleTileEnabled: boolean;
-  /** Whether the voice-benchmark nudge live tile is ever shown (phase 5 deepening ticket 03). */
-  voiceBenchmarkNudgeEnabled: boolean;
   /** A passage of somebody's own to read for a voice benchmark, empty for the
       one the app ships (phase 5 deepening ticket 15, CONTEXT: "Benchmark
       passage"). Kept because the next benchmark has to be read from the same
@@ -162,9 +145,7 @@ export interface PreferenceValues {
   voiceBenchmarkPassage: string;
   /** The two ends of the person's own comfort band on the pitch figure, in
       Hz, or null when they have not set one (phase 8 features ticket 09,
-      ADR-0059). Null is the shipped state and stays it: the reference bands
-      on that figure are a citation, and this one is a decision nobody but
-      the person can make, so there is no default and no table behind it.
+      ADR-0059). Null is the shipped state; no default or suggested range.
       Both are set and cleared together.
       Portable, like every other preference that is about the person rather
       than about this installation (ADR-0003). */
@@ -172,12 +153,6 @@ export interface PreferenceValues {
   voiceComfortHighHz: number | null;
   /** Whether the pause-active banner live tile is ever shown (phase 5 deepening ticket 03). */
   pauseActiveBannerEnabled: boolean;
-  /** Whether the hair-removal recovery live tile is ever shown (phase 5 deepening ticket 03). */
-  hairRemovalRecoveryEnabled: boolean;
-  /** Whether the appointment-today live tile is ever shown (phase 8 features
-      ticket 63), when today's date carries an appointment. Same shape and
-      reasoning as `wearTimerEnabled`. */
-  appointmentTodayEnabled: boolean;
   /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
       stops the Home card and the recap read behind it, rather than hiding a
       card over work that still runs.
@@ -387,16 +362,6 @@ export interface PreferenceValues {
       page to be on. A stale key resolves to nothing rather than to a
       guess. */
   pinnedRows: string[] | null;
-  /** Which of ADR-0067's five mark kinds the agenda draws, by kind (phase 10
-      redesign ticket 05). Null while the person has switched none of them
-      off, which is every kind; a list is exactly the kinds left on.
-
-      A switch rather than a dismissal, which is the whole of why it is
-      stored: a kind somebody does not want is one they would otherwise
-      dismiss every week for the life of the journal. A stored kind
-      `DAY_AHEAD_MARK_KINDS` does not name resolves to nothing, the same way
-      a stale pin does. */
-  agendaKinds: string[] | null;
   /** Which areas the person said they were keeping track of, when
       onboarding asked (phase 10 redesign ticket 05; the step itself is its
       own ticket). `hubRows.ts` row keys.
@@ -440,7 +405,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hideNotificationTitles: true,
   checkInEnabled: false,
   checkInTime: '21:00',
-  checkInAffirmationsEnabled: true,
   guidedPromptsEnabled: true,
   entryTryoutPromptEnabled: true,
   entryDoseQuickLogEnabled: true,
@@ -450,20 +414,15 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   wearTimerEnabled: true,
   dosePanelEnabled: true,
   readyLetterEnabled: true,
-  revisitEnabled: true,
   surgeryCountdownEnabled: true,
   safeSpaceNudgeEnabled: true,
   safeSpaceNudgeDismissedEntryId: null,
   stockNoticeEnabled: true,
-  activeTryoutTileEnabled: true,
   patchScheduleTileEnabled: true,
-  voiceBenchmarkNudgeEnabled: true,
   voiceBenchmarkPassage: '',
   voiceComfortLowHz: null,
   voiceComfortHighHz: null,
   pauseActiveBannerEnabled: true,
-  hairRemovalRecoveryEnabled: true,
-  appointmentTodayEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
   remindersEnabled: true,
@@ -494,7 +453,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   clinicianSummaryDrugExcluded: {},
   adherenceRegimenPick: null,
   pinnedRows: null,
-  agendaKinds: null,
   onboardingAreas: null
 };
 
@@ -511,7 +469,6 @@ export const PORTABLE_KEYS = [
   'language',
   'checkInEnabled',
   'checkInTime',
-  'checkInAffirmationsEnabled',
   'preferredLabUnits',
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
@@ -521,7 +478,7 @@ export const PORTABLE_KEYS = [
   'voiceComfortLowHz',
   'voiceComfortHighHz',
   'areaFinishOfferDeclined',
-  /* All three of phase 10's front-page preferences travel, on
+  /* Both of phase 10's remaining front-page preferences travel, on
      `areaFinishOfferDeclined`'s own argument next door: each is something
      the person said about their own journal rather than something this
      installation happens to be showing, and a restore that handed somebody
@@ -530,7 +487,6 @@ export const PORTABLE_KEYS = [
      choice about what one screen shows right now - and stays device-local
      for it. */
   'pinnedRows',
-  'agendaKinds',
   'onboardingAreas'
 ] as const satisfies readonly PreferenceKey[];
 
@@ -555,18 +511,13 @@ export const DEVICE_LOCAL_KEYS = [
   'wearTimerEnabled',
   'dosePanelEnabled',
   'readyLetterEnabled',
-  'revisitEnabled',
   'surgeryCountdownEnabled',
   'safeSpaceNudgeEnabled',
   'safeSpaceNudgeDismissedEntryId',
   'stockNoticeEnabled',
-  'activeTryoutTileEnabled',
   'patchScheduleTileEnabled',
-  'voiceBenchmarkNudgeEnabled',
   'voiceBenchmarkPassage',
   'pauseActiveBannerEnabled',
-  'hairRemovalRecoveryEnabled',
-  'appointmentTodayEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
   'remindersEnabled',

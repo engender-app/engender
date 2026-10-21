@@ -63,8 +63,8 @@
   import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
   import { readAgenda, projectAgenda } from '$lib/data/agendaReads';
-  import { passedSlotSentence } from '$lib/data/agenda';
-  import { fallbackReading, pinnedRows, pinReadScope, shownAgendaKinds, type PinnedRow } from '$lib/data/pinnedRows';
+  import { passedSlotSentence, type AgendaItem } from '$lib/data/agenda';
+  import { fallbackReading, pinnedRows, pinReadScope, type PinnedRow } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { readRowForward } from '$lib/data/rowForwardReads';
   import { crossesOnArrival, rememberCrossed } from '$lib/data/gettingStartedMemory';
@@ -128,7 +128,11 @@
   let letterDismissSheetOpen = $state(false);
   const liveTiles = homeTiles(() => today, {
     onLetterDismiss: () => (letterDismissSheetOpen = true)
-  }, doorActive);
+  }, doorActive,
+  /* A pinned wear row counts up on the grid's clock, so the clock keeps
+     its second hand for it even while the wear tile is switched off and
+     reads nothing (functional-audit ticket 14). */
+  () => pinned.some((row) => row.line.kind === 'running' && row.line.what.area === 'wear'));
 
   /* Three at a time, the rest folded in place (phase 8 UX ticket 01,
      ADR-0055). Expanding raises the cap rather than appending the folded
@@ -211,10 +215,7 @@
      The tiers are contiguous in the order, so filtering by them keeps each
      block's own order and needs no second sort. Dormant is not here: it is
      not a tile at all but a row of a list, which is the whole of what the
-     quiet weight means - except the one row promoted to a Notice below
-     (carpet ticket 03), which keeps the dormant tier's gate and snooze but
-     draws as a surface asking to be acted on, rather than a line in a
-     list. */
+     quiet weight means. */
   const TILE_BLOCKS = [
     { tier: 'today', weight: 'row', rows: true },
     { tier: 'moment', weight: 'card', rows: undefined }
@@ -226,12 +227,6 @@
   let todayTiles = $derived(shownTiles.filter((tile) => tile.tier === 'today'));
   let momentTiles = $derived(shownTiles.filter((tile) => tile.tier === 'moment'));
   let quietTiles = $derived(shownTiles.filter((tile) => tile.tier === 'dormant'));
-  /* The felt-sense gap is a nudge to act, not a fact to skim (carpet ticket
-     03) - it keeps the dormant tier's gate and snooze (still counted in
-     `quietTiles` for the fold/cap math above) but draws as a Notice next to
-     the moment tiles instead of a row in the quiet list below them. */
-  let feltSenseGapTile = $derived(quietTiles.find((tile) => tile.key === 'active-tryout-tile') ?? null);
-  let quietListTiles = $derived(quietTiles.filter((tile) => tile.key !== 'active-tryout-tile'));
   const FOLD_NAMES = 2;
   let foldLabel = $derived.by(() => {
     const names = tileSplit.folded.slice(0, FOLD_NAMES).map((tile) => tile.title).join(', ');
@@ -276,13 +271,13 @@
 
   /* Read the facts alongside the tiles. Only the projection needs the
      dose panel's coverage; waiting for all tiles before issuing SQL adds
-     their round trips to the agenda's own. Switches and coverage changes
+     their round trips to the agenda's own. Coverage changes
      project these same facts without another read. */
   let dosePanelCoversEveryDose = $derived(liveTiles.dosePanelCoversEveryRegimen);
   let agendaQuery = liveQuery((j) => readAgenda(j, today));
   let agenda = $derived(
     liveTiles.ready
-      ? projectAgenda(agendaQuery.value, shownAgendaKinds(prefs), dosePanelCoversEveryDose)
+      ? projectAgenda(agendaQuery.value, dosePanelCoversEveryDose)
       : null
   );
   let agendaExpanded = $state(false);
@@ -307,6 +302,17 @@
     if (epochDay === today) return m.today();
     if (epochDay === today + 1) return m.tomorrow();
     return weekdayDay(epochDay);
+  }
+  /** A row's second line: when it falls, and for today's appointment where
+      it is and how many others share the day (functional-audit ticket 14,
+      which folded the appointment-today tile into this row). */
+  function agendaLine(item: AgendaItem): string {
+    const when = agendaWhen(item.epochDay);
+    if (!item.appointment) return when;
+    const { place, more } = item.appointment;
+    return [when, place, more > 0 ? m.agenda_appointments_more({ count: String(more) }) : null]
+      .filter((part) => part)
+      .join(' · ');
   }
   const shortWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'short' });
   const dayNumber = (epochDay: number) => fmtDay(epochDay, { day: 'numeric' });
@@ -916,8 +922,8 @@
               <ListRow
                 key={item.key}
                 href={item.route}
-                title={label.title}
-                subtitle={agendaWhen(item.epochDay)}
+                title={item.appointment?.title ?? label.title}
+                subtitle={agendaLine(item)}
                 data-agenda-item={item.kind}
                 data-agenda-day={item.epochDay}
               >
@@ -1113,44 +1119,14 @@
       <div class="home-tiles" transition:collapse={panel}>
         {@render tileRow(momentTiles, TILE_BLOCKS.find((block) => block.tier === 'moment')!)}
 
-        <!-- Carpet ticket 03: this one dormant tile gets a Notice instead of a
-             quiet row - a stalled tryout is a thing to act on, and the
-             snooze/action it already carries (dismissSnooze, the "Log
-             feeling" link) were sitting unused under the ListRow's plainer
-             tap-through. Same liveTiles role as the tiles beside it: this is
-             journal content, not the app talking about itself.
-
-             `dismiss` isn't `feltSenseGapTile.dismiss` straight through, unlike
-             `tileRow`'s `dismiss={tile.dismiss}` below: `HomeTileDismiss.onclick`
-             takes a MouseEvent, which `Tile.svelte` also declares and forwards
-             untouched, but `Notice`'s own `dismiss.onclick` takes none - the
-             same snooze (`liveTiles.snooze`, the tile's own `dismissSnooze`)
-             called through a zero-arg wrapper `svelte-check` requires here. -->
-        {#if feltSenseGapTile}
-          <Notice
-            icon="heart"
-            key="active-tryout-tile"
-            role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-            title={feltSenseGapTile.title}
-            text={feltSenseGapTile.note}
-            action={{ label: feltSenseGapTile.action!.label, href: feltSenseGapTile.action!.href! }}
-            dismiss={{
-              label: feltSenseGapTile.dismiss!.label,
-              onclick: () => liveTiles.snooze('active-tryout-tile')
-            }}
-            data-live-tile={feltSenseGapTile.key}
-            {...feltSenseGapTile.attrs}
-          />
-        {/if}
-
         <!-- The quiet weight. A dormant nudge keeps neither its action nor its
              dismiss: the whole line taps through to the screen its action
              opened anyway, and the fewest controls belong on the quietest
              thing. Its value goes with them - "40 days" is what the note
              already says. -->
-        {#if quietListTiles.length > 0}
+        {#if quietTiles.length > 0}
           <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
-            {#each quietListTiles as tile (tile.key)}
+            {#each quietTiles as tile (tile.key)}
               <ListRow
                 key={tile.tileKey}
                 href={withEntryListReturn(tile.href, page.url)}

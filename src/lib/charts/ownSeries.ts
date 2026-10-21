@@ -1,7 +1,6 @@
 /* One Own-series figure across the benchmarks that can be read together.
 
-   Six of the seven figures a benchmark reports carry no published range and
-   nothing to compare against except the person's own earlier takes
+   These figures have nothing to compare against except the person's own earlier takes
    (CONTEXT: "Own-series figure"). The reference screen says that in words.
    This is the half that makes the honest answer useful: the figure over
    time, in its own units.

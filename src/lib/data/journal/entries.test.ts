@@ -430,8 +430,6 @@ test.each(['ON', 'OFF'])('purgeExpiredTrash reclaims expired children and keeps 
   const freshId = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: 'just trashed' });
   await journal.marginNotes.add({ entryId: expiredId, epochDay: 102, text: 'old reflection' });
   await journal.marginNotes.add({ entryId: freshId, epochDay: 103, text: 'keep this reflection' });
-  await journal.revisits.setRevisit({ entryId: expiredId, createdEpochDay: 100, targetEpochDay: 200 });
-  await journal.revisits.setRevisit({ entryId: freshId, createdEpochDay: 101, targetEpochDay: 201 });
   db.raw.exec(`PRAGMA foreign_keys = ${foreignKeys}`);
 
   await journal.entries.deleteEntry(expiredId);
@@ -451,8 +449,6 @@ test.each(['ON', 'OFF'])('purgeExpiredTrash reclaims expired children and keeps 
 
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(freshId) as { n: number }).n, 1);
   assert.deepEqual((await journal.entries.trashedEntries()).map((e) => e.id), [freshId]);
-  assert.equal(await journal.revisits.getRevisitForEntry(expiredId), null);
-  assert.ok(await journal.revisits.getRevisitForEntry(freshId));
   assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
 
   assert.equal(await purgeExpiredTrash(db, files), 0, 'and nothing to take is nothing to announce');

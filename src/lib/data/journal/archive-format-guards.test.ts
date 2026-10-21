@@ -10,7 +10,7 @@ import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { CHEAP_KDF, GOLDEN_PASSWORD, oneShot } from './golden-archive-fixture.ts';
-import { DROPPED_ARCHIVE_SECTION_NAMES } from './archiveSections.ts';
+import { ARCHIVE_SECTION_NAMES, DROPPED_ARCHIVE_SECTION_NAMES } from './archiveSections.ts';
 import { verifyArchive } from './restore.ts';
 
 const newerVersion = (error: unknown): boolean => {
@@ -19,6 +19,14 @@ const newerVersion = (error: unknown): boolean => {
   assert.match(error.message, /newer version of the app/);
   return true;
 };
+
+test('removed areas are dropped from archives while letters remain', () => {
+  for (const name of ['affirmations', 'revisits']) {
+    assert.ok(DROPPED_ARCHIVE_SECTION_NAMES.includes(name));
+    assert.ok(!ARCHIVE_SECTION_NAMES.some((section) => section === name));
+  }
+  assert.ok(ARCHIVE_SECTION_NAMES.includes('letters'));
+});
 
 for (const mode of ['replace', 'merge'] as const) {
   test(`${mode} refuses unknown archive sections before writing rows or files`, async () => {

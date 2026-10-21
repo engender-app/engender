@@ -78,6 +78,8 @@ try {
         await page.locator('#care-stock-lead-time').fill('7');
         await fillDate(page, '#care-stock-opened', '2026-10-01');
         await page.locator('#care-stock-window-days').fill('30');
+        await fillDate(page, '#care-stock-expiry', '2027-03-01');
+        await page.locator('#care-stock-pharmacy-note').fill('Batch 7, Dworcowa');
         await page.evaluate(() => {
           window.__stockSave = [];
           const start = performance.now();
@@ -94,6 +96,7 @@ try {
         await row.waitFor();
         await page.waitForTimeout(500);
         assert.match(await row.textContent(), /20.*tablets/);
+        assert.match(await row.textContent(), /Expires.*2027.*Batch 7, Dworcowa/);
         await page.waitForTimeout(250);
         results.at(-1).saveSamples = await page.evaluate(() => window.__stockSave);
         const saveSamples = results.at(-1).saveSamples;
@@ -136,6 +139,8 @@ try {
         assert.equal(await page.locator('#care-stock-lead-time').inputValue(), '7');
         assert.equal(await dateValue(page.locator('#care-stock-opened')), '2026-10-01');
         assert.equal(await page.locator('#care-stock-window-days').inputValue(), '30');
+        assert.equal(await dateValue(page.locator('#care-stock-expiry')), '2027-03-01');
+        assert.equal(await page.locator('#care-stock-pharmacy-note').inputValue(), 'Batch 7, Dworcowa');
         await page.locator('[data-sheet] [data-segment="end"]').click();
         await fillDate(page, '#care-stock-window-end', '2026-10-31');
         await page.locator('#care-stock-quantity').fill('12');

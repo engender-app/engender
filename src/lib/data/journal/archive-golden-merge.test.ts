@@ -4,7 +4,6 @@
    Before this file, merge coverage was 45 hand-written assertions in
    restore.test.ts, each naming its own section by calling into that area's
    own read API - and eight sections were never named there at all
-   (affirmations, journaling pauses, effect categories, hair removal
    sessions, procedures, letters, medication stock, wear sessions). A section
    whose apply forgets its present-ids filter and double-inserts on a
    repeated merge would pass every one of those 45 assertions, because none
@@ -43,7 +42,6 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   tagGroups: (r) => r.key,
   presentations: (r) => r.id,
   entryTemplates: (r) => r.id,
-  affirmations: (r) => r.id,
   bodyRegions: (r) => r.id,
   entries: (r) => r.uuid,
   milestones: (r) => r.id,
@@ -53,7 +51,6 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   sideEffects: (r) => r.id,
   cycleEvents: (r) => r.id,
   journalingPauses: (r) => r.id,
-  revisits: (r) => r.id,
   eras: (r) => r.id,
   eraMutes: (r) => r.eraUuid,
   effectCategories: (r) => r.key,

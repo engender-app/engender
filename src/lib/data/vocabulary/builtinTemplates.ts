@@ -4,7 +4,7 @@
    first run's scales step offers before there is a journal, and the euphoria tag keys
    the good-day rule reads. Split out of builtins.ts in
    ux-carpet ticket 223 so the rest of the catalogue - dimensions, tag groups,
-   affirmations, body regions and effect types, which only the
+   body regions and effect types, which only the
    reconcile, the archive and the demo read - stays out of the first-load
    graph. Same rule as builtins.ts: keys only, no display text, types only. */
 

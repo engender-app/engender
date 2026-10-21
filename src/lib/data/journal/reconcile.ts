@@ -12,7 +12,6 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { TableName } from '../live/writes';
 import {
-  BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_BODY_REGIONS,
   BUILT_IN_DIMENSIONS,
   BUILT_IN_EFFECT_CATEGORIES,
@@ -109,12 +108,6 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
         [tagKey, tagIndex, ts, g.key]
       );
     }
-  }
-
-  const affirmationKeys = await presentKeys(driver, 'affirmation');
-  for (const key of BUILT_IN_AFFIRMATION_KEYS) {
-    if (affirmationKeys.has(key)) continue;
-    await driver.run(`INSERT INTO affirmation (key, text, updated_at) VALUES (?, '', ?)`, [key, ts]);
   }
 
   const bodyRegionKeys = await presentKeys(driver, 'body_region');

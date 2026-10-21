@@ -1,0 +1,33 @@
+{
+  "input": {
+    "reminders": [],
+    "checkInEnabled": true,
+    "checkInTime": "21:30",
+    "journalingPauses": [],
+    "checkInAffirmations": ["You are allowed to take up space"],
+    "latestEntryEpochDay": null,
+    "hideNotificationTitles": false,
+    "quietHours": { "enabled": false, "start": "22:00", "end": "07:00" },
+    "texts": {
+      "channelReminders": "Reminders",
+      "channelCheckIn": "Check-in",
+      "checkInTitle": "Daily check-in",
+      "checkInBody": "How are you today?"
+    }
+  },
+  "expected": {
+    "reminders": [],
+    "checkInEnabled": true,
+    "checkInTime": "21:30",
+    "journalingPauses": [],
+    "latestEntryEpochDay": null,
+    "hideNotificationTitles": false,
+    "quietHours": { "enabled": false, "start": "22:00", "end": "07:00" },
+    "texts": {
+      "channelReminders": "Reminders",
+      "channelCheckIn": "Check-in",
+      "checkInTitle": "Daily check-in",
+      "checkInBody": "How are you today?"
+    }
+  }
+}

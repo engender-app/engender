@@ -46,8 +46,6 @@ export async function seedCompleteArchiveJournal(
   await journal.tags.renameTag('a-therapy', 'therapy session');
   await journal.tags.setTagHidden('a-work', true);
   await journal.tags.setGroupEnabled('activities', false);
-  await journal.affirmations.addLine('en', 'You get to take up space, today too.');
-  await journal.affirmations.setHidden('affirmation_2', true);
   const bodyRegion = await journal.bodyRegions.addCustomRegion('scar tissue');
   await journal.bodyRegions.setRegionHidden('hairline', true);
 
@@ -97,7 +95,6 @@ export async function seedCompleteArchiveJournal(
   await journal.entries.upsertEntry({ id: entry, attachVideos: [bytes('a video note')] });
   await journal.marginNotes.add({ entryId: entry, epochDay: 20050, text: 'reading this back, zażółć gęślą jaźń' });
   const trashedEntry = await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
-  await journal.revisits.setRevisit({ entryId: trashedEntry, createdEpochDay: 20001, targetEpochDay: 20101 });
   await journal.marginNotes.add({ entryId: trashedEntry, epochDay: 20051, text: 'A note on a trashed entry' });
   await journal.entries.deleteEntry(trashedEntry);
   // Mixed case, so the fixture pins that the write folds it (phase 8
@@ -154,10 +151,9 @@ export async function seedCompleteArchiveJournal(
   });
   await journal.taper.upsertSession({ epochDay: 19955, note: 'first one, went fine' });
   await journal.taper.upsertSession({ epochDay: 19956, note: '' });
-  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: 20030 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });
-  await journal.revisits.setRevisit({ entryId: entry, createdEpochDay: 20000, targetEpochDay: 20100 });
 
   /* Three eras, so both open bounds and a closed pair all travel. An absent
      bound is the case a round trip can lose silently by defaulting it to a
@@ -188,16 +184,12 @@ export async function seedCompleteArchiveJournal(
   await journal.personalEffects.setEffectTypeHidden('improved_smell_feminizing', true);
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.personalEffects.upsertMarker({ effect: customEffect.key, firstNoticedEpochDay: 19190 });
-  // One staging per scale, including the escape hatch: the scale column is
-  // what keeps two published classifications from being read as one series
-  // (ticket 33), and a fixture with only one scale in it could not notice a
-  // restore that lost it.
-  await journal.hairProgress.upsertStage({ epochDay: 19200, scale: 'norwood_hamilton', stage: '2a' });
-  await journal.hairProgress.upsertStage({ epochDay: 19230, scale: 'sinclair', stage: '2' });
+  // Free text since functional audit ticket 23, including the text a staging
+  // migrated from each published scale reads as.
+  await journal.hairProgress.upsertStage({ epochDay: 19200, description: 'Norwood-Hamilton 2A' });
+  await journal.hairProgress.upsertStage({ epochDay: 19230, description: 'Sinclair 2' });
   await journal.hairProgress.upsertStage({
     epochDay: 19260,
-    scale: 'other',
-    stage: '',
     description: 'thinner all over the top'
   });
   await journal.hairProgress.addPhoto(19200, { full: bytes('hairline'), thumb: bytes('ht') });
@@ -249,7 +241,7 @@ export async function seedCompleteArchiveJournal(
   });
   await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null, autoLogFromEpochDay: null });
   await journal.doses.upsertPause({ episodeId: episode, startEpochDay: 19100, endEpochDay: null, reason: 'planned' });
-  await journal.stock.upsertEntry({ drug: 'estradiol valerate', quantity: 5, unit: 'ampoules', recordedEpochDay: 20000 });
+  await journal.stock.upsertEntry({ drug: 'estradiol valerate', quantity: 5, unit: 'ampoules', recordedEpochDay: 20000, expiryEpochDay: 20400, pharmacyNote: 'Batch 7' });
 
   const tryout = await journal.tryouts.upsertTryout({
     kind: 'style',
@@ -281,6 +273,17 @@ export async function seedCompleteArchiveJournal(
     place: 'Poradnia, ul. Kopernika',
     note: 'ask about the dose'
   });
+  /* And one still waiting for its day, with a dated update (ticket 26), so
+     the section carries a null day, a referred-on day and its statuses. */
+  const waiting = await journal.appointments.upsertAppointment({
+    epochDay: null,
+    referredEpochDay: 19800,
+    procedureId: null,
+    kind: 'Gender clinic',
+    place: 'Charing Cross',
+    note: 'GP letter sent'
+  });
+  await journal.appointments.addStatusUpdate({ appointmentId: waiting, epochDay: 19900, status: 'Letter came' });
   await journal.procedures.addPhoto(procedure, 20052, { full: bytes('recovery'), thumb: bytes('rt') });
   const checklistItem = await journal.procedures.addChecklistItem(procedure, 'buy gauze');
   await journal.checklists.setItemChecked(checklistItem.id, true);

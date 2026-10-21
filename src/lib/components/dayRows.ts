@@ -27,7 +27,6 @@
 import { m } from '$lib/paraglide/messages';
 import { hubRow, type HubRow } from '$lib/data/hubRows';
 import { DAY_SECTION_KEYS, type DayRecords, type DaySectionKey } from '$lib/data/journal/day';
-import { isGradedScale } from '$lib/data/hairStageScales';
 import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
 import { wearKindLabel } from '$lib/data/vocabulary/wearLabels';
 import type { Photo } from '$lib/data/types';
@@ -35,14 +34,14 @@ import {
   cycleEventKindName,
   hairRemovalAreaName,
   hairRemovalMethodName,
-  hairScaleName,
-  hairStageName,
+  hairStagingText,
   moodName,
   severityName
 } from '$lib/data/vocabulary/labels';
 import { doseRowTitle, statusLabel } from '$lib/data/vocabulary/doseLabels';
 import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 import { iconOf } from './rowIcon';
+import { appointmentDayRow } from './appointmentDayRow';
 
 /** One line in the day's context list. `subtitle` is the earned exception
     (DIRECTION 3b), not the standard: most rows say everything in the
@@ -262,19 +261,13 @@ const SECTION_ROWS: Record<
           : hubRow('milestones').href
     })),
 
-  /* The scale as well as the grade. On the hair-progress screen the scale is
-     the group heading above the row and there is no grouping here, so a row
-     reading "3" would say nothing - '3' is a grade on both published scales
-     and means something different on each, which is why those two never
-     separate. 'other' publishes no grades at all, so what someone wrote is
-     the record, and that screen's own wording covers writing nothing. */
+  /* What the staging says, in the person's words (functional audit ticket
+     23). */
   hairStages: (day) =>
     day.hairStages.map((stage) => ({
       key: `hair-stage-${stage.id}`,
       ...iconOf('hair-progress'),
-      title: isGradedScale(stage.scale)
-        ? `${hairScaleName(stage.scale)} ${hairStageName(stage.scale, stage.stage)}`
-        : stage.description || m.hair_other_unwritten(),
+      title: hairStagingText(stage),
       href: HAIR_PROGRESS
     })),
 
@@ -317,17 +310,12 @@ const SECTION_ROWS: Record<
       count: group.length
     })),
 
-  /* What the appointment was, with where it was underneath it. An
-     appointment nobody named a kind for says only "appointment", because
-     the app ships no kinds of its own to guess with (ADR-0066); one that
-     belongs to a surgery journey says so, since that is what a consult
-     read as before the record existed. */
+  /* What the appointment was, or the referral or update on its wait
+     (appointmentDayRow.ts). */
   appointments: (day) =>
     day.appointments.map((appointment) => ({
-      key: `appointment-${appointment.id}`,
+      ...appointmentDayRow(appointment),
       ...iconOf('appointments'),
-      title: appointment.kind ?? appointment.procedureName ?? m.appointments_untitled(),
-      subtitle: appointment.place ?? (appointment.kind ? appointment.procedureName ?? undefined : undefined),
       href: APPOINTMENTS
     })),
 

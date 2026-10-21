@@ -304,7 +304,6 @@ const SCENES = [
   { name: 'settings-theme-switcher', at: '/settings', act: '[data-segmented="theme"] [data-segment="dark"]', after: {"selector": "html", "attribute": "data-theme", "value": "dark"}, is: 'switching theme segmented control' },
   { name: 'settings-switch', at: '/settings', prepare: [{ act: '[data-list-row="features"]' }], act: '[data-cycle-tracking-toggle] button.switch', after: {"selector": "[data-cycle-tracking-toggle] button.switch", "attribute": "aria-checked"}, is: 'toggling a settings switch' },
   { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', after: {"selector": "[data-sheet]"}, is: 'the gender scales checklist sheet opening' },
-  { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', after: {"selector": "[data-sheet]"}, is: 'the calendar colour metric sheet opening' },
   { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', after: {"selector": "[data-sheet]"}, is: 'the disguise preview sheet opening' },
   { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', after: {"selector": "[data-sheet]"}, is: 'the about sheet opening' },
   { name: 'presentations-add', at: '/settings', prepare: ['[data-list-row="presentations"]'], act: '[data-sheet] [data-add]', after: { selector: '[name="presentation-name"]' }, is: 'the add presentation sheet opening' },
@@ -2068,7 +2067,7 @@ const HYDRATION_SCENES = [
   { name: 'wrapped-year', at: '/wrapped/year', when: 'persona', is: 'a wrapped year' },
   /* More hub and the Body group */
   { name: 'more', at: '/more', is: 'the hub itself' },
-  { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged against the published scale' },
+  { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged as free text' },
   { name: 'hair-removal', at: '/body/hair-removal', is: 'electrolysis and laser sessions' },
   /* Ticket 21: wear moved off the retired Practice prefix onto its own
      door. */
@@ -2128,7 +2127,6 @@ const HYDRATION_SCENES = [
   { name: 'passphrase', at: '/settings/passphrase', is: 'the passphrase change screen' },
   { name: 'recovery-key', at: '/settings/recovery-key', is: 'the recovery key mint and revoke' },
   { name: 'security', at: '/settings/security', is: 'the security module' },
-  { name: 'affirmations', at: '/settings/affirmations', is: 'affirmations' },
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
   { name: 'words-ignored', at: '/settings/words', is: 'the words the reading skips' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
@@ -2149,9 +2147,7 @@ const HYDRATION_SCENES = [
      the eight swatches render inline on the settings screen itself, so
      that scene's cold mount is the whole of the surface, and picking one
      re-themes in place with no layout consequence, which both detectors
-     are right to ignore. The quick-log dims sheet is a query param, so it
-     opens over Home's own cold mount - the after-save state a real quick
-     log lands in. */
+     are right to ignore. */
   { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', after: { selector: '[data-fan]' }, is: 'the quick add fan opening' },
   { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet' },
   { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet' },

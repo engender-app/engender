@@ -50,7 +50,7 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   hairProgress: ['hair_stage', 'hair_photo'],
   hairRemoval: ['hair_removal_session', 'hair_removal_photo'],
   procedure: ['procedure', 'procedure_photo'],
-  appointment: ['appointment'],
+  appointment: ['appointment', 'appointment_status'],
   comfortItem: ['comfort_item'],
   tryout: ['tryout', 'tryout_photo'],
   feltSense: ['felt_sense'],
@@ -65,7 +65,6 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   // comment on `procedures`), so it lives here and not under 'procedure'.
   checklist: ['checklist', 'checklist_item'],
   wearSession: ['wear_session'],
-  affirmation: ['affirmation'],
   bodyRegion: ['body_region'],
   effectCategory: ['effect_category'],
   personalEffectType: ['personal_effect_type'],
@@ -73,7 +72,6 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   entryTemplate: ['entry_template', 'entry_template_tag', 'entry_template_dimension_value'],
   importLog: ['import_log'],
   areaState: ['area_state'],
-  revisit: ['revisit'],
   marginNote: ['margin_note'],
   wordIgnore: ['word_frequency_ignore'],
   document: ['document']

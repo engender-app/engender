@@ -1,8 +1,6 @@
 /* The body-region area (phase 5 ticket 30, CONTEXT: "Reference data" -
    amended). A region's domain id is its travelling identity (ADR-0002):
-   the seeded key for a built-in, the minted uuid for a custom - the same
-   split affirmations.ts draws, and the closest model for this area's own
-   shape, since a body region is a flat row too.
+   the seeded key for a built-in, the minted uuid for a custom.
 
    Built-ins hide rather than delete, like a Tag or a GenderDimension, so a
    hidden region's logged intensities keep resolving and charting

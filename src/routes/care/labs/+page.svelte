@@ -311,7 +311,6 @@
 
   const ocrSaver: OcrSaver = {
     getExistingResults: (a) => journal.labs.getResults(a),
-    getPreferredUnit: (a) => preferredUnitForAnalyte(a, prefs.preferredLabUnits),
     async saveResult(params) {
       await journal.labs.upsertResult(params);
       analyte = params.analyte;

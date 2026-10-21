@@ -203,19 +203,6 @@
               <TimePicker {id} name="checkin-time" style="max-width:160px" required bind:value={prefs.checkInTime} />
             {/snippet}
           </Field>
-          <div class="spread" data-checkin-affirmations>
-            <span class="kit-row-text">
-              <span class="kit-row-title">{m.checkin_affirmations_title()}</span>
-              <span class="kit-row-sub">{m.checkin_affirmations_sub()}</span>
-            </span>
-            <Switch
-              checked={prefs.checkInAffirmationsEnabled}
-              label={m.checkin_affirmations_title()}
-              onChange={(v) => {
-                prefs.checkInAffirmationsEnabled = v;
-              }}
-            />
-          </div>
         </div>
         {/if}
       </div>

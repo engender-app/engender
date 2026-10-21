@@ -203,7 +203,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 97);
+  assert.equal(db.getUserVersion(), 102);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -211,8 +211,8 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     .map((r) => (r as { name: string }).name);
 
   for (const expected of [
-    'affirmation',
     'appointment',
+    'appointment_status',
     'area_state',
     'comfort_item',
     'cycle_event',
@@ -238,7 +238,6 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'preset_dimension',
     'regimen_episode',
     'reminder',
-    'revisit',
     'side_effect',
     'tag',
     'tag_group',
@@ -250,6 +249,16 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   ]) {
     assert.ok(tables.includes(expected), `expected table ${expected} to exist`);
   }
+});
+
+test('affirmation and revisit tables are removed from migrated journals', async () => {
+  const db = await migratedDb();
+  const tables = db.raw.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all()
+    .map((row) => (row as { name: string }).name);
+  assert.ok(!tables.includes('affirmation'));
+  assert.ok(!tables.includes('revisit'));
+  assert.ok(tables.includes('letter'));
+  await db.close();
 });
 
 test('entry_fts is a contentless FTS5 table', async () => {
@@ -539,40 +548,16 @@ test('personal_effect.effect is an open catalogue, and effect_category/personal_
   );
 });
 
-type HairStageDb = Awaited<ReturnType<typeof migratedDb>>;
-
-const insertHairStage =
-  (db: HairStageDb) =>
-  (uuid: string, scale: string, stage: string, description = '') =>
-    db.raw.exec(
-      `INSERT INTO hair_stage (uuid, epoch_day, scale, stage, description, updated_at) VALUES ('${uuid}', 100, '${scale}', '${stage}', '${description}', 1000)`
-    );
-
-test('hair_stage rejects a grade the named scale does not publish', async () => {
+/* Functional audit ticket 23: a staging is free text, with no scale or
+   grade left to check (the migration's own test is
+   hair-stage-free-text-migration.test.ts). */
+test('hair_stage holds free text and nothing else', async () => {
   const db = await migratedDb();
-  const insert = insertHairStage(db);
-
-  assert.doesNotThrow(() => insert('h1', 'norwood_hamilton', '3v'));
-  assert.doesNotThrow(() => insert('h2', 'sinclair', '5'));
-
-  // '3v' and '7' are Norwood-Hamilton codes and Sinclair publishes neither,
-  // so the pair is refused even though each half is valid somewhere.
-  assert.throws(() => insert('h3', 'sinclair', '3v'));
-  assert.throws(() => insert('h4', 'sinclair', '7'));
-  assert.throws(() => insert('h5', 'norwood_hamilton', '8'));
-  assert.throws(() => insert('h6', 'ludwig', 'ii'));
-});
-
-test('hair_stage keeps a free-text description to the scale that has no grades', async () => {
-  const db = await migratedDb();
-  const insert = insertHairStage(db);
-
-  assert.doesNotThrow(() => insert('h1', 'other', '', 'diffuse thinning all over the top'));
-  // Neither of these, and nothing written down, is a record too.
-  assert.doesNotThrow(() => insert('h2', 'other', ''));
-
-  assert.throws(() => insert('h3', 'other', '3'));
-  assert.throws(() => insert('h4', 'norwood_hamilton', '3', 'and some prose'));
+  const columns = (db.raw.prepare('PRAGMA table_info(hair_stage)').all() as Array<{ name: string }>).map((c) => c.name);
+  assert.deepEqual(columns, ['id', 'uuid', 'epoch_day', 'description', 'updated_at']);
+  assert.doesNotThrow(() =>
+    db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, description, updated_at) VALUES ('h1', 100, 'diffuse thinning all over the top', 1000)")
+  );
 });
 
 test('a dose schedule cannot claim one recurrence shape while carrying the other one data', async () => {

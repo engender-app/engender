@@ -7,10 +7,11 @@
      feature: the app ranks nothing centrally and infers nothing, so the
      only way Today becomes theirs is a surface where they say so.
 
-     One edit mode, four things in it, in the order somebody works through
-     them: the rows they have, the rows they could add, the tiles Today may
-     put above them, and the kinds of dated thing the agenda is allowed to
-     draw. Then the two exits - back to the default set, and done.
+     One edit mode, three things in it, in the order somebody works through
+     them: the rows they have, the rows they could add, and the tiles Today
+     may put above them. Then the two exits - back to the default set, and
+     done. The agenda's five kind switches went in functional-audit ticket
+     14: the agenda draws every kind ADR-0067 admits.
 
      There is no per-row menu and no second reset (the ticket's own scope),
      and nothing here sorts, scores, suggests or highlights: every rule about what the arrangement becomes
@@ -57,14 +58,11 @@
     addablePins,
     movedPin,
     pinArrangement,
-    shownAgendaKinds,
-    withAgendaKind,
     withoutPin,
     withPin,
     type PinnedRow
   } from '$lib/data/pinnedRows';
   import type { HubReading, HubRowKey } from '$lib/data/hubRows';
-  import { DAY_AHEAD_MARK_KINDS, type DayAheadMarkKind } from '$lib/data/journal/dayAhead';
   import { LIVE_TILE_DRAW_ORDER, LIVE_TILE_PREF_KEY, type LiveTileKind } from '$lib/data/liveTiles';
   import { PREFERENCE_DEFAULTS } from '$lib/data/prefs/catalogue';
   import { UNPROMPTED_ROWS } from '$lib/unprompted/registry';
@@ -74,7 +72,6 @@
   import { announce } from '$lib/stores/announcer.svelte';
   import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { Role } from '$lib/theme/roles';
-  import { dayAheadMarkLabel } from './dayAheadRows';
   import Icon from './Icon.svelte';
   import Switch from './Switch.svelte';
   import ConfirmDeleteSheet from './kit/ConfirmDeleteSheet.svelte';
@@ -115,7 +112,6 @@
   );
 
   let addable = $derived(addablePins(prefs, reading, { cycleVisible }));
-  let kindsOn = $derived(new Set(shownAgendaKinds(prefs)));
 
   /* Every write goes through the arrangement rather than through what is
      drawn, and materialises the default the first time (ADR-0073: the
@@ -143,10 +139,6 @@
     prefs.pinnedRows = movedPin(arrangement(), key, targetKey);
   }
 
-  function toggleKind(kind: DayAheadMarkKind, on: boolean) {
-    prefs.agendaKinds = withAgendaKind(prefs, kind, on);
-  }
-
   /* The tiles' own titles and lines, off the registry that already carries
      them for every other surface - the switch here and the tile on the page
      have to be the same words, and the registry is where that is declared
@@ -162,19 +154,19 @@
   /** Back to what onboarding was told, which is null rather than a list:
       an arrangement written back as the default set would be a set nobody
       chose, and the next answer to onboarding's question would not reach
-      it. The switches go with it, both kinds - one edit mode, one reset.
+      it. The tile switches go with it - one edit mode, one reset.
 
       The tiles come back from `PREFERENCE_DEFAULTS` rather than from a
-      null, because each of the thirteen is its own boolean in the catalogue
-      and has no unset state to resolve. Read from that file rather than
-      written as `true` thirteen times: what the app ships with is that
+      null, because each of them is its own boolean in the catalogue and
+      has no unset state to resolve. Read from that file rather than
+      written as `true` once per tile: what the app ships with is that
       file's to say, and a default changed there would otherwise leave this
       one handing back the old answer.
 
       Behind a question, unlike every other write on this surface. The rest
       are each one row and each undone by one tap; this is the only one that
       throws away work, and what it throws away is somebody's own curation -
-      the row they took off because an anniversary is painful, the kind they
+      the row they took off because an anniversary is painful, the tile they
       switched off during a taper. A stray tap on the button under Done may
       not cost that silently. Unpinning stays unconfirmed for the same
       reason read the other way: a row somebody wants gone should go the
@@ -184,7 +176,6 @@
   function reset() {
     resetAsked = false;
     prefs.pinnedRows = null;
-    prefs.agendaKinds = null;
     for (const kind of LIVE_TILE_DRAW_ORDER) {
       const key = LIVE_TILE_PREF_KEY[kind];
       prefs[key] = PREFERENCE_DEFAULTS[key];
@@ -386,15 +377,14 @@
        the kinds inside each one (`LIVE_TILE_DRAW_ORDER`), so the list reads
        down the page the way the page does rather than alphabetically or in
        the order the tiles were written. No icon on the row, unlike the pins
-       and the agenda kinds above: a tile has none on Today either, and
-       inventing thirteen of them here would name each tile a second way in
-       the one place both names would be read at once.
+       above: a tile has none on Today either, and inventing one per tile
+       here would name each tile a second way in the one place both names
+       would be read at once.
 
        Each row keeps the registry's line, for the reason the add list above
        keeps its own and the pinned list drops them: a line under a row being
        dragged is in the way, and a line under a row being decided about is
-       the decision. "Revisit" and "Active tryout" are not self-evident, and
-       the screen these switches came from stated what each one puts in front
+       the decision. Each switch explains what it puts in front
        of you (the impeccable critique's own first finding, 2026-09-16).
 
        Every kind, including one whose area is hidden or finished. The
@@ -422,33 +412,6 @@
       {/each}
     </ListCard>
   </div>
-
-  <!-- The agenda's five kinds (ADR-0067), each named the way the agenda
-       itself names it, so a switch says exactly which rows it stops. A
-       switch rather than a dismissal is the point: a kind somebody does not
-       want is otherwise one they dismiss every week for the life of the
-       journal. -->
-  <SectionHeading text={m.home_edit_agenda_heading()} />
-  <ListCard {role}>
-    {#each DAY_AHEAD_MARK_KINDS as kind (kind)}
-      {@const label = dayAheadMarkLabel(kind)}
-      <ListRow
-        static
-        key={kind}
-        icon={label.icon}
-        title={label.title}
-        data-edit-kind={kind}
-      >
-        {#snippet trailing()}
-          <Switch
-            checked={kindsOn.has(kind)}
-            label={label.title}
-            onChange={(on) => toggleKind(kind, on)}
-          />
-        {/snippet}
-      </ListRow>
-    {/each}
-  </ListCard>
 
   <div class="today-editor-exits">
     <button type="button" class="btn btn-primary" data-edit-done onclick={onDone}>

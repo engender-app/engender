@@ -31,7 +31,6 @@ const ROUTES = [
   '/tally',
   '/settings/tags',
   '/settings/words',
-  '/settings/affirmations',
   '/settings/eras',
   '/transition/letters',
   '/transition/tryouts',

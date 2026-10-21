@@ -102,7 +102,8 @@ try {
   await settlePage(page, server.resolvedUrls.local[0], 'health/appointments', 'light');
   await page.evaluate(async () => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-    for (const appointment of await journal.appointments.getAppointments()) await journal.appointments.deleteAppointment(appointment.id);
+    for (const appointment of [...await journal.appointments.getAppointments(), ...await journal.appointments.getWaiting()])
+      await journal.appointments.deleteAppointment(appointment.id);
   });
   await page.locator('[data-appointment]').waitFor({ state: 'detached' });
   await page.locator('[data-add]').click();
@@ -151,6 +152,60 @@ try {
   assert.equal(await row.evaluate((el) => el.contains(document.activeElement)), true, 'Dismissal restores opener focus');
   console.log('PASS create/reopen retains all fields; suggestions fill kind; discard preserves saved record and restores focus');
 
+  /* Waiting lists (functional-audit ticket 26): an appointment saved with no
+     day waits, says how long as a fact, collects dated updates, and later
+     takes a day without becoming another record. */
+  async function clearDate(selector) {
+    await page.locator(selector).click();
+    await page.locator('[data-date-picker] [data-date-picker-clear]').click();
+    await page.locator('[data-date-picker]').waitFor({ state: 'detached' });
+  }
+  await page.locator('[data-add]').click();
+  await page.locator('#appointment-kind').fill('Gender clinic');
+  await page.locator('#appointment-place').fill('Charing Cross');
+  await clearDate('#appointment-date');
+  await fillDate(page, '#appointment-referred', '2024-01-10');
+  await page.locator('[data-save-appointment]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  const waitRow = page.locator('[data-waiting] [data-waiting-appointment]').filter({ hasText: 'Gender clinic' });
+  await waitRow.waitFor();
+  const waitId = await waitRow.getAttribute('data-waiting-appointment');
+  const waitText = await waitRow.innerText();
+  assert.match(waitText, /Waiting \d+ (years?|months?)[^\n]*, since 10 Jan 2024/, `elapsed time stated: ${waitText}`);
+  const screenText = await page.locator('main, body').first().innerText();
+  assert.ok(!/\b(left to wait|expected|estimate|likely|remaining)\b|in \d+ (days?|months?|years?)[^)]*Gender clinic/i.test(screenText),
+    'No prediction appears on the screen');
+  await waitRow.click();
+  assert.equal(await page.locator('[data-add-to-calendar]').count(), 0, 'A wait has nothing to hand to a calendar');
+  await page.locator('#appointment-update').fill('Letter came');
+  await fillDate(page, '#appointment-update-date', '2024-02-01');
+  await page.locator('[data-add-status-update]').click();
+  await page.locator('[data-status-update]').waitFor();
+  assert.equal(await page.locator('#appointment-update').inputValue(), '', 'The update field empties once added');
+  await close();
+  assert.ok((await waitRow.innerText()).includes('1 Feb: Letter came'), 'The row quotes the latest update');
+  await page.locator('[data-add-waiting]').click();
+  assert.equal(await dateValue(page.locator('#appointment-date')), '', 'A new wait opens with no day');
+  assert.equal(await dateValue(page.locator('#appointment-referred')), today, 'and today as its referred-on day');
+  await close();
+  console.log('PASS a referral saves with no day, states its wait as elapsed time only, and collects dated updates');
+
+  await navigate('/day/2024-01-10');
+  await page.locator(`[data-list-row="appointment-referred-${waitId}"]`).waitFor();
+  await navigate('/day/2024-02-01');
+  assert.ok((await page.locator('[data-list-row^="appointment-status-"]').innerText()).includes('Letter came'));
+  await navigate('/health/appointments');
+  await waitRow.click();
+  await fillDate(page, '#appointment-date', '2024-03-20');
+  await page.locator('[data-save-appointment]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  await page.locator('[data-waiting]').waitFor({ state: 'detached' });
+  await page.locator(`[data-past] [data-appointment="${waitId}"]`).click();
+  assert.equal(await dateValue(page.locator('#appointment-referred')), '2024-01-10', 'The referred-on day stays');
+  assert.equal(await page.locator('[data-status-update]').count(), 1, 'and so do its updates');
+  await close();
+  console.log('PASS the referral and its update show in the day view on their dates, and it later takes a day as the same record');
+
   const linked = await page.evaluate(async () => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     const procedureId = await journal.procedures.upsertProcedure({ name: 'Fixture journey' });
@@ -174,7 +229,7 @@ try {
     return {
       body: face('var(--font-body)'),
       display: face('var(--font-display)'),
-      lines: [...lead.children].filter((line) => !line.hasAttribute('data-visit-gap'))
+      lines: [...lead.querySelector('.visit-lead-lines').children].filter((line) => !line.hasAttribute('data-visit-gap'))
         .map((line) => getComputedStyle(line).fontFamily),
       gap: getComputedStyle(lead.querySelector('[data-visit-gap]')).fontFamily
     };
@@ -215,7 +270,7 @@ try {
     await settlePage(page, server.resolvedUrls.local[0], 'health/appointments', 'light');
     await row.click();
     for (const key of ['appointments_kind_label', 'appointments_place_label', 'appointments_note_label', 'appointments_day_label']) {
-      assert.equal(await page.getByRole('textbox', { name: copy[key], exact: true }).count(), 1);
+      assert.equal(await page.getByRole('textbox', { name: copy[key], exact: true }).count(), 1, `${locale} ${key}`);
     }
     for (const zoom of [1, 2]) {
       await page.evaluate(async (zoom) => {

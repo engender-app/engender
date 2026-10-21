@@ -11,7 +11,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import type {
-  ArchiveAffirmation,
   ArchiveAppointment,
   ArchiveBodyRegion,
   ArchiveChecklist,
@@ -40,7 +39,6 @@ import { foldText } from '../fold.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import {
-  applyAffirmations,
   applyAppointments,
   applyBodyRegions,
   applyChecklists,
@@ -327,24 +325,6 @@ test('applyTagGroups walks tags of an existing group in both modes, but only rep
   );
   assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM tag_group'))[0].name, 'Renamed');
   assert.deepEqual(await select(driver, 'SELECT label FROM tag WHERE key = ?', ['t1']), [{ label: 'Relabeled' }]);
-});
-
-// applyAffirmations ---------------------------------------------------------
-
-test('applyAffirmations inserts and merge leaves a matched id alone, replace updates it', async () => {
-  const driver = await migratedDb();
-  const a: ArchiveAffirmation = { id: 'calm', language: null, text: 'I am calm.', builtIn: true, hidden: false };
-
-  await applyAffirmations(restoring(driver, { affirmations: [a] }, 'merge', 2));
-  assert.deepEqual(await select(driver, 'SELECT key, text, updated_at FROM affirmation'), [
-    { key: 'calm', text: 'I am calm.', updated_at: 2 }
-  ]);
-
-  await applyAffirmations(restoring(driver, { affirmations: [{ ...a, text: 'Renamed' }] }, 'merge', 5));
-  assert.deepEqual((await select<{ text: string }>(driver, 'SELECT text FROM affirmation'))[0].text, 'I am calm.');
-
-  await applyAffirmations(restoring(driver, { affirmations: [{ ...a, text: 'Renamed' }] }, 'replace', 5));
-  assert.deepEqual((await select<{ text: string }>(driver, 'SELECT text FROM affirmation'))[0].text, 'Renamed');
 });
 
 // applyBodyRegions -----------------------------------------------------------

@@ -103,7 +103,7 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
-  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.reminders.upsertReminder({
@@ -208,16 +208,13 @@ async function exported(journal: Journal): Promise<RestoreContents> {
 const rowCount = async (db: SqliteDriver, sql: string): Promise<number> =>
   (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${sql}`))[0].n;
 
-test('archives omit revisits and margin notes owned by trashed entries', async () => {
+test('archives omit margin notes owned by trashed entries', async () => {
   const { driver, journal } = await everySectionDevice();
   assert.equal(await rowCount(driver, 'entry WHERE trashed_at IS NOT NULL'), 1);
-  assert.equal(await rowCount(driver, 'revisit'), 2);
   assert.equal(await rowCount(driver, 'margin_note'), 2);
   const snapshot = await journal.archive.snapshot();
-  assert.equal(snapshot.journal.revisits.length, 1);
   assert.equal(snapshot.journal.marginNotes.length, 1);
   const entryUuids = new Set(snapshot.journal.entries.map((entry) => entry.uuid));
-  assert.ok(entryUuids.has(snapshot.journal.revisits[0].entryId));
   assert.ok(entryUuids.has(snapshot.journal.marginNotes[0].entryId));
 });
 
@@ -226,26 +223,19 @@ test.each([
   ['merge', 'same device'],
   ['replace', 'fresh device'],
   ['merge', 'fresh device']
-] as const)('%s restores an older archive with trash children on %s with foreign keys enforced', async (mode, location) => {
+] as const)('%s restores an older archive with trash margin notes on %s with foreign keys enforced', async (mode, location) => {
   const source = await everySectionDevice();
   const target = location === 'same device' ? { db: source.driver, journal: source.journal } : await device();
   const contents = await exported(source.journal);
   const trash = (await source.driver.query<{ id: number; uuid: string }>('SELECT id, uuid FROM entry WHERE trashed_at IS NOT NULL'))[0];
-  const revisit = (await source.journal.revisits.getRevisitForEntry(trash.id))!;
   const margin = (await source.journal.marginNotes.forEntries([trash.id])).get(trash.id)![0];
-  contents.journal.revisits = contents.journal.revisits.filter((row) => row.entryId !== trash.uuid);
   contents.journal.marginNotes = contents.journal.marginNotes.filter((row) => row.entryId !== trash.uuid);
-  contents.journal.revisits.push({
-    id: revisit.id, entryId: trash.uuid, entryEpochDay: 20001,
-    createdEpochDay: 20001, targetEpochDay: 20101
-  });
   contents.journal.marginNotes.push({
     id: margin.id, entryId: trash.uuid, epochDay: 20051, text: margin.text
   });
   assert.equal((await target.db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
   await target.journal.archive[mode](contents);
   const restored = (await target.journal.archive.snapshot()).journal;
-  assert.equal(restored.revisits.length, 1);
   assert.equal(restored.marginNotes.length, 1);
   assert.deepEqual(await target.db.query('PRAGMA foreign_key_check'), []);
 });
@@ -445,7 +435,7 @@ test('a weekday schedule and its dose amounts survive an export/import round tri
 
 test('a side effect left blank survives an export/import round trip as null, not zero or three', async () => {
   const source = await device();
-  await source.journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 19000 });
+  await source.journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 19000, resolvedEpochDay: null });
 
   const target = await device();
   await target.journal.archive.merge(await exported(source.journal));
@@ -1090,7 +1080,33 @@ test('a staging from an archive written before there were two scales restores as
   });
 
   assert.deepEqual(await target.journal.hairProgress.getStages(), [
-    { id: 'legacy-staging', epochDay: 19200, scale: 'norwood_hamilton', stage: '3a', description: '' }
+    { id: 'legacy-staging', epochDay: 19200, description: 'Norwood-Hamilton 3A' }
+  ]);
+});
+
+/* FA 23: staging is free text now. An archive written before that still
+   restores, every graded row as the text the migration would give it. */
+test('a graded staging from an older archive restores as the text it read as', async () => {
+  const target = await device();
+
+  await target.journal.archive.replace({
+    journal: {
+      ...emptyArchiveJournal(),
+      hairStages: [
+        { id: 'nh', epochDay: 19200, scale: 'norwood_hamilton', stage: '3v', description: '' },
+        { id: 'si', epochDay: 19201, scale: 'sinclair', stage: '2', description: '' },
+        { id: 'ot', epochDay: 19202, scale: 'other', stage: '', description: 'thinner on top' },
+        { id: 'ft', epochDay: 19203, description: 'my own words' }
+      ]
+    },
+    files: (async function* () {})()
+  });
+
+  assert.deepEqual(await target.journal.hairProgress.getStages(), [
+    { id: 'nh', epochDay: 19200, description: 'Norwood-Hamilton 3V' },
+    { id: 'si', epochDay: 19201, description: 'Sinclair 2' },
+    { id: 'ot', epochDay: 19202, description: 'thinner on top' },
+    { id: 'ft', epochDay: 19203, description: 'my own words' }
   ]);
 });
 

@@ -30,8 +30,6 @@ search-filter-label
 settings-unit-row
 starred-photo-cell
 starred-photo-unstar
-stats-interval
-stats-interval-input
 value-row
 video-preview
 wrapped-card

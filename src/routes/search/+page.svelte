@@ -40,7 +40,7 @@
      **What it searches (phase 5 deepening ticket 24).** Entries, and every
      other area of the journal that holds text: letters, milestone names,
      procedure notes, appointment questions, felt-sense reflections, custom
-     roadmap goals, affirmations, lab notes, fit notes, wear notes, provider
+     roadmap goals, lab notes, fit notes, wear notes, provider
      names, drug names, reminder titles. Which those are is textSearch.ts's
      registry, not a list here - this screen names no area, and an area
      registered there reaches this screen without it being edited.
@@ -67,7 +67,7 @@
      print every letter in the range, which is the archive's job.
 
      *The date range narrows everything it can reach.* An area whose records
-     carry a day is narrowed by it; a roadmap goal and an affirmation belong
+     carry a day is narrowed by it; a roadmap goal and a checklist belong
      to no day and are not.
 
      *Tags, moods, has-note and has-photo are entry-only.* They are entry

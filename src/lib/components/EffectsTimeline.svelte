@@ -16,12 +16,20 @@
      the chart adds only its own fixed wording (the legend, the two edge
      captions) via paraglide directly, inline rather than threaded through as a
      prop. Decorative only - the day-by-day detail a screen reader needs
-     lives in the textual list the caller renders alongside this. -->
+     lives in the textual list the caller renders alongside this.
+
+     The bands are drawn only while `literature` is true, the screen's "What
+     the literature says" disclosure (functional audit ticket 22). Closed,
+     the chart is the person's own markers on the months since HRT began;
+     opening it wipes each band in from its own start, and closing covers it
+     again from the same edge. The legend's two literature swatches stay in
+     place and fade with them, last in the row, so nothing beside them moves. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { scaleLinear } from 'd3-scale';
   import { fmtDay } from '$lib/data/dates';
   import { localDateFromEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
+  import { wipe } from '$lib/motion/reveal';
 
   export interface EffectTimelineRow {
     key: string;
@@ -42,11 +50,14 @@
   let {
     rows,
     anchorEpochDay,
-    todayEpochDay
+    todayEpochDay,
+    literature
   }: {
     rows: EffectTimelineRow[];
     anchorEpochDay: number;
     todayEpochDay: number;
+    /** Whether the literature's bands are shown (ticket 22). */
+    literature: boolean;
   } = $props();
 
   const P = 4;
@@ -176,8 +187,9 @@
             <line class="tick-grid" x1={x(tick.day)} x2={x(tick.day)} y1="0" y2={ROW_H} />
           {/each}
           <line class="track-baseline" x1={P} x2={WIDTH - P} y1={ROW_H / 2} y2={ROW_H / 2} />
-          {#if row.onset}
+          {#if literature && row.onset}
             <rect
+              transition:wipe
               class="band-onset"
               x={x(row.onset.start)}
               y={BAND_Y}
@@ -185,8 +197,9 @@
               height={BAND_H}
             />
           {/if}
-          {#if row.completion}
+          {#if literature && row.completion}
             <rect
+              transition:wipe
               class="band-completion"
               x={x(row.completion.start)}
               y={BAND_Y}
@@ -206,10 +219,14 @@
   </div>
 
   <div class="effects-timeline-legend">
-    <span class="legend-item"><span class="legend-swatch swatch-onset"></span>{m.effect_legend_onset()}</span>
-    <span class="legend-item"><span class="legend-swatch swatch-completion"></span>{m.effect_legend_completion()}</span>
     <span class="legend-item"><span class="legend-swatch swatch-marker"></span>{m.effect_legend_marker()}</span>
     <span class="legend-item"><span class="legend-swatch swatch-today"></span>{m.effect_legend_today()}</span>
+    <span class="legend-item legend-literature" class:is-off={!literature} aria-hidden={!literature} data-legend-literature>
+      <span class="legend-swatch swatch-onset"></span>{m.effect_legend_onset()}
+    </span>
+    <span class="legend-item legend-literature" class:is-off={!literature} aria-hidden={!literature} data-legend-literature>
+      <span class="legend-swatch swatch-completion"></span>{m.effect_legend_completion()}
+    </span>
   </div>
 </div>
 
@@ -308,6 +325,12 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
+  }
+  .legend-literature {
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+  .legend-literature.is-off {
+    opacity: 0;
   }
   .legend-swatch {
     width: 12px;

@@ -17,8 +17,7 @@
    Phase 8 features ticket 09 adds the two halves that ticket needs proving
    here rather than in Node: that the take a real recording produces carries
    a stored pitch track, and that the figure drawn from a live session puts
-   its trace where the absolute axis says 185 Hz is, with its reference
-   bands, their source and the averages caveat all on screen. The gauge is
+   its trace where the absolute axis says 185 Hz is. The gauge is
    mounted for real, so what is measured is the component's own output over
    frames that came off a microphone. */
 
@@ -74,20 +73,8 @@ function drawnFigure(frames: readonly PitchFrame[], report: QualityReport) {
     tracePoints: ys.length,
     traceMeanY: ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : null,
     expectedY: (1 - axisFraction(SIGNAL_HZ, DEFAULT_PITCH_AXIS)) * 100,
-    bands: [...target.querySelectorAll('[data-pitch-band]')].map((li) =>
-      li.getAttribute('data-pitch-band')
-    ),
-    /* Every Hz figure the legend printed, in order. The figures are what
-       ADR-0059 requires beside the labels, and counting them says so
-       without this test asserting on anybody's wording. */
-    bandFigures: [...target.querySelectorAll('[data-pitch-band]')].map(
-      (li) => (li.textContent ?? '').match(/\d+/g)?.length ?? 0
-    ),
-    middleEdges: target.querySelectorAll('[data-pitch-middle] line').length,
-    middleFills: target.querySelectorAll('[data-pitch-middle] rect').length,
+    populationBands: target.querySelectorAll('[data-pitch-band], [data-pitch-middle], [data-pitch-source], [data-pitch-caveat]').length,
     comfortMarks: target.querySelectorAll('[data-pitch-comfort] line').length,
-    sourceText: target.querySelector('[data-pitch-source]')?.textContent?.trim() ?? '',
-    caveatText: target.querySelector('[data-pitch-caveat]')?.textContent?.trim() ?? ''
   };
 }
 
@@ -113,7 +100,7 @@ async function take(kind: 'steady' | 'loud' | 'wobble', seconds: number, gate: Q
 /** A finished benchmark, drawn from its stored track and then from none.
     The second case is every benchmark taken before schema v58: the frames
     were summarized and dropped, so the screen has to say so rather than
-    draw a field with bands and no trace, which would read as a take that
+    draw a field with no trace, which would read as a take that
     had no voice in it. */
 function drawnTake(pitchTrack: string | null) {
   const target = document.createElement('div');

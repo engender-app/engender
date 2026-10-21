@@ -70,15 +70,10 @@ export type UnpromptedKind =
   | 'surgery-countdown'
   | 'safe-space-nudge'
   | 'stock-notice'
-  | 'active-tryout-tile'
   | 'patch-schedule-tile'
-  | 'voice-benchmark-nudge'
   | 'pause-active-banner'
-  | 'hair-removal-recovery'
-  | 'appointment-today'
   | 'wrapped'
   | 'on-this-day'
-  | 'revisit'
   | 'reminders'
   | 'check-in'
   | 'wear-elapsed'
@@ -203,13 +198,6 @@ const ROWS = [
     surface: { subtitle: () => m.tile_stock_sub(), prefKey: 'stockNoticeEnabled' }
   },
   {
-    key: 'active-tryout-tile',
-    // a tryout carries its own end day.
-    area: null,
-    title: () => m.tile_active_tryout_title(),
-    surface: { subtitle: () => m.tile_active_tryout_sub(), prefKey: 'activeTryoutTileEnabled' }
-  },
-  {
     key: 'patch-schedule-tile',
     // the dose log again, for the same reason as the dose panel.
     area: null,
@@ -217,31 +205,11 @@ const ROWS = [
     surface: { subtitle: () => m.tile_patch_schedule_sub(), prefKey: 'patchScheduleTileEnabled' }
   },
   {
-    key: 'voice-benchmark-nudge',
-    area: 'voiceBenchmarks',
-    title: () => m.tile_voice_benchmark_title(),
-    surface: { subtitle: () => m.tile_voice_benchmark_sub(), prefKey: 'voiceBenchmarkNudgeEnabled' }
-  },
-  {
     key: 'pause-active-banner',
     // a journaling pause already carries the day it started and the day it ended.
     area: null,
     title: () => m.tile_pause_active_title(),
     surface: { subtitle: () => m.tile_pause_active_sub(), prefKey: 'pauseActiveBannerEnabled' }
-  },
-  {
-    key: 'hair-removal-recovery',
-    area: 'hairRemovalSessions',
-    title: () => m.tile_hair_removal_title(),
-    surface: { subtitle: () => m.tile_hair_removal_sub(), prefKey: 'hairRemovalRecoveryEnabled' }
-  },
-  {
-    key: 'appointment-today',
-    // appointments is its own hideable series (hubRows.ts): hiding it takes
-    // this tile with it the same way hiding wearSessions takes wear-timer.
-    area: 'appointments',
-    title: () => m.tile_appointment_title(),
-    surface: { subtitle: () => m.tile_appointment_sub(), prefKey: 'appointmentTodayEnabled' }
   },
   {
     key: 'wrapped',
@@ -256,17 +224,6 @@ const ROWS = [
     area: null,
     title: () => m.on_this_day(),
     surface: { subtitle: () => m.on_this_day_settings_sub(), prefKey: 'onThisDayEnabled' },
-  },
-  {
-    key: 'revisit',
-    // an entry someone already wrote, on the day they chose to see it again.
-    area: null,
-    title: () => m.tile_revisit_title(),
-    surface: { subtitle: () => m.tile_revisit_sub(), prefKey: 'revisitEnabled' }
-    // No `notify`: phase 8 features ticket 08 is explicit that this
-    // registers no new notification machinery - the arrival offers in the
-    // app and never mints anything (ADR-0045), the same reason a ready
-    // letter carries no `notify` either.
   },
   {
     key: 'reminders',

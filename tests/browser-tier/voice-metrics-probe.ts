@@ -26,13 +26,8 @@
    behind it (`figure: null`, the same fallback an unread journal gets
    there).
 
-   The second claim is that a Referenced section and an Own-series section
-   read differently: pitch carries published ranges with a citation under
-   them, spread carries a sentence saying no dependable range exists, and
-   the two tier lines are not the same sentence. A screen that draws a band
-   on one figure and nothing on five without ever saying why is the thing
-   this ticket exists to stop, so "they read differently" is the assertion
-   rather than "they both rendered". */
+   The second claim is that pitch and spread explain different measurements
+   without drawing a population range in either section. */
 
 import { mount } from 'svelte';
 import '$lib/theme/fonts.css';
@@ -155,13 +150,7 @@ try {
     key: panel.getAttribute('data-metric'),
     tier: panel.getAttribute('data-metric-tier'),
     fields: panel.querySelectorAll('[data-metric-field]').length,
-    /* One per language the citation covers, which is the rule ADR-0060
-       exists for: a figure with no sourced range for a language draws
-       nothing rather than the English one. */
-    bandedLanguages: [...panel.querySelectorAll('[data-metric-bands]')].map((band) =>
-      band.getAttribute('data-metric-bands')
-    ),
-    citations: panel.querySelectorAll('[data-metric-bands] .vms-source').length,
+    populationBands: panel.querySelectorAll('[data-metric-bands], .vms-source').length,
     tierText: panel.querySelector('[data-metric-field="tier"] p')?.textContent?.trim() ?? '',
     typicalText: panel.querySelector('[data-metric-field="typical"] p')?.textContent?.trim() ?? ''
   }));

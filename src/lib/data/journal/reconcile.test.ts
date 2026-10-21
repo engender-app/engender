@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import {
-  BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_DIMENSIONS,
   BUILT_IN_TAG_GROUPS
 } from '../vocabulary/builtins.ts';
@@ -27,7 +26,6 @@ test('seeds every built-in dimension, group and tag into an empty journal, and n
   assert.equal(count(db, 'gender_preset'), 0);
   assert.equal(count(db, 'tag_group'), BUILT_IN_TAG_GROUPS.length);
   assert.equal(count(db, 'tag'), BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags).length);
-  assert.equal(count(db, 'affirmation'), BUILT_IN_AFFIRMATION_KEYS.length);
 
 });
 
@@ -59,20 +57,6 @@ test('restores a missing built-in without touching custom rows', async () => {
   const emotions = groups.find((g) => g.key === 'emotions')!;
   assert.ok(emotions.tags.some((t) => t.id === 'e-happy'), 'e-happy restored');
   assert.ok(emotions.tags.some((t) => t.label === 'proud'), 'custom tag survived');
-});
-
-test('restores a missing built-in affirmation without touching a custom one', async () => {
-  const db = await migratedDb();
-  const journal = openJournal(db, fakeFileStore());
-  await journal.reconcileBuiltIns();
-  await journal.affirmations.addLine('en', 'You are doing great.');
-
-  db.raw.exec("DELETE FROM affirmation WHERE key = 'affirmation_1'");
-  await journal.reconcileBuiltIns();
-
-  const affirmations = await journal.affirmations.getAffirmations();
-  assert.ok(affirmations.some((a) => a.id === 'affirmation_1'), 'affirmation_1 restored');
-  assert.ok(affirmations.some((a) => a.text === 'You are doing great.'), 'custom line survived');
 });
 
 test('the appointment debrief seeds hidden, and an ordinary template seeds visible (ticket 25)', async () => {
@@ -127,7 +111,6 @@ const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
   preset_dimension: 'preset',
   tag_group: 'tag',
   tag: 'tag',
-  affirmation: 'affirmation',
   body_region: 'bodyRegion',
   effect_category: 'effectCategory',
   personal_effect_type: 'personalEffectType',

@@ -10,7 +10,6 @@
   import { attempt, writer } from '$lib/stores/attempt.svelte';
   import {
     todayEpochDay,
-    epochDayMonthsAgo,
     epochDayFromDateInputValue,
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
@@ -67,6 +66,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
   import EffectPickerSheet from '$lib/components/EffectPickerSheet.svelte';
+  import { offeredEffectTypes } from '$lib/data/effectPicker';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
@@ -204,67 +204,6 @@
     const id = existing.id;
     // The star goes back if the write does not land, with a toast saying so.
     if (!(await starWrite.run(() => journal.entries.setEntryStarred(id, next), m.write_failed()))) session.starred = !next;
-  }
-
-  /* A day chosen to see this entry again (phase 8 features ticket 08,
-     ADR-0045). Its own live query rather than folded into `loaded`: a
-     revisit is a separate record, and reading it only while the sheet is
-     open would show a stale "not set" state the moment somebody reopens it
-     after setting one on another device. */
-  let revisitOpen = $state(false);
-  let revisitQuery = liveQuery((j) =>
-    entryId != null ? j.revisits.getRevisitForEntry(entryId) : Promise.resolve(null)
-  );
-  let revisit = $derived(revisitQuery.value);
-  let revisitDateInput = $state('');
-
-  const revisitPresetDay = (preset: 'week' | 'month' | 'threeMonths' | 'year'): number => {
-    const today = todayEpochDay();
-    switch (preset) {
-      case 'week':
-        return today + 7;
-      /* epochDayMonthsAgo's own clamping (31 Oct minus a month lands on 30
-         Sep, not a 1 Nov rollover) is exactly what a revisit's own presets
-         need going forward too, and negating `months` gives it that
-         direction: the function subtracts `months` from the total month
-         count, so a negative count adds. Every other caller only ever
-         passes a positive count looking backward - this is the one call
-         site that runs it the other way on purpose. */
-      case 'month':
-        return epochDayMonthsAgo(today, -1);
-      case 'threeMonths':
-        return epochDayMonthsAgo(today, -3);
-      case 'year':
-        return epochDayMonthsAgo(today, -12);
-    }
-  };
-
-  const revisitWrite = writer();
-  async function setRevisit(targetEpochDay: number) {
-    const id = entryId;
-    if (id == null) return;
-    const set = await revisitWrite.run(
-      () => journal.revisits.setRevisit({ entryId: id, createdEpochDay: todayEpochDay(), targetEpochDay }),
-      m.write_failed()
-    );
-    if (!set) return;
-    revisitDateInput = '';
-    revisitOpen = false;
-    toast(m.revisit_set_toast({ date: fmtDay(targetEpochDay, { day: 'numeric', month: 'long', year: 'numeric' }) }), { kind: 'record-saved' });
-  }
-
-  async function setRevisitFromInput() {
-    const targetEpochDay = epochDayFromDateInputValue(revisitDateInput);
-    if (targetEpochDay == null) return;
-    await setRevisit(targetEpochDay);
-  }
-
-  async function cancelRevisit() {
-    const target = revisit;
-    if (!target) return;
-    if (!(await revisitWrite.run(() => journal.revisits.deleteRevisit(target.id), m.write_failed()))) return;
-    revisitOpen = false;
-    toast(m.revisit_cancelled_toast(), { kind: 'record-deleted' });
   }
 
   /* Same reasoning as toggleStarred above, but for one stored photo: the
@@ -918,22 +857,6 @@
         <!-- The star left this header for the save bar (ticket 18): a new
              entry can be starred before it exists, which this header
              cannot offer since it is only drawn `{#if existing}`. -->
-        <button
-          class="icon-btn press"
-          aria-label={m.revisit_open_aria()}
-          aria-pressed={!!revisit}
-          data-revisit-open
-          onclick={() => (revisitOpen = true)}
-        >
-          <!-- Recoloured rather than filled: components.css's `is-starred`
-               fills the whole shape, which reads fine for a star's single
-               closed path but turns a clock's circle-plus-hand into an
-               unreadable solid disc, the hand's stroke lost against its
-               own fill. `.revisit-set` below is `.photo-star.is-starred`'s
-               own recolour-not-fill answer to the same problem, applied to
-               this icon instead of a wrapping button. -->
-          <Icon name="clock" size={20} cls={revisit ? 'revisit-set' : ''} />
-        </button>
         <button class="icon-btn press" aria-label={m.delete_entry()} onclick={() => (deleteOpen = true)}>
           <Icon name="trash" size={20} />
         </button>
@@ -1528,50 +1451,10 @@
 
   <DiscardSheet {guard} />
 
-  <Sheet busy={revisitWrite.busy} bind:open={revisitOpen} title={m.revisit_sheet_title()}>
-    <SectionHeading text={m.revisit_sheet_title()} />
-    {#if revisit}
-      <p class="editor-hint">
-        {m.revisit_current_label({ date: fmtDay(revisit.targetEpochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-      </p>
-      <SectionHeading text={m.revisit_change()} />
-    {:else}
-      <p class="editor-hint">{m.revisit_sheet_hint()}</p>
-    {/if}
-    <ListCard {role}>
-      <ListRow key="week" title={m.revisit_preset_week()} chevron={false} onclick={() => setRevisit(revisitPresetDay('week'))} />
-      <ListRow key="month" title={m.revisit_preset_month()} chevron={false} onclick={() => setRevisit(revisitPresetDay('month'))} />
-      <ListRow
-        key="three-months"
-        title={m.revisit_preset_3_months()}
-        chevron={false}
-        onclick={() => setRevisit(revisitPresetDay('threeMonths'))}
-      />
-      <ListRow key="year" title={m.revisit_preset_year()} chevron={false} onclick={() => setRevisit(revisitPresetDay('year'))} />
-    </ListCard>
-    <p class="revisit-or-label">{m.revisit_pick_date_label()}</p>
-    <div class="revisit-date-row">
-      <DatePicker
-        id="revisit-date"
-        name="revisit-date"
-        min={dateInputValueFromEpochDay(currentDay() + 1)}
-        ariaLabel={m.revisit_pick_date_label()}
-        bind:value={revisitDateInput}
-        data-revisit-date
-      />
-      <button class="btn btn-soft" disabled={!revisitDateInput || revisitWrite.busy} data-revisit-set onclick={setRevisitFromInput}>
-        <span>{m.revisit_set_confirm()}</span>
-      </button>
-    </div>
-    {#if revisit}
-      <button class="btn btn-ghost" data-revisit-cancel disabled={revisitWrite.busy} onclick={cancelRevisit}><span>{m.revisit_cancel()}</span></button>
-    {/if}
-  </Sheet>
-
   <EffectPickerSheet
     bind:open={effectSheetOpen}
     {role}
-    effects={vocabulary.visiblePersonalEffectTypes}
+    effects={offeredEffectTypes(vocabulary.visiblePersonalEffectTypes, new Set(recordedEffects.keys()))}
     categoryOrder={vocabulary.effectCategories.map((category) => category.key)}
     drugs={activeEpisodes.map((episode) => episode.drug)}
     chosen={entryDraft.effectMarkers.map((marker) => marker.effect)}
@@ -1658,14 +1541,6 @@
   /* The free-choice date, under the presets rather than a fifth row among
      them - "sensible offered options and a free choice behind them", the
      ticket's own phrase. */
-  .revisit-or-label {
-    color: var(--text-2);
-    font-size: var(--text-sm);
-    margin: var(--space-3) 0 var(--space-2);
-  }
-  .revisit-date-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
-  .revisit-date-row :global(input) { flex: 1; }
-  :global(.icon.revisit-set) { color: var(--accent); }
 
   /* Grown to the height of its text (ticket 19): the browser owns the
      measurement (`field-sizing`), and where it does not yet, `rows` holds

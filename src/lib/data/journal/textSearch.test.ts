@@ -394,7 +394,7 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     note: 'plain note'
   });
   await journal.checklists.addToStandaloneChecklist(`question ${word}`);
-  await journal.sideEffects.upsertSideEffect({ name: `effect ${word}`, severity: 2, epochDay: DAY });
+  await journal.sideEffects.upsertSideEffect({ name: `effect ${word}`, severity: 2, epochDay: DAY, resolvedEpochDay: null });
   const tryoutId = await journal.tryouts.upsertTryout({
     kind: 'name',
     label: `tryout ${word}`,
@@ -404,7 +404,6 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
   });
   await journal.feltSense.add({ tryoutId }, { epochDay: DAY, mood: 4, note: `felt ${word}` });
   await journal.roadmap.addCustomGoal('legal', `goal ${word}`);
-  await journal.affirmations.addLine('en', `affirmation ${word}`);
   await journal.labs.upsertResult({
     epochDay: DAY,
     analyte: 'Estradiol',
@@ -434,7 +433,7 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     snrDb: null,
     note: `benchmark ${word}`
   });
-  await journal.hairProgress.upsertStage({ epochDay: DAY, scale: 'other', stage: '', description: `hair ${word}` });
+  await journal.hairProgress.upsertStage({ epochDay: DAY, description: `hair ${word}` });
   await journal.hairRemoval.upsertSession({
     epochDay: DAY,
     area: 'chin',

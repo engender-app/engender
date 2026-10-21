@@ -40,19 +40,11 @@ export interface FeltSenseArea {
   /** Newest first, the same order the tryout screen already read in before
       this module existed. */
   forTryout(tryoutId: string): Promise<FeltSenseEntry[]>;
-  /** The latest felt-sense day of each named tryout, in one statement
-      whatever the number asked about - the shape `forEntries` establishes
-      (marginNotes.ts): a screen deciding between several tryouts costs one
-      query, not one per tryout. A tryout with no felt-sense history is
-      absent from the map rather than present and null, the same convention
-      `forEntries` and `photosByEntry` use; what an absence means is the
-      caller's to say. */
-  latestDaysForTryouts(tryoutIds: readonly string[]): Promise<Map<string, number>>;
   /** Every tryout's readings, oldest first, keyed by tryout and read in one
       query rather than one per row - `photosByProcedure` (procedures.ts)
-      is the shape, and the reason is the one `latestDaysForTryouts` gives
-      just above: a screen drawing several tryouts at once costs one query,
-      not one per tryout. A tryout with no readings is absent rather than
+      is the shape, and the reason is the one `forEntries` (marginNotes.ts)
+      gives: a screen drawing several tryouts at once costs one query, not
+      one per tryout. A tryout with no readings is absent rather than
       present with an empty list, so a caller reads "has any" off `get`
       alone.
 
@@ -110,20 +102,6 @@ export function makeFeltSenseArea(driver: SqliteDriver): FeltSenseArea {
         [tryoutId]
       );
       return rows.map(toFeltSenseEntry);
-    },
-
-    async latestDaysForTryouts(tryoutIds) {
-      const latest = new Map<string, number>();
-      if (tryoutIds.length === 0) return latest;
-      const rows = await driver.query<{ uuid: string; day: number }>(
-        `SELECT t.uuid AS uuid, MAX(f.epoch_day) AS day
-           FROM felt_sense f JOIN tryout t ON t.id = f.tryout_id
-          WHERE t.uuid IN (${tryoutIds.map(() => '?').join(', ')})
-          GROUP BY t.uuid`,
-        [...tryoutIds]
-      );
-      for (const row of rows) latest.set(row.uuid, row.day);
-      return latest;
     },
 
     async byTryout() {

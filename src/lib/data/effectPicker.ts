@@ -13,6 +13,7 @@
 import { foldText } from './fold';
 import { resolveHormoneDrug } from './hormoneDrug';
 import type { PersonalEffectCatalogEntry } from './types';
+import { RETIRED_PERSONAL_EFFECT_KEYS } from './vocabulary/retiredEffects';
 
 export interface EffectPickerGroup {
   /** The category key, `'custom'` for a person's own effects, or null for a
@@ -39,6 +40,16 @@ interface EffectPickerInput {
   drugs: string[];
   showAll: boolean;
   query: string;
+}
+
+/** What a person may mark: the visible catalogue less the retired built-ins
+    (builtins.ts), except one already marked, which keeps its row and its
+    place on the axis. */
+export function offeredEffectTypes(
+  visible: PersonalEffectCatalogEntry[],
+  markedKeys: ReadonlySet<string>
+): PersonalEffectCatalogEntry[] {
+  return visible.filter((e) => !RETIRED_PERSONAL_EFFECT_KEYS.has(e.key) || markedKeys.has(e.key));
 }
 
 export function buildEffectPicker(input: EffectPickerInput): EffectPicker {

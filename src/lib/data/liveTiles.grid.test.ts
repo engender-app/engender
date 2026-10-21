@@ -7,9 +7,9 @@
    and fails on a correct move that does not, which is what this ticket is.
    So everything here goes through `composeHomeTiles` instead.
 
-   One fixture qualifies all eleven at once, and each test switches off the
+   One fixture qualifies all live tiles at once, and each test switches off the
    one thing it is about. That is the shape the ordering and the absence of a
-   cap need - both are claims about eleven tiles together - and it also means
+   cap need - both are claims about all tiles together - and it also means
    a tile that silently stops qualifying breaks every test rather than one. */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -35,14 +35,10 @@ import {
   type LiveTileKind
 } from './liveTiles';
 import type { LetterSeal } from './journal/letters';
-import type { AppointmentDayRecord } from './journal/appointments';
 import type {
   DoseSchedule,
-  HairRemovalSession,
-  Revisit,
   Procedure,
   RegimenEpisode,
-  Tryout,
   WearSession
 } from './types';
 
@@ -89,7 +85,7 @@ const schedule: DoseSchedule = {
 const procedure: Procedure = {
   id: 'proc-1',
   name: 'Vaginoplasty',
-  surgeryEpochDay: TODAY + 10,
+  surgeryEpochDay: TODAY - 10,
   consults: [],
   notes: '',
   kind: 'vaginoplasty',
@@ -102,36 +98,6 @@ const letters: LetterSeal[] = [
   { id: 'letter-2', epochDay: TODAY - 30, unlockEpochDay: TODAY - 1 }
 ];
 
-const dueRevisits: Revisit[] = [
-  { id: 'revisit-1', entryId: 101, entryEpochDay: TODAY - 60, createdEpochDay: TODAY - 61, targetEpochDay: TODAY }
-];
-
-const tryout: Tryout = {
-  id: 'tryout-1',
-  kind: 'name',
-  label: 'Alicja',
-  description: null,
-  startEpochDay: TODAY - 10,
-  endEpochDay: null
-};
-
-const hairRemovalSession: HairRemovalSession = {
-  id: 'hr-1',
-  epochDay: TODAY,
-  area: 'upper_lip',
-  method: 'laser',
-  painRating: 3,
-  cost: '',
-  provider: ''
-};
-
-const todayAppointment: AppointmentDayRecord = {
-  id: 'appt-1',
-  kind: 'Endocrinologist',
-  place: 'City clinic',
-  procedureId: null,
-  procedureName: null
-};
 
 const allOn = <T>(value: T): Record<LiveTileKind, T> =>
   Object.fromEntries(LIVE_TILE_ORDER.map((kind) => [kind, value])) as Record<LiveTileKind, T>;
@@ -164,25 +130,18 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       episodes: [episode],
       procedures: [procedure],
       letters,
-      dueRevisits,
       latestBadEntryId: 42,
       safeSpaceDismissedEntryId: null,
-      tryouts: [tryout],
-      latestFeltSenseByTryoutId: new Map(),
       schedules: [schedule],
       dosePauses: [],
       scheduleDoses: [],
       yesterdayDoses: [],
-      latestBenchmarkEpochDay: TODAY - 20,
-      journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }],
-      latestHairRemovalSession: hairRemovalSession,
-      todayAppointments: [todayAppointment]
+      journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }]
     },
     actions: {
       stopWear: vi.fn(),
       dismissSafeSpace: vi.fn(),
       openLetterDismiss: vi.fn(),
-      dismissRevisit: vi.fn(),
       resumePause: vi.fn(),
       snooze: vi.fn()
     },
@@ -193,8 +152,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       fullDay: (epochDay) => `full:${epochDay}`,
       shortDay: (epochDay) => `short:${epochDay}`,
       weekdayDay: (epochDay) => `weekday:${epochDay}`,
-      time: (timestamp) => `time:${timestamp}`,
-      hairRemovalArea: (area) => `area:${area}`
+      time: (timestamp) => `time:${timestamp}`
     }
   };
   return {
@@ -217,39 +175,28 @@ const TIERED: LiveTileKind[] = [
   // Bound to today.
   'wear-timer',
   'patch-schedule-tile',
-  'hair-removal-recovery',
-  'appointment-today',
   // A moment.
   'dose-panel',
   'surgery-countdown',
   'safe-space-nudge',
   'ready-letter',
-  'revisit',
-  'pause-active-banner',
-  // Dormant.
-  'active-tryout-tile',
-  'voice-benchmark-nudge',
+  'pause-active-banner'
 ];
 
 describe('which kinds the grid is for', () => {
-  it('draws the twelve live tiles and none of the registry\'s other seven', () => {
-    /* The narrowing is the point: `UnpromptedKind` has eighteen members and
+  it('draws only live tiles from the registry', () => {
+    /* The narrowing is the point: `UnpromptedKind` has fifteen members and
        seven of them are a notice, a look-back card or a notification, so an
        ordering keyed off the whole union would demand an entry for
        `export-failure`. */
     expect([...LIVE_TILE_ORDER].sort()).toEqual(
       [
-        'active-tryout-tile',
-        'appointment-today',
         'dose-panel',
-        'hair-removal-recovery',
         'patch-schedule-tile',
         'pause-active-banner',
         'ready-letter',
-        'revisit',
         'safe-space-nudge',
         'surgery-countdown',
-        'voice-benchmark-nudge',
         'wear-timer'
       ].sort()
     );
@@ -285,24 +232,15 @@ describe('the tier every kind is in', () => {
     const byTier = { today: [] as string[], moment: [] as string[], dormant: [] as string[] };
     for (const kind of LIVE_TILE_ORDER) byTier[LIVE_TILE_TIER[kind]].push(kind);
 
-    expect(byTier.today).toEqual([
-      'wear-timer',
-      'patch-schedule-tile',
-      'hair-removal-recovery',
-      'appointment-today'
-    ]);
+    expect(byTier.today).toEqual(['wear-timer', 'patch-schedule-tile']);
     expect(byTier.moment).toEqual([
       'dose-panel',
       'surgery-countdown',
       'safe-space-nudge',
       'ready-letter',
-      'revisit',
       'pause-active-banner'
     ]);
-    expect(byTier.dormant).toEqual([
-      'active-tryout-tile',
-      'voice-benchmark-nudge',
-        ]);
+    expect(byTier.dormant).toEqual([]);
   });
 
   it('carries the tier on the tile, which is what Home draws the weight from', () => {
@@ -335,12 +273,12 @@ describe('the order, and the cap', () => {
   });
 
   it('keeps the order when the ones before a tile drop out', () => {
-    /* Order is the policy\'s, not the reads\': with the first six of the
-       tiered order gone the remaining five come out in the same relative
+    /* Order is the policy\'s, not the reads\': with the first four of the
+       tiered order gone the remaining four come out in the same relative
        order. */
     const enabled = allOn(true);
-    for (const kind of TIERED.slice(0, 6)) enabled[kind] = false;
-    expect(keysOf({ enabled })).toEqual(TIERED.slice(6));
+    for (const kind of TIERED.slice(0, 4)) enabled[kind] = false;
+    expect(keysOf({ enabled })).toEqual(TIERED.slice(4));
   });
 
   it('shows three and folds the rest, in place, with nothing dropped', () => {
@@ -354,16 +292,16 @@ describe('the order, and the cap', () => {
 
   it('folds nothing while the cap is not reached', () => {
     const enabled = allOn(false);
-    for (const kind of ['revisit', 'active-tryout-tile'] as const) enabled[kind] = true;
+    for (const kind of ['ready-letter', 'pause-active-banner'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
-    expect(shown.map((t) => t.key)).toEqual(['revisit', 'active-tryout-tile']);
+    expect(shown.map((t) => t.key)).toEqual(['ready-letter', 'pause-active-banner']);
     expect(folded).toEqual([]);
   });
 
   it('folds nothing at exactly the cap, so three never becomes two and a row', () => {
     const enabled = allOn(false);
-    for (const kind of ['wear-timer', 'revisit', 'active-tryout-tile'] as const) enabled[kind] = true;
+    for (const kind of ['wear-timer', 'ready-letter', 'pause-active-banner'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
     expect(shown).toHaveLength(HOME_TILE_CAP);
@@ -522,15 +460,40 @@ describe('what each tile says', () => {
     });
   });
 
-  it('the surgery countdown reads the nearest procedure and carries no control', () => {
+  it('the surgery tile says which day after surgery it is and carries no control', () => {
     const tile = tileNamed('surgery-countdown')!;
     expect(tile.tileKey).toBe('surgery-countdown');
     expect(tile.attrs).toEqual({ 'data-surgery-tile': true });
-    expect(tile.value).toBe(m.surgery_day_upcoming({ days: m.n_days({ n: 10 }) }));
+    expect(tile.value).toBe(m.tile_surgery_post_op_day({ days: '10' }));
     expect(tile.note).toBe('Vaginoplasty');
     expect(tile.href).toBe('/health/surgery');
     expect(tile.action).toBeUndefined();
     expect(tile.dismiss).toBeUndefined();
+  });
+
+  /* Functional-audit ticket 14: the agenda already states a surgery's date
+     while it is ahead, so the tile counting down to it said the same thing
+     twice. Only the days after it are the tile's. */
+  it('the surgery tile is absent before the surgery day and on it', () => {
+    for (const surgeryEpochDay of [TODAY + 10, TODAY + 1, TODAY]) {
+      expect(tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay }] } })).toBeUndefined();
+    }
+    expect(tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay: null }] } })).toBeUndefined();
+  });
+
+  it('the surgery tile counts from the day after, and an upcoming one nearer today does not hide it', () => {
+    const dayOne = tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay: TODAY - 1 }] } })!;
+    expect(dayOne.value).toBe(m.tile_surgery_post_op_day({ days: '1' }));
+    const behind = tileNamed('surgery-countdown', {
+      reads: {
+        procedures: [
+          { ...procedure, id: 'proc-2', name: 'Top surgery', surgeryEpochDay: TODAY + 1 },
+          { ...procedure, surgeryEpochDay: TODAY - 20 }
+        ]
+      }
+    })!;
+    expect(behind.value).toBe(m.tile_surgery_post_op_day({ days: '20' }));
+    expect(behind.note).toBe('Vaginoplasty');
   });
 
   it('the safe space nudge dismisses the entry it is about', () => {
@@ -562,46 +525,6 @@ describe('what each tile says', () => {
     expect(tile.action).toBeUndefined();
   });
 
-  it('the revisit tile names the entry due and deletes the row on dismiss', () => {
-    const actions = { dismissRevisit: vi.fn() };
-    const tile = tileNamed('revisit', { actions })!;
-    expect(tile.tileKey).toBe('revisit');
-    expect(tile.attrs).toEqual({ 'data-revisit-tile': true });
-    expect(tile.href).toBe('/entry/101');
-    expect(tile.value).toBe(`full:${TODAY - 60}`);
-    // One due revisit, so the note names it rather than counting others.
-    expect(tile.note).toBe(m.tile_revisit_single_note());
-    tile.dismiss!.onclick(CLICK);
-    expect(actions.dismissRevisit).toHaveBeenCalledWith('revisit-1');
-    expect(tile.action).toBeUndefined();
-  });
-
-  it('the revisit tile counts the rest when more than one is due', () => {
-    const tile = tileNamed('revisit', {
-      reads: {
-        dueRevisits: [
-          ...dueRevisits,
-          { id: 'revisit-2', entryId: 102, entryEpochDay: TODAY - 5, createdEpochDay: TODAY - 6, targetEpochDay: TODAY }
-        ]
-      }
-    })!;
-    expect(tile.note).toBe(m.tile_revisit_more({ count: '1' }));
-  });
-
-  it('the revisit tile is absent with nothing due', () => {
-    expect(tileNamed('revisit', { reads: { dueRevisits: [] } })).toBeUndefined();
-  });
-
-  it('the active tryout offers a felt-sense entry against the tryout it names', () => {
-    const tile = tileNamed('active-tryout-tile')!;
-    expect(tile.tileKey).toBe('active-tryout');
-    expect(tile.attrs).toEqual({ 'data-active-tryout-tile': true });
-    expect(tile.value).toBe('Alicja');
-    expect(tile.note).toBe(m.tile_active_tryout_note({ days: '10' }));
-    expect(tile.href).toBe('/transition/tryouts/tryout-1');
-    expect(tile.action?.href).toBe('/transition/tryouts/tryout-1?feltSense=1');
-  });
-
   it('the patch schedule names the dose that is due', () => {
     const tile = tileNamed('patch-schedule-tile')!;
     expect(tile.tileKey).toBe('patch-schedule');
@@ -609,15 +532,6 @@ describe('what each tile says', () => {
     expect(tile.value).toBe('Estradiol patch');
     expect(tile.note).toBe('100 mcg · patch');
     expect(tile.action?.href).toBe('/care/doses?add=1');
-  });
-
-  it('the voice benchmark nudge counts the days and links the recorder', () => {
-    const tile = tileNamed('voice-benchmark-nudge')!;
-    expect(tile.tileKey).toBe('voice-benchmark');
-    expect(tile.attrs).toEqual({ 'data-voice-benchmark-tile': true });
-    expect(tile.note).toBe(m.tile_voice_benchmark_days_ago({ days: '20' }));
-    expect(tile.href).toBe('/voice?tab=compare');
-    expect(tile.action?.href).toBe('/voice?tab=record');
   });
 
   it('the pause banner says when the pause ends and offers to resume it', () => {
@@ -637,67 +551,10 @@ describe('what each tile says', () => {
     })!;
     expect(tile.note).toBe(m.tile_pause_ongoing());
   });
-
-  it('the hair removal tile names the area and carries no action', () => {
-    const tile = tileNamed('hair-removal-recovery')!;
-    expect(tile.tileKey).toBe('hair-removal-recovery');
-    expect(tile.attrs).toEqual({ 'data-hair-removal-tile': true });
-    expect(tile.value).toBe('area:upper_lip');
-    expect(tile.href).toBe('/body/hair-removal');
-    expect(tile.action).toBeUndefined();
-    expect(tile.dismiss).toBeDefined();
-  });
-
-    it('the appointment tile names the kind and place of today\'s appointment', () => {
-    const tile = tileNamed('appointment-today')!;
-    expect(tile.tileKey).toBe('appointment-today');
-    expect(tile.attrs).toEqual({ 'data-appointment-today-tile': true });
-    expect(tile.value).toBe('Endocrinologist');
-    expect(tile.note).toBe('City clinic');
-    expect(tile.href).toBe('/health/appointments');
-    expect(tile.action).toBeUndefined();
-    expect(tile.dismiss).toBeUndefined();
-  });
-
-  it('the appointment tile falls back to the untitled label with no kind or procedure', () => {
-    const tile = tileNamed('appointment-today', {
-      reads: { todayAppointments: [{ ...todayAppointment, kind: null }] }
-    })!;
-    expect(tile.value).toBe(m.appointments_untitled());
-  });
-
-  it('the appointment tile names the procedure before the untitled label', () => {
-    const tile = tileNamed('appointment-today', {
-      reads: { todayAppointments: [{ ...todayAppointment, kind: null, procedureName: 'Vaginoplasty' }] }
-    })!;
-    expect(tile.value).toBe('Vaginoplasty');
-  });
-
-  it('the appointment tile counts the rest when more than one is today', () => {
-    const tile = tileNamed('appointment-today', {
-      reads: {
-        todayAppointments: [
-          todayAppointment,
-          { ...todayAppointment, id: 'appt-2', kind: 'Psychologist', place: null }
-        ]
-      }
-    })!;
-    expect(tile.note).toBe(m.tile_appointment_more({ count: '1' }));
-  });
-
-  it('the appointment tile is absent with nothing today', () => {
-    expect(tileNamed('appointment-today', { reads: { todayAppointments: [] } })).toBeUndefined();
-  });
 });
 
 describe('the dismiss controls', () => {
-  const SNOOZABLE = [
-    'active-tryout-tile',
-    'patch-schedule-tile',
-    'voice-benchmark-nudge',
-    'pause-active-banner',
-    'hair-removal-recovery',
-    ] as const;
+  const SNOOZABLE = ['patch-schedule-tile', 'pause-active-banner'] as const;
 
   it.each(SNOOZABLE)('%s snoozes itself and no other kind', (kind) => {
     const snooze = vi.fn();
@@ -706,27 +563,17 @@ describe('the dismiss controls', () => {
     expect(snooze).toHaveBeenCalledWith(kind);
   });
 
-  it('gives no dismiss to the four that close nothing', () => {
+  it('gives no dismiss to the three that close nothing', () => {
     /* Wear, dose and surgery each resolve themselves - a running session
        cannot be hidden while it runs (ADR-0039's amendment), and the other
-       two are facts about the day rather than nudges. The appointment tile
-       joins them for the nearest reason: it names a single day's own fact,
-       gone on its own tomorrow, so there is nothing a snooze would buy
-       (ticket 63).
+       two are facts about the day rather than nudges.
 
-       Safe space, the ready letter and the revisit left this list in phase 9
-       carpet ticket 04 (ADR-0071). All three were closable all along - each
+       Safe space and the ready letter left this list in phase 9
+       carpet ticket 04 (ADR-0071). Both were closable all along - each
        carried an `action` whose icon was an x - and only the registry field
-       said otherwise, which drew one job as two controls: a corner X on five
-       tiles and a soft button on these three. What each close does is
-       unchanged: the letter opens Home's sheet, the revisit deletes its row,
+       said otherwise. The letter opens Home's sheet;
        safe space forgets the entry it was about. */
-    for (const kind of [
-      'wear-timer',
-      'dose-panel',
-      'surgery-countdown',
-      'appointment-today'
-    ] as const) {
+    for (const kind of ['wear-timer', 'dose-panel', 'surgery-countdown'] as const) {
       expect(tileNamed(kind)!.dismiss).toBeUndefined();
     }
   });
@@ -734,7 +581,7 @@ describe('the dismiss controls', () => {
   it('draws every close as the tile\'s own dismiss, never as an action wearing an x', () => {
     /* The rule the three above were breaking, held over the whole registry
        so a fourth cannot quietly reintroduce it. An `action` is the tile's
-       other control - log this dose, stop this session, check an appointment -
+       other control - log this dose, stop this session, open a letter -
        and none of those is a close. */
     for (const kind of LIVE_TILE_ORDER) {
       const tile = tileNamed(kind);
@@ -756,7 +603,7 @@ describe('the dismiss controls', () => {
     const areaStates: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY - 1, suspendedEpochDay: null } };
 
     expect(tileNamed('wear-timer', { areaStates })).toBeUndefined();
-    expect(tileNamed('revisit', { areaStates })).toBeDefined();
+    expect(tileNamed('ready-letter', { areaStates })).toBeDefined();
   });
 
   it('takes them off while it is hidden too, and puts them back when it is not', () => {

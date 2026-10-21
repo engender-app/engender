@@ -35,9 +35,8 @@
    both, and applying the wrong stopword list to one of them either leaves
    its function words inflating the count or strips content words that
    happen to collide with the other language's closed class. There is no
-   stored language on an entry to read instead (unlike Affirmation's, which
-   the person chose), so `noteLanguage` is a heuristic: a Polish-only
-   diacritic anywhere in the note is decisive, and short of that, whichever
+   stored language on an entry to read instead, so `noteLanguage` is a
+   heuristic: a Polish-only diacritic anywhere in the note is decisive, and short of that, whichever
    language's closed-class list the note's own words hit more often wins,
    defaulting to 'en' - the project's base locale (project.inlang) - on a
    tie or on a note with no evidence either way.
