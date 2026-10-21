@@ -28,6 +28,7 @@ import {
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
+import { assertOneOf, CYCLE_EVENT_KINDS } from '../rowValues';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Entry, Photo, VideoNote, VoiceRecording } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -800,6 +801,7 @@ export function makeEntriesArea(
 
     if (input.cycleEvent) {
       const cycle = input.cycleEvent;
+      assertOneOf(CYCLE_EVENT_KINDS, 'cycle event kind', cycle.kind);
       const cycleDay = cycle.epochDay ?? epochDay;
       await driver.run('INSERT INTO cycle_event (uuid, kind, epoch_day, updated_at) VALUES (?, ?, ?, ?)', [
         mintUuid(),

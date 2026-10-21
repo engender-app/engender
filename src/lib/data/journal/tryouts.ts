@@ -24,6 +24,7 @@
    bytes through the same file-before-row order, and removeFilesOf
    reclaims them the same way on delete. */
 
+import { assertOneOf, TRYOUT_KINDS } from '../rowValues';
 import { assertSpanOrdered } from '../span';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Tryout, TryoutKind, TryoutPhoto } from '../types';
@@ -130,6 +131,7 @@ export function makeTryoutsArea(
     },
 
     async upsertTryout(input) {
+      assertOneOf(TRYOUT_KINDS, 'tryout kind', input.kind);
       assertSpanOrdered(input);
       const label = input.label.trim();
       if (label.length === 0) throw new Error('a tryout needs a label');

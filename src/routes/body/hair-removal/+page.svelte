@@ -285,7 +285,7 @@
                     data-hair-removal-session={session.id}
                     icon="shuffle"
                     title={hairRemovalAreaName(session.area)}
-                    subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
+                    subtitle={[dayLabel(session.epochDay), hairRemovalMethodName(session.method), severityName(session.painRating)].filter(Boolean).join(' · ')}
                     chevron={false}
                     onclick={() => record.openEditor(session)}
                   />

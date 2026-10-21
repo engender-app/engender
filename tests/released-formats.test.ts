@@ -51,6 +51,8 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
       const [row] = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${table.replaceAll('"', '""')}"`);
       assert.equal(row.n, expected, `released SQLite table ${table}`);
     }
+    assert.deepEqual(await driver.query('PRAGMA integrity_check'), [{ integrity_check: 'ok' }]);
+    assert.deepEqual(await driver.query('PRAGMA foreign_key_check'), []);
   } finally {
     await driver.close();
     rmSync(temporary, { recursive: true, force: true });

@@ -21,6 +21,7 @@
    be carried over through an archive exported by the build that wrote it. */
 
 import type { Migration } from './migration-runner.ts';
+import { CLOSED_LISTS_REBUILD } from './closed-lists-migration.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
 import { migrateDrugClass } from './drug-class-migration.ts';
 import { migrateStockIdentity } from './stock-identity-migration.ts';
@@ -51,5 +52,6 @@ CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT N
   /* Functional audit ticket 18: HRT or another drug. No CHECK, by the audit's
      CHECK policy (vocabularies live in code, drugClass.ts reads anything but
      'hrt' as 'other'). */
-  { version: 93, sql: "ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other';", apply: migrateDrugClass }
+  { version: 93, sql: "ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other';", apply: migrateDrugClass },
+  { version: 94, sql: CLOSED_LISTS_REBUILD }
 ];

@@ -30,6 +30,7 @@ import type { ArchiveJournal } from '../archive/payload.ts';
 import {
   archivePath,
   countsPath,
+  builtInsOnlyDevice,
   emptyDevice,
   everySection,
   GOLDEN_PASSWORD,
@@ -163,6 +164,14 @@ test('the golden archive restores section by section into an empty journal', asy
     );
     assert.deepEqual(restored[section], golden[section], `${section} did not survive the restore`);
   }
+});
+
+test('a journal holding the golden archive passes the integrity and foreign key checks', async () => {
+  const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
+  const { driver, journal } = await builtInsOnlyDevice();
+  await journal.archive.replace({ journal: opened.payload.journal, files: opened.files });
+  assert.deepEqual(await driver.query('PRAGMA integrity_check'), [{ integrity_check: 'ok' }]);
+  assert.deepEqual(await driver.query('PRAGMA foreign_key_check'), []);
 });
 
 /* The keys and their order, not just the rows under them: a section renamed
