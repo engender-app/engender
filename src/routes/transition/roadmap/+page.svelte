@@ -370,8 +370,8 @@
          and only while its steps show: with the switch off there is no
          Polish procedure on screen for it to qualify. -->
     {#if polishShown}
-      <div class="roadmap-pack" data-roadmap-pack transition:disclose>
-        <ListCard>
+      <div data-roadmap-pack transition:disclose>
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
           <ListRow
             data-roadmap-pack-toggle
             onclick={() => (packDetailsOpen = !packDetailsOpen)}
