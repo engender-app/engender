@@ -77,6 +77,7 @@ import { reconcileBuiltInsWithin } from './reconcile';
 import { recordImport } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS, DROPPED_ARCHIVE_SECTION_NAMES, emptyArchiveJournal } from './archiveSections';
 import { assertArchiveReferences, assertArchiveRows } from './archiveRowValidation';
+import { DROPPED_TRYOUT_KINDS } from '../rowValues';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -402,7 +403,16 @@ function restorableJournal(journal: ArchiveJournal, externalImport = false): Arc
   }
   assertArchiveReferences(complete, externalImport);
   assertArchiveFileOwnership(complete);
-  return complete;
+  const dropped = new Set(complete.tryouts
+    .filter((row) => (DROPPED_TRYOUT_KINDS as readonly string[]).includes(row.kind))
+    .map((row) => row.id));
+  if (dropped.size === 0) return complete;
+  return {
+    ...complete,
+    tryouts: complete.tryouts.filter((row) => !dropped.has(row.id)),
+    feltSenseEntries: complete.feltSenseEntries.filter((row) => !row.tryoutId || !dropped.has(row.tryoutId)),
+    milestones: complete.milestones.map((row) => dropped.has(row.tryoutId ?? '') ? { ...row, tryoutId: null } : row)
+  };
 }
 
 /** Every journal row this device has, gone: one operation, ordered by the

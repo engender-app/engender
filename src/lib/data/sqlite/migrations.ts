@@ -74,5 +74,14 @@ DROP TABLE size_record;
 DELETE FROM area_state WHERE area IN ('measurementTypes', 'measurements', 'sizeRecords');
 DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed');
 ` },
-  { version: 98, sql: 'DROP TABLE affirmation; DROP TABLE revisit;' }
+  { version: 98, sql: 'DROP TABLE affirmation; DROP TABLE revisit;' },
+  { version: 99, sql: `
+UPDATE milestone SET tryout_id = NULL
+  WHERE tryout_id IN (SELECT uuid FROM tryout WHERE kind IN ('garment', 'presentation_step'));
+DELETE FROM felt_sense WHERE tryout_id IN
+  (SELECT id FROM tryout WHERE kind IN ('garment', 'presentation_step'));
+DELETE FROM tryout_photo WHERE tryout_id IN
+  (SELECT id FROM tryout WHERE kind IN ('garment', 'presentation_step'));
+DELETE FROM tryout WHERE kind IN ('garment', 'presentation_step');
+` }
 ];

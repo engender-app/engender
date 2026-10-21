@@ -22,7 +22,6 @@
      split by the one fact that changes which of them you want, with a
      heading over each half. */
   import { m } from '$lib/paraglide/messages';
-  import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -32,7 +31,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TryoutCard from '$lib/components/TryoutCard.svelte';
-  import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -101,27 +99,6 @@
     remove: (id) => journal.tryouts.deleteTryout(id),
     findById: (id) => tryouts.find((t) => t.id === id)
   });
-
-  /* Recording how a tryout felt today, from its own card. The same sheet
-     a milestone's felt-sense offer uses and the same write the detail
-     screen makes - what is new here is only that the running card is a
-     place to reach it from, which is what the Home tile has always linked
-     to the detail screen for. */
-  let feelingFor = $state<Tryout | null>(null);
-  const FEELING_COPY = {
-    title: m.tryout_feeling_today_title,
-    confirm: m.tryout_feeling_save,
-    decline: m.not_now
-  };
-
-  async function saveFeeling(input: { mood: number; note: string | null }) {
-    const tryout = feelingFor;
-    if (!tryout) return;
-    // Closed once stored; the sheet holds its button and reports a failure.
-    await journal.feltSense.add({ tryoutId: tryout.id }, { epochDay: today, mood: input.mood, note: input.note });
-    feelingFor = null;
-    toast(m.saved(), { kind: 'record-saved' });
-  }
 </script>
 
 <div class="screen">
@@ -142,7 +119,6 @@
                 tryout={t}
                 entries={feltByTryout.get(t.id) ?? []}
                 {today}
-                onfeel={() => (feelingFor = t)}
                 ondelete={() => record.askToDelete(t)}
               />
             {/each}
@@ -178,13 +154,6 @@
       />
     {/snippet}
   </ReadGate>
-
-  <FeltSenseOfferSheet
-    open={feelingFor !== null}
-    copy={FEELING_COPY}
-    onSave={saveFeeling}
-    onSkip={() => (feelingFor = null)}
-  />
 
   <RecordSheet
     {record}

@@ -135,7 +135,7 @@ test('entries in a tryout\'s date range are read by date overlap, not a stored l
 test('a tryout can be any of the widened kinds, each with its own free-text description', async () => {
   const { journal } = await journalWithBuiltIns();
 
-  for (const kind of ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'] as const) {
+  for (const kind of ['name', 'pronouns', 'style', 'makeup'] as const) {
     const id = await journal.tryouts.upsertTryout({
       kind,
       label: `trying ${kind}`,
@@ -147,6 +147,17 @@ test('a tryout can be any of the widened kinds, each with its own free-text desc
     assert.equal(tryout.kind, kind);
     assert.equal(tryout.description, kind === 'name' ? null : `notes about the ${kind}`);
   }
+});
+
+test('cut tryout kinds are refused by the write path', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const kind of ['garment', 'presentation_step']) {
+    await assert.rejects(
+      journal.tryouts.upsertTryout({ kind: kind as 'name', label: kind, startEpochDay: 100, endEpochDay: null }),
+      /invalid tryout kind/
+    );
+  }
+  assert.deepEqual(await journal.tryouts.getTryouts(), []);
 });
 
 test('a blank description is stored as null, the same as an absent one', async () => {

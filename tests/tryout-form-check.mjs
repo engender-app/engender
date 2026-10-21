@@ -14,7 +14,7 @@
       Phase 15 ticket 05 replaces the scrolling track with wrapping chips.
       Labels must fit inside their chips and the group without clipping.
 
-   3. That all six kinds are reachable at 320px by keyboard and by touch,
+   3. That all four kinds are reachable at 320px by keyboard and by touch,
       that creating, saving and reopening a tryout still keeps what was
       typed, and that the cards tell each other apart: a name far longer
       than the plate is wide stays inside the card, and a tryout nobody has
@@ -50,8 +50,8 @@ const NO_FEELING_YET = {
   pl: 'Nie ma jeszcze zapisu odczuć'
 };
 
-/** The six kinds, in the order the form lists them. */
-const KINDS = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
+/** The four kinds, in the order the form lists them. */
+const KINDS = ['name', 'pronouns', 'style', 'makeup'];
 
 /** What a screen reader would announce for a field: its accessible name
     from the label pointing at it, and its description from whatever
@@ -119,7 +119,7 @@ try {
               chip.scrollWidth <= chip.clientWidth + 1;
           });
       });
-      assert.ok(labelsFit, 'all six kind labels fit without clipping or horizontal scrolling');
+      assert.ok(labelsFit, 'all four kind labels fit without clipping or horizontal scrolling');
 
       // Touch: every segment clears the product's 48px floor, and a tap on
       // one selects that one rather than a neighbour.
@@ -201,6 +201,7 @@ try {
       await settlePage(page, base, '/transition/tryouts', 'light');
       const card = page.locator(`[data-tryout-card]:has-text("${LONG_NAME}")`);
       await card.waitFor();
+      assert.equal(await card.locator('[data-feel-today]').count(), 0, 'list card has no felt-sense entry point');
       assert.equal(
         (await card.locator('[data-tryout-latest]').textContent()).trim(),
         NO_FEELING_YET[language],
@@ -225,7 +226,7 @@ try {
       assert.ok(!names.some((n) => n.includes('Never saved')), 'leaving the form without saving writes nothing');
 
       await page.close();
-      console.log(`PASS ${language} ${width}px: one label and one help, six kinds readable and reachable, record kept`);
+      console.log(`PASS ${language} ${width}px: one label and one help, four kinds readable and reachable, record kept`);
     }
   }
   assert.deepEqual(errors, [], 'no browser errors');

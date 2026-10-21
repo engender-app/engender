@@ -306,7 +306,7 @@ const INJECTABLE_SITES: InjectionSiteKey[] = [
   'ventrogluteal-left',
   'ventrogluteal-right'
 ];
-const TRYOUT_KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
+const TRYOUT_KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'makeup'];
 const CYCLE_EVENT_KINDS = ['period_occurred', 'spotting', 'nothing_this_month'] as const;
 const SIDE_EFFECT_NAMES = ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
 /* Phase 8 features ticket 59. A blank entry (`''`) is one of these on
