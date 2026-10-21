@@ -34,7 +34,6 @@ import { hrtAnchor } from '../../src/lib/data/personalEffectWindow.ts';
 import { readReturnGap, readWhatIsWaiting } from '../../src/lib/data/comingBackReads.ts';
 import { offeredWrappedPeriod } from '../../src/lib/data/wrapped.ts';
 import { touchesMutedEra } from '../../src/lib/data/resurfacingConsent.ts';
-import { spanCoversDay } from '../../src/lib/data/span.ts';
 import { analyseNotes, countWords } from '../../src/lib/data/wordFrequency.ts';
 import { readCare } from '../../src/lib/data/careReads.ts';
 import type { RecordingDriver } from '../../src/lib/data/sqlite/test-support/recording-driver.ts';
@@ -808,7 +807,7 @@ export async function measureLongJournal(
 
   await mount('mount-home', 'Home, every read its tiles, panels and cards fire on arrival', async () => {
     if (options.mountHome) return options.mountHome(journal);
-    /* Seventeen live queries from `homeTiles()`, five the route holds
+    /* Fourteen live queries from `homeTiles()`, five the route holds
        itself, and the three look-back surfaces under it: the wrapped card,
        the on-this-day card and the week strip. The two cards are gated on
        `wrappedEnabled` and `onThisDayEnabled`, which both ship on, so a
@@ -816,14 +815,9 @@ export async function measureLongJournal(
 
        One of these still grows by a loop rather than by a table: the
        on-this-day card asks whether each lookback day clears the good-day
-       bar, one statement per candidate. The felt-sense read used to be the
-       other, and is one statement for every active tryout since phase 8
-       audit ticket 13. */
+       bar, one statement per candidate. */
     const wrappedPeriod = offeredWrappedPeriod(today);
     const lookbackDays = onThisDayCandidates(today);
-    const activeTryoutIds = journal.tryouts
-      .getTryouts()
-      .then((rows) => rows.filter((tryout) => spanCoversDay(tryout, today)).map((tryout) => tryout.id));
     /* The debrief offer's own most-recent-past-appointment lookup (ticket
        58) is a second, dependent read - Home's own liveQuery cannot ask
        getDebriefState until this one has answered, the same reason it is
@@ -838,20 +832,11 @@ export async function measureLongJournal(
       letters: journal.letters.getLetterSeals(HOME_LETTER_PAGE),
       dueRevisits: journal.revisits.getDueRevisits(today),
       latestBadEntryId: journal.entries.latestBadMomentEntryId(),
-      tryouts: activeTryoutIds,
-      /* Fed the ids the tryout list already answered with, which is what the
-         screen does: `tryouts.rows` is read synchronously before the call
-         (liveTiles.svelte.ts). One statement whatever the number. */
-      latestFeltSenseByTryout: activeTryoutIds.then((ids) =>
-        journal.feltSense.latestDaysForTryouts(ids)
-      ),
       schedules: journal.doses.getSchedules(),
       dosePauses: journal.doses.getPauses(),
       todayDoses: journal.doses.getDoses(today, today),
-      latestBenchmarkDay: journal.voiceBenchmarks.lastWriteEpochDay(today),
       journalingPauses: journal.journalingPauses.getPauses(),
       areaStates: journal.areaStates.getAreaStates(),
-      latestHairRemovalSession: journal.hairRemoval.latestSession(today),
       measurementCount: journal.measurements.countAll(),
       latestMeasurementDay: journal.measurements.lastWriteEpochDay(today),
       entryCount: journal.entries.countAll(),
@@ -876,8 +861,7 @@ export async function measureLongJournal(
     return {
       result: [reads, wrappedRecap, goodDays],
       detail:
-        `newest benchmark ${reads.latestBenchmarkDay ?? 'none'}, ${reads.measurementCount} measurements counted, ` +
-        `${reads.letters.length} letter seals, ${reads.tryouts.length} active tryouts asked at once, ` +
+        `${reads.measurementCount} measurements counted, ${reads.letters.length} letter seals, ` +
         `${reads.projections.length} stock projections, ${lookbackDays.length} lookback days asked one at a time, ` +
         `${reads.entryCount} entries counted, wrapped recap ${wrappedRecap ? 'read' : 'skipped as muted'}`
     };

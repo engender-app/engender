@@ -32,8 +32,6 @@ import { prefs } from './prefs/store.svelte';
 import { fmtDay, fmtTime, fmtNumber } from './dates';
 import { SPINE_FORWARD_DAYS } from './careSpine';
 import { todayEpochDay as clockDay } from './epochDay';
-import { hairRemovalAreaName } from './vocabulary/labels';
-import { spanCoversDay } from './span';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
 import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
 import {
@@ -109,34 +107,20 @@ export function homeTiles(
   const letters = liveList((j) => j.letters.getLetterSeals(100));
   const dueRevisits = liveList((j) => j.revisits.getDueRevisits(todayEpochDay));
   const latestBadEntryId = liveQuery((j) => j.entries.latestBadMomentEntryId());
-  const tryouts = liveList((j) => j.tryouts.getTryouts());
-  /* One statement for every active tryout at once, fed the list the line
-     above already holds rather than reading it again. `tryouts.rows` is read
-     synchronously, before the call, which is what makes this re-run when a
-     tryout is added, ended or removed (journal.svelte.ts: reads after an
-     await are invisible). */
-  const tryoutFeltSense = liveQuery((j) =>
-    j.feltSense.latestDaysForTryouts(
-      tryouts.rows.filter((tryout) => spanCoversDay(tryout, todayEpochDay)).map((tryout) => tryout.id)
-    )
-  );
   const schedules = liveList((j) => j.doses.getSchedules());
   const dosePauses = liveList((j) => j.doses.getPauses());
   const scheduleDoses = liveList((j) => j.doses.getDosesForSlots(todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS));
   const yesterdayDoses = liveList((j) => j.doses.getDoses(todayEpochDay - 1, todayEpochDay - 1));
-  const latestBenchmarkDay = liveQuery((j) => j.voiceBenchmarks.lastWriteEpochDay(todayEpochDay));
   const journalingPauses = liveList((j) => j.journalingPauses.getPauses());
   /* Which areas are hidden or finished (phase 8 features ticket 04). One
      query for the whole grid rather than one per tile: the cascade is a
      property of the grid, and `unpromptedQuiet` is what spends this. */
   const areaStates = liveQuery((j) => j.areaStates.getAreaStates());
-  const latestHairRemoval = liveQuery((j) => j.hairRemoval.latestSession(todayEpochDay));
   /* Two scalars asked as two scalars. The nudge wants how many measurements
      there are and the latest day, and the read used to fetch every
      measurement ever stored to reduce to exactly that. */
   const measurementCount = liveQuery((j) => j.measurements.countAll());
   const latestMeasurementDay = liveQuery((j) => j.measurements.lastWriteEpochDay(todayEpochDay));
-  const todayAppointments = liveList((j) => j.appointments.getDayRecords(todayEpochDay));
 
   function snooze(kind: LiveTileKind): void {
     snoozeStoreOf(kind).snooze();
@@ -177,19 +161,14 @@ export function homeTiles(
     letters,
     dueRevisits,
     latestBadEntryId,
-    tryouts,
-    tryoutFeltSense,
     schedules,
     dosePauses,
     scheduleDoses,
     yesterdayDoses,
-    latestBenchmarkDay,
     journalingPauses,
     areaStates,
-    latestHairRemoval,
     measurementCount,
-    latestMeasurementDay,
-    todayAppointments
+    latestMeasurementDay
   ];
   /* Whether the grid may be composed yet (phase 11 ticket 146). Composed
      while the reads are still landing, it states an arrangement it does not
@@ -223,17 +202,12 @@ export function homeTiles(
         latestBadEntryId: latestBadEntryId.value,
         wearDurationCue: prefs.wearDurationCueEnabled,
         safeSpaceDismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
-        tryouts: tryouts.rows,
-        latestFeltSenseByTryoutId: tryoutFeltSense.value ?? new Map(),
         schedules: schedules.rows,
         dosePauses: dosePauses.rows,
         scheduleDoses: scheduleDoses.rows,
         yesterdayDoses: yesterdayDoses.rows,
-        latestBenchmarkEpochDay: latestBenchmarkDay.value ?? null,
         journalingPauses: journalingPauses.rows,
-        latestHairRemovalSession: latestHairRemoval.value ?? null,
-        measurements: { count: measurementCount.value ?? 0, latestDay: latestMeasurementDay.value ?? null },
-        todayAppointments: todayAppointments.rows
+        measurements: { count: measurementCount.value ?? 0, latestDay: latestMeasurementDay.value ?? null }
       },
       actions: {
         stopWear: (session) => {
@@ -261,8 +235,7 @@ export function homeTiles(
            and the rows under "Coming up" write a day the same way on the
            one screen that draws both. */
         weekdayDay: (epochDay) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' }),
-        time: (timestamp) => fmtTime(timestamp),
-        hairRemovalArea: hairRemovalAreaName
+        time: (timestamp) => fmtTime(timestamp)
       }
     });
   });

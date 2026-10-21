@@ -720,7 +720,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getSessions: ['hairRemoval'],
       getSessionsOnDay: ['hairRemoval'],
-      latestSession: ['hairRemoval'],
       getPhotos: ['hairRemoval'],
       lastWriteEpochDay: ['hairRemoval']
     }
@@ -838,7 +837,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       forTryout: ['feltSense', 'tryout'],
       // Keyed by the tryout's own uuid, so the owner table is joined the way
       // `forTryout` joins it.
-      latestDaysForTryouts: ['feltSense', 'tryout'],
       // The same join, every tryout at once (ticket 53).
       byTryout: ['feltSense', 'tryout'],
       forMilestone: ['feltSense', 'milestone'],

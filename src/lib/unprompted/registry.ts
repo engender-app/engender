@@ -81,13 +81,9 @@ export type UnpromptedKind =
   | 'surgery-countdown'
   | 'safe-space-nudge'
   | 'stock-notice'
-  | 'active-tryout-tile'
   | 'patch-schedule-tile'
-  | 'voice-benchmark-nudge'
   | 'pause-active-banner'
-  | 'hair-removal-recovery'
   | 'measurements-nudge'
-  | 'appointment-today'
   | 'wrapped'
   | 'on-this-day'
   | 'revisit'
@@ -222,24 +218,11 @@ const ROWS = [
     surface: { subtitle: () => m.tile_stock_sub(), prefKey: 'stockNoticeEnabled' }
   },
   {
-    key: 'active-tryout-tile',
-    // a tryout carries its own end day.
-    area: null,
-    title: () => m.tile_active_tryout_title(),
-    surface: { subtitle: () => m.tile_active_tryout_sub(), prefKey: 'activeTryoutTileEnabled' }
-  },
-  {
     key: 'patch-schedule-tile',
     // the dose log again, for the same reason as the dose panel.
     area: null,
     title: () => m.tile_patch_schedule_title(),
     surface: { subtitle: () => m.tile_patch_schedule_sub(), prefKey: 'patchScheduleTileEnabled' }
-  },
-  {
-    key: 'voice-benchmark-nudge',
-    area: 'voiceBenchmarks',
-    title: () => m.tile_voice_benchmark_title(),
-    surface: { subtitle: () => m.tile_voice_benchmark_sub(), prefKey: 'voiceBenchmarkNudgeEnabled' }
   },
   {
     key: 'pause-active-banner',
@@ -249,24 +232,10 @@ const ROWS = [
     surface: { subtitle: () => m.tile_pause_active_sub(), prefKey: 'pauseActiveBannerEnabled' }
   },
   {
-    key: 'hair-removal-recovery',
-    area: 'hairRemovalSessions',
-    title: () => m.tile_hair_removal_title(),
-    surface: { subtitle: () => m.tile_hair_removal_sub(), prefKey: 'hairRemovalRecoveryEnabled' }
-  },
-  {
     key: 'measurements-nudge',
     area: 'measurements',
     title: () => m.tile_measurements_title(),
     surface: { subtitle: () => m.tile_measurements_sub(), prefKey: 'measurementsNudgeEnabled' }
-  },
-  {
-    key: 'appointment-today',
-    // appointments is its own hideable series (hubRows.ts): hiding it takes
-    // this tile with it the same way hiding wearSessions takes wear-timer.
-    area: 'appointments',
-    title: () => m.tile_appointment_title(),
-    surface: { subtitle: () => m.tile_appointment_sub(), prefKey: 'appointmentTodayEnabled' }
   },
   {
     key: 'wrapped',

@@ -40,37 +40,37 @@ describe('liveTilesSnooze', () => {
   });
 
   it('generates predictable storage keys', () => {
-    expect(snoozeKey('active-tryout-tile')).toBe('engender-tile-snooze-active-tryout-tile');
+    expect(snoozeKey('patch-schedule-tile')).toBe('engender-tile-snooze-patch-schedule-tile');
   });
 
   it('reports unsnoozed when nothing is stored', () => {
-    expect(isTileSnoozed('active-tryout-tile', now, storage)).toBe(false);
+    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(false);
   });
 
   it('snoozes tile for default 24h interval', () => {
-    snoozeTile('active-tryout-tile', undefined, now, storage);
-    expect(isTileSnoozed('active-tryout-tile', now, storage)).toBe(true);
-    expect(isTileSnoozed('active-tryout-tile', now + DEFAULT_SNOOZE_DURATION_MS - 1, storage)).toBe(true);
-    expect(isTileSnoozed('active-tryout-tile', now + DEFAULT_SNOOZE_DURATION_MS + 1, storage)).toBe(false);
+    snoozeTile('patch-schedule-tile', undefined, now, storage);
+    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(true);
+    expect(isTileSnoozed('patch-schedule-tile', now + DEFAULT_SNOOZE_DURATION_MS - 1, storage)).toBe(true);
+    expect(isTileSnoozed('patch-schedule-tile', now + DEFAULT_SNOOZE_DURATION_MS + 1, storage)).toBe(false);
   });
 
   it('snoozes tile for custom duration', () => {
     const duration = 1000 * 60 * 60 * 48; // 48 hours
-    snoozeTile('hair-removal-recovery', duration, now, storage);
-    expect(isTileSnoozed('hair-removal-recovery', now + 1000 * 60 * 60 * 24, storage)).toBe(true);
-    expect(isTileSnoozed('hair-removal-recovery', now + duration + 1, storage)).toBe(false);
+    snoozeTile('pause-active-banner', duration, now, storage);
+    expect(isTileSnoozed('pause-active-banner', now + 1000 * 60 * 60 * 24, storage)).toBe(true);
+    expect(isTileSnoozed('pause-active-banner', now + duration + 1, storage)).toBe(false);
   });
 
   it('clears snooze explicitly', () => {
-    snoozeTile('active-tryout-tile', DEFAULT_SNOOZE_DURATION_MS, now, storage);
-    expect(isTileSnoozed('active-tryout-tile', now, storage)).toBe(true);
+    snoozeTile('patch-schedule-tile', DEFAULT_SNOOZE_DURATION_MS, now, storage);
+    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(true);
 
-    clearSnooze('active-tryout-tile', storage);
-    expect(isTileSnoozed('active-tryout-tile', now, storage)).toBe(false);
+    clearSnooze('patch-schedule-tile', storage);
+    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(false);
   });
 
   it('handles corrupted localStorage values safely', () => {
-    storage.setItem(snoozeKey('active-tryout-tile'), 'invalid-json-and-not-a-number');
-    expect(isTileSnoozed('active-tryout-tile', now, storage)).toBe(false);
+    storage.setItem(snoozeKey('patch-schedule-tile'), 'invalid-json-and-not-a-number');
+    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(false);
   });
 });

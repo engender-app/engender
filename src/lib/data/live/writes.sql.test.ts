@@ -1175,7 +1175,6 @@ beforeAll(async () => {
   await driveRead('hairRemoval', 'getSessions', () => journal.hairRemoval.getSessions());
   await driveRead('hairRemoval', 'getSessionsOnDay', () => journal.hairRemoval.getSessionsOnDay(20000));
   await driveRead('hairRemoval', 'lastWriteEpochDay', () => journal.hairRemoval.lastWriteEpochDay(20000));
-  await driveRead('hairRemoval', 'latestSession', () => journal.hairRemoval.latestSession(20000));
   await driveRead('hairRemoval', 'getPhotos', () => journal.hairRemoval.getPhotos(hairRemovalId));
   await driveRead('procedures', 'getProcedures', () => journal.procedures.getProcedures());
   await driveRead('procedures', 'getSurgeryDaysInRange', () => journal.procedures.getSurgeryDaysInRange(19000, 20000));
@@ -1208,7 +1207,6 @@ beforeAll(async () => {
   await driveRead('feltSense', 'onDay', () => journal.feltSense.onDay(19910));
   await driveRead('feltSense', 'lastWriteEpochDay', () => journal.feltSense.lastWriteEpochDay(19910));
   // With an id, since the empty case short-circuits before any SQL runs.
-  await driveRead('feltSense', 'latestDaysForTryouts', () => journal.feltSense.latestDaysForTryouts([tryoutId]));
   await driveRead('feltSense', 'byTryout', () => journal.feltSense.byTryout());
   await driveRead('letters', 'getLetters', () => journal.letters.getLetters(10));
   await driveRead('letters', 'getLetterSeals', () => journal.letters.getLetterSeals(10));

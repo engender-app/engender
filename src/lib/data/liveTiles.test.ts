@@ -3,130 +3,17 @@ import type {
   DoseEvent,
   DosePause,
   DoseSchedule,
-  HairRemovalSession,
   JournalingPause,
-  RegimenEpisode,
-  Tryout
+  RegimenEpisode
 } from './types';
 import {
-  shouldShowActiveTryoutTile,
-  shouldShowHairRemovalRecovery,
   shouldShowMeasurementsNudge,
   shouldShowPatchScheduleTile,
-  shouldShowPauseActiveBanner,
-  shouldShowVoiceBenchmarkNudge
+  shouldShowPauseActiveBanner
 } from './liveTiles.ts';
 
 describe('liveTiles trigger predicates', () => {
   const today = 20_000;
-
-  describe('shouldShowActiveTryoutTile', () => {
-    const activeTryout: Tryout = {
-      id: 'tryout-1',
-      kind: 'name',
-      label: 'Alicja',
-      description: null,
-      startEpochDay: today - 10,
-      endEpochDay: null
-    };
-
-    it('suppresses tile when disabled or snoozed', () => {
-      expect(
-        shouldShowActiveTryoutTile({
-          tryouts: [activeTryout],
-          latestFeltSenseByTryoutId: new Map([[activeTryout.id, today - 4]]),
-          todayEpochDay: today,
-          enabled: false,
-          snoozed: false
-        })
-      ).toBeNull();
-
-      expect(
-        shouldShowActiveTryoutTile({
-          tryouts: [activeTryout],
-          latestFeltSenseByTryoutId: new Map([[activeTryout.id, today - 4]]),
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: true
-        })
-      ).toBeNull();
-    });
-
-    it('ignores closed tryouts', () => {
-      const closedTryout: Tryout = { ...activeTryout, endEpochDay: today - 1 };
-      expect(
-        shouldShowActiveTryoutTile({
-          tryouts: [closedTryout],
-          latestFeltSenseByTryoutId: new Map([[closedTryout.id, today - 5]]),
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: false
-        })
-      ).toBeNull();
-    });
-
-    it('triggers when active tryout has no felt-sense entry for >= 3 days', () => {
-      const result = shouldShowActiveTryoutTile({
-        tryouts: [activeTryout],
-        latestFeltSenseByTryoutId: new Map([[activeTryout.id, today - 3]]),
-        todayEpochDay: today,
-        enabled: true,
-        snoozed: false
-      });
-      expect(result).not.toBeNull();
-      expect(result?.tryout.id).toBe('tryout-1');
-      expect(result?.daysElapsed).toBe(3);
-    });
-
-    it('falls back to startEpochDay when no felt-sense entries exist', () => {
-      const newTryout: Tryout = { ...activeTryout, startEpochDay: today - 4 };
-      const result = shouldShowActiveTryoutTile({
-        tryouts: [newTryout],
-        latestFeltSenseByTryoutId: new Map(),
-        todayEpochDay: today,
-        enabled: true,
-        snoozed: false
-      });
-      expect(result).not.toBeNull();
-      expect(result?.daysElapsed).toBe(4);
-
-      const recentTryout: Tryout = { ...activeTryout, startEpochDay: today - 2 };
-      expect(
-        shouldShowActiveTryoutTile({
-          tryouts: [recentTryout],
-          latestFeltSenseByTryoutId: new Map(),
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: false
-        })
-      ).toBeNull();
-    });
-
-    it('suppresses when felt-sense logged within 3 days', () => {
-      expect(
-        shouldShowActiveTryoutTile({
-          tryouts: [activeTryout],
-          latestFeltSenseByTryoutId: new Map([[activeTryout.id, today - 2]]),
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: false
-        })
-      ).toBeNull();
-    });
-
-    it('ignores a tryout that has not started yet, even against a stale felt-sense entry', () => {
-      const futureTryout: Tryout = { ...activeTryout, startEpochDay: today + 5 };
-      expect(
-        shouldShowActiveTryoutTile({
-          tryouts: [futureTryout],
-          latestFeltSenseByTryoutId: new Map([[futureTryout.id, today - 10]]),
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: false
-        })
-      ).toBeNull();
-    });
-  });
 
   describe('shouldShowPatchScheduleTile', () => {
     const episode: RegimenEpisode = {
@@ -259,40 +146,6 @@ describe('liveTiles trigger predicates', () => {
     });
   });
 
-  describe('shouldShowVoiceBenchmarkNudge', () => {
-    it('stays silent until there is a benchmark to be overdue for', () => {
-      const result = shouldShowVoiceBenchmarkNudge({
-        latestBenchmarkEpochDay: null,
-        todayEpochDay: today,
-        enabled: true,
-        snoozed: false
-      });
-      expect(result).toBeNull();
-    });
-
-    it('triggers when the last benchmark was > 14 days ago', () => {
-      const result = shouldShowVoiceBenchmarkNudge({
-        latestBenchmarkEpochDay: today - 15,
-        todayEpochDay: today,
-        enabled: true,
-        snoozed: false
-      });
-      expect(result).not.toBeNull();
-      expect(result?.daysElapsed).toBe(15);
-    });
-
-    it('suppresses when the last benchmark was <= 14 days ago', () => {
-      expect(
-        shouldShowVoiceBenchmarkNudge({
-          latestBenchmarkEpochDay: today - 14,
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: false
-        })
-      ).toBeNull();
-    });
-  });
-
   describe('shouldShowPauseActiveBanner', () => {
     it('triggers when today is covered by active journaling pause', () => {
       const pause: JournalingPause = {
@@ -319,49 +172,6 @@ describe('liveTiles trigger predicates', () => {
       expect(
         shouldShowPauseActiveBanner({
           pauses: [pastPause],
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: false
-        })
-      ).toBeNull();
-    });
-  });
-
-  describe('shouldShowHairRemovalRecovery', () => {
-    it('triggers within 48h (today or yesterday) of session', () => {
-      const session: HairRemovalSession = {
-        id: 'hr-1',
-        epochDay: today - 1,
-        area: 'upper_lip',
-        method: 'laser',
-        painRating: 3,
-        cost: '',
-        provider: ''
-      };
-      const result = shouldShowHairRemovalRecovery({
-        latestSession: session,
-        todayEpochDay: today,
-        enabled: true,
-        snoozed: false
-      });
-      expect(result).not.toBeNull();
-      expect(result?.session.area).toBe('upper_lip');
-      expect(result?.daysSince).toBe(1);
-    });
-
-    it('suppresses when session is 2 or more days old (> 48h)', () => {
-      const session: HairRemovalSession = {
-        id: 'hr-1',
-        epochDay: today - 2,
-        area: 'upper_lip',
-        method: 'laser',
-        painRating: 3,
-        cost: '',
-        provider: ''
-      };
-      expect(
-        shouldShowHairRemovalRecovery({
-          latestSession: session,
           todayEpochDay: today,
           enabled: true,
           snoozed: false

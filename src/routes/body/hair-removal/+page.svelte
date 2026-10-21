@@ -14,7 +14,6 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { hairRemovalAreaName, hairRemovalMethodName, severityName } from '$lib/data/vocabulary/labels';
   import { daysSinceLastSession } from '$lib/data/hairRemovalSchedule';
-  import { shouldShowHairRemovalRecovery } from '$lib/data/liveTiles';
   import { HAIR_REMOVAL_AREAS, type HairRemovalAreaKey } from '$lib/data/hairRemovalAreas';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -103,12 +102,8 @@
     return onDay && onDay.length ? onDay.map((session) => hairRemovalAreaName(session.area)).join(' · ') : null;
   };
 
-  /* Hair removal's present reading (ticket 56): the recovery state the Home
-     tile already computes (liveTiles.ts), not a next-session due date -
-     hairRemovalSchedule.ts refuses that framing on purpose. Read with
-     `enabled`/`snoozed` fixed rather than off `prefs`: this is the area's
-     own screen, not a dismissible Home nudge, so a snoozed tile has nothing
-     to say about it. */
+  /* The newest session at or before today, which is the week the strip
+     opens on. */
   let latestSession = $derived(
     sessions.reduce<HairRemovalSession | null>((latest, session) => {
       if (session.epochDay > today) return latest;
@@ -125,10 +120,6 @@
     [...sessions]
       .filter((session) => session.epochDay >= shownWeek.first && session.epochDay <= shownWeek.last)
       .sort((a, b) => b.epochDay - a.epochDay)
-  );
-
-  let recovery = $derived(
-    shouldShowHairRemovalRecovery({ latestSession, todayEpochDay: today, enabled: true, snoozed: false })
   );
 
   /** A tap on a strip day: its first session if it has one, or a blank
@@ -249,15 +240,6 @@
 
   <ReadGate read={sessionsQuery} variant="line" count={3}>
     {#snippet rows()}
-      {#if recovery}
-        <Notice
-          icon="shuffle"
-          key="hair-removal-recovery"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-          title={hairRemovalAreaName(recovery.session.area)}
-          text={m.tile_hair_removal_guidance()}
-        />
-      {/if}
       <SectionHeading text={m.hair_removal_sessions_title()} />
       {#if earliest !== null}
         <DayStrip

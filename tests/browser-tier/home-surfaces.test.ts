@@ -287,19 +287,14 @@ export async function homeContracts(): Promise<Result[]> {
     ['letters', 'getLetterSeals'],
     ['revisits', 'getDueRevisits'],
     ['entries', 'latestBadMomentEntryId'],
-    ['tryouts', 'getTryouts'],
-    ['feltSense', 'latestDaysForTryouts'],
     ['doses', 'getSchedules'],
     ['doses', 'getPauses'],
     ['doses', 'getDosesForSlots', today],
     ['doses', 'getDoses', today - 1],
-    ['voiceBenchmarks', 'lastWriteEpochDay'],
     ['journalingPauses', 'getPauses'],
     ['areaStates', 'getAreaStates'],
-    ['hairRemoval', 'latestSession'],
     ['measurements', 'countAll'],
-    ['measurements', 'lastWriteEpochDay'],
-    ['appointments', 'getDayRecords']
+    ['measurements', 'lastWriteEpochDay']
   ];
   for (const [area, operation, day] of initialReads) {
     const held = heldReads(
