@@ -27,11 +27,9 @@
    and inside every ancestor that clips sideways, which is what Journal's
    month ("Octobe", "paździe") and In the room's question ("spironolac")
    failed. A scene marked `apart` has no two listed controls whose boxes
-   overlap, which is what Lab results' and a saved question's back
-   control did, 24px deep under the first action, and what Journal's
-   month button did under the search control. A scene whose `path` is a
-   function finds its address on the filled journal (a saved question's
-   id is not fixed).
+   overlap, which is what Lab results' back control did, 24px deep under
+   the first action, and what Journal's month button did under the search
+   control.
 
    The walk alone cannot tell 47px from 48px. Chromium snaps a hit-test
    point by up to a pixel, so a lone 47px button read 47.75 and a 48px
@@ -112,16 +110,6 @@ const SCENES = [
   { key: 'stats', path: '/stats/days', targets: '.kit-donut-item-btn' },
   { key: 'journal', path: '/calendar', targets: '[data-cal-month-btn], .cal-field > a', whole: '[data-cal-month-btn]', apart: true, narrow: true },
   { key: 'labs', path: '/care/labs', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
-  {
-    key: 'saved-search',
-    path: async (page, base) => {
-      await settlePage(page, base, '/search?questions=1', 'light');
-      return page.locator('a[href^="/search/questions/"]').first().getAttribute('href');
-    },
-    targets: '[data-screen-back], .header-action > *',
-    apart: true,
-    narrow: true
-  },
   { key: 'measurements', path: '/body/measurements', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
   { key: 'in-the-room', path: '/health/appointments/in-the-room', targets: '[data-screen-back]', whole: '[data-room-question]', narrow: true },
   { key: 'words', path: '/stats/words', targets: '[data-cloud-word]', narrow: true },
@@ -326,8 +314,6 @@ try {
     throw new Error(`the walk cannot tell a 47px control from a 48px one: ${JSON.stringify(planted)}`);
   }
   console.log(`planted controls: 47px reads ${small.w}x${small.h} (under), 48px reads ${whole.w}x${whole.h} (at the floor)`);
-
-  for (const scene of SCENES) if (typeof scene.path === 'function') scene.path = await scene.path(page, base);
 
   for (const width of [...WIDTHS, NARROW]) {
     await page.setViewportSize({ width, height: 844 });

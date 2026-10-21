@@ -911,8 +911,8 @@ describe('scraping a detail id off a list screen (ux-carpet 235)', () => {
 
   it('waits for rows that draw after the list settles', async () => {
     const hrefs = [];
-    setTimeout(() => hrefs.push('/search/questions/q-7'), 150);
-    expect(await onPage(scrapeIdExpression(HYDRATION_NEEDS.question, { waitMs: 1000 }), { hrefs })).toBe('q-7');
+    setTimeout(() => hrefs.push('/transition/tryouts/t-7'), 150);
+    expect(await onPage(scrapeIdExpression(HYDRATION_NEEDS.tryout, { waitMs: 1000 }), { hrefs })).toBe('t-7');
   });
 
   it('marks reminders as a list only the device can read', () => {

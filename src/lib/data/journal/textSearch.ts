@@ -592,10 +592,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // everything is what makes it trustworthy, and the row itself is an area
   // key and a day (phase 8 deepening ticket 13).
   areaStates: 'no text of its own: an area key, a flag and a day',
-  // Its own reason: a saved question's name and query are words about a
-  // search, and search returning a hit on the search itself would be the
-  // feature answering its own reflection rather than the journal.
-  savedQuestions: 'a name for a search, not a record for search to hand back as a hit',
   revisits: 'no text of its own: an entry link and two days',
   // The word itself is already searchable where it was actually written -
   // the entry's own note, matched through the FTS index (ADR-0005) - so

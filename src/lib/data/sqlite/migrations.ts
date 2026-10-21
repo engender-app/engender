@@ -53,5 +53,8 @@ CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT N
      CHECK policy (vocabularies live in code, drugClass.ts reads anything but
      'hrt' as 'other'). */
   { version: 93, sql: "ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other';", apply: migrateDrugClass },
-  { version: 94, sql: CLOSED_LISTS_REBUILD }
+  { version: 94, sql: CLOSED_LISTS_REBUILD },
+  /* Functional audit ticket 10: saved questions are cut. Rows are dropped,
+     not converted, and restore skips the archive section by name. */
+  { version: 95, sql: 'DROP TABLE saved_question;' }
 ];

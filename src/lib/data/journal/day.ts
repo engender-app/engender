@@ -438,7 +438,6 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // date belongs on a dated surface is a chart annotation beside the regimen
   // changes and pauses (chartAnnotations.ts), not a record in a day's list.
   areaStates: 'a statement about the practice of tracking, not a record of a day',
-  savedQuestions: 'a name for a search, not a record of a day it belongs to',
   revisits: 'a schedule: sealed until the day chosen to see the entry again',
   // Phase 8 features ticket 07: a margin note is drawn beside the entry it
   // annotates, on this screen among others (DayRecords.svelte's own batched

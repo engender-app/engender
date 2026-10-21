@@ -77,7 +77,6 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   entryTemplate: ['entry_template', 'entry_template_tag', 'entry_template_dimension_value'],
   importLog: ['import_log'],
   areaState: ['area_state'],
-  savedQuestion: ['saved_question'],
   revisit: ['revisit'],
   marginNote: ['margin_note'],
   wordIgnore: ['word_frequency_ignore'],

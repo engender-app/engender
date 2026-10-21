@@ -56,7 +56,6 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   sideEffects: (r) => r.id,
   cycleEvents: (r) => r.id,
   journalingPauses: (r) => r.id,
-  savedQuestions: (r) => r.id,
   revisits: (r) => r.id,
   eras: (r) => r.id,
   eraMutes: (r) => r.eraUuid,

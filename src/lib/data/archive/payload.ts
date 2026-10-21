@@ -318,25 +318,6 @@ interface ArchiveVoicePracticeTake {
   feltSense: number | null;
 }
 
-/** A saved question (phase 8 features ticket 06, CONTEXT: "Saved question").
-    `tagIds`/`moods` travel comma-joined, the same as the row is stored -
-    an archive descriptor has no array column either, and the split back
-    into a list is savedQuestions.ts's job on the way out of a restore too. */
-interface ArchiveSavedQuestion {
-  id: string;
-  name: string;
-  queryText: string;
-  tagIds: string;
-  moods: string;
-  startEpochDay: number | null;
-  endEpochDay: number | null;
-  hasNote: boolean;
-  hasPhoto: boolean;
-  /** After-release ticket 16. Absent on an archive written before it, which
-      restores as false. */
-  starred: boolean;
-}
-
 /** A day chosen to see one entry again (phase 8 features ticket 08,
     ADR-0045). `entryId` is the owning entry's own uuid here, not its local
     row id: a raw integer FK would need resolving against a rowid that can
@@ -907,7 +888,6 @@ export interface ArchiveJournal {
   comfortItems: ArchiveComfortItem[];
   importLog: ArchiveImportLogRecord[];
   areaStates: ArchiveAreaState[];
-  savedQuestions: ArchiveSavedQuestion[];
   revisits: ArchiveRevisit[];
   marginNotes: ArchiveMarginNote[];
   wordIgnore: ArchiveWordIgnore[];
@@ -1091,7 +1071,6 @@ const postAlphaSections = [
   'sideEffects',
   'cycleEvents',
   'journalingPauses',
-  'savedQuestions',
   'revisits',
   'eras',
   'eraMutes',

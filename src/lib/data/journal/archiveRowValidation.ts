@@ -486,18 +486,6 @@ const ROWS = {
     finishedEpochDay: nullable(numeric),
     suspendedEpochDay: nullable(numeric)
   },
-  savedQuestions: {
-    id: identity,
-    name: text,
-    queryText: text,
-    tagIds: text,
-    moods: text,
-    startEpochDay: nullable(numeric),
-    endEpochDay: nullable(numeric),
-    hasNote: optional(bool),
-    hasPhoto: optional(bool),
-    starred: optional(bool)
-  },
   revisits: {
     id: identity,
     entryId: text,

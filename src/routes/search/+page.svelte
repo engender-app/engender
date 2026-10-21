@@ -1,6 +1,5 @@
 <script lang="ts">
   import { withEntryListReturn } from '$lib/navigation/sourceRecord';
-  import { journalTextAutocomplete } from '$lib/platform';
   /* Search (phase 5 ticket 22), rebuilt on the kit.
 
      Three things were wrong with it as a screen, none of them about what it
@@ -77,23 +76,14 @@
      they picked.
 
      **Ticket 18: one front door, and something before a keystroke.** The
-     starred shelf and the saved-questions list were their own routes,
-     `/search/starred` and `/search/questions`, each reachable from its own
-     icon in this screen's own header - two doors to shelves this screen
-     already had the read for. Starred is a filter now (`EntrySearchFilters`
-     already carried it, "reached from search"), so it is a toggle in the
-     sheet below rather than a screen elsewhere, and the starred photo grid
-     that page also drew moves in beside it, shown whenever the toggle is on.
-     The old starred route redirects here with the filter applied
-     (`?starred=1`) and the old questions route to the bare screen, whose
-     opening state carries the saved questions, so a bookmark still lands
-     somewhere real.
-
-     Saved questions keep their own run (`/search/questions/[id]`, unmoved -
-     rename and delete live there, on the one question being looked at) but
-     lose their list screen: a chip row on this screen's opening state links
-     straight to a run instead, the same discovery a person reaching for
-     "what did I search before" actually wants.
+     starred shelf was its own route, `/search/starred`, reachable from an
+     icon in this screen's own header. Starred is a filter now
+     (`EntrySearchFilters` already carried it, "reached from search"), so it
+     is a toggle in the sheet below rather than a screen elsewhere, and the
+     starred photo grid that page also drew moves in beside it, shown
+     whenever the toggle is on. The old route redirects here with the filter
+     applied (`?starred=1`). Saved questions and the random draw were cut by
+     the functional audit (ticket 10).
 
      And that opening state is the other half: before this ticket, an empty
      box and two sentences was what a 268-entry journal offered before a
@@ -103,21 +93,18 @@
      `recentSearches.ts` for what "recent" means, since a search's own
      history is a device's memory of its own typing, not the journal's. */
   import { m } from '$lib/paraglide/messages';
-  import { writer } from '$lib/stores/attempt.svelte';
-  import { toast } from '$lib/stores/toasts.svelte';
-  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
+  import { afterNavigate, beforeNavigate } from '$app/navigation';
   import { EMPTY_SEARCH, holdSearch, takeHandedQuery, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY } from '$lib/data/epochDay';
   import { fmtDateValue } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
   import { entryDayGroups } from '$lib/data/recentEntries';
-  import { drawRandomEntry } from '$lib/data/randomDraw';
   import { listRecentSearches, recordRecentSearch } from '$lib/data/recentSearches';
-  import { answerTotal, savedQuestionInputOf, starredPhotosAsked } from '$lib/data/savedQuestionQuery';
+  import { answerTotal, starredPhotosAsked } from '$lib/data/searchAnswer';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -126,12 +113,10 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import SearchActions from '$lib/components/SearchActions.svelte';
   import StarredPhotoGrid from '$lib/components/StarredPhotoGrid.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
-  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -175,22 +160,6 @@
     query: handedQuery ?? page.url.searchParams.get('q') ?? '',
     starredOnly: page.url.searchParams.has('starred')
   });
-  /* Saving a question keeps the query and every filter that is on, never
-     today's results (ticket 06's own acceptance criterion: a saved
-     question is read the same way an ad hoc search is, not frozen). */
-  let savingOpen = $state(false);
-  let savingName = $state('');
-
-  const questionWrite = writer();
-  async function saveQuestion() {
-    const name = savingName.trim();
-    if (!name) return;
-    const input = savedQuestionInputOf(name, query.trim(), filters);
-    if (!(await questionWrite.run(() => journal.savedQuestions.upsertSavedQuestion(input), m.write_failed()))) return;
-    savingOpen = false;
-    savingName = '';
-    toast(m.saved(), { kind: 'record-saved' });
-  }
   /* How many pages have been asked for, one counter per read. Reset by
      anything that changes what is being searched for, because page four of
      one query is not page four of the next one and leaving it where it was
@@ -287,11 +256,9 @@
     if (held && !from?.url.pathname.startsWith('/entry/')) restore(asked());
   });
 
-  /* Off the debounced query, not the box: what this gates - the idle/results
-     switch below, and the save-question button - all describe an answer, and
-     the box can hold a character or two nothing has answered for yet
-     (ticket 15). The lag this adds before the save button appears is the
-     debounce interval, not a wait anyone types through. */
+  /* Off the debounced query, not the box: the idle/results switch below
+     describes an answer, and the box can hold a character or two nothing
+     has answered for yet (ticket 15). */
   let hasCriteria = $derived(!!debouncedQuery || hasStructuredCriteria);
 
   /* Back to the first page whenever the question changes. An effect rather
@@ -304,23 +271,7 @@
     criteria;
     pages = 1;
     hitPages = 1;
-    drawnIds = new Set();
   });
-
-  /* Random, scoped to the question currently being asked rather than its own
-     control (phase 8 features ticket 08, spec.md: "Random, scoped"). The
-     small "which ones have come up already" piece of state the ticket calls
-     for and says is not a stored one - reset above whenever the question
-     changes, and by drawRandomEntry itself once every loaded hit has come
-     up. Draws from `hits`, the run currently on screen, not from `total`:
-     the ticket's own "the result set currently on screen". */
-  let drawnIds = $state<Set<number>>(new Set());
-  function drawRandom() {
-    const draw = drawRandomEntry(hits, drawnIds);
-    if (!draw) return;
-    drawnIds = draw.drawnIds;
-    void goto(withEntryListReturn(`/entry/${draw.entry.id}`, page.url));
-  }
 
   /* Tag labels are matched here and note text in FTS5, which is ADR-0005's
      split: a built-in tag stores a key, so the words it was shown under only
@@ -451,8 +402,6 @@
     if (!hasCriteria) answered = false;
     else if (settled) answered = true;
   });
-  /* Nothing to save when nothing matched (ticket 16, audit U7). */
-  let canSave = $derived(answered && settled && !foundNothing);
   /* Headings name a list only where there is one above it to tell it
      apart from, the Transition door's call for the same two lists: the
      entries lead, so they are named only under starred photos, and the
@@ -524,8 +473,8 @@
   let todayInput = $derived(dateInputValueFromEpochDay(currentDay()));
 
   /* What the opening state offers before a character is typed (ticket 18):
-     the eight most-used tags, the saved questions that exist, and this
-     device's own last five searches. All three are read regardless of
+     the eight most-used tags and this device's own last five searches. Both
+     are read regardless of
      `hasCriteria` - cheap, bounded reads a person is about to want the
      moment they clear the field again. */
   const POPULAR_TAG_COUNT = 8;
@@ -536,9 +485,6 @@
       .filter((t) => t != null)
       .slice(0, POPULAR_TAG_COUNT)
   );
-
-  let savedQuestionsQuery = liveList((j) => j.savedQuestions.getSavedQuestions());
-  let savedQuestions = $derived(savedQuestionsQuery.rows);
 
   let recentSearchList = $state<string[]>(listRecentSearches());
   /* Read again when the opening state comes back rather than the moment a
@@ -555,16 +501,7 @@
 </script>
 
 <div class="screen" data-screen>
-  <!-- The actions snippet is always passed, so the header's layout never
-       changes as its buttons come and go (SearchActions.svelte). -->
-  <ScreenHeader title={m.search()} screen="search" back="/calendar">
-    {#snippet actions()}
-      <SearchActions
-        save={canSave ? () => (savingOpen = true) : undefined}
-        draw={answered && hits.length > 0 ? drawRandom : undefined}
-      />
-    {/snippet}
-  </ScreenHeader>
+  <ScreenHeader title={m.search()} screen="search" back="/calendar" />
 
   <div class="search-controls">
     <div class="search-box">
@@ -637,17 +574,6 @@
              is said once, in the Filters sheet, where the filters are
              (ticket 16). -->
         <p class="search-hint">{m.search_hint()}</p>
-
-        {#if savedQuestions.length}
-          <p class="search-filter-label">{m.saved_questions_title()}</p>
-          <div class="tag-row" role="group" aria-label={m.saved_questions_title()}>
-            {#each savedQuestions as question (question.id)}
-              <a class="tag-chip press" data-saved-question-chip={question.id} href="/search/questions/{question.id}">
-                <Icon name="bookmark" size={14} />{question.name}
-              </a>
-            {/each}
-          </div>
-        {/if}
 
         {#if popularTags.length}
           <p class="search-filter-label">{m.search_filter_tags_label()}</p>
@@ -745,9 +671,7 @@
           </div>
         {/if}
 
-        <!-- One count, the total, in the same words as a saved question's
-             (ticket 16: "Entries: 27" here and "35 results ... Entries 21
-             results" there). Under the results rather than over them: a
+        <!-- One count, the total (ticket 16). Under the results rather than over them: a
              line of its own above the first day put the first entry at
              y 316 of 844, past the first third, where the results are
              meant to start. The screen reader hears it first anyway, from
@@ -836,31 +760,6 @@
     </div>
   </Sheet>
 
-  <Sheet busy={questionWrite.busy} bind:open={savingOpen} title={m.saved_question_save_sheet()} onClose={() => (savingName = '')}>
-    <h3>{m.saved_question_save_sheet()}</h3>
-    <Field label={m.saved_question_name_label()} id="saved-question-name">
-      {#snippet children(id)}
-        <input autocomplete={journalTextAutocomplete()}
-          class="input"
-          {id}
-          name="saved-question-name"
-          placeholder={m.saved_question_name_placeholder()}
-          bind:value={savingName}
-        />
-      {/snippet}
-    </Field>
-    <p class="search-hint">{m.saved_question_save_hint()}</p>
-    <div class="stack-3">
-      <button
-        class="btn btn-primary"
-        data-saved-question-save-confirm
-        disabled={!savingName.trim() || questionWrite.busy}
-        onclick={saveQuestion}
-      >
-        <span>{m.saved_question_save_confirm()}</span>
-      </button>
-    </div>
-  </Sheet>
 </div>
 
 <style>

@@ -16,8 +16,8 @@ The check runs in `npm run test:browser`.
 
 `VITE_DEMO=1 npm run build && node tests/completed-history-check.mjs` drives
 the built SPA through real links, saves, deletes and browser Back. It checks
-custom scales, existing and new reminders, new and edited tryouts, documents
-and saved questions. Ordinary Back and draft discard retain their opener.
+custom scales, existing and new reminders, new and edited tryouts and
+documents. Ordinary Back and draft discard retain their opener.
 The custom-scale Save/Back assertion fails on the old code by reopening
 `/settings/dimension`. No history or navigation function is mocked.
 
@@ -1166,11 +1166,9 @@ lock cleanup through the shared content-forgetting boundary.
 
 `entry-source-return-check.mjs` drives the real router and editor through
 Save and Delete from Voice recordings, ordinary and margin-note Search
-results, a saved question, Today's revisit tile, a hormone-curve annotation
-and an ordinary day list. It checks the selected Voice tab, curve range,
-Search query and starred filter on return. Repeated saved-question visits
-reuse warm answers, while changed criteria discard the previous hits.
-It also checks that Search spends
+results, Today's revisit tile, a hormone-curve annotation and an ordinary
+day list. It checks the selected Voice tab, curve range, Search query and
+starred filter on return. It also checks that Search spends
 its in-memory snapshot and that typed queries stay out of return URLs,
 history state and Web Storage. The existing `entry-editor-return` guard also
 checks that reloading the editor drops the in-memory Search query while

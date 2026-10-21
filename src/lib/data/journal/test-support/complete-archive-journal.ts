@@ -162,17 +162,6 @@ export async function seedCompleteArchiveJournal(
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });
-  await journal.savedQuestions.upsertSavedQuestion({
-    name: 'Therapy check-ins',
-    queryText: 'therapy',
-    tagIds: [],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: true,
-    hasPhoto: false,
-    starred: false
-  });
   await journal.revisits.setRevisit({ entryId: entry, createdEpochDay: 20000, targetEpochDay: 20100 });
 
   /* Three eras, so both open bounds and a closed pair all travel. An absent

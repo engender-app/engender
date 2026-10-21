@@ -51,7 +51,7 @@ try {
     });
   }
   for (const path of [
-    '/entry/abc', '/search/questions/zzz', '/transition/letters/zzz',
+    '/entry/abc', '/transition/letters/zzz',
     '/transition/tryouts/zzz', '/stats/zzz', '/wrapped/zzz', '/media/documents/zzz'
   ]) {
     await check(path, async () => {

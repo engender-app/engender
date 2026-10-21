@@ -7,7 +7,7 @@ import { unzipSync, zipSync, type Zippable } from 'fflate';
 
 export type Rng = () => number;
 
-/** mulberry32. randomDraw.ts takes an injected rng but does not make one. */
+/** mulberry32: a seeded rng, so a failing case replays. */
 export function mulberry32(seed: number): Rng {
   let a = seed >>> 0;
   return () => {

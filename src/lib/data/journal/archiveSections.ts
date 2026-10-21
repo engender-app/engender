@@ -542,30 +542,6 @@ const SECTIONS = [
     orderBy: 'start_epoch_day, id',
     columns: { uuid: 'id', start_epoch_day: 'startEpochDay', end_epoch_day: 'endEpochDay' }
   }),
-  flat({
-    name: 'savedQuestions',
-    // A saved search is a tool the person built for themselves, not a
-    // record of something that happened to them - the same judgement
-    // journalingPauses and cycleEvents above already made.
-    travels: 'none',
-    table: 'saved_question',
-    identity: 'uuid',
-    orderBy: 'updated_at DESC, id',
-    columns: {
-      uuid: 'id',
-      name: 'name',
-      query_text: 'queryText',
-      tag_ids: 'tagIds',
-      moods: 'moods',
-      start_epoch_day: 'startEpochDay',
-      end_epoch_day: 'endEpochDay',
-      has_note: { field: 'hasNote', bool: true },
-      has_photo: { field: 'hasPhoto', bool: true },
-      // Added in v88 (after-release ticket 16). A bool column writes 0 when
-      // the field is absent, so an older archive restores it as not starred.
-      starred: { field: 'starred', bool: true }
-    }
-  }),
   section({
     name: 'revisits',
     // A day chosen once to read an entry again is scheduling metadata about
@@ -1154,7 +1130,7 @@ export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map((s) => s.name);
 
 /** Wire sections removed before 1.0. Their rows no longer have an owner here. */
-export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries'];
+export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries', 'savedQuestions'];
 
 /** A journal with every section present and empty - what an importer builds
     on and what a test that cares about one section starts from. */

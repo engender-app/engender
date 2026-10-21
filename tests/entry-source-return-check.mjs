@@ -49,20 +49,19 @@ try {
     await journal.regimen.upsertEpisode({ drug: 'estradiol', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'every day', startEpochDay: day - 60, endEpochDay: null, endReason: null });
     await journal.doses.upsertDose({ timestamp: startOfDayTimestamp(day - 1) + 8 * 3600000, route: 'oral', drug: 'estradiol', dose: 2, doseUnit: 'mg' });
     const ids = {};
-    for (const source of ['Voice', 'Search', 'Margin', 'Question', 'Today', 'Chart', 'Day']) {
+    for (const source of ['Voice', 'Search', 'Margin', 'Today', 'Chart', 'Day']) {
       for (const action of ['Save', 'Delete']) {
         const id = await journal.entries.upsertEntry({ epochDay: day, mood: 4, starred: true,
           note: `Source fixture ${source} ${action}`, attachRecordings: source === 'Voice' ? [wav] : [],
           bodyRegions: source === 'Chart' ? { chest: 5 } : {} });
         ids[`${source}${action}`] = id;
-        if (['Margin', 'Question'].includes(source)) await journal.marginNotes.add({ entryId: id, epochDay: day, text: `privateorchid ${source} ${action}` });
+        if (source === 'Margin') await journal.marginNotes.add({ entryId: id, epochDay: day, text: `privateorchid ${source} ${action}` });
       }
     }
     for (let n = 0; n < 10; n++) await journal.entries.upsertEntry({ epochDay: day - 20 - n, mood: 3, bodyRegions: { chest: 40 } });
-    const question = await journal.savedQuestions.upsertSavedQuestion({ name: 'Source fixture', queryText: 'privateorchid Question', tagIds: [], moods: [], startEpochDay: null, endEpochDay: null, hasNote: false, hasPhoto: false, starred: false });
-    return { ids, question, day };
+    return { ids, day };
   });
-  for (const source of ['Voice', 'Search', 'Margin', 'Question', 'Today', 'Chart', 'Day'].filter(source => !process.env.ENTRY_SOURCE || source === process.env.ENTRY_SOURCE)) {
+  for (const source of ['Voice', 'Search', 'Margin', 'Today', 'Chart', 'Day'].filter(source => !process.env.ENTRY_SOURCE || source === process.env.ENTRY_SOURCE)) {
     for (const action of ['Save', 'Delete']) {
       await go('/more');
       const id = fixture.ids[`${source}${action}`];
@@ -80,10 +79,6 @@ try {
         await go(route);
         await page.locator('#q').fill(source === 'Search' ? `Source fixture Search ${action}` : `privateorchid Margin ${action}`);
         link = source === 'Search' ? page.locator(`[data-entry-card][href^="/entry/${id}?"]`) : page.locator(`[data-search-hit="marginNotes"][href^="/entry/${id}?"]`);
-      } else if (source === 'Question') {
-        route = `/search/questions/${fixture.question}`;
-        await go(route);
-        link = page.locator(`[data-search-hit="marginNotes"][href^="/entry/${id}?"]`);
       } else if (source === 'Today') {
         await page.evaluate(async ({ id, day }) => {
           const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
@@ -111,7 +106,6 @@ try {
       assert.ok(!page.url().includes('privateorchid'), 'typed query stays out of the entry URL');
       await finish(action);
       assert.equal(new URL(page.url()).pathname + new URL(page.url()).search, route, `${source} ${action} returns to source`);
-      if (source === 'Question') await page.locator('[data-search-hit="marginNotes"]').first().waitFor();
       if (source === 'Voice') await page.locator('[data-open-entry]').first().waitFor();
       if (source === 'Chart') assert.equal(await page.locator('[data-segment="30"]').getAttribute('aria-checked'), 'true');
       if (source === 'Search' || source === 'Margin') {
@@ -124,16 +118,6 @@ try {
           return takeHeldSearch();
         });
         assert.equal(held, null, 'return spends the held snapshot');
-      }
-      if (source === 'Question' && action === 'Delete') {
-        await page.evaluate(async questionId => {
-          const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-          const question = (await journal.savedQuestions.getSavedQuestions()).find(row => row.id === questionId);
-          await journal.savedQuestions.upsertSavedQuestion({ ...question, queryText: 'privateorchid Margin Save' });
-        }, fixture.question);
-        await page.locator(`[data-search-hit="marginNotes"][href^="/entry/${fixture.ids.MarginSave}?"]`).waitFor();
-        assert.equal(await page.locator(`[data-search-hit="marginNotes"][href^="/entry/${fixture.ids.QuestionSave}?"]`).count(), 0, 'changed criteria reject the warm answer for the old question');
-        console.log('PASS changed saved-question criteria replace warm hits');
       }
       console.log(`PASS ${source} ${action}: source route, filters and query`);
     }

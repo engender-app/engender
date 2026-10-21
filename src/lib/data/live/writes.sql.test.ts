@@ -665,37 +665,6 @@ beforeAll(async () => {
     journal.journalingPauses.deletePause(secondJournalingPauseId)
   );
 
-  // --- savedQuestions -----------------------------------------------------
-  const savedQuestionId = (await drive('savedQuestions', 'upsertSavedQuestion', () =>
-    journal.savedQuestions.upsertSavedQuestion({
-      name: 'Therapy check-ins',
-      queryText: 'therapy',
-      tagIds: [],
-      moods: [],
-      startEpochDay: null,
-      endEpochDay: null,
-      hasNote: true,
-      hasPhoto: false,
-      starred: false
-    })
-  )) as string;
-  const secondSavedQuestionId = (await drive('savedQuestions', 'upsertSavedQuestion', () =>
-    journal.savedQuestions.upsertSavedQuestion({
-      name: 'A second saved question',
-      queryText: 'gauze',
-      tagIds: [],
-      moods: [],
-      startEpochDay: null,
-      endEpochDay: null,
-      hasNote: false,
-      hasPhoto: false,
-      starred: false
-    })
-  )) as string;
-  await drive('savedQuestions', 'deleteSavedQuestion', () =>
-    journal.savedQuestions.deleteSavedQuestion(secondSavedQuestionId)
-  );
-
   // --- revisits -----------------------------------------------------------
   await drive('revisits', 'setRevisit', () =>
     journal.revisits.setRevisit({ entryId, createdEpochDay: 20000, targetEpochDay: 20100 })
@@ -1005,7 +974,7 @@ beforeAll(async () => {
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
   void [labId, measurementId, sizeRecordId, taperSessionId, tallyId, doseId, stockId, sideEffectId, cycleEventId,
-    journalingPauseId, savedQuestionId, wearSessionId, hairStageId, benchmarkId, takeId];
+    journalingPauseId, wearSessionId, hairStageId, benchmarkId, takeId];
 
   // --- reads --------------------------------------------------------------
   // Every classified read this file can drive with no more setup than the
@@ -1116,7 +1085,6 @@ beforeAll(async () => {
   await driveRead('cycleEvents', 'getCycleEventsInRange', () => journal.cycleEvents.getCycleEventsInRange(0, 30000));
   await driveRead('cycleEvents', 'lastWriteEpochDay', () => journal.cycleEvents.lastWriteEpochDay(20000));
   await driveRead('journalingPauses', 'getPauses', () => journal.journalingPauses.getPauses());
-  await driveRead('savedQuestions', 'getSavedQuestions', () => journal.savedQuestions.getSavedQuestions());
   await driveRead('revisits', 'getDueRevisits', () => journal.revisits.getDueRevisits(20200));
   await driveRead('marginNotes', 'forEntries', () => journal.marginNotes.forEntries([entryId]));
   await driveRead('eras', 'getEras', () => journal.eras.getEras());
