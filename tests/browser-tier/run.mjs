@@ -157,7 +157,7 @@ await block('Safe space optional Good moments', 12, async () => {
   }
 });
 
-await block('Look back after the functional audit trim', 12, async () => {
+await block('Look back after the functional audit trim', 11, async () => {
   const result = await load('/screen-mount.html?look-back=1', 'screen-mount');
   if (!Array.isArray(result.lookBack)) throw new Error(result.error ?? 'missing Look back results');
   for (const item of result.lookBack) {

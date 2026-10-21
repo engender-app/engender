@@ -44,12 +44,11 @@ export async function lookBackContracts(): Promise<Result[]> {
   const ring = () => root().querySelector('[data-chart-card="tag-share"] [data-chart="donut"]');
   const slices = () =>
     [...root().querySelectorAll('[data-chart-card="tag-share"] [data-donut-slice]')].map((s) => s.getAttribute('data-donut-slice'));
-  await check('Tags carries the share ring the days reading had', async () => {
+  await check('Tags carries the share ring the days reading had, beside its ranking', async () => {
     await until(ring, 'tag share ring');
-    return slices().includes('e-calm') && slices().includes('g-misgendered');
+    return slices().includes('e-calm') && slices().includes('g-misgendered') &&
+      root().querySelector('[data-chart-card="tags-moved"]');
   });
-  await check('Tags keeps the tag and scale card beside the ring', () =>
-    root().querySelector('[data-chart-card="tags-moved"]'));
   await check('Tags offers an "on good days" filter on the ring', async () => {
     const select = await until(
       () => root().querySelector<HTMLSelectElement>('[data-chart-card="tag-share"] select'),
