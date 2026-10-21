@@ -53,3 +53,13 @@ export function upcomingMilestones(
     .map((m) => ({ m, s: milestoneStatus(m, todayEpochDay) }))
     .sort((a, b) => daysAway(a.s) - daysAway(b.s));
 }
+
+/** The milestone Home marks today: the first one landing on today, either
+    on its own day or on an anniversary of it, in `upcomingMilestones`'
+    order. */
+export function landingMilestone(
+  milestones: Milestone[],
+  todayEpochDay: number
+): { m: Milestone; s: MilestoneStatus } | undefined {
+  return upcomingMilestones(milestones, todayEpochDay).find((x) => x.s.type === 'today' || x.s.isAnnivToday);
+}

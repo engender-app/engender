@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { epochDayFromLocalDate } from './epochDay.ts';
-import { milestoneStatus, upcomingMilestones } from './milestoneStatus.ts';
+import { landingMilestone, milestoneStatus, upcomingMilestones } from './milestoneStatus.ts';
 import type { Milestone } from './types.ts';
 
 const day = (year: number, month: number, date: number) => epochDayFromLocalDate(new Date(year, month - 1, date));
@@ -80,4 +80,11 @@ test('a milestone landing today sorts to the front, ahead of everything counting
     today
   );
   assert.deepEqual(ordered.map((x) => x.m.name), ['today', 'tomorrow']);
+});
+
+test('Home marks the milestone landing today, on its own day or on an anniversary', () => {
+  const today = day(2026, 8, 11);
+  assert.equal(landingMilestone([milestone('tomorrow', today + 1), milestone('today', today)], today)?.m.name, 'today');
+  assert.equal(landingMilestone([milestone('three years on', day(2023, 8, 11))], today)?.m.name, 'three years on');
+  assert.equal(landingMilestone([milestone('last week', today - 7), milestone('next week', today + 7)], today), undefined);
 });

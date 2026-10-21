@@ -55,7 +55,7 @@
   import { latestMood } from '$lib/data/latestMood';
   import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { upcomingMilestones } from '$lib/data/milestoneStatus';
+  import { landingMilestone } from '$lib/data/milestoneStatus';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -508,8 +508,7 @@
      read. The list itself no longer draws here - a milestone still ahead is
      an agenda row - but the day one lands is the one authored moment below,
      and this is the read that knows it. */
-  let upcoming = $derived(upcomingMilestones(vocabulary.milestones, today));
-  let landing = $derived(upcoming.find((x) => x.s.type === 'today' || x.s.isAnnivToday));
+  let landing = $derived(landingMilestone(vocabulary.milestones, today));
   let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
 
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt, today));
