@@ -2068,7 +2068,7 @@ const HYDRATION_SCENES = [
   { name: 'wrapped-year', at: '/wrapped/year', when: 'persona', is: 'a wrapped year' },
   /* More hub and the Body group */
   { name: 'more', at: '/more', is: 'the hub itself' },
-  { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged against the published scale' },
+  { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged as free text' },
   { name: 'hair-removal', at: '/body/hair-removal', is: 'electrolysis and laser sessions' },
   /* Ticket 21: wear moved off the retired Practice prefix onto its own
      door. */
