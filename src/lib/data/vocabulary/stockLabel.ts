@@ -92,6 +92,24 @@ export function stockNotice(
   return { title: m.notice_stock_low_title(), body: m.notice_stock_projected_body({ drug, date }) };
 }
 
+/** The supply's expiry day and the pharmacy note, one row line joined with
+    the same "·" (functional audit ticket 47). Logged and shown, never
+    advised on: a past date reads "Expired", in the same plain style as the
+    window line, with no warn treatment and no suggestion. Null when neither
+    was typed. */
+export function stockSupplyLine(
+  entry: { expiryEpochDay: number | null; pharmacyNote: string | null },
+  asOfEpochDay: number
+): string | null {
+  const parts: string[] = [];
+  if (entry.expiryEpochDay !== null) {
+    const date = fmtWindowDay(entry.expiryEpochDay);
+    parts.push(entry.expiryEpochDay < asOfEpochDay ? m.stock_expired_line({ date }) : m.stock_expiry_line({ date }));
+  }
+  if (entry.pharmacyNote) parts.push(entry.pharmacyNote);
+  return parts.length ? parts.join(' · ') : null;
+}
+
 /** Opened and its window folded into one row line rather than two - the
     same "·" join `dlb_tag_counts`/`exposure_dose_total_sub` already use to
     chain two facts, and one fewer line for a row that already carries the
