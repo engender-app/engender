@@ -501,11 +501,6 @@
     ]
   },
   {
-    "name": "roadmap-track-summary",
-    "tier": "built",
-    "holds": "the selected track travels with the goal list it shows"
-  },
-  {
     "name": "prep-context-check",
     "tier": "built",
     "holds": "an empty prep list still shows the next visit and keeps every section",

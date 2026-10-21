@@ -251,6 +251,12 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(1500);
   await dress();
 
+  /* The picker offers the Polish legal steps only while the roadmap shows
+     them, and this run is English (functional audit ticket 34). */
+  await settle('/transition/roadmap');
+  const polishSwitch = page.locator('[data-roadmap-polish-steps] [role="switch"]');
+  if ((await polishSwitch.getAttribute('aria-checked')) !== 'true') await polishSwitch.click();
+
   await settle('/media/documents');
   await page.locator('[data-list-row]').first().click();
   await page.waitForSelector('#document-title');
@@ -259,8 +265,8 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(400);
   await shootViewport('06-picker');
 
-  /* The goal the ticket was written around: paper arrives for "keep every
-     opinion" long before that step could ever be ticked. */
+  /* Paper that arrives for a step before it could ever be ticked: a copy
+     of the final ruling, filed as soon as it is in hand. */
   const GOAL = 'pl-legal-final-copy';
   await page.locator(`[data-pick-target="goal:${GOAL}"]`).click();
   await page.waitForTimeout(800);
@@ -279,9 +285,6 @@ for (const theme of ['light', 'dark']) {
   /* ---------- 09: the other end. The goal's own sheet lists what points at
      it; the goal itself stores nothing. ---------- */
   await settle('/transition/roadmap');
-  // Ticket 54: only the current track's panel starts in front; medical's
-  // own row needs its segment shown first.
-  await page.locator('[data-segment="medical"]').click();
   await page.locator(`[data-open-goal="${GOAL}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.waitForTimeout(600);

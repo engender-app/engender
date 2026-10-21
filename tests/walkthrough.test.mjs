@@ -4309,35 +4309,43 @@ try {
 } catch (e) { fail('compare two periods', e); }
 });
 
+/* The roadmap's "Polish legal steps" switch (functional audit ticket 34).
+   Its answer is a stored preference, so it outlives fresh(); every roadmap
+   flow sets the state it needs rather than inheriting the last one. */
+async function polishSteps(on) {
+  const control = page.locator('[data-roadmap-polish-steps] [role="switch"]');
+  await control.waitFor();
+  if ((await control.getAttribute('aria-checked')) !== String(on)) await control.click();
+  await page.waitForFunction(
+    (want) => document.querySelector('[data-roadmap-polish-steps] [role="switch"]')?.getAttribute('aria-checked') === want,
+    String(on)
+  );
+}
+
 /* Flow: the transition roadmap (phase 4 ticket 23, widened phase 5 ticket
-   20 for the "not my path" tri-state and custom goals). Acceptance boxes
-   that need a real browser rather than a unit test: that a status
-   survives a reload, that a bundled country pack makes no network request
-   at all, and that a custom goal appends to a track and ticks through the
-   same tri-state a bundled goal does. The request log is armed only
-   around the ticking, after the reload has finished, so what it asserts
-   is exact - zero requests of any origin, not just none off-origin.
-   Boot's own document, modules and SQLite wasm are all behind it by
-   then. */
+   20 for the "not my path" tri-state and custom goals, trimmed to the
+   legal track behind a switch by functional audit ticket 34). Acceptance
+   boxes that need a real browser rather than a unit test: that the English
+   app shows no Polish step until the switch is turned on, that a status
+   survives a reload, and that a bundled country pack makes no network
+   request at all. The request log is armed only around the ticking, after
+   the reload has finished, so what it asserts is exact - zero requests of
+   any origin, not just none off-origin. Boot's own document, modules and
+   SQLite wasm are all behind it by then. */
 await flow('transition roadmap tri-state', async () => {
 try {
   await fresh('/transition/roadmap');
-  await page.waitForSelector('[data-goal]');
+  await page.waitForSelector('[data-roadmap-polish-steps]');
 
-  /* The kit's heading, not SectionTitle's: phase 5 UX ticket 25 moved the
-     feature screens onto it, and the handle moved with the component the
-     way ticket 24's list-row handles did.
-
-     The `h2` inside it rather than the element itself, because a
-     SectionHeading also renders an `action` snippet on the same line and
-     `allTextContents` swallows it: once each track heading carried a "Not
-     my path" control (phase 8 features ticket 49), every track here read as
-     "Social Not my path" and no name matched. The heading's own name is its
-     h2, and it was only ever the h2 this meant to read. */
-  const tracks = (await page.locator('[data-section-heading] h2').allTextContents()).map((t) => t.trim());
-  for (const track of ['Social', 'Legal', 'Presentation', 'Medical']) {
-    if (!tracks.includes(track)) throw new Error('missing track ' + track + ': ' + JSON.stringify(tracks));
+  // Ticket 34: this run is English, so the Polish steps start switched off.
+  if ((await page.locator('[data-roadmap-polish-steps] [role="switch"]').getAttribute('aria-checked')) !== 'false') {
+    throw new Error('the Polish legal steps are on by default in English');
   }
+  if (await page.locator('[data-goal^="pl-"]').count()) throw new Error('a Polish step shows with the switch off');
+  if (await page.locator('[data-roadmap-pack-toggle]').count()) throw new Error('the Polish pack details show with the switch off');
+
+  await polishSteps(true);
+  await page.waitForSelector('[data-goal^="pl-"]');
 
   // Redesign ticket 16 collapsed the pack's own caveat behind this toggle,
   // closed by default - the two checks below read what it discloses.
@@ -4346,22 +4354,14 @@ try {
   if (!(await page.getByText(/III CZP 20\/26/).count())) throw new Error('the unsettled-law caveat is not shown'); // text-under-test: the caveat itself
   if (!(await page.getByText(/checked against its sources/i).count())) throw new Error('the review date is not shown'); // text-under-test: the review note itself
 
-  const boxes = page.locator('[data-goal]');
+  const boxes = page.locator('[data-goal^="pl-"]');
   const before = await boxes.count();
-  if (before < 30) throw new Error('the Polish pack rendered only ' + before + ' goals');
-
-  /* Ticket 54: every track's rows stay mounted (`[data-goal]` above counts
-     all of them, hidden or not), but only the current track's panel is in
-     front, and it opens on Social - nothing is ticked yet, so it is the
-     first live track in the pack's own order. A click on a row in another
-     track needs that track's own segment first. */
-  await page.locator('[data-segment="legal"]').click();
-
-  /* Ticket 42: track context belongs with selected panel, rather than in a
-     separate summary that still names the first track after a switch. */
-  const legalPanel = page.locator('[data-track-panel="legal"]:not([hidden])');
-  if (!/steps? left/.test(await legalPanel.locator('[data-roadmap-track-steps="legal"]').innerText())) {
-    throw new Error('the selected legal track has no remaining-step context');
+  if (before !== 23) throw new Error('the Polish pack rendered ' + before + ' goals, not the 23 legal steps');
+  if (await page.locator('[data-goal^="pl-social-"], [data-goal^="pl-medical-"], [data-goal^="pl-presentational-"]').count()) {
+    throw new Error('a cut track still shows a step');
+  }
+  if (!/steps? left/.test(await page.locator('[data-roadmap-steps-left]').innerText())) {
+    throw new Error('the roadmap has no remaining-step context');
   }
 
   await page.locator('[data-open-goal="pl-legal-written-reasons"]').click();
@@ -4371,16 +4371,10 @@ try {
   const target = page.locator('[data-goal="pl-legal-written-reasons"]');
   await target.click(); // unchecked -> checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
-  if (!/steps? left/.test(await legalPanel.locator('[data-roadmap-track-steps="legal"]').innerText())) {
-    throw new Error('the legal remaining-step context disappeared after changing a goal');
-  }
 
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
-  // 'attached' rather than the default 'visible': Social remains the current
-  // track after the reload (it is still all-unchecked), so the goal this
-  // just checked sits in a panel that is not the one in front.
-  await page.waitForSelector('[data-goal][data-status="checked"]', { state: 'attached' });
+  await page.waitForSelector('[data-goal][data-status="checked"]');
   const stillChecked = await page.locator('[data-goal][data-status="checked"]').count();
   if (stillChecked !== 1) throw new Error('after a reload ' + stillChecked + ' goals read as checked');
 
@@ -4400,8 +4394,6 @@ try {
     if (!new URL(request.url()).pathname.startsWith('/fonts/')) requested.push(request.url());
   });
 
-  await page.locator('[data-segment="legal"]').click(); // the reload above remounted on Social
-
   const target2 = page.locator('[data-goal="pl-legal-written-reasons"]');
   await target2.click(); // checked -> not-my-path
   await page.waitForFunction(
@@ -4413,46 +4405,47 @@ try {
 
   await target2.click(); // not-my-path -> unchecked, leaving zero checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 0);
-  await page.locator('[data-segment="medical"]').click(); // the last `[data-goal]` in DOM order is medical's
-  await page.locator('[data-goal]').last().click(); // a different goal, unchecked -> checked
+  await page.locator('[data-goal^="pl-"]').last().click(); // a different goal, unchecked -> checked
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
-
   if (requested.length) throw new Error('the roadmap made requests: ' + JSON.stringify(requested.slice(0, 4)));
-  ok('the roadmap cycles a goal through checked, not-my-path and unchecked, offline, and remembers it across a reload');
+
+  // Off again: the steps leave, and their ticks wait underneath.
+  await polishSteps(false);
+  await page.waitForFunction(() => document.querySelectorAll('[data-goal^="pl-"]').length === 0);
+  await polishSteps(true);
+  await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
+  ok('the English roadmap hides the Polish steps until switched on, then cycles a goal through checked, not-my-path and unchecked, offline, and remembers it across a reload');
 } catch (e) { fail('transition roadmap tri-state', e); }
 });
 
-/* Custom goals (phase 5 ticket 20): a person can add their own goal to a
-   track, it appends after the bundled ones, and it ticks through the same
-   tri-state. Scoped to this one goal's own data-status rather than a
-   global checked count: the tri-state flow above already leaves one
-   bundled goal checked in this same browser session, since fresh() only
-   clears localStorage and never the journal itself. */
+/* Custom goals (phase 5 ticket 20): a person can add their own goal, it
+   appends after the bundled ones, and it ticks through the same tri-state.
+   Scoped to this one goal's own data-status rather than a global checked
+   count: the tri-state flow above already leaves one bundled goal checked
+   in this same browser session, since fresh() only clears localStorage and
+   never the journal itself. Ticket 34: a custom goal shows whether or not
+   the Polish steps do, so this runs with them off. */
 await flow('transition roadmap custom goal', async () => {
 try {
   await fresh('/transition/roadmap');
-  await page.waitForSelector('[data-goal]');
+  await polishSteps(false);
 
   const before = await page.locator('[data-goal]').count();
-  const addGoalButton = page.locator('[data-add-goal="social"]');
-  // The social track's own list-group, so "appended to the end" is checked
-  // against that track alone - `[data-goal]` on the whole page ends inside
-  // whichever track renders last (medical), not the one this goal was
-  // added to.
-  const socialGroup = addGoalButton.locator('xpath=..');
+  const addGoalButton = page.locator('[data-add-goal]');
+  const list = addGoalButton.locator('xpath=..');
 
   await addGoalButton.click();
   await page.getByPlaceholder('Your step').fill('Tell my sister');
   await page.getByRole('button', { name: 'Add goal' }).click();
 
   await page.waitForFunction((n) => document.querySelectorAll('[data-goal]').length === n, before + 1);
-  const customRow = socialGroup.locator('[data-goal]').filter({ hasText: 'Tell my sister' }); // text-under-test: the goal I just typed
-  if (!(await customRow.count())) throw new Error('the custom goal did not render inside the social track');
+  const customRow = list.locator('[data-goal]').filter({ hasText: 'Tell my sister' }); // text-under-test: the goal I just typed
+  if (!(await customRow.count())) throw new Error('the custom goal did not render in the list');
 
-  const idsInOrder = await socialGroup.locator('[data-goal]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('data-goal')));
+  const idsInOrder = await list.locator('[data-goal]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('data-goal')));
   const customGoalId = await customRow.getAttribute('data-goal');
   if (idsInOrder[idsInOrder.length - 1] !== customGoalId) {
-    throw new Error('the custom goal did not append to the end of its track');
+    throw new Error('the custom goal did not append to the end of the list');
   }
 
   await customRow.click(); // unchecked -> checked
@@ -4467,7 +4460,7 @@ try {
   const afterReload = await page.locator(`[data-goal="${customGoalId}"]`).getAttribute('data-status');
   if (afterReload !== 'checked') throw new Error('the custom goal did not survive a reload, checked');
 
-  ok('a custom goal appends to its track and ticks through the same tri-state a bundled goal does');
+  ok('a custom goal appends to the list with the Polish steps off and ticks through the same tri-state a bundled goal does');
 } catch (e) { fail('transition roadmap custom goal', e); }
 });
 
@@ -4985,8 +4978,9 @@ try {
   }
 
   // Roadmap and effects carry no empty-state Notice of their own (their
-  // toggles and tracks always render) - checked instead for a signal that
-  // only exists once something is ticked or marked.
+  // switches and lists always render) - checked instead for a signal that
+  // only exists once something is ticked or marked. In English the Polish
+  // steps are off, so the persona's ticked custom goal is what answers.
   await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
   if ((await page.locator('[data-status="checked"], [data-status="not-my-path"]').count()) === 0) {
     throw new Error('roadmap has no ticked or not-my-path goal after filling every feature');
@@ -7598,8 +7592,13 @@ try {
       throw new Error(key + ' is still switched here as well as in Today\'s editor');
     }
   }
-  /* Remaining prompts that came off Settings' Tracking section. */
-  for (const key of ['guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
+  /* Remaining prompts that came off Settings' Tracking section. The
+     roadmap's milestone prompt moved onto the roadmap (functional audit
+     ticket 34). */
+  if (await page.locator('[data-prompt="roadmap-milestone-sync"]').count()) {
+    throw new Error('the roadmap milestone prompt is still on the notifications screen');
+  }
+  for (const key of ['guided-prompts', 'wear-duration-cue']) {
     if (!(await page.locator(`[data-prompt="${key}"]`).count())) {
       throw new Error('the ' + key + ' prompt did not arrive with the rest');
     }
@@ -7878,12 +7877,9 @@ try {
 await flow('a roadmap goal reworded and removed', async () => {
 try {
   await fresh('/transition/roadmap');
-  await page.waitForSelector('[data-goal]');
-
-  // Ticket 54: only the current track's panel starts in front; medical's
-  // own add-goal button needs its segment shown first.
-  await page.locator('[data-segment="medical"]').click();
-  await page.locator('[data-add-goal="medical"]').click();
+  // The built-in goal at the end of this flow needs the Polish steps on.
+  await polishSteps(true);
+  await page.locator('[data-add-goal]').click();
   await page.getByPlaceholder('Your step').fill('Get the referal reissued');
   await page.getByRole('button', { name: 'Add goal' }).click();
 
@@ -7932,7 +7928,6 @@ try {
   // The goal's sheet lists it, and the confirmation counts it before it goes.
   await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
   await booted();
-  await page.locator('[data-segment="medical"]').click();
   await page.locator(`[data-open-goal="${goalId}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.locator('[data-delete-goal]').click();
@@ -7973,9 +7968,8 @@ try {
      rendered proves nothing. */
   await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
   await booted();
-  await page.locator('[data-segment="medical"]').click();
-  await page.locator('[data-open-goal="pl-medical-keep-opinions"]').click();
-  await page.waitForSelector('[data-goal-sheet-status="pl-medical-keep-opinions"]');
+  await page.locator('[data-open-goal="pl-legal-final-copy"]').click();
+  await page.waitForSelector('[data-goal-sheet-status="pl-legal-final-copy"]');
   if (await page.locator('[data-save-goal]').count()) throw new Error('a built-in goal offers a way to reword it');
   if (await page.locator('[data-delete-goal]').count()) throw new Error('a built-in goal offers a way to delete it');
 
