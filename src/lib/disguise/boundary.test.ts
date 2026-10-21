@@ -22,6 +22,11 @@ const outsideOwners = new Set([
   'src/lib/disguise/identity.ts',
   'src/routes/onboarding/+page.svelte'
 ]);
+const nonPreferenceDisguiseReads = new Map([
+  ['src/lib/android/plugin-registry.ts', 'androidPluginOwners.disguise'],
+  ['src/lib/disguise/android-bridge.ts', 'androidPluginOwners.disguise'],
+  ['src/lib/onboarding/complete.ts', 'completion.disguise']
+]);
 
 function files(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -34,9 +39,13 @@ describe('disguise boundary', () => {
   it('reads disguise only in outside-surface owners', () => {
     const readers = files(source)
       .filter((path) => /\.(svelte|ts|html)$/.test(path) && !/\.test\.ts$/.test(path))
-      .filter((path) => /\b(?:prefs|preferences)\s*(?:(?:\?\.|\.)\s*disguise\b|(?:\?\.)?\s*\[\s*['"]disguise['"]\s*\])|\b(?:const|let)\s*\{[^}]*\bdisguise\b[^}]*\}\s*=\s*(?:prefs|preferences)\b/.test(
-        readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|\/\/[^\n]*/g, '')
-      ))
+      .filter((path) => {
+        const name = `src/${relative(source, path)}`;
+        const otherProperty = nonPreferenceDisguiseReads.get(name);
+        const sourceCode = readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|\/\/[^\n]*/g, '');
+        const code = otherProperty ? sourceCode.replace(otherProperty, '') : sourceCode;
+        return /(?:\?\.|\.)\s*disguise\b|(?:[\w$]|\]|\))\s*(?:\?\.)?\s*\[\s*['"`]disguise['"`]\s*\]|\{[^}]*\bdisguise\b[^}]*\}\s*=/.test(code);
+      })
       .map((path) => `src/${relative(source, path)}`);
     expect(readers.filter((path) => !outsideOwners.has(path))).toEqual([]);
   });
