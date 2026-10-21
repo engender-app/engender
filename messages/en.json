@@ -75,6 +75,7 @@
   "affirmations_row_title": "Affirmations",
   "affirmations_save": "Save",
   "affirmations_show_aria": "Show {line}",
+  "agenda_appointments_more": "+{count} more",
   "agenda_more": "{count} more this month",
   "agenda_passed_dose": "A scheduled dose on {date}",
   "ak_cancelled": "Cancelled.",

@@ -63,7 +63,7 @@
   import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
   import { readAgenda, projectAgenda } from '$lib/data/agendaReads';
-  import { passedSlotSentence } from '$lib/data/agenda';
+  import { passedSlotSentence, type AgendaItem } from '$lib/data/agenda';
   import { fallbackReading, pinnedRows, pinReadScope, shownAgendaKinds, type PinnedRow } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { readRowForward } from '$lib/data/rowForwardReads';
@@ -299,6 +299,17 @@
     if (epochDay === today) return m.today();
     if (epochDay === today + 1) return m.tomorrow();
     return weekdayDay(epochDay);
+  }
+  /** A row's second line: when it falls, and for today's appointment where
+      it is and how many others share the day (functional-audit ticket 14,
+      which folded the appointment-today tile into this row). */
+  function agendaLine(item: AgendaItem): string {
+    const when = agendaWhen(item.epochDay);
+    if (!item.appointment) return when;
+    const { place, more } = item.appointment;
+    return [when, place, more > 0 ? m.agenda_appointments_more({ count: String(more) }) : null]
+      .filter((part) => part)
+      .join(' · ');
   }
   const shortWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'short' });
   const dayNumber = (epochDay: number) => fmtDay(epochDay, { day: 'numeric' });
@@ -951,8 +962,8 @@
               <ListRow
                 key={item.key}
                 href={item.route}
-                title={label.title}
-                subtitle={agendaWhen(item.epochDay)}
+                title={item.appointment?.title ?? label.title}
+                subtitle={agendaLine(item)}
                 data-agenda-item={item.kind}
                 data-agenda-day={item.epochDay}
               >

@@ -75,6 +75,7 @@
   "affirmations_row_title": "Afirmacje",
   "affirmations_save": "Zapisz",
   "affirmations_show_aria": "Pokaż {line}",
+  "agenda_appointments_more": "+{count} kolejne",
   "agenda_more": "Jeszcze {count} w tym miesiącu",
   "agenda_passed_dose": "Zaplanowana dawka na {date}",
   "ak_cancelled": "Anulowano.",

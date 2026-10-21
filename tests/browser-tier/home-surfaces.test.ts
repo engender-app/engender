@@ -280,6 +280,13 @@ export async function homeContracts(): Promise<Result[]> {
     unlockEpochDay: today - 1,
     text: 'Sealed contract letter'
   });
+  await f.journal.appointments.upsertAppointment({
+    epochDay: today,
+    procedureId: null,
+    kind: 'Contract endocrinologist',
+    place: 'Contract clinic',
+    note: null
+  });
   const initialReads: [string, string, number?][] = [
     ['wearSessions', 'getRunningSession'],
     ['regimen', 'getEpisodes'],
@@ -294,7 +301,8 @@ export async function homeContracts(): Promise<Result[]> {
     ['journalingPauses', 'getPauses'],
     ['areaStates', 'getAreaStates'],
     ['measurements', 'countAll'],
-    ['measurements', 'lastWriteEpochDay']
+    ['measurements', 'lastWriteEpochDay'],
+    ['appointments', 'getDayRecords']
   ];
   for (const [area, operation, day] of initialReads) {
     const held = heldReads(
@@ -337,6 +345,14 @@ export async function homeContracts(): Promise<Result[]> {
     return !!(
       wear.compareDocumentPosition(node(root(), '[data-home-agenda]')) &
       Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+  await check("Agenda's today row names today's appointment and its place", () => {
+    const row = node(root(), `[data-agenda-item="appointment"][data-agenda-day="${today}"]`);
+    return (
+      row.textContent!.includes('Contract endocrinologist') &&
+      row.textContent!.includes('Contract clinic') &&
+      !root().querySelector('[data-live-tile="appointment-today"]')
     );
   });
   await check('Backup notice stays below mood strip and out of agenda', () => {

@@ -72,6 +72,7 @@
   "affirmations_row_title": {"owner":42,"sources":["src/lib/components/searchHitRows.ts","src/routes/settings/+page.svelte","src/routes/settings/affirmations/+page.svelte"]},
   "affirmations_save": {"owner":42,"sources":["src/routes/settings/affirmations/+page.svelte"]},
   "affirmations_show_aria": {"owner":42,"sources":["src/routes/settings/affirmations/+page.svelte"]},
+  "agenda_appointments_more": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "agenda_more": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "agenda_passed_dose": {"owner":39,"sources":["src/lib/data/agenda.ts"]},
   "ak_cancelled": {"owner":41,"sources":["src/lib/components/AndroidKeyGate.svelte","src/lib/components/SessionUnlock.svelte"]},

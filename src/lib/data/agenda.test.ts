@@ -60,6 +60,7 @@ function input(over: Partial<AgendaInput> = {}): AgendaInput {
     todayEpochDay: TODAY,
     marks: [],
     doses: { reason: 'noEpisode' },
+    todayAppointments: [],
     ...over
   };
 }

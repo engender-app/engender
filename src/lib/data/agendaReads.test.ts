@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { readAgenda as readFacts, projectAgenda, type AgendaAreas } from './agendaReads.ts';
 import { AGENDA_DAYS, AGENDA_PASSED_DAYS } from './agenda.ts';
 import { DAY_AHEAD_MARK_KINDS, type DayAheadMark, type DayAheadMarkKind } from './journal/dayAhead.ts';
+import type { AppointmentDayRecord } from './journal/appointments.ts';
 
 async function readAgenda(
   areas: AgendaAreas,
@@ -23,8 +24,9 @@ type Window = { fromEpochDay: number; toEpochDay: number };
 
 /** Areas that record what was asked of them. Anything the reader reaches
     that is not here is a TypeError and a failing test. */
-function recordingAreas(marks: DayAheadMark[] = []) {
+function recordingAreas(marks: DayAheadMark[] = [], todayAppointments: AppointmentDayRecord[] = []) {
   const asked: string[] = [];
+  const appointmentDays: number[] = [];
   const dayAheadCalls: (Window & { todayEpochDay: number })[] = [];
   const doseWindows: Window[] = [];
   const areas = {
@@ -41,9 +43,16 @@ function recordingAreas(marks: DayAheadMark[] = []) {
         doseWindows.push(window);
         return { reason: 'noEpisode' as const };
       }
+    },
+    appointments: {
+      getDayRecords: async (epochDay: number) => {
+        asked.push('appointments');
+        appointmentDays.push(epochDay);
+        return todayAppointments;
+      }
     }
   } as unknown as AgendaAreas;
-  return { areas, asked, dayAheadCalls, doseWindows };
+  return { areas, asked, dayAheadCalls, doseWindows, appointmentDays };
 }
 
 test('the forward read is dayAhead, asked for the thirty days from today', async () => {
@@ -119,15 +128,62 @@ test('the schedule is asked about the week behind, ending yesterday', async () =
   assert.deepEqual(doseWindows, [{ fromEpochDay: TODAY - AGENDA_PASSED_DAYS, toEpochDay: TODAY - 1 }]);
 });
 
-test('both reads are issued before the first await, so a live query sees both', async () => {
+test('every read is issued before the first await, so a live query sees all three', async () => {
   // What lets ticket 13 mount this in an unseeded `liveQuery`: dependencies
   // are discovered from the operations a closure calls, and a read sitting
   // past an earlier `await` is discovered a re-run late (WAITING_TABLES's
-  // own reason for existing). Both of these are in flight in the same tick.
+  // own reason for existing). All of these are in flight in the same tick.
   const { areas, asked } = recordingAreas();
   const pending = readAgenda(areas, TODAY);
-  assert.deepEqual(asked, ['dayAhead', 'doses']);
+  assert.deepEqual(asked, ['dayAhead', 'doses', 'appointments']);
   await pending;
+});
+
+/* Functional-audit ticket 14: the appointment-today tile is gone, and what
+   it said - which appointment, and where - is the agenda's today row now.
+   A mark is still a day and a kind (ADR-0067); only today's appointment row
+   names the visit, because today is the one day the person needs the name
+   and the place rather than the date. */
+const endo: AppointmentDayRecord = {
+  id: 'appt-1',
+  kind: 'Endocrinologist',
+  place: 'City clinic',
+  procedureId: null,
+  procedureName: null
+};
+
+test("today's appointment row names the appointment and its place", async () => {
+  const { areas, appointmentDays } = recordingAreas(
+    [
+      { kind: 'appointment', epochDay: TODAY },
+      { kind: 'appointment', epochDay: TODAY + 5 }
+    ],
+    [endo]
+  );
+  const projection = await readAgenda(areas, TODAY);
+  assert.deepEqual(appointmentDays, [TODAY]);
+  assert.deepEqual(projection?.shown[0].appointment, { title: 'Endocrinologist', place: 'City clinic', more: 0 });
+  assert.equal(projection?.shown[1].appointment, undefined);
+});
+
+test("today's appointment row falls back to the procedure, then to no name", async () => {
+  const marks: DayAheadMark[] = [{ kind: 'appointment', epochDay: TODAY }];
+  const withProcedure = await readAgenda(
+    recordingAreas(marks, [{ ...endo, kind: null, place: null, procedureName: 'Vaginoplasty' }]).areas,
+    TODAY
+  );
+  assert.deepEqual(withProcedure?.shown[0].appointment, { title: 'Vaginoplasty', place: null, more: 0 });
+  const bare = await readAgenda(recordingAreas(marks, [{ ...endo, kind: null, place: null }]).areas, TODAY);
+  assert.deepEqual(bare?.shown[0].appointment, { title: null, place: null, more: 0 });
+});
+
+test("today's appointment row counts a second appointment on the same day", async () => {
+  const { areas } = recordingAreas(
+    [{ kind: 'appointment', epochDay: TODAY }],
+    [endo, { ...endo, id: 'appt-2', kind: 'Psychologist', place: null }]
+  );
+  const projection = await readAgenda(areas, TODAY);
+  assert.deepEqual(projection?.shown[0].appointment, { title: 'Endocrinologist', place: 'City clinic', more: 1 });
 });
 
 
@@ -144,5 +200,5 @@ test('dose-panel coverage changes project the same facts without another read', 
   assert.deepEqual(covered?.shown.map((row) => row.kind), ['appointment', 'milestone', 'letterUnlock']);
   assert.deepEqual(covered?.folded, []);
   assert.equal(projectAgenda(facts, DAY_AHEAD_MARK_KINDS, false)?.shown[0].kind, 'doseSlot');
-  assert.deepEqual(asked, ['dayAhead', 'doses']);
+  assert.deepEqual(asked, ['dayAhead', 'doses', 'appointments']);
 });
