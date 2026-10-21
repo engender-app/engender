@@ -18,6 +18,7 @@ writeFileSync(join(dir, 'README.md'), '# ADRs\n\n## Tombstones\n\n- ADR-0080: mo
 const index = readAdrIndex(dir);
 // Built at runtime so this file never cites a number itself.
 const madeUp = 'ADR-' + '9999';
+const draftCite = (slug: string) => 'ADR ' + 'draft-' + slug;
 
 describe('the citation guard', () => {
   it('flags a citation with no file and no tombstone', () => {
@@ -27,7 +28,7 @@ describe('the citation guard', () => {
     expect(unresolved(['ADR-0080', 'ADR-0081'], index)).toEqual([]);
   });
   it('accepts a draft citation that has its draft file, flags one that has not', () => {
-    expect(unresolved(citationsIn('ADR draft-next-thing, docs/adr/draft-nothing-here'), index)).toEqual(['draft-nothing-here']);
+    expect(unresolved(citationsIn(`${draftCite('next-thing')}, ${draftCite('nothing-here')}`), index)).toEqual(['draft-nothing-here']);
   });
   it('does not take a tombstone mentioned mid-sentence for an index line', () => {
     writeFileSync(join(dir, 'README.md'), '# ADRs\n\nsee ADR-0042 for the story\n');
