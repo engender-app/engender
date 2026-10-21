@@ -24,9 +24,11 @@
      short of.
 
      **Open and collapsed.** A procedure still running draws all of it. One
-     past the recovery cutoff drops the block and the strip: its phases are
-     still on the rail, but the number belongs to a reading that is still
-     live, and an operation four hundred days ago has none. What it keeps
+     the person archived after its operation drops the block and the strip:
+     its phases are still on the rail, but the number belongs to a reading
+     that is still live, and an operation they have filed away has none.
+     Only their own switch collapses a card (functional-audit ticket 24); no
+     number of days since surgery does. What it keeps
      instead is the date and the day count. That density difference is what lets
      several running procedures fit at once, which the screen's own intro
      promises.
@@ -74,7 +76,7 @@
     [key: string]: unknown;
   } = $props();
 
-  let phase = $derived<ProcedurePhase>(procedurePhase(procedure.surgeryEpochDay, today));
+  let phase = $derived<ProcedurePhase>(procedurePhase(procedure.surgeryEpochDay, today, procedure.archived));
   let recDay = $derived(recoveryDay(procedure.surgeryEpochDay, today));
 
   /** Everything but the archived phase, which is the one with no live
@@ -205,9 +207,9 @@
       <span class="proc-head">
         <span class="proc-name">{procedure.name}</span>
         <!-- An archived card only ever sits under the "Archived procedures"
-             heading, so its pill would say the heading again. A card the
-             person archived by hand keeps its pill: Recovery under that
-             heading still says something the heading does not. -->
+             heading, so its pill would say the heading again. One archived
+             before its operation keeps its pill: Pre-op under that heading
+             still says something the heading does not. -->
         {#if phase !== 'archived'}
           <span class="kit-pill proc-phase-pill" data-phase-pill={phase}>{phaseLabel}</span>
         {/if}
