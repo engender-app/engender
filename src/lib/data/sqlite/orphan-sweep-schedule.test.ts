@@ -36,9 +36,30 @@ test('a retry written by another tab is not cleared by this sweep', () => {
     setItem: (key: string, value: string) => { values.set(key, value); }
   };
   markOrphanSweepComplete(100, storage);
+  markOrphanSweepDue(storage);
   const started = orphanSweepRequestVersion(storage);
-  const [key] = values.keys();
-  storage.setItem(key, 'retry:other-tab');
+  const retryKey = [...values.keys()].find(key => key.endsWith('-retry'))!;
+  storage.setItem(retryKey, 'other-tab');
+  markOrphanSweepComplete(101, storage, started);
+  expect(shouldSweepOrphans(101, storage)).toBe(true);
+});
+
+test('a retry between the final read and completion write remains due', () => {
+  const values = new Map<string, string>();
+  let injectRetry = false;
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      if (injectRetry && value === '101') {
+        injectRetry = false;
+        markOrphanSweepDue(storage);
+      }
+      values.set(key, value);
+    }
+  };
+  markOrphanSweepComplete(100, storage);
+  const started = orphanSweepRequestVersion(storage);
+  injectRetry = true;
   markOrphanSweepComplete(101, storage, started);
   expect(shouldSweepOrphans(101, storage)).toBe(true);
 });
