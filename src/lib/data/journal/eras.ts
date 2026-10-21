@@ -1,8 +1,7 @@
 /* The era area (phase 6 ticket 01, ADR-0049, CONTEXT: "Era"). Rows only:
    whether a day falls in an era, and what an open bound resolves to, are
    `eras.ts`'s pure functions, read from here by the editor while someone is
-   still typing and by this area before it writes - the same split
-   journalingPauses.ts and journalingPause.ts already have.
+   still typing and by this area before it writes.
 
    No `key` column and no built-ins: an era is the person's own name for
    their own stretch of time, so nothing ships seeded and a minted uuid is

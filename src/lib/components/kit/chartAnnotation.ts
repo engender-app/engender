@@ -29,7 +29,6 @@ const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
   regimen: m.chart_annotation_regimen,
   recovery: m.chart_annotation_recovery,
   dosePause: m.chart_annotation_dose_pause,
-  journalingPause: m.chart_annotation_journaling_pause,
   tryout: m.chart_annotation_tryout,
   era: m.chart_annotation_era,
   /* Phase 8 features ticket 59, ADR-0066: what a past appointment is called

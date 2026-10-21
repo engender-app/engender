@@ -199,6 +199,7 @@ function portableWith(marker: string) {
     language: values.language,
     checkInEnabled: values.checkInEnabled,
     checkInTime: values.checkInTime,
+    checkInPausedThrough: values.checkInPausedThrough,
     preferredLabUnits: {},
     journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
     hairAnchorEpochDay: values.hairAnchorEpochDay,

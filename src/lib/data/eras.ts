@@ -2,8 +2,7 @@
    named stretch of the person's own timeline, carrying a name and two
    bounds either of which may be absent.
 
-   Kept apart from journal/eras.ts (the CRUD area) the same way
-   journalingPause.ts sits beside journal/journalingPauses.ts: the two
+   Kept apart from journal/eras.ts (the CRUD area): the two
    invariants below have to be answerable by the editor while someone is
    still typing, and by the area before it writes, and those are the same
    rule rather than two copies of it drifting apart.
@@ -26,8 +25,8 @@ export interface EraSpan {
   name: string;
   /** Absent means the era reaches back before the journal does. */
   startEpochDay: number | null;
-  /** Absent means the era is still running, the same way a JournalingPause
-      and a RegimenEpisode say it. */
+  /** Absent means the era is still running, the same way a RegimenEpisode
+      says it. */
   endEpochDay: number | null;
 }
 

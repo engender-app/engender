@@ -51,7 +51,6 @@ async function populated() {
   const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
   const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   const cycleEvent = await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
-  const journalingPause = await journal.journalingPauses.upsertPause({ startEpochDay: 19500, endEpochDay: 19510 });
   const personalEffect = await journal.personalEffects.upsertMarker({
     effect: 'breast_development',
     firstNoticedEpochDay: 19180
@@ -166,7 +165,6 @@ async function populated() {
     stock,
     sideEffect,
     cycleEvent,
-    journalingPause,
     personalEffect,
     tryout,
     feltSense,
@@ -249,7 +247,7 @@ test('the state a user put on a built-in row travels with it', async () => {
   assert.equal(activities.tags.find((t) => t.id === 'a-therapy')!.label, 'therapy session');
 });
 
-test('milestones, lab results, tally events, side effects, cycle events, journaling pauses, reminders and regimen episodes travel whole', async () => {
+test('milestones, lab results, tally events, side effects, cycle events, reminders and regimen episodes travel whole', async () => {
   const {
     journal,
     milestone,
@@ -259,7 +257,6 @@ test('milestones, lab results, tally events, side effects, cycle events, journal
     tally,
     sideEffect,
     cycleEvent,
-    journalingPause,
     personalEffect,
     reminder,
     episode
@@ -316,9 +313,6 @@ test('milestones, lab results, tally events, side effects, cycle events, journal
     { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null }
   ]);
   assert.deepEqual(snapshot.journal.cycleEvents, [{ id: cycleEvent, kind: 'spotting', epochDay: 20000 }]);
-  assert.deepEqual(snapshot.journal.journalingPauses, [
-    { id: journalingPause, startEpochDay: 19500, endEpochDay: 19510 }
-  ]);
   assert.deepEqual(snapshot.journal.personalEffects, [
     { id: personalEffect, effect: 'breast_development', firstNoticedEpochDay: 19180 }
   ]);

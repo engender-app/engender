@@ -71,8 +71,8 @@
   const ANNOTATION_SOURCES: ChartAnnotationSource[] = [
     { id: 'e', kind: 'regimen', name: 'estradiol valerate', startEpochDay: -40, endEpochDay: 250 },
     { id: 's', kind: 'regimen', name: 'spironolactone', startEpochDay: 280, endEpochDay: null },
-    { id: 'p', kind: 'journalingPause', name: null, startEpochDay: 96, endEpochDay: 110 },
-    { id: 'q', kind: 'journalingPause', name: null, startEpochDay: 2, endEpochDay: 4 },
+    { id: 'p', kind: 'dosePause', name: 'estradiol valerate', startEpochDay: 96, endEpochDay: 110 },
+    { id: 'q', kind: 'dosePause', name: 'estradiol valerate', startEpochDay: 2, endEpochDay: 4 },
     { id: 'm', kind: 'milestone', name: 'first shot', startEpochDay: 3, endEpochDay: null },
     { id: 'n', kind: 'milestone', name: 'name change filed', startEpochDay: 4, endEpochDay: null },
     { id: 'v', kind: 'milestone', name: 'voice therapy', startEpochDay: 5, endEpochDay: null },

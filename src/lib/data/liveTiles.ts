@@ -23,12 +23,10 @@ import type {
   DoseEvent,
   DosePause,
   DoseSchedule,
-  JournalingPause,
   Procedure,
   RegimenEpisode,
   WearSession
 } from './types';
-import { pauseCoversDay as isJournalingPauseOn } from './journalingPause';
 import { expectedAmountOn, isDailySchedule } from './doseSchedule';
 import { activeEpisodesAt, attributeDose } from './regimenEpisode';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
@@ -95,30 +93,6 @@ export function shouldShowPatchScheduleTile(params: {
   return null;
 }
 
-interface PauseActiveBannerResult {
-  pause: JournalingPause;
-  resumeEpochDay: number | null;
-}
-
-/* shouldShowPauseActiveBanner stays exported only for its own test (AU-09
-   test-only review). */
-export function shouldShowPauseActiveBanner(params: {
-  pauses: readonly JournalingPause[];
-  todayEpochDay: number;
-  enabled: boolean;
-  snoozed: boolean;
-}): PauseActiveBannerResult | null {
-  if (!params.enabled || params.snoozed) return null;
-
-  const activePause = params.pauses.find((p) => isJournalingPauseOn(p, params.todayEpochDay));
-  if (!activePause) return null;
-
-  return {
-    pause: activePause,
-    resumeEpochDay: activePause.endEpochDay != null ? activePause.endEpochDay + 1 : null
-  };
-}
-
 /* ------------------------------------------------------------------------
    Home's grid (phase 8 deepening ticket 07)
 
@@ -149,8 +123,7 @@ export type LiveTileKind =
   | 'surgery-countdown'
   | 'safe-space-nudge'
   | 'ready-letter'
-  | 'patch-schedule-tile'
-  | 'pause-active-banner';
+  | 'patch-schedule-tile';
 
 /** The order Home draws them in, and the only place that order is written.
 
@@ -165,8 +138,7 @@ export const LIVE_TILE_ORDER = [
   'surgery-countdown',
   'safe-space-nudge',
   'ready-letter',
-  'patch-schedule-tile',
-  'pause-active-banner'
+  'patch-schedule-tile'
 ] as const satisfies readonly LiveTileKind[];
 
 /** How much of the screen a tile is worth (phase 8 UX ticket 01, ADR-0055).
@@ -181,7 +153,7 @@ export const LIVE_TILE_ORDER = [
       agenda's today row since functional-audit ticket 14, not a tile.
     - `moment` is something that has happened and is waiting: a letter that
       unlocked, a bad moment Safe Space can answer, the days after a
-      surgery, a break that is running.
+      surgery.
     - `dormant` is a thing nothing is asking for. No live tile sits there
       since functional-audit tickets 05 and 14 cut the nudges and the tryout
       tile; the tier stays so the next quiet nudge has a place.
@@ -210,8 +182,7 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'dose-panel': 'moment',
   'surgery-countdown': 'moment',
   'safe-space-nudge': 'moment',
-  'ready-letter': 'moment',
-  'pause-active-banner': 'moment'
+  'ready-letter': 'moment'
 };
 
 /** How many tiles Home draws at their own weight. The rest fold into one
@@ -350,7 +321,6 @@ export interface HomeTileReads {
   /** Yesterday's logged timestamps, used only for the automatic-log notice.
       Schedule pairing reads its own tolerance-widened window above. */
   yesterdayDoses: readonly DoseEvent[];
-  journalingPauses: readonly JournalingPause[];
 }
 
 /** What a tile's controls do. Everything a tile can start except opening the
@@ -361,7 +331,6 @@ export interface HomeTileActions {
   stopWear: (session: WearSession) => void;
   dismissSafeSpace: (entryId: number) => void;
   openLetterDismiss: () => void;
-  resumePause: (pauseId: string, startEpochDay: number) => void;
   snooze: (kind: LiveTileKind) => void;
 }
 
@@ -373,8 +342,6 @@ export interface HomeTileFormat {
   number?: (value: number) => string;
   /** A full date - the day a letter unlocked. */
   fullDay: (epochDay: number) => string;
-  /** A day and a short month - when a pause ends. */
-  shortDay: (epochDay: number) => string;
   /** A weekday and a date - "Monday 21 September" - which is how the agenda
       band on the same screen writes a day still to come. Its own format
       rather than the band's `agendaWhen`, which says "Today" and "Tomorrow"
@@ -656,36 +623,6 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
           href: '/care/doses?add=1'
         },
         dismiss: dismissSnooze('patch-schedule-tile')
-      };
-    },
-
-    'pause-active-banner': (gate) => {
-      const qualifying = shouldShowPauseActiveBanner({
-        pauses: reads.journalingPauses,
-        todayEpochDay: today,
-        enabled: gate.enabled,
-        snoozed: gate.snoozed
-      });
-      if (!qualifying) return null;
-      const { pause } = qualifying;
-      return {
-        key: 'pause-active-banner',
-        tileKey: 'pause-active',
-        attrs: { 'data-pause-active-tile': true },
-        title: m.tile_pause_active_title(),
-        value: m.tile_pause_value(),
-        note:
-          pause.endEpochDay != null
-            ? m.tile_pause_until_date({ date: format.shortDay(pause.endEpochDay) })
-            : m.tile_pause_ongoing(),
-        href: '/settings/journaling-pause',
-        action: {
-          icon: 'play',
-          text: m.journaling_pause_resume(),
-          label: m.journaling_pause_resume(),
-          onclick: () => actions.resumePause(pause.id, pause.startEpochDay)
-        },
-        dismiss: dismissSnooze('pause-active-banner')
       };
     }
   };

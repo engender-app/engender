@@ -2132,7 +2132,6 @@ const HYDRATION_SCENES = [
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
-  { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },
   /* No live-tiles scene: deepening ticket 09 merged that screen into
      /settings/notifications, and the route now client-replaces to it, so
      a scene pinned to the old path can only ever time out - the

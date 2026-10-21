@@ -1,9 +1,8 @@
 /* Whether a dated span covers a day, or overlaps a range (phase 8 deepening
-   ticket 11). eras.ts's eraCoversDay, journalingPause.ts's pauseCoversDay,
-   doseSchedule.ts's pauseCoversDay and regimenEpisode.ts's isActiveOn all
-   answered this same question over their own row, and two more inline
-   copies differed by one token nothing named. This module hoists the
-   arithmetic only - the four modules keep their own types, their own
+   ticket 11). eras.ts's eraCoversDay, doseSchedule.ts's pauseCoversDay and
+   regimenEpisode.ts's isActiveOn all answered this same question over their
+   own row, and two more inline copies differed by one token nothing named.
+   This module hoists the arithmetic only - the modules keep their own types, their own
    wrappers where a domain name reads better at the call site, and their own
    headers, because ADR-0055's live invariant is which computation reads
    which pause, not the row shape, and a merged type would make that

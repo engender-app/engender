@@ -369,7 +369,6 @@ test('tablesWrittenBy answers with the classified tables, and refuses anything e
 test('tablesReadBy answers with the tables a read depends on, and refuses anything else', () => {
   // What a liveQuery resolves its dependencies from, instead of asking the
   // screen to name tables (phase 5 audit ticket 03).
-  expect(tablesReadBy('journalingPauses', 'getPauses')).toEqual(['journalingPause']);
   expect(() => tablesReadBy('entries', 'upsertEntry')).toThrow(/not a classified read/);
   expect(() => tablesReadBy('nosuchArea', 'getEntry')).toThrow(/not a classified read/);
 });

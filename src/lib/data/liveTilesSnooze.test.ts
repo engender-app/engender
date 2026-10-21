@@ -56,9 +56,9 @@ describe('liveTilesSnooze', () => {
 
   it('snoozes tile for custom duration', () => {
     const duration = 1000 * 60 * 60 * 48; // 48 hours
-    snoozeTile('pause-active-banner', duration, now, storage);
-    expect(isTileSnoozed('pause-active-banner', now + 1000 * 60 * 60 * 24, storage)).toBe(true);
-    expect(isTileSnoozed('pause-active-banner', now + duration + 1, storage)).toBe(false);
+    snoozeTile('safe-space-nudge', duration, now, storage);
+    expect(isTileSnoozed('safe-space-nudge', now + 1000 * 60 * 60 * 24, storage)).toBe(true);
+    expect(isTileSnoozed('safe-space-nudge', now + duration + 1, storage)).toBe(false);
   });
 
   it('clears snooze explicitly', () => {

@@ -323,24 +323,6 @@ try {
   assert.equal(await page.locator('#tr-feeling-note').inputValue(), 'Typed while saving', 'a note typed during the write is kept');
   console.log('PASS felt sense: failure keeps the reading, double tap saves one');
 
-  // UI 17: a journaling pause, started and resumed.
-  await navigate('/settings/journaling-pause');
-  await page.locator('[data-new-pause]').click();
-  await fault('journalingPauses', 'upsertPause');
-  const confirmPause = page.locator('[data-confirm-pause]');
-  await failsThenRetries(confirmPause);
-  const beforePause = await doubleTapWhilePending(confirmPause, page.locator('#pause-start'));
-  const resume = page.locator('[data-resume-pause]');
-  await resume.waitFor();
-  assert.equal(await calls(), beforePause + 1, 'a double tap starts one pause');
-  // Started today, so resuming deletes it rather than ending it yesterday.
-  await fault('journalingPauses', 'deletePause');
-  await failsThenRetries(resume);
-  const beforeResume = await doubleTapWhilePending(resume);
-  await page.locator('[data-new-pause]').waitFor();
-  assert.equal(await calls(), beforeResume + 1, 'a double tap resumes once');
-  console.log('PASS journaling pause: start and resume say a failure, double tap writes once');
-
   assert.deepEqual(await page.evaluate(() => window.unhandled), [], 'no unhandled rejections');
   assert.deepEqual(errors, [], 'no page errors');
   console.log('PASS no unhandled rejection or page error across the run');

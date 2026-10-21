@@ -181,11 +181,6 @@ const ROWS = {
     kind: oneOf(CYCLE_EVENT_KINDS),
     epochDay: numeric
   },
-  journalingPauses: {
-    id: identity,
-    startEpochDay: numeric,
-    endEpochDay: nullable(numeric)
-  },
   eras: {
     id: identity,
     name: text,

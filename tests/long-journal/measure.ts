@@ -782,7 +782,6 @@ export async function measureLongJournal(
       schedules: journal.doses.getSchedules(),
       dosePauses: journal.doses.getPauses(),
       todayDoses: journal.doses.getDoses(today, today),
-      journalingPauses: journal.journalingPauses.getPauses(),
       areaStates: journal.areaStates.getAreaStates(),
       entryCount: journal.entries.countAll(),
       journalBounds: journal.eras.getJournalBounds(),

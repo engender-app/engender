@@ -319,9 +319,8 @@
     padding: var(--space-2) var(--space-4) var(--space-3) var(--space-3);
   }
 
-  /* Two time fields side by side, the shape journaling-pause's two date
-     fields already use, so the window reads as one range rather than as two
-     unrelated settings. */
+  /* Two time fields side by side, so the window reads as one range rather
+     than as two unrelated settings. */
   .quiet-window {
     display: grid;
     /* minmax(0, 1fr), not 1fr: a time field's min-content width is a text

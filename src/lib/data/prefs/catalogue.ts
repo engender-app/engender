@@ -156,8 +156,6 @@ export interface PreferenceValues {
       than about this installation (ADR-0003). */
   voiceComfortLowHz: number | null;
   voiceComfortHighHz: number | null;
-  /** Whether the pause-active banner live tile is ever shown (phase 5 deepening ticket 03). */
-  pauseActiveBannerEnabled: boolean;
   /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
       stops the Home card and the recap read behind it, rather than hiding a
       card over work that still runs.
@@ -428,7 +426,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   voiceBenchmarkPassage: '',
   voiceComfortLowHz: null,
   voiceComfortHighHz: null,
-  pauseActiveBannerEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
   remindersEnabled: true,
@@ -524,7 +521,6 @@ export const DEVICE_LOCAL_KEYS = [
   'stockNoticeEnabled',
   'patchScheduleTileEnabled',
   'voiceBenchmarkPassage',
-  'pauseActiveBannerEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
   'remindersEnabled',

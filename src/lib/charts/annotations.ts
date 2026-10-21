@@ -95,7 +95,6 @@ export type ChartAnnotationKind =
   | 'regimen'
   | 'recovery'
   | 'dosePause'
-  | 'journalingPause'
   | 'tryout'
   | 'era'
   | 'appointment'
@@ -115,7 +114,6 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   regimen: 'span',
   recovery: 'span',
   dosePause: 'span',
-  journalingPause: 'span',
   tryout: 'span',
   era: 'point',
   appointment: 'point',
@@ -144,14 +142,14 @@ export type ChartAnnotationDetail =
 /** One dated thing, as the query hands it over: stored days, untouched.
 
     `endEpochDay` is null on every point event, and on a stretch that has not
-    finished - the same meaning `RegimenEpisode`, `DosePause`, `Tryout` and
-    `JournalingPause` all give it in types.ts. */
+    finished - the same meaning `RegimenEpisode`, `DosePause` and `Tryout`
+    all give it in types.ts. */
 export interface ChartAnnotationSource {
   id: string;
   kind: ChartAnnotationKind;
   /** What the record calls itself: a milestone's name, an episode's drug, a
       procedure's name, a tryout's label. Null where the record has no name
-      of its own, which is a journaling pause. */
+      of its own, such as a dose pause whose episode is gone. */
   name: string | null;
   startEpochDay: number;
   endEpochDay: number | null;

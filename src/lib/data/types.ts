@@ -632,17 +632,6 @@ export interface DosePause {
   reason: PauseReason;
 }
 
-/** A dated break from journaling (phase 5 ticket 21, CONTEXT: "Journaling
-    pause"). No episode reference: unlike DosePause above, this has nothing
-    to do with a regimen. Null end day means the pause is still running, the
-    same reasoning DosePause.endEpochDay gives. Whether a day falls inside
-    one is `journalingPause.ts`'s `pauseCoversDay`. */
-export interface JournalingPause {
-  id: string;
-  startEpochDay: number;
-  endEpochDay: number | null;
-}
-
 /** A named stretch of the person's own timeline (phase 6 ticket 01,
     ADR-0049, CONTEXT: "Era") - "before I knew", "first year", "after I
     moved". Owns a name and two bounds and nothing else: no colour, no mute
@@ -659,7 +648,7 @@ export interface Era {
   /** Absent means the era reaches back before the journal does. */
   startEpochDay: number | null;
   /** Absent means it is still running, the same reasoning
-      JournalingPause.endEpochDay gives. */
+      DosePause.endEpochDay gives. */
   endEpochDay: number | null;
 }
 

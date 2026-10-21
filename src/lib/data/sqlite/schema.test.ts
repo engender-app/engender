@@ -203,7 +203,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 102);
+  assert.equal(db.getUserVersion(), 103);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -258,6 +258,15 @@ test('affirmation and revisit tables are removed from migrated journals', async 
   assert.ok(!tables.includes('affirmation'));
   assert.ok(!tables.includes('revisit'));
   assert.ok(tables.includes('letter'));
+  await db.close();
+});
+
+test('the journaling pause table is gone from migrated journals', async () => {
+  const db = await migratedDb();
+  const tables = db.raw.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all()
+    .map((row) => (row as { name: string }).name);
+  assert.ok(!tables.includes('journaling_pause'));
+  assert.ok(tables.includes('dose_pause'));
   await db.close();
 });
 

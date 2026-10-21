@@ -191,7 +191,6 @@ const ROUTES = [
   { path: '/settings/dimension' },
   { path: '/settings/export' },
   { path: '/settings/journal-book' },
-  { path: '/settings/journaling-pause' },
   { path: '/settings/notifications' },
   { path: '/settings/passphrase' },
   { path: '/settings/permissions' },

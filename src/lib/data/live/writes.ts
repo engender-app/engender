@@ -95,8 +95,6 @@ export const TABLE_NAMES = [
   'personalEffect',
   /* Cycle events (phase 5 ticket 03). */
   'cycleEvent',
-  /* The journaling pause (phase 5 ticket 21). */
-  'journalingPause',
   /* The person's named eras (phase 6 ticket 01, ADR-0049). Its own name and
      not folded into 'entry', even though `getJournalBounds` reads the entry
      table: an era read has to re-run when an era is written, and an entry
@@ -582,10 +580,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       lastWriteEpochDay: ['cycleEvent']
     }
   }),
-  journalingPauses: classify<Journal['journalingPauses']>()({
-    writes: { upsertPause: ['journalingPause'], deletePause: ['journalingPause'] },
-    reads: { getPauses: ['journalingPause'] }
-  }),
   marginNotes: classify<Journal['marginNotes']>()({
     writes: { add: ['marginNote'], edit: ['marginNote'], remove: ['marginNote'] },
     reads: { forEntries: ['marginNote'] }
@@ -898,7 +892,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
         'milestone',
         'regimen',
         'dose',
-        'journalingPause',
         'tryout',
         'procedure',
         'appointment',

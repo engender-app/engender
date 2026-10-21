@@ -28,7 +28,6 @@ describe('the unprompted registry', () => {
       'safeSpaceNudgeEnabled',
       'stockNoticeEnabled',
       'patchScheduleTileEnabled',
-      'pauseActiveBannerEnabled',
       'wrappedEnabled',
       'onThisDayEnabled'
     ]);

@@ -312,7 +312,6 @@
          about the same list. `zap` rather than a second bell beside the
          reminders row. -->
     <ListRow key="notifications" icon="zap" title={m.notif_title()} href="/settings/notifications" />
-    <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} href="/settings/journaling-pause" />
   </ListCard>
 
   <SectionHeading text={m.settings_lists()} />

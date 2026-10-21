@@ -117,5 +117,15 @@ INSERT INTO sqlite_sequence (name, seq) SELECT 'hair_stage_new', seq FROM sqlite
 DROP TABLE hair_stage;
 ALTER TABLE hair_stage_new RENAME TO hair_stage;
 CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
+` },
+  /* Functional audit ticket 08: the journaling pause is cut. The check-in
+     it silenced has its own pause now, one date in the checkInPausedThrough
+     preference, and the streak it bridged is gone. Rows are dropped, not
+     converted; archives that still carry the section skip it on restore
+     (DROPPED_ARCHIVE_SECTION_NAMES). */
+  { version: 103, sql: `
+DROP TABLE journaling_pause;
+DELETE FROM area_state WHERE area = 'journalingPauses';
+DELETE FROM pref WHERE key = 'pauseActiveBannerEnabled';
 ` }
 ];

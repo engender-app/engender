@@ -44,7 +44,6 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   sideEffect: ['side_effect'],
   personalEffect: ['personal_effect'],
   cycleEvent: ['cycle_event'],
-  journalingPause: ['journaling_pause'],
   era: ['era'],
   eraMute: ['era_mute'],
   hairProgress: ['hair_stage', 'hair_photo'],

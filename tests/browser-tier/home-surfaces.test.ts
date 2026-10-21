@@ -298,7 +298,6 @@ export async function homeContracts(): Promise<Result[]> {
     ['doses', 'getPauses'],
     ['doses', 'getDosesForSlots', today],
     ['doses', 'getDoses', today - 1],
-    ['journalingPauses', 'getPauses'],
     ['areaStates', 'getAreaStates'],
     ['appointments', 'getDayRecords']
   ];
@@ -377,8 +376,7 @@ export async function homeContracts(): Promise<Result[]> {
     'doses.getSchedules',
     'doses.getPauses',
     'doses.getDosesForSlots',
-    'doses.getDoses',
-    'journalingPauses.getPauses'
+    'doses.getDoses'
   ];
   const settledHome = async () => {
     await until(() => root().querySelector('[data-home-log]'), 'counted Home');
@@ -412,10 +410,6 @@ export async function homeContracts(): Promise<Result[]> {
   });
   await screen.remove();
   await f.journal.areaStates.setAreasHidden(['wearSessions'], false);
-  await f.journal.journalingPauses.upsertPause({
-    startEpochDay: today - 2,
-    endEpochDay: null
-  });
   await f.journal.entries.upsertEntry({ epochDay: today, mood: 1, note: 'Difficult contract day' });
   screen = await mountScreen('/', f);
   await until(() => root().querySelector('[data-home-tiles-fold]'), 'live tile overflow');
@@ -435,7 +429,7 @@ export async function homeContracts(): Promise<Result[]> {
     return (
       node(root(), '[data-home-tiles-fold]').getAttribute('aria-expanded') === 'true' &&
       root().querySelector('[data-live-tile="safe-space-nudge"]') &&
-      root().querySelector('[data-live-tile="pause-active-banner"]')
+      root().querySelector('[data-live-tile="ready-letter"]')
     );
   });
   await screen.remove();

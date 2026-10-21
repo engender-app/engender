@@ -107,7 +107,7 @@ const COLD_ROUTES = (ALL_ROUTES ? (x) => x : (x) => x.slice(0, 4))([
     '/media/photos', '/media/photos/export', '/on-this-day', '/search', '/settings',
     '/settings/access-mode', '/settings/body-regions',
     '/settings/dimension', '/settings/eras', '/settings/export', '/settings/journal-book',
-    '/settings/journaling-pause', '/settings/notifications', '/settings/passphrase',
+    '/settings/notifications', '/settings/passphrase',
     '/settings/permissions', '/settings/recovery-key', '/settings/reminders', '/settings/security',
     '/settings/tags', '/settings/trash', '/settings/words', '/support/resources', '/tally',
     '/transition/letters', '/transition/milestones', '/transition/roadmap', '/transition/tryouts',

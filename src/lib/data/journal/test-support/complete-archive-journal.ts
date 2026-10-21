@@ -153,7 +153,6 @@ export async function seedCompleteArchiveJournal(
   await journal.taper.upsertSession({ epochDay: 19956, note: '' });
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: 20030 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
-  await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });
 
   /* Three eras, so both open bounds and a closed pair all travel. An absent
      bound is the case a round trip can lose silently by defaulting it to a

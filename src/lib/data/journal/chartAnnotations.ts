@@ -67,7 +67,6 @@ import type { AppointmentsArea } from './appointments';
 import type { AreaStatesArea } from './areaStates';
 import type { DosesArea } from './doses';
 import type { ErasArea } from './eras';
-import type { JournalingPausesArea } from './journalingPauses';
 import type { MilestonesArea } from './milestones';
 import type { ProceduresArea } from './procedures';
 import type { RegimenArea } from './regimen';
@@ -86,7 +85,6 @@ interface Areas {
   milestones: MilestonesArea;
   regimen: RegimenArea;
   doses: DosesArea;
-  journalingPauses: JournalingPausesArea;
   tryouts: TryoutsArea;
   procedures: ProceduresArea;
   eras: ErasArea;
@@ -107,12 +105,11 @@ function writtenNote(text: string | null | undefined): ChartAnnotationDetail | u
 export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
   return {
     async getAnnotations(fromEpochDay, toEpochDay, todayEpochDay) {
-      const [milestones, episodes, dosePauses, journalingPauses, tryouts, procedures, eras, areaStates, appointments] =
+      const [milestones, episodes, dosePauses, tryouts, procedures, eras, areaStates, appointments] =
         await Promise.all([
           areas.milestones.getMilestones(),
           areas.regimen.getEpisodes(),
           areas.doses.getPauses(),
-          areas.journalingPauses.getPauses(),
           areas.tryouts.getTryouts(),
           areas.procedures.getProcedures(),
           areas.eras.getEras(),
@@ -144,13 +141,6 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           id: pause.id,
           kind: 'dosePause' as const,
           name: drugOf.get(pause.episodeId) ?? null,
-          startEpochDay: pause.startEpochDay,
-          endEpochDay: pause.endEpochDay
-        })),
-        ...journalingPauses.map((pause) => ({
-          id: pause.id,
-          kind: 'journalingPause' as const,
-          name: null,
           startEpochDay: pause.startEpochDay,
           endEpochDay: pause.endEpochDay
         })),
