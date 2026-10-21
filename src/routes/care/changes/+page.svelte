@@ -46,6 +46,8 @@
     literatureWindowDays
   } from '$lib/data/personalEffectWindow';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { offeredEffectTypes } from '$lib/data/effectPicker';
+  import { RETIRED_PERSONAL_EFFECT_KEYS } from '$lib/data/vocabulary/retiredEffects';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -103,9 +105,12 @@
 
   /* The catalogue a hidden effect or a disabled category has already
      removed (CONTEXT: "Hidden", "Effect category") - what the timeline and
-     the "mark a change" list offer. The full, unfiltered list lives only in
-     the manage sheet below. */
-  let visibleEffects = $derived(vocabulary.visiblePersonalEffectTypes);
+     the "mark a change" list offer. A retired built-in (ticket 23) is left
+     out too unless it is already marked, which keeps its row and its mark.
+     The fuller list lives only in the manage sheet below. */
+  let visibleEffects = $derived(
+    offeredEffectTypes(vocabulary.visiblePersonalEffectTypes, new Set(markers.map((marker) => marker.effect)))
+  );
 
   /* Whether an effect has a band at all is decided once, here, and read by
      both the chart and the editor sheet's caption - asking
@@ -329,6 +334,10 @@
   }
 
   let manageOpen = $state(false);
+  /* A retired built-in (ticket 23) has no hide toggle to offer: nothing
+     brings it back, so a row for it here would be a switch that does
+     nothing. */
+  let managedEffects = $derived(vocabulary.personalEffectTypes.filter((e) => !RETIRED_PERSONAL_EFFECT_KEYS.has(e.key)));
   let methodologyOpen = $state(false);
   let newEffectName = $state('');
   let newEffectCategory = $state('');
@@ -708,7 +717,7 @@
          stays live regardless - hiding it individually is a choice that
          should still stick once the category comes back on. -->
     {#each vocabulary.effectCategories as cat (cat.key)}
-      {@const catEffects = vocabulary.personalEffectTypes.filter((e) => e.categoryKey === cat.key)}
+      {@const catEffects = managedEffects.filter((e) => e.categoryKey === cat.key)}
       {#if catEffects.length}
         <p class="field-label" style="margin:var(--space-3) 0 var(--space-2)">{cat.name}</p>
         <div class="managed-tags">
@@ -718,7 +727,7 @@
         </div>
       {/if}
     {/each}
-    {@const uncategorized = vocabulary.personalEffectTypes.filter((e) => e.categoryKey === null)}
+    {@const uncategorized = managedEffects.filter((e) => e.categoryKey === null)}
     {#if uncategorized.length}
       <p class="field-label" style="margin:var(--space-3) 0 var(--space-2)">{m.effect_type_category_none()}</p>
       <div class="managed-tags">
