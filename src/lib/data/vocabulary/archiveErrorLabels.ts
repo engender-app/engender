@@ -16,8 +16,6 @@
    kind means adding a kind is a typecheck failure in both, rather than a
    silent fall through to "something went wrong". */
 
-import { appWordmark } from '$lib/disguise/identity';
-import { prefs } from '$lib/data/prefs/store.svelte';
 import { m } from '$lib/paraglide/messages';
 import type { RestoreFailureKind, RestoreGuardKind } from '$lib/data/journal/restoreFlow';
 import { spaceShortage, type SpaceShortage } from '$lib/data/spaceShortage';
@@ -36,7 +34,7 @@ const IMPORT_MESSAGE: Record<RestoreFailureKind, () => string> = {
   ...GUARD_MESSAGE,
   'wrong-password': m.imp_wrong_password,
   'newer-version': m.imp_newer_version,
-  'not-an-archive': () => m.imp_not_an_archive({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }),
+  'not-an-archive': () => m.imp_not_an_archive({ appName: m.app_name() }),
   corrupt: m.imp_corrupt,
   failed: m.imp_failed
 };
@@ -48,7 +46,7 @@ const VERIFY_MESSAGE: Record<RestoreFailureKind, () => string> = {
   ...GUARD_MESSAGE,
   'wrong-password': m.verify_wrong_password,
   'newer-version': m.verify_newer_version,
-  'not-an-archive': () => m.verify_not_an_archive({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }),
+  'not-an-archive': () => m.verify_not_an_archive({ appName: m.app_name() }),
   corrupt: m.verify_corrupt,
   failed: m.verify_failed
 };

@@ -84,22 +84,18 @@ try {
     await generic('locked');
     await unlock();
   }
-  for (const pending of [false, true]) {
-    await page.evaluate(async () => { (await import('/src/lib/data/prefs/store.svelte.ts')).prefs.disguise = false; });
-    await page.waitForFunction(() => !document.querySelector('[data-app-root]')?.classList.contains('disguised'));
-    await feedback(pending);
-    await page.evaluate(async () => {
-      window.feedbackConcealed = true;
-      (await import('/src/lib/data/prefs/store.svelte.ts')).prefs.disguise = true;
-    });
-    await page.waitForFunction(() => document.querySelector('[data-app-root]')?.classList.contains('disguised'));
-    await cleared(`disguise ${pending ? 'pending' : 'visible'}`);
-    await generic('disguised');
-  }
+  await feedback(false);
+  await page.evaluate(async () => { (await import('/src/lib/data/prefs/store.svelte.ts')).prefs.disguise = true; });
+  await page.waitForFunction(() => document.title === 'Notes');
+  ok(await page.locator('[data-toast]').count() === 1, 'disguise leaves unlocked toast visible');
+  ok(await page.evaluate(async () => (await import('/src/lib/stores/toasts.svelte.ts')).toasts.length === 1), 'disguise keeps unlocked toast state');
+  ok((await page.locator('[data-announce-urgent]').textContent())?.includes('08-private-'), 'disguise keeps unlocked announcement');
   await page.evaluate(async () => {
     (await import('/src/lib/data/prefs/store.svelte.ts')).prefs.disguise = false;
+    (await import('/src/lib/stores/toasts.svelte.ts')).clearToasts();
+    (await import('/src/lib/stores/announcer.svelte.ts')).announce.clear();
   });
-  await page.waitForFunction(() => !document.querySelector('[data-app-root]')?.classList.contains('disguised'));
+  await page.waitForFunction(() => document.title === 'engender');
   await page.evaluate(async () => {
     const { announce } = await import('/src/lib/stores/announcer.svelte.ts');
     window.feedbackDeliveries = 0;
@@ -125,7 +121,7 @@ try {
   ok(await page.evaluate(() => window.feedbackActions === 1), 'fresh authenticated toast action works by keyboard at 200% zoom');
   ok(await page.locator('[data-live-regions]').count() === 1 && await page.locator('[data-announce]').count() === 1 && await page.locator('[data-announce-urgent]').count() === 1, 'permanent live regions are not duplicated');
   ok(errors.length === 0, 'no uncaught page errors');
-  assert.equal(checks, 33, 'all concealment checks ran');
+  assert.equal(checks, 22, 'all concealment checks ran');
   console.log(`Feedback concealment passed: ${checks} checks`);
 } finally {
   await page.close();

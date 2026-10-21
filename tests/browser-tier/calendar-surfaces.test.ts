@@ -188,7 +188,7 @@ export async function calendarContracts(): Promise<Result[]> {
   await check('Calendar responds to shell palette updates without stale roles', async () => {
     prefs.palette = 'agender';
     document.documentElement.dataset.palette = 'agender';
-    refreshActiveFlag(document, false);
+    refreshActiveFlag(document);
     flushSync();
     const sample = document.createElement('span');
     sample.style.background = activeFlag.roles[0].heat[4].fill;

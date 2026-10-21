@@ -71,8 +71,9 @@ if (process.argv.includes('--list')) {
 }
 const runStarted = Date.now();
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-await mkdir('ci-logs', { recursive: true });
-const outputDirectory = await mkdtemp(`ci-logs/walkthrough-${GROUP?.id ?? 'all'}-`);
+const outputRoot = process.env.WALKTHROUGH_OUT ?? 'ci-logs';
+await mkdir(outputRoot, { recursive: true });
+const outputDirectory = await mkdtemp(`${outputRoot}/walkthrough-${GROUP?.id ?? 'all'}-`);
 const timings = [];
 console.log(`Walkthrough ${GROUP?.id ?? 'all'}: ${PICKED.length} flows, ${GROUP?.state ?? 'alice'} fixture, revision ${revision}`);
 
@@ -1000,9 +1001,7 @@ try {
   await page.waitForURL('**/transition/milestones');
   await page.waitForSelector('[data-milestone-rail]');
 
-  /* Under disguise: no agenda and no sun, and every control left on the
-     screen still works - asserted on the log strip that replaces the band
-     rather than on a handle that is gone. */
+  /* Disguise changes outside identity; Today keeps its agenda, sun and controls. */
   await fresh('/settings');
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
@@ -1011,8 +1010,8 @@ try {
   await booted();
   await page.waitForSelector('[data-home-log]');
   await page.waitForSelector('[data-pinned-row]');
-  if (await page.locator('[data-home-agenda]').count()) throw new Error('the agenda drew under disguise');
-  if (await page.locator('[data-flag-sun]').count()) throw new Error('the sun drew under disguise');
+  if (!(await page.locator('[data-home-agenda]').count())) throw new Error('the agenda vanished under disguise');
+  if (!(await page.locator('[data-flag-sun]').count())) throw new Error('the sun vanished under disguise');
   await page.locator('[data-home-log] [data-mood="4"]').click();
   await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
   await page.locator('[data-screen-back]').click();
@@ -2069,6 +2068,10 @@ try {
   if (!['true', 'false'].includes(await cycleSwitch.getAttribute('aria-checked'))) {
     throw new Error('Polish cycle choice has no announced state');
   }
+  await fresh('/settings');
+  await page.locator('[data-list-row="language"]').click();
+  await page.locator('[data-segment="en"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Today', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
 });
@@ -3904,49 +3907,17 @@ try {
      serve leaves the flag in the tab and no attribute check would notice. */
   const served = await page.evaluate((href) => fetch(href).then((r) => r.status), await favicon());
   if (served !== 200) throw new Error('the disguised icon is not served: HTTP ' + served);
-  /* Ticket 08: the fourth tab is the one thing in the bar disguise still
-     touches - it reverts to More rather than staying Transition. */
+  /* The fourth tab remains Transition inside the unlocked app. */
   const fourthTabLabel = () => page.locator('[data-nav-item="settings"] [data-nav-label]').textContent();
-  if ((await fourthTabLabel()) !== 'More') throw new Error('fourth tab while disguised: ' + (await fourthTabLabel()));
+  if ((await fourthTabLabel()) !== 'Transition') throw new Error('fourth tab while disguised: ' + (await fourthTabLabel()));
 
-  /* The field under disguise (redesign ticket 23, ADR-0075): the shell
-     publishes --surface-2 and --text in place of the flag's colour and its
-     ink, and the sun is absent. Read off Home, where the field is painted,
-     rather than off the tokens: a token nothing paints proves nothing. The
-     expected colours come from a probe element wearing the two tokens, so
-     the check follows the palette rather than naming a hex. */
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-home-field]');
-  const disguisedField = await page.evaluate(() => {
-    const probe = document.createElement('div');
-    probe.style.background = 'var(--surface-2)';
-    probe.style.color = 'var(--text)';
-    document.body.append(probe);
-    const want = getComputedStyle(probe);
-    const field = document.querySelector('[data-home-field]');
-    /* The colour off the blind, the ink off the box. The field paints
-       nothing since redesign ticket 28: its colour is a block a window tall
-       hanging inside it whose bottom edge is a clip, which is what lets the
-       edge move without the box being resized. Read off the box, the
-       background has been `rgba(0, 0, 0, 0)` ever since - so this flow was
-       failing on a true statement about the wrong element. */
-    const got = getComputedStyle(field);
-    const paint = getComputedStyle(field.querySelector('[data-field-blind]'));
-    const out = {
-      background: paint.backgroundColor,
-      surface2: want.backgroundColor,
-      ink: got.color,
-      text: want.color,
-      suns: document.querySelectorAll('[data-flag-sun]').length
-    };
-    probe.remove();
-    return out;
-  });
-  if (disguisedField.background !== disguisedField.surface2 || disguisedField.ink !== disguisedField.text) {
-    throw new Error('the field under disguise is not the neutral pair: ' + JSON.stringify(disguisedField));
+  if (!(await page.locator('[data-flag-sun]').count())) throw new Error('the sun vanished under disguise');
+  if ((await page.locator('[data-home-hero]').textContent()) !== 'engender') {
+    throw new Error('the unlocked wordmark changed under disguise');
   }
-  if (disguisedField.suns !== 0) throw new Error('the sun drew under disguise');
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
   await page.getByRole('button', { name: /Disguise/i }).click();

@@ -553,8 +553,9 @@ and localStorage. Initialization explicitly resets the synthetic journal and
 waits for the demo control's database writes to finish. Each hosted job owns
 its checkout and build. Concurrent local runs may read the same completed
 walkthrough build; do not rebuild underneath them. Diagnostic files and JSON
-results use a unique `ci-logs/walkthrough-<group>-*` directory. CI keeps these
-results for seven days, including passing runs, and reports per-flow durations
+results use a unique `ci-logs/walkthrough-<group>-*` directory, or the root
+set by `WALKTHROUGH_OUT`. CI keeps these results for seven days, including
+passing runs, and reports per-flow durations
 in the job summary. The browser matrix remains part of `All required checks`;
 a failed group does not cancel its siblings.
 
@@ -594,7 +595,7 @@ To run one on its own, use
 | --- | --- |
 | `entry-source-return-check` | entry Save and Delete return to Voice recordings, Search and margin-note hits, Today tiles, chart annotations and day lists with private query context |
 | `pending-unlock-lock-check` | a newer lock cancels pending authentication and its opening transition |
-| `feedback-concealment-check` | lock and disguise clear private live regions, pending announcements and toast actions; fresh feedback and keyboard actions still work |
+| `feedback-concealment-check` | lock clears private live regions, pending announcements and toast actions; disguise leaves unlocked feedback alone; fresh feedback and keyboard actions still work |
 | `blind-edge-padding-check` | a padding-only change to a field still moves `--blind-edge` |
 | `dilation-schedule-action` | the dilation schedule's edit action, keyboard editor and its empty and deleted states |
 | `letters-ready-jump` | the ready-letters count and the jump above the waiting list |
@@ -875,7 +876,14 @@ recovery proof workflow uploads both attempts for seven days, including on succe
 
 `procedure-collapse-motion` (`tests/procedure-collapse-motion.mjs`) records procedure logs closing in light and dark, with descendant paint bounds beside timestamped compositor frames. It checks shared clipping and fading, reopening, rapid selection changes, saved data, unsaved notes, disclosure state and both reduced-motion settings. Run after a demo build: `node tests/procedure-collapse-motion.mjs [output-directory]`; `--baseline` records the unfixed behavior.
 
-`today-settings-sun-motion` captures both navigation directions at 195px, 390px and 1280px in both themes. Painted stripe probes check sun continuity; the recorder also checks interrupted navigation, reduced motion, disguise, lock replacement and all 16 palettes. Run after a demo build: `node tests/today-settings-sun-motion.mjs [output-directory]`. `--baseline` records without assertions; `--gate-only` limits capture to lock replacement.
+`today-settings-sun-motion` captures both navigation directions at 195px,
+390px and 1280px in both themes. Painted stripe probes check sun continuity,
+including when outside identity is disguised. The recorder also checks
+interrupted navigation, reduced motion, lock replacement and all 16 palettes.
+Run after a demo build: `node tests/today-settings-sun-motion.mjs [output-directory]`.
+`--baseline` records without assertions; `--gate-only` limits capture to lock
+replacement; `--signoff` limits capture to 390px, both themes and both
+navigation directions with disguise off and on.
 
 `node tests/browser-tier/ocr-offline.mjs` uses the production service worker,
 then runs the real OCR engine after offline reload. It checks English/Polish
@@ -1133,10 +1141,10 @@ SDK (`ANDROID_HOME` or `ANDROID_SDK_ROOT`) with build-tools and a platform
 device is used. Temporary keys and artifacts are removed after the tests.
 
 
-### Disguised app names
+### App names after unlock and on gates
 
-`node tests/disguise-wordmark-check.mjs` checks the Settings footer, About
-and archive error labels in EN/PL, light/dark and both disguise states.
+`node tests/disguise-wordmark-check.mjs` checks the unchanged Settings footer,
+About and archive error labels in EN/PL, light/dark and both disguise states.
 Run again with `--gates` for both recovery bodies and the below-baseline
 boot notice. `WORDMARK_SHOTS` saves crops after fonts and animations settle;
 `--before` captures the baseline without asserting the repaired wording.

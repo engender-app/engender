@@ -30,10 +30,8 @@
      buttons (quick add, ticket 18), the doubt-journal card (a hub row), and
      the streak (phase 8 UX ticket 01).
 
-     Under disguise the agenda is absent - `readAgenda` returns null before
-     either read runs (ADR-0074) - the sun does not draw (ADR-0035) and the
-     field is grey; the log strip, the tiles and the pinned rows are still
-     here, so the app is thinner rather than useless.
+     Disguise changes outside identity only. Today keeps its agenda, sun,
+     wordmark and flag colours after unlock.
 
      Colour comes from the flag, categorically (DIRECTION.md rule 3): each
      area takes one stripe as its own, off HOME_AREA_ROLE, where the two
@@ -62,7 +60,6 @@
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { appWordmark } from '$lib/disguise/identity';
   import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
   import { readAgenda, projectAgenda } from '$lib/data/agendaReads';
@@ -283,9 +280,9 @@
      their round trips to the agenda's own. Switches and coverage changes
      project these same facts without another read. */
   let dosePanelCoversEveryDose = $derived(liveTiles.dosePanelCoversEveryRegimen);
-  let agendaQuery = liveQuery((j) => readAgenda(j, today, prefs.disguise));
+  let agendaQuery = liveQuery((j) => readAgenda(j, today));
   let agenda = $derived(
-    liveTiles.ready && !prefs.disguise
+    liveTiles.ready
       ? projectAgenda(agendaQuery.value, shownAgendaKinds(prefs), dosePanelCoversEveryDose)
       : null
   );
@@ -797,23 +794,11 @@
            rode being invisible by design. Nested here, it rides the
            blind's own capture instead, which is never hidden. -->
       <div class="field-blind" data-field-blind aria-hidden="true">
-        <!-- Home-only, and never under disguise (ADR-0035) - checked on
-             prefs.disguise here rather than inside FlagSun, so the one
-             place that decides whether the sun renders at all matches
-             every other disguise gate in the app. Under disguise the field
-             itself falls to --surface-2 (activeFlag), so this block is a
-             grey header with the app's assumed name in it and nothing
-             else. -->
-        {#if !prefs.disguise}<FlagSun />{/if}
+        <!-- Home owns the sun. Unlocked disguise leaves it here. -->
+        <FlagSun />
       </div>
-      <!-- The same swap AppNav.svelte makes on the rail's wordmark, out of
-           the same module, and for the reason SCREENS.md gives: disguise
-           changes the app's name and icon app-wide, not per screen. The hero
-           is the largest text on the screen, so leaving it saying "Gender
-           Diary" while the tab, the launcher and the rail all say "Notes"
-           undoes the rest of the disguise in one line. Two sites in Settings
-           still name the app under disguise; those are ticket 24's screen. -->
-      <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</h1>
+      <!-- The unlocked wordmark matches the rail. -->
+      <h1 class="home-hero" data-home-hero data-field-part translate="no">{m.app_name()}</h1>
     </div>
     <!-- Under the field and over the foot: a waiting release, if there is
          one (UpdateNoticeSlot.svelte). -->
@@ -852,8 +837,7 @@
            and live here (ticket 09, which also gives the rail its fifth item
            and takes the Settings row out of the hub). Placed by ticket 23 as
            part of the foot; a plain link, because an unwired control is a
-           dead control. Nothing about a gear says what the app is, so it is
-           unremarkable under disguise. -->
+           dead control. -->
       <a class="icon-btn press home-gear" href="/settings" aria-label={m.nav_settings()} data-home-gear>
         <Icon name="settings" size={22} />
       </a>
@@ -1038,8 +1022,7 @@
        of the fan taking 260px of the first screen. The faces stay because
        a mood is the one write that makes today's entry and the habit a
        daily check-in has should not get worse; the heading says what they
-       do rather than naming the strip. It draws under disguise too, every
-       role fallen to the accent, so the thin app still writes. -->
+       do rather than naming the strip. Disguise leaves it unchanged. -->
   <SectionHeading text={m.home_log_heading()}>
     {#snippet action()}
       <!-- One grid cell, so a later entry's time crosses the earlier one in
@@ -1498,8 +1481,7 @@
     position: relative;
   }
   /* The field: a solid block of the flag's second colour, published by
-     activeFlag as --field with its ink beside it (--surface-2 and --text
-     under disguise). Widened past .screen's own horizontal padding
+     activeFlag as --field with its ink beside it. Widened past .screen's own horizontal padding
      (negative margin) and padded back out to the same inset, so the flag
      sun's corner point lands on the screen's own right edge rather than on
      the padded content edge - "centred exactly on the screen's top right

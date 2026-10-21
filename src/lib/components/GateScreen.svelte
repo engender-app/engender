@@ -15,9 +15,8 @@
      the window's top edge with the title on it at 48, and under its bottom
      edge, on the page, whatever the gate needs: one line, the control, the
      status line, and under a hairline the way out that is not a way in.
-     `--field` and `--field-ink` are published on <html> by activeFlag, which
-     already answers disguise with `--surface-2` and `--text`, so a gate
-     needs no disguised variant of its own to get wrong.
+     `--field` and `--field-ink` are published on <html> by activeFlag. This gate overrides them with
+     `--surface-2` and `--text` while disguise is on, before unlock.
 
      **What the title says, once, for all six.** An unlock never says the
      person's name. The mid-session lock used to greet by name because the
@@ -78,6 +77,7 @@
 
   import { fieldPart } from '$lib/motion/navigation';
   import { blindEdge } from '$lib/motion/stepBlind';
+  import { prefs } from '$lib/data/prefs/store.svelte';
 
   let {
     title,
@@ -91,7 +91,9 @@
   } = $props();
 </script>
 
-<div class="screen screen-gate" data-gate-frame>
+<div class="screen screen-gate" data-gate-frame
+  style:--field={prefs.disguise ? 'var(--surface-2)' : undefined}
+  style:--field-ink={prefs.disguise ? 'var(--text)' : undefined}>
   <!-- The host of the edge and everything that reads it (components.css).
        `blindEdge` is on the field below rather than here, because what it
        watches is the field's own height: the title changes when a gate walks

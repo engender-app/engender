@@ -4,8 +4,7 @@
    that a milestone happened on the day under their finger and nothing about
    what the milestone was. The line builder here is the second half of that
    sentence, and every rule it follows is a rule about what a mark is allowed
-   to say: a record with nothing written behind it draws no line, a disguised
-   app draws no free text at all, and an era's own sentence replaces the pair
+   to say: a record with nothing written behind it draws no line, and an era's own sentence replaces the pair
    rather than joining it.
 
    The assertions read the text a person sees rather than the fields behind
@@ -116,18 +115,7 @@ test('a position standing for more than a day dates the line it draws', () => {
   assert.equal(annotationReadout([tick('milestone', 'First injection')], { dated: true }).entries[0].note, undefined);
 });
 
-test('under disguise every tick keeps its pair and drops the free text', () => {
-  const written: ChartAnnotation[] = [
-    tick('milestone', 'First injection', { type: 'note', text: 'hands shook' }),
-    tick('surgery', 'Top surgery', { type: 'note', text: 'two nights in' }),
-    tick('era', 'First year')
-  ];
-  for (const annotation of written) {
-    const { entries } = annotationReadout([annotation], { disguised: true, dated: true });
-    assert.equal(entries[0].note, undefined, `${annotation.kind} drew text under disguise`);
-    assert.ok(entries[0].label, `${annotation.kind} drew nothing at all under disguise`);
-  }
-});
+
 
 test('the readout keeps its two-annotation cap and counts the rest', () => {
   const gathered = [

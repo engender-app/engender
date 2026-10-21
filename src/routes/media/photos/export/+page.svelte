@@ -14,6 +14,7 @@
   import { page } from '$app/state';
   import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
+  import { outsideDisguise } from '$lib/disguise/identity';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, photoCaptionDate } from '$lib/data/dates';
@@ -250,7 +251,7 @@
   async function share() {
     if (!showing) return;
     try {
-      const delivery = await deliverBlob(journeyFileName(prefs.name, output, undefined, prefs.disguise), showing.blob);
+      const delivery = await deliverBlob(journeyFileName(prefs.name, output, undefined, outsideDisguise(prefs)), showing.blob);
       if (delivery === 'cancelled') {
         toast(m.exp_cancelled());
         if (fromHair) await smartBackSettled(returnTo);

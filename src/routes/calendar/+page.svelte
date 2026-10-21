@@ -181,9 +181,7 @@
   /* Which era each month belongs to (phase 6 ticket 03): each era paired
      with the role it draws in, the same way role 0 is picked for the
      metric below - by position, since an era stores no colour of its own
-     (ADR-0049). Under disguise `activeFlag.roles` is empty and `roleAt`
-     answers undefined for every index, so the pairing drops every era
-     rather than handing HeatMap a colour there is no flag to have drawn. */
+     (ADR-0049). */
   let erasQuery = liveList((j) => j.eras.getEras());
   let eraRoles = $derived.by(() => {
     const out: { era: Era; role: Role }[] = [];

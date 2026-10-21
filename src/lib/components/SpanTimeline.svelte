@@ -69,7 +69,7 @@
      call the milestone mark on this same rail already made, and its own
      note says why - a stripe sitting under the eras' colours vanishes into
      the band of its own hue, and DIRECTION rule 4 gives ink to the smallest
-     things. It cannot collide on any palette or under disguise, because it
+     things. It cannot collide on any palette, because it
      never asks the flag for anything.
 
      Three weights, and each says what it is: the flag is an era, full ink
@@ -142,8 +142,8 @@
     /** Whether the drag hint has already been answered on this journal. */
     hintSeen = true,
     /** The whole flag as one gradient, for the eras' legend key - the one
-        kind here whose colour is plural. `'none'` under disguise
-        (ADR-0035), where the key falls back to an outline with no fill. */
+        kind here whose colour is plural. Without a flag, the key falls
+        back to an outline with no fill. */
     flagFill = null,
     roles,
     onChange,
@@ -913,9 +913,8 @@
     margin: 0;
     background: var(--role-draw);
     color: var(--role-fill-ink);
-    /* Every block wears an edge, so an era next to an era of a similar
-       stripe, or every era under disguise where all roles are the accent,
-       still reads as its own band. */
+    /* Every block wears an edge, so eras with similar stripes still read
+       as separate bands. */
     border: 1px solid var(--outline);
     border-radius: 0;
     font: inherit;

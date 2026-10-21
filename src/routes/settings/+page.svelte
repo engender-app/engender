@@ -7,7 +7,6 @@
      hand-written in the kit's own row classes (ticket 16: `.kit-row.is-static`
      also drops the row's cursor and its :active wash). */
   import { page } from '$app/state';
-  import { appWordmark } from '$lib/disguise/identity';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
@@ -17,11 +16,11 @@
   import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { activateLanguagePreference, prefs, selectMetric, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { replaceRoute } from '$lib/navigation/smart-back';
-  import { writer } from '$lib/stores/attempt.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Mark from '$lib/components/Mark.svelte';
-  import DisguisePreview from '$lib/components/DisguisePreview.svelte';
+  import DisguiseSetting from '$lib/components/DisguiseSetting.svelte';
+  import LauncherIconPreview from '$lib/components/LauncherIconPreview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -102,7 +101,6 @@
       : [...prefs.activeScales, key];
   }
   let metricSheet = $state(false);
-  let disguiseSheet = $state(false);
   let aboutSheet = $state(false);
   let moodSheet = $state(false);
   let languageSheet = $state(false);
@@ -153,27 +151,6 @@
       .map((g) => g.name)
       .join(', ')
   );
-
-  /* Durable first (last-audit UI ticket 02): on Android the projection
-     moving is what flips the launcher alias and closes the app, so
-     prefs.disguise changes only once SQLite has the answer. The switch
-     shows that answer while it saves and, like every tapped write, takes
-     no other until it has: a second write in flight would let the first
-     one's projection flip the alias, and close the app, under an answer
-     it then never saves. setPreferenceDurably logs a refused write and
-     leaves the projection alone, which is how this one knows to say so
-     and let the switch fall back to the stored value. */
-  const disguiseWrite = writer();
-  let disguiseAnswer = $state<boolean | null>(null);
-  async function setDisguise(on: boolean) {
-    if (disguiseWrite.busy) return;
-    disguiseAnswer = on;
-    await disguiseWrite.run(async () => {
-      await setPreferenceDurably('disguise', on);
-      if (prefs.disguise !== on) throw new Error('The disguise preference was not saved');
-    }, m.write_failed());
-    disguiseAnswer = null;
-  }
 
   async function setLanguage(v: string) {
     await setPreferenceDurably('language', v as typeof prefs.language);
@@ -226,9 +203,7 @@
        for it to point at. -->
   <ScreenHeader title={m.nav_settings()} back="/" chrome class="settings-sun-header">
     {#snippet blindContent()}
-      {#if !prefs.disguise}
-        {#key activeFlag.dark}<FlagSun />{/key}
-      {/if}
+      {#key activeFlag.dark}<FlagSun />{/key}
     {/snippet}
   </ScreenHeader>
 
@@ -285,11 +260,7 @@
     {#if isAndroid()}
       <div class="kit-row settings-unit-row" data-launcher-icon-shape>
         <span class="kit-row-ico settings-icon-preview">
-          {#if prefs.disguise}
-            <img src="/icons/icon-notes.svg" alt="" width="32" height="32" />
-          {:else}
-            <Mark size={32} crop={prefs.launcherIconShape === 'round' ? 'launcher-round' : 'tile'} />
-          {/if}
+          <LauncherIconPreview />
         </span>
         <span class="kit-row-text"><span class="kit-row-title">{m.settings_app_icon()}</span></span>
         <span class="kit-row-trail">
@@ -422,16 +393,7 @@
   <SectionHeading text={m.settings_privacy()} />
   <ListCard>
     <ListRow key="security" icon="lock" title={m.settings_lock_row()} subtitle={lockLine} href="/settings/security" />
-    <ListRow
-      key="disguise"
-      icon="eyeOff"
-      title={m.disguise_row()}
-      subtitle={prefs.disguise ? m.settings_disguise_on() : m.settings_row_off()}
-      chevron={false}
-      onclick={() => (disguiseSheet = true)}
-    >
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
+    <DisguiseSetting />
     <ListRow
       key="export"
       icon="download"
@@ -467,7 +429,7 @@
   </ListCard>
 
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
-    <span translate="no">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span> · {m.footer_note()}
+    <span translate="no">{m.app_name()}</span> · {m.footer_note()}
   </p>
 
   <Sheet bind:open={scalesSheet} title={m.gender_scales()}>
@@ -561,26 +523,6 @@
     </ListCard>
   </Sheet>
 
-  <Sheet busy={disguiseWrite.busy} bind:open={disguiseSheet} title={m.disguise_row()}>
-    <h3>{m.disguise_row()}</h3>
-    <div class="stack-3">
-      <div class="spread">
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.disguise_app_title()}</span>
-          <span class="kit-row-sub">
-            {isAndroid() ? m.disguise_app_sub_android() : m.disguise_app_sub_web()}
-          </span>
-        </span>
-        <Switch
-          checked={disguiseAnswer ?? prefs.disguise}
-          label={m.disguise_app_title()}
-          onChange={(v) => void setDisguise(v)}
-        />
-      </div>
-      <!-- The same block setup's last question draws (ticket 32). -->
-      <DisguisePreview on={disguiseAnswer ?? prefs.disguise} />
-    </div>
-  </Sheet>
 
   <Sheet bind:open={eraseSheet} title={m.erase_row()}>
     <h3>{m.erase_row()}</h3>
@@ -727,11 +669,9 @@
              proportions app.css's .lockup sets, scaled to 32px. The tile's
              edge is not optional anywhere the drawing has an outside
              (Alicja, 2026-09-21: "its supposed to be black always").
-             Absent under disguise, which is Mark's own answer - what is
-             left is the name in type, which is what every surface carrying
-             the mark falls back to (ADR-0014). -->
+             The unlocked About sheet keeps both the mark and app name. -->
         <h2 class="lockup about-lockup" translate="no">
-          <Mark size={40} crop="tile" /><span class="lockup-word">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span>
+          <Mark size={40} crop="tile" /><span class="lockup-word">{m.app_name()}</span>
         </h2>
         <p class="about-version">
           {m.version()}

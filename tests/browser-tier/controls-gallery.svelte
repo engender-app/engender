@@ -33,7 +33,7 @@
     html.dataset.theme = theme;
     if (motion === 'reduce') html.dataset.a11yMotion = 'reduce';
     else delete html.dataset.a11yMotion;
-    refreshActiveFlag(document, false);
+    refreshActiveFlag(document);
   });
 
   const TEN = { name: 'Femininity', low: 'Not at all', high: 'Completely', min: 0, max: 10 };

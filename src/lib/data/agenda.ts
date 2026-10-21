@@ -129,16 +129,6 @@ export interface AgendaInput {
       about slots only in the one arm where a schedule exists - the same
       narrowing `whatIsWaiting` does. */
   doses: DoseScheduleComparison;
-  /** Disguise, read from preferences by the caller. True returns nothing at
-      all: no drug name, no clinic and no date reaches a screen somebody may
-      be reading over the person's shoulder.
-
-      `readAgenda` checks the same flag and returns before either read runs,
-      so on the one production path this field is never true. Both checks
-      stay: that one is what keeps the reads from happening, and this one is
-      what makes the rule true of the projection itself, which is where a
-      future caller assembling its own input would meet it. */
-  disguised: boolean;
 }
 
 /** The window Today asks `dayAhead` for: `AGENDA_DAYS` days starting today,
@@ -207,8 +197,6 @@ export function passedSlotSentence(epochDay: number, fullDay: (epochDay: number)
     registry order (`assembleDayAhead`), the same order `/day/[day]` draws
     them in. */
 export function agenda(input: AgendaInput): Agenda | null {
-  if (input.disguised) return null;
-
   const items: AgendaItem[] = [...input.marks]
     .sort((a, b) => a.epochDay - b.epochDay)
     .map((mark) => ({

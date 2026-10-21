@@ -194,17 +194,12 @@ export interface AnnotationReadoutEntry {
     the readout already names that day, and repeating it on every line would
     be the same date written three times.
 
-    `disguised` drops every line of free text (ADR-0035). The names are
-    already drawn on these charts and that does not change; a paragraph
-    about a surgery is a different exposure from the word "surgery". */
+    Notes remain visible on unlocked charts. */
 interface ReadoutOptions {
   dated?: boolean;
-  disguised?: boolean;
 }
 
 function readoutEntry(annotation: ChartAnnotation, options: ReadoutOptions): AnnotationReadoutEntry {
-  if (options.disguised) return { id: annotation.id, label: annotationLabel(annotation) };
-
   const note = annotationNote(annotation);
   const dated =
     note && options.dated

@@ -47,7 +47,7 @@ try {
   for (const locale of ['en', 'pl']) {
     for (const theme of ['light', 'dark']) {
       for (const disguise of [false, true]) {
-        const name = disguise ? locale === 'pl' ? 'Notatki' : 'Notes' : 'engender';
+        const name = gates && disguise ? locale === 'pl' ? 'Notatki' : 'Notes' : 'engender';
         const tag = `${locale}-${theme}-${disguise ? 'disguised' : 'normal'}`;
         if (!gates) {
           await page.goto(`${base}settings`, { waitUntil: 'networkidle' });
@@ -65,7 +65,7 @@ try {
               const { importFailureMessage, verifyFailureMessage } = await import('/src/lib/data/vocabulary/archiveErrorLabels.ts');
               return [importFailureMessage('not-an-archive'), verifyFailureMessage('not-an-archive')];
             });
-            for (const text of messages) { assert.ok(text.includes(name), text); if (disguise) assert.doesNotMatch(text, /engender/i); else assert.doesNotMatch(text, /\b(?:Notes|Notatki)\b/); checks++; }
+            for (const text of messages) { assert.ok(text.includes(name), text); assert.doesNotMatch(text, /\b(?:Notes|Notatki)\b/); checks++; }
           }
         } else {
           await page.goto(`${base}gates.html`, { waitUntil: 'networkidle' });

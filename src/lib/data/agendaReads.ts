@@ -13,10 +13,6 @@
    single passed slot the projection may state - `agenda.ts`'s own header
    says why that is a dose slot and can be nothing else.
 
-   Disguise is checked before either read runs. A screen that is not going
-   to draw an agenda should not be reading appointments and drug schedules
-   to decide not to draw one.
-
    No table list is exported to seed a live query with. Both reads are
    issued in the same `Promise.all`, before this function's first `await`,
    so a `liveQuery` discovers both dependencies on its first run - the
@@ -37,14 +33,11 @@ export interface AgendaAreas {
 }
 
 /** Read the agenda's facts without waiting for the live tiles to decide
-    whether their dose panel covers every regimen. Disguise reads nothing. */
+    whether their dose panel covers every regimen. */
 export async function readAgenda(
   areas: AgendaAreas,
-  todayEpochDay: number,
-  disguised: boolean
+  todayEpochDay: number
 ): Promise<AgendaInput | null> {
-  if (disguised) return null;
-
   const ahead = agendaWindow(todayEpochDay);
   const behind = agendaPassedWindow(todayEpochDay);
   const [marks, doses] = await Promise.all([
@@ -55,7 +48,7 @@ export async function readAgenda(
     areas.doses.getComparison(behind)
   ]);
 
-  return { todayEpochDay, marks, doses, disguised };
+  return { todayEpochDay, marks, doses };
 }
 
 /** Apply the current switches and dose-panel coverage to the same facts.

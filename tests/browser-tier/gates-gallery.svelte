@@ -135,7 +135,7 @@
   $effect(() => {
     document.documentElement.dataset.palette = palette;
     document.documentElement.dataset.theme = theme;
-    refreshActiveFlag(document, false);
+    refreshActiveFlag(document);
   });
 
   /* Set synchronously on the way in, not from an $effect. `isAndroid()` is

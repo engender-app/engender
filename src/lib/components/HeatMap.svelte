@@ -18,9 +18,8 @@
      under it instead - see below - so this file reads the ramp's fills and
      never its inks.
 
-     Under disguise there is no flag to shade with (activeFlag.svelte.ts
-     publishes none), so the fills fall back to the accent ramp's own tokens
-     - which is exactly what this screen looked like before roles existed.
+     Before the flag has landed, the fills fall back to the accent ramp's
+     own tokens - which is what this screen looked like before roles existed.
 
      **A day that covered ground is drawn as two, not averaged into one**
      (phase 6 unprompted ticket 11). Averaging is the app quietly
@@ -102,16 +101,14 @@
   }: {
     year: number;
     month: number /* 0-based */;
-    /** The flag stripe the shading is drawn in. Omitted - under disguise,
-        or before the flag has landed - the accent ramp's own tokens stand
-        in. */
+    /** The flag stripe the shading is drawn in. Before the flag has landed,
+        the accent ramp's own tokens stand in. */
     role?: Role;
     /** Which era each day belongs to (phase 6 ticket 03), each already
         carrying the role it draws in. Resolved by the caller, the same
         division of labour `role` above keeps: an era stores no colour of
-        its own (ADR-0049), and under disguise there is no flag to draw one
-        from - the caller hands over nothing rather than this component
-        reaching for `activeFlag` itself. Named in the key under the grid,
+        its own (ADR-0049). The caller resolves the role rather than this
+        component reaching for `activeFlag` itself. Named in the key under the grid,
         never on a cell (ticket 280: a cell has no outline to carry it). */
     eras?: { era: Era; role: Role }[];
     /** The chosen presentation (phase 8 features ticket 17, ADR-0048) and

@@ -22,7 +22,7 @@ Object.assign(window, {
       setLocale(locale, { reload: false });
       prefs.disguise = disguise;
       document.documentElement.dataset.theme = theme;
-      refreshActiveFlag(document, false);
+      refreshActiveFlag(document);
       bootState.androidKey = { kind: 'refused', authentication: { outcome: 'unavailable', unlocksJournal: false, wayForward: 'deviceCredential' } };
       const target = document.getElementById('gate')!;
       instance = scene === 'cold' ? mount(AndroidKeyGate, { target }) : mount(SessionUnlock, { target, props: { mode: 'device-bound' } });

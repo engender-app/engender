@@ -12,7 +12,7 @@
   {
     "name": "feedback-concealment-check",
     "tier": "dev",
-    "holds": "lock and disguise clear private live regions, pending announcements and toast actions; fresh feedback and keyboard actions still work"
+    "holds": "lock clears private live regions, pending announcements and toast actions; disguise leaves unlocked feedback alone; fresh feedback and keyboard actions still work"
   },
   {
     "name": "blind-edge-padding-check",

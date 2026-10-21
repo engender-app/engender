@@ -21,7 +21,7 @@ describe('roleAt', () => {
   });
 
   it('has nothing to give when the flag published none', () => {
-    // Which is what disguise looks like from here (ADR-0035).
+    // A missing flag leaves no role to draw.
     expect(roleAt([], 0)).toBeUndefined();
   });
 });

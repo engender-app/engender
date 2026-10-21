@@ -11,6 +11,7 @@ import { PALETTES } from './palettes.mjs';
 const out = resolve(process.argv[2] ?? '.claude/today-settings-sun');
 const baseline = process.argv.includes('--baseline');
 const gateOnly = process.argv.includes('--gate-only');
+const signoff = process.argv.includes('--signoff');
 await mkdir(out, { recursive: true });
 const server = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${server.httpServer.address().port}`;
@@ -44,6 +45,9 @@ const read = `
   };`;
 
 async function record(page, name, act) {
+  /* Flush the frame after a programmatic scroll before screencast starts.
+     Chromium can otherwise send its cached, pre-scroll frame first. */
+  await page.screenshot();
   const frames = [];
   const cdp = await page.context().newCDPSession(page);
   cdp.on('Page.screencastFrame', e => {
@@ -61,7 +65,7 @@ async function record(page, name, act) {
   await cdp.detach();
   const dir = resolve(out, name);
   await mkdir(dir, { recursive: true });
-  const painted = !name.includes('disguise') && !name.includes('gate') && !name.includes('away')
+  const painted = !name.includes('gate') && !name.includes('away')
     ? await page.evaluate(async ({ images, corner, scale }) => {
       let initial;
       let worst = 0;
@@ -110,7 +114,7 @@ async function record(page, name, act) {
     if (painted) assert.ok(painted.maximumChangedFraction < 0.05, `${name}: sun changes ${painted.maximumChangedFraction} of painted rays`);
     assert.equal(settled.staleNames, 0, `${name}: stale snapshot names`);
     assert.equal(settled.nav, null, `${name}: stale navigation state`);
-    if (!name.includes('disguise') && !name.includes('gate') && !name.includes('away')) {
+    if (!name.includes('gate') && !name.includes('away')) {
       assert.equal(settled.suns, 1, `${name}: settled sun count`);
       assert.ok(settled.rings[0].bottom <= settled.field.bottom + 1, `${name}: resting curtain clips sun`);
       const shared = samples.filter(s => s.rings.some(r => r.name.startsWith('sun-shared-')));
@@ -119,14 +123,14 @@ async function record(page, name, act) {
         assert.ok(shared.every(s => s.rings.every(r => r.group === 'normal')), `${name}: curtain owns shared sun`);
       }
     }
-    if (name.includes('disguise') || name.includes('gate') || name.includes('away')) assert.equal(settled.suns, 0, `${name}: stale decoration survives`);
+    if (name.includes('gate') || name.includes('away')) assert.equal(settled.suns, 0, `${name}: stale decoration survives`);
     if (name.includes('gate')) assert.equal(settled.journal, false, `${name}: journal survives gate replacement`);
   }
   console.log(`${name}: ${frames.length} painted frames`);
 }
 
 try {
-  for (const width of gateOnly ? [] : [195, 390, 1280]) {
+  for (const width of gateOnly ? [] : signoff ? [390] : [195, 390, 1280]) {
     for (const theme of ['light', 'dark']) {
       const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion: 'no-preference' });
       const page = await context.newPage();
@@ -135,7 +139,7 @@ try {
       await page.waitForTimeout(1500);
       await record(page, `${width}-${theme}-today-settings`, () => navigate(page, '/settings'));
       await record(page, `${width}-${theme}-settings-today`, () => navigate(page, '/'));
-      if (width === 390 && !baseline) {
+      if (width === 390 && !baseline && !signoff) {
         await record(page, `${width}-${theme}-interrupted`, async () => {
           await navigate(page, '/settings');
           await page.waitForTimeout(90);
@@ -144,7 +148,7 @@ try {
           await navigate(page, '/settings');
         });
       }
-      if (width === 390 && !baseline) {
+      if (width === 390 && !baseline && !signoff) {
         await record(page, `${width}-${theme}-interrupted-away`, async () => {
           await navigate(page, '/');
           await page.waitForTimeout(90);
@@ -167,16 +171,24 @@ try {
         await navigate(page, '/settings');
         await page.waitForTimeout(700);
         await page.locator('[data-list-row="disguise"]').click();
+        const before = await page.locator('[data-list-row="disguise"] .kit-row-sub').textContent();
         await page.getByRole('dialog').getByRole('switch').click();
+        await page.waitForFunction((previous) => {
+          const subtitle = document.querySelector('[data-list-row="disguise"] .kit-row-sub')?.textContent;
+          const content = document.querySelector('[data-sheet] .stack-3');
+          return subtitle !== previous && content && !content.inert;
+        }, before);
         await page.keyboard.press('Escape');
-        await page.waitForTimeout(500);
+        await page.locator('[data-sheet-scrim]').waitFor({ state: 'detached' });
+        await page.waitForTimeout(100);
+        await page.evaluate(() => document.querySelector('[data-app-scroll-region]')?.scrollTo({ top: 0, behavior: 'instant' }));
         await record(page, `${width}-${theme}-disguise-settings-today`, () => navigate(page, '/'));
         await record(page, `${width}-${theme}-disguise-today-settings`, () => navigate(page, '/settings'));
       }
       await context.close();
     }
   }
-  if (!baseline && !gateOnly) {
+  if (!baseline && !gateOnly && !signoff) {
     for (const width of [195, 390, 1280]) for (const theme of ['light', 'dark']) {
       const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion: 'reduce' });
       const page = await context.newPage();
@@ -187,15 +199,23 @@ try {
       await navigate(page, '/settings');
       await page.waitForTimeout(800);
       await page.locator('[data-list-row="disguise"]').click();
+      const before = await page.locator('[data-list-row="disguise"] .kit-row-sub').textContent();
       await page.getByRole('dialog').getByRole('switch').click();
+      await page.waitForFunction((previous) => {
+        const subtitle = document.querySelector('[data-list-row="disguise"] .kit-row-sub')?.textContent;
+        const content = document.querySelector('[data-sheet] .stack-3');
+        return subtitle !== previous && content && !content.inert;
+      }, before);
       await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
+      await page.locator('[data-sheet-scrim]').waitFor({ state: 'detached' });
+      await page.waitForTimeout(100);
+      await page.evaluate(() => document.querySelector('[data-app-scroll-region]')?.scrollTo({ top: 0, behavior: 'instant' }));
       await record(page, `${width}-${theme}-reduced-disguise-settings-today`, () => navigate(page, '/'));
       await record(page, `${width}-${theme}-reduced-disguise-today-settings`, () => navigate(page, '/settings'));
       await context.close();
     }
   }
-  for (const theme of ['light', 'dark']) {
+  for (const theme of signoff ? [] : ['light', 'dark']) {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'no-preference' });
     const page = await context.newPage();
     page.on('pageerror', e => report.errors.push(e.message));

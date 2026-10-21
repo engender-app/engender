@@ -110,9 +110,9 @@ const ALL_STEPS: readonly OnboardingStep[] = [
     inside the encrypted journal and is only settable from Settings, which
     sits behind `prefs.onboarded`, so the only way to reach setup disguised
     is the demo's own first-run control. Disguise is now the last question
-    setup asks (ticket 32) rather than a state it has to survive, and
-    ADR-0035 is untouched: nothing identifying draws while disguise is on,
-    and by the time it can be on, setup is over. */
+    setup asks (ticket 32) rather than a state it has to survive. The
+    disguise choice affects outside identity after setup, not the unlocked
+    app. */
 export function onboardingSteps(): readonly OnboardingStep[] {
   return ALL_STEPS;
 }
