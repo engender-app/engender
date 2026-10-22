@@ -107,6 +107,21 @@ test('an action applied days later, after the journal stayed locked, still fills
   assert.equal(epochDayFromTimestamp((await dosesOn(journal, DAY - 3))[0].timestamp), DAY - 3);
 });
 
+test('the rule the notification was posted under decides the slot, not a rule edited since', async () => {
+  const { journal, reminderId } = await onRegimen();
+  // Posted at 07:00 for a 07:00 rule, then the reminder was moved to 20:00 before the tap landed.
+  await journal.reminders.upsertReminder({
+    id: reminderId, title: 'Estradiol', time: '20:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null,
+    epochDay: null, enabled: true, drug: 'Estradiol valerate'
+  });
+  const posted = { time: '07:00', recurrence: 'DAILY' as const, interval: null, anchorEpochDay: null, epochDay: null };
+  const outcome = await applyPendingDoseAction(
+    journal, { ...action(reminderId, 'taken', at(DAY, '07:00'), at(DAY + 1, '06:00')), rule: posted }, []
+  );
+  assert.equal(outcome.slotEpochDay, DAY);
+  assert.equal((await dosesOn(journal, DAY))[0]?.timestamp, at(DAY, '07:00'));
+});
+
 test('Skip over a dose the schedule logged on its own turns that dose into a skip', async () => {
   const { journal, reminderId } = await onRegimen({ autoLogFrom: DAY - 1 });
   assert.equal(await journal.doses.autoLogDueDoses(DAY, []), 1);

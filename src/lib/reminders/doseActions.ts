@@ -17,7 +17,7 @@ import { epochDayFromTimestamp } from '../data/epochDay';
 import { matchDoseRoute, type RouteOption } from '../data/doseSchedule';
 import type { Journal } from '../data/journal/journal';
 import { activeEpisodesAt, sameDrug } from '../data/regimenEpisode';
-import { previousOccurrence } from '../data/reminderRule';
+import { previousOccurrence, type ReminderRule } from '../data/reminderRule';
 
 export type DoseActionKind = 'taken' | 'skipped';
 
@@ -32,6 +32,11 @@ export interface PendingDoseAction {
   postedAt: number;
   /** When the button was tapped. */
   at: number;
+  /** The reminder's rule as it stood when the notification was posted. A
+      rule edited before the tap must not move the slot the tap answers.
+      Absent only if the native side could not read one, and then the
+      reminder's current rule stands in. */
+  rule?: ReminderRule;
 }
 
 export type DoseActionOutcome = {
@@ -62,7 +67,8 @@ export async function applyPendingDoseAction(
   routeWords: readonly RouteOption[]
 ): Promise<DoseActionOutcome> {
   const reminder = (await journal.reminders.getReminders()).find((r) => r.id === action.reminderId);
-  const fired = reminder ? previousOccurrence(reminder, new Date(action.postedAt)) : null;
+  const rule = action.rule ?? reminder;
+  const fired = rule ? previousOccurrence(rule, new Date(action.postedAt)) : null;
   const firedAt = fired?.getTime() ?? action.postedAt;
   const slotEpochDay = epochDayFromTimestamp(firedAt);
   /* The tap is when the dose was taken, unless it came on a later day: then

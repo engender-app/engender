@@ -50,7 +50,7 @@ public class ReminderDoseActionTest {
     public void aTapIsKeptWithTheDrugTheReminderNamed() throws Exception {
         AtomicReference<JSONObject> stored = new AtomicReference<>(payload());
         assertTrue(ReminderScheduler.recordDoseAction(stored::get, stored::set,
-            "a1", "med", "taken", 1_000L, 2_000L));
+            "a1", "med", "taken", 1_000L, 2_000L, null));
 
         JSONArray kept = stored.get().getJSONArray(ReminderScheduler.PENDING_DOSE_ACTIONS);
         assertEquals(1, kept.length());
@@ -64,18 +64,31 @@ public class ReminderDoseActionTest {
     }
 
     @Test
+    public void aTapKeepsTheRuleTheNotificationWasPostedUnder() throws Exception {
+        AtomicReference<JSONObject> stored = new AtomicReference<>(payload());
+        String rule = ReminderScheduler.ruleOf(reminder("med", "E"));
+        ReminderScheduler.recordDoseAction(stored::get, stored::set, "a1", "med", "taken", 1L, 2L, rule);
+
+        JSONObject kept = stored.get().getJSONArray(ReminderScheduler.PENDING_DOSE_ACTIONS)
+            .getJSONObject(0).getJSONObject("rule");
+        assertEquals("20:00", kept.getString("time"));
+        assertEquals("DAILY", kept.getString("recurrence"));
+        assertTrue(kept.isNull("epochDay"));
+    }
+
+    @Test
     public void aTapForAReminderWithNoDrugOrAnUnknownActionKeepsNothing() throws Exception {
         AtomicReference<JSONObject> stored = new AtomicReference<>(payload());
-        assertFalse(ReminderScheduler.recordDoseAction(stored::get, stored::set, "a1", "plain", "taken", 1L, 2L));
-        assertFalse(ReminderScheduler.recordDoseAction(stored::get, stored::set, "a2", "gone", "taken", 1L, 2L));
-        assertFalse(ReminderScheduler.recordDoseAction(stored::get, stored::set, "a3", "med", "maybe", 1L, 2L));
+        assertFalse(ReminderScheduler.recordDoseAction(stored::get, stored::set, "a1", "plain", "taken", 1L, 2L, null));
+        assertFalse(ReminderScheduler.recordDoseAction(stored::get, stored::set, "a2", "gone", "taken", 1L, 2L, null));
+        assertFalse(ReminderScheduler.recordDoseAction(stored::get, stored::set, "a3", "med", "maybe", 1L, 2L, null));
         assertNull(stored.get().optJSONArray(ReminderScheduler.PENDING_DOSE_ACTIONS));
     }
 
     @Test
     public void aSyncFromTheAppKeepsTheTapsItHasNotAppliedYet() throws Exception {
         AtomicReference<JSONObject> stored = new AtomicReference<>(payload());
-        ReminderScheduler.recordDoseAction(stored::get, stored::set, "a1", "med", "skipped", 1L, 2L);
+        ReminderScheduler.recordDoseAction(stored::get, stored::set, "a1", "med", "skipped", 1L, 2L, null);
 
         JSONObject fresh = payload();
         ReminderScheduler.saveAndSchedule(fresh, ZonedDateTime.of(2026, 10, 22, 12, 0, 0, 0, ZONE),
@@ -88,8 +101,8 @@ public class ReminderDoseActionTest {
     @Test
     public void clearingRemovesOnlyTheActionsTheAppApplied() throws Exception {
         AtomicReference<JSONObject> stored = new AtomicReference<>(payload());
-        ReminderScheduler.recordDoseAction(stored::get, stored::set, "a1", "med", "taken", 1L, 2L);
-        ReminderScheduler.recordDoseAction(stored::get, stored::set, "a2", "med", "skipped", 3L, 4L);
+        ReminderScheduler.recordDoseAction(stored::get, stored::set, "a1", "med", "taken", 1L, 2L, null);
+        ReminderScheduler.recordDoseAction(stored::get, stored::set, "a2", "med", "skipped", 3L, 4L, null);
 
         ReminderScheduler.clearDoseActions(stored::get, stored::set, Collections.singleton("a1"));
 

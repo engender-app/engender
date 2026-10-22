@@ -41,6 +41,7 @@ public final class ReminderScheduler {
     static final String KIND_DOSE_ACTION = "dose-action";
     static final String EXTRA_DOSE_ACTION = "doseAction";
     static final String EXTRA_POSTED_AT = "postedAt";
+    static final String EXTRA_RULE = "rule";
 
     /** Taken and Skip taps on a medication reminder's notification
         (functional audit ticket 20), kept in the encrypted payload until
@@ -249,7 +250,8 @@ public final class ReminderScheduler {
      * before the next unlock still says what the tap was about.
      */
     static synchronized boolean recordDoseAction(PayloadReader reader, PayloadWriter writer, String id,
-                                                 String reminderId, String action, long postedAt, long at) throws Exception {
+                                                 String reminderId, String action, long postedAt, long at,
+                                                 String rule) throws Exception {
         if (!"taken".equals(action) && !"skipped".equals(action)) return false;
         JSONObject payload = reader.read();
         JSONObject reminder = findReminder(payload, reminderId);
@@ -257,9 +259,12 @@ public final class ReminderScheduler {
         if (drug.isEmpty()) return false;
         JSONArray actions = payload.optJSONArray(PENDING_DOSE_ACTIONS);
         if (actions == null) actions = new JSONArray();
-        actions.put(new JSONObject()
+        JSONObject kept = new JSONObject()
             .put("id", id).put("reminderId", reminderId).put("drug", drug)
-            .put("action", action).put("postedAt", postedAt).put("at", at));
+            .put("action", action).put("postedAt", postedAt).put("at", at);
+        JSONObject posted = parseRule(rule);
+        if (posted != null) kept.put("rule", posted);
+        actions.put(kept);
         payload.put(PENDING_DOSE_ACTIONS, actions);
         writer.write(payload);
         return true;
@@ -273,9 +278,32 @@ public final class ReminderScheduler {
     }
 
     static synchronized boolean recordDoseAction(Context context, String id, String reminderId, String action,
-                                                 long postedAt, long at) throws Exception {
+                                                 long postedAt, long at, String rule) throws Exception {
         return recordDoseAction(() -> loadPayload(context), saved -> ReminderPayloadStore.write(context, saved),
-            id, reminderId, action, postedAt, at);
+            id, reminderId, action, postedAt, at, rule);
+    }
+
+    /** The reminder's rule as the notification was posted with it, so a rule
+        edited before the tap does not move the slot the tap answers. */
+    static String ruleOf(JSONObject reminder) {
+        try {
+            JSONObject rule = new JSONObject();
+            for (String field : new String[] { "time", "recurrence", "interval", "anchorEpochDay", "epochDay" }) {
+                rule.put(field, reminder.has(field) ? reminder.get(field) : JSONObject.NULL);
+            }
+            return rule.toString();
+        } catch (Exception unreadable) {
+            return null;
+        }
+    }
+
+    private static JSONObject parseRule(String rule) {
+        if (rule == null) return null;
+        try {
+            return new JSONObject(rule);
+        } catch (Exception unreadable) {
+            return null;
+        }
     }
 
     static synchronized JSONArray pendingDoseActions(Context context) {
@@ -303,14 +331,15 @@ public final class ReminderScheduler {
         clearDoseActions(() -> loadPayload(context), saved -> ReminderPayloadStore.write(context, saved), ids);
     }
 
-    static PendingIntent doseActionIntent(Context context, String reminderId, String action, long postedAt) {
+    static PendingIntent doseActionIntent(Context context, String reminderId, String action, long postedAt, String rule) {
         Intent intent = new Intent(context, ReminderAlarmReceiver.class)
             .setAction("dev.engender.app.DOSE_ACTION")
             .setData(Uri.parse("engender://dose-action/" + Uri.encode(reminderId) + "/" + action))
             .putExtra(EXTRA_KIND, KIND_DOSE_ACTION)
             .putExtra(EXTRA_REMINDER_ID, reminderId)
             .putExtra(EXTRA_DOSE_ACTION, action)
-            .putExtra(EXTRA_POSTED_AT, postedAt);
+            .putExtra(EXTRA_POSTED_AT, postedAt)
+            .putExtra(EXTRA_RULE, rule);
         return PendingIntent.getBroadcast(context, REQUEST_DOSE_ACTION, intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }

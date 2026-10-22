@@ -105,7 +105,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         boolean kept;
         try {
             kept = ReminderScheduler.recordDoseAction(context, UUID.randomUUID().toString(), reminderId, action,
-                postedAt, System.currentTimeMillis());
+                postedAt, System.currentTimeMillis(), intent.getStringExtra(ReminderScheduler.EXTRA_RULE));
         } catch (Exception failedStore) {
             kept = false;
         }
@@ -171,8 +171,9 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
                 : texts.optString(DisguiseAlias.isDisguised(context) ? "doseDone" : "doseTaken", "Taken");
             String skip = texts == null ? "Skip" : texts.optString("doseSkip", "Skip");
             long postedAt = System.currentTimeMillis();
-            builder.addAction(0, taken, ReminderScheduler.doseActionIntent(context, id, "taken", postedAt));
-            builder.addAction(0, skip, ReminderScheduler.doseActionIntent(context, id, "skipped", postedAt));
+            String rule = ReminderScheduler.ruleOf(reminder);
+            builder.addAction(0, taken, ReminderScheduler.doseActionIntent(context, id, "taken", postedAt, rule));
+            builder.addAction(0, skip, ReminderScheduler.doseActionIntent(context, id, "skipped", postedAt, rule));
         }
 
         NotificationManagerCompat.from(context).notify("reminder:" + id, 7000, builder.build());
