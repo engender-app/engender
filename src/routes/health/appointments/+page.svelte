@@ -1031,23 +1031,31 @@
           ></textarea>
         {/snippet}
       </Field>
-      <Field label={m.appointments_day_label()} hint={m.appointments_day_hint()} id="appointment-date">
-        {#snippet children(id, describedBy)}
-          <DatePicker name="appointment-date" bind:value={editor.date} {id} {describedBy} />
-        {/snippet}
-      </Field>
-      <!-- The time only goes with a day (ticket 27): clearing the day makes
-           a wait, and a wait has no time to keep, so the field closes its
-           height rather than standing there unsaved. -->
-      {#if editor.date}
-        <div transition:collapse>
-          <Field label={m.appointments_time_label()} id="appointment-time">
-            {#snippet children(id)}
-              <TimePicker name="appointment-time" bind:value={editor.time} {id} />
-            {/snippet}
-          </Field>
-        </div>
-      {/if}
+      <!-- Day and its time in one box of their own (flow-root), so the
+           time arriving and a wait's fields leaving below it on the same
+           tick (a day set on a wait) do not read each other's margins
+           mid-travel: measured, the wait block's leave otherwise kept 16px
+           under it and the buttons stepped up 16px the frame it was
+           removed. -->
+      <div class="ap-when">
+        <Field label={m.appointments_day_label()} hint={m.appointments_day_hint()} id="appointment-date">
+          {#snippet children(id, describedBy)}
+            <DatePicker name="appointment-date" bind:value={editor.date} {id} {describedBy} />
+          {/snippet}
+        </Field>
+        <!-- The time only goes with a day (ticket 27): clearing the day makes
+             a wait, and a wait has no time to keep, so the field closes its
+             height rather than standing there unsaved. -->
+        {#if editor.date}
+          <div transition:collapse>
+            <Field label={m.appointments_time_label()} id="appointment-time">
+              {#snippet children(id)}
+                <TimePicker name="appointment-time" bind:value={editor.time} {id} />
+              {/snippet}
+            </Field>
+          </div>
+        {/if}
+      </div>
       <!-- The wait's own fields, only on a wait: an appointment with no day,
            or one that began as a wait (it has a referred-on day or updates).
            An ordinary booking is the four fields above and nothing more, and
@@ -1359,6 +1367,14 @@
 
   /* The wait's fields keep the sheet's own field rhythm (RecordSheet's
      fieldset spaces its direct children), one wrapper deeper. */
+  .ap-when {
+    display: flow-root;
+  }
+
+  .ap-when > :global(* + *) {
+    margin-top: var(--space-4);
+  }
+
   .ap-wait > :global(* + *) {
     margin-top: var(--space-4);
   }
