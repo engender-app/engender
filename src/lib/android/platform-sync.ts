@@ -41,6 +41,7 @@ import { unpromptedQuiet } from '../unprompted/registry';
 import { quietHoursOf, type QuietHours } from '../unprompted/quietHours';
 import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
+import type { DoseActionOutcome, PendingDoseAction } from '$lib/reminders/doseActions';
 import { dismissActiveOverlay } from '../components/overlayLock';
 import { setupBack } from '../onboarding/back';
 import { resolveAndroidBackAction } from './back-navigation';
@@ -88,6 +89,19 @@ export interface PlatformSyncDeps {
   androidReminders: {
     sync(payload: AndroidReminderSyncPayload): Promise<void>;
     consumeLaunchRoute(): Promise<{ route: string | null }>;
+    pendingDoseActions(): Promise<{ actions: PendingDoseAction[] }>;
+    clearDoseActions(options: { ids: string[] }): Promise<void>;
+  };
+  /** Taken and Skip from a medication reminder's notification (functional
+      audit ticket 20): `apply` writes one kept tap into the open journal
+      (doseActions.ts), `confirm` tells the person what it did, and
+      `resolveLaunchRoute` turns a dose reminder's route into its drug's
+      dose log. Injected, like everything else here that reaches the
+      journal or the screen. */
+  doseActions: {
+    apply(action: PendingDoseAction): Promise<DoseActionOutcome>;
+    confirm(outcome: DoseActionOutcome): void;
+    resolveLaunchRoute(route: string): Promise<string>;
   };
   androidDisguise: { setLauncherIdentity(options: { disguised: boolean; palette: string; shape: 'current' | 'round' }): Promise<void> };
   androidLockTiming: { setTiming(options: { timing: LockAfter }): Promise<void> };
@@ -258,12 +272,40 @@ const reconcileStockRunOutReminders = coalescing(
   (error) => console.error('Could not reconcile the medication stock run-out reminder', error)
 );
 
+/* Each kept tap is applied on its own, so one that fails to write stays in
+   the native store for the next pass while the rest are cleared. Cleared
+   before they are confirmed: a toast for a tap that then replays would say
+   the same thing twice, and the replay itself writes nothing. */
+const applyPendingDoseActions = coalescing(
+  async () => {
+    if (!active) return;
+    const deps = activeDeps();
+    if (!deps.isAndroid() || !deps.isReady()) return;
+    const { actions } = await deps.androidReminders.pendingDoseActions();
+    const outcomes: DoseActionOutcome[] = [];
+    for (const action of actions) {
+      if (!active || currentDeps !== deps || !deps.isReady()) break;
+      try {
+        outcomes.push(await deps.doseActions.apply(action));
+      } catch (error) {
+        console.error('Could not apply a dose reminder action', error);
+      }
+    }
+    if (outcomes.length === 0) return;
+    await deps.androidReminders.clearDoseActions({ ids: outcomes.map((outcome) => outcome.id) });
+    for (const outcome of outcomes) deps.doseActions.confirm(outcome);
+  },
+  (error) => console.error('Could not apply dose reminder actions', error)
+);
+
 async function consumeReminderLaunchRoute() {
   const deps = activeDeps();
   if (!deps.isAndroid() || !deps.isReady()) return;
   try {
-    const { route } = await deps.androidReminders.consumeLaunchRoute();
-    if (!route || !deps.isValidLaunchRoute(route) || route === deps.currentPathname()) return;
+    const { route: raw } = await deps.androidReminders.consumeLaunchRoute();
+    if (!raw || !deps.isValidLaunchRoute(raw)) return;
+    const route = await deps.doseActions.resolveLaunchRoute(raw);
+    if (route === deps.currentPathname()) return;
     await deps.goto(route);
   } catch (error) {
     console.error('Could not consume reminder launch route', error);
@@ -299,12 +341,14 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   }
 
   void syncReminderSchedules();
+  void applyPendingDoseActions();
   void consumeReminderLaunchRoute();
   void reconcileStockRunOutReminders();
 
   const onVisibleOrFocused = () => {
     if (document.visibilityState !== 'visible') return;
     void syncReminderSchedules();
+    void applyPendingDoseActions();
     void consumeReminderLaunchRoute();
   };
   window.addEventListener('focus', onVisibleOrFocused);

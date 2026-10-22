@@ -55,6 +55,10 @@ public class RemindersPlugin extends Plugin {
             textObject.put("channelCheckIn", text(texts, "channelCheckIn", "Check-in"));
             textObject.put("checkInTitle", text(texts, "checkInTitle", "Daily check-in"));
             textObject.put("checkInBody", text(texts, "checkInBody", "How are you today?"));
+            textObject.put("doseTaken", text(texts, "doseTaken", "Taken"));
+            textObject.put("doseDone", text(texts, "doseDone", "Done"));
+            textObject.put("doseSkip", text(texts, "doseSkip", "Skip"));
+            textObject.put("doseNoted", text(texts, "doseNoted", "Noted"));
             payload.put("texts", textObject);
 
             ensureChannels(textObject);
@@ -148,6 +152,30 @@ public class RemindersPlugin extends Plugin {
             result.put("route", route);
         }
         call.resolve(result);
+    }
+
+    /** Taken and Skip taps the journal has not taken in yet (functional
+        audit ticket 20). Read, not consumed: the app clears each one only
+        after its dose is written, so a crash in between replays it, and
+        replaying is harmless (doseActions.ts). */
+    @PluginMethod
+    public void pendingDoseActions(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("actions", ReminderScheduler.pendingDoseActions(getContext()));
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void clearDoseActions(PluginCall call) {
+        try {
+            JSArray ids = call.getArray("ids");
+            java.util.Set<String> remove = new java.util.HashSet<>();
+            if (ids != null) for (int i = 0; i < ids.length(); i++) remove.add(ids.getString(i));
+            ReminderScheduler.clearDoseActions(getContext(), remove);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
     }
 
     private JSObject status() {

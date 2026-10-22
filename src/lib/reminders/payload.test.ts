@@ -34,7 +34,11 @@ describe('buildAndroidReminderPayload', () => {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
         checkInTitle: 'Daily check-in',
-        checkInBody: 'How are you today?'
+        checkInBody: 'How are you today?',
+        doseTaken: 'Taken',
+        doseDone: 'Done',
+        doseSkip: 'Skip',
+        doseNoted: 'Noted'
       }
     });
 
@@ -65,7 +69,11 @@ describe('buildAndroidReminderPayload', () => {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
         checkInTitle: 'Daily check-in',
-        checkInBody: 'How are you today?'
+        checkInBody: 'How are you today?',
+        doseTaken: 'Taken',
+        doseDone: 'Done',
+        doseSkip: 'Skip',
+        doseNoted: 'Noted'
       }
     });
   });
@@ -98,7 +106,11 @@ describe('buildAndroidReminderPayload', () => {
         channelReminders: 'A',
         channelCheckIn: 'B',
         checkInTitle: 'C',
-        checkInBody: 'D'
+        checkInBody: 'D',
+        doseTaken: 'Taken',
+        doseDone: 'Done',
+        doseSkip: 'Skip',
+        doseNoted: 'Noted'
       }
     });
 

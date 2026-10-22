@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -37,12 +38,23 @@ public final class ReminderScheduler {
     public static final String EXTRA_ROUTE = "gd_route";
     static final String KIND_REMINDER = "reminder";
     static final String KIND_CHECK_IN = "check-in";
+    static final String KIND_DOSE_ACTION = "dose-action";
+    static final String EXTRA_DOSE_ACTION = "doseAction";
+    static final String EXTRA_POSTED_AT = "postedAt";
+
+    /** Taken and Skip taps on a medication reminder's notification
+        (functional audit ticket 20), kept in the encrypted payload until
+        the app has written them into the journal. The journal may be locked
+        when the button is pressed, and its key only exists after unlock, so
+        this store is where a tap waits. */
+    static final String PENDING_DOSE_ACTIONS = "pendingDoseActions";
 
     static final String CHANNEL_REMINDERS = "gd-reminders";
     static final String CHANNEL_CHECK_IN = "gd-check-in";
 
     private static final int REQUEST_REMINDER = 41;
     private static final int REQUEST_CHECK_IN = 42;
+    private static final int REQUEST_DOSE_ACTION = 43;
 
     private ReminderScheduler() {}
 
@@ -90,6 +102,10 @@ public final class ReminderScheduler {
     static synchronized void saveAndSchedule(JSONObject payload, ZonedDateTime now, PayloadReader reader, PayloadWriter writer,
                                 Consumer<JSONObject> cancel, Consumer<JSONObject> schedule) throws Exception {
         JSONObject previous = reader.read();
+        /* The app's payload never carries the taps it has not applied yet,
+           so a sync must not drop them on its way through. */
+        JSONArray kept = previous == null ? null : previous.optJSONArray(PENDING_DOSE_ACTIONS);
+        if (kept != null) payload.put(PENDING_DOSE_ACTIONS, kept);
         JSONArray reminders = payload.optJSONArray("reminders");
         if (reminders != null) {
             for (int i = 0; i < reminders.length(); i++) {
@@ -225,6 +241,80 @@ public final class ReminderScheduler {
         return null;
     }
 
+    /**
+     * Keeps one Taken or Skip tap until the app applies it. Only a reminder
+     * that names a drug has the buttons, so a tap for any other, for a
+     * reminder that has since gone, or with an action this build does not
+     * know keeps nothing. The drug is copied in, so a reminder deleted
+     * before the next unlock still says what the tap was about.
+     */
+    static synchronized boolean recordDoseAction(PayloadReader reader, PayloadWriter writer, String id,
+                                                 String reminderId, String action, long postedAt, long at) throws Exception {
+        if (!"taken".equals(action) && !"skipped".equals(action)) return false;
+        JSONObject payload = reader.read();
+        JSONObject reminder = findReminder(payload, reminderId);
+        String drug = reminder == null ? "" : drugOf(reminder);
+        if (drug.isEmpty()) return false;
+        JSONArray actions = payload.optJSONArray(PENDING_DOSE_ACTIONS);
+        if (actions == null) actions = new JSONArray();
+        actions.put(new JSONObject()
+            .put("id", id).put("reminderId", reminderId).put("drug", drug)
+            .put("action", action).put("postedAt", postedAt).put("at", at));
+        payload.put(PENDING_DOSE_ACTIONS, actions);
+        writer.write(payload);
+        return true;
+    }
+
+    /** The reminder's drug, or "" for none. Read by type rather than with
+        optString, which on Android turns a JSON null into the text "null". */
+    static String drugOf(JSONObject reminder) {
+        Object drug = reminder.opt("drug");
+        return drug instanceof String ? ((String) drug).trim() : "";
+    }
+
+    static synchronized boolean recordDoseAction(Context context, String id, String reminderId, String action,
+                                                 long postedAt, long at) throws Exception {
+        return recordDoseAction(() -> loadPayload(context), saved -> ReminderPayloadStore.write(context, saved),
+            id, reminderId, action, postedAt, at);
+    }
+
+    static synchronized JSONArray pendingDoseActions(Context context) {
+        JSONObject payload = loadPayload(context);
+        JSONArray actions = payload == null ? null : payload.optJSONArray(PENDING_DOSE_ACTIONS);
+        return actions == null ? new JSONArray() : actions;
+    }
+
+    /** Removes the taps the app has written, and only those: one pressed
+        while the app was applying the others waits for the next pass. */
+    static synchronized void clearDoseActions(PayloadReader reader, PayloadWriter writer, Set<String> ids) throws Exception {
+        JSONObject payload = reader.read();
+        JSONArray actions = payload == null ? null : payload.optJSONArray(PENDING_DOSE_ACTIONS);
+        if (actions == null) return;
+        JSONArray kept = new JSONArray();
+        for (int i = 0; i < actions.length(); i++) {
+            JSONObject action = actions.optJSONObject(i);
+            if (action != null && !ids.contains(action.optString("id", ""))) kept.put(action);
+        }
+        payload.put(PENDING_DOSE_ACTIONS, kept);
+        writer.write(payload);
+    }
+
+    static synchronized void clearDoseActions(Context context, Set<String> ids) throws Exception {
+        clearDoseActions(() -> loadPayload(context), saved -> ReminderPayloadStore.write(context, saved), ids);
+    }
+
+    static PendingIntent doseActionIntent(Context context, String reminderId, String action, long postedAt) {
+        Intent intent = new Intent(context, ReminderAlarmReceiver.class)
+            .setAction("dev.engender.app.DOSE_ACTION")
+            .setData(Uri.parse("engender://dose-action/" + Uri.encode(reminderId) + "/" + action))
+            .putExtra(EXTRA_KIND, KIND_DOSE_ACTION)
+            .putExtra(EXTRA_REMINDER_ID, reminderId)
+            .putExtra(EXTRA_DOSE_ACTION, action)
+            .putExtra(EXTRA_POSTED_AT, postedAt);
+        return PendingIntent.getBroadcast(context, REQUEST_DOSE_ACTION, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
     /** Consuming the occurrence must reach disk before its notification can be posted. */
     static synchronized void deliverReminder(Context context, JSONObject payload, JSONObject reminder, ZonedDateTime now) {
         deliverReminder(payload, reminder, now, saved -> ReminderPayloadStore.write(context, saved),
@@ -355,6 +445,18 @@ public final class ReminderScheduler {
     static String sanitizeLaunchRoute(String route) {
         if (route == null || route.isBlank() || route.charAt(0) != '/') return null;
         if (route.startsWith("//")) return null;
+        // A medication reminder's notification (functional audit ticket 20):
+        // the reminder's id only, which the app resolves to its drug.
+        if (route.startsWith("/care/doses?add=1&reminder=")) {
+            String reminderId = route.substring("/care/doses?add=1&reminder=".length());
+            if (reminderId.isEmpty()) return null;
+            for (int i = 0; i < reminderId.length(); i++) {
+                char c = reminderId.charAt(i);
+                boolean ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-';
+                if (!ok) return null;
+            }
+            return route;
+        }
         if (route.startsWith("/settings/reminders")) {
             String suffix = route.substring("/settings/reminders".length());
             if (suffix.isEmpty()) return route;

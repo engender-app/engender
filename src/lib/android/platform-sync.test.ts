@@ -21,7 +21,11 @@ const TEXTS = {
   channelReminders: 'Reminders',
   channelCheckIn: 'Check-in',
   checkInTitle: 'Daily check-in',
-  checkInBody: 'How are you today?'
+  checkInBody: 'How are you today?',
+  doseTaken: 'Taken',
+  doseDone: 'Done',
+  doseSkip: 'Skip',
+  doseNoted: 'Noted'
 };
 
 /* The registry's reminder switches and the quiet window, at the settings a
@@ -321,7 +325,14 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
     onTablesWritten: vi.fn(),
     androidReminders: {
       sync: vi.fn().mockResolvedValue(undefined),
-      consumeLaunchRoute: vi.fn().mockResolvedValue({ route: null })
+      consumeLaunchRoute: vi.fn().mockResolvedValue({ route: null }),
+      pendingDoseActions: vi.fn().mockResolvedValue({ actions: [] }),
+      clearDoseActions: vi.fn().mockResolvedValue(undefined)
+    },
+    doseActions: {
+      apply: vi.fn(),
+      confirm: vi.fn(),
+      resolveLaunchRoute: vi.fn(async (route: string) => route)
     },
     androidDisguise: { setLauncherIdentity: vi.fn().mockResolvedValue(undefined) },
     androidLockTiming: { setTiming: vi.fn().mockResolvedValue(undefined) },
@@ -654,6 +665,60 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
 
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.goto).toHaveBeenCalledWith('/entry/new/today');
+  });
+
+  /* Functional audit ticket 20: a Taken or Skip tap kept while the journal
+     was locked is written, cleared and said out loud once it is open. */
+  const tap = (id: string, action: 'taken' | 'skipped') => ({
+    id, reminderId: 'r-1', drug: 'Estradiol', action, postedAt: 1, at: 2
+  });
+
+  test('applies kept dose taps once the journal is open, clears them and confirms each', async () => {
+    const deps = makeDeps();
+    (deps.androidReminders.pendingDoseActions as ReturnType<typeof vi.fn>).mockResolvedValue({
+      actions: [tap('a1', 'taken'), tap('a2', 'skipped')]
+    });
+    (deps.doseActions.apply as ReturnType<typeof vi.fn>).mockImplementation(async (action: { id: string }) => ({
+      id: action.id, result: 'logged', doseId: `d-${action.id}`
+    }));
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    await flush();
+
+    expect((deps.doseActions.apply as ReturnType<typeof vi.fn>).mock.calls.map(([a]) => a.id)).toEqual(['a1', 'a2']);
+    expect(deps.androidReminders.clearDoseActions).toHaveBeenCalledWith({ ids: ['a1', 'a2'] });
+    expect((deps.doseActions.confirm as ReturnType<typeof vi.fn>).mock.calls.map(([o]) => o.id)).toEqual(['a1', 'a2']);
+  });
+
+  test('keeps a dose tap whose write failed, for the next time the app comes back', async () => {
+    const deps = makeDeps();
+    (deps.androidReminders.pendingDoseActions as ReturnType<typeof vi.fn>).mockResolvedValue({
+      actions: [tap('a1', 'taken'), tap('a2', 'skipped')]
+    });
+    (deps.doseActions.apply as ReturnType<typeof vi.fn>).mockImplementation(async (action: { id: string }) => {
+      if (action.id === 'a1') throw new Error('write failed');
+      return { id: action.id, result: 'logged', doseId: 'd' };
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    await flush();
+    error.mockRestore();
+
+    expect(deps.androidReminders.clearDoseActions).toHaveBeenCalledWith({ ids: ['a2'] });
+    expect((deps.doseActions.confirm as ReturnType<typeof vi.fn>).mock.calls.map(([o]) => o.id)).toEqual(['a2']);
+  });
+
+  test('a dose reminder route is resolved to its drug before the app navigates', async () => {
+    const deps = makeDeps({ isValidLaunchRoute: () => true });
+    (deps.androidReminders.consumeLaunchRoute as ReturnType<typeof vi.fn>).mockResolvedValue({
+      route: '/care/doses?add=1&reminder=r-1'
+    });
+    (deps.doseActions.resolveLaunchRoute as ReturnType<typeof vi.fn>).mockResolvedValue('/care/doses?add=1&episode=e-1');
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    await flush();
+    expect(deps.goto).toHaveBeenCalledWith('/care/doses?add=1&episode=e-1');
   });
 
   test('leaves nothing behind after stop: every removable listener it attached is removed', async () => {
