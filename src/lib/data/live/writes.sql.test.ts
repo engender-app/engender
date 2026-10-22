@@ -131,6 +131,13 @@ const NARROWED = new Map(
   COMPOSING_READS.map(({ read, narrows }) => [read.join('.'), Object.keys(narrows ?? {}) as TableName[]])
 );
 
+/** The recorder sees the view name rather than its underlying tables. The
+    library's source_rank filter excludes non-library arms; writes.ts names
+    the owner tables that can change the resulting rows. */
+const VIEW_READS = new Set([
+  'photoLibrary.inJournal', 'photoLibrary.starred', 'photoLibrary.hasAny'
+]);
+
 /** The tables a read's SQL read that its declaration, mapped through
     `tables`, does not cover. */
 const readOutside = (
@@ -1199,7 +1206,8 @@ describe('every classified read declares the tables its SQL read', () => {
     const stale = drivenReads
       .map(({ key, read }) => ({
         key,
-        extra: readOutside(read, [...declaredRead(key), ...(NARROWED.get(key) ?? [])], SQL_TABLES)
+        extra: readOutside(read.filter((table) => table !== 'media_file' || !VIEW_READS.has(key)),
+          [...declaredRead(key), ...(NARROWED.get(key) ?? [])], SQL_TABLES)
       }))
       .filter(({ extra }) => extra.length > 0)
       .map(({ key, extra }) => `journal.${key} read ${JSON.stringify(extra)} outside its declared ${JSON.stringify(declaredRead(key))}`);

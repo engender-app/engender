@@ -37,6 +37,7 @@ import type { MigrationFileOps } from '../data/sqlite/migration-runner';
 import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
+import { shouldSweepOrphans } from '../data/sqlite/orphan-sweep-schedule';
 import { attachJournal, journalIsClosing, journalIsOpen } from '../data/live/journal.svelte';
 import { sessionDriver } from '../data/live/sessionDriver';
 import { bump } from '../data/live/tableVersions.svelte';
@@ -1215,6 +1216,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
       if (reclaimed > 0) bump(tablesWrittenBy('entries', 'deleteEntry'));
     },
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
+    shouldSweepOrphans,
     /* The standing instruction, carried out (phase 11 ticket 11, ADR-0086).
        Through the journal rather than the driver, unlike the two passes
        above: this one is an ordinary area operation, so it takes the write

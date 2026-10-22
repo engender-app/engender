@@ -10,7 +10,9 @@ import { DatabaseSync } from 'node:sqlite';
 import type { SqliteDriver } from './driver.ts';
 import { journalIsBusy, prepareJournalHandover } from '../journal-busy.ts';
 import { boot, migrateJournal } from './boot.ts';
-import { noopFileOps } from './test-support/migrated-db.ts';
+import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
+import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
+import { sweepOrphanPhotos } from '../journal/photos.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 
 function makeFakeDriver(): SqliteDriver {
@@ -53,6 +55,24 @@ test('opens the database, runs migrations, and reports ready', async () => {
   if (result.phase === 'ready') {
     assert.equal(await result.driver.getUserVersion(), LATEST_SCHEMA_VERSION);
   }
+});
+
+test('normal boot skips attachment sweep until weekly due', async () => {
+  const driver = await migratedDb();
+  const files = fakeFileStore();
+  let listed = 0;
+  const list = files.list;
+  files.list = async () => { listed++; return list(); };
+  const result = await boot({
+    createDriver: () => driver,
+    fileOps: noopFileOps(),
+    shouldSweepOrphans: () => false,
+    sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, files)
+  });
+  assert.equal(result.phase, 'ready');
+  if (result.phase === 'ready') await result.housekeeping;
+  assert.equal(listed, 0);
+  await driver.close();
 });
 
 test('runs steps in the documented order: prefs, then open+migrate, then persist, then reference data, trash purge and photo sweep', async () => {

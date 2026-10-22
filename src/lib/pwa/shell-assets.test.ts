@@ -35,19 +35,19 @@ describe('splitShellAssets, the two built files', () => {
   test('the PDF renderer is asked for, the promiser worker nobody constructs is not stored', () => {
     const { shell, pdfWorker, unused } = splitShellAssets(paths, '', PREFIX);
 
-    expect(pdfWorker).toEqual(['/_app/immutable/workers/pdf-worker-Kp7_pMCT.js']);
+    expect(pdfWorker).toEqual(['/_app/immutable/workers/pdf-worker-Kp7_pMCT.js', '/pdf-fonts/LiberationSans-Regular.ttf']);
     expect(unused).toEqual(['/_app/immutable/workers/sqlite3-worker1-bundler-friendly-CrvDegEM.js']);
     expect(shell).toEqual([
       '/_app/immutable/chunks/AbC123.js',
       '/_app/immutable/workers/mc-worker-akfwo7ds.js',
-      '/_app/immutable/workers/sqlite3-worker1-B2PgjPc4.js',
-      '/pdf-fonts/LiberationSans-Regular.ttf'
+      '/_app/immutable/workers/sqlite3-worker1-B2PgjPc4.js'
     ]);
   });
 
-  test('the fonts stay in the shell (ADR-0065)', () => {
-    const { shell } = splitShellAssets(['/pdf-fonts/LiberationSans-Bold.ttf'], '', PREFIX);
-    expect(shell).toEqual(['/pdf-fonts/LiberationSans-Bold.ttf']);
+  test('the fonts load with the PDF worker', () => {
+    const { shell, pdfWorker } = splitShellAssets(['/pdf-fonts/LiberationSans-Bold.ttf'], '', PREFIX);
+    expect(shell).toEqual([]);
+    expect(pdfWorker).toEqual(['/pdf-fonts/LiberationSans-Bold.ttf']);
   });
 
   test('matches under the base too', () => {

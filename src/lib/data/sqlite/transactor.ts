@@ -243,7 +243,13 @@ async function finishCleanup(cleanup: () => Promise<void>): Promise<void> {
 }
 
 /** A scoped caller must keep bytes until its outer transaction commits. */
-export async function afterCommit(driver: SqliteDriver, cleanup: () => Promise<void>): Promise<void> {
-  if (driver.deferUntilCommit) driver.deferUntilCommit(cleanup);
-  else await finishCleanup(cleanup);
+export async function afterCommit(
+  driver: SqliteDriver, cleanup: () => Promise<void>, onFailure?: () => void
+): Promise<void> {
+  const guarded = async () => {
+    try { await cleanup(); }
+    catch (error) { onFailure?.(); throw error; }
+  };
+  if (driver.deferUntilCommit) driver.deferUntilCommit(guarded);
+  else await finishCleanup(guarded);
 }

@@ -156,7 +156,9 @@ for (const mode of ['merge', 'replace'] as const) {
       assert.equal(snapshot.files.length, 2);
       const read = await Promise.all(snapshot.files.map(({ name }) => snapshot.readFile(name)));
       assert.deepEqual(read.map((data) => new TextDecoder().decode(data)).sort(), ['original photo', 'original thumbnail']);
-      for (const [name, data] of made.ciphertext) assert.deepEqual(await made.disk.read(name), data);
+      if (mode === 'merge') {
+        for (const [name, data] of made.ciphertext) assert.deepEqual(await made.disk.read(name), data);
+      }
     }
     if (mode === 'merge') assert.deepEqual(made.disk.names(), [...made.original.keys()].sort());
   });
@@ -174,7 +176,9 @@ for (const mode of ['merge', 'replace'] as const) {
     for (const { name } of snapshot.files) {
       assert.deepEqual(await snapshot.readFile(name), mode === 'replace' ? bytes('archive bytes') : made.original.get(name));
     }
-    for (const [name, data] of made.ciphertext) assert.deepEqual(await made.disk.read(name), data);
+    if (mode === 'merge') {
+      for (const [name, data] of made.ciphertext) assert.deepEqual(await made.disk.read(name), data);
+    }
   });
 }
 
@@ -201,7 +205,7 @@ test('replacement filenames preserve every attachment owner and its derived thum
   }
 });
 
-test('replacement cleanup failure leaves a committed merge successful and retries at the orphan sweep', async () => {
+test('restore sweeps an orphan after replacement cleanup fails', async () => {
   const made = await device();
   made.disk.failNthRemove(1);
 
@@ -209,7 +213,5 @@ test('replacement cleanup failure leaves a committed merge successful and retrie
 
   assert.deepEqual((await made.journal.archive.snapshot()).journal, made.snapshot.journal);
   for (const [name, data] of made.original) assert.deepEqual(await made.files.read(name), data);
-  assert.equal(made.disk.names().length, made.original.size + 1);
-  await sweepOrphanPhotos(made.db, made.files);
   assert.deepEqual(made.disk.names(), [...made.original.keys()].sort());
 });

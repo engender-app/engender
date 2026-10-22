@@ -1,4 +1,4 @@
-/* Update activation and the optional PDF worker use fixed messages. */
+/* Update activation and optional PDF assets use fixed messages. */
 
 /** Sent to a waiting worker to let it take over. The page only sends it when
     the journal is idle, which is the whole of the guard: the worker itself
@@ -38,7 +38,7 @@ export function listenForSkipWaiting(sw: SkipWaitingScope): void {
   });
 }
 
-/** The PDF renderer stays optional. A page can ask only for the worker's
+/** The PDF renderer stays optional. A page can ask only for its
     fixed asset list; a failed fetch leaves the request retryable. */
 export function listenForOnDemandCache(
   sw: MessageScope,
@@ -51,9 +51,8 @@ export function listenForOnDemandCache(
     event.waitUntil(
       (async () => {
         const cache = await cacheStore.open(onDemand.cacheName);
-        /* Past the HTTP cache is exactly what is not wanted here: the page has
-           just loaded every one of these, so this second pass is meant to be
-           served out of the cache it filled. */
+        /* The page has loaded the worker and may have loaded one standard
+           font. addAll fetches the remaining faces for later offline use. */
         await cache.addAll(onDemand.assets);
       })().catch(() => {})
     );

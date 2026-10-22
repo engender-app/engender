@@ -34,10 +34,11 @@
    resolved promise, because that promise is what the write registry treats
    as permission to announce the tables (live/writes.ts).
 
-   Nothing here deletes an existing file (ADR-0011). Unpublished replacements
-   are removed when proven unowned; an uncertain transaction or interrupted
-   cleanup leaves them for the boot sweep. Other new files also wait for that
-   sweep. Deleting existing files up front would mean a failure part way leaves the
+   Nothing here deletes an existing file before the row transaction (ADR-0011).
+   Unpublished replacements are removed when proven unowned; an uncertain
+   transaction or interrupted cleanup leaves them for the orphan sweep. The
+   sweep runs after the transaction and keeps every name still owned by a row.
+   Deleting existing files up front would mean a failure part way leaves the
    user with neither their old photos nor the new ones, on a device that by
    design has no other copy.
 
@@ -71,7 +72,10 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { filesOf } from '../photos/names';
 import { documentFilesOf } from './documents';
-import { assertArchiveFileOwnership, readFileOwnership } from './fileOwnership';
+import { assertArchiveFileOwnership, readCleanupFileNames } from './fileOwnership';
+import { journalIsBusy, waitForJournalIdle } from '../journal-busy';
+import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
+import { sweepOrphanPhotos } from './photos';
 import { mintUuid } from './support';
 import { reconcileBuiltInsWithin } from './reconcile';
 import { recordImport } from './archiveApply';
@@ -275,7 +279,7 @@ async function restoreWithin(
   commit?: ImportCommit
 ): Promise<Record<string, number>> {
   const original = restorableJournal(contents.journal, commit !== undefined);
-  const existing = new Set(await files.list());
+  const existing = new Set([...await readCleanupFileNames(driver), ...await files.list()]);
   const replacements = new Map<string, string>();
   const journal = replacementNames(original, existing, replacements);
   const staged = new Set<string>();
@@ -322,13 +326,20 @@ async function restoreWithin(
         await recordImport(driver, commit.source, added);
       }
       if (staged.size > 0) {
-        const owned = new Set((await readFileOwnership(driver, 'cleanup')).names);
+        const owned = new Set(await readCleanupFileNames(driver));
         unpublished = new Set([...staged].filter((name) => !owned.has(name)));
       }
     });
   } finally {
     // Cleanup cannot turn a committed restore into a reported failure.
     await Promise.allSettled([...unpublished].map(async (name) => files.remove(name)));
+    markOrphanSweepDue();
+    const sweep = () => sweepOrphanPhotos(driver, files).catch((error) => {
+      console.warn('post-restore orphan sweep failed', error);
+    });
+    // The live journal's write guard covers this call until it returns.
+    if (journalIsBusy()) void waitForJournalIdle().then(sweep);
+    else await sweep();
   }
   return added;
 }

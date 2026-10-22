@@ -691,7 +691,7 @@ test('replace leaves the PIN, the app-lock flags and the disguise settings alone
   );
 });
 
-test('the archive\'s photo files land, and the ones a replace orphaned are still on disk', async () => {
+test('the archive\'s photo files land, and replace sweeps the files it orphaned', async () => {
   const source = await populated();
   const target = await device();
   const mineId = await target.journal.entries.upsertEntry({ epochDay: 20500, mood: 5 });
@@ -702,10 +702,9 @@ test('the archive\'s photo files land, and the ones a replace orphaned are still
   assert.deepEqual(await target.files.read(`${source.photo}.jpg`), bytes('full-photo'));
   assert.deepEqual(await target.files.read(thumbFileName(`${source.photo}.jpg`)), bytes('thumb'));
   assert.deepEqual(await target.files.read(`${source.milestonePhoto}.jpg`), bytes('m'));
-  // Never deleted (ADR-0011): the row is gone, the file waits for the next
-  // boot's orphan sweep. Deleting up front is how a failed restore leaves a
-  // device with neither its old photos nor the new ones.
-  assert.deepEqual(await target.files.read(`${myPhoto}.jpg`), bytes('old'));
+  // Old bytes stay until the row transaction commits; the following sweep
+  // removes them only after the imported rows own their new files.
+  assert.equal(await target.files.read(`${myPhoto}.jpg`), null);
   assert.equal(await rowCount(target.db, 'photo'), 2);
 });
 
@@ -724,9 +723,9 @@ test('a failure after the files are written and before the commit leaves the jou
   const after = await target.journal.archive.snapshot();
   assert.deepEqual(after.journal, before.journal);
   assert.deepEqual(after.files, before.files);
-  // The archive's files did land, and stay as orphans for the boot sweep -
-  // which is the whole cost of ordering it this way.
-  assert.deepEqual(await target.files.read(`${source.photo}.jpg`), bytes('full-photo'));
+  // The archive's files landed before the refused transaction. Cleanup now
+  // removes them while preserving every file the original rows still own.
+  assert.equal(await target.files.read(`${source.photo}.jpg`), null);
 });
 
 test('a refused commit rolls the whole restore back in both replace and merge', async () => {

@@ -67,19 +67,14 @@ function pdfjs(): Promise<PdfjsModule> {
     call `terminate()` on it.
 
     The worker is not in the offline shell's install (shell-assets.ts): the
-    first one built here asks the service worker to keep it, the way a
-    loaded OCR engine does. Not awaited and not repeated within a session,
-    since the cache is keyed per release and a repeat ask is a few reads. */
-let askedToCache = false;
+    first one built here asks the service worker to keep it and its fonts.
+    Repeated asks retry a failed cache fill and are cheap for cached assets. */
 function workerFor(module: PdfjsModule) {
   const port = new Worker(new URL('./pdf-worker.ts', import.meta.url), { type: 'module' });
-  if (!askedToCache) {
-    askedToCache = true;
-    void navigator.serviceWorker
-      ?.getRegistration()
-      .then((registration) => registration?.active?.postMessage(CACHE_PDF_WORKER))
-      .catch(() => {});
-  }
+  void navigator.serviceWorker
+    ?.getRegistration()
+    .then((registration) => registration?.active?.postMessage(CACHE_PDF_WORKER))
+    .catch(() => {});
   return { worker: module.PDFWorker.fromPort({ port }), port };
 }
 
