@@ -39,7 +39,7 @@
  * writing" and the app opened, which is the moment the whole flow is for,
  * and rule 12 already says the sun's handover to Home is one object at one
  * size rather than two suns. Cut, it was the app's largest surface changing
- * in a single frame at the end of ten steps that had all moved.
+ * in a single frame at the end of setup's moving steps.
  *
  * This is ticket 35's lesson one route further on: one predicate answering
  * two questions is what produced that ticket's own yank, and the fix each

@@ -8,8 +8,8 @@
    when the journal does - and every reader who differs met a screen
    describing somebody else. Nothing here ranks anything: a pinned row is on
    Today because the person put it there, in the place they put it, and the
-   only pin this module ever produces without being asked is the default set
-   derived from what onboarding chose.
+   only pins this module resolves without an arrangement are the saved
+   onboarding choice or the default set.
 
    A **pinned row** is what a person put on Today. A **hub row** is
    navigation. One row has one shape - `hubRows.ts`'s `DrawnRow`, which both
@@ -34,12 +34,11 @@ import { ROW_FORWARD_KEYS } from './rowForward';
 import { AREA_STATES_BEFORE_READ } from './areaState';
 import type { PreferenceValues } from './prefs/catalogue';
 
-/** The set a new journal sees pre-ticked in setup. New journals store it
-    explicitly even when the question is skipped, so older journals whose
-    `onboardingAreas` is null keep their former four-pin default.
+/** Default pins for a new journal and an older journal without an areas answer.
+    Older journals with `onboardingAreas` set keep their chosen pins.
 
     It is the one central guess in this module, and it is confined to a
-    person who has not answered. Three rows: the transition's dated points,
+    person who has not arranged pins. Three rows: the transition's dated points,
     medication, and what is being tried out.
 
     Typed `readonly HubRowKey[]` rather than left as strings so a row renamed
@@ -65,8 +64,8 @@ export type PinPreferences = Pick<PreferenceValues, 'pinnedRows' | 'onboardingAr
     does, which is what stops the app having two opinions about one area. */
 export type PinnedRow = DrawnRow;
 
-/** The default set: what onboarding chose, or the old four-row answer where
-    it was never stored. New setup stores its three-row default explicitly.
+/** The default set: saved onboarding choices for older journals, or the
+    three-row default when no choice was stored.
 
     In registry order rather than in the order somebody ticked a list of
     checkboxes, which is an artefact of reading down a page rather than an

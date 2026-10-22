@@ -141,7 +141,7 @@ test('the resolution can be run over a shortened registry and seen to drop the r
 
 // --- the default set --------------------------------------------------------
 
-test('the default set is what onboarding chose', () => {
+test('an older journal keeps its chosen onboarding pins', () => {
   const rows = pinnedRows({ pinnedRows: null, onboardingAreas: ['tryouts', 'hair-progress'] }, reading());
 
   assert.deepEqual(keysOf(rows), ['tryouts', 'hair-progress']);
@@ -154,14 +154,14 @@ test('the default set is drawn in registry order rather than in ticking order', 
   assert.deepEqual(defaultPins(['tryouts', 'hair-progress']), defaultPins(['tryouts', 'hair-progress']));
 });
 
-test('a skipped onboarding still produces a set', () => {
+test('a new journal without an areas answer gets default pins', () => {
   const skipped = pinnedRows({ pinnedRows: null, onboardingAreas: null }, reading());
 
   assert.deepEqual(keysOf(skipped), [...DEFAULT_ONBOARDING_AREAS]);
   assert.ok(skipped.length > 0);
 });
 
-test('unticking every area at onboarding means a front page with no pinned rows', () => {
+test('an older journal with no selected areas keeps an empty front page', () => {
   const rows = pinnedRows({ pinnedRows: null, onboardingAreas: [] }, reading());
 
   assert.deepEqual(keysOf(rows), []);

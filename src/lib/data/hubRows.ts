@@ -74,7 +74,7 @@ import {
   latestWrite,
   type AreaGroupKey
 } from './areaGroups';
-import { areasHidden, type AreaStates } from './areaState';
+import { areasHidden, type AreaStates, type HideableArea } from './areaState';
 import { foldText } from './fold';
 import type { ArchiveSectionName } from './journal/archiveSections';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
@@ -202,6 +202,9 @@ export interface HubRowSpec {
       whether the row has gone with a hidden area, and which of its sections'
       last writes its line reports. */
   areas: readonly ArchiveSectionName[];
+  /** Areas controlling visibility when a row is a gateway rather than a
+      dated stream. Care owns these records but reports no single last write. */
+  visibilityAreas?: readonly HideableArea[];
   /** The group whose finish this row fronts, where there is one. Every key
       in `AREA_GROUPS` is claimed by exactly one row - a compile error
       otherwise, below. */
@@ -248,6 +251,7 @@ const ROWS = [
     href: '/care',
     home: 'health',
     areas: [],
+    visibilityAreas: ['regimenEpisodes', 'doseEvents', 'doseSchedules', 'dosePauses', 'medicationStock', 'labResults'],
     finishes: null,
     line: 'written'
   },
@@ -505,6 +509,7 @@ const ROWS = [
        and opts out of the last-write registry for the reason a dose schedule
        does; `taperSessions` is the practice, and the practice is what ends. */
     areas: ['taperSessions'],
+    visibilityAreas: ['procedures'],
     finishes: 'dilation',
     line: 'read'
   }
@@ -524,6 +529,14 @@ export type HubRow = Omit<HubRowSpec, 'key'> & { key: HubRowKey };
    feature-screens.test.ts, home-surfaces.test.ts, more-surfaces.test.ts,
    safe-space-surfaces.test.ts (AU-09 test-only review). */
 export const HUB_ROWS: readonly HubRow[] = ROWS;
+
+/** The same rows people can hide later. Dilation is configured by an eligible
+    procedure inside Surgery journey, not chosen as a separate module. */
+export const FEATURE_MODULE_ROWS: readonly HubRow[] = HUB_ROWS.filter((row) => row.key !== 'dilation' && featureAreas(row).length > 0);
+
+export function featureAreas(row: HubRowSpec): readonly HideableArea[] {
+  return row.visibilityAreas ?? row.areas.filter((area): area is HideableArea => area !== 'cycleEvents');
+}
 
 const ROWS_BY_KEY = new Map<HubRowKey, HubRow>(ROWS.map((row) => [row.key, row]));
 
@@ -599,7 +612,7 @@ export function rowReads(spec: HubRowSpec): LastWriteKey[] {
     it fronts, which is where the rule lives now that the stats tab's cards
     ask it too (`areaState.ts`). */
 export function rowHidden(spec: HubRowSpec, states: AreaStates): boolean {
-  return areasHidden(spec.areas, states);
+  return areasHidden(spec.visibilityAreas ?? spec.areas, states);
 }
 
 /** What a row's second line says.

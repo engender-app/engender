@@ -26,14 +26,18 @@ describe('the step list', () => {
     expect(new Set(ONBOARDING_STEPS).size).toBe(ONBOARDING_STEPS.length);
   });
 
-  it('sets the five things a first run has to settle, then the list of what the app can ask for, then the last question', () => {
+  it('goes from features to access mode without asking for areas', () => {
+    expect(ONBOARDING_STEPS).not.toContain('areas');
+    expect(stepAfter(ONBOARDING_STEPS, 'features')).toBe('lock');
+  });
+
+  it('sets first-run choices, then permissions and disguise', () => {
     expect(ONBOARDING_STEPS).toEqual([
       'welcome',
       'name',
       'flag',
       'scales',
       'features',
-      'areas',
       'lock',
       'permissions',
       'disguise',
@@ -100,7 +104,6 @@ describe('skipping', () => {
       'flag',
       'scales',
       'features',
-      'areas',
       'lock',
       'permissions',
       'disguise'
@@ -116,14 +119,9 @@ describe('skipping', () => {
   });
 });
 
-/* After-release 17 (UX-09): the pins step asked two questions at once -
-   what sits on Today and which features exist at all - and offered
-   Measurements as both. Features are their own step now, before the pins,
-   so the pins step only offers areas that are switched on. */
-describe('features before pins', () => {
-  it('asks which features to show right before what to pin', () => {
+describe('features', () => {
+  it('asks which features to show after scales', () => {
     expect(stepAfter(ONBOARDING_STEPS, 'scales')).toBe('features');
-    expect(stepAfter(ONBOARDING_STEPS, 'features')).toBe('areas');
   });
 
   it('stores the cycle choice, which an archive carries, so a restore skips it', () => {

@@ -11,6 +11,7 @@
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { featureAreas, rowHidden, type HubRow } from '$lib/data/hubRows';
   import { activateLanguagePreference, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -25,6 +26,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
+  import FeatureVisibilityList from '$lib/components/FeatureVisibilityList.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { isAndroid } from '$lib/platform';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -64,6 +66,19 @@
   let reminders = liveList((j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.rows).filter((r) => r.enabled).length);
   let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
+  let featureStates = liveQuery((j) => j.areaStates.getAreaStates());
+  let featureError = $state('');
+  function moduleEnabled(row: HubRow): boolean {
+    return !rowHidden(row, featureStates.value ?? {});
+  }
+  async function changeModule(row: HubRow, enabled: boolean) {
+    featureError = '';
+    try {
+      await journal.areaStates.setAreasHidden(featureAreas(row), !enabled);
+    } catch {
+      featureError = m.write_failed();
+    }
+  }
   let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
   let genitalEffectsOn = $derived(
     vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
@@ -385,6 +400,10 @@
     <h3 id="settings-features-title">{m.features_to_show()}</h3>
     <p class="muted small">{m.features_to_show_sub()}</p>
     <div data-feature-visibility role="group" aria-labelledby="settings-features-title">
+      {#if featureStates.value !== undefined}
+        <FeatureVisibilityList {moduleEnabled} onModuleChange={changeModule} />
+      {/if}
+      <h4>{m.feature_filters_title()}</h4>
       <ListCard>
         <div class="kit-row" data-genital-effects-toggle>
           <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
@@ -418,6 +437,7 @@
         </div>
       </ListCard>
     </div>
+    {#if featureError}<p role="alert">{featureError}</p>{/if}
     <button class="btn btn-ghost" data-features-close onclick={() => (featuresSheet = false)}>{m.close()}</button>
   </Sheet>
 

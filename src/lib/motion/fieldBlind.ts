@@ -44,7 +44,7 @@ import { blindSettle, EASE_OUT_SOFT_VAR } from './blindSettle';
    until redesign ticket 33, which meant the outgoing side of setup's
    handover contributed nothing: the blind opened from no height at all
    while setup's field crossfaded away inside the screen's snapshot, so what
-   a person saw at the end of ten steps was one field fading out and another
+   a person saw at the end of setup was one field fading out and another
    appearing. Alicja, on the ticket's own renders: "the field must always
    stay a single object that transitions to other states only by moving up
    or down".

@@ -25,7 +25,6 @@ export type OnboardingStep =
   | 'flag'
   | 'scales'
   | 'features'
-  | 'areas'
   | 'lock'
   | 'permissions'
   | 'disguise'
@@ -39,13 +38,7 @@ export type OnboardingStep =
               shows its own result while it is being made
      scales   which sliders appear when logging, i.e. what the journal is
      features which optional parts of the app show at all - genital effects
-              and cycle tracking (after-release 17, UX-09). Asked before
-              pins, so the pins that follow offer only visible areas
-     areas    which of the hub's areas the front page starts pinned with
-              (phase 10 redesign ticket 22) - the one central guess left in
-              `pinnedRows.ts`, and the cheapest moment to settle it: the
-              person has just ticked their scales, which is the same
-              question about the journal one step earlier
+              and cycle tracking (after-release 17, UX-09)
      lock     whether leaving the app locks it
      permissions
               everything the app can ask this device for, with a reason
@@ -63,20 +56,7 @@ export type OnboardingStep =
               strip and the home screen rather than on any screen the app
               draws
 
-   Five settings, one list and one last question, plus a welcome and a
-   finish. Everything else the app has a preference for is either already
-   right by default or is something a person goes looking for once they
-   know the app.
-
-   The settled shape (phase 10 redesign ticket 29, DIRECTION.md rule 12) is
-   ten steps, and this list becomes it as the tickets that build each step
-   land:
-
-     welcome, name, flag, scales, areas, access mode, PIN pad,
-     permissions, disguise, done
-
-   `lock` is the one step left to split, into the mode list and the pad
-   (ticket 30). What ticket 31 landed: `checkin` left the flow and
+   What ticket 31 landed: `checkin` left the flow and
    `permissions` took its place. The daily nudge is not asked for in setup
    any more - the notification row's reason line is what names it, and the
    switch itself stays on the reminders screen, where skipping the step
@@ -94,7 +74,6 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'flag',
   'scales',
   'features',
-  'areas',
   'lock',
   'permissions',
   'disguise',
@@ -142,7 +121,6 @@ const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
      those travel in an archive with the rest of the journal, so a restore
      already answers this step whole. */
   features: ['cycleTrackingChoice'],
-  areas: ['onboardingAreas'],
   lock: ['lockAfter'],
   /* Nothing, and not because it was forgotten: the permissions step's
      answers live in the OS rather than in a preference (ticket 31), so
