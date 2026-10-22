@@ -417,12 +417,20 @@
         <span class="roadmap-tick" class:roadmap-tick-shown={goal.status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
       </span>
       <span class="kit-row-text">
+        <!-- A rewording crossfades the old words into the new in one grid
+             cell, and `resize` carries the row's height when the new words
+             take a line more or less, so nothing under the row steps. -->
         <span
           class="kit-row-title"
           class:roadmap-done={goal.status === 'checked'}
           class:roadmap-skip-text={goal.status === 'not-my-path'}
+          use:resize
         >
-          {@render struck(goal.text)}
+          <span class="roadmap-fade">
+            {#key goal.text}
+              <span transition:fadeCount>{@render struck(goal.text)}</span>
+            {/key}
+          </span>
         </span>
       </span>
     </button>
@@ -773,7 +781,13 @@
      ticket 69's. -->
 <Sheet busy={goalWrite.busy || visibilityWrite.busy} open={selectedGoal !== null} title={selectedTitle} onClose={closeGoalSheet}>
   {#if selectedGoal}
-    <h3>{selectedTitle}</h3>
+    <!-- The sheet stays open over a rewording, so its heading crossfades to
+         the new words and travels any change of height. -->
+    <h3 class="roadmap-fade" use:resize>
+      {#key selectedTitle}
+        <span transition:fadeCount>{selectedTitle}</span>
+      {/key}
+    </h3>
     <div class="kit-row is-static" data-goal-sheet-status={selectedGoal.key}>
       <span
         class="roadmap-box"
@@ -1062,7 +1076,14 @@
     white-space: nowrap;
   }
 
-  .roadmap-steps > span {
+  .roadmap-steps > span,
+  .roadmap-fade > span {
     grid-area: 1 / 1;
+  }
+
+  /* A goal's words and the sheet's heading, old and new in one cell while
+     a rewording crossfades. */
+  .roadmap-fade {
+    display: grid;
   }
 </style>
