@@ -41,7 +41,6 @@ const ALL_ON = {
 const REMINDER = {
   id: 'r-1',
   title: 'Estradiol patch',
-  type: 'med' as const,
   time: '20:00',
   recurrence: 'EVERY_N_DAYS' as const,
   interval: 3,

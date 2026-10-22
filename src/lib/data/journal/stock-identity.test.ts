@@ -155,7 +155,7 @@ test('legacy stock selection filters destination uuids before choosing siblings 
       { ...old, id: 'gel-first', drug: 'żel', quantity: 4 },
       { ...old, id: 'gel-last', drug: ' ŻEL ', quantity: 9 }
     ];
-    const reminder = { title: 'Incoming reminder', type: 'med' as const, time: '09:00', recurrence: null,
+    const reminder = { title: 'Incoming reminder', time: '09:00', recurrence: null,
       interval: null, anchorEpochDay: null, epochDay: 20020, enabled: true };
     snapshot.journal.reminders = [
       { ...reminder, id: 'incoming-auto', autoSource: 'stock: estradiol ' },
