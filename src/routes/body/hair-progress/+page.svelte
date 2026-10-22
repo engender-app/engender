@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -152,7 +153,7 @@
         description
       });
     },
-    remove: (id) => journal.hairProgress.deleteStage(id),
+    remove: (id) => undoable((j) => j.hairProgress.deleteStage(id)),
     findById: (id) => stages.find((s) => s.id === id)
   });
 
@@ -163,7 +164,7 @@
   const hairPhotos = photoSection<HairPhoto>({
     photos: () => photos,
     add: storePhoto,
-    remove: (id) => journal.hairProgress.deletePhoto(id),
+    remove: (id) => undoable((j) => j.hairProgress.deletePhoto(id)),
     reference: () => lastPhotoReference(photos)
   });
 

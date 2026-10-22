@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* Every dose, and how it sits against the schedule, on the surface kit
      (phase 5 UX ticket 25).
@@ -227,7 +228,7 @@
     },
     // "Dose saved." above says it, with the handle the walkthrough grips.
     saved: () => null,
-    remove: (id) => journal.doses.deleteDose(id),
+    remove: (id) => undoable((j) => j.doses.deleteDose(id)),
     findById: (id) => allDoses.find((dose) => dose.id === id)
   });
   let editor = $derived(record.editor);

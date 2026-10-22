@@ -12,6 +12,7 @@
      https://helloclue.com/articles/cycle-a-z/tips-for-using-clue-when-you're-trans):
      no prediction of a next period, no fertility framing, no assumption
      that a regular cycle exists. */
+  import { undoable } from '$lib/stores/deleteUndo';
   import { crossfade, resize } from '$lib/motion/reveal';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
@@ -144,7 +145,7 @@
         epochDay: epochDayFromDateInputValueOrToday(draft.date)
       });
     },
-    remove: (id) => journal.cycleEvents.deleteCycleEvent(id),
+    remove: (id) => undoable((j) => j.cycleEvents.deleteCycleEvent(id)),
     findById: (id) => events.find((event) => event.id === id)
   });
 

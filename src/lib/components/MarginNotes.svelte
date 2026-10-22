@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
   /* A margin note: a visibly later layer under the entry it annotates
      (phase 8 features ticket 07, CONTEXT: "Margin note").
@@ -86,9 +88,10 @@
   async function confirmDelete() {
     if (!deleting) return;
     const id = deleting.id;
-    if (!(await removing.run(() => journal.marginNotes.remove(id)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.marginNotes.remove(id)); }))) return;
     deleting = null;
-    toast(m.record_deleted(), { kind: 'record-deleted' });
+    offerUndo(deletion!, m.record_deleted());
   }
 </script>
 

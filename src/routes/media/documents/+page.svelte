@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* The paper somebody keeps (phase 8 features ticket 52, ADR-0065; phase
      10 redesign ticket 58).
@@ -86,7 +87,7 @@
         draft.content
       );
     },
-    remove: (id) => journal.documents.deleteDocument(id),
+    remove: (id) => undoable((j) => j.documents.deleteDocument(id)),
     findById: (id) => documentsQuery.rows.find((document) => document.id === id)
   });
 

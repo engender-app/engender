@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import { untrack } from 'svelte';
   import type { TransitionConfig } from 'svelte/transition';
@@ -381,7 +382,7 @@
         providerId: draft.providerId
       });
     },
-    remove: (id) => journal.appointments.deleteAppointment(id),
+    remove: (id) => undoable((j) => j.appointments.deleteAppointment(id)),
     findById: (id) =>
       appointments.find((appointment) => appointment.id === id) ?? waiting.find((appointment) => appointment.id === id)
   });
@@ -422,7 +423,7 @@
      confirmation for. Separate from the appointment's above because they
      delete different records and carry different confirmations. */
   const prepRecord = recordEditor<ChecklistItem>({
-    remove: (id) => journal.checklists.deleteItem(id),
+    remove: (id) => undoable((j) => j.checklists.deleteItem(id)),
     findById: (id) => items.find((item) => item.id === id)
   });
 
@@ -464,7 +465,7 @@
       });
       if (attachNewProvider && !draft.id && record.editor) record.editor.providerId = id;
     },
-    remove: (id) => journal.appointments.deleteProvider(id),
+    remove: (id) => undoable((j) => j.appointments.deleteProvider(id)),
     findById: (id) => providersQuery.rows.find((provider) => provider.id === id)
   });
 

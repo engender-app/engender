@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* The comfort list (phase 6 ticket 14, CONTEXT: "Comfort list"), lifted
      out of Safe space by phase 10 redesign ticket 47.
@@ -60,7 +61,7 @@
       if (draft.id) await journal.comfortItems.editItem(draft.id, text);
       else await journal.comfortItems.addItem(text);
     },
-    remove: (id) => journal.comfortItems.deleteItem(id),
+    remove: (id) => undoable((j) => j.comfortItems.deleteItem(id)),
     findById: (id) => comfortItems.find((item) => item.id === id)
   });
 

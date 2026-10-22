@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* Letters to your future self (phase 5 UX ticket 25, redrawn by phase 10
      redesign ticket 45).
@@ -184,7 +185,7 @@
       }
     },
     saved: () => sealOutcome || m.saved(),
-    remove: (id) => journal.letters.deleteLetter(id),
+    remove: (id) => undoable((j) => j.letters.deleteLetter(id)),
     findById: (id) => letters.find((letter) => letter.id === id)
   });
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
@@ -163,7 +164,7 @@
       });
     },
     saved: () => m.saved(),
-    remove: (id) => journal.milestones.deleteMilestone(id),
+    remove: (id) => undoable((j) => j.milestones.deleteMilestone(id)),
     findById: (id) => sorted.find((mi) => mi.id === id)
   });
 

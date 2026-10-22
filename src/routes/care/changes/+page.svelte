@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* When you first noticed each change, on the surface kit (phase 5 UX
      ticket 25).
@@ -270,7 +271,7 @@
         resolvedEpochDay: epochDayFromDateInputValue(draft.resolved)
       });
     },
-    remove: (id) => journal.sideEffects.deleteSideEffect(id),
+    remove: (id) => undoable((j) => j.sideEffects.deleteSideEffect(id)),
     findById: (id) => effects.find((effect) => effect.id === id)
   });
 

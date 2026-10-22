@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* Dilation: a taper typed in and its session log (phase 8 features
      ticket 12, CONTEXT: "Taper").
@@ -165,7 +166,7 @@
         note: draft.note
       });
     },
-    remove: (id) => journal.taper.deleteSession(id),
+    remove: (id) => undoable((j) => j.taper.deleteSession(id)),
     findById: (id) => sessions.find((s) => s.id === id)
   });
 

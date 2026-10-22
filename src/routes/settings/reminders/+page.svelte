@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -39,7 +40,7 @@
   // Web's one write (ADR-0063): a reminder that can never ring on this
   // device still needs a cancel path, and this is it.
   const record = recordEditor<Reminder>({
-    remove: (id) => journal.reminders.deleteReminder(id),
+    remove: (id) => undoable((j) => j.reminders.deleteReminder(id)),
     findById: (id) => reminders.rows.find((r) => r.id === id)
   });
 

@@ -22,6 +22,7 @@
      The distinction from a benchmark's p10-p90 span is written under the
      list rather than assumed, because a "fix" that makes one match the
      other would be wrong in both directions (schema.ts's own note). */
+  import { undoable } from '$lib/stores/deleteUndo';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -49,7 +50,7 @@
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
   const record = recordEditor<VoicePracticeTake>({
-    remove: (id) => journal.voicePracticeTakes.deleteTake(id),
+    remove: (id) => undoable((j) => j.voicePracticeTakes.deleteTake(id)),
     findById: (id) => takes.find((take) => take.id === id)
   });
 </script>

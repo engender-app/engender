@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
@@ -21,7 +22,7 @@
   let renameTarget = $state<{ id: string; label: string } | null>(null);
 
   const record = recordEditor<{ id: string; label: string }>({
-    remove: (id) => journal.tags.deleteTag(id),
+    remove: (id) => undoable((j) => j.tags.deleteTag(id)),
     findById: (id) => {
       const tg = vocabulary.tagGroups.flatMap((g) => g.tags).find((t) => t.id === id);
       return tg && { id: tg.id, label: tg.label };

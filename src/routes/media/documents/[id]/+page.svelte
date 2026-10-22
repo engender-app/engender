@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
@@ -430,9 +432,10 @@
   async function deleteDocument() {
     const id = stored?.id;
     if (!id) return;
-    if (!(await removing.run(() => journal.documents.deleteDocument(id)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.documents.deleteDocument(id)); }))) return;
     confirming = false;
-    toast(m.record_deleted(), { kind: 'record-deleted' });
+    offerUndo(deletion!, m.record_deleted());
     // Deleting answered the question a rename would have asked.
     detail.discard();
     await replaceRoute(DOCUMENTS);

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* One tryout, on the surface kit (phase 5 UX ticket 25).
@@ -177,7 +178,7 @@
   const tryoutPhotos = photoSection<TryoutPhoto>({
     photos: () => photos,
     add: storePhoto,
-    remove: (id) => journal.tryouts.deletePhoto(id),
+    remove: (id) => undoable((j) => j.tryouts.deletePhoto(id)),
     reference: () => lastPhotoReference(photos)
   });
 
@@ -269,7 +270,7 @@
   }
 
   const feelingRecord = recordEditor<FeltSenseEntry>({
-    remove: (id) => journal.feltSense.remove(id),
+    remove: (id) => undoable((j) => j.feltSense.remove(id)),
     findById: (id) => feeling.find((f) => f.id === id)
   });
   /* One example per kind, so changing the picker changes the hint too. */

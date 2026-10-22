@@ -14,6 +14,7 @@
      across the plot now names each reading as the finger passes it. The
      draw's context - the timing figure and the lab - rides on the scrub's
      own label, so it is still the same three facts as before. */
+  import { undoable } from '$lib/stores/deleteUndo';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
@@ -301,7 +302,7 @@
     },
     // The new-unit toast already says the result went in; one toast at a time.
     saved: () => (unitStated ? null : m.saved()),
-    remove: (id) => journal.labs.deleteResult(id),
+    remove: (id) => undoable((j) => j.labs.deleteResult(id)),
     findById: (id) => results.find((result) => result.id === id)
   });
 

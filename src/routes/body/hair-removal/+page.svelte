@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import { navigating, page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
@@ -181,7 +182,7 @@
     },
     // A new session's notice below says more than a toast would.
     saved: (draft) => (draft.id ? m.saved() : null),
-    remove: (id) => journal.hairRemoval.deleteSession(id),
+    remove: (id) => undoable((j) => j.hairRemoval.deleteSession(id)),
     findById: (id) => sessions.find((session) => session.id === id)
   });
   /** Empty is fine; a length is a whole number of minutes in a day. */
@@ -204,7 +205,7 @@
   const sessionPhotos = photoSection<HairRemovalPhoto>({
     photos: () => photos,
     add: storePhoto,
-    remove: (id) => journal.hairRemoval.deletePhoto(id),
+    remove: (id) => undoable((j) => j.hairRemoval.deletePhoto(id)),
     reference: () => lastPhotoReference(photos)
   });
 </script>
