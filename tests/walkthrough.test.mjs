@@ -1947,6 +1947,38 @@ try {
   const names = await page.locator('[data-dim-name]').allTextContents();
   if (!names.includes('Voice comfort')) throw new Error('editor scales: ' + JSON.stringify(names));
   ok('a custom scale previews, saves ticked, and appears like a built-in');
+
+  /* And it can be renamed and hidden afterwards (functional audit ticket
+     41). Hiding unticks it, so it leaves the checklist and the entry
+     screen together. */
+  await page.goto(BASE + '/settings/dimension', { waitUntil: 'networkidle' });
+  await booted();
+  const rename = page.locator('[data-scale-rename]').last();
+  const key = await rename.getAttribute('data-scale-rename');
+  await rename.click();
+  await page.locator('#rename-scale-name').fill('Voice ease');
+  await page.locator('[data-save-scale-name]').click();
+  await page.waitForFunction(
+    (k) => document.querySelector(`[data-scale-label="${k}"]`)?.textContent?.trim() === 'Voice ease',
+    key
+  );
+  await page.locator(`[data-scale-hide="${key}"]`).click();
+  await page.waitForFunction((k) => document.querySelector(`[data-scale-hide="${k}"]`)?.closest('.is-hidden') !== null, key);
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Gender scales/i }).click();
+  await page.locator('[data-list-row^="scale-"]').first().waitFor();
+  if ((await page.locator(`[data-list-row="scale-${key}"]`).count()) !== 0) {
+    throw new Error('a hidden scale is still offered in the checklist');
+  }
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  const after = await page.locator('[data-dim-name]').allTextContents();
+  if (after.includes('Voice ease') || after.includes('Voice comfort')) {
+    throw new Error('a hidden scale is still on the entry screen: ' + JSON.stringify(after));
+  }
+  ok('a custom scale renames, and hiding it takes it off the checklist and the entry screen');
 } catch (e) { fail('custom dimension', e); }
 });
 

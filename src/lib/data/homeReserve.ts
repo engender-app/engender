@@ -29,6 +29,7 @@ export type ReserveSlot =
   | 'dilation'
   | 'on-this-day'
   | 'body-regions'
+  | 'custom-scales'
   | 'recovery-key'
   | 'reminders'
   | 'reminders-check-in'
