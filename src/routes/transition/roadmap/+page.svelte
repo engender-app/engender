@@ -628,28 +628,30 @@
     {#each list.categories as { category, goals } (category.id)}
       {@const left = ownStepsLeft(goals)}
       <section class="roadmap-group" data-roadmap-category={category.id} transition:disclose>
-        <SectionHeading text={roadmapCategoryName(category)} crossfade>
-          {#snippet action()}
-            <span class="roadmap-heading-act">
-              <span class="roadmap-steps" data-category-steps-left>
-                {#if goals.length > 0}
-                  {#key left}
-                    <span transition:fadeCount>{m.roadmap_track_steps_left({ n: left })}</span>
-                  {/key}
-                {/if}
-              </span>
+        <!-- `resize`: a rename a line longer or shorter changes the
+             heading's height, and the card under it travels that height
+             rather than stepping by it. The count sits on the heading's
+             second line, so the pencil is the whole of the action and the
+             name has the rest of the line. -->
+        <div class="roadmap-heading" use:resize>
+          <SectionHeading
+            text={roadmapCategoryName(category)}
+            crossfade
+            sub={goals.length > 0 ? m.roadmap_track_steps_left({ n: left }) : ''}
+          >
+            {#snippet action()}
               <button
                 type="button"
-                class="icon-btn press"
+                class="icon-btn press roadmap-edit-category"
                 data-edit-category={category.id}
                 aria-label={m.roadmap_category_edit_aria({ category: roadmapCategoryName(category) })}
                 onclick={() => openCategory(category)}
               >
                 <Icon name="pencil" size={18} />
               </button>
-            </span>
-          {/snippet}
-        </SectionHeading>
+            {/snippet}
+          </SectionHeading>
+        </div>
         <ListCard role={roleAt(activeFlag.roles, 2)}>
           {#each goals as goal (goal.id)}
             <div class="rows-divide" transition:disclose>{@render customRow(goal)}</div>
@@ -898,13 +900,30 @@
     margin: var(--space-3) 0 0;
   }
 
-  /* The count and the pencil on a category's heading, side by side at the
-     heading's far end. */
-  .roadmap-heading-act {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-left: auto;
+  /* The heading's first-child 16px would collapse through this wrapper and
+     then through the section, two boxes deep, which `disclose` cannot see:
+     the heading dropped 16px in the first frame of a removal and rose 16px
+     in the last frame of an arrival. The block above already owns the 20
+     the collapse would have come to, so the heading takes none of its own
+     here and nothing is left to collapse. */
+  .roadmap-heading > :global(.kit-heading) {
+    margin: 0;
+  }
+
+  /* The 12 under the heading, as this box's own padding rather than the
+     heading's margin: `resize` holds the box at a set height while it
+     travels, and a set height stops a last child's bottom margin
+     collapsing through it, so the card under a renamed heading stepped
+     12px down in the frame the travel let go. */
+  .roadmap-heading {
+    padding-bottom: var(--space-3);
+  }
+
+  /* The pencil's 48px target, pulled up so its glyph centres on the
+     heading's first line rather than below it: the heading row is
+     top-aligned (SectionHeading's `crossfade`). */
+  .roadmap-edit-category {
+    margin-block: -8px;
   }
 
   .roadmap-new-category {
