@@ -41,8 +41,8 @@ public class RemindersPlugin extends Plugin {
             payload.put("reminders", reminders == null ? new JSArray() : reminders);
             payload.put("checkInEnabled", Boolean.TRUE.equals(call.getBoolean("checkInEnabled", false)));
             payload.put("checkInTime", text(call, "checkInTime", "21:00"));
-            JSArray pauses = call.getArray("journalingPauses");
-            payload.put("journalingPauses", pauses == null ? new JSArray() : pauses);
+            Integer pausedThrough = call.getInt("checkInPausedThrough");
+            payload.put("checkInPausedThrough", pausedThrough == null ? JSONObject.NULL : pausedThrough);
             payload.put("quietHours", call.getObject("quietHours"));
             payload.put("hideNotificationTitles", Boolean.TRUE.equals(call.getBoolean("hideNotificationTitles", false)));
 

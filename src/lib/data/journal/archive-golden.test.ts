@@ -60,7 +60,6 @@ const SECTIONS = [
   'taperSessions',
   'sideEffects',
   'cycleEvents',
-  'journalingPauses',
   'eras',
   'eraMutes',
   'effectCategories',

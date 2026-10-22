@@ -345,9 +345,9 @@ export function persona(today: number = todayEpochDay()): Persona {
       { name: 'Full time', startEpochDay: today - 150, endEpochDay: today }
     ],
     reminders: [
-      { title: 'Estradiol patch', type: 'med', time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: today, epochDay: null, enabled: true },
-      { title: 'Progesterone', type: 'med', time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true },
-      { title: 'Endocrinologist', type: 'appointment', time: '09:30', recurrence: null, interval: null, anchorEpochDay: null, epochDay: futureAppointmentDay, enabled: true },
+      { title: 'Estradiol patch', time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: today, epochDay: null, enabled: true },
+      { title: 'Progesterone', time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true },
+      { title: 'Endocrinologist', time: '09:30', recurrence: null, interval: null, anchorEpochDay: null, epochDay: futureAppointmentDay, enabled: true },
     ],
     appointments: [
       {

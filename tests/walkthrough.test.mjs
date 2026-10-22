@@ -4466,38 +4466,6 @@ try {
 } catch (e) { fail('transition roadmap custom goal', e); }
 });
 
-/* 26. the journaling pause (phase 5 ticket 21): declaring one puts its tile
-   on Home while it covers today, and resuming takes it off straight away
-   rather than a day later - the exact bug an inclusive end day would cause
-   if `resumeToday()` used today instead of yesterday as the end.
-
-   It was Home's streak line that went quiet here until phase 8 UX ticket 01
-   deleted the streak. The tile says the same thing and is what is left. */
-await flow('journaling pause', async () => {
-try {
-  await fresh('/');
-  if (await page.locator('[data-pause-active-tile]').count())
-    throw new Error('the pause tile shows with no pause declared');
-
-  await page.goto(BASE + '/settings/journaling-pause', { waitUntil: 'networkidle' });
-  await page.locator('[data-new-pause]').click();
-  await page.locator('[data-confirm-pause]').click();
-  await page.waitForSelector('[data-resume-pause]');
-
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-pause-active-tile]');
-
-  await page.goto(BASE + '/settings/journaling-pause', { waitUntil: 'networkidle' });
-  await page.locator('[data-resume-pause]').click();
-  await page.waitForSelector('[data-new-pause]');
-
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  if (await page.locator('[data-pause-active-tile]').count())
-    throw new Error('the pause tile still shows the day the pause was resumed');
-  ok('a journaling pause puts its tile on Home while it covers today, and resuming takes it off the same day');
-} catch (e) { fail('journaling pause', e); }
-});
-
 /* 27. the journal book (phase 5 ticket 17): what the inclusion picker says
    is what the pages hold, and the print layout is many sheets rather than
    one. The second half is the part no unit test can reach - the app shell
@@ -4677,7 +4645,7 @@ try {
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
     '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
     '/settings/body-regions',
-    '/settings/journaling-pause', '/media/photos',
+    '/media/photos',
     '/body/hair-progress',
     '/body/hair-removal', '/care/labs', '/care/regimen',
     '/health/cycle-events', '/health/surgery',

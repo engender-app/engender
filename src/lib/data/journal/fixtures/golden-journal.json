@@ -811,13 +811,6 @@
       "epochDay": 20000
     }
   ],
-  "journalingPauses": [
-    {
-      "id": "9a51f8ed-af0e-43b1-a616-b6d32718cef3",
-      "startEpochDay": 19700,
-      "endEpochDay": null
-    }
-  ],
   "eras": [
     {
       "id": "14fe6821-5bac-4a57-b496-fda4bf99d526",
@@ -1567,7 +1560,6 @@
     {
       "id": "44234817-c68e-4aa4-8f90-3508f9f14832",
       "title": "injection",
-      "type": "injection",
       "time": "08:00",
       "recurrence": "EVERY_N_DAYS",
       "interval": 7,
@@ -1579,7 +1571,6 @@
     {
       "id": "5f95f7b3-e55c-4080-99fb-45763187ecbc",
       "title": "binder check-in",
-      "type": "other",
       "time": "07:13",
       "recurrence": null,
       "interval": null,

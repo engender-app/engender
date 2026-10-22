@@ -566,7 +566,7 @@ try {
   scopeCheck(!tilesSql.some(spread) && !tilesSql.some(tagShare), 'Look back tiles omit screen-only spreads and tag shares');
   const initialTileKeys = new Set(tilesSql.filter(tileAverages).map(metricKey));
   scopeCheck(initialTileKeys.size <= 2, 'Look back tiles read mood and the active scale without loading every scale');
-  scopeCheck(tilesSql.filter((query) => query.sql.includes('FROM journaling_pause')).length === 1, 'Look back reads annotations only for its history rail');
+  scopeCheck(tilesSql.filter((query) => query.sql.includes('FROM dose_pause p JOIN regimen_episode e')).length === 1, 'Look back reads annotations only for its history rail');
 
   await page.goto(`${base}/stats/day-by-day`, { waitUntil: 'networkidle' });
   await waitFor(`!!document.querySelector('[data-values-list] li') && !!document.querySelector('[data-chart="area"]')`);
@@ -574,7 +574,7 @@ try {
   const metricOptions = await page.locator('[data-chart-picker="stats-metric"] option').evaluateAll((options) => options.map((option) => option.value));
   const seriesKeys = new Set(chartSql.filter(averages).map(metricKey));
   scopeCheck(metricOptions.length > 2 && metricOptions.every((key) => seriesKeys.has(key)) && chartSql.some(spread), 'Day by day screen retains every scale, spreads and accessible values');
-  scopeCheck(chartSql.some((query) => query.sql.includes('FROM journaling_pause')), 'Day by day screen retains chart annotations');
+  scopeCheck(chartSql.some((query) => query.sql.includes('FROM dose_pause p JOIN regimen_episode e')), 'Day by day screen retains chart annotations');
 
   const selectedMetric = metricOptions.at(-1);
   await page.locator('[data-chart-picker="stats-metric"]').selectOption(selectedMetric);

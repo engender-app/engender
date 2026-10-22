@@ -452,7 +452,6 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
   await journal.stock.upsertEntry({ drug: `stock ${word}`, quantity: 30, unit: 'tablets', recordedEpochDay: DAY });
   await journal.reminders.upsertReminder({
     title: `reminder ${word}`,
-    type: 'other',
     time: '09:00',
     recurrence: null,
     interval: null,

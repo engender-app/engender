@@ -288,7 +288,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
 
   regimenEpisodes: 'a span: what is being taken across a stretch of days, not a single day still ahead',
   dosePauses: 'a span: a break declared across days',
-  journalingPauses: 'a span: a break declared across days',
   eras: 'a span the person named, not a single day still ahead',
   tryouts:
     'a span with no day still ahead of its own - its photos are recorded when taken, the same reasoning voiceBenchmarks gets',

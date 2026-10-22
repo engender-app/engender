@@ -107,7 +107,7 @@
   {
     "name": "save-and-failure-check",
     "tier": "dev",
-    "holds": "a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today; effect types, appointment prep add/tick/flag, Add to appointment prep, dilation schedule, felt sense and journaling pause write once per double tap and say a failure"
+    "holds": "a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today; effect types, appointment prep add/tick/flag, Add to appointment prep, dilation schedule and felt sense write once per double tap and say a failure"
   },
   {
     "name": "recovery-key-departure-check",
@@ -262,7 +262,7 @@
   {
     "name": "range-editors-check",
     "tier": "dev",
-    "holds": "regimen, dose-pause, journaling-pause and tryout end-picker limits, inverted-save guards, equal/open bounds and feedback motion in English and Polish, light and dark; `RANGE_SIGNOFF` saves crops"
+    "holds": "regimen, dose-pause and tryout end-picker limits, inverted-save guards, equal/open bounds and feedback motion in English and Polish, light and dark; `RANGE_SIGNOFF` saves crops"
   },
   {
     "name": "regimen-editor-check",

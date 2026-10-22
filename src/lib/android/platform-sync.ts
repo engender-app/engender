@@ -54,6 +54,9 @@ export interface PlatformSyncDeps {
   prefs: {
     checkInEnabled: boolean;
     checkInTime: string;
+    /** Read by the native scheduler while the app is closed, so a pause
+        holds without the app open (checkIn.ts). */
+    checkInPausedThrough: number | null;
     hideNotificationTitles: boolean;
     /** The unprompted registry's two reminder switches. Gated here rather
         than by editing the rows themselves: a person who
@@ -76,13 +79,9 @@ export interface PlatformSyncDeps {
     reminders: { getReminders(): Promise<Reminder[]> };
     entries: { recentDays(dayCount: number): Promise<Array<{ epochDay: number }>> };
     stock: { reconcileRunOutReminders(asOfEpochDay: number): Promise<unknown> };
-    /** Native scheduling reads pause dates while the app is closed, without
-        changing the `checkInEnabled` preference. */
-    journalingPauses: { getPauses(): Promise<Array<{ startEpochDay: number; endEpochDay: number | null }>> };
     /** Which areas are hidden or finished: finishing the wear log stops
-        its elapsed prompts the same way the preference does, and for the
-        same reason the pause above is read here rather than written into
-        a preference. */
+        its elapsed prompts the same way the preference does, read here
+        rather than written into a preference. */
     areaStates: { getAreaStates(): Promise<AreaStates> };
   };
   onTablesWritten: (listener: (tables: string[]) => void) => void;
@@ -188,6 +187,7 @@ export function assembleReminderSyncPayload(input: {
   recentEntries: Array<{ epochDay: number }>;
   checkInEnabled: boolean;
   checkInTime: string;
+  checkInPausedThrough: number | null;
   hideNotificationTitles: boolean;
   remindersEnabled: boolean;
   wearElapsedEnabled: boolean;
@@ -196,14 +196,13 @@ export function assembleReminderSyncPayload(input: {
   areaStates: AreaStates;
   todayEpochDay: number;
   quietHours: QuietHours;
-  journalingPauses: Array<{ startEpochDay: number; endEpochDay: number | null }>;
   texts: AndroidReminderTexts;
 }): AndroidReminderSyncPayload {
   return buildAndroidReminderPayload({
     reminders: schedulableReminders(input.reminders, input),
     checkInEnabled: input.checkInEnabled,
     checkInTime: input.checkInTime,
-    journalingPauses: input.journalingPauses,
+    checkInPausedThrough: input.checkInPausedThrough,
     latestEntryEpochDay: input.recentEntries[0]?.epochDay ?? null,
     hideNotificationTitles: input.hideNotificationTitles,
     quietHours: input.quietHours,
@@ -223,10 +222,9 @@ const syncReminderSchedules = coalescing(
     if (!active) return;
     const deps = activeDeps();
     if (!deps.isAndroid() || !deps.isReady()) return;
-    const [reminders, recentEntries, pauses, areaStates] = await Promise.all([
+    const [reminders, recentEntries, areaStates] = await Promise.all([
       deps.journal.reminders.getReminders(),
       deps.journal.entries.recentDays(1),
-      deps.journal.journalingPauses.getPauses(),
       deps.journal.areaStates.getAreaStates()
     ]);
     if (!active || currentDeps !== deps || !deps.isReady()) return;
@@ -236,13 +234,13 @@ const syncReminderSchedules = coalescing(
         recentEntries,
         checkInEnabled: deps.prefs.checkInEnabled,
         checkInTime: deps.prefs.checkInTime,
+        checkInPausedThrough: deps.prefs.checkInPausedThrough,
         hideNotificationTitles: deps.prefs.hideNotificationTitles,
         remindersEnabled: deps.prefs.remindersEnabled,
         wearElapsedEnabled: deps.prefs.wearElapsedEnabled,
         areaStates,
         todayEpochDay: deps.todayEpochDay(),
         quietHours: quietHoursOf(deps.prefs),
-        journalingPauses: pauses,
         texts: deps.reminderTexts()
       })
     );
@@ -290,8 +288,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
     subscribedToTableWrites = true;
     deps.onTablesWritten((tables) => {
       if (
-        tables.includes('reminder') || tables.includes('entry') ||
-        tables.includes('journalingPause') || tables.includes('areaState')
+        tables.includes('reminder') || tables.includes('entry') || tables.includes('areaState')
       ) {
         void syncReminderSchedules();
       }

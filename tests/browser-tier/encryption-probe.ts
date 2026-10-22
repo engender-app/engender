@@ -133,7 +133,6 @@ async function run() {
   });
   await journal.reminders.upsertReminder({
     title: 'sentinel-reminder-progynova-2114',
-    type: 'med',
     time: '09:00',
     recurrence: 'DAILY',
     interval: null,

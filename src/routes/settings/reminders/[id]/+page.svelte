@@ -29,20 +29,13 @@
   import { writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
 
-  const TYPES = [
-    { value: 'med', label: m.rem_type_med() },
-    { value: 'injection', label: m.rem_type_injection() },
-    { value: 'appointment', label: m.rem_type_appointment() },
-    { value: 'other', label: m.rem_type_other() },
-  ];
   /* What the segmented control offers; the stored rule is reminderRule.ts's
-     shape (a one-off day, DAILY/WEEKLY, or an anchored EVERY_N_DAYS). */
+     shape (a one-off day, DAILY, or an anchored EVERY_N_DAYS). */
   const RECURRENCES: { value: RecurrenceChoice; label: string }[] = [
     { value: 'ONCE', label: m.rem_rec_once() },
     { value: 'DAILY', label: m.rem_rec_daily() },
     { value: 'EVERY_3_DAYS', label: m.rem_rec_every_3() },
     { value: 'EVERY_7_DAYS', label: m.rem_rec_every_7() },
-    { value: 'WEEKLY', label: m.rem_rec_weekly() },
   ];
 
   /* Reminders are tens of rows and not mirrored, so the one being edited comes
@@ -50,10 +43,10 @@
      moment it arrives and never again, and refilled if the route moves to
      another id - both are detailDraft.ts's rules, node-tested there. Back
      with an unsaved change asks first, which is detailDraft's default. */
-  const detail = detailDraft<Reminder, { title: string; type: Reminder['type']; time: string; choice: RecurrenceChoice }>({
+  const detail = detailDraft<Reminder, { title: string; time: string; choice: RecurrenceChoice }>({
     read: async (j, id) => (await j.reminders.getReminders()).find((r) => r.id === id),
-    blank: () => ({ title: '', type: 'med', time: '20:00', choice: 'DAILY' }),
-    fromRecord: (found) => ({ title: found.title, type: found.type, time: found.time, choice: choiceFromRule(found) }),
+    blank: () => ({ title: '', time: '20:00', choice: 'DAILY' }),
+    fromRecord: (found) => ({ title: found.title, time: found.time, choice: choiceFromRule(found) }),
     // Leaving waits while a save runs, so a late success never lands on another screen.
     saving: () => saving.busy
   });
@@ -91,7 +84,6 @@
         journal.reminders.upsertReminder({
           id: detail.record?.id,
           title: draft.title || m.rem_default_name(),
-          type: draft.type,
           enabled: detail.record?.enabled ?? true,
           ...ruleFromDraft(),
         }),
@@ -154,11 +146,6 @@
     <Notice icon="bell" key="reminder-web" title={m.rem_web_list_note()} text={m.rem_web_save_note()} />
   {/if}
 
-  <Field label={m.rem_type_label()} legend>
-    {#snippet children()}
-      <Segmented name={m.rem_type_label()} options={TYPES} value={draft.type} onChange={(v) => (draft.type = v as Reminder['type'])} />
-    {/snippet}
-  </Field>
   <Field label={m.rem_name_label()} id="r-name">
     {#snippet children(id)}
       <input autocomplete={journalTextAutocomplete()} class="input" {id} name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />

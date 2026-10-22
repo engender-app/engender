@@ -110,7 +110,6 @@ async function run() {
   });
   await journal.reminders.upsertReminder({
     title: SENTINELS.reminder,
-    type: 'med',
     time: '09:00',
     recurrence: 'DAILY',
     interval: null,

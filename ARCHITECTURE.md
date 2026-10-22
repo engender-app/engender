@@ -258,8 +258,8 @@ flowchart LR
 
 Vite emits workers as ES modules so demo worker imports can split into chunks. The development and preview servers set COOP/COEP headers for SQLite; production hosting supplies those headers itself.
 
-**Date range writes.** Regimen episodes, dose pauses, journaling pauses and
-tryouts share the ordering guard in [data/span.ts](src/lib/data/span.ts).
+**Date range writes.** Regimen episodes, dose pauses and tryouts share the
+ordering guard in [data/span.ts](src/lib/data/span.ts).
 Editors constrain the end picker and explain an inverted draft before saving.
 Journal writes reject inverted bounds independently, including episode ending
 and tryout adoption. Equal dates remain inclusive and null ends stay open.
@@ -393,7 +393,7 @@ The rest, without SQL edges:
 |---|---|
 | Body | `hair_stage`, `hair_photo`, `personal_effect`, `side_effect` |
 | Voice | `voice_benchmark`, `voice_practice_take` |
-| Logs | `tally_event`, `cycle_event` (ADR-0043), `wear_session` (ADR-0064), `journaling_pause` |
+| Logs | `tally_event`, `cycle_event` (ADR-0043), `wear_session` (ADR-0064) |
 | Self | `letter` (seal derived from dates), `document` (ADR-0065), `roadmap_check`, `roadmap_goal`, `roadmap_track` (ADR-0068) |
 | Eras and resurfacing | `era` (ADR-0049), `era_mute`, `comfort_item` |
 | Housekeeping | `reminder`, `pref`, `import_log`, `area_state` (hidden and finished areas, ADR-0052) |

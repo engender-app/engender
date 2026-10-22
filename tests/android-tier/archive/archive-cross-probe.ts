@@ -121,7 +121,6 @@ async function seedSource(journal: Journal, files: PhotoFileStore, marker: strin
   await journal.labs.upsertResult({ epochDay: 20000, analyte: `estradiol-${marker}`, value: 412.5, unit: 'pmol/L' });
   await journal.reminders.upsertReminder({
     title: `reminder-${marker}`,
-    type: 'med',
     time: '09:30',
     recurrence: 'DAILY',
     interval: null,
@@ -199,6 +198,7 @@ function portableWith(marker: string) {
     language: values.language,
     checkInEnabled: values.checkInEnabled,
     checkInTime: values.checkInTime,
+    checkInPausedThrough: values.checkInPausedThrough,
     preferredLabUnits: {},
     journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
     hairAnchorEpochDay: values.hairAnchorEpochDay,

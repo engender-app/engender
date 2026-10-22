@@ -112,3 +112,43 @@ describe('the reminders list on Android', () => {
     expect(unknown).not.toContain('rem_inexact');
   });
 });
+
+/* Functional audit ticket 08. The check-in had a switch here and a second
+   one on /settings/notifications, both writing `checkInEnabled`; the
+   reminders screen keeps it beside the time and the pause, and the other
+   screen links here. And the notifications screen's Reminders switch gates
+   every row on this list, so this list says when it is off rather than
+   showing every row switched on while nothing rings. */
+const notifications = read('src/routes/settings/notifications/+page.svelte');
+const notificationsMarkup = stripScript(notifications);
+
+describe('the check-in in one place', () => {
+  it('has its switch on the reminders screen and nowhere else', () => {
+    const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
+    expect(android.match(/prefs\.checkInEnabled = v/g)?.length).toBe(1);
+    /* The notifications screen draws the registry's check-in row as a link
+       to this screen, and its generic notify switch skips that row. */
+    const checkIn = notificationsMarkup.slice(notificationsMarkup.indexOf("{#if row.key === 'check-in'}"));
+    expect(notificationsMarkup).toContain("{#if row.key === 'check-in'}");
+    expect(checkIn).toContain('href="/settings/reminders"');
+    expect(checkIn.slice(0, checkIn.indexOf('{:else}'))).not.toContain('<Switch');
+  });
+
+  it('pauses the check-in until a date on the check-in row', () => {
+    const block = listMarkup.slice(listMarkup.indexOf('data-checkin'), listMarkup.indexOf('</ReadReserve>', listMarkup.indexOf('data-checkin')));
+    expect(block).toContain('<DatePicker');
+    expect(block).toContain('m.checkin_pause_label()');
+    expect(list).toContain('prefs.checkInPausedThrough =');
+  });
+});
+
+describe('the notifications master switch, on the reminders screen', () => {
+  it('says so when reminders are switched off, with the way back', () => {
+    const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
+    const off = android.slice(android.indexOf('{#if !prefs.remindersEnabled'));
+    expect(android).toContain('{#if !prefs.remindersEnabled');
+    expect(off).toContain('key="reminders-switched-off"');
+    expect(off).toContain('m.rem_switched_off_title()');
+    expect(off).toContain("href: '/settings/notifications'");
+  });
+});

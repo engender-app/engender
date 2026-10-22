@@ -21,10 +21,6 @@ const areas = {
       read: () => journal.doses.getPauses(), table: 'dose_pause'
     };
   },
-  journalingPause: async (journal: Journal) => ({
-    save: (range: RangeInput) => journal.journalingPauses.upsertPause(range),
-    read: () => journal.journalingPauses.getPauses(), table: 'journaling_pause'
-  }),
   tryout: async (journal: Journal) => ({
     save: (range: RangeInput) => journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', ...range }),
     read: () => journal.tryouts.getTryouts(), table: 'tryout'

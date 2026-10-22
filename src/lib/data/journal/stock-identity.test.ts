@@ -147,9 +147,9 @@ test('legacy stock selection filters destination uuids before choosing siblings 
     const snapshot = await journal.archive.snapshot();
     await journal.stock.upsertEntry({ id: renamed, drug: 'Estradiol 2mg', quantity: 20, unit: 'pills', recordedEpochDay: 20010 });
     const destination = await journal.stock.upsertEntry({ drug: 'ŻEL', quantity: 40, unit: 'pumps', recordedEpochDay: 20010 });
-    await db.run(`INSERT INTO reminder(uuid, title, type, time, epoch_day, auto_source, updated_at)
-      VALUES ('destination-auto', 'Destination reminder', 'med', '09:00', 20020, 'stock:żel', 100),
-        ('destination-manual', 'A taken-over reminder', 'med', '09:00', 20020, NULL, 100)`);
+    await db.run(`INSERT INTO reminder(uuid, title, time, epoch_day, auto_source, updated_at)
+      VALUES ('destination-auto', 'Destination reminder', '09:00', 20020, 'stock:żel', 100),
+        ('destination-manual', 'A taken-over reminder', '09:00', 20020, NULL, 100)`);
     const before = await db.query('SELECT * FROM medication_stock ORDER BY id');
     const reminders = await db.query('SELECT * FROM reminder ORDER BY id');
     const old = snapshot.journal.medicationStock[0];
@@ -158,7 +158,7 @@ test('legacy stock selection filters destination uuids before choosing siblings 
       { ...old, id: 'gel-first', drug: 'żel', quantity: 4 },
       { ...old, id: 'gel-last', drug: ' ŻEL ', quantity: 9 }
     ];
-    const reminder = { title: 'Incoming reminder', type: 'med' as const, time: '09:00', recurrence: null,
+    const reminder = { title: 'Incoming reminder', time: '09:00', recurrence: null,
       interval: null, anchorEpochDay: null, epochDay: 20020, enabled: true };
     snapshot.journal.reminders = [
       { ...reminder, id: 'incoming-auto', autoSource: 'stock: estradiol ' },

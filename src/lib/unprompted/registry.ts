@@ -71,7 +71,6 @@ export type UnpromptedKind =
   | 'safe-space-nudge'
   | 'stock-notice'
   | 'patch-schedule-tile'
-  | 'pause-active-banner'
   | 'wrapped'
   | 'on-this-day'
   | 'reminders'
@@ -203,13 +202,6 @@ const ROWS = [
     area: null,
     title: () => m.tile_patch_schedule_title(),
     surface: { subtitle: () => m.tile_patch_schedule_sub(), prefKey: 'patchScheduleTileEnabled' }
-  },
-  {
-    key: 'pause-active-banner',
-    // a journaling pause already carries the day it started and the day it ended.
-    area: null,
-    title: () => m.tile_pause_active_title(),
-    surface: { subtitle: () => m.tile_pause_active_sub(), prefKey: 'pauseActiveBannerEnabled' }
   },
   {
     key: 'wrapped',

@@ -35,7 +35,6 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['milestones', 'getMilestones'],
       ['regimen', 'getEpisodes'],
       ['doses', 'getPauses'],
-      ['journalingPauses', 'getPauses'],
       ['tryouts', 'getTryouts'],
       ['procedures', 'getProcedures'],
       ['eras', 'getEras'],

@@ -31,7 +31,6 @@ import { AREA_STATES_BEFORE_READ } from './areaState';
 import { prefs } from './prefs/store.svelte';
 import { fmtDay, fmtTime, fmtNumber } from './dates';
 import { SPINE_FORWARD_DAYS } from './careSpine';
-import { todayEpochDay as clockDay } from './epochDay';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
 import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
 import { UNPROMPTED_ROWS, unpromptedQuiet } from '../unprompted/registry';
@@ -160,20 +159,10 @@ export function homeTiles(
   const yesterdayDoses = liveList((j) =>
     wanted('dose-panel') ? j.doses.getDoses(todayEpochDay - 1, todayEpochDay - 1) : none([])
   );
-  const journalingPauses = liveList((j) => (wanted('pause-active-banner') ? j.journalingPauses.getPauses() : none([])));
 
   function snooze(kind: LiveTileKind): void {
     snoozeStoreOf(kind).snooze();
     snoozeRevision += 1;
-  }
-
-  async function resumePause(pauseId: string, startEpochDay: number): Promise<void> {
-    const endEpochDay = clockDay() - 1;
-    if (endEpochDay < startEpochDay) {
-      await journal.journalingPauses.deletePause(pauseId);
-      return;
-    }
-    await journal.journalingPauses.upsertPause({ id: pauseId, startEpochDay, endEpochDay });
   }
 
   /* Which preference switches a tile off is the unprompted registry's to
@@ -204,7 +193,6 @@ export function homeTiles(
     dosePauses,
     scheduleDoses,
     yesterdayDoses,
-    journalingPauses,
     areaStates
   ];
   /* Whether the grid may be composed yet (phase 11 ticket 146). Composed
@@ -241,8 +229,7 @@ export function homeTiles(
         schedules: schedules.rows,
         dosePauses: dosePauses.rows,
         scheduleDoses: scheduleDoses.rows,
-        yesterdayDoses: yesterdayDoses.rows,
-        journalingPauses: journalingPauses.rows
+        yesterdayDoses: yesterdayDoses.rows
       },
       actions: {
         stopWear: (session) => {
@@ -258,13 +245,11 @@ export function homeTiles(
           prefs.safeSpaceNudgeDismissedEntryId = entryId;
         },
         openLetterDismiss: handlers.onLetterDismiss,
-        resumePause: (pauseId, startEpochDay) => void resumePause(pauseId, startEpochDay),
         snooze
       },
       format: {
         number: fmtNumber,
         fullDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
-        shortDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short' }),
         /* The agenda band's own day format, so the dose panel's next slot
            and the rows under "Coming up" write a day the same way on the
            one screen that draws both. */

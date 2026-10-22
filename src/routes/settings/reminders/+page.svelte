@@ -4,11 +4,16 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { resolveReminderOrigin } from '$lib/data/provenance';
-  import { reminderScheduleLabel, reminderTypeLabel } from '$lib/data/vocabulary/reminderLabel';
+  import { reminderScheduleLabel } from '$lib/data/vocabulary/reminderLabel';
   import { prefs, preferencesAttached } from '$lib/data/prefs/store.svelte';
   import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import TimePicker from '$lib/components/TimePicker.svelte';
+  import DatePicker from '$lib/components/DatePicker.svelte';
+  import { fmtDay } from '$lib/data/dates';
+  import { dateInputValueFromEpochDay, epochDayFromDateInputValue, epochDayFromLocalDate } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
+  import { nextCheckIn } from '$lib/reminders/checkIn';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -22,7 +27,6 @@
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
   import { watchStatus } from '$lib/permissions/watchStatus';
 
-  const TYPE_ICON: Record<string, string> = { med: 'pill', injection: 'pill', appointment: 'calendar', other: 'bell' };
   let isWeb = $derived(!isAndroid());
 
   let reminders = liveList((j) => j.reminders.getReminders());
@@ -88,6 +92,27 @@
     };
   });
 
+  /* The check-in's pause (functional audit ticket 08): one date, the last
+     silent day. A date that has gone by is no pause, so the field reads
+     empty again the day after without anything having to clear it. */
+  let today = $derived(currentDay());
+  let pausedThrough = $derived(
+    prefs.checkInPausedThrough !== null && prefs.checkInPausedThrough >= today ? prefs.checkInPausedThrough : null
+  );
+  let pauseValue = $derived(pausedThrough === null ? '' : dateInputValueFromEpochDay(pausedThrough));
+  /* When it rings again: checkIn.ts's rule, the one the alarm is held to. */
+  let backOn = $derived.by(() => {
+    if (pausedThrough === null) return null;
+    const at = nextCheckIn(
+      { enabled: true, time: prefs.checkInTime, pausedThroughEpochDay: pausedThrough, latestEntryEpochDay: null },
+      new Date()
+    );
+    return at && m.checkin_pause_back({ date: fmtDay(epochDayFromLocalDate(at), { day: 'numeric', month: 'long' }), time: prefs.checkInTime });
+  });
+  function setPause(value: string) {
+    prefs.checkInPausedThrough = value ? epochDayFromDateInputValue(value) : null;
+  }
+
   /* Latched: a reserve must not put its placeholder back (ticket 211). */
   let remindersRevealed = $state(false);
   $effect.pre(() => {
@@ -136,9 +161,9 @@
               static
               key={r.id}
               data-reminder={r.id}
-              icon={TYPE_ICON[r.type] || 'bell'}
+              icon="bell"
               title={r.title}
-              subtitle={[`${reminderTypeLabel(r.type)} · ${reminderScheduleLabel(r)}`, origin?.text]}
+              subtitle={[reminderScheduleLabel(r), origin?.text]}
               action={{
                 icon: 'trash',
                 label: m.rem_delete_aria({ title: r.title }),
@@ -198,11 +223,36 @@
                says so about the same input - so the value was clipped and the
                row read as a label losing an argument with a pill. The cap is
                the 160px `/settings/reminders/[id]` gives the same field. -->
-          <Field label={m.checkin_time()} id="checkin-time" spread>
-            {#snippet children(id)}
-              <TimePicker {id} name="checkin-time" style="max-width:160px" required bind:value={prefs.checkInTime} />
-            {/snippet}
-          </Field>
+          <div class="stack-3">
+            <Field label={m.checkin_time()} id="checkin-time" spread>
+              {#snippet children(id)}
+                <TimePicker {id} name="checkin-time" style="max-width:160px" required bind:value={prefs.checkInTime} />
+              {/snippet}
+            </Field>
+            <!-- The pause sits on the check-in itself rather than on a screen
+                 of its own (functional audit ticket 08): an empty field is no
+                 pause, a date is the last quiet day, and the picker's own
+                 Clear is how it resumes. -->
+            <Field label={m.checkin_pause_label()} id="checkin-pause" spread>
+              {#snippet children(id)}
+                <DatePicker
+                  {id}
+                  name="checkin-pause"
+                  style="max-width:160px"
+                  min={dateInputValueFromEpochDay(today)}
+                  value={pauseValue}
+                  onchange={setPause}
+                  placeholder={m.checkin_pause_none()}
+                  data-checkin-pause
+                />
+              {/snippet}
+            </Field>
+            {#if backOn}
+              <div class="disclosed" transition:disclose>
+                <p class="checkin-back" data-checkin-back>{backOn}</p>
+              </div>
+            {/if}
+          </div>
         </div>
         {/if}
       </div>
@@ -248,6 +298,20 @@
     </ReadReserve>
 
     <ReadReserve ready={remindersRevealed} estimate={remindersEstimate} onrest={remindersRemember}>
+      <!-- The notifications screen's Reminders switch gates every row below
+           (platform-sync.ts's schedulableReminders), and each row keeps its
+           own switch on while it is off - so the list says so rather than
+           showing a column of switched-on reminders that will not ring
+           (functional audit ticket 08). -->
+      {#if !prefs.remindersEnabled && reminders.rows.length > 0}
+        <Notice
+          icon="bell"
+          key="reminders-switched-off"
+          title={m.rem_switched_off_title()}
+          text={m.rem_switched_off_body()}
+          action={{ label: m.rem_switched_off_action(), href: '/settings/notifications' }}
+        />
+      {/if}
       <ListCard>
         {#each reminders.rows as r (r.id)}
           <!-- A navigable title beside an independent Switch, and ListRow has
@@ -256,10 +320,10 @@
                one icon button, not a Switch (ticket 18). -->
           {@const origin = resolveReminderOrigin(r)}
           <div class="kit-row" data-list-row={r.id}>
-            <span class="kit-row-ico"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
+            <span class="kit-row-ico"><Icon name="bell" size={22} /></span>
             <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
               <span class="kit-row-title">{r.title}</span>
-              <span class="kit-row-sub">{reminderTypeLabel(r.type)} · {reminderScheduleLabel(r)}</span>
+              <span class="kit-row-sub">{reminderScheduleLabel(r)}</span>
               {#if origin}<span class="kit-row-sub">{origin.text}</span>{/if}
             </a>
             <span class="kit-row-trail">
@@ -280,3 +344,13 @@
     </div>
   {/if}
 </div>
+
+<style>
+  /* The pause's answer, read under the field it answers: --text-2 like a
+     field hint, flush with the label above it. */
+  .checkin-back {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+</style>

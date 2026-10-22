@@ -38,7 +38,6 @@ import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
 import { makeErasArea, type ErasArea } from './eras';
 import { makeEraMutesArea, type EraMutesArea } from './eraMutes';
-import { makeJournalingPausesArea, type JournalingPausesArea } from './journalingPauses';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeLastWriteArea, type LastWriteArea } from './lastWrite';
 import { makeLettersArea, type LettersArea } from './letters';
@@ -166,11 +165,6 @@ export interface Journal {
       reason sideEffects has none - charted against regimen episode
       history above this seam rather than owning a link to one. */
   cycleEvents: CycleEventsArea;
-  /** A declared, dated break from journaling (phase 5 ticket 21, CONTEXT:
-      "Journaling pause"). No episode reference, the same reason cycleEvents
-      has none. This area owns the rows; who reads them - Home's pause tile,
-      the check-in suppression, the chart's pause band - is elsewhere. */
-  journalingPauses: JournalingPausesArea;
   /** A dated note an entry's owner added afterwards, on rereading (phase 8
       features ticket 07, CONTEXT: "Margin note"). Rows only, owned by an
       entry's rowid directly - what a margin note is rendered as (a visibly
@@ -190,9 +184,9 @@ export interface Journal {
       one place that reads the two areas together. */
   eraMutes: EraMutesArea;
   /** What was happening around the numbers a time chart draws (phase 5
-      deepening ticket 23): milestones, regimen episodes, dose and journaling
-      pauses, tryouts, and a procedure's surgery day and recovery window, for
-      one date range. A view over rows six other areas own, storing nothing of
+      deepening ticket 23): milestones, regimen episodes, dose pauses,
+      tryouts, and a procedure's surgery day and recovery window, for one
+      date range. A view over rows other areas own, storing nothing of
       its own - the same kind of area `exposure` and `clinicianSummary` are. */
   chartAnnotations: ChartAnnotationsArea;
   /** The binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear
@@ -384,7 +378,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const hairRemoval = makeHairRemovalArea(driver, files);
   const tryouts = makeTryoutsArea(driver, files);
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
-  const journalingPauses = makeJournalingPausesArea(driver);
   const marginNotes = makeMarginNotesArea(driver);
   const eras = makeErasArea(driver);
   const eraMutes = makeEraMutesArea(driver);
@@ -420,7 +413,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     exposure,
     sideEffects,
     cycleEvents,
-    journalingPauses,
     marginNotes,
     eras,
     eraMutes,
@@ -431,7 +423,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
         milestones,
         regimen,
         doses,
-        journalingPauses,
         tryouts,
         procedures,
         eras

@@ -438,7 +438,6 @@ beforeAll(async () => {
   const reminderId = (await drive('reminders', 'upsertReminder', () =>
     journal.reminders.upsertReminder({
       title: 'injection',
-      type: 'injection',
       time: '08:00',
       recurrence: 'EVERY_N_DAYS',
       interval: 7,
@@ -451,7 +450,6 @@ beforeAll(async () => {
   const secondReminderId = (await drive('reminders', 'upsertReminder', () =>
     journal.reminders.upsertReminder({
       title: 'a second reminder',
-      type: 'injection',
       time: '09:00',
       recurrence: 'EVERY_N_DAYS',
       interval: 7,
@@ -598,17 +596,6 @@ beforeAll(async () => {
     journal.cycleEvents.upsertCycleEvent({ kind: 'nothing_this_month', epochDay: 20001 })
   )) as string;
   await drive('cycleEvents', 'deleteCycleEvent', () => journal.cycleEvents.deleteCycleEvent(secondCycleEventId));
-
-  // --- journalingPauses ---------------------------------------------------
-  const journalingPauseId = (await drive('journalingPauses', 'upsertPause', () =>
-    journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null })
-  )) as string;
-  const secondJournalingPauseId = (await drive('journalingPauses', 'upsertPause', () =>
-    journal.journalingPauses.upsertPause({ startEpochDay: 19600, endEpochDay: 19610 })
-  )) as string;
-  await drive('journalingPauses', 'deletePause', () =>
-    journal.journalingPauses.deletePause(secondJournalingPauseId)
-  );
 
   // --- marginNotes ------------------------------------------------------
   const marginNoteId = (await drive('marginNotes', 'add', () =>
@@ -907,7 +894,7 @@ beforeAll(async () => {
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
   void [labId, taperSessionId, tallyId, doseId, stockId, sideEffectId, cycleEventId,
-    journalingPauseId, wearSessionId, hairStageId, benchmarkId, takeId];
+    wearSessionId, hairStageId, benchmarkId, takeId];
 
   // --- reads --------------------------------------------------------------
   // Every classified read this file can drive with no more setup than the
@@ -996,7 +983,6 @@ beforeAll(async () => {
   await driveRead('cycleEvents', 'getCycleEvents', () => journal.cycleEvents.getCycleEvents());
   await driveRead('cycleEvents', 'getCycleEventsInRange', () => journal.cycleEvents.getCycleEventsInRange(0, 30000));
   await driveRead('cycleEvents', 'lastWriteEpochDay', () => journal.cycleEvents.lastWriteEpochDay(20000));
-  await driveRead('journalingPauses', 'getPauses', () => journal.journalingPauses.getPauses());
   await driveRead('marginNotes', 'forEntries', () => journal.marginNotes.forEntries([entryId]));
   await driveRead('eras', 'getEras', () => journal.eras.getEras());
   await driveRead('eras', 'getJournalBounds', () => journal.eras.getJournalBounds());

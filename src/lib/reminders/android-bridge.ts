@@ -13,7 +13,8 @@ export interface AndroidReminderSyncPayload {
   reminders: Reminder[];
   checkInEnabled: boolean;
   checkInTime: string;
-  journalingPauses: Array<{ startEpochDay: number; endEpochDay: number | null }>;
+  /** The last day the check-in stays silent, or null (checkIn.ts). */
+  checkInPausedThrough: number | null;
   latestEntryEpochDay: number | null;
   /** Reminder notifications drop the reminder's own title for a generic
       one when true (ticket 15). */

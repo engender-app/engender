@@ -205,13 +205,10 @@ describe('the rail draws every dated history, not only the eras', () => {
     { id: 'e2', kind: 'regimen', name: 'Estradiol valerate', startEpochDay: 19001, endEpochDay: null },
     { id: 't1', kind: 'tryout', name: 'Alex', startEpochDay: 20000, endEpochDay: 20100 },
     { id: 's1', kind: 'surgery', name: 'Orchiectomy', startEpochDay: 20300, endEpochDay: null },
-    /* Four kinds the same query returns and the rail does not draw: a
-       milestone and an era already have their own marks and bands here, a
-       recovery window is a reading of a procedure rather than a stretch the
-       person lived through as its own thing, and a journaling pause came
-       off the rail on the sign-off renders - it is the absence of a journal
-       rather than a stretch of a life, and the charts still band it. */
-    { id: 'p1', kind: 'journalingPause', name: null, startEpochDay: 20200, endEpochDay: 20230 },
+    /* Three kinds the same query returns and the rail does not draw: a
+       milestone and an era already have their own marks and bands here,
+       and a recovery window is a reading of a procedure rather than a
+       stretch the person lived through as its own thing. */
     { id: 'm1', kind: 'milestone', name: 'Came out', startEpochDay: 20400, endEpochDay: null },
     { id: 'era1', kind: 'era', name: 'First year', startEpochDay: 19500, endEpochDay: null },
     { id: 'r1', kind: 'recovery', name: 'Orchiectomy', startEpochDay: 20301, endEpochDay: 20390 }

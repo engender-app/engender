@@ -3,7 +3,6 @@ package dev.engender.app.reminders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
@@ -17,12 +16,11 @@ public class ReminderSchedulerCheckInTest {
     private static final ZoneId ZONE = ZoneId.of("Europe/Warsaw");
 
     @Test
-    public void schedulesFirstUnpausedDayAfterFinitePause() throws Exception {
+    public void schedulesTheDayAfterThePause() throws Exception {
         ZonedDateTime now = ZonedDateTime.of(2026, 8, 13, 10, 0, 0, 0, ZONE);
         int today = (int) now.toLocalDate().toEpochDay();
         JSONObject payload = new JSONObject().put("checkInEnabled", true).put("checkInTime", "21:00")
-            .put("journalingPauses", new JSONArray().put(new JSONObject()
-                .put("startEpochDay", today).put("endEpochDay", today + 1)));
+            .put("checkInPausedThrough", today + 1);
         List<ZonedDateTime> alarms = new ArrayList<>();
 
         ReminderScheduler.scheduleCheckIn(payload, now, alarms::add);
@@ -31,18 +29,11 @@ public class ReminderSchedulerCheckInTest {
     }
 
     @Test
-    public void openEndedPauseAndDisabledPreferenceSetNoAlarm() throws Exception {
+    public void disabledPreferenceSetsNoAlarm() throws Exception {
         ZonedDateTime now = ZonedDateTime.of(2026, 8, 13, 10, 0, 0, 0, ZONE);
-        int today = (int) now.toLocalDate().toEpochDay();
-        JSONObject payload = new JSONObject().put("checkInEnabled", true).put("checkInTime", "21:00")
-            .put("journalingPauses", new JSONArray().put(new JSONObject()
-                .put("startEpochDay", today).put("endEpochDay", JSONObject.NULL)));
+        JSONObject payload = new JSONObject().put("checkInEnabled", false).put("checkInTime", "21:00");
         List<ZonedDateTime> alarms = new ArrayList<>();
 
-        ReminderScheduler.scheduleCheckIn(payload, now, alarms::add);
-        assertTrue(alarms.isEmpty());
-
-        payload.put("journalingPauses", new JSONArray()).put("checkInEnabled", false);
         ReminderScheduler.scheduleCheckIn(payload, now, alarms::add);
         assertTrue(alarms.isEmpty());
     }

@@ -8,23 +8,8 @@ import { relativeDayFromToday } from '../epochDay';
 import { currentDay } from '../../stores/today.svelte';
 import type { Reminder } from '../types';
 
-const TYPE_NAME: Record<string, (() => string) | undefined> = {
-  med: m.rem_type_med,
-  injection: m.rem_type_injection,
-  appointment: m.rem_type_appointment,
-  other: m.rem_type_other
-};
-
-/** The wording for a reminder's type; a stored type this build does not know
-    reads as "other". The row used to print the stored value, so a Polish
-    reader read "med" and "injection" in English. */
-export function reminderTypeLabel(type: Reminder['type']): string {
-  return (TYPE_NAME[type] ?? m.rem_type_other)();
-}
-
 function recurrenceLabel(r: Reminder): string {
   if (r.recurrence === 'DAILY') return m.recurrence_daily();
-  if (r.recurrence === 'WEEKLY') return m.recurrence_weekly();
   return m.recurrence_every_n_days({ n: r.interval ?? 0 });
 }
 

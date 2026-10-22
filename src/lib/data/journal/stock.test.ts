@@ -338,7 +338,6 @@ test('reconciling with an approaching run-out creates a marked reminder', async 
   assert.equal(reminders.length, 1);
   assert.equal(reminders[0].autoSource, 'stock:estradiol');
   assert.equal(reminders[0].title, 'estradiol');
-  assert.equal(reminders[0].type, 'med');
   assert.equal(reminders[0].recurrence, null);
 
   const [entry] = await journal.stock.getEntries();
@@ -393,7 +392,6 @@ test('a person editing the auto reminder through the ordinary editor also stops 
   await journal.reminders.upsertReminder({
     id: created.id,
     title: 'my own title',
-    type: created.type,
     time: created.time,
     recurrence: created.recurrence,
     interval: created.interval,

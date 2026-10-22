@@ -34,7 +34,6 @@ const milestone = (overrides: Partial<Milestone> = {}): Milestone => ({
 const reminder = (overrides: Partial<Reminder> = {}): Reminder => ({
   id: 'r-1',
   title: 'Estradiol',
-  type: 'med',
   time: '09:00',
   recurrence: null,
   interval: null,

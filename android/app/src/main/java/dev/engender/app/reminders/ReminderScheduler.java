@@ -90,7 +90,6 @@ public final class ReminderScheduler {
     static synchronized void saveAndSchedule(JSONObject payload, ZonedDateTime now, PayloadReader reader, PayloadWriter writer,
                                 Consumer<JSONObject> cancel, Consumer<JSONObject> schedule) throws Exception {
         JSONObject previous = reader.read();
-        ReminderPlanner.anchorLegacyWeeklyRules(payload, now);
         JSONArray reminders = payload.optJSONArray("reminders");
         if (reminders != null) {
             for (int i = 0; i < reminders.length(); i++) {
@@ -134,7 +133,6 @@ public final class ReminderScheduler {
             payload = reader.read();
             if (payload == null) return;
             String before = payload.toString();
-            ReminderPlanner.anchorLegacyWeeklyRules(payload, now);
             JSONArray reminders = payload.optJSONArray("reminders");
             if (reminders != null) {
                 for (int i = 0; i < reminders.length(); i++) {

@@ -31,6 +31,9 @@ test('imports alpha producer output through the current public Archive boundary'
         const restored = actual.journal[section].find((candidate) => (candidate as unknown as Record<string, unknown>)[key] === identity[key]) as unknown as Record<string, unknown>;
         assert.ok(restored, `${section} ${identity[key]}`);
         for (const [key, value] of Object.entries(row)) {
+          // A reminder's type was removed (functional audit ticket 08): the alpha
+          // archive still carries one, and restore ignores it.
+          if (section === 'reminders' && key === 'type') continue;
           if (key === 'photos') {
             assert.deepEqual((restored.photos as { id: string; fileName: string }[]).map(({ id, fileName }) => ({ id, fileName })), value);
           } else if (key === 'photo' && value) {

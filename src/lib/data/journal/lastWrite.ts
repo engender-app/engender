@@ -274,7 +274,6 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   doseSchedules: 'a schedule: what is meant to happen, never something written on a day',
   taper: 'a schedule: what is meant to happen, never something written on a day (ticket 12)',
   dosePauses: 'a span: a break declared across days',
-  journalingPauses: 'a span: a break declared across days',
   eras: 'a span the person named, not a record of one day',
   reminders: 'a schedule: an intention for a future day, not a record of one already written',
   medicationStock: 'a running count, dated by when it was last reported rather than by a day someone lived',

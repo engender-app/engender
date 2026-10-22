@@ -30,7 +30,6 @@ test('gathers every dated area a chart can be annotated with', async () => {
     endReason: null
   });
   await journal.doses.upsertPause({ episodeId: episode, startEpochDay: 20120, endEpochDay: 20125, reason: 'planned' });
-  await journal.journalingPauses.upsertPause({ startEpochDay: 20130, endEpochDay: 20134 });
   await journal.tryouts.upsertTryout({ kind: 'name', label: 'Ada', startEpochDay: 20140, endEpochDay: 20150 });
   await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20160 });
   await journal.eras.upsertEra({ name: 'first year', startEpochDay: 20155, endEpochDay: null });
@@ -39,7 +38,7 @@ test('gathers every dated area a chart can be annotated with', async () => {
 
   assert.deepEqual(
     found.map((a) => a.kind),
-    ['regimen', 'milestone', 'dosePause', 'journalingPause', 'tryout', 'era', 'surgery', 'recovery']
+    ['regimen', 'milestone', 'dosePause', 'tryout', 'era', 'surgery', 'recovery']
   );
 });
 

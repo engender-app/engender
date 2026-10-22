@@ -372,7 +372,6 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   doseSchedules: 'a schedule: what was meant to happen, not what did',
   taper: 'a schedule: what was meant to happen, not what did (ticket 12)',
   dosePauses: 'a span: a break declared across days',
-  journalingPauses: 'a span: a break declared across days',
   eras: 'a span: a stretch of days the person named, and not a record of one',
   eraMutes: 'no date of its own: a uuid naming a muted era',
   reminders: 'a schedule: an intention for a future day',

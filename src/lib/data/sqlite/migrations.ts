@@ -212,5 +212,56 @@ FROM voice_benchmark b WHERE b.vowel_file_path IS NOT NULL;
      refuses a length outside 1 to 1440 and archiveRowValidation.ts judges an
      archive row by the same range, so no CHECK. Pain was made nullable by
      version 94's rebuild. */
-  { version: 107, sql: 'ALTER TABLE hair_removal_session ADD COLUMN minutes INTEGER;' }
+  { version: 107, sql: 'ALTER TABLE hair_removal_session ADD COLUMN minutes INTEGER;' },
+  /* Functional audit ticket 08: the journaling pause is cut. The check-in
+     it silenced has its own pause now, one date in the checkInPausedThrough
+     preference, and the streak it bridged is gone. Rows are dropped, not
+     converted; archives that still carry the section skip it on restore
+     (DROPPED_ARCHIVE_SECTION_NAMES). */
+  { version: 108, sql: `
+DROP TABLE journaling_pause;
+DELETE FROM area_state WHERE area = 'journalingPauses';
+DELETE FROM pref WHERE key = 'pauseActiveBannerEnabled';
+` },
+  /* Functional audit ticket 08: a reminder has no type (it only ever picked
+     an icon), and the pre-rc WEEKLY recurrence has no reader left. SQLite
+     cannot drop a column or change a CHECK in place, so the table is rebuilt,
+     its AUTOINCREMENT counter carried over, and the trigger that anchored a
+     WEEKLY insert goes with the old table. A row could only hold WEEKLY
+     between that trigger's insert and its update, so none should exist; one
+     that does becomes the seven-day progression the trigger would have made. */
+  { version: 109, sql: `
+CREATE TABLE reminder_new (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid             TEXT NOT NULL UNIQUE,
+  title            TEXT NOT NULL,
+  time             TEXT NOT NULL,
+  recurrence       TEXT CHECK (recurrence IN ('DAILY','EVERY_N_DAYS')),
+  interval         INTEGER,
+  anchor_epoch_day INTEGER,
+  epoch_day        INTEGER,
+  enabled          INTEGER NOT NULL DEFAULT 1,
+  updated_at       INTEGER NOT NULL,
+  auto_source      TEXT,
+  CHECK (
+    (recurrence IS NULL AND epoch_day IS NOT NULL AND interval IS NULL AND anchor_epoch_day IS NULL)
+    OR (recurrence IS 'EVERY_N_DAYS' AND interval IS NOT NULL AND anchor_epoch_day IS NOT NULL AND epoch_day IS NULL)
+    OR (recurrence IS 'DAILY' AND interval IS NULL AND anchor_epoch_day IS NULL AND epoch_day IS NULL)
+  )
+);
+INSERT INTO reminder_new (id, uuid, title, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, updated_at, auto_source)
+  SELECT id, uuid, title, time,
+    CASE recurrence WHEN 'WEEKLY' THEN 'EVERY_N_DAYS' ELSE recurrence END,
+    CASE recurrence WHEN 'WEEKLY' THEN 7 ELSE interval END,
+    CASE recurrence
+      WHEN 'WEEKLY' THEN CAST(strftime('%s', date(updated_at / 1000, 'unixepoch', 'localtime')) AS INTEGER) / 86400
+      ELSE anchor_epoch_day
+    END,
+    epoch_day, enabled, updated_at, auto_source
+  FROM reminder;
+DELETE FROM sqlite_sequence WHERE name = 'reminder_new';
+INSERT INTO sqlite_sequence (name, seq) SELECT 'reminder_new', seq FROM sqlite_sequence WHERE name = 'reminder';
+DROP TABLE reminder;
+ALTER TABLE reminder_new RENAME TO reminder;
+` }
 ];

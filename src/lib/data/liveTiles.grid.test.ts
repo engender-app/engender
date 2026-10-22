@@ -135,14 +135,12 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       schedules: [schedule],
       dosePauses: [],
       scheduleDoses: [],
-      yesterdayDoses: [],
-      journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }]
+      yesterdayDoses: []
     },
     actions: {
       stopWear: vi.fn(),
       dismissSafeSpace: vi.fn(),
       openLetterDismiss: vi.fn(),
-      resumePause: vi.fn(),
       snooze: vi.fn()
     },
     format: {
@@ -150,7 +148,6 @@ function input(overrides: Overrides = {}): HomeTilesInput {
          tile asks for the right one about the right day, which a real date
          string would hide behind a locale. */
       fullDay: (epochDay) => `full:${epochDay}`,
-      shortDay: (epochDay) => `short:${epochDay}`,
       weekdayDay: (epochDay) => `weekday:${epochDay}`,
       time: (timestamp) => `time:${timestamp}`
     }
@@ -179,13 +176,12 @@ const TIERED: LiveTileKind[] = [
   'dose-panel',
   'surgery-countdown',
   'safe-space-nudge',
-  'ready-letter',
-  'pause-active-banner'
+  'ready-letter'
 ];
 
 describe('which kinds the grid is for', () => {
   it('draws only live tiles from the registry', () => {
-    /* The narrowing is the point: `UnpromptedKind` has fifteen members and
+    /* The narrowing is the point: `UnpromptedKind` has thirteen members and
        seven of them are a notice, a look-back card or a notification, so an
        ordering keyed off the whole union would demand an entry for
        `export-failure`. */
@@ -193,7 +189,6 @@ describe('which kinds the grid is for', () => {
       [
         'dose-panel',
         'patch-schedule-tile',
-        'pause-active-banner',
         'ready-letter',
         'safe-space-nudge',
         'surgery-countdown',
@@ -237,8 +232,7 @@ describe('the tier every kind is in', () => {
       'dose-panel',
       'surgery-countdown',
       'safe-space-nudge',
-      'ready-letter',
-      'pause-active-banner'
+      'ready-letter'
     ]);
     expect(byTier.dormant).toEqual([]);
   });
@@ -292,16 +286,16 @@ describe('the order, and the cap', () => {
 
   it('folds nothing while the cap is not reached', () => {
     const enabled = allOn(false);
-    for (const kind of ['ready-letter', 'pause-active-banner'] as const) enabled[kind] = true;
+    for (const kind of ['ready-letter', 'surgery-countdown'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
-    expect(shown.map((t) => t.key)).toEqual(['ready-letter', 'pause-active-banner']);
+    expect(shown.map((t) => t.key)).toEqual(['surgery-countdown', 'ready-letter']);
     expect(folded).toEqual([]);
   });
 
   it('folds nothing at exactly the cap, so three never becomes two and a row', () => {
     const enabled = allOn(false);
-    for (const kind of ['wear-timer', 'ready-letter', 'pause-active-banner'] as const) enabled[kind] = true;
+    for (const kind of ['wear-timer', 'ready-letter', 'surgery-countdown'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
     expect(shown).toHaveLength(HOME_TILE_CAP);
@@ -533,28 +527,10 @@ describe('what each tile says', () => {
     expect(tile.note).toBe('100 mcg · patch');
     expect(tile.action?.href).toBe('/care/doses?add=1');
   });
-
-  it('the pause banner says when the pause ends and offers to resume it', () => {
-    const actions = { resumePause: vi.fn() };
-    const tile = tileNamed('pause-active-banner', { actions })!;
-    expect(tile.tileKey).toBe('pause-active');
-    expect(tile.attrs).toEqual({ 'data-pause-active-tile': true });
-    expect(tile.note).toBe(m.tile_pause_until_date({ date: `short:${TODAY + 2}` }));
-    expect(tile.href).toBe('/settings/journaling-pause');
-    tile.action!.onclick!(CLICK);
-    expect(actions.resumePause).toHaveBeenCalledWith('pause-1', TODAY - 2);
-  });
-
-  it('the pause banner says so when the pause has no end', () => {
-    const tile = tileNamed('pause-active-banner', {
-      reads: { journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: null }] }
-    })!;
-    expect(tile.note).toBe(m.tile_pause_ongoing());
-  });
 });
 
 describe('the dismiss controls', () => {
-  const SNOOZABLE = ['patch-schedule-tile', 'pause-active-banner'] as const;
+  const SNOOZABLE = ['patch-schedule-tile'] as const;
 
   it.each(SNOOZABLE)('%s snoozes itself and no other kind', (kind) => {
     const snooze = vi.fn();

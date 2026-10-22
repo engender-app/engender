@@ -128,9 +128,6 @@ try {
     await checkRange(page, { ...options, name: 'dose-pause', start: '#pause-start', end: '#pause-end', save: '[data-add-pause]', error: '#regimen-pause-requirements', area: 'doses' });
     await page.locator('[data-close-regimen]').click();
     await page.locator('[data-sheet]').waitFor({ state: 'detached' });
-    await navigate(page, '/settings/journaling-pause');
-    await page.locator('[data-new-pause]').click();
-    await checkRange(page, { ...options, name: 'journaling-pause', start: '#pause-start', end: '#pause-end', save: '[data-confirm-pause]', error: '#pause-range-error', area: 'journalingPauses' });
     await navigate(page, '/transition/tryouts/new');
     await page.locator('#tr-label').fill('Range proof');
     await checkRange(page, { ...options, name: 'tryout', start: '#tr-start', end: '#tr-end', save: '[data-save-tryout]', error: '#tr-range-error', area: 'tryouts' });

@@ -3,7 +3,6 @@ package dev.engender.app.reminders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
@@ -28,8 +27,7 @@ public class ReminderAlarmReceiverTest {
         ZonedDateTime now = ZonedDateTime.of(2026, 8, 14, 9, 0, 0, 0, ZONE);
         int today = (int) now.toLocalDate().toEpochDay();
         JSONObject payload = new JSONObject().put("checkInEnabled", true).put("checkInTime", "08:00")
-            .put("journalingPauses", new JSONArray().put(new JSONObject()
-                .put("startEpochDay", today).put("endEpochDay", today)));
+            .put("checkInPausedThrough", today);
         List<Integer> posts = new ArrayList<>();
         List<ZonedDateTime> alarms = new ArrayList<>();
 
@@ -44,8 +42,7 @@ public class ReminderAlarmReceiverTest {
         ZonedDateTime now = ZonedDateTime.of(2026, 8, 15, 9, 0, 0, 0, ZONE);
         int today = (int) now.toLocalDate().toEpochDay();
         JSONObject payload = new JSONObject().put("checkInEnabled", true).put("checkInTime", "08:00")
-            .put("journalingPauses", new JSONArray().put(new JSONObject()
-                .put("startEpochDay", today - 1).put("endEpochDay", today - 1)));
+            .put("checkInPausedThrough", today - 1);
         List<Integer> posts = new ArrayList<>();
         List<ZonedDateTime> alarms = new ArrayList<>();
 

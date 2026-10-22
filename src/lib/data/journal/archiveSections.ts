@@ -194,7 +194,6 @@ const REMINDERS = {
   columns: {
     uuid: 'id',
     title: 'title',
-    type: 'type',
     time: 'time',
     recurrence: 'recurrence',
     interval: 'interval',
@@ -490,14 +489,6 @@ const SECTIONS = [
     identity: 'uuid',
     orderBy: 'epoch_day, id',
     columns: { uuid: 'id', kind: 'kind', epoch_day: 'epochDay' }
-  }),
-  flat({
-    name: 'journalingPauses',
-    travels: 'none',
-    table: 'journaling_pause',
-    identity: 'uuid',
-    orderBy: 'start_epoch_day, id',
-    columns: { uuid: 'id', start_epoch_day: 'startEpochDay', end_epoch_day: 'endEpochDay' }
   }),
   /* The person's named eras (phase 6 ticket 01, ADR-0049). Flat: one table,
      no children, no built-ins - nothing ships seeded, so every row is the
@@ -1056,7 +1047,8 @@ export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map
 /** Wire sections removed before 1.0. Their rows no longer have an owner here. */
 export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
   'doubtEntries', 'savedQuestions', 'counterevidenceSnapshots',
-  'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits', 'wordIgnore'
+  'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits', 'wordIgnore',
+  'journalingPauses'
 ];
 
 /** A journal with every section present and empty - what an importer builds

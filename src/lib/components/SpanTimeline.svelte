@@ -256,9 +256,9 @@
     milestone: () => m.lookback_legend_milestones(),
     'milestone-and-surgery': () => m.lookback_legend_milestones_and_surgery()
   };
-  /* The query types a band's name nullable because a journaling pause has
-     none, and neither kind drawn here is that one - so the fallback is the
-     kind's own word rather than a band with no label at all. */
+  /* The query types a band's name nullable because some kinds have none,
+     and neither kind drawn here is one - so the fallback is the kind's own
+     word rather than a band with no label at all. */
   const bandName = (band: RailBand) => band.name ?? LEGEND_WORD[band.kind]();
 
   /* The span as the finger has it, which is the settled span whenever no

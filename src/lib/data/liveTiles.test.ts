@@ -3,13 +3,9 @@ import type {
   DoseEvent,
   DosePause,
   DoseSchedule,
-  JournalingPause,
   RegimenEpisode
 } from './types';
-import {
-  shouldShowPatchScheduleTile,
-  shouldShowPauseActiveBanner
-} from './liveTiles.ts';
+import { shouldShowPatchScheduleTile } from './liveTiles.ts';
 
 describe('liveTiles trigger predicates', () => {
   const today = 20_000;
@@ -137,40 +133,6 @@ describe('liveTiles trigger predicates', () => {
           schedules: [biweeklySchedule],
           doses: [],
           pauses: [pause],
-          todayEpochDay: today,
-          enabled: true,
-          snoozed: false
-        })
-      ).toBeNull();
-    });
-  });
-
-  describe('shouldShowPauseActiveBanner', () => {
-    it('triggers when today is covered by active journaling pause', () => {
-      const pause: JournalingPause = {
-        id: 'pause-1',
-        startEpochDay: today - 2,
-        endEpochDay: today + 3
-      };
-      const result = shouldShowPauseActiveBanner({
-        pauses: [pause],
-        todayEpochDay: today,
-        enabled: true,
-        snoozed: false
-      });
-      expect(result).not.toBeNull();
-      expect(result?.pause.startEpochDay).toBe(today - 2);
-    });
-
-    it('suppresses when no pause covers today', () => {
-      const pastPause: JournalingPause = {
-        id: 'pause-2',
-        startEpochDay: today - 10,
-        endEpochDay: today - 1
-      };
-      expect(
-        shouldShowPauseActiveBanner({
-          pauses: [pastPause],
           todayEpochDay: today,
           enabled: true,
           snoozed: false

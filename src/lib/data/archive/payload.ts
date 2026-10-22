@@ -248,12 +248,6 @@ interface ArchiveCycleEvent {
   epochDay: number;
 }
 
-interface ArchiveJournalingPause {
-  id: string;
-  startEpochDay: number;
-  endEpochDay: number | null;
-}
-
 /** A time-capsule letter (phase 4 ticket 19), sealed until `unlockEpochDay`
     - never stored as a `sealed` flag, the same reasoning ArchiveMilestone
     carries no `kind`. */
@@ -494,10 +488,11 @@ export interface ArchiveHairRemovalSession {
   photos: ArchiveHairRemovalPhoto[];
 }
 
+/* An archive written before functional audit ticket 08 also carries a
+   `type`; nothing reads it now, and restore ignores it. */
 interface ArchiveReminder {
   id: string;
   title: string;
-  type: string;
   time: string;
   recurrence: string | null;
   interval: number | null;
@@ -775,7 +770,6 @@ export interface ArchiveJournal {
   taperSessions: ArchiveTaperSession[];
   sideEffects: ArchiveSideEffect[];
   cycleEvents: ArchiveCycleEvent[];
-  journalingPauses: ArchiveJournalingPause[];
   eras: ArchiveEra[];
   eraMutes: ArchiveEraMute[];
   personalEffects: ArchivePersonalEffect[];
@@ -983,7 +977,6 @@ const postAlphaSections = [
   'taperSessions',
   'sideEffects',
   'cycleEvents',
-  'journalingPauses',
   'eras',
   'eraMutes',
   'effectCategories',

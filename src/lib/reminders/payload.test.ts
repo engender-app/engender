@@ -14,7 +14,6 @@ describe('buildAndroidReminderPayload', () => {
         {
           id: 'r-1',
           title: 'Estradiol patch',
-          type: 'med',
           time: '20:00',
           recurrence: 'EVERY_N_DAYS',
           interval: 3,
@@ -26,7 +25,7 @@ describe('buildAndroidReminderPayload', () => {
       ],
       checkInEnabled: true,
       checkInTime: '21:30',
-      journalingPauses: [],
+      checkInPausedThrough: null,
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
@@ -45,7 +44,6 @@ describe('buildAndroidReminderPayload', () => {
         {
           id: 'r-1',
           title: 'Estradiol patch',
-          type: 'med',
           time: '20:00',
           recurrence: 'EVERY_N_DAYS',
           interval: 3,
@@ -57,7 +55,7 @@ describe('buildAndroidReminderPayload', () => {
       ],
       checkInEnabled: true,
       checkInTime: '21:30',
-      journalingPauses: [],
+      checkInPausedThrough: null,
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
@@ -75,7 +73,6 @@ describe('buildAndroidReminderPayload', () => {
       {
         id: 'r-1',
         title: 'Reminder',
-        type: 'other' as const,
         time: '08:00',
         recurrence: 'DAILY' as const,
         interval: null,
@@ -86,12 +83,11 @@ describe('buildAndroidReminderPayload', () => {
       }
     ];
 
-    const journalingPauses = [{ startEpochDay: 21000, endEpochDay: null }];
     const payload = buildAndroidReminderPayload({
       reminders,
       checkInEnabled: false,
       checkInTime: '21:00',
-      journalingPauses,
+      checkInPausedThrough: 21000,
       latestEntryEpochDay: 21000,
       hideNotificationTitles: false,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
@@ -104,8 +100,7 @@ describe('buildAndroidReminderPayload', () => {
     });
 
     reminders[0].title = 'Changed';
-    journalingPauses[0].startEpochDay = 21001;
     expect(payload.reminders[0].title).toBe('Reminder');
-    expect(payload.journalingPauses[0].startEpochDay).toBe(21000);
+    expect(payload.checkInPausedThrough).toBe(21000);
   });
 });
