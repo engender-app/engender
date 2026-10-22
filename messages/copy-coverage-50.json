@@ -1242,6 +1242,8 @@
   "heat_legend_aria": {"owner":38,"sources":["src/lib/components/HeatMap.svelte"]},
   "hello": {"owner":38,"sources":["src/lib/paraglide/runtime.js","src/paraglide/runtime.js","src/routes/+page.svelte"]},
   "home_agenda_heading": {"owner":38,"sources":["src/routes/+page.svelte"]},
+  "home_anchor_since": {"owner":38,"sources":["src/lib/data/journeyAnchor.ts"]},
+  "home_anchor_today": {"owner":38,"sources":["src/lib/data/journeyAnchor.ts"]},
   "home_anniv_today": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "home_anniv_years": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "home_count_since": {"owner":38,"sources":["src/routes/+page.svelte"]},
