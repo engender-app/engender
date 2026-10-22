@@ -669,6 +669,7 @@
   "dilation_session_new_sheet": "Nowa sesja",
   "dilation_session_note_label": "Notatka",
   "dilation_session_note_placeholder": "Opcjonalnie",
+  "dilation_session_numbered": "Sesja {index} z {count}",
   "dilation_session_save": "Zapisz",
   "dilation_sessions_empty_body": "Sesje pojawią się tutaj, gdy twój harmonogram stanie się aktywny.",
   "dilation_sessions_empty_title": "Jeszcze nic nie zaplanowano",
@@ -678,7 +679,46 @@
   "dilation_stage_duration_aria": "Przez ile dni",
   "dilation_stage_frequency_aria": "Co ile dni",
   "dilation_stage_hint": "Wpisz częstotliwość i czas trwania etapów w kolejności podanej przez chirurga.",
+  "dilation_stage_kind_every": "Co kilka dni",
+  "dilation_stage_kind_label": "Jak często",
+  "dilation_stage_kind_per_day": "Kilka razy dziennie",
   "dilation_stage_legend": "Etapy",
+  "dilation_stage_now_every": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Codziennie",
+        "countPlural=few": "Co {count} dni",
+        "countPlural=many": "Co {count} dni",
+        "countPlural=other": "Co {count} dni"
+      }
+    }
+  ],
+  "dilation_stage_now_rest": "W tym etapie bez sesji",
+  "dilation_stage_now_times": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Raz dziennie",
+        "countPlural=few": "{count} razy dziennie",
+        "countPlural=many": "{count} razy dziennie",
+        "countPlural=other": "{count} razy dziennie"
+      }
+    }
+  ],
+  "dilation_stage_times_aria": "Ile razy dziennie",
   "dilation_start_day_hint": "Zwykle kilka dni po operacji, kiedy chirurg powie, że można zacząć.",
   "dilation_start_day_label": "Dzień rozpoczęcia",
   "dim_agender_gendered": "agender - genderful",

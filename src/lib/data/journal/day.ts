@@ -67,7 +67,6 @@ import type {
   PersonalEffect,
   SideEffect,
   TallyEvent,
-  TaperSession,
   VoiceBenchmark,
   WearSession
 } from '../types';
@@ -85,7 +84,7 @@ import type { MilestonesArea } from './milestones';
 import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea, ProcedureDayRecord } from './procedures';
 import type { SideEffectsArea } from './sideEffects';
-import type { TaperArea } from './taper';
+import type { DayTaperSession, TaperArea } from './taper';
 import type { TallyArea } from './tally';
 import type { TryoutsArea, TryoutPhotoOnDay } from './tryouts';
 import type { VoiceBenchmarksArea } from './voiceBenchmarks';
@@ -102,7 +101,7 @@ export interface DayRecords {
   doses: DoseEvent[];
   labResults: LabResult[];
   voiceBenchmarks: VoiceBenchmark[];
-  taperSessions: TaperSession[];
+  taperSessions: DayTaperSession[];
   sideEffects: SideEffect[];
   personalEffects: PersonalEffect[];
   cycleEvents: CycleEvent[];
@@ -219,8 +218,10 @@ const SECTIONS = [
   section({
     key: 'taperSessions',
     covers: ['taperSessions'],
-    tables: ['taper'],
-    read: ({ taper, epochDay }) => taper.getSessionsOnDay(epochDay)
+    tables: ['taper', 'procedure'],
+    // Numbered against the schedule's count for the day, so a times-a-day
+    // stage reads "session 2 of 3" here (functional audit ticket 25).
+    read: ({ taper, epochDay }) => taper.getDaySessions(epochDay)
   }),
   section({
     key: 'sideEffects',

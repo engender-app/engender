@@ -960,6 +960,7 @@ beforeAll(async () => {
   await driveRead('taper', 'getTaper', () => journal.taper.getTaper());
   await driveRead('taper', 'getSessions', () => journal.taper.getSessions());
   await driveRead('taper', 'getSessionsOnDay', () => journal.taper.getSessionsOnDay(19955));
+  await driveRead('taper', 'getDaySessions', () => journal.taper.getDaySessions(19955));
   await driveRead('taper', 'lastWriteEpochDay', () => journal.taper.lastWriteEpochDay(19955));
   await driveRead('reminders', 'getReminders', () => journal.reminders.getReminders());
   await driveRead('tally', 'getEvents', () => journal.tally.getEvents('misgendered'));

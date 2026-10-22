@@ -99,6 +99,22 @@ export function sessionsExpectedOn(taper: Pick<Taper, 'startEpochDay' | 'stages'
   return (epochDay - place.firstDay) % place.stage.everyNDays === 0 ? sessionsPerDay(place.stage) : 0;
 }
 
+/** Which of a day's expected sessions a row stands for: "2 of 3". Null on
+    a day that expects one or none, and on a session past the day's count,
+    which is still a session but not one the schedule asked for. */
+export type SessionSlotNumber = { index: number; count: number } | null;
+
+/** A day's rows: one per expected session, filled by the day's sessions in
+    the order they were logged, and one more for each session past the
+    count. The dilation screen draws the empty ones as gaps (ADR-0010);
+    the day view keeps only the filled ones. */
+export function sessionSlots<T>(sessions: readonly T[], expected: number): { session: T | null; slot: SessionSlotNumber }[] {
+  return Array.from({ length: Math.max(expected, sessions.length) }, (_, i) => ({
+    session: sessions[i] ?? null,
+    slot: expected > 1 && i < expected ? { index: i + 1, count: expected } : null
+  }));
+}
+
 /** A typed-in number, or null when nothing usable was typed. A
     `type=number bind:value` field hands over null once emptied and '' before
     it was ever touched, and Number() reads both as 0. */
