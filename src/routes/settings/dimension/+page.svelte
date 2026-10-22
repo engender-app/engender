@@ -18,6 +18,7 @@
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { crossfade, discloseWidth } from '$lib/motion/reveal';
+  import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import { attempt } from '$lib/stores/attempt.svelte';
   import type { GenderDimension } from '$lib/data/types';
 
@@ -63,6 +64,11 @@
   }
 
   let customs = $derived(vocabulary.dimensions.filter((d) => !d.builtIn));
+
+  /* A renamed scale's words cross: the old ones lift out and fade under
+     (crossfade is out-only), the new ones fade up in place. Local, so it
+     plays on a rename and not when the list itself arrives. */
+  const nameIn = (_node: Element) => fadeOnly(crossfadeDuration());
 
   /* Latched: the mirror re-arms `ready` on a journal re-open, and a reserve
      must not put its placeholder back over a settled list. */
@@ -121,7 +127,7 @@
         {#each customs as d (d.key)}
           <div class="rows-divide managed-tag" class:is-hidden={d.hidden}>
             <span class="managed-label scale-label" data-scale-label={d.key}>
-              {#key d.name}<span out:crossfade>{d.name}</span>{/key}
+              {#key d.name}<span in:nameIn out:crossfade>{d.name}</span>{/key}
             </span>
             {#if d.hidden}<span class="muted small" transition:discloseWidth>{m.cd_hidden()}</span>{/if}
             <span class="managed-actions">
