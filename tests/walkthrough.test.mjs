@@ -4362,7 +4362,7 @@ try {
 
   const boxes = page.locator('[data-goal^="pl-"]');
   const before = await boxes.count();
-  if (before !== 23) throw new Error('the Polish pack rendered ' + before + ' goals, not the 23 legal steps');
+  if (before !== 24) throw new Error('the Polish pack rendered ' + before + ' goals, not the 24 legal steps');
   if (await page.locator('[data-goal^="pl-social-"], [data-goal^="pl-medical-"], [data-goal^="pl-presentational-"]').count()) {
     throw new Error('a cut track still shows a step');
   }
@@ -4429,37 +4429,40 @@ try {
 } catch (e) { fail('transition roadmap tri-state', e); }
 });
 
-/* Custom goals (phase 5 ticket 20): a person can add their own goal, it
-   appends after the bundled ones, and it ticks through the same tri-state.
-   Scoped to this one goal's own data-status rather than a global checked
-   count: the tri-state flow above already leaves one bundled goal checked
-   in this same browser session, since fresh() only clears localStorage and
-   never the journal itself. Ticket 34: a custom goal shows whether or not
-   the Polish steps do, so this runs with them off. */
-await flow('transition roadmap custom goal', async () => {
+/* Custom goals (phase 5 ticket 20) in categories of the person's own
+   (functional audit ticket 34, round two). With the Polish steps off - an
+   English install's default - the roadmap still lets somebody make a
+   category, add a goal to it that appends to the end of that category and
+   ticks through the same tri-state a bundled goal does, rename the category
+   and delete it with its goal. Scoped to this goal's own data-status rather
+   than a global checked count: the tri-state flow above leaves one bundled
+   goal checked in this same browser session, since fresh() only clears
+   localStorage and never the journal itself. */
+await flow('transition roadmap own category', async () => {
 try {
   await fresh('/transition/roadmap');
   await polishSteps(false);
 
-  const before = await page.locator('[data-goal]').count();
-  const addGoalButton = page.locator('[data-add-goal]');
-  const list = addGoalButton.locator('xpath=..');
+  await page.locator('[data-add-category]').click();
+  await page.getByPlaceholder('Coming out, wardrobe, work').fill('Coming out');
+  await page.locator('[data-save-new-category]').click();
+  const section = page.locator('[data-roadmap-category]').filter({ has: page.locator('h2', { hasText: 'Coming out' }) }); // text-under-test: the name I just typed
+  await section.waitFor();
+  const categoryId = await section.getAttribute('data-roadmap-category');
 
-  await addGoalButton.click();
-  await page.getByPlaceholder('Your step').fill('Tell my sister');
-  await page.getByRole('button', { name: 'Add goal' }).click();
-
-  await page.waitForFunction((n) => document.querySelectorAll('[data-goal]').length === n, before + 1);
-  const customRow = list.locator('[data-goal]').filter({ hasText: 'Tell my sister' }); // text-under-test: the goal I just typed
-  if (!(await customRow.count())) throw new Error('the custom goal did not render in the list');
-
-  const idsInOrder = await list.locator('[data-goal]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('data-goal')));
-  const customGoalId = await customRow.getAttribute('data-goal');
-  if (idsInOrder[idsInOrder.length - 1] !== customGoalId) {
-    throw new Error('the custom goal did not append to the end of the list');
+  for (const text of ['Tell my sister', 'Tell my manager']) {
+    await section.locator(`[data-add-goal="${categoryId}"]`).click();
+    await page.getByPlaceholder('Your step').fill(text);
+    await page.getByRole('button', { name: 'Add goal' }).click();
+    await section.locator('[data-goal]').filter({ hasText: text }).waitFor(); // text-under-test: the goal I just typed
+    await page.waitForFunction(() => document.querySelectorAll('[data-sheet]').length === 0);
   }
+  const ids = await section.locator('[data-goal]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('data-goal')));
+  const lastRow = section.locator('[data-goal]').filter({ hasText: 'Tell my manager' }); // text-under-test: fixture text typed above
+  const customGoalId = await lastRow.getAttribute('data-goal');
+  if (ids.length !== 2 || ids[1] !== customGoalId) throw new Error('the goals did not append in order inside their category: ' + JSON.stringify(ids));
 
-  await customRow.click(); // unchecked -> checked
+  await lastRow.click(); // unchecked -> checked
   await page.waitForFunction(
     (id) => document.querySelector(`[data-goal="${id}"]`)?.getAttribute('data-status') === 'checked',
     customGoalId
@@ -4469,10 +4472,33 @@ try {
   await booted();
   await page.waitForSelector(`[data-goal="${customGoalId}"]`);
   const afterReload = await page.locator(`[data-goal="${customGoalId}"]`).getAttribute('data-status');
-  if (afterReload !== 'checked') throw new Error('the custom goal did not survive a reload, checked');
+  if (afterReload !== 'checked') throw new Error('the goal did not survive a reload, checked');
+  if (await page.locator('[data-goal^="pl-"]').count()) throw new Error('a Polish step shows with the switch off');
 
-  ok('a custom goal appends to the list with the Polish steps off and ticks through the same tri-state a bundled goal does');
-} catch (e) { fail('transition roadmap custom goal', e); }
+  // Renamed in its own sheet, and the heading follows.
+  await page.locator(`[data-edit-category="${categoryId}"]`).click();
+  await page.locator('#category-name').fill('Coming out at work');
+  await page.locator('[data-save-category]').click();
+  await page.waitForFunction(
+    (id) => document.querySelector(`[data-roadmap-category="${id}"] h2`)?.textContent?.trim() === 'Coming out at work',
+    categoryId
+  );
+
+  // Deleted with its two goals, after a confirmation that counts them.
+  await page.waitForFunction(() => document.querySelectorAll('[data-sheet]').length === 0);
+  await page.locator(`[data-edit-category="${categoryId}"]`).click();
+  await page.locator('[data-delete-category]').click();
+  const confirm = page.locator('[data-confirm-delete-category]');
+  if ((await confirm.getAttribute('data-goals')) !== '2') throw new Error('the delete confirmation does not count the two goals');
+  await confirm.click();
+  await page.waitForFunction(
+    (id) => !document.querySelector(`[data-roadmap-category="${id}"]`) && !document.querySelector(`[data-goal="${id}"]`),
+    categoryId
+  );
+  if (await page.locator(`[data-goal="${customGoalId}"]`).count()) throw new Error('a goal outlived its category');
+
+  ok('with the Polish steps off, a category of my own takes goals that append in order and tick, survives a reload, renames, and deletes with its goals');
+} catch (e) { fail('transition roadmap own category', e); }
 });
 
 /* 26. the journaling pause (phase 5 ticket 21): declaring one puts its tile
@@ -7890,7 +7916,7 @@ try {
   await fresh('/transition/roadmap');
   // The built-in goal at the end of this flow needs the Polish steps on.
   await polishSteps(true);
-  await page.locator('[data-add-goal]').click();
+  await page.locator('[data-add-goal="legal"]').click();
   await page.getByPlaceholder('Your step').fill('Get the referal reissued');
   await page.getByRole('button', { name: 'Add goal' }).click();
 

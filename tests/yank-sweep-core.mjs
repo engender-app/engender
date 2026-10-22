@@ -281,7 +281,9 @@ const SCENES = [
   { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a mark on the rail opening the same editor (redesign 43)' },
   { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '[data-goal] .kit-row-main', when: 'persona', after: {"selector": "[data-goal]", "attribute": "data-status"}, is: 'a goal check state cycled' },
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a goal details sheet opening' },
-  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
+  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
+  { name: 'roadmap-add-category', at: '/transition/roadmap', act: '[data-add-category]', after: {"selector": "[data-sheet]"}, is: 'the new category sheet opening' },
+  { name: 'roadmap-edit-category', at: '/transition/roadmap', act: '[data-edit-category]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a category sheet opening' },
   { name: 'letters-compose', freshEmpty: true, at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
   /* Phase 11 ticket 15: the good-moments list opens on six and discloses
      the rest in place, so the control collapses while fourteen cards clip
