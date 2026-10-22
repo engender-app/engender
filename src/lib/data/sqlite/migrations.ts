@@ -206,5 +206,11 @@ UNION ALL
 SELECT b.uuid, b.vowel_file_path, 'voiceBenchmarkVowel', b.epoch_day, NULL, b.uuid,
   0, NULL, 0, b.id, 1
 FROM voice_benchmark b WHERE b.vowel_file_path IS NOT NULL;
-` }
+` },
+  /* Functional audit ticket 28: a hair-removal session can say how long it ran
+     (electrolysis is booked by the hour). NULL until written; hairRemoval.ts
+     refuses a length outside 1 to 1440 and archiveRowValidation.ts judges an
+     archive row by the same range, so no CHECK. Pain was made nullable by
+     version 94's rebuild. */
+  { version: 107, sql: 'ALTER TABLE hair_removal_session ADD COLUMN minutes INTEGER;' }
 ];

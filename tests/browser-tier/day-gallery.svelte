@@ -205,7 +205,7 @@
       { id: 'hp3', epochDay: DAY, fileName: noFile() }
     ],
     hairRemovalSessions: [
-      { id: 'hr1', epochDay: DAY, area: 'chin', method: 'laser', painRating: 3, cost: '250 zł', provider: 'Klinika' }
+      { id: 'hr1', epochDay: DAY, area: 'chin', method: 'laser', painRating: 3, minutes: 60, cost: '250 zł', provider: 'Klinika' }
     ],
     appointments: [
       { id: 'ap1', event: 'visit', status: null, kind: 'endokrynolog', place: 'Poradnia', procedureId: null, procedureName: null },

@@ -38,16 +38,16 @@ async function close() {
 async function fieldOrder(copy) {
   const method = page.getByRole('radiogroup', { name: copy.hair_removal_method_label, exact: true });
   const pain = page.getByRole('radiogroup', { name: copy.hair_removal_pain_label, exact: true });
-  const controls = [method, page.locator('#hair-removal-area'), pain,
+  const controls = [method, page.locator('#hair-removal-area'), page.locator('#hair-removal-minutes'), pain,
     page.locator('#hair-removal-cost'), page.locator('#hair-removal-provider'), page.locator('#hair-removal-date')];
   for (let i = 1; i < controls.length; i++) {
     const previous = await controls[i - 1].boundingBox();
     const current = await controls[i].boundingBox();
-    assert.ok(current.y > previous.y, 'Method, area, pain, cost and provider precede date');
+    assert.ok(current.y > previous.y, 'Method, area, minutes, pain, cost and provider precede date');
   }
   const selectedMethod = method.getByRole('radio', { checked: true });
   await selectedMethod.focus();
-  for (const control of [controls[1], pain.getByRole('radio', { checked: true }), ...controls.slice(3)]) {
+  for (const control of [controls[1], controls[2], pain.getByRole('radio', { checked: true }), ...controls.slice(4)]) {
     await page.keyboard.press('Tab');
     assert.equal(await control.evaluate((el) => el === document.activeElement), true, 'Keyboard follows field order');
   }

@@ -14,6 +14,7 @@ const session = (epochDay: number, area: string): HairRemovalSession => ({
   area,
   method: 'laser',
   painRating: 2,
+  minutes: null,
   cost: '',
   provider: ''
 });

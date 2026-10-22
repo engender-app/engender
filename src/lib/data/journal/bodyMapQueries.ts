@@ -38,11 +38,11 @@ export interface RegionSomaticBreakdown {
 }
 
 const REGION_HAIR_REMOVAL_AREAS_MAP: Record<string, string[]> = {
-  face_jaw: ['upper_lip', 'chin', 'neck'],
+  face_jaw: ['upper_lip', 'cheeks', 'jawline', 'sideburns', 'chin', 'neck'],
   chest: ['chest'],
   body_facial_hair: [...HAIR_REMOVAL_AREAS],
   hips_waist: ['bikini_line', 'abdomen'],
-  genitals: ['bikini_line', 'abdomen'],
+  genitals: ['bikini_line', 'abdomen', 'genital_surgical_site'],
   whole_body: [...HAIR_REMOVAL_AREAS]
 };
 
@@ -90,7 +90,8 @@ type HairRemovalSessionRow = {
   epoch_day: number;
   area: string;
   method: HairRemovalMethod;
-  pain_rating: number;
+  pain_rating: number | null;
+  minutes: number | null;
   cost: string;
   provider: string;
 };
@@ -209,7 +210,7 @@ export async function getRegionSomaticBreakdown(
   if (hairAreas.length > 0) {
     const placeholders = hairAreas.map(() => '?').join(', ');
     const sRows = await driver.query<HairRemovalSessionRow>(
-      `SELECT uuid, epoch_day, area, method, pain_rating, cost, provider
+      `SELECT uuid, epoch_day, area, method, pain_rating, minutes, cost, provider
        FROM hair_removal_session
        WHERE area IN (${placeholders})
        ORDER BY epoch_day DESC, id DESC`,
@@ -221,6 +222,7 @@ export async function getRegionSomaticBreakdown(
       area: r.area,
       method: r.method,
       painRating: r.pain_rating,
+      minutes: r.minutes,
       cost: r.cost,
       provider: r.provider
     }));

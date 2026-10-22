@@ -26,13 +26,19 @@ import { assertChanged, mintUuid, now } from './support';
 
 const MIN_PAIN_RATING = 1;
 const MAX_PAIN_RATING = 5;
+const MIN_MINUTES = 1;
+const MAX_MINUTES = 1440;
 
 interface HairRemovalSessionInput {
   id?: string;
   epochDay: number;
   area: string;
   method: HairRemovalMethod;
-  painRating: number;
+  /** Left out or null when the person did not rate it: nothing is stored
+      in its place (FA 28). */
+  painRating?: number | null;
+  /** Whole minutes the session ran; left out or null when not written down. */
+  minutes?: number | null;
   cost?: string;
   provider?: string;
 }
@@ -77,6 +83,7 @@ type HairRemovalSessionRow = {
   area: string;
   method: HairRemovalMethod;
   pain_rating: number | null;
+  minutes: number | null;
   cost: string | null;
   provider: string;
 };
@@ -88,6 +95,7 @@ const toHairRemovalSession = (row: HairRemovalSessionRow): HairRemovalSession =>
   area: row.area,
   method: row.method,
   painRating: row.pain_rating,
+  minutes: row.minutes,
   cost: row.cost ?? '',
   provider: row.provider
 });
@@ -108,18 +116,24 @@ function assertValidPainRating(painRating: number): void {
   }
 }
 
+function assertValidMinutes(minutes: number): void {
+  if (!Number.isInteger(minutes) || minutes < MIN_MINUTES || minutes > MAX_MINUTES) {
+    throw new Error(`invalid session minutes: ${minutes}`);
+  }
+}
+
 export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore): HairRemovalArea {
   return {
     async getSessions() {
       const rows = await driver.query<HairRemovalSessionRow>(
-        'SELECT uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session ORDER BY epoch_day, id'
+        'SELECT uuid, epoch_day, area, method, pain_rating, minutes, cost, provider FROM hair_removal_session ORDER BY epoch_day, id'
       );
       return rows.map(toHairRemovalSession);
     },
 
     async getSessionsOnDay(epochDay) {
       const rows = await driver.query<HairRemovalSessionRow>(
-        'SELECT uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session WHERE epoch_day = ? ORDER BY id',
+        'SELECT uuid, epoch_day, area, method, pain_rating, minutes, cost, provider FROM hair_removal_session WHERE epoch_day = ? ORDER BY id',
         [epochDay]
       );
       return rows.map(toHairRemovalSession);
@@ -128,16 +142,19 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
     async upsertSession(input) {
       assertValidArea(input.area);
       assertValidMethod(input.method);
-      assertValidPainRating(input.painRating);
+      const painRating = input.painRating ?? null;
+      const minutes = input.minutes ?? null;
+      if (painRating !== null) assertValidPainRating(painRating);
+      if (minutes !== null) assertValidMinutes(minutes);
       const cost = input.cost ?? '';
       const provider = input.provider ?? '';
 
       if (input.id) {
         const result = await driver.run(
           `UPDATE hair_removal_session
-           SET epoch_day = ?, area = ?, method = ?, pain_rating = ?, cost = ?, provider = ?, updated_at = ?
+           SET epoch_day = ?, area = ?, method = ?, pain_rating = ?, minutes = ?, cost = ?, provider = ?, updated_at = ?
            WHERE uuid = ?`,
-          [input.epochDay, input.area, input.method, input.painRating, cost, provider, now(), input.id]
+          [input.epochDay, input.area, input.method, painRating, minutes, cost, provider, now(), input.id]
         );
         assertChanged(result, `hair removal session: ${input.id}`);
         return input.id;
@@ -145,9 +162,9 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
 
       const uuid = mintUuid();
       await driver.run(
-        `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, cost, provider, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [uuid, input.epochDay, input.area, input.method, input.painRating, cost, provider, now()]
+        `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, minutes, cost, provider, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuid, input.epochDay, input.area, input.method, painRating, minutes, cost, provider, now()]
       );
       return uuid;
     },

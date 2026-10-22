@@ -1475,6 +1475,7 @@
       "area": "upper_lip",
       "method": "laser",
       "painRating": 2,
+      "minutes": 45,
       "cost": "250 PLN",
       "provider": "Klinika Laserowa",
       "photos": [
@@ -1483,6 +1484,17 @@
           "fileName": "35ddcc3d-6219-45bf-9362-d33d9f5743be.jpg"
         }
       ]
+    },
+    {
+      "id": "f89c85d9-6450-4ee4-a2ab-8bc59b4284be",
+      "epochDay": 20007,
+      "area": "genital_surgical_site",
+      "method": "electrolysis",
+      "painRating": null,
+      "minutes": 90,
+      "cost": "",
+      "provider": "",
+      "photos": []
     }
   ],
   "procedures": [

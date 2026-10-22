@@ -16,6 +16,9 @@
 
 export const HAIR_REMOVAL_AREAS = [
   'upper_lip',
+  'cheeks',
+  'jawline',
+  'sideburns',
   'chin',
   'neck',
   'underarms',
@@ -24,7 +27,8 @@ export const HAIR_REMOVAL_AREAS = [
   'back',
   'arms',
   'legs',
-  'bikini_line'
+  'bikini_line',
+  'genital_surgical_site'
 ] as const;
 
 export type HairRemovalAreaKey = (typeof HAIR_REMOVAL_AREAS)[number];

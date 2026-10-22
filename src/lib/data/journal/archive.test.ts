@@ -986,7 +986,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // section's own read would issue.
   hair_photo: ['uuid', 'epoch_day', 'file_path'],
   // Owns a child (hair_removal_photo) below.
-  hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'cost', 'provider'],
+  hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'minutes', 'cost', 'provider'],
   // session_id travels as the session's own uuid, the way dose_pause's
   // episode_id does (ADR-0002). Read once for the file manifest, the same
   // reason hair_photo above is hand-written.

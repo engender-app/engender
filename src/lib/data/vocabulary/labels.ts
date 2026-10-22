@@ -223,6 +223,9 @@ export const severityName = (value: number | null): string | null =>
    own vocabulary, deliberately not BODY_REGION_NAME below. */
 const HAIR_REMOVAL_AREA_NAME: Record<HairRemovalAreaKey, Message> = {
   upper_lip: m.hair_removal_area_upper_lip,
+  cheeks: m.hair_removal_area_cheeks,
+  jawline: m.hair_removal_area_jawline,
+  sideburns: m.hair_removal_area_sideburns,
   chin: m.hair_removal_area_chin,
   neck: m.hair_removal_area_neck,
   underarms: m.hair_removal_area_underarms,
@@ -231,7 +234,8 @@ const HAIR_REMOVAL_AREA_NAME: Record<HairRemovalAreaKey, Message> = {
   back: m.hair_removal_area_back,
   arms: m.hair_removal_area_arms,
   legs: m.hair_removal_area_legs,
-  bikini_line: m.hair_removal_area_bikini_line
+  bikini_line: m.hair_removal_area_bikini_line,
+  genital_surgical_site: m.hair_removal_area_genital_surgical_site
 };
 
 /** The name of a hair-removal treatment area, or "other" for a stored key

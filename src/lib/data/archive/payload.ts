@@ -486,6 +486,9 @@ export interface ArchiveHairRemovalSession {
   area: string;
   method: string;
   painRating: number | null;
+  /** Absent in an archive written before functional audit ticket 28, which
+      reads as no length. */
+  minutes?: number | null;
   cost: string;
   provider: string;
   photos: ArchiveHairRemovalPhoto[];
