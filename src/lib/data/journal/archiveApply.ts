@@ -1126,10 +1126,17 @@ async function insertAppointment(driver: SqliteDriver, appointment: ArchiveAppoi
   const rows = appointment.procedureId
     ? await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [appointment.procedureId])
     : [];
+  // The provider (ticket 27) the same way: a link that resolves to nothing
+  // is dropped, the appointment kept. And a time only on a row with a day,
+  // which is the only place appointments.ts ever writes one.
+  const providers = appointment.providerId
+    ? await driver.query<{ id: number }>('SELECT id FROM provider WHERE uuid = ?', [appointment.providerId])
+    : [];
 
   await driver.run(
-    `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, referred_epoch_day, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, referred_epoch_day,
+                              time_of_day, provider_id, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       appointment.id,
       rows[0]?.id ?? null,
@@ -1138,6 +1145,8 @@ async function insertAppointment(driver: SqliteDriver, appointment: ArchiveAppoi
       appointment.place,
       appointment.note,
       appointment.referredEpochDay ?? null,
+      appointment.epochDay === null ? null : (appointment.time ?? null),
+      providers[0]?.id ?? null,
       ts
     ]
   );

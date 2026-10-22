@@ -87,7 +87,8 @@ for (const mode of ['merge', 'replace'] as const) {
       // under test is the stock table's, so the columns later migrations add
       // to other archived tables are added here (v93: drug_class; v100: the
       // appointment's referred-on day and its status updates; v101: a side
-      // effect's resolved day; v104: milestone.celebrate).
+      // effect's resolved day; v104: milestone.celebrate; v107: the
+      // appointment's time and provider, and the provider table).
       await sourceDb.exec("ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other'");
       // And ticket 47's two stock columns (v99), for the same reason.
       await sourceDb.exec('ALTER TABLE medication_stock ADD COLUMN expiry_epoch_day INTEGER');
@@ -95,6 +96,10 @@ for (const mode of ['merge', 'replace'] as const) {
       await sourceDb.exec('ALTER TABLE appointment ADD COLUMN referred_epoch_day INTEGER');
       await sourceDb.exec(`CREATE TABLE appointment_status (id INTEGER PRIMARY KEY, uuid TEXT NOT NULL UNIQUE,
         appointment_id INTEGER NOT NULL, epoch_day INTEGER NOT NULL, status TEXT NOT NULL, updated_at INTEGER NOT NULL)`);
+      await sourceDb.exec('ALTER TABLE appointment ADD COLUMN time_of_day TEXT');
+      await sourceDb.exec('ALTER TABLE appointment ADD COLUMN provider_id INTEGER');
+      await sourceDb.exec(`CREATE TABLE provider (id INTEGER PRIMARY KEY, uuid TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
+        contact TEXT, competence TEXT, impressions TEXT, updated_at INTEGER NOT NULL)`);
       await sourceDb.exec('ALTER TABLE side_effect ADD COLUMN resolved_epoch_day INTEGER');
       await sourceDb.exec('ALTER TABLE milestone ADD COLUMN celebrate INTEGER NOT NULL DEFAULT 1');
       await source.reconcileBuiltIns();

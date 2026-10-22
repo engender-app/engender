@@ -264,9 +264,19 @@ export async function seedCompleteArchiveJournal(
   });
   await journal.procedures.addConsult(procedure, 19950);
   /* One appointment on its own beside the consult above, so the section
-     carries both cases it has to (ticket 57). */
+     carries both cases it has to (ticket 57), with a time and a provider
+     (functional-audit ticket 27) so the providers section is not empty and
+     the link between the two is exercised. */
+  const provider = await journal.appointments.upsertProvider({
+    name: 'Dr Nowak',
+    contact: '22 123 45 67',
+    competence: 'good',
+    impressions: 'Listened, no gatekeeping'
+  });
   await journal.appointments.upsertAppointment({
     epochDay: 20030,
+    time: '14:30',
+    providerId: provider,
     procedureId: null,
     kind: 'endokrynolog',
     place: 'Poradnia, ul. Kopernika',
