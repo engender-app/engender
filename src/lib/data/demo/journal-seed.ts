@@ -69,7 +69,7 @@ export async function writePersonaJournal(
   source: ReturnType<typeof persona>,
   makePhoto: typeof demoPhoto = demoPhoto
 ): Promise<void> {
-  const { customTag, presentations, entries, milestones, eras, reminders, appointments, waiting, documents, labResults, tallyEvents } =
+  const { customTag, presentations, entries, milestones, eras, reminders, providers, appointments, waiting, documents, labResults, tallyEvents } =
     source;
 
   /* What the journal held before this ran, so the check at the end reads a
@@ -116,8 +116,14 @@ export async function writePersonaJournal(
      for the link to land on, which is why `recordDebriefEntry` creates the
      standalone checklist on first use (checklists.ts) rather than assuming
      one exists. */
-  for (const { debrief, ...appointment } of appointments) {
-    const appointmentId = await journal.appointments.upsertAppointment(appointment);
+  const providerIds = new Map<string, string>();
+  for (const provider of providers) providerIds.set(provider.name, await journal.appointments.upsertProvider(provider));
+
+  for (const { debrief, providerName, ...appointment } of appointments) {
+    const appointmentId = await journal.appointments.upsertAppointment({
+      ...appointment,
+      providerId: providerName ? providerIds.get(providerName) ?? null : null
+    });
     if (debrief) {
       const entryId = await journal.entries.upsertEntry({ epochDay: appointment.epochDay, ...debrief });
       written++;

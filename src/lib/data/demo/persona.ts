@@ -19,6 +19,8 @@ import type { EntryInput } from '../journal/entries';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
 import type { AppointmentInput } from '../journal/appointments';
+import type { FlatInput } from '../journal/flatArea';
+import type { Provider } from '../types';
 import type { DocumentInput } from '../journal/documents';
 import { demoNow } from './demoClock';
 import {
@@ -80,6 +82,9 @@ interface PersonaEra {
 interface PersonaAppointment extends AppointmentInput {
   epochDay: number;
   procedureId: null;
+  /** Who it is with, by the name in `Persona.providers` (ticket 27):
+      journal-seed.ts resolves it to the id once the provider exists. */
+  providerName?: string;
   debrief?: { timestamp: number; mood: number; note: string; tags?: string[] };
 }
 
@@ -90,6 +95,9 @@ interface Persona {
   milestones: PersonaMilestone[];
   eras: PersonaEra[];
   reminders: ReminderInput[];
+  /** The people the persona sees, with her own notes on them
+      (functional-audit ticket 27). */
+  providers: FlatInput<Provider>[];
   appointments: PersonaAppointment[];
   /** Waiting lists (functional-audit ticket 26): appointments with no day
       yet, each with the dated updates the wait collected. */
@@ -349,9 +357,28 @@ export function persona(today: number = todayEpochDay()): Persona {
       { title: 'Progesterone', type: 'med', time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true },
       { title: 'Endocrinologist', type: 'appointment', time: '09:30', recurrence: null, interval: null, anchorEpochDay: null, epochDay: futureAppointmentDay, enabled: true },
     ],
+    /* Two providers: the endocrinologist both appointments are with, and a
+       psychologist nothing is booked with, so the list holds somebody the
+       screen's appointments do not already name. */
+    providers: [
+      {
+        name: 'Dr Kowalska',
+        contact: 'Przychodnia na Kopernika, 22 555 01 23',
+        competence: 'good',
+        impressions: 'Uses my name without being told. Explains every change to the dose.'
+      },
+      {
+        name: 'Psychologist, Centrum Zdrowia',
+        contact: null,
+        competence: 'mixed',
+        impressions: 'Kind, but spent the opinion visit on my childhood.'
+      }
+    ],
     appointments: [
       {
         epochDay: pastAppointmentDay,
+        time: '10:00',
+        providerName: 'Dr Kowalska',
         procedureId: null,
         kind: 'Endocrinologist',
         place: 'Przychodnia na Kopernika',
@@ -365,6 +392,8 @@ export function persona(today: number = todayEpochDay()): Persona {
       },
       {
         epochDay: futureAppointmentDay,
+        time: '09:30',
+        providerName: 'Dr Kowalska',
         procedureId: null,
         kind: 'Endocrinologist',
         place: 'Przychodnia na Kopernika',
