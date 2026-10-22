@@ -67,6 +67,7 @@ import { makeVoiceBenchmarksArea, type VoiceBenchmarksArea } from './voiceBenchm
 import type { VoicePracticeTakesArea } from './voicePracticeTakes';
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
 import { deferredArea } from './deferredArea';
+import type { UndoableDelete } from './undoableDelete';
 
 /** Every write below that addresses a row by id answers the unknown-id
     case the same way, in every area, and the answer differs by operation
@@ -345,6 +346,14 @@ export interface Journal {
       either - the rows go, and the next boot's orphan sweep reclaims what
       they named (photos.ts). */
   discardEverything(): Promise<void>;
+  /** Runs one deletion so that it can be taken back for a while (functional
+      audit ticket 46): every row it removes or changes is recorded, its file
+      removals wait, and the handle either puts the rows back or lets the
+      files go (undoableDelete.ts). `remove` is handed a journal over the
+      deletion's own transaction and must make its writes through that one;
+      it must not call `undoable` again. Entries do not come through here -
+      they go to Trash. */
+  undoable(remove: (journal: Journal) => Promise<unknown>): Promise<UndoableDelete>;
 }
 
 export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journal {
@@ -556,6 +565,10 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     discardEverything: async () => {
       const { discardJournalRows } = await import('./restore');
       await driver.transaction((driver) => discardJournalRows(driver));
+    },
+    undoable: async (remove) => {
+      const { captureDelete } = await import('./undoableDelete');
+      return captureDelete(driver, files, openJournal, remove);
     }
   };
 }
