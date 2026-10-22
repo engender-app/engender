@@ -7,7 +7,10 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
 
 describe('feature modules', () => {
   it('uses hub rows with real hideable areas and includes Care', () => {
+    expect(FEATURE_MODULE_ROWS).toHaveLength(14);
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).toContain('care');
+    expect(FEATURE_MODULE_ROWS.map((row) => row.key)).toContain('surgery');
+    expect(FEATURE_MODULE_ROWS.map((row) => row.key)).not.toContain('dilation');
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).not.toContain('cycle-events');
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).not.toContain('resources');
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).not.toContain('photos');
@@ -29,6 +32,10 @@ describe('feature modules', () => {
     expect(selected.find(({ row }) => row.key === 'care')?.hidden).toBe(false);
     expect(selected.find(({ row }) => row.key === 'voice-benchmark')?.hidden).toBe(false);
     expect(selected.find(({ row }) => row.key === 'milestones')?.hidden).toBe(true);
+
+    const surgery = firstRunModuleWrites(false, false, ['surgery']);
+    expect(surgery.find(({ row }) => row.key === 'surgery')?.hidden).toBe(false);
+    expect(surgery.flatMap(({ row }) => featureAreas(row))).not.toContain('taperSessions');
   });
 
   it('leaves restored and existing journals untouched', () => {

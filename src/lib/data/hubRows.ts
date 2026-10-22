@@ -509,6 +509,7 @@ const ROWS = [
        and opts out of the last-write registry for the reason a dose schedule
        does; `taperSessions` is the practice, and the practice is what ends. */
     areas: ['taperSessions'],
+    visibilityAreas: ['procedures'],
     finishes: 'dilation',
     line: 'read'
   }
@@ -529,9 +530,9 @@ export type HubRow = Omit<HubRowSpec, 'key'> & { key: HubRowKey };
    safe-space-surfaces.test.ts (AU-09 test-only review). */
 export const HUB_ROWS: readonly HubRow[] = ROWS;
 
-/** The same rows people can hide later. Screens without a hideable area stay
-    part of the journal; cycle tracking has its own positive gate. */
-export const FEATURE_MODULE_ROWS: readonly HubRow[] = HUB_ROWS.filter((row) => featureAreas(row).length > 0);
+/** The same rows people can hide later. Dilation is configured by an eligible
+    procedure inside Surgery journey, not chosen as a separate module. */
+export const FEATURE_MODULE_ROWS: readonly HubRow[] = HUB_ROWS.filter((row) => row.key !== 'dilation' && featureAreas(row).length > 0);
 
 export function featureAreas(row: HubRowSpec): readonly HideableArea[] {
   return row.visibilityAreas ?? row.areas.filter((area): area is HideableArea => area !== 'cycleEvents');

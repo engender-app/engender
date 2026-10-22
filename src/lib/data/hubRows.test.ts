@@ -799,14 +799,18 @@ test('a match that has not ended names the group it belongs to', () => {
   );
 });
 
-test('a hidden area cannot be searched up, hub row or hosted', () => {
+test('a hidden module cannot be searched up, while dilation follows surgery visibility', () => {
   /* Hair progress fronts two sections. Hiding one keeps its row searchable. */
   assert.equal(hubRowsMatching(reading({ states: { hairStages: hidden } }), 'hair progress', titleOf).length, 1);
   assert.deepEqual(
     hubRowsMatching(reading({ states: { hairStages: hidden, hairPhotos: hidden } }), 'hair progress', titleOf),
     []
   );
-  assert.deepEqual(hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf), []);
+  assert.deepEqual(
+    hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf).map((row) => row.spec.key),
+    ['dilation']
+  );
+  assert.deepEqual(hubRowsMatching(reading({ states: { procedures: hidden } }), 'dilation', titleOf), []);
 });
 
 /* The six rows drawn on a screen of their own are still areas of the app,
