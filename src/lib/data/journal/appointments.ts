@@ -32,11 +32,23 @@
    because every reader of it - the next visit, the debrief, the room, the
    clinician summary, the day-ahead marks - is asking about a day;
    `getWaiting` reads the rest. How long somebody has waited is stated as
-   elapsed time and never as an estimate of what is left (`waitingSince`). */
+   elapsed time and never as an estimate of what is left (`waitingSince`).
+
+   A TIME AND A WHO (functional-audit ticket 27). A visit can keep its time
+   of day, `HH:MM` or nothing, which the calendar hand-off then uses rather
+   than asking for one on every share. A wait has no day, so it has no time
+   either. And a visit or a wait can name its provider: the person's own
+   record of somebody they see, with a contact, how trans-competent they
+   were and their impressions. Providers live here rather than in an area
+   of their own because nothing reads one except as an appointment's who;
+   they are a flat table (flatArea.ts) and never leave the journal except
+   in the person's own backup. Deleting one leaves its appointments with
+   nobody named (`ON DELETE SET NULL`). */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { calendarDuration, type CalendarDuration } from '../epochDay';
-import type { Appointment, AppointmentStatusUpdate, WaitingAppointment } from '../types';
+import type { Appointment, AppointmentStatusUpdate, Provider, ProviderCompetence, WaitingAppointment } from '../types';
+import { flatArea, type FlatInput } from './flatArea';
 import { assertChanged, mintUuid, now } from './support';
 
 export interface AppointmentInput {
@@ -48,6 +60,12 @@ export interface AppointmentInput {
   /** The day it was referred on, or null. Absent is null, on an update as
       on a create: the one screen that edits a wait always passes it. */
   referredEpochDay?: number | null;
+  /** `HH:MM`, or empty or absent for none (ticket 27). Refused on a wait
+      with no day, and refused when it is not a 24-hour clock time. */
+  time?: string | null;
+  /** The provider this is with, or null; absent is null. Throws if the
+      provider is unknown. */
+  providerId?: string | null;
   /** The procedure this belongs to, or null. Throws if the procedure is
       unknown - the caller acted on something stale. */
   procedureId: string | null;
@@ -117,7 +135,26 @@ export interface AppointmentsArea {
       One query for every procedure rather than one per row, the same reason
       `photosByMilestone` (photos.ts) exists. */
   consultsByProcedure(): Promise<Map<string, { id: string; epochDay: number }[]>>;
+  /** Every provider, by name (ticket 27). */
+  getProviders(): Promise<Provider[]>;
+  /** Returns the provider's id. A blank name throws; updating an unknown id
+      throws (ADR-0053). Contact and impressions left blank are stored as
+      nothing. */
+  upsertProvider(input: FlatInput<Provider>): Promise<string>;
+  /** Idempotent (ADR-0053). Its appointments stay, with nobody named. */
+  deleteProvider(id: string): Promise<void>;
 }
+
+/** The three answers to "how were they with trans care", in the order the
+    editor offers them. */
+export const PROVIDER_COMPETENCES: readonly ProviderCompetence[] = ['good', 'mixed', 'poor'];
+
+const competenceOf = (value: unknown): ProviderCompetence | null =>
+  PROVIDER_COMPETENCES.find((known) => known === value) ?? null;
+
+/** `HH:MM` on a 24-hour clock - the TimePicker's own value, and the only
+    shape an archive's appointment time is accepted in. */
+export const isClockTime = (value: string): boolean => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 
 /** Empty, or all whitespace, is nothing written. */
 const trimmed = (value: string | null): string | null => {
@@ -193,11 +230,15 @@ type AppointmentRow = {
   kind: string | null;
   place: string | null;
   note: string | null;
+  time_of_day: string | null;
+  provider_uuid: string | null;
 };
 
 const APPOINTMENT_SELECT = `SELECT a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
-                a.kind AS kind, a.place AS place, a.note AS note, a.referred_epoch_day AS referred_epoch_day
-           FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id`;
+                a.kind AS kind, a.place AS place, a.note AS note, a.referred_epoch_day AS referred_epoch_day,
+                a.time_of_day AS time_of_day, p.uuid AS provider_uuid
+           FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id
+           LEFT JOIN provider p ON p.id = a.provider_id`;
 
 const fieldsOf = (row: AppointmentRow) => ({
   id: row.uuid,
@@ -205,7 +246,9 @@ const fieldsOf = (row: AppointmentRow) => ({
   kind: row.kind,
   place: row.place,
   note: row.note,
-  referredEpochDay: row.referred_epoch_day
+  referredEpochDay: row.referred_epoch_day,
+  time: row.time_of_day,
+  providerId: row.provider_uuid
 });
 
 /* Each read below filters on whether the day is there, so the casts state
@@ -220,6 +263,21 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
     if (rows.length === 0) throw new Error(`unknown procedure: ${procedureId}`);
     return rows[0].id;
   };
+
+  const providerRowid = async (providerId: string | null | undefined): Promise<number | null> => {
+    if (!providerId) return null;
+    const rows = await driver.query<{ id: number }>('SELECT id FROM provider WHERE uuid = ?', [providerId]);
+    if (rows.length === 0) throw new Error(`unknown provider: ${providerId}`);
+    return rows[0].id;
+  };
+
+  const providers = flatArea<Provider>(driver, {
+    table: 'provider',
+    columns: { name: 'name', contact: 'contact', competence: 'competence', impressions: 'impressions' },
+    guard: ({ name }) => {
+      if (!trimmed(name)) throw new Error('a provider needs a name');
+    }
+  });
 
   return {
     async getAppointments() {
@@ -280,20 +338,26 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
     async upsertAppointment(input) {
       // Resolved before either branch writes, so an unknown procedure fails
       // without having changed a day or a note first.
+      const time = input.time || null;
+      if (time !== null && !isClockTime(time)) throw new Error(`not a time of day: ${time}`);
+      if (time !== null && input.epochDay === null) throw new Error('a wait with no day has no time');
       const rowid = await procedureRowid(input.procedureId);
+      const providerRow = await providerRowid(input.providerId);
       const values = [
         rowid,
         input.epochDay,
         trimmed(input.kind),
         trimmed(input.place),
         trimmed(input.note),
-        input.referredEpochDay ?? null
+        input.referredEpochDay ?? null,
+        time,
+        providerRow
       ];
 
       if (input.id) {
         const result = await driver.run(
           `UPDATE appointment SET procedure_id = ?, epoch_day = ?, kind = ?, place = ?, note = ?,
-                  referred_epoch_day = ?, updated_at = ?
+                  referred_epoch_day = ?, time_of_day = ?, provider_id = ?, updated_at = ?
             WHERE uuid = ?`,
           [...values, now(), input.id]
         );
@@ -303,8 +367,9 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
 
       const uuid = mintUuid();
       await driver.run(
-        `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, referred_epoch_day, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, referred_epoch_day,
+                                  time_of_day, provider_id, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [uuid, ...values, now()]
       );
       return uuid;
@@ -394,6 +459,22 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
         else byProcedure.set(row.procedure_uuid, [consult]);
       }
       return byProcedure;
-    }
+    },
+
+    async getProviders() {
+      const rows = await providers.read('ORDER BY name COLLATE NOCASE, id');
+      return rows.map((row) => ({ ...row, competence: competenceOf(row.competence) }));
+    },
+
+    upsertProvider: (input) =>
+      providers.upsert({
+        id: input.id,
+        name: input.name.trim(),
+        contact: trimmed(input.contact),
+        competence: competenceOf(input.competence),
+        impressions: trimmed(input.impressions)
+      }),
+
+    deleteProvider: providers.delete
   };
 }
