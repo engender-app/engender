@@ -35,11 +35,12 @@ describe('what the merged screen is built from', () => {
   it('draws relevant registry kinds, not hand-written rows', () => {
     expect(screen).toContain("from '$lib/unprompted/registry'");
     expect(screen).toMatch(/const ROWS = UNPROMPTED_ROWS\.filter\(\(row\) => !isLiveTileKind\(row\.key\)\)/);
-    expect(screenMarkup).toContain('{#each visibleRows as row (row.key)}');
     expect(screen).toContain('isWeb ? ROWS.filter((row) => row.surface) : ROWS');
-    // One {#each} over the registry, and one over the four prompts.
-    expect(screenMarkup.match(/\{#each\b/g)?.length).toBe(2);
-    expect(screenMarkup.match(/<RegistryRow/g)?.length).toBe(1);
+    expect(screen).toContain('homeRows = $derived(visibleRows.filter((row) => row.surface))');
+    expect(screen).toContain('notifyRows = $derived(visibleRows.filter((row) => !row.surface))');
+    // One {#each} per registry card, and one over the four prompts.
+    expect(screenMarkup.match(/\{#each\b/g)?.length).toBe(3);
+    expect(screenMarkup.match(/<RegistryRow/g)?.length).toBe(2);
   });
 
   it('leaves the live tiles to the editor that arranges them, by filtering rather than by a second list', () => {
@@ -93,12 +94,20 @@ describe('what the merged screen is built from', () => {
     expect(screen).toMatch(/if \(v && row\.surface\) prefs\[row\.surface\.prefKey\] = true/);
   });
 
-  it('shows the two column heads only where there is a notify column to head', () => {
-    const gate = screenMarkup.indexOf('{#if !isWeb}');
-    expect(gate).toBeGreaterThanOrEqual(0);
-    const heads = screenMarkup.slice(gate, screenMarkup.indexOf('</ListCard>'));
-    expect(heads).toContain('m.notif_col_show()');
-    expect(heads).toContain('m.notif_col_notify()');
+  it('puts every switch on the trailing edge, Home switches and notify switches in cards of their own', () => {
+    /* No row carries both switches since FA 13 took the Wrapped and On
+       this day notifications, so a Show column and a Notify column left
+       the Home switches one 48px slot in from the edge while the
+       notification switches sat on it (Alicja at FA 08's sign-off: "the
+       sliders need to be aligned vertically"). Two headed cards say which
+       question a switch answers instead of a column position. */
+    expect(screenMarkup).not.toContain('registry-heads');
+    const home = screenMarkup.indexOf('{#each homeRows as row (row.key)}');
+    const notify = screenMarkup.indexOf('{#each notifyRows as row (row.key)}');
+    expect(home).toBeGreaterThanOrEqual(0);
+    expect(notify).toBeGreaterThan(home);
+    expect(screenMarkup).toContain('m.notif_section_home()');
+    expect(screenMarkup).toContain('m.notif_section_notify()');
   });
 
   it('reaches back to Settings, and Settings reaches it', () => {
@@ -115,16 +124,14 @@ describe('what the row draws', () => {
     expect(row.replace(/<script[\s\S]*?<\/script>/g, '')).toMatch(/<div class="kit-row">/);
   });
 
-  it('leaves a slot with no toggle empty rather than drawing a dead one', () => {
-    expect(row).toContain('{#if surface}');
-    expect(row).toContain('{#if notify}');
-    expect(row).toContain('data-live-tile={surface ? key : undefined}');
-    expect(row).toContain('data-notification={notify ? key : undefined}');
+  it('draws a slot only for a switch it has, so every switch sits on the trailing edge', () => {
+    // An empty slot held 48px and pushed a lone switch in from the edge.
+    expect(row).toMatch(/\{#if surface\}\s*<span class="kit-row-toggle" data-live-tile=\{key\}>/);
+    expect(row).toMatch(/\{#if notify\}\s*<span class="kit-row-toggle" data-notification=\{key\}>/);
+    expect(row).not.toContain('notifyColumn');
   });
 
-  it('reserves each slot the same width whether or not it holds a switch', () => {
-    // Otherwise the empty slot on a notify-only or surface-only row would
-    // collapse and the two columns would stop lining up down the list.
+  it('keeps each slot at the touch target, whatever the switch measures', () => {
     expect(row).toContain('flex: 0 0 var(--touch-target)');
   });
 });
@@ -148,7 +155,7 @@ describe('the notify column on web', () => {
        distance, and an explanation after another section was the audit's
        finding. */
     const notice = screenMarkup.indexOf('key="notifications-web"');
-    const rows = screenMarkup.indexOf('{#each visibleRows as row (row.key)}');
+    const rows = screenMarkup.indexOf('{#each homeRows as row (row.key)}');
     expect(notice).toBeGreaterThanOrEqual(0);
     expect(notice).toBeLessThan(rows);
   });

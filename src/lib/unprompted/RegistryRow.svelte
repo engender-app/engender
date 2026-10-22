@@ -2,9 +2,8 @@
   /* One row of the unprompted registry (phase 6 ticket 04, merged onto one
      screen by deepening ticket 09). A row answers up to two questions -
      "does this show on Home" and "does this notify" - so it takes up to two
-     switches, each in its own slot; a kind that doesn't fire leaves the
-     second slot empty rather than showing a dead control (ticket 09's
-     acceptance line).
+     switches, each in its own slot; a kind that doesn't fire gets no second
+     slot rather than a dead control (ticket 09's acceptance line).
 
      A plain .kit-row div rather than ListRow: ListRow renders an <a> or a
      <button>, and a switch inside either would be a control nested in a
@@ -21,8 +20,7 @@
     title,
     subtitle,
     surface,
-    notify,
-    notifyColumn = true
+    notify
   }: {
     key: string;
     title: string;
@@ -31,11 +29,6 @@
     surface?: { label: string; checked: boolean; onChange: (v: boolean) => void };
     /** Present when this kind has a notification switch on this row. */
     notify?: { label: string; checked: boolean; onChange: (v: boolean) => void };
-    /** Off where no row can notify (the web): the empty notify slot used
-        to hold its 48px anyway, so the Home switches sat one column in from
-        the trailing edge while every other switch on the screen sat on it
-        (after-release 28, audit UI-09). */
-    notifyColumn?: boolean;
   } = $props();
 </script>
 
@@ -45,16 +38,14 @@
     <span class="kit-row-sub">{subtitle}</span>
   </span>
   <span class="kit-row-trail">
-    <span class="kit-row-toggle" data-live-tile={surface ? key : undefined}>
-      {#if surface}
+    {#if surface}
+      <span class="kit-row-toggle" data-live-tile={key}>
         <Switch checked={surface.checked} label={surface.label} onChange={surface.onChange} />
-      {/if}
-    </span>
-    {#if notifyColumn}
-      <span class="kit-row-toggle" data-notification={notify ? key : undefined}>
-        {#if notify}
-          <Switch checked={notify.checked} label={notify.label} onChange={notify.onChange} />
-        {/if}
+      </span>
+    {/if}
+    {#if notify}
+      <span class="kit-row-toggle" data-notification={key}>
+        <Switch checked={notify.checked} label={notify.label} onChange={notify.onChange} />
       </span>
     {/if}
   </span>
@@ -62,8 +53,9 @@
 
 <style>
   /* Fixed at the switch's own touch target, not the switch's content width,
-     so the two columns line up down every row regardless of which rows have
-     a control in which slot - the empty slot still holds the space. */
+     so every switch on the screen sits the same distance from the edge. A
+     slot is drawn only for a switch the row has: an empty one held 48px and
+     pushed a lone switch in from the edge (FA 08 sign-off). */
   .kit-row-toggle {
     flex: 0 0 var(--touch-target);
     display: flex;

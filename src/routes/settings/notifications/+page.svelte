@@ -68,6 +68,10 @@
 
   let isWeb = $derived(!isAndroid());
   let visibleRows = $derived(isWeb ? ROWS.filter((row) => row.surface) : ROWS);
+  // No row carries both switches since FA 13, so Home switches and
+  // notification switches get a card each rather than a column each.
+  let homeRows = $derived(visibleRows.filter((row) => row.surface));
+  let notifyRows = $derived(visibleRows.filter((row) => !row.surface));
 
   /* Every producer here posts through the same POST_NOTIFICATIONS
      permission, so one status/request pair covers the whole list. */
@@ -178,40 +182,48 @@
   {/if}
 
   {#if !isWeb}
-    <div class="registry-heads" aria-hidden="true">
-      <span class="registry-head">{m.notif_col_show()}</span>
-      <span class="registry-head">{m.notif_col_notify()}</span>
-    </div>
+    <SectionHeading text={m.notif_section_home()} />
   {/if}
-
   <ListCard>
-    {#each visibleRows as row (row.key)}
-      {#if row.key === 'check-in'}
-        <ListRow key="check-in" title={row.title()} subtitle={checkInState} href="/settings/reminders" />
-      {:else}
-        <RegistryRow
-          key={row.key}
-          notifyColumn={!isWeb}
-          title={row.title()}
-          subtitle={row.surface?.subtitle() ?? row.notify?.subtitle() ?? ''}
-          surface={row.surface
-            ? {
-                label: m.notif_show_toggle_aria({ name: row.title() }),
-                checked: prefs[row.surface.prefKey],
-                onChange: (v) => setKind(row, v)
-              }
-            : undefined}
-          notify={!isWeb && row.notify
-            ? {
-                label: m.notif_notify_toggle_aria({ name: row.title() }),
-                checked: prefs[row.notify.prefKey],
-                onChange: (v) => setNotify(row, v)
-              }
-            : undefined}
-        />
-      {/if}
+    {#each homeRows as row (row.key)}
+      <RegistryRow
+        key={row.key}
+        title={row.title()}
+        subtitle={row.surface?.subtitle() ?? ''}
+        surface={row.surface
+          ? {
+              label: m.notif_show_toggle_aria({ name: row.title() }),
+              checked: prefs[row.surface.prefKey],
+              onChange: (v) => setKind(row, v)
+            }
+          : undefined}
+      />
     {/each}
   </ListCard>
+
+  {#if notifyRows.length > 0}
+    <SectionHeading text={m.notif_section_notify()} />
+    <ListCard>
+      {#each notifyRows as row (row.key)}
+        {#if row.key === 'check-in'}
+          <ListRow key="check-in" title={row.title()} subtitle={checkInState} href="/settings/reminders" />
+        {:else}
+          <RegistryRow
+            key={row.key}
+            title={row.title()}
+            subtitle={row.notify?.subtitle() ?? ''}
+            notify={!isWeb && row.notify
+              ? {
+                  label: m.notif_notify_toggle_aria({ name: row.title() }),
+                  checked: prefs[row.notify.prefKey],
+                  onChange: (v) => setNotify(row, v)
+                }
+              : undefined}
+          />
+        {/if}
+      {/each}
+    </ListCard>
+  {/if}
 
   <SectionHeading text={m.notif_prompts_heading()} />
   <!-- Each stays a plain div rather than a ListRow, the rule Settings kept
@@ -314,25 +326,6 @@
 </div>
 
 <style>
-  /* Right-aligned to match .kit-row-trail's own two fixed-width slots
-     (RegistryRow.svelte), with no left padding of its own so the gap and the
-     slot width are the only things that have to agree between the two
-     files. +1px accounts for the list card's own border, which the row's
-     padding is measured from the inside of. */
-  .registry-heads {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
-    padding: 0 calc(var(--space-4) + 1px) var(--space-2) 0;
-  }
-
-  .registry-head {
-    flex: 0 0 var(--touch-target);
-    text-align: center;
-    font-size: var(--text-xs);
-    color: var(--text-2);
-  }
-
   /* The window is not a row, so it takes the row's own horizontal padding
      rather than sitting flush against the card's edge (kit.css). */
   .quiet-body {
