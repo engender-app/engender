@@ -46,6 +46,7 @@ import type {
   SideEffect
 } from '../types';
 import { todayEpochDay } from '../epochDay';
+import { daysOnEachRoute } from '../exposureCounters';
 import { attributeDrug, sameDrug } from '../regimenEpisode';
 import { spanCoversDay, spanOverlapsRange } from '../span';
 import type { AreaStatesArea } from './areaStates';
@@ -260,19 +261,23 @@ async function readRegimen(reading: ClinicianSummaryReading): Promise<ClinicianS
   };
 }
 
-/* Exposure counters, with the excluded drugs' rows dropped from the two
-   parts keyed by drug (phase 8 features ticket 39). `routeDays` is not
-   filtered: it is a route total, not a drug total (daysOnEachRoute merges
-   across whatever episodes used that route), and this ticket does not
-   conflate the two any more than it conflates an analyte with a drug.
-   `excludedDoses` stays as-is for the same reason - it counts doses the
-   drug log itself could not attribute, which a drug toggle does not
-   change. */
-async function readExposure({ exposure, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
+/* Exposure counters, with the excluded drugs' rows dropped (phase 8
+   features ticket 39). Route days are a route total, not a drug total
+   (daysOnEachRoute merges across whatever episodes used that route), so
+   they are recounted by that same function over the printed drugs'
+   episodes only: before functional audit ticket 39 they kept every drug,
+   and with a drug that is not HRT off by default an SSRI's oral days still
+   reached the page as "oral" days. `excludedDoses` stays as-is - it counts
+   doses the drug log itself could not attribute, which a drug toggle does
+   not change. */
+async function readExposure({ exposure, regimen, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
   const counters = await exposure.getCounters(fromEpochDay, toEpochDay);
+  if (excludedDrugs.size === 0) return counters;
+  const printed = (await regimen.getEpisodes()).filter((episode) => !excludesDrug(excludedDrugs, episode.drug));
   return {
     ...counters,
     doseTotals: counters.doseTotals.filter((total) => !excludesDrug(excludedDrugs, total.drug)),
+    routeDays: daysOnEachRoute(printed, fromEpochDay, toEpochDay),
     regimenDays: counters.regimenDays.filter((days) => !excludesDrug(excludedDrugs, days.drug))
   };
 }

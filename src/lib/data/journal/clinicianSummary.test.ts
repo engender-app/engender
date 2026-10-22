@@ -383,19 +383,26 @@ test('a dose that cannot be attributed to any drug is never dropped by an exclus
   assert.equal(summary.sections.regimen!.doses.length, 1);
 });
 
-test('excluding a drug drops its exposure dose totals and regimen days, keeps route days and excluded doses as they were', async () => {
+/* Route days left an excluded drug in until functional-audit ticket 39:
+   with a drug that is not HRT off by default, an SSRI's oral days still
+   reached the page as "oral" days. They now count only the drugs printed;
+   excluded doses (ones the log could not attribute) stay as they were. */
+test('excluding a drug drops its exposure dose totals, regimen days and route days, keeps excluded doses as they were', async () => {
   const { journal } = await journalWithBuiltIns();
   await episode(journal, 19000, { drug: 'estradiol valerate' });
-  await journal.doses.upsertDose({ timestamp: at(19001), route: 'im', dose: 4, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
+  await episode(journal, 19000, { drug: 'Sertraline', ester: null, dose: 50, route: 'oral', interval: 'daily' });
+  await journal.doses.upsertDose({ timestamp: at(19001), route: 'im', dose: 4, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil', drug: 'estradiol valerate' });
 
   const withDrug = await journal.clinicianSummary.getSummary(19000, 19020);
   const withoutDrug = await journal.clinicianSummary.getSummary(19000, 19020, { excludedDrugs: new Set([' ESTRADIOL VALERATE ']) });
+  const withoutSertraline = await journal.clinicianSummary.getSummary(19000, 19020, { excludedDrugs: new Set(['sertraline']) });
 
   assert.equal(withDrug.sections.exposure!.doseTotals.length, 1);
   assert.deepEqual(withoutDrug.sections.exposure!.doseTotals, []);
-  assert.deepEqual(withoutDrug.sections.exposure!.regimenDays, []);
-  // Not drug-keyed rows: unaffected by the exclusion.
-  assert.deepEqual(withoutDrug.sections.exposure!.routeDays, withDrug.sections.exposure!.routeDays);
+  assert.deepEqual(withoutDrug.sections.exposure!.regimenDays.map((row) => row.drug), ['Sertraline']);
+  assert.deepEqual(withDrug.sections.exposure!.routeDays.map((row) => row.route), ['im', 'oral']);
+  assert.deepEqual(withoutDrug.sections.exposure!.routeDays.map((row) => row.route), ['oral']);
+  assert.deepEqual(withoutSertraline.sections.exposure!.routeDays.map((row) => row.route), ['im']);
   assert.equal(withoutDrug.sections.exposure!.excludedDoses, withDrug.sections.exposure!.excludedDoses);
 });
 
