@@ -6,9 +6,10 @@
   import { androidAutoExport, type AutoExportStatus } from '$lib/data/archive/android-auto-export-bridge';
   import { backupAgeDays, backupStanding } from '$lib/data/backupHealth';
   import { preferencesAttached, prefs } from '$lib/data/prefs/store.svelte';
-  import { resize } from '$lib/motion/reveal';
+  import { disclose, resize } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, scrollBehavior } from '$lib/motion/tokens';
   import { archivePasswordProblem } from '$lib/data/archive/password';
+  import { changeBackupPassword, checkBackupNow } from '$lib/data/archive/backup-password';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { exportFailureMessage, importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
   import type { PickedArchive } from '$lib/data/archive/pick';
@@ -226,24 +227,76 @@
     }
   }
 
-  async function setAutoEnabled(enabled: boolean) {
-    if (enabled && !autoHasPassword) {
-      const refusal = expPassRefusal(m.exp_auto_password_needed);
-      if (refusal) {
-        toast(refusal);
-        prefs.autoExportEnabled = false;
-        return;
-      }
-      try {
-        await androidAutoExport.setPassword({ password: expPass });
-      } catch (error) {
-        // The switch goes back off rather than claiming a schedule with no password behind it.
-        console.error('could not store the auto-export password', error);
-        toast(m.exp_auto_config_failed(), { kind: 'failed' });
-        prefs.autoExportEnabled = false;
+  /* The backup password is set and changed here and nowhere else (FA 56).
+     It used to be taken from the export field by the switch and by "Back up
+     now", silently, so a typo became the password of every later backup.
+     Now it is typed twice in its own sheet and says when it has worked. */
+  let passwordSheet = $state(false);
+  let newBackupPass = $state('');
+  let repeatBackupPass = $state('');
+  let passwordError = $state('');
+  let passwordErrorAt = $state<'new' | 'repeat' | null>(null);
+  let passwordSaving = $state(false);
+  /* Turning the schedule on with no password opens the sheet first, and the
+     switch goes on only once a password is saved. */
+  let enableAfterPassword = false;
+
+  let sheetChanging = $state(false);
+
+  function openPasswordSheet(enableAfter = false) {
+    sheetChanging = autoHasPassword;
+    newBackupPass = '';
+    repeatBackupPass = '';
+    passwordError = '';
+    passwordErrorAt = null;
+    enableAfterPassword = enableAfter;
+    passwordSheet = true;
+  }
+
+  function clearPasswordError() {
+    passwordError = '';
+    passwordErrorAt = null;
+  }
+
+  async function saveBackupPassword(event: SubmitEvent) {
+    event.preventDefault();
+    if (passwordSaving) return;
+    passwordSaving = true;
+    try {
+      const result = await changeBackupPassword(newBackupPass, repeatBackupPass);
+      if (result !== 'saved') {
+        passwordErrorAt = result === 'mismatch' ? 'repeat' : 'new';
+        passwordError =
+          result === 'missing'
+            ? m.exp_password_first()
+            : result === 'too-short'
+              ? m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) })
+              : m.exp_backup_password_mismatch();
         return;
       }
       autoHasPassword = true;
+      passwordSheet = false;
+      toast(sheetChanging ? m.exp_backup_password_changed_toast() : m.exp_backup_password_saved_toast());
+      if (enableAfterPassword) {
+        prefs.autoExportEnabled = true;
+        await configureAutoExport(true, prefs.autoExportSchedule);
+      }
+    } catch (error) {
+      console.error('could not store the backup password', error);
+      passwordErrorAt = null;
+      passwordError = m.exp_auto_config_failed();
+    } finally {
+      passwordSaving = false;
+      enableAfterPassword = false;
+    }
+  }
+
+  async function setAutoEnabled(enabled: boolean) {
+    if (enabled && !autoHasPassword) {
+      // The switch stays off until the sheet has a password behind it.
+      prefs.autoExportEnabled = false;
+      openPasswordSheet(true);
+      return;
     }
     prefs.autoExportEnabled = enabled;
     await configureAutoExport(enabled, prefs.autoExportSchedule);
@@ -273,13 +326,25 @@
 
   async function backupNowToDestination() {
     if (!android || autoBusy) return;
-    const refusal = expPassRefusal(m.exp_password_first);
-    if (refusal) {
-      toast(refusal);
+    autoBusy = true;
+    try {
+      /* The saved password is what the backup is sealed with. A password in
+         the export field is only compared with it: a mismatch is refused,
+         never saved over it (FA 56). */
+      const check = await checkBackupNow(expPass);
+      if (!check.ok) {
+        autoBusy = false;
+        if (check.problem === 'no-password') openPasswordSheet();
+        else toast(m.exp_backup_password_wrong(), { kind: 'failed' });
+        return;
+      }
+    } catch (error) {
+      autoBusy = false;
+      console.error('could not check the backup password', error);
+      toast(m.exp_auto_failed());
       return;
     }
 
-    autoBusy = true;
     /* Not exp_auto_running(): the button above already says that while it
        is disabled, and a bar repeating its button says nothing the button
        has not. It names the half that is running instead. */
@@ -287,11 +352,6 @@
     const stop = new AbortController();
     autoProgress.start({ onCancel: () => stop.abort() });
     try {
-      if (expPass) {
-        await androidAutoExport.setPassword({ password: expPass });
-        autoHasPassword = true;
-      }
-
       const snapshot = await journal.archive.snapshot();
       const snapshotAt = Date.now();
       const result = await runAndroidAutoExport(
@@ -917,6 +977,25 @@
       {autoDestination ?? (autoDestinationUri ? m.exp_auto_destination_chosen() : m.exp_auto_destination_missing())}
     </p>
 
+    <!-- The backup password's own row (FA 56): the one place it is set or
+         changed. Both wordings of the button and of the line under it are
+         always laid out in one grid cell and only their opacity moves, so
+         the row keeps its size when a password is first saved. -->
+    <div class="spread" data-backup-password-row>
+      <span class="small muted">{m.exp_backup_password_label()}</span>
+      <button class="btn btn-soft" type="button" onclick={() => openPasswordSheet()} disabled={autoBusy}
+        data-change-backup-password>
+        <span class="swap">
+          <span class:is-on={!autoHasPassword} aria-hidden={autoHasPassword}>{m.exp_backup_password_set()}</span>
+          <span class:is-on={autoHasPassword} aria-hidden={!autoHasPassword}>{m.exp_backup_password_change()}</span>
+        </span>
+      </button>
+    </div>
+    <p class="muted small swap" data-backup-password-state={autoHasPassword ? 'saved' : 'missing'}>
+      <span class:is-on={autoHasPassword} aria-hidden={!autoHasPassword}>{m.exp_auto_password_saved()}</span>
+      <span class:is-on={!autoHasPassword} aria-hidden={autoHasPassword}>{m.exp_auto_password_missing()}</span>
+    </p>
+
     {#if prefs.autoExportEnabled}
       <div class="spread">
         <span class="small muted">{m.exp_schedule()}</span>
@@ -933,9 +1012,6 @@
       <Progress run={autoProgress} label={autoLabel} handle="auto-export" />
     {/if}
 
-    <p class="muted small">
-      {autoHasPassword ? m.exp_auto_password_saved() : m.exp_auto_password_missing()}
-    </p>
     <div role="status" aria-live="polite" aria-atomic="true" data-auto-backup-status>
       <p class="muted small">
         {m.exp_auto_last_success({ when: stampText(autoLastSuccessAt) })}
@@ -1077,6 +1153,47 @@
       </button>
       <button class="btn btn-ghost" onclick={() => (exportWarningOpen = false)}><span>{m.cancel()}</span></button>
     </div>
+  </Sheet>
+
+  <!-- Typed twice, and it says when it worked (FA 56). The wording is fixed
+       when the sheet opens, so saving a first password does not rewrite the
+       title of a sheet that is on its way out. -->
+  <Sheet bind:open={passwordSheet} title={sheetChanging ? m.exp_backup_password_change_title() : m.exp_backup_password_set_title()}>
+    <h3>{sheetChanging ? m.exp_backup_password_change_title() : m.exp_backup_password_set_title()}</h3>
+    <p class="small" style="margin-bottom:var(--space-4)">
+      {sheetChanging ? m.exp_backup_password_change_body() : m.exp_backup_password_set_body()}
+    </p>
+    <form onsubmit={saveBackupPassword} data-backup-password-form>
+      <Field label={m.exp_backup_password_new()}>
+        {#snippet children(id)}
+          <input class="input" type="password" {id} name="new-backup-password" autocomplete="off"
+            bind:value={newBackupPass} oninput={clearPasswordError} readonly={passwordSaving}
+            aria-invalid={passwordErrorAt === 'new'}
+            aria-describedby={passwordErrorAt === 'new' ? 'backup-password-error' : undefined}
+            data-new-backup-password />
+        {/snippet}
+      </Field>
+      <Field label={m.exp_backup_password_repeat()}>
+        {#snippet children(id)}
+          <input class="input" type="password" {id} name="repeat-backup-password" autocomplete="off"
+            bind:value={repeatBackupPass} oninput={clearPasswordError} readonly={passwordSaving}
+            aria-invalid={passwordErrorAt === 'repeat'}
+            aria-describedby={passwordErrorAt === 'repeat' ? 'backup-password-error' : undefined}
+            data-repeat-backup-password />
+        {/snippet}
+      </Field>
+      <!-- Opens its own height rather than pushing the buttons down in one
+           frame, and closes again as soon as either field is edited. -->
+      {#if passwordError}
+        <p class="small backup-password-error" role="alert" id="backup-password-error" data-backup-password-error transition:disclose>{passwordError}</p>
+      {/if}
+      <div class="stack-3">
+        <button class="btn btn-primary" type="submit" disabled={passwordSaving} data-save-backup-password>
+          <span>{m.exp_backup_password_save()}</span>
+        </button>
+        <button class="btn btn-ghost" type="button" onclick={() => (passwordSheet = false)}><span>{m.cancel()}</span></button>
+      </div>
+    </form>
   </Sheet>
 
   <Sheet open={plainSheet !== null} title={m.plain_section()} onClose={() => (plainSheet = null)}>
@@ -1305,6 +1422,27 @@
     border: none;
     border-top: 1px solid var(--hairline);
     margin: var(--space-4) 0;
+  }
+  /* Two wordings in one cell: the cell is as big as the longer one either
+     way, and changing state crossfades rather than swapping text in a
+     frame. */
+  .swap {
+    display: inline-grid;
+  }
+  p.swap {
+    display: grid;
+  }
+  .swap > * {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .swap > .is-on {
+    opacity: 1;
+  }
+  .backup-password-error {
+    color: var(--danger);
+    margin: 0 0 var(--space-4);
   }
   .mode-mark {
     display: inline-flex;
