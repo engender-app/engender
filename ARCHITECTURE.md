@@ -395,7 +395,7 @@ The rest, without SQL edges:
 | Body | `hair_stage`, `hair_photo`, `personal_effect`, `side_effect` |
 | Voice | `voice_benchmark`, `voice_practice_take` |
 | Logs | `tally_event`, `cycle_event` (ADR-0043), `wear_session` (ADR-0064), `journaling_pause` |
-| Self | `letter` (seal derived from dates), `document` (ADR-0065), `roadmap_check`, `roadmap_goal` (ADR-0068) |
+| Self | `letter` (seal derived from dates), `document` (ADR-0065), `roadmap_check`, `roadmap_goal` (ADR-0068), `roadmap_category` |
 | Eras and resurfacing | `era` (ADR-0049), `era_mute`, `comfort_item` |
 | Housekeeping | `reminder`, `pref`, `word_frequency_ignore`, `import_log`, `area_state` (hidden and finished areas, ADR-0052) |
 
