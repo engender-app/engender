@@ -105,6 +105,8 @@
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
   import { collapse, crossfade, resize } from '$lib/motion/reveal';
+  import { fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { flip } from 'svelte/animate';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { rowWriter, writer } from '$lib/stores/attempt.svelte';
@@ -470,6 +472,18 @@
     attachNewProvider = attach;
     providerRecord.openEditor(provider);
   }
+
+  /* The Who chips with "Someone new" as the last of them, one keyed list,
+     so a provider made from the editor fades in where it lands while the
+     chips after it - "Someone new" itself at least - travel aside rather
+     than jumping a chip's width (search's filter chips, functional audit
+     10, are the same row). */
+  let whoChips = $derived([
+    ...providersQuery.rows.map((provider) => ({ key: provider.id, provider })),
+    { key: 'new', provider: null }
+  ]);
+  const chipTravel = (_distance?: number) => (isReducedMotion() ? 0 : motionDuration('--dur-fast'));
+  const chipIn = (_node: Element) => (isReducedMotion() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast')));
 
   const providerSubtitle = (provider: Provider) =>
     [provider.competence ? competenceLine[provider.competence]() : undefined, provider.contact ?? undefined]
@@ -838,9 +852,18 @@
       </button>
     {/snippet}
   </SectionHeading>
-  <ReadGate read={providersQuery} variant="line" count={1}>
-    {#snippet rows()}
-      <div class="screen-part" data-providers>
+  <!-- Not a ReadGate (measured, ticket 27): the gate swaps its rows for its
+       empty branch in one frame, so the last provider deleted vanished and
+       the page under a bottom-of-screen scroll stepped 120px, and its
+       wrapper's resize held the old height through a row's own collapse and
+       then stepped the scroller 45px when it let go. Here the list and the
+       notice each open and close their own height, so the one leaving and
+       the one arriving overlap rather than cut. Nothing is drawn until the
+       read has answered; this is the screen's last section, so nothing
+       under it waits on it. -->
+  <div class="screen-part">
+    {#if providersQuery.rows.length}
+      <div data-providers transition:collapse>
         <ListCard role={roleAt(activeFlag.roles, 2)}>
           {#each providersQuery.rows as provider (provider.id)}
             <div transition:collapse>
@@ -857,8 +880,9 @@
           {/each}
         </ListCard>
       </div>
-    {/snippet}
-    {#snippet empty()}
+    {:else if providersQuery.failed}
+      <Notice title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => providersQuery.retry() }} />
+    {:else if !providersQuery.loading}
       <Notice
         icon="note"
         key="providers-empty"
@@ -866,8 +890,8 @@
         title={m.provider_empty_title()}
         text={m.provider_empty_body()}
       />
-    {/snippet}
-  </ReadGate>
+    {/if}
+  </div>
 
   <Sheet busy={itemWrite.busy} open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
     <h3>{m.appointment_prep_new_sheet()}</h3>
@@ -957,22 +981,30 @@
            there. -->
       <Field label={m.appointments_who_label()} legend id="appointment-who">
         {#snippet children(id)}
-          <div class="tag-row ap-who" role="group" aria-labelledby={id}>
-            {#each providersQuery.rows as provider (provider.id)}
+          <div class="tag-row ap-who" role="group" aria-labelledby={id} use:resize>
+            {#each whoChips as chip (chip.key)}
               <button
                 class="tag-chip"
-                class:is-selected={editor.providerId === provider.id}
-                aria-pressed={editor.providerId === provider.id}
-                data-who={provider.id}
-                onclick={() => (editor.providerId = editor.providerId === provider.id ? null : provider.id)}
+                class:is-selected={!!chip.provider && editor.providerId === chip.provider.id}
+                aria-pressed={chip.provider ? editor.providerId === chip.provider.id : undefined}
+                data-who={chip.provider?.id}
+                data-who-new={chip.provider ? undefined : ''}
+                onclick={() => {
+                  if (!chip.provider) return openProvider(null, true);
+                  const id = chip.provider.id;
+                  editor.providerId = editor.providerId === id ? null : id;
+                }}
+                animate:flip={{ duration: chipTravel }}
+                in:chipIn
               >
-                {provider.name}
+                {#if chip.provider}
+                  {chip.provider.name}
+                {:else}
+                  <Icon name="plus" size={16} />
+                  {m.appointments_who_new()}
+                {/if}
               </button>
             {/each}
-            <button class="tag-chip" data-who-new onclick={() => openProvider(null, true)}>
-              <Icon name="plus" size={16} />
-              {m.appointments_who_new()}
-            </button>
           </div>
         {/snippet}
       </Field>

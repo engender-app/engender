@@ -107,6 +107,7 @@ try {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     for (const appointment of [...await journal.appointments.getAppointments(), ...await journal.appointments.getWaiting()])
       await journal.appointments.deleteAppointment(appointment.id);
+    for (const provider of await journal.appointments.getProviders()) await journal.appointments.deleteProvider(provider.id);
   });
   await page.locator('[data-appointment]').waitFor({ state: 'detached' });
   await page.locator('[data-add]').click();
@@ -253,7 +254,7 @@ try {
   await page.locator('[data-providers] [data-provider]').filter({ hasText: 'Dr Anna Nowak' }).click();
   await page.locator('[data-delete-provider]').click();
   await page.locator('[data-confirm-delete-provider]').click();
-  await page.locator('[data-providers] [data-provider]').waitFor({ state: 'detached' });
+  await page.locator('[data-providers] [data-provider]').filter({ hasText: 'Nowak' }).waitFor({ state: 'detached' });
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   assert.ok(!(await row.innerText()).includes('Nowak'), 'Deleting the provider leaves the appointment with nobody named');
   assert.ok((await row.innerText()).includes('14:30'), 'and keeps the appointment itself');
