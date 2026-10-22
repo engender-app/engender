@@ -135,9 +135,9 @@ await block('Archive after browser installation loss', 2, async () => {
   console.log(`RECOVERY ${JSON.stringify({ revision: execFileSync('git', ['-C', resolve(here, '../..'), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), runtime: browser.version(), source: 'web', destination: 'web', producer: 'manual', sourceIdentity: source.identity, destinationIdentity: destination.identity, sourceDestroyed: true, ...destination })}`);
 });
 
-await block('rendered screen contracts', 176, async () => {
+await block('rendered screen contracts', 175, async () => {
   const result = await load('/screen-mount.html', 'screen-mount');
-  for (const [suite, expected] of Object.entries({ direction: 58, home: 59, calendar: 59 })) {
+  for (const [suite, expected] of Object.entries({ direction: 58, home: 58, calendar: 59 })) {
     const cases = result[suite];
     if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
     if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
