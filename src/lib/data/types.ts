@@ -286,6 +286,10 @@ export interface Reminder {
       even one that started out managed - clears it: that is the handoff
       this field exists to record. */
   autoSource: string | null;
+  /** The drug a medication reminder is for, in the regimen's own words
+      (functional audit ticket 20), or null for any other reminder. Its
+      notification opens that drug's dose log and offers Taken and Skip. */
+  drug: string | null;
 }
 
 /* Where a draw fell relative to dosing (phase 4 ticket 03, CONTEXT: "Lab

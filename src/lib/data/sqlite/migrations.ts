@@ -263,5 +263,10 @@ DELETE FROM sqlite_sequence WHERE name = 'reminder_new';
 INSERT INTO sqlite_sequence (name, seq) SELECT 'reminder_new', seq FROM sqlite_sequence WHERE name = 'reminder';
 DROP TABLE reminder;
 ALTER TABLE reminder_new RENAME TO reminder;
-` }
+` },
+  /* Functional audit ticket 20: a medication reminder names the drug it is
+     for, in the regimen's own words, so its notification can open that
+     drug's dose log and carry Taken and Skip. Null for every other reminder,
+     which is every reminder stored before this. */
+  { version: 110, sql: 'ALTER TABLE reminder ADD COLUMN drug TEXT;' }
 ];

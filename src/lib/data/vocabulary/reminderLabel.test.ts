@@ -30,7 +30,8 @@ const oneOff = (epochDay: number): Reminder => ({
   anchorEpochDay: null,
   epochDay,
   enabled: true,
-  autoSource: null
+  autoSource: null,
+  drug: null
 });
 
 test('a one-off today says today, and never "in 0 days"', () => {

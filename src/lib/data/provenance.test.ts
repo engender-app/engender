@@ -41,6 +41,7 @@ const reminder = (overrides: Partial<Reminder> = {}): Reminder => ({
   epochDay: 20000,
   enabled: true,
   autoSource: null,
+  drug: null,
   ...overrides
 });
 

@@ -261,7 +261,8 @@ const ROWS = {
     anchorEpochDay: nullable(numeric),
     epochDay: nullable(numeric),
     enabled: optional(bool),
-    autoSource: nullable(text)
+    autoSource: nullable(text),
+    drug: optional(nullable(text))
   },
   tallyEvents: {
     id: identity,

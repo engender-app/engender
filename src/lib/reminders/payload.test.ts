@@ -20,7 +20,8 @@ describe('buildAndroidReminderPayload', () => {
           anchorEpochDay: 20300,
           epochDay: null,
           enabled: true,
-          autoSource: null
+          autoSource: null,
+          drug: null
         }
       ],
       checkInEnabled: true,
@@ -50,7 +51,8 @@ describe('buildAndroidReminderPayload', () => {
           anchorEpochDay: 20300,
           epochDay: null,
           enabled: true,
-          autoSource: null
+          autoSource: null,
+          drug: null
         }
       ],
       checkInEnabled: true,
@@ -79,7 +81,8 @@ describe('buildAndroidReminderPayload', () => {
         anchorEpochDay: null,
         epochDay: null,
         enabled: true,
-        autoSource: null
+        autoSource: null,
+        drug: null
       }
     ];
 

@@ -47,7 +47,8 @@ const REMINDER = {
   anchorEpochDay: 20300,
   epochDay: null,
   enabled: true,
-  autoSource: null
+  autoSource: null,
+  drug: null
 };
 
 describe('assembleReminderSyncPayload', () => {

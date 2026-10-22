@@ -505,6 +505,10 @@ interface ArchiveReminder {
       hand-off state - see the coalescing note at applyReminders (an
       archive from before ticket 04 has no such field at all). */
   autoSource: string | null;
+  /** The drug a medication reminder is for (functional audit ticket 20).
+      Absent from an archive written before that ticket, which restores it
+      as null. */
+  drug?: string | null;
 }
 
 interface ArchiveRegimenEpisode {
