@@ -598,10 +598,15 @@
    computed to 2.66-4.05:1, failing 16/16 combinations. The strikethrough
    already carries the "hidden" meaning; --text-2 gives the same
    de-emphasised look at a contrast the token layer already guarantees. */
-.managed-tag.is-hidden .managed-label { color: var(--text-2); text-decoration: line-through; }
+/* The strike is always drawn and only its colour changes, so hiding a row
+   fades the line in with the grey rather than painting it in one frame
+   (functional audit ticket 41: a `text-decoration` switch cannot
+   transition, `text-decoration-color` can). */
+.managed-tag.is-hidden .managed-label { color: var(--text-2); text-decoration-color: currentColor; }
 .managed-label {
   flex: 1; font-size: var(--text-sm);
-  transition: color var(--dur-fast) var(--ease-out);
+  text-decoration: line-through transparent;
+  transition: color var(--dur-fast) var(--ease-out), text-decoration-color var(--dur-fast) var(--ease-out);
 }
 /* SH-105: was 36px with no gap between two adjacent targets, one of them
    destructive (delete). Falls back to .icon-btn's 44px default; the gap
