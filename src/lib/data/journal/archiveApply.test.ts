@@ -899,6 +899,33 @@ test('applyTaper resolves its procedure link, drops a taper whose procedure is n
   assert.deepEqual((await select<{ stages: string }>(driver, 'SELECT stages FROM taper'))[0].stages, '[]');
 });
 
+/* Functional audit ticket 25: one taper per procedure. A merge bringing a
+   second schedule for a procedure that already has one keeps the one here,
+   and so does an archive that itself carries two. */
+test('merging a second taper for a procedure that has one keeps one', async () => {
+  const driver = await migratedDb();
+  await seedProcedure(driver, 'proc1');
+  await seedProcedure(driver, 'proc2');
+  const here: ArchiveTaper = { id: 'here', procedureId: 'proc1', startEpochDay: 20100, stagesJson: '[]' };
+  await applyTaper(restoring(driver, { taper: [here] }, 'merge', 4));
+
+  await applyTaper(restoring(driver, {
+    taper: [
+      { ...here, id: 'incoming', stagesJson: '[{"everyNDays":1,"timesPerDay":3,"days":14}]' },
+      { ...here, id: 'other1', procedureId: 'proc2' },
+      { ...here, id: 'other2', procedureId: 'proc2' }
+    ]
+  }, 'merge', 9));
+
+  assert.deepEqual(
+    await select(driver, 'SELECT t.uuid AS uuid, p.uuid AS procedure, t.stages AS stages FROM taper t JOIN procedure p ON p.id = t.procedure_id ORDER BY p.uuid'),
+    [
+      { uuid: 'here', procedure: 'proc1', stages: '[]' },
+      { uuid: 'other1', procedure: 'proc2', stages: '[]' }
+    ]
+  );
+});
+
 // applyAppointments -------------------------------------------------------------
 
 test('applyAppointments resolves its optional procedure link, keeps the day when it cannot, and leaves a matched uuid alone', async () => {

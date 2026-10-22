@@ -1068,7 +1068,12 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
     than kept link-less: `procedure_id` is NOT NULL, and the schedule says
     nothing on its own - its whole reading is days since that procedure's
     surgery. Unreachable from a whole archive, where the procedure travels
-    beside it. */
+    beside it.
+
+    One taper per procedure (functional audit ticket 25, schema v111's
+    UNIQUE index): a merge that brings a second schedule for a procedure
+    this journal already has one for keeps the one already here, the same
+    insert-if-absent rule a matched uuid gets. */
 export async function applyTaper({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM taper');
 
@@ -1077,12 +1082,11 @@ export async function applyTaper({ driver, journal, ts }: Restoring): Promise<vo
 
     const rows = await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [taper.procedureId]);
     if (!rows[0]) continue;
-    const existing = await driver.query('SELECT id FROM taper WHERE procedure_id = ? LIMIT 1', [rows[0].id]);
-    if (existing.length > 0) continue;
 
     await driver.run(
       `INSERT INTO taper (uuid, procedure_id, start_epoch_day, stages, updated_at)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (procedure_id) DO NOTHING`,
       [taper.id, rows[0].id, taper.startEpochDay, taper.stagesJson, ts]
     );
   }
