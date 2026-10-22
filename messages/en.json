@@ -1201,7 +1201,7 @@
   "exp_backup_password_label": "Backup password",
   "exp_backup_password_mismatch": "The two passwords don't match.",
   "exp_backup_password_new": "New backup password",
-  "exp_backup_password_repeat": "New backup password, once more",
+  "exp_backup_password_repeat": "Repeat password",
   "exp_backup_password_save": "Save password",
   "exp_backup_password_saved_toast": "Backup password saved.",
   "exp_backup_password_set": "Set",
