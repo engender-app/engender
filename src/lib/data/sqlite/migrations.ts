@@ -206,5 +206,27 @@ UNION ALL
 SELECT b.uuid, b.vowel_file_path, 'voiceBenchmarkVowel', b.epoch_day, NULL, b.uuid,
   0, NULL, 0, b.id, 1
 FROM voice_benchmark b WHERE b.vowel_file_path IS NOT NULL;
+` },
+  /* Functional audit ticket 27: an appointment's time of day, and the
+     person's own notes on the people they see. Plain ADD COLUMNs after
+     ticket 26's rebuild, as its own comment planned. `time_of_day` is
+     `HH:MM` or NULL, checked in appointments.ts rather than by a CHECK
+     (the audit's CHECK policy). A provider is never shared, so deleting
+     one leaves its appointments standing with nobody named. `competence`
+     has no CHECK either: providers.ts reads anything it does not know as
+     not said. */
+  { version: 107, sql: `
+CREATE TABLE provider (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  name        TEXT NOT NULL,
+  contact     TEXT,
+  competence  TEXT,
+  impressions TEXT,
+  updated_at  INTEGER NOT NULL
+);
+ALTER TABLE appointment ADD COLUMN time_of_day TEXT;
+ALTER TABLE appointment ADD COLUMN provider_id INTEGER REFERENCES provider(id) ON DELETE SET NULL;
+CREATE INDEX idx_appointment_provider ON appointment(provider_id);
 ` }
 ];
