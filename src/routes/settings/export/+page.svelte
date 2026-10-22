@@ -324,27 +324,32 @@
     }
   }
 
+  /* Not autoBusy: the check is one bridge call, and a refusal would flash
+     the button to "Backing up…" and back for a backup that never started. */
+  let checkingPassword = false;
+
   async function backupNowToDestination() {
-    if (!android || autoBusy) return;
-    autoBusy = true;
+    if (!android || autoBusy || checkingPassword) return;
+    checkingPassword = true;
     try {
       /* The saved password is what the backup is sealed with. A password in
          the export field is only compared with it: a mismatch is refused,
          never saved over it (FA 56). */
       const check = await checkBackupNow(expPass);
       if (!check.ok) {
-        autoBusy = false;
         if (check.problem === 'no-password') openPasswordSheet();
         else toast(m.exp_backup_password_wrong(), { kind: 'failed' });
         return;
       }
     } catch (error) {
-      autoBusy = false;
       console.error('could not check the backup password', error);
       toast(m.exp_auto_failed());
       return;
+    } finally {
+      checkingPassword = false;
     }
 
+    autoBusy = true;
     /* Not exp_auto_running(): the button above already says that while it
        is disabled, and a bar repeating its button says nothing the button
        has not. It names the half that is running instead. */
@@ -1432,13 +1437,23 @@
   p.swap {
     display: grid;
   }
+  /* The resting wording leaves selection and hit-testing once it has faded:
+     visibility flips after the fade on the way out and at once on the way
+     in. */
   .swap > * {
     grid-area: 1 / 1;
     opacity: 0;
-    transition: opacity var(--dur-fast) var(--ease-out);
+    visibility: hidden;
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      visibility 0s linear var(--dur-fast);
   }
   .swap > .is-on {
     opacity: 1;
+    visibility: visible;
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      visibility 0s;
   }
   .backup-password-error {
     color: var(--danger);
