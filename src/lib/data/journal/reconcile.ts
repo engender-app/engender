@@ -17,7 +17,9 @@ import {
   BUILT_IN_EFFECT_CATEGORIES,
   BUILT_IN_PERSONAL_EFFECT_TYPES,
   BUILT_IN_TAG_GROUPS,
-  ENTRY_TEMPLATES
+  ENTRY_TEMPLATES,
+  SEEDED_HIDDEN_BODY_REGIONS,
+  SEEDED_HIDDEN_TAGS
 } from '../vocabulary/builtins';
 import { builtInTemplateHidden } from '../vocabulary/entryTemplates';
 import { RECONCILE_TABLES } from '../live/writes';
@@ -103,9 +105,9 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     for (const [tagIndex, tagKey] of g.tags.entries()) {
       if (tagKeys.has(tagKey)) continue;
       await driver.run(
-        `INSERT INTO tag (key, group_id, label, order_index, updated_at)
-         SELECT ?, id, '', ?, ? FROM tag_group WHERE key = ?`,
-        [tagKey, tagIndex, ts, g.key]
+        `INSERT INTO tag (key, group_id, label, hidden, order_index, updated_at)
+         SELECT ?, id, '', ?, ?, ? FROM tag_group WHERE key = ?`,
+        [tagKey, SEEDED_HIDDEN_TAGS.has(tagKey) ? 1 : 0, tagIndex, ts, g.key]
       );
     }
   }
@@ -113,7 +115,11 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
   const bodyRegionKeys = await presentKeys(driver, 'body_region');
   for (const key of BUILT_IN_BODY_REGIONS) {
     if (bodyRegionKeys.has(key)) continue;
-    await driver.run(`INSERT INTO body_region (key, name, updated_at) VALUES (?, '', ?)`, [key, ts]);
+    await driver.run(`INSERT INTO body_region (key, name, hidden, updated_at) VALUES (?, '', ?, ?)`, [
+      key,
+      SEEDED_HIDDEN_BODY_REGIONS.has(key) ? 1 : 0,
+      ts
+    ]);
   }
 
   const effectCategoryKeys = await presentKeys(driver, 'effect_category');

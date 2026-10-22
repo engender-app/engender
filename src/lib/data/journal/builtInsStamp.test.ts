@@ -13,7 +13,9 @@ import {
   BUILT_IN_EFFECT_CATEGORIES,
   BUILT_IN_PERSONAL_EFFECT_TYPES,
   BUILT_IN_TAG_GROUPS,
-  ENTRY_TEMPLATES
+  ENTRY_TEMPLATES,
+  SEEDED_HIDDEN_BODY_REGIONS,
+  SEEDED_HIDDEN_TAGS
 } from '../vocabulary/builtins.ts';
 import { builtInTemplateHidden } from '../vocabulary/entryTemplates.ts';
 import { BUILT_INS_FINGERPRINT, builtInsStamp } from './builtInsStamp.ts';
@@ -28,7 +30,8 @@ function catalogueFingerprint(): string {
     bodyRegions: [...BUILT_IN_BODY_REGIONS],
     effectCategories: BUILT_IN_EFFECT_CATEGORIES.map((c) => [c.key, c.defaultEnabled]),
     personalEffectTypes: BUILT_IN_PERSONAL_EFFECT_TYPES.map((e) => [e.key, e.category, e.direction]),
-    templates: ENTRY_TEMPLATES.map((t) => [t.key, [...t.tags], Object.entries(t.dims), builtInTemplateHidden(t)])
+    templates: ENTRY_TEMPLATES.map((t) => [t.key, [...t.tags], Object.entries(t.dims), builtInTemplateHidden(t)]),
+    seededHidden: [[...SEEDED_HIDDEN_TAGS], [...SEEDED_HIDDEN_BODY_REGIONS]]
   };
   const source = readFileSync(new URL('./reconcile.ts', import.meta.url), 'utf8');
   return createHash('sha256').update(JSON.stringify(catalogue)).update(source).digest('hex').slice(0, 16);

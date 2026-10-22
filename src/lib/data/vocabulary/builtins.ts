@@ -81,6 +81,21 @@ export const BUILT_IN_TAG_GROUPS = [
 ] as const;
 
 export type BuiltInTagGroupKey = (typeof BUILT_IN_TAG_GROUPS)[number]['key'];
+
+/* Built-ins a new journal seeds hidden (functional audit ticket 41), because
+   each one repeats another built-in. `g-body-dys` and `g-soc-dys` are the
+   physical and social dysphoria types again under the gender group, without
+   the line saying what each means; the euphoria tags they sat beside stay,
+   as the counterpart CONTEXT ("Euphoria capture") already pairs with a
+   dysphoria type. `whole_body` is a feeling about the body as a whole, which
+   is what the euphoria/dysphoria scale records on every entry.
+
+   Seed defaults only, the same shape the appointment debrief template has:
+   reconcile.ts inserts these rows hidden and never touches a row that is
+   already there, so a journal that holds them visible keeps them visible,
+   and an archive restores whatever flag it carries. */
+export const SEEDED_HIDDEN_TAGS: ReadonlySet<string> = new Set(['g-body-dys', 'g-soc-dys']);
+export const SEEDED_HIDDEN_BODY_REGIONS: ReadonlySet<string> = new Set(['whole_body']);
 export type BuiltInTagKey = (typeof BUILT_IN_TAG_GROUPS)[number]['tags'][number];
 
 

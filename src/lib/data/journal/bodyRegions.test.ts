@@ -21,7 +21,9 @@ test('the built-in regions are seeded by key, with empty names', async () => {
   const builtIns = regions.filter((r) => r.builtIn);
 
   assert.equal(builtIns.length, 10);
-  assert.ok(builtIns.every((r) => r.name === '' && !r.hidden));
+  assert.ok(builtIns.every((r) => r.name === ''));
+  // Whole body seeds hidden in a new journal (FA 41); every other one shows.
+  assert.deepEqual(builtIns.filter((r) => r.hidden).map((r) => r.id), ['whole_body']);
   assert.ok(builtIns.some((r) => r.id === 'chest'));
   assert.ok(builtIns.some((r) => r.id === 'shoulders'));
   assert.ok(builtIns.some((r) => r.id === 'whole_body'));
