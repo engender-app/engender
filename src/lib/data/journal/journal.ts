@@ -371,6 +371,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const tags = makeTagsArea(driver);
   const taper = makeTaperArea(driver);
   const personalEffects = makePersonalEffectsArea(driver);
+  const effectCategories = makeEffectCategoriesArea(driver);
   const cycleEvents = makeCycleEventsArea(driver);
   const tally = makeTallyArea(driver);
   const wearSessions = makeWearSessionsArea(driver, reminders);
@@ -439,7 +440,9 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
         sideEffects,
         cycleEvents,
         checklists,
-        procedures
+        procedures,
+        personalEffects,
+        effectCategories
       })
     )(['getSummary']),
     day: makeDayArea({
@@ -495,7 +498,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       (await import('./journalBook')).makeJournalBookArea({ entries, milestones, sideEffects, stats, tags })
     )(['getBook']),
     personalEffects,
-    effectCategories: makeEffectCategoriesArea(driver),
+    effectCategories,
     hairProgress,
     hairRemoval,
     procedures,

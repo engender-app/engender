@@ -177,15 +177,17 @@ describe('ClinicianSummaryDossier preview truncation (ticket 08)', () => {
      A count rather than one assertion per table so a table added later that
      forgets the mark fails loudly instead of silently passing everything
      else. */
-  it('marks every table row past the floor as an overflow row, on all twelve of the dossier\'s tables', () => {
+  /* Thirteen table templates since functional-audit ticket 39 added the
+     changes noticed; the ongoing and resolved side effects share one. */
+  it('marks every table row past the floor as an overflow row, on every one of the dossier\'s table templates', () => {
     const marks = dossierComponent.match(/class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}/g) ?? [];
-    expect(marks.length).toBe(12);
+    expect(marks.length).toBe(13);
   });
 
   it('reports a table\'s overflow through the same helper everywhere, one call per table', () => {
     const calls = dossierComponent.match(/overflowCount\(/g) ?? [];
     // Once per table to compute the count, once more to render the note.
-    expect(calls.length).toBe(24);
+    expect(calls.length).toBe(26);
   });
 
   it('renders the truncation note through one shared snippet, screen-only', () => {
@@ -256,5 +258,35 @@ describe('stacked rows at phone width (after-release 22)', () => {
   it('keeps a table date on one line on screen only', () => {
     expect(dossierComponent).toContain('<span class="dossier-date">{dayShort(epochDay)}{after}</span>');
     expect(screenBlock).toMatch(/\.dossier-date\s*{\s*white-space:\s*nowrap;/);
+  });
+});
+
+/* Functional-audit ticket 39: what leaves the device. */
+describe('HRT drugs by default, the changes noticed, and honest side-effect headings (functional-audit ticket 39)', () => {
+  const sideEffectNames = messages.map((catalogue) => JSON.parse(catalogue).clinician_summary_section_side_effects as string);
+
+  it('files a resolved side effect under its own heading, never under an "active" one', () => {
+    for (const name of sideEffectNames) expect(name).not.toMatch(/^(Active|Aktualne)\b/i);
+    expect(dossierComponent).toContain('effect.resolvedEpochDay === null');
+    expect(dossierComponent).toContain('data-side-effects="ongoing"');
+    expect(dossierComponent).toContain('data-side-effects="resolved"');
+    expect(dossierComponent).toContain('m.clinician_summary_side_effects_resolved()');
+    expect(dossierComponent).toContain('m.side_effect_resolved_label()');
+  });
+
+  it('prints the changes noticed with their first-noticed dates, named in the reader\'s language', () => {
+    expect(dossierComponent).toContain("{#snippet personalEffectsSection(changes: Section<'personalEffects'>)}");
+    expect(dossierComponent).toContain('data-dossier-section="personalEffects"');
+    expect(dossierComponent).toContain('change.firstNoticedEpochDay');
+    expect(dossierComponent).toContain('personalEffectName(change.effect)');
+    expect(labels).toContain('personalEffects: m.clinician_summary_section_personal_effects');
+  });
+
+  it('defaults the drug switches from the episodes, so a drug that is not HRT starts off', () => {
+    expect(summaryPage).toContain('excludedClinicianDrugs(regimenEpisodesQuery.value ?? [], prefs.clinicianSummaryDrugExcluded)');
+  });
+
+  it('opens and closes a part switched on or off rather than painting it whole', () => {
+    expect(dossierComponent).toMatch(/\{#if content !== null\}<div class="dossier-part"[^>]*transition:disclose>/);
   });
 });

@@ -32,7 +32,9 @@ const areasOf = (journal: Journal) => ({
   sideEffects: journal.sideEffects,
   cycleEvents: journal.cycleEvents,
   checklists: journal.checklists,
-  procedures: journal.procedures
+  procedures: journal.procedures,
+  personalEffects: journal.personalEffects,
+  effectCategories: journal.effectCategories
 });
 
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
@@ -139,6 +141,7 @@ test('with nothing logged at all, every section comes back empty rather than thr
       exposure: { doseTotals: [], routeDays: [], regimenDays: [], excludedDoses: 0 },
       labs: [],
       sideEffects: [],
+      personalEffects: [],
       cycleEvents: [],
       appointmentPrep: [],
       procedures: [],
@@ -160,6 +163,7 @@ test('a section is registered for each part the page prints, in the order it pri
     'exposure',
     'labs',
     'sideEffects',
+    'personalEffects',
     'cycleEvents',
     'appointmentPrep',
     'procedures',
@@ -427,16 +431,19 @@ test('lists every distinct drug name across the given episodes once, sorted, kee
   assert.deepEqual(regimenDrugNames([]), []);
 });
 
+type Drugged = Parameters<typeof excludedClinicianDrugs>[0][number];
+const drugged = (drug: string, drugClass: 'hrt' | 'other') => ({ drug, drugClass }) as Drugged;
+
 test('preserves saved exclusions under alternate spellings after deduplication', () => {
-  const names = ['Estradiol Valerate'];
+  const episodes = [drugged('Estradiol Valerate', 'hrt')];
   const preferences = { ' ESTRADIOL VALERATE ': true, 'Estradiol Valerate': false, Progesterone: true };
 
-  assert.deepEqual([...excludedClinicianDrugs(names, preferences)], ['Estradiol Valerate']);
-  const included = withClinicianDrugIncluded(preferences, names[0], true);
-  assert.deepEqual([...excludedClinicianDrugs(names, included)], []);
+  assert.deepEqual([...excludedClinicianDrugs(episodes, preferences)], ['Estradiol Valerate']);
+  const included = withClinicianDrugIncluded(preferences, 'Estradiol Valerate', true);
+  assert.deepEqual([...excludedClinicianDrugs(episodes, included)], []);
   assert.deepEqual(included, { ' ESTRADIOL VALERATE ': false, 'Estradiol Valerate': false, Progesterone: true });
   const excluded = withClinicianDrugIncluded(included, 'estradiol valerate', false);
-  assert.deepEqual([...excludedClinicianDrugs(names, excluded)], ['Estradiol Valerate']);
+  assert.deepEqual([...excludedClinicianDrugs(episodes, excluded)], ['Estradiol Valerate']);
   assert.deepEqual(excluded, { ' ESTRADIOL VALERATE ': true, 'Estradiol Valerate': true, 'estradiol valerate': true, Progesterone: true });
 });
 
@@ -451,4 +458,88 @@ test('names an ester beside the drug only when the drug name does not already, b
   assert.equal(regimenEsterNote('Spironolactone', null), null);
   assert.equal(regimenEsterNote('Spironolactone', '  '), null);
   assert.equal(regimenEsterNote('Estradiol enanthate-free', 'enanthat'), 'enanthat');
+});
+
+/* Functional-audit ticket 39: the summary is the one thing made to leave
+   the device, so a drug that is not HRT stays off it until the person
+   switches it on. The drug class is FA 18's, stored on the episode. */
+test('a drug of class other is left out by default, and printed once switched on', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, { drug: 'estradiol valerate' });
+  await episode(journal, 19000, { drug: 'Sertraline', ester: null, dose: 50, route: 'oral', interval: 'daily' });
+  const episodes = await journal.regimen.getEpisodes();
+
+  const byDefault = excludedClinicianDrugs(episodes, {});
+  assert.deepEqual([...byDefault], ['Sertraline']);
+  const printed = await journal.clinicianSummary.getSummary(19000, 19020, { excludedDrugs: byDefault });
+  assert.deepEqual(printed.sections.regimen!.history.map((ep) => ep.drug), ['estradiol valerate']);
+
+  const switchedOn = excludedClinicianDrugs(episodes, withClinicianDrugIncluded({}, 'Sertraline', true));
+  assert.deepEqual([...switchedOn], []);
+  const withIt = await journal.clinicianSummary.getSummary(19000, 19020, { excludedDrugs: switchedOn });
+  assert.deepEqual(withIt.sections.regimen!.history.map((ep) => ep.drug).sort(), ['Sertraline', 'estradiol valerate']);
+});
+
+test('a drug name with any HRT episode counts as HRT, and an HRT drug is never off by default', () => {
+  assert.deepEqual([...excludedClinicianDrugs([drugged('Finasteride', 'other'), drugged('finasteride', 'hrt')], {})], []);
+  assert.deepEqual([...excludedClinicianDrugs([drugged('Estradiol', 'hrt')], {})], []);
+  assert.deepEqual([...excludedClinicianDrugs([drugged('Estradiol', 'hrt')], { Estradiol: true })], ['Estradiol']);
+});
+
+/* Changes noticed (functional-audit ticket 39): every personal effect a
+   date has been marked for, oldest first. Not range-filtered, for the
+   reason procedures are not: a marker is one row per effect whose date is
+   replaced in place, a record of what has changed so far rather than an
+   event inside a window. Only what the timeline shows: an effect hidden, or
+   in a category switched off, stays off the page the way it stays off the
+   axis. */
+test('the changes noticed part lists marked personal effects with their first-noticed dates, whatever the range', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const own = await journal.personalEffects.addCustomEffectType('Rings fit looser', null);
+  await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19100 });
+  await journal.personalEffects.upsertMarker({ effect: own.key, firstNoticedEpochDay: 18900 });
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.deepEqual(summary.sections.personalEffects, [
+    { effect: own.key, name: 'Rings fit looser', builtIn: false, firstNoticedEpochDay: 18900 },
+    { effect: 'breast_development', name: summary.sections.personalEffects![1].name, builtIn: true, firstNoticedEpochDay: 19100 }
+  ]);
+});
+
+test('a change whose effect is hidden, or whose category is off, stays off the page', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19100 });
+  await journal.personalEffects.upsertMarker({ effect: 'skin_softening', firstNoticedEpochDay: 19110 });
+  await journal.personalEffects.setEffectTypeHidden('breast_development', true);
+  await journal.effectCategories.setCategoryEnabled('skin_hair', false);
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.deepEqual(summary.sections.personalEffects, []);
+});
+
+/* The side-effects part reads FA 23's ongoing or resolved state. A side
+   effect that began before the range and is still going on was active in
+   it, so it prints; one resolved before the range began was not, so it
+   does not. Each carries its resolved day, for the page to file it under
+   ongoing or resolved. */
+test('side effects are the ones active at any point in the range, each with its resolved day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.sideEffects.upsertSideEffect({ name: 'long ago, over', severity: 2, epochDay: 18800, resolvedEpochDay: 18850 });
+  await journal.sideEffects.upsertSideEffect({ name: 'began before, still going', severity: 3, epochDay: 18900, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'began before, ended inside', severity: null, epochDay: 18950, resolvedEpochDay: 19005 });
+  await journal.sideEffects.upsertSideEffect({ name: 'inside', severity: 1, epochDay: 19010, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'after', severity: 1, epochDay: 19030, resolvedEpochDay: null });
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.deepEqual(
+    summary.sections.sideEffects!.map((effect) => [effect.name, effect.resolvedEpochDay]),
+    [
+      ['began before, still going', null],
+      ['began before, ended inside', 19005],
+      ['inside', null]
+    ]
+  );
 });

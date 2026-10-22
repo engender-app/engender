@@ -200,6 +200,14 @@ await block('release blockers 03 duplicate display values', 10, async () => {
   }
 });
 
+await block('functional-audit 39 clinician summary headings and changes noticed', 2, async () => {
+  const result = await load('/clinician-summary-dossier.html', 'clinician-summary-dossier');
+  for (const item of result.cases) {
+    if (item.passed) ok(item.name);
+    else fail(item.name, item.error ?? 'the rendered dossier did not match');
+  }
+});
+
 await block('archived wear kinds', 8, async () => {
   const r = await load('/wear-labels.html', 'wear-labels-probe');
   if (r.error) throw new Error(r.error);

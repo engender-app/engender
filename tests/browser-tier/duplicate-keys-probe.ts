@@ -94,7 +94,7 @@ await check('clinician dose totals keep distinct tuples with equal joined labels
   const instance = mount(ClinicianSummaryDossier, { target, props: { summary: {
     fromEpochDay: 20000, toEpochDay: 20000, generatedAtEpochDay: 20000,
     sections: {
-      demographics: null, regimen: null, labs: null, sideEffects: null, cycleEvents: null,
+      demographics: null, regimen: null, labs: null, sideEffects: null, personalEffects: null, cycleEvents: null,
       appointmentPrep: null, procedures: null, finishedAreas: null,
       exposure: {
         doseTotals: [
