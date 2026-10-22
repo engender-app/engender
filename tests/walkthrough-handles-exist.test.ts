@@ -99,14 +99,22 @@ const INJECTED_HANDLES: Record<string, string> = {
    that handle. */
 const DELIBERATE_ABSENCE_HANDLES: Record<string, string> = {};
 
+/* A removed surface can still be checked by the walkthrough. Keep its old
+   handle absent from source too, so the browser's negative check stays useful. */
+const REMOVED_HANDLES = new Set(['data-safe-space-photos']);
+
 describe('the walkthrough grips handles that actually exist', () => {
   it('refuses any deliberate-absence handle that names nothing real', () => {
     const unfalsifiable = Object.keys(DELIBERATE_ABSENCE_HANDLES).filter((h) => !existsInSrc(h));
     expect(unfalsifiable).toEqual([]);
   });
 
+  it('keeps removed walkthrough handles out of source', () => {
+    expect([...REMOVED_HANDLES].filter(existsInSrc)).toEqual([]);
+  });
+
   it('finds every handle the walkthrough greps for somewhere in src/', () => {
-    const offenders = [...handles].filter((h) => !(h in INJECTED_HANDLES)).filter((h) => !existsInSrc(h));
+    const offenders = [...handles].filter((h) => !(h in INJECTED_HANDLES) && !REMOVED_HANDLES.has(h)).filter((h) => !existsInSrc(h));
     expect(offenders).toEqual([]);
   });
 });

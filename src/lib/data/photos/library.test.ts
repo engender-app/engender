@@ -35,6 +35,19 @@ test('a source with no photographs draws no chip', () => {
   assert.deepEqual(chipsFor(photos), ['everything', 'body', 'tryouts']);
 });
 
+test('Starred chip appears with starred photos and narrows across source chips', () => {
+  const entry = { ...photo('entry', 'entry', 20000), starred: true };
+  const milestone = { ...photo('milestone', 'milestone', 20001), starred: true };
+  const hair = photo('hair', 'hair', 20002);
+  const photos = [entry, milestone, hair];
+
+  assert.deepEqual(chipsFor(photos), ['everything', 'body', 'hair', 'starred']);
+  assert.deepEqual(narrowTo(photos, 'starred').map((p) => p.id), ['entry', 'milestone']);
+  assert.equal(photoChipFromQuery('starred'), 'starred');
+  assert.equal(chipsFor([hair]).includes('starred'), false);
+  assert.deepEqual(chipsFor([entry]), ['everything', 'body', 'starred']);
+});
+
 test('one source draws no chip row at all: everything and it would be the same grid', () => {
   assert.deepEqual(chipsFor([photo('a', 'entry', 20000), photo('b', 'milestone', 20001)]), []);
   assert.deepEqual(chipsFor([]), []);
