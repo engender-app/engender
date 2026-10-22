@@ -690,7 +690,7 @@
 
         {@render notesBlock()}
 
-      <!-- Phase 4: Recovery Phase (1..90 days post-op) -->
+      <!-- Phase 4: Recovery Phase (any day after surgery, not archived) -->
       {:else if selectedPhase === 'recovery'}
         <SectionHeading text={m.surgery_phase_recovery()} />
         <Notice
@@ -717,7 +717,7 @@
         {@render consultsBlock()}
         {@render consultActions()}
 
-      <!-- Phase 5: Archived Phase (>90 days post-op) -->
+      <!-- Phase 5: Archived Phase (after surgery, archived by the person) -->
       {:else if selectedPhase === 'archived'}
         <SectionHeading text={m.surgery_phase_archived()} />
         <Notice
