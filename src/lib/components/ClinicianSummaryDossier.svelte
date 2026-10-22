@@ -42,7 +42,8 @@
   } from '$lib/data/journal/clinicianSummary';
   import { clinicianSummarySectionName } from '$lib/data/vocabulary/clinicianSummaryLabels';
   import { disclose, resize } from '$lib/motion/reveal';
-  import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, EASE_OUT_SOFT_POINTS, fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { bezier } from '$lib/motion/blindSettle';
   import { travelOnChange } from '$lib/motion/reorder.svelte';
   import type { DoseEvent, DoseRoute, RegimenEpisode, SideEffect } from '$lib/data/types';
   import type { Snippet } from 'svelte';
@@ -141,6 +142,20 @@
       width: `${offsetWidth}px`
     });
     return fadeOnly(crossfadeDuration());
+  }
+
+  /* A part switched on or off on the sheet (functional audit ticket 39)
+     travels its whole height, often several hundred pixels. disclose's
+     own --ease-out leaves at four times its average speed, which put 119px
+     of a 379px part into the first frame; a long travel setting off takes
+     --ease-out-soft over --dur-slow instead, as base.css says, which keeps
+     every frame under about 45px. The height, padding and margin it
+     animates are still disclose's, and so is its reduced-motion cut. */
+  const easeOutSoft = bezier(EASE_OUT_SOFT_POINTS);
+  function partDisclose(node: Element) {
+    const config = disclose(node);
+    if (!config.duration) return config;
+    return { ...config, duration: motionDuration('--dur-slow'), easing: easeOutSoft };
   }
 
   const SECTION_SNIPPETS: { [Key in ClinicianSummarySectionKey]: Snippet<[Section<Key>]> } = {
@@ -814,7 +829,7 @@
        transitions, so the parts drawn with the page do not play them. -->
   {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
     {@const content = summary.sections[key]}
-    {#if content !== null}<div class="dossier-part" data-dossier-part={key} transition:disclose>{@render sectionSnippet(key)(content)}</div>{/if}
+    {#if content !== null}<div class="dossier-part" data-dossier-part={key} transition:partDisclose>{@render sectionSnippet(key)(content)}</div>{/if}
   {/each}
 
   {#if isSummaryEmpty}

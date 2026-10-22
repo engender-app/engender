@@ -287,6 +287,7 @@ describe('HRT drugs by default, the changes noticed, and honest side-effect head
   });
 
   it('opens and closes a part switched on or off rather than painting it whole', () => {
-    expect(dossierComponent).toMatch(/\{#if content !== null\}<div class="dossier-part"[^>]*transition:disclose>/);
+    expect(dossierComponent).toMatch(/\{#if content !== null\}<div class="dossier-part"[^>]*transition:partDisclose>/);
+    expect(dossierComponent).toContain('easing: easeOutSoft');
   });
 });
