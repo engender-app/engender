@@ -285,6 +285,9 @@ beforeAll(async () => {
     journal.dimensions.addPreset({ name: 'Mine', dims: [voice.key, 'femininity'] })
   );
   await drive('dimensions', 'setDimensionHidden', () => journal.dimensions.setDimensionHidden('masculinity', true));
+  await drive('dimensions', 'renameCustomDimension', () =>
+    journal.dimensions.renameCustomDimension(voice.key, { name: 'Voice', low: 'off', high: 'mine' })
+  );
 
   // --- entries --------------------------------------------------------
   // One call touching every table 'entry' covers at once: dims, tags,

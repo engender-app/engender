@@ -64,6 +64,25 @@ test('dimensions hide rather than delete, and their logged values survive hiding
   await assert.rejects(journal.dimensions.setDimensionHidden('nope', true), /unknown dimension/);
 });
 
+test('a custom dimension renames its name and both ends; a built-in or unknown key throws (FA 41)', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  const voice = await journal.dimensions.addCustomDimension({ name: 'Vocie', low: 'strianed', high: 'easy', min: 0, max: 10 });
+  db.raw.prepare('UPDATE gender_dimension SET updated_at = 1 WHERE key = ?').run(voice.key);
+
+  await journal.dimensions.renameCustomDimension(voice.key, { name: 'Voice', low: 'strained', high: 'at ease' });
+
+  const stored = (await journal.dimensions.getDimensions()).find((d) => d.key === voice.key);
+  assert.deepEqual(stored, { ...voice, name: 'Voice', low: 'strained', high: 'at ease' });
+  const updatedAt = db.raw.prepare('SELECT updated_at FROM gender_dimension WHERE key = ?').get(voice.key) as { updated_at: number };
+  assert.ok(updatedAt.updated_at > 1, 'a rename moves updated_at, which Merge reads');
+
+  await assert.rejects(
+    journal.dimensions.renameCustomDimension('femininity', { name: 'x', low: 'a', high: 'b' }),
+    /custom dimension/
+  );
+  await assert.rejects(journal.dimensions.renameCustomDimension('nope', { name: 'x', low: 'a', high: 'b' }), /custom dimension/);
+});
+
 /* milestones */
 
 test('a milestone round-trips without a kind column and updates by id', async () => {
