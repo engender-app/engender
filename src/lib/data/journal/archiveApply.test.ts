@@ -59,6 +59,7 @@ import {
   applyPersonalEffectTypes,
   applyPresets,
   applyProcedures,
+  adoptLegacyRoadmapTracks,
   applyRoadmapChecks,
   applyTagGroups,
   applyTaper,
@@ -519,6 +520,27 @@ test('applyRoadmapChecks skips ticks against the cut social, presentational and 
 
   await applyRoadmapChecks(restoring(driver, { roadmapChecks: checks }, 'replace', 2));
   assert.deepEqual(await select(driver, 'SELECT goal_key FROM roadmap_check'), [{ goal_key: 'pl-legal-court-fee' }]);
+});
+
+/* Round two of ticket 34: an archive from before the person's categories
+   carries custom goals under the cut social, presentational and medical
+   tracks and no roadmapCategories section. Each such track gets a nameless
+   category named by its key, the one migration 98 made, so those goals
+   still show; a category already here (renamed on this device) is left as
+   it is, and legal goals need none. */
+test('adoptLegacyRoadmapTracks gives each cut track a goal still names a category of its own', async () => {
+  const driver = await migratedDb();
+  await driver.run("INSERT INTO roadmap_category (uuid, name, updated_at) VALUES ('social', 'Friends and family', 1)");
+  await driver.run(`INSERT INTO roadmap_goal (uuid, track, text, status, updated_at) VALUES
+    ('g1', 'medical', 'Ask about a second opinion', 'unchecked', 1), ('g2', 'social', 'Tell my sister', 'checked', 1),
+    ('g3', 'legal', 'Find a notary', 'unchecked', 1), ('g4', 'medical', 'Bloods', 'unchecked', 1)`);
+
+  await adoptLegacyRoadmapTracks(restoring(driver, {}, 'merge'));
+
+  assert.deepEqual(await select(driver, 'SELECT uuid, name, updated_at FROM roadmap_category ORDER BY id'), [
+    { uuid: 'social', name: 'Friends and family', updated_at: 1 },
+    { uuid: 'medical', name: '', updated_at: 7 }
+  ]);
 });
 
 // applyChecklists ---------------------------------------------------------------

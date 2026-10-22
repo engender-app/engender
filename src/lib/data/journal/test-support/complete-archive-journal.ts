@@ -226,6 +226,8 @@ export async function seedCompleteArchiveJournal(
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
   await journal.roadmap.addCustomGoal('Tell my sister');
+  const comingOut = await journal.roadmap.addCategory('Coming out');
+  await journal.roadmap.addCustomGoal('Tell my manager', comingOut.id);
 
   const episode = await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',

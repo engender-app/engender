@@ -904,6 +904,10 @@ beforeAll(async () => {
     journal.roadmap.updateCustomGoalText(customGoal.id, 'Tell my sister about the appointment')
   );
   await drive('roadmap', 'deleteCustomGoal', () => journal.roadmap.deleteCustomGoal(customGoal.id));
+  const category = (await drive('roadmap', 'addCategory', () => journal.roadmap.addCategory('Coming out'))) as { id: string };
+  await drive('roadmap', 'renameCategory', () => journal.roadmap.renameCategory(category.id, 'Coming out at work'));
+  await journal.roadmap.addCustomGoal('Tell my manager', category.id);
+  await drive('roadmap', 'deleteCategory', () => journal.roadmap.deleteCategory(category.id));
 
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
@@ -1097,6 +1101,7 @@ beforeAll(async () => {
   await driveRead('roadmap', 'getHiddenGoals', () => journal.roadmap.getHiddenGoals('pl'));
   await driveRead('roadmap', 'getGoalStatuses', () => journal.roadmap.getGoalStatuses('pl'));
   await driveRead('roadmap', 'getCustomGoals', () => journal.roadmap.getCustomGoals());
+  await driveRead('roadmap', 'getCategories', () => journal.roadmap.getCategories());
   await driveRead('stats', 'dayAverages', () => journal.stats.dayAverages('mood', 19000, 21000));
   await driveRead('stats', 'daySpread', () => journal.stats.daySpread('mood', 19000, 21000));
   await driveRead('stats', 'constellationReadings', () =>

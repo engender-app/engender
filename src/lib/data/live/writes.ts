@@ -171,20 +171,17 @@ export const TABLE_NAMES = [
   'videoNote',
   /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
      pack's ticks: they live in one table and a screen shows one pack at a
-     time, so there is nothing a per-pack name would let a query skip.
-
-     Track dismissals (phase 8 features ticket 49) share the name rather
-     than taking one of their own, which is the opposite call from
-     'roadmapGoal' below and for the opposite reason: a dismissed track
-     decides which ticks are even shown, so no screen ever reads one
-     without the other, and a separate name would only buy a re-query of
-     four rows. */
+     time, so there is nothing a per-pack name would let a query skip. */
   'roadmapCheck',
   /* Custom roadmap goals (phase 5 ticket 20), kept apart from
      'roadmapCheck': a screen reading the custom goals someone added
      should not re-query just because a bundled goal's tick changed, and
      the reverse. */
   'roadmapGoal',
+  /* The person's roadmap categories (functional audit ticket 34), apart
+     from 'roadmapGoal' so that ticking a goal does not re-read the
+     category names. */
+  'roadmapCategory',
   /* Checklists and their items alike (phase 5 ticket 05): nothing reads a
      checklist without its items, the same reasoning 'dose' gives. */
   'checklist',
@@ -806,12 +803,16 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       addCustomGoal: ['roadmapGoal'],
       setCustomGoalStatus: ['roadmapGoal'],
       updateCustomGoalText: ['roadmapGoal'],
-      deleteCustomGoal: ['roadmapGoal', 'document']
+      deleteCustomGoal: ['roadmapGoal', 'document'],
+      addCategory: ['roadmapCategory'],
+      renameCategory: ['roadmapCategory'],
+      deleteCategory: ['roadmapCategory', 'roadmapGoal', 'document']
     },
     reads: {
       getHiddenGoals: ['roadmapCheck'],
       getGoalStatuses: ['roadmapCheck'],
-      getCustomGoals: ['roadmapGoal']
+      getCustomGoals: ['roadmapGoal'],
+      getCategories: ['roadmapCategory']
     }
   }),
   checklists: classify<Journal['checklists']>()({

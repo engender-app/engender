@@ -388,6 +388,31 @@ test('a reworded custom goal travels as it now reads, and a deleted one does not
   ]);
 });
 
+/* Functional audit ticket 34, round two: the person's categories travel
+   with the goals in them, and a merge keeps a category this device made
+   that the archive has never heard of. */
+test("a category travels with its goals, and a merge keeps this device's own", async () => {
+  const source = await device();
+  const category = await source.journal.roadmap.addCategory('Coming out');
+  const goal = await source.journal.roadmap.addCustomGoal('Tell my sister', category.id);
+
+  const replaced = await device();
+  await replaced.journal.archive.replace(await exported(source.journal));
+  assert.deepEqual(await replaced.journal.roadmap.getCategories(), [{ id: category.id, name: 'Coming out' }]);
+  assert.deepEqual(await replaced.journal.roadmap.getCustomGoals(), [
+    { id: goal.id, track: category.id, text: 'Tell my sister', status: 'unchecked' }
+  ]);
+
+  const merged = await device();
+  const own = await merged.journal.roadmap.addCategory('Wardrobe');
+  await merged.journal.archive.merge(await exported(source.journal));
+  assert.deepEqual(
+    (await merged.journal.roadmap.getCategories()).map((one) => one.name).sort(),
+    ['Coming out', 'Wardrobe']
+  );
+  assert.ok((await merged.journal.roadmap.getCategories()).some((one) => one.id === own.id));
+});
+
 test('a dose log travels with its schedule and pauses, still hung off the right episode', async () => {
   const source = await populated();
   const target = await device();

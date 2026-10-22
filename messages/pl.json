@@ -2810,6 +2810,35 @@
   "rkr_body": "Klucz odzyskiwania otworzył dziennik. Wybierz, jak ma się otwierać następnym razem. Klucz nadal działa, możesz go wymienić albo usunąć w Ustawieniach.",
   "rkr_title": "Wybierz, jak ma się otwierać dziennik",
   "roadmap_add_goal": "Dodaj krok",
+  "roadmap_category_add": "Dodaj kategorię",
+  "roadmap_category_delete": "Usuń kategorię",
+  "roadmap_category_delete_goals": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Razem z nią zniknie {count} krok. Tego nie da się cofnąć.",
+        "countPlural=few": "Razem z nią znikną {count} kroki. Tego nie da się cofnąć.",
+        "countPlural=many": "Razem z nią zniknie {count} kroków. Tego nie da się cofnąć.",
+        "countPlural=other": "Razem z nią zniknie {count} kroku. Tego nie da się cofnąć."
+      }
+    }
+  ],
+  "roadmap_category_delete_hint": "Nie ma w niej żadnych kroków. Tego nie da się cofnąć.",
+  "roadmap_category_delete_q": "Usunąć kategorię {category}?",
+  "roadmap_category_edit_aria": "Edytuj kategorię: {category}",
+  "roadmap_category_medical": "Medyczna",
+  "roadmap_category_name_label": "Nazwa kategorii",
+  "roadmap_category_new": "Nowa kategoria",
+  "roadmap_category_placeholder": "Coming out, ubrania, praca",
+  "roadmap_category_presentational": "Prezentacyjna",
+  "roadmap_category_save": "Zapisz nazwę",
+  "roadmap_category_social": "Społeczna",
   "roadmap_caveat_pl": "W Polsce nie ma ustawy o uzgodnieniu płci, więc procedura opisana niżej wynika z uchwały Sądu Najwyższego z 4 marca 2025. Przed tym samym sądem wciąż leży pytanie, czy sama niezgodność tożsamości z oznaczeniem płci wystarcza, żeby ją zmienić (III CZP 20/26), więc wynik sprawy nie jest przesądzony.",
   "roadmap_goal_delete": "Usuń krok",
   "roadmap_goal_delete_documents": [
@@ -2854,6 +2883,7 @@
   "roadmap_goal_pl_legal_institutions": "Bank, ubezpieczyciele, przychodnia, operator telefonu",
   "roadmap_goal_pl_legal_name_usc": "Decyzja USC o zmianie imienia",
   "roadmap_goal_pl_legal_new_birth_copy": "Nowy odpis aktu urodzenia",
+  "roadmap_goal_pl_legal_opinions": "Opinia psychologa i opinia lekarza do wniosku",
   "roadmap_goal_pl_legal_passport": "Nowy paszport",
   "roadmap_goal_pl_legal_pesel": "Wzmianka w akcie urodzenia i nowy PESEL",
   "roadmap_goal_pl_legal_remote_hearing": "7 dni na wniosek o rozprawę zdalną",
@@ -2893,6 +2923,7 @@
   "roadmap_note_pl_legal_institutions": "Każda instytucja zmienia dane osobno, na podstawie nowego dowodu i odpisu postanowienia.",
   "roadmap_note_pl_legal_name_usc": "Potrzebna, jeśli sąd nie objął imienia postanowieniem. Opłata skarbowa 37 zł, odwołanie do wojewody.",
   "roadmap_note_pl_legal_new_birth_copy": "Odpisy zamówione wcześniej mają nieaktualne dane.",
+  "roadmap_note_pl_legal_opinions": "Do wniosku zwykle dołącza się opinię psychologa oraz opinię psychiatry albo seksuologa, obie z kodem rozpoznania. Oryginały warto zachować, a sądowi dać kopie.",
   "roadmap_note_pl_legal_passport": "Paszport traci ważność najpóźniej po 120 dniach od zarejestrowania zmiany, a bywa traktowany jako nieważny od razu.",
   "roadmap_note_pl_legal_pesel": "Sąd przesyła postanowienie do USC miejsca urodzenia. Licz się z tym, że o nowy numer trzeba będzie się upominać. Urzędowy termin to 30 dni, a zmiana nic nie kosztuje.",
   "roadmap_note_pl_legal_remote_hearing": "Termin liczy się od doręczenia zawiadomienia o rozprawie.",
@@ -2908,7 +2939,6 @@
   "roadmap_state_checked": "zaznaczone",
   "roadmap_state_not_my_path": "nie moja droga",
   "roadmap_state_unchecked": "niezaznaczone",
-  "roadmap_steps_heading": "Kroki",
   "roadmap_title": "Mapa tranzycji",
   "roadmap_track_steps_left": [
     {

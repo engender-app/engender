@@ -85,8 +85,10 @@ for (const mode of ['merge', 'replace'] as const) {
       await runMigrations(sourceDb, noopFileOps(), migrations.filter((migration) => migration.version <= 90));
       // The snapshot below reads with this build's sections. The legacy shape
       // under test is the stock table's, so the columns later migrations add
-      // to other archived tables are added here (v93: drug_class).
+      // to other archived tables are added here (v93: drug_class), and so
+      // are the archived tables they create (v98: roadmap_category).
       await sourceDb.exec("ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other'");
+      await sourceDb.exec('CREATE TABLE roadmap_category (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE, name TEXT NOT NULL, updated_at INTEGER NOT NULL)');
       await source.reconcileBuiltIns();
       for (const [id, drug, quantity, day, updated] of [
         ['first', firstDrug, 7, 20010, 200], ['last', lastDrug, 59, 20000, 100]

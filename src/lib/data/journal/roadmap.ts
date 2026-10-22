@@ -13,15 +13,15 @@
    it is added regardless of its tick, and 'unchecked' is an ordinary
    value of that same row's `status` column.
 
-   A custom goal's `track` column predates functional audit ticket 34,
-   which left the roadmap one list. Goals written before it keep the
-   social, presentational or medical track they were filed under, and
-   nothing reads it any more; new ones are written as 'legal', the one
-   track left. The column stays so an older archive's goals restore as they
-   were written. */
+   A custom goal's `track` column says where the goal sits. Functional
+   audit ticket 34 left one built-in group, the Polish legal steps, written
+   'legal', and gave the person categories of their own (roadmap_category),
+   whose uuid a goal in one of them holds. A goal written before the trim
+   under social, presentational or medical sits in a category migration 98
+   made for that track, its uuid the track key. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { CustomRoadmapGoal, RoadmapGoalStatus } from '../types';
+import type { CustomRoadmapGoal, RoadmapCategory, RoadmapGoalStatus } from '../types';
 import { assertChanged, mintUuid, now } from './support';
 
 export interface RoadmapArea {
@@ -36,11 +36,12 @@ export interface RoadmapArea {
   /** Visibility only: never changes status, milestones or documents. */
   setGoalHidden(packKey: string, goalKey: string, hidden: boolean): Promise<void>;
 
-  /** Every custom goal across every track, in the order they were added -
-      the order a screen appends them in after the pack's bundled goals. */
+  /** Every custom goal in every group, in the order they were added -
+      the order a screen appends them in to their group. */
   getCustomGoals(): Promise<CustomRoadmapGoal[]>;
-  /** Starts unchecked, appended to the end of the list. */
-  addCustomGoal(text: string): Promise<CustomRoadmapGoal>;
+  /** Starts unchecked, appended to the end of its group: `track` is 'legal'
+      for the Polish legal steps (the default) or a category's uuid. */
+  addCustomGoal(text: string, track?: string): Promise<CustomRoadmapGoal>;
   setCustomGoalStatus(id: string, status: RoadmapGoalStatus): Promise<void>;
   /** The person's own words, so they can be changed after the fact
       (phase 8 features ticket 69, ADR-0068). Throws on an unknown id the
@@ -57,6 +58,16 @@ export interface RoadmapArea {
       note about where it belonged goes. A built-in goal has no counterpart
       to any of this: there is no row, so there is nothing to delete. */
   deleteCustomGoal(id: string): Promise<void>;
+
+  /** The person's categories, in the order they were made. */
+  getCategories(): Promise<RoadmapCategory[]>;
+  addCategory(name: string): Promise<RoadmapCategory>;
+  /** Throws on an unknown id, like `updateCustomGoalText`. */
+  renameCategory(id: string, name: string): Promise<void>;
+  /** Removes the category and every goal in it, unfiling the paper filed
+      against those goals the way `deleteCustomGoal` does; a milestone one
+      of them minted keeps its link. Idempotent (ADR-0053). */
+  deleteCategory(id: string): Promise<void>;
 }
 
 export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
@@ -120,9 +131,8 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
       return rows.map((row) => ({ id: row.uuid, track: row.track, text: row.text, status: row.status }));
     },
 
-    async addCustomGoal(text) {
+    async addCustomGoal(text, track = 'legal') {
       const uuid = mintUuid();
-      const track = 'legal';
       await driver.run('INSERT INTO roadmap_goal (uuid, track, text, status, updated_at) VALUES (?, ?, ?, ?, ?)', [
         uuid,
         track,
@@ -164,6 +174,37 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
           [id]
         );
         await driver.run('DELETE FROM roadmap_goal WHERE uuid = ?', [id]);
+      });
+    },
+
+    async getCategories() {
+      const rows = await driver.query<{ uuid: string; name: string }>('SELECT uuid, name FROM roadmap_category ORDER BY id');
+      return rows.map((row) => ({ id: row.uuid, name: row.name }));
+    },
+
+    async addCategory(name) {
+      const uuid = mintUuid();
+      await driver.run('INSERT INTO roadmap_category (uuid, name, updated_at) VALUES (?, ?, ?)', [uuid, name, now()]);
+      return { id: uuid, name };
+    },
+
+    async renameCategory(id, name) {
+      const result = await driver.run('UPDATE roadmap_category SET name = ?, updated_at = ? WHERE uuid = ?', [
+        name,
+        now(),
+        id
+      ]);
+      assertChanged(result, `roadmap category: ${id}`);
+    },
+
+    async deleteCategory(id) {
+      await driver.transaction(async (driver) => {
+        await driver.run(
+          "UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'goal' AND target_id IN (SELECT uuid FROM roadmap_goal WHERE track = ?)",
+          [id]
+        );
+        await driver.run('DELETE FROM roadmap_goal WHERE track = ?', [id]);
+        await driver.run('DELETE FROM roadmap_category WHERE uuid = ?', [id]);
       });
     }
   };

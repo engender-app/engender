@@ -338,3 +338,69 @@ test('hidden unchecked goals survive status changes and restore to sparse storag
   await journal.roadmap.setGoalHidden('pl', key, false);
   assert.equal((await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM roadmap_check'))[0].n, 0);
 });
+
+/* The person's own categories (functional audit ticket 34, round two:
+   "it should be possible to add your own goal/category"). A category is a
+   uuid row with a name; a custom goal names the category it sits in
+   through its `track`, which is 'legal' for the Polish legal steps and a
+   category's uuid otherwise. */
+
+test('a category gets a minted uuid, keeps its name, and comes back in the order added', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  const first = await journal.roadmap.addCategory('Coming out');
+  const second = await journal.roadmap.addCategory('Wardrobe');
+
+  assert.match(first.id, UUID_PATTERN);
+  assert.deepEqual(await journal.roadmap.getCategories(), [
+    { id: first.id, name: 'Coming out' },
+    { id: second.id, name: 'Wardrobe' }
+  ]);
+});
+
+test('a goal added into a category names that category, and the legal steps stay the default', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const category = await journal.roadmap.addCategory('Coming out');
+
+  const own = await journal.roadmap.addCustomGoal('Tell my sister', category.id);
+  const legal = await journal.roadmap.addCustomGoal('Find a notary');
+
+  assert.deepEqual(await journal.roadmap.getCustomGoals(), [
+    { id: own.id, track: category.id, text: 'Tell my sister', status: 'unchecked' },
+    { id: legal.id, track: 'legal', text: 'Find a notary', status: 'unchecked' }
+  ]);
+});
+
+test('a category can be renamed, and renaming one that is not there fails loudly', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const category = await journal.roadmap.addCategory('Comming out');
+
+  await journal.roadmap.renameCategory(category.id, 'Coming out');
+
+  assert.deepEqual(await journal.roadmap.getCategories(), [{ id: category.id, name: 'Coming out' }]);
+  await assert.rejects(() => journal.roadmap.renameCategory('not-a-real-uuid', 'Anything'));
+});
+
+test('removing a category removes its goals, unfiles their paper, and leaves every other goal', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const gone = await journal.roadmap.addCategory('Coming out');
+  const kept = await journal.roadmap.addCategory('Wardrobe');
+  const inGone = await journal.roadmap.addCustomGoal('Tell my sister', gone.id);
+  const inKept = await journal.roadmap.addCustomGoal('Shoes that fit', kept.id);
+  const legal = await journal.roadmap.addCustomGoal('Find a notary');
+  const page = () => ({ full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+  const filed = await journal.documents.addDocument({ epochDay: 20400, title: 'Letter' }, page());
+  await journal.documents.setDocumentTarget(filed, { kind: 'goal', id: inGone.id });
+
+  await journal.roadmap.deleteCategory(gone.id);
+  await journal.roadmap.deleteCategory(gone.id);
+
+  assert.deepEqual(await journal.roadmap.getCategories(), [{ id: kept.id, name: 'Wardrobe' }]);
+  assert.deepEqual(
+    (await journal.roadmap.getCustomGoals()).map((goal) => goal.id),
+    [inKept.id, legal.id]
+  );
+  const unfiled = (await journal.documents.getDocument(filed))!;
+  assert.equal(unfiled.title, 'Letter');
+  assert.equal(unfiled.targetId, null);
+});

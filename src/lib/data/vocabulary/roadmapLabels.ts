@@ -27,7 +27,8 @@
    reason the notes carry deadlines and fees rather than recommendations. */
 
 import { m } from '$lib/paraglide/messages';
-import type { RoadmapGoalKey, RoadmapPackKey } from '../roadmap';
+import type { LEGACY_ROADMAP_TRACKS, RoadmapGoalKey, RoadmapPackKey } from '../roadmap';
+import type { RoadmapCategory } from '../types';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -58,6 +59,7 @@ const GOAL_TITLE: Record<RoadmapGoalKey, Message> = {
   'pl-legal-birth-certificate': m.roadmap_goal_pl_legal_birth_certificate,
   'pl-legal-which-court': m.roadmap_goal_pl_legal_which_court,
   'pl-legal-court-fee': m.roadmap_goal_pl_legal_court_fee,
+  'pl-legal-opinions': m.roadmap_goal_pl_legal_opinions,
   'pl-legal-application': m.roadmap_goal_pl_legal_application,
   'pl-legal-file-it': m.roadmap_goal_pl_legal_file_it,
   'pl-legal-formal-defects': m.roadmap_goal_pl_legal_formal_defects,
@@ -83,6 +85,7 @@ const GOAL_TITLE: Record<RoadmapGoalKey, Message> = {
 const GOAL_NOTE: Partial<Record<RoadmapGoalKey, Message>> = {
   'pl-legal-which-court': m.roadmap_note_pl_legal_which_court,
   'pl-legal-court-fee': m.roadmap_note_pl_legal_court_fee,
+  'pl-legal-opinions': m.roadmap_note_pl_legal_opinions,
   'pl-legal-application': m.roadmap_note_pl_legal_application,
   'pl-legal-file-it': m.roadmap_note_pl_legal_file_it,
   'pl-legal-formal-defects': m.roadmap_note_pl_legal_formal_defects,
@@ -136,3 +139,18 @@ export const roadmapGoalNote = (goal: RoadmapGoalKey): string | null => GOAL_NOT
 /** A second, independent line for a goal whose first note has one. */
 export const roadmapGoalNoteSecondary = (goal: RoadmapGoalKey): string | null =>
   GOAL_NOTE_SECONDARY[goal]?.() ?? null;
+
+/* The names of the tracks functional audit ticket 34 cut, for the nameless
+   categories migration 98 made out of them (roadmap.ts,
+   LEGACY_ROADMAP_TRACKS). Said in the current language until somebody
+   renames the category. */
+const LEGACY_CATEGORY_NAME: Record<(typeof LEGACY_ROADMAP_TRACKS)[number], Message> = {
+  social: m.roadmap_category_social,
+  presentational: m.roadmap_category_presentational,
+  medical: m.roadmap_category_medical
+};
+
+/** A category's heading: what the person named it, or a cut track's own
+    name for a category migration 98 made and nobody has renamed. */
+export const roadmapCategoryName = (category: RoadmapCategory): string =>
+  category.name || (LEGACY_CATEGORY_NAME[category.id as keyof typeof LEGACY_CATEGORY_NAME]?.() ?? '');

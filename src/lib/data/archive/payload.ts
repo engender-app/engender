@@ -317,6 +317,13 @@ export interface ArchiveRoadmapCheck {
     uuid like any other user-owned row - unlike ArchiveRoadmapCheck, it
     carries data of its own (a track and its text) rather than naming
     bundled content, so it travels whether or not it is checked. */
+/** A category the person made on the roadmap (functional audit ticket 34),
+    named by its own uuid like any other user-owned row. */
+interface ArchiveRoadmapCategory {
+  id: string;
+  name: string;
+}
+
 interface ArchiveRoadmapGoal {
   id: string;
   track: string;
@@ -789,6 +796,7 @@ export interface ArchiveJournal {
   letters: ArchiveLetter[];
   voicePracticeTakes: ArchiveVoicePracticeTake[];
   roadmapChecks: ArchiveRoadmapCheck[];
+  roadmapCategories: ArchiveRoadmapCategory[];
   roadmapGoals: ArchiveRoadmapGoal[];
   regimenEpisodes: ArchiveRegimenEpisode[];
   doseEvents: ArchiveDoseEvent[];
@@ -1000,6 +1008,7 @@ const postAlphaSections = [
   'letters',
   'voicePracticeTakes',
   'roadmapChecks',
+  'roadmapCategories',
   'roadmapGoals',
   'regimenEpisodes',
   'doseEvents',

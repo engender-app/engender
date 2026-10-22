@@ -8,7 +8,9 @@ import { test, expect } from 'vitest';
 import {
   POLISH_PACK,
   ROADMAP_PACKS,
+  LEGACY_ROADMAP_TRACKS,
   isCutTrackGoal,
+  ownStepsLeft,
   polishLegalStepsShown,
   roadmapList,
   roadmapStepsLeft,
@@ -23,7 +25,7 @@ const allGoals = ROADMAP_PACKS.flatMap((pack) => pack.goals);
    the most clinical text outside Care, so only the court procedure and its
    paperwork stay. */
 test('the Polish pack holds the legal steps and nothing else', () => {
-  expect(POLISH_PACK.goals.length).toBe(23);
+  expect(POLISH_PACK.goals.length).toBe(24);
   for (const goal of POLISH_PACK.goals) expect(goal.key.startsWith('pl-legal-')).toBe(true);
   expect(POLISH_PACK.goals[0].key).toBe('pl-legal-birth-certificate');
   expect(POLISH_PACK.goals.at(-1)!.key).toBe('pl-legal-document-set');
@@ -71,7 +73,7 @@ test('a second pack satisfies the same shape without any change to it', () => {
     goals: [{ key: 'xx-legal-first' }, { key: 'xx-legal-second' }]
   } satisfies RoadmapPack;
 
-  expect(roadmapList(stub, true, [], []).goals.map((goal) => goal.key)).toEqual(['xx-legal-first', 'xx-legal-second']);
+  expect(roadmapList(stub, true, [], [], []).goals.map((goal) => goal.key)).toEqual(['xx-legal-first', 'xx-legal-second']);
 });
 
 test('a stored tick is cut only when it names one of the three dropped tracks', () => {
@@ -92,50 +94,86 @@ test('the Polish legal steps follow the locale until somebody answers the switch
   expect(polishLegalStepsShown(false, 'pl')).toBe(false);
 });
 
-const CUSTOM = [
-  /* Tracks a custom goal was filed under before the trim. They stay what the
-     person wrote, so the list carries them whatever track they name. */
-  { id: 'c1', track: 'medical', text: 'Ask about a second opinion', status: 'unchecked' as const },
-  { id: 'c2', track: 'social', text: 'Come out to my book club', status: 'checked' as const },
-  { id: 'c3', track: 'legal', text: 'Find a notary', status: 'unchecked' as const }
+const CATEGORIES = [
+  { id: 'k1', name: 'Coming out' },
+  /* A category migration 98 made from a track cut before round two: its
+     uuid is the old track key and its name is empty until somebody gives it
+     one, so the screen says the old track's name in the current language. */
+  { id: 'medical', name: '' },
+  { id: 'k2', name: 'Nothing here yet' }
 ];
 
-test('with the switch on, the list is the whole pack and every custom goal', () => {
-  const list = roadmapList(POLISH_PACK, true, CUSTOM, []);
+const CUSTOM = [
+  { id: 'c1', track: 'medical', text: 'Ask about a second opinion', status: 'unchecked' as const },
+  { id: 'c2', track: 'k1', text: 'Come out to my book club', status: 'checked' as const },
+  { id: 'c3', track: 'legal', text: 'Find a notary', status: 'unchecked' as const },
+  { id: 'c4', track: 'k1', text: 'Tell my sister', status: 'unchecked' as const }
+];
+
+test('with the switch on, the legal group is the whole pack and the goals added to it', () => {
+  const list = roadmapList(POLISH_PACK, true, CUSTOM, [], CATEGORIES);
   expect(list.goals.map((goal) => goal.key)).toEqual(POLISH_PACK.goals.map((goal) => goal.key));
-  expect(list.customGoals).toEqual(CUSTOM);
+  expect(list.legalGoals.map((goal) => goal.id)).toEqual(['c3']);
 });
 
-test('with the switch off, no Polish step shows and custom goals are untouched', () => {
-  const list = roadmapList(POLISH_PACK, false, CUSTOM, []);
-  expect(list.goals).toEqual([]);
-  expect(list.customGoals).toEqual(CUSTOM);
+test('every category of the person shows with its own goals, an empty one included, in the order made', () => {
+  const list = roadmapList(POLISH_PACK, true, CUSTOM, [], CATEGORIES);
+  expect(list.categories.map(({ category, goals }) => [category.id, goals.map((goal) => goal.id)])).toEqual([
+    ['k1', ['c2', 'c4']],
+    ['medical', ['c1']],
+    ['k2', []]
+  ]);
+});
+
+test('with the switch off, no Polish step shows and the person\'s categories are untouched', () => {
+  const on = roadmapList(POLISH_PACK, true, CUSTOM, [], CATEGORIES);
+  const off = roadmapList(POLISH_PACK, false, CUSTOM, [], CATEGORIES);
+  expect(off.goals).toEqual([]);
+  expect(off.legalGoals).toEqual([]);
+  expect(off.categories).toEqual(on.categories);
 });
 
 test('hidden built-in goals leave the list and the remaining count', () => {
   const key = 'pl-legal-court-fee';
-  const before = roadmapList(POLISH_PACK, true, CUSTOM, []);
-  const after = roadmapList(POLISH_PACK, true, CUSTOM, [key]);
+  const before = roadmapList(POLISH_PACK, true, CUSTOM, [], CATEGORIES);
+  const after = roadmapList(POLISH_PACK, true, CUSTOM, [key], CATEGORIES);
   expect(after.goals.some((goal) => goal.key === key)).toBe(false);
-  expect(after.customGoals).toEqual(before.customGoals);
+  expect(after.legalGoals).toEqual(before.legalGoals);
   expect(roadmapStepsLeft(after, () => 'unchecked')).toBe(roadmapStepsLeft(before, () => 'unchecked') - 1);
 });
 
-test('steps left counts unchecked built-ins and custom goals, and not-my-path resolves one', () => {
-  const list = roadmapList(POLISH_PACK, true, CUSTOM, []);
+test('steps left counts the legal group, built-ins and own goals, and not-my-path resolves one', () => {
+  const list = roadmapList(POLISH_PACK, true, CUSTOM, [], CATEGORIES);
   const statuses: Record<string, RoadmapGoalStatus> = { 'pl-legal-court-fee': 'checked', 'pl-legal-appeal': 'not-my-path' };
-  expect(roadmapStepsLeft(list, (key) => statuses[key] ?? 'unchecked')).toBe(POLISH_PACK.goals.length - 2 + 2);
-  expect(roadmapStepsLeft(roadmapList(POLISH_PACK, false, CUSTOM, []), () => 'checked')).toBe(2);
+  expect(roadmapStepsLeft(list, (key) => statuses[key] ?? 'unchecked')).toBe(POLISH_PACK.goals.length - 2 + 1);
+  expect(ownStepsLeft(list.categories[0].goals)).toBe(1);
+  expect(ownStepsLeft(list.categories[2].goals)).toBe(0);
 });
 
-test('the roadmap screen draws one list, gated by the switch, with no track picker', () => {
+test('a track cut before round two is a legacy category key, and nothing else is', () => {
+  expect([...LEGACY_ROADMAP_TRACKS]).toEqual(['social', 'presentational', 'medical']);
+});
+
+/* Functional audit ticket 34 (decided by Alicja on 2026-10-22): the court
+   application attaches a psychologist's and a doctor's opinion, and with
+   the medical track gone no legal step named them. */
+test("the legal steps name the psychologist's and doctor's opinions, just before the application", () => {
+  const keys = POLISH_PACK.goals.map((goal) => goal.key) as string[];
+  expect(keys).toContain('pl-legal-opinions');
+  expect(keys.indexOf('pl-legal-opinions')).toBe(keys.indexOf('pl-legal-application') - 1);
+});
+
+test('the roadmap screen draws the legal group and the person\'s categories, gated by the switch', () => {
   /* Read as source rather than mounted: what is under test is where the
      screen gets its rows from. A screen filtering the pack for itself could
      show a Polish step with the switch off and no test above would notice. */
   const screen = readFileSync(new URL('../../routes/transition/roadmap/+page.svelte', import.meta.url), 'utf8');
 
   expect(screen).toContain('polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale())');
-  expect(screen).toContain('roadmapList(pack, polishShown, customGoals, hiddenGoals)');
+  expect(screen).toContain('roadmapList(pack, polishShown, customGoals, hiddenGoals, categories)');
+  expect(screen).toContain('journal.roadmap.addCategory(');
+  expect(screen).toContain('journal.roadmap.renameCategory(');
+  expect(screen).toContain('journal.roadmap.deleteCategory(');
   expect(screen).not.toContain('<Segmented');
   expect(screen).not.toContain('data-track-toggle');
   expect(screen).toContain('prefs.roadmapMilestoneSyncEnabled = v');

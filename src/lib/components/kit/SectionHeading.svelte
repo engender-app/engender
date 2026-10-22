@@ -14,9 +14,15 @@
     id,
     focusable = false,
     action,
-    sub
+    sub,
+    crossfade = false
   }: {
     text: string;
+    /** For a heading whose words the person can change while it is on
+        screen (a roadmap category renamed in place, functional audit ticket
+        34): the old and the new words crossfade in one grid cell, the way
+        `sub` does, rather than swapping in one frame. */
+    crossfade?: boolean;
     /** A second line under the heading saying which part of the area comes
         first - the Journal's month over its first day (ux-carpet ticket 282).
         An empty string draws the line with nothing on it yet (its
@@ -48,7 +54,13 @@
 </script>
 
 <div class="kit-heading" data-section-heading id={focusable ? undefined : id}>
-  {#if focusable}
+  {#if crossfade}
+    <h2 class="kit-heading-fade">
+      {#key text}
+        <span transition:subFade>{text}</span>
+      {/key}
+    </h2>
+  {:else if focusable}
     <h2 {id} tabindex="-1">{text}</h2>
   {:else}
     <h2>{text}</h2>
@@ -81,5 +93,7 @@
     font-weight: var(--weight-medium);
     line-height: 1.3;
   }
-  .kit-heading-sub > * { grid-area: 1 / 1; }
+  .kit-heading-sub > *,
+  .kit-heading-fade > * { grid-area: 1 / 1; }
+  .kit-heading-fade { display: grid; }
 </style>

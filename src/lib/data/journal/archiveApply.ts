@@ -24,7 +24,7 @@
 import { foldText } from '../fold';
 import { drugNameKey } from '../regimenEpisode';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource';
-import { isCutTrackGoal } from '../roadmap';
+import { LEGACY_ROADMAP_TRACKS, isCutTrackGoal } from '../roadmap';
 import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
@@ -673,6 +673,21 @@ export async function applyMilestones({ driver, journal, ts }: Restoring): Promi
    An unchecked row exists only to hold visibility, so it can take the
    Archive's status while keeping this device's hidden flag. Replace has
    already emptied the table before this runs. */
+/** After the custom goals land: an archive written before functional audit
+    ticket 34's round two has goals under the cut social, presentational and
+    medical tracks and no categories, so each such track gets the nameless
+    category migration 98 made for it, its uuid the track key. A category
+    already here keeps its name, on a merge as on a replace. */
+export async function adoptLegacyRoadmapTracks({ driver, ts }: Restoring): Promise<void> {
+  await driver.run(
+    `INSERT OR IGNORE INTO roadmap_category (uuid, name, updated_at)
+       SELECT track, '', ? FROM roadmap_goal
+         WHERE track IN (${LEGACY_ROADMAP_TRACKS.map(() => '?').join(', ')})
+         GROUP BY track ORDER BY MIN(id)`,
+    [ts, ...LEGACY_ROADMAP_TRACKS]
+  );
+}
+
 export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Promise<void> {
   /* Two identity columns, so the present map is built here rather than through
      presentIds, which reads a single id column. A newline joins the pair

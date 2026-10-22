@@ -61,6 +61,7 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   videoNote: ['video_note'],
   roadmapCheck: ['roadmap_check'],
   roadmapGoal: ['roadmap_goal'],
+  roadmapCategory: ['roadmap_category'],
   // The recovery checklist is an ordinary checklist row (writes.ts's own
   // comment on `procedures`), so it lives here and not under 'procedure'.
   checklist: ['checklist', 'checklist_item'],

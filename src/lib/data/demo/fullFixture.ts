@@ -195,13 +195,16 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     }
   }
 
-  // Roadmap: a few ticks across the legal steps, plus one custom goal.
+  // Roadmap: a few ticks across the legal steps, plus a category of the
+  // person's own with two goals in it, one done.
   for (const goal of POLISH_PACK.goals) {
     if (r() < 0.65) continue;
     await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, r() < 0.85 ? 'checked' : 'not-my-path');
   }
-  const customGoal = await journal.roadmap.addCustomGoal('Tell my sister');
+  const comingOut = await journal.roadmap.addCategory('Coming out');
+  const customGoal = await journal.roadmap.addCustomGoal('Tell my sister', comingOut.id);
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
+  await journal.roadmap.addCustomGoal('Tell my manager', comingOut.id);
 
   // Letters: two already unlockable, two still sealed.
   await journal.letters.addLetter({ epochDay: today - 400, text: 'Dear future me, HRT starts next month.', unlockEpochDay: today - 200 });

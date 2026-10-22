@@ -2762,6 +2762,33 @@
   "rkr_body": "Your recovery key opened the journal. Choose how to open it next time. The recovery key keeps working; you can replace or remove it in Settings.",
   "rkr_title": "Choose how your journal opens",
   "roadmap_add_goal": "Add goal",
+  "roadmap_category_add": "Add category",
+  "roadmap_category_delete": "Delete category",
+  "roadmap_category_delete_goals": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Its {count} goal goes with it. This cannot be undone.",
+        "countPlural=other": "Its {count} goals go with it. This cannot be undone."
+      }
+    }
+  ],
+  "roadmap_category_delete_hint": "It has no goals in it. This cannot be undone.",
+  "roadmap_category_delete_q": "Delete {category}?",
+  "roadmap_category_edit_aria": "Edit category: {category}",
+  "roadmap_category_medical": "Medical",
+  "roadmap_category_name_label": "Category name",
+  "roadmap_category_new": "New category",
+  "roadmap_category_placeholder": "Coming out, wardrobe, work",
+  "roadmap_category_presentational": "Presentation",
+  "roadmap_category_save": "Save name",
+  "roadmap_category_social": "Social",
   "roadmap_caveat_pl": "Poland has no gender recognition statute, so the procedure below follows from a Supreme Court resolution of 4 March 2025. Whether a mismatch between identity and the recorded sex is on its own enough to change it is still before that court (III CZP 20/26), so the outcome of a case is not a given.",
   "roadmap_goal_delete": "Delete step",
   "roadmap_goal_delete_documents": [
@@ -2804,6 +2831,7 @@
   "roadmap_goal_pl_legal_institutions": "Bank, insurers, clinic, phone operator",
   "roadmap_goal_pl_legal_name_usc": "The USC decision changing your first name",
   "roadmap_goal_pl_legal_new_birth_copy": "A fresh copy of the birth certificate",
+  "roadmap_goal_pl_legal_opinions": "The psychologist’s and doctor’s opinions for the application",
   "roadmap_goal_pl_legal_passport": "A new passport",
   "roadmap_goal_pl_legal_pesel": "The annotation on the birth certificate, and a new PESEL",
   "roadmap_goal_pl_legal_remote_hearing": "Seven days to ask for a remote hearing",
@@ -2843,6 +2871,7 @@
   "roadmap_note_pl_legal_institutions": "Each one handles it separately, off the new ID card and a copy of the ruling.",
   "roadmap_note_pl_legal_name_usc": "Needed if the court ruling did not cover the name. The fee is 37 zł, and an appeal goes to the wojewoda.",
   "roadmap_note_pl_legal_new_birth_copy": "Copies ordered earlier still carry the old details.",
+  "roadmap_note_pl_legal_opinions": "The application usually attaches a psychologist’s opinion and one from a psychiatrist or sexologist, both giving the diagnosis code. Keep the originals and give the court copies.",
   "roadmap_note_pl_legal_passport": "The passport expires no later than 120 days after the change is registered, and is sometimes treated as void at once.",
   "roadmap_note_pl_legal_pesel": "The court sends the ruling to the USC where you were born. Expect to have to chase the new number; the official deadline is 30 days and it costs nothing.",
   "roadmap_note_pl_legal_remote_hearing": "Counted from delivery of the notice of the hearing date.",
@@ -2858,7 +2887,6 @@
   "roadmap_state_checked": "checked",
   "roadmap_state_not_my_path": "not my path",
   "roadmap_state_unchecked": "not checked",
-  "roadmap_steps_heading": "Steps",
   "roadmap_title": "Transition roadmap",
   "roadmap_track_steps_left": [
     {

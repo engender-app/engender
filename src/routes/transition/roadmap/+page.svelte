@@ -29,12 +29,15 @@
      "keep opinions" goal is exactly the case where paper arrives before a
      tick ever could.
 
-     Functional audit ticket 34 left one list: the Polish court procedure,
-     behind a "Polish legal steps" switch that follows the app's language
-     until somebody answers it, and the person's own goals under it. The
-     social, presentational and medical tracks went, and with them the
-     track switcher and the per-track "not my path", which the switch now
-     says for the only track left. The roadmap-to-milestone prompt moved
+     Functional audit ticket 34 left one built-in group, the Polish court
+     procedure, behind a "Polish legal steps" switch that follows the app's
+     language until somebody answers it. The social, presentational and
+     medical tracks went, and with them the track switcher and the per-track
+     "not my path", which the switch now says for the only group left. Under
+     it, whatever the switch says, sit the person's own categories: each one
+     named, renamed and removed by them, with goals of their own in it
+     (round two, Alicja at sign-off: "it should be possible to add your own
+     goal/category"). The roadmap-to-milestone prompt moved
      here from the notifications screen, beside the switch, since it is
      about this screen's ticks and nothing else. The count beside the
      heading says how many steps are still unchecked, in words rather than
@@ -51,7 +54,9 @@
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
   import { getLocale } from '$lib/paraglide/runtime';
   import {
+    LEGAL_GROUP,
     POLISH_PACK,
+    ownStepsLeft,
     polishLegalStepsShown,
     roadmapList,
     roadmapStepsLeft,
@@ -63,6 +68,7 @@
   import {
     roadmapGoalNote,
     roadmapGoalNoteSecondary,
+    roadmapCategoryName,
     roadmapGoalTitle,
     roadmapPackCaveat,
     roadmapPackMarkerNote,
@@ -108,6 +114,9 @@
   let customQuery = liveList((j) => j.roadmap.getCustomGoals());
   let customGoals = $derived(customQuery.rows);
 
+  let categoryQuery = liveList((j) => j.roadmap.getCategories());
+  let categories = $derived(categoryQuery.rows);
+
   /* The switch (functional audit ticket 34). Null until somebody touches
      it, and null follows the language: on for Polish, off otherwise. The
      ticks stay stored either way, so switching back brings back exactly
@@ -118,10 +127,10 @@
   let hiddenGoals = $derived(hiddenQuery.value ?? []);
   let hiddenBuiltIns = $derived(pack.goals.filter((goal) => hiddenGoals.includes(goal.key)));
   let hiddenGoalsOpen = $state(false);
-  let list = $derived(roadmapList(pack, polishShown, customGoals, hiddenGoals));
+  let list = $derived(roadmapList(pack, polishShown, customGoals, hiddenGoals, categories));
   let stepsLeft = $derived(roadmapStepsLeft(list, (key) => statuses[key] ?? 'unchecked'));
-  let anySteps = $derived(list.goals.length + list.customGoals.length > 0);
-  let loaded = $derived(!statusQuery.loading && !customQuery.loading && !hiddenQuery.loading);
+  let anySteps = $derived(list.goals.length + list.legalGoals.length > 0);
+  let loaded = $derived(!statusQuery.loading && !customQuery.loading && !hiddenQuery.loading && !categoryQuery.loading);
   const fadeCount = (_node: Element) =>
     fadeOnly(Math.max(motionDuration('--dur-fast'), crossfadeDuration()));
 
@@ -195,8 +204,14 @@
     return m.roadmap_state_unchecked();
   }
 
-  let adding = $state(false);
+  /* Which group the new-goal sheet adds to: LEGAL_GROUP or a category's
+     uuid. Null while the sheet is closed. */
+  let addingTo = $state<string | null>(null);
   let newGoalText = $state('');
+  const startAddingGoal = (group: string) => {
+    addingTo = group;
+    newGoalText = '';
+  };
 
   /* The goal sheet (ticket 56, ADR-0068): identity only, never a status
      snapshot, so the sheet keeps reading the live tick after it opens
@@ -301,11 +316,61 @@
   const addGoalWrite = writer();
   async function addGoal() {
     const text = newGoalText.trim();
-    if (!text) return;
-    if (!(await addGoalWrite.run(() => journal.roadmap.addCustomGoal(text), m.write_failed()))) return;
-    adding = false;
+    const group = addingTo;
+    if (!text || group === null) return;
+    if (!(await addGoalWrite.run(() => journal.roadmap.addCustomGoal(text, group), m.write_failed()))) return;
+    addingTo = null;
     toast(m.saved(), { kind: 'record-saved' });
   }
+
+  /* The person's categories (round two). A new one is a name and nothing
+     else; renaming and removing live in its own sheet, opened from the
+     pencil on its heading, the place a control for the area as a whole
+     goes (SectionHeading's `action`). */
+  let addingCategory = $state(false);
+  let newCategoryName = $state('');
+  const addCategoryWrite = writer();
+  async function addCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    if (!(await addCategoryWrite.run(() => journal.roadmap.addCategory(name), m.write_failed()))) return;
+    addingCategory = false;
+    toast(m.saved(), { kind: 'record-saved' });
+  }
+
+  /* Identity only, like the goal sheet: the name shown is read live. */
+  let selectedCategoryId = $state<string | null>(null);
+  let selectedCategory = $derived(categories.find((one) => one.id === selectedCategoryId) ?? null);
+  let selectedCategoryName = $derived(selectedCategory ? roadmapCategoryName(selectedCategory) : '');
+  let categoryDraft = $state('');
+  let goalsInSelectedCategory = $derived(customGoals.filter((goal) => goal.track === selectedCategoryId).length);
+  const openCategory = (category: { id: string; name: string }) => {
+    selectedCategoryId = category.id;
+    categoryDraft = roadmapCategoryName(category);
+  };
+  let canSaveCategory = $derived(
+    selectedCategory !== null && categoryDraft.trim() !== '' && categoryDraft.trim() !== selectedCategoryName
+  );
+  const categoryWrite = writer();
+  const saveCategoryName = async () => {
+    if (!canSaveCategory) return;
+    const id = selectedCategoryId!;
+    const name = categoryDraft.trim();
+    if (await categoryWrite.run(() => journal.roadmap.renameCategory(id, name), m.write_failed())) {
+      selectedCategoryId = null;
+      toast(m.saved(), { kind: 'record-saved' });
+    }
+  };
+  let confirmingCategoryDelete = $state(false);
+  const removingCategory = deleter();
+  const deleteCategory = async () => {
+    const id = selectedCategoryId;
+    if (id === null) return;
+    if (!(await removingCategory.run(() => journal.roadmap.deleteCategory(id)))) return;
+    confirmingCategoryDelete = false;
+    selectedCategoryId = null;
+    toast(m.record_deleted(), { kind: 'record-deleted' });
+  };
 
   let sourceId = $derived(page.url.searchParams.get('goal'));
   let sourceBuiltin = $derived(pack.goals.find((goal) => goal.key === sourceId));
@@ -332,6 +397,54 @@
      clip-path alone (after-release 28, audit V08). -->
 {#snippet struck(text: string)}
   <span class="roadmap-strike-text">{text}<span class="roadmap-strike-lines" aria-hidden="true"><span>{text}</span></span></span>
+{/snippet}
+
+<!-- A goal the person wrote, in whichever group it sits. -->
+{#snippet customRow(goal: { id: string; track: string; text: string; status: RoadmapGoalStatus })}
+  <div class="kit-row is-split" data-goal={goal.id} data-status={goal.status}>
+    <button
+      type="button"
+      class="kit-row-main"
+      aria-label={`${goal.text} — ${stateLabel(goal.status)}`}
+      onclick={() => toggleCustom(goal)}
+    >
+      <span
+        class="roadmap-box"
+        class:roadmap-ticked={goal.status === 'checked'}
+        class:roadmap-skip={goal.status === 'not-my-path'}
+      >
+        <span class="roadmap-tick" class:roadmap-tick-shown={goal.status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
+        <span class="roadmap-tick" class:roadmap-tick-shown={goal.status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
+      </span>
+      <span class="kit-row-text">
+        <span
+          class="kit-row-title"
+          class:roadmap-done={goal.status === 'checked'}
+          class:roadmap-skip-text={goal.status === 'not-my-path'}
+        >
+          {@render struck(goal.text)}
+        </span>
+      </span>
+    </button>
+    <button
+      type="button"
+      class="kit-row-act press"
+      data-open-goal={goal.id}
+      aria-label={m.roadmap_goal_open_aria({ goal: goal.text })}
+      onclick={() => openCustomGoal(goal)}
+    >
+      <Icon name="chevronRight" size={18} />
+    </button>
+  </div>
+{/snippet}
+
+<!-- The last row of every group: a goal of the person's own, added to that
+     group. -->
+{#snippet addGoalRow(group: string)}
+  <button class="kit-row" data-add-goal={group} onclick={() => startAddingGoal(group)}>
+    <span class="roadmap-box add-icon"><Icon name="plus" size={20} /></span>
+    <span class="kit-row-text"><span class="kit-row-title muted">{m.roadmap_new_goal()}</span></span>
+  </button>
 {/snippet}
 
 <div class="screen">
@@ -407,152 +520,165 @@
       </div>
     {/if}
 
-    <SectionHeading text={m.roadmap_steps_heading()}>
-      {#snippet action()}
-        <span class="roadmap-steps" data-roadmap-steps-left>
-          {#if anySteps}
-            {#key stepsLeft}
-              <span transition:fadeCount>{m.roadmap_track_steps_left({ n: stepsLeft })}</span>
-            {/key}
-          {/if}
-        </span>
-      {/snippet}
-    </SectionHeading>
-    <ListCard role={roleAt(activeFlag.roles, 1)}>
-      <!-- Every row below is hand-rolled rather than ListRow (ticket 16):
-           .roadmap-box is a three-state control (checked/not-my-path/
-           unchecked, two different glyphs), which ListRow's binary
-           `checked` has no room for, and the done/skip title styling needs
-           a class ListRow's plain `title` string can't carry.
-
-           The split shape (ticket 56, ADR-0068) is still ListRow's own,
-           borrowed for its classes rather than the component: the tap that
-           cycles the tick is `.kit-row-main`, and `.kit-row-act` opens the
-           goal's own sheet, on every row whether ticked or not. The glyph
-           on it is a chevron rather than the paper one: the sheet holds the
-           tick, the milestone and the documents, and an icon naming one of
-           the three reads as though it were all of it.
-
-           The pack's rows travel as one block when the switch turns them
-           on or off, so the list grows and shrinks once rather than 23
-           times, and only the part the screen shows travels (`onScreen`:
-           the block is about 3000px, and travelled whole its edge crossed
-           the screen in one frame). A single row hidden or put back still
-           discloses on its own. `rows-divide` keeps the hairline between the block and the
-           first custom goal under it. -->
-      {#if list.goals.length > 0}
-        <div class="rows-divide" data-roadmap-pack-goals transition:disclose={{ onScreen: true }}>
-          {#each list.goals as goal (goal.key)}
-            {@const status = statuses[goal.key] ?? 'unchecked'}
-            <div class="kit-row is-split" data-goal={goal.key} data-status={status} transition:disclose>
-              <button
-                type="button"
-                class="kit-row-main"
-                aria-label={`${roadmapGoalTitle(goal.key)} — ${stateLabel(status)}`}
-                onclick={() => toggleBuiltIn(goal.key)}
-              >
-                <!-- Both glyphs stay in the markup and cross on opacity and a
-                     scale rather than being added and removed (ux-carpet
-                     ticket 236, the same fix appointment-prep's .ap-tick
-                     already carries): a glyph that appears in one frame is a
-                     yank in both directions, and which one shows is on the
-                     box's own classes. -->
-                <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
-                  <span class="roadmap-tick" class:roadmap-tick-shown={status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
-                  <span class="roadmap-tick" class:roadmap-tick-shown={status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
-                </span>
-                <span class="kit-row-text">
-                  <span
-                    class="kit-row-title"
-                    class:roadmap-done={status === 'checked'}
-                    class:roadmap-skip-text={status === 'not-my-path'}
-                  >
-                    {@render struck(roadmapGoalTitle(goal.key))}
-                  </span>
-                  {#if roadmapGoalNote(goal.key)}
-                    <span class="kit-row-sub">{roadmapGoalNote(goal.key)}</span>
-                  {/if}
-                  {#if roadmapGoalNoteSecondary(goal.key)}
-                    <span class="kit-row-sub">{roadmapGoalNoteSecondary(goal.key)}</span>
-                  {/if}
-                </span>
-              </button>
-              <button
-                type="button"
-                class="kit-row-act press"
-                data-open-goal={goal.key}
-                aria-label={m.roadmap_goal_open_aria({ goal: roadmapGoalTitle(goal.key) })}
-                onclick={() => openBuiltInGoal(goal.key)}
-              >
-                <Icon name="chevronRight" size={18} />
-              </button>
-            </div>
-          {/each}
-        </div>
-      {/if}
-      {#each list.customGoals as goal (goal.id)}
-        <div class="kit-row is-split" data-goal={goal.id} data-status={goal.status}>
-          <button
-            type="button"
-            class="kit-row-main"
-            aria-label={`${goal.text} — ${stateLabel(goal.status)}`}
-            onclick={() => toggleCustom(goal)}
-          >
-            <span
-              class="roadmap-box"
-              class:roadmap-ticked={goal.status === 'checked'}
-              class:roadmap-skip={goal.status === 'not-my-path'}
-            >
-              <span class="roadmap-tick" class:roadmap-tick-shown={goal.status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
-              <span class="roadmap-tick" class:roadmap-tick-shown={goal.status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
-            </span>
-            <span class="kit-row-text">
-              <span
-                class="kit-row-title"
-                class:roadmap-done={goal.status === 'checked'}
-                class:roadmap-skip-text={goal.status === 'not-my-path'}
-              >
-                {@render struck(goal.text)}
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            class="kit-row-act press"
-            data-open-goal={goal.id}
-            aria-label={m.roadmap_goal_open_aria({ goal: goal.text })}
-            onclick={() => openCustomGoal(goal)}
-          >
-            <Icon name="chevronRight" size={18} />
-          </button>
-        </div>
-      {/each}
-      <button
-        class="kit-row"
-        data-add-goal
-        onclick={() => {
-          adding = true;
-          newGoalText = '';
-        }}
-      >
-        <span class="roadmap-box add-icon"><Icon name="plus" size={20} /></span>
-        <span class="kit-row-text"><span class="kit-row-title muted">{m.roadmap_new_goal()}</span></span>
-      </button>
-    </ListCard>
-
-    <!-- The sources and the checked-on date carry no warning about how to
-         read the list above - unlike the caveat and the marker note, which
-         stay at the top - so they close the screen rather than open it. -->
+    <!-- The Polish legal steps, the one built-in group, and the goals the
+         person added to it; all of it shows and hides with the switch, as
+         one block that travels only the part the screen shows (`onScreen`:
+         the group is about 3000px, and travelled whole its edge crossed the
+         screen in one frame). The sources and the checked-on date close the
+         group rather than the screen, since they are about these steps. -->
     {#if polishShown}
-      <p class="roadmap-sources muted small" data-roadmap-sources transition:disclose>
-        {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
-      </p>
+      <section class="roadmap-group" data-roadmap-legal transition:disclose={{ onScreen: true }}>
+        <SectionHeading text={m.roadmap_polish_steps_title()}>
+          {#snippet action()}
+            <span class="roadmap-steps" data-roadmap-steps-left>
+              {#if anySteps}
+                {#key stepsLeft}
+                  <span transition:fadeCount>{m.roadmap_track_steps_left({ n: stepsLeft })}</span>
+                {/key}
+              {/if}
+            </span>
+          {/snippet}
+        </SectionHeading>
+        <ListCard role={roleAt(activeFlag.roles, 1)}>
+          <!-- Every row below is hand-rolled rather than ListRow (ticket 16):
+               .roadmap-box is a three-state control (checked/not-my-path/
+               unchecked, two different glyphs), which ListRow's binary
+               `checked` has no room for, and the done/skip title styling needs
+               a class ListRow's plain `title` string can't carry.
+
+               The split shape (ticket 56, ADR-0068) is still ListRow's own,
+               borrowed for its classes rather than the component: the tap that
+               cycles the tick is `.kit-row-main`, and `.kit-row-act` opens the
+               goal's own sheet, on every row whether ticked or not. The glyph
+               on it is a chevron rather than the paper one: the sheet holds the
+               tick, the milestone and the documents, and an icon naming one of
+               the three reads as though it were all of it.
+
+               A single row hidden or put back discloses on its own, and
+               `rows-divide` keeps the hairline between the pack's rows and
+               the first goal of the person's own under them. -->
+          {#if list.goals.length > 0}
+            <div class="rows-divide" data-roadmap-pack-goals>
+              {#each list.goals as goal (goal.key)}
+                {@const status = statuses[goal.key] ?? 'unchecked'}
+                <div class="kit-row is-split" data-goal={goal.key} data-status={status} transition:disclose>
+                  <button
+                    type="button"
+                    class="kit-row-main"
+                    aria-label={`${roadmapGoalTitle(goal.key)} — ${stateLabel(status)}`}
+                    onclick={() => toggleBuiltIn(goal.key)}
+                  >
+                    <!-- Both glyphs stay in the markup and cross on opacity and a
+                         scale rather than being added and removed (ux-carpet
+                         ticket 236, the same fix appointment-prep's .ap-tick
+                         already carries): a glyph that appears in one frame is a
+                         yank in both directions, and which one shows is on the
+                         box's own classes. -->
+                    <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
+                      <span class="roadmap-tick" class:roadmap-tick-shown={status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
+                      <span class="roadmap-tick" class:roadmap-tick-shown={status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
+                    </span>
+                    <span class="kit-row-text">
+                      <span
+                        class="kit-row-title"
+                        class:roadmap-done={status === 'checked'}
+                        class:roadmap-skip-text={status === 'not-my-path'}
+                      >
+                        {@render struck(roadmapGoalTitle(goal.key))}
+                      </span>
+                      {#if roadmapGoalNote(goal.key)}
+                        <span class="kit-row-sub">{roadmapGoalNote(goal.key)}</span>
+                      {/if}
+                      {#if roadmapGoalNoteSecondary(goal.key)}
+                        <span class="kit-row-sub">{roadmapGoalNoteSecondary(goal.key)}</span>
+                      {/if}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    class="kit-row-act press"
+                    data-open-goal={goal.key}
+                    aria-label={m.roadmap_goal_open_aria({ goal: roadmapGoalTitle(goal.key) })}
+                    onclick={() => openBuiltInGoal(goal.key)}
+                  >
+                    <Icon name="chevronRight" size={18} />
+                  </button>
+                </div>
+              {/each}
+            </div>
+          {/if}
+          <!-- Each row in a wrapper of its own so the disclosure belongs to
+               the each block that adds and removes it (a transition inside
+               a snippet is not that block's), and .rows-divide keeps the
+               hairlines between them. -->
+          {#each list.legalGoals as goal (goal.id)}
+            <div class="rows-divide" transition:disclose>{@render customRow(goal)}</div>
+          {/each}
+          {@render addGoalRow(LEGAL_GROUP)}
+        </ListCard>
+        <p class="roadmap-sources muted small" data-roadmap-sources>
+          {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
+        </p>
+      </section>
     {/if}
+
+    <!-- The person's own categories, whatever the switch says. A category
+         arrives and leaves as one block, heading and card together, and a
+         rename crossfades its heading in place. -->
+    {#each list.categories as { category, goals } (category.id)}
+      {@const left = ownStepsLeft(goals)}
+      <section class="roadmap-group" data-roadmap-category={category.id} transition:disclose>
+        <SectionHeading text={roadmapCategoryName(category)} crossfade>
+          {#snippet action()}
+            <span class="roadmap-heading-act">
+              <span class="roadmap-steps" data-category-steps-left>
+                {#if goals.length > 0}
+                  {#key left}
+                    <span transition:fadeCount>{m.roadmap_track_steps_left({ n: left })}</span>
+                  {/key}
+                {/if}
+              </span>
+              <button
+                type="button"
+                class="icon-btn press"
+                data-edit-category={category.id}
+                aria-label={m.roadmap_category_edit_aria({ category: roadmapCategoryName(category) })}
+                onclick={() => openCategory(category)}
+              >
+                <Icon name="pencil" size={18} />
+              </button>
+            </span>
+          {/snippet}
+        </SectionHeading>
+        <ListCard role={roleAt(activeFlag.roles, 2)}>
+          {#each goals as goal (goal.id)}
+            <div class="rows-divide" transition:disclose>{@render customRow(goal)}</div>
+          {/each}
+          {@render addGoalRow(category.id)}
+        </ListCard>
+      </section>
+    {/each}
+
+    <div class="roadmap-new-category">
+      <ListCard>
+        <button
+          class="kit-row"
+          data-add-category
+          onclick={() => {
+            addingCategory = true;
+            newCategoryName = '';
+          }}
+        >
+          <span class="roadmap-box add-icon"><Icon name="plus" size={20} /></span>
+          <span class="kit-row-text"><span class="kit-row-title muted">{m.roadmap_category_new()}</span></span>
+        </button>
+      </ListCard>
+    </div>
   </ReadReserve>
 </div>
 
-<Sheet busy={addGoalWrite.busy} open={adding} title={m.roadmap_new_goal()} onClose={() => (adding = false)}>
-  {#if adding}
+<Sheet busy={addGoalWrite.busy} open={addingTo !== null} title={m.roadmap_new_goal()} onClose={() => (addingTo = null)}>
+  {#if addingTo !== null}
     <h3>{m.roadmap_new_goal()}</h3>
     <Field label={m.roadmap_new_goal()} id="newgoal-input" hidden>
       {#snippet children(id)}
@@ -570,6 +696,64 @@
     </button>
   {/if}
 </Sheet>
+
+<Sheet busy={addCategoryWrite.busy} open={addingCategory} title={m.roadmap_category_new()} onClose={() => (addingCategory = false)}>
+  {#if addingCategory}
+    <h3>{m.roadmap_category_new()}</h3>
+    <Field label={m.roadmap_category_name_label()} id="newcategory-input" hidden>
+      {#snippet children(id)}
+        <input autocomplete={journalTextAutocomplete()}
+          class="input"
+          {id}
+          name="newcategory-input"
+          placeholder={m.roadmap_category_placeholder()}
+          bind:value={newCategoryName}
+        />
+      {/snippet}
+    </Field>
+    <button class="btn btn-primary" data-save-new-category disabled={!newCategoryName.trim() || addCategoryWrite.busy} onclick={addCategory}>
+      <span>{m.roadmap_category_add()}</span>
+    </button>
+  {/if}
+</Sheet>
+
+<!-- A category's own sheet: its name, and removing it. Removing takes its
+     goals with it, so the confirmation counts them. -->
+<Sheet busy={categoryWrite.busy} open={selectedCategory !== null} title={selectedCategoryName} onClose={() => (selectedCategoryId = null)}>
+  {#if selectedCategory}
+    <h3>{selectedCategoryName}</h3>
+    <div class="goal-edit">
+      <Field label={m.roadmap_category_name_label()} id="category-name">
+        {#snippet children(id)}
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="category-name" bind:value={categoryDraft} />
+        {/snippet}
+      </Field>
+      <button class="btn btn-primary press" data-save-category disabled={!canSaveCategory || categoryWrite.busy} onclick={saveCategoryName}>
+        <span>{m.roadmap_category_save()}</span>
+      </button>
+      <button class="btn btn-ghost press" data-delete-category onclick={() => (confirmingCategoryDelete = true)}>
+        <Icon name="trash" size={18} />
+        <span>{m.roadmap_category_delete()}</span>
+      </button>
+    </div>
+  {/if}
+</Sheet>
+
+<ConfirmDeleteSheet
+  open={confirmingCategoryDelete}
+  title={m.roadmap_category_delete()}
+  question={m.roadmap_category_delete_q({ category: selectedCategoryName })}
+  hint={goalsInSelectedCategory > 0
+    ? m.roadmap_category_delete_goals({ count: goalsInSelectedCategory })
+    : m.roadmap_category_delete_hint()}
+  confirmLabel={m.roadmap_category_delete()}
+  cancelLabel={m.keep_it()}
+  confirmAttrs={{ 'data-confirm-delete-category': '', 'data-goals': String(goalsInSelectedCategory) }}
+  onConfirm={deleteCategory}
+  onCancel={() => { confirmingCategoryDelete = false; removingCategory.dismiss(); }}
+  busy={removingCategory.busy}
+  failed={removingCategory.failed}
+/>
 
 <RoadmapMilestonePromptSheet
   open={promptGoal !== null}
@@ -711,7 +895,20 @@
   }
 
   .roadmap-sources {
-    margin: var(--space-5) 0 0;
+    margin: var(--space-3) 0 0;
+  }
+
+  /* The count and the pencil on a category's heading, side by side at the
+     heading's far end. */
+  .roadmap-heading-act {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: auto;
+  }
+
+  .roadmap-new-category {
+    margin-top: var(--space-6);
   }
 
   /* An empty square until it is ticked, so a row reads as a checkbox

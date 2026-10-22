@@ -51,6 +51,7 @@ const POLISH_GOALS = [
   { key: 'pl-legal-birth-certificate' },
   { key: 'pl-legal-which-court' },
   { key: 'pl-legal-court-fee' },
+  { key: 'pl-legal-opinions' },
   { key: 'pl-legal-application' },
   { key: 'pl-legal-file-it' },
   { key: 'pl-legal-formal-defects' },
@@ -114,39 +115,67 @@ export function polishLegalStepsShown(choice: boolean | null, locale: string): b
   return choice ?? locale === 'pl';
 }
 
-/** The roadmap as the screen draws it: the pack's goals still in view, and
-    every custom goal. */
-export interface RoadmapList<K extends string, C> {
-  /** Empty while the pack's steps are switched off. The stored ticks are
-      untouched, so switching back brings back exactly what was ticked. */
-  readonly goals: readonly RoadmapGoal<K>[];
-  /** Every custom goal, whatever track it was filed under. A goal written
-      before ticket 34 may name social, presentational or medical; it is
-      still the person's own words and stays on the list. */
-  readonly customGoals: readonly C[];
+/** The tracks cut by functional audit ticket 34 that a custom goal could
+    still name. Migration 98 gave each one holding a goal a category whose
+    uuid is the track key and whose name is empty, and a restore of an older
+    archive does the same, so the person's own goals keep their grouping.
+    roadmapLabels.ts says such a category's name in the current language
+    until somebody renames it. */
+export const LEGACY_ROADMAP_TRACKS = ['social', 'presentational', 'medical'] as const;
+
+/** Where a custom goal sits: `LEGAL_GROUP` for the Polish legal steps, the
+    one built-in group, or the uuid of one of the person's categories. */
+export const LEGAL_GROUP = 'legal';
+
+interface OwnGoal {
+  readonly track: string;
+  readonly status: RoadmapGoalStatus;
 }
 
-export function roadmapList<K extends string, C>(
+/** The roadmap as the screen draws it: the Polish legal group, and every
+    category the person made with the goals they put in it. */
+export interface RoadmapList<K extends string, C, Cat> {
+  /** The pack's goals still in view. Empty while the switch is off; the
+      stored ticks are untouched, so switching back brings back exactly
+      what was ticked. */
+  readonly goals: readonly RoadmapGoal<K>[];
+  /** Goals the person added to the legal group, shown and hidden with it. */
+  readonly legalGoals: readonly C[];
+  /** Every category, an empty one included, in the order they were made,
+      whatever the switch says: they are the person's own. */
+  readonly categories: readonly { readonly category: Cat; readonly goals: readonly C[] }[];
+}
+
+export function roadmapList<K extends string, C extends OwnGoal, Cat extends { readonly id: string }>(
   pack: RoadmapPack<K>,
   shown: boolean,
   customGoals: readonly C[],
-  hiddenGoals: readonly string[]
-): RoadmapList<K, C> {
+  hiddenGoals: readonly string[],
+  categories: readonly Cat[]
+): RoadmapList<K, C, Cat> {
   const hidden = new Set(hiddenGoals);
   return {
     goals: shown ? pack.goals.filter((goal) => !hidden.has(goal.key)) : [],
-    customGoals
+    legalGoals: shown ? customGoals.filter((goal) => goal.track === LEGAL_GROUP) : [],
+    categories: categories.map((category) => ({
+      category,
+      goals: customGoals.filter((goal) => goal.track === category.id)
+    }))
   };
 }
 
-/** Remaining work in the list, as a plain count rather than a fraction of
-    the whole pack (DIRECTION.md rule 16). `not-my-path` counts as resolved
-    the same way `checked` does: a step somebody has ruled out is not one
-    they are still on. */
-export function roadmapStepsLeft<K extends string, C extends { readonly status: RoadmapGoalStatus }>(
-  list: RoadmapList<K, C>,
+/** Remaining work in the legal group, as a plain count rather than a
+    fraction of the whole pack (DIRECTION.md rule 16). `not-my-path` counts
+    as resolved the same way `checked` does: a step somebody has ruled out
+    is not one they are still on. */
+export function roadmapStepsLeft<K extends string, C extends OwnGoal, Cat>(
+  list: RoadmapList<K, C, Cat>,
   statusOf: (key: K) => RoadmapGoalStatus
 ): number {
-  return list.goals.filter((goal) => statusOf(goal.key) === 'unchecked').length +
-    list.customGoals.filter((goal) => goal.status === 'unchecked').length;
+  return list.goals.filter((goal) => statusOf(goal.key) === 'unchecked').length + ownStepsLeft(list.legalGoals);
+}
+
+/** The same count for goals the person wrote, which carry their own tick. */
+export function ownStepsLeft(goals: readonly { readonly status: RoadmapGoalStatus }[]): number {
+  return goals.filter((goal) => goal.status === 'unchecked').length;
 }

@@ -556,7 +556,11 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       'addCustomGoal',
       'setCustomGoalStatus',
       'updateCustomGoalText',
-      'deleteCustomGoal'
+      'deleteCustomGoal',
+      'getCategories',
+      'addCategory',
+      'renameCategory',
+      'deleteCategory'
     ]),
     checklists,
     stats,
