@@ -881,7 +881,7 @@
         </ListCard>
       </div>
     {:else if providersQuery.failed}
-      <Notice title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => providersQuery.retry() }} />
+      <Notice key="providers-failed" title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => providersQuery.retry() }} />
     {:else if !providersQuery.loading}
       <Notice
         icon="note"
