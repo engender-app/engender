@@ -106,6 +106,7 @@
   const labelFade = (_node: Element) =>
     !doorActive() || stillArriving() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast'));
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { journeyAnchorLine } from '$lib/data/journeyAnchor';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
@@ -260,6 +261,13 @@
   })();
   let countPending = $derived(entryCountQuery.loading || journalBoundsQuery.loading);
   const countFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
+
+  /* How long ago the journey anchor was (functional audit 33), counted from
+     the milestone the person marked in Milestones and re-read with `today`,
+     so a Home left open across a month boundary moves from "30 days" to
+     "1 month" the same way the greeting moves to the new day. The mirror
+     is filled before the first paint, so the line is there when Home is. */
+  const anchorLine = $derived(journeyAnchorLine(vocabulary.journeyAnchor, today));
 
   $effect(() => {
     if (!doorActive()) return;
@@ -783,6 +791,18 @@
     <div class="home-foot" data-home-foot>
       <div class="home-foot-lines">
         <p class="home-hello" data-home-hello>{prefs.name ? m.home_hello_named({ name: prefs.name, date: fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' }) }) : fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <!-- How long since the journey anchor (functional audit 33): one
+             line, absent when no anchor is set or the anchor is still
+             ahead. Between the day and the count, since it is the fact
+             about the person's own journey and the count is about the
+             journal. It opens and closes its own height when the anchor is
+             set or cleared on a settled screen, and a new count of months
+             crosses in place, the two lines in one grid cell. -->
+        {#if anchorLine}
+          <p class="home-anchor" data-home-anchor transition:collapse={panel}>
+            {#key anchorLine}<span transition:labelFade>{anchorLine}</span>{/key}
+          </p>
+        {/if}
         <!-- How much is here, and since when. The streak stood in this slot
              and was a run that could break; this only grows. Same size as the
              greeting above it, so the foot reads as today, then history, and
@@ -1500,12 +1520,23 @@
   }
   .home-foot-lines { flex: 1; min-width: 0; }
   .home-hello,
+  .home-anchor,
   .home-count {
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     margin: 0;
   }
   .home-hello { color: var(--text); }
+  /* The anchor line is history too, so it takes the count's shade. One grid
+     cell for both spans of a crossing month, so the line keeps its height
+     while the old count fades out over the new one. */
+  .home-anchor {
+    display: grid;
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+    text-wrap: balance;
+  }
+  .home-anchor > span { grid-area: 1 / 1; }
   /* The count line takes the greeting's own size and weight rather than a
      step of its own, one shade quieter: the foot reads as today, then
      history, and neither is a score. Tabular numerals so the figure does not

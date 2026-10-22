@@ -21,6 +21,8 @@ import { ui } from '$lib/stores/ui.svelte';
 import { HOME_AREA_ROLE, tileRoleAt } from '$lib/theme/roles';
 import { activeFlag } from '$lib/theme/activeFlag.svelte';
 import { LIVE_TILE_ORDER, LIVE_TILE_PREF_KEY } from '$lib/data/liveTiles';
+import { calendarDuration } from '$lib/data/epochDay';
+import { journeyAnchorLine } from '$lib/data/journeyAnchor';
 
 export async function homeContracts(): Promise<Result[]> {
   const results: Result[] = [];
@@ -41,6 +43,10 @@ export async function homeContracts(): Promise<Result[]> {
   await check(
     'Home hides the count when no entry exists',
     () => !root().querySelector('[data-home-count]')
+  );
+  await check(
+    'Home draws no time-since line without a journey anchor',
+    () => !root().querySelector('[data-home-anchor]')
   );
   await check('Getting started offers five destinations including More without dismiss', () => {
     const section = node(root(), '[data-getting-started]');
@@ -237,6 +243,48 @@ export async function homeContracts(): Promise<Result[]> {
     globalThis.Date = RealDate;
   }
   await screen.remove();
+  /* Functional audit 33: with a journey anchor, the foot says how long ago
+     it was, and a Home that stays mounted moves the count on when the day
+     completes another month. The anchor sits 45 days back, and the clock is
+     walked to the eve of the second month and then onto it. */
+  const anchorDay = today - 45;
+  const anchorId = await f.journal.milestones.upsertMilestone({ name: 'Started HRT', epochDay: anchorDay });
+  f.preferences!.journeyAnchorMilestoneId = anchorId;
+  let monthDay = today + 1;
+  while (calendarDuration(anchorDay, monthDay).months < 2) monthDay++;
+  screen = await mountScreen('/', f);
+  await check('Home says how long ago the journey anchor was', async () => {
+    await until(() => root().querySelector('[data-home-anchor]'), 'anchor line');
+    return node(root(), '[data-home-anchor]').textContent === journeyAnchorLine({ name: 'Started HRT', epochDay: anchorDay }, today);
+  });
+  let anchorShift = 0;
+  class AnchorShiftedDate extends RealDate {
+    constructor(...args: unknown[]) {
+      super(...((args.length ? args : [RealDate.now() + anchorShift]) as [number]));
+    }
+    static now() {
+      return RealDate.now() + anchorShift;
+    }
+  }
+  globalThis.Date = AnchorShiftedDate as DateConstructor;
+  try {
+    const lineOn = async (day: number) => {
+      anchorShift = (day - today) * 86_400_000;
+      document.dispatchEvent(new Event('visibilitychange'));
+      const expected = journeyAnchorLine({ name: 'Started HRT', epochDay: anchorDay }, day);
+      await until(() => node(root(), '[data-home-anchor]').textContent === expected || null, `anchor line on ${day}`);
+      return expected;
+    };
+    await check('The time-since line moves on across a month boundary without a reload', async () => {
+      const eve = await lineOn(monthDay - 1);
+      const after = await lineOn(monthDay);
+      return eve === 'Started HRT, 1 month ago' && after === 'Started HRT, 2 months ago';
+    });
+  } finally {
+    globalThis.Date = RealDate;
+  }
+  await screen.remove();
+  f.preferences!.journeyAnchorMilestoneId = null;
   screen = await mountScreen('/more', f);
   await check('More keeps Safe Space and milestones destinations', async () => {
     await until(() => root().querySelector('a[href="/doubt"]'), 'More rows');
