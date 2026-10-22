@@ -3115,6 +3115,7 @@
   "surgery_consult_deleted": "Consult deleted.",
   "surgery_consult_question_add": "Add a question",
   "surgery_consult_question_hint": "It goes on the appointment prep list.",
+  "surgery_consult_question_label": "Question",
   "surgery_consult_question_placeholder": "What do you want to ask?",
   "surgery_consult_question_sheet": "A question for a consult",
   "surgery_consult_sheet": "Add a consult date",

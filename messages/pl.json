@@ -3173,6 +3173,7 @@
   "surgery_consult_deleted": "Usunięto konsultację.",
   "surgery_consult_question_add": "Dodaj pytanie",
   "surgery_consult_question_hint": "Trafi na listę pytań na wizytę.",
+  "surgery_consult_question_label": "Pytanie",
   "surgery_consult_question_placeholder": "O co chcesz zapytać?",
   "surgery_consult_question_sheet": "Pytanie na konsultację",
   "surgery_consult_sheet": "Dodaj termin konsultacji",

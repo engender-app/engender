@@ -864,7 +864,7 @@
   <Sheet busy={sheetWrite.busy} open={questionSheet} title={m.surgery_consult_question_sheet()} onClose={() => (questionSheet = false)}>
     <h3>{m.surgery_consult_question_sheet()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consult_question_hint()}</p>
-    <Field label={m.surgery_consult_question_sheet()} id="surgery-consult-question" hidden>
+    <Field label={m.surgery_consult_question_label()} id="surgery-consult-question" hidden>
       {#snippet children(id)}
         <input autocomplete={journalTextAutocomplete()}
           class="input"
