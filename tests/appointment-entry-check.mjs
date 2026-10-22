@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium, settlePage, dateValue, fieldValue } from './browser-harness.mjs';
+import { fillDate, fillTime, launchChromium, settlePage, dateValue, fieldValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -47,8 +47,11 @@ async function valuesMatch() {
 }
 
 async function fieldOrder() {
+  // Who (functional-audit ticket 27) answers the kind, so its chips follow
+  // the kind's; the time follows the day it belongs to.
   const controls = [page.locator('#appointment-kind'), ...await page.locator('[data-kind]').all(),
-    ...['appointment-place', 'appointment-note', 'appointment-date'].map((id) => page.locator(`#${id}`))];
+    ...await page.locator('[data-who]').all(), page.locator('[data-who-new]'),
+    ...['appointment-place', 'appointment-note', 'appointment-date', 'appointment-time'].map((id) => page.locator(`#${id}`))];
   const positions = [];
   for (const control of controls) {
     positions.push(await control.evaluate((el) => {
@@ -59,7 +62,7 @@ async function fieldOrder() {
   for (let i = 1; i < positions.length; i++) {
     const previous = positions[i - 1], current = positions[i];
     assert.ok(current.top > previous.top || (current.top === previous.top && current.left > previous.left),
-      'Kind, its suggestions, place and note precede day in reading order');
+      'Kind, its suggestions, who, place and note precede day and time in reading order');
   }
   await controls[0].focus();
   for (const control of controls.slice(1)) {
@@ -104,6 +107,7 @@ try {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     for (const appointment of [...await journal.appointments.getAppointments(), ...await journal.appointments.getWaiting()])
       await journal.appointments.deleteAppointment(appointment.id);
+    for (const provider of await journal.appointments.getProviders()) await journal.appointments.deleteProvider(provider.id);
   });
   await page.locator('[data-appointment]').waitFor({ state: 'detached' });
   await page.locator('[data-add]').click();
@@ -205,6 +209,56 @@ try {
   assert.equal(await page.locator('[data-status-update]').count(), 1, 'and so do its updates');
   await close();
   console.log('PASS the referral and its update show in the day view on their dates, and it later takes a day as the same record');
+
+  /* A time and a who (functional-audit ticket 27): somebody made from
+     inside the editor is attached to it, the time is kept, and the calendar
+     hand-off uses it without asking. */
+  await row.click();
+  await page.locator('[data-who-new]').click();
+  await page.locator('#provider-name').fill('Dr Nowak');
+  await page.locator('#provider-contact').fill('22 123 45 67');
+  await page.locator('[data-competence="good"]').click();
+  await page.locator('#provider-impressions').fill('Listened, no gatekeeping');
+  await page.locator('[data-save-provider]').click();
+  await page.locator('#provider-name').waitFor({ state: 'detached' });
+  const who = page.locator('[data-who]').filter({ hasText: 'Dr Nowak' });
+  assert.equal(await who.getAttribute('aria-pressed'), 'true', 'Someone made from the editor is picked in it');
+  await fillTime(page, '#appointment-time', '14:30');
+  await page.locator('[data-save-appointment]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  const rowText = await row.innerText();
+  assert.ok(rowText.includes('14:30') && rowText.includes('Dr Nowak'), `The row states the time and who: ${rowText}`);
+  await row.click();
+  assert.equal(await page.locator('#appointment-time').inputValue(), '14:30', 'The time is kept');
+  await page.locator('[data-add-to-calendar]').click();
+  await page.locator('#calendar-handoff-title').waitFor();
+  assert.equal(await page.locator('#calendar-handoff-time').count(), 0, 'A stored time is not asked for again');
+  assert.ok((await page.locator('[data-calendar-handoff-day]').innerText()).includes('14:30'), 'The hand-off states the time it will use');
+  const [timed] = await Promise.all([page.waitForEvent('download'), page.locator('[data-share-to-calendar]').click()]);
+  const timedIcs = await readFile(await timed.path(), 'utf8');
+  assert.ok(timedIcs.includes('DTSTART:20240312T143000'), 'The calendar file carries the stored time');
+  assert.ok(!timedIcs.includes('Nowak'), 'and nothing about who it is with');
+  await page.locator('#calendar-handoff-title').waitFor({ state: 'detached' });
+  await close();
+  console.log('PASS a provider made in the editor is attached, the time is kept, and the hand-off uses it without asking');
+
+  const providerRow = page.locator('[data-providers] [data-provider]').filter({ hasText: 'Dr Nowak' });
+  assert.ok((await providerRow.innerText()).includes('Trans competence: good'), 'The provider row states the competence');
+  await providerRow.click();
+  assert.equal(await page.locator('#provider-impressions').inputValue(), 'Listened, no gatekeeping');
+  await page.locator('#provider-name').fill('Dr Anna Nowak');
+  await page.locator('[data-save-provider]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('[data-past] [data-appointment]')].some((el) => el.textContent?.includes('Dr Anna Nowak')));
+  await page.locator('[data-providers] [data-provider]').filter({ hasText: 'Dr Anna Nowak' }).click();
+  await page.locator('[data-delete-provider]').click();
+  await page.locator('[data-confirm-delete-provider]').click();
+  await page.locator('[data-providers] [data-provider]').filter({ hasText: 'Nowak' }).waitFor({ state: 'detached' });
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  assert.ok(!(await row.innerText()).includes('Nowak'), 'Deleting the provider leaves the appointment with nobody named');
+  assert.ok((await row.innerText()).includes('14:30'), 'and keeps the appointment itself');
+  console.log('PASS a provider is edited from the list, renaming redraws its appointment, and deleting it leaves the appointment');
 
   const linked = await page.evaluate(async () => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');

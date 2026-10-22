@@ -89,3 +89,20 @@ test('an archive written before waiting lists restores its appointments with not
   assert.deepEqual(await target.journal.appointments.getWaiting(), []);
   assert.deepEqual(await target.journal.appointments.getStatusUpdates(), []);
 });
+
+test('a status update listed twice in one archive restores once', async () => {
+  const source = await device();
+  await source.journal.appointments.upsertAppointment({ ...referral, epochDay: null, referredEpochDay: 19000 });
+  const [waiting] = await source.journal.appointments.getWaiting();
+  await source.journal.appointments.addStatusUpdate({ appointmentId: waiting.id, epochDay: 19200, status: 'Letter came' });
+  const journal = (await source.journal.archive.snapshot()).journal;
+  const doubled = {
+    ...journal,
+    appointments: journal.appointments.map((a) => ({ ...a, statuses: [...(a.statuses ?? []), ...(a.statuses ?? [])] }))
+  };
+
+  const target = await device();
+  await restoreArchive(target.driver, fakeFileStore(), 'replace', { journal: doubled, files: noFiles() });
+
+  assert.deepEqual(await target.journal.appointments.getStatusUpdates(), await source.journal.appointments.getStatusUpdates());
+});

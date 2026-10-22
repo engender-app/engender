@@ -1518,6 +1518,15 @@
       "archived": false
     }
   ],
+  "providers": [
+    {
+      "id": "b665a08a-21e3-42ec-98cf-24216c2964de",
+      "name": "Dr Nowak",
+      "contact": "22 123 45 67",
+      "competence": "good",
+      "impressions": "Listened, no gatekeeping"
+    }
+  ],
   "appointments": [
     {
       "id": "42c4085d-1a60-4515-a76f-30453633a241",
@@ -1527,7 +1536,9 @@
       "place": null,
       "note": null,
       "referredEpochDay": null,
-      "statuses": []
+      "statuses": [],
+      "time": null,
+      "providerId": null
     },
     {
       "id": "506e81cf-0205-4a32-a727-b24d97acf07b",
@@ -1537,7 +1548,9 @@
       "place": "Poradnia, ul. Kopernika",
       "note": "ask about the dose",
       "referredEpochDay": null,
-      "statuses": []
+      "statuses": [],
+      "time": "14:30",
+      "providerId": "b665a08a-21e3-42ec-98cf-24216c2964de"
     },
     {
       "id": "f3cc950a-0183-4355-8fc5-3fff4784041f",
@@ -1553,7 +1566,9 @@
           "epochDay": 19900,
           "status": "Letter came"
         }
-      ]
+      ],
+      "time": null,
+      "providerId": null
     }
   ],
   "reminders": [

@@ -272,6 +272,7 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   personalEffectTypes: 'reference data, not a day still to come',
 
   entries: 'written on the day it happened, never ahead of it',
+  providers: 'no date of its own: notes on somebody the person sees (functional-audit ticket 27)',
   documents: 'added on the day it was imported, not scheduled ahead of time',
   labResults: 'recorded when drawn, not scheduled ahead of time',
   taperSessions:

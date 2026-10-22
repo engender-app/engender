@@ -374,6 +374,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   dosePauses: 'a span: a break declared across days',
   eras: 'a span: a stretch of days the person named, and not a record of one',
   eraMutes: 'no date of its own: a uuid naming a muted era',
+  providers: 'no date of its own: notes on somebody the person sees, named on the appointment rows that are (ticket 27)',
   reminders: 'a schedule: an intention for a future day',
   medicationStock: 'a running count, dated by when it was last reported',
 

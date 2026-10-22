@@ -1104,6 +1104,30 @@ export interface Appointment {
       (functional-audit ticket 26), or null. Kept once the day is given, so
       the referral stays on its own day in the day view. */
   referredEpochDay: number | null;
+  /** The time of day as `HH:MM` on a 24-hour clock, or null for a day with
+      no time given (functional-audit ticket 27). Only ever on a visit with
+      a day: a wait has no time to keep. */
+  time: string | null;
+  /** Who it is with, the person's own `Provider` record, or null. */
+  providerId: string | null;
+}
+
+/** How a provider was with trans care, in the person's own judgement
+    (functional-audit ticket 27). Stored as the key; a key this build does
+    not know reads as not said. */
+export type ProviderCompetence = 'good' | 'mixed' | 'poor';
+
+/** Somebody the person sees - a doctor, a psychologist, a clinic - as the
+    person's own notes on them (functional-audit ticket 27): how to reach
+    them, how trans-competent they were, what they made of them. Attached
+    to appointments as the "who". Never shared and never rated anywhere but
+    here. */
+export interface Provider {
+  id: string;
+  name: string;
+  contact: string | null;
+  competence: ProviderCompetence | null;
+  impressions: string | null;
 }
 
 /** An appointment still waiting for its day: a referral to a clinic, an NFZ

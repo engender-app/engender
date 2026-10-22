@@ -30,7 +30,9 @@ test('an appointment carries a day, a kind, a place and a note, and edits', asyn
       kind: 'endokrynolog',
       place: 'Poradnia, ul. Kopernika',
       note: 'ask about the dose',
-      referredEpochDay: null
+      referredEpochDay: null,
+      time: null,
+      providerId: null
     }
   ]);
 
@@ -60,7 +62,7 @@ test('everything but the day may be left out', async () => {
     note: null
   });
   const [only] = await journal.appointments.getAppointments();
-  assert.deepEqual(only, { id, epochDay: 20100, procedureId: null, kind: null, place: null, note: null, referredEpochDay: null });
+  assert.deepEqual(only, { id, epochDay: 20100, procedureId: null, kind: null, place: null, note: null, referredEpochDay: null, time: null, providerId: null });
 });
 
 test('appointments come back oldest first', async () => {
@@ -252,7 +254,9 @@ test('getAppointment reads one row by id, or undefined for an unknown one', asyn
     kind: 'endokrynolog',
     place: null,
     note: null,
-    referredEpochDay: null
+    referredEpochDay: null,
+    time: null,
+    providerId: null
   });
   assert.equal(await journal.appointments.getAppointment('no-such-appointment'), undefined);
 });
@@ -264,7 +268,7 @@ test('getAppointment reads one row by id, or undefined for an unknown one', asyn
    never appears in either list: the prep screen's own comment says an
    appointment later today is not past yet, and the debrief's existing
    "strictly past" condition is what this extends. */
-const blank = { procedureId: null, kind: null, place: null, note: null, referredEpochDay: null };
+const blank = { procedureId: null, kind: null, place: null, note: null, referredEpochDay: null, time: null, providerId: null };
 const at = (epochDay: number, id: string): Appointment => ({ ...blank, id, epochDay });
 
 test('soonestFutureAppointment picks the earliest day at or after today, or null', () => {
@@ -340,14 +344,14 @@ test('a referral is created without a day, waits, and is later given one', async
 
   assert.deepEqual(await journal.appointments.getAppointments(), [], 'no day, so not a visit');
   assert.deepEqual(await journal.appointments.getWaiting(), [
-    { id, epochDay: null, referredEpochDay: 19000, ...referral }
+    { id, epochDay: null, referredEpochDay: 19000, ...referral, time: null, providerId: null }
   ]);
   assert.equal(await journal.appointments.getAppointment(id), undefined, 'the debrief link reads visits only');
 
   await journal.appointments.upsertAppointment({ ...referral, id, epochDay: 19400, referredEpochDay: 19000 });
   assert.deepEqual(await journal.appointments.getWaiting(), []);
   assert.deepEqual(await journal.appointments.getAppointments(), [
-    { id, epochDay: 19400, referredEpochDay: 19000, ...referral }
+    { id, epochDay: 19400, referredEpochDay: 19000, ...referral, time: null, providerId: null }
   ]);
 });
 
@@ -422,4 +426,82 @@ test('waitingSince is the elapsed calendar time and nothing else', () => {
   assert.deepEqual(waitingSince(19000, 19045), { years: 0, months: 1, days: 14 });
   assert.equal(waitingSince(null, 19000), null);
   assert.equal(waitingSince(19001, 19000), null);
+});
+
+/* Functional-audit ticket 27: a time of day, and the person's own notes on
+   who they see. */
+
+test('an appointment keeps its time of day, and clearing it stores nothing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.appointments.upsertAppointment({
+    epochDay: 20100, time: '14:30', procedureId: null, kind: null, place: null, note: null
+  });
+  assert.equal((await journal.appointments.getAppointment(id))?.time, '14:30');
+
+  await journal.appointments.upsertAppointment({ id, epochDay: 20100, time: '', procedureId: null, kind: null, place: null, note: null });
+  assert.equal((await journal.appointments.getAppointment(id))?.time, null);
+});
+
+test('a time that is not HH:MM, or a time on a wait with no day, is refused before anything is written', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const time of ['2:30', '24:00', '12:60', 'noon']) {
+    await assert.rejects(
+      journal.appointments.upsertAppointment({ epochDay: 20100, time, procedureId: null, kind: null, place: null, note: null })
+    );
+  }
+  await assert.rejects(
+    journal.appointments.upsertAppointment({ epochDay: null, time: '09:00', procedureId: null, kind: null, place: null, note: null })
+  );
+  assert.deepEqual(await journal.appointments.getAppointments(), []);
+  assert.deepEqual(await journal.appointments.getWaiting(), []);
+});
+
+test('a provider is created, edited, attached to appointments, and deleting it leaves them standing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const provider = await journal.appointments.upsertProvider({
+    name: '  Dr Nowak ', contact: '22 123 45 67', competence: 'good', impressions: 'listened'
+  });
+  assert.deepEqual(await journal.appointments.getProviders(), [
+    { id: provider, name: 'Dr Nowak', contact: '22 123 45 67', competence: 'good', impressions: 'listened' }
+  ]);
+
+  await journal.appointments.upsertProvider({ id: provider, name: 'Dr Anna Nowak', contact: ' ', competence: null, impressions: null });
+  assert.deepEqual(await journal.appointments.getProviders(), [
+    { id: provider, name: 'Dr Anna Nowak', contact: null, competence: null, impressions: null }
+  ]);
+
+  const visit = await journal.appointments.upsertAppointment({
+    epochDay: 20100, providerId: provider, procedureId: null, kind: null, place: null, note: null
+  });
+  const wait = await journal.appointments.upsertAppointment({
+    epochDay: null, referredEpochDay: 20000, providerId: provider, procedureId: null, kind: null, place: null, note: null
+  });
+  assert.equal((await journal.appointments.getAppointment(visit))?.providerId, provider);
+  assert.equal((await journal.appointments.getWaiting())[0].providerId, provider);
+
+  await journal.appointments.deleteProvider(provider);
+  assert.deepEqual(await journal.appointments.getProviders(), []);
+  assert.equal((await journal.appointments.getAppointment(visit))?.providerId, null);
+  assert.equal((await journal.appointments.getWaiting())[0].id, wait);
+  assert.equal((await journal.appointments.getWaiting())[0].providerId, null);
+});
+
+test('a provider needs a name, an unknown competence reads as not said, and an unknown provider is refused', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  await assert.rejects(journal.appointments.upsertProvider({ name: '  ', contact: null, competence: null, impressions: null }));
+  await assert.rejects(
+    journal.appointments.upsertAppointment({ epochDay: 20100, providerId: 'nobody', procedureId: null, kind: null, place: null, note: null })
+  );
+  assert.deepEqual(await journal.appointments.getAppointments(), []);
+
+  db.raw.exec(`INSERT INTO provider (uuid, name, competence, updated_at) VALUES ('p-old', 'Someone', 'stellar', 1)`);
+  assert.equal((await journal.appointments.getProviders())[0].competence, null);
+});
+
+test('providers read by name, ignoring case', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const name of ['zofia', 'Adam', 'beata']) {
+    await journal.appointments.upsertProvider({ name, contact: null, competence: null, impressions: null });
+  }
+  assert.deepEqual((await journal.appointments.getProviders()).map((p) => p.name), ['Adam', 'beata', 'zofia']);
 });

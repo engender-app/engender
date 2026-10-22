@@ -393,6 +393,24 @@ export interface ArchiveAppointment {
   note: string | null;
   referredEpochDay?: number | null;
   statuses?: ArchiveAppointmentStatus[];
+  /** `HH:MM`, or null (functional-audit ticket 27). Optional so an archive
+      written before the ticket parses; it reads as no time. */
+  time?: string | null;
+  /** The provider's travelling uuid, resolved against the `providers`
+      section on apply, the way `procedureId` is. Optional for the same
+      reason as `time`. */
+  providerId?: string | null;
+}
+
+/** The person's own notes on somebody they see (functional-audit ticket
+    27). `competence` is a key ('good', 'mixed', 'poor'); one this build does
+    not know reads as not said. */
+export interface ArchiveProvider {
+  id: string;
+  name: string;
+  contact: string | null;
+  competence: string | null;
+  impressions: string | null;
 }
 
 /** One dated update on an appointment's wait (ticket 26). */
@@ -779,6 +797,7 @@ export interface ArchiveJournal {
   hairPhotos: ArchiveHairPhoto[];
   hairRemovalSessions: ArchiveHairRemovalSession[];
   procedures: ArchiveProcedure[];
+  providers: ArchiveProvider[];
   appointments: ArchiveAppointment[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];

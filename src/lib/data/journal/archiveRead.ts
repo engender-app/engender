@@ -525,10 +525,14 @@ export async function readAppointments({ driver }: SectionRead): Promise<Archive
     place: string | null;
     note: string | null;
     referred_epoch_day: number | null;
+    time_of_day: string | null;
+    provider_uuid: string | null;
   }>(
     `SELECT a.id AS id, a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
-            a.kind AS kind, a.place AS place, a.note AS note, a.referred_epoch_day AS referred_epoch_day
+            a.kind AS kind, a.place AS place, a.note AS note, a.referred_epoch_day AS referred_epoch_day,
+            a.time_of_day AS time_of_day, p.uuid AS provider_uuid
        FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id
+       LEFT JOIN provider p ON p.id = a.provider_id
       ORDER BY a.epoch_day IS NULL, a.epoch_day, a.id`
   );
   // A wait's dated updates (ticket 26), nested under the appointment they
@@ -551,7 +555,9 @@ export async function readAppointments({ driver }: SectionRead): Promise<Archive
     place: row.place,
     note: row.note,
     referredEpochDay: row.referred_epoch_day,
-    statuses: byAppointment.get(row.id) ?? []
+    statuses: byAppointment.get(row.id) ?? [],
+    time: row.time_of_day,
+    providerId: row.provider_uuid
   }));
 }
 

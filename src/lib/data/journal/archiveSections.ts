@@ -644,9 +644,22 @@ const SECTIONS = [
      Archives without this section restore with an empty appointment list.
      A wait's status updates (ticket 26) travel nested in their appointment
      and are discarded with it. */
+  /* The person's own notes on the people they see (functional-audit ticket
+     27). Flat: one table, uuid-identified, nothing ships. Declared before
+     appointments, which resolve their `providerId` against it. Never shared:
+     the whole point is that a judgement of a named doctor stays with the
+     person who made it. */
+  flat({
+    name: 'providers',
+    travels: 'none',
+    table: 'provider',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: { uuid: 'id', name: 'name', contact: 'contact', competence: 'competence', impressions: 'impressions' }
+  }),
   section({
     name: 'appointments',
-    after: ['procedures'],
+    after: ['procedures', 'providers'],
     discard: ['DELETE FROM appointment_status', 'DELETE FROM appointment'],
     // Where somebody's medical appointments were and what they were about.
     travels: 'none',

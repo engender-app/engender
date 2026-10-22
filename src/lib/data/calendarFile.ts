@@ -23,10 +23,10 @@ import { localDateFromEpochDay, timestampAtLocalTime } from './epochDay';
 export type CalendarEventKind = 'appointment' | 'surgery' | 'letterUnlock';
 
 /** One dated thing and the title it carries. Only an appointment may carry
-    a time of day: this app never stores one (CONTEXT.md's own "Appointment"
-    is a day, nothing more), so a caller can only have one to give at all
-    where ticket 18's share sheet lets the person type it in. A surgery date
-    and a letter's unlock day are always all-day. */
+    a time of day: since functional-audit ticket 27 an appointment can keep
+    one, and the share sheet hands it over or lets the person type one for
+    an appointment that has none. A surgery date and a letter's unlock day
+    are always all-day. */
 export type CalendarEventInput =
   | { kind: 'surgery' | 'letterUnlock'; epochDay: number; title: string; nowEpochMs: number }
   | { kind: 'appointment'; epochDay: number; time?: string; title: string; nowEpochMs: number };

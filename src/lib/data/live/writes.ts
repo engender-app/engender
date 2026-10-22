@@ -672,7 +672,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // A status update is its own table under the same coarse name: nothing
       // reads one without the appointment it belongs to (sqlTables.ts).
       addStatusUpdate: ['appointment'],
-      deleteStatusUpdate: ['appointment']
+      deleteStatusUpdate: ['appointment'],
+      // A provider too (ticket 27): nothing reads one except as an
+      // appointment's who, and renaming one redraws every row naming it.
+      upsertProvider: ['appointment'],
+      deleteProvider: ['appointment']
     },
     // consultsByProcedure and getDayRecords join `procedure` for its name,
     // so a renamed journey redraws them.
@@ -681,6 +685,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getAppointment: ['appointment', 'procedure'],
       getWaiting: ['appointment', 'procedure'],
       getStatusUpdates: ['appointment'],
+      getProviders: ['appointment'],
       getKinds: ['appointment'],
       getDayRecords: ['appointment', 'procedure'],
       lastWriteEpochDay: ['appointment'],

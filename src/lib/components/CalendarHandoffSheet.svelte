@@ -16,7 +16,8 @@
      - and writes nothing, the same as every other sheet in this app that
      holds no record of its own. */
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { timestampAtLocalTime } from '$lib/data/epochDay';
   import { nameSlug } from '$lib/data/fold';
   import { buildCalendarEvent, type CalendarEventKind } from '$lib/data/calendarFile';
   import { calendarEventDefaultTitle } from '$lib/data/vocabulary/calendarEventLabel';
@@ -30,6 +31,7 @@
     open,
     kind,
     epochDay,
+    time: storedTime = null,
     onClose
   }: {
     open: boolean;
@@ -37,22 +39,32 @@
     /** The day the record already carries - a surgery date, an appointment,
         a letter's unlock day. Read fresh each time the sheet opens. */
     epochDay: number;
+    /** The appointment's own time of day, `HH:MM`, where it keeps one
+        (functional-audit ticket 27). Given, the sheet uses it and does not
+        ask; absent, an appointment still offers the field. */
+    time?: string | null;
     onClose: () => void;
   } = $props();
 
   let title = $state('');
-  // Only an appointment may carry a time (calendarFile.ts) - the record
-  // itself never stores one, so this is where a person types it in.
+  // Only an appointment may carry a time (calendarFile.ts). One that keeps
+  // its own (ticket 27) hands it over; one that does not can still be
+  // given one here for this file only.
   let time = $state('');
 
   $effect(() => {
     if (open) {
       title = calendarEventDefaultTitle(kind);
-      time = '';
+      time = storedTime ?? '';
     }
   });
 
-  const dayLabel = $derived(fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' }));
+  const dayLabel = $derived.by(() => {
+    const day = fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+    return storedTime
+      ? m.calendar_handoff_when({ day, time: fmtTime(timestampAtLocalTime(epochDay, storedTime)) })
+      : day;
+  });
 
   // One file per tap: the share sheet takes a moment to come up.
   let sharing = $state(false);
@@ -95,7 +107,7 @@
     {/snippet}
   </Field>
 
-  {#if kind === 'appointment'}
+  {#if kind === 'appointment' && !storedTime}
     <Field label={m.calendar_handoff_time_label()} id="calendar-handoff-time">
       {#snippet children(id)}
         <TimePicker {id} name="calendar-handoff-time" bind:value={time} />

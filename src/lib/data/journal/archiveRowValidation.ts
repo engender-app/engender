@@ -23,6 +23,8 @@ const optional = (check: Check): Check => (value) => value === undefined || chec
 const oneOf = (values: readonly string[]): Check => (value) => typeof value === 'string' && values.includes(value);
 const integerBetween = (min: number, max: number): Check => (value) =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
+// `HH:MM` on a 24-hour clock, appointments.ts's own rule for a stored time.
+const clockTime: Check = (value) => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 const list = (check: Check): Check => (value) => Array.isArray(value) && value.every(check);
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -250,7 +252,18 @@ const ROWS = {
     place: nullable(text),
     note: nullable(text),
     referredEpochDay: optional(nullable(numeric)),
-    statuses: optional(list(appointmentStatus))
+    statuses: optional(list(appointmentStatus)),
+    time: optional(nullable(clockTime)),
+    providerId: optional(nullable(text))
+  },
+  providers: {
+    id: identity,
+    // Not blank, the rule upsertProvider keeps: a nameless provider has
+    // nothing to be picked by.
+    name: identity,
+    contact: nullable(text),
+    competence: nullable(text),
+    impressions: nullable(text)
   },
   reminders: {
     id: identity,

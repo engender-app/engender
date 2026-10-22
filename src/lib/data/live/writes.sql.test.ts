@@ -786,6 +786,17 @@ beforeAll(async () => {
     journal.appointments.addStatusUpdate({ appointmentId: waitingId, epochDay: 19960, status: 'typo' })
   )) as string;
   await drive('appointments', 'deleteStatusUpdate', () => journal.appointments.deleteStatusUpdate(droppedStatusId));
+  // A provider (ticket 27): one kept and named on a visit, one deleted.
+  const providerId = (await drive('appointments', 'upsertProvider', () =>
+    journal.appointments.upsertProvider({ name: 'Dr Nowak', contact: null, competence: 'good', impressions: null })
+  )) as string;
+  await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({ epochDay: 20043, time: '09:30', providerId, procedureId: null, kind: null, place: null, note: null })
+  );
+  const droppedProviderId = (await drive('appointments', 'upsertProvider', () =>
+    journal.appointments.upsertProvider({ name: 'typo', contact: null, competence: null, impressions: null })
+  )) as string;
+  await drive('appointments', 'deleteProvider', () => journal.appointments.deleteProvider(droppedProviderId));
   const secondProcedureId = (await drive('procedures', 'upsertProcedure', () =>
     journal.procedures.upsertProcedure({ name: 'a second procedure', surgeryEpochDay: 20100, notes: '' })
   )) as string;
@@ -1049,6 +1060,7 @@ beforeAll(async () => {
   await driveRead('appointments', 'getAppointment', () => journal.appointments.getAppointment(appointmentId));
   await driveRead('appointments', 'getWaiting', () => journal.appointments.getWaiting());
   await driveRead('appointments', 'getStatusUpdates', () => journal.appointments.getStatusUpdates());
+  await driveRead('appointments', 'getProviders', () => journal.appointments.getProviders());
   await driveRead('appointments', 'getKinds', () => journal.appointments.getKinds());
   await driveRead('appointments', 'getDayRecords', () => journal.appointments.getDayRecords(20041));
   await driveRead('appointments', 'lastWriteEpochDay', () => journal.appointments.lastWriteEpochDay(20050));

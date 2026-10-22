@@ -988,7 +988,9 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in', 'archived'],
   // procedure_id travels as the procedure's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - here and on the child below.
-  appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note', 'referred_epoch_day'],
+  appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note', 'referred_epoch_day',
+    // provider_id travels as the provider's uuid (ticket 27), like procedure_id.
+    'time_of_day', 'provider_id'],
   // appointment_id travels as nesting under its appointment (ticket 26), the
   // way procedure_photo travels under its procedure.
   appointment_status: ['uuid', 'appointment_id', 'epoch_day', 'status'],

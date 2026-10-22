@@ -211,6 +211,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   entries: 'the journal itself, not a stream inside it',
   feltSenseEntries: 'content belonging to a tryout, not a series of its own',
   marginNotes: 'content belonging to an entry, not a series of its own (phase 8 features ticket 07)',
+  providers: 'notes on the people appointments are with, not a series of its own (functional-audit ticket 27)',
   eraMutes: 'presence naming a muted era, which is the era’s own state and not a series',
   comfortItems: 'a standing list with no dates in it at all',
   importLog: 'this device’s bookkeeping about where an import came from',

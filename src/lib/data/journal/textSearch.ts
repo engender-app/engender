@@ -529,6 +529,10 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // The row is a uuid pointing at an era, whose own name is what `eras`
   // above already searches - and a mute is presence, not a value.
   eraMutes: 'no text of its own: a uuid naming a muted era',
+  // Functional-audit ticket 27: a judgement of a named doctor, read where
+  // the person keeps it (the appointments screen lists every provider)
+  // rather than surfaced by a search somebody else could be looking over.
+  providers: 'private notes on a named person, read on the appointments screen',
   roadmapChecks: 'no text of its own: a tick against a bundled pack’s goal',
   roadmapTracks: 'no text of its own: the name of one of the app’s four tracks',
   hairPhotos: 'no text of its own: a dated photograph',

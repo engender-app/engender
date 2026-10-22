@@ -283,6 +283,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   roadmapTracks: 'no date of its own',
   roadmapGoals: 'no date of its own',
   checklists: 'no date of its own',
+  providers: 'no date of its own: notes on somebody the person sees (functional-audit ticket 27)',
 
   // ADR-0037/0040: a Safe Space artefact, not a diary record with a day to
   // report a gap about.
