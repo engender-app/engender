@@ -2404,7 +2404,7 @@
   "provider_competence_poor_line": "Kompetencje trans: słabe",
   "provider_contact_label": "Kontakt",
   "provider_contact_placeholder": "Telefon, adres, e-mail",
-  "provider_delete_hint": "Wizyty u niej zostaną, tylko bez wpisanej osoby.",
+  "provider_delete_hint": "Wizyty zostaną, tylko bez wpisanej osoby.",
   "provider_delete_q": "Usunąć notatki o tej osobie?",
   "provider_delete_sheet": "Usuń notatki",
   "provider_edit_sheet": "Twoje notatki",
