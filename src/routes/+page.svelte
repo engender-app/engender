@@ -265,8 +265,9 @@
   /* How long ago the journey anchor was (functional audit 33), counted from
      the milestone the person marked in Milestones and re-read with `today`,
      so a Home left open across a month boundary moves from "30 days" to
-     "1 month" the same way the greeting moves to the new day. The mirror
-     is filled before the first paint, so the line is there when Home is. */
+     "1 month" the same way the greeting moves to the new day. Boot fills
+     the milestone mirror and the preferences before the splash lifts, so
+     on a cold load the line is in place in the first frame Home shows. */
   const anchorLine = $derived(journeyAnchorLine(vocabulary.journeyAnchor, today));
 
   $effect(() => {
@@ -797,10 +798,12 @@
              about the person's own journey and the count is about the
              journal. It opens and closes its own height when the anchor is
              set or cleared on a settled screen, and a new count of months
-             crosses in place, the two lines in one grid cell. -->
+             crosses in place, the two lines in one grid cell. The words
+             fade (global, so they also fade when the line itself arrives,
+             not only when the key changes). -->
         {#if anchorLine}
           <p class="home-anchor" data-home-anchor transition:collapse={panel}>
-            {#key anchorLine}<span transition:labelFade>{anchorLine}</span>{/key}
+            {#key anchorLine}<span transition:countFade|global>{anchorLine}</span>{/key}
           </p>
         {/if}
         <!-- How much is here, and since when. The streak stood in this slot
