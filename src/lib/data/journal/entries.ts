@@ -288,6 +288,12 @@ export interface EntriesArea {
   /** Brings a trashed entry back, photos and recordings included. A no-op
       on an unknown id or one that is not trashed. */
   restoreEntry(id: number): Promise<void>;
+  /** Delete forever (functional audit ticket 46): purges a trashed entry
+      now instead of after TRASH_WINDOW_DAYS, every row and file of it, the
+      way purgeExpiredTrash does. A no-op on an entry that is not in Trash,
+      checked inside the purge's own transaction so a restore that lands
+      first wins. */
+  purgeEntry(id: number): Promise<void>;
   /** Every trashed entry, most recently trashed first - the dedicated trash
       view's only read (out of scope: any other screen surfacing them). */
   trashedEntries(): Promise<TrashedEntry[]>;
@@ -1233,6 +1239,20 @@ export function makeEntriesArea(
       });
     },
 
+    async purgeEntry(id) {
+      const owned = await driver.transaction(async (driver) => {
+        const trashed = await driver.query<{ id: number }>(
+          'SELECT id FROM entry WHERE id = ? AND trashed_at IS NOT NULL',
+          [id]
+        );
+        if (trashed.length === 0) return null;
+        const owned = await filesOfEntries(driver, [id]);
+        await deleteEntryRows(driver, [id]);
+        return owned;
+      });
+      if (owned) await removeFilesOfEntries(driver, files, owned);
+    },
+
     async setEntryStarred(id, starred) {
       const result = await driver.run('UPDATE entry SET starred = ?, updated_at = ? WHERE id = ?', [
         starred ? 1 : 0,
@@ -1304,38 +1324,47 @@ async function purgeTrashedBefore(
   );
   if (expired.length === 0) return 0;
   const ids = expired.map((row) => row.id);
-  const placeholders = ids.map(() => '?').join(', ');
-
-  const photos = await driver.query<{ file_path: string }>(
-    `SELECT file_path FROM photo WHERE entry_id IN (${placeholders})`,
-    ids
-  );
-  const recordings = await driver.query<{ file_path: string }>(
-    `SELECT file_path FROM voice_recording WHERE entry_id IN (${placeholders})`,
-    ids
-  );
-  const videos = await driver.query<{ file_path: string }>(
-    `SELECT file_path FROM video_note WHERE entry_id IN (${placeholders})`,
-    ids
-  );
+  const owned = await filesOfEntries(driver, ids);
 
   // The last moment before this is irreversible.
   if (sawWrite()) return 0;
-  await driver.transaction(async (driver) => {
-    await driver.run(`DELETE FROM photo WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM voice_recording WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM video_note WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM margin_note WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM entry_dimension_value WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM entry_tag WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM entry_body_region WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM entry WHERE id IN (${placeholders})`, ids);
-  });
-  // After the commit, the same reasoning deleteEntry's old hard delete gave:
-  // a failed file removal must not resurrect rows, and an orphaned file is
-  // what the boot orphan sweep (sweepOrphanPhotos) reclaims next.
-  await removeFilesOf(driver, files, photos);
-  await removeRecordingFilesOf(driver, files, recordings);
-  await removeVideoFilesOf(driver, files, videos);
+  await driver.transaction((driver) => deleteEntryRows(driver, ids));
+  await removeFilesOfEntries(driver, files, owned);
   return ids.length;
+}
+
+type EntryFiles = Record<'photos' | 'recordings' | 'videos', { file_path: string }[]>;
+
+async function filesOfEntries(driver: SqliteDriver, ids: number[]): Promise<EntryFiles> {
+  const placeholders = ids.map(() => '?').join(', ');
+  const of = (table: string) =>
+    driver.query<{ file_path: string }>(`SELECT file_path FROM ${table} WHERE entry_id IN (${placeholders})`, ids);
+  return { photos: await of('photo'), recordings: await of('voice_recording'), videos: await of('video_note') };
+}
+
+/** Every row of the given entries, children first so it holds with foreign
+    keys off too. The search index goes through its own delete trigger. */
+async function deleteEntryRows(driver: SqliteDriver, ids: number[]): Promise<void> {
+  const placeholders = ids.map(() => '?').join(', ');
+  for (const table of [
+    'photo',
+    'voice_recording',
+    'video_note',
+    'margin_note',
+    'entry_dimension_value',
+    'entry_tag',
+    'entry_body_region'
+  ]) {
+    await driver.run(`DELETE FROM ${table} WHERE entry_id IN (${placeholders})`, ids);
+  }
+  await driver.run(`DELETE FROM entry WHERE id IN (${placeholders})`, ids);
+}
+
+/* After the commit, the same reasoning deleteEntry's old hard delete gave:
+   a failed file removal must not resurrect rows, and an orphaned file is
+   what the orphan sweep (sweepOrphanPhotos) reclaims next. */
+async function removeFilesOfEntries(driver: SqliteDriver, files: PhotoFileStore, owned: EntryFiles): Promise<void> {
+  await removeFilesOf(driver, files, owned.photos);
+  await removeRecordingFilesOf(driver, files, owned.recordings);
+  await removeVideoFilesOf(driver, files, owned.videos);
 }

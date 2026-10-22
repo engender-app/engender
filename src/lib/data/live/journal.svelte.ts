@@ -138,7 +138,8 @@ export const journal: Journal = new Proxy({} as Journal, {
     // distinction (JOURNAL_WIDE).
     if ((JOURNAL_WIDE as readonly string[]).includes(name)) {
       const operation = name as (typeof JOURNAL_WIDE)[number];
-      return () => journals.run((ready) => ready[operation]());
+      return (...args: unknown[]) =>
+        journals.run((ready) => (ready[operation] as (...args: unknown[]) => unknown)(...args));
     }
     return facadeFor(name);
   }

@@ -107,6 +107,18 @@ test('deleting an entry or a milestone announces photos too, because it takes th
   ]);
 });
 
+test('an undoable delete announces its tables, and its undo announces them again', async () => {
+  const { journal, announced } = await observed();
+  const milestoneId = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 90 });
+  announced.length = 0;
+
+  const deletion = await journal.undoable((j) => j.milestones.deleteMilestone(milestoneId));
+  assert.deepEqual(announced, [['milestone', 'photo', 'document']]);
+  await deletion.undo();
+  assert.deepEqual(announced, [['milestone', 'photo', 'document'], ['milestone', 'photo', 'document']]);
+  assert.equal((await journal.milestones.getMilestones()).length, 1);
+});
+
 test('reads announce nothing at all', async () => {
   const { journal, announced } = await observed();
   await journal.entries.upsertEntry({ epochDay: 100, mood: 4 });
