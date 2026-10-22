@@ -68,7 +68,8 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { dilationEligible, expectedSessionDays, sessionSlots, sessionsExpectedOn, stageOn, stagesFromInput } from '$lib/data/taperSchedule';
   import type { TaperSession, TaperStage } from '$lib/data/types';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { writer } from '$lib/stores/attempt.svelte';
@@ -245,6 +246,17 @@
   const numbered = (slot: { index: number; count: number } | null) =>
     slot ? m.dilation_session_numbered({ index: slot.index, count: slot.count }) : undefined;
 
+  /* A paged week's rows arrive as a whole and fade in over the outgoing
+     week's fade-out, while the box under them travels to its new height
+     (cycle-events/+page.svelte draws its week the same way). The first
+     week the screen shows is simply there. */
+  let weekShown = false;
+  function revealWeek(_node: Element) {
+    const duration = weekShown || weeksBack > 0 ? motionDuration('--dur-fast') : 0;
+    weekShown = true;
+    return fadeOnly(duration);
+  }
+
   /** A tap on a row: its own session if one is logged there, or a blank
       draft for that day if none is. */
   function openSlot(epochDay: number, logged: TaperSession | null) {
@@ -276,6 +288,14 @@
   const dilationEstimate = readReserve('dilation');
   const dilationRemember = (px: number) => rememberReserve('dilation', px);
 </script>
+
+<!-- A row's state words: logged or not, crossfaded in place when a
+     session is logged or deleted rather than swapped in one frame. -->
+{#snippet trailWord(word: string)}
+  <span class="dilation-trail-word">
+    {#key word}<span in:crossfade out:crossfade>{word}</span>{/key}
+  </span>
+{/snippet}
 
 <div class="screen">
   <ScreenHeader title={m.dilation()} back="/health/surgery" subtitle={m.dilation_intro()}>
@@ -465,11 +485,13 @@
                     <!-- Suppressed once the note is already saying it, the same
                          rule the week's rows below follow: "Logged" beside a note
                          about the session is the row saying it twice. -->
-                    {#if !logged}
-                      {stateWords(slot || todayMark === 'expected' ? 'expected' : todayMark)}
-                    {:else if !logged.note}
-                      {m.dilation_session_logged()}
-                    {/if}
+                    {@render trailWord(
+                      !logged
+                        ? stateWords(slot || todayMark === 'expected' ? 'expected' : todayMark)
+                        : logged.note
+                          ? ''
+                          : m.dilation_session_logged()
+                    )}
                   {/snippet}
                 </ListRow>
               </div>
@@ -479,6 +501,9 @@
 
         <div class="screen-part">
           <SectionHeading text={m.dilation_sessions_heading()} />
+          <div class="dilation-week" use:resize={shownWeek.first}>
+          {#key shownWeek.first}
+          <div class="dilation-week-content" in:revealWeek out:crossfade>
           {#if weekRows.length === 0}
             <!-- Its own words rather than a day's answer stretched over
                  seven: "Nothing expected" is what one cell says. -->
@@ -496,17 +521,16 @@
                     onclick={() => openSlot(epochDay, logged)}
                   >
                     {#snippet trailing()}
-                      {#if !logged}
-                        {m.adherence_nothing_logged()}
-                      {:else if !logged.note}
-                        {m.dilation_session_logged()}
-                      {/if}
+                      {@render trailWord(!logged ? m.adherence_nothing_logged() : logged.note ? '' : m.dilation_session_logged())}
                     {/snippet}
                   </ListRow>
                 </div>
               {/each}
             </ListCard>
           {/if}
+          </div>
+          {/key}
+          </div>
         </div>
       {/if}
 
@@ -603,7 +627,26 @@
   }
   /* The leaving words are taken out of flow by crossfade, so this is
      what they stay positioned against. */
-  .dilation-stage-words {
+  .dilation-stage-words,
+  .dilation-trail-word {
     position: relative;
+  }
+  /* crossfade pins the leaving words at the width they measured; a block
+     measures the column, and the trailing words never wrap, so neither
+     re-lays its text out in the frame it starts to fade. */
+  .dilation-stage-words > span {
+    display: block;
+  }
+  .dilation-trail-word > span {
+    white-space: nowrap;
+  }
+
+  .dilation-week {
+    position: relative;
+    isolation: isolate;
+    display: flow-root;
+  }
+  .dilation-week > .dilation-week-content {
+    display: flow-root;
   }
 </style>
