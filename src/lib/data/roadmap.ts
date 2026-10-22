@@ -1,5 +1,10 @@
-/* The transition roadmap's tracks and its country packs (phase 4 ticket
-   23, CONTEXT: "Roadmap goal", "Country pack", "Roadmap track").
+/* The transition roadmap's country pack (phase 4 ticket 23; CONTEXT:
+   "Roadmap goal", "Country pack"). Trimmed to the legal track by functional
+   audit ticket 34: the social and presentational tracks repeated
+   milestones, voice, hair removal and tryouts, and the medical track was
+   the most clinical text outside Care. What is left is the Polish court
+   procedure and the paperwork around it, shown behind the "Polish legal
+   steps" switch (`polishLegalStepsShown` below).
 
    A country pack is bundled content, not reference data (CONTEXT:
    "Reference data"): nothing about it is per-install, so there is no row
@@ -14,34 +19,14 @@
    changes with the language, and this file stays Node-tier safe by
    importing no paraglide (ADR-0016).
 
-   The four tracks are the app's structure and a pack populates them; a
-   goal belongs to exactly one. Nothing here models one goal blocking
-   another, because the ticket's whole point is that each is independently
-   checkable - a person part-way through a court case may well have done
-   the presentational things first, or none of them. Order within a track
-   is the order the procedure usually runs in, and it is a suggestion the
-   screen renders rather than a rule anything enforces. */
+   Nothing here models one goal blocking another: each is independently
+   checkable. Order is the order the procedure usually runs in, and it is a
+   suggestion the screen renders rather than a rule anything enforces. */
 
-import type { Lean, RoadmapGoalStatus } from './types';
+import type { RoadmapGoalStatus } from './types';
 
-export const ROADMAP_TRACKS = ['social', 'legal', 'presentational', 'medical'] as const;
-
-export type RoadmapTrack = (typeof ROADMAP_TRACKS)[number];
-
-/* Generic in its key so a pack declared `as const` keeps its literal keys
-   all the way to the screen, where roadmapLabels.ts needs them to look
-   wording up. The default keeps every other reader - the tests, a future
-   contributed pack - writing plain `RoadmapGoal`. */
 interface RoadmapGoal<K extends string = string> {
   readonly key: K;
-  readonly track: RoadmapTrack;
-  /** CONTEXT: "Lean" (phase 5 ticket 43). Most of the Polish pack is
-      `neutral`: it describes a legal procedure common to any transition
-      direction. `pl-presentational-voice` and `pl-presentational-hair` are
-      the exceptions - voice training and hair removal are, in practice,
-      feminizing-transition work, since testosterone's own effects cover
-      the masculinizing equivalent of both without training. */
-  readonly lean: Lean;
 }
 
 /* RoadmapPack stays exported only for its own test (AU-09 test-only review). */
@@ -59,61 +44,35 @@ export interface RoadmapPack<K extends string = string> {
 }
 
 /* Polish pack. Sources and the reasoning behind the wording are in
-   vocabulary/roadmapLabels.ts, next to the text itself. */
+   vocabulary/roadmapLabels.ts, next to the text itself. The court procedure
+   Poland runs is one procedure, the same steps and documents whichever
+   direction the applicant is transitioning. */
 const POLISH_GOALS = [
-  /* social - none of this is direction-specific: telling someone, being
-     out at work or finding community reads the same regardless of which
-     way a person is transitioning. */
-  { key: 'pl-social-tell-one-person', track: 'social', lean: 'neutral' },
-  { key: 'pl-social-close-people', track: 'social', lean: 'neutral' },
-  { key: 'pl-social-name-at-work', track: 'social', lean: 'neutral' },
-  { key: 'pl-social-community', track: 'social', lean: 'neutral' },
-  /* legal - the court procedure Poland runs is one procedure, the same
-     steps and documents whichever direction the applicant is transitioning. */
-  { key: 'pl-legal-birth-certificate', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-which-court', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-court-fee', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-application', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-file-it', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-formal-defects', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-remote-hearing', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-closed-hearing', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-fee-waiver', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-expert', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-written-reasons', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-appeal', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-final-copy', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-pesel', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-new-birth-copy', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-name-usc', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-id-card', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-passport', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-driving-licence', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-zus-ceidg', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-diplomas', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-institutions', track: 'legal', lean: 'neutral' },
-  { key: 'pl-legal-document-set', track: 'legal', lean: 'neutral' },
-  /* presentational - clothes and a document photo are direction-neutral
-     asks. Voice training and hair removal are, in practice, feminizing
-     work: testosterone drops pitch and grows facial hair on its own, so a
-     masculinizing transition rarely needs either as an active step. */
-  { key: 'pl-presentational-clothes', track: 'presentational', lean: 'neutral' },
-  { key: 'pl-presentational-voice', track: 'presentational', lean: 'femme' },
-  { key: 'pl-presentational-hair', track: 'presentational', lean: 'femme' },
-  { key: 'pl-presentational-photo', track: 'presentational', lean: 'neutral' },
-  /* medical - the diagnosis and its paperwork are one pathway under Polish
-     law (the same F64.0/HA60 code, the same two opinions) regardless of
-     which hormone or direction it clears the way for. */
-  { key: 'pl-medical-two-specialists', track: 'medical', lean: 'neutral' },
-  { key: 'pl-medical-psychologist', track: 'medical', lean: 'neutral' },
-  { key: 'pl-medical-psych-opinion', track: 'medical', lean: 'neutral' },
-  { key: 'pl-medical-doctor-opinion', track: 'medical', lean: 'neutral' },
-  { key: 'pl-medical-diagnosis-code', track: 'medical', lean: 'neutral' },
-  { key: 'pl-medical-bloodwork', track: 'medical', lean: 'neutral' },
-  { key: 'pl-medical-keep-opinions', track: 'medical', lean: 'neutral' }
+  { key: 'pl-legal-birth-certificate' },
+  { key: 'pl-legal-which-court' },
+  { key: 'pl-legal-court-fee' },
+  { key: 'pl-legal-opinions' },
+  { key: 'pl-legal-application' },
+  { key: 'pl-legal-file-it' },
+  { key: 'pl-legal-formal-defects' },
+  { key: 'pl-legal-remote-hearing' },
+  { key: 'pl-legal-closed-hearing' },
+  { key: 'pl-legal-fee-waiver' },
+  { key: 'pl-legal-expert' },
+  { key: 'pl-legal-written-reasons' },
+  { key: 'pl-legal-appeal' },
+  { key: 'pl-legal-final-copy' },
+  { key: 'pl-legal-pesel' },
+  { key: 'pl-legal-new-birth-copy' },
+  { key: 'pl-legal-name-usc' },
+  { key: 'pl-legal-id-card' },
+  { key: 'pl-legal-passport' },
+  { key: 'pl-legal-driving-licence' },
+  { key: 'pl-legal-zus-ceidg' },
+  { key: 'pl-legal-diplomas' },
+  { key: 'pl-legal-institutions' },
+  { key: 'pl-legal-document-set' }
 ] as const satisfies readonly RoadmapGoal[];
-
-type PolishGoalKey = (typeof POLISH_GOALS)[number]['key'];
 
 export const POLISH_PACK = {
   key: 'pl',
@@ -140,87 +99,84 @@ export type RoadmapGoalKey = (typeof ROADMAP_PACKS)[number]['goals'][number]['ke
 
 export type RoadmapPackKey = (typeof ROADMAP_PACKS)[number]['key'];
 
-/** One track's goals, in the order the pack lists them. */
-/* goalsInTrack stays exported only for its own test (AU-09 test-only review). */
-export const goalsInTrack = <K extends string>(pack: RoadmapPack<K>, track: RoadmapTrack): RoadmapGoal<K>[] =>
-  pack.goals.filter((goal) => goal.track === track);
+/** Whether a stored tick names a goal from one of the three tracks
+    functional audit ticket 34 cut (social, presentational, medical).
+    Migration 111 deleted those ticks, and a restore leaves them out of an
+    older archive the same way. Matched by the track's key prefix rather
+    than against the goals still bundled, so a tick naming a legal goal
+    that a pack renamed earlier stays exactly as it was. */
+export const isCutTrackGoal = (goalKey: string): boolean => /^pl-(social|presentational|medical)-/.test(goalKey);
 
-/** One track as the screen draws it: the track itself, whether the person
-    has said it is not their path, and the goals left to show. */
-export interface RoadmapSection<K extends string, C> {
-  readonly track: RoadmapTrack;
-  readonly dismissed: boolean;
-  /** Empty for a dismissed track. The stored ticks are untouched - putting
-      a track back brings back exactly what was ticked in it. */
+/** Whether the Polish legal steps show (functional audit ticket 34).
+    `choice` is the person's answer to the switch, null until they give
+    one; until then the steps follow the app's language, on for Polish and
+    off for everyone else, since the procedure is a Polish court's and an
+    English reader is unlikely to be in front of one. */
+export function polishLegalStepsShown(choice: boolean | null, locale: string): boolean {
+  return choice ?? locale === 'pl';
+}
+
+/** The tracks cut by functional audit ticket 34 that a custom goal could
+    still name. Migration 111 gave each one holding a goal a category whose
+    uuid is the track key and whose name is empty, and a restore of an older
+    archive does the same, so the person's own goals keep their grouping.
+    roadmapLabels.ts says such a category's name in the current language
+    until somebody renames it. */
+export const LEGACY_ROADMAP_TRACKS = ['social', 'presentational', 'medical'] as const;
+
+/** Where a custom goal sits: `LEGAL_GROUP` for the Polish legal steps, the
+    one built-in group, or the uuid of one of the person's categories. */
+export const LEGAL_GROUP = 'legal';
+
+interface OwnGoal {
+  readonly track: string;
+  readonly status: RoadmapGoalStatus;
+}
+
+/** The roadmap as the screen draws it: the Polish legal group, and every
+    category the person made with the goals they put in it. */
+export interface RoadmapList<K extends string, C, Cat> {
+  /** The pack's goals still in view. Empty while the switch is off; the
+      stored ticks are untouched, so switching back brings back exactly
+      what was ticked. */
   readonly goals: readonly RoadmapGoal<K>[];
-  readonly customGoals: readonly C[];
+  /** Goals the person added to the legal group, shown and hidden with it. */
+  readonly legalGoals: readonly C[];
+  /** Every category, an empty one included, in the order they were made,
+      whatever the switch says: they are the person's own. */
+  readonly categories: readonly { readonly category: Cat; readonly goals: readonly C[] }[];
 }
 
-/** The whole roadmap, track by track, with a dismissed track's goals folded
-    away (phase 8 features ticket 49 item 5, CONTEXT: "Roadmap track").
-
-    "Not my path" existed per goal only, so somebody the medical track has
-    nothing to do with had to say so on each of its seven goals in turn.
-    Said once per track it means the same thing one grain out, and it folds
-    the same way `hidden` folds a hub row: the track stays on screen so it
-    can be put back, and nothing inside it prompts. There is nothing further
-    to gate - the milestone offer only fires from a tap on a goal, and a
-    folded goal has nothing to tap.
-
-    Built by walking `ROADMAP_TRACKS` rather than the goals present, which
-    is what makes a fifth track cost nothing here and what
-    roadmap.test.ts's coverage test is able to fail on: a screen listing
-    tracks for itself would be free to miss one, and this is the one list. */
-export function roadmapSections<K extends string, C extends { readonly track: string }>(
+export function roadmapList<K extends string, C extends OwnGoal, Cat extends { readonly id: string }>(
   pack: RoadmapPack<K>,
+  shown: boolean,
   customGoals: readonly C[],
-  dismissedTracks: readonly string[],
-  hiddenGoals: readonly string[] = []
-): RoadmapSection<K, C>[] {
-  const dismissed = new Set(dismissedTracks);
+  hiddenGoals: readonly string[],
+  categories: readonly Cat[]
+): RoadmapList<K, C, Cat> {
   const hidden = new Set(hiddenGoals);
-  return ROADMAP_TRACKS.map((track) => {
-    const isDismissed = dismissed.has(track);
-    return {
-      track,
-      dismissed: isDismissed,
-      goals: isDismissed ? [] : goalsInTrack(pack, track).filter((goal) => !hidden.has(goal.key)),
-      customGoals: isDismissed ? [] : customGoals.filter((goal) => goal.track === track)
-    };
-  });
+  return {
+    goals: shown ? pack.goals.filter((goal) => !hidden.has(goal.key)) : [],
+    legalGoals: shown ? customGoals.filter((goal) => goal.track === LEGAL_GROUP) : [],
+    categories: categories.map((category) => ({
+      category,
+      goals: customGoals.filter((goal) => goal.track === category.id)
+    }))
+  };
 }
 
-/** Where somebody is in the roadmap, in the pack's own terms (ticket 54,
-    DIRECTION.md rule 16): which track still has work in it, and how much of
-    it, in a plain count rather than a fraction of the whole pack.
-
-    The first non-dismissed track, in the pack's own order, that still holds
-    an unchecked goal - built-in or custom. `not-my-path` counts as resolved
-    the same way `checked` does: the Polish pack's "keep opinions" goal is
-    ADR-0068's own example of a step nobody ticks, and a person who has said
-    a whole track is not their path is not "still on" it either. Once every
-    live track is resolved this returns the last one with nothing left,
-    which is still where the person is - a finished pack is not nowhere.
-    `null` only when every track is dismissed, which the screen already
-    draws with nothing to open. */
-export function whereYouAreInRoadmap<K extends string, C extends { readonly status: RoadmapGoalStatus }>(
-  sections: readonly RoadmapSection<K, C>[],
-  statusOf: (key: K) => RoadmapGoalStatus
-): { readonly track: RoadmapTrack; readonly stepsLeft: number } | null {
-  const live = sections.filter((section) => !section.dismissed);
-  if (live.length === 0) return null;
-
-  const current = live.find((section) => roadmapStepsLeft(section, statusOf) > 0) ?? live[live.length - 1];
-  return { track: current.track, stepsLeft: roadmapStepsLeft(current, statusOf) };
-}
-
-/** Remaining work in one visible track. The screen uses this for the track
-    somebody selected, while `whereYouAreInRoadmap` uses it to choose the
-    initial track. */
-export function roadmapStepsLeft<K extends string, C extends { readonly status: RoadmapGoalStatus }>(
-  section: RoadmapSection<K, C>,
+/** Remaining work in the legal group, as a plain count rather than a
+    fraction of the whole pack (DIRECTION.md rule 16). `not-my-path` counts
+    as resolved the same way `checked` does: a step somebody has ruled out
+    is not one they are still on. */
+export function roadmapStepsLeft<K extends string, C extends OwnGoal, Cat>(
+  list: RoadmapList<K, C, Cat>,
   statusOf: (key: K) => RoadmapGoalStatus
 ): number {
-  return section.goals.filter((goal) => statusOf(goal.key) === 'unchecked').length +
-    section.customGoals.filter((goal) => goal.status === 'unchecked').length;
+  return list.goals.filter((goal) => statusOf(goal.key) === 'unchecked').length + ownStepsLeft(list.legalGoals);
+}
+
+/** The same count for goals the person wrote, which carry their own tick. */
+export function ownStepsLeft(goals: readonly { readonly status: RoadmapGoalStatus }[]): number {
+  return goals.filter((goal) => goal.status === 'unchecked').length;
 }

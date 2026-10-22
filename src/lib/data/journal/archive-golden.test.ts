@@ -76,7 +76,7 @@ const SECTIONS = [
   'letters',
   'voicePracticeTakes',
   'roadmapChecks',
-  'roadmapTracks',
+  'roadmapCategories',
   'roadmapGoals',
   'regimenEpisodes',
   'doseEvents',

@@ -17,19 +17,19 @@ describe('roadmap to milestone sync (ticket 10, ADR-0045)', () => {
 
   it('stores and retrieves roadmapGoalKey on milestone', async () => {
     const { journal } = await journalWithBuiltIns();
-    await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-one-person', 'checked');
+    await journal.roadmap.setGoalStatus('pl', 'pl-legal-which-court', 'checked');
 
     const id = await journal.milestones.upsertMilestone({
       name: 'Came out to my best friend',
       epochDay: 20100,
-      roadmapGoalKey: 'pl-social-tell-one-person'
+      roadmapGoalKey: 'pl-legal-which-court'
     });
 
     const milestones = await journal.milestones.getMilestones();
     const found = milestones.find((m) => m.id === id);
     assert.ok(found);
     expect(found.name).toBe('Came out to my best friend');
-    expect(found.roadmapGoalKey).toBe('pl-social-tell-one-person');
+    expect(found.roadmapGoalKey).toBe('pl-legal-which-court');
   });
 
   it('allows updating milestone while preserving roadmapGoalKey', async () => {

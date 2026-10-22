@@ -996,17 +996,28 @@ export interface Checklist {
 export type RoadmapGoalStatus = 'unchecked' | 'checked' | 'not-my-path';
 
 /** A user-authored roadmap goal (phase 5 ticket 20, CONTEXT: "Roadmap
-    goal", "Custom"): free text someone added to a track themselves,
-    uuid-identified rather than named by a pack and a key the way a
-    bundled goal is, and never translated or reseeded - the split CONTEXT
-    already draws between Custom and Built-in. Appended to the end of its
-    track's order; the roadmap already refuses ordering between goals
-    (roadmap.ts), so creation order is all there is to keep. */
+    goal", "Custom"): free text someone added themselves, uuid-identified
+    rather than named by a pack and a key the way a bundled goal is, and
+    never translated or reseeded - the split CONTEXT already draws between
+    Custom and Built-in. `track` says where it sits: 'legal' for the Polish
+    legal steps, or the uuid of one of the person's categories (functional
+    audit ticket 34). Appended to the end of its group; the roadmap already
+    refuses ordering between goals (roadmap.ts), so creation order is all
+    there is to keep. */
 export interface CustomRoadmapGoal {
   id: string;
   track: string;
   text: string;
   status: RoadmapGoalStatus;
+}
+
+/** A category the person made on the roadmap (functional audit ticket 34),
+    to hold goals of their own beside the Polish legal steps. `name` is
+    empty only on a category migration 111 made from a cut track, whose uuid
+    is that track's key (roadmap.ts, LEGACY_ROADMAP_TRACKS). */
+export interface RoadmapCategory {
+  id: string;
+  name: string;
 }
 
 /** What kind of surgery a procedure is (phase 9 carpet ticket 17): a

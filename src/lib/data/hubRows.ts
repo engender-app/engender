@@ -355,7 +355,7 @@ const ROWS = [
     home: 'transition',
     /* A goal and a tick against one both opt out of the last-write registry
        for the same reason: neither carries a date of its own. */
-    areas: ['roadmapGoals', 'roadmapChecks'],
+    areas: ['roadmapGoals', 'roadmapCategories', 'roadmapChecks'],
     finishes: null,
     line: 'written'
   },

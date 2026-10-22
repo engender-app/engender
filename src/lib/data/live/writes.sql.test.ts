@@ -893,14 +893,17 @@ beforeAll(async () => {
   await drive('roadmap', 'setGoalHidden', () => journal.roadmap.setGoalHidden('pl', 'pl-legal-court-file', true));
   await drive('roadmap', 'setGoalStatus', () => journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked'));
   const customGoal = (await drive('roadmap', 'addCustomGoal', () =>
-    journal.roadmap.addCustomGoal('social', 'Tell my sister')
+    journal.roadmap.addCustomGoal('Tell my sister')
   )) as { id: string };
   await drive('roadmap', 'setCustomGoalStatus', () => journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked'));
   await drive('roadmap', 'updateCustomGoalText', () =>
     journal.roadmap.updateCustomGoalText(customGoal.id, 'Tell my sister about the appointment')
   );
   await drive('roadmap', 'deleteCustomGoal', () => journal.roadmap.deleteCustomGoal(customGoal.id));
-  await drive('roadmap', 'setTrackDismissed', () => journal.roadmap.setTrackDismissed('medical', true));
+  const category = (await drive('roadmap', 'addCategory', () => journal.roadmap.addCategory('Coming out'))) as { id: string };
+  await drive('roadmap', 'renameCategory', () => journal.roadmap.renameCategory(category.id, 'Coming out at work'));
+  await journal.roadmap.addCustomGoal('Tell my manager', category.id);
+  await drive('roadmap', 'deleteCategory', () => journal.roadmap.deleteCategory(category.id));
 
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
@@ -1088,8 +1091,8 @@ beforeAll(async () => {
   await driveRead('letters', 'getUnlockDaysInRange', () => journal.letters.getUnlockDaysInRange(20000, 30000));
   await driveRead('roadmap', 'getHiddenGoals', () => journal.roadmap.getHiddenGoals('pl'));
   await driveRead('roadmap', 'getGoalStatuses', () => journal.roadmap.getGoalStatuses('pl'));
-  await driveRead('roadmap', 'getDismissedTracks', () => journal.roadmap.getDismissedTracks());
   await driveRead('roadmap', 'getCustomGoals', () => journal.roadmap.getCustomGoals());
+  await driveRead('roadmap', 'getCategories', () => journal.roadmap.getCategories());
   await driveRead('stats', 'dayAverages', () => journal.stats.dayAverages('mood', 19000, 21000));
   await driveRead('stats', 'daySpread', () => journal.stats.daySpread('mood', 19000, 21000));
   await driveRead('stats', 'constellationReadings', () =>

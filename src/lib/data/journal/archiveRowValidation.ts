@@ -301,8 +301,9 @@ const ROWS = {
     status: text,
     hidden: optional(bool)
   },
-  roadmapTracks: {
-    track: text
+  roadmapCategories: {
+    id: identity,
+    name: text
   },
   roadmapGoals: {
     id: identity,
@@ -596,7 +597,8 @@ export function assertArchiveReferences(journal: ArchiveJournal, externalImport 
     for (const key of Object.keys(entry.dims ?? {})) referenced(key, dimensions, 'entry dimension');
     // External previews reuse tags already on the destination, outside their row-only payload.
     if (!externalImport) for (const id of entry.tags ?? []) referenced(id, tags, 'entry tag');
-    if (entry.presentationId) referenced(entry.presentationId, presentations, 'entry presentation');
+    // An empty string is a reference too (it would fail the foreign key at insert), so only absent and null mean none.
+    if (entry.presentationId !== undefined && entry.presentationId !== null) referenced(entry.presentationId, presentations, 'entry presentation');
   }
   for (const type of journal.personalEffectTypes) {
     if (type.categoryKey !== null) referenced(type.categoryKey, categories, 'effect category');

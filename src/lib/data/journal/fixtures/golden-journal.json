@@ -1632,16 +1632,23 @@
       "status": "checked"
     }
   ],
-  "roadmapTracks": [
+  "roadmapCategories": [
     {
-      "track": "medical"
+      "id": "cee2b176-9009-492c-a17c-f9d373c148c8",
+      "name": "Coming out"
     }
   ],
   "roadmapGoals": [
     {
-      "id": "00d672b1-c105-4233-a149-00657a56b2d7",
-      "track": "social",
+      "id": "73208230-ff02-496e-80d7-31cc8295cc72",
+      "track": "legal",
       "text": "Tell my sister",
+      "status": "unchecked"
+    },
+    {
+      "id": "75d3244b-742b-42ec-9237-db00400b369b",
+      "track": "cee2b176-9009-492c-a17c-f9d373c148c8",
+      "text": "Tell my manager",
       "status": "unchecked"
     }
   ],

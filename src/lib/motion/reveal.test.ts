@@ -144,6 +144,26 @@ describe('tier 3, a group opening its own height', () => {
     expect(frame(css!, 0.5)).toContain('overflow: hidden');
   });
 
+  /* Functional audit ticket 34: the roadmap's 23 Polish steps open as one
+     2967px block under a switch. Travelled whole, the edge crossed the
+     visible part of the screen in one frame (893px in the first 16ms), so
+     the steps painted in one frame. With `onScreen` the travel is only the
+     part the viewport shows, and the rest arrives at the end, below the
+     fold, where nothing is painted. */
+  it('travels only the part the viewport shows when asked, and rests at full height', () => {
+    stubDocument(false, true, { height: '2967px', paddingTop: '0px', paddingBottom: '0px' });
+    (globalThis as Record<string, unknown>).innerHeight = 844;
+    const below = { getBoundingClientRect: () => ({ top: 468 }) } as unknown as Element;
+    try {
+      const { css } = disclose(below, { onScreen: true });
+      expect(frame(css!, 0.5)).toContain('height: 188px');
+      expect(Number(/height: ([\d.]+)px/.exec(frame(css!, 0.99))![1])).toBeCloseTo(372.24, 2);
+      expect(frame(css!, 1)).toContain('height: 2967px');
+    } finally {
+      delete (globalThis as Record<string, unknown>).innerHeight;
+    }
+  });
+
   /* Tier 3's substitute is an instant cut rather than tier 2's crossfade: a
      group opening inside a screen has no journey for a fade to stand in for,
      and the chevron beside it has already said what happened. */

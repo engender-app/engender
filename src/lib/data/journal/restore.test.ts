@@ -157,7 +157,7 @@ async function populated() {
   });
 
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
-  await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  await journal.roadmap.addCustomGoal('Tell my sister');
 
   const tryout = await journal.tryouts.upsertTryout({
     kind: 'name',
@@ -338,14 +338,14 @@ test('merge adds what this device does not have and leaves what it has alone', a
 test('a target own roadmap tick and custom goal survive a merge that has never heard of them', async () => {
   const source = await populated();
   const target = await device();
-  await target.journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'checked');
-  await target.journal.roadmap.addCustomGoal('legal', 'Ask about remote hearings');
+  await target.journal.roadmap.setGoalStatus('pl', 'pl-legal-which-court', 'checked');
+  await target.journal.roadmap.addCustomGoal('Ask about remote hearings');
 
   await target.journal.archive.merge(await exported(source.journal));
 
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), {
     'pl-legal-court-file': 'checked',
-    'pl-social-tell-someone': 'checked'
+    'pl-legal-which-court': 'checked'
   });
   assert.deepEqual(
     (await target.journal.roadmap.getCustomGoals()).map((g) => g.text).sort(),
@@ -361,9 +361,9 @@ test('a target own roadmap tick and custom goal survive a merge that has never h
    was deleted. */
 test('a reworded custom goal travels as it now reads, and a deleted one does not travel at all', async () => {
   const source = await device();
-  const kept = await source.journal.roadmap.addCustomGoal('legal', 'Ask about remote hearings');
-  const reworded = await source.journal.roadmap.addCustomGoal('social', 'Tell my sster');
-  const removed = await source.journal.roadmap.addCustomGoal('medical', 'Ask for a second opinion');
+  const kept = await source.journal.roadmap.addCustomGoal('Ask about remote hearings');
+  const reworded = await source.journal.roadmap.addCustomGoal('Tell my sster');
+  const removed = await source.journal.roadmap.addCustomGoal('Ask for a second opinion');
   await source.journal.roadmap.setCustomGoalStatus(reworded.id, 'checked');
   await source.journal.roadmap.updateCustomGoalText(reworded.id, 'Tell my sister');
   await source.journal.roadmap.deleteCustomGoal(removed.id);
@@ -373,8 +373,33 @@ test('a reworded custom goal travels as it now reads, and a deleted one does not
 
   assert.deepEqual(await target.journal.roadmap.getCustomGoals(), [
     { id: kept.id, track: 'legal', text: 'Ask about remote hearings', status: 'unchecked' },
-    { id: reworded.id, track: 'social', text: 'Tell my sister', status: 'checked' }
+    { id: reworded.id, track: 'legal', text: 'Tell my sister', status: 'checked' }
   ]);
+});
+
+/* Functional audit ticket 34, round two: the person's categories travel
+   with the goals in them, and a merge keeps a category this device made
+   that the archive has never heard of. */
+test("a category travels with its goals, and a merge keeps this device's own", async () => {
+  const source = await device();
+  const category = await source.journal.roadmap.addCategory('Coming out');
+  const goal = await source.journal.roadmap.addCustomGoal('Tell my sister', category.id);
+
+  const replaced = await device();
+  await replaced.journal.archive.replace(await exported(source.journal));
+  assert.deepEqual(await replaced.journal.roadmap.getCategories(), [{ id: category.id, name: 'Coming out' }]);
+  assert.deepEqual(await replaced.journal.roadmap.getCustomGoals(), [
+    { id: goal.id, track: category.id, text: 'Tell my sister', status: 'unchecked' }
+  ]);
+
+  const merged = await device();
+  const own = await merged.journal.roadmap.addCategory('Wardrobe');
+  await merged.journal.archive.merge(await exported(source.journal));
+  assert.deepEqual(
+    (await merged.journal.roadmap.getCategories()).map((one) => one.name).sort(),
+    ['Coming out', 'Wardrobe']
+  );
+  assert.ok((await merged.journal.roadmap.getCategories()).some((one) => one.id === own.id));
 });
 
 test('a dose log travels with its schedule and pauses, still hung off the right episode', async () => {

@@ -24,8 +24,9 @@
      **The four prompts below the list** came off Settings' Tracking section
      with the same ticket, where they floated under no heading of their own.
      Each is the app speaking up without being asked - after a mood-only
-     save, while writing, eight hours into a binder session, over a ticked
-     roadmap goal - which is the question this whole screen is about. They
+     save, while writing, eight hours into a binder session - which is the
+     question this whole screen is about. The roadmap's milestone prompt
+     moved onto the roadmap itself (functional audit ticket 34). They
      are not registry rows: none of them is a kind of its own with a surface
      and a channel, each is one boolean a single feature reads, so they sit
      under a heading of their own rather than being forced into a list whose
@@ -161,12 +162,6 @@
       prefKey: 'wearDurationCueEnabled',
       title: () => m.wear_duration_cue_toggle(),
       subtitle: () => m.wear_duration_cue_sub()
-    },
-    {
-      key: 'roadmap-milestone-sync',
-      prefKey: 'roadmapMilestoneSyncEnabled',
-      title: () => m.roadmap_milestone_sync_title(),
-      subtitle: () => m.roadmap_milestone_sync_sub()
     }
   ];
 </script>

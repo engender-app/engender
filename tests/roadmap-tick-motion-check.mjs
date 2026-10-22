@@ -93,10 +93,15 @@ try {
   }
 
   await page.goto(`${server.resolvedUrls.local[0]}transition/roadmap`, { waitUntil: 'networkidle' });
+  /* The Polish legal steps follow the language until the switch is
+     answered (functional audit ticket 34), so turn them on for an English
+     run. */
+  const polishSwitch = page.locator('[data-roadmap-polish-steps] [role="switch"]');
+  if ((await polishSwitch.getAttribute('aria-checked')) !== 'true') await polishSwitch.click();
   await page.waitForSelector('[data-goal]');
 
   // Every goal starts unchecked on a fresh journal; the first one in DOM
-  // order is on the pack's opening track (Social).
+  // order is the pack's first legal step.
   const goal = await page.locator('[data-goal]').first().getAttribute('data-goal');
   const rowSel = `[data-goal="${goal}"]`;
   await page.waitForFunction((sel) => document.querySelector(sel)?.getAttribute('data-status') === 'unchecked', rowSel);

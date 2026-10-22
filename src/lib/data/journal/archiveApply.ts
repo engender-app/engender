@@ -24,6 +24,7 @@
 import { foldText } from '../fold';
 import { drugNameKey } from '../regimenEpisode';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource';
+import { LEGACY_ROADMAP_TRACKS, isCutTrackGoal } from '../roadmap';
 import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
@@ -650,6 +651,21 @@ export async function applyMilestones({ driver, journal, ts }: Restoring): Promi
    An unchecked row exists only to hold visibility, so it can take the
    Archive's status while keeping this device's hidden flag. Replace has
    already emptied the table before this runs. */
+/** After the custom goals land: an archive written before functional audit
+    ticket 34's round two has goals under the cut social, presentational and
+    medical tracks and no categories, so each such track gets the nameless
+    category migration 111 made for it, its uuid the track key. A category
+    already here keeps its name, on a merge as on a replace. */
+export async function adoptLegacyRoadmapTracks({ driver, ts }: Restoring): Promise<void> {
+  await driver.run(
+    `INSERT OR IGNORE INTO roadmap_category (uuid, name, updated_at)
+       SELECT track, '', ? FROM roadmap_goal
+         WHERE track IN (${LEGACY_ROADMAP_TRACKS.map(() => '?').join(', ')})
+         GROUP BY track ORDER BY MIN(id)`,
+    [ts, ...LEGACY_ROADMAP_TRACKS]
+  );
+}
+
 export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Promise<void> {
   /* Two identity columns, so the present map is built here rather than through
      presentIds, which reads a single id column. A newline joins the pair
@@ -658,8 +674,12 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
     'SELECT pack_key, goal_key, status FROM roadmap_check'
   );
   const present = new Map(rows.map((row) => [`${row.pack_key}\n${row.goal_key}`, row.status]));
+  /* Ticks against the tracks functional audit ticket 34 cut are skipped,
+     the same rows migration 111 deleted, so an older archive cannot bring
+     them back as invisible rows. */
+  const checks = journal.roadmapChecks.filter((check) => !isCutTrackGoal(check.goalKey));
 
-  for (const check of journal.roadmapChecks) {
+  for (const check of checks) {
     if (check.status !== 'unchecked' && present.get(`${check.packKey}\n${check.goalKey}`) === 'unchecked') {
       await driver.run(
         'UPDATE roadmap_check SET status = ?, updated_at = ? WHERE pack_key = ? AND goal_key = ?',
@@ -668,7 +688,7 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
     }
   }
 
-  const inserting = journal.roadmapChecks.filter((check) => !present.has(`${check.packKey}\n${check.goalKey}`));
+  const inserting = checks.filter((check) => !present.has(`${check.packKey}\n${check.goalKey}`));
   await insertRows(
     driver,
     'INSERT INTO roadmap_check (pack_key, goal_key, status, hidden, updated_at)',

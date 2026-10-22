@@ -63,7 +63,7 @@ test('each kind carries its exact record identity to its screen', () => {
   assert.equal(documentTargetHref({ kind: 'procedure', id: 'p1' }), '/health/surgery?procedure=p1');
   assert.equal(documentTargetHref({ kind: 'episode', id: 'e1' }), '/care/regimen?episode=e1#e1');
   assert.equal(
-    documentTargetHref({ kind: 'goal', id: 'pl-medical-keep-opinions' }),
-    '/transition/roadmap?goal=pl-medical-keep-opinions'
+    documentTargetHref({ kind: 'goal', id: 'pl-legal-final-copy' }),
+    '/transition/roadmap?goal=pl-legal-final-copy'
   );
 });

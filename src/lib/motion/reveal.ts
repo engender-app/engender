@@ -168,7 +168,7 @@ export function spread(_node: Element, params?: { authored?: boolean }): Transit
  */
 export function disclose(
   node: Element,
-  params?: { skip?: boolean },
+  params?: { skip?: boolean; onScreen?: boolean },
   /* `fadeEdges`: the panel primitive's closing (redesign ticket 25). A
      box's hairlines were cut to nothing on the first frame of a close,
      because a border cannot shrink below a device pixel and stalled the
@@ -272,6 +272,16 @@ export function disclose(
      pulled up by the same margin and made taller by it, so the content
      stays where it was and the edge below it does too. */
   const swallowed = collapsedTopMargin(node, style);
+  /* `onScreen` (functional audit ticket 34): a block far taller than the
+     screen travels only the part the viewport shows, the way `resize` does
+     since ticket 282, and takes the rest at the end, below the fold where
+     nothing is painted. The roadmap's 23 Polish steps are 2967px; travelled
+     whole under ease-out, the edge crossed the visible part of the screen
+     in one frame and the steps painted at once. */
+  const full = height + swallowed;
+  const top = params?.onScreen && typeof node.getBoundingClientRect === 'function' ? node.getBoundingClientRect().top : NaN;
+  const travel =
+    typeof innerHeight === 'number' && Number.isFinite(top) ? Math.min(full, Math.max(0, innerHeight - top)) : full;
 
   return {
     duration: motionDuration('--dur-med'),
@@ -286,7 +296,7 @@ export function disclose(
       `overflow: hidden;` +
       `min-height: 0;` +
       (rows ? `grid-template-rows: ${rows};` : '') +
-      `height: ${t * (height + swallowed)}px;` +
+      `height: ${t >= 1 ? full : t * travel}px;` +
       `padding-top: ${t * paddingTop}px;` +
       `padding-bottom: ${t * paddingBottom}px;` +
       `border-top-width: ${fadeEdges || t >= 1 ? borderTop : 0}px;` +

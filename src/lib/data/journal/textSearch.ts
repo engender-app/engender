@@ -534,7 +534,7 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // rather than surfaced by a search somebody else could be looking over.
   providers: 'private notes on a named person, read on the appointments screen',
   roadmapChecks: 'no text of its own: a tick against a bundled pack’s goal',
-  roadmapTracks: 'no text of its own: the name of one of the app’s four tracks',
+  roadmapCategories: 'a heading over goals, whose own text `roadmapGoals` above already searches',
   hairPhotos: 'no text of its own: a dated photograph',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',
   taper: 'no text of its own: a surgery day, a start day and a stage sequence (ticket 12)',

@@ -40,7 +40,7 @@ import { startOfDayTimestamp, weekdayOfEpochDay } from '../../src/lib/data/epoch
 import { activeEpisodesAt } from '../../src/lib/data/regimenEpisode.ts';
 import { BUILT_IN_DIMENSIONS, BUILT_IN_PERSONAL_EFFECT_TYPES } from '../../src/lib/data/vocabulary/builtins.ts';
 import { HAIR_REMOVAL_AREAS } from '../../src/lib/data/hairRemovalAreas.ts';
-import { POLISH_PACK, ROADMAP_TRACKS } from '../../src/lib/data/roadmap.ts';
+import { POLISH_PACK } from '../../src/lib/data/roadmap.ts';
 import { demoAudioBytes, demoVideoBytes } from '../../src/lib/data/demoAudioBytes.ts';
 
 /** Fixture spans: one year and ten years, two of them leap. The unit is
@@ -661,16 +661,13 @@ export async function generateLongJournal(
     }
   }
 
-  // Roadmap: a few ticks across every track, plus one custom goal.
-  for (const track of ROADMAP_TRACKS) {
-    const goals = POLISH_PACK.goals.filter((g) => g.track === track);
-    for (const goal of goals) {
-      if (random() < 0.65) continue;
-      await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, random() < 0.85 ? 'checked' : 'not-my-path');
-      summary.roadmapChecks++;
-    }
+  // Roadmap: a few ticks across the legal steps, plus one custom goal.
+  for (const goal of POLISH_PACK.goals) {
+    if (random() < 0.65) continue;
+    await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, random() < 0.85 ? 'checked' : 'not-my-path');
+    summary.roadmapChecks++;
   }
-  const customGoal = await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  const customGoal = await journal.roadmap.addCustomGoal('Tell my sister');
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
   summary.roadmapChecks++;
 

@@ -203,7 +203,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 110);
+  assert.equal(db.getUserVersion(), 111);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1030,6 +1030,54 @@ test('the saved-questions cut drops saved_question and nothing else', async () =
   assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
 });
 
+
+/* Functional audit ticket 34 kept only the roadmap's legal track. Ticks
+   against the three cut tracks go, with the per-track "not my path" table
+   and the document links that named a cut goal; custom goals, legal ticks
+   (an older legal key included) and documents themselves stay. */
+test('the roadmap trim drops cut-track ticks and roadmap_track, and keeps custom goals in categories', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 110));
+  await db.run(`INSERT INTO roadmap_check (pack_key, goal_key, status, hidden, updated_at) VALUES
+    ('pl', 'pl-social-tell-one-person', 'checked', 0, 1), ('pl', 'pl-presentational-voice', 'unchecked', 1, 1),
+    ('pl', 'pl-medical-bloodwork', 'not-my-path', 0, 1), ('pl', 'pl-legal-court-fee', 'checked', 0, 1),
+    ('pl', 'pl-legal-court-file', 'checked', 0, 1)`);
+  await db.run("INSERT INTO roadmap_track (track, updated_at) VALUES ('medical', 1), ('legal', 1)");
+  await db.run(`INSERT INTO roadmap_goal (uuid, track, text, status, updated_at) VALUES
+    ('g1', 'social', 'Tell my sister', 'checked', 1), ('g2', 'legal', 'Find a notary', 'unchecked', 2),
+    ('g3', 'medical', 'Ask about a second opinion', 'unchecked', 3), ('g4', 'social', 'Tell my brother', 'unchecked', 4)`);
+  await db.run(`INSERT INTO document (uuid, epoch_day, title, file_path, target_kind, target_id, updated_at) VALUES
+    ('d1', 100, 'Opinion', 'a.pdf', 'goal', 'pl-medical-psych-opinion', 1),
+    ('d2', 100, 'Fee', 'b.pdf', 'goal', 'pl-legal-court-fee', 1)`);
+  await db.run("INSERT INTO area_state (area, hidden, updated_at) VALUES ('roadmapTracks', 1, 1), ('roadmapGoals', 1, 1)");
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.deepEqual(await db.query('SELECT goal_key FROM roadmap_check ORDER BY goal_key'), [
+    { goal_key: 'pl-legal-court-fee' },
+    { goal_key: 'pl-legal-court-file' }
+  ]);
+  const tables = (await db.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'")).map((row) => row.name);
+  assert.ok(!tables.includes('roadmap_track'), 'roadmap_track is gone');
+  assert.deepEqual(await db.query('SELECT uuid, track, text, status FROM roadmap_goal ORDER BY id'), [
+    { uuid: 'g1', track: 'social', text: 'Tell my sister', status: 'checked' },
+    { uuid: 'g2', track: 'legal', text: 'Find a notary', status: 'unchecked' },
+    { uuid: 'g3', track: 'medical', text: 'Ask about a second opinion', status: 'unchecked' },
+    { uuid: 'g4', track: 'social', text: 'Tell my brother', status: 'unchecked' }
+  ]);
+  /* Round two: a goal under a cut track keeps a category of its own, named
+     by the old track's key and left nameless, so the screen says the old
+     name in whatever language it runs in. Legal goals sit with the legal
+     steps and need none. */
+  assert.deepEqual(await db.query('SELECT uuid, name FROM roadmap_category ORDER BY id'), [
+    { uuid: 'social', name: '' },
+    { uuid: 'medical', name: '' }
+  ]);
+  assert.deepEqual(await db.query('SELECT uuid, target_kind, target_id FROM document ORDER BY uuid'), [
+    { uuid: 'd1', target_kind: null, target_id: null },
+    { uuid: 'd2', target_kind: 'goal', target_id: 'pl-legal-court-fee' }
+  ]);
+  assert.deepEqual(await db.query('SELECT area FROM area_state'), [{ area: 'roadmapGoals' }]);
+  assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
+});
 
 test('visibility migration preserves existing checked and not-my-path goals as visible', async () => {
   const db = makeNodeSqliteDb();

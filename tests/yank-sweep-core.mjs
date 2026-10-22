@@ -281,7 +281,9 @@ const SCENES = [
   { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a mark on the rail opening the same editor (redesign 43)' },
   { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '[data-goal] .kit-row-main', when: 'persona', after: {"selector": "[data-goal]", "attribute": "data-status"}, is: 'a goal check state cycled' },
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a goal details sheet opening' },
-  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
+  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
+  { name: 'roadmap-add-category', at: '/transition/roadmap', act: '[data-add-category]', after: {"selector": "[data-sheet]"}, is: 'the new category sheet opening' },
+  { name: 'roadmap-edit-category', at: '/transition/roadmap', act: '[data-edit-category]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a category sheet opening' },
   { name: 'letters-compose', freshEmpty: true, at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
   /* Phase 11 ticket 15: the good-moments list opens on six and discloses
      the rest in place, so the control collapses while fourteen cards clip
@@ -388,8 +390,7 @@ const SCENES = [
   { name: 'dilation-week-later', at: '/health/dilation', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the dilation week later' },
   { name: 'cycle-week-earlier', at: '/health/cycle-events', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the cycle week earlier' },
   { name: 'cycle-week-later', at: '/health/cycle-events', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the cycle week later' },
-  { name: 'roadmap-track-switch', at: '/transition/roadmap', act: '[data-segmented="roadmap-track"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="roadmap-track"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the roadmap track' },
-  { name: 'roadmap-track-dismiss', at: '/transition/roadmap', act: '[data-track-panel]:not([hidden]) [data-track-toggle]', after: { selector: '[data-track-panel]:not([hidden]) [data-track-toggle]', attribute: 'data-dismissed' }, is: 'dismissing or restoring the visible roadmap track' },
+  { name: 'roadmap-polish-steps-switch', at: '/transition/roadmap', act: '[data-roadmap-polish-steps] [role="switch"]', after: { selector: '[data-roadmap-polish-steps] [role="switch"]', attribute: 'aria-checked' }, is: 'turning the Polish legal steps on or off' },
   { name: 'comfort-reorder', at: '/doubt/comfort', prepare: ['[data-comfort-arrange]'], act: '[data-comfort-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-comfort-item]', order: 'data-comfort-item' }, is: 'moving the first comfort row down with keyboard' },
   { name: 'today-editor-reorder', at: '/', prepare: ['[data-edit-today]'], act: '[data-edit-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-edit-pinned-row]', order: 'data-edit-pinned-row' }, is: 'moving a pinned row down with keyboard' },
   { name: 'voice-tab-switch', at: '/voice', act: '[data-segmented="voice-tab"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="voice-tab"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the voice surface' },

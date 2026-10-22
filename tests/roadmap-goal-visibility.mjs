@@ -28,7 +28,11 @@ try {
     await page.locator('[data-leave-setup]').click();
     await page.goto(`${base}/transition/roadmap`, { waitUntil: 'networkidle' });
   }
-  await page.locator('[data-segment="legal"]').click();
+  /* The Polish legal steps follow the language until the switch is
+     answered (functional audit ticket 34), so turn them on for an English
+     run. */
+  const polishSwitch = page.locator('[data-roadmap-polish-steps] [role="switch"]');
+  if ((await polishSwitch.getAttribute('aria-checked')) !== 'true') await polishSwitch.click();
   await row().waitFor({ state: 'visible' });
   const status = await row().getAttribute('data-status');
   const otherStates = await page.locator(`[data-goal]:not([data-goal="${key}"])`).evaluateAll((nodes) => nodes.map((node) => [node.dataset.goal, node.dataset.status]));
@@ -37,7 +41,6 @@ try {
   const statusLabel = await page.locator(`[data-goal-sheet-status="${key}"] .kit-row-title`).innerText();
   await visibility().click();
   await row().waitFor({ state: 'detached' });
-  assert.equal(await page.locator('[data-track-toggle="legal"]').getAttribute('data-dismissed'), 'false');
   assert.deepEqual(await page.locator(`[data-goal]:not([data-goal="${key}"])`).evaluateAll((nodes) => nodes.map((node) => [node.dataset.goal, node.dataset.status])), otherStates);
 
   await page.reload({ waitUntil: 'networkidle' });
@@ -70,7 +73,6 @@ try {
   assert.equal(await visibility().getAttribute('data-hidden'), 'true');
   assert.equal(await row().count(), 0);
   await visibility().click();
-  await page.locator('[data-segment="legal"]').click();
   await row().waitFor({ state: 'visible' });
   assert.equal(await row().getAttribute('data-status'), status);
   await page.reload({ waitUntil: 'networkidle' });

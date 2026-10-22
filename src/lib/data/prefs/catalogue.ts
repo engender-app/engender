@@ -279,6 +279,13 @@ export interface PreferenceValues {
   /** Whether ticking a roadmap goal prompts to record it as a milestone
       on the timeline (phase 5 deepening ticket 10, ADR-0045). */
   roadmapMilestoneSyncEnabled: boolean;
+  /** The answer to the roadmap's "Polish legal steps" switch (functional
+      audit ticket 34), null until somebody touches it. Null follows the
+      app's language: on for Polish, off otherwise (roadmap.ts,
+      `polishLegalStepsShown`). Portable, on `areaFinishOfferDeclined`'s
+      argument: whether a Polish court procedure is somebody's path is
+      something they said about their own journal. */
+  roadmapPolishStepsChoice: boolean | null;
   /** The areas whose finish offer has been answered no (phase 8 features
       ticket 04, ADR-0045). `ArchiveSectionName`s - the same key space
       `area_state` rows use.
@@ -448,6 +455,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   storageNoticeDismissed: false,
   lastVerifiedAt: null,
   roadmapMilestoneSyncEnabled: true,
+  roadmapPolishStepsChoice: null,
   areaFinishOfferDeclined: [],
   comingBackSeenSince: null,
   clinicianSummaryDrugExcluded: {},
@@ -479,6 +487,7 @@ export const PORTABLE_KEYS = [
   'voiceComfortLowHz',
   'voiceComfortHighHz',
   'areaFinishOfferDeclined',
+  'roadmapPolishStepsChoice',
   /* Both of phase 10's remaining front-page preferences travel, on
      `areaFinishOfferDeclined`'s own argument next door: each is something
      the person said about their own journal rather than something this

@@ -208,6 +208,7 @@ function portableWith(marker: string) {
     voiceComfortLowHz: values.voiceComfortLowHz,
     voiceComfortHighHz: values.voiceComfortHighHz,
     areaFinishOfferDeclined: values.areaFinishOfferDeclined,
+    roadmapPolishStepsChoice: values.roadmapPolishStepsChoice,
     pinnedRows: values.pinnedRows,
     onboardingAreas: values.onboardingAreas
   };

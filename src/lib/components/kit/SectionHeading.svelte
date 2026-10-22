@@ -14,9 +14,19 @@
     id,
     focusable = false,
     action,
-    sub
+    sub,
+    crossfade = false
   }: {
     text: string;
+    /** For a heading whose words the person can change while it is on
+        screen (a roadmap category renamed in place, functional audit ticket
+        34): the old and the new words crossfade in one grid cell, the way
+        `sub` does, rather than swapping in one frame. The words take what
+        the line leaves beside the action and wrap inside it, and the row is
+        top-aligned, so a new name a line longer or shorter only grows or
+        shrinks the heading downward: the action never wraps to a line of its
+        own and nothing re-centres. The caller animates that height. */
+    crossfade?: boolean;
     /** A second line under the heading saying which part of the area comes
         first - the Journal's month over its first day (ux-carpet ticket 282).
         An empty string draws the line with nothing on it yet (its
@@ -47,8 +57,14 @@
   const subFade = (_node: Element) => fadeOnly(crossfadeDuration());
 </script>
 
-<div class="kit-heading" data-section-heading id={focusable ? undefined : id}>
-  {#if focusable}
+<div class="kit-heading" class:is-crossfade={crossfade} data-section-heading id={focusable ? undefined : id}>
+  {#if crossfade}
+    <h2 class="kit-heading-fade">
+      {#key text}
+        <span transition:subFade>{text}</span>
+      {/key}
+    </h2>
+  {:else if focusable}
     <h2 {id} tabindex="-1">{text}</h2>
   {:else}
     <h2>{text}</h2>
@@ -81,5 +97,11 @@
     font-weight: var(--weight-medium);
     line-height: 1.3;
   }
-  .kit-heading-sub > * { grid-area: 1 / 1; }
+  .kit-heading-sub > *,
+  .kit-heading-fade > * { grid-area: 1 / 1; }
+  .kit-heading-fade {
+    display: grid;
+    flex: 1 1 0;
+  }
+  .is-crossfade { align-items: flex-start; }
 </style>

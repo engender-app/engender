@@ -224,7 +224,7 @@ test('the JSON reads as a file, indented, version first', () => {
     "letters": [],
     "voicePracticeTakes": [],
     "roadmapChecks": [],
-    "roadmapTracks": [],
+    "roadmapCategories": [],
     "roadmapGoals": [],
     "regimenEpisodes": [],
     "doseEvents": [],

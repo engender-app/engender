@@ -285,5 +285,38 @@ CREATE TABLE provider (
 ALTER TABLE appointment ADD COLUMN time_of_day TEXT;
 ALTER TABLE appointment ADD COLUMN provider_id INTEGER REFERENCES provider(id) ON DELETE SET NULL;
 CREATE INDEX idx_appointment_provider ON appointment(provider_id);
+` },
+  /* Functional audit ticket 34: the roadmap keeps only its legal track.
+     Ticks against the social, presentational and medical goals are dropped,
+     not converted, and so is the per-track "not my path" table, which one
+     track and the "Polish legal steps" switch leave nothing to do. A
+     document filed against a cut goal is unfiled, the way deleting a custom
+     goal unfiles one.
+
+     Round two gave the person categories of their own (roadmap_category):
+     a uuid, a name, and the goals whose track holds that uuid. A custom goal
+     written under a cut track keeps its grouping in a category whose uuid
+     is the old track key and whose name is empty, which the screen fills
+     with the old track's name in the language it runs in until somebody
+     renames it. Goals under 'legal' sit with the Polish legal steps. */
+  { version: 111, sql: `
+UPDATE document SET target_kind = NULL, target_id = NULL
+  WHERE target_kind = 'goal'
+    AND (target_id LIKE 'pl-social-%' OR target_id LIKE 'pl-presentational-%' OR target_id LIKE 'pl-medical-%');
+DELETE FROM roadmap_check
+  WHERE pack_key = 'pl'
+    AND (goal_key LIKE 'pl-social-%' OR goal_key LIKE 'pl-presentational-%' OR goal_key LIKE 'pl-medical-%');
+DROP TABLE roadmap_track;
+DELETE FROM area_state WHERE area = 'roadmapTracks';
+CREATE TABLE roadmap_category (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+INSERT INTO roadmap_category (uuid, name, updated_at)
+  SELECT track, '', MAX(updated_at) FROM roadmap_goal
+    WHERE track IN ('social', 'presentational', 'medical')
+    GROUP BY track ORDER BY MIN(id);
 ` }
 ];

@@ -89,7 +89,7 @@ for (const mode of ['merge', 'replace'] as const) {
       // appointment's referred-on day and its status updates; v101: a side
       // effect's resolved day; v104: milestone.celebrate; v107: a hair-removal
       // session's minutes; v110: the appointment's time and provider, and the
-      // provider table).
+      // provider table; v111: the roadmap's category table).
       await sourceDb.exec("ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other'");
       // And ticket 47's two stock columns (v99), for the same reason.
       await sourceDb.exec('ALTER TABLE medication_stock ADD COLUMN expiry_epoch_day INTEGER');
@@ -104,6 +104,7 @@ for (const mode of ['merge', 'replace'] as const) {
       await sourceDb.exec('ALTER TABLE side_effect ADD COLUMN resolved_epoch_day INTEGER');
       await sourceDb.exec('ALTER TABLE milestone ADD COLUMN celebrate INTEGER NOT NULL DEFAULT 1');
       await sourceDb.exec('ALTER TABLE hair_removal_session ADD COLUMN minutes INTEGER');
+      await sourceDb.exec('CREATE TABLE roadmap_category (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE, name TEXT NOT NULL, updated_at INTEGER NOT NULL)');
       await source.reconcileBuiltIns();
       for (const [id, drug, quantity, day, updated] of [
         ['first', firstDrug, 7, 20010, 200], ['last', lastDrug, 59, 20000, 100]

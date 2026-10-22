@@ -165,6 +165,21 @@ function asFreeTextStaging({ id, epochDay, scale, stage, description }: ArchiveH
   return { id, epochDay, description: legacyHairStagingText(scale ?? 'norwood_hamilton', stage, description ?? '') };
 }
 
+/** A flat section whose rows need one more statement once they have
+    landed. */
+function withAfterApply<Section extends { apply: (restoring: Restoring) => Promise<void> }>(
+  section: Section,
+  after: (restoring: Restoring) => Promise<void>
+): Section {
+  return {
+    ...section,
+    apply: async (restoring: Restoring) => {
+      await section.apply(restoring);
+      await after(restoring);
+    }
+  };
+}
+
 const MEDICATION_STOCK = {
   table: 'medication_stock',
   identity: 'drug',
@@ -726,44 +741,43 @@ const SECTIONS = [
     read: read.readRoadmapChecks,
     apply: apply.applyRoadmapChecks
   }),
-  /* A track somebody has said is not their path (phase 8 features ticket
-     49). Named by bundled structure rather than by anything the person
-     wrote, so it does not travel, for the same reason roadmapChecks above
-     does not: it records a fact about this person against content every
-     install already has.
-
-     A descriptor rather than a hand-written pair, unlike roadmapChecks: a
-     tick is identified by a pack/goal couple, which `identity` has no way
-     to name, and a dismissed track is one column of one table - exactly
-     what eraMutes above is. */
+  /* The person's own roadmap categories (functional audit ticket 34, round
+     two), ahead of the goals that name them. Uuid-identified, so a merge
+     skips one already here, keeping this device's name for it. Absent from
+     an archive written before them, which reads as none. */
   flat({
-    name: 'roadmapTracks',
-    travels: 'none',
-    table: 'roadmap_track',
-    identity: 'track',
-    orderBy: 'track',
-    columns: { track: 'track' }
+    name: 'roadmapCategories',
+    travels: 'whole',
+    table: 'roadmap_category',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: { uuid: 'id', name: 'name' }
   }),
   /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
      present locally is simply skipped rather than compared column by column.
-     Its track is fixed at creation (roadmap.ts has no move-track setter),
-     and its text and status are both this device's own to say since ticket
-     69 gave a custom goal a rewording - so skipping is the same rule
+     Its text and status are both this device's own to say since ticket 69
+     gave a custom goal a rewording - so skipping is the same rule
      applyRoadmapChecks keeps, that a merge must not overwrite what the
      person did on the device doing the importing. A replace carries all
      three columns as they now stand, which is what makes a rewording and a
-     delete travel at all (restore.test.ts). */
-  flat({
-    name: 'roadmapGoals',
-    // Ticket 04's own worked case: a custom goal carries its own text and
-    // track rather than naming bundled content, so it travels whether or
-    // not it is checked - unlike `roadmapChecks` above.
-    travels: 'whole',
-    table: 'roadmap_goal',
-    identity: 'uuid',
-    orderBy: 'id',
-    columns: { uuid: 'id', track: 'track', text: 'text', status: 'status' }
-  }),
+     delete travel at all (restore.test.ts). Its track is 'legal' or a
+     category's uuid since ticket 34; a goal from an older archive under a
+     cut track gets that track's nameless category once the goals land
+     (adoptLegacyRoadmapTracks). */
+  withAfterApply(
+    flat({
+      name: 'roadmapGoals',
+      // Ticket 04's own worked case: a custom goal carries its own text and
+      // group rather than naming bundled content, so it travels whether or
+      // not it is checked - unlike `roadmapChecks` above.
+      travels: 'whole',
+      table: 'roadmap_goal',
+      identity: 'uuid',
+      orderBy: 'id',
+      columns: { uuid: 'id', track: 'track', text: 'text', status: 'status' }
+    }),
+    apply.adoptLegacyRoadmapTracks
+  ),
   // `end_epoch_day` is absent on an archive from before ticket 38 - read as
   // still ongoing, the same as every pre-existing episode's backfill (v40).
   // `end_reason` is absent the same way on an archive from before ticket 43 -
@@ -1061,7 +1075,7 @@ export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map
 export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
   'doubtEntries', 'savedQuestions', 'counterevidenceSnapshots',
   'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits', 'wordIgnore',
-  'journalingPauses'
+  'journalingPauses', 'roadmapTracks'
 ];
 
 /** A journal with every section present and empty - what an importer builds
