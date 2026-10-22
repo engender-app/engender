@@ -6,9 +6,7 @@
    comfort/pain field.
 
    Every row says which practice it was (`kind`, schema v71, phase 8
-   features ticket 50). Everything downstream reads it: the screen's whole
-   wording, which body region the trend defaults to, and whether the eight-
-   hour duration cue below can apply at all.
+   features ticket 50). The screen's wording and the duration cue use it.
 
    Its optional Reminder hook is reconciled here rather than at the UI seam,
    the same reason stock.ts owns its run-out reminder rather than leaving it
@@ -108,39 +106,6 @@ const SESSION_COLUMNS = 'uuid, kind, start_timestamp, duration_ms, note';
     vocabulary/wearLabels.ts are what turn a forgotten kind into a
     typecheck failure. */
 export const WEAR_KINDS: readonly WearKind[] = ['binder', 'tucking', 'compression'];
-
-/** Which built-in body region the wear trend compares against by default,
-    per kind (CONTEXT: "Wear session"). Built-in ids only - no new region
-    vocabulary - and a default rather than a rule: the chart card's own
-    region picker overrides it for any kind, exactly as it did before there
-    were kinds. */
-export const WEAR_KIND_REGION: Record<WearKind, string> = {
-  binder: 'chest',
-  tucking: 'genitals',
-  compression: 'hips_waist'
-};
-
-/** Which region the trend actually draws against: what the person picked,
-    or the kind's own default, or - if either names a region they have
-    turned off in their body-region vocabulary - the first one still
-    offered. A function rather than three expressions on the screen, so the
-    override and the fallback are one rule that can be read and tested in
-    one place.
-
-    `picked` is null until the person touches the picker, and never seeded
-    with the default: seeded, a deliberate pick of the region the default
-    already names would be indistinguishable from not having picked, and the
-    selection would start following the kind again on the next save. */
-export function wearTrendRegion(
-  kind: WearKind,
-  picked: string | null,
-  available: readonly string[]
-): string {
-  for (const candidate of [picked, WEAR_KIND_REGION[kind]]) {
-    if (candidate !== null && available.includes(candidate)) return candidate;
-  }
-  return available[0] ?? WEAR_KIND_REGION[kind];
-}
 
 /** How long a running binder session runs before it picks up the duration
     cue (ADR-0064).

@@ -21,11 +21,11 @@
      later ticket extends, and RegistryRow draws one, so this page is the
      {#each} and nothing else.
 
-     **The four prompts below the list** came off Settings' Tracking section
+     **The prompts below the list** came off Settings' Tracking section
      with the same ticket, where they floated under no heading of their own.
      Each is the app speaking up without being asked - after a mood-only
-     save, while writing, eight hours into a binder session, over a ticked
-     roadmap goal - which is the question this whole screen is about. They
+     save, while writing, over a ticked roadmap goal - which is the
+     question this whole screen is about. The binder cue lives on Wear. They
      are not registry rows: none of them is a kind of its own with a surface
      and a channel, each is one boolean a single feature reads, so they sit
      under a heading of their own rather than being forced into a list whose
@@ -36,7 +36,7 @@
      the app is closed, so a switch there would be a promise the platform
      does not keep. The show column carries no such limit - a notice or a
      card is in-app UI, not an OS notification - so it stays live on web,
-     and so do the four prompts; only the notify slot on each row, the
+     and so do the prompts; only the notify slot on each row, the
      permission notice and the two notification-only cards after the list
      drop out. What takes their place on web sits above the rows it
      explains (ticket 13): the platform notice opens the screen, so every
@@ -140,8 +140,8 @@
 
   let anyNotifyOn = $derived(ROWS.some((row) => row.notify && prefs[row.notify.prefKey]));
 
-  /* The four prompts, in the order Settings drew them. A list rather than
-     four copies of the same eight lines of markup: they differ only in
+  /* The remaining prompts, in the order Settings drew them. A list rather than
+     copies of the same markup: they differ only in
      which boolean they write and what they are called.
 
      A named shape rather than an inline one, the way the registry names
@@ -156,12 +156,6 @@
 
   const PROMPTS: PromptRow[] = [
     { key: 'guided-prompts', prefKey: 'guidedPromptsEnabled', title: () => m.guided_prompts(), subtitle: () => m.guided_prompts_sub() },
-    {
-      key: 'wear-duration-cue',
-      prefKey: 'wearDurationCueEnabled',
-      title: () => m.wear_duration_cue_toggle(),
-      subtitle: () => m.wear_duration_cue_sub()
-    },
     {
       key: 'roadmap-milestone-sync',
       prefKey: 'roadmapMilestoneSyncEnabled',

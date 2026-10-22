@@ -11,8 +11,7 @@ import {
   binderCueShowing,
   BINDER_CUE_HOURS,
   hoursMinutesOf,
-  hoursMinutesSecondsOf,
-  wearTrendRegion
+  hoursMinutesSecondsOf
 } from './wearSessions.ts';
 
 test('hoursMinutesOf formats milliseconds span into hours and minutes', () => {
@@ -60,29 +59,6 @@ test('the duration cue is a running binder session past eight hours, and nothing
   // And the preference switches the whole thing off, for a session that
   // would otherwise be showing it.
   assert.equal(binderCueShowing(running('binder'), 30 * HOUR, false), false);
-});
-
-test('the trend region follows the kind until the person picks one, and falls back to what is offered', () => {
-  const ALL = ['chest', 'hips_waist', 'genitals'];
-
-  // The kind's own default, one per kind, with nothing picked.
-  assert.equal(wearTrendRegion('binder', null, ALL), 'chest');
-  assert.equal(wearTrendRegion('tucking', null, ALL), 'genitals');
-  assert.equal(wearTrendRegion('compression', null, ALL), 'hips_waist');
-
-  // A pick overrides it for any kind, including a pick of another kind's
-  // default - the picker stays free, which is the whole point of it.
-  assert.equal(wearTrendRegion('binder', 'genitals', ALL), 'genitals');
-  assert.equal(wearTrendRegion('compression', 'chest', ALL), 'chest');
-
-  // A region the person has turned off in their own vocabulary is not
-  // drawn against, whether it arrived as the pick or as the default.
-  assert.equal(wearTrendRegion('binder', 'genitals', ['chest']), 'chest');
-  assert.equal(wearTrendRegion('tucking', null, ['chest', 'hips_waist']), 'chest');
-
-  // Nothing offered at all: the kind's default, which is what the picker
-  // would be empty beside anyway.
-  assert.equal(wearTrendRegion('tucking', null, []), 'genitals');
 });
 
 test('a session carries its kind through a save, an edit and a read back', async () => {

@@ -963,7 +963,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       constellationReadings: ['entry', 'dimension', 'presentation'],
       bodyRegionTrend: ['entry'],
       bodyRegionBreakdown: ['entry', 'photo', 'hairRemoval', 'hairProgress'],
-      wearTimeTrend: ['wearSession'],
+      weeklyWearHours: ['wearSession'],
       tallyTrend: ['tally'],
       bodyRegionMap: ['entry'],
       entryCountsByDay: ['entry'],

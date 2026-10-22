@@ -67,8 +67,7 @@ const CHART_LIBRARY = /^d3(-|$)/;
 const LOADERS = [
   'src/lib/charts/areaPath.ts',
   'src/lib/components/CycleEventChart.svelte',
-  'src/lib/components/EffectsTimeline.svelte',
-  'src/lib/components/WearTrendChart.svelte'
+  'src/lib/components/EffectsTimeline.svelte'
 ];
 
 /** Of those, the ones that are not components. A `.ts` module is the shape

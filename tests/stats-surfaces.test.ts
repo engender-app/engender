@@ -88,7 +88,7 @@ describe('the summary panels wait for the floor', () => {
    held to, which outlives the block itself. */
 describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
   it('asks for no per-area read at all', () => {
-    for (const call of ['getMeasurementsInRange', 'getMostRecentAnalyte', 'wearTimeTrend', 'tallyTrend']) {
+    for (const call of ['getMeasurementsInRange', 'getMostRecentAnalyte', 'weeklyWearHours', 'tallyTrend']) {
       expect(stats).not.toContain(call);
     }
   });

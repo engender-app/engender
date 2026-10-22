@@ -1,118 +1,92 @@
 <script lang="ts">
-  /* Wear time against body-region intensity, on one chart (phase 5 ticket
-     04). Two independent series sharing an x axis (day) but never a y
-     scale: wear time is hours and intensity is 0-100, so forcing them onto
-     one axis would either flatten the hours line or blow the intensity one
-     off the top. Left axis is hours, right is intensity.
+  /* Calendar weeks and hours arrive from the stats area. This component
+     places bars only; the caller supplies dates and words. */
+  import type { TransitionConfig } from 'svelte/transition';
+  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
 
-     A dumb renderer: it
-     takes numbers and formatters and knows nothing about wear sessions or
-     body regions. The wording, and paraglide, stay with the caller. */
-
-  import { scaleLinear } from 'd3-scale';
-  import { line as d3line } from 'd3-shape';
-  import type { Role } from '$lib/theme/roles';
-
-  interface Point {
-    day: number;
-    value: number;
-  }
-
+  const growBar = (_node: Element): TransitionConfig => ({
+    duration: motionDuration('--dur-med'),
+    easing: EASE_OUT,
+    css: (t) => `transform: scaleY(${t})`
+  });
+  const moveTick = (_node: Element): TransitionConfig => ({
+    duration: motionDuration('--dur-fast'),
+    easing: EASE_OUT,
+    css: (t) => `transform: translateY(${(1 - t) * 8}px); opacity: ${t}`
+  });
+  const moveLabel = (_node: Element): TransitionConfig => ({
+    duration: motionDuration('--dur-fast'),
+    easing: EASE_OUT,
+    css: (t) => `transform: translateX(${(1 - t) * -12}px); opacity: ${t}`
+  });
   let {
-    wearPoints,
-    regionPoints,
-    wearMax,
-    regionMin = 0,
-    regionMax = 100,
-    height = 150,
-    width = 320,
+    points,
+    fromWeek,
+    toWeek,
+    firstLabel,
+    lastLabel,
     ariaLabel,
-    highlight
+    height = 150,
+    width = 320
   }: {
-    wearPoints: Point[];
-    regionPoints: Point[];
-    /** The hours axis's ceiling. Left to the caller rather than computed
-        here from the data, so the axis stays put as the range picker moves
-        and a shallow week does not zoom in on noise. */
-    wearMax: number;
-    regionMin?: number;
-    regionMax?: number;
+    points: { weekStart: number; hours: number; label: string }[];
+    fromWeek: number;
+    toWeek: number;
+    firstLabel: string;
+    lastLabel: string;
+    ariaLabel: string;
     height?: number;
     width?: number;
-    ariaLabel: string;
-    /** Which positions on the shared x axis carry the chosen presentation
-        (phase 8 features ticket 17, ADR-0048), in the same units `day`
-        already is here - the caller places, this chart only draws, the
-        same division of labour `wearMax` keeps. Its own row of marks along
-        the baseline rather than a mark on either line: a highlighted day
-        may carry wear data, region data, both or neither, since the two
-        series and a presentation are three independent reads of the same
-        days. */
-    highlight?: { positions: number[]; role: Role };
   } = $props();
 
-  const P = 8;
-  const AXIS = 30;
+  const LEFT = 30;
+  const RIGHT = 8;
+  const TOP = 8;
+  const BOTTOM = 22;
 
-  let chart = $derived.by(() => {
-    /* A line needs two days. Under that the chart draws nothing, and the
-       caller says why in words (after-release 27, audit L05-14): this used
-       to print its own aria label, the chart's title, as body text. */
-    if (wearPoints.length < 2 && regionPoints.length < 2) return null;
-    const days = [...wearPoints, ...regionPoints].map((p) => p.day);
-    const x0 = Math.min(...days);
-    const x1 = Math.max(...days);
-
-    const x = scaleLinear().domain([x0, Math.max(x0 + 1, x1)]).range([AXIS, width - AXIS]);
-    const yWear = scaleLinear().domain([0, Math.max(wearMax, 1)]).range([height - P, P]);
-    const yRegion = scaleLinear().domain([regionMin, regionMax]).range([height - P, P]);
-
-    const wearLine = d3line<Point>().x((p) => x(p.day)).y((p) => yWear(p.value));
-    const regionLine = d3line<Point>().x((p) => x(p.day)).y((p) => yRegion(p.value));
-
+  let plot = $derived.by(() => {
+    const bottom = height - BOTTOM;
+    const plotHeight = bottom - TOP;
+    const weeks = Math.max(1, Math.round((toWeek - fromWeek) / 7) + 1);
+    const slot = (width - LEFT - RIGHT) / weeks;
+    const barWidth = Math.min(20, slot * 0.72);
+    const maxHours = Math.max(4, ...points.map((point) => point.hours));
+    const ceiling = Math.ceil(maxHours / 4) * 4;
     return {
-      wear: wearPoints.length >= 2 ? (wearLine(wearPoints) ?? '') : null,
-      region: regionPoints.length >= 2 ? (regionLine(regionPoints) ?? '') : null,
-      wearTicks: yWear.ticks(3),
-      wearTickY: (v: number) => yWear(v),
-      // Off the plot's own domain rather than the wear/region days: a
-      // highlighted day past either series' last reading is still on the
-      // axis and still worth marking.
-      highlighted: (highlight?.positions ?? [])
-        .filter((p) => p >= x0 && p <= x1)
-        .map((p) => x(p))
+      ticks: [0, ceiling / 2, ceiling].map((hours) => ({ hours, y: bottom - (hours / ceiling) * plotHeight })),
+      bars: points.map((point) => {
+        const barHeight = (point.hours / ceiling) * plotHeight;
+        return {
+          ...point,
+          x: LEFT + ((point.weekStart - fromWeek) / 7 + 0.5) * slot - barWidth / 2,
+          y: bottom - barHeight,
+          width: barWidth,
+          height: barHeight
+        };
+      })
     };
   });
 </script>
 
-{#if chart}
-  <svg class="wear-trend-chart" viewBox="0 0 {width} {height}" preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
-    {#each chart.wearTicks as tick (tick)}
-      <line x1={AXIS} x2={width - P} y1={chart.wearTickY(tick)} y2={chart.wearTickY(tick)} class="chart-gridline" />
-      <text x={AXIS - 4} y={chart.wearTickY(tick) + 3.5} class="wear-axis-label" text-anchor="end">{tick}</text>
-    {/each}
-
-    {#if chart.region}
-      <path d={chart.region} class="wear-trend-region" />
-    {/if}
-    {#if chart.wear}
-      <path d={chart.wear} class="wear-trend-wear" />
-    {/if}
-    {#if highlight}
-      {#each chart.highlighted as hx (hx)}
-        <circle class="wear-trend-highlight" cx={hx} cy={height - P} r="3" style:fill={highlight.role.mark} />
-      {/each}
-    {/if}
-  </svg>
-{/if}
+<svg class="wear-trend-chart" viewBox="0 0 {width} {height}" preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
+  {#each plot.ticks as tick (tick.hours)}
+    <line x1={LEFT} x2={width - RIGHT} y1={tick.y} y2={tick.y} class="chart-gridline" transition:moveTick />
+    <text x={LEFT - 4} y={tick.y + 3.5} class="wear-axis-label" text-anchor="end" transition:moveTick>{tick.hours}</text>
+  {/each}
+  {#each plot.bars as bar (bar.weekStart)}
+    <rect class="wear-week-bar" x={bar.x} y={bar.y} width={bar.width} height={bar.height} transition:growBar>
+      <title>{bar.label}</title>
+    </rect>
+  {/each}
+  {#key fromWeek}
+    <text x={LEFT} y={height - 4} class="wear-axis-label" transition:moveLabel>{firstLabel}</text>
+  {/key}
+  {#if fromWeek !== toWeek}
+    <text x={width - RIGHT} y={height - 4} class="wear-axis-label" text-anchor="end">{lastLabel}</text>
+  {/if}
+</svg>
 
 <style>
-  .chart-gridline {
-    stroke: var(--chart-grid);
-    stroke-width: 1;
-    stroke-dasharray: 2 4;
-  }
-
   .wear-trend-chart {
     width: 100%;
     height: auto;
@@ -120,40 +94,22 @@
     overflow: visible;
   }
 
-  .wear-trend-wear {
-    fill: none;
-    stroke: var(--chart-line);
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  .chart-gridline {
+    stroke: var(--chart-grid);
+    stroke-width: 1;
+    stroke-dasharray: 2 4;
   }
 
-  /* accent-2 rather than a second chart token: the app already reaches for
-     it whenever two things need telling apart at a glance (screens.css's
-     gradients, the calendar's today-dot). */
-  .wear-trend-region {
-    fill: none;
-    stroke: var(--accent-2);
-    stroke-width: 2;
-    stroke-dasharray: 4 3;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  .wear-week-bar {
+    fill: var(--chart-line);
+    rx: 2;
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    transition: x var(--dur-med) var(--ease-out), y var(--dur-med) var(--ease-out), width var(--dur-med) var(--ease-out), height var(--dur-med) var(--ease-out);
   }
 
   .wear-axis-label {
     fill: var(--text-2);
     font-size: var(--text-sm);
-  }
-
-  /* The presentation chip's mark (ticket 17, ADR-0048): a dot on the
-     baseline both lines already share, at less than full strength so it
-     reads as a mark on the axis rather than as a third series - a
-     highlighted day may carry no reading on either line at all. The
-     surface-coloured ring is the same separation the area chart's own
-     scrub dot draws against the card underneath it. */
-  .wear-trend-highlight {
-    fill-opacity: 0.55;
-    stroke: var(--surface);
-    stroke-width: 1;
   }
 </style>

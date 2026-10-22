@@ -7530,13 +7530,28 @@ try {
     }
   }
   /* Remaining prompts that came off Settings' Tracking section. */
-  for (const key of ['guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
+  for (const key of ['guided-prompts', 'roadmap-milestone-sync']) {
     if (!(await page.locator(`[data-prompt="${key}"]`).count())) {
       throw new Error('the ' + key + ' prompt did not arrive with the rest');
     }
   }
+  if (await page.locator('[data-prompt="wear-duration-cue"]').count()) {
+    throw new Error('the binder cue switch still appears in Notifications');
+  }
+  await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
+  const cue = page.locator('[data-wear-cue-switch] [role="switch"]');
+  await cue.waitFor();
+  const beforeCue = await cue.getAttribute('aria-checked');
+  await cue.click();
+  if ((await cue.getAttribute('aria-checked')) === beforeCue) {
+    throw new Error('the binder cue switch on Wear did not change');
+  }
+  await page.reload({ waitUntil: 'networkidle' });
+  if ((await page.locator('[data-wear-cue-switch] [role="switch"]').getAttribute('aria-checked')) === beforeCue) {
+    throw new Error('the binder cue switch on Wear did not persist');
+  }
 
-  ok('one screen over one registry: notify column absent on web, the show column holds what Today does not arrange, and the remaining prompts are under their heading');
+  ok('the notification registry stays on its screen; the binder cue switch persists on Wear');
 } catch (e) { fail('the unprompted registry view', e); }
 });
 

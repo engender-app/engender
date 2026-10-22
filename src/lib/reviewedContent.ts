@@ -24,7 +24,8 @@
 import { literatureReviews } from './data/personalEffectWindow';
 import { ROADMAP_PACKS } from './data/roadmap';
 import { VOICE_METRICS_REVIEWED_ON } from './data/voice/metrics';
-import { WEAR_SAFETY_REVIEWED_ON } from './data/journal/wearSessions';
+import { WEAR_KINDS, WEAR_SAFETY_REVIEWED_ON } from './data/journal/wearSessions';
+import { wearSafetyFacts } from './data/vocabulary/wearLabels';
 import { RESOURCES_REVIEWED_ON } from './resources/directory';
 
 export type ReviewedKind = 'helpline' | 'legal' | 'literature';
@@ -47,7 +48,10 @@ export const REVIEWED_CONTENT: readonly ReviewedContent[] = [
      after the ruling, so its one date covers the institution list too. */
   ...ROADMAP_PACKS.map((pack) => ({ area: 'Roadmap', item: `${pack.key} pack`, kind: 'legal' as const, reviewedOn: pack.reviewedOn })),
   { area: 'Voice', item: 'figures on the metric reference screen', kind: 'literature', reviewedOn: VOICE_METRICS_REVIEWED_ON },
-  { area: 'Wear', item: 'safety facts and the binder cue hours', kind: 'literature', reviewedOn: WEAR_SAFETY_REVIEWED_ON },
+  { area: 'Wear', item: 'binder cue hours', kind: 'literature', reviewedOn: WEAR_SAFETY_REVIEWED_ON },
+  ...WEAR_KINDS.flatMap((kind) => wearSafetyFacts(kind).facts.map((fact, index) => ({
+    area: 'Wear', item: `${kind} safety fact ${index + 1}`, kind: 'literature' as const, reviewedOn: fact.reviewedOn
+  }))),
   ...literatureReviews().map((band) => ({ area: 'Onset bands', item: band.effect, kind: 'literature' as const, reviewedOn: band.reviewedOn }))
 ];
 

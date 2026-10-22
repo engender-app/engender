@@ -222,7 +222,7 @@ await block('archived wear kinds', 8, async () => {
     row.labels.length === 10 && row.labels.every((label, index) => label === messages[`${labelKeys[index]}_${row.kind}`])),
     'known wear kinds retain every catalogue translation');
   check(r.known.every(row => row.safety.facts.length === 3 &&
-    row.safety.facts.every((fact, index) => fact === messages[`wear_facts_${row.kind}_${index + 1}`]) &&
+    row.safety.facts.every((fact, index) => fact.text === messages[`wear_facts_${row.kind}_${index + 1}`] && /^\d{4}-\d{2}-\d{2}$/.test(fact.reviewedOn)) &&
     row.safety.source === messages[`wear_facts_${row.kind}_source`]),
     'known wear kinds retain their safety facts and sources');
   const everyKind = (field) => rendered.length === 4 && unknownKinds.every(kind =>

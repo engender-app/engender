@@ -325,32 +325,39 @@ test('a body-region trend filters by presentation, and partitions the unfiltered
   assert.equal(totalCount(byGirl) + totalCount(byBoy) + totalCount(byNone), totalCount(unfiltered));
 });
 
-/* wear-time trend (phase 5 ticket 04) */
+/* Weekly wear hours (functional audit ticket 37). Epoch day 4 is Monday. */
 
-test('a wear-time trend averages completed sessions per day, in hours', async () => {
+test('weekly hours sum sessions and split a Sunday night across calendar weeks', async () => {
   const { journal } = await journalWithBuiltIns();
+  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(10) + 23 * 3600000, durationMs: 3 * 3600000 });
+  await journal.wearSessions.upsertSession({ kind: 'tucking', startTimestamp: startOfDayTimestamp(11) + 9 * 3600000, durationMs: 2 * 3600000 });
 
-  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: 4 * 3600000 });
-  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(100) + 15 * 3600000, durationMs: 2 * 3600000 });
-  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(101) + 9 * 3600000, durationMs: 6 * 3600000 });
-
-  assert.deepEqual(await journal.stats.wearTimeTrend(100, 101), [
-    { day: 100, value: 3, count: 2 },
-    { day: 101, value: 6, count: 1 }
+  assert.deepEqual(await journal.stats.weeklyWearHours(4, 17, startOfDayTimestamp(18)), [
+    { weekStart: 4, hours: 1 },
+    { weekStart: 11, hours: 4 }
   ]);
 });
 
-test('a still-running session has no duration to average and is left out of the trend', async () => {
+test('chosen range clips overnight hours even when session started before range', async () => {
   const { journal } = await journalWithBuiltIns();
-
-  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: null });
-
-  assert.deepEqual(await journal.stats.wearTimeTrend(100, 100), []);
+  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(10) + 23 * 3600000, durationMs: 3 * 3600000 });
+  assert.deepEqual(await journal.stats.weeklyWearHours(11, 11, startOfDayTimestamp(12)), [
+    { weekStart: 11, hours: 2 }
+  ]);
 });
 
-test('a range with no completed session comes back empty rather than throwing', async () => {
+test('running session counts through now and splits at midnight', async () => {
   const { journal } = await journalWithBuiltIns();
-  assert.deepEqual(await journal.stats.wearTimeTrend(100, 100), []);
+  await journal.wearSessions.upsertSession({ kind: 'compression', startTimestamp: startOfDayTimestamp(10) + 23 * 3600000, durationMs: null });
+  assert.deepEqual(await journal.stats.weeklyWearHours(10, 11, startOfDayTimestamp(11) + 2 * 3600000), [
+    { weekStart: 4, hours: 1 },
+    { weekStart: 11, hours: 2 }
+  ]);
+});
+
+test('range with no elapsed wear returns no bars', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.deepEqual(await journal.stats.weeklyWearHours(100, 100, startOfDayTimestamp(101)), []);
 });
 
 /* tally trend (ticket 10) */

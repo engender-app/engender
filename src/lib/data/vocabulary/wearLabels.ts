@@ -36,6 +36,7 @@
    runs on the Node tier, where no alias exists (vitest.config.ts). */
 import { m } from '../../paraglide/messages';
 import type { WearKind } from '../types';
+import { WEAR_SAFETY_REVIEWED_ON } from '../journal/wearSessions';
 
 const KIND_LABELS: Record<WearKind, () => string> = {
   binder: m.wear_kind_binder,
@@ -128,17 +129,24 @@ const TILE_TITLES: Record<WearKind, () => string> = {
    Testicular torsion is deliberately absent. It is widely repeated as a
    tucking risk and appears in none of the sources checked, so the ticket
    rules it out by name rather than leaving it to judgment. */
-const SAFETY_FACTS: Record<WearKind, { facts: () => string[]; source: () => string }> = {
+export interface WearSafetyFact {
+  text: string;
+  reviewedOn: string;
+}
+
+const reviewedFact = (text: string): WearSafetyFact => ({ text, reviewedOn: WEAR_SAFETY_REVIEWED_ON });
+
+const SAFETY_FACTS: Record<WearKind, { facts: () => WearSafetyFact[]; source: () => string }> = {
   binder: {
-    facts: () => [m.wear_facts_binder_1(), m.wear_facts_binder_2(), m.wear_facts_binder_3()],
+    facts: () => [reviewedFact(m.wear_facts_binder_1()), reviewedFact(m.wear_facts_binder_2()), reviewedFact(m.wear_facts_binder_3())],
     source: m.wear_facts_binder_source
   },
   tucking: {
-    facts: () => [m.wear_facts_tucking_1(), m.wear_facts_tucking_2(), m.wear_facts_tucking_3()],
+    facts: () => [reviewedFact(m.wear_facts_tucking_1()), reviewedFact(m.wear_facts_tucking_2()), reviewedFact(m.wear_facts_tucking_3())],
     source: m.wear_facts_tucking_source
   },
   compression: {
-    facts: () => [m.wear_facts_compression_1(), m.wear_facts_compression_2(), m.wear_facts_compression_3()],
+    facts: () => [reviewedFact(m.wear_facts_compression_1()), reviewedFact(m.wear_facts_compression_2()), reviewedFact(m.wear_facts_compression_3())],
     source: m.wear_facts_compression_source
   }
 };
@@ -157,7 +165,7 @@ export const wearDeleteSheetTitle = (kind: WearKind): string => labelForKind(DEL
 export const wearReminderTitle = (kind: WearKind): string => labelForKind(REMINDER_TITLES, kind);
 export const wearTileTitle = (kind: WearKind): string => labelForKind(TILE_TITLES, kind);
 export const wearReturningRowTitle = (kind: WearKind): string => labelForKind(RETURNING_ROW_TITLES, kind);
-export const wearSafetyFacts = (kind: WearKind): { facts: string[]; source: string } =>
+export const wearSafetyFacts = (kind: WearKind): { facts: WearSafetyFact[]; source: string } =>
   Object.prototype.hasOwnProperty.call(SAFETY_FACTS, kind)
     ? { facts: SAFETY_FACTS[kind].facts(), source: SAFETY_FACTS[kind].source() }
     : { facts: [], source: '' };
