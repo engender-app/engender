@@ -8,15 +8,20 @@
   /* Procedures, dates and your own recovery log, on the surface kit (phase
      5 UX ticket 25 and phase 5 deepening ticket 12).
      Rebuilt into a five-phase Procedure Care & Recovery Hub:
-     1. Planning Phase (no date set): Consult questions, preparation checklist, insurance tasks.
-     2. Pre-Op Phase (date set, before surgery day): Live day countdown, packing list, clearance tasks.
+     1. Planning Phase (no date set): consults.
+     2. Pre-Op Phase (date set, before surgery day): live day countdown, consults.
      3. Surgery Day: On surgery day, prompts user to record surgery day as transition milestone upon explicit confirmation (ADR-0045).
-     4. Recovery Phase (1..90 days post-op): Post-op recovery day badge (Post-Op Day X), recovery feelings diary, wound healing progression photo album.
-     5. Archived Phase (>90 days post-op): Permanent surgical history record. */
+     4. Recovery Phase (any day after surgery): Post-Op Day X, wound healing photo album, consults.
+     5. Archived Phase (after surgery, archived by the person): the record, read back.
+     Every phase carries the same one Notes field and one Checklist under
+     those two names (functional-audit ticket 24); they used to be retitled
+     per phase, which made one field look like five. A question for a
+     consult goes on the appointment prep list, the one list that is taken
+     into any appointment, rather than into these notes. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
-  import { SURGERY_RECOVERY_CUTOFF_DAYS, procedureInArchive, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
+  import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { dilationEligible } from '$lib/data/taperSchedule';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
@@ -63,8 +68,10 @@
 
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedures = $derived(proceduresQuery.rows);
-  let ongoingProcedures = $derived(procedures.filter((procedure) => !procedureInArchive(procedure, today)));
-  let archivedProcedures = $derived(procedures.filter((procedure) => procedureInArchive(procedure, today)));
+  /* Archived only by the person's own switch (functional-audit ticket 24):
+     a surgery date never moves a procedure here on its own. */
+  let ongoingProcedures = $derived(procedures.filter((procedure) => !procedure.archived));
+  let archivedProcedures = $derived(procedures.filter((procedure) => procedure.archived));
   let procedureGroups = $derived([
     { key: 'ongoing', title: m.surgery_ongoing_title(), procedures: ongoingProcedures },
     { key: 'archive', title: m.surgery_archive_title(), procedures: archivedProcedures }
@@ -94,7 +101,7 @@
   let selected = $derived(procedures.find((p) => p.id === selectedId) ?? null);
 
   let selectedPhase = $derived<ProcedurePhase | null>(
-    selected ? procedurePhase(selected.surgeryEpochDay, today) : null
+    selected ? procedurePhase(selected.surgeryEpochDay, today, selected.archived) : null
   );
 
   let selectedRecDay = $derived(
@@ -106,17 +113,17 @@
      days yet). A one-day stretch on surgery day itself is still a real
      window, not a reason to hide the link - `compareStretchLink`'s own
      too-short/no-data states are exactly what a marginal window like that
-     is for. Its end clamps to today while recovery is still active
-     (surgery day and recovery) and holds at the 90-day cutoff once
-     archived, so an old procedure's stretch stops growing (ADR-0010's
-     "clamp at read time", the same rule an open-ended tryout or era
-     follows). */
+     is for. Its end clamps to today for the first 90 days and holds at
+     that cutoff after, archived or not, so an old procedure's stretch stops
+     growing (ADR-0010's "clamp at read time", the same rule an open-ended
+     tryout or era follows). It is open-ended only while it still ends
+     today. */
   let recoveryWindow = $derived(
     selected && selected.surgeryEpochDay !== null && selectedPhase !== 'planning' && selectedPhase !== 'pre_op'
       ? { start: selected.surgeryEpochDay, end: Math.min(today, selected.surgeryEpochDay + SURGERY_RECOVERY_CUTOFF_DAYS) }
       : null
   );
-  let recoveryOpenEnded = $derived(selectedPhase === 'surgery_day' || selectedPhase === 'recovery');
+  let recoveryOpenEnded = $derived(recoveryWindow !== null && recoveryWindow.end === today);
   const compareLink = compareStretchLink(() => recoveryWindow);
   const SURGERY_COMPARE_COPY = {
     title: m.surgery_compare_title,
@@ -328,6 +335,25 @@
     }
   }
 
+  /* The question is the prep list's own item, written where labs and
+     changes already write theirs, so it shows under "What to raise" on the
+     appointment screen and on the clinician summary. */
+  let questionSheet = $state(false);
+  let questionText = $state('');
+
+  function openQuestionSheet() {
+    questionText = '';
+    questionSheet = true;
+  }
+
+  async function addQuestion() {
+    const content = questionText.trim();
+    if (!content) return;
+    if (!(await sheetWrite.run(() => journal.checklists.addToStandaloneChecklist(content), m.write_failed()))) return;
+    questionSheet = false;
+    toast(m.appointment_prep_added_toast(), { kind: 'record-saved' });
+  }
+
   function openPhotoSheet() {
     photoDate = dateInputValueFromEpochDay(today);
     photoSheet = true;
@@ -446,8 +472,8 @@
          with `aria-controls` (ticket 52): the log is a sibling of the
          whole list rather than a child of the card that opens it. -->
     <div id="procedure-log-{selected.id}" class="recovery" data-recovery-log={selected.id} data-phase={selectedPhase} transition:collapse>
-      {#snippet checklistBlock(title: string, readonly = false)}
-        <SectionHeading text={title} />
+      {#snippet checklistBlock(readonly = false)}
+        <SectionHeading text={m.surgery_checklist_title()} />
         {#if checklistItems.length}
           <div style="margin-bottom:var(--space-3)">
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
@@ -501,16 +527,16 @@
         {/if}
       {/snippet}
 
-      {#snippet notesBlock(title: string, placeholder: string)}
-        <SectionHeading text={title} />
-        <Field label={title} id="surgery-notes" hidden>
+      {#snippet notesBlock()}
+        <SectionHeading text={m.surgery_notes_title()} />
+        <Field label={m.surgery_notes_title()} id="surgery-notes" hidden>
           {#snippet children(id)}
             <textarea autocomplete={journalTextAutocomplete()}
               class="input"
               {id}
               name="surgery-notes"
               rows="4"
-              {placeholder}
+              placeholder={m.surgery_notes_placeholder()}
               bind:value={notesDraft}
             ></textarea>
           {/snippet}
@@ -544,6 +570,21 @@
         {:else}
           <p class="muted small" style="margin-bottom:var(--space-3)" transition:collapse>{m.surgery_consults_empty()}</p>
         {/if}
+      {/snippet}
+
+      <!-- A consult date, and a question to take into it. The question goes
+           on the appointment prep list (functional-audit ticket 24): that
+           is the list "What to raise" reads at any appointment, and these
+           notes used to hold the questions under a title of their own. -->
+      {#snippet consultActions()}
+        <div class="consult-actions">
+          <button class="btn btn-soft press" data-add-consult onclick={openConsultSheet}>
+            <span>{m.surgery_consult_add()}</span>
+          </button>
+          <button class="btn btn-soft press" data-add-consult-question onclick={openQuestionSheet}>
+            <span>{m.surgery_consult_question_add()}</span>
+          </button>
+        </div>
       {/snippet}
 
       <!-- Ticket 18: the recovery window as one side of `/compare`, offered
@@ -580,13 +621,11 @@
 
         <SectionHeading text={m.surgery_consults_title()} />
         {@render consultsBlock()}
-        <button class="btn btn-soft press" data-add-consult style="margin-bottom:var(--space-4)" onclick={openConsultSheet}>
-          <span>{m.surgery_consult_add()}</span>
-        </button>
+        {@render consultActions()}
 
-        {@render notesBlock(m.surgery_consult_questions_title(), m.surgery_notes_placeholder())}
+        {@render notesBlock()}
 
-        {@render checklistBlock(m.surgery_prep_checklist_title())}
+        {@render checklistBlock()}
 
       <!-- Phase 2: Pre-Op Phase (date set in future) -->
       {:else if selectedPhase === 'pre_op'}
@@ -601,15 +640,13 @@
           data-add-as-milestone-notice
         />
 
-        {@render checklistBlock(m.surgery_clearance_checklist_title())}
+        {@render checklistBlock()}
 
         <SectionHeading text={m.surgery_consults_title()} />
         {@render consultsBlock()}
-        <button class="btn btn-soft press" data-add-consult style="margin-bottom:var(--space-4)" onclick={openConsultSheet}>
-          <span>{m.surgery_consult_add()}</span>
-        </button>
+        {@render consultActions()}
 
-        {@render notesBlock(m.surgery_notes_title(), m.surgery_notes_placeholder())}
+        {@render notesBlock()}
 
       <!-- Phase 3: Surgery Day Phase (surgery date is today) -->
       {:else if selectedPhase === 'surgery_day'}
@@ -649,11 +686,11 @@
           </div>
         {/if}
 
-        {@render checklistBlock(m.surgery_checklist_title())}
+        {@render checklistBlock()}
 
-        {@render notesBlock(m.surgery_notes_title(), m.surgery_notes_placeholder())}
+        {@render notesBlock()}
 
-      <!-- Phase 4: Recovery Phase (1..90 days post-op) -->
+      <!-- Phase 4: Recovery Phase (any day after surgery, not archived) -->
       {:else if selectedPhase === 'recovery'}
         <SectionHeading text={m.surgery_phase_recovery()} />
         <Notice
@@ -670,19 +707,17 @@
 
         {@render compareBlock()}
 
-        {@render notesBlock(m.surgery_feelings_title(), m.surgery_feelings_placeholder())}
+        {@render notesBlock()}
 
         {@render woundAlbum()}
 
-        {@render checklistBlock(m.surgery_recovery_checklist_title())}
+        {@render checklistBlock()}
 
         <SectionHeading text={m.surgery_consults_title()} />
         {@render consultsBlock()}
-        <button class="btn btn-soft press" data-add-consult style="margin-bottom:var(--space-4)" onclick={openConsultSheet}>
-          <span>{m.surgery_consult_add()}</span>
-        </button>
+        {@render consultActions()}
 
-      <!-- Phase 5: Archived Phase (>90 days post-op) -->
+      <!-- Phase 5: Archived Phase (after surgery, archived by the person) -->
       {:else if selectedPhase === 'archived'}
         <SectionHeading text={m.surgery_phase_archived()} />
         <Notice
@@ -698,12 +733,12 @@
 
         {@render woundAlbum()}
 
-        {@render notesBlock(m.surgery_notes_title(), m.surgery_notes_placeholder())}
+        {@render notesBlock()}
 
         <SectionHeading text={m.surgery_consults_title()} />
         {@render consultsBlock()}
 
-        {@render checklistBlock(m.surgery_checklist_title(), true)}
+        {@render checklistBlock(true)}
       {/if}
 
       <!-- Outside the phase chain on purpose (ticket 56, ADR-0065): a
@@ -826,6 +861,23 @@
     <button class="btn btn-primary" data-save-consult disabled={sheetWrite.busy} onclick={addConsult}><span>{m.surgery_consult_add()}</span></button>
   </Sheet>
 
+  <Sheet busy={sheetWrite.busy} open={questionSheet} title={m.surgery_consult_question_sheet()} onClose={() => (questionSheet = false)}>
+    <h3>{m.surgery_consult_question_sheet()}</h3>
+    <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consult_question_hint()}</p>
+    <Field label={m.surgery_consult_question_label()} id="surgery-consult-question" hidden>
+      {#snippet children(id)}
+        <input autocomplete={journalTextAutocomplete()}
+          class="input"
+          {id}
+          name="surgery-consult-question"
+          placeholder={m.surgery_consult_question_placeholder()}
+          bind:value={questionText}
+        />
+      {/snippet}
+    </Field>
+    <button class="btn btn-primary" data-save-consult-question disabled={sheetWrite.busy} onclick={addQuestion}><span>{m.appointment_prep_add_button()}</span></button>
+  </Sheet>
+
   <Sheet busy={sheetWrite.busy} open={photoSheet} title={m.surgery_photos_title()} onClose={() => (photoSheet = false)}>
     <h3>{m.surgery_photos_title()}</h3>
     <Field label={m.surgery_photo_date_label()} id="surgery-photo-date">
@@ -916,6 +968,13 @@
 
   .recovery {
     margin-top: var(--space-4);
+  }
+
+  .consult-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
   }
 
   .sj-box {

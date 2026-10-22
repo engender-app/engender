@@ -15,7 +15,8 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(procedurePhase(20000, today)).toBe('surgery_day');
     expect(procedurePhase(19986, today)).toBe('recovery'); // 14 days post-op
     expect(procedurePhase(19910, today)).toBe('recovery'); // 90 days post-op
-    expect(procedurePhase(19909, today)).toBe('archived'); // 91 days post-op
+    expect(procedurePhase(19880, today)).toBe('recovery'); // 120 days post-op, not archived
+    expect(procedurePhase(19880, today, true)).toBe('archived'); // archived by the person
   });
 
   it('ProcedureRecoveryCard component contains required accessibility, role and phase hooks', () => {
@@ -120,7 +121,46 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(photos).toHaveLength(1);
     expect(photos[0].epochDay).toBe(20044);
 
-    // 5. Archived phase (>90 days post-op)
-    expect(procedurePhase(proc.surgeryEpochDay, 20150)).toBe('archived');
+    // 5. Still recovery 120 days on: only the person's switch archives it
+    expect(procedurePhase(proc.surgeryEpochDay, 20150, proc.archived)).toBe('recovery');
+    await journal.procedures.upsertProcedure({ id: procId, name: 'Top Surgery', surgeryEpochDay: 20030, archived: true });
+    [proc] = await journal.procedures.getProcedures();
+    expect(procedurePhase(proc.surgeryEpochDay, 20150, proc.archived)).toBe('archived');
+  });
+
+  /* Functional-audit ticket 24: the one notes field and the one checklist
+     used to be retitled by phase ("Consult questions & notes", "Recovery
+     feelings diary", "Clearance & packing list" and four more), which made
+     one field look like five. */
+  it('shows one Notes and one Checklist in every phase', () => {
+    const pageCode = read('src/routes/health/surgery/+page.svelte');
+    const notes = [...pageCode.matchAll(/\{@render notesBlock\(([^)]*)\)\}/g)].map((match) => match[1]);
+    const checklists = [...pageCode.matchAll(/\{@render checklistBlock\(([^)]*)\)\}/g)].map((match) => match[1]);
+    expect(notes).toEqual(['', '', '', '', '']);
+    expect(checklists).toEqual(['', '', '', '', 'true']);
+    expect(pageCode).toMatch(/<SectionHeading text=\{m\.surgery_notes_title\(\)\} \/>/);
+    expect(pageCode).toMatch(/<SectionHeading text=\{m\.surgery_checklist_title\(\)\} \/>/);
+    for (const lang of ['en', 'pl']) {
+      const messages = JSON.parse(read(`messages/${lang}.json`)) as Record<string, string>;
+      for (const retired of [
+        'surgery_consult_questions_title', 'surgery_feelings_title', 'surgery_feelings_placeholder',
+        'surgery_prep_checklist_title', 'surgery_clearance_checklist_title', 'surgery_recovery_checklist_title'
+      ]) expect(messages[retired], `${lang} ${retired}`).toBeUndefined();
+    }
+    expect(JSON.parse(read('messages/en.json')).surgery_notes_title).toBe('Notes');
+    expect(JSON.parse(read('messages/en.json')).surgery_checklist_title).toBe('Checklist');
+  });
+
+  it('sends a consult question to the appointment prep list, not the procedure notes', async () => {
+    const pageCode = read('src/routes/health/surgery/+page.svelte');
+    expect(pageCode).toContain('data-add-consult-question');
+    expect(pageCode).toMatch(/journal\.checklists\.addToStandaloneChecklist\(/);
+
+    // The list the surgery screen writes to is the one the appointment
+    // screen reads as its prep list.
+    const { journal } = await journalWithBuiltIns();
+    await journal.checklists.addToStandaloneChecklist('How long before I can lift?');
+    const standalone = await journal.checklists.getStandaloneChecklist();
+    expect(standalone?.items.map((item) => item.content)).toEqual(['How long before I can lift?']);
   });
 });

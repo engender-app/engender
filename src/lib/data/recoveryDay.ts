@@ -69,30 +69,30 @@ export function activeSurgeryProcedure<T extends { surgeryEpochDay: number | nul
 }
 
 /** The 5 lifecycle phases of a surgical procedure (phase 5 ticket 12).
-    - `planning`: no surgery date set yet (consult questions, prep checklist, insurance)
-    - `pre_op`: surgery date set in future (countdown, packing list, pre-op clearance)
+    - `planning`: no surgery date set yet
+    - `pre_op`: surgery date set in future
     - `surgery_day`: surgery day is today (prompt for milestone recording)
-    - `recovery`: 1..90 days post-op (Post-Op Day X badge, feelings diary, wound photo album)
-    - `archived`: >90 days post-op (permanent surgical history record)
-*/
+    - `recovery`: any day after surgery, for as long as the procedure is not
+      archived
+    - `archived`: after surgery, and the person moved it to the archive
+
+    No date ages a procedure into the archive (functional-audit ticket 24).
+    `procedure.archived` is the person's own organising choice (schema.ts),
+    and it used to be overridden 90 days after surgery, which moved a
+    procedure nobody had touched into the archive and back out of reach of
+    its own switch. An archived procedure whose operation is still ahead
+    keeps the phase its date gives, since its log has nothing to look back
+    on yet. */
 export type ProcedurePhase = 'planning' | 'pre_op' | 'surgery_day' | 'recovery' | 'archived';
 
 export function procedurePhase(
   surgeryEpochDay: number | null,
   today: number,
-  cutoffDays = SURGERY_RECOVERY_CUTOFF_DAYS
+  archived = false
 ): ProcedurePhase {
   const status = recoveryDay(surgeryEpochDay, today);
   if (status.type === 'unscheduled') return 'planning';
   if (status.type === 'upcoming') return 'pre_op';
   if (status.type === 'surgeryDay') return 'surgery_day';
-  return status.days <= cutoffDays ? 'recovery' : 'archived';
-}
-
-/** Group an older procedure with the archive without writing its manual flag. */
-export function procedureInArchive(
-  procedure: { archived: boolean; surgeryEpochDay: number | null },
-  today: number
-): boolean {
-  return procedure.archived || procedurePhase(procedure.surgeryEpochDay, today) === 'archived';
+  return archived ? 'archived' : 'recovery';
 }

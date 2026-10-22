@@ -334,11 +334,15 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // recovery checklist. `kind` defaults to `custom`, and the dilation gate
   // only reads a `custom` procedure's own opt-in (ticket 17), so this needs
   // it set to be the seed the surgery-journey and dilation screens read.
+  // Archived by hand: nothing archives a procedure by its date any more
+  // (functional-audit ticket 24), and the persona keeps one in the archive
+  // so the screen shows both groups.
   const procedureId = await journal.procedures.upsertProcedure({
     name: 'top surgery',
     surgeryEpochDay: today - 400,
     notes: 'Double incision, drains out on day 5.',
-    dilationOptIn: true
+    dilationOptIn: true,
+    archived: true
   });
   await journal.procedures.addConsult(procedureId, today - 460);
   await journal.procedures.addConsult(procedureId, today - 420);
