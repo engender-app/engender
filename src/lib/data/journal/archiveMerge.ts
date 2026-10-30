@@ -1,5 +1,5 @@
 /* What an archive Merge decides for each row, and the deletions it carries
-   (functional audit ticket 48, ADR draft "archive-merge-applies-edits").
+   (functional audit ticket 48, ADR draft-archive-merge-keeps-the-newer-copy).
 
    Until this ticket a Merge added what this device did not have and left
    every matched row alone, so an edit made on the other device never
@@ -40,8 +40,8 @@
    taking this device's clock: stamping it now would make the copy look
    newer than an edit the first device makes after the export, and that
    edit would lose the next Merge. The clocks of two devices are trusted to
-   be roughly right; ADR-0011's original argument against last-write-wins
-   is answered in the ADR. */
+   be roughly right; what that costs, and the old argument for skipping
+   matched rows instead, are in the ADR. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { ArchiveDeletion } from '../archive/payload';
