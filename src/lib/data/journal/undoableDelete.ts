@@ -22,8 +22,10 @@
      uuids and `updated_at` stamps. To anything that reads the database
      afterwards, Merge included (ticket 48), an undone deletion never
      happened. If a row cannot go back (something new took its rowid or its
-     uuid), the transaction rolls back and `undo()` rejects; the deletion
-     stands.
+     uuid), or a row the deletion only changed has been written since (a
+     provider named again on the appointment it was cleared from), the
+     transaction rolls back and `undo()` rejects; the deletion stands and the
+     newer edit is kept.
    - `finish()` closes the window: the held files are removed. Calling `undo()`
      after it, or `finish()` after an undo, does nothing.
 
@@ -42,6 +44,14 @@ export interface UndoableDelete {
   undo(): Promise<void>;
   /** Ends the window and removes the files the deletion let go of. */
   finish(): Promise<void>;
+}
+
+interface Guard {
+  tbl: string;
+  rid: number;
+  col: string;
+  /** The value as an SQL literal, from quote(). */
+  val: string;
 }
 
 interface Column {
@@ -72,7 +82,12 @@ function captureScript(columns: Column[]): { create: string; drop: string } {
     byTable.set(column.tbl, [...(byTable.get(column.tbl) ?? []), column]);
   }
 
-  const create: string[] = ['CREATE TEMP TABLE undo_log (seq INTEGER PRIMARY KEY, tbl TEXT NOT NULL, inverse TEXT NOT NULL)'];
+  const create: string[] = [
+    'CREATE TEMP TABLE undo_log (seq INTEGER PRIMARY KEY, kind TEXT NOT NULL, tbl TEXT NOT NULL, rid INTEGER NOT NULL, inverse TEXT NOT NULL)',
+    // What each column an update changed was left holding, so an undo can
+    // tell whether anything has written it since.
+    'CREATE TEMP TABLE undo_guard (seq INTEGER PRIMARY KEY, tbl TEXT NOT NULL, rid INTEGER NOT NULL, col TEXT NOT NULL, val TEXT NOT NULL)'
+  ];
   const drop: string[] = [];
   let n = 0;
   for (const [table, cols] of byTable) {
@@ -93,18 +108,21 @@ function captureScript(columns: Column[]): { create: string; drop: string } {
     const restore = `${literal(`UPDATE ${target} SET `)} || substr(s, 3) || ' WHERE rowid = ' || OLD.rowid`;
     const unInsert = `${literal(`DELETE FROM ${target} WHERE rowid = `)} || NEW.rowid`;
     const t = literal(table);
+    const guards = cols
+      .map((c) => `INSERT INTO undo_guard (tbl, rid, col, val) SELECT ${t}, NEW.rowid, ${literal(c.col)}, quote(NEW.${ident(c.col)}) WHERE OLD.${ident(c.col)} IS NOT NEW.${ident(c.col)};`)
+      .join(' ');
     const d = `undo_d_${n}`;
     const u = `undo_u_${n}`;
     const i = `undo_i_${n}`;
     n++;
     create.push(
-      `CREATE TEMP TRIGGER ${d} BEFORE DELETE ON ${target} BEGIN INSERT INTO undo_log (tbl, inverse) VALUES (${t}, ${reinsert}); END`,
-      `CREATE TEMP TRIGGER ${u} BEFORE UPDATE ON ${target} BEGIN INSERT INTO undo_log (tbl, inverse) SELECT ${t}, ${restore} FROM (SELECT ${changed} AS s) WHERE s <> ''; END`,
-      `CREATE TEMP TRIGGER ${i} AFTER INSERT ON ${target} BEGIN INSERT INTO undo_log (tbl, inverse) VALUES (${t}, ${unInsert}); END`
+      `CREATE TEMP TRIGGER ${d} BEFORE DELETE ON ${target} BEGIN INSERT INTO undo_log (kind, tbl, rid, inverse) VALUES ('d', ${t}, OLD.rowid, ${reinsert}); END`,
+      `CREATE TEMP TRIGGER ${u} BEFORE UPDATE ON ${target} BEGIN INSERT INTO undo_log (kind, tbl, rid, inverse) SELECT 'u', ${t}, OLD.rowid, ${restore} FROM (SELECT ${changed} AS s) WHERE s <> ''; ${guards} END`,
+      `CREATE TEMP TRIGGER ${i} AFTER INSERT ON ${target} BEGIN INSERT INTO undo_log (kind, tbl, rid, inverse) VALUES ('i', ${t}, NEW.rowid, ${unInsert}); END`
     );
     drop.push(`DROP TRIGGER temp.${d}`, `DROP TRIGGER temp.${u}`, `DROP TRIGGER temp.${i}`);
   }
-  drop.push('DROP TABLE temp.undo_log');
+  drop.push('DROP TABLE temp.undo_log', 'DROP TABLE temp.undo_guard');
   return { create: `${create.join(';\n')};`, drop: `${drop.join(';\n')};` };
 }
 
@@ -149,7 +167,7 @@ export async function captureDelete<J>(
     }
   };
 
-  const log = await driver.transaction(async (scope) => {
+  const { entries: log, guards } = await driver.transaction(async (scope) => {
     const columns = await scope.query<Column & Record<string, unknown>>(
       `SELECT m.name AS tbl, p.name AS col, p.pk AS pk, upper(p.type) AS type,
               m.sql LIKE 'CREATE VIRTUAL TABLE%' AS isVirtual
@@ -160,9 +178,20 @@ export async function captureDelete<J>(
     const script = captureScript(columns);
     await scope.exec(script.create);
     await remove(open(inline(scope), holding));
-    const rows = await scope.query<{ tbl: string; inverse: string }>('SELECT tbl, inverse FROM temp.undo_log ORDER BY seq');
+    const rows = await scope.query<{ kind: string; tbl: string; rid: number; inverse: string }>(
+      'SELECT kind, tbl, rid, inverse FROM temp.undo_log ORDER BY seq'
+    );
+    const guardRows = await scope.query<{ tbl: string; rid: number; col: string; val: string }>(
+      'SELECT tbl, rid, col, val FROM temp.undo_guard ORDER BY seq'
+    );
     await scope.exec(script.drop);
-    return rows.map((row) => ({ tbl: row.tbl, inverse: row.inverse }));
+    /* The last value each surviving row's column was left with. A row the
+       deletion went on to delete has nothing to guard: its re-insert fails
+       on its own if something took its place. */
+    const gone = new Set(rows.filter((row) => row.kind === 'd').map((row) => `${row.tbl}\t${row.rid}`));
+    const last = new Map<string, Guard>();
+    for (const g of guardRows) if (!gone.has(`${g.tbl}\t${g.rid}`)) last.set(`${g.tbl}\t${g.rid}\t${g.col}`, g);
+    return { entries: rows.map((row) => ({ tbl: row.tbl, inverse: row.inverse })), guards: [...last.values()] };
   });
   if (heldFiles.length > 0) markOrphanSweepDue();
 
@@ -172,6 +201,10 @@ export async function captureDelete<J>(
     async undo() {
       if (state !== 'open' || log.length === 0) return;
       await driver.transaction(async (scope) => {
+        for (const g of guards) {
+          const [still] = await scope.query(`SELECT 1 FROM main.${ident(g.tbl)} WHERE rowid = ${Number(g.rid)} AND ${ident(g.col)} IS ${g.val}`);
+          if (!still) throw new Error(`${g.tbl}.${g.col} has changed since the deletion, so it is not put back`);
+        }
         await scope.exec('PRAGMA defer_foreign_keys = ON');
         await scope.exec(`${log.map((row) => row.inverse).reverse().join(';\n')};`);
       });

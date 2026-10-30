@@ -148,6 +148,24 @@ test('an undo that cannot put its rows back changes nothing and says so', async 
   assert.deepEqual(await dump(driver), blocked, 'the failed undo rolled back whole');
 });
 
+test('an undo never overwrites a change made to a surviving row inside the window', async () => {
+  const { driver, journal } = await device();
+  // A provider named on an appointment: the delete sets the appointment's
+  // provider_id to NULL, and the appointment survives it.
+  const id = await pick(driver, 'SELECT p.uuid AS id FROM provider p JOIN appointment a ON a.provider_id = p.id');
+  const [{ appointment }] = await driver.query<{ appointment: number }>(
+    'SELECT a.id AS appointment FROM appointment a JOIN provider p ON a.provider_id = p.id WHERE p.uuid = ? ORDER BY a.rowid LIMIT 1',
+    [id]
+  );
+  const deletion = await journal.undoable((j) => j.appointments.deleteProvider(id));
+  // The person names another provider on that appointment before the window closes.
+  const newer = await journal.appointments.upsertProvider({ name: 'Dr Nowak', contact: null, competence: null, impressions: null });
+  await driver.run('UPDATE appointment SET provider_id = (SELECT id FROM provider WHERE uuid = ?) WHERE id = ?', [newer, appointment]);
+  const edited = await dump(driver);
+  await assert.rejects(deletion.undo());
+  assert.deepEqual(await dump(driver), edited, 'the newer edit stands and nothing came back');
+});
+
 test('a delete that throws leaves nothing behind and nothing to undo', async () => {
   const { driver, journal } = await device();
   const id = await pick(driver, 'SELECT uuid AS id FROM letter');
