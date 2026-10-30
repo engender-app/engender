@@ -7,9 +7,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { rekeyDaySeries, completedInjectionIntervals } from './dayKeying';
-import { startOfDayTimestamp } from './epochDay';
-import type { DoseEvent } from './types';
+import { rekeyDaySeries } from './dayKeying';
 import type { DayAverage } from './journal/stats';
 
 const DAY_0 = 20000;
@@ -131,60 +129,4 @@ test('anchored on the anchor day itself is position zero, not position one', () 
 test('an empty series re-keys to nothing under either rule', () => {
   assert.deepEqual(rekeyDaySeries([], anchored(DAY_0)), []);
   assert.deepEqual(rekeyDaySeries([], repeating([{ startEpochDay: DAY_0, length: 14 }])), []);
-});
-
-function dose(epochDay: number, overrides: Partial<DoseEvent> = {}): DoseEvent {
-  return {
-    id: `dose-${epochDay}-${Math.random()}`,
-    timestamp: startOfDayTimestamp(epochDay) + 1000,
-    dose: 4,
-    doseUnit: 'mg',
-    status: 'taken',
-    scheduled: null,
-    route: 'im',
-    injectionSite: null,
-    vehicle: null,
-    ...overrides
-  } as DoseEvent;
-}
-
-test('completedInjectionIntervals spans consecutive injections, oldest first', () => {
-  const intervals = completedInjectionIntervals([dose(DAY_0), dose(DAY_0 + 14), dose(DAY_0 + 28)]);
-
-  assert.deepEqual(intervals, [
-    { startEpochDay: DAY_0, length: 14 },
-    { startEpochDay: DAY_0 + 14, length: 14 }
-  ]);
-});
-
-test('the span since the latest injection is left out - it has no length yet', () => {
-  const intervals = completedInjectionIntervals([dose(DAY_0), dose(DAY_0 + 14)]);
-
-  assert.deepEqual(intervals, [{ startEpochDay: DAY_0, length: 14 }]);
-});
-
-test('a skipped dose never happened and starts no interval', () => {
-  const intervals = completedInjectionIntervals([dose(DAY_0), dose(DAY_0 + 7, { status: 'skipped' }), dose(DAY_0 + 14)]);
-
-  assert.deepEqual(intervals, [{ startEpochDay: DAY_0, length: 14 }]);
-});
-
-test('oral and sublingual doses carry no interval - only IM/SC depots have one', () => {
-  const intervals = completedInjectionIntervals([dose(DAY_0, { route: 'oral' }), dose(DAY_0 + 14, { route: 'oral' })]);
-
-  assert.deepEqual(intervals, []);
-});
-
-/* Phase 8 features ticket 42's regression guard: completedInjectionIntervals
-   must never grow a per-drug read, the same invariant correlationCards.test.ts
-   pins on doseDaysFromEvents. Two injections of different drugs still span
-   one interval, the same as two of the same drug; checked by temporarily
-   adding a drug filter to completedInjectionIntervals and confirming this
-   test fails before taking it back out. */
-test('completedInjectionIntervals does not read drug - a mix of injectable drugs still spans one interval', () => {
-  const sameDrug = completedInjectionIntervals([dose(DAY_0, { drug: 'Estradiol valerate' }), dose(DAY_0 + 14, { drug: 'Estradiol valerate' })]);
-  const mixedDrugs = completedInjectionIntervals([dose(DAY_0, { drug: 'Estradiol valerate' }), dose(DAY_0 + 14, { drug: 'Testosterone cypionate' })]);
-
-  assert.deepEqual(sameDrug, mixedDrugs);
-  assert.deepEqual(sameDrug, [{ startEpochDay: DAY_0, length: 14 }]);
 });

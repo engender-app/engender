@@ -26,8 +26,6 @@
    only rearranged. */
 
 import type { DayAverage } from './journal/stats';
-import type { DoseEvent } from './types';
-import { epochDayFromTimestamp } from './epochDay';
 
 export interface PatternPoint {
   /** Where the day landed on the re-keyed axis. Under the repeating rule
@@ -44,33 +42,6 @@ export interface PatternPoint {
       entries. Always 1 under the anchored rule, where a position *is* one
       calendar day. */
   count: number;
-}
-
-/** The injectable regimen's own completed intervals, one per gap between
-    consecutive IM/SC doses - a skipped dose never happened, the same rule
-    doseDaysFromEvents (correlationCards.ts) applies. The span from the
-    latest injection to today is left out: it has no length yet, so bucketing
-    its days would mean picking an arbitrary cutoff rather than reporting one.
-
-    Derived from the dose log alone, the same reasoning labTimingFor
-    (labTiming.ts) gives for day of interval generally: a regimen episode's
-    `interval` is free text and cannot be computed from, and a dose schedule
-    is optional and would go silently missing for anyone who has not set
-    one. */
-export function completedInjectionIntervals(doseEvents: readonly DoseEvent[]): CompletedInterval[] {
-  const injectionDays = [
-    ...new Set(
-      doseEvents
-        .filter((d) => d.status !== 'skipped' && (d.route === 'im' || d.route === 'sc'))
-        .map((d) => epochDayFromTimestamp(d.timestamp))
-    )
-  ].sort((a, b) => a - b);
-
-  const intervals: CompletedInterval[] = [];
-  for (let i = 0; i < injectionDays.length - 1; i++) {
-    intervals.push({ startEpochDay: injectionDays[i], length: injectionDays[i + 1] - injectionDays[i] });
-  }
-  return intervals;
 }
 
 export interface CompletedInterval {

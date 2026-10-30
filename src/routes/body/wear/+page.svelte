@@ -672,7 +672,7 @@
           <div class="wear-facts" data-wear-facts={editor.kind} out:crossfade>
             <p class="wear-facts-title">{m.wear_facts_title()}</p>
             <ul class="muted small wear-facts-list">
-              {#each safety.facts as fact (fact)}
+              {#each safety.facts as fact (fact.text)}
                 <li>{fact.text}</li>
               {/each}
             </ul>
