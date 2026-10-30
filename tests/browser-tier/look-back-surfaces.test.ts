@@ -4,8 +4,9 @@
    one way into Wrapped and none while Wrapped is off, and the two "is off"
    notices open the screen where their switches live. Since Alicja's
    sign-off note, the mood strip draws on the door itself rather than
-   behind a "Mood across days" tile, which leaves an even number of tiles.
-   Ticket 31's Cost reading is checked last, absent and then present. */
+   behind a "Mood across days" tile, which leaves six tiles on a journal
+   with no cost. Ticket 31's Cost reading, a seventh tile when the span holds
+   a cost, is checked last, absent and then present. */
 import { mountScreen, until } from './mount-screen';
 import { fixture, assertions, today, type Result } from './screen-contracts/fixture';
 import { startOfDayTimestamp } from '$lib/data/epochDay';

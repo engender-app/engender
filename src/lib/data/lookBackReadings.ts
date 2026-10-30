@@ -3,7 +3,7 @@
    The door used to be a scroll of cards, every one drawn in full at the
    span the rail points at. It is a grid of tiles now, each stating one
    headline figure for the span and opening a screen of its own where the
-   full card draws - so the door says six things in one viewport and a
+   full card draws - so the door says several things in one viewport and a
    person opens the one they meant. What this module owns is the part of
    that which is not a component: which readings there are, how a tile
    addresses its screen and how a screen reads the span back, and the

@@ -47,7 +47,8 @@
      lives, and cut Words and Highest days. What was left behind the tile
      was the mood strip alone, so on Alicja's sign-off the tile and its
      screen went and the strip draws here over the grid, which leaves six
-     tiles, three rows of two.
+     tiles, three rows of two. Functional audit ticket 31 added a seventh,
+     What it cost, last and only when the span holds a cost.
 
      Redesign ticket 11: one span drives every read on this screen. The rail
      runs from the earliest day the person authored anything dated to today
