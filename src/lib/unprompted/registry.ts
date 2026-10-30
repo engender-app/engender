@@ -102,19 +102,20 @@ export interface UnpromptedRow {
       an export failure and the two retrospectives concern the journal as
       a whole, and `entries` is not finishable.
 
-      A row's `prefKey` is untouched by any of this. Whether a kind of prompt
+      A row's switch (its `surfaceOverrides` entry, or a notification's
+      `prefKey`) is untouched by any of this. Whether a kind of prompt
       talks is a different question from whether an area is on, and this is a
       switch above the preferences rather than a replacement for them.
 
       Checked 2026-09-05 (features ticket 35) against the worry that
-      `prefs/catalogue.ts`'s `*Enabled` booleans are a second, boolean-shaped
-      answer to what this field already answers: they are not. Five rows
-      carry a non-null area today - `wear-timer` and `wear-elapsed` both
-      name `wearSessions`, so it is five booleans across four areas, not
-      four - and every other `*Enabled` boolean fronts a record that cannot
-      be an area at all (its own reason lives on its row above). ADR-0039's
-      amendment is why the boolean survives alongside the cascade rather than
-      being replaced by it: a kind's toggle means "never show me this kind,"
+      the kind switches (then `*Enabled` booleans, now `surfaceOverrides`
+      entries and the notification booleans) are a second, boolean-shaped
+      answer to what this field already answers: they are not. Two rows
+      carry a non-null area today, `wear-timer` and `wear-elapsed`, both
+      naming `wearSessions`, and every other switch fronts a record that
+      cannot be an area at all (its own reason lives on its row above).
+      ADR-0039's amendment is why the switch survives alongside the cascade
+      rather than being replaced by it: a kind's toggle means "never show me this kind,"
       not "hide the one instance that's currently true," and folding it into
       `unpromptedQuiet` would delete that distinction. This field being
       required rather than optional already forces the next kind to answer
