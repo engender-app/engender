@@ -19,7 +19,10 @@ export interface AndroidReminderTexts {
 }
 
 export interface AndroidReminderSyncPayload {
-  reminders: Reminder[];
+  /** `title` is what the notification shows (for a medication reminder,
+      what it reminds about) and `text` the line under it, time included
+      (functional audit ticket 21). Absent `text`, the time stands alone. */
+  reminders: Array<Reminder & { text?: string }>;
   checkInEnabled: boolean;
   checkInTime: string;
   /** The last day the check-in stays silent, or null (checkIn.ts). */

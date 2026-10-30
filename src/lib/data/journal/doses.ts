@@ -47,11 +47,13 @@ import {
   type InjectionSiteKey,
   type RouteOption
 } from '../doseSchedule';
-import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
+import { epochDayFromTimestamp, startOfDayTimestamp, todayEpochDay as localToday } from '../epochDay';
 import { activeEpisodesAt, attributeDose, sameDrug } from '../regimenEpisode';
 import { rangesFromCuts } from '../span';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { assertChanged, mintUuid, now } from './support';
+import { syncDoseReminders } from './doseReminders';
+import { NOTHING_WRITTEN, type NothingWritten } from './nothingWritten';
 
 interface DoseInputFields {
   id?: string;
@@ -121,6 +123,12 @@ interface DoseScheduleInput {
       silently turned the instruction off would be the worst of the two
       directions to get wrong. */
   autoLogFromEpochDay: number | null;
+  /** The times the schedule's reminders ring at (functional audit ticket
+      21, doseReminders.ts): a list, empty or null for no reminders. Left out,
+      the reminders keep the times they have and only follow the new rhythm,
+      which is what a save that is about something else (the auto-log
+      switch, a fixture) should do. */
+  reminderTimes?: readonly string[] | null;
 }
 
 type DosePauseInput = Omit<DosePause, 'id'> & { id?: string };
@@ -266,6 +274,12 @@ export interface DosesArea {
       Refuses an unknown episode. No delete: an episode's rhythm is edited,
       and an episode that should expect nothing gets a pause instead. */
   upsertSchedule(input: DoseScheduleInput): Promise<string>;
+  /** Brings every schedule's reminders in line with it as of `todayEpochDay`
+      (functional audit ticket 21): an episode whose end day has come loses
+      them. Every write that changes a schedule or its episode already does
+      this; the boot pass is for an end day that arrived while the app was
+      closed. Never creates a reminder that was not there. */
+  reconcileDoseReminders(todayEpochDay: number): Promise<void | NothingWritten>;
   /** Every pause, oldest start first. Refuses an unknown episode on write. */
   getPauses(): Promise<DosePause[]>;
   upsertPause(input: DosePauseInput): Promise<string>;
@@ -839,7 +853,18 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
           }
         }
 
+        await syncDoseReminders(
+          driver,
+          localToday(),
+          input.reminderTimes === undefined ? undefined : { episodeId: input.episodeId, times: input.reminderTimes ?? [] }
+        );
         return uuid;
+      });
+    },
+
+    async reconcileDoseReminders(asOfEpochDay) {
+      return driver.transaction(async (scope) => {
+        if (!(await syncDoseReminders(scope, asOfEpochDay))) return NOTHING_WRITTEN;
       });
     },
 

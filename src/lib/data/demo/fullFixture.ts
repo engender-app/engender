@@ -68,7 +68,10 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     recurrence: { kind: 'weekdays', weekdays: [0] },
     dosesPerDay: 1,
     doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
-    autoLogFromEpochDay: null
+    autoLogFromEpochDay: null,
+    // Its reminder comes from the schedule (functional audit ticket 21),
+    // at the hour the injections below are logged.
+    reminderTimes: ['19:00']
   });
   const injectionSites = ['thigh-left', 'thigh-right', 'deltoid-left', 'deltoid-right', 'ventrogluteal-left', 'ventrogluteal-right'] as const;
   let injectionCount = 0;
@@ -106,6 +109,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     dosesPerDay: 1,
     doseAmounts: [{ dose: 100, doseUnit: 'mg' }],
     autoLogFromEpochDay: null
+    // No reminder times: the persona's own "Progesterone" reminder is
+    // what this schedule's editor offers to take over (ticket 21).
   });
   for (let day = progesteroneStart; day <= today; day++) {
     if (r() < 0.08) continue;
@@ -141,7 +146,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
     doseAmounts: [{ dose: 50, doseUnit: 'mg' }],
-    autoLogFromEpochDay: null
+    autoLogFromEpochDay: null,
+    reminderTimes: ['09:00']
   });
   for (let day = sertralineStart; day <= today; day++) {
     if (r() < 0.08) continue;

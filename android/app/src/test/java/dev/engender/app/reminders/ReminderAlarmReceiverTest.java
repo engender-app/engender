@@ -97,4 +97,31 @@ public class ReminderAlarmReceiverTest {
 
         assertEquals("Reminders", ReminderAlarmReceiver.resolveNotificationTitle(payload, reminder));
     }
+
+    /* Functional audit ticket 21: a medication reminder says what it reminds
+       about. The app words the line (doseReminderLabel.ts) and the time is
+       part of it; hiding sensitive titles keeps only the time, the one
+       detail that setting promises to leave visible. */
+    @Test
+    public void theTextIsTheLineTheAppWroteForTheReminder() throws Exception {
+        JSONObject payload = new JSONObject();
+        JSONObject reminder = new JSONObject().put("time", "20:00").put("text", "Dose 2 of 2 a day · 20:00");
+
+        assertEquals("Dose 2 of 2 a day · 20:00", ReminderAlarmReceiver.resolveNotificationText(payload, reminder));
+    }
+
+    @Test
+    public void hidingTitlesLeavesOnlyTheTimeInTheText() throws Exception {
+        JSONObject payload = new JSONObject().put("hideNotificationTitles", true);
+        JSONObject reminder = new JSONObject().put("time", "20:00").put("text", "Sertraline 50 mg, oral · 20:00");
+
+        assertEquals("20:00", ReminderAlarmReceiver.resolveNotificationText(payload, reminder));
+    }
+
+    @Test
+    public void aPayloadWrittenBeforeTheTextExistedShowsTheTime() throws Exception {
+        JSONObject reminder = new JSONObject().put("time", "08:30");
+
+        assertEquals("08:30", ReminderAlarmReceiver.resolveNotificationText(new JSONObject(), reminder));
+    }
 }

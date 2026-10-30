@@ -28,7 +28,7 @@
    of it. */
 
 import { m } from '$lib/paraglide/messages';
-import { STOCK_PREFIX, WEAR_PREFIX } from './autoSource';
+import { DOSE_PREFIX, STOCK_PREFIX, WEAR_PREFIX } from './autoSource';
 import { POLISH_PACK, isBuiltInInstitution, type RoadmapGoalKey } from './roadmap';
 import { roadmapGoalTitle, roadmapInstitutionName } from './vocabulary/roadmapLabels';
 import type { Milestone, Reminder } from './types';
@@ -87,11 +87,22 @@ export function resolveReminderOrigin(reminder: Reminder): ReminderOrigin | null
     const drug = reminder.autoSource.slice(STOCK_PREFIX.length);
     return { text: m.prov_reminder_stock({ drug }), hint, href: '/care', actionLabel: m.prov_view_stock() };
   }
+  if (reminder.autoSource.startsWith(DOSE_PREFIX)) {
+    // No drug in the line: the reminder's own title is the drug's name,
+    // which the schedule keeps in step (functional audit ticket 21).
+    const episodeId = reminder.autoSource.slice(DOSE_PREFIX.length);
+    return {
+      text: m.prov_reminder_dose(),
+      hint,
+      href: `/care/regimen?episode=${encodeURIComponent(episodeId)}`,
+      actionLabel: m.prov_view_schedule()
+    };
+  }
   if (reminder.autoSource.startsWith(WEAR_PREFIX)) {
     return { text: m.prov_reminder_wear(), hint, href: '/body/wear', actionLabel: m.prov_view_wear_log() };
   }
-  // Defensive: stock.ts and wearSessions.ts are the only writers of
-  // autoSource today, so this branch is unreached until a third feature
-  // starts marking reminders.
+  // Defensive: stock.ts, wearSessions.ts and doseReminders.ts are the only
+  // writers of autoSource today, so this branch is unreached until another
+  // feature starts marking reminders.
   return { text: m.prov_source_gone(), hint, href: null, actionLabel: null };
 }
