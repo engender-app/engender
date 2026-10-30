@@ -81,6 +81,7 @@ test('a cost is refused when its amount is not a non-negative number or its curr
     { amount: Number.NaN, currency: 'PLN', refunded: false },
     { amount: Number.POSITIVE_INFINITY, currency: 'PLN', refunded: false },
     { amount: 1e12, currency: 'PLN', refunded: false },
+    { amount: 49.999, currency: 'PLN', refunded: false },
     { amount: 10, currency: null, refunded: false },
     { amount: 10, currency: 'zł', refunded: false },
     { amount: 10, currency: 'PL', refunded: false }

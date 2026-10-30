@@ -105,6 +105,7 @@ test('an archive row with a cost the app would refuse is refused as unreadable',
   const snapshot = await (await costedJournal()).archive.snapshot();
   for (const [section, patch] of [
     ['labResults', { costAmount: 10, costCurrency: null }],
+    ['labResults', { costAmount: 49.999, costCurrency: 'PLN' }],
     ['appointments', { costAmount: -1, costCurrency: 'PLN' }],
     ['procedures', { costAmount: 10, costCurrency: 'zł' }],
     ['medicationStock', { costAmount: null, costCurrency: 'PLN' }],

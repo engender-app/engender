@@ -42,8 +42,11 @@ export function isCurrencyCode(value: unknown): value is string {
   return typeof value === 'string' && CODE.test(value);
 }
 
+/** At most two decimal places, the most the editor reads or writes back:
+    an amount with a third would round when it is opened and saved. */
 export function isValidAmount(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= MAX_AMOUNT;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= MAX_AMOUNT &&
+    Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
 }
 
 /** A blank amount drops its currency, and a code is upper-cased. */
