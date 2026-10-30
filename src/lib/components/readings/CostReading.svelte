@@ -42,6 +42,15 @@
 
   const money = (amount: number, currency: string) => formatAmount(amount, currency, intlLocale());
 
+  /* The tile's figure sits in half the screen at 28px, and Intl joins the
+     currency to the number with a no-break space, so "PLN 1,030.90" was one
+     word the tile broke anywhere it ran out ("1,030.9" over "0"). The space
+     beside the currency becomes an ordinary one, so the line breaks there
+     and the number stays whole; the spaces inside a Polish number
+     ("1 030,90 zł") are between digits and stay as they are. */
+  const tileMoney = (amount: number, currency: string) =>
+    money(amount, currency).replace(/^(\D+?)\s/, '$1 ').replace(/\s(\D+)$/, ' $1');
+
   const AREA_NAME: Record<CostSource, () => string> = {
     hairRemoval: () => m.cost_area_hair_removal(),
     appointment: () => m.cost_area_appointment(),
@@ -60,12 +69,12 @@
 
   /* The tile's one line under the figure: the other currencies by code
      when there are any, since the figure is only one of them; otherwise
-     how much of it was refunded. */
+     how much of it was refunded, or else how many costs it is. */
   let tileNote = $derived.by(() => {
     if (!first) return '';
     const others = reading.currencies.slice(1).map((c) => c.currency);
     if (others.length) return m.cost_tile_also({ codes: new Intl.ListFormat(intlLocale(), { type: 'conjunction' }).format(others) });
-    return first.refunded > 0 ? m.cost_tile_refunded({ amount: money(first.refunded, first.currency) }) : m.cost_tile_none_refunded();
+    return first.refunded > 0 ? m.cost_tile_refunded({ amount: money(first.refunded, first.currency) }) : m.cost_reading_count({ count: first.count });
   });
 </script>
 
@@ -75,7 +84,7 @@
       key="cost"
       name={m.stats_cost()}
       href={readingHref('cost', span)}
-      headline={money(first.total, first.currency)}
+      headline={tileMoney(first.total, first.currency)}
       note={tileNote}
     />
   {/if}
@@ -86,7 +95,9 @@
         <div class="cost-reading" data-cost-currency={currency.currency}>
           <p class="cost-total">
             <span class="cost-total-figure" data-cost-total>{money(currency.total, currency.currency)}</span>
-            <span class="cost-total-note">{m.cost_reading_count({ count: currency.count })}</span>
+            <span class="cost-total-note">
+              {currency.refunded > 0 ? m.cost_reading_count({ count: currency.count }) : m.cost_reading_count_none_refunded({ count: currency.count })}
+            </span>
           </p>
 
           <h3 class="cost-sub">{m.cost_reading_by_area()}</h3>
@@ -105,17 +116,22 @@
             {/each}
           </ListCard>
 
-          <h3 class="cost-sub">{m.cost_reading_by_refund()}</h3>
-          <ListCard role={roleAt(activeFlag.roles, CHART_ROLE)}>
-            <ListRow static data-cost-refund="refunded" title={m.cost_refunded()}>
-              {#snippet trailing()}<b class="wrapped-figure-value">{money(currency.refunded, currency.currency)}</b>{/snippet}
-            </ListRow>
-            <div class="rows-divide">
-              <ListRow static data-cost-refund="not-refunded" title={m.cost_reading_not_refunded()}>
-                {#snippet trailing()}<b class="wrapped-figure-value">{money(currency.notRefunded, currency.currency)}</b>{/snippet}
+          <!-- The split by refunded state, where there is one to make: with
+               nothing refunded, "Not refunded" would only repeat the total,
+               so the line under the total says "none refunded" instead. -->
+          {#if currency.refunded > 0}
+            <h3 class="cost-sub">{m.cost_reading_by_refund()}</h3>
+            <ListCard role={roleAt(activeFlag.roles, CHART_ROLE)}>
+              <ListRow static data-cost-refund="refunded" title={m.cost_refunded()}>
+                {#snippet trailing()}<b class="wrapped-figure-value">{money(currency.refunded, currency.currency)}</b>{/snippet}
               </ListRow>
-            </div>
-          </ListCard>
+              <div class="rows-divide">
+                <ListRow static data-cost-refund="not-refunded" title={m.cost_reading_not_refunded()}>
+                  {#snippet trailing()}<b class="wrapped-figure-value">{money(currency.notRefunded, currency.currency)}</b>{/snippet}
+                </ListRow>
+              </div>
+            </ListCard>
+          {/if}
         </div>
       </ChartCard>
     {/each}
@@ -141,7 +157,7 @@
   .cost-total {
     display: grid;
     gap: var(--space-1);
-    margin: 0;
+    margin: calc(-1 * var(--space-1)) 0 0;
   }
 
   .cost-total-figure {
@@ -161,9 +177,9 @@
   }
 
   .cost-sub {
-    margin: var(--space-3) 0 0;
+    margin: var(--space-4) 0 0;
     font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--text-2);
+    font-weight: var(--weight-bold);
+    color: var(--text);
   }
 </style>

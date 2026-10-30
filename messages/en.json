@@ -569,6 +569,21 @@
       }
     }
   ],
+  "cost_reading_count_none_refunded": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "One cost, not refunded",
+        "countPlural=other": "{count} costs, none refunded"
+      }
+    }
+  ],
   "cost_reading_empty": "No costs in this span.",
   "cost_reading_not_refunded": "Not refunded",
   "cost_reading_undated": [
@@ -588,7 +603,6 @@
   ],
   "cost_refunded": "Refunded",
   "cost_tile_also": "Also in {codes}",
-  "cost_tile_none_refunded": "None refunded",
   "cost_tile_refunded": "{amount} refunded",
   "custom_dimension": "Your own scales",
   "custom_suffix": "custom",

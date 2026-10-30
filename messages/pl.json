@@ -575,6 +575,23 @@
       }
     }
   ],
+  "cost_reading_count_none_refunded": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Jeden koszt, bez zwrotu",
+        "countPlural=few": "{count} koszty, bez zwrotów",
+        "countPlural=many": "{count} kosztów, bez zwrotów",
+        "countPlural=other": "{count} kosztu, bez zwrotów"
+      }
+    }
+  ],
   "cost_reading_empty": "W tym okresie nie ma kosztów.",
   "cost_reading_not_refunded": "Nie zwrócono",
   "cost_reading_undated": [
@@ -596,7 +613,6 @@
   ],
   "cost_refunded": "Zwrócono",
   "cost_tile_also": "Także w {codes}",
-  "cost_tile_none_refunded": "Bez zwrotów",
   "cost_tile_refunded": "Zwrócono {amount}",
   "custom_dimension": "Własne skale",
   "custom_suffix": "własny",

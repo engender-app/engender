@@ -174,8 +174,9 @@ export async function lookBackContracts(): Promise<Result[]> {
       /500/.test(figure('PLN', '[data-cost-area="hairRemoval"]')) && /120[.,]5/.test(figure('PLN', '[data-cost-area="lab"]'));
   });
   await check('each currency splits by refunded state, the two parts making its total', () =>
-    /250/.test(figure('PLN', '[data-cost-refund="refunded"]')) && /370[.,]5/.test(figure('PLN', '[data-cost-refund="not-refunded"]')) &&
-    /0/.test(figure('EUR', '[data-cost-refund="refunded"]')) && /80/.test(figure('EUR', '[data-cost-refund="not-refunded"]')));
+    /250/.test(figure('PLN', '[data-cost-refund="refunded"]')) && /370[.,]5/.test(figure('PLN', '[data-cost-refund="not-refunded"]')));
+  await check('a currency with nothing refunded says so once rather than repeating its total', () =>
+    !card('EUR')?.querySelector('[data-cost-refund]') && /not refunded|none refunded/i.test(card('EUR')?.textContent ?? ''));
   await check('the Cost screen counts the cost with no day rather than adding it to the span', () =>
     root().querySelector('[data-cost-undated]') !== null);
   await screen.remove();
