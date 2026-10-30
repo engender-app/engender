@@ -110,8 +110,11 @@ export const LIVE_TILE_ORDER = [
 
     The dose panel is a moment rather than bound to today on purpose. It
     qualifies for as long as an episode is active, which would make it a
-    permanent full-width row. A dose due today is a line on it rather than a
-    second tile (functional-audit ticket 15). */
+    permanent full-width row. On a day a dose is due it rises to `today`,
+    the one kind whose band moves with the day: it took over that day from
+    the patch-schedule tile, which was a `today` tile of its own
+    (functional-audit ticket 15), and a dose due now drawn below the agenda
+    would be the screen's most urgent fact in its quietest place. */
 type HomeTileTier = 'today' | 'moment' | 'dormant';
 
 /** The three bands, in the order Home draws them. */
@@ -332,8 +335,10 @@ interface TileGate {
 
 /** A builder answers everything about a tile except its tier, which is
     `LIVE_TILE_TIER`'s to say and `composeHomeTiles` stamps on - so no
-    builder can disagree with the table the ordering reads. */
-type TileBuilder = (gate: TileGate) => Omit<HomeTile, 'tier'> | null;
+    builder can disagree with the table the ordering reads. The dose panel
+    is the one exception, and only upward: `dueToday` moves it to `today`
+    on a day its schedule expects a dose (functional-audit ticket 15). */
+type TileBuilder = (gate: TileGate) => (Omit<HomeTile, 'tier'> & { dueToday?: boolean }) | null;
 
 /** What the dose panel states about one regimen: the episode, and the
     next slot its schedule still expects nothing logged against. */
@@ -467,10 +472,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       /* A second regimen on a rhythm is named rather than left to the
          agenda, whose rows are withheld while the panel is up. Its own day
          is one tap away on the dose log. */
+      const dueToday = next?.epochDay === today;
       const also = others.length > 0 ? m.tile_dose_also({ drugs: others.map((o) => o.episode.drug).join(', ') }) : undefined;
       return {
         key: 'dose-panel',
         tileKey: 'dose-panel',
+        dueToday,
         attrs: { 'data-dose-panel-tile': true },
         title: m.tile_dose_title(),
         value: episode.drug,
@@ -580,9 +587,13 @@ export function composeHomeTiles(input: HomeTilesInput): HomeTile[] {
   const tiles: HomeTile[] = [];
   for (const kind of LIVE_TILE_DRAW_ORDER) {
     const quiet = unpromptedQuiet(kind, input.areaStates, input.todayEpochDay);
-    const tile = builders[kind]({ enabled: input.enabled[kind] && !quiet, snoozed: input.snoozed[kind] });
-    if (tile) tiles.push({ ...tile, tier: LIVE_TILE_TIER[kind] });
+    const built = builders[kind]({ enabled: input.enabled[kind] && !quiet, snoozed: input.snoozed[kind] });
+    if (!built) continue;
+    const { dueToday, ...tile } = built;
+    tiles.push({ ...tile, tier: dueToday ? 'today' : LIVE_TILE_TIER[kind] });
   }
+  /* No re-sort for the dose panel rising a band: it opens the moment band in
+     the draw order, so it lands at the end of the today band either way. */
   return tiles;
 }
 

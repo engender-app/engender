@@ -235,7 +235,21 @@ describe('the tier every kind is in', () => {
   });
 
   it('carries the tier on the tile, which is what Home draws the weight from', () => {
-    for (const tile of composeHomeTiles(input())) expect(tile.tier).toBe(LIVE_TILE_TIER[tile.key]);
+    /* Logged today, so no tile has risen out of its band. */
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['scheduleDoses'];
+    for (const tile of composeHomeTiles(input({ reads: { scheduleDoses: logged } }))) {
+      expect(tile.tier).toBe(LIVE_TILE_TIER[tile.key]);
+    }
+  });
+
+  /* Functional-audit ticket 15: the patch-schedule tile was the `today`
+     tile for a dose due now. Folded into the panel, the panel takes that
+     band for that day and goes back to being a moment once it is logged. */
+  it('lifts the dose panel to the today band on a day a dose is due, after the wear timer', () => {
+    const due = composeHomeTiles(input());
+    expect(due.filter((t) => t.tier === 'today').map((t) => t.key)).toEqual(['wear-timer', 'dose-panel']);
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['scheduleDoses'];
+    expect(tileNamed('dose-panel', { reads: { scheduleDoses: logged } })!.tier).toBe('moment');
   });
 });
 
