@@ -106,9 +106,23 @@ const MARKS: Record<string, string> = {
 };
 
 let knownCodes: Set<string> | null = null;
-function isKnownCode(code: string): boolean {
+function allCodes(): Set<string> {
   knownCodes ??= new Set(typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('currency') : CURRENCY_CHOICES);
-  return knownCodes.has(code);
+  return knownCodes;
+}
+function isKnownCode(code: string): boolean {
+  return allCodes().has(code);
+}
+
+/** What the editor's currency select lists: the common choices first, then
+    every other code the runtime knows, alphabetically, and `current` if it is
+    none of those (a code from an archive). The default table cannot cover
+    every region, so nobody is left without their currency. */
+export function currencyChoices(current: string): string[] {
+  const common: string[] = [...CURRENCY_CHOICES];
+  const rest = [...allCodes()].filter((code) => !common.includes(code)).sort();
+  const list = [...common, ...rest];
+  return list.includes(current) ? list : [...common, current, ...rest];
 }
 
 function currencyOfMark(mark: string): string | null {
@@ -182,8 +196,13 @@ export function deviceDefaultCurrency(): string {
     amount, "250,50 zł" for one with a fraction. */
 export function formatAmount(amount: number, currency: string, locale: string): string {
   try {
+    // Never fewer than the two places an amount may hold (isValidAmount), so a
+    // currency with no minor unit still shows JP¥250.5 as stored, not JP¥251.
+    const natural = new Intl.NumberFormat(locale, { style: 'currency', currency }).resolvedOptions().maximumFractionDigits ?? 2;
     // trailingZeroDisplay is ES2023 Intl; this lib target does not type it yet.
-    const options = { style: 'currency', currency, trailingZeroDisplay: 'stripIfInteger' } as Intl.NumberFormatOptions;
+    const options = {
+      style: 'currency', currency, trailingZeroDisplay: 'stripIfInteger', maximumFractionDigits: Math.max(2, natural)
+    } as Intl.NumberFormatOptions;
     return new Intl.NumberFormat(locale, options).format(amount);
   } catch {
     return `${amount} ${currency}`;

@@ -4,6 +4,7 @@ import {
   assertValidCost,
   costTotalsByCurrency,
   defaultCurrency,
+  currencyChoices,
   formatAmount,
   NO_COST,
   normalizeCost,
@@ -109,4 +110,14 @@ test('a whole amount is written without decimals, a fraction with its two', () =
   assert.equal(formatAmount(250, 'PLN', 'pl-PL'), '250\u00a0zł');
   assert.equal(formatAmount(250.5, 'PLN', 'pl-PL'), '250,50\u00a0zł');
   assert.equal(formatAmount(9800, 'EUR', 'en-GB'), '€9,800');
+  // JPY has no minor unit, but an amount typed with one is shown as stored.
+  assert.equal(formatAmount(250.5, 'JPY', 'en-GB'), 'JP¥250.5');
+});
+
+test('the currency list offers the common ones first, then every other code, and keeps a stored one', () => {
+  const list = currencyChoices('PLN');
+  assert.deepEqual(list.slice(0, 3), ['PLN', 'EUR', 'GBP']);
+  assert.ok(list.includes('MAD'));
+  assert.equal(new Set(list).size, list.length);
+  assert.ok(currencyChoices('XYZ').includes('XYZ'));
 });

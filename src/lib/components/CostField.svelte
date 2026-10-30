@@ -16,15 +16,13 @@
   import Field from '$lib/components/kit/Field.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import { disclose } from '$lib/motion/reveal';
-  import { CURRENCY_CHOICES } from '$lib/data/cost';
+  import { currencyChoices } from '$lib/data/cost';
   import { costDraftOk, type CostDraft } from './costDraft';
 
   let { draft = $bindable(), id }: { draft: CostDraft; id: string } = $props();
 
-  // A currency from an archive or another device stays offerable.
-  let choices = $derived(
-    (CURRENCY_CHOICES as readonly string[]).includes(draft.currency) ? CURRENCY_CHOICES : [...CURRENCY_CHOICES, draft.currency]
-  );
+  // The common currencies first, then every other code; a stored one stays offerable.
+  let choices = $derived(currencyChoices(draft.currency));
   let ok = $derived(costDraftOk(draft));
 </script>
 
