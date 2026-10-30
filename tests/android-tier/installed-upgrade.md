@@ -17,8 +17,8 @@ detached worktrees, builds each source's web bundle, runs `cap sync android`, an
 builds four debug APKs with the same debug signing key. The package ID changes
 only in those temporary sources. No release signing key or tag is created.
 The healthy candidate is unchanged apart from the synthetic package and test
-version. The row-deleting control appends testing 06's measurement deletion to
-migration 89. The failed-migration control uses its milestone deletion, which
+version. The row-deleting control appends testing 06's row deletion (the oldest
+side effect) to migration 89. The failed-migration control uses its milestone deletion, which
 leaves a photo foreign key dangling. Both controls have the candidate source
 identity and an explicit derivative marker in `manifest.json`.
 
@@ -50,15 +50,17 @@ refuse an existing forward and remove only the forward they create.
 The upgrade command checks input APK hashes, `aapt` package/version metadata and
 source identities. Every install verifies the actual installed base APK's hash
 and version before opening it. It requires a healthy schema-88 baseline with
-entries, measurements, media, alarms and a photo attached to the first milestone.
+entries, side effects, media, alarms and a photo attached to the first milestone.
 It snapshots the live native SQLite connection, encrypted media SHA-256 values
-and stable alarm facts. The healthy pair must preserve every table count, entry
+and stable alarm facts. The healthy pair must preserve the row count of every
+table that still exists after the upgrade (tables the migrations drop are read from
+`migrations.ts` and skipped, one that goes missing otherwise is a loss), entry
 UUID, media filename/checksum, integrity and foreign-key result, declared schema
 version and alarm time/mode. Its JSON before/after table names every difference.
 
 Each control starts from the saved encrypted app data in the same test package.
 The Keystore identity stays in place: this tests an installed update and migration
-recovery, not transfer to a new installation. A measurement row must disappear
+recovery, not transfer to a new installation. A side-effect row must disappear
 only in the row-deleting control, and that comparison must reject it. The failing
 build must show the saved-copy action. Restoring must copy the encrypted database
 byte for byte; reopening with the healthy candidate must return the original

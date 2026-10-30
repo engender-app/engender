@@ -30,7 +30,7 @@ afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 function upgrade(revision: string) {
   const apk = (hash: string, sourceRevision: string, versionName: string, versionCode: number,
-    patch: null | 'loss-migration-measurement' | 'loss-migration') => ({
+    patch: null | 'loss-migration-side-effect' | 'loss-migration') => ({
       sha256: hash.repeat(64), sourceRevision, versionName, versionCode,
       packageId: 'dev.engender.app.test.upgrade40', patch
     });
@@ -42,7 +42,7 @@ function upgrade(revision: string) {
       upgradeApks: {
         previous: apk('a', previous, '1.0.0-rc.1', 1000000501, null),
         healthy: apk('c', revision, '1.1.0-upgrade.40', 1001000740, null),
-        rowDeleting: apk('d', revision, '1.1.0-upgrade.40', 1001000740, 'loss-migration-measurement'),
+        rowDeleting: apk('d', revision, '1.1.0-upgrade.40', 1001000740, 'loss-migration-side-effect'),
         failing: apk('e', revision, '1.1.0-upgrade.40', 1001000740, 'loss-migration')
       }
     }

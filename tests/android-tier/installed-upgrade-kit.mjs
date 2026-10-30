@@ -40,7 +40,7 @@ function build(worktree, name, sourceRevision, patch = null) {
   const migrationsPath = join(worktree, 'src/lib/data/sqlite/migrations.ts');
   const migrations = readFileSync(migrationsPath, 'utf8');
   if (patch) {
-    const table = patch === 'loss-migration' ? 'milestone' : 'measurement';
+    const table = patch === 'loss-migration' ? 'milestone' : 'side_effect';
     const statement = 'ALTER TABLE roadmap_check ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;';
     if (!migrations.includes(statement)) throw new Error('Retained testing-06 failure recipe no longer applies');
     writeFileSync(migrationsPath, migrations.replace(statement, `${statement} DELETE FROM ${table} WHERE id = (SELECT MIN(id) FROM ${table});`));
@@ -84,7 +84,7 @@ try {
   } finally { sink.destroy(); await browser.close(); await server.close(); }
   const candidate = source('candidate', revision);
   build(candidate, 'healthy', revision);
-  build(candidate, 'rowDeleting', revision, 'loss-migration-measurement');
+  build(candidate, 'rowDeleting', revision, 'loss-migration-side-effect');
   build(candidate, 'failing', revision, 'loss-migration');
   writeFileSync(join(output, 'manifest.json'), JSON.stringify(manifest, null, 2));
   console.log(join(output, 'manifest.json'));

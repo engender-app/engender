@@ -26,13 +26,35 @@ export function alarmState(dump, packageId) {
   return alarms.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
 }
 
+/** Every table a migration after `fromVersion` drops, read from the migration
+ * sources so a later cut cannot leave this list behind. `rebuildSources` are
+ * the SQL constants migrations.ts imports; their drops are table rebuilds, and
+ * a rebuilt table exists after the upgrade, so it is still compared.
+ * @param {string} migrationsSource
+ * @param {number} fromVersion
+ * @param {string[]} [rebuildSources]
+ * @returns {Set<string>}
+ */
+export function droppedTables(migrationsSource, fromVersion, rebuildSources = []) {
+  const tables = new Set();
+  const collect = (/** @type {string} */ sql) => {
+    for (const match of sql.matchAll(/DROP TABLE (?:IF EXISTS )?"?(\w+)"?/g)) tables.add(match[1]);
+  };
+  const starts = [...migrationsSource.matchAll(/^ *\{ version: (\d+),/gm)];
+  starts.forEach((start, i) => {
+    if (Number(start[1]) > fromVersion) collect(migrationsSource.slice(start.index, starts[i + 1]?.index));
+  });
+  rebuildSources.forEach(collect);
+  return tables;
+}
+
 /** @param {UpgradeState} state */
 export function assertFilledState(state) {
-  if (state.userVersion !== 88 || !(state.counts?.entry > 0) || !(state.counts?.measurement > 0)
+  if (state.userVersion !== 88 || !(state.counts?.entry > 0) || !(state.counts?.side_effect > 0)
     || !(state.counts?.milestone > 0) || !(state.counts?.roadmap_check > 0)
     || !(state.linkedMilestones > 0)
     || !Object.keys(state.mediaSha256 ?? {}).length || !state.alarms?.length) {
-    throw new Error('Installed-upgrade requires a filled schema-88 journal, linked milestones, measurements, media and alarms');
+    throw new Error('Installed-upgrade requires a filled schema-88 journal, linked milestones, side effects, media and alarms');
   }
   if (!isDeepStrictEqual(state.integrity, [{ integrity_check: 'ok' }]) || state.foreignKeys?.length !== 0) {
     throw new Error('Installed-upgrade baseline is not healthy');
@@ -43,8 +65,10 @@ export function assertFilledState(state) {
  * @param {UpgradeState} before
  * @param {UpgradeState} after
  * @param {number} expectedVersion
+ * @param {Set<string>} [dropped] tables the migrations drop on purpose; one of them
+ * absent after the upgrade is expected, any other missing table is a loss
  */
-export function compareUpgradeState(before, after, expectedVersion) {
+export function compareUpgradeState(before, after, expectedVersion, dropped = new Set()) {
   /** @type {string[]} */
   const differences = [];
   /** @type {{name: string, before: unknown, after: unknown, expected: unknown}[]} */
@@ -58,6 +82,7 @@ export function compareUpgradeState(before, after, expectedVersion) {
   check('entry_uuids', before.entryUuids, after.entryUuids);
   check('linked_milestones', before.linkedMilestones, after.linkedMilestones);
   for (const table of [...new Set([...Object.keys(before.counts), ...Object.keys(after.counts)])].sort()) {
+    if (dropped.has(table) && !(table in after.counts)) continue;
     check(`rows:${table}`, before.counts[table], after.counts[table]);
   }
   for (const file of [...new Set([...Object.keys(before.mediaSha256), ...Object.keys(after.mediaSha256)])].sort()) {
@@ -69,9 +94,9 @@ export function compareUpgradeState(before, after, expectedVersion) {
   return { rows, differences };
 }
 
-/** @param {UpgradeState} before @param {UpgradeState} after @param {number} expectedVersion */
-export function assertUpgradeState(before, after, expectedVersion) {
-  const result = compareUpgradeState(before, after, expectedVersion);
+/** @param {UpgradeState} before @param {UpgradeState} after @param {number} expectedVersion @param {Set<string>} [dropped] */
+export function assertUpgradeState(before, after, expectedVersion, dropped = new Set()) {
+  const result = compareUpgradeState(before, after, expectedVersion, dropped);
   if (result.differences.length) throw new Error(`Installed-upgrade state differs: ${result.differences.join(', ')}`);
   return result;
 }

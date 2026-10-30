@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-import { alarmState, assertFilledState, assertUpgradeState, compareUpgradeState } from './installed-upgrade-state.mjs';
+import { alarmState, assertFilledState, assertUpgradeState, compareUpgradeState, droppedTables } from './installed-upgrade-state.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const packageId = 'dev.engender.app.test.upgrade40';
@@ -35,7 +35,7 @@ const start = beginAndroidTier(repo);
 if (manifest.sourceStart?.revision !== start.revision || !Number.isFinite(Date.parse(manifest.sourceStart?.startedAt))
   || Date.parse(manifest.sourceStart.startedAt) > Date.parse(start.startedAt)) throw new Error('Installed-upgrade kit lacks this source identity captured before its build');
 const apks = {};
-for (const [name, patch] of [['previous', null], ['healthy', null], ['rowDeleting', 'loss-migration-measurement'], ['failing', 'loss-migration']]) {
+for (const [name, patch] of [['previous', null], ['healthy', null], ['rowDeleting', 'loss-migration-side-effect'], ['failing', 'loss-migration']]) {
   const input = manifest.upgradeApks?.[name];
   if (!input || input.packageId !== packageId || input.patch !== patch || !/^[a-f0-9]{40}$/.test(input.sourceRevision)) {
     throw new Error(`Invalid installed-upgrade provenance: ${name}`);
@@ -56,6 +56,10 @@ const released = run('git', ['rev-parse', 'v1.0.0-rc.1^{commit}'], { cwd: repo }
 if (apks.previous.sourceRevision !== released || apks.previous.versionName !== '1.0.0-rc.1') throw new Error('Previous APK is not the released rc.1 source');
 const sourceVersion = Math.max(...[...readFileSync(join(repo, 'src/lib/data/sqlite/migrations.ts'), 'utf8').matchAll(/version:\s*(\d+)/g)].map((match) => Number(match[1])));
 if (manifest.expectedVersion !== sourceVersion || sourceVersion <= 88) throw new Error('Installed-upgrade expected schema does not match this source');
+// Tables the migrations after the released schema drop, read from the source under test; their rows are not compared.
+const sqliteDir = join(repo, 'src/lib/data/sqlite');
+const dropped = droppedTables(readFileSync(join(sqliteDir, 'migrations.ts'), 'utf8'), 88,
+  ['closed-lists-migration.ts', 'waitlist-migration.ts'].map((file) => readFileSync(join(sqliteDir, file), 'utf8')));
 const installed = device('shell', 'dumpsys', 'package', packageId);
 if (!installed.includes(`versionCode=${apks.previous.versionCode} `) || !installed.includes(`versionName=${apks.previous.versionName}`)) {
   throw new Error('Prepare the filled synthetic rc.1 package before this stage');
@@ -176,17 +180,17 @@ try {
       // Credential adoption is one-way: the released binary cannot read the native wrap.
       await disconnect(); install('healthy'); page = await launch(); await unlock(page);
       const after = await snapshot(page); save('restored.json', after);
-      save('restored-table.json', assertUpgradeState(before, after, manifest.expectedVersion));
+      save('restored-table.json', assertUpgradeState(before, after, manifest.expectedVersion, dropped));
       completedChecks.push('failed migration offers saved copy', 'saved copy restores filled rc.1 journal');
     } else {
       const after = await snapshot(page); save(`${name}-after.json`, after);
-      const comparison = compareUpgradeState(before, after, manifest.expectedVersion); save(`${name}-table.json`, comparison);
+      const comparison = compareUpgradeState(before, after, manifest.expectedVersion, dropped); save(`${name}-table.json`, comparison);
       if (name === 'healthy') {
-        assertUpgradeState(before, after, manifest.expectedVersion);
+        assertUpgradeState(before, after, manifest.expectedVersion, dropped);
         completedChecks.push('healthy installed update preserves rows, media, integrity, foreign keys, schema and alarms');
       } else {
-        if (!comparison.differences.includes('rows:measurement') || after.counts.measurement !== before.counts.measurement - 1) {
-          throw new Error('Row-deleting installed control did not fail the measurement comparison');
+        if (!comparison.differences.includes('rows:side_effect') || after.counts.side_effect !== before.counts.side_effect - 1) {
+          throw new Error('Row-deleting installed control did not fail the side-effect comparison');
         }
         completedChecks.push('row-deleting installed control rejected');
       }
