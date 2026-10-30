@@ -62,12 +62,15 @@
 </Field>
 
 <style>
+  /* The currency goes under the amount rather than squeezing it below a
+     touch target when the sheet is narrow (200% text at 390px). */
   .cost-row {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
   }
   .cost-amount {
-    flex: 1 1 auto;
+    flex: 1 1 8rem;
     min-width: 0;
   }
   .cost-currency {

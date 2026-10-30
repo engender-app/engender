@@ -78,6 +78,7 @@ try {
   assert.ok((await page.locator('[data-sheet]').innerText()).includes(en.hair_removal_photo_hint));
   await page.locator('#hair-removal-area').selectOption('chin');
   await page.locator('#hair-removal-cost').fill('125');
+  await page.locator('#hair-removal-cost-currency').selectOption('PLN');
   await page.locator('#hair-removal-provider').fill('Clinic fixture');
   await fillDate(page, '#hair-removal-date', '2024-03-12');
   await page.keyboard.press('Escape');
@@ -117,7 +118,7 @@ try {
   const saved = (await sessions()).find((session) => session.provider === 'Clinic fixture');
   assert.equal((await sessions()).length, before + 1);
   assert.equal(saved.epochDay, 19794);
-  assert.equal(saved.cost, '125 PLN');
+  assert.deepEqual(saved.cost, { amount: 125, currency: 'PLN', refunded: false });
   const notice = page.locator(`[data-hair-removal-saved="${saved.id}"]`);
   await notice.waitFor();
   assert.equal(await notice.getAttribute('aria-live'), 'polite');
