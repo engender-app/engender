@@ -147,7 +147,7 @@ try {
     });
     if (serial) {
       adb('shell', 'input', 'keyevent', 'KEYCODE_HOME');
-      adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.disguise.LauncherDefault`);
+      adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.Launch01`);
     } else await page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
       document.dispatchEvent(new Event('visibilitychange'));

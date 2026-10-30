@@ -45,7 +45,20 @@
          owned by src/lib/data/prefs/boot-cache.ts and have to be changed
          in the two places together. */
       try {
-        const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
+        let boot = {};
+        try {
+          boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
+          if (!boot || typeof boot !== 'object') boot = {};
+        } catch {
+          /* unreadable storage or a damaged mirror: the shell's answer below still applies */
+        }
+        /* The Android shell's live alias outranks the mirror: the disguise
+           flip kills the process before the mirror is flushed to disk, so
+           the first start after a flip would otherwise read the old state.
+           Same read as nativeDisguise() in boot-cache.ts. */
+        try {
+          if (window.androidDisguiseState) boot.disguise = window.androidDisguiseState.isDisguised() === true;
+        } catch {}
         const root = document.documentElement;
         if (boot.palette) root.dataset.palette = boot.palette;
         if (boot.moodPreset) root.dataset.moodPreset = boot.moodPreset;

@@ -96,7 +96,7 @@ try {
   await page.evaluate(() => { void window.keyGateProbe.mount(); });
   await sleep(2000);
   evidence.stopped = await snapshot(page);
-  device('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.disguise.LauncherDefault`);
+  device('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.Launch01`);
   await page.waitForFunction(() => window.keyGateNativeSaved === false && document.visibilityState === 'visible');
   await sleep(500);
   evidence.returned = await snapshot(page);

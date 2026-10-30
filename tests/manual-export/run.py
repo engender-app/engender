@@ -96,7 +96,7 @@ try:
     adb('shell', 'input', 'keyevent', 'KEYCODE_MENU')
     original_live = set_live_dka(True)
     adb('shell', 'am', 'force-stop', PACKAGE)
-    adb('shell', 'am', 'start', '-n', PACKAGE + '/dev.engender.app.disguise.LauncherDefault')
+    adb('shell', 'am', 'start', '-n', PACKAGE + '/dev.engender.app.Launch01')
     pid = until(lambda: adb('shell', 'pidof', PACKAGE, check=False), bool)
     until(lambda: adb('shell', 'cat', '/proc/net/unix'), lambda s: 'webview_devtools_remote_' + pid in s)
     adb('forward', 'tcp:' + PORT, 'localabstract:webview_devtools_remote_' + pid)

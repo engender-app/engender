@@ -30,7 +30,7 @@ describe('android manifest exported surface', () => {
     expect(mainActivity()).toContain('android:exported="false"');
   });
 
-  for (const name of ['\\.disguise\\.LauncherDefault', '\\.disguise\\.LauncherDisguised']) {
+  for (const name of ['\\.Launch01', '\\.Launch03']) {
     it(`keeps ${name.replace(/\\/g, '')} exported with the launcher category`, () => {
       const xml = alias(name);
       expect(xml).toContain('android:exported="true"');

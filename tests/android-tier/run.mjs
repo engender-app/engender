@@ -91,8 +91,8 @@ const NATIVE_ONLY = new Set(['gd26']);
    (ticket 11), what Android Keystore does with the journal's data key
    (ticket 13), and which authenticators BiometricManager reports available
    (ticket 09). The photo initialization checks also run without a WebView,
-   and so does the capture-on-leave check, which needs an Android below 13
-   to reach the FLAG_SECURE path. These are worth having on the older emulator
+   and so do the capture-on-leave and disguise capture checks, which need an
+   Android below 13 to reach the FLAG_SECURE-only path. These are worth having on the older emulator
    in particular - below API 30 the Keystore key is authorized by time
    rather than per-operation, and androidx.biometric's device-credential
    fallback exists specifically for that floor. */
@@ -103,7 +103,8 @@ const NATIVE_TESTS = [
   'dev.engender.app.keystore.SessionDeviceCredentialTest',
   'dev.engender.app.keystore.KeystorePromptLifecycleTest',
   'dev.engender.app.photos.PhotoDirectoryInitializationTest',
-  'dev.engender.app.screencapture.CaptureChoiceOnLeaveTest'
+  'dev.engender.app.screencapture.CaptureChoiceOnLeaveTest',
+  'dev.engender.app.screencapture.DisguiseCaptureTest'
 ].join(',');
 
 const sdkRoot =

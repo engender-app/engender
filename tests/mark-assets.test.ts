@@ -28,10 +28,18 @@ const palettes = [...read('src/lib/theme/palettes.css').matchAll(/\[data-palette
 
 const manifest = read('android/app/src/main/AndroidManifest.xml');
 
-/** LauncherDefault is the default palette's alias, so trans has no alias of
-    its own: an install that never changes its flag never flips one. */
+/** Launch01 is the default palette's alias, the one the manifest enables:
+    an install that never changes its flag never flips one. */
 const DEFAULT_PALETTE = 'trans';
-const capitalised = (flag: string) => flag[0].toUpperCase() + flag.slice(1);
+
+/** Every launcher alias, keyed by the LAUNCHER_IDENTITY meta-data
+    DisguiseAlias resolves it by: a palette, the palette with "-round", or
+    "disguised". */
+const aliasBlocks = [...manifest.matchAll(/<activity-alias[\s\S]*?<\/activity-alias>/g)].map((m) => m[0]);
+const aliasByIdentity = new Map(aliasBlocks.map((block) => [
+  /android:name="dev\.engender\.app\.LAUNCHER_IDENTITY"\s+android:value="([^"]+)"/.exec(block)?.[1],
+  block
+]));
 
 describe('the mark is generated for every palette the app ships', () => {
   it('finds all 16 palettes - the parser has drifted otherwise', () => {
@@ -61,12 +69,22 @@ describe('the mark is generated for every palette the app ships', () => {
 
   it('has a launcher activity-alias naming that icon for each one', () => {
     for (const flag of palettes) {
-      if (flag === DEFAULT_PALETTE) continue;
-      expect(manifest, flag).toContain(`android:name=".disguise.Launcher${capitalised(flag)}"`);
-      expect(manifest, flag).toContain(`android:icon="@mipmap/ic_launcher_${flag}"`);
-      expect(manifest, flag).toContain(`android:name=".disguise.Launcher${capitalised(flag)}Round"`);
-      expect(manifest, flag).toContain(`android:icon="@mipmap/ic_launcher_${flag}_round"`);
+      const icon = flag === DEFAULT_PALETTE ? 'ic_launcher' : `ic_launcher_${flag}`;
+      expect(aliasByIdentity.get(flag), flag).toContain(`android:icon="@mipmap/${icon}"`);
+      expect(aliasByIdentity.get(`${flag}-round`), flag).toContain(`android:icon="@mipmap/ic_launcher_${flag}_round"`);
     }
+    expect(aliasByIdentity.get('disguised')).toContain('android:label="@string/app_name_disguised"');
+    expect(aliasByIdentity.size).toBe(aliasBlocks.length);
+  });
+
+  it('pins the two names DisguiseAlias holds as constants', () => {
+    /* DEFAULT is the fallback before anything is toggled and DISGUISED is
+       what isDisguised compares against, so both must be the aliases the
+       meta-data says they are. */
+    const java = read('android/app/src/main/java/dev/engender/app/disguise/DisguiseAlias.java');
+    const constant = (name: string) => new RegExp(`${name} = "dev\\.engender\\.app(\\.[A-Za-z0-9]+)"`).exec(java)?.[1];
+    expect(aliasByIdentity.get(DEFAULT_PALETTE)).toContain(`android:name="${constant('DEFAULT')}"`);
+    expect(aliasByIdentity.get('disguised')).toContain(`android:name="${constant('DISGUISED')}"`);
   });
 
   it('starts with exactly one alias enabled, and it is the default one', () => {
@@ -75,11 +93,22 @@ describe('the mark is generated for every palette the app ships', () => {
        leave it with no way in at all. DisguiseAliasTest proves the same
        invariant on a device across every flip; this proves the state the
        device test starts from. */
-    const aliases = [...manifest.matchAll(/<activity-alias[\s\S]*?<\/activity-alias>/g)].map((m) => m[0]);
-    expect(aliases).toHaveLength(palettes.length * 2 + 1);
-    const enabled = aliases.filter((alias) => /android:enabled="true"/.test(alias));
+    expect(aliasBlocks).toHaveLength(palettes.length * 2 + 1);
+    const enabled = aliasBlocks.filter((alias) => /android:enabled="true"/.test(alias));
     expect(enabled).toHaveLength(1);
-    expect(enabled[0]).toContain('.disguise.LauncherDefault');
+    expect(enabled[0]).toBe(aliasByIdentity.get(DEFAULT_PALETTE));
+  });
+
+  it('names no alias after a flag, the app or the disguise', () => {
+    /* Apps that list launcher activities print these class names, and the
+       names are fixed for good at 1.0 (FA 43). Which flag or shape an alias
+       draws is meta-data, read by DisguiseAlias, not part of the name. */
+    const names = [...manifest.matchAll(/<activity-alias[\s\S]*?android:name="([^"]+)"/g)].map((m) => m[1]);
+    expect(names).toHaveLength(palettes.length * 2 + 1);
+    const banned = [...palettes, 'default', 'round', 'disguis', 'notes', 'engender', 'gender', 'flag'];
+    for (const name of names) {
+      for (const word of banned) expect(name.toLowerCase(), `${name} says ${word}`).not.toContain(word);
+    }
   });
 
   it('keeps the review set out of static/, where everything ships', () => {

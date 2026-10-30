@@ -15,7 +15,7 @@ const [, width, height] = /Physical size: (\d+)x(\d+)/.exec(adb('shell', 'wm', '
 const gestureY = String(Math.round(Number(height) / 2));
 const gestureEndX = String(Math.round(Number(width) / 3));
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-adb('shell', 'am', 'start', '-n', `${pkg}/.disguise.LauncherDefault`);
+adb('shell', 'am', 'start', '-n', `${pkg}/.Launch01`);
 await pause(2000);
 const pid = adb('shell', 'pidof', pkg).trim().split(/\s+/)[0];
 const port = adb('forward', 'tcp:0', `localabstract:webview_devtools_remote_${pid}`).trim();

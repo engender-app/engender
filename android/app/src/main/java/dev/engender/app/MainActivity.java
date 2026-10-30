@@ -19,6 +19,7 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.WebViewListener;
 
+import dev.engender.app.disguise.DisguiseState;
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
 import dev.engender.app.lock.OwnSystemUi;
@@ -54,9 +55,10 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Apply the saved capture choice before the first frame. A device
-        // with no saved choice allows capture by default. SharedPreferences
+        // with no saved choice allows capture by default; disguise forces
+        // it off. SharedPreferences
         // needs no bridge or WebView, so this runs before super.onCreate.
-        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
+        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.allowedNow(this));
         // Old retrospective channels can survive an app update after their plugin is removed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notifications = getSystemService(NotificationManager.class);
@@ -109,6 +111,10 @@ public class MainActivity extends BridgeActivity {
                     return true;
                 }
             });
+            // Before the first document's scripts: the lock screen and the
+            // pre-paint script read the live alias instead of a mirror the
+            // disguise flip's process kill can outrun.
+            bridge.getWebView().addJavascriptInterface(new DisguiseState(this), DisguiseState.INTERFACE_NAME);
             PhotoWriteChannel.registerIfSupported(this, bridge.getWebView(), APP_ORIGIN);
             PhotoPickChannel.registerIfSupported(bridge.getWebView(), APP_ORIGIN);
         }
@@ -212,7 +218,7 @@ public class MainActivity extends BridgeActivity {
         if (!rendererGone && bridge != null && bridge.getWebView() != null) {
             bridge.getWebView().evaluateJavascript("window.__lockOnReturnFromNative && window.__lockOnReturnFromNative();", null);
         }
-        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
+        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.allowedNow(this));
     }
 
     private void captureReminderRoute(Intent intent) {

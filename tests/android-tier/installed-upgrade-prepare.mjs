@@ -52,6 +52,7 @@ const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 try {
   if (Number(device('shell', 'getprop', 'ro.build.version.sdk').trim()) >= 33) device('shell', 'pm', 'grant', packageId, 'android.permission.POST_NOTIFICATIONS');
   device('shell', 'appops', 'set', packageId, 'SCHEDULE_EXACT_ALARM', 'allow');
+  /* The previous APK predates FA 43's neutral alias names. */
   device('shell', 'am', 'start', '-W', '-n', `${packageId}/dev.engender.app.disguise.LauncherDefault`);
   const deadline = Date.now() + 60000;
   while (Date.now() < deadline) {

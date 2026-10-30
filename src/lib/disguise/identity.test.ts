@@ -50,6 +50,37 @@ describe('what the tab says', () => {
   });
 });
 
+describe('the Recents preview', () => {
+  /* FA 43: capture is allowed by default, so under disguise the Recents
+     card would show "Notes" over a thumbnail of the journal. The window
+     flag is decided natively before the first frame, so the read has to
+     be the native one: the live launcher alias, the same read the widgets
+     and notifications make. DisguiseCaptureTest proves it on a device. */
+  const java = (path: string) =>
+    readFileSync(fileURLToPath(new URL(`../../../android/app/src/main/java/dev/engender/app/${path}`, import.meta.url)), 'utf8');
+
+  it('is hidden while the launcher is disguised, whatever the capture choice', () => {
+    expect(java('screencapture/ScreenCapturePlugin.java')).toMatch(/isAllowed\(context\)\s*&&\s*!DisguiseAlias\.isDisguised\(context\)/);
+  });
+
+  it('is named in the disguise sheet, beside the preview that follows the setting', () => {
+    const source = (path: string) => readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), 'utf8');
+    expect(source('src/lib/components/DisguiseSetting.svelte')).toContain('<DisguisePreview on={disguiseAnswer ?? prefs.disguise} />');
+    expect(source('src/lib/components/DisguisePreview.svelte')).toContain('m.disguise_android_gap_note()');
+    for (const locale of ['en', 'pl']) {
+      const note = (JSON.parse(source(`messages/${locale}.json`)) as Record<string, string>).disguise_android_gap_note;
+      expect(note, locale).toMatch(locale === 'en' ? /Recents/ : /ostatnio używanych/);
+    }
+  });
+
+  it('is decided by that read on create, on return and on a change', () => {
+    const main = java('MainActivity.java');
+    expect(main.match(/applyWindowFlags\(this, ScreenCapturePlugin\.allowedNow\(this\)\)/g)).toHaveLength(2);
+    expect(main).not.toMatch(/ScreenCapturePlugin\.isAllowed\(/);
+    expect(java('screencapture/ScreenCapturePlugin.java')).toMatch(/applyWindowFlags\(activity, allowedNow\(/);
+  });
+});
+
 describe('where the decoy name is allowed to appear', () => {
   const root = fileURLToPath(new URL('../../..', import.meta.url));
 

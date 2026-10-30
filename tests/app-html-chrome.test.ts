@@ -66,7 +66,8 @@ function stamp(
   boot: unknown,
   system: { prefersDark: boolean; prefersReducedMotion: boolean },
   window: Record<string, unknown> = {},
-  heldLinks: Array<{ rel: string }> = []
+  heldLinks: Array<{ rel: string }> = [],
+  nativeDisguise?: boolean
 ) {
   const dataset = documentElementDataset();
   const links = documentLinks();
@@ -76,12 +77,15 @@ function stamp(
   };
   runInNewContext(prePaintScript(), {
     JSON,
+    /* The Android shell's synchronous hand-over (DisguiseState.java), absent
+       on the web. */
+    ...(nativeDisguise === undefined ? {} : { window: { androidDisguiseState: { isDisguised: () => nativeDisguise } } }),
     localStorage: {
       /* Answered by the constant boot-cache.ts writes under, not by
          app.html's own literal: the two are the second thing that file's
          header says has to be changed together, and a script reading a key
          nothing writes finds no mirror and silently paints the defaults. */
-      getItem: (key: string) => (key === BOOT_CACHE_KEY ? JSON.stringify(boot) : null)
+      getItem: (key: string) => (key === BOOT_CACHE_KEY ? (typeof boot === 'string' ? boot : JSON.stringify(boot)) : null)
     },
     matchMedia: (query: string) => ({
       matches: query.includes('prefers-color-scheme: dark') ? system.prefersDark : system.prefersReducedMotion
@@ -154,6 +158,24 @@ describe("app.html's pre-paint script against the shared fixture", () => {
     const calm = { prefersDark: false, prefersReducedMotion: false };
     expect(stamp({ disguise: true }, calm).dataset.disguised).toBe('');
     expect(stamp({ disguise: false }, calm).dataset.disguised).toBeUndefined();
+  });
+
+  it('takes the Android shell\'s live disguise over a mirror the flip\'s process kill left stale', () => {
+    const calm = { prefersDark: false, prefersReducedMotion: false };
+    /* Disguise just turned on: the alias is flipped, the mirror still says off. */
+    const on = stamp({ disguise: false }, calm, {}, [], true);
+    expect(on.dataset.disguised).toBe('');
+    expect(on.icon).toBe('favicon-notes.svg');
+    expect(on.manifest).toBe('manifest-notes.webmanifest');
+    /* And the other way: just turned off, the mirror still says on. */
+    const off = stamp({ disguise: true }, calm, {}, [], false);
+    expect(off.dataset.disguised).toBeUndefined();
+    expect(off.icon).not.toBe('favicon-notes.svg');
+    /* A mirror that cannot be parsed must not hide the shell's answer. */
+    const damaged = stamp('{not json', calm, {}, [], true);
+    expect(damaged.dataset.disguised).toBe('');
+    /* Nor may a mirror that parses to something other than an object. */
+    expect(stamp('null', calm, {}, [], true).dataset.disguised).toBe('');
   });
 
   it('gives the held module hints back once the document has parsed', () => {

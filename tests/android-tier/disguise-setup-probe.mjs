@@ -60,7 +60,7 @@ function appPid() {
     and cannot tell them apart. This answers with the component itself. */
 function launcherAlias() {
   const out = adb('shell', 'pm resolve-activity --brief -c android.intent.category.LAUNCHER ' + PKG);
-  return /Launcher\w+/.exec(out)?.[0] ?? out.trim();
+  return /Launch\d{2}/.exec(out)?.[0] ?? out.trim();
 }
 
 async function attach() {
@@ -390,11 +390,11 @@ page = null;
 adb('forward', '--remove', 'tcp:9333');
 
 const ok =
-  findings['the launcher starts undisguised'] === 'LauncherDefault' &&
+  findings['the launcher starts undisguised'] === 'Launch01' &&
   findings['starts on setup'] === true &&
-  findings['alias while the step is open'] === 'LauncherDefault' &&
+  findings['alias while the step is open'] === 'Launch01' &&
   findings['the app restarted itself'] === true &&
-  findings['alias after the finish'] === 'LauncherDisguised' &&
+  findings['alias after the finish'] === 'Launch03' &&
   findings['setup came back'] === false &&
   findings['the journal opened'] === true &&
   String(findings['the greeting']).includes('Ola') &&
