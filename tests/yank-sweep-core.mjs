@@ -284,6 +284,8 @@ const SCENES = [
   { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
   { name: 'roadmap-add-category', at: '/transition/roadmap', act: '[data-add-category]', after: {"selector": "[data-sheet]"}, is: 'the new category sheet opening' },
   { name: 'roadmap-edit-category', at: '/transition/roadmap', act: '[data-edit-category]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a category sheet opening' },
+  { name: 'roadmap-open-institution', at: '/transition/roadmap', act: '[data-institution]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'an institution sheet opening' },
+  { name: 'roadmap-add-institution', at: '/transition/roadmap', act: '[data-add-institution]', after: {"selector": "[data-sheet]"}, is: 'the add institution sheet opening' },
   { name: 'letters-compose', freshEmpty: true, at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
   /* Phase 11 ticket 15: the good-moments list opens on six and discloses
      the rest in place, so the control collapses while fourteen cards clip
