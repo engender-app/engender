@@ -900,12 +900,16 @@
                     {#if adoptingReminders}
                       <!-- Goes once the save has taken the reminders over, by
                            closing its height rather than in one frame. -->
-                      <div transition:disclose>
+                      <div class="disclosed" transition:disclose>
                         <p class="muted small" data-schedule-reminders-adopt>{m.regimen_schedule_reminders_adopt()}</p>
                       </div>
                     {/if}
                     {#each shownReminderTimes as time, index (index)}
-                      <div transition:disclose>
+                      <!-- `.disclosed` (flow-root) keeps the field's own
+                           margin inside the height that animates: without
+                           it the margin collapsed through and the content
+                           below jumped 16 px in the frame the row arrived. -->
+                      <div class="disclosed" transition:disclose>
                         <Field
                           label={shownReminderTimes.length > 1 ? m.regimen_schedule_reminder_dose_label({ number: index + 1 }) : m.rem_time_label()}
                           spread
