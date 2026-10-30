@@ -300,6 +300,8 @@ describe('a deletion made on one side', () => {
 
     await b.journal.archive.merge(await exported(a));
     assert.equal(await read(b.driver, 'letter', 'text', id), 'written after');
+    // The deletion is recorded on B all the same, so B's archive carries it on.
+    assert.equal((await b.driver.query("SELECT 1 FROM deletion WHERE tbl = 'letter' AND row_key = ?", [id])).length, 1);
 
     await a.journal.archive.merge(await exported(b));
     assert.equal(await read(a.driver, 'letter', 'text', id), 'written after');

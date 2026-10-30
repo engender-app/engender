@@ -179,7 +179,8 @@ test('the roadmap screen draws the legal group and the person\'s categories, gat
   expect(screen).toContain('roadmapList(pack, polishShown, customGoals, hiddenGoals, categories)');
   expect(screen).toContain('journal.roadmap.addCategory(');
   expect(screen).toContain('journal.roadmap.renameCategory(');
-  expect(screen).toContain('journal.roadmap.deleteCategory(');
+  // Through the Undo window since functional audit ticket 48 (deleteUndo.ts).
+  expect(screen).toContain('j.roadmap.deleteCategory(');
   expect(screen).not.toContain('<Segmented');
   expect(screen).not.toContain('data-track-toggle');
   expect(screen).toContain('prefs.roadmapMilestoneSyncEnabled = v');

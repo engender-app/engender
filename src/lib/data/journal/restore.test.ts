@@ -542,9 +542,10 @@ test('merge leaves a matched entry alone, even when the archive holds an older c
   const target = await device();
   await target.journal.archive.merge(await exported(source.journal));
 
-  // The same rows on both sides now. Editing one here and merging again is
-  // the two-device case: skip-existing means this device's fix stays, where
-  // last-write-wins would silently drop it.
+  // The same rows on both sides now. Editing one here and merging the same,
+  // older archive again is the two-device case: the archive's copies carry
+  // stamps older than this device's fix, so the fix stays
+  // (archiveMerge.ts).
   const [restored] = await target.journal.entries.entriesForDay(20000);
   await target.journal.entries.upsertEntry({ id: restored.id, note: 'fixed on this device' });
   await target.journal.tags.renameTag(source.tag.id, 'endocrinologist');

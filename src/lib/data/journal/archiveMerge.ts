@@ -33,8 +33,8 @@
      - only in the archive: inserted, unless this device deleted it at or
        after the archive's last write of it.
      - a deletion in the archive: applied when this device's row is not newer
-       than it, and recorded either way it is applied, so a third device
-       hears of it too.
+       than it, and recorded whether or not it removed anything, so a third
+       device hears of it too.
 
    A row the archive wins keeps the archive's `updated_at` rather than
    taking this device's clock: stamping it now would make the copy look
@@ -242,8 +242,9 @@ export async function applyDeletions({ driver, mode, journal }: Restoring): Prom
       const [row] = await driver.query<{ updated_at: number }>(
         `SELECT updated_at FROM ${deletion.table} WHERE ${identity} = ?`, [deletion.id]
       );
-      if (row && row.updated_at > deletion.deletedAt) continue;
-      if (row) {
+      // A row written here after the deletion stays; the marker is still
+      // recorded below, so this device's next archive carries it on.
+      if (row && row.updated_at <= deletion.deletedAt) {
         for (const unlink of await unlinkStatements(driver, deletion.table)) await driver.run(unlink, [deletion.id]);
         await driver.run(`DELETE FROM ${deletion.table} WHERE ${identity} = ?`, [deletion.id]);
       }
