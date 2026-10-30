@@ -229,10 +229,10 @@ export const FEATURES = {
     journal: ['regimen', 'doses', 'stock', 'labs', 'exposure'],
     hubRows: ['care'],
     areaGroups: none,
-    unprompted: ['dose-panel', 'stock-notice', 'patch-schedule-tile'],
-    tiles: ['dose-panel', 'patch-schedule-tile'],
+    unprompted: ['dose-panel', 'stock-notice'],
+    tiles: ['dose-panel'],
     routes: ['/care', '/care/regimen', '/care/labs', '/care/doses'],
-    messages: ['care', 'regimen', 'dose', 'doses', 'labs', 'stock', 'adherence', 'exposure', 'tile_dose', 'tile_patch', 'tile_stock']
+    messages: ['care', 'regimen', 'dose', 'doses', 'labs', 'stock', 'adherence', 'exposure', 'tile_dose', 'tile_stock']
   },
   effects: {
     sections: ['personalEffects', 'personalEffectTypes', 'effectCategories', 'sideEffects'],
