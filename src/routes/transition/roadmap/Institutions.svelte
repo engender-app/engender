@@ -59,8 +59,17 @@
     own,
     changes,
     hiddenGoals,
-    packKey
+    packKey,
+    part,
+    onOpen
   }: {
+    /** The list sits inside the court steps' section so the switch moves
+        one block; the institution's sheet is mounted beside the screen so a
+        document's link can open it whatever the switch says. Two
+        instances, one per part, and the list's rows ask the sheet's
+        instance to open through `onOpen`. */
+    part: 'list' | 'sheet';
+    onOpen?: (id: string) => void;
     shown: boolean;
     own: readonly RoadmapInstitution[];
     changes: readonly InstitutionChange[];
@@ -203,13 +212,13 @@
       title={name}
       subtitle={institutionStateLine(state, dayLabel)}
       fadeSwap
-      onclick={() => open(id)}
+      onclick={() => onOpen?.(id)}
     >
       {#snippet leading()}{@render stateDisc(state.status)}{/snippet}
     </ListRow>
 {/snippet}
 
-{#if shown}
+{#if part === 'list' && shown}
   <section class="roadmap-group inst-group" data-roadmap-institutions transition:disclose>
     <SectionHeading text={m.roadmap_institutions_title()}>
       {#snippet action()}
@@ -238,6 +247,7 @@
   </section>
 {/if}
 
+{#if part === 'sheet'}
 <Sheet busy={recordWrite.busy || nameWrite.busy || visibilityWrite.busy} open={selectedId !== null} title={selectedName} onClose={close}>
   {#if selectedId !== null}
     {@const id = selectedId}
@@ -330,6 +340,22 @@
   {/if}
 </Sheet>
 
+<ConfirmDeleteSheet
+  open={confirmingDelete}
+  title={m.roadmap_institution_delete()}
+  question={m.roadmap_institution_delete_q({ name: selectedName })}
+  hint={m.roadmap_institution_delete_detail({ count: selectedChanges.length })}
+  confirmLabel={m.roadmap_institution_delete()}
+  cancelLabel={m.keep_it()}
+  confirmAttrs={{ 'data-confirm-delete-institution': '' }}
+  onConfirm={remove}
+  onCancel={() => { confirmingDelete = false; removing.dismiss(); }}
+  busy={removing.busy}
+  failed={removing.failed}
+/>
+{/if}
+
+{#if part === 'list'}
 <Sheet busy={addWrite.busy} open={adding} title={m.roadmap_institution_new()} onClose={() => (adding = false)}>
   {#if adding}
     <h3>{m.roadmap_institution_new()}</h3>
@@ -349,20 +375,7 @@
     </button>
   {/if}
 </Sheet>
-
-<ConfirmDeleteSheet
-  open={confirmingDelete}
-  title={m.roadmap_institution_delete()}
-  question={m.roadmap_institution_delete_q({ name: selectedName })}
-  hint={m.roadmap_institution_delete_detail({ count: selectedChanges.length })}
-  confirmLabel={m.roadmap_institution_delete()}
-  cancelLabel={m.keep_it()}
-  confirmAttrs={{ 'data-confirm-delete-institution': '' }}
-  onConfirm={remove}
-  onCancel={() => { confirmingDelete = false; removing.dismiss(); }}
-  busy={removing.busy}
-  failed={removing.failed}
-/>
+{/if}
 
 <style>
   .inst-group {

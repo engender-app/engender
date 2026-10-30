@@ -395,7 +395,7 @@
   /* A document filed under an institution links here with the same
      `?goal=`, since the six that were steps kept their keys. */
   let sourceInstitution = $derived(
-    polishShown && sourceId !== null && (POLISH_INSTITUTIONS.some((one) => one.key === sourceId) || institutionQuery.rows.some((one) => one.id === sourceId))
+    sourceId !== null && (POLISH_INSTITUTIONS.some((one) => one.key === sourceId) || institutionQuery.rows.some((one) => one.id === sourceId))
   );
   function openSource() {
     if (sourceBuiltin) openBuiltInGoal(sourceBuiltin.key);
@@ -666,7 +666,8 @@
              view and sink again, and its margin dropped the categories 20px
              in the frame it left. -->
         <Institutions
-          bind:this={institutionsPanel}
+          part="list"
+          onOpen={(id) => institutionsPanel?.open(id)}
           shown={polishShown}
           own={institutionQuery.rows}
           changes={institutionChangeQuery.rows}
@@ -810,6 +811,18 @@
   onCancel={() => { confirmingCategoryDelete = false; removingCategory.dismiss(); }}
   busy={removingCategory.busy}
   failed={removingCategory.failed}
+/>
+
+<!-- The institution's sheet (functional audit ticket 35), outside the
+     switch's block so a document's link opens it whatever the switch says. -->
+<Institutions
+  part="sheet"
+  bind:this={institutionsPanel}
+  shown={polishShown}
+  own={institutionQuery.rows}
+  changes={institutionChangeQuery.rows}
+  {hiddenGoals}
+  packKey={pack.key}
 />
 
 <RoadmapMilestonePromptSheet
