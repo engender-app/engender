@@ -644,7 +644,7 @@
 
   <!-- Keep this regimen-specific offer beside an active testosterone
        episode, subject to the same cycle choice as other offers. -->
-  {#if testosteroneActive(episodes, Date.now()) && cycleTrackingVisible(episodes, Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)}
+  {#if testosteroneActive(episodes, Date.now()) && cycleTrackingVisible(episodes, Date.now(), prefs.cycleTrackingChoice)}
     <div class="regimen-elsewhere">
       <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.elsewhere)}>
         <ListRow

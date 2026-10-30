@@ -16,7 +16,8 @@ test('version 116 drops the patch-schedule tile switch and keeps the dose panel 
   db.raw.exec(`INSERT INTO pref (key, value) VALUES ('patchScheduleTileEnabled', 'false'),
                                                    ('dosePanelEnabled', 'false')`);
 
-  await runMigrations(db, fileOps, migrations);
+  // Stops at 116: version 117 later folds the dose panel's own switch into surfaceOverrides.
+  await runMigrations(db, fileOps, migrations.filter((m) => m.version <= 116));
 
   assert.deepEqual(
     db.raw.prepare("SELECT key, value FROM pref WHERE key IN ('patchScheduleTileEnabled', 'dosePanelEnabled')")

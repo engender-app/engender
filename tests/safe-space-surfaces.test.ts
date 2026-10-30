@@ -236,7 +236,7 @@ describe('Home live tile for Safe Space nudge (ticket 50)', () => {
 
   it('keeps the nudge in the registry both settings views read', () => {
     const row = UNPROMPTED_ROWS.find((r) => r.key === 'safe-space-nudge');
-    expect(row?.surface?.prefKey).toBe('safeSpaceNudgeEnabled');
+    expect(row?.surface?.defaultOn).toBe(true);
     expect(LIVE_TILE_ORDER as readonly string[]).toContain('safe-space-nudge');
   });
 });

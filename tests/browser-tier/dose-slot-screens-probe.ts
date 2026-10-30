@@ -5,7 +5,6 @@ import { startOfDayTimestamp } from '$lib/data/epochDay';
 import { fmtDay } from '$lib/data/dates';
 import { m } from '$lib/paraglide/messages';
 import { setLocale } from '$lib/paraglide/runtime';
-import { LIVE_TILE_PREF_KEY } from '$lib/data/liveTiles';
 import { hubRowLine } from '$lib/data/vocabulary/hubLabels';
 import { freshOrigin } from './fresh-origin';
 
@@ -19,7 +18,7 @@ publishFixture('dose-slot-screens', async () => {
   f.preferences = { ...f.preferences, language: locale,
     theme: params.get('theme') === 'light' ? 'light' : 'dark',
     palette: params.get('palette') ?? 'trans', disguise: params.has('disguise'), pinnedRows: ['care'],
-    [LIVE_TILE_PREF_KEY['dose-panel']]: true };
+    surfaceOverrides: {} };
   const episodeId = await f.journal.regimen.upsertEpisode({ drug: 'Weekly patch proof', ester: null,
     dose: 100, doseUnit: 'mcg', route: 'patch', interval: 'weekly', startEpochDay: today - 14,
     endEpochDay: null, endReason: null });

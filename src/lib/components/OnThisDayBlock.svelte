@@ -11,6 +11,7 @@
   import { liveList } from '$lib/data/live/journal.svelte';
   import { tablesReadBy } from '$lib/data/live/writes';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { surfaceOn } from '$lib/unprompted/registry';
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
@@ -55,7 +56,7 @@
 
   /* Seed reads made after the first await to avoid a duplicate query. */
   let daysQuery = liveList(async (j) => {
-    if (!prefs.onThisDayEnabled) return [];
+    if (!surfaceOn(prefs.surfaceOverrides, 'on-this-day')) return [];
     // Read before the first await, so the query re-runs when the day changes.
     const asOf = today;
     const [letters, consent, bounds] = await Promise.all([

@@ -39,8 +39,8 @@ import { AGENDA_DAYS } from './agenda';
 import { pairDoseSchedule } from './journal/doses';
 import { shouldShowSafeSpaceNudge } from './safeSpaceNudge';
 import { unreadUnlockedLetters } from './letterStatus';
-import type { BooleanPrefKey, SurfaceRow, UnpromptedKind } from '../unprompted/registry';
-import { SURFACE_ROWS, unpromptedQuiet } from '../unprompted/registry';
+import type { SurfaceKind, UnpromptedKind } from '../unprompted/registry';
+import { unpromptedQuiet } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
 import type { LetterSeal } from './journal/letters';
 
@@ -168,30 +168,11 @@ type Unordered = Exclude<LiveTileKind, (typeof LIVE_TILE_ORDER)[number]>;
 type AssertNoneUnordered<Missing extends never> = Missing;
 type EveryLiveTileOrdered = AssertNoneUnordered<Unordered>;
 
-/** Every grid kind is a kind the unprompted registry knows, which is what
-    lets the preference gate below be read off the registry instead of
-    restated. A literal above that is not an `UnpromptedKind` fails here. */
-type AssertKindsAreUnprompted<K extends UnpromptedKind> = K;
-type EveryLiveTileIsUnprompted = AssertKindsAreUnprompted<LiveTileKind>;
-
-/** Which preference switches each tile off, taken from the registry that
-    already declares it (Today's editor draws its switch from the same
-    field, and /settings/notifications draws the rest of the registry's from
-    it too). Exported as a function over the rows so registry.test.ts's
-    trick works here too: the rule can be run over a shortened registry and
-    seen to fail, rather than only asserted never to. */
-export function liveTilePrefKeys(rows: readonly SurfaceRow[]): Record<LiveTileKind, BooleanPrefKey> {
-  const declared = new Map(rows.map((row) => [row.key, row.surface.prefKey]));
-  const table = {} as Record<LiveTileKind, BooleanPrefKey>;
-  for (const kind of LIVE_TILE_ORDER) {
-    const prefKey = declared.get(kind);
-    if (!prefKey) throw new Error(`the unprompted registry declares no preference for the ${kind} tile`);
-    table[kind] = prefKey;
-  }
-  return table;
-}
-
-export const LIVE_TILE_PREF_KEY = liveTilePrefKeys(SURFACE_ROWS);
+/** Every grid kind is a kind the unprompted registry gives a switch, which is
+    what lets `surfaceOn` answer for it. A literal above that is not a
+    `SurfaceKind` fails here. */
+type AssertKindsHaveASurface<K extends SurfaceKind> = K;
+type EveryLiveTileHasASurface = AssertKindsHaveASurface<LiveTileKind>;
 
 /** A handle a tile stamps on itself, valued the way the markup that used to
     write it rendered it: `true`, which is what a bare `data-letter-tile`

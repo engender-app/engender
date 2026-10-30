@@ -152,7 +152,7 @@ describe('Home ready-letter live tile rendering and behavior', () => {
     // The snooze goes through the module, which is what makes the tile
     // disappear the moment the sheet closes rather than a tick later.
     expect(home).toContain("liveTiles.snooze('ready-letter')");
-    expect(home).toContain('prefs.readyLetterEnabled = false');
+    expect(home).toContain("withSurface(prefs.surfaceOverrides, 'ready-letter', false)");
   });
 
   it('links tile to the letter reading route', () => {
@@ -164,7 +164,7 @@ describe('Settings and letter route integration', () => {
   it('registers ready-letter in live-tiles settings registry', () => {
     const row = UNPROMPTED_ROWS.find((r) => r.key === 'ready-letter');
     expect(row).toBeDefined();
-    expect(row?.surface?.prefKey).toBe('readyLetterEnabled');
+    expect(row?.surface?.defaultOn).toBe(true);
     expect(row?.title()).toBe(enMessages.tile_letter_title);
   });
 

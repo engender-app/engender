@@ -58,8 +58,8 @@ export interface PreferenceValues {
   a11yMotionReduce: boolean;
   /** How long the app may be out of sight before the access mode's secret
       is asked for again (lock-timing ticket 01). Replaced `lockOnLeave`,
-      whose on and off are `immediately` and `restart`; openPreferences()
-      reads an old row across. Meaningless under a mode with no secret, which
+      whose on and off are `immediately` and `restart`; migration 117 moved
+      an old row across. Meaningless under a mode with no secret, which
       is why no screen asks it there. */
   lockAfter: LockAfter;
   disguise: boolean;
@@ -85,14 +85,6 @@ export interface PreferenceValues {
       screen (phase 4 features ticket 17). Device-local because this controls
       one installation's entry screen, not anything the journal carries. */
   guidedPromptsEnabled: boolean;
-  /** Whether active tryouts show a felt-sense quick prompt in the entry editor. */
-  entryTryoutPromptEnabled: boolean;
-  /** Whether a scheduled dose due today shows a quick-log chip in the entry editor. */
-  entryDoseQuickLogEnabled: boolean;
-  /** Whether post-op procedure recovery shows a status card in the entry editor. */
-  entryProcedureRecoveryEnabled: boolean;
-  /** Whether active HRT regimen shows a physical change marker chip in the entry editor. */
-  entryHrtEffectsEnabled: boolean;
   /** Whether a running binder session past eight hours picks up its
       duration cue, on the wear screen and the live tile (phase 8 features
       ticket 50, ADR-0064). Default on: the figure is well enough sourced to
@@ -108,38 +100,10 @@ export interface PreferenceValues {
       `roadmapMilestoneSyncEnabled` are: a yes/no about what this
       installation's screens say. */
   wearDurationCueEnabled: boolean;
-  /** Whether the wear-timer live tile is ever shown (phase 5 ticket 51).
-      A kind-level switch, not a way to hide one running session: the tile
-      appears while a session is running and the kind is on, and this never
-      stands in for that data check (ADR-0039's amendment). Default on, the
-      same "the app may speak unless told otherwise" default wrapped has.
-      Device-local for the same reason `wrappedEnabled` is - a yes/no about
-      one installation's Home screen. */
-  wearTimerEnabled: boolean;
-  /** Whether the dose-log live tile is ever shown (phase 5 ticket 51),
-      while a regimen episode is active. Same shape and reasoning as
-      `wearTimerEnabled`. */
-  dosePanelEnabled: boolean;
-  /** Whether the ready-letter live tile is ever shown (phase 5 ticket 51),
-      when a time-capsule letter has become readable. Same shape and
-      reasoning as `wearTimerEnabled`. */
-  readyLetterEnabled: boolean;
-  /** Whether the surgery-countdown live tile is ever shown (phase 5
-      ticket 51), ahead of a scheduled procedure. Same shape and reasoning
-      as `wearTimerEnabled`. */
-  surgeryCountdownEnabled: boolean;
-  /** Whether the Safe Space nudge is ever shown (phase 5 ticket 51), after
-      an entry that reads as a bad moment. Same shape and reasoning as
-      `wearTimerEnabled`. */
-  safeSpaceNudgeEnabled: boolean;
   /** The entry ID of the most recent bad-moment entry whose Safe Space nudge
       was dismissed or opened (ticket 50). A subsequent qualifying entry with a
       newer ID produces its own fresh nudge. */
   safeSpaceNudgeDismissedEntryId: number | null;
-  /** Whether the running-low stock notice is ever shown (phase 5 ticket 51),
-      while an in-use regimen's stock is projected to run out. Same shape and
-      reasoning as `wearTimerEnabled`. */
-  stockNoticeEnabled: boolean;
   /** A passage of somebody's own to read for a voice benchmark, empty for the
       one the app ships (phase 5 deepening ticket 15, CONTEXT: "Benchmark
       passage"). Kept because the next benchmark has to be read from the same
@@ -154,23 +118,21 @@ export interface PreferenceValues {
       than about this installation (ADR-0003). */
   voiceComfortLowHz: number | null;
   voiceComfortHighHz: number | null;
-  /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
-      stops the Home card and the recap read behind it, rather than hiding a
-      card over work that still runs.
+  /** The person's own answer to "show me this kind of thing", for every kind
+      in the unprompted registry that draws something in the app: the live
+      tiles, the stock notice, wrapped and on-this-day (functional audit
+      ticket 44, which replaced eight per-kind booleans). Keyed by the
+      registry's kind (`UnpromptedKind`) and holding only an answer that
+      differs from the registry's default, so the defaults live in one place
+      and a kind added later needs no key here. A key this build has no kind
+      for is left alone.
 
-      Device-local, deliberately, and unlike `checkInEnabled`: the check-in is
-      a ritual with a time attached that a person would have to set up again
-      on a new device, while this is a yes/no about one installation's Home
-      screen. Weighed rather than defaulted - ADR-0003's rule would have
-      landed it here either way. */
-  wrappedEnabled: boolean;
-  /** Whether on-this-day is offered at all (phase 4 features ticket 03).
-      Its own toggle, independent of `wrappedEnabled`: on-this-day reuses
-      wrapped's presentation components but answers a different question,
-      and turning one off must not silently turn off the other. Device-local
-      for the same reason `wrappedEnabled` is - a yes/no about one
-      installation's Home screen. */
-  onThisDayEnabled: boolean;
+      A switch is a kind-level yes or no, never a way to hide one running
+      session (ADR-0039's amendment). Portable, like `pinnedRows` beside it:
+      which tiles somebody turned off is a statement about the front page
+      they arranged, and a restore that switched them all back on would be
+      the app forgetting an answer. Notifications keep their own switches. */
+  surfaceOverrides: Partial<Record<string, boolean>>;
   /** Whether reminder alarms are scheduled at all (phase 6 ticket 04). The
       kind-level switch the notifications view draws, one level above each
       Reminder row's own `enabled`: off means no reminder reaches the phone,
@@ -255,11 +217,9 @@ export interface PreferenceValues {
       journey. A milestone this install no longer has resolves to unset
       rather than falling back to another one. */
   journeyAnchorMilestoneId: string | null;
-  /** Legacy opt-in, kept so older journals and archives retain their
-      visibility before a cycle choice is made. */
-  cycleTrackingEnabled: boolean;
-  /** Null preserves the pre-choice rule for existing journals. A new
-      journal records false when setup finishes. */
+  /** Null preserves the pre-choice rule for existing journals (a person who
+      had the old opt-in on was migrated to true, functional audit ticket 44).
+      A new journal records false when setup finishes. */
   cycleTrackingChoice: boolean | null;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
@@ -302,7 +262,7 @@ export interface PreferenceValues {
       reads as declined when any of its sections is.
 
       A list rather than a boolean per area, so a section added later needs
-      no migration and no entry here. Portable, like `cycleTrackingEnabled`
+      no migration and no entry here. Portable, like `cycleTrackingChoice`
       and for the same reason: it says something about this person and their
       journal rather than about this installation, and a restore that started
       asking again about eight areas would be the app forgetting an answer
@@ -412,23 +372,12 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   checkInTime: '21:00',
   checkInPausedThrough: null,
   guidedPromptsEnabled: true,
-  entryTryoutPromptEnabled: true,
-  entryDoseQuickLogEnabled: true,
-  entryProcedureRecoveryEnabled: true,
-  entryHrtEffectsEnabled: true,
   wearDurationCueEnabled: true,
-  wearTimerEnabled: true,
-  dosePanelEnabled: true,
-  readyLetterEnabled: true,
-  surgeryCountdownEnabled: true,
-  safeSpaceNudgeEnabled: true,
   safeSpaceNudgeDismissedEntryId: null,
-  stockNoticeEnabled: true,
   voiceBenchmarkPassage: '',
   voiceComfortLowHz: null,
   voiceComfortHighHz: null,
-  wrappedEnabled: true,
-  onThisDayEnabled: true,
+  surfaceOverrides: {},
   remindersEnabled: true,
   wearElapsedEnabled: true,
   exportFailureNoticeEnabled: true,
@@ -443,7 +392,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hairAnchorEpochDay: null,
   hrtStartEpochDay: null,
   journeyAnchorMilestoneId: null,
-  cycleTrackingEnabled: false,
   cycleTrackingChoice: null,
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
@@ -479,10 +427,10 @@ export const PORTABLE_KEYS = [
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
   'hrtStartEpochDay',
-  'cycleTrackingEnabled',
   'cycleTrackingChoice',
   'voiceComfortLowHz',
   'voiceComfortHighHz',
+  'surfaceOverrides',
   'areaFinishOfferDeclined',
   'roadmapPolishStepsChoice',
   /* Both of phase 10's remaining front-page preferences travel, on
@@ -510,21 +458,9 @@ export const DEVICE_LOCAL_KEYS = [
   'allowScreenCapture',
   'hideNotificationTitles',
   'guidedPromptsEnabled',
-  'entryTryoutPromptEnabled',
-  'entryDoseQuickLogEnabled',
-  'entryProcedureRecoveryEnabled',
-  'entryHrtEffectsEnabled',
   'wearDurationCueEnabled',
-  'wearTimerEnabled',
-  'dosePanelEnabled',
-  'readyLetterEnabled',
-  'surgeryCountdownEnabled',
-  'safeSpaceNudgeEnabled',
   'safeSpaceNudgeDismissedEntryId',
-  'stockNoticeEnabled',
   'voiceBenchmarkPassage',
-  'wrappedEnabled',
-  'onThisDayEnabled',
   'remindersEnabled',
   'wearElapsedEnabled',
   'exportFailureNoticeEnabled',

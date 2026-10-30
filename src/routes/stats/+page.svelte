@@ -59,6 +59,7 @@
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { surfaceOn } from '$lib/unprompted/registry';
   import {
     defaultSpan,
     eraBands,
@@ -733,10 +734,10 @@
       bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, AREA_ROLE.lookBack))}
       data-tight
     >
-      {#if prefs.wrappedEnabled}
+      {#if surfaceOn(prefs.surfaceOverrides, 'wrapped')}
         <WrappedHomeCard />
       {/if}
-      {#if prefs.onThisDayEnabled}
+      {#if surfaceOn(prefs.surfaceOverrides, 'on-this-day')}
         <OnThisDayHomeCard
           open={dayOpen}
           onOpen={(event) => {
@@ -748,7 +749,7 @@
     </TileGrid>
     </ReadGroup>
     </div>
-    {#if dayOpen && prefs.onThisDayEnabled}
+    {#if dayOpen && surfaceOn(prefs.surfaceOverrides, 'on-this-day')}
       <div class="lookback-day" id="lookback-day" data-lookback-day transition:disclose={{ skip: !isDoorActive() }}>
         <OnThisDayBlock />
       </div>

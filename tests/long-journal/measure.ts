@@ -711,7 +711,7 @@ export async function measureLongJournal(
     /* Twelve live queries from `homeTiles()`, five the route holds
        itself, and the three look-back surfaces under it: the wrapped card,
        the on-this-day card and the week strip. The two cards are gated on
-       `wrappedEnabled` and `onThisDayEnabled`, which both ship on, so a
+       the `wrapped` and `on-this-day` surface switches, which both ship on, so a
        default install pays for them.
 
        One of these still grows by a loop rather than by a table: the

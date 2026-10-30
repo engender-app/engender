@@ -94,13 +94,13 @@ export async function lookBackContracts(): Promise<Result[]> {
     until(() => wrappedLinks() === 1, 'one Wrapped link'));
   await screen.remove();
 
-  screen = await mountScreen('/stats', { ...f, preferences: { ...f.preferences, wrappedEnabled: false } });
+  screen = await mountScreen('/stats', { ...f, preferences: { ...f.preferences, surfaceOverrides: { wrapped: false } } });
   await until(() => root().querySelector('[data-lookback-readings] [data-reading]'), 'Look back tiles, Wrapped off');
   await settle(400);
   await check('Look back draws no Wrapped link while Wrapped is off', () => wrappedLinks() === 0);
   await screen.remove();
 
-  screen = await mountScreen('/wrapped/week', { ...f, preferences: { ...f.preferences, wrappedEnabled: false } });
+  screen = await mountScreen('/wrapped/week', { ...f, preferences: { ...f.preferences, surfaceOverrides: { wrapped: false } } });
   await check('the Wrapped-off notice opens the notifications screen', async () => {
     const action = await until(
       () => root().querySelector<HTMLAnchorElement>('[data-notice="wrapped-off"] a[data-notice-action]'),
@@ -110,7 +110,7 @@ export async function lookBackContracts(): Promise<Result[]> {
   });
   await screen.remove();
 
-  screen = await mountScreen('/on-this-day', { ...f, preferences: { ...f.preferences, onThisDayEnabled: false } });
+  screen = await mountScreen('/on-this-day', { ...f, preferences: { ...f.preferences, surfaceOverrides: { 'on-this-day': false } } });
   await check('the On-this-day-off notice opens the notifications screen', async () => {
     const action = await until(
       () => root().querySelector<HTMLAnchorElement>('[data-notice="on-this-day-off"] a[data-notice-action]'),
@@ -120,7 +120,7 @@ export async function lookBackContracts(): Promise<Result[]> {
   });
   await screen.remove();
 
-  Object.assign(prefs, { wrappedEnabled: true, onThisDayEnabled: true });
+  Object.assign(prefs, { surfaceOverrides: {} });
 
   /* What it cost (functional audit ticket 31). Every check above ran on a
      journal with no cost in it, which is the reading's absent case: no

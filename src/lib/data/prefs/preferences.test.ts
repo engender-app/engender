@@ -5,7 +5,14 @@
 import { test, expect } from 'vitest';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BOOT_KEYS, PREFERENCE_DEFAULTS } from './catalogue.ts';
-import { openPreferences, type BootPreferences, type PreferenceCache } from './preferences.ts';
+import { portablePreferences } from '../archive/payload.ts';
+import { surfaceOn, withSurface } from '../../unprompted/registry.ts';
+import {
+  openPreferences,
+  restorePortablePreferencesWithin,
+  type BootPreferences,
+  type PreferenceCache
+} from './preferences.ts';
 
 function recordingCache() {
   const writes: BootPreferences[] = [];
@@ -200,38 +207,20 @@ test('works without a cache at all, which is what the Node tier and Android boot
   expect(prefs.get('theme')).toBe('dark');
 });
 
-/* Lock timing replaced the lock-on-leave switch (lock-timing ticket 01).
-   The old row stays on disk, because nothing here deletes rows, and is read
-   once into the new key so nobody's behaviour changes on upgrade: on meant
-   "lock the moment the app goes to background", off meant "only a restart
-   asks again". */
-test('an upgraded journal with lock on leave on asks again immediately', async () => {
+/* Lock timing replaced the lock-on-leave switch (lock-timing ticket 01), and
+   version 117 moved the old row across in SQL (FA 44). Reading it here is
+   gone: a stray row from a build that never migrated is simply skipped. */
+test('a stray lock on leave row is skipped, like any key this build does not know', async () => {
   const driver = await migratedDb();
   await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['lockOnLeave', 'true']);
-
-  const prefs = await openPreferences(driver);
-
-  expect(prefs.get('lockAfter')).toBe('immediately');
-});
-
-test('an upgraded journal with lock on leave off asks again only on a restart', async () => {
-  const driver = await migratedDb();
-  await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['lockOnLeave', 'false']);
 
   const prefs = await openPreferences(driver);
 
   expect(prefs.get('lockAfter')).toBe('restart');
 });
 
-test('a journal that never wrote lock on leave keeps its old off, which is a restart', async () => {
-  const prefs = await openPreferences(await migratedDb());
-
-  expect(prefs.get('lockAfter')).toBe('restart');
-});
-
-test('a timing chosen after the upgrade wins over the old switch', async () => {
+test('a timing chosen by the person is read back', async () => {
   const driver = await migratedDb();
-  await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['lockOnLeave', 'true']);
   const first = await openPreferences(driver);
   await first.set('lockAfter', 'five-minutes');
 
@@ -240,6 +229,21 @@ test('a timing chosen after the upgrade wins over the old switch', async () => {
   expect(reopened.get('lockAfter')).toBe('five-minutes');
 });
 
+/* Functional audit ticket 44: a tile switch is portable, so one set before an
+   export is set after restoring that archive into a fresh journal. */
+test('a tile switch set before an export is set after restoring it into a fresh journal', async () => {
+  const source = await openPreferences(await migratedDb());
+  await source.set('surfaceOverrides', withSurface(source.get('surfaceOverrides'), 'wear-timer', false));
+  const archived = JSON.parse(JSON.stringify(portablePreferences(source.all())));
+
+  const freshDriver = await migratedDb();
+  expect(surfaceOn((await openPreferences(freshDriver)).get('surfaceOverrides'), 'wear-timer')).toBe(true);
+  await restorePortablePreferencesWithin(freshDriver, archived);
+
+  const restored = await openPreferences(freshDriver);
+  expect(surfaceOn(restored.get('surfaceOverrides'), 'wear-timer')).toBe(false);
+  expect(surfaceOn(restored.get('surfaceOverrides'), 'dose-panel')).toBe(true);
+});
 
 test('a successful later write wins over prepared Archive values, including reasserting the old value', async () => {
   const driver = await migratedDb();

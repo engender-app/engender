@@ -86,7 +86,7 @@ describe('what the merged screen is built from', () => {
   });
 
   it('hands each row both toggles conditionally, one per question', () => {
-    expect(screen).toContain('surface={row.surface');
+    expect(screen).toContain('surface={isSurfaceRow(row)');
     expect(screen).toContain('notify={!isWeb && row.notify');
   });
 
@@ -97,7 +97,7 @@ describe('what the merged screen is built from', () => {
        than on a whole statement, so reformatting the line is not a test
        failure. */
     expect(screen).toMatch(/if \(!v && row\.notify\) prefs\[row\.notify\.prefKey\] = false/);
-    expect(screen).toMatch(/if \(v && row\.surface\) prefs\[row\.surface\.prefKey\] = true/);
+    expect(screen).toMatch(/if \(v && isSurfaceRow\(row\)\) prefs\.surfaceOverrides = withSurface\(prefs\.surfaceOverrides, row\.key, true\)/);
   });
 
   it('puts every switch on the trailing edge, Home switches and notify switches in cards of their own', () => {

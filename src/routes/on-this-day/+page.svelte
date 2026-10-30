@@ -3,6 +3,7 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { surfaceOn } from '$lib/unprompted/registry';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import OnThisDayBlock from '$lib/components/OnThisDayBlock.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -13,7 +14,7 @@
 <div class="screen">
   <ScreenHeader title={m.on_this_day()} screen="on-this-day" back="/stats" />
 
-  {#if !prefs.onThisDayEnabled}
+  {#if !surfaceOn(prefs.surfaceOverrides, 'on-this-day')}
     <Notice
       icon="info"
       key="on-this-day-off"

@@ -8,8 +8,7 @@ import {
   DEVICE_LOCAL_KEYS,
   PORTABLE_KEYS,
   PREFERENCE_DEFAULTS,
-  isPreferenceKey,
-  type PreferenceKey
+  isPreferenceKey
 } from './catalogue.ts';
 
 const allKeys = Object.keys(PREFERENCE_DEFAULTS);
@@ -75,11 +74,10 @@ test('the boot set cuts across the portable split rather than following it', () 
   ]);
 });
 
-/* Ticket 51: every live tile and every unprompted notice is switchable as a
-   kind, in one consolidated Settings entry. A fresh install shows all of
-   them - the same default wrapped and on-this-day already carry - so the
-   toggles exist for opting out, never in. */
-test('every live-tile kind is switchable and defaults to on (ticket 51)', () => {
+/* Functional audit ticket 44: the eight per-surface booleans are one map,
+   `surfaceOverrides`, whose defaults live in the unprompted registry. It
+   travels in an archive, like the front-page pins. */
+test('the per-surface booleans are gone, replaced by one portable map (FA 44)', () => {
   for (const key of [
     'wearTimerEnabled',
     'dosePanelEnabled',
@@ -87,11 +85,14 @@ test('every live-tile kind is switchable and defaults to on (ticket 51)', () => 
     'surgeryCountdownEnabled',
     'safeSpaceNudgeEnabled',
     'stockNoticeEnabled',
+    'wrappedEnabled',
+    'onThisDayEnabled'
   ]) {
-    expect(PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe(true);
-    expect(DEVICE_LOCAL_KEYS).toContain(key);
-    expect(PORTABLE_KEYS).not.toContain(key);
+    expect(isPreferenceKey(key), key).toBe(false);
   }
+  expect(PREFERENCE_DEFAULTS.surfaceOverrides).toEqual({});
+  expect(PORTABLE_KEYS).toContain('surfaceOverrides');
+  expect(DEVICE_LOCAL_KEYS as readonly string[]).not.toContain('surfaceOverrides');
 });
 
 /* Functional-audit ticket 14 cut four tiles and the agenda's kind
@@ -112,23 +113,22 @@ test('the cut tiles and the agenda kind switches leave no preference behind', ()
   }
 });
 
-test('every entry contextual card is switchable and defaults to on', () => {
+/* Functional audit ticket 44: dead and legacy keys leave the catalogue. The
+   entry editor's four cards always show, nothing ever wrote their switches,
+   and the two legacy read-acrosses were migrated by version 117. */
+test('dead and legacy keys are not preferences any more (FA 44)', () => {
   for (const key of [
     'entryTryoutPromptEnabled',
     'entryDoseQuickLogEnabled',
     'entryProcedureRecoveryEnabled',
-    'entryHrtEffectsEnabled'
+    'entryHrtEffectsEnabled',
+    'cycleTrackingEnabled',
+    'lockOnLeave'
   ]) {
-    expect(PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe(true);
-    expect(DEVICE_LOCAL_KEYS).toContain(key);
-    expect(PORTABLE_KEYS).not.toContain(key);
+    expect(isPreferenceKey(key), key).toBe(false);
+    expect(DEVICE_LOCAL_KEYS as readonly string[]).not.toContain(key);
+    expect(PORTABLE_KEYS as readonly string[]).not.toContain(key);
   }
-});
-
-test('cycleTrackingEnabled defaults to false and is portable (ADR-0043)', () => {
-  expect(PREFERENCE_DEFAULTS.cycleTrackingEnabled).toBe(false);
-  expect(PORTABLE_KEYS).toContain('cycleTrackingEnabled');
-  expect(DEVICE_LOCAL_KEYS).not.toContain('cycleTrackingEnabled');
 });
 
 test('theme and language default to following the system, as the PRD asks', () => {

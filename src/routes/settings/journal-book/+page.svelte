@@ -70,7 +70,7 @@
 
   /* The inclusion is read inside the query, so unticking a part stops the
      read that would have found it rather than only the markup that would
-     have drawn it - the same shape the wrapped screen's `wrappedEnabled`
+     have drawn it - the same shape the wrapped screen's `wrapped` switch
      check uses, and the point of the flags living in the assembly. */
   let bookQuery = liveQuery((j) =>
     range ? j.journalBook.getBook(range.start, range.end, inclusion) : Promise.resolve(null)

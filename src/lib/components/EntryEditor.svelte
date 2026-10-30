@@ -459,7 +459,7 @@
   let isHrtActive = $derived(activeEpisodes.length > 0);
 
   /* ADR-0043's gate, asked rather than re-derived (phase 8 features ticket
-     04). This screen read `prefs.cycleTrackingEnabled` directly, which is the
+     04). This screen read the cycle preference directly, which was the
      one surface of three that did - so somebody on a testosterone regimen who
      never flipped the switch got the More row and the side-effects section
      and not this, which is the reader the automatic half of the rule exists
@@ -471,7 +471,7 @@
      to. A regimen that has since ended does not take the chips off an entry
      written last spring. */
   let cycleTrackingActive = $derived(
-    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)
+    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingChoice)
   );
 
   /* The cascade (phase 8 features ticket 04, ADR-0052). The effects chip is
@@ -1154,7 +1154,7 @@
   <!-- Contextual Inline Cards (ticket 04, ADR-0044). Offers rather than
        questions, so they stay where they were - after what the person
        chose to open, before the foot - and take no chip. -->
-  {#if prefs.entryTryoutPromptEnabled && activeTryout}
+  {#if activeTryout}
     <!-- All three contextual cards open their own height rather than
          appearing at full size in one frame (ticket 99 item 18, "tryout
          felt sense comes out without an animation"). None of them is on
@@ -1217,7 +1217,7 @@
     </div>
   {/if}
 
-  {#if prefs.entryDoseQuickLogEnabled && scheduleDose && !episodesQuery.loading && !todayDosesQuery.loading}
+  {#if scheduleDose && !episodesQuery.loading && !todayDosesQuery.loading}
     <!-- Off the two reads as well as off the schedule: the logged doses are
          `[]` until today's doses answer, so a chip for a dose already logged
          once stood on screen for the length of the round trip and then had
@@ -1266,7 +1266,7 @@
     </div>
   {/if}
 
-  {#if prefs.entryProcedureRecoveryEnabled && recoveringProcedure}
+  {#if recoveringProcedure}
     <div class="contextual-panel" data-contextual="procedure-recovery" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">
@@ -1321,7 +1321,7 @@
     </div>
   {/if}
 
-  {#if prefs.entryHrtEffectsEnabled && isHrtActive && !effectsQuiet}
+  {#if isHrtActive && !effectsQuiet}
     <div class="contextual-row" data-contextual="hrt-effects">
       {#each entryDraft.effectMarkers as marker (marker.effect)}
         <div class="contextual-chip effect-chip is-active" transition:discloseWidth|global>

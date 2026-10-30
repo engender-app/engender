@@ -143,7 +143,7 @@
   let moduleChoices = $state<HubRowKey[] | null>(null);
   let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
   let cycleShown = $derived(cycleChoice ?? (restoring || prefs.onboarded
-    ? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)
+    ? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingChoice)
     : false));
   let genitalEffectsShown = $derived(
     genitalEffectsChoice ?? (restoring || prefs.onboarded

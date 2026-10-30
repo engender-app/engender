@@ -58,7 +58,14 @@
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
   import { disclose } from '$lib/motion/reveal';
   import { watchStatus } from '$lib/permissions/watchStatus';
-  import { UNPROMPTED_ROWS, type BooleanPrefKey, type UnpromptedRow } from '$lib/unprompted/registry';
+  import {
+    UNPROMPTED_ROWS,
+    isSurfaceRow,
+    surfaceOn,
+    withSurface,
+    type BooleanPrefKey,
+    type UnpromptedRow
+  } from '$lib/unprompted/registry';
   import { isLiveTileKind } from '$lib/data/liveTiles';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -116,15 +123,15 @@
      invariant either direction keeps - nothing fires for a kind that is off
      - whichever switch the person just touched. */
   function setKind(row: UnpromptedRow, v: boolean) {
-    if (!row.surface) return;
-    prefs[row.surface.prefKey] = v;
+    if (!isSurfaceRow(row)) return;
+    prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, row.key, v);
     if (!v && row.notify) prefs[row.notify.prefKey] = false;
   }
 
   function setNotify(row: UnpromptedRow, v: boolean) {
     if (!row.notify) return;
     prefs[row.notify.prefKey] = v;
-    if (v && row.surface) prefs[row.surface.prefKey] = true;
+    if (v && isSurfaceRow(row)) prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, row.key, true);
   }
 
   /* The check-in's switch lives on the reminders screen, beside its time and
@@ -180,10 +187,10 @@
         key={row.key}
         title={row.title()}
         subtitle={row.surface?.subtitle() ?? ''}
-        surface={row.surface
+        surface={isSurfaceRow(row)
           ? {
               label: m.notif_show_toggle_aria({ name: row.title() }),
-              checked: prefs[row.surface.prefKey],
+              checked: surfaceOn(prefs.surfaceOverrides, row.key),
               onChange: (v) => setKind(row, v)
             }
           : undefined}

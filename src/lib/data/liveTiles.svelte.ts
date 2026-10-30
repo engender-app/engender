@@ -35,10 +35,9 @@ import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
 import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
 import { routeLabel } from './vocabulary/doseLabels';
 import type { DoseRoute } from './types';
-import { UNPROMPTED_ROWS, unpromptedQuiet } from '../unprompted/registry';
+import { UNPROMPTED_ROWS, surfaceOn, unpromptedQuiet } from '../unprompted/registry';
 import {
   LIVE_TILE_ORDER,
-  LIVE_TILE_PREF_KEY,
   composeHomeTiles,
   type HomeTile,
   type LiveTileKind
@@ -124,7 +123,7 @@ export function homeTiles(
   const areaStatesAnswered = () => !areaStates.loading;
   function wanted(...kinds: LiveTileKind[]): boolean {
     return kinds.some((kind) => {
-      if (!prefs[LIVE_TILE_PREF_KEY[kind]]) return false;
+      if (!surfaceOn(prefs.surfaceOverrides, kind)) return false;
       if (AREA_OF.get(kind) == null) return true;
       return !unpromptedQuiet(kind, areaStates.value ?? AREA_STATES_BEFORE_READ, todayEpochDay);
     });
@@ -164,9 +163,9 @@ export function homeTiles(
     snoozeRevision += 1;
   }
 
-  /* Which preference switches a tile off is the unprompted registry's to
-     say - the same field Today's own editor draws its switch from - so
-     this indexes the store by it rather than naming eleven preferences. */
+  /* Whether a tile is switched on is the unprompted registry's to say - its
+     default and the person's `surfaceOverrides`, the same answer Today's own
+     editor draws its switch from. */
   const gates = $derived.by(() => {
     snoozeRevision;
     snoozeMinute;
@@ -174,7 +173,7 @@ export function homeTiles(
     const enabled = {} as Record<LiveTileKind, boolean>;
     const snoozed = {} as Record<LiveTileKind, boolean>;
     for (const kind of LIVE_TILE_ORDER) {
-      enabled[kind] = prefs[LIVE_TILE_PREF_KEY[kind]];
+      enabled[kind] = surfaceOn(prefs.surfaceOverrides, kind);
       snoozed[kind] = snoozeStoreOf(kind).snoozed(snoozeNow);
     }
     return { enabled, snoozed };

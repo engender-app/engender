@@ -60,11 +60,11 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
     expect(editor).not.toContain('toast(m.entry_needs_mood())');
   });
 
-  it('guards contextual sections behind device preferences and domain conditions', () => {
-    expect(editor).toContain('prefs.entryTryoutPromptEnabled && activeTryout');
-    expect(editor).toContain('prefs.entryDoseQuickLogEnabled && scheduleDose');
-    expect(editor).toContain('prefs.entryProcedureRecoveryEnabled && recoveringProcedure');
-    expect(editor).toContain('prefs.entryHrtEffectsEnabled && isHrtActive');
+  it('guards contextual sections behind domain conditions', () => {
+    expect(editor).toContain('{#if activeTryout}');
+    expect(editor).toContain('{#if scheduleDose &&');
+    expect(editor).toContain('{#if recoveringProcedure}');
+    expect(editor).toContain('{#if isHrtActive && !effectsQuiet}');
     expect(editor).toContain('cycleTrackingActive');
   });
 

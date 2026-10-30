@@ -102,19 +102,20 @@ export interface UnpromptedRow {
       an export failure and the two retrospectives concern the journal as
       a whole, and `entries` is not finishable.
 
-      A row's `prefKey` is untouched by any of this. Whether a kind of prompt
+      A row's switch (its `surfaceOverrides` entry, or a notification's
+      `prefKey`) is untouched by any of this. Whether a kind of prompt
       talks is a different question from whether an area is on, and this is a
       switch above the preferences rather than a replacement for them.
 
       Checked 2026-09-05 (features ticket 35) against the worry that
-      `prefs/catalogue.ts`'s `*Enabled` booleans are a second, boolean-shaped
-      answer to what this field already answers: they are not. Five rows
-      carry a non-null area today - `wear-timer` and `wear-elapsed` both
-      name `wearSessions`, so it is five booleans across four areas, not
-      four - and every other `*Enabled` boolean fronts a record that cannot
-      be an area at all (its own reason lives on its row above). ADR-0039's
-      amendment is why the boolean survives alongside the cascade rather than
-      being replaced by it: a kind's toggle means "never show me this kind,"
+      the kind switches (then `*Enabled` booleans, now `surfaceOverrides`
+      entries and the notification booleans) are a second, boolean-shaped
+      answer to what this field already answers: they are not. Two rows
+      carry a non-null area today, `wear-timer` and `wear-elapsed`, both
+      naming `wearSessions`, and every other switch fronts a record that
+      cannot be an area at all (its own reason lives on its row above).
+      ADR-0039's amendment is why the switch survives alongside the cascade
+      rather than being replaced by it: a kind's toggle means "never show me this kind,"
       not "hide the one instance that's currently true," and folding it into
       `unpromptedQuiet` would delete that distinction. This field being
       required rather than optional already forces the next kind to answer
@@ -123,12 +124,14 @@ export interface UnpromptedRow {
       Outcome. */
   area: HideableArea | null;
   /** Present when this kind shows something in the app of its own, carrying
-      the preference its switch writes and the subtitle saying what it puts
-      in front of you. The switch is in Today's editor for a live tile and on
+      the subtitle saying what it puts in front of you, and whether it shows until the person says otherwise
+      (`defaultOn`). The switch is one entry in the `surfaceOverrides`
+      preference, keyed by this row's key (functional audit ticket 44), and
+      sits in Today's editor for a live tile and on
       `/settings/notifications` for everything else (ticket 04). Absent is "shows
       nothing in the app of its own": the four producers ticket 04 folded in
       all fire and none surfaces. */
-  surface?: { subtitle: () => string; prefKey: BooleanPrefKey };
+  surface?: { subtitle: () => string; defaultOn: boolean };
   /** Present when this kind may become a notification, and what firing
       means: the preference the notifications view's switch writes, the
       subtitle saying *when* it fires, which channel it fires on, and
@@ -158,56 +161,56 @@ const ROWS = [
     key: 'wear-timer',
     area: 'wearSessions',
     title: () => m.tile_wear_title(),
-    surface: { subtitle: () => m.tile_wear_sub(), prefKey: 'wearTimerEnabled' }
+    surface: { subtitle: () => m.tile_wear_sub(), defaultOn: true }
   },
   {
     key: 'dose-panel',
     // a dose is an event inside a regimen episode, and an episode carries its own end day.
     area: null,
     title: () => m.tile_dose_title(),
-    surface: { subtitle: () => m.tile_dose_sub(), prefKey: 'dosePanelEnabled' }
+    surface: { subtitle: () => m.tile_dose_sub(), defaultOn: true }
   },
   {
     key: 'ready-letter',
     // a letter is sealed and then unlocked, which is its whole lifecycle.
     area: null,
     title: () => m.tile_letter_title(),
-    surface: { subtitle: () => m.tile_letter_sub(), prefKey: 'readyLetterEnabled' }
+    surface: { subtitle: () => m.tile_letter_sub(), defaultOn: true }
   },
   {
     key: 'surgery-countdown',
     // a procedure has its own date and its own recovery window.
     area: null,
     title: () => m.tile_surgery_title(),
-    surface: { subtitle: () => m.tile_surgery_sub(), prefKey: 'surgeryCountdownEnabled' }
+    surface: { subtitle: () => m.tile_surgery_sub(), defaultOn: true }
   },
   {
     key: 'safe-space-nudge',
     // a crisis surface, and being done needing it is not a thing to record.
     area: null,
     title: () => m.tile_safe_space_title(),
-    surface: { subtitle: () => m.tile_safe_space_sub(), prefKey: 'safeSpaceNudgeEnabled' }
+    surface: { subtitle: () => m.tile_safe_space_sub(), defaultOn: true }
   },
   {
     key: 'stock-notice',
     // a running count of what is in the drawer, not a series to stop adding to.
     area: null,
     title: () => m.tile_stock_title(),
-    surface: { subtitle: () => m.tile_stock_sub(), prefKey: 'stockNoticeEnabled' }
+    surface: { subtitle: () => m.tile_stock_sub(), defaultOn: true }
   },
   {
     key: 'wrapped',
     // the journal as a whole, and `entries` is not finishable.
     area: null,
     title: () => m.wrapped(),
-    surface: { subtitle: () => m.wrapped_settings_sub(), prefKey: 'wrappedEnabled' },
+    surface: { subtitle: () => m.wrapped_settings_sub(), defaultOn: true }
   },
   {
     key: 'on-this-day',
     // the journal as a whole, for the same reason.
     area: null,
     title: () => m.on_this_day(),
-    surface: { subtitle: () => m.on_this_day_settings_sub(), prefKey: 'onThisDayEnabled' },
+    surface: { subtitle: () => m.on_this_day_settings_sub(), defaultOn: true }
   },
   {
     key: 'reminders',
@@ -284,6 +287,37 @@ const ROW_OF = Object.fromEntries(UNPROMPTED_ROWS.map((row) => [row.key, row])) 
   UnpromptedRow
 >;
 
+/** A kind that shows something in the app of its own, and so has a switch in
+    `surfaceOverrides`. Read off `ROWS` rather than typed out again, like
+    `UNPROMPTED_KINDS` below. */
+export type SurfaceKind = Extract<(typeof ROWS)[number], { surface: unknown }>['key'];
+
+/** Whether a surface is on, given the stored `surfaceOverrides`: the person's
+    answer when they gave one, the registry's `defaultOn` otherwise. A
+    pure function over the map so the node tier and a template read it the
+    same way. */
+export function surfaceOn(overrides: Readonly<Partial<Record<string, boolean>>>, kind: SurfaceKind): boolean {
+  const stored = overrides[kind];
+  if (typeof stored === 'boolean') return stored;
+  return ROW_OF[kind].surface!.defaultOn;
+}
+
+/** The map after a person turns one surface on or off. Holds only answers
+    that differ from the default, so setting a surface back to its default
+    takes its entry away, and entries for other kinds (including ones this
+    build does not know) are carried over untouched. A new object each time,
+    which is what the preference store needs to see a write. */
+export function withSurface(
+  overrides: Readonly<Partial<Record<string, boolean>>>,
+  kind: SurfaceKind,
+  on: boolean
+): Partial<Record<string, boolean>> {
+  const next = { ...overrides };
+  if (on === ROW_OF[kind].surface!.defaultOn) delete next[kind];
+  else next[kind] = on;
+  return next;
+}
+
 /** Whether a kind should stay silent because the area it talks about is
     hidden or finished (phase 8 features ticket 04, ADR-0052).
 
@@ -304,13 +338,16 @@ export function unpromptedQuiet(kind: UnpromptedKind, states: AreaStates, todayE
     longer optional. Without these two, both screens read `row.surface!` and
     `row.notify!` on every line, which is a non-null assertion standing in
     for a filter that already ran. */
-export type SurfaceRow = UnpromptedRow & { surface: NonNullable<UnpromptedRow['surface']> };
+export type SurfaceRow = UnpromptedRow & { key: SurfaceKind; surface: NonNullable<UnpromptedRow['surface']> };
+
+/** Narrows a row to one with a switch in `surfaceOverrides`, key included. */
+export function isSurfaceRow(row: UnpromptedRow): row is SurfaceRow {
+  return row.surface !== undefined;
+}
 type NotificationRow = UnpromptedRow & { notify: NonNullable<UnpromptedRow['notify']> };
 
 /** The surfaces view's rows, in registry order. */
-export const SURFACE_ROWS: readonly SurfaceRow[] = UNPROMPTED_ROWS.filter(
-  (row): row is SurfaceRow => row.surface !== undefined
-);
+export const SURFACE_ROWS: readonly SurfaceRow[] = UNPROMPTED_ROWS.filter(isSurfaceRow);
 
 /** The notifications view's rows, in registry order - every kind that may
     reach the phone rather than only the app. */

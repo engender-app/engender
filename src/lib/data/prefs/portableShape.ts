@@ -46,10 +46,11 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
   journeyAnchorMilestoneId: (v) => v === null || typeof v === 'string',
   hairAnchorEpochDay: (v) => v === null || Number.isFinite(v),
   hrtStartEpochDay: (v) => v === null || Number.isFinite(v),
-  cycleTrackingEnabled: (v) => typeof v === 'boolean',
   cycleTrackingChoice: (v) => v === null || typeof v === 'boolean',
   voiceComfortLowHz: (v) => v === null || Number.isFinite(v),
   voiceComfortHighHz: (v) => v === null || Number.isFinite(v),
+  surfaceOverrides: (v) =>
+    typeof v === 'object' && v !== null && !Array.isArray(v) && Object.values(v).every((on) => typeof on === 'boolean'),
   areaFinishOfferDeclined: isStringArray,
   roadmapPolishStepsChoice: (v) => v === null || typeof v === 'boolean',
   pinnedRows: (v) => v === null || isStringArray(v),
@@ -76,7 +77,7 @@ export function portableValueForKey<K extends PortableKey>(
 }
 
 /** What Archive Replace writes for a restored
-    archive: every valid portable key, plus a null cycle choice for older
+    archive: every valid portable key, plus a cycle choice for older
     archives. Other missing or invalid keys leave this device's value alone.
 
     Pulled out as its own function so the "importing an archive keeps the
@@ -90,8 +91,13 @@ export function portablePreferencePatch(portable: Partial<PortablePreferences> |
     const value = portableValueForKey(key, portable?.[key]);
     if (value !== undefined) patch[key] = value as never;
   }
-  // Archives written before cycle choices keep the automatic rule even
-  // when replacing a journal whose choice was explicit.
-  if (!Object.prototype.hasOwnProperty.call(portable, 'cycleTrackingChoice')) patch.cycleTrackingChoice = null;
+  /* Archives written before cycle choices keep the automatic rule even when
+     replacing a journal whose choice was explicit, except that the legacy
+     opt-in they may carry (`cycleTrackingEnabled`, no longer a preference)
+     read as a yes in that rule, so it is kept as one. */
+  if (!Object.prototype.hasOwnProperty.call(portable, 'cycleTrackingChoice')) {
+    const legacyOptIn = (portable as { cycleTrackingEnabled?: unknown }).cycleTrackingEnabled;
+    patch.cycleTrackingChoice = legacyOptIn === true ? true : null;
+  }
   return patch;
 }

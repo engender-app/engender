@@ -253,8 +253,8 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('gates the two look-back teasers separately, the way Home did', () => {
-    expect(stats).toMatch(/\{#if prefs\.wrappedEnabled\}\s*<WrappedHomeCard \/>/);
-    expect(stats).toMatch(/\{#if prefs\.onThisDayEnabled\}\s*<OnThisDayHomeCard/);
+    expect(stats).toMatch(/\{#if surfaceOn\(prefs\.surfaceOverrides, 'wrapped'\)\}\s*<WrappedHomeCard \/>/);
+    expect(stats).toMatch(/\{#if surfaceOn\(prefs\.surfaceOverrides, 'on-this-day'\)\}\s*<OnThisDayHomeCard/);
   });
 
   it('waits for the rail and has a day-one shape', () => {
@@ -402,7 +402,7 @@ describe('the merged tag card draws as paired dots', () => {
 describe('the resurfacing block', () => {
   it('opens the day under the pair without leaving the door, and keeps the route on the same block', () => {
     expect(stats).toMatch(/onOpen=\{\(event\) => \{\s*event\.preventDefault\(\);\s*dayOpen = !dayOpen;/);
-    expect(stats).toMatch(/\{#if dayOpen && prefs\.onThisDayEnabled\}\s*<div class="lookback-day" id="lookback-day" data-lookback-day transition:disclose[^>]*>\s*<OnThisDayBlock \/>/);
+    expect(stats).toMatch(/\{#if dayOpen && surfaceOn\(prefs\.surfaceOverrides, 'on-this-day'\)\}\s*<div class="lookback-day" id="lookback-day" data-lookback-day transition:disclose[^>]*>\s*<OnThisDayBlock \/>/);
     const onThisDay = read('src/routes/on-this-day/+page.svelte');
     expect(onThisDay).toContain('<OnThisDayBlock {scrollTo} />');
     expect(onThisDay).toContain("page.url.searchParams.get('lookback')");
