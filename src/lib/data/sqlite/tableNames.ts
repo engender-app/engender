@@ -11,6 +11,7 @@ export const TABLE_NAMES = [
   'checklist_item',
   'comfort_item',
   'cycle_event',
+  'deletion',
   'document',
   'dose_event',
   'dose_pause',

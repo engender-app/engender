@@ -77,8 +77,8 @@ const none = [] as const;
 
 export const FEATURES = {
   app: {
-    sections: none,
-    tables: ['pref', 'media_file'],
+    sections: ['deletions'],
+    tables: ['pref', 'media_file', 'deletion'],
     journal: ['reconcileBuiltIns', 'discardEverything', 'undoable'],
     hubRows: none,
     areaGroups: none,
