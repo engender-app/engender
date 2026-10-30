@@ -192,12 +192,16 @@
   let autoFolderSync = $state(false);
   let autoFolderOutcome = $state<FolderSyncOutcome | null>(null);
   let autoFolderAt = $state<number | null>(null);
-  const folderSyncLine = $derived(
-    autoFolderOutcome == null || autoFolderAt == null ? m.exp_folder_never()
-      : autoFolderOutcome === 'merged' ? m.exp_folder_last_merged({ when: stampText(autoFolderAt) })
-      : autoFolderOutcome === 'wrong-password' ? m.exp_folder_last_wrong_password({ when: stampText(autoFolderAt) })
-      : m.exp_folder_last_failed({ when: stampText(autoFolderAt) })
+  /* Which wording the line under the switch shows. Null until the first
+     status read, so nothing is painted that the read then replaces. */
+  let autoFolderLoaded = $state(false);
+  const folderSyncState = $derived(
+    !autoFolderLoaded ? null
+      : autoFolderOutcome == null || autoFolderAt == null ? 'never'
+      : autoFolderOutcome === 'merged' || autoFolderOutcome === 'wrong-password' ? autoFolderOutcome
+      : 'failed'
   );
+  const folderWhen = $derived(stampText(autoFolderAt));
 
   function applyAutoStatus(status: AutoExportStatus) {
     prefs.autoExportEnabled = status.enabled;
@@ -214,6 +218,7 @@
     autoFolderSync = status.folderSync ?? false;
     autoFolderOutcome = status.folderLastOutcome ?? null;
     autoFolderAt = status.folderLastAt ?? null;
+    autoFolderLoaded = true;
   }
 
   async function refreshAutoStatus() {
@@ -1034,7 +1039,15 @@
       <Switch checked={autoFolderSync} label={m.exp_folder_title()} onChange={setFolderSync} />
     </div>
     <p class="muted small">{m.exp_folder_note()}</p>
-    <p class="muted small" data-folder-sync-state={autoFolderOutcome ?? 'never'}>{folderSyncLine}</p>
+    <!-- Every wording laid out in one cell and crossfaded, so the first
+         status read and a later outcome change no height and swap no text
+         in a frame (the backup password line's own pattern). -->
+    <p class="muted small swap" data-folder-sync-state={folderSyncState ?? 'loading'}>
+      <span class:is-on={folderSyncState === 'never'} aria-hidden={folderSyncState !== 'never'}>{m.exp_folder_never()}</span>
+      <span class:is-on={folderSyncState === 'merged'} aria-hidden={folderSyncState !== 'merged'}>{m.exp_folder_last_merged({ when: folderWhen })}</span>
+      <span class:is-on={folderSyncState === 'wrong-password'} aria-hidden={folderSyncState !== 'wrong-password'}>{m.exp_folder_last_wrong_password({ when: folderWhen })}</span>
+      <span class:is-on={folderSyncState === 'failed'} aria-hidden={folderSyncState !== 'failed'}>{m.exp_folder_last_failed({ when: folderWhen })}</span>
+    </p>
 
     {#if prefs.autoExportEnabled}
       <div class="spread">
