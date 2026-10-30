@@ -3,7 +3,7 @@
   import { m } from '$lib/paraglide/messages';
   import { runExport, type ExportPath } from '$lib/data/archive/backup';
   import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
-  import { androidAutoExport, type AutoExportStatus } from '$lib/data/archive/android-auto-export-bridge';
+  import { androidAutoExport, type AutoExportStatus, type FolderSyncOutcome } from '$lib/data/archive/android-auto-export-bridge';
   import { backupAgeDays, backupStanding } from '$lib/data/backupHealth';
   import { preferencesAttached, prefs } from '$lib/data/prefs/store.svelte';
   import { disclose, resize } from '$lib/motion/reveal';
@@ -187,6 +187,17 @@
   let autoSnapshotAt = $state<number | null>(null);
   let autoStagedAt = $state<number | null>(null);
   let autoDeferredAt = $state<number | null>(null);
+  /* Folder sync (FA 49): this device's own switch, and how the last archive
+     from another device ended. */
+  let autoFolderSync = $state(false);
+  let autoFolderOutcome = $state<FolderSyncOutcome | null>(null);
+  let autoFolderAt = $state<number | null>(null);
+  const folderSyncLine = $derived(
+    autoFolderOutcome == null || autoFolderAt == null ? m.exp_folder_never()
+      : autoFolderOutcome === 'merged' ? m.exp_folder_last_merged({ when: stampText(autoFolderAt) })
+      : autoFolderOutcome === 'wrong-password' ? m.exp_folder_last_wrong_password({ when: stampText(autoFolderAt) })
+      : m.exp_folder_last_failed({ when: stampText(autoFolderAt) })
+  );
 
   function applyAutoStatus(status: AutoExportStatus) {
     prefs.autoExportEnabled = status.enabled;
@@ -200,6 +211,9 @@
     autoDeferredAt = status.deferredAt ?? null;
     autoLastFailureAt = status.lastFailureAt;
     autoLastFailureReason = status.lastFailureReason;
+    autoFolderSync = status.folderSync ?? false;
+    autoFolderOutcome = status.folderLastOutcome ?? null;
+    autoFolderAt = status.folderLastAt ?? null;
   }
 
   async function refreshAutoStatus() {
@@ -300,6 +314,18 @@
     }
     prefs.autoExportEnabled = enabled;
     await configureAutoExport(enabled, prefs.autoExportSchedule);
+  }
+
+  async function setFolderSync(enabled: boolean) {
+    if (!android) return;
+    autoFolderSync = enabled;
+    try {
+      applyAutoStatus(await androidAutoExport.configureFolderSync({ enabled }));
+    } catch (error) {
+      console.error('could not configure folder sync', error);
+      autoFolderSync = !enabled;
+      toast(m.exp_auto_config_failed());
+    }
   }
 
   async function setAutoSchedule(value: string) {
@@ -1000,6 +1026,15 @@
       <span class:is-on={autoHasPassword} aria-hidden={!autoHasPassword}>{m.exp_auto_password_saved()}</span>
       <span class:is-on={!autoHasPassword} aria-hidden={autoHasPassword}>{m.exp_auto_password_missing()}</span>
     </p>
+
+    <!-- Folder sync (FA 49): the folder above, read back. Always laid out,
+         so switching it moves nothing on the screen. -->
+    <div class="spread" data-folder-sync-row>
+      <span class="small muted">{m.exp_folder_title()}</span>
+      <Switch checked={autoFolderSync} label={m.exp_folder_title()} onChange={setFolderSync} />
+    </div>
+    <p class="muted small">{m.exp_folder_note()}</p>
+    <p class="muted small" data-folder-sync-state={autoFolderOutcome ?? 'never'}>{folderSyncLine}</p>
 
     {#if prefs.autoExportEnabled}
       <div class="spread">

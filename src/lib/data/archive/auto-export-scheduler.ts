@@ -8,7 +8,8 @@ import { m } from '$lib/paraglide/messages';
    enough that mocking it out would only hide what the notice actually says. */
 import { notificationText } from '../../unprompted/notificationText';
 import { quietHoursOf } from '../../unprompted/quietHours';
-import { androidAutoExport } from './android-auto-export-bridge';
+import { androidAutoExport, type AutoExportStatus } from './android-auto-export-bridge';
+import type { FolderSyncResult } from './folder-sync';
 import { exportFailureNoticeStep } from './failureNotice';
 import { periodicCheck } from '../backgroundSchedulers';
 
@@ -61,6 +62,33 @@ async function reportFailure(failedNow: boolean, at: number, failureAt?: number)
   }
 }
 
+/* Folder sync (FA 49), on the same tick as the backup and ahead of it: on
+   open after unlock (the scheduler starts only on an unlocked, ready
+   journal) and again whenever the app comes back to the front. A merge
+   says so; so does an archive that would not open, once, since the plugin
+   moves past it either way. Nothing new in the folder says nothing. */
+async function syncFromFolder(status: AutoExportStatus, signal: AbortSignal) {
+  const { runFolderSync, folderSyncReady, localFileBytes } = await import('./folder-sync');
+  if (!folderSyncReady(status)) return;
+  const { Capacitor } = await import('@capacitor/core');
+  let result: FolderSyncResult;
+  try {
+    result = await runFolderSync(status, {
+      merge: (contents) => journal.archive.merge(contents),
+      read: (path) => localFileBytes(Capacitor.convertFileSrc(path)),
+      signal
+    });
+  } catch (error) {
+    if (signal.aborted) return;
+    console.error('folder sync failed', error);
+    return;
+  }
+  if (result.outcome === 'none') return;
+  if (result.outcome === 'merged') toast(m.exp_folder_merged_toast(), { kind: 'folder-sync' });
+  else if (result.outcome === 'wrong-password') toast(m.exp_folder_wrong_password_toast(), { kind: 'folder-sync' });
+  else toast(m.exp_folder_failed_toast(), { kind: 'folder-sync' });
+}
+
 function maybeRun() {
   if (running || !isAndroid()) return;
 
@@ -82,6 +110,8 @@ async function run(owner: AbortController, now: number) {
     if (status.lastFailureAt == null && prefs.lastExportFailureNotifiedAt != null) {
       await setPreferenceDurably('lastExportFailureNotifiedAt', null);
     }
+    await syncFromFolder(status, owner.signal);
+    owner.signal.throwIfAborted();
     // Packing stays deferred until this Android-only check runs.
     const { runAndroidAutoExport } = await import('./android-auto-export');
     if (status.lastSnapshotAt != null && (prefs.lastBackupAt == null || status.lastSnapshotAt > prefs.lastBackupAt)) {
