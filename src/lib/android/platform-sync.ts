@@ -29,7 +29,8 @@
    original effects guarded it with `remindersListenerAttached` and
    `stockReminderListenerAttached`. */
 
-import type { Reminder } from '$lib/data/types';
+import type { DoseSchedule, RegimenEpisode, Reminder } from '$lib/data/types';
+import type { ReminderWordsContext } from '$lib/data/vocabulary/doseReminderLabel';
 import type { LockAfter } from '../data/prefs/catalogue';
 /* Relative, not `$lib/...`: platform-sync.test.ts's vitest config has no
    SvelteKit plugin and cannot resolve the alias, and this pure module
@@ -83,7 +84,13 @@ export interface PlatformSyncDeps {
     /** Removes a schedule's reminders once its episode's end day has come
         (functional audit ticket 21): every write already keeps them in
         step, but an end day can arrive while the app is closed. */
-    doses: { reconcileDoseReminders(asOfEpochDay: number): Promise<unknown> };
+    doses: {
+      reconcileDoseReminders(asOfEpochDay: number): Promise<unknown>;
+      getSchedules(): Promise<DoseSchedule[]>;
+    };
+    /** With the schedules: what a medication reminder's notification says
+        it reminds about (ticket 21). */
+    regimen: { getEpisodes(): Promise<RegimenEpisode[]> };
     /** Which areas are hidden or finished: finishing the wear log stops
         its elapsed prompts the same way the preference does, read here
         rather than written into a preference. */
@@ -115,6 +122,9 @@ export interface PlatformSyncDeps {
     minimizeApp(): Promise<void>;
   };
   reminderTexts: () => AndroidReminderTexts;
+  /** A reminder notification's title and text (doseReminderLabel.ts),
+      injected because it speaks paraglide. */
+  reminderNotification: (reminder: Reminder, context: ReminderWordsContext) => { title: string; text: string };
   isValidLaunchRoute: (route: string) => boolean;
   currentPathname: () => string;
   goto: (path: string) => Promise<void> | void;
@@ -215,9 +225,13 @@ export function assembleReminderSyncPayload(input: {
   todayEpochDay: number;
   quietHours: QuietHours;
   texts: AndroidReminderTexts;
+  /** What each reminder's notification says. Without it a notification
+      shows the stored title over the time, as it did before ticket 21. */
+  notificationWords?: (reminder: Reminder) => { title: string; text: string };
 }): AndroidReminderSyncPayload {
+  const words = input.notificationWords;
   return buildAndroidReminderPayload({
-    reminders: schedulableReminders(input.reminders, input),
+    reminders: schedulableReminders(input.reminders, input).map((reminder) => (words ? { ...reminder, ...words(reminder) } : reminder)),
     checkInEnabled: input.checkInEnabled,
     checkInTime: input.checkInTime,
     checkInPausedThrough: input.checkInPausedThrough,
@@ -240,11 +254,14 @@ const syncReminderSchedules = coalescing(
     if (!active) return;
     const deps = activeDeps();
     if (!deps.isAndroid() || !deps.isReady()) return;
-    const [reminders, recentEntries, areaStates] = await Promise.all([
+    const [reminders, recentEntries, areaStates, episodes, schedules] = await Promise.all([
       deps.journal.reminders.getReminders(),
       deps.journal.entries.recentDays(1),
-      deps.journal.areaStates.getAreaStates()
+      deps.journal.areaStates.getAreaStates(),
+      deps.journal.regimen.getEpisodes(),
+      deps.journal.doses.getSchedules()
     ]);
+    const context: ReminderWordsContext = { reminders, episodes, schedules, todayEpochDay: deps.todayEpochDay() };
     if (!active || currentDeps !== deps || !deps.isReady()) return;
     await deps.androidReminders.sync(
       assembleReminderSyncPayload({
@@ -259,7 +276,8 @@ const syncReminderSchedules = coalescing(
         areaStates,
         todayEpochDay: deps.todayEpochDay(),
         quietHours: quietHoursOf(deps.prefs),
-        texts: deps.reminderTexts()
+        texts: deps.reminderTexts(),
+        notificationWords: (reminder) => deps.reminderNotification(reminder, context)
       })
     );
   },

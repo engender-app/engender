@@ -2529,6 +2529,7 @@
   "rem_delete_sheet": "Delete reminder",
   "rem_dose_done": "Done",
   "rem_dose_noted": "Noted. It goes into your journal the next time you open it.",
+  "rem_dose_of_day": "Dose {index} of {count} a day",
   "rem_dose_skip": "Skip",
   "rem_dose_taken": "Taken",
   "rem_drug_hint": "Pick one and the notification opens its dose log, with Taken and Skip on it.",

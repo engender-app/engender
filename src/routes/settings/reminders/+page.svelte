@@ -5,6 +5,7 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { resolveReminderOrigin } from '$lib/data/provenance';
   import { reminderScheduleLabel } from '$lib/data/vocabulary/reminderLabel';
+  import { describeReminder } from '$lib/data/vocabulary/doseReminderLabel';
   import { prefs, preferencesAttached } from '$lib/data/prefs/store.svelte';
   import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -30,6 +31,11 @@
   let isWeb = $derived(!isAndroid());
 
   let reminders = liveList((j) => j.reminders.getReminders());
+  /* What a medication reminder reminds about comes from its regimen and
+     schedule (functional audit ticket 21), so the rows wait for those too
+     rather than renaming themselves after they have painted. */
+  let episodes = liveList((j) => j.regimen.getEpisodes());
+  let schedules = liveList((j) => j.doses.getSchedules());
   /* 'unreadable' is a read the bridge refused (ticket 41): neither a grant
      nor a refusal, so the screen says it could not check rather than
      claiming either. */
@@ -113,10 +119,13 @@
     prefs.checkInPausedThrough = value ? epochDayFromDateInputValue(value) : null;
   }
 
+  const words = (r: Reminder) =>
+    describeReminder(r, { reminders: reminders.rows, episodes: episodes.rows, schedules: schedules.rows, todayEpochDay: today });
+
   /* Latched: a reserve must not put its placeholder back (ticket 211). */
   let remindersRevealed = $state(false);
   $effect.pre(() => {
-    if (!reminders.loading) remindersRevealed = true;
+    if (!reminders.loading && !episodes.loading && !schedules.loading) remindersRevealed = true;
   });
   const remindersEstimate = readReserve('reminders');
   const remindersRemember = (px: number) => rememberReserve('reminders', px);
@@ -157,16 +166,17 @@
         <ListCard>
           {#each reminders.rows as r (r.id)}
             {@const origin = resolveReminderOrigin(r)}
+            {@const said = words(r)}
             <ListRow
               static
               key={r.id}
               data-reminder={r.id}
               icon="bell"
-              title={r.title}
-              subtitle={[reminderScheduleLabel(r), origin?.text]}
+              title={said.title}
+              subtitle={[reminderScheduleLabel(r), said.detail, origin?.text]}
               action={{
                 icon: 'trash',
-                label: m.rem_delete_aria({ title: r.title }),
+                label: m.rem_delete_aria({ title: said.title }),
                 onclick: () => record.askToDelete(r)
               }}
             />
@@ -180,7 +190,7 @@
       handle="reminder"
       confirm={{
         title: m.rem_delete_sheet(),
-        question: (reminder) => m.rem_delete_q({ title: reminder.title }),
+        question: (reminder) => m.rem_delete_q({ title: words(reminder).title }),
         hint: () => m.rem_delete_hint(),
         confirmLabel: m.rem_delete(),
         cancelLabel: m.keep_it()
@@ -319,15 +329,17 @@
                would toggle the switch by navigating past it; `action` renders
                one icon button, not a Switch (ticket 18). -->
           {@const origin = resolveReminderOrigin(r)}
+          {@const said = words(r)}
           <div class="kit-row" data-list-row={r.id}>
             <span class="kit-row-ico"><Icon name="bell" size={22} /></span>
             <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
-              <span class="kit-row-title">{r.title}</span>
+              <span class="kit-row-title">{said.title}</span>
               <span class="kit-row-sub">{reminderScheduleLabel(r)}</span>
+              {#if said.detail}<span class="kit-row-sub">{said.detail}</span>{/if}
               {#if origin}<span class="kit-row-sub">{origin.text}</span>{/if}
             </a>
             <span class="kit-row-trail">
-              <Switch checked={r.enabled} label={m.rem_enable_aria({ title: r.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
+              <Switch checked={r.enabled} label={m.rem_enable_aria({ title: said.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
             </span>
           </div>
         {/each}

@@ -522,6 +522,7 @@
       import('$lib/reminders/doseActions'),
       import('$lib/reminders/doseActionToast'),
       import('$lib/data/vocabulary/doseLabels'),
+      import('$lib/data/vocabulary/doseReminderLabel'),
     ]).then(
       ([
         { startAndroidPlatformSync },
@@ -532,7 +533,8 @@
         { androidScreenCapture },
         { applyPendingDoseAction, resolveDoseReminderRoute },
         { confirmDoseAction },
-        { ROUTE_OPTIONS }
+        { ROUTE_OPTIONS },
+        { reminderNotification }
       ]) => {
         if (unmounted) return;
         cleanup = startAndroidPlatformSync({
@@ -560,6 +562,7 @@
             entries: journal.entries,
             stock: journal.stock,
             doses: journal.doses,
+            regimen: journal.regimen,
             areaStates: journal.areaStates
           },
           onTablesWritten,
@@ -589,6 +592,7 @@
             doseSkip: m.rem_dose_skip(),
             doseNoted: m.rem_dose_noted()
           }),
+          reminderNotification,
           isValidLaunchRoute: isValidAndroidLaunchRoute,
           currentPathname: () => page.url.pathname,
           goto,

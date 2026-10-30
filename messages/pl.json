@@ -2575,6 +2575,7 @@
   "rem_delete_sheet": "Usuń przypomnienie",
   "rem_dose_done": "Gotowe",
   "rem_dose_noted": "Zapisano. Trafi do dziennika przy następnym otwarciu aplikacji.",
+  "rem_dose_of_day": "Dawka {index} z {count} na dzień",
   "rem_dose_skip": "Pomiń",
   "rem_dose_taken": "Przyjęto",
   "rem_drug_hint": "Po wyborze leku powiadomienie otwiera jego dawki i ma przyciski Przyjęto i Pomiń.",
