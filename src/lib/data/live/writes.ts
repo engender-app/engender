@@ -808,14 +808,23 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     }
   }),
   regimen: classify<Journal['regimen']>()({
-    writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'], setEpisodeHidden: ['regimen'] },
+    // Each carries the episode's schedule reminders along with it: a rename,
+    // an end day or hiding all change or remove them (functional audit 21).
+    writes: {
+      upsertEpisode: ['regimen', 'reminder'],
+      endEpisode: ['regimen', 'reminder'],
+      setEpisodeHidden: ['regimen', 'reminder']
+    },
     reads: { getEpisodes: ['regimen'], getHiddenEpisodes: ['regimen'], hasAny: ['regimen'] }
   }),
   doses: classify<Journal['doses']>()({
     writes: {
       upsertDose: ['dose'],
       deleteDose: ['dose'],
-      upsertSchedule: ['dose'],
+      // A schedule's reminders follow it (functional audit ticket 21).
+      upsertSchedule: ['dose', 'reminder'],
+      // Only ever removes reminders whose episode has ended.
+      reconcileDoseReminders: ['reminder'],
       upsertPause: ['dose'],
       deletePause: ['dose'],
       // The auto-log pass writes dose rows and nothing else (ticket 11).

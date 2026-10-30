@@ -18,6 +18,8 @@ import { assertSpanOrdered } from '../span';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DrugClass, EpisodeEndReason, RegimenEpisode } from '../types';
 import { assertChanged, bool, mintUuid, now } from './support';
+import { syncDoseReminders } from './doseReminders';
+import { todayEpochDay } from '../epochDay';
 
 /** `drugClass` is optional on the way in (functional audit ticket 18): a new
     episode without one starts as whatever its drug infers to, and an update
@@ -111,15 +113,43 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
       // caller passes - the same reason endEpisode below never trusts a
       // caller to have cleared it either.
       const endReason = input.endEpochDay === null ? null : input.endReason;
-      if (input.id) {
-        const result = await driver.run(
-          `UPDATE regimen_episode
-             SET drug = ?, drug_class = COALESCE(?, drug_class), ester = ?, dose = ?, dose_unit = ?, route = ?, interval = ?, start_epoch_day = ?,
-                 end_epoch_day = ?, end_reason = ?, updated_at = ?
-           WHERE uuid = ?`,
+      /* The episode and its schedule's reminders in one transaction: a drug
+         renamed, a start moved or an end day typed in all change what those
+         reminders say (functional audit ticket 21). */
+      return driver.transaction(async (driver) => {
+        if (input.id) {
+          const result = await driver.run(
+            `UPDATE regimen_episode
+               SET drug = ?, drug_class = COALESCE(?, drug_class), ester = ?, dose = ?, dose_unit = ?, route = ?, interval = ?, start_epoch_day = ?,
+                   end_epoch_day = ?, end_reason = ?, updated_at = ?
+             WHERE uuid = ?`,
+            [
+              input.drug,
+              input.drugClass ?? null,
+              input.ester,
+              input.dose,
+              input.doseUnit,
+              input.route,
+              input.interval,
+              input.startEpochDay,
+              input.endEpochDay,
+              endReason,
+              now(),
+              input.id
+            ]
+          );
+          assertChanged(result, `regimen episode: ${input.id}`);
+          await syncDoseReminders(driver, todayEpochDay());
+          return input.id;
+        }
+        const uuid = mintUuid();
+        await driver.run(
+          `INSERT INTO regimen_episode (uuid, drug, drug_class, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, end_reason, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
+            uuid,
             input.drug,
-            input.drugClass ?? null,
+            input.drugClass ?? inferDrugClass(input.drug),
             input.ester,
             input.dose,
             input.doseUnit,
@@ -128,33 +158,11 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
             input.startEpochDay,
             input.endEpochDay,
             endReason,
-            now(),
-            input.id
+            now()
           ]
         );
-        assertChanged(result, `regimen episode: ${input.id}`);
-        return input.id;
-      }
-      const uuid = mintUuid();
-      await driver.run(
-        `INSERT INTO regimen_episode (uuid, drug, drug_class, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, end_reason, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          uuid,
-          input.drug,
-          input.drugClass ?? inferDrugClass(input.drug),
-          input.ester,
-          input.dose,
-          input.doseUnit,
-          input.route,
-          input.interval,
-          input.startEpochDay,
-          input.endEpochDay,
-          endReason,
-          now()
-        ]
-      );
-      return uuid;
+        return uuid;
+      });
     },
 
     async endEpisode(id, endEpochDay, endReason = null) {
@@ -169,16 +177,23 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
           [endEpochDay, endReason, now(), id]
         );
         assertChanged(result, `regimen episode: ${id}`);
+        await syncDoseReminders(driver, todayEpochDay());
       });
     },
 
+    /* Hiding takes the schedule's reminders with it (ticket 21). Showing
+       the episode again does not bring them back: their times went with
+       them, and the schedule's own switch is the way back. */
     async setEpisodeHidden(id, hidden) {
-      const result = await driver.run('UPDATE regimen_episode SET hidden = ?, updated_at = ? WHERE uuid = ?', [
-        hidden ? 1 : 0,
-        now(),
-        id
-      ]);
-      assertChanged(result, `regimen episode: ${id}`);
+      await driver.transaction(async (driver) => {
+        const result = await driver.run('UPDATE regimen_episode SET hidden = ?, updated_at = ? WHERE uuid = ?', [
+          hidden ? 1 : 0,
+          now(),
+          id
+        ]);
+        assertChanged(result, `regimen episode: ${id}`);
+        await syncDoseReminders(driver, todayEpochDay());
+      });
     }
   };
 }

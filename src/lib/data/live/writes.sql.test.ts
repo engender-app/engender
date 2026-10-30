@@ -553,6 +553,31 @@ beforeAll(async () => {
       autoLogFromEpochDay: null
     })
   );
+  /* A schedule's reminders (functional audit ticket 21), on an episode whose
+     end day lies far ahead, so the boot pass has one to remove once asked
+     on that day. */
+  const endingEpisodeId = await journal.regimen.upsertEpisode({
+    drug: 'progesterone',
+    ester: null,
+    dose: 100,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 19000,
+    endEpochDay: 100000,
+    endReason: null
+  });
+  await drive('doses', 'upsertSchedule', () =>
+    journal.doses.upsertSchedule({
+      episodeId: endingEpisodeId,
+      recurrence: { kind: 'everyNDays', everyNDays: 1 },
+      dosesPerDay: 1,
+      doseAmounts: null,
+      autoLogFromEpochDay: null,
+      reminderTimes: ['22:00']
+    })
+  );
+  await drive('doses', 'reconcileDoseReminders', () => journal.doses.reconcileDoseReminders(100000));
 
   // --- stock --------------------------------------------------------------
   const stockId = (await drive('stock', 'upsertEntry', () =>

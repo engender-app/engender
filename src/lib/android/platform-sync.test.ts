@@ -320,6 +320,7 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       reminders: { getReminders: vi.fn().mockResolvedValue([REMINDER]) },
       entries: { recentDays: vi.fn().mockResolvedValue([{ epochDay: 20309 }]) },
       stock: { reconcileRunOutReminders: vi.fn().mockResolvedValue(undefined) },
+      doses: { reconcileDoseReminders: vi.fn().mockResolvedValue(undefined) },
       areaStates: { getAreaStates: vi.fn().mockResolvedValue({}) }
     },
     onTablesWritten: vi.fn(),
@@ -435,6 +436,7 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidScreenCapture.setAllowed).not.toHaveBeenCalled();
     expect(deps.journal.reminders.getReminders).not.toHaveBeenCalled();
     expect(deps.journal.stock.reconcileRunOutReminders).not.toHaveBeenCalled();
+    expect(deps.journal.doses.reconcileDoseReminders).not.toHaveBeenCalled();
     expect(deps.androidReminders.consumeLaunchRoute).not.toHaveBeenCalled();
   });
 
@@ -525,13 +527,15 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
   });
 
-  test('runs the initial reminder sync, stock reconciliation, disguise, lock-timing and screen-capture sync on start', async () => {
+  test('runs the initial reminder sync, stock and dose reminder reconciliation, disguise, lock-timing and screen-capture sync on start', async () => {
     const deps = makeDeps();
     platformSync.startAndroidPlatformSync(deps);
     await flush();
 
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledWith(20313);
+    // An episode whose end day came while the app was closed (ticket 21).
+    expect(deps.journal.doses.reconcileDoseReminders).toHaveBeenCalledWith(20313);
     expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({ disguised: false, palette: 'trans', shape: 'current' });
     expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart' });
     expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: false });

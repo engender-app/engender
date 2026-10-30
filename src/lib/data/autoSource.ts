@@ -1,7 +1,8 @@
 /* A Reminder's `autoSource` marker: `feature:id`, naming the thing that
    created the row so the app can keep it in step and say where it came from
-   (CONTEXT.md, ADR-0045). Two features write one today - medication stock
-   (`stock:<drug>`) and a wear session (`wear:<sessionId>`) - and a person who
+   (CONTEXT.md, ADR-0045). Three features write one today - medication stock
+   (`stock:<drug>`), a wear session (`wear:<sessionId>`) and a regimen
+   episode's dose schedule (`dose:<episodeId>`) - and a person who
    saves the row in the reminders editor clears it, at which point the row is
    indistinguishable from one they wrote themselves.
 
@@ -17,12 +18,18 @@ import { drugNameKey } from './regimenEpisode';
 
 export const STOCK_PREFIX = 'stock:';
 export const WEAR_PREFIX = 'wear:';
+export const DOSE_PREFIX = 'dose:';
 
 /** The marker medication stock puts on the run-out reminder it manages. */
 export const stockAutoSource = (drug: string): string => `${STOCK_PREFIX}${drugNameKey(drug)}`;
 
 /** The marker a wear session puts on its own elapsed prompt. */
 export const wearAutoSource = (sessionId: string): string => `${WEAR_PREFIX}${sessionId}`;
+
+/** The marker a dose schedule puts on each reminder it derives
+    (functional audit ticket 21, doseReminders.ts). Keyed by the episode,
+    since a schedule is one per episode and is upserted on it. */
+export const doseAutoSource = (episodeId: string): string => `${DOSE_PREFIX}${episodeId}`;
 
 /** Whether a reminder is a wear session's elapsed prompt rather than an
     ordinary one. `wearElapsedEnabled` gates exactly this subset: wanting

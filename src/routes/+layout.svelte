@@ -559,6 +559,7 @@
             reminders: journal.reminders,
             entries: journal.entries,
             stock: journal.stock,
+            doses: journal.doses,
             areaStates: journal.areaStates
           },
           onTablesWritten,

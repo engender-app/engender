@@ -115,6 +115,16 @@ test('a stock-managed reminder names the drug, explains the handoff, and links t
   });
 });
 
+test('a schedule reminder names its drug and opens the episode whose schedule it follows (functional audit 21)', () => {
+  const origin = resolveReminderOrigin(reminder({ autoSource: 'dose:episode-1', drug: 'Progesterone' }));
+  assert.deepEqual(origin, {
+    text: 'Follows your Progesterone schedule.',
+    hint: 'Saving stops automatic updates to this reminder. You can then change it here.',
+    href: '/care/regimen?episode=episode-1',
+    actionLabel: 'Edit schedule'
+  });
+});
+
 test('a wear-session reminder is recognised too, not just stock - the same auto_source column carries both', () => {
   const origin = resolveReminderOrigin(reminder({ autoSource: 'wear:session-1' }));
   assert.deepEqual(origin, {

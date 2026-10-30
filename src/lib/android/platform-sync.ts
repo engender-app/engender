@@ -80,6 +80,10 @@ export interface PlatformSyncDeps {
     reminders: { getReminders(): Promise<Reminder[]> };
     entries: { recentDays(dayCount: number): Promise<Array<{ epochDay: number }>> };
     stock: { reconcileRunOutReminders(asOfEpochDay: number): Promise<unknown> };
+    /** Removes a schedule's reminders once its episode's end day has come
+        (functional audit ticket 21): every write already keeps them in
+        step, but an end day can arrive while the app is closed. */
+    doses: { reconcileDoseReminders(asOfEpochDay: number): Promise<unknown> };
     /** Which areas are hidden or finished: finishing the wear log stops
         its elapsed prompts the same way the preference does, read here
         rather than written into a preference. */
@@ -272,6 +276,16 @@ const reconcileStockRunOutReminders = coalescing(
   (error) => console.error('Could not reconcile the medication stock run-out reminder', error)
 );
 
+const reconcileDoseReminders = coalescing(
+  async () => {
+    if (!active) return;
+    const deps = activeDeps();
+    if (!deps.isAndroid() || !deps.isReady()) return;
+    await deps.journal.doses.reconcileDoseReminders(deps.todayEpochDay());
+  },
+  (error) => console.error('Could not reconcile the dose schedule reminders', error)
+);
+
 /* Each kept tap is applied on its own, so one that fails to write stays in
    the native store for the next pass while the rest are cleared. Cleared
    before they are confirmed: a toast for a tap that then replays would say
@@ -344,6 +358,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   void applyPendingDoseActions();
   void consumeReminderLaunchRoute();
   void reconcileStockRunOutReminders();
+  void reconcileDoseReminders();
 
   const onVisibleOrFocused = () => {
     if (document.visibilityState !== 'visible') return;
