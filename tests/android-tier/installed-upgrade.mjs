@@ -95,9 +95,14 @@ async function connect() {
   throw new Error('Installed-upgrade WebView did not become available');
 }
 async function launch() {
-  /* By intent rather than by component: the launch runs on both APKs, and
-     the launcher aliases were renamed between them (FA 43). */
-  device('shell', 'am', 'start', '-W', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-p', packageId);
+  /* The component is resolved rather than named: the launch runs on both
+     APKs, and the launcher aliases were renamed between them (FA 43). Not
+     `am start -c LAUNCHER -p`, which resolves with MATCH_DEFAULT_ONLY and
+     so never finds a launcher filter, which has no DEFAULT category. */
+  const component = device('shell', 'cmd', 'package', 'resolve-activity', '--brief', '-c', 'android.intent.category.LAUNCHER', packageId)
+    .trim().split(/\r?\n/).at(-1);
+  if (!component?.startsWith(`${packageId}/`)) throw new Error(`No launcher activity for ${packageId}: ${component}`);
+  device('shell', 'am', 'start', '-W', '-n', component);
   return connect();
 }
 async function unlock(page, failure = false) {
