@@ -255,3 +255,13 @@ test('a stored tick on a step that became an institution keeps only its hidden f
   expect(keptTick(tick('pl-legal-institutions', 'unchecked', true))).toBeNull();
   expect(keptTick(tick('pl-social-tell-one-person', 'checked', false))).toBeNull();
 });
+
+test('the roadmap screen draws the institutions under the same switch, from the shared list', () => {
+  const screen = readFileSync(new URL('../../routes/transition/roadmap/+page.svelte', import.meta.url), 'utf8');
+  const panel = readFileSync(new URL('../../routes/transition/roadmap/Institutions.svelte', import.meta.url), 'utf8');
+  expect(screen).toContain('<Institutions');
+  expect(screen).toContain('shown={polishShown}');
+  expect(panel).toContain('institutionList(shown, own, hiddenGoals)');
+  expect(panel).toContain('journal.roadmap.addInstitutionChange(');
+  expect(panel).toContain('<LinkedDocuments kind="goal" {id} />');
+});
