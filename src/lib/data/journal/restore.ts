@@ -410,7 +410,7 @@ function restorableJournal(journal: ArchiveJournal, externalImport = false): Arc
   }
   const complete = emptyArchiveJournal();
   for (const section of ARCHIVE_SECTION_NAMES) (complete as unknown as Record<string, unknown[]>)[section] = journal[section] ?? [];
-  complete.areaStates = complete.areaStates.filter((row) => !DROPPED_ARCHIVE_SECTION_NAMES.includes(row.area));
+  complete.areaStates = complete.areaStates.filter((row) => !DROPPED_ARCHIVE_SECTION_NAMES.includes(row?.area));
   // A felt-sense reading an older archive hung off a milestone, which no
   // longer holds any (functional audit ticket 32): dropped, not converted.
   complete.feltSenseEntries = complete.feltSenseEntries.filter((row) => {
