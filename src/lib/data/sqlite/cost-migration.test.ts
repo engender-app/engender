@@ -74,7 +74,9 @@ test('a text cost that does not parse moves into the note, after any note alread
   session(db, 'blank', '   ');
   session(db, 'empty', '');
   session(db, 'none', null, 'kept');
+  session(db, 'padded', '  paid  in cash ');
   await migrateHairRemovalCostAfter111(db);
+  assert.equal(read(db, 'padded').note, '  paid  in cash ', 'the text moves exactly as typed');
   assert.deepEqual(read(db, 'words'), { cost: null, cost_amount: null, cost_currency: null, cost_refunded: 0, note: 'covered by NFZ', updated_at: 1000 });
   assert.deepEqual(read(db, 'range'), { cost: null, cost_amount: null, cost_currency: null, cost_refunded: 0, note: 'second pass\n200-300 zł', updated_at: 1000 });
   assert.equal(read(db, 'blank').note, null);

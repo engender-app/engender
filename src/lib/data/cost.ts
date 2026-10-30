@@ -46,10 +46,6 @@ export function isValidAmount(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= MAX_AMOUNT;
 }
 
-export function hasCost(cost: Cost): boolean {
-  return cost.amount !== null || cost.refunded;
-}
-
 /** A blank amount drops its currency, and a code is upper-cased. */
 export function normalizeCost(input: CostInput): Cost {
   if (!input) return NO_COST;
@@ -140,11 +136,16 @@ export function parseLegacyCostText(text: string, fallbackCurrency: string): { a
 
 /* Region to currency, for the default only. A region missing here falls
    through to the next locale, then to EUR. */
-const EURO = ['AT', 'BE', 'CY', 'DE', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PT', 'SI', 'SK'];
+const EURO = ['AD', 'AT', 'BE', 'CY', 'DE', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IE', 'IT', 'LT', 'LU', 'LV', 'MC', 'ME',
+  'MT', 'NL', 'PT', 'SI', 'SK', 'SM', 'VA', 'XK'];
 const REGION_CURRENCY: Record<string, string> = {
   ...Object.fromEntries(EURO.map((region) => [region, 'EUR'])),
   PL: 'PLN', GB: 'GBP', US: 'USD', CH: 'CHF', LI: 'CHF', CZ: 'CZK', SE: 'SEK', NO: 'NOK', DK: 'DKK',
-  CA: 'CAD', AU: 'AUD', NZ: 'NZD', HU: 'HUF', RO: 'RON', BG: 'BGN', UA: 'UAH', IS: 'ISK'
+  CA: 'CAD', AU: 'AUD', NZ: 'NZD', HU: 'HUF', RO: 'RON', BG: 'BGN', UA: 'UAH', IS: 'ISK',
+  RS: 'RSD', BA: 'BAM', MK: 'MKD', AL: 'ALL', MD: 'MDL', BY: 'BYN', RU: 'RUB', TR: 'TRY', GE: 'GEL',
+  IL: 'ILS', JP: 'JPY', CN: 'CNY', HK: 'HKD', TW: 'TWD', KR: 'KRW', SG: 'SGD', IN: 'INR', TH: 'THB',
+  PH: 'PHP', ID: 'IDR', MY: 'MYR', VN: 'VND', ZA: 'ZAR', NG: 'NGN', KE: 'KES', EG: 'EGP', AE: 'AED',
+  SA: 'SAR', BR: 'BRL', MX: 'MXN', AR: 'ARS', CL: 'CLP', CO: 'COP', PE: 'PEN', UY: 'UYU'
 };
 
 function regionOf(locale: string, maximize: boolean): string | undefined {

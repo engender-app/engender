@@ -89,14 +89,14 @@ test("an older archive's text cost is read by the migration's rule, and text tha
   for (const field of ['costAmount', 'costCurrency', 'costRefunded', 'note']) delete session[field];
   older.hairRemovalSessions = [
     { ...session, id: 'parsed', cost: '€80,50' },
-    { ...session, id: 'words', cost: 'covered by NFZ' }
+    { ...session, id: 'words', cost: ' covered by NFZ ' }
   ];
   const target = await restored(older as unknown as ArchiveJournal);
   assert.deepEqual(
     (await target.hairRemoval.getSessions()).map((s) => [s.id, s.cost, s.note]),
     [
       ['parsed', { amount: 80.5, currency: 'EUR', refunded: false }, null],
-      ['words', NO_COST, 'covered by NFZ']
+      ['words', NO_COST, ' covered by NFZ ']
     ]
   );
 });

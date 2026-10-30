@@ -15,6 +15,7 @@ export async function migrateHairRemovalCost(db: MigrationDb, fallbackCurrency: 
   for (const row of rows) {
     const text = row.cost.trim();
     const parsed = text ? parseLegacyCostText(text, fallbackCurrency) : null;
+    // Parsed trimmed; moved as typed, spaces and all.
     if (parsed) {
       await db.run('UPDATE hair_removal_session SET cost = NULL, cost_amount = ?, cost_currency = ? WHERE id = ?', [
         parsed.amount,
@@ -23,15 +24,16 @@ export async function migrateHairRemovalCost(db: MigrationDb, fallbackCurrency: 
       ]);
     } else {
       await db.run('UPDATE hair_removal_session SET cost = NULL, note = ? WHERE id = ?', [
-        appendLegacyCost(row.note, text),
+        appendLegacyCost(row.note, row.cost),
         row.id
       ]);
     }
   }
 }
 
-/** The note with an unparsed cost on its own last line; blank text adds nothing. */
+/** The note with an unparsed cost on its own last line, exactly as typed;
+    blank text adds nothing. */
 export function appendLegacyCost(note: string | null, text: string): string | null {
-  if (!text) return note;
+  if (!text.trim()) return note;
   return note?.trim() ? `${note}\n${text}` : text;
 }

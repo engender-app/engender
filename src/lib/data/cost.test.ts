@@ -4,7 +4,6 @@ import {
   assertValidCost,
   costTotalsByCurrency,
   defaultCurrency,
-  hasCost,
   formatAmount,
   NO_COST,
   normalizeCost,
@@ -58,6 +57,7 @@ test('the default currency follows the first locale that names a region, then th
   assert.equal(defaultCurrency(['en-GB', 'pl-PL']), 'GBP');
   assert.equal(defaultCurrency(['en-US']), 'USD');
   assert.equal(defaultCurrency(['de-AT']), 'EUR');
+  assert.equal(defaultCurrency(['ja-JP']), 'JPY');
   assert.equal(defaultCurrency(['en', 'en-IE']), 'EUR');
   assert.equal(defaultCurrency(['pl']), 'PLN');
   assert.equal(defaultCurrency(['en']), 'USD');
@@ -87,12 +87,6 @@ test('a cost is refused when its amount is not a non-negative number or its curr
   ]) {
     assert.throws(() => assertValidCost(cost), /invalid cost/, JSON.stringify(cost));
   }
-});
-
-test('hasCost is true for an amount or a refund, false for nothing', () => {
-  assert.equal(hasCost(NO_COST), false);
-  assert.equal(hasCost({ amount: 0, currency: 'PLN', refunded: false }), true);
-  assert.equal(hasCost({ amount: null, currency: null, refunded: true }), true);
 });
 
 test('totals never add two currencies together', () => {

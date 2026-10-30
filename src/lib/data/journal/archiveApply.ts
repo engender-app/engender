@@ -1002,7 +1002,7 @@ function sessionCostAndNote(session: ArchiveHairRemovalSession): [number | null,
   const legacy = session.cost?.trim() ?? '';
   if (session.costAmount != null || session.costRefunded || !legacy) return [...costValues(session), note];
   const parsed = parseLegacyCostText(legacy, deviceDefaultCurrency());
-  return parsed ? [parsed.amount, parsed.currency, 0, note] : [null, null, 0, appendLegacyCost(note, legacy)];
+  return parsed ? [parsed.amount, parsed.currency, 0, note] : [null, null, 0, appendLegacyCost(note, session.cost ?? '')];
 }
 
 /* A session is matched and inserted directly by uuid like applySideEffects
