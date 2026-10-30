@@ -15,14 +15,15 @@
    Highest days, and affirming themes, which became the share ring's "on
    good days" filter on Tags. Alicja's sign-off on that ticket took the
    mood strip off its own screen: one chart behind a tile was a screen for
-   nothing, so it draws on the door over the tiles. */
+   nothing, so it draws on the door over the tiles. Ticket 31 added the
+   fourth, what the span cost, per currency. */
 import type { RegionSideReading } from './bodyMap';
 import { epochDayFromDateInputValue } from './epochDay';
 import { DEFAULT_SPAN_DAYS, spanRangeQuery, type Span } from './lookBackSpan';
 
-/** The three readings that open under `/stats/<reading>`, in the door's
-    own order. */
-export const READINGS = ['day-by-day', 'plane', 'tags'] as const;
+/** The readings that open under `/stats/<reading>`, in the door's own
+    order. */
+export const READINGS = ['day-by-day', 'plane', 'tags', 'cost'] as const;
 export type Reading = (typeof READINGS)[number];
 
 export function isReading(value: string | undefined): value is Reading {

@@ -544,9 +544,52 @@
   "correlation_cards_empty": "Not enough logged data yet to show a pattern.",
   "cost_amount_invalid": "One amount, like 250 or 250.50.",
   "cost_amount_placeholder": "e.g. 250",
+  "cost_area_appointment": "Appointments",
+  "cost_area_hair_removal": "Hair removal",
+  "cost_area_lab": "Lab results",
+  "cost_area_procedure": "Surgery",
+  "cost_area_stock": "Medication stock",
   "cost_currency_label": "Currency",
   "cost_label": "Cost",
+  "cost_reading_apart": "Each currency has its own total. The app never converts between them.",
+  "cost_reading_by_area": "By area",
+  "cost_reading_by_refund": "Refunded or not",
+  "cost_reading_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "One cost",
+        "countPlural=other": "{count} costs"
+      }
+    }
+  ],
+  "cost_reading_empty": "No costs in this span.",
+  "cost_reading_not_refunded": "Not refunded",
+  "cost_reading_undated": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "One cost has no date, so no span holds it.",
+        "countPlural=other": "{count} costs have no date, so no span holds them."
+      }
+    }
+  ],
   "cost_refunded": "Refunded",
+  "cost_tile_also": "Also in {codes}",
+  "cost_tile_none_refunded": "None refunded",
+  "cost_tile_refunded": "{amount} refunded",
   "custom_dimension": "Your own scales",
   "custom_suffix": "custom",
   "cycle_event_add_aria": "Log a cycle event",
@@ -3085,6 +3128,7 @@
   "stats_compare_none": "No second scale",
   "stats_compare_open": "Add a second scale",
   "stats_constellation": "Two scales at once",
+  "stats_cost": "What it cost",
   "stats_day_by_day": "Day by day",
   "stats_mood_days": "Days at each mood",
   "stats_range_group": "Range",

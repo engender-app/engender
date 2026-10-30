@@ -4,7 +4,8 @@
    one way into Wrapped and none while Wrapped is off, and the two "is off"
    notices open the screen where their switches live. Since Alicja's
    sign-off note, the mood strip draws on the door itself rather than
-   behind a "Mood across days" tile, which leaves an even number of tiles. */
+   behind a "Mood across days" tile, which leaves an even number of tiles.
+   Ticket 31's Cost reading is checked last, absent and then present. */
 import { mountScreen, until } from './mount-screen';
 import { fixture, assertions, today, type Result } from './screen-contracts/fixture';
 import { startOfDayTimestamp } from '$lib/data/epochDay';
@@ -119,5 +120,65 @@ export async function lookBackContracts(): Promise<Result[]> {
   await screen.remove();
 
   Object.assign(prefs, { wrappedEnabled: true, onThisDayEnabled: true });
+
+  /* What it cost (functional audit ticket 31). Every check above ran on a
+     journal with no cost in it, which is the reading's absent case: no
+     tile, and its screen says the span holds none. */
+  const costTile = () => root().querySelector<HTMLAnchorElement>('[data-lookback-readings] [data-reading="cost"]');
+  screen = await mountScreen('/stats', f);
+  await until(() => root().querySelector('[data-lookback-readings] [data-reading]'), 'Look back tiles, no costs');
+  await settle(400);
+  await check('a span with no cost in it has no Cost tile', () => tiles().length === 6 && !costTile());
+  await screen.remove();
+  screen = await mountScreen(`/stats/cost${span}`, f);
+  await check('the Cost screen over a span with no cost says so in its card', () =>
+    until(() => root().querySelector('[data-chart-card="cost"] .kit-chart-empty'), 'cost empty card'));
+  await screen.remove();
+
+  /* Two currencies, both refund states, three areas, one cost before the
+     span and one wait with no day. */
+  const pln = (amount: number, refunded = false) => ({ amount, currency: 'PLN', refunded });
+  await f.journal.hairRemoval.upsertSession({ epochDay: today - 5, area: 'chin', method: 'laser', cost: pln(250, true) });
+  await f.journal.hairRemoval.upsertSession({ epochDay: today - 4, area: 'chin', method: 'laser', cost: pln(250) });
+  await f.journal.labs.upsertResult({ epochDay: today - 6, analyte: 'Estradiol', value: 150, unit: 'pg/mL', cost: pln(120.5) });
+  await f.journal.appointments.upsertAppointment({
+    epochDay: today - 7, procedureId: null, kind: 'endo', place: null, note: null, cost: { amount: 80, currency: 'EUR', refunded: false }
+  });
+  await f.journal.labs.upsertResult({ epochDay: today - 200, analyte: 'Estradiol', value: 140, unit: 'pg/mL', cost: pln(999) });
+  await f.journal.appointments.upsertAppointment({
+    epochDay: null, procedureId: null, kind: 'clinic', place: null, note: null, cost: pln(300)
+  });
+
+  screen = await mountScreen('/stats', f);
+  await check('a span with costs draws a Cost tile with the most-used currency\'s total, naming the other', async () => {
+    const tile = await until(costTile, 'Cost tile');
+    const text = tile.textContent ?? '';
+    return /620[.,]5/.test(text) && text.includes('EUR') && !/700[.,]5|1[ .,]?619/.test(text) &&
+      (tile.getAttribute('href') ?? '').startsWith('/stats/cost?');
+  });
+  await screen.remove();
+
+  screen = await mountScreen(`/stats/cost${span}`, f);
+  const card = (code: string) => root().querySelector(`[data-cost-currency="${code}"]`);
+  const figure = (code: string, handle: string) =>
+    card(code)?.querySelector(`${handle} .wrapped-figure-value`)?.textContent?.replace(/\s/g, '') ?? '';
+  await check('the Cost screen draws one card per currency and no figure across two', async () => {
+    await until(() => card('PLN') && card('EUR'), 'two currency cards');
+    const totals = [...root().querySelectorAll('[data-cost-total]')].map((t) => t.textContent ?? '');
+    return totals.length === 2 && /620[.,]5/.test(totals[0]) && /80/.test(totals[1]) &&
+      root().querySelector('[data-cost-apart]') !== null;
+  });
+  await check('each currency splits by area: hair removal and labs in PLN, appointments in EUR', () => {
+    const areas = (code: string) => [...(card(code)?.querySelectorAll('[data-cost-area]') ?? [])].map((a) => a.getAttribute('data-cost-area'));
+    return areas('PLN').join() === 'hairRemoval,lab' && areas('EUR').join() === 'appointment' &&
+      /500/.test(figure('PLN', '[data-cost-area="hairRemoval"]')) && /120[.,]5/.test(figure('PLN', '[data-cost-area="lab"]'));
+  });
+  await check('each currency splits by refunded state, the two parts making its total', () =>
+    /250/.test(figure('PLN', '[data-cost-refund="refunded"]')) && /370[.,]5/.test(figure('PLN', '[data-cost-refund="not-refunded"]')) &&
+    /0/.test(figure('EUR', '[data-cost-refund="refunded"]')) && /80/.test(figure('EUR', '[data-cost-refund="not-refunded"]')));
+  await check('the Cost screen counts the cost with no day rather than adding it to the span', () =>
+    root().querySelector('[data-cost-undated]') !== null);
+  await screen.remove();
+
   return results;
 }

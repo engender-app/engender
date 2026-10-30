@@ -99,6 +99,7 @@
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import TallyTile from '$lib/components/readings/TallyTile.svelte';
+  import CostReading from '$lib/components/readings/CostReading.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
@@ -708,6 +709,7 @@
       <BodyMapTile span={resolvedSpan} />
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
       <TallyTile span={resolvedSpan} />
+      <CostReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
     </ReadGroup>
     </div>

@@ -548,9 +548,56 @@
   "correlation_cards_empty": "Za mało zapisanych danych, żeby pokazać zależność.",
   "cost_amount_invalid": "Jedna kwota, np. 250 albo 250,50.",
   "cost_amount_placeholder": "np. 250",
+  "cost_area_appointment": "Wizyty",
+  "cost_area_hair_removal": "Depilacja",
+  "cost_area_lab": "Wyniki badań",
+  "cost_area_procedure": "Operacje",
+  "cost_area_stock": "Zapas leków",
   "cost_currency_label": "Waluta",
   "cost_label": "Koszt",
+  "cost_reading_apart": "Każda waluta ma własną sumę. Aplikacja nie przelicza walut.",
+  "cost_reading_by_area": "W podziale na obszary",
+  "cost_reading_by_refund": "Zwrócone i niezwrócone",
+  "cost_reading_count": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Jeden koszt",
+        "countPlural=few": "{count} koszty",
+        "countPlural=many": "{count} kosztów",
+        "countPlural=other": "{count} kosztu"
+      }
+    }
+  ],
+  "cost_reading_empty": "W tym okresie nie ma kosztów.",
+  "cost_reading_not_refunded": "Nie zwrócono",
+  "cost_reading_undated": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Jeden koszt nie ma daty, więc nie należy do żadnego okresu.",
+        "countPlural=few": "{count} koszty nie mają daty, więc nie należą do żadnego okresu.",
+        "countPlural=many": "{count} kosztów nie ma daty, więc nie należy do żadnego okresu.",
+        "countPlural=other": "{count} kosztu nie ma daty, więc nie należy do żadnego okresu."
+      }
+    }
+  ],
   "cost_refunded": "Zwrócono",
+  "cost_tile_also": "Także w {codes}",
+  "cost_tile_none_refunded": "Bez zwrotów",
+  "cost_tile_refunded": "Zwrócono {amount}",
   "custom_dimension": "Własne skale",
   "custom_suffix": "własny",
   "cycle_event_add_aria": "Zapisz wydarzenie cyklu",
@@ -3147,6 +3194,7 @@
   "stats_compare_none": "Bez drugiej skali",
   "stats_compare_open": "Dodaj drugą skalę",
   "stats_constellation": "Dwie skale naraz",
+  "stats_cost": "Ile to kosztowało",
   "stats_day_by_day": "Dzień po dniu",
   "stats_mood_days": "Dni według nastroju",
   "stats_range_group": "Zakres",

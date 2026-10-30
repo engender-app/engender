@@ -3,7 +3,7 @@
      ticket 07). The door is a grid of tiles, each stating one figure for
      the span; this is where the full card draws, with its controls - the
      second scale, the metric picker, the share ring's days filter, the
-     constellation's scrub and play. Three readings share the route,
+     constellation's scrub and play. Four readings share the route,
      since they are one screen showing a different card and nothing about
      the header, the span or the floor differs between them.
 
@@ -35,11 +35,13 @@
   import DayByDayReading from '$lib/components/readings/DayByDayReading.svelte';
   import PlaneReading from '$lib/components/readings/PlaneReading.svelte';
   import TagsReading from '$lib/components/readings/TagsReading.svelte';
+  import CostReading from '$lib/components/readings/CostReading.svelte';
 
   const TITLE: Record<Reading, () => string> = {
     'day-by-day': () => m.stats_day_by_day(),
     plane: () => m.stats_constellation(),
-    tags: () => m.stats_tags_moved()
+    tags: () => m.stats_tags_moved(),
+    cost: () => m.stats_cost()
   };
 
   let today = $derived(currentDay());
@@ -98,8 +100,10 @@
     <DayByDayReading {span} {today} {enoughEntries} />
   {:else if reading === 'plane'}
     <PlaneReading {span} />
-  {:else}
+  {:else if reading === 'tags'}
     <TagsReading {span} spanLabel={label} {enoughEntries} />
+  {:else}
+    <CostReading {span} />
   {/if}
   </ReadGroup>
   {/key}

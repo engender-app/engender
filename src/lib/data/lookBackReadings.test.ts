@@ -18,8 +18,9 @@ describe('a reading tile opens its screen at the door\'s span', () => {
     expect(readingHref('tags', span)).toBe(`/stats/tags${spanRangeQuery(span)}`);
   });
 
-  it('knows its three readings and refuses anything else', () => {
-    expect(READINGS).toEqual(['day-by-day', 'plane', 'tags']);
+  it('knows its four readings and refuses anything else', () => {
+    // Cost joined in functional audit ticket 31.
+    expect(READINGS).toEqual(['day-by-day', 'plane', 'tags', 'cost']);
     // Cut by functional audit ticket 12; the mood strip draws on the door.
     for (const key of ['words', 'highest', 'themes', 'days']) expect(isReading(key)).toBe(false);
     for (const key of READINGS) expect(isReading(key)).toBe(true);
