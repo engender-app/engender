@@ -240,15 +240,17 @@
         <SectionHeading id="opened" focusable text={m.letters_opened_title()} />
         <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
           {#each opened as letter (letter.id)}
-            <LetterCard
-              {letter}
-              {today}
-              read={readIds.has(letter.id)}
-              open={openId === letter.id}
-              onopen={() => openLetter(letter)}
-              onclose={() => (openId = null)}
-              ondelete={() => record.askToDelete(letter)}
-            />
+            <div transition:collapse>
+              <LetterCard
+                {letter}
+                {today}
+                read={readIds.has(letter.id)}
+                open={openId === letter.id}
+                onopen={() => openLetter(letter)}
+                onclose={() => (openId = null)}
+                ondelete={() => record.askToDelete(letter)}
+              />
+            </div>
           {/each}
         </div>
       {/if}
