@@ -1,5 +1,5 @@
 /* What an archive Merge decides for each row, and the deletions it carries
-   (functional audit ticket 48, ADR draft-archive-merge-keeps-the-newer-copy).
+   (functional audit ticket 48, ADR-0098).
 
    Until this ticket a Merge added what this device did not have and left
    every matched row alone, so an edit made on the other device never

@@ -49,7 +49,7 @@
    re-importing the same archive changes nothing. This replaced
    skip-existing, which never carried an edit or a deletion between
    devices; the clocks it trusts, and the rest of the argument, are in
-   ADR draft-archive-merge-keeps-the-newer-copy.
+   ADR-0098.
 
    Replace discards this device's journal rows and installs the archive's,
    then writes the archive's state onto the built-in rows it kept. Which rows
