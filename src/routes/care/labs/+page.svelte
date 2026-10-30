@@ -558,6 +558,11 @@
                context line carries .lab-context's own size and colour -
                both classes ListRow's plain title/subtitle strings have no
                room for. -->
+          <!-- Keyed by the analyte the rows belong to, so switching analyte
+               swaps the list in one piece rather than closing every old row
+               while the new ones open beside them; a delete or an Undo
+               inside one analyte still moves its row (functional audit 46). -->
+          {#key results[0]?.analyte}
           {#each [...results].reverse() as r (r.id)}
             <button transition:collapse
               class="kit-row"
@@ -582,6 +587,7 @@
               </span>
             </button>
           {/each}
+          {/key}
         </ListCard>
       {/if}
     {/snippet}

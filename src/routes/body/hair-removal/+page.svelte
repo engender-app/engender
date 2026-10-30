@@ -42,7 +42,7 @@
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
-  import { collapse, crossfade } from '$lib/motion/reveal';
+  import { crossfade } from '$lib/motion/reveal';
 
   /* The strip's fill shares the chromatic role with the recency figures
      (ticket 56, following ticket 44's own rule for dilation and wear):
@@ -274,17 +274,15 @@
             {:else}
               <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
                 {#each weekSessions as session (session.id)}
-                  <div class="rows-divide" transition:collapse>
-                    <ListRow
-                      key={session.id}
-                      data-hair-removal-session={session.id}
-                      icon="shuffle"
-                      title={hairRemovalAreaName(session.area)}
-                      subtitle={[dayLabel(session.epochDay), hairRemovalMethodName(session.method), session.minutes === null ? null : m.hair_removal_minutes_short({ n: session.minutes }), severityName(session.painRating)].filter(Boolean).join(' · ')}
-                      chevron={false}
-                      onclick={() => record.openEditor(session)}
-                    />
-                  </div>
+                  <ListRow
+                    key={session.id}
+                    data-hair-removal-session={session.id}
+                    icon="shuffle"
+                    title={hairRemovalAreaName(session.area)}
+                    subtitle={[dayLabel(session.epochDay), hairRemovalMethodName(session.method), session.minutes === null ? null : m.hair_removal_minutes_short({ n: session.minutes }), severityName(session.painRating)].filter(Boolean).join(' · ')}
+                    chevron={false}
+                    onclick={() => record.openEditor(session)}
+                  />
                 {/each}
               </ListCard>
             {/if}
