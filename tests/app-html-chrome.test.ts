@@ -174,6 +174,8 @@ describe("app.html's pre-paint script against the shared fixture", () => {
     /* A mirror that cannot be parsed must not hide the shell's answer. */
     const damaged = stamp('{not json', calm, {}, [], true);
     expect(damaged.dataset.disguised).toBe('');
+    /* Nor may a mirror that parses to something other than an object. */
+    expect(stamp('null', calm, {}, [], true).dataset.disguised).toBe('');
   });
 
   it('gives the held module hints back once the document has parsed', () => {

@@ -48,6 +48,7 @@
         let boot = {};
         try {
           boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
+          if (!boot || typeof boot !== 'object') boot = {};
         } catch {
           /* unreadable storage or a damaged mirror: the shell's answer below still applies */
         }

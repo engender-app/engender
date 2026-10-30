@@ -43,6 +43,8 @@ describe('the boot mirror read under the Android shell', () => {
     vi.stubGlobal('localStorage', { getItem: () => '{not json' });
     shell(true);
     expect(localStorageCache().read()).toEqual({ disguise: true });
+    vi.stubGlobal('localStorage', { getItem: () => 'null' });
+    expect(localStorageCache().read()).toEqual({ disguise: true });
     vi.stubGlobal('localStorage', {
       getItem: () => {
         throw new Error('storage blocked');

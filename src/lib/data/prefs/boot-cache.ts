@@ -67,7 +67,8 @@ export function localStorageCache(): PreferenceCache {
       let boot: Partial<BootPreferences> = {};
       try {
         const raw = localStorage.getItem(BOOT_CACHE_KEY);
-        if (raw) boot = JSON.parse(raw) as Partial<BootPreferences>;
+        const parsed: unknown = raw ? JSON.parse(raw) : {};
+        if (parsed && typeof parsed === 'object') boot = parsed as Partial<BootPreferences>;
       } catch {
         // A damaged mirror is not worth failing a boot over: SQLite holds
         // the real values and is a few hundred milliseconds away.
