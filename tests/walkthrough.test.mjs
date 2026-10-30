@@ -8142,7 +8142,7 @@ try {
     throw new Error(`Starred did not narrow to both owners: ${JSON.stringify(starredSources)}`);
   }
   await page.locator('[data-photo-chip="everything"]').click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-photo-key]').length === 37);
+  await page.waitForFunction((total) => document.querySelectorAll('[data-photo-key]').length === total, everySource.length);
   await page.locator('[data-photo-chip="hair"]').click();
   /* Waited out rather than counted down: a narrowed-away tile is pinned out
      of the flow and fades, so it is still in the DOM for the length of its
