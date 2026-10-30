@@ -16,7 +16,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import { deleter } from '$lib/stores/attempt.svelte';
   import { fade } from 'svelte/transition';
-  import { tick } from 'svelte';
   import { motionDuration } from '$lib/motion/tokens';
 
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -58,9 +57,16 @@
     if (!(await purging.run(() => journal.entries.purgeEntry(target.id)))) return;
     purgeTarget = null;
     purged = { key: (purged?.key ?? 0) + 1, day: dayOf(target.epochDay) };
-    // Focus once the line is in the document; preventScroll because the
-    // line arrives at the top, where the person already is.
-    await tick();
+    focusResult = true;
+  }
+
+  /* After the sheet hands focus back, or the launcher (the row's own
+     button, now gone) would take it. preventScroll because the line
+     arrives at the top, where the person already is. */
+  let focusResult = false;
+  function sheetClosed() {
+    if (!focusResult) return;
+    focusResult = false;
     resultLine?.focus({ preventScroll: true });
   }
 </script>
@@ -144,6 +150,7 @@
     busy={purging.busy}
     failed={purging.failed}
     onConfirm={purge}
+    onClosed={sheetClosed}
     onCancel={() => {
       purgeTarget = null;
       purging.dismiss();

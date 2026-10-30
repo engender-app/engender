@@ -19,7 +19,8 @@
     onCancel,
     confirmAttrs = {},
     busy = false,
-    failed = false
+    failed = false,
+    onClosed
   }: {
     open: boolean;
     title: string;
@@ -45,10 +46,12 @@
     busy?: boolean;
     /** The last delete failed; the record is still there. */
     failed?: boolean;
+    /** Sheet's own onClosed: the moment the screen can take focus back. */
+    onClosed?: () => void;
   } = $props();
 </script>
 
-<Sheet {open} {title} onClose={onCancel} {busy}>
+<Sheet {open} {title} onClose={onCancel} {onClosed} {busy}>
   <h3>{question}</h3>
   {#if hint}
     <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
