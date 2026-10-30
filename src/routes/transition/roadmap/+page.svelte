@@ -395,7 +395,7 @@
   /* A document filed under an institution links here with the same
      `?goal=`, since the six that were steps kept their keys. */
   let sourceInstitution = $derived(
-    sourceId !== null && (POLISH_INSTITUTIONS.some((one) => one.key === sourceId) || institutionQuery.rows.some((one) => one.id === sourceId))
+    polishShown && sourceId !== null && (POLISH_INSTITUTIONS.some((one) => one.key === sourceId) || institutionQuery.rows.some((one) => one.id === sourceId))
   );
   function openSource() {
     if (sourceBuiltin) openBuiltInGoal(sourceBuiltin.key);
@@ -659,19 +659,23 @@
         <p class="roadmap-sources muted small" data-roadmap-sources>
           {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
         </p>
+        <!-- After the court steps, the offices to update once the ruling is
+             final (functional audit ticket 35). Inside this section rather
+             than beside it, so the switch moves one block: two blocks
+             collapsing at once on two curves made the second one rise into
+             view and sink again, and its margin dropped the categories 20px
+             in the frame it left. -->
+        <Institutions
+          bind:this={institutionsPanel}
+          shown={polishShown}
+          own={institutionQuery.rows}
+          changes={institutionChangeQuery.rows}
+          {hiddenGoals}
+          packKey={pack.key}
+        />
       </section>
     {/if}
 
-    <!-- After the court steps, the offices to update once the ruling is
-         final (functional audit ticket 35), under the same switch. -->
-    <Institutions
-      bind:this={institutionsPanel}
-      shown={polishShown}
-      own={institutionQuery.rows}
-      changes={institutionChangeQuery.rows}
-      {hiddenGoals}
-      packKey={pack.key}
-    />
 
     <!-- The person's own categories, whatever the switch says. A category
          arrives and leaves as one block, heading and card together, and a

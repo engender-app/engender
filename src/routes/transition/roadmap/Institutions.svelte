@@ -249,7 +249,7 @@
     {/if}
     {#if selectedChanges.length}
       <div transition:collapse>
-        <SectionHeading text={m.roadmap_institution_changes()} />
+        <FieldGroupHeading legend={m.roadmap_institution_changes()} />
         <ListCard>
           {#each selectedChanges as change (change.id)}
             <div transition:collapse>
