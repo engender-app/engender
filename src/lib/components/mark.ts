@@ -95,8 +95,9 @@ export type MarkCrop = 'tile' | 'round' | 'launcher-round' | 'bleed';
 
 export interface MarkOptions {
   /** One ink and four rings, drawn as outlines, the edge included: the
-      printed surfaces and any single-colour reproduction. The stripes are ignored when this is set, and so is the
-      ground - paper is the ground there. */
+      printed surfaces and any single-colour reproduction. The stripes are
+      ignored when this is set, and so is the ground - paper is the ground
+      there. */
   ink?: string;
   /** The ground under the drawing. Defaults to the white tile, or to
       nothing in one ink. */

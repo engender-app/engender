@@ -362,4 +362,3 @@ export function effectWindowShape(effect: PersonalEffectType): EffectWindowShape
   if (!window.completionMonths) return 'no-completion';
   return window.completionMonths.max == null ? 'open-completion' : 'bounded';
 }
-
