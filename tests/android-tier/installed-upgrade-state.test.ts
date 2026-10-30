@@ -75,7 +75,7 @@ test('integrity, foreign keys and alarm changes fail independently of row counts
 
 test('empty or already migrated baselines cannot pass upgrade proof', () => {
   assertFilledState(state());
-  for (const change of [{ userVersion: 89 }, { counts: {} }, { counts: { entry: 3, milestone: 2, roadmap_check: 1 } }, { linkedMilestones: 0 }, { mediaSha256: {} }, { alarms: [] }]) {
+  for (const change of [{ userVersion: 89 }, { counts: {} }, { counts: { entry: 3, milestone: 2, roadmap_check: 1 } as Record<string, number> }, { linkedMilestones: 0 }, { mediaSha256: {} }, { alarms: [] }]) {
     expect(() => assertFilledState({ ...state(), ...change })).toThrow('filled schema-88');
   }
 });
