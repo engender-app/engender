@@ -158,6 +158,9 @@ test('a later stock insert failure still rolls back unrelated rows after a renam
     const backup = await journal.archive.snapshot();
     await journal.stock.upsertEntry({ id, drug: 'Estradiol 2mg', quantity: 20, unit: 'pills', recordedEpochDay: 20010 });
     await journal.stock.deleteEntry(otherId);
+    // Lost without a record of the deletion, so the archive's copy is new
+    // here again (a deletion recorded here would keep it out, ticket 48).
+    await db.run("DELETE FROM deletion WHERE tbl = 'medication_stock'");
     await journal.entries.deleteEntry(entryId);
     const stockBefore = await db.query('SELECT * FROM medication_stock');
     const entriesBefore = await db.query('SELECT * FROM entry');

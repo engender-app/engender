@@ -561,6 +561,7 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // settings screen that lists these is where "where did this come from"
   // is answered, not an ordinary search result (phase 7 ticket 03).
   importLog: 'no text of its own: a source key, a date and counts by kind',
+  deletions: 'no text of its own: a table name, an identity and a time',
 
   // Deliberately not searchable rather than incidentally: a hidden or
   // finished area's own records stay searchable, because search finding

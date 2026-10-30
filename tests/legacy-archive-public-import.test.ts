@@ -40,7 +40,12 @@ test('imports alpha producer output through the current public Archive boundary'
             const photo = restored.photo as { id: string; fileName: string };
             assert.deepEqual({ id: photo.id, fileName: photo.fileName }, value);
           } else if (key === 'tags' && section === 'tagGroups') {
-            for (const tag of value as { id: string }[]) assert.deepEqual((restored.tags as { id: string }[]).find((candidate) => candidate.id === tag.id), tag);
+            // Each tag carries this device's edit stamp too (functional audit ticket 48).
+            for (const tag of value as { id: string }[]) {
+              const found = (restored.tags as { id: string; updatedAt?: number }[]).find((candidate) => candidate.id === tag.id);
+              const { updatedAt: _stamp, ...content } = found ?? {};
+              assert.deepEqual(content, tag);
+            }
           } else assert.deepEqual(restored[key], value, `${section}.${key}`);
         }
       }

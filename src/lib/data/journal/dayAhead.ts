@@ -323,6 +323,7 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   // mark of its own, the same restraint day.ts and lastWrite.ts both hold.
   voicePracticeTakes: 'a past take, sealed until the day after it happened - not a day still ahead',
   importLog: 'device bookkeeping, dated by when the import ran, not a day still to come',
+  deletions: 'which records were deleted, for an archive Merge to carry; nothing that happens on a day',
   areaStates: 'a statement about the practice of tracking, not a day still to come',
   marginNotes: 'drawn beside the entry it annotates, not a day still to come of its own'
 };

@@ -413,6 +413,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // person did that day - the settings screen it reads into is where it
   // belongs, the same reasoning `medicationStock` gives.
   importLog: 'device bookkeeping, dated by when the import ran, not a diary record',
+  deletions: 'which records were deleted, for an archive Merge to carry; not a diary record',
 
   // Phase 8 deepening ticket 13: `finished_epoch_day` is a day, but it is
   // the day a person stopped adding to a stream rather than something they

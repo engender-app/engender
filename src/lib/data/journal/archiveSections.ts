@@ -42,17 +42,17 @@
    so a section can be declared next to the area it belongs with rather than
    wherever the insert happens to have to go.
 
-   Merge semantics stay inside each apply function. They genuinely differ per
-   area, the reasoning is recorded where the differences are, and a policy
-   language expressive enough to state all of them would be a wider interface
-   over less behaviour. The registry decides which areas exist and in what
-   order they insert, never what merging one of them means. */
+   Which copy of a row a Merge keeps is archiveMerge.ts's one rule for every
+   table; what else merging an area means stays inside its apply function,
+   with the reasoning where the differences are. The registry decides which
+   areas exist and in what order they insert. */
 
 import type { ArchiveJournal } from '../archive/payload';
 import { inferDrugClass } from '../drugClass';
 import { legacyHairStagingText } from '../hairStageScales';
 import * as read from './archiveRead';
 import * as apply from './archiveApply';
+import { applyDeletions, readDeletions } from './archiveMerge';
 import type { SectionRead } from './archiveRead';
 import type { Restoring } from './archiveApply';
 import type { FlatColumn, FlatTable } from './archiveTable';
@@ -160,9 +160,9 @@ const HAIR_STAGES = flat({
 
 type ArchiveHairStage = ArchiveJournal['hairStages'][number];
 
-function asFreeTextStaging({ id, epochDay, scale, stage, description }: ArchiveHairStage): ArchiveHairStage {
-  if (stage === undefined) return { id, epochDay, description };
-  return { id, epochDay, description: legacyHairStagingText(scale ?? 'norwood_hamilton', stage, description ?? '') };
+function asFreeTextStaging({ id, epochDay, scale, stage, description, updatedAt }: ArchiveHairStage): ArchiveHairStage {
+  if (stage === undefined) return { id, epochDay, description, updatedAt };
+  return { id, epochDay, description: legacyHairStagingText(scale ?? 'norwood_hamilton', stage, description ?? ''), updatedAt };
 }
 
 /** A flat section whose rows need one more statement once they have
@@ -230,6 +230,19 @@ const REMINDERS = {
 } as const satisfies FlatTable<ArchiveJournal['reminders'][number]>;
 
 const SECTIONS = [
+  /* What this device has deleted (functional audit ticket 48,
+     archiveMerge.ts). Declared first and depending on nothing, so it is
+     applied before every other section and discarded after all of them:
+     the deletion trigger records every row a Replace's discard removes, and
+     this statement is what empties those again. */
+  section({
+    name: 'deletions',
+    discard: ['DELETE FROM deletion'],
+    // Which records a person deleted is a record about them.
+    travels: 'none',
+    read: readDeletions,
+    apply: applyDeletions
+  }),
   section({
     name: 'dimensions',
     // Only the customs. A built-in dimension the archive does not carry keeps
@@ -754,8 +767,9 @@ const SECTIONS = [
   }),
   /* The person's own roadmap categories (functional audit ticket 34, round
      two), ahead of the goals that name them. Uuid-identified, so a merge
-     skips one already here, keeping this device's name for it. Absent from
-     an archive written before them, which reads as none. */
+     matches one already here and keeps whichever name was given last
+     (archiveMerge.ts). Absent from an archive written before them, which
+     reads as none. */
   flat({
     name: 'roadmapCategories',
     travels: 'whole',
@@ -764,14 +778,9 @@ const SECTIONS = [
     orderBy: 'id',
     columns: { uuid: 'id', name: 'name' }
   }),
-  /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
-     present locally is simply skipped rather than compared column by column.
-     Its text and status are both this device's own to say since ticket 69
-     gave a custom goal a rewording - so skipping is the same rule
-     applyRoadmapChecks keeps, that a merge must not overwrite what the
-     person did on the device doing the importing. A replace carries all
-     three columns as they now stand, which is what makes a rewording and a
-     delete travel at all (restore.test.ts). Its track is 'legal' or a
+  /* Uuid-identified like a checklist. A merge takes the copy of a goal
+     written last, its rewording (ticket 69) and status together, and a
+     deleted goal's deletion the same way (archiveMerge.ts). Its track is 'legal' or a
      category's uuid since ticket 34; a goal from an older archive under a
      cut track gets that track's nameless category once the goals land
      (adoptLegacyRoadmapTracks). */
@@ -792,7 +801,7 @@ const SECTIONS = [
   /* The institutions the person added to the roadmap's list of name and
      document changes (functional audit ticket 35), and the dated changes at
      every institution, built-in or added. Both uuid-identified, so a merge
-     skips a row already here. Changes name their institution by a built-in
+     matches a row already here and keeps the copy written last. Changes name their institution by a built-in
      key or an added one's uuid, the way a goal names its group, so the
      institutions land first. An added institution is structure the way a
      category is; the changes are what happened to this person, and stay. */

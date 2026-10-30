@@ -1221,8 +1221,11 @@ export function makeEntriesArea(
       // recording rows all stay exactly as they are, so restoreEntry has
       // them to bring back. Only the search index drops the entry now -
       // trashed_at IS NULL on every other read is what hides the rest.
+      // A move to Trash and a restore from it are edits (functional audit
+      // ticket 48): they bump `updated_at`, so an archive Merge carries them.
       await driver.transaction(async (driver) => {
-        await driver.run('UPDATE entry SET trashed_at = ? WHERE id = ? AND trashed_at IS NULL', [now(), id]);
+        const at = now();
+        await driver.run('UPDATE entry SET trashed_at = ?, updated_at = ? WHERE id = ? AND trashed_at IS NULL', [at, at, id]);
         await driver.run('DELETE FROM entry_fts WHERE rowid = ?', [id]);
       });
     },
@@ -1234,7 +1237,7 @@ export function makeEntriesArea(
       ))[0];
       if (!current) return;
       await driver.transaction(async (driver) => {
-        await driver.run('UPDATE entry SET trashed_at = NULL WHERE id = ?', [id]);
+        await driver.run('UPDATE entry SET trashed_at = NULL, updated_at = ? WHERE id = ?', [now(), id]);
         await indexEntry(driver, id, current.note ?? '');
       });
     },

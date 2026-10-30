@@ -203,7 +203,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 116);
+  assert.equal(db.getUserVersion(), 117);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -216,6 +216,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'area_state',
     'comfort_item',
     'cycle_event',
+    'deletion',
     'entry',
     'entry_body_region',
     'entry_dimension_value',
@@ -1012,7 +1013,10 @@ test('a WEEKLY reminder is refused by the schema, with no trigger left to transl
   const db = await migratedDb();
   await assert.rejects(db.run(`INSERT INTO reminder (uuid, title, time, recurrence, updated_at)
     VALUES ('archive-weekly', 'Injection', '20:00', 'WEEKLY', 1)`));
-  const triggers = await db.query("SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'reminder'");
+  // The deletion log's own trigger (version 117) records a removal; it translates nothing.
+  const triggers = await db.query(
+    "SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'reminder' AND name <> 'deletion_reminder'"
+  );
   assert.deepEqual(triggers, []);
 });
 

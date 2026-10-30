@@ -84,7 +84,8 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   voiceBenchmarks: (r) => r.id,
   comfortItems: (r) => r.id,
   importLog: (r) => r.id,
-  areaStates: (r) => r.area
+  areaStates: (r) => r.area,
+  deletions: (r) => `${r.table}:${r.id}`
 };
 
 test('every registered section merges idempotently and keeps the target device its own rows', async () => {

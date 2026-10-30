@@ -25,6 +25,12 @@ const optional = (check: Check): Check => (value) => value === undefined || chec
 const oneOf = (values: readonly string[]): Check => (value) => typeof value === 'string' && values.includes(value);
 const integerBetween = (min: number, max: number): Check => (value) =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
+// A wall-clock time in milliseconds, as `updated_at` and Trash hold one.
+const instant = integerBetween(0, Number.MAX_SAFE_INTEGER);
+// When the row was last written (functional audit ticket 48), on every row
+// and every nested child that has a table of its own; absent on an archive
+// written before it.
+const STAMP = { updatedAt: optional(instant) };
 // `HH:MM` on a 24-hour clock, appointments.ts's own rule for a stored time.
 const clockTime: Check = (value) => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 // A cost (functional audit ticket 30) is three fields on each costed row,
@@ -49,6 +55,7 @@ const object = (fields: Record<string, Check>): Check => (value) =>
 // These contracts follow the wire rows, not SQLite's permissive coercions.
 // Missing booleans keep the existing false default; legacy fields keep their apply defaults.
 const tag = object({
+  ...STAMP,
   id: identity,
   label: text,
   builtIn: optional(bool),
@@ -56,6 +63,7 @@ const tag = object({
 });
 
 const photo = object({
+  ...STAMP,
   id: identity,
   fileName: text,
   starred: optional(bool),
@@ -63,39 +71,46 @@ const photo = object({
 });
 
 const voiceRecording = object({
+  ...STAMP,
   id: identity,
   fileName: text
 });
 
 const videoNote = object({
+  ...STAMP,
   id: identity,
   fileName: text
 });
 
 const hairRemovalPhoto = object({
+  ...STAMP,
   id: identity,
   fileName: text
 });
 
 const procedurePhoto = object({
+  ...STAMP,
   id: identity,
   epochDay: numeric,
   fileName: text
 });
 
 const appointmentStatus = object({
+  ...STAMP,
   id: identity,
   epochDay: numeric,
   status: text
 });
 
 const tryoutPhoto = object({
+  ...STAMP,
   id: identity,
   epochDay: numeric,
   fileName: text
 });
 
 const checklistItem = object({
+  ...STAMP,
   id: identity,
   content: text,
   checked: optional(bool),
@@ -104,6 +119,7 @@ const checklistItem = object({
 
 const ROWS = {
   dimensions: {
+    ...STAMP,
     key: identity,
     name: text,
     low: text,
@@ -114,12 +130,14 @@ const ROWS = {
     hidden: optional(bool)
   },
   presets: {
+    ...STAMP,
     id: identity,
     name: text,
     builtIn: optional(bool),
     dims: optional(list(text))
   },
   tagGroups: {
+    ...STAMP,
     key: identity,
     name: text,
     enabled: optional(bool),
@@ -127,12 +145,14 @@ const ROWS = {
     tags: optional(list(tag))
   },
   bodyRegions: {
+    ...STAMP,
     id: identity,
     name: text,
     builtIn: optional(bool),
     hidden: optional(bool)
   },
   entries: {
+    ...STAMP,
     uuid: identity,
     epochDay: numeric,
     timestamp: numeric,
@@ -145,9 +165,11 @@ const ROWS = {
     videos: optional(list(videoNote)),
     bodyRegions: optional(bodyRegionValues),
     starred: optional(bool),
-    presentationId: optional(nullable(text))
+    presentationId: optional(nullable(text)),
+    trashedAt: optional(nullable(instant))
   },
   milestones: {
+    ...STAMP,
     id: identity,
     name: text,
     epochDay: numeric,
@@ -160,6 +182,7 @@ const ROWS = {
     photo: optional(nullable(photo))
   },
   labResults: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     analyte: text,
@@ -174,17 +197,20 @@ const ROWS = {
     ...COST_FIELDS
   },
   taper: {
+    ...STAMP,
     id: identity,
     procedureId: text,
     startEpochDay: numeric,
     stagesJson: text
   },
   taperSessions: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     note: text
   },
   sideEffects: {
+    ...STAMP,
     id: identity,
     name: text,
     severity: nullable(integerBetween(1, 5)),
@@ -192,30 +218,36 @@ const ROWS = {
     resolvedEpochDay: optional(nullable(numeric))
   },
   cycleEvents: {
+    ...STAMP,
     id: identity,
     kind: oneOf(CYCLE_EVENT_KINDS),
     epochDay: numeric
   },
   eras: {
+    ...STAMP,
     id: identity,
     name: text,
     startEpochDay: nullable(numeric),
     endEpochDay: nullable(numeric)
   },
   eraMutes: {
+    ...STAMP,
     eraUuid: text
   },
   personalEffects: {
+    ...STAMP,
     id: identity,
     effect: text,
     firstNoticedEpochDay: numeric
   },
   effectCategories: {
+    ...STAMP,
     key: identity,
     name: text,
     enabled: optional(bool)
   },
   personalEffectTypes: {
+    ...STAMP,
     key: identity,
     name: text,
     builtIn: optional(bool),
@@ -224,6 +256,7 @@ const ROWS = {
     direction: nullable(oneOf(EFFECT_DIRECTIONS_STORED))
   },
   hairStages: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     scale: optional(text),
@@ -231,11 +264,13 @@ const ROWS = {
     description: optional(text)
   },
   hairPhotos: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     fileName: text
   },
   hairRemovalSessions: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     area: oneOf(HAIR_REMOVAL_AREAS),
@@ -250,6 +285,7 @@ const ROWS = {
     ...COST_FIELDS
   },
   procedures: {
+    ...STAMP,
     id: identity,
     name: text,
     surgeryEpochDay: nullable(numeric),
@@ -261,6 +297,7 @@ const ROWS = {
     ...COST_FIELDS
   },
   appointments: {
+    ...STAMP,
     id: identity,
     epochDay: nullable(numeric),
     procedureId: nullable(text),
@@ -274,6 +311,7 @@ const ROWS = {
     ...COST_FIELDS
   },
   providers: {
+    ...STAMP,
     id: identity,
     // Not blank, the rule upsertProvider keeps: a nameless provider has
     // nothing to be picked by.
@@ -283,6 +321,7 @@ const ROWS = {
     impressions: nullable(text)
   },
   reminders: {
+    ...STAMP,
     id: identity,
     title: text,
     time: text,
@@ -295,17 +334,20 @@ const ROWS = {
     drug: optional(nullable(text))
   },
   tallyEvents: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     kind: oneOf(TALLY_KINDS)
   },
   letters: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     text: text,
     unlockEpochDay: numeric
   },
   voicePracticeTakes: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     minHz: numeric,
@@ -314,21 +356,25 @@ const ROWS = {
     feltSense: nullable(numeric)
   },
   roadmapChecks: {
+    ...STAMP,
     packKey: identity,
     goalKey: identity,
     status: text,
     hidden: optional(bool)
   },
   roadmapCategories: {
+    ...STAMP,
     id: identity,
     name: text
   },
   roadmapInstitutions: {
+    ...STAMP,
     id: identity,
     // Not blank, the rule addInstitution keeps.
     name: identity
   },
   roadmapInstitutionChanges: {
+    ...STAMP,
     id: identity,
     institution: identity,
     status: oneOf(INSTITUTION_STATUSES),
@@ -336,12 +382,14 @@ const ROWS = {
     note: nullable(text)
   },
   roadmapGoals: {
+    ...STAMP,
     id: identity,
     track: text,
     text: text,
     status: text
   },
   regimenEpisodes: {
+    ...STAMP,
     id: identity,
     drug: text,
     drugClass: text,
@@ -356,6 +404,7 @@ const ROWS = {
     hidden: optional(bool)
   },
   doseEvents: {
+    ...STAMP,
     id: identity,
     timestamp: numeric,
     route: text,
@@ -375,6 +424,7 @@ const ROWS = {
     autoLogIndex: optional(nullable(numeric))
   },
   doseSchedules: {
+    ...STAMP,
     id: identity,
     episodeId: text,
     recurrenceKind: oneOf(DOSE_RECURRENCE_KINDS),
@@ -385,6 +435,7 @@ const ROWS = {
     autoLogFromEpochDay: optional(nullable(numeric))
   },
   dosePauses: {
+    ...STAMP,
     id: identity,
     episodeId: text,
     startEpochDay: numeric,
@@ -392,6 +443,7 @@ const ROWS = {
     reason: text
   },
   medicationStock: {
+    ...STAMP,
     id: identity,
     drug: text,
     quantity: numeric,
@@ -409,6 +461,7 @@ const ROWS = {
     ...COST_FIELDS
   },
   tryouts: {
+    ...STAMP,
     id: identity,
     kind: oneOf([...TRYOUT_KINDS, ...DROPPED_TRYOUT_KINDS]),
     label: text,
@@ -418,6 +471,7 @@ const ROWS = {
     photos: list(tryoutPhoto)
   },
   feltSenseEntries: {
+    ...STAMP,
     id: identity,
     tryoutId: text,
     epochDay: numeric,
@@ -425,6 +479,7 @@ const ROWS = {
     note: nullable(text)
   },
   checklists: {
+    ...STAMP,
     id: identity,
     ownerKind: nullable(text),
     ownerId: nullable(text),
@@ -432,6 +487,7 @@ const ROWS = {
     items: list(checklistItem)
   },
   wearSessions: {
+    ...STAMP,
     id: identity,
     kind: text,
     startTimestamp: numeric,
@@ -439,6 +495,7 @@ const ROWS = {
     note: nullable(text)
   },
   voiceBenchmarks: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     timestamp: numeric,
@@ -459,12 +516,14 @@ const ROWS = {
     resonanceScale: nullable(numeric)
   },
   presentations: {
+    ...STAMP,
     id: identity,
     name: text,
     roleIndex: numeric,
     hidden: optional(bool)
   },
   entryTemplates: {
+    ...STAMP,
     id: identity,
     name: text,
     tags: optional(list(text)),
@@ -475,35 +534,45 @@ const ROWS = {
     hidden: optional(bool)
   },
   comfortItems: {
+    ...STAMP,
     id: identity,
     text: text,
     position: numeric
   },
   importLog: {
+    ...STAMP,
     id: identity,
     source: text,
     importedAt: numeric,
     counts: numericRecord
   },
   areaStates: {
+    ...STAMP,
     area: text,
     hidden: optional(bool),
     finishedEpochDay: nullable(numeric),
     suspendedEpochDay: nullable(numeric)
   },
   marginNotes: {
+    ...STAMP,
     id: identity,
     entryId: text,
     epochDay: numeric,
     text: text
   },
   documents: {
+    ...STAMP,
     id: identity,
     epochDay: numeric,
     title: text,
     fileName: text,
     targetKind: nullable(oneOf(DOCUMENT_TARGET_KINDS)),
     targetId: nullable(text)
+  },
+  deletions: {
+    table: identity,
+    id: identity,
+    deletedAt: instant
   }
 } satisfies { [Name in keyof ArchiveJournal]: { [Field in keyof ArchiveJournal[Name][number]]-?: Check } };
 
@@ -534,7 +603,7 @@ export function assertArchiveRows(
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
     // Stock folds legacy duplicate drug names, but its UUID must still be unique.
-    const identityFields = name === 'roadmapChecks' ? ['packKey', 'goalKey'] :
+    const identityFields = name === 'roadmapChecks' ? ['packKey', 'goalKey'] : name === 'deletions' ? ['table', 'id'] :
       [name === 'medicationStock' ? 'id' : naturalIdentity ?? NON_FLAT_IDENTITY[name] ?? 'id'];
     const rowIdentity = JSON.stringify(identityFields.map((field) => row[field]));
     if (identities.has(rowIdentity)) {

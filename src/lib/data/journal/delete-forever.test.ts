@@ -36,11 +36,12 @@ async function richEntry() {
 }
 
 /** Every column of every table that holds the entry's rowid as an entry
-    reference, its uuid, or its note. */
+    reference, its uuid, or its note. The deletion log is read on its own
+    below: it keeps the uuid on purpose (functional audit ticket 48). */
 async function rowsOfEntry(driver: SqliteDriver, id: number, uuid: string): Promise<string[]> {
   const columns = await driver.query<{ tbl: string; col: string }>(
     `SELECT m.name AS tbl, p.name AS col FROM sqlite_master m JOIN pragma_table_info(m.name) p
-      WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT LIKE 'entry_fts%'`
+      WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name NOT LIKE 'entry_fts%' AND m.name <> 'deletion'`
   );
   const found: string[] = [];
   for (const { tbl, col } of columns) {
@@ -72,6 +73,14 @@ test('Delete forever leaves no row and no file of the entry', async () => {
   await journal.entries.purgeEntry(id);
 
   assert.deepEqual(await rowsOfEntry(driver, id, uuid), [], 'no table keeps a row of the entry');
+  /* What is left is the fact of the deletion, so an archive Merge can carry
+     it to another device: the table and the uuid, and nothing of what the
+     entry said. */
+  assert.deepEqual(
+    await driver.query("SELECT tbl, row_key FROM deletion WHERE tbl = 'entry'"),
+    [{ tbl: 'entry', row_key: uuid }]
+  );
+  assert.deepEqual(await driver.query('SELECT 1 FROM deletion WHERE instr(row_key, ?) > 0', [NOTE]), []);
   assert.deepEqual(await driver.query('SELECT rowid FROM entry_fts WHERE rowid = ?', [id]), []);
   assert.deepEqual(files.names(), others, 'its files are gone and every other file stays');
   assert.deepEqual(await driver.query('PRAGMA foreign_key_check'), []);

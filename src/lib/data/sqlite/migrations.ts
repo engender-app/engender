@@ -28,6 +28,7 @@ import { migrateHairRemovalCost } from './cost-migration.ts';
 import { deviceDefaultCurrency } from '../cost.ts';
 import { migrateStockIdentity } from './stock-identity-migration.ts';
 import { WAITLIST_REBUILD } from './waitlist-migration.ts';
+import { DELETION_LOG } from './deletion-migration.ts';
 
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
@@ -413,5 +414,9 @@ ALTER TABLE medication_stock ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0
   /* Functional audit ticket 15: the patch-schedule tile is folded into the
      dose panel, so the switch that turned it off has nothing left to turn
      off. The dose panel's own switch is untouched. */
-  { version: 116, sql: "DELETE FROM pref WHERE key = 'patchScheduleTileEnabled';" }
+  { version: 116, sql: "DELETE FROM pref WHERE key = 'patchScheduleTileEnabled';" },
+  /* Functional audit ticket 48: a deletion leaves a row behind for an
+     archive Merge to carry, and seeded built-ins stop reading as edits
+     (deletion-migration.ts). */
+  { version: 117, sql: DELETION_LOG }
 ];

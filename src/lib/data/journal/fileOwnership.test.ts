@@ -85,7 +85,8 @@ test('every attachment survives archive restore and cleanup removes only orphans
   assert.deepEqual((await restored.journal.archive.snapshot()).journal, snapshot.journal);
 });
 
-test('trash attachments stay on disk but do not travel in archives', async () => {
+// Trash travels since functional audit ticket 48, and its files with it.
+test('trash attachments stay on disk and travel in archives', async () => {
   const { db, files, journal } = await device();
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000, mood: 3, attachRecordings: [audio], attachVideos: [audio]
@@ -93,7 +94,7 @@ test('trash attachments stay on disk but do not travel in archives', async () =>
   await journal.photos.attach({ entryId: entry }, photo);
   const expected = files.names();
   await journal.entries.deleteEntry(entry);
-  assert.deepEqual((await journal.archive.snapshot()).files, []);
+  assert.deepEqual((await journal.archive.snapshot()).files.map((file) => file.name).sort(), [...expected].sort());
   await sweepOrphanPhotos(db, files);
   assert.deepEqual(files.names(), expected);
 });
