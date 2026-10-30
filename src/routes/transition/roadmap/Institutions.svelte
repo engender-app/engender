@@ -23,6 +23,8 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { deleter, rowWriter, writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import {
     INSTITUTIONS_REVIEWED_ON,
     institutionList,
@@ -145,8 +147,16 @@
   }
 
   const changeDelete = rowWriter();
-  const deleteChange = (change: InstitutionChange) =>
-    changeDelete(change.id, () => journal.roadmap.deleteInstitutionChange(change.id), m.write_failed());
+  /* One tap, no confirmation: the toast's Undo is the way back (functional
+     audit ticket 46). */
+  async function deleteChange(change: InstitutionChange) {
+    let deletion: UndoableDelete | undefined;
+    const write = async () => {
+      deletion = await undoable((j) => j.roadmap.deleteInstitutionChange(change.id));
+    };
+    if (!(await changeDelete(change.id, write, m.write_failed()))) return;
+    offerUndo(deletion!, m.record_deleted());
+  }
 
   const visibilityWrite = writer();
   async function toggleHidden() {
@@ -171,10 +181,11 @@
   async function remove() {
     const id = selectedOwn?.id;
     if (!id) return;
-    if (!(await removing.run(() => journal.roadmap.deleteInstitution(id)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.roadmap.deleteInstitution(id)); }))) return;
     confirmingDelete = false;
     close();
-    toast(m.record_deleted(), { kind: 'record-deleted' });
+    offerUndo(deletion!, m.record_deleted());
   }
 
   let adding = $state(false);

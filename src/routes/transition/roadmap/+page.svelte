@@ -386,10 +386,11 @@
   const deleteCategory = async () => {
     const id = selectedCategoryId;
     if (id === null) return;
-    if (!(await removingCategory.run(() => journal.roadmap.deleteCategory(id)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removingCategory.run(async () => { deletion = await undoable((j) => j.roadmap.deleteCategory(id)); }))) return;
     confirmingCategoryDelete = false;
     selectedCategoryId = null;
-    toast(m.record_deleted(), { kind: 'record-deleted' });
+    offerUndo(deletion!, m.record_deleted());
   };
 
   let sourceId = $derived(page.url.searchParams.get('goal'));
