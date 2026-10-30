@@ -10,8 +10,8 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-import dev.engender.app.keystore.CredentialWrapStore;
 import dev.engender.app.files.StorageFailure;
+import dev.engender.app.keystore.CredentialWrapStore;
 import org.json.JSONObject;
 
 /** Mirrors lock timing and owns durable PIN admissions and their waits. */
@@ -60,7 +60,7 @@ public class LockTimingPlugin extends Plugin {
                 result.put("adopted", wait.adopted());
             }
         } catch (IllegalStateException error) {
-            call.reject(error.getMessage(), StorageFailure.code(error, StorageFailure.DEVICE_FULL), error);
+            rejectStorage(call, error);
             return;
         }
         call.resolve(result);
@@ -83,7 +83,7 @@ public class LockTimingPlugin extends Plugin {
                     SystemClock.elapsedRealtime(), bootCount(getContext()));
             }
         } catch (IllegalStateException error) {
-            call.reject(error.getMessage(), StorageFailure.code(error, StorageFailure.DEVICE_FULL), error);
+            rejectStorage(call, error);
             return;
         }
         call.resolve();
@@ -100,7 +100,7 @@ public class LockTimingPlugin extends Plugin {
             }
             call.resolve(result);
         } catch (IllegalStateException error) {
-            call.reject(error.getMessage(), StorageFailure.code(error, StorageFailure.DEVICE_FULL), error);
+            rejectStorage(call, error);
         }
     }
 
@@ -117,8 +117,13 @@ public class LockTimingPlugin extends Plugin {
             }
             call.resolve();
         } catch (IllegalStateException error) {
-            call.reject(error.getMessage(), StorageFailure.code(error, StorageFailure.DEVICE_FULL), error);
+            rejectStorage(call, error);
         }
+    }
+
+    /** A failed durable read or write reaches the page as `DEVICE_FULL` unless the failure says otherwise. */
+    private static void rejectStorage(PluginCall call, IllegalStateException error) {
+        call.reject(error.getMessage(), StorageFailure.code(error, StorageFailure.DEVICE_FULL), error);
     }
 
     private static boolean validIdentity(String value) {
