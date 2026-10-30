@@ -522,11 +522,6 @@
   padding: var(--space-2) 0 var(--space-4);
 }
 
-.kit-filter-label {
-  font-size: var(--text-sm);
-  color: var(--text-2);
-}
-
 /* The gender-scales row names every scale that is ticked, so it is the one
    subtitle in the app whose length is set by how much the person has chosen.
    Past three it wrapped to a second line, the row grew by 17px, and the whole

@@ -1,23 +1,4 @@
 <script lang="ts">
-  /* Binder and tucking wear time, on the surface and chart kits (phase 5 UX
-     ticket 25).
-
-     The trend was two controls stacked above a card: a Segmented over every
-     body region the person tracks, and a hand-written copy of `.segmented`
-     for the range - the same class names as the real control with no
-     sliding pill and no press. The range is the real Segmented now, and the
-     region is the chart card's own picker, which is where DIRECTION.md puts
-     a section's one switch and is also the control eight regions actually
-     fit in.
-
-     The marks stay WearTrendChart's. Two series on two scales is not
-     something the chart kit draws, and drawing them as two cards would take
-     away the only reason the pair is on one axis - whether the hours and
-     the feeling move together. That also keeps the one legend in the app,
-     which DIRECTION.md's chart rules refuse: a legend is what a
-     single-series chart does not need, and two lines with nothing naming
-     them is not a chart at all. Named as a departure rather than left to be
-     found. */
   /* The binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear
      session"). Two ways into the same row: tapping "Now" writes a running
      session (a null duration) immediately, and stopping it later fills the
@@ -41,14 +22,12 @@
     epochDayFromTimestamp,
     startOfDayTimestamp,
     timestampAtLocalTime,
-    FIRST_EPOCH_DAY
+    weekdayOfEpochDay
   } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import {
     binderCueShowing,
     hoursMinutesOf,
-    wearTrendRegion,
-    WEAR_KIND_REGION,
     WEAR_KINDS
   } from '$lib/data/journal/wearSessions';
   import {
@@ -63,24 +42,14 @@
     wearAddAria
   } from '$lib/data/vocabulary/wearLabels';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
-  import { highlightedPositions } from '$lib/charts/presentationHighlight';
-  import { wearTrendLegend } from '$lib/charts/wearLegend';
-  import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
-  import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
-  import { dayAxisLabel, dayAxisOptions } from '$lib/components/kit/dayAxisLabel';
-  import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Reminder, WearKind, WearSession } from '$lib/data/types';
   import DayStrip from '$lib/components/DayStrip.svelte';
   import { stripWindow, type DayMark } from '$lib/components/dayStrip';
   import Icon from '$lib/components/Icon.svelte';
-  import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
-  import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -423,89 +392,20 @@
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* One region per kind and nothing else (CONTEXT: "Wear session"), not the
-     full body-map vocabulary. Three rather than the two this offered before
-     kinds existed, because compression compares against hips and waist. */
-  const TREND_REGIONS = Object.values(WEAR_KIND_REGION);
-  let trendRegionOptions = $derived(
-    vocabulary.bodyRegions.filter((r) => TREND_REGIONS.includes(r.id)).map((r) => ({ value: r.id, label: r.name }))
-  );
-  /* Null until the person picks. Which region that resolves to - the pick,
-     the kind's default, or the fallback when either names a region the
-     person has turned off - is `wearTrendRegion`'s rule, not this screen's
-     (wearSessions.ts). */
-  let pickedRegion = $state<string | null>(null);
-  let trendRegion = $derived(
-    wearTrendRegion(
-      latestKind,
-      pickedRegion,
-      trendRegionOptions.map((r) => r.value)
-    )
-  );
-
   let range = $state(30);
-
-  /* Which axis the trend is read on (ticket 16). Both its series take the
-     same one, which is not a choice so much as the only coherent reading:
-     they already share one x axis, and the whole point of the pair is
-     whether the hours and the feeling move together. The queries, the
-     fallback and the keying are the kit's (dayAxis.svelte.ts), shared with
-     the body map. */
-  const readAxis = dayAxisState(() => today);
-
-  /* A re-keyed axis reads all history and says so. The question needs every
-     interval, or every day either side of a surgery, available; the range
-     picker would hand it a slice near today that answers nothing, so it is
-     swapped out rather than left sitting there inert. */
-  let trendFrom = $derived(readAxis.keying ? FIRST_EPOCH_DAY : today - range + 1);
-
-  let wearTrendQuery = liveList((j) => j.stats.wearTimeTrend(trendFrom, today));
-  /* Dysphoria specifically, which is the axis this chart has always drawn -
-     ticket 31 gave a region a second one but did not widen what wear time is
-     compared against. */
-  let regionTrendQuery = liveList((j) =>
-    j.stats.bodyRegionTrend(trendRegion, 'dysphoria', trendFrom, today)
-  );
-  /* One call for both, so the two lines fold at one width. Folded
-     separately they would space their marks differently while sharing an
-     axis, which is the one reading this chart exists to support
-     ($lib/charts/dayAxis). */
-  let plotted = $derived(
-    plotDaySeriesGroup([wearTrendQuery.rows, regionTrendQuery.rows], readAxis.keying, range)
-  );
-  /* WearTrendChart places by a numeric x and knows nothing about what it
-     counts, so a position goes in where an epoch day used to with no change
-     to the renderer - which is exactly the substitution re-keying is. */
-  let wearTrend = $derived(plotted[0].points.map((point) => ({ day: point.x, value: point.y })));
-  let regionTrend = $derived(plotted[1].points.map((point) => ({ day: point.x, value: point.y })));
-  let wearMax = $derived(Math.max(4, 1, ...wearTrend.map((p) => Math.ceil(p.value))));
-  let trendRegionLabel = $derived(trendRegionOptions.find((r) => r.value === trendRegion)?.label ?? '');
-  let axisName = $derived(dayAxisLabel(readAxis.axis, readAxis.anchors));
-  /* Per series rather than the chart's own both-empty guard (ticket 16,
-     audit U7): a series with no points in the range gets a note instead of
-     a promise it draws nothing on. wearLegend.ts is the pure, node-tested
-     half; this just supplies the two booleans. */
-  let legendEntries = $derived(wearTrendLegend(wearTrend.length, regionTrend.length));
-
-  /* The presentation chip (ticket 17, ADR-0048): highlights, never
-     filters, so both lines above keep drawing exactly what they draw
-     today. Read over the same `trendFrom`/`today` window the two series
-     themselves read, then carried through whichever axis is in force -
-     the calendar's own bucket on the calendar axis, or the same
-     day-to-position rule dayKeying.ts folds the series by on a re-keyed
-     one, at the one width `plotted` already settled the group on
-     ($lib/charts/presentationHighlight.ts). */
-  let selectedPresentation = $state<string | null>(null);
-  let presentationDaysQuery = liveList((j) =>
-    selectedPresentation ? j.stats.presentationDays(selectedPresentation, trendFrom, today) : Promise.resolve([])
-  );
-  let highlightRole = $derived(presentationRole(selectedPresentation));
-  let highlightedAt = $derived(
-    highlightedPositions(presentationDaysQuery.rows, readAxis.keying, plotted[0].grain ?? 'day', plotted[0].width)
-  );
-  let trendHighlight = $derived(
-    highlightRole ? { positions: [...highlightedAt], role: highlightRole } : undefined
-  );
+  let trendFrom = $derived(today - range + 1);
+  let fromWeek = $derived(trendFrom - weekdayOfEpochDay(trendFrom));
+  let toWeek = $derived(today - weekdayOfEpochDay(today));
+  let wearTrendQuery = liveList((j) => j.stats.weeklyWearHours(trendFrom, today, nowTick));
+  let wearTrend = $derived(wearTrendQuery.rows.map((point) => ({
+    ...point,
+    label: m.wear_week_hours({
+      date: fmtDay(point.weekStart, { day: 'numeric', month: 'short' }),
+      hours: String(Math.round(point.hours * 10) / 10)
+    })
+  })));
+  let fromWeekLabel = $derived(fmtDay(fromWeek, { day: 'numeric', month: 'short' }));
+  let toWeekLabel = $derived(fmtDay(toWeek, { day: 'numeric', month: 'short' }));
 
   /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
   let wearRevealed = $state(false);
@@ -640,105 +540,50 @@
         {/if}
       {/if}
 
-      <!-- No heading over the range. The chart card under it is called
-           "Wear time and intensity" and so was this, one above the other -
-           the same two-headers-stacked reading DIRECTION.md 3d names. The
-           card names the area. -->
-      <!-- The axis first, because it decides whether there is a range to
-           pick, and absent for a journal that can answer only the calendar. -->
-      <div class="wear-reading-controls">
-        {#if readAxis.axes.length > 1}
-          <div class="kit-filter">
-            <label class="kit-filter-label" for="wear-axis">{m.chart_axis_label()}</label>
-            <ChartPicker
-              key="wear-axis"
-              id="wear-axis"
-              labelledBy="wear-axis"
-              value={readAxis.axis}
-              options={dayAxisOptions(readAxis.axes, readAxis.anchors)}
-              onPick={(value) => (readAxis.axis = value as DayAxis)}
-            />
-          </div>
-        {/if}
-
-      <!-- One slot for the range control and the whole-journal note that
-           replaces it, travelling between the two rather than snapping
-           (the positioned slot below). -->
-        <div class="wear-reading-slot" use:resize>
-          {#if readAxis.keying}
-            <p class="muted small wear-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
-          {:else}
-            <div out:crossfade>
-              <Segmented
-                name={m.stats_range_group()}
-                options={dayRangeOptions(RANGES)}
-                value={String(range)}
-                onChange={(v) => (range = Number(v))}
-                compact
-                key="wear-range"
-              />
-            </div>
-          {/if}
-        </div>
-      </div>
-      <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
+      <Segmented
+        name={m.stats_range_group()}
+        options={dayRangeOptions(RANGES)}
+        value={String(range)}
+        onChange={(v) => (range = Number(v))}
+        compact
+        key="wear-range"
+      />
       <ChartCard level={2}
         heading={m.wear_session_trend_title()}
         kind="wear-trend"
         role={roleAt(activeFlag.roles, SECTION_ROLE.chart)}
       >
-        {#snippet control()}
-          {#if trendRegionOptions.length}
-            <ChartPicker
-              key="wear-region"
-              label={m.wear_session_trend_region_group()}
-              value={trendRegion}
-              options={trendRegionOptions}
-              onPick={(v) => (pickedRegion = v)}
-            />
-          {/if}
-        {/snippet}
-        <!-- A chart with nothing in it drew an empty plot and a legend
-             naming two lines that were not there. It says so instead, the
-             way every other chart in the kit does - and so does a range
-             with one day in it, which is a point and no line (after-release
-             27, audit L05-14). -->
-        {#if legendEntries.length}
-          <!-- Slid in and out against the sentence that stands in for it,
-               which ChartEmpty slides the same way: a range going from one
-               day to two mounted the chart at full height in one frame. -->
+        {#if wearTrend.length}
           <div transition:slideMonit>
             <WearTrendChart
-              wearPoints={wearTrend}
-              regionPoints={regionTrend}
-              {wearMax}
-              regionMin={BODY_REGION_INTENSITY_MIN}
-              regionMax={BODY_REGION_INTENSITY_MAX}
-              highlight={trendHighlight}
-              ariaLabel={readAxis.keying
-                ? m.chart_axis_reading_aria({ reading: m.wear_session_trend_title(), axis: axisName })
-                : m.wear_session_trend_title()}
+              points={wearTrend}
+              {fromWeek}
+              {toWeek}
+              firstLabel={fromWeekLabel}
+              lastLabel={toWeekLabel}
+              ariaLabel={m.wear_session_trend_title()}
             />
-            <p class="muted small wear-trend-legend" use:resize>
-              {#each legendEntries as entry (entry.series)}
-                {@const label =
-                  entry.series === 'wear'
-                    ? m.wear_session_trend_wear_legend()
-                    : m.wear_session_trend_region_legend({ region: trendRegionLabel })}
-                {#if entry.state === 'empty'}
-                  <span out:crossfade>{m.wear_session_trend_series_empty({ series: label })}</span>
-                {:else if entry.state === 'one-day'}
-                  <span out:crossfade>{m.wear_session_trend_series_one_day({ series: label })}</span>
-                {:else}
-                  <span out:crossfade><span class="legend-dot legend-{entry.series}"></span>{label}</span>
-                {/if}
-              {/each}
-            </p>
           </div>
         {:else}
           <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
         {/if}
       </ChartCard>
+
+      <ListCard>
+        <div class="kit-row" data-wear-cue-switch>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.wear_duration_cue_toggle()}</span>
+            <span class="kit-row-sub">{m.wear_duration_cue_sub()}</span>
+          </span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={prefs.wearDurationCueEnabled}
+              label={m.wear_duration_cue_toggle()}
+              onChange={(v) => { prefs.wearDurationCueEnabled = v; }}
+            />
+          </span>
+        </div>
+      </ListCard>
 
     <!-- Saying you are done with this area (phase 8 features ticket 04). -->
     <AreaFinish group="wear" />
@@ -828,7 +673,7 @@
             <p class="wear-facts-title">{m.wear_facts_title()}</p>
             <ul class="muted small wear-facts-list">
               {#each safety.facts as fact (fact)}
-                <li>{fact}</li>
+                <li>{fact.text}</li>
               {/each}
             </ul>
             <p class="muted small">{safety.source}</p>
@@ -884,55 +729,6 @@
 </div>
 
 <style>
-  .wear-reading-controls {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .wear-reading-controls > .kit-filter {
-    padding-bottom: 0;
-  }
-
-  /* Crossfade leaves the slot's flow; position keeps its fading control here. */
-  .wear-reading-slot {
-    position: relative;
-  }
-
-  .wear-reading-note {
-    margin: 0;
-    padding: var(--space-2) 0;
-  }
-
-  /* The running session had an accent outline drawn around the row to say
-     it was live. The card it now sits in has an outline of its own and the
-     two would have been a line inside a line; what says it is running is
-     that it is the only row above the list, with a stop control where every
-     other row carries nothing. */
-  .wear-trend-legend {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-    margin-top: var(--space-2);
-  }
-
-  .legend-dot {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    margin-right: 4px;
-  }
-
-  .legend-wear {
-    background: var(--chart-line);
-  }
-
-  .legend-region {
-    background: var(--accent-2);
-  }
-
   /* Indented to the row's text column rather than the card's edge, so the
      cue reads as belonging to the session above it. */
   .wear-cue {

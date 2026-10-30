@@ -21,23 +21,24 @@
      later ticket extends, and RegistryRow draws one, so this page is the
      {#each} and nothing else.
 
-     **The four prompts below the list** came off Settings' Tracking section
-     with the same ticket, where they floated under no heading of their own.
-     Each is the app speaking up without being asked - after a mood-only
-     save, while writing, eight hours into a binder session - which is the
-     question this whole screen is about. The roadmap's milestone prompt
-     moved onto the roadmap itself (functional audit ticket 34). They
-     are not registry rows: none of them is a kind of its own with a surface
-     and a channel, each is one boolean a single feature reads, so they sit
-     under a heading of their own rather than being forced into a list whose
-     shape promises two columns.
+     **The prompt below the list** came off Settings' Tracking section
+     with the same ticket, where it floated under no heading of its own,
+     next to three others that have since moved. The binder cue went to
+     Wear (functional audit ticket 37) and the roadmap's milestone prompt
+     onto the roadmap itself (ticket 34), each beside the thing it is
+     about. What stays is the app speaking up without being asked, after
+     a mood-only save or while writing - which is the question this whole
+     screen is about. It is not a registry row: it is not a kind of its
+     own with a surface and a channel, only one boolean a single feature
+     reads, so it sits under a heading of its own rather than being forced
+     into a list whose shape promises two columns.
 
      Absent on web rather than shown and inert, for the notify column only
      (user story 18): a browser cannot fire a scheduled notification while
      the app is closed, so a switch there would be a promise the platform
      does not keep. The show column carries no such limit - a notice or a
      card is in-app UI, not an OS notification - so it stays live on web,
-     and so do the four prompts; only the notify slot on each row, the
+     and so do the prompts; only the notify slot on each row, the
      permission notice and the two notification-only cards after the list
      drop out. What takes their place on web sits above the rows it
      explains (ticket 13): the platform notice opens the screen, so every
@@ -141,8 +142,8 @@
 
   let anyNotifyOn = $derived(ROWS.some((row) => row.notify && prefs[row.notify.prefKey]));
 
-  /* The four prompts, in the order Settings drew them. A list rather than
-     four copies of the same eight lines of markup: they differ only in
+  /* The remaining prompts, in the order Settings drew them. A list rather than
+     copies of the same markup: they differ only in
      which boolean they write and what they are called.
 
      A named shape rather than an inline one, the way the registry names
@@ -156,13 +157,7 @@
   }
 
   const PROMPTS: PromptRow[] = [
-    { key: 'guided-prompts', prefKey: 'guidedPromptsEnabled', title: () => m.guided_prompts(), subtitle: () => m.guided_prompts_sub() },
-    {
-      key: 'wear-duration-cue',
-      prefKey: 'wearDurationCueEnabled',
-      title: () => m.wear_duration_cue_toggle(),
-      subtitle: () => m.wear_duration_cue_sub()
-    }
+    { key: 'guided-prompts', prefKey: 'guidedPromptsEnabled', title: () => m.guided_prompts(), subtitle: () => m.guided_prompts_sub() }
   ];
 </script>
 

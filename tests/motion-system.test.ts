@@ -1336,6 +1336,12 @@ describe('the cap on animating layout', () => {
       props: ['left', 'right', 'top', 'bottom'],
       reason:
         "the Journal month picker's pill (ticket 281), .segment-pill's shape on two axes: one absolutely positioned empty box out of the grid's flow, so its insets cannot move a month; the ticket's probe sampled 52 distinct frames of a two-step travel with no edge moving more than 15.2px in a frame"
+    },
+    {
+      selector: '.wear-week-bar',
+      props: ['width', 'height'],
+      reason:
+        'at most 53 SVG rects within one fixed 320 by 150 viewBox; changing range resizes bars without moving surrounding layout. The FA 37 Chromium motion probe sampled 56 animation frames over 900 ms with 14 bars and no missed frame'
     }
   ];
 

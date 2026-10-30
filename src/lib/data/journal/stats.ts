@@ -17,7 +17,7 @@
    Nothing is stored. A recap is recomputed from entries, tags, milestones
    and dimension values every time it is opened (ADR-0010). */
 
-import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
+import { epochDayFromTimestamp, startOfDayTimestamp, weekdayOfEpochDay } from '../epochDay';
 import type { ConstellationReading } from '../constellationData';
 import { regionReading, type RegionSideReading, type RegionSides } from '../bodyMap';
 import { normalize } from '../metricRange';
@@ -34,6 +34,12 @@ export interface DayAverage {
   value: number;
   /** How many entries went into the average, so a screen can say "avg of 2". */
   count: number;
+}
+
+export interface WeeklyWearHours {
+  /** Monday of the calendar week, even when the chosen range starts later. */
+  weekStart: number;
+  hours: number;
 }
 
 export interface DaySpread {
@@ -226,20 +232,10 @@ export interface StatsArea {
     toEpochDay: number,
     presentationId?: string | null
   ): Promise<RegionSideReading[]>;
-  /** One point per day at least one completed wear session started in the
-      range, oldest first, both ends inclusive - the same DayAverage shape
-      as bodyRegionTrend, so a wear-time trend overlays the same chart
-      (phase 5 ticket 04). `value` is the day's average wear duration in
-      hours (native units for this metric), averaged only over sessions
-      whose duration is known - a live session still running has nothing to
-      average yet. A session is attributed to the day it started even when
-      it ran past midnight, the same rule dose_event's own timestamp-only
-      attribution follows: nothing here re-derives a different day from how
-      long a session lasted. Grouped in JS rather than SQL, because
-      wear_session carries a raw timestamp and not a stored epoch_day
-      column, the same reason dose_event has no per-day trend of its own in
-      SQL either. */
-  wearTimeTrend(fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
+  /** Hours worn in each Monday-to-Sunday week overlapping the chosen day
+      range. Sessions crossing a week or range boundary contribute only their
+      overlap. A running session ends at `nowMs` for this read. */
+  weeklyWearHours(fromEpochDay: number, toEpochDay: number, nowMs: number): Promise<WeeklyWearHours[]>;
   /** Whether `epochDay` clears on-this-day's good-day bar (CONTEXT: Good
       day, phase 4 features ticket 03): its day average mood at or above
       the mood scale's midpoint, a euphoria capture logged that day, or
@@ -570,25 +566,31 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       );
     },
 
-    async wearTimeTrend(fromEpochDay, toEpochDay) {
-      const rows = await driver.query<{ start_timestamp: number; duration_ms: number }>(
+    async weeklyWearHours(fromEpochDay, toEpochDay, nowMs) {
+      const rangeStart = startOfDayTimestamp(fromEpochDay);
+      const rangeEnd = startOfDayTimestamp(toEpochDay + 1);
+      const rows = await driver.query<{ start_timestamp: number; duration_ms: number | null }>(
         `SELECT start_timestamp, duration_ms FROM wear_session
-         WHERE duration_ms IS NOT NULL AND start_timestamp >= ? AND start_timestamp < ?`,
-        [startOfDayTimestamp(fromEpochDay), startOfDayTimestamp(toEpochDay + 1)]
+         WHERE start_timestamp < ? AND (duration_ms IS NULL OR start_timestamp + duration_ms > ?)`,
+        [rangeEnd, rangeStart]
       );
 
-      const byDay = new Map<number, { totalMs: number; sessions: number }>();
+      const byWeek = new Map<number, number>();
       for (const row of rows) {
-        const day = epochDayFromTimestamp(row.start_timestamp);
-        const bucket = byDay.get(day) ?? { totalMs: 0, sessions: 0 };
-        bucket.totalMs += row.duration_ms;
-        bucket.sessions += 1;
-        byDay.set(day, bucket);
+        let cursor = Math.max(row.start_timestamp, rangeStart);
+        const end = Math.min(row.start_timestamp + (row.duration_ms ?? nowMs - row.start_timestamp), rangeEnd);
+        while (cursor < end) {
+          const day = epochDayFromTimestamp(cursor);
+          const weekStart = day - weekdayOfEpochDay(day);
+          const next = Math.min(end, startOfDayTimestamp(weekStart + 7));
+          byWeek.set(weekStart, (byWeek.get(weekStart) ?? 0) + next - cursor);
+          cursor = next;
+        }
       }
 
-      return [...byDay.entries()]
-        .map(([day, { totalMs, sessions }]) => ({ day, value: totalMs / sessions / 3600000, count: sessions }))
-        .sort((a, b) => a.day - b.day);
+      return [...byWeek.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([weekStart, totalMs]) => ({ weekStart, hours: totalMs / 3600000 }));
     },
 
     async tallyTrend(kind, fromEpochDay, toEpochDay) {

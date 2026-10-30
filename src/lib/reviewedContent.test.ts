@@ -4,6 +4,7 @@
 
 import { expect, test } from 'vitest';
 import { REVIEWED_CONTENT, REVIEW_LIMIT_MONTHS, reviewDueOn, staleContent, type ReviewedContent } from './reviewedContent';
+import { wearSafetyFacts } from './data/vocabulary/wearLabels';
 
 const fixture = (kind: ReviewedContent['kind'], reviewedOn: string): ReviewedContent => ({
   area: 'Fixture',
@@ -41,6 +42,21 @@ test('a reviewed-on value that is not an ISO day is always flagged', () => {
 test('every shipped area is registered, with a real ISO day', () => {
   expect(new Set(REVIEWED_CONTENT.map((entry) => entry.area))).toEqual(new Set(['Onset bands', 'Resources', 'Roadmap', 'Voice', 'Wear']));
   for (const entry of REVIEWED_CONTENT) expect(reviewDueOn(entry), `${entry.area}: ${entry.item}`).not.toBeNull();
+});
+
+test('each shipped wear safety fact carries its own reviewed-on metadata in the guard', () => {
+  const wearEntries = REVIEWED_CONTENT.filter((entry) => entry.area === 'Wear');
+  for (const kind of ['binder', 'tucking', 'compression'] as const) {
+    const facts = wearSafetyFacts(kind).facts;
+    expect(facts).toHaveLength(3);
+    for (const [index, fact] of facts.entries()) {
+      expect(fact).toHaveProperty('reviewedOn');
+      expect(wearEntries).toContainEqual(expect.objectContaining({
+        item: `${kind} safety fact ${index + 1}`,
+        reviewedOn: fact.reviewedOn
+      }));
+    }
+  }
 });
 
 test('nothing shipped is past its limit on the day it was last reviewed', () => {

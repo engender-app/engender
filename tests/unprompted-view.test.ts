@@ -30,6 +30,7 @@ const screen = read('src/routes/settings/notifications/+page.svelte');
 const screenMarkup = stripScript(screen);
 const row = read('src/lib/unprompted/RegistryRow.svelte');
 const editor = read('src/lib/components/TodayEditor.svelte');
+const wear = read('src/routes/body/wear/+page.svelte');
 
 describe('what the merged screen is built from', () => {
   it('draws relevant registry kinds, not hand-written rows', () => {
@@ -38,7 +39,7 @@ describe('what the merged screen is built from', () => {
     expect(screen).toContain('isWeb ? ROWS.filter((row) => row.surface) : ROWS');
     expect(screen).toContain('homeRows = $derived(visibleRows.filter((row) => row.surface))');
     expect(screen).toContain('notifyRows = $derived(visibleRows.filter((row) => !row.surface))');
-    // One {#each} per registry card, and one over the four prompts.
+    // One {#each} per registry card, and one over the remaining prompts.
     expect(screenMarkup.match(/\{#each\b/g)?.length).toBe(3);
     expect(screenMarkup.match(/<RegistryRow/g)?.length).toBe(2);
   });
@@ -63,9 +64,11 @@ describe('what the merged screen is built from', () => {
 
   it('carries remaining prompts under a heading', () => {
     expect(screenMarkup).toContain('m.notif_prompts_heading()');
-    for (const key of ['guided-prompts', 'wear-duration-cue']) {
+    for (const key of ['guided-prompts']) {
       expect(screen).toContain(`key: '${key}'`);
     }
+    expect(screen).not.toContain("key: 'wear-duration-cue'");
+    expect(wear).toContain('prefs.wearDurationCueEnabled = v');
     // Functional audit ticket 34 moved the roadmap's milestone prompt onto
     // the roadmap screen, next to the ticks it is about.
     expect(screen).not.toContain('roadmapMilestoneSyncEnabled');

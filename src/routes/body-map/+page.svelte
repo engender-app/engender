@@ -362,6 +362,11 @@
 </div>
 
 <style>
+  .kit-filter-label {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+
   /* The figure's own card. The shapes are the drawing, so the card gives
      them room and nothing else - no silhouette to sit on, because
      whole_body is the ground now. */

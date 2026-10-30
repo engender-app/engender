@@ -7571,17 +7571,34 @@ try {
   }
   /* Remaining prompts that came off Settings' Tracking section. The
      roadmap's milestone prompt moved onto the roadmap (functional audit
-     ticket 34). */
-  if (await page.locator('[data-prompt="roadmap-milestone-sync"]').count()) {
-    throw new Error('the roadmap milestone prompt is still on the notifications screen');
+     ticket 34), the binder cue onto Wear (ticket 37). */
+  for (const key of ['roadmap-milestone-sync', 'wear-duration-cue']) {
+    if (await page.locator(`[data-prompt="${key}"]`).count()) {
+      throw new Error('the ' + key + ' prompt is still on the notifications screen');
+    }
   }
-  for (const key of ['guided-prompts', 'wear-duration-cue']) {
+  for (const key of ['guided-prompts']) {
     if (!(await page.locator(`[data-prompt="${key}"]`).count())) {
       throw new Error('the ' + key + ' prompt did not arrive with the rest');
     }
   }
+  if (await page.locator('[data-prompt="wear-duration-cue"]').count()) {
+    throw new Error('the binder cue switch still appears in Notifications');
+  }
+  await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
+  const cue = page.locator('[data-wear-cue-switch] [role="switch"]');
+  await cue.waitFor();
+  const beforeCue = await cue.getAttribute('aria-checked');
+  await cue.click();
+  if ((await cue.getAttribute('aria-checked')) === beforeCue) {
+    throw new Error('the binder cue switch on Wear did not change');
+  }
+  await page.reload({ waitUntil: 'networkidle' });
+  if ((await page.locator('[data-wear-cue-switch] [role="switch"]').getAttribute('aria-checked')) === beforeCue) {
+    throw new Error('the binder cue switch on Wear did not persist');
+  }
 
-  ok('one screen over one registry: notify column absent on web, the show column holds what Today does not arrange, and the remaining prompts are under their heading');
+  ok('the notification registry stays on its screen; the binder cue switch persists on Wear');
 } catch (e) { fail('the unprompted registry view', e); }
 });
 

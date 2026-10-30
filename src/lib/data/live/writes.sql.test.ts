@@ -1105,7 +1105,7 @@ beforeAll(async () => {
     journal.stats.bodyRegionTrend('chest', 'dysphoria', 19000, 21000)
   );
   await driveRead('stats', 'bodyRegionBreakdown', () => journal.stats.bodyRegionBreakdown('chest'));
-  await driveRead('stats', 'wearTimeTrend', () => journal.stats.wearTimeTrend(0, 30000));
+  await driveRead('stats', 'weeklyWearHours', () => journal.stats.weeklyWearHours(0, 30000, Date.now()));
   await driveRead('stats', 'tallyTrend', () => journal.stats.tallyTrend('misgendered', 0, 30000));
   await driveRead('stats', 'bodyRegionMap', () => journal.stats.bodyRegionMap(19000, 21000));
   await driveRead('stats', 'entryCountsByDay', () => journal.stats.entryCountsByDay(19000, 21000));
