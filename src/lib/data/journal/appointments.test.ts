@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './test-support.ts';
 import { soonestFutureAppointment, mostRecentPastAppointment, appointmentsOnDay, chosenAppointmentOnDay, waitingSince } from './appointments.ts';
 import type { Appointment } from '../types.ts';
+import { NO_COST } from '../cost.ts';
 
 test('an appointment carries a day, a kind, a place and a note, and edits', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -32,7 +33,8 @@ test('an appointment carries a day, a kind, a place and a note, and edits', asyn
       note: 'ask about the dose',
       referredEpochDay: null,
       time: null,
-      providerId: null
+      providerId: null,
+      cost: NO_COST
     }
   ]);
 
@@ -62,7 +64,7 @@ test('everything but the day may be left out', async () => {
     note: null
   });
   const [only] = await journal.appointments.getAppointments();
-  assert.deepEqual(only, { id, epochDay: 20100, procedureId: null, kind: null, place: null, note: null, referredEpochDay: null, time: null, providerId: null });
+  assert.deepEqual(only, { id, epochDay: 20100, procedureId: null, kind: null, place: null, note: null, referredEpochDay: null, time: null, providerId: null, cost: NO_COST });
 });
 
 test('appointments come back oldest first', async () => {
@@ -256,7 +258,8 @@ test('getAppointment reads one row by id, or undefined for an unknown one', asyn
     note: null,
     referredEpochDay: null,
     time: null,
-    providerId: null
+    providerId: null,
+    cost: NO_COST
   });
   assert.equal(await journal.appointments.getAppointment('no-such-appointment'), undefined);
 });
@@ -268,7 +271,7 @@ test('getAppointment reads one row by id, or undefined for an unknown one', asyn
    never appears in either list: the prep screen's own comment says an
    appointment later today is not past yet, and the debrief's existing
    "strictly past" condition is what this extends. */
-const blank = { procedureId: null, kind: null, place: null, note: null, referredEpochDay: null, time: null, providerId: null };
+const blank = { procedureId: null, kind: null, place: null, note: null, referredEpochDay: null, time: null, providerId: null, cost: NO_COST };
 const at = (epochDay: number, id: string): Appointment => ({ ...blank, id, epochDay });
 
 test('soonestFutureAppointment picks the earliest day at or after today, or null', () => {
@@ -344,14 +347,14 @@ test('a referral is created without a day, waits, and is later given one', async
 
   assert.deepEqual(await journal.appointments.getAppointments(), [], 'no day, so not a visit');
   assert.deepEqual(await journal.appointments.getWaiting(), [
-    { id, epochDay: null, referredEpochDay: 19000, ...referral, time: null, providerId: null }
+    { id, epochDay: null, referredEpochDay: 19000, ...referral, time: null, providerId: null, cost: NO_COST }
   ]);
   assert.equal(await journal.appointments.getAppointment(id), undefined, 'the debrief link reads visits only');
 
   await journal.appointments.upsertAppointment({ ...referral, id, epochDay: 19400, referredEpochDay: 19000 });
   assert.deepEqual(await journal.appointments.getWaiting(), []);
   assert.deepEqual(await journal.appointments.getAppointments(), [
-    { id, epochDay: 19400, referredEpochDay: 19000, ...referral, time: null, providerId: null }
+    { id, epochDay: 19400, referredEpochDay: 19000, ...referral, time: null, providerId: null, cost: NO_COST }
   ]);
 });
 

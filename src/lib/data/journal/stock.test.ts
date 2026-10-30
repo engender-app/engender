@@ -14,6 +14,7 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource.ts';
 import { projectStock } from '../stockProjection.ts';
+import { NO_COST } from '../cost.ts';
 
 const DIED = /the process died here/;
 
@@ -72,7 +73,8 @@ test('an entry gets a minted uuid id and round-trips every field', async () => {
       leadTimeDays: null,
       dosesPerUnit: null,
       expiryEpochDay: null,
-      pharmacyNote: null
+      pharmacyNote: null,
+      cost: NO_COST
     }
   ]);
 });

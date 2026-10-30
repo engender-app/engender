@@ -422,7 +422,8 @@ const READS_ITS_OWN_SQL: Partial<Record<keyof Journal, string>> = {
   voice: 'the recording rows dated, read straight off the driver',
   videos: 'the video-note rows dated, read straight off the driver',
   photoLibrary:
-    'one UNION ALL over the six tables that hold a photograph, so that the ordering rule is applied once by the thing holding the index rather than assembled from six reads above the seam (photoLibrary.ts)'
+    'one UNION ALL over the six tables that hold a photograph, so that the ordering rule is applied once by the thing holding the index rather than assembled from six reads above the seam (photoLibrary.ts)',
+  costs: 'one UNION ALL over the five tables that hold a cost (costs.ts)'
 };
 
 const READ_OPERATIONS_ITS_OWN_SQL = {

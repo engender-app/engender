@@ -197,8 +197,9 @@ export async function seedCompleteArchiveJournal(
     method: 'laser',
     painRating: 2,
     minutes: 45,
-    cost: '250 PLN',
-    provider: 'Klinika Laserowa'
+    cost: { amount: 250, currency: 'PLN', refunded: true },
+    provider: 'Klinika Laserowa',
+    note: 'numbing cream helped'
   });
   // Unrated and untimed-pain, the shape FA 28 allows: no rating is stored.
   await journal.hairRemoval.upsertSession({
@@ -206,7 +207,6 @@ export async function seedCompleteArchiveJournal(
     area: 'genital_surgical_site',
     method: 'electrolysis',
     minutes: 90,
-    cost: '',
     provider: ''
   });
   await journal.hairRemoval.addPhoto(hairRemovalSession, { full: bytes('session'), thumb: bytes('st') });

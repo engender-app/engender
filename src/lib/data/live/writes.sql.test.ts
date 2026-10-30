@@ -683,7 +683,7 @@ beforeAll(async () => {
       area: 'upper_lip',
       method: 'laser',
       painRating: 2,
-      cost: '250 PLN',
+      cost: { amount: 250, currency: 'PLN', refunded: false },
       provider: 'Klinika Laserowa'
     })
   )) as string;
@@ -697,7 +697,6 @@ beforeAll(async () => {
       area: 'chin',
       method: 'electrolysis',
       painRating: 3,
-      cost: '',
       provider: ''
     })
   )) as string;
@@ -1020,6 +1019,7 @@ beforeAll(async () => {
   await driveRead('lastWrite', 'getLastWrites', () => journal.lastWrite.getLastWrites(20000));
   await driveRead('lastWrite', 'getWritingDays', () => journal.lastWrite.getWritingDays(20000));
   await driveRead('dayAhead', 'getDayAhead', () => journal.dayAhead.getDayAhead(0, 30000, 20000));
+  await driveRead('costs', 'getCosts', () => journal.costs.getCosts());
   await driveRead('textSearch', 'search', () =>
     journal.textSearch.search({ query: 'good', today: 20000, limit: 10 })
   );

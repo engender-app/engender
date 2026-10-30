@@ -24,6 +24,7 @@ import { reconcileStockReminder } from '../stockReminder';
 import { stockAutoSource } from '../autoSource';
 import { NOTHING_WRITTEN, type NothingWritten } from './nothingWritten';
 import { drugNameKey } from '../regimenEpisode';
+import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInput, type CostRow } from '../cost';
 
 interface StockEntryInput {
   /** The entry being edited. With it the row is matched by id, so a new
@@ -56,6 +57,10 @@ interface StockEntryInput {
       clears them. Blank text is stored as null. */
   expiryEpochDay?: number | null;
   pharmacyNote?: string | null;
+  /** What the supply held now cost (FA 30). Optional and defaulted to none;
+      like the expiry, a count that leaves it out clears it. Throws if
+      invalid. */
+  cost?: CostInput;
 }
 
 export interface StockProjectionRow {
@@ -117,7 +122,7 @@ type StockRow = {
   doses_per_unit: number | null;
   expiry_epoch_day: number | null;
   pharmacy_note: string | null;
-};
+} & CostRow;
 
 const toStock = (row: StockRow): MedicationStock => ({
   id: row.uuid,
@@ -133,13 +138,14 @@ const toStock = (row: StockRow): MedicationStock => ({
   leadTimeDays: row.lead_time_days,
   dosesPerUnit: row.doses_per_unit,
   expiryEpochDay: row.expiry_epoch_day,
-  pharmacyNote: row.pharmacy_note
+  pharmacyNote: row.pharmacy_note,
+  cost: costFromRow(row)
 });
 
 const STOCK_COLUMNS =
   'uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed, ' +
   'opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, ' +
-  'expiry_epoch_day, pharmacy_note';
+  'expiry_epoch_day, pharmacy_note, cost_amount, cost_currency, cost_refunded';
 
 /** Where box 4's reminder marks which drug it belongs to
     (stockReminder.ts). The marker itself lives in autoSource.ts, which is
@@ -189,6 +195,8 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
     getProjections: projections,
 
     async upsertEntry(input) {
+      const cost = normalizeCost(input.cost);
+      assertValidCost(cost);
       return driver.transaction(async (scope) => {
         const scopedReminders = makeRemindersArea(scope);
         const drug = input.drug.trim();
@@ -236,6 +244,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
           input.dosesPerUnit ?? null,
           input.expiryEpochDay ?? null,
           input.pharmacyNote?.trim() || null,
+          ...costColumns(cost),
           now()
         ];
 
@@ -244,7 +253,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
             `UPDATE medication_stock
                 SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
                     opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, doses_per_unit = ?,
-                    expiry_epoch_day = ?, pharmacy_note = ?, updated_at = ?,
+                    expiry_epoch_day = ?, pharmacy_note = ?, cost_amount = ?, cost_currency = ?, cost_refunded = ?, updated_at = ?,
                     drug = ?, drug_key = ?
               WHERE uuid = ?`,
             [...values, drug, drugKey, existing[0].uuid]
@@ -257,8 +266,8 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
           `INSERT INTO medication_stock
              (uuid, drug, drug_key, quantity, unit, recorded_epoch_day, reminder_ever_created,
               opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit,
-              expiry_epoch_day, pharmacy_note, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              expiry_epoch_day, pharmacy_note, cost_amount, cost_currency, cost_refunded, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [uuid, drug, drugKey, ...values]
         );
         return uuid;

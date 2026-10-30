@@ -10,6 +10,7 @@ import { drawUpperBound, labTimingFor, selectTimingDose, type CandidateDose, typ
 import { assertChanged, mintUuid, now } from './support';
 import { normalizeUnit } from '../labs/units';
 import type { RegimenArea } from './regimen';
+import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInput, type CostRow } from '../cost';
 
 /** The analytes offered before any result exists. Lowercase scientific
     names shown as-is, like every stored analyte. Order is cosmetic - it
@@ -34,6 +35,9 @@ export interface LabResultInput {
       known, and no hours figure is derived. */
   drawTime?: string | null;
   provider?: string;
+  /** What the test cost (FA 30). Absent or null is none, like `note`; the
+      editor always resubmits it. Throws if invalid. */
+  cost?: CostInput;
 }
 
 /** One chart line: the results of one analyte that share a unit, oldest
@@ -103,7 +107,7 @@ export interface LabsArea {
   deleteResult(id: string): Promise<void>;
 }
 
-type LabRow = {
+type LabRow = CostRow & {
   uuid: string;
   epoch_day: number;
   analyte: string;
@@ -118,7 +122,7 @@ type LabRow = {
 };
 
 const LAB_COLUMNS = `uuid, epoch_day, analyte, value, unit, note, draw_time, provider,
-                     timing_route, timing_hours, timing_day_of_interval`;
+                     timing_route, timing_hours, timing_day_of_interval, cost_amount, cost_currency, cost_refunded`;
 
 /** The three timing columns collapsed into the arm their route names, so a
     result comes out with one figure rather than with two nulls beside it
@@ -146,7 +150,8 @@ const toLabResult = (row: LabRow): LabResult => ({
   note: row.note ?? '',
   drawTime: row.draw_time,
   provider: row.provider,
-  timing: toLabTiming(row)
+  timing: toLabTiming(row),
+  cost: costFromRow(row)
 });
 
 /** A LabTiming as the columns that hold it. The inverse of toLabTiming. */
@@ -310,6 +315,8 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
     async upsertResult(input) {
       const draw: LabDraw = { epochDay: input.epochDay, drawTime: input.drawTime ?? null };
       const fields = [input.analyte, input.value, input.unit ?? '', input.note ?? '', input.provider ?? ''];
+      const cost = normalizeCost(input.cost);
+      assertValidCost(cost);
 
       if (input.id) {
         const existing = (
@@ -336,9 +343,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
         const result = await driver.run(
           `UPDATE lab_result
               SET epoch_day = ?, analyte = ?, value = ?, unit = ?, note = ?, provider = ?, draw_time = ?,
-                  timing_route = ?, timing_hours = ?, timing_day_of_interval = ?, updated_at = ?
+                  timing_route = ?, timing_hours = ?, timing_day_of_interval = ?,
+                  cost_amount = ?, cost_currency = ?, cost_refunded = ?, updated_at = ?
             WHERE uuid = ?`,
-          [input.epochDay, ...fields, draw.drawTime, ...timing, now(), input.id]
+          [input.epochDay, ...fields, draw.drawTime, ...timing, ...costColumns(cost), now(), input.id]
         );
         assertChanged(result, `lab result: ${input.id}`);
         return input.id;
@@ -347,9 +355,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       const uuid = mintUuid();
       await driver.run(
         `INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, provider, draw_time,
-                                 timing_route, timing_hours, timing_day_of_interval, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [uuid, input.epochDay, ...fields, draw.drawTime, ...timingColumns(await deriveTiming(draw, input.analyte)), now()]
+                                 timing_route, timing_hours, timing_day_of_interval,
+                                 cost_amount, cost_currency, cost_refunded, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuid, input.epochDay, ...fields, draw.drawTime, ...timingColumns(await deriveTiming(draw, input.analyte)), ...costColumns(cost), now()]
       );
       return uuid;
     },

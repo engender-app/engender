@@ -50,6 +50,7 @@ import { calendarDuration, type CalendarDuration } from '../epochDay';
 import type { Appointment, AppointmentStatusUpdate, Provider, ProviderCompetence, WaitingAppointment } from '../types';
 import { flatArea, type FlatInput } from './flatArea';
 import { assertChanged, mintUuid, now } from './support';
+import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInput, type CostRow } from '../cost';
 
 export interface AppointmentInput {
   /** Absent to create, present to update. Updating an unknown id throws
@@ -72,6 +73,9 @@ export interface AppointmentInput {
   kind: string | null;
   place: string | null;
   note: string | null;
+  /** What it cost (FA 30). Absent is none, on an update as on a create, like
+      `referredEpochDay`: the editor always passes it. Throws if invalid. */
+  cost?: CostInput;
 }
 
 /** One appointment as a day view reads it: what it was and where, with the
@@ -222,7 +226,7 @@ export function chosenAppointmentOnDay(
 /** The `appointment`/`procedure` join every `getAppointments`/`getAppointment`
     row shares, so the two differ only in their `WHERE`, not in what a row
     means. */
-type AppointmentRow = {
+type AppointmentRow = CostRow & {
   uuid: string;
   epoch_day: number | null;
   referred_epoch_day: number | null;
@@ -236,7 +240,8 @@ type AppointmentRow = {
 
 const APPOINTMENT_SELECT = `SELECT a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
                 a.kind AS kind, a.place AS place, a.note AS note, a.referred_epoch_day AS referred_epoch_day,
-                a.time_of_day AS time_of_day, p.uuid AS provider_uuid
+                a.time_of_day AS time_of_day, p.uuid AS provider_uuid,
+                a.cost_amount AS cost_amount, a.cost_currency AS cost_currency, a.cost_refunded AS cost_refunded
            FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id
            LEFT JOIN provider p ON p.id = a.provider_id`;
 
@@ -248,7 +253,8 @@ const fieldsOf = (row: AppointmentRow) => ({
   note: row.note,
   referredEpochDay: row.referred_epoch_day,
   time: row.time_of_day,
-  providerId: row.provider_uuid
+  providerId: row.provider_uuid,
+  cost: costFromRow(row)
 });
 
 /* Each read below filters on whether the day is there, so the casts state
@@ -341,6 +347,8 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
       const time = input.time || null;
       if (time !== null && !isClockTime(time)) throw new Error(`not a time of day: ${time}`);
       if (time !== null && input.epochDay === null) throw new Error('a wait with no day has no time');
+      const cost = normalizeCost(input.cost);
+      assertValidCost(cost);
       const rowid = await procedureRowid(input.procedureId);
       const providerRow = await providerRowid(input.providerId);
       const values = [
@@ -351,13 +359,15 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
         trimmed(input.note),
         input.referredEpochDay ?? null,
         time,
-        providerRow
+        providerRow,
+        ...costColumns(cost)
       ];
 
       if (input.id) {
         const result = await driver.run(
           `UPDATE appointment SET procedure_id = ?, epoch_day = ?, kind = ?, place = ?, note = ?,
-                  referred_epoch_day = ?, time_of_day = ?, provider_id = ?, updated_at = ?
+                  referred_epoch_day = ?, time_of_day = ?, provider_id = ?,
+                  cost_amount = ?, cost_currency = ?, cost_refunded = ?, updated_at = ?
             WHERE uuid = ?`,
           [...values, now(), input.id]
         );
@@ -368,8 +378,8 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
       const uuid = mintUuid();
       await driver.run(
         `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, referred_epoch_day,
-                                  time_of_day, provider_id, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                  time_of_day, provider_id, cost_amount, cost_currency, cost_refunded, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [uuid, ...values, now()]
       );
       return uuid;

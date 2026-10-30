@@ -861,6 +861,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
        date on screen. */
     reads: { getEntries: ['stock'], getProjections: ['stock', 'dose', 'regimen'] }
   }),
+  /* Read-only across the five areas that carry a cost (FA 30). */
+  costs: classify<Journal['costs']>()({
+    writes: {},
+    reads: { getCosts: ['hairRemoval', 'appointment', 'procedure', 'lab', 'stock'] }
+  }),
   /* Read-only for the same reason exposure below is: an annotation is
      selected out of seven other areas' rows on every read and stored nowhere
      (ADR-0010, phase 5 deepening ticket 23). One table per area behind it -

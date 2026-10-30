@@ -57,6 +57,7 @@ import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
 import { makeTaperArea, type TaperArea } from './taper';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeStockArea, type StockArea } from './stock';
+import { makeCostsArea, type CostsArea } from './costs';
 import { makeTagsArea, type TagsArea } from './tags';
 import { makeTallyArea, type TallyArea } from './tally';
 import { makeTextSearchArea, type TextSearchArea } from './textSearch';
@@ -155,6 +156,10 @@ export interface Journal {
       (phase 4 ticket 04). A view over rows `doses`, `regimen` and
       `reminders` own, not a fourth owner for any of them. */
   stock: StockArea;
+  /** Every record that carries a cost, read across the five areas that
+      hold one (functional audit ticket 30). Read-only; totals go through
+      costTotalsByCurrency (cost.ts), never across currencies. */
+  costs: CostsArea;
   /** Cumulative dose totals, days-on-each-route and time-on-each-regimen,
       purely descriptive (phase 4 ticket 05). A view over rows `doses` and
       `regimen` own, not a third owner for either one. */
@@ -410,6 +415,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     regimen,
     doses,
     stock: makeStockArea(driver, doses, regimen),
+    costs: makeCostsArea(driver),
     exposure,
     sideEffects,
     cycleEvents,
