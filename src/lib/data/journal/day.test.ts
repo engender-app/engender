@@ -232,14 +232,16 @@ test('a maximal day costs one pass per area, not one per row', async () => {
     sparse,
     `a busy day cost ${busy} queries against a sparse day's ${sparse}: something reads per row`
   );
-  /* 26 for 18 sections as this lands: entries hydrate their dimension
+  /* 27 for 18 sections as this lands: entries hydrate their dimension
      values, tags, body regions, photos, recordings and video notes,
      milestones read their photos, and procedures asks for consults and
      recovery photos separately. Held as a number rather than derived so
      that a section quietly gaining a query has to come back here and say
      so. Documents is the eighteenth and costs the one query a flat area
-     costs (phase 8 features ticket 52). */
-  assert.equal(busy, 26, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
+     costs (phase 8 features ticket 52). Dilation reads its schedule
+     beside its sessions, one query more, so a times-a-day day can number
+     them (functional audit ticket 25). */
+  assert.equal(busy, 27, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
 });
 
 test('a test may register a section of its own and read it back through the same path', async () => {

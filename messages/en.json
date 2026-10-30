@@ -678,6 +678,7 @@
   "dilation_session_new_sheet": "New session",
   "dilation_session_note_label": "Note",
   "dilation_session_note_placeholder": "Optional",
+  "dilation_session_numbered": "Session {index} of {count}",
   "dilation_session_save": "Save",
   "dilation_sessions_empty_body": "Sessions will show here once your schedule is active.",
   "dilation_sessions_empty_title": "Nothing expected yet",
@@ -687,7 +688,42 @@
   "dilation_stage_duration_aria": "For how many days",
   "dilation_stage_frequency_aria": "Every how many days",
   "dilation_stage_hint": "Enter each stage's frequency and duration in your surgeon's order.",
+  "dilation_stage_kind_every": "Every few days",
+  "dilation_stage_kind_label": "How often",
+  "dilation_stage_kind_per_day": "Times a day",
   "dilation_stage_legend": "Stages",
+  "dilation_stage_now_every": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Every day",
+        "countPlural=other": "Every {count} days"
+      }
+    }
+  ],
+  "dilation_stage_now_rest": "No sessions in this stage",
+  "dilation_stage_now_times": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Once a day",
+        "countPlural=other": "{count} times a day"
+      }
+    }
+  ],
+  "dilation_stage_times_aria": "How many times a day",
   "dilation_start_day_hint": "Usually a few days after surgery, once your surgeon says to begin.",
   "dilation_start_day_label": "Start day",
   "dim_agender_gendered": "agender - genderful",

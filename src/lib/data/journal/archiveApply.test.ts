@@ -937,6 +937,49 @@ test('applyTaper resolves its procedure link, drops a taper whose procedure is n
   assert.deepEqual((await select<{ stages: string }>(driver, 'SELECT stages FROM taper'))[0].stages, '[]');
 });
 
+/* Functional audit ticket 25: one taper per procedure. A merge bringing a
+   second schedule for a procedure that already has one keeps the one here,
+   and so does an archive that itself carries two. */
+test('merging a second taper for a procedure that has one keeps one', async () => {
+  const driver = await migratedDb();
+  await seedProcedure(driver, 'proc1');
+  await seedProcedure(driver, 'proc2');
+  const here: ArchiveTaper = { id: 'here', procedureId: 'proc1', startEpochDay: 20100, stagesJson: '[]' };
+  await applyTaper(restoring(driver, { taper: [here] }, 'merge', 4));
+
+  await applyTaper(restoring(driver, {
+    taper: [
+      { ...here, id: 'incoming', stagesJson: '[{"everyNDays":1,"timesPerDay":3,"days":14}]' },
+      { ...here, id: 'other1', procedureId: 'proc2' },
+      { ...here, id: 'other2', procedureId: 'proc2' }
+    ]
+  }, 'merge', 9));
+
+  assert.deepEqual(
+    await select(driver, 'SELECT t.uuid AS uuid, p.uuid AS procedure, t.stages AS stages FROM taper t JOIN procedure p ON p.id = t.procedure_id ORDER BY p.uuid'),
+    [
+      { uuid: 'here', procedure: 'proc1', stages: '[]' },
+      { uuid: 'other2', procedure: 'proc2', stages: '[]' }
+    ]
+  );
+});
+
+/* An archive written before schema v112 can carry two tapers for one
+   procedure. The export lists them in row order and carries no updated_at,
+   so the later one stands for the newer, and a restore keeps it: the same
+   survivor the v112 migration picks on a journal it upgrades. */
+test('restoring an archive with two tapers for one procedure keeps the later one', async () => {
+  const driver = await migratedDb();
+  await seedProcedure(driver, 'proc1');
+  const taper = (id: string, startEpochDay: number): ArchiveTaper => ({ id, procedureId: 'proc1', startEpochDay, stagesJson: '[]' });
+
+  await applyTaper(restoring(driver, { taper: [taper('older', 20100), taper('newer', 20200)] }, 'replace', 9));
+
+  assert.deepEqual(await select(driver, 'SELECT uuid, start_epoch_day FROM taper'), [
+    { uuid: 'newer', start_epoch_day: 20200 }
+  ]);
+});
+
 // applyAppointments -------------------------------------------------------------
 
 test('applyAppointments resolves its optional procedure link, keeps the day when it cannot, and leaves a matched uuid alone', async () => {

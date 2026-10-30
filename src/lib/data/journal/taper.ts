@@ -23,6 +23,7 @@
    reads every stage at once and never queries one on its own. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import { sessionSlots, sessionsExpectedOn, type SessionSlotNumber } from '../taperSchedule';
 import type { Taper, TaperSession, TaperStage } from '../types';
 import { flatArea } from './flatArea';
 import { assertChanged, mintUuid, now, rowidByUuid } from './support';
@@ -33,6 +34,11 @@ interface TaperInput {
   startEpochDay: number;
   stages: TaperStage[];
 }
+
+/** A session as a day lists it: which of that day's expected sessions it
+    is, when the schedule asked for more than one (functional audit ticket
+    25). */
+export type DayTaperSession = TaperSession & { slot: SessionSlotNumber };
 
 interface TaperSessionInput {
   id?: string;
@@ -51,6 +57,9 @@ export interface TaperArea {
   upsertTaper(input: TaperInput): Promise<string>;
   getSessions(): Promise<TaperSession[]>;
   getSessionsOnDay(epochDay: number): Promise<TaperSession[]>;
+  /** The day's sessions numbered against what the schedule expected that
+      day: "session 2 of 3" on a times-a-day stage (day.ts). */
+  getDaySessions(epochDay: number): Promise<DayTaperSession[]>;
   /** The day of the most recent session at or before `todayEpochDay`, or
       null if there is none (lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
@@ -86,11 +95,13 @@ export function makeTaperArea(driver: SqliteDriver): TaperArea {
     columns: { epochDay: 'epoch_day', note: 'note' }
   });
 
+  async function getTaper() {
+    const rows = await driver.query<TaperRow>(`${TAPER_SELECT} ORDER BY t.id LIMIT 1`);
+    return rows[0] ? toTaper(rows[0]) : null;
+  }
+
   return {
-    async getTaper() {
-      const rows = await driver.query<TaperRow>(`${TAPER_SELECT} ORDER BY t.id LIMIT 1`);
-      return rows[0] ? toTaper(rows[0]) : null;
-    },
+    getTaper,
 
     async upsertTaper(input) {
       // Resolved before either branch writes, so an unknown procedure
@@ -118,6 +129,15 @@ export function makeTaperArea(driver: SqliteDriver): TaperArea {
     getSessions: () => sessions.read('ORDER BY epoch_day, id'),
 
     getSessionsOnDay: (epochDay) => sessions.read('WHERE epoch_day = ? ORDER BY id', [epochDay]),
+
+    async getDaySessions(epochDay) {
+      const [onDay, taper] = await Promise.all([
+        sessions.read('WHERE epoch_day = ? ORDER BY id', [epochDay]),
+        getTaper()
+      ]);
+      const expected = taper ? sessionsExpectedOn(taper, epochDay) : 0;
+      return sessionSlots(onDay, expected).flatMap(({ session, slot }) => (session ? [{ ...session, slot }] : []));
+    },
 
     async lastWriteEpochDay(todayEpochDay) {
       const [latest] = await sessions.read('WHERE epoch_day <= ? ORDER BY epoch_day DESC LIMIT 1', [todayEpochDay]);

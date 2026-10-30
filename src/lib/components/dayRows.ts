@@ -169,12 +169,17 @@ const SECTION_ROWS: Record<
       href: `${hubRow('voice-benchmark').href}?tab=compare`
     })),
 
+  // "Session 2 of 3" on a day a times-a-day stage asked for several
+  // (functional audit ticket 25), beside the note when there is one.
   taperSessions: (day) =>
     day.taperSessions.map((session) => ({
       key: `taper-${session.id}`,
       ...iconOf('dilation'),
       title: m.dilation(),
-      subtitle: session.note || undefined,
+      subtitle:
+        [session.slot && m.dilation_session_numbered({ index: session.slot.index, count: session.slot.count }), session.note]
+          .filter(Boolean)
+          .join(' · ') || undefined,
       href: hubRow('dilation').href
     })),
 

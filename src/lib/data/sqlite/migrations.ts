@@ -318,5 +318,20 @@ INSERT INTO roadmap_category (uuid, name, updated_at)
   SELECT track, '', MAX(updated_at) FROM roadmap_goal
     WHERE track IN ('social', 'presentational', 'medical')
     GROUP BY track ORDER BY MIN(id);
+` },
+  /* Functional audit ticket 25: one taper per procedure. The app reads the
+     taper as a single row, but the schema never said so, and a merge or a
+     stray write could leave a procedure with two. The newest of each
+     procedure's tapers is kept (by updated_at, then the later row), and a
+     UNIQUE index stands in for the constraint a rebuild would add: SQLite
+     enforces both the same way, and an index needs no copy of the table. */
+  { version: 112, sql: `
+DELETE FROM taper WHERE id NOT IN (
+  SELECT (SELECT newest.id FROM taper newest
+           WHERE newest.procedure_id = t.procedure_id
+           ORDER BY newest.updated_at DESC, newest.id DESC LIMIT 1)
+    FROM taper t GROUP BY t.procedure_id
+);
+CREATE UNIQUE INDEX idx_taper_procedure ON taper(procedure_id);
 ` }
 ];

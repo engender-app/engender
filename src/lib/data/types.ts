@@ -1174,10 +1174,17 @@ export interface BodyRegion {
 /** One stretch of a dilation taper (phase 8 features ticket 12, CONTEXT:
     "Taper"): a session every `everyNDays` days, for `days` days, before the
     next stage takes over. Typed in from the person's own surgeon's plan,
-    never a default this app ships (out of scope, ticket 12). */
+    never a default this app ships (out of scope, ticket 12).
+
+    `timesPerDay` makes it "N times a day for D days" instead (functional
+    audit ticket 25), which is how post-vaginoplasty schedules are given. A
+    stage carrying it is saved with `everyNDays: 1`, so a build that does
+    not know the field reads it as a daily stage rather than as nothing.
+    Absent means one session on each expected day. */
 export interface TaperStage {
   everyNDays: number;
   days: number;
+  timesPerDay?: number;
 }
 
 /** The dilation schedule the person has typed in (ticket 12). One per

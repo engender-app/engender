@@ -536,6 +536,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getTaper: ['taper', 'procedure'],
       getSessions: ['taper'],
       getSessionsOnDay: ['taper'],
+      // Numbers a day's sessions against the schedule, which getTaper reads.
+      getDaySessions: ['taper', 'procedure'],
       lastWriteEpochDay: ['taper']
     }
   }),
