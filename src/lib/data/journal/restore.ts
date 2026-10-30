@@ -42,12 +42,14 @@
    user with neither their old photos nor the new ones, on a device that by
    design has no other copy.
 
-   Merge adds what this device does not have and leaves matched rows alone,
-   matching by uuid for the user's own rows and by key for built-ins
-   (ADR-0002) - so re-importing the same archive changes nothing. Skip-
-   existing rather than last-write-wins, because LWW needs trustworthy clocks
-   across two devices with no sync protocol and its failure mode is silent: a
-   fix made on this device would vanish under an older archive.
+   Merge matches rows by uuid for the user's own rows and by key for
+   built-ins (ADR-0002), and takes whichever copy of a matched row was
+   written last; deletions travel too (functional audit ticket 48,
+   archiveMerge.ts has the rule). A tie keeps this device's row, so
+   re-importing the same archive changes nothing. This replaced
+   skip-existing, which never carried an edit or a deletion between
+   devices; the clocks it trusts, and the rest of the argument, are in
+   the ADR.
 
    Replace discards this device's journal rows and installs the archive's,
    then writes the archive's state onto the built-in rows it kept. Which rows

@@ -4,17 +4,15 @@
 
    A flat area with one identity needs no function here: applyFlatTable() writes it
    from the descriptor the registry declares (archiveTable.ts). What is left
-   is the sections whose merge semantics are their own - a matched row a
-   Replace overwrites in place, a child table walked in both modes, a rowid
-   resolved against a section that ran earlier.
+   is the sections with more than one table or an owner to resolve - a
+   child table walked in both modes, a rowid resolved against a section that
+   ran earlier, a built-in matched by key.
 
-   Merge semantics are each section's own, not the registry's. They differ
-   for reasons the individual comments record - a roadmap check must survive
-   a merge that does not carry it, a tag group walks its tags in both modes,
-   an episode may hold only one schedule - and a policy language wide enough
-   to state all of them would be a wider interface over less behaviour than
-   the functions themselves. What the registry decides is which sections
-   exist and in what order they insert.
+   Which copy of a row wins is one rule for every table (archiveMerge.ts).
+   What stays each section's own is the rest, for reasons the individual
+   comments record - a roadmap check holds two facts in one row, a tag group
+   walks its tags in both modes, an episode may hold only one schedule and a
+   procedure one taper.
 
    The rules every one of them follows are archiveMerge.ts's: each row the
    archive carries asks a RowGate whether it is inserted, written over this
@@ -239,8 +237,9 @@ export async function applyReminders(
   await applyFlatTable(table, rows, restoring);
 }
 
-/** A stock rename keeps its uuid. Keep that destination row before the flat
-    applier also skips a different uuid already counting the same drug key.
+/** A stock rename keeps its uuid, so a destination row is matched by its
+    uuid or by its drug key, and only a row matching neither is inserted.
+    A matched one takes the archive's newer copy (updateMatchedStock).
     Legacy siblings have no edit timestamp on the wire; their last complete
     row in Archive order wins. Replace has cleared destination stock first. */
 export async function applyMedicationStock(
@@ -1473,15 +1472,14 @@ async function writeAppointment(
 
 /** The column list import_log's insert shares with `recordImport` below -
     that one writes always and one row at a time (a record is a new fact
-    every commit, never insert-if-absent), this one is insert-if-absent,
-    many rows at once. Named once here so a column added later is one edit
+    every commit), this one writes what the archive's gate lets in, many
+    rows at once. Named once here so a column added later is one edit
     rather than two kept in sync by hand. */
 export const IMPORT_LOG_COLUMNS = 'uuid, source, counts, imported_at, updated_at';
 
 /** One import_log row for a commit that has just happened, direct rather
     than through the ordinary merge: this record is not content a device
-    might already have and skip (ADR-0002's own insert-if-absent shape) - it
-    is a new fact every time, minted here the way any other user-owned row is
+    might already have - it is a new fact every time, minted here the way any other user-owned row is
     (phase 7 ticket 03).
 
     Called from inside the restore's own transaction (restore.ts) and from
@@ -1508,11 +1506,11 @@ export function importLogRow(
   return [record.id, record.source, JSON.stringify(record.counts), record.importedAt, ts];
 }
 
-/** The import log (phase 7 ticket 03): ordinary insert-if-absent by uuid,
-    the same as every other user-owned row. Every record already carries its
-    own minted uuid and timestamp (journal/archive.ts writes it once, on
-    commit), so `ts` here only stamps `updated_at` - the bookkeeping column
-    every insert carries, not the moment the import itself happened. */
+/** The import log (phase 7 ticket 03), by uuid like every other user-owned
+    row. Every record already carries its own minted uuid and timestamp
+    (journal/archive.ts writes it once, on commit), so `ts` here only stamps
+    `updated_at` for an archive that carries none - never the moment the
+    import itself happened. */
 export async function applyImportLog(restoring: Restoring): Promise<void> {
   const { driver, journal, ts } = restoring;
   const gate = await rowGate(restoring, 'import_log');
