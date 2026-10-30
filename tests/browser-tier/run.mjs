@@ -107,6 +107,11 @@ await block('layout managers follow navigation and gates', 1, async () => {
   ok('navigation, Back, legacy links, focus, chooser cleanup and lock/unlock');
 });
 
+await block('old addresses land on the unknown-address screen', 1, async () => {
+  await import('../old-addresses-check.mjs');
+  ok('every removed route id renders not-found at its own address');
+});
+
 await block('first-run credentials survive stale and simultaneous tabs', 8, async () => {
   for (const result of await firstRunSetup(browser, `http://localhost:${port}`)) {
     ok(`first-run ownership: ${JSON.stringify(result)}`);
