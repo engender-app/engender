@@ -678,6 +678,21 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 0.5)).not.toContain('height:');
   });
 
+  /* FA 46, Trash's last row: the empty state arrived from above while the
+     list it replaced was still closing, its lower edge following the
+     list's down the screen. `after` holds the arrival back until the
+     close is over, at its first frame (clipped to nothing, no room). */
+  it('waits out a closing block when told to, and only on the way in', () => {
+    markScreenArrival(performance.now() - 1000);
+    const arriving = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '0px' });
+    const { css, delay } = collapse(arriving, { after: 380 }, { direction: 'in' });
+    expect(delay).toBe(380);
+    expect(frame(css!, 0)).toContain('clip-path: inset(100px 0 0 0)');
+    expect(frame(css!, 0)).toContain('margin-top: -100px');
+    const leaving = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px' });
+    expect(collapse(leaving, { after: 380 }, { direction: 'out' }).delay ?? 0).toBe(0);
+  });
+
   /* Last-audit UI ticket 41: one notice replacing another in the same spot
      (Reminders' "Could not check" and "Notifications are off"). The arriving
      notice stands behind the leaving one, so the kit's surface-after-surface
@@ -1172,7 +1187,7 @@ describe('tier 3, a box resizing under its own content', () => {
   it('puts back a scroll position the shrinking layout clamped before the travel held it', () => {
     stubDocument(false);
     let onScroll: ((event: { target: unknown }) => void) | undefined;
-    (globalThis as { document: Record<string, unknown> }).document.addEventListener = (type: string, listener: typeof onScroll) => {
+    ((globalThis as Record<string, unknown>).document as Record<string, unknown>).addEventListener = (type: string, listener: typeof onScroll) => {
       if (type === 'scroll') onScroll = listener;
     };
     const { node, calls, setHeight, trigger, restore } = resizingNode(1169);

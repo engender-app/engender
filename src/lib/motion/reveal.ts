@@ -750,10 +750,18 @@ function sharesItsLine(node: Element): boolean {
  *
  * `skip` is the same escape `disclose` documents, for the caller that can see
  * a SvelteKit navigation and this module cannot.
+ *
+ * `after` holds a column arrival back by that many milliseconds, for a block
+ * that replaces another closing in the same place. Arriving from above, the
+ * new block's lower edge follows the closing one's down the screen, so the
+ * two travel at once and the empty state read as sliding down over a list
+ * still closing (FA 46, Trash's last row). Held back, the old block is gone
+ * before the new one starts; until then it is clipped to nothing and takes
+ * no room, which is its first frame anyway.
  */
 export function collapse(
   node: Element,
-  params?: { skip?: boolean },
+  params?: { skip?: boolean; after?: number },
   options?: { direction?: 'in' | 'out' | 'both' }
 ): TransitionConfig {
   /* Every caller reaches this through `transition:`, which is bidirectional,
@@ -824,7 +832,7 @@ export function collapse(
        leaving, it gives its height back from the bottom up, which is
        `disclose` run backwards and the closing Alicja signed off. */
     if (options?.direction === 'in' && node.getBoundingClientRect().height <= FROM_ABOVE_MAX) {
-      return arrivesFromAbove(node);
+      return { ...arrivesFromAbove(node), delay: params?.after ?? 0 };
     }
     /* A tall panel arriving opens in place with no fade; only a close fades
        its edges out. */
