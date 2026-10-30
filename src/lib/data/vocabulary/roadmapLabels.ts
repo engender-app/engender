@@ -184,8 +184,9 @@ const STATUS_WORD: Record<(typeof INSTITUTION_STATUSES)[number], Message> = {
   done: m.roadmap_institution_status_done
 };
 
-/** One change's status as a word. A status this build does not know (an
-    archive from a newer one) reads as "changed" (the CHECK policy's "other"). */
+/** One change's status as a word. A stored word outside the three (the
+    column has no CHECK) reads as "changed", the CHECK policy's "other";
+    writes and archive import both refuse one. */
 export const institutionStatusWord = (status: string): string =>
   isOneOf(INSTITUTION_STATUSES, status) ? STATUS_WORD[status]() : m.roadmap_institution_status_other();
 

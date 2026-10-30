@@ -1022,10 +1022,11 @@ export interface RoadmapInstitution {
 /** One dated change at an institution (functional audit ticket 35):
     submitted, waiting or done on `epochDay`, with an optional line of the
     person's own ("sent on to the kuratorium"). `institution` is a built-in
-    institution's key or the uuid of one the person added. `status` is read
-    as a word the build may not know (rowValues.ts, INSTITUTION_STATUSES): an
-    archive from a newer build can carry one, and the screen says "updated"
-    for it. */
+    institution's key or the uuid of one the person added. `status` is a
+    string rather than the three words because the column carries no CHECK
+    (the audit's CHECK policy): the write path and archive import both hold
+    it to rowValues.ts's INSTITUTION_STATUSES, and a stored word outside
+    them still renders, as "changed". */
 export interface InstitutionChange {
   id: string;
   institution: string;
