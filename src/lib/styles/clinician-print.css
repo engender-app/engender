@@ -5,10 +5,22 @@
 .clinician-dossier {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
   color: var(--text);
   font-family: inherit;
   line-height: 1.5;
+}
+
+/* The space between parts is each part's own bottom margin rather than the
+   column's gap. A part switched off closes to nothing (disclose, functional
+   audit ticket 39), and a gap kept its 16px slot until the frame the part
+   was removed, where the parts below then jumped. A margin closes with the
+   part. Bottom rather than top, so no part gains or loses a margin in one
+   frame when the part above it goes. The disclaimer is always last. Screen
+   only: print lays the column out as blocks with its own section margins. */
+@media screen {
+  .clinician-dossier > :not(:last-child) {
+    margin-bottom: var(--space-4);
+  }
 }
 
 /* Patient profile summary box */

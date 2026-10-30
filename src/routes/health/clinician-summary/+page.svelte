@@ -76,13 +76,14 @@
 
   /* Every drug the person has ever logged a regimen episode for (ticket
      39), unbounded - not scoped to the range below, since the toggle is a
-     device preference set once rather than a per-print control. */
+     device preference set once rather than a per-print control. A drug
+     that is not HRT starts switched off (functional audit ticket 39). */
   let regimenEpisodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let drugNames = $derived(regimenDrugNames(regimenEpisodesQuery.value ?? []));
   const rowEstimate = readReserve('clinician-summary-row');
   const rememberRow = (px: number) => rememberReserve('clinician-summary-row', px);
   let excludedDrugs = $derived(
-    excludedClinicianDrugs(drugNames, prefs.clinicianSummaryDrugExcluded)
+    excludedClinicianDrugs(regimenEpisodesQuery.value ?? [], prefs.clinicianSummaryDrugExcluded)
   );
 
   function toggleDrug(drug: string, included: boolean) {

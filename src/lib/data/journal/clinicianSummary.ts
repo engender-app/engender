@@ -1,7 +1,8 @@
 /* The clinician visit summary (phase 4 ticket 12, CONTEXT: "Clinician
    summary section", "Regimen episode", "Dose event", "Analyte", "Side
-   effect"). A view over rows regimen, doses, labs, exposure, sideEffects,
-   cycleEvents, checklists, procedures and areaStates own, not another owner
+   effect", "Personal effect"). A view over rows regimen, doses, labs,
+   exposure, sideEffects, personalEffects, cycleEvents, checklists,
+   procedures and areaStates own, not another owner
    for any of them - the whole point of this area is that it introduces no
    figure the tickets it draws from do not already produce (ADR-0010).
    Selecting which rows fall in the requested range is the only work done
@@ -45,14 +46,17 @@ import type {
   SideEffect
 } from '../types';
 import { todayEpochDay } from '../epochDay';
+import { daysOnEachRoute } from '../exposureCounters';
 import { attributeDrug, sameDrug } from '../regimenEpisode';
 import { spanCoversDay, spanOverlapsRange } from '../span';
 import type { AreaStatesArea } from './areaStates';
 import type { ChecklistsArea } from './checklists';
 import type { CycleEventsArea } from './cycleEvents';
 import type { DosesArea } from './doses';
+import type { EffectCategoriesArea } from './effectCategories';
 import type { ExposureArea, ExposureCounters } from './exposure';
 import type { LabsArea } from './labs';
+import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea } from './procedures';
 import type { RegimenArea } from './regimen';
 import type { SideEffectsArea } from './sideEffects';
@@ -96,13 +100,30 @@ interface ClinicianSummaryFinishedArea {
   epochDay: number;
 }
 
+/** A change the person has noticed, as the summary prints it (functional
+    audit ticket 39): the marker's effect and its first-noticed day, with
+    the catalogue's stored name. A built-in's printed name is the
+    vocabulary's, looked up by key on the page, because this file speaks
+    no paraglide; a custom one is the name the person gave it. */
+export interface ClinicianSummaryChange {
+  effect: string;
+  name: string;
+  builtIn: boolean;
+  firstNoticedEpochDay: number;
+}
+
 /** What each part holds when it is included. */
 interface ClinicianSummaryContents {
   demographics: ClinicianSummaryDemographics;
   regimen: ClinicianSummaryRegimen;
   exposure: ExposureCounters;
   labs: LabResult[];
+  /** Side effects active at any point in the range, ongoing or resolved
+      (functional audit ticket 23's `resolvedEpochDay`). */
   sideEffects: SideEffect[];
+  /** Every change marked so far that the timeline shows, oldest first -
+      not range-filtered, see readChangesNoticed below. */
+  personalEffects: ClinicianSummaryChange[];
   cycleEvents: CycleEvent[];
   /** The appointment prep list's items (phase 5 ticket 11), as they stand
       right now - not range-filtered, since the list has no date of its own
@@ -151,6 +172,8 @@ interface ClinicianSummaryAreas {
   cycleEvents: CycleEventsArea;
   checklists: ChecklistsArea;
   procedures: ProceduresArea;
+  personalEffects: PersonalEffectsArea;
+  effectCategories: EffectCategoriesArea;
 }
 
 /** What every section's read is given: the areas, the range to read for,
@@ -238,21 +261,69 @@ async function readRegimen(reading: ClinicianSummaryReading): Promise<ClinicianS
   };
 }
 
-/* Exposure counters, with the excluded drugs' rows dropped from the two
-   parts keyed by drug (phase 8 features ticket 39). `routeDays` is not
-   filtered: it is a route total, not a drug total (daysOnEachRoute merges
-   across whatever episodes used that route), and this ticket does not
-   conflate the two any more than it conflates an analyte with a drug.
-   `excludedDoses` stays as-is for the same reason - it counts doses the
-   drug log itself could not attribute, which a drug toggle does not
-   change. */
-async function readExposure({ exposure, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
+/* Exposure counters, with the excluded drugs' rows dropped (phase 8
+   features ticket 39). Route days are a route total, not a drug total
+   (daysOnEachRoute merges across whatever episodes used that route), so
+   they are recounted by that same function over the printed drugs'
+   episodes only: before functional audit ticket 39 they kept every drug,
+   and with a drug that is not HRT off by default an SSRI's oral days still
+   reached the page as "oral" days. `excludedDoses` stays as-is - it counts
+   doses the drug log itself could not attribute, which a drug toggle does
+   not change. */
+async function readExposure({ exposure, regimen, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
   const counters = await exposure.getCounters(fromEpochDay, toEpochDay);
+  if (excludedDrugs.size === 0) return counters;
+  const printed = (await regimen.getEpisodes()).filter((episode) => !excludesDrug(excludedDrugs, episode.drug));
   return {
     ...counters,
     doseTotals: counters.doseTotals.filter((total) => !excludesDrug(excludedDrugs, total.drug)),
+    routeDays: daysOnEachRoute(printed, fromEpochDay, toEpochDay),
     regimenDays: counters.regimenDays.filter((days) => !excludesDrug(excludedDrugs, days.drug))
   };
+}
+
+/* A side effect is a span from the day it began to the day it resolved,
+   open while it goes on (functional audit ticket 23). It belongs on the
+   page if it was active on any day of the range: one that began before the
+   range and is still going on is exactly what a visit needs to hear about,
+   and one that resolved before the range began is not. The span arithmetic
+   is span.ts's, as for regimen episodes. */
+async function readSideEffects({ sideEffects, fromEpochDay, toEpochDay }: ClinicianSummaryReading) {
+  const all = await sideEffects.getSideEffects();
+  return all.filter((effect) =>
+    spanOverlapsRange({ startEpochDay: effect.epochDay, endEpochDay: effect.resolvedEpochDay }, fromEpochDay, toEpochDay)
+  );
+}
+
+/* Changes noticed (functional audit ticket 39). Every personal effect a
+   first-noticed day is marked for, oldest first. Not range-filtered, for
+   the reason procedures are not: a marker is one row per effect whose day
+   is replaced in place, so it records what has changed so far rather than
+   an event inside a window, and a change first noticed before the window
+   is still one the person has. Only what the changes timeline draws: an
+   effect hidden, or in a category switched off, stays off the page the way
+   it stays off the axis (reference.svelte.ts's visiblePersonalEffectTypes
+   asks the same two questions). A marker naming a key the catalogue no
+   longer has prints under that key, as the timeline names it. */
+async function readChangesNoticed({ personalEffects, effectCategories }: ClinicianSummaryReading) {
+  const [markers, types, categories] = await Promise.all([
+    personalEffects.getMarkers(),
+    personalEffects.getEffectTypes(),
+    effectCategories.getEffectCategories()
+  ]);
+  const off = new Set(categories.filter((category) => !category.enabled).map((category) => category.key));
+  const changes: ClinicianSummaryChange[] = [];
+  for (const marker of markers) {
+    const type = types.find((candidate) => candidate.key === marker.effect);
+    if (type && (type.hidden || (type.categoryKey !== null && off.has(type.categoryKey)))) continue;
+    changes.push({
+      effect: marker.effect,
+      name: type?.name ?? marker.effect,
+      builtIn: type?.builtIn ?? false,
+      firstNoticedEpochDay: marker.firstNoticedEpochDay
+    });
+  }
+  return changes.sort((a, b) => a.firstNoticedEpochDay - b.firstNoticedEpochDay || a.effect.localeCompare(b.effect));
 }
 
 /* Shared bounded read for the clinician summary and appointment prep. */
@@ -319,10 +390,13 @@ const SECTIONS = [
     tables: ['lab'],
     read: ({ labs, fromEpochDay, toEpochDay }) => readLabResultsInRange(labs, fromEpochDay, toEpochDay)
   }),
+  section({ key: 'sideEffects', tables: ['sideEffect'], read: readSideEffects }),
   section({
-    key: 'sideEffects',
-    tables: ['sideEffect'],
-    read: ({ sideEffects, fromEpochDay, toEpochDay }) => sideEffects.getSideEffectsInRange(fromEpochDay, toEpochDay)
+    key: 'personalEffects',
+    // The catalogue and its categories too: hiding an effect or switching
+    // its category off takes its row off the page.
+    tables: ['personalEffect', 'personalEffectType', 'effectCategory'],
+    read: readChangesNoticed
   }),
   section({
     key: 'cycleEvents',
@@ -445,7 +519,7 @@ export function makeClinicianSummaryArea(
     scoped to whatever range a summary itself reads for: the toggle is a
     device preference set once, not a per-print control, so a drug outside
     today's chosen range still gets a switch. */
-export function regimenDrugNames(episodes: readonly RegimenEpisode[]): string[] {
+export function regimenDrugNames(episodes: readonly Pick<RegimenEpisode, 'drug'>[]): string[] {
   const names: string[] = [];
   for (const episode of episodes) {
     if (!names.some((name) => sameDrug(name, episode.drug))) names.push(episode.drug);
@@ -453,13 +527,24 @@ export function regimenDrugNames(episodes: readonly RegimenEpisode[]): string[] 
   return names.sort((a, b) => a.localeCompare(b));
 }
 
-/** Saved exclusions can use a spelling hidden by the deduplicated choices. */
+/** The drugs this print leaves out. A drug the person has switched on or off
+    keeps that choice, under any spelling the deduplicated choices hide. One
+    never touched is off when it is not HRT (functional audit ticket 39):
+    the summary is the one thing made to leave the device, so an SSRI or
+    PrEP should not reach an endocrinologist unless the person says so. A
+    drug name with any HRT episode counts as HRT. */
 export function excludedClinicianDrugs(
-  drugNames: readonly string[],
+  episodes: readonly Pick<RegimenEpisode, 'drug' | 'drugClass'>[],
   preferences: Partial<Record<string, boolean>>
 ): Set<string> {
   const saved = Object.entries(preferences);
-  return new Set(drugNames.filter((drug) => saved.some(([name, excluded]) => excluded && sameDrug(name, drug))));
+  return new Set(
+    regimenDrugNames(episodes).filter((drug) => {
+      const choices = saved.filter(([name]) => sameDrug(name, drug));
+      if (choices.length > 0) return choices.some(([, excluded]) => excluded);
+      return !episodes.some((episode) => episode.drugClass === 'hrt' && sameDrug(episode.drug, drug));
+    })
+  );
 }
 
 /** Update old spellings too, so an earlier exclusion cannot override this pick. */

@@ -16,6 +16,7 @@ const SECTION_NAME: Record<ClinicianSummarySectionKey, () => string> = {
   exposure: m.clinician_summary_section_exposure,
   labs: m.clinician_summary_section_labs,
   sideEffects: m.clinician_summary_section_side_effects,
+  personalEffects: m.clinician_summary_section_personal_effects,
   cycleEvents: m.clinician_summary_section_cycle_events,
   appointmentPrep: m.clinician_summary_section_appointment_prep,
   procedures: m.clinician_summary_section_procedures,

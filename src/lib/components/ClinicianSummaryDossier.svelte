@@ -28,7 +28,7 @@
     statusLabel,
     vehicleLabel
   } from '$lib/data/vocabulary/doseLabels';
-  import { cycleEventKindName, severityName } from '$lib/data/vocabulary/labels';
+  import { cycleEventKindName, personalEffectName, severityName } from '$lib/data/vocabulary/labels';
   import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { recoveryDay } from '$lib/data/recoveryDay';
@@ -41,10 +41,11 @@
     type ClinicianSummarySections
   } from '$lib/data/journal/clinicianSummary';
   import { clinicianSummarySectionName } from '$lib/data/vocabulary/clinicianSummaryLabels';
-  import { resize } from '$lib/motion/reveal';
-  import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { disclose, resize } from '$lib/motion/reveal';
+  import { crossfadeDuration, EASE_OUT_SOFT_POINTS, fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { bezier } from '$lib/motion/blindSettle';
   import { travelOnChange } from '$lib/motion/reorder.svelte';
-  import type { DoseEvent, DoseRoute, RegimenEpisode } from '$lib/data/types';
+  import type { DoseEvent, DoseRoute, RegimenEpisode, SideEffect } from '$lib/data/types';
   import type { Snippet } from 'svelte';
   import '$lib/styles/clinician-print.css';
 
@@ -143,12 +144,27 @@
     return fadeOnly(crossfadeDuration());
   }
 
+  /* A part switched on or off on the sheet (functional audit ticket 39)
+     travels its whole height, often several hundred pixels. disclose's
+     own --ease-out leaves at four times its average speed, which put 119px
+     of a 379px part into the first frame; a long travel setting off takes
+     --ease-out-soft over --dur-slow instead, as base.css says, which keeps
+     every frame under about 45px. The height, padding and margin it
+     animates are still disclose's, and so is its reduced-motion cut. */
+  const easeOutSoft = bezier(EASE_OUT_SOFT_POINTS);
+  function partDisclose(node: Element) {
+    const config = disclose(node);
+    if (!config.duration) return config;
+    return { ...config, duration: motionDuration('--dur-slow'), easing: easeOutSoft };
+  }
+
   const SECTION_SNIPPETS: { [Key in ClinicianSummarySectionKey]: Snippet<[Section<Key>]> } = {
     demographics: demographicsSection,
     regimen: regimenSection,
     exposure: exposureSection,
     labs: labsSection,
     sideEffects: sideEffectsSection,
+    personalEffects: personalEffectsSection,
     cycleEvents: cycleEventsSection,
     appointmentPrep: appointmentPrepSection,
     procedures: proceduresSection,
@@ -517,50 +533,110 @@
   </section>
 {/snippet}
 
-<!-- 5. Active Side Effects & Symptoms -->
+<!-- 5. Side effects, ongoing and resolved. Two tables under their own
+     headings rather than one under "Active": the part reads every side
+     effect active at some point in the range (clinicianSummary.ts), and
+     one that resolved in it was not active when the page was printed
+     (functional audit ticket 39, off ticket 23's resolved day). -->
+{#snippet sideEffectRows(effects: SideEffect[], resolved: boolean)}
+  <DossierTable label={resolved ? m.clinician_summary_side_effects_resolved() : m.clinician_summary_side_effects_ongoing()}>
+    <table class="dossier-table">
+      <thead>
+        <tr>
+          <th>{m.side_effect_date_label()}</th>
+          {#if resolved}<th>{m.side_effect_resolved_label()}</th>{/if}
+          <th>{m.side_effect_name_label()}</th>
+          <th>{m.side_effect_severity_label()}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each effects as effect, i (effect.id)}
+          <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
+            <td data-label={m.side_effect_date_label()} class="num">{@render date(effect.epochDay)}</td>
+            {#if resolved && effect.resolvedEpochDay !== null}
+              <td data-label={m.side_effect_resolved_label()} class="num">{@render date(effect.resolvedEpochDay)}</td>
+            {/if}
+            <td data-label={m.side_effect_name_label()}><strong>{effect.name}</strong></td>
+            <td data-label={m.side_effect_severity_label()}>
+              {#if effect.severity === null}
+                {m.clinician_summary_not_set()}
+              {:else}
+                {severityName(effect.severity)} ({effect.severity}/5)
+              {/if}
+            </td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </DossierTable>
+  {#if overflowCount(effects) > 0}
+    {@render truncateNote(overflowCount(effects))}
+  {/if}
+{/snippet}
+
 {#snippet sideEffectsSection(sideEffects: Section<'sideEffects'>)}
+  {@const ongoing = sideEffects.filter((effect) => effect.resolvedEpochDay === null)}
+  {@const resolved = sideEffects.filter((effect) => effect.resolvedEpochDay !== null)}
   <section class="dossier-section" data-dossier-section="sideEffects">
     <div class="dossier-section-header">
       <h2 class="dossier-section-title">{clinicianSummarySectionName('sideEffects')}</h2>
     </div>
 
-    {#if sideEffects.length}
-      <DossierTable label={clinicianSummarySectionName('sideEffects')}>
+    {#if ongoing.length}
+      <h3 class="sub-heading" data-side-effects="ongoing">{m.clinician_summary_side_effects_ongoing()}</h3>
+      {@render sideEffectRows(ongoing, false)}
+    {/if}
+    {#if resolved.length}
+      <h3 class="sub-heading" data-side-effects="resolved">{m.clinician_summary_side_effects_resolved()}</h3>
+      {@render sideEffectRows(resolved, true)}
+    {/if}
+    {#if !sideEffects.length}
+      <p class="dossier-empty-note">{m.clinician_summary_side_effects_empty()}</p>
+    {/if}
+  </section>
+{/snippet}
+
+<!-- 6. Changes noticed (functional audit ticket 39): each change the
+     person marked, oldest first, with the day they first noticed it. A
+     built-in change is named in the reader's language from its key; one
+     the person added keeps the name they gave it. -->
+{#snippet personalEffectsSection(changes: Section<'personalEffects'>)}
+  <section class="dossier-section" data-dossier-section="personalEffects">
+    <div class="dossier-section-header">
+      <h2 class="dossier-section-title">{clinicianSummarySectionName('personalEffects')}</h2>
+    </div>
+
+    {#if changes.length}
+      <DossierTable label={clinicianSummarySectionName('personalEffects')}>
         <table class="dossier-table">
           <thead>
             <tr>
-              <th>{m.side_effect_date_label()}</th>
-              <th>{m.side_effect_name_label()}</th>
-              <th>{m.side_effect_severity_label()}</th>
+              <th>{m.effect_first_noticed_label()}</th>
+              <th>{m.clinician_summary_change_label()}</th>
             </tr>
           </thead>
           <tbody>
-            {#each sideEffects as effect, i (effect.id)}
+            {#each changes as change, i (change.effect)}
               <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                <td data-label={m.side_effect_date_label()} class="num">{@render date(effect.epochDay)}</td>
-                <td data-label={m.side_effect_name_label()}><strong>{effect.name}</strong></td>
-                <td data-label={m.side_effect_severity_label()}>
-                  {#if effect.severity === null}
-                    {m.clinician_summary_not_set()}
-                  {:else}
-                    {severityName(effect.severity)} ({effect.severity}/5)
-                  {/if}
+                <td data-label={m.effect_first_noticed_label()} class="num">{@render date(change.firstNoticedEpochDay)}</td>
+                <td data-label={m.clinician_summary_change_label()}>
+                  <strong>{change.builtIn ? personalEffectName(change.effect) : change.name}</strong>
                 </td>
               </tr>
             {/each}
           </tbody>
         </table>
       </DossierTable>
-      {#if overflowCount(sideEffects) > 0}
-        {@render truncateNote(overflowCount(sideEffects))}
+      {#if overflowCount(changes) > 0}
+        {@render truncateNote(overflowCount(changes))}
       {/if}
     {:else}
-      <p class="dossier-empty-note">{m.clinician_summary_side_effects_empty()}</p>
+      <p class="dossier-empty-note">{m.clinician_summary_personal_effects_empty()}</p>
     {/if}
   </section>
 {/snippet}
 
-<!-- 6. Cycle Events -->
+<!-- 7. Cycle Events -->
 {#snippet cycleEventsSection(cycleEvents: Section<'cycleEvents'>)}
   <section class="dossier-section" data-dossier-section="cycleEvents">
     <div class="dossier-section-header">
@@ -595,7 +671,7 @@
   </section>
 {/snippet}
 
-<!-- 7. Consultation Questions (Appointment Prep) -->
+<!-- 8. Consultation Questions (Appointment Prep) -->
 {#snippet appointmentPrepSection(appointmentPrep: Section<'appointmentPrep'>)}
   <section class="dossier-section" data-dossier-section="appointmentPrep">
     <div class="dossier-section-header">
@@ -641,7 +717,7 @@
   </section>
 {/snippet}
 
-<!-- 8. Procedures & Recovery (if present) -->
+<!-- 9. Procedures & Recovery (if present) -->
 {#snippet proceduresSection(procedures: Section<'procedures'>)}
   {#if procedures.length}
     <section class="dossier-section" data-dossier-section="procedures">
@@ -709,7 +785,7 @@
   {/if}
 {/snippet}
 
-<!-- 9. Tracking that ended (phase 8 features ticket 04). A stopped stream
+<!-- 10. Tracking that ended (phase 8 features ticket 04). A stopped stream
      reads as a decision with a date rather than as missing data, which is
      what the flat stretch on the charts above needs explaining with. -->
 {#snippet finishedAreasSection(finishedAreas: Section<'finishedAreas'>)}
@@ -747,9 +823,13 @@
 {/snippet}
 
 <div class="clinician-dossier" data-clinician-dossier>
+  <!-- A part switched on or off on the sheet opens or closes its own
+       height, so the parts under it travel rather than jump (functional
+       audit ticket 39, which added the changes part and its switch). Local
+       transitions, so the parts drawn with the page do not play them. -->
   {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
     {@const content = summary.sections[key]}
-    {#if content !== null}{@render sectionSnippet(key)(content)}{/if}
+    {#if content !== null}<div class="dossier-part" data-dossier-part={key} transition:partDisclose>{@render sectionSnippet(key)(content)}</div>{/if}
   {/each}
 
   {#if isSummaryEmpty}
