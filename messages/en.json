@@ -2340,7 +2340,7 @@
   "prov_from_surgery": "From your surgery journey: {name}",
   "prov_from_tryout": "From adopting {label}",
   "prov_open_source": "Open",
-  "prov_reminder_dose": "Follows your {drug} schedule.",
+  "prov_reminder_dose": "Follows the dose schedule.",
   "prov_reminder_stock": "Kept in step with your {drug} stock.",
   "prov_reminder_takeover_hint": "Saving stops automatic updates to this reminder. You can then change it here.",
   "prov_reminder_wear": "Set from a wear session you logged.",

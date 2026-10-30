@@ -2386,7 +2386,7 @@
   "prov_from_surgery": "Z operacji: {name}",
   "prov_from_tryout": "Z przyjętej próby: {label}",
   "prov_open_source": "Otwórz",
-  "prov_reminder_dose": "Aktualizowane wraz z harmonogramem leku {drug}.",
+  "prov_reminder_dose": "Aktualizowane wraz z harmonogramem dawek.",
   "prov_reminder_stock": "Aktualizowane wraz z zapasem leku {drug}.",
   "prov_reminder_takeover_hint": "Zapisanie wyłączy automatyczne aktualizacje tego przypomnienia. Potem zmienisz je tutaj.",
   "prov_reminder_wear": "Ustawione na podstawie zapisanej sesji noszenia.",

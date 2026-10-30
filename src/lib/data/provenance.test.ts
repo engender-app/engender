@@ -115,10 +115,10 @@ test('a stock-managed reminder names the drug, explains the handoff, and links t
   });
 });
 
-test('a schedule reminder names its drug and opens the episode whose schedule it follows (functional audit 21)', () => {
+test('a schedule reminder says it follows the schedule and opens the episode it belongs to (functional audit 21)', () => {
   const origin = resolveReminderOrigin(reminder({ autoSource: 'dose:episode-1', drug: 'Progesterone' }));
   assert.deepEqual(origin, {
-    text: 'Follows your Progesterone schedule.',
+    text: 'Follows the dose schedule.',
     hint: 'Saving stops automatic updates to this reminder. You can then change it here.',
     href: '/care/regimen?episode=episode-1',
     actionLabel: 'Edit schedule'

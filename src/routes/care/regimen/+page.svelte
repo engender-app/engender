@@ -36,6 +36,9 @@
     ROUTE_OPTIONS
   } from '$lib/data/vocabulary/doseLabels';
   import { canAutoLog } from '$lib/data/doseSchedule';
+  import { doseAutoSource } from '$lib/data/autoSource';
+  import { defaultReminderTimes, isHandMadeReminderFor, reminderTimesOf, resizeReminderTimes } from '$lib/data/doseReminders';
+  import TimePicker from '$lib/components/TimePicker.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DosePause, DoseRoute, DoseScheduleRecurrence, DrugClass, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -139,6 +142,10 @@
   let pausesQuery = liveList((j) => j.doses.getPauses());
   let editorSchedule = $derived((schedulesQuery.rows).find((s) => s.episodeId === editor?.id) ?? null);
   let editorPauses = $derived((pausesQuery.rows).filter((p) => p.episodeId === editor?.id));
+  /* The schedule's reminders (functional audit ticket 21): the rows marked
+     as derived from this episode, and the person's own reminders for its
+     drug, which the schedule's first reminders replace. */
+  let remindersQuery = liveList((j) => j.reminders.getReminders());
 
   let editor = $state<{
     id?: string;
@@ -222,7 +229,15 @@
         schedule keeps the day it started from instead of restarting it and
         reaching over the days in between. */
     autoLogFromEpochDay: number | null;
+    /** Whether the schedule rings a reminder for each dose (ticket 21),
+        and at what times - one per dose a day, resized as that count
+        changes (`shownReminderTimes`). */
+    remind: boolean;
+    reminderTimes: string[];
   } | null>(null);
+  /** The schedule's own reminders were seeded from the person's reminders
+      for this drug, which saving replaces. Said under the switch. */
+  let adoptingReminders = $state(false);
   let newPause = $state<{ start: string; end: string; reason: PauseReason } | null>(null);
   /* The dose amounts a person has been in and left, by amount, so an
      amount row added empty is not announced as invalid before anybody has
@@ -349,7 +364,19 @@
   // Seed once per opening. Live writes must not replace unrelated drafts.
   $effect(() => {
     if (!editor?.id || schedule || schedulesQuery.loading || schedulesQuery.failed) return;
+    if (remindersQuery.loading || remindersQuery.failed) return;
     const recurrence = editorSchedule?.recurrence ?? { kind: 'everyNDays' as const, everyNDays: 1 };
+    /* Which times the switch opens on: the schedule's own reminders; else
+       the person's reminders for this drug, taken over on save; else, for a
+       schedule not yet saved, the default times, switched on - a new
+       schedule comes with its reminders. An existing schedule with neither
+       stays off: it was saved without them. */
+    const episodeId = editor.id;
+    const drug = episodeBaseline?.drug ?? editor.drug;
+    const own = remindersQuery.rows.filter((r) => r.autoSource === doseAutoSource(episodeId));
+    const handMade = own.length ? [] : remindersQuery.rows.filter((r) => isHandMadeReminderFor(r, drug));
+    const seeded = own.length ? own : handMade;
+    adoptingReminders = handMade.length > 0;
     schedule = {
       recurrenceKind: recurrence.kind,
       everyNDays: String(recurrence.kind === 'everyNDays' ? recurrence.everyNDays : 1),
@@ -359,10 +386,21 @@
         dose: String(amount.dose),
         doseUnit: amount.doseUnit
       })),
-      autoLogFromEpochDay: editorSchedule?.autoLogFromEpochDay ?? null
+      autoLogFromEpochDay: editorSchedule?.autoLogFromEpochDay ?? null,
+      remind: seeded.length > 0 || !editorSchedule,
+      reminderTimes: seeded.length ? reminderTimesOf(seeded) : defaultReminderTimes(editorSchedule?.dosesPerDay ?? 1)
     };
     scheduleBaseline = snapshotDraft(scheduleSnapshot);
   });
+
+  /* One time per dose a day. Read through the count so a field being
+     typed into ("" on the way from 2 to 3) keeps the times it has. */
+  let shownReminderTimes = $derived(schedule ? resizeReminderTimes(schedule.reminderTimes, Number(schedule.dosesPerDay)) : []);
+
+  function setReminderTime(index: number, time: string) {
+    if (!schedule) return;
+    schedule.reminderTimes = shownReminderTimes.map((current, i) => (i === index ? time : current));
+  }
 
   function toggleWeekday(day: number) {
     if (!schedule) return;
@@ -399,19 +437,26 @@
       schedule.doseAmounts.length > 0
         ? schedule.doseAmounts.map((amount) => ({ dose: parseFloat(String(amount.dose)), doseUnit: amount.doseUnit.trim() }))
         : null;
-    return { recurrence, dosesPerDay, doseAmounts, autoLogFromEpochDay: schedule.autoLogFromEpochDay };
+    return {
+      recurrence,
+      dosesPerDay,
+      doseAmounts,
+      autoLogFromEpochDay: schedule.autoLogFromEpochDay,
+      reminderTimes: schedule.remind ? shownReminderTimes : []
+    };
   });
 
   let scheduleRequirements = $derived.by(() => {
     if (!scheduleValues) return [];
-    const { recurrence, dosesPerDay, doseAmounts } = scheduleValues;
+    const { recurrence, dosesPerDay, doseAmounts, reminderTimes } = scheduleValues;
     return [
       ...(!Number.isSafeInteger(dosesPerDay) || dosesPerDay < 1 ? [m.regimen_per_day_required()] : []),
       ...(recurrence.kind === 'everyNDays' && (!Number.isSafeInteger(recurrence.everyNDays) || recurrence.everyNDays < 1)
         ? [m.regimen_every_required()] : []),
       ...(recurrence.kind === 'weekdays' && recurrence.weekdays.length === 0 ? [m.regimen_weekday_required()] : []),
       ...(doseAmounts?.some((amount) => !Number.isFinite(amount.dose) || !amount.doseUnit)
-        ? [m.regimen_amount_required()] : [])
+        ? [m.regimen_amount_required()] : []),
+      ...(reminderTimes.some((time) => !/^\d{2}:\d{2}$/.test(time)) ? [m.regimen_schedule_reminder_time_required()] : [])
     ];
   });
   let scheduleCanSave = $derived(scheduleValues !== null && scheduleRequirements.length === 0);
@@ -442,6 +487,7 @@
     if (!await write('schedule', () => journal.doses.upsertSchedule(values), m.regimen_schedule_save_failed())) return;
     schedule.autoLogFromEpochDay = values.autoLogFromEpochDay;
     scheduleBaseline = snapshotDraft(scheduleSnapshot);
+    if (values.reminderTimes.length) adoptingReminders = false;
     status = on ? m.regimen_auto_log_on_saved() : m.regimen_auto_log_off_saved();
   }
 
@@ -450,6 +496,7 @@
     const values = { episodeId: editor.id, ...snapshotDraft(scheduleValues) };
     if (!await write('schedule', () => journal.doses.upsertSchedule(values), m.regimen_schedule_save_failed())) return;
     scheduleBaseline = snapshotDraft(scheduleSnapshot);
+    if (values.reminderTimes.length) adoptingReminders = false;
     status = m.regimen_schedule_saved();
   }
 
@@ -828,6 +875,57 @@
                     />
                   {/snippet}
                 </Field>
+
+                <!-- The schedule's reminders (functional audit ticket 21): one
+                     time per dose a day, saved with the rhythm above and
+                     rung on its days. The times open under the switch the
+                     way the auto-log switch's own text does, and each row
+                     opens or closes its height as the count changes. -->
+                <div data-schedule-remind>
+                  <Field label={m.regimen_schedule_reminders_label()} legend spread>
+                    {#snippet children()}
+                      <Switch
+                        checked={schedule!.remind}
+                        label={m.regimen_schedule_reminders_label()}
+                        onChange={(on) => schedule && (schedule.remind = on)}
+                      />
+                    {/snippet}
+                  </Field>
+                  <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
+                    {m.regimen_schedule_reminders_hint()}
+                  </p>
+                </div>
+                {#if schedule.remind}
+                  <div class="disclosed" data-schedule-reminder-times transition:disclose>
+                    {#if adoptingReminders}
+                      <!-- Goes once the save has taken the reminders over, by
+                           closing its height rather than in one frame. -->
+                      <div transition:disclose>
+                        <p class="muted small" data-schedule-reminders-adopt>{m.regimen_schedule_reminders_adopt()}</p>
+                      </div>
+                    {/if}
+                    {#each shownReminderTimes as time, index (index)}
+                      <div transition:disclose>
+                        <Field
+                          label={shownReminderTimes.length > 1 ? m.regimen_schedule_reminder_dose_label({ number: index + 1 }) : m.rem_time_label()}
+                          spread
+                        >
+                          {#snippet children(id)}
+                            <TimePicker
+                              {id}
+                              name="regimen-reminder-{index}"
+                              style="max-width:160px"
+                              required
+                              value={time}
+                              onchange={(next) => setReminderTime(index, next)}
+                              data-reminder-time={index}
+                            />
+                          {/snippet}
+                        </Field>
+                      </div>
+                    {/each}
+                  </div>
+                {/if}
 
                 <FieldGroupHeading legend={m.regimen_schedule_amounts_legend()} hint={m.regimen_schedule_amounts_hint()} />
                 {#if schedule.doseAmounts.length}

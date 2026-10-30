@@ -84,11 +84,11 @@ export function resolveReminderOrigin(reminder: Reminder): ReminderOrigin | null
     return { text: m.prov_reminder_stock({ drug }), hint, href: '/care', actionLabel: m.prov_view_stock() };
   }
   if (reminder.autoSource.startsWith(DOSE_PREFIX)) {
-    // The drug as the episode names it now: the schedule rewrites it on
-    // every change (functional audit ticket 21), unlike stock's key.
+    // No drug in the line: the reminder's own title is the drug's name,
+    // which the schedule keeps in step (functional audit ticket 21).
     const episodeId = reminder.autoSource.slice(DOSE_PREFIX.length);
     return {
-      text: m.prov_reminder_dose({ drug: reminder.drug ?? reminder.title }),
+      text: m.prov_reminder_dose(),
       hint,
       href: `/care/regimen?episode=${encodeURIComponent(episodeId)}`,
       actionLabel: m.prov_view_schedule()
