@@ -64,10 +64,10 @@
         procedure's date, its consults, its checklist. */
     subtitle?: RowLine | RowLine[];
     /** Set where the row's words come from a read that lands once while the
-        row is on screen - the hub's lines, the curve row's reading, a day's
-        drug names - so the swap fades the previous words off instead of
-        cutting (the same asymmetry the skeleton's crossfade keeps: what
-        replaces them is simply there). Off by default, and a row whose
+        row is on screen - the hub's lines, a day's drug names - so the
+        swap fades the previous words off instead of cutting (the same
+        asymmetry the skeleton's crossfade keeps: what replaces them is
+        simply there). Off by default, and a row whose
         words tick must never set it: a fading swap on a clock is a pulse. */
     fadeSwap?: boolean;
     /** A name from $lib/components/icons.ts. */
