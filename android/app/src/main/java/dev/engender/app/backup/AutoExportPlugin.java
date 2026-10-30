@@ -171,6 +171,28 @@ public class AutoExportPlugin extends Plugin {
     }
 
     /**
+     * Whether a typed password is the saved backup password (FA 56). "Back up
+     * now" asks this instead of saving whatever is in the field, so a typo
+     * is refused rather than becoming the password every later backup is
+     * sealed with. Answers a boolean; the saved password never crosses the
+     * bridge.
+     */
+    @PluginMethod
+    public void checkPassword(PluginCall call) {
+        String typed = call.getString("password");
+        try {
+            String saved = passwordStore().read();
+            boolean matches = typed != null && saved != null && java.security.MessageDigest.isEqual(
+                typed.getBytes(StandardCharsets.UTF_8), saved.getBytes(StandardCharsets.UTF_8));
+            JSObject out = new JSObject();
+            out.put("matches", matches);
+            call.resolve(out);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    /**
      * Derives an archive encryption key from the saved backup password,
      * without ever exposing the password to the WebView (audit finding F-04).
      *
@@ -403,7 +425,7 @@ public class AutoExportPlugin extends Plugin {
                 // Always create a new document. Never truncate a recoverable backup.
                 DocumentFile target = folder.createFile("application/octet-stream", pendingFileName);
                 if (target == null) throw new IllegalStateException("destination-unavailable");
-                DeliveredBackup.writeAndVerify(getContext(), folder, target, backup.file, expectedLength, sha256);
+                DeliveredBackup.writeAndVerify(getContext(), folder, target, backup.file, expectedLength, sha256, passwordStore().read());
 
                 // Cleanup failure must never remove the newly verified backup.
                 try { clearPendingBackup(); }
@@ -678,6 +700,11 @@ public class AutoExportPlugin extends Plugin {
 
     private SharedPreferences preferences() {
         return getContext().getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
+    }
+
+    /** The saved backup password, for checking a written backup opens with it. */
+    static String storedPassword(Context context) throws Exception {
+        return new PasswordStore(context, BackupWork.preferences(context)).read();
     }
 
     private PasswordStore passwordStore() {

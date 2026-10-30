@@ -126,7 +126,7 @@ final class PersistentBackup {
             }
         }
         // An interrupted attempt can reuse its unverified target; a failed copy removes it.
-        DeliveredBackup.writeAndVerify(context, folder, target, file, size, digest);
+        DeliveredBackup.writeAndVerify(context, folder, target, file, size, digest, AutoExportPlugin.storedPassword(context));
         AutoExportPlugin.completeVerifiedBackup(context, folder, target, stage.getLong("snapshotAt"), System.currentTimeMillis());
         file.delete();
         return true;

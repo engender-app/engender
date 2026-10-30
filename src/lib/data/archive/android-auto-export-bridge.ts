@@ -23,6 +23,9 @@ interface AndroidAutoExportBridge {
   pickDestination(): Promise<{ picked: boolean; destinationUri: string | null; destinationLabel: string | null }>;
   configure(options: { enabled: boolean; schedule: AutoExportSchedule }): Promise<AutoExportStatus>;
   setPassword(options: { password: string }): Promise<void>;
+  /** Whether a typed password is the saved backup password (FA 56). The
+      saved one never crosses the bridge; only the answer does. */
+  checkPassword(options: { password: string }): Promise<{ matches: boolean }>;
   /** Derives an archive encryption key from the saved backup password
       behind the bridge (phase 5 security ticket 06, F-04), returning a key
       for one archive rather than the cleartext password. */

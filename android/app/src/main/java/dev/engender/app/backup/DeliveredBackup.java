@@ -24,8 +24,11 @@ final class DeliveredBackup {
             & (ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0;
     }
 
+    /** Opens the written file again; called once per check, each reading from the start. */
+    interface Source { InputStream open() throws Exception; }
+
     static void writeAndVerify(Context context, DocumentFile folder, DocumentFile target,
-        File staged, long length, String digest) throws Exception {
+        File staged, long length, String digest, String password) throws Exception {
         try {
             // SAF has no remote-commit acknowledgement. A cloud cache descriptor is insufficient.
             if (!supports(context, target.getUri())) throw new IllegalStateException("destination-durability-unavailable");
@@ -50,14 +53,25 @@ final class DeliveredBackup {
                 }
                 Os.fsync(directory.getFileDescriptor());
             }
-            try (InputStream input = context.getContentResolver().openInputStream(target.getUri())) {
+            readBack(() -> {
+                InputStream input = context.getContentResolver().openInputStream(target.getUri());
                 if (input == null) throw new IllegalStateException("destination-unavailable");
-                StagedBackup.verify(input, length, digest);
-            }
+                return input;
+            }, length, digest, password);
         } catch (Exception failed) {
             discard(target, failed);
             throw failed;
         }
+    }
+
+    /** What "verified" means for a written backup: the bytes are the ones
+        meant to be written, and the file opens, every chunk of it, with the
+        saved backup password. Before FA 56 only the first half was checked,
+        so a backup sealed under a mistyped password was listed as verified. */
+    static void readBack(Source source, long length, String digest, String password) throws Exception {
+        try (InputStream input = source.open()) { StagedBackup.verify(input, length, digest); }
+        // Matching bytes only say the copy is faithful; this says it opens (FA 56).
+        try (InputStream input = source.open()) { ArchiveReadBack.open(input, password); }
     }
 
     static void discard(DocumentFile target, Exception failure) {

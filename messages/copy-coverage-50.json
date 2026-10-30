@@ -984,7 +984,6 @@
   "exp_auto_last_failure": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
   "exp_auto_last_success": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
   "exp_auto_password_missing": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
-  "exp_auto_password_needed": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
   "exp_auto_password_saved": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
   "exp_auto_pick_destination_first": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
   "exp_auto_reselect_needed": {"owner":43,"sources":["src/lib/data/archive/auto-export-scheduler.ts","src/routes/settings/export/+page.svelte"]},
