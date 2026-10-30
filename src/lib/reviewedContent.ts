@@ -22,7 +22,7 @@
    item (the onset bands do), map its items to one row each. */
 
 import { literatureReviews } from './data/personalEffectWindow';
-import { ROADMAP_PACKS } from './data/roadmap';
+import { INSTITUTIONS_REVIEWED_ON, ROADMAP_PACKS } from './data/roadmap';
 import { VOICE_METRICS_REVIEWED_ON } from './data/voice/metrics';
 import { WEAR_SAFETY_REVIEWED_ON } from './data/journal/wearSessions';
 import { RESOURCES_REVIEWED_ON } from './resources/directory';
@@ -43,9 +43,11 @@ export interface ReviewedContent {
 
 export const REVIEWED_CONTENT: readonly ReviewedContent[] = [
   { area: 'Resources', item: 'every number, address and opening time', kind: 'helpline', reviewedOn: RESOURCES_REVIEWED_ON },
-  /* The Polish pack holds the court procedure and the institutions to update
-     after the ruling, so its one date covers the institution list too. */
+  /* The court steps per pack, and the institutions to update after the
+     ruling on a day of their own (functional audit ticket 35): they were
+     checked on a different day, so each falls due by its own age. */
   ...ROADMAP_PACKS.map((pack) => ({ area: 'Roadmap', item: `${pack.key} pack`, kind: 'legal' as const, reviewedOn: pack.reviewedOn })),
+  { area: 'Roadmap', item: 'institutions to update after the ruling', kind: 'legal', reviewedOn: INSTITUTIONS_REVIEWED_ON },
   { area: 'Voice', item: 'figures on the metric reference screen', kind: 'literature', reviewedOn: VOICE_METRICS_REVIEWED_ON },
   { area: 'Wear', item: 'safety facts and the binder cue hours', kind: 'literature', reviewedOn: WEAR_SAFETY_REVIEWED_ON },
   ...literatureReviews().map((band) => ({ area: 'Onset bands', item: band.effect, kind: 'literature' as const, reviewedOn: band.reviewedOn }))
