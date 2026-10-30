@@ -136,14 +136,14 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
 
         String title = resolveNotificationTitle(payload, reminder);
         String id = reminder.optString("id", "");
-        String time = reminder.optString("time", "");
+        String text = resolveNotificationText(payload, reminder);
 
         String route = routeFor(reminder);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
             .setSmallIcon(DisguiseAlias.isDisguised(context)
                     ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_stat_mark)
             .setContentTitle(title)
-            .setContentText(time)
+            .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             /* Audit finding F-05, corrected by a later audit pass:
@@ -210,6 +210,16 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         String fallbackTitle = texts != null ? texts.optString("channelReminders", "Reminders") : "Reminders";
         if (payload.optBoolean("hideNotificationTitles", false)) return fallbackTitle;
         return reminder.optString("title", fallbackTitle);
+    }
+
+    /** The line under the title: what the app wrote for this reminder
+        (functional audit ticket 21), or the time alone. Hiding sensitive
+        titles keeps only the time, since the app's line names the drug. */
+    static String resolveNotificationText(JSONObject payload, JSONObject reminder) {
+        String time = reminder.optString("time", "");
+        if (payload.optBoolean("hideNotificationTitles", false)) return time;
+        String text = reminder.optString("text", "");
+        return text.isBlank() ? time : text;
     }
 
     private static boolean notificationsAllowed(Context context) {
