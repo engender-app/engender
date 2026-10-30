@@ -137,7 +137,15 @@ const EDITS: [string, string, string, string?][] = [
   ['tryout_photo', 'epoch_day', 'epoch_day + 1'],
   ['voice_benchmark', 'note', "'edited'"],
   ['voice_practice_take', 'felt_sense', '3'],
-  ['wear_session', 'note', "'edited'"]
+  ['wear_session', 'note', "'edited'"],
+  // The columns added since the tables first travelled: FA 30's costs and
+  // FA 20's reminder drug.
+  ['appointment', 'cost_refunded', '1 - cost_refunded'],
+  ['hair_removal_session', 'cost_refunded', '1 - cost_refunded'],
+  ['lab_result', 'cost_refunded', '1 - cost_refunded'],
+  ['medication_stock', 'cost_refunded', '1 - cost_refunded'],
+  ['procedure', 'cost_refunded', '1 - cost_refunded'],
+  ['reminder', 'drug', "'edited'"]
 ];
 
 const later = () => Date.now() + 60_000;
