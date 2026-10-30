@@ -227,6 +227,9 @@ export async function seedCompleteArchiveJournal(
   await journal.roadmap.addCustomGoal('Tell my sister');
   const comingOut = await journal.roadmap.addCategory('Coming out');
   await journal.roadmap.addCustomGoal('Tell my manager', comingOut.id);
+  const gym = await journal.roadmap.addInstitution('Gym');
+  await journal.roadmap.addInstitutionChange({ institution: 'pl-legal-passport', status: 'submitted', epochDay: 20400, note: 'Voivode office' });
+  await journal.roadmap.addInstitutionChange({ institution: gym.id, status: 'done', epochDay: 20401, note: null });
 
   const episode = await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',

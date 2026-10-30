@@ -78,6 +78,8 @@ const SECTIONS = [
   'roadmapChecks',
   'roadmapCategories',
   'roadmapGoals',
+  'roadmapInstitutions',
+  'roadmapInstitutionChanges',
   'regimenEpisodes',
   'doseEvents',
   'doseSchedules',

@@ -19,6 +19,8 @@ export function assertOneOf(values: readonly string[], what: string, value: unkn
 
 export const REMINDER_RECURRENCES = ['DAILY', 'EVERY_N_DAYS'] as const;
 export const EFFECT_DIRECTIONS_STORED = ['feminizing', 'masculinizing'] as const;
+/** Where an institution stands after a change (functional audit ticket 35). */
+export const INSTITUTION_STATUSES = ['submitted', 'waiting', 'done'] as const;
 export const DOCUMENT_TARGET_KINDS = ['goal', 'milestone', 'procedure', 'episode'] as const;
 export const HAIR_REMOVAL_METHODS = ['laser', 'electrolysis', 'other'] as const;
 export const TALLY_KINDS = ['misgendered', 'correctly_gendered'] as const;

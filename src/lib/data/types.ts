@@ -1011,6 +1011,29 @@ export interface CustomRoadmapGoal {
   status: RoadmapGoalStatus;
 }
 
+/** An institution the person added to the roadmap's list of name and
+    document changes (functional audit ticket 35), beside the built-in ones
+    roadmap.ts names. */
+export interface RoadmapInstitution {
+  id: string;
+  name: string;
+}
+
+/** One dated change at an institution (functional audit ticket 35):
+    submitted, waiting or done on `epochDay`, with an optional line of the
+    person's own ("sent on to the kuratorium"). `institution` is a built-in
+    institution's key or the uuid of one the person added. `status` is read
+    as a word the build may not know (rowValues.ts, INSTITUTION_STATUSES): an
+    archive from a newer build can carry one, and the screen says "updated"
+    for it. */
+export interface InstitutionChange {
+  id: string;
+  institution: string;
+  status: string;
+  epochDay: number;
+  note: string | null;
+}
+
 /** A category the person made on the roadmap (functional audit ticket 34),
     to hold goals of their own beside the Polish legal steps. `name` is
     empty only on a category migration 111 made from a cut track, whose uuid

@@ -313,6 +313,8 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   roadmapChecks: 'no date of its own',
   roadmapCategories: 'no date of its own',
   roadmapGoals: 'no date of its own',
+  roadmapInstitutions: 'no date of its own',
+  roadmapInstitutionChanges: 'a record of what happened, never scheduled ahead',
   checklists: 'no date of its own',
 
   comfortItems: 'a Safe Space artefact with no date of its own',

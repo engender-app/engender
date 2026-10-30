@@ -27,8 +27,9 @@
    reason the notes carry deadlines and fees rather than recommendations. */
 
 import { m } from '$lib/paraglide/messages';
-import type { LEGACY_ROADMAP_TRACKS, RoadmapGoalKey, RoadmapPackKey } from '../roadmap';
-import type { RoadmapCategory } from '../types';
+import { INSTITUTION_STATUSES, isOneOf } from '../rowValues';
+import type { LEGACY_ROADMAP_TRACKS, RoadmapGoalKey, RoadmapInstitutionKey, RoadmapPackKey } from '../roadmap';
+import type { RoadmapCategory, RoadmapInstitution } from '../types';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -70,15 +71,8 @@ const GOAL_TITLE: Record<RoadmapGoalKey, Message> = {
   'pl-legal-written-reasons': m.roadmap_goal_pl_legal_written_reasons,
   'pl-legal-appeal': m.roadmap_goal_pl_legal_appeal,
   'pl-legal-final-copy': m.roadmap_goal_pl_legal_final_copy,
-  'pl-legal-pesel': m.roadmap_goal_pl_legal_pesel,
   'pl-legal-new-birth-copy': m.roadmap_goal_pl_legal_new_birth_copy,
   'pl-legal-name-usc': m.roadmap_goal_pl_legal_name_usc,
-  'pl-legal-id-card': m.roadmap_goal_pl_legal_id_card,
-  'pl-legal-passport': m.roadmap_goal_pl_legal_passport,
-  'pl-legal-driving-licence': m.roadmap_goal_pl_legal_driving_licence,
-  'pl-legal-zus-ceidg': m.roadmap_goal_pl_legal_zus_ceidg,
-  'pl-legal-diplomas': m.roadmap_goal_pl_legal_diplomas,
-  'pl-legal-institutions': m.roadmap_goal_pl_legal_institutions,
   'pl-legal-document-set': m.roadmap_goal_pl_legal_document_set
 };
 
@@ -96,15 +90,8 @@ const GOAL_NOTE: Partial<Record<RoadmapGoalKey, Message>> = {
   'pl-legal-written-reasons': m.roadmap_note_pl_legal_written_reasons,
   'pl-legal-appeal': m.roadmap_note_pl_legal_appeal,
   'pl-legal-final-copy': m.roadmap_note_pl_legal_final_copy,
-  'pl-legal-pesel': m.roadmap_note_pl_legal_pesel,
   'pl-legal-new-birth-copy': m.roadmap_note_pl_legal_new_birth_copy,
   'pl-legal-name-usc': m.roadmap_note_pl_legal_name_usc,
-  'pl-legal-id-card': m.roadmap_note_pl_legal_id_card,
-  'pl-legal-passport': m.roadmap_note_pl_legal_passport,
-  'pl-legal-driving-licence': m.roadmap_note_pl_legal_driving_licence,
-  'pl-legal-zus-ceidg': m.roadmap_note_pl_legal_zus_ceidg,
-  'pl-legal-diplomas': m.roadmap_note_pl_legal_diplomas,
-  'pl-legal-institutions': m.roadmap_note_pl_legal_institutions,
   'pl-legal-document-set': m.roadmap_note_pl_legal_document_set
 };
 
@@ -154,3 +141,60 @@ const LEGACY_CATEGORY_NAME: Record<(typeof LEGACY_ROADMAP_TRACKS)[number], Messa
     name for a category migration 111 made and nobody has renamed. */
 export const roadmapCategoryName = (category: RoadmapCategory): string =>
   category.name || (LEGACY_CATEGORY_NAME[category.id as keyof typeof LEGACY_CATEGORY_NAME]?.() ?? '');
+
+/* The institutions (functional audit ticket 35). Every one has a note:
+   each says who acts and on what, which is what somebody standing at that
+   office needs. The notes for the ID card, passport and driving licence
+   are the post-ruling steps' own, unchanged; the rest were checked against
+   gov.pl, ZUS and the Ombudsman on INSTITUTIONS_REVIEWED_ON. */
+const INSTITUTION_NAME: Record<RoadmapInstitutionKey, Message> = {
+  'pl-legal-pesel': m.roadmap_institution_pl_legal_pesel,
+  'pl-legal-id-card': m.roadmap_institution_pl_legal_id_card,
+  'pl-legal-passport': m.roadmap_institution_pl_legal_passport,
+  'pl-legal-driving-licence': m.roadmap_institution_pl_legal_driving_licence,
+  'pl-legal-bank': m.roadmap_institution_pl_legal_bank,
+  'pl-legal-zus-ceidg': m.roadmap_institution_pl_legal_zus_ceidg,
+  'pl-legal-employer': m.roadmap_institution_pl_legal_employer,
+  'pl-legal-diplomas': m.roadmap_institution_pl_legal_diplomas
+};
+
+const INSTITUTION_NOTE: Record<RoadmapInstitutionKey, Message> = {
+  'pl-legal-pesel': m.roadmap_institution_note_pl_legal_pesel,
+  'pl-legal-id-card': m.roadmap_institution_note_pl_legal_id_card,
+  'pl-legal-passport': m.roadmap_institution_note_pl_legal_passport,
+  'pl-legal-driving-licence': m.roadmap_institution_note_pl_legal_driving_licence,
+  'pl-legal-bank': m.roadmap_institution_note_pl_legal_bank,
+  'pl-legal-zus-ceidg': m.roadmap_institution_note_pl_legal_zus_ceidg,
+  'pl-legal-employer': m.roadmap_institution_note_pl_legal_employer,
+  'pl-legal-diplomas': m.roadmap_institution_note_pl_legal_diplomas
+};
+
+/** A built-in institution's name. */
+export const roadmapInstitutionName = (key: RoadmapInstitutionKey): string => INSTITUTION_NAME[key]();
+
+/** What a built-in institution does with the ruling, in a sentence or two. */
+export const roadmapInstitutionNote = (key: RoadmapInstitutionKey): string => INSTITUTION_NOTE[key]();
+
+/** An institution the person added, by its own name. */
+export const ownInstitutionName = (institution: RoadmapInstitution): string => institution.name;
+
+const STATUS_WORD: Record<(typeof INSTITUTION_STATUSES)[number], Message> = {
+  submitted: m.roadmap_institution_status_submitted,
+  waiting: m.roadmap_institution_status_waiting,
+  done: m.roadmap_institution_status_done
+};
+
+/** One change's status as a word. A status this build does not know (an
+    archive from a newer one) reads as "changed" (the CHECK policy's "other"). */
+export const institutionStatusWord = (status: string): string =>
+  isOneOf(INSTITUTION_STATUSES, status) ? STATUS_WORD[status]() : m.roadmap_institution_status_other();
+
+/** Where an institution stands, as the line under its name. */
+export function institutionStateLine(state: { status: string | null; epochDay: number | null }, day: (epochDay: number) => string): string {
+  if (state.status === null || state.epochDay === null) return m.roadmap_institution_not_started();
+  const date = day(state.epochDay);
+  if (state.status === 'submitted') return m.roadmap_institution_submitted_on({ date });
+  if (state.status === 'waiting') return m.roadmap_institution_waiting_since({ date });
+  if (state.status === 'done') return m.roadmap_institution_done_on({ date });
+  return m.roadmap_institution_changed_on({ date });
+}

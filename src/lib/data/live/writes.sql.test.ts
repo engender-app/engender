@@ -904,6 +904,14 @@ beforeAll(async () => {
   await drive('roadmap', 'renameCategory', () => journal.roadmap.renameCategory(category.id, 'Coming out at work'));
   await journal.roadmap.addCustomGoal('Tell my manager', category.id);
   await drive('roadmap', 'deleteCategory', () => journal.roadmap.deleteCategory(category.id));
+  const institution = (await drive('roadmap', 'addInstitution', () => journal.roadmap.addInstitution('Gym'))) as { id: string };
+  await drive('roadmap', 'renameInstitution', () => journal.roadmap.renameInstitution(institution.id, 'Climbing gym'));
+  const institutionChange = (await drive('roadmap', 'addInstitutionChange', () =>
+    journal.roadmap.addInstitutionChange({ institution: institution.id, status: 'submitted', epochDay: 100, note: null })
+  )) as string;
+  await drive('roadmap', 'deleteInstitutionChange', () => journal.roadmap.deleteInstitutionChange(institutionChange));
+  await journal.roadmap.addInstitutionChange({ institution: institution.id, status: 'done', epochDay: 101, note: null });
+  await drive('roadmap', 'deleteInstitution', () => journal.roadmap.deleteInstitution(institution.id));
 
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
@@ -1093,6 +1101,8 @@ beforeAll(async () => {
   await driveRead('roadmap', 'getGoalStatuses', () => journal.roadmap.getGoalStatuses('pl'));
   await driveRead('roadmap', 'getCustomGoals', () => journal.roadmap.getCustomGoals());
   await driveRead('roadmap', 'getCategories', () => journal.roadmap.getCategories());
+  await driveRead('roadmap', 'getInstitutions', () => journal.roadmap.getInstitutions());
+  await driveRead('roadmap', 'getInstitutionChanges', () => journal.roadmap.getInstitutionChanges());
   await driveRead('stats', 'dayAverages', () => journal.stats.dayAverages('mood', 19000, 21000));
   await driveRead('stats', 'daySpread', () => journal.stats.daySpread('mood', 19000, 21000));
   await driveRead('stats', 'constellationReadings', () =>

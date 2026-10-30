@@ -381,6 +381,10 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   roadmapChecks: 'no date of its own',
   roadmapCategories: 'no date of its own',
   roadmapGoals: 'no date of its own',
+  roadmapInstitutions: 'no date of its own',
+  // Dated, but read on the roadmap, where one institution's changes sit
+  // together in order (functional audit ticket 35).
+  roadmapInstitutionChanges: 'read on the roadmap with the rest of its institution',
   checklists: 'no date of its own',
 
   // ADR-0037 and ADR-0040: Safe Space is a crisis-mode read someone opens

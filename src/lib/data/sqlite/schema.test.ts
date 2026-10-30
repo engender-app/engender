@@ -203,7 +203,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 111);
+  assert.equal(db.getUserVersion(), 112);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1076,6 +1076,37 @@ test('the roadmap trim drops cut-track ticks and roadmap_track, and keeps custom
     { uuid: 'd2', target_kind: 'goal', target_id: 'pl-legal-court-fee' }
   ]);
   assert.deepEqual(await db.query('SELECT area FROM area_state'), [{ area: 'roadmapGoals' }]);
+  assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
+});
+
+/* Functional audit ticket 35 turned the post-ruling steps into
+   institutions. A tick on one of the six that became an institution is
+   dropped unless it hid the row, which stays hidden; the retired "bank,
+   insurers, clinic" step goes with its tick and its document links. Paper
+   filed against a step that became an institution stays filed, since the
+   key did not change. */
+test('the institution list adds its two tables and keeps only hidden flags of the steps it replaced', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 111));
+  await db.run(`INSERT INTO roadmap_check (pack_key, goal_key, status, hidden, updated_at) VALUES
+    ('pl', 'pl-legal-passport', 'checked', 0, 1), ('pl', 'pl-legal-driving-licence', 'checked', 1, 1),
+    ('pl', 'pl-legal-institutions', 'checked', 0, 1), ('pl', 'pl-legal-court-fee', 'checked', 0, 1)`);
+  await db.run(`INSERT INTO document (uuid, epoch_day, title, file_path, target_kind, target_id, updated_at) VALUES
+    ('d1', 100, 'Bank letter', 'a.pdf', 'goal', 'pl-legal-institutions', 1),
+    ('d2', 100, 'Old passport', 'b.pdf', 'goal', 'pl-legal-passport', 1)`);
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.deepEqual(await db.query('SELECT goal_key, status, hidden FROM roadmap_check ORDER BY goal_key'), [
+    { goal_key: 'pl-legal-court-fee', status: 'checked', hidden: 0 },
+    { goal_key: 'pl-legal-driving-licence', status: 'unchecked', hidden: 1 }
+  ]);
+  assert.deepEqual(await db.query('SELECT uuid, target_kind, target_id FROM document ORDER BY uuid'), [
+    { uuid: 'd1', target_kind: null, target_id: null },
+    { uuid: 'd2', target_kind: 'goal', target_id: 'pl-legal-passport' }
+  ]);
+  await db.run("INSERT INTO roadmap_institution (uuid, name, updated_at) VALUES ('i1', 'Gym', 1)");
+  await db.run(
+    "INSERT INTO roadmap_institution_change (uuid, institution, status, epoch_day, note, updated_at) VALUES ('c1', 'i1', 'submitted', 100, NULL, 1)"
+  );
   assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
 });
 

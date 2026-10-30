@@ -535,6 +535,10 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   providers: 'private notes on a named person, read on the appointments screen',
   roadmapChecks: 'no text of its own: a tick against a bundled pack’s goal',
   roadmapCategories: 'a heading over goals, whose own text `roadmapGoals` above already searches',
+  // Functional-audit ticket 35: the name of an office and short lines on
+  // where a request stands there, read on the roadmap's own list.
+  roadmapInstitutions: 'the name of an office on the roadmap list, read there',
+  roadmapInstitutionChanges: 'a status and a short line about one office, read on the roadmap',
   hairPhotos: 'no text of its own: a dated photograph',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',
   taper: 'no text of its own: a surgery day, a start day and a stage sequence (ticket 12)',

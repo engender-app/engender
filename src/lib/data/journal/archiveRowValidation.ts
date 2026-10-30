@@ -4,7 +4,7 @@ import { isLegacyHairStaging } from '../hairStageScales';
 import {
   CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
   EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
-  TALLY_KINDS, DROPPED_TRYOUT_KINDS, TRYOUT_KINDS
+  TALLY_KINDS, DROPPED_TRYOUT_KINDS, TRYOUT_KINDS, INSTITUTION_STATUSES
 } from '../rowValues';
 import {
   BUILT_IN_DIMENSIONS, BUILT_IN_EFFECT_CATEGORIES, BUILT_IN_TAG_GROUPS
@@ -304,6 +304,18 @@ const ROWS = {
   roadmapCategories: {
     id: identity,
     name: text
+  },
+  roadmapInstitutions: {
+    id: identity,
+    // Not blank, the rule addInstitution keeps.
+    name: identity
+  },
+  roadmapInstitutionChanges: {
+    id: identity,
+    institution: identity,
+    status: oneOf(INSTITUTION_STATUSES),
+    epochDay: numeric,
+    note: nullable(text)
   },
   roadmapGoals: {
     id: identity,

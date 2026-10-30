@@ -522,7 +522,14 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       'getCategories',
       'addCategory',
       'renameCategory',
-      'deleteCategory'
+      'deleteCategory',
+      'getInstitutions',
+      'addInstitution',
+      'renameInstitution',
+      'deleteInstitution',
+      'getInstitutionChanges',
+      'addInstitutionChange',
+      'deleteInstitutionChange'
     ]),
     checklists,
     stats,

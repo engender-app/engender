@@ -318,5 +318,48 @@ INSERT INTO roadmap_category (uuid, name, updated_at)
   SELECT track, '', MAX(updated_at) FROM roadmap_goal
     WHERE track IN ('social', 'presentational', 'medical')
     GROUP BY track ORDER BY MIN(id);
+` },
+  /* Functional audit ticket 35: the post-ruling steps that each named an
+     office became a list of institutions, moved through submitted, waiting
+     and done on dated changes. A tick on one of the six steps that became an
+     institution is dropped, since a tick has no date to give a change; a
+     hidden flag stays (the institution keeps the step's key), so a row the
+     person hid stays hidden. The "bank, insurers, clinic, phone operator"
+     step is retired, so its tick goes and paper filed against it is
+     unfiled. Paper filed against the six stays filed: same key.
+
+     `roadmap_institution` holds the ones the person adds. A change names
+     its institution by a built-in key or such a row's uuid in one column,
+     the way roadmap_goal.track names 'legal' or a category, so no foreign
+     key; deleting an institution deletes its changes in the same
+     transaction (journal/roadmap.ts). `status` has no CHECK (the audit's
+     CHECK policy): rowValues.ts's INSTITUTION_STATUSES is the vocabulary. */
+  { version: 112, sql: `
+UPDATE document SET target_kind = NULL, target_id = NULL
+  WHERE target_kind = 'goal' AND target_id = 'pl-legal-institutions';
+DELETE FROM roadmap_check
+  WHERE pack_key = 'pl' AND (goal_key = 'pl-legal-institutions'
+    OR (hidden = 0 AND goal_key IN ('pl-legal-pesel', 'pl-legal-id-card', 'pl-legal-passport',
+      'pl-legal-driving-licence', 'pl-legal-zus-ceidg', 'pl-legal-diplomas')));
+UPDATE roadmap_check SET status = 'unchecked'
+  WHERE pack_key = 'pl' AND goal_key IN ('pl-legal-pesel', 'pl-legal-id-card', 'pl-legal-passport',
+    'pl-legal-driving-licence', 'pl-legal-zus-ceidg', 'pl-legal-diplomas');
+CREATE TABLE roadmap_institution (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE roadmap_institution_change (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  institution TEXT NOT NULL,
+  status      TEXT NOT NULL,
+  epoch_day   INTEGER NOT NULL,
+  note        TEXT,
+  updated_at  INTEGER NOT NULL
+);
+CREATE INDEX idx_roadmap_institution_change ON roadmap_institution_change(institution, epoch_day);
+CREATE INDEX idx_roadmap_institution_change_epoch_day ON roadmap_institution_change(epoch_day);
 ` }
 ];
