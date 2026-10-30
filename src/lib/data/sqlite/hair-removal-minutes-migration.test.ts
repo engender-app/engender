@@ -18,7 +18,7 @@ test('version 107 adds minutes and leaves existing sessions untouched', async ()
     )
     .run();
 
-  await runMigrations(db, fileOps, migrations);
+  await runMigrations(db, fileOps, migrations.filter((m) => m.version <= 107));
 
   assert.ok((await db.getUserVersion()) >= 107);
   const row = db.raw.prepare('SELECT * FROM hair_removal_session').get() as Record<string, unknown>;

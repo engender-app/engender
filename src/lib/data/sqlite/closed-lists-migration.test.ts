@@ -98,7 +98,9 @@ test('migrating a populated 92 keeps every row, child link and id counter, and c
   const children = ['hair_removal_photo', 'tryout_photo', 'felt_sense', 'milestone'];
   const childrenBefore = children.map((t) => count(db, t));
 
-  await runMigrations(db, fileOps, migrations);
+  // Stops before ticket 30's v112, which reads the text cost into its own
+  // columns (cost-migration.test.ts); this test is about the rebuild.
+  await runMigrations(db, fileOps, migrations.filter((m) => m.version <= 111));
 
   for (const table of REBUILT) {
     assert.equal(count(db, table), before[table].rows, `${table} row count`);

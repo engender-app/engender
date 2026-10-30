@@ -24,6 +24,8 @@ import type { Migration } from './migration-runner.ts';
 import { CLOSED_LISTS_REBUILD } from './closed-lists-migration.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
 import { migrateDrugClass } from './drug-class-migration.ts';
+import { migrateHairRemovalCost } from './cost-migration.ts';
+import { deviceDefaultCurrency } from '../cost.ts';
 import { migrateStockIdentity } from './stock-identity-migration.ts';
 import { WAITLIST_REBUILD } from './waitlist-migration.ts';
 
@@ -318,5 +320,31 @@ INSERT INTO roadmap_category (uuid, name, updated_at)
   SELECT track, '', MAX(updated_at) FROM roadmap_goal
     WHERE track IN ('social', 'presentational', 'medical')
     GROUP BY track ORDER BY MIN(id);
-` }
+` },
+  /* Functional audit ticket 30: a cost on the records that cost money - an
+     amount, its currency and whether it was refunded. Plain ADD COLUMNs:
+     nullable amount and currency, cost.ts's assertValidCost is the rule (no
+     CHECK, the audit's CHECK policy). On the stock row it is the cost of the
+     supply held now, next to ticket 47's expiry and pharmacy note; there is
+     no purchase log. Hair removal's free-text cost is read into the new
+     columns, or into the session's note when it does not parse
+     (cost-migration.ts), and the old column is left null for ticket 50 to
+     drop. */
+  { version: 112, sql: `
+ALTER TABLE hair_removal_session ADD COLUMN cost_amount REAL;
+ALTER TABLE hair_removal_session ADD COLUMN cost_currency TEXT;
+ALTER TABLE hair_removal_session ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE appointment ADD COLUMN cost_amount REAL;
+ALTER TABLE appointment ADD COLUMN cost_currency TEXT;
+ALTER TABLE appointment ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE procedure ADD COLUMN cost_amount REAL;
+ALTER TABLE procedure ADD COLUMN cost_currency TEXT;
+ALTER TABLE procedure ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE lab_result ADD COLUMN cost_amount REAL;
+ALTER TABLE lab_result ADD COLUMN cost_currency TEXT;
+ALTER TABLE lab_result ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE medication_stock ADD COLUMN cost_amount REAL;
+ALTER TABLE medication_stock ADD COLUMN cost_currency TEXT;
+ALTER TABLE medication_stock ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
+`, apply: (db) => migrateHairRemovalCost(db, deviceDefaultCurrency()) }
 ];
