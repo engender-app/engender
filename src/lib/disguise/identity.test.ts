@@ -48,8 +48,6 @@ describe('what the tab says', () => {
       icon: 'favicon-notes.svg'
     });
   });
-
-
 });
 
 describe('where the decoy name is allowed to appear', () => {
@@ -93,7 +91,34 @@ describe('where the decoy name is allowed to appear', () => {
     expect(naming).toEqual(['src/app.html']);
   });
 
+  it('is asked by every surface that says the app name out loud', () => {
+    /* The other half of the check above: nobody hardcodes the decoy name,
+       and the outside surfaces do print a name, so they have to be getting
+       it from here. FA 42 removed the in-app reads (AppNav, the home
+       hero), so only surfaces a person can see before unlocking, or on
+       paper, remain: a disguise that stopped reaching a lock screen would
+       show the real name to the person it was hiding from, and ship
+       green. */
+    for (const path of [
+      'src/lib/components/PrintLetterhead.svelte',
+      'src/lib/components/JournalGate.svelte',
+      'src/lib/components/AndroidKeyGate.svelte',
+      'src/lib/components/SessionUnlock.svelte'
+    ]) {
+      /* The call, not its argument list: matching the arguments would fail
+         a rename that kept the behaviour. */
+      expect(readFileSync(root + path, 'utf8'), path).toContain('appWordmark(');
+    }
+    expect(readFileSync(root + 'src/routes/+layout.svelte', 'utf8')).toContain('tabIdentity({');
+  });
 
+  it('keeps the printed letterhead behind its disguise branch', () => {
+    /* PrintLetterhead is the one outside surface that is absent rather
+       than renamed under disguise. */
+    expect(readFileSync(root + 'src/lib/components/PrintLetterhead.svelte', 'utf8')).toMatch(
+      /\{#if !prefs\.disguise\}/
+    );
+  });
 });
 
 describe('catalogued app names', () => {
@@ -102,6 +127,29 @@ describe('catalogued app names', () => {
     entry.name === 'paraglide' ? [] : entry.isDirectory() ? files(`${dir}/${entry.name}`)
       : /\.(svelte|ts)$/.test(entry.name) && !entry.name.endsWith('.test.ts') ? [`${dir}/${entry.name}`] : []);
   const sources = files(`${root}src`).map(path => ({ path, text: readFileSync(path, 'utf8') }));
+
+  /* Unlocked screens print the plain name since FA 42 (the in-app
+     disguise reads are gone); these are the only files allowed to. Any
+     other file, a gate or a printed page included, goes through
+     appWordmark or tabIdentity. */
+  const inApp = new Set([
+    `${root}src/lib/components/AppNav.svelte`,
+    `${root}src/lib/data/vocabulary/archiveErrorLabels.ts`,
+    `${root}src/routes/+page.svelte`,
+    `${root}src/routes/settings/+page.svelte`
+  ]);
+
+  it('routes every direct app-name lookup through the identity helpers', () => {
+    for (const { path, text } of sources) {
+      if (inApp.has(path)) continue;
+      let remaining = text.replace(/<!--[^]*?-->|\/\*[^]*?\*\//g, '')
+        .replace(/appWordmark\(prefs\.disguise, m\.app_name\(\), m\.disguise_name\(\)\)/g, '');
+      if (path.endsWith('/src/routes/+layout.svelte')) {
+        remaining = remaining.replace(/tabIdentity\(\{[^]*?\}\)/g, '');
+      }
+      expect(remaining, path).not.toMatch(/m\.app_name\b/);
+    }
+  });
 
   for (const locale of ['en', 'pl']) {
     const catalogue = JSON.parse(readFileSync(`${root}messages/${locale}.json`, 'utf8')) as Record<string, string>;

@@ -24,7 +24,7 @@ export function warmDemoPhotos(
 
 /** The worker owns its connection until this call finishes. Journal writes
     join this transaction rather than opening nested transactions. A failed
-    seed rolls back all rows; boot's next orphan sweep reclaims staged files. */
+    seed rolls back all rows; the next due orphan sweep reclaims staged files. */
 export async function seedPersonaInTransaction(
   driver: SqliteDriver,
   files: PhotoFileStore,

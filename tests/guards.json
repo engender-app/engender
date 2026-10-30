@@ -277,7 +277,7 @@
   {
     "name": "accessible-names-check",
     "tier": "dev",
-    "holds": "English and Polish accessible names retain lab analytes, values, units and dates, resource numbers and domains, and benchmark pitches and dates; measurement images describe their chart"
+    "holds": "English and Polish accessible names retain lab analytes, values, units and dates, resource numbers and domains, and benchmark pitches and dates"
   },
   {
     "name": "lab-entry-check",

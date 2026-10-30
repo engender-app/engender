@@ -2366,7 +2366,9 @@ try {
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
   await page.locator('[data-next]').click(); // scales -> features
   const modules = page.locator('[data-feature-module]');
-  if (await modules.count() < 12) throw new Error('setup did not list the available tracking areas');
+  // FEATURE_MODULE_ROWS in src/lib/data/hubRows.ts: one row per optional area.
+  const featureCount = await modules.count();
+  if (featureCount !== 14) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 14`);
   for (const key of ['care', 'milestones', 'tryouts', 'voice-benchmark']) {
     if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== 'false') {
       throw new Error(`${key} started on instead of keeping the first run to journal basics`);
@@ -7139,14 +7141,12 @@ try {
 });
 
 
-await flow('quick add effects nudge', async () => {
+await flow('changes noticed axis', async () => {
 try {
-  /* The personal effects onset nudge (phase 5 ticket 49).
-     Absent on a fresh journal with no regimen. Once an active regimen
-     episode with a literature onset window is added, opening the fan shows
-     the effects row; tapping it navigates to /care/changes and closes
-     the fan. When the anchor is moved past the onset window (>12 months),
-     the row is absent again. */
+  /* The effects axis on "changes you've noticed". Quick add's effects row
+     went with FA 16, so what is left of this flow is the axis, which needs
+     a bare persona with one estradiol episode far enough back for a change
+     to be marked against it. */
   const localIso = (daysAgo = 0) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -7156,32 +7156,16 @@ try {
   /* Back to the bare persona, which alone gives the "no regimen yet" this
      flow needs (demo-persona-has-no-doses-or-procedures): by this point in
      the suite "Fill every feature" has been running since around flow 100,
-     and its own estradiol episode started 500 days ago - long past every
-     literature onset window. isHrtOnsetWindowCurrent anchors on the
-     earliest episode in the whole journal, not the newest (see its own doc
-     comment and personalEffectWindow.test.ts's "goes quiet once the
-     anchoring episode has ended"), so an episode this flow adds afterward
-     can never become current while that one is still on record - correct,
-     tested app behavior this flow is not the place to relitigate. Nothing
-     later in this file reads regimen, dose or injection-map
-     state, so resetting here does not cost any flow after it. */
+     and its own estradiol episode started 500 days ago. The effects
+     timeline anchors on the earliest HRT episode in the whole journal
+     (hrtAnchor.test.ts), so the episode this flow adds is the anchor only
+     if the journal starts bare. Nothing later in this file reads regimen,
+     dose or injection-map state, so resetting here does not cost any flow
+     after it. */
   await fresh('/body/hair-progress'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-reset-demo]');
   await page.waitForURL(BASE + '/');
   await booted();
-
-  await openQuickAdd();
-  if ((await page.locator('[data-choose="effects"]').count()) > 0) {
-    throw new Error('effects row was present with no regimen logged');
-  }
-  /* The FAB itself, not the scrim behind the fan (`[data-quick-add]`): the
-     scrim covers the whole screen but the fan cards sit above it, so a
-     click at the scrim's own center - where Playwright aims by default -
-     lands on a card instead and never reaches the scrim. The FAB is the
-     control that opened the fan and closes it the same way (see its own
-     comment in AppNav.svelte), which is also the real dismiss gesture the
-     rest of this flow already uses below. */
-  await page.locator('[data-nav-fab]').click();
 
   // Add an active estradiol regimen episode starting today
   await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
@@ -7196,19 +7180,6 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForSelector('[data-episode]', { timeout: 8000 });
 
-  // Now Quick Add should show the effects row
-  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
-  await page.locator('[data-nav-fab]').click();
-  await page.waitForSelector('[data-choose="effects"]', { timeout: 8000 });
-  await page.locator('[data-choose="effects"]').click();
-  await page.waitForFunction(() => window.location.pathname === '/care/changes', null, { timeout: 8000 });
-  /* Detached rather than an instant count (see flow 18's own note): the
-     fan's cards carry their own out:fanOut transition, so a plain count
-     right after the tap can still catch it mid-fade. */
-  await page.waitForSelector('[data-fan]', { state: 'detached', timeout: 2000 }).catch(() => {
-    throw new Error('the fan remained open after tapping effects');
-  });
-
   // Move the anchor episode to 400 days ago (>12 months)
   await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]').first().click();
@@ -7216,17 +7187,6 @@ try {
   await fillDate(page, '#regimen-start', localIso(400));
   await page.click('[data-save-regimen]');
   await page.waitForTimeout(500);
-
-  // Now Quick Add should no longer show the effects row
-  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
-  await page.locator('[data-nav-fab]').click();
-  await page.waitForSelector('[data-fan-target="mood-3"]');
-  if ((await page.locator('[data-choose="effects"]').count()) > 0) {
-    throw new Error('effects row was still present after onset window had passed');
-  }
-  await page.locator('[data-nav-fab]').click();
-
-  ok('quick add: personal effects nudge appears only during onset window and navigates to /care/changes');
 
   /* The axis at the top of "changes you've noticed" (phase 10 redesign
      ticket 57). It runs on the journal this flow has just left behind - a
@@ -7270,7 +7230,7 @@ try {
   await page.waitForSelector('[data-noticed-mark="breast_development"]', { state: 'detached', timeout: 8000 });
 
   ok('personal effects: a change marked from the list lands on the axis, and its mark opens the editor again');
-} catch (e) { fail('quick add effects nudge', e); }
+} catch (e) { fail('changes noticed axis', e); }
 });
 
 

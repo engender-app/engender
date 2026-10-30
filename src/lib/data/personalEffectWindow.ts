@@ -362,31 +362,3 @@ export function effectWindowShape(effect: PersonalEffectType): EffectWindowShape
   if (!window.completionMonths) return 'no-completion';
   return window.completionMonths.max == null ? 'open-completion' : 'bounded';
 }
-
-/** Whether at least one tier-1 personal effect's literature onset window is
-    currently active for the HRT anchor (phase 5 ticket 49, anchored on HRT
-    by functional audit ticket 18).
-    Shows while at least one onset window for the anchor episode's drug is
-    current (from the anchor's start day through the latest onset window end
-    across all covered effects, e.g. 12 months for estradiol/testosterone),
-    and false once every onset window has passed or when no covered episode
-    exists. */
-export function isHrtOnsetWindowCurrent(
-  episodes: readonly RegimenEpisode[],
-  todayEpochDay: number,
-  hrtStartEpochDay: number | null
-): boolean {
-  const anchor = hrtAnchor(episodes, hrtStartEpochDay);
-  if (!anchor) return false;
-  if (todayEpochDay < anchor.startEpochDay) return false;
-
-  for (const effectKey of Object.keys(EFFECT_LITERATURE_WINDOW) as PersonalEffectType[]) {
-    const days = literatureWindowDays(effectKey, anchor);
-    if (!days) continue;
-    if (todayEpochDay <= days.onset.end) {
-      return true;
-    }
-  }
-  return false;
-}
-

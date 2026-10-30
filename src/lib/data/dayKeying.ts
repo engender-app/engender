@@ -8,7 +8,6 @@
    of a repeating interval each day fell on, or how many days each day sits
    from one dated event.
 
-
    Two rules, and they have different origins on purpose:
 
    - **Repeating** counts from 1, because the day the event happened is "day

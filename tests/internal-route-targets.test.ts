@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { expect, it } from 'vitest';
 import ts from 'typescript';
+import launchRoutes from '../src/lib/android/fixtures/launch-routes.json';
 import { parse } from 'svelte/compiler';
 
 const root = join(import.meta.dirname, '..', 'src');
@@ -20,6 +21,8 @@ const screens = files(routes)
   .map((path) => path === '/' ? path : path.replace(/\/$/, ''));
 const routeHeads = new Set(screens.map((screen) => screen.split('/')[1]));
 const unknown = '__route_value__';
+/* A new wrapper function or destination property must be added to these two
+   sets, or targets built through it escape the guard below without a failure. */
 const routeWrappers = new Set(['$derived', '$state', 'withListReturn', 'withEntryListReturn', 'withSourceReturn', 'resolve']);
 const destinationProperties = new Set(['href', 'route', 'back']);
 
@@ -183,6 +186,17 @@ function constructedTargets(source: string, file: string): string[] {
 function missesIn(source: string, file: string): string[] {
   return [...new Set(constructedTargets(source, file))];
 }
+
+/* Alarms, widgets and the reminder scheduler emit these addresses from
+   native code, where no source in src/ mentions them, so the guard below
+   cannot see them. The fixture is the list the Java and TypeScript
+   validators share. */
+it('keeps every address Android may launch on a rendered route', () => {
+  const misses = launchRoutes.filter(({ accepted }) => accepted)
+    .map(({ route }) => route.split(/[?#]/, 1)[0])
+    .filter((path) => !matchesScreen(path));
+  expect(misses).toEqual([]);
+});
 
 it('keeps internal href and goto targets on rendered routes', () => {
   const misses = files(root)

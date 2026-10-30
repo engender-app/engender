@@ -4,7 +4,7 @@ import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** @typedef {{revision: string, startedAt: string}} AndroidStart */
-/** @typedef {{sha256: string, sourceRevision: string, versionName: string, versionCode: number, packageId: string, patch: null | 'loss-migration-measurement' | 'loss-migration'}} UpgradeApk */
+/** @typedef {{sha256: string, sourceRevision: string, versionName: string, versionCode: number, packageId: string, patch: null | 'loss-migration-side-effect' | 'loss-migration'}} UpgradeApk */
 /** @typedef {{variant?: 'debug' | 'r8Instrumented', apkSha256: string, testApkSha256?: string, upgradeApks?: {previous: UpgradeApk, healthy: UpgradeApk, rowDeleting: UpgradeApk, failing: UpgradeApk}}} AndroidBuild */
 /** @typedef {{avd: string, serial: string, api: number, nativeOnly: boolean, kind: string, completedStages: string[], completedChecks: string[], build: AndroidBuild, offlineOcr?: {package: string, build: {apkSha256: string, testApkSha256: string}}, revision?: string, startedAt?: string, passedAt?: string}} AndroidRun */
 /** @typedef {{revision: string, startedAt: string, passedAt: string, runs: AndroidRun[], optionalStages: Record<string, string | null>}} AndroidEvidence */
@@ -38,7 +38,7 @@ export function installedUpgradeBuildProblems(build, revision, cwd) {
     problems.push('Installed-upgrade target hash or derivative source differs from the tested candidate.');
   }
   if (apks.previous.patch !== null || apks.healthy.patch !== null ||
-      apks.rowDeleting.patch !== 'loss-migration-measurement' || apks.failing.patch !== 'loss-migration') {
+      apks.rowDeleting.patch !== 'loss-migration-side-effect' || apks.failing.patch !== 'loss-migration') {
     problems.push('Installed-upgrade APK patch roles are missing or mismatched.');
   }
   if (apks.healthy.versionCode <= apks.previous.versionCode ||

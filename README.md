@@ -146,14 +146,14 @@ incomplete backup. Android keeps
 the five newest verified automatic backups and prunes older automatic backups
 only after a new one verifies. Manual backups remain untouched.
 
-The import tools accept supported exports from Daylio, Day One, TransTracks,
-Track & Graph and Pixels. Plain CSV and JSON exports are available when you
-want to work with your own records outside the app.
+Daylio is the only app you can import from, through its CSV export or its
+`.daylio` backup. Plain CSV and JSON exports are available when you want to
+work with your own records outside the app.
 
-Daylio backups may be up to 1024 MiB on disk. ZIP imports from Daylio, Day One
-and TransTracks allow up to 1536 MiB of decompressed content. Large imports
-also need enough free memory on the device. Daylio attachment previews read
-only file headers; attachment bodies are loaded when the import commits.
+A Daylio backup may be up to 1024 MiB on disk, and its ZIP may hold up to
+1536 MiB of decompressed content. Large imports also need enough free memory
+on the device. Attachment previews read only file headers; attachment bodies
+are loaded when the import commits.
 
 This build refuses journals left by the old plaintext version and leaves
 their files untouched. It does not convert them.
@@ -281,8 +281,8 @@ the English and Polish catalogues and prevents the number of untranslated
 literals from increasing. The licence check inspects installed dependencies;
 the first-load check measures the built app's initial assets.
 
-`npm test` includes 480 seeded importer and sniffer fuzz cases. Run
-`FUZZ_LONG=1 FUZZ_SEED=7 npm test` for 24,000 cases. Failures keep their exact
+`npm test` includes 320 seeded importer and sniffer fuzz cases. Run
+`FUZZ_LONG=1 FUZZ_SEED=7 npm test` for 16,000 cases. Failures keep their exact
 inputs and seed/index receipts in `ci-logs/fuzz/`; see
 [tests/PROBES.md](tests/PROBES.md) for replay and strict typed-refusal checks.
 

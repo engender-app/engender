@@ -10,6 +10,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal, type PhotoFileStore } from './journal.ts';
 import type { RestoreContents } from './restore.ts';
 import { CHEAP_KDF, everySectionDevice, oneShot } from './golden-archive-fixture.ts';
+import { markJournalBusy } from '../journal-busy.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 
 const bytes = (text: string) => new TextEncoder().encode(text);
@@ -213,5 +214,20 @@ test('restore sweeps an orphan after replacement cleanup fails', async () => {
 
   assert.deepEqual((await made.journal.archive.snapshot()).journal, made.snapshot.journal);
   for (const [name, data] of made.original) assert.deepEqual(await made.files.read(name), data);
+  assert.deepEqual(made.disk.names(), [...made.original.keys()].sort());
+});
+
+test('restore holds its orphan sweep while another write is in flight, then runs it', async () => {
+  const made = await device();
+  made.disk.failNthRemove(1);
+  const release = markJournalBusy();
+  try {
+    await made.journal.archive.merge(made.contents());
+    // Deferred, not skipped: the orphan is still there while the other write runs.
+    assert.notDeepEqual(made.disk.names(), [...made.original.keys()].sort());
+  } finally {
+    release();
+  }
+  for (let i = 0; i < 50 && made.disk.names().length !== made.original.size; i++) await new Promise((done) => setTimeout(done, 10));
   assert.deepEqual(made.disk.names(), [...made.original.keys()].sort());
 });

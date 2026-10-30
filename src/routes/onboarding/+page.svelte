@@ -2,7 +2,7 @@
   import { rovingRadio } from '$lib/components/rovingRadio';
   /* The first run (F16), rebuilt for phase 5 ticket 26.
 
-     Five settings, one pass. What a person had to leave here and go and find
+     Six settings, one pass. What a person had to leave here and go and find
      afterwards was the flag, which is the app's whole look and something
      someone decides in the first minute and almost never revisits. So the
      flow is welcome, name, flag, scales, features, lock, permissions,

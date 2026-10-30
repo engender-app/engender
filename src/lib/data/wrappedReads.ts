@@ -5,6 +5,11 @@ import type { Journal } from './journal/journal';
 import { wrappedLetters, LETTER_RETROSPECTIVE_LIMIT } from './letterRetrospective';
 import { wrappedTagInsights, wrappedTallyCounts } from './wrappedSections';
 
+/** One result for a wrapped period. Start every journal call before
+    awaiting so liveQuery observes every dependency on its first run. The
+    screen holds the period whole until every figure has landed; a failed
+    read fails it whole too, rather than drawing a recap beside sections
+    that silently read as empty. */
 export async function readWrappedPeriod(
   journal: Pick<Journal, 'stats' | 'letters'>,
   period: {

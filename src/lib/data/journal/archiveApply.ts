@@ -938,9 +938,9 @@ export async function applyEffectCategories({ driver, mode, journal, ts }: Resto
   }
 }
 
-/** The effect vocabulary itself, the same flat shape applyMeasurementTypes
-    uses: a custom's key is its own minted uuid (personalEffects.ts), the
-    column NOT NULL for the built-ins' sake. */
+/** The effect vocabulary itself, a flat shape like the other vocabulary
+    sections here: a custom's key is its own minted uuid
+    (personalEffects.ts), the column NOT NULL for the built-ins' sake. */
 export async function applyPersonalEffectTypes({ driver, mode, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT key AS id FROM personal_effect_type');
 

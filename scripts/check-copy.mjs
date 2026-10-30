@@ -264,6 +264,34 @@ export function catalogueFindings(en, pl, referenced) {
 }
 
 /**
+ * Entries of messages/copy-coverage-50.json that point at nothing: a key the
+ * catalogue no longer has, or a source file that is gone or no longer names
+ * the key. The file only feeds the strings page, so a stale entry misleads
+ * a reader and nothing else, which is why it is easy to leave behind.
+ *
+ * @param {Record<string, { sources?: string[] }>} coverage
+ * @param {Record<string, unknown>} catalogue
+ * @param {(file: string) => string | null} readSource null when the file does not exist
+ * @returns {string[]}
+ */
+export function coverageProblems(coverage, catalogue, readSource) {
+  /** @type {string[]} */
+  const problems = [];
+  for (const [key, entry] of Object.entries(coverage)) {
+    if (!(key in catalogue)) {
+      problems.push(`copy-coverage-50.json lists ${key}, which messages/en.json no longer has`);
+      continue;
+    }
+    for (const file of entry.sources ?? []) {
+      const text = readSource(file);
+      if (text === null) problems.push(`copy-coverage-50.json: ${key} names ${file}, which does not exist`);
+      else if (!new RegExp(`\\b${key}\\b`).test(text)) problems.push(`copy-coverage-50.json: ${key} names ${file}, which does not use it`);
+    }
+  }
+  return problems;
+}
+
+/**
  * User-facing text written straight into a Svelte file's markup, from the
  * parsed template rather than by pattern-matching the source: a template
  * knows the difference between a text node, an expression, a comment and the
@@ -397,7 +425,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const problems = [
     ...catalogueOrderProblems(Object.fromEntries(CATALOGUES.map((file) => [file, readFileSync(file, 'utf8')]))),
     ...ratchetProblems(counts, readBaseline()),
-    ...catalogueFindings(enCatalogue, plCatalogue, referenced).map(({ message }) => message)
+    ...catalogueFindings(enCatalogue, plCatalogue, referenced).map(({ message }) => message),
+    ...coverageProblems(JSON.parse(readFileSync('messages/copy-coverage-50.json', 'utf8')), enCatalogue,
+      (file) => existsSync(file) ? readFileSync(file, 'utf8') : null)
   ];
 
   for (const problem of problems) console.log('FAIL', problem);
@@ -413,5 +443,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       `${UNSCANNED.size} file(s) not scanned)`
   );
   console.log('PASS no Polish string genders the reader');
+  console.log('PASS copy-coverage-50.json names only live keys and sources');
   console.log(`PASS no catalogue key sits with no caller (${referenced.size} referenced, ${DEAD_ALLOW.size} allow-listed)`);
 }

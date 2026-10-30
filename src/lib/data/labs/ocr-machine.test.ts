@@ -491,11 +491,8 @@ describe('OcrMachine – save-failed path', () => {
 });
 
 describe('OcrMachine – source units', () => {
-  test('saves scanned value and unit even when preference uses another unit', async () => {
-    const saver = {
-      ...saverWith(),
-      getPreferredUnit: () => 'pmol/L'
-    };
+  test('saves the scanned value in the unit the report printed', async () => {
+    const saver = saverWith();
     const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(GOOD_OCR_TEXT), saver);
 
     m.open();
@@ -505,8 +502,6 @@ describe('OcrMachine – source units', () => {
     await m.save();
     expect(saver.saved[0]).toMatchObject({ value: 123.4, unit: 'pg/mL' });
   });
-
-
 });
 
 /* Phase 9 audit ticket 11. Recognition on a phone photo of a lab report is

@@ -42,7 +42,10 @@
       right but the journal would not open again after a web lock
       (after-release ticket 10); not counted as a guess either. `cancelled`:
       a newer lock or departure superseded the attempt. Credential contention
-      and unreadable access metadata are separate from a wrong guess too. */
+      and unreadable access metadata are separate from a wrong guess too.
+      `storage-full`: the device had no room to write the attempt record or
+      the wait, so the guess was never judged; it is not wrong, and freeing
+      space is the only fix. */
   export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened' | 'cancelled' | 'busy' | 'access-unavailable' | 'storage-full';
 
   let {
@@ -65,6 +68,8 @@
   let opening = false;
   let refusals = $state(0);
   let waitMs = $state(0);
+  /** The one status the line below shows, for its `data-pin-status` handle and for the `{#key}` that replays its entrance. */
+  let status = $derived(authenticating ? 'busy' : waitMs > 0 ? 'throttled' : error ? lastOutcome : 'idle');
   /** The whole wait, taken the moment it starts, so the rail under the status
       line can draw the share of it that is left. Read off the throttle's
       first reading rather than added to its API: the countdown always begins
@@ -239,10 +244,10 @@
   {/key}
 {/if}
 
-<p class="pin-status small" {...{ [statusHandle]: authenticating ? 'busy' : waitMs > 0 ? 'throttled' : error ? lastOutcome : 'idle' }}>
+<p class="pin-status small" {...{ [statusHandle]: status }}>
   <span class="pin-status-reserve" aria-hidden="true">{m.pin_access_unavailable()}</span>
   <span class="pin-status-reserve" aria-hidden="true">{m.pin_storage_full()}</span>
-  {#key authenticating ? 'busy' : waitMs > 0 ? 'throttled' : error ? lastOutcome : 'idle'}
+  {#key status}
     <span in:enterStatus>
       {#if authenticating}
         {m.pp_decrypting()}

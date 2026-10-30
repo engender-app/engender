@@ -6,8 +6,7 @@ export type ResurfacingSurface =
   | 'on-this-day-home-card'
   | 'wrapped'
   | 'wrapped-home-card'
-  | 'milestone-anniversary'
-;
+  | 'milestone-anniversary';
 
 interface ResurfacingSurfaceRow {
   key: ResurfacingSurface;

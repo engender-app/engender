@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { catalogueOrderProblems, catalogueProblems, fixCatalogues, findLiterals, ratchetProblems } from '../scripts/check-copy.mjs';
+import { catalogueOrderProblems, catalogueProblems, coverageProblems, fixCatalogues, findLiterals, ratchetProblems } from '../scripts/check-copy.mjs';
 import { serializeCatalogue } from '../scripts/catalogue.mjs';
 
 describe('catalogueProblems', () => {
@@ -132,5 +132,28 @@ describe('ratchetProblems', () => {
 
   it('rejects a baseline entry for a file with nothing left to fix', () => {
     expect(ratchetProblems({}, { 'a.svelte': 3 })).toHaveLength(1);
+  });
+});
+
+describe('coverageProblems', () => {
+  const sources: Record<string, string> = { 'a.svelte': 'm.hello()' };
+  const read = (file: string) => sources[file] ?? null;
+
+  it('passes entries whose key and sources are live', () => {
+    expect(coverageProblems({ hello: { sources: ['a.svelte'] } }, { hello: 'Hello' }, read)).toEqual([]);
+  });
+
+  it('rejects a key the catalogue no longer has', () => {
+    const problems = coverageProblems({ gone: { sources: [] } }, { hello: 'Hello' }, read);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('gone');
+  });
+
+  it('rejects a source that is missing or no longer uses the key', () => {
+    const problems = coverageProblems({ hello: { sources: ['b.svelte', 'a.svelte'] }, bye: { sources: ['a.svelte'] } },
+      { hello: 'Hello', bye: 'Bye' }, read);
+    expect(problems).toHaveLength(2);
+    expect(problems[0]).toContain('does not exist');
+    expect(problems[1]).toContain('does not use it');
   });
 });

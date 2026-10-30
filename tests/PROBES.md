@@ -646,7 +646,7 @@ To run one on its own, use
 | `range-editors-check` | regimen, dose-pause and tryout end-picker limits, inverted-save guards, equal/open bounds and feedback motion in English and Polish, light and dark; `RANGE_SIGNOFF` saves crops |
 | `regimen-editor-check` | independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment |
 | `document-import-check` | document import field order, saved values, owner links, draft dismissal, failures and privacy in English and Polish |
-| `accessible-names-check` | English and Polish accessible names retain lab analytes, values, units and dates, resource numbers and domains, and benchmark pitches and dates; measurement images describe their chart |
+| `accessible-names-check` | English and Polish accessible names retain lab analytes, values, units and dates, resource numbers and domains, and benchmark pitches and dates |
 | `lab-entry-check` | lab result field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish |
 | `wear-entry-check` | a wear session duration typed key by key keeps decimals and a minus, saves the hours typed and reopens as typed; empty and negative durations stay refused |
 | `leave-lock-check` | leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open |
@@ -1159,13 +1159,12 @@ lock cleanup through the shared content-forgetting boundary.
 
 `entry-source-return-check.mjs` drives the real router and editor through
 Save and Delete from Voice recordings, ordinary and margin-note Search
-results and an ordinary day list. It checks the
-selected Voice tab, Search query and starred filter on return. It also
-checks that Search spends
-its in-memory snapshot and that typed queries stay out of return URLs,
-history state and Web Storage. The existing `entry-editor-return` guard also
-checks that reloading the editor drops the in-memory Search query while
-keeping its return route. Run with `node tests/entry-source-return-check.mjs`.
+results and an ordinary day list. It checks the selected Voice tab, Search
+query and starred filter on return. It also checks that Search spends its
+in-memory snapshot and that typed queries stay out of return URLs, history
+state and Web Storage. The existing `entry-editor-return` guard also checks
+that reloading the editor drops the in-memory Search query while keeping its
+return route. Run with `node tests/entry-source-return-check.mjs`.
 
 ### Safari storage notice
 

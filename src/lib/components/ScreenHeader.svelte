@@ -149,9 +149,8 @@
        white at 4.41:1, legal for large text and nothing smaller - which is
        why the subtitle is outside the field, on the page, and why
        tests/direction-contract.test.ts holds every rule that sizes type
-       inside this element to 24px, or 18.66px bold. Under disguise the
-       shell publishes --surface-2 and --text instead, so the same markup
-       draws a grey header and nothing here has to know. -->
+       inside this element to 24px, or 18.66px bold. The unlocked app
+       always paints the flag here, disguise or not (FA 42). -->
   <div class="screen-field" data-screen-field use:resize>
     <!-- The blind (redesign ticket 28): the field's colour, split off from
          the box that measures it so the two can move on different clocks

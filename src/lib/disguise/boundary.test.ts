@@ -1,3 +1,14 @@
+/* The FA 42 boundary guard: unlocked screens never read the disguise
+   preference; only the owners listed below do.
+
+   Blind spots, so nobody takes a green run for more than it says: the scan
+   looks for `.disguise` property access, bracket access with the literal
+   key, and object destructuring. It does not see `Object.entries(prefs)`
+   or a spread of the prefs object, a keyed accessor such as
+   `prefs.get('disguise')`, or anything that is not .svelte, .ts or
+   .html (.js and .css are not scanned). The positive half - outside
+   surfaces still ask the identity helpers - lives in identity.test.ts. */
+
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { parse } from 'svelte/compiler';

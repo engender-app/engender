@@ -39,7 +39,7 @@ import { todayEpochDay } from '../epochDay';
     file, deliberately, so that a failed import leaves the old photos on disk
     (restore.ts). Removing them row and file together here keeps a demo device
     from accumulating orphans across every state jump rather than waiting for
-    the next boot's sweep. The persona attaches no other kind of file, so the
+    the next due orphan sweep. The persona attaches no other kind of file, so the
     remaining four photo tables need no loop of their own - and if it ever
     does, the sweep is what reclaims them. */
 export async function clearJournal(journal: Journal): Promise<void> {

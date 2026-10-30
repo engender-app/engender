@@ -1,20 +1,14 @@
 /* The metric registry's own invariants (phase 8 features ticket 27,
    ADR-0060).
 
-   What this file is for: the registry decides which figure may carry a
-   cited band and which may not, and both halves of that are a safety
-   claim rather than a formatting one. A band drawn against the wrong
-   language reads as a verdict with a citation behind it, and a missing
-   band that nothing explains reads as a bug.
+   What this file is for: the registry decides which figure is Referenced
+   and which is read only against the person's own earlier takes. No figure
+   draws a population band any more (ADR-0059), so what is left to protect
+   is that every figure is explained, keyed once and typed into every prose
+   map.
 
    Node tier, so this imports metrics.ts and never metricLabels.ts
-   (ADR-0016).
-
-   `bandsOf` is driven over entries written here rather than only over the
-   shipped table: the shipped table has one Referenced figure and two
-   sourced languages, so every interesting case - a language nobody
-   measured, an own-series figure asked for a band - is unreachable
-   through it. The rule under test is the production one either way. */
+   (ADR-0016). */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

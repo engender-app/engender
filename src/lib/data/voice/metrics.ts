@@ -30,8 +30,8 @@ const ENTRIES = [
   { key: 'room', tier: 'ownSeries' },
   /* The corner-vowel scaling factor (phase 8 features ticket 30). Fitted
      across the two extra held vowels alongside the one `resonance` already
-     reads, so it carries no band for the same reason: it is built from the
-     same two formants the only Polish sex-split data finds no difference in. */
+     reads, so it is read against the person's own earlier takes like
+     `resonance`, since it is built from the same two formants. */
   { key: 'scale', tier: 'ownSeries' }
 ] as const satisfies readonly VoiceMetricShape[];
 

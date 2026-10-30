@@ -1241,9 +1241,9 @@
   /* The eras are the one kind whose colour is plural - they run the flag,
      one colour per era - so their key is the flag itself rather than any
      one stripe, which is also what keeps it clear of everything else here.
-     Under disguise roles.ts hands out no gradient at all (ADR-0035), the
-     variable is unset, and the key falls back to the outline over nothing,
-     which is what "no colour" looks like on that theme. */
+     The unlocked app always uses the flag, disguise or not (FA 42), so the
+     variable is set here; the outline alone is the fallback for a flag with
+     no colour of its own. */
   .span-tl-chip[data-span-chip='era'] {
     height: var(--low-h);
     background: var(--tl-flag, transparent);

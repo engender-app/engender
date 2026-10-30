@@ -119,7 +119,7 @@ Versions are the ones the lockfile installs ([package-lock.json](package-lock.js
 | `@inlang/paraglide-js` | 2.25.0 | Compiled English and Polish message catalogues |
 | `d3-scale`, `d3-shape` | 4.0.2, 3.2.0 | Scales and path generators for SVG charts. Nothing else from d3 |
 | `melt` | 0.30.1 | Headless behaviour for a few controls (`Slider`, `Switch`, `MediaTransport`) |
-| `fflate` | 0.8.3 | Zip reading for the Daylio and Day One importers |
+| `fflate` | 0.8.3 | Zip reading for the Daylio backup importer |
 | `tesseract.js` (+ eng, pol data) | 7.0.0 | Lab-result OCR. Installed with the PWA and bundled in the APK; initialized on a scan |
 | `pdfjs-dist` | 4.10.38 | Renders stored documents in a worker ([src/lib/data/documents/pdf-worker.ts](src/lib/data/documents/pdf-worker.ts)) |
 | Vitest | 4.1.11 | Node tier |
@@ -345,11 +345,10 @@ erDiagram
   entry ||--o{ entry_dimension_value : has
   gender_dimension ||--o{ entry_dimension_value : scale
   presentation ||--o{ entry : presentation_id
-  entry ||--o{ revisit : entry_id
   entry ||--o{ checklist : debrief_entry_id
 ```
 
-The same section holds `gender_preset`/`preset_dimension`, `body_region`, `entry_template` (with its tag and dimension children), `affirmation` and `presentation` (ADR-0048: a grouping key, never a set of scales). An entry is never deleted on the spot. `trashed_at` marks it, and boot purges trash older than 30 days.
+The same section holds `gender_preset`/`preset_dimension`, `body_region`, `entry_template` (with its tag and dimension children) and `presentation` (ADR-0048: a grouping key, never a set of scales). An entry is never deleted on the spot. `trashed_at` marks it, and boot purges trash older than 30 days.
 
 **Care: regimen, doses, stock, labs**
 
@@ -401,8 +400,7 @@ The rest, without SQL edges:
 [unprompted/resurfacing.ts](src/lib/unprompted/resurfacing.ts) loads eras
 and mutes for each registered resurfacing surface. On this day filters out
 muted candidates before reading their content. Wrapped rejects the whole
-period if it overlaps a muted era, including notifications and direct share
-URLs. The interface requires a registered surface key; its type check rejects
+period if it overlaps a muted era. The interface requires a registered surface key; its type check rejects
 missing and unknown keys. Direct Journal reads remain possible; code review
 must check that resurfacing surfaces use this interface.
 
@@ -594,8 +592,7 @@ including legacy consult IDs, and resolve references to Archive rows or built-in
 before SQLite or template lookup. Full Archives may reference built-in tags or
 tags they carry; row-only imports may also reuse destination tags. The contracts
 cover all `ArchiveJournal` sections and fields at compile time. Flat descriptors
-supply natural identities and absent-field defaults. Two revisits for one entry are
-refused before restore picks one. These known malformed rows raise
+supply natural identities and absent-field defaults. These known malformed rows raise
 `CorruptArchiveError` during verification, Merge and Replace. A document link
 with one missing half gets that typed refusal before SQLite. SQLite still
 enforces remaining constraints inside the transaction; unexpected storage and
@@ -639,27 +636,19 @@ Unicode folding uses the same JavaScript helper as live writes; SQLite's
 the same migration transaction, before the version advances. The released
 schema-88 baseline and intervening migrations remain unchanged.
 
-Each entry has at most one revisit. Merge keeps the destination's revisit when
-an older Archive or another device carries a different revisit uuid for that
-entry. Replace installs the Archive's revisit after clearing the old rows.
-
 Bundled roadmap goals keep status and visibility separately during Merge. A
 local unchecked row records only visibility, so an incoming status fills it
 without changing the local hidden flag. A local checked or not-my-path status
 still wins; a missing incoming goal leaves both choices alone.
 
-**External importers** sit in [data/archive/sources.ts](src/lib/data/archive/sources.ts), a registry of `daylio`, `daylio-backup`, `dayone`, `transtracks`, `trackAndGraph` and `pixels`. Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](src/lib/data/archive/plain.ts)) are readable files, not backups.
+**External importers** sit in [data/archive/sources.ts](src/lib/data/archive/sources.ts), a registry of `daylio` (its CSV export) and `daylio-backup` (its `.daylio` backup). Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](src/lib/data/archive/plain.ts)) are readable files, not backups.
 
-Importers deduplicate entry tags. Pixels preview reports `invalidMoodCount` for entries whose supplied scores fall outside 1 to 5; their mood becomes null. This count is part of the preview API; Pixels has no import screen yet. Archive restore also nulls invalid moods.
+Importers deduplicate entry tags. Archive restore also nulls invalid moods.
 
 The ZIP reader reports malformed container bytes through `ZipFormatError`.
-Daylio backup, Day One and TransTracks translate that error into their own
-import failure types, including attachment reads deferred until commit.
+Daylio backup translates that error into its own import failure type,
+including attachment reads deferred until commit.
 Consumed JSON fields are checked before string and collection operations.
-Day One permits omitted optional text/collection fields, as in its recorded
-export shape, and refuses explicit null.
-Absent optional TransTracks collections remain empty; present collections
-must be arrays.
 Preview refuses incoming identity collisions before they can reach SQLite
 uniqueness checks or attachment writes.
 Known JSON and encoding refusals receive the same importer classification;
@@ -669,8 +658,8 @@ Daylio JSON refusals omit parser diagnostics that can echo a cleartext PIN.
 
 The Daylio backup picker refuses files larger than 1024 MiB before buffering them.
 The shared [ZIP reader](src/lib/data/archive/zipReader.ts) allows at most
-1536 MiB of declared decompressed content across the members it reads, including
-Day One and TransTracks imports. Both limits use a ten-year estimate: twice the
+1536 MiB of declared decompressed content across the members it reads. Both
+limits use a ten-year estimate: twice the
 393.6 MiB attachment baseline in [the benchmark](tests/long-journal/budgets.json),
 plus 64 MiB for longer recordings, metadata and ZIP overhead, totals 851.2 MiB.
 The factor of two allows larger source media than Engender's normalized photos;
@@ -1131,7 +1120,7 @@ The contract suite in [data/journal/contract-suite.ts](src/lib/data/journal/cont
 **Fixtures and the demo.** [data/demo/persona.ts](src/lib/data/demo/persona.ts) is "Alice", a seeded, deterministic persona about two and a half years into transition, generated relative to today. Every import of it sits behind `__DEMO__`, which a production build replaces with `false`. [verify-build.mjs](tests/browser-tier/verify-build.mjs) greps the built bundle to prove the persona is gone. `VITE_DEMO=1 npm run build` produces the demo build that guards and the walkthrough use. On a cold web load the database worker seeds the persona itself, in one transaction ([worker-seed.ts](src/lib/data/demo/worker-seed.ts)). While the sqlite wasm is still downloading, the worker draws the persona's photos ahead of time (`warmDemoPhotos`); the seed takes each one from that set, and draws on demand any photo the set does not hold. Photos depend on their seed alone, so the rows and bytes written do not change. [data/demo/fullFixture.ts](src/lib/data/demo/fullFixture.ts) fills every feature. The long-journal fixture is a separate generator ([tests/long-journal/generate.ts](tests/long-journal/generate.ts)).
 
 The Node tier also runs [tests/fuzz/](tests/fuzz/): 40 seeded mutations for
-each of 12 importer and sniffer targets. A separate child has a 1 GiB heap
+each of 8 importer, archive and sniffer targets. A separate child has a 1 GiB heap
 limit and a 30-second case watchdog. Refused cases must preserve row and file
 content hashes after orphan cleanup; accepted imports must pass SQLite
 integrity checks and read back through the journal. Exact failing inputs and
@@ -1168,7 +1157,7 @@ flowchart LR
 - [migrations.ts](src/lib/data/sqlite/migrations.ts), because a journal already on the current schema never loads it
 - `hash-wasm`, which the Argon2 worker bundles for itself
 - most of the built-in vocabulary ([vocabulary/builtinTemplates.ts](src/lib/data/vocabulary/builtinTemplates.ts) carries only what boot needs)
-- the screens' wording layer, [vocabulary/vocabulary.ts](src/lib/data/vocabulary/vocabulary.ts), with the dose and entry-template labels it joins in. The shell's one reader, the Android affirmation pool, loads it with the rest of the Android sync, and [tests/shell-graph.test.ts](tests/shell-graph.test.ts) keeps the shell's static imports from reaching it
+- the screens' wording layer, [vocabulary/vocabulary.ts](src/lib/data/vocabulary/vocabulary.ts), with the dose and entry-template labels it joins in. The shell does not need it, and [tests/shell-graph.test.ts](tests/shell-graph.test.ts) keeps the shell's static imports from reaching it
 
 **Preload hints wait for the first frame.** [src/hooks.server.ts](src/hooks.server.ts) runs once at build time and turns the document's module preload hints into held `x-modulepreload` hints. The pre-paint script in [app.html](src/app.html) releases them after the first frame, so the splash paints before the chunk downloads compete with it. Over HTTP/2 at 4x CPU throttling and a slow network, the splash paints in under a second. Over HTTP/1.1 the browser has six connections rather than one to share, so the script gives each hint back as the parser adds it instead; holding them there only delayed the first screen by about 0.3 s. The browser checks serve `build/` through [tests/serve-build.mjs](tests/serve-build.mjs), which hands out `build/index.html` itself under the production isolation headers and the CSP header read from the nginx configuration, so they run under the shipped CSP and the held hints.
 

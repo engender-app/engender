@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { launchChromium, previewBuild } from './browser-harness.mjs';
 import { firstRun, unlock } from './browser-tier/built-flow.mjs';
 
-// Snapshot of 52 route ids that had redirect-only +page.ts files before FA11.
+// Route ids FA11 removed (they were redirect-only +page.ts files). None may come back: each must render the unknown-address screen.
 const oldRoutes = JSON.parse(readFileSync(new URL('./old-addresses.json', import.meta.url), 'utf8'));
 assert.equal(oldRoutes.length, 52);
 const app = await previewBuild(process.cwd());

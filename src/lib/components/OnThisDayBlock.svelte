@@ -45,6 +45,8 @@
   interface QualifyingDay {
     key: OnThisDayLookback;
     epochDay: number;
+    /** Whole years back, set on the annual anniversaries past the first. */
+    years?: number;
     entries: Entry[];
     /* Letters this lookback resurfaces - written that day, or unlocked that
        day (phase 5 deepening ticket 13). Sealed ones are already out. */
@@ -71,6 +73,7 @@
         return {
           key: c.key,
           epochDay: c.epochDay,
+          years: c.years,
           entries: good ? await j.entries.entriesForDay(c.epochDay) : [],
           letters: dayLetters
         };
@@ -82,7 +85,7 @@
   let days = $derived(
     daysQuery.rows.map((d) => ({
       ...d,
-      title: d.key.startsWith('year-') ? m.on_this_day_years_title({ years: m.n_years({ n: Number(d.key.slice(5)) }) }) : LOOKBACK_TITLE[d.key as 'year' | 'sixMonths' | 'month'](),
+      title: d.years !== undefined ? m.on_this_day_years_title({ years: m.n_years({ n: d.years }) }) : LOOKBACK_TITLE[d.key as 'year' | 'sixMonths' | 'month'](),
       date: fmtDayBar(d.epochDay, today),
       photos: d.entries.flatMap((entry) => entry.photos)
     }))
