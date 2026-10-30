@@ -286,7 +286,10 @@ test('milestones, lab results, tally events, side effects, cycle events, reminde
       provider: 'Diagnostyka',
       timingRoute: 'im',
       timingHours: null,
-      timingDayOfInterval: 5
+      timingDayOfInterval: 5,
+      costAmount: null,
+      costCurrency: null,
+      costRefunded: false
     },
     {
       id: lab,
@@ -299,7 +302,10 @@ test('milestones, lab results, tally events, side effects, cycle events, reminde
       provider: '',
       timingRoute: null,
       timingHours: null,
-      timingDayOfInterval: null
+      timingDayOfInterval: null,
+      costAmount: null,
+      costCurrency: null,
+      costRefunded: false
     }
   ]);
   assert.deepEqual(snapshot.journal.tallyEvents, [{ id: tally, epochDay: 20000, kind: 'misgendered' }]);
@@ -479,7 +485,10 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
       leadTimeDays: null,
       dosesPerUnit: null,
       expiryEpochDay: null,
-      pharmacyNote: null
+      pharmacyNote: null,
+      costAmount: null,
+      costCurrency: null,
+      costRefunded: false
     }
   ]);
 });
@@ -978,19 +987,23 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // section's own read would issue.
   hair_photo: ['uuid', 'epoch_day', 'file_path'],
   // Owns a child (hair_removal_photo) below.
-  hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'minutes', 'cost', 'provider'],
+  // The old free-text `cost` is left behind: version 112 emptied it into the
+  // cost columns or the note (FA 30), and FA 50 drops it.
+  hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'minutes', 'provider', 'note',
+    'cost_amount', 'cost_currency', 'cost_refunded'],
   // session_id travels as the session's own uuid, the way dose_pause's
   // episode_id does (ADR-0002). Read once for the file manifest, the same
   // reason hair_photo above is hand-written.
   hair_removal_photo: ['uuid', 'session_id', 'file_path'],
   // Owns a child (procedure_photo) below. Its consults are appointments now
   // and travel in their own section (ticket 57).
-  procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in', 'archived'],
+  procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in', 'archived',
+    'cost_amount', 'cost_currency', 'cost_refunded'],
   // procedure_id travels as the procedure's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - here and on the child below.
   appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note', 'referred_epoch_day',
     // provider_id travels as the provider's uuid (ticket 27), like procedure_id.
-    'time_of_day', 'provider_id'],
+    'time_of_day', 'provider_id', 'cost_amount', 'cost_currency', 'cost_refunded'],
   // appointment_id travels as nesting under its appointment (ticket 26), the
   // way procedure_photo travels under its procedure.
   appointment_status: ['uuid', 'appointment_id', 'epoch_day', 'status'],
@@ -1099,8 +1112,8 @@ test('every column in the schema is either carried or deliberately left behind',
     const columns = await db.query<{ name: string }>(`PRAGMA table_info(${name})`);
     // Stock identity is rebuilt from the drug's wire spelling on this device.
     const known = [...CARRIED[name], ...LEFT_BEHIND, ...(name === 'medication_stock' ? ['drug_key'] : []),
-      // A nullable note FA 04 adds for FA 30; nothing writes or carries it yet.
-      ...(name === 'hair_removal_session' ? ['note'] : [])];
+      // The free-text cost FA 30 emptied; FA 50 drops the column.
+      ...(name === 'hair_removal_session' ? ['cost'] : [])];
     for (const column of columns) {
       assert.ok(known.includes(column.name), `${name}.${column.name} is neither carried nor left behind`);
     }

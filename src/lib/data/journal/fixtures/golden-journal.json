@@ -61,7 +61,7 @@
       "hidden": false
     },
     {
-      "key": "b4ef4d2f-f5bd-46fc-9093-1a25dea01ac3",
+      "key": "69e023c6-2a80-4b66-ad04-ee6e84ca698e",
       "name": "Voice comfort",
       "low": "off",
       "high": "mine",
@@ -153,11 +153,11 @@
       ]
     },
     {
-      "id": "0f609623-1c3c-4ff1-b4b6-1a0f9a8c46a4",
+      "id": "ea551352-2bf8-4456-8a08-f385ce36cb0c",
       "name": "Mine",
       "builtIn": false,
       "dims": [
-        "b4ef4d2f-f5bd-46fc-9093-1a25dea01ac3",
+        "69e023c6-2a80-4b66-ad04-ee6e84ca698e",
         "femininity"
       ]
     }
@@ -262,7 +262,7 @@
           "hidden": false
         },
         {
-          "id": "85a12136-568b-46f1-a21b-d35568832068",
+          "id": "4f87da90-49e4-414f-80de-f4ddf2734b32",
           "label": "wired",
           "builtIn": false,
           "hidden": false
@@ -377,13 +377,13 @@
       ]
     },
     {
-      "key": "4e88ff18-63b6-4a2c-adcd-a30bc89cfbc5",
+      "key": "81509789-3d9f-428a-8cb8-f0ecea6b5ebe",
       "name": "Appointments",
       "enabled": true,
       "builtIn": false,
       "tags": [
         {
-          "id": "873f2af5-343b-45c3-9ee0-ab122ded0699",
+          "id": "e8cc5a25-2355-43db-9ce6-bc5be3304f6e",
           "label": "endo",
           "builtIn": false,
           "hidden": false
@@ -393,13 +393,13 @@
   ],
   "presentations": [
     {
-      "id": "01ff1c21-f176-4134-91a0-31eb757c0cbd",
+      "id": "68e5fc8d-a5f6-4255-9b00-e7020d5ca694",
       "name": "femme",
       "roleIndex": 0,
       "hidden": false
     },
     {
-      "id": "d35f2996-a0f8-4f2f-a01e-7d4065d9c035",
+      "id": "b9e0c32c-cc5d-4a0f-8258-8b704e855c42",
       "name": "androgynous",
       "roleIndex": 1,
       "hidden": true
@@ -582,16 +582,16 @@
       "hidden": true
     },
     {
-      "id": "a91d58d1-9bd8-4726-ab5c-e89f45f7b44f",
+      "id": "3b62f96c-d5c1-4211-9a88-fc1036cf2beb",
       "name": "After a hard day",
       "tags": [
-        "873f2af5-343b-45c3-9ee0-ab122ded0699"
+        "e8cc5a25-2355-43db-9ce6-bc5be3304f6e"
       ],
       "dims": {
-        "b4ef4d2f-f5bd-46fc-9093-1a25dea01ac3": 3
+        "69e023c6-2a80-4b66-ad04-ee6e84ca698e": 3
       },
       "noteScaffold": "What made today hard?",
-      "presentationId": "01ff1c21-f176-4134-91a0-31eb757c0cbd",
+      "presentationId": "68e5fc8d-a5f6-4255-9b00-e7020d5ca694",
       "builtIn": false,
       "hidden": false
     }
@@ -658,7 +658,7 @@
       "hidden": false
     },
     {
-      "id": "507d2422-a427-407a-bab1-a251cb80bc84",
+      "id": "623e8aa0-ffa6-4b01-a471-a6dc17bc917f",
       "name": "scar tissue",
       "builtIn": false,
       "hidden": false
@@ -666,46 +666,46 @@
   ],
   "entries": [
     {
-      "uuid": "dad93746-a138-415d-9d10-f30c05e84ea6",
+      "uuid": "87a7be7a-8122-45c2-aedf-1a65ea805fbb",
       "epochDay": 20000,
       "timestamp": 1700000000000,
       "mood": 4,
       "note": "a good day, zażółć gęślą jaźń",
       "dims": {
         "femininity": 60,
-        "b4ef4d2f-f5bd-46fc-9093-1a25dea01ac3": 7
+        "69e023c6-2a80-4b66-ad04-ee6e84ca698e": 7
       },
       "tags": [
         "e-happy",
-        "873f2af5-343b-45c3-9ee0-ab122ded0699"
+        "e8cc5a25-2355-43db-9ce6-bc5be3304f6e"
       ],
       "photos": [
         {
-          "id": "03cd553a-74d0-4ab3-bbba-1dc7e3a22275",
-          "fileName": "03cd553a-74d0-4ab3-bbba-1dc7e3a22275.jpg",
+          "id": "9405c56d-78e8-490c-96b6-2b6cccd9086d",
+          "fileName": "9405c56d-78e8-490c-96b6-2b6cccd9086d.jpg",
           "starred": false,
           "epochDayOverride": 19000
         }
       ],
       "recordings": [
         {
-          "id": "5ba84b62-91aa-4256-a28c-8bdce01c832b",
-          "fileName": "5ba84b62-91aa-4256-a28c-8bdce01c832b.webm"
+          "id": "71e0b179-a219-4039-a148-ab3bcec2d747",
+          "fileName": "71e0b179-a219-4039-a148-ab3bcec2d747.webm"
         }
       ],
       "videos": [
         {
-          "id": "44c111a8-1069-4718-bad7-63625e4d9f8d",
-          "fileName": "44c111a8-1069-4718-bad7-63625e4d9f8d.webm"
+          "id": "5898eb84-8f0e-4b40-ac98-bfbda4c4a28b",
+          "fileName": "5898eb84-8f0e-4b40-ac98-bfbda4c4a28b.webm"
         }
       ],
       "bodyRegions": {
-        "507d2422-a427-407a-bab1-a251cb80bc84": 80,
+        "623e8aa0-ffa6-4b01-a471-a6dc17bc917f": 80,
         "chest": 25,
         "voice_throat": 65
       },
       "starred": false,
-      "presentationId": "01ff1c21-f176-4134-91a0-31eb757c0cbd"
+      "presentationId": "68e5fc8d-a5f6-4255-9b00-e7020d5ca694"
     },
     {
       "uuid": "4891b88d-1d66-5be4-ae42-5585a40059a4",
@@ -725,25 +725,25 @@
   ],
   "marginNotes": [
     {
-      "id": "9c331616-a797-44c3-b7ee-8ec456872416",
-      "entryId": "dad93746-a138-415d-9d10-f30c05e84ea6",
+      "id": "2fb8d3c4-b324-4f28-885e-47e7d702bacb",
+      "entryId": "87a7be7a-8122-45c2-aedf-1a65ea805fbb",
       "epochDay": 20050,
       "text": "reading this back, zażółć gęślą jaźń"
     }
   ],
   "documents": [
     {
-      "id": "22dd0c78-0622-4dfb-8548-b558ab198e4d",
+      "id": "20741a43-bdd5-485e-9c80-b5c3ecb0273e",
       "epochDay": 8766,
       "title": "Opinia psychiatryczna",
-      "fileName": "2d41d0e9-e0c6-452e-b265-27e2a6647daa.jpg",
+      "fileName": "a3919e5e-ad53-4980-834b-8a938858fd41.jpg",
       "targetKind": "milestone",
-      "targetId": "bc43c9f8-6e30-40c7-bedc-47d5c2827484"
+      "targetId": "667ca260-5938-4316-a7ac-1dfc031d8ada"
     }
   ],
   "milestones": [
     {
-      "id": "bc43c9f8-6e30-40c7-bedc-47d5c2827484",
+      "id": "667ca260-5938-4316-a7ac-1dfc031d8ada",
       "name": "HRT start",
       "epochDay": 19000,
       "description": "the pharmacist barely looked up",
@@ -753,8 +753,8 @@
       "tryoutId": null,
       "celebrate": false,
       "photo": {
-        "id": "fbaabdf6-ce25-427d-b50b-a0d3a4a127b2",
-        "fileName": "fbaabdf6-ce25-427d-b50b-a0d3a4a127b2.jpg",
+        "id": "b7ac6334-d4b6-4a3e-81b4-64370d96b3b2",
+        "fileName": "b7ac6334-d4b6-4a3e-81b4-64370d96b3b2.jpg",
         "starred": false,
         "epochDayOverride": null
       }
@@ -762,7 +762,7 @@
   ],
   "labResults": [
     {
-      "id": "6d328e37-003e-4989-9886-9b56b8ef4c31",
+      "id": "d391199b-8fbc-4b1f-82fc-d5e4a30fbe60",
       "epochDay": 20004,
       "analyte": "estradiol",
       "value": 412.5,
@@ -772,32 +772,35 @@
       "provider": "Diagnostyka",
       "timingRoute": null,
       "timingHours": null,
-      "timingDayOfInterval": null
+      "timingDayOfInterval": null,
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": true
     }
   ],
   "taper": [
     {
-      "id": "3047ea00-d8a1-4f33-96e3-93a33b160056",
-      "procedureId": "48e1f71c-dabc-4187-b593-602597c40228",
+      "id": "77b46331-3437-4cf9-8262-6451bc7dce61",
+      "procedureId": "f6793dd2-74e4-442e-ba99-7fbfe67cd4ed",
       "startEpochDay": 19955,
       "stagesJson": "[{\"everyNDays\":1,\"days\":14},{\"everyNDays\":3,\"days\":30}]"
     }
   ],
   "taperSessions": [
     {
-      "id": "6e074105-a8a5-48aa-ae61-d174b4d041f2",
+      "id": "6a6bd544-d82c-47d6-ad41-c98d3d28c2eb",
       "epochDay": 19955,
       "note": "first one, went fine"
     },
     {
-      "id": "46c6382b-6093-4a69-9952-1af25c984c10",
+      "id": "c3dea7c0-94e2-45ea-8b00-67250797866d",
       "epochDay": 19956,
       "note": ""
     }
   ],
   "sideEffects": [
     {
-      "id": "e0c77243-5661-4936-876e-6909e7e4ff79",
+      "id": "f7bfa870-7a8f-4f10-bc2d-5383b1b98753",
       "name": "hot flashes",
       "severity": 3,
       "epochDay": 20000,
@@ -806,26 +809,26 @@
   ],
   "cycleEvents": [
     {
-      "id": "0452569a-06c7-41f1-8953-77c3beceb890",
+      "id": "568f9bc8-1286-40b3-a16d-ca68fbcd2b69",
       "kind": "spotting",
       "epochDay": 20000
     }
   ],
   "eras": [
     {
-      "id": "14fe6821-5bac-4a57-b496-fda4bf99d526",
+      "id": "d156d9c9-beec-4f09-8a34-cc422010ca7e",
       "name": "before I knew",
       "startEpochDay": null,
       "endEpochDay": 19000
     },
     {
-      "id": "26252230-28d7-4ddd-83a2-cd0f43e74102",
+      "id": "80440c1a-d9bb-4fcc-8b75-5b6240bcb578",
       "name": "first year",
       "startEpochDay": 19001,
       "endEpochDay": 19365
     },
     {
-      "id": "d10f8470-b8c2-4c43-b314-0d26d30ae2af",
+      "id": "f39e5f8d-06b8-4f64-ba2f-301b19d21bfc",
       "name": "after I moved",
       "startEpochDay": 19366,
       "endEpochDay": null
@@ -833,7 +836,7 @@
   ],
   "eraMutes": [
     {
-      "eraUuid": "14fe6821-5bac-4a57-b496-fda4bf99d526"
+      "eraUuid": "d156d9c9-beec-4f09-8a34-cc422010ca7e"
     }
   ],
   "effectCategories": [
@@ -1417,7 +1420,7 @@
       "direction": "masculinizing"
     },
     {
-      "key": "6786daa7-5d89-4e6b-a787-44975c838381",
+      "key": "29b7493a-a1cf-4b71-afa0-aaf017721fb1",
       "name": "a feeling only I have a word for",
       "builtIn": false,
       "hidden": false,
@@ -1427,100 +1430,112 @@
   ],
   "personalEffects": [
     {
-      "id": "6778eb81-cac6-4892-a529-c2db6d2fccca",
-      "effect": "6786daa7-5d89-4e6b-a787-44975c838381",
+      "id": "73cc0155-9b5c-4e19-9977-bb84bc036347",
+      "effect": "29b7493a-a1cf-4b71-afa0-aaf017721fb1",
       "firstNoticedEpochDay": 19190
     },
     {
-      "id": "b7402767-9e52-480d-ab39-650bf87a37d8",
+      "id": "d650efb7-21b6-420a-ade5-be15136f66a9",
       "effect": "breast_development",
       "firstNoticedEpochDay": 19180
     }
   ],
   "hairStages": [
     {
-      "id": "c6133b2d-6a81-4fc6-b278-9ff56b3ab15a",
+      "id": "a3474c35-449f-402d-9713-de7a40409f5f",
       "epochDay": 19200,
       "description": "Norwood-Hamilton 2A"
     },
     {
-      "id": "009a239f-c0e0-4948-878f-0caf5dbb07cc",
+      "id": "b498048b-e67f-4d23-bf29-cd430ae89faf",
       "epochDay": 19230,
       "description": "Sinclair 2"
     },
     {
-      "id": "df46d8af-c7af-48a2-b83e-2ff64273067f",
+      "id": "2d06e9da-321c-4407-be95-4b2e88961ef9",
       "epochDay": 19260,
       "description": "thinner all over the top"
     }
   ],
   "hairPhotos": [
     {
-      "id": "e1bf38ed-ad96-43c1-8d3b-a9c7511d77cf",
+      "id": "00a76ff7-5b03-4ea5-a504-378394cda85e",
       "epochDay": 19200,
-      "fileName": "e1bf38ed-ad96-43c1-8d3b-a9c7511d77cf.jpg"
+      "fileName": "00a76ff7-5b03-4ea5-a504-378394cda85e.jpg"
     }
   ],
   "hairRemovalSessions": [
     {
-      "id": "dd732dc6-f7a2-4925-9cd9-d536248bcfdd",
+      "id": "ced45cca-e5b8-4624-acea-4e8150c378ee",
       "epochDay": 20000,
       "area": "upper_lip",
       "method": "laser",
       "painRating": 2,
       "minutes": 45,
-      "cost": "250 PLN",
       "provider": "Klinika Laserowa",
       "photos": [
         {
-          "id": "35ddcc3d-6219-45bf-9362-d33d9f5743be",
-          "fileName": "35ddcc3d-6219-45bf-9362-d33d9f5743be.jpg"
+          "id": "95d0a301-9c1f-4edc-a781-2b1e9447dd5e",
+          "fileName": "95d0a301-9c1f-4edc-a781-2b1e9447dd5e.jpg"
         }
-      ]
+      ],
+      "note": "numbing cream helped",
+      "costAmount": 250,
+      "costCurrency": "PLN",
+      "costRefunded": true
     },
     {
-      "id": "f89c85d9-6450-4ee4-a2ab-8bc59b4284be",
+      "id": "1063f949-6430-4419-b815-afd60f8e9c92",
       "epochDay": 20007,
       "area": "genital_surgical_site",
       "method": "electrolysis",
       "painRating": null,
       "minutes": 90,
-      "cost": "",
       "provider": "",
-      "photos": []
+      "photos": [],
+      "note": null,
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": false
     }
   ],
   "procedures": [
     {
-      "id": "48e1f71c-dabc-4187-b593-602597c40228",
+      "id": "f6793dd2-74e4-442e-ba99-7fbfe67cd4ed",
       "name": "vaginoplasty",
       "surgeryEpochDay": 19950,
       "notes": "",
       "photos": [],
       "kind": "vaginoplasty",
       "dilationOptIn": false,
-      "archived": false
+      "archived": false,
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": false
     },
     {
-      "id": "35bef3f4-7070-489e-8dbe-eb914cee4feb",
+      "id": "45edc35e-34bd-48c5-b84a-847f93abfaf6",
       "name": "top surgery",
       "surgeryEpochDay": 20050,
       "notes": "drains out on day five",
       "photos": [
         {
-          "id": "fc84629e-13e3-4a6d-b281-bc2f1c8d9852",
+          "id": "ccf397bb-0522-423d-861d-2a6fb53089a4",
           "epochDay": 20052,
-          "fileName": "fc84629e-13e3-4a6d-b281-bc2f1c8d9852.jpg"
+          "fileName": "ccf397bb-0522-423d-861d-2a6fb53089a4.jpg"
         }
       ],
       "kind": "chest_reconstruction",
       "dilationOptIn": false,
-      "archived": false
+      "archived": false,
+      "costAmount": 9500,
+      "costCurrency": "EUR",
+      "costRefunded": false
     }
   ],
   "providers": [
     {
-      "id": "b665a08a-21e3-42ec-98cf-24216c2964de",
+      "id": "8c62961c-2f5f-48cb-b3ea-6c7ce923f428",
       "name": "Dr Nowak",
       "contact": "22 123 45 67",
       "competence": "good",
@@ -1529,19 +1544,22 @@
   ],
   "appointments": [
     {
-      "id": "42c4085d-1a60-4515-a76f-30453633a241",
+      "id": "3f40e1ea-ea77-47d7-ab10-eda34eacc8e2",
       "epochDay": 19950,
-      "procedureId": "35bef3f4-7070-489e-8dbe-eb914cee4feb",
+      "procedureId": "45edc35e-34bd-48c5-b84a-847f93abfaf6",
       "kind": null,
       "place": null,
       "note": null,
       "referredEpochDay": null,
       "statuses": [],
       "time": null,
-      "providerId": null
+      "providerId": null,
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": false
     },
     {
-      "id": "506e81cf-0205-4a32-a727-b24d97acf07b",
+      "id": "33b8d042-2f67-42a8-8166-30ce04e8971b",
       "epochDay": 20030,
       "procedureId": null,
       "kind": "endokrynolog",
@@ -1550,10 +1568,13 @@
       "referredEpochDay": null,
       "statuses": [],
       "time": "14:30",
-      "providerId": "b665a08a-21e3-42ec-98cf-24216c2964de"
+      "providerId": "8c62961c-2f5f-48cb-b3ea-6c7ce923f428",
+      "costAmount": 200,
+      "costCurrency": "PLN",
+      "costRefunded": false
     },
     {
-      "id": "f3cc950a-0183-4355-8fc5-3fff4784041f",
+      "id": "ab4575fe-000b-442e-aa1d-f308a7790a42",
       "epochDay": null,
       "procedureId": null,
       "kind": "Gender clinic",
@@ -1562,18 +1583,21 @@
       "referredEpochDay": 19800,
       "statuses": [
         {
-          "id": "cc25c618-b75d-423d-8c65-4a27d7396eb5",
+          "id": "fcf65db6-48cc-4b72-869b-b8e42f516827",
           "epochDay": 19900,
           "status": "Letter came"
         }
       ],
       "time": null,
-      "providerId": null
+      "providerId": null,
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": false
     }
   ],
   "reminders": [
     {
-      "id": "44234817-c68e-4aa4-8f90-3508f9f14832",
+      "id": "34d4cc91-f1b5-4920-a3d3-aff68a6e6b04",
       "title": "injection",
       "time": "08:00",
       "recurrence": "EVERY_N_DAYS",
@@ -1584,7 +1608,7 @@
       "autoSource": null
     },
     {
-      "id": "5f95f7b3-e55c-4080-99fb-45763187ecbc",
+      "id": "ab2abb46-c5cc-4f11-8b83-6325dac4a39b",
       "title": "binder check-in",
       "time": "07:13",
       "recurrence": null,
@@ -1592,19 +1616,19 @@
       "anchorEpochDay": null,
       "epochDay": 19676,
       "enabled": true,
-      "autoSource": "wear:f85256ab-b54d-4367-b63b-c788fa85e373"
+      "autoSource": "wear:f67f2c25-e902-4ec3-9ce7-37ca0b368303"
     }
   ],
   "tallyEvents": [
     {
-      "id": "0df0994d-de36-4078-8208-5e731f638193",
+      "id": "ccb4fe91-a745-48f5-8d9e-778570d103e8",
       "epochDay": 20000,
       "kind": "misgendered"
     }
   ],
   "letters": [
     {
-      "id": "b2eda835-94cc-4826-8691-4f891b16fe7c",
+      "id": "8132c119-2013-47e9-ae71-0159be06f928",
       "epochDay": 20000,
       "text": "read this in a year",
       "unlockEpochDay": 20365
@@ -1612,7 +1636,7 @@
   ],
   "voicePracticeTakes": [
     {
-      "id": "8a4c3fd4-61b1-4291-a7b3-2b10c32916ad",
+      "id": "82769e74-4758-49ca-9be4-4e9e2cabefa9",
       "epochDay": 20000,
       "minHz": 150,
       "maxHz": 220,
@@ -1634,27 +1658,27 @@
   ],
   "roadmapCategories": [
     {
-      "id": "cee2b176-9009-492c-a17c-f9d373c148c8",
+      "id": "ed85bab2-5879-4239-b189-59639c340f0d",
       "name": "Coming out"
     }
   ],
   "roadmapGoals": [
     {
-      "id": "73208230-ff02-496e-80d7-31cc8295cc72",
+      "id": "1a652459-d4f4-4656-8b7c-0e4dcba973f4",
       "track": "legal",
       "text": "Tell my sister",
       "status": "unchecked"
     },
     {
-      "id": "75d3244b-742b-42ec-9237-db00400b369b",
-      "track": "cee2b176-9009-492c-a17c-f9d373c148c8",
+      "id": "eb3cc72d-2b48-4e62-a605-68d0a59185d2",
+      "track": "ed85bab2-5879-4239-b189-59639c340f0d",
       "text": "Tell my manager",
       "status": "unchecked"
     }
   ],
   "regimenEpisodes": [
     {
-      "id": "2b0a7e91-46fb-4caf-b919-3952c0616ece",
+      "id": "eb42d707-045f-440c-89eb-54e67986bb67",
       "drug": "estradiol valerate",
       "drugClass": "hrt",
       "ester": "valerate",
@@ -1670,7 +1694,7 @@
   ],
   "doseEvents": [
     {
-      "id": "6e8a0df8-83ff-470b-a89d-10ff2346462f",
+      "id": "9f2d2b40-a26d-40bc-ae8a-2aeb70ec2ace",
       "timestamp": 1700000000000,
       "route": "im",
       "dose": 4,
@@ -1691,8 +1715,8 @@
   ],
   "doseSchedules": [
     {
-      "id": "98049b70-825d-4ab0-80ba-d3ce91779779",
-      "episodeId": "2b0a7e91-46fb-4caf-b919-3952c0616ece",
+      "id": "1e9470c7-d362-4953-a105-aed349dd7f25",
+      "episodeId": "eb42d707-045f-440c-89eb-54e67986bb67",
       "recurrenceKind": "everyNDays",
       "everyNDays": 14,
       "weekdays": null,
@@ -1703,8 +1727,8 @@
   ],
   "dosePauses": [
     {
-      "id": "5413a5d1-0d25-43f8-a272-76b04f5f9d5a",
-      "episodeId": "2b0a7e91-46fb-4caf-b919-3952c0616ece",
+      "id": "435ded10-3dbc-43f1-afc6-68ef4f21b11c",
+      "episodeId": "eb42d707-045f-440c-89eb-54e67986bb67",
       "startEpochDay": 19100,
       "endEpochDay": null,
       "reason": "planned"
@@ -1712,7 +1736,7 @@
   ],
   "medicationStock": [
     {
-      "id": "afae42b3-3239-459f-87ca-c80c8273daf6",
+      "id": "eac77a0d-4db8-4b1c-a88a-ccf860f864df",
       "drug": "estradiol valerate",
       "quantity": 5,
       "unit": "ampoules",
@@ -1725,12 +1749,15 @@
       "leadTimeDays": null,
       "dosesPerUnit": null,
       "expiryEpochDay": 20400,
-      "pharmacyNote": "Batch 7"
+      "pharmacyNote": "Batch 7",
+      "costAmount": 49.99,
+      "costCurrency": "PLN",
+      "costRefunded": false
     }
   ],
   "tryouts": [
     {
-      "id": "38556534-1f36-4a9b-b810-818521183a74",
+      "id": "01300bae-6e53-469c-b7c9-c5b1c199d03f",
       "kind": "style",
       "label": "layered look",
       "description": "cardigan over a fitted top",
@@ -1738,17 +1765,17 @@
       "endEpochDay": null,
       "photos": [
         {
-          "id": "09732266-cc23-40f4-9347-47992818de96",
+          "id": "d30022c7-6076-4b4f-82e6-3dd018d6126e",
           "epochDay": 19905,
-          "fileName": "09732266-cc23-40f4-9347-47992818de96.jpg"
+          "fileName": "d30022c7-6076-4b4f-82e6-3dd018d6126e.jpg"
         }
       ]
     }
   ],
   "feltSenseEntries": [
     {
-      "id": "10b5193d-bf7f-4d45-b311-03331ce2231d",
-      "tryoutId": "38556534-1f36-4a9b-b810-818521183a74",
+      "id": "d72530c1-63a3-4230-bbff-94d9546ea898",
+      "tryoutId": "01300bae-6e53-469c-b7c9-c5b1c199d03f",
       "epochDay": 19910,
       "mood": 4,
       "note": "felt right"
@@ -1756,13 +1783,13 @@
   ],
   "checklists": [
     {
-      "id": "85647355-35b7-41a7-9566-4d7275e5d328",
+      "id": "fb78ac6e-1a8c-4860-b682-fb76858ed61a",
       "ownerKind": "procedure",
-      "ownerId": "35bef3f4-7070-489e-8dbe-eb914cee4feb",
+      "ownerId": "45edc35e-34bd-48c5-b84a-847f93abfaf6",
       "appointmentEpochDay": null,
       "items": [
         {
-          "id": "b4770efb-c6cb-40b9-bac9-ba13941f17c6",
+          "id": "56861271-def4-4247-9d16-9dedee3298e5",
           "content": "buy gauze",
           "checked": true,
           "carriedForward": false
@@ -1772,7 +1799,7 @@
   ],
   "wearSessions": [
     {
-      "id": "f85256ab-b54d-4367-b63b-c788fa85e373",
+      "id": "f67f2c25-e902-4ec3-9ce7-37ca0b368303",
       "kind": "tucking",
       "startTimestamp": 1700000000000,
       "durationMs": 21600000,
@@ -1781,12 +1808,12 @@
   ],
   "voiceBenchmarks": [
     {
-      "id": "a96c4a21-3298-4126-851e-275dff6bcdb6",
+      "id": "839b46fa-9c7e-4ddb-a130-0d6780b1d877",
       "epochDay": 20060,
-      "timestamp": 1792622357931,
+      "timestamp": 1793371139384,
       "passageKey": "builtin",
-      "passageFileName": "0fb17771-fa08-466b-9f47-a675f78c8034.webm",
-      "vowelFileName": "cdb159c9-a993-4035-a477-e31be9f3e7c6.webm",
+      "passageFileName": "9c9a40a1-20f9-423a-969c-957fd20d13a0.webm",
+      "vowelFileName": "38ba1a07-f42b-40c7-9cde-6596bbe45075.webm",
       "f0MedianHz": 178.5,
       "f0P10Hz": 164.2,
       "f0P90Hz": 199.1,
@@ -1803,12 +1830,12 @@
   ],
   "comfortItems": [
     {
-      "id": "c2ddc28b-0d80-47d9-aff4-4a8303db737c",
+      "id": "7f49508d-30c1-4c00-88cf-4071f4f90812",
       "text": "text a friend",
       "position": 0
     },
     {
-      "id": "87c7dfc8-165b-404a-9c10-c9b45bb97858",
+      "id": "65827815-996b-4543-a27f-d2bb082dd199",
       "text": "walk by the river",
       "position": 1
     }
@@ -1847,9 +1874,9 @@
   ],
   "importLog": [
     {
-      "id": "49b7abcd-5515-41ec-90f5-703b555d98dc",
+      "id": "619e97af-a995-43a6-8a75-915cc85d9dc7",
       "source": "daylio",
-      "importedAt": 1792622358046,
+      "importedAt": 1793371139460,
       "counts": {
         "entries": 1,
         "tags": 0

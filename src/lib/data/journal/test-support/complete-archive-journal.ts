@@ -129,7 +129,9 @@ export async function seedCompleteArchiveJournal(
     value: 412.5,
     unit: 'pmol/L',
     drawTime: '07:40',
-    provider: 'Diagnostyka'
+    provider: 'Diagnostyka',
+    // A refund with no amount, the one cost shape the others below lack (FA 30).
+    cost: { amount: null, currency: null, refunded: true }
   });
   // Its own procedure (audit item 7, schema v83): the taper names which
   // procedure it dilates for rather than carrying a surgery day of its
@@ -249,7 +251,7 @@ export async function seedCompleteArchiveJournal(
   });
   await journal.doses.upsertSchedule({ episodeId: episode, recurrence: { kind: 'everyNDays', everyNDays: 14 }, dosesPerDay: 1, doseAmounts: null, autoLogFromEpochDay: null });
   await journal.doses.upsertPause({ episodeId: episode, startEpochDay: 19100, endEpochDay: null, reason: 'planned' });
-  await journal.stock.upsertEntry({ drug: 'estradiol valerate', quantity: 5, unit: 'ampoules', recordedEpochDay: 20000, expiryEpochDay: 20400, pharmacyNote: 'Batch 7' });
+  await journal.stock.upsertEntry({ drug: 'estradiol valerate', quantity: 5, unit: 'ampoules', recordedEpochDay: 20000, expiryEpochDay: 20400, pharmacyNote: 'Batch 7', cost: { amount: 49.99, currency: 'PLN', refunded: false } });
 
   const tryout = await journal.tryouts.upsertTryout({
     kind: 'style',
@@ -269,7 +271,8 @@ export async function seedCompleteArchiveJournal(
     notes: 'drains out on day five',
     // A compiled-in kind rather than 'custom' (the default), so the fixture
     // proves `kind` round-trips through the archive (ticket 17).
-    kind: 'chest_reconstruction'
+    kind: 'chest_reconstruction',
+    cost: { amount: 9500, currency: 'EUR', refunded: false }
   });
   await journal.procedures.addConsult(procedure, 19950);
   /* One appointment on its own beside the consult above, so the section
@@ -289,7 +292,8 @@ export async function seedCompleteArchiveJournal(
     procedureId: null,
     kind: 'endokrynolog',
     place: 'Poradnia, ul. Kopernika',
-    note: 'ask about the dose'
+    note: 'ask about the dose',
+    cost: { amount: 200, currency: 'PLN', refunded: false }
   });
   /* And one still waiting for its day, with a dated update (ticket 26), so
      the section carries a null day, a referred-on day and its statuses. */

@@ -51,6 +51,15 @@ import type {
   ArchiveVoiceRecording
 } from '../archive/payload';
 import { bool, domainIdOf } from './support';
+import type { CostRow } from '../cost';
+import type { ArchiveCostFields } from '../archive/payload';
+
+/** A costed row's three columns as they travel (functional audit ticket 30). */
+const costFields = (row: CostRow): Required<ArchiveCostFields> => ({
+  costAmount: row.cost_amount,
+  costCurrency: row.cost_currency,
+  costRefunded: row.cost_refunded !== 0
+});
 import { columnsOf, type FlatTable } from './archiveTable';
 
 import { readFileOwnership } from './fileOwnership';
@@ -450,7 +459,8 @@ export async function readHairRemovalSessions({
   driver,
   hairRemovalPhotos
 }: SectionRead): Promise<ArchiveHairRemovalSession[]> {
-  const sessions = await driver.query<{
+  // The old free-text `cost` stays behind: version 112 emptied it.
+  const sessions = await driver.query<CostRow & {
     id: number;
     uuid: string;
     epoch_day: number;
@@ -458,9 +468,10 @@ export async function readHairRemovalSessions({
     method: string;
     pain_rating: number | null;
     minutes: number | null;
-    cost: string | null;
     provider: string;
-  }>('SELECT id, uuid, epoch_day, area, method, pain_rating, minutes, cost, provider FROM hair_removal_session ORDER BY epoch_day, id');
+    note: string | null;
+  }>(`SELECT id, uuid, epoch_day, area, method, pain_rating, minutes, provider, note,
+            cost_amount, cost_currency, cost_refunded FROM hair_removal_session ORDER BY epoch_day, id`);
 
   const byId = groupBy(
     hairRemovalPhotos,
@@ -475,14 +486,15 @@ export async function readHairRemovalSessions({
     method: session.method,
     painRating: session.pain_rating,
     minutes: session.minutes,
-    cost: session.cost ?? '',
     provider: session.provider,
-    photos: byId.get(session.id) ?? []
+    photos: byId.get(session.id) ?? [],
+    note: session.note,
+    ...costFields(session)
   }));
 }
 
 export async function readProcedures({ driver, procedurePhotos }: SectionRead): Promise<ArchiveProcedure[]> {
-  const procedures = await driver.query<{
+  const procedures = await driver.query<CostRow & {
     id: number;
     uuid: string;
     name: string;
@@ -492,7 +504,8 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     dilation_opt_in: number;
     archived: number;
   }>(
-    'SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
+    `SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived,
+            cost_amount, cost_currency, cost_refunded FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id`
   );
   const photosById = groupBy(
     procedurePhotos,
@@ -508,7 +521,8 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     photos: photosById.get(procedure.id) ?? [],
     kind: procedure.kind,
     dilationOptIn: procedure.dilation_opt_in !== 0,
-    archived: procedure.archived !== 0
+    archived: procedure.archived !== 0,
+    ...costFields(procedure)
   }));
 }
 
@@ -516,7 +530,7 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
    rowid, which is this device's alone (ADR-0002) - the same join
    readDoseSchedules makes for the same reason. */
 export async function readAppointments({ driver }: SectionRead): Promise<ArchiveAppointment[]> {
-  const rows = await driver.query<{
+  const rows = await driver.query<CostRow & {
     id: number;
     uuid: string;
     epoch_day: number | null;
@@ -530,7 +544,8 @@ export async function readAppointments({ driver }: SectionRead): Promise<Archive
   }>(
     `SELECT a.id AS id, a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
             a.kind AS kind, a.place AS place, a.note AS note, a.referred_epoch_day AS referred_epoch_day,
-            a.time_of_day AS time_of_day, p.uuid AS provider_uuid
+            a.time_of_day AS time_of_day, p.uuid AS provider_uuid,
+            a.cost_amount AS cost_amount, a.cost_currency AS cost_currency, a.cost_refunded AS cost_refunded
        FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id
        LEFT JOIN provider p ON p.id = a.provider_id
       ORDER BY a.epoch_day IS NULL, a.epoch_day, a.id`
@@ -557,7 +572,8 @@ export async function readAppointments({ driver }: SectionRead): Promise<Archive
     referredEpochDay: row.referred_epoch_day,
     statuses: byAppointment.get(row.id) ?? [],
     time: row.time_of_day,
-    providerId: row.provider_uuid
+    providerId: row.provider_uuid,
+    ...costFields(row)
   }));
 }
 
