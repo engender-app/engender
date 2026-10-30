@@ -174,10 +174,13 @@ export function deviceDefaultCurrency(): string {
   return defaultCurrency(nav?.languages?.length ? nav.languages : nav?.language ? [nav.language] : []);
 }
 
-/** `amount` in `currency`, as the locale writes money. */
+/** `amount` in `currency`, as the locale writes money: "250 zł" for a whole
+    amount, "250,50 zł" for one with a fraction. */
 export function formatAmount(amount: number, currency: string, locale: string): string {
   try {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount);
+    // trailingZeroDisplay is ES2023 Intl; this lib target does not type it yet.
+    const options = { style: 'currency', currency, trailingZeroDisplay: 'stripIfInteger' } as Intl.NumberFormatOptions;
+    return new Intl.NumberFormat(locale, options).format(amount);
   } catch {
     return `${amount} ${currency}`;
   }

@@ -5,6 +5,7 @@ import {
   costTotalsByCurrency,
   defaultCurrency,
   hasCost,
+  formatAmount,
   NO_COST,
   normalizeCost,
   parseAmount,
@@ -107,4 +108,10 @@ test('totals never add two currencies together', () => {
     { currency: 'EUR', total: 80, refunded: 0, count: 1 },
     { currency: 'PLN', total: 250.3, refunded: 0.1, count: 3 }
   ]);
+});
+
+test('a whole amount is written without decimals, a fraction with its two', () => {
+  assert.equal(formatAmount(250, 'PLN', 'pl-PL'), '250\u00a0zł');
+  assert.equal(formatAmount(250.5, 'PLN', 'pl-PL'), '250,50\u00a0zł');
+  assert.equal(formatAmount(9800, 'EUR', 'en-GB'), '€9,800');
 });
