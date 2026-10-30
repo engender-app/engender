@@ -692,44 +692,44 @@
     </div>
 
     {#if doseAvailable || wearAvailable}
-    <div class="fan-card" transition:disclose>
-      {#if doseAvailable}
-      <button
-        class="fan-item"
-        class:is-armed={armed === 'dose' && !availabilityPending}
-        data-fan-target="dose"
-        data-choose="dose"
-        disabled={availabilityPending}
-        transition:disclose={{ skip: !wearAvailable }}
-        onclick={ACTIONS.dose}
-      >
-        <span class="fan-icon"><Icon name="clock" size={22} /></span>
-        <span class="fan-label">{m.doses_empty_action()}</span>
-      </button>
-      {/if}
-      <!-- The icon changes with the label because they are saying the same
-           thing: a running session is a thing to stop. `timeline` for the
-           other half is not a stand-in - it is a start dot, a span and an
-           end dot, which is exactly the shape of a wear session, and it is
-           already the app's mark for something measured between two
-           moments. It is a lighter glyph than the ones above it, which is
-           the icon set's own weight rather than this row's. -->
-      {#if wearAvailable}
-      <button
-        class="fan-item"
-        class:is-armed={armed === 'wear' && !availabilityPending}
-        data-fan-target="wear"
-        data-choose="wear"
-        disabled={availabilityPending}
-        data-wear-running={running ? '' : undefined}
-        transition:disclose={{ skip: !doseAvailable }}
-        onclick={ACTIONS.wear}
-      >
-        <span class="fan-icon"><Icon name={running ? 'stop' : 'timeline'} size={22} /></span>
-        <span class="fan-label">{running ? m.wear_session_stop_action() : m.wear_session_start_action()}</span>
-      </button>
-      {/if}
-    </div>
+      <div class="fan-card" transition:disclose>
+        {#if doseAvailable}
+          <button
+            class="fan-item"
+            class:is-armed={armed === 'dose' && !availabilityPending}
+            data-fan-target="dose"
+            data-choose="dose"
+            disabled={availabilityPending}
+            transition:disclose={{ skip: !wearAvailable }}
+            onclick={ACTIONS.dose}
+          >
+            <span class="fan-icon"><Icon name="clock" size={22} /></span>
+            <span class="fan-label">{m.doses_empty_action()}</span>
+          </button>
+        {/if}
+        <!-- The icon changes with the label because they are saying the same
+             thing: a running session is a thing to stop. `timeline` for the
+             other half is not a stand-in - it is a start dot, a span and an
+             end dot, which is exactly the shape of a wear session, and it is
+             already the app's mark for something measured between two
+             moments. It is a lighter glyph than the ones above it, which is
+             the icon set's own weight rather than this row's. -->
+        {#if wearAvailable}
+          <button
+            class="fan-item"
+            class:is-armed={armed === 'wear' && !availabilityPending}
+            data-fan-target="wear"
+            data-choose="wear"
+            disabled={availabilityPending}
+            data-wear-running={running ? '' : undefined}
+            transition:disclose={{ skip: !doseAvailable }}
+            onclick={ACTIONS.wear}
+          >
+            <span class="fan-icon"><Icon name={running ? 'stop' : 'timeline'} size={22} /></span>
+            <span class="fan-label">{running ? m.wear_session_stop_action() : m.wear_session_start_action()}</span>
+          </button>
+        {/if}
+      </div>
     {/if}
   </div>
 {/if}

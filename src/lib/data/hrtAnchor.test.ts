@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { epochDayFromLocalDate, epochDayMonthsAgo } from './epochDay.ts';
-import { hrtAnchor, isHrtOnsetWindowCurrent, literatureWindowDays } from './personalEffectWindow.ts';
+import { hrtAnchor, literatureWindowDays } from './personalEffectWindow.ts';
 import type { RegimenEpisode } from './types.ts';
 
 /* Functional audit ticket 18: the effects timeline anchors on HRT, never on
@@ -32,9 +32,6 @@ const ssri = episode({ id: 'ssri', drug: 'sertraline', drugClass: 'other', start
 const estradiol = episode({ id: 'e', drug: 'estradiol valerate', drugClass: 'hrt', startEpochDay: E_START });
 
 test('an SSRI started before HRT leaves the onset windows counted from the HRT start', () => {
-  const oneMonthIn = epochDayMonthsAgo(E_START, -1);
-  assert.equal(isHrtOnsetWindowCurrent([ssri, estradiol], oneMonthIn, null), true);
-
   const anchor = hrtAnchor([ssri, estradiol], null);
   assert.deepEqual(anchor, { drug: 'estradiol valerate', startEpochDay: E_START, endEpochDay: null });
   assert.equal(literatureWindowDays('breast_development', anchor!)?.onset.start, epochDayMonthsAgo(E_START, -3));
@@ -52,7 +49,6 @@ test('a portable HRT start date wins over the earliest HRT episode', () => {
 test('no HRT episode and no date set is no anchor, whatever else was logged', () => {
   assert.equal(hrtAnchor([ssri], null), null);
   assert.equal(hrtAnchor([], null), null);
-  assert.equal(isHrtOnsetWindowCurrent([ssri], SSRI_START, null), false);
 });
 
 test('the drug a band is read against is the first HRT hormone, not an antiandrogen started before it', () => {

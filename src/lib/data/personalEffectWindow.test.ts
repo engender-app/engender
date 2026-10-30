@@ -5,7 +5,6 @@ import type { PersonalEffectType, RegimenEpisode } from './types.ts';
 import {
   effectTier,
   effectWindowShape,
-  isHrtOnsetWindowCurrent,
   LITERATURE_SOURCES,
   literatureCovers,
   literatureReviews,
@@ -283,89 +282,6 @@ test('every tier-1 window has a shape that is not none, and no other key does', 
   }
 });
 
-test('isHrtOnsetWindowCurrent returns true only while at least one onset window is active', () => {
-  const eEpisode: RegimenEpisode = {
-    id: 'e1',
-    drug: 'estradiol valerate',
-    drugClass: 'hrt',
-    ester: null,
-    dose: 4,
-    doseUnit: 'mg',
-    route: 'oral',
-    interval: 'daily',
-    startEpochDay: ANCHOR,
-    endEpochDay: null,
-    endReason: null
-  };
-
-  // No episodes -> false
-  assert.equal(isHrtOnsetWindowCurrent([], ANCHOR, null), false);
-
-  // Before anchor start day -> false
-  const dayBefore = epochDayFromLocalDate(new Date(2023, 11, 31));
-  assert.equal(isHrtOnsetWindowCurrent([eEpisode], dayBefore, null), false);
-
-  // On anchor start day -> true
-  assert.equal(isHrtOnsetWindowCurrent([eEpisode], ANCHOR, null), true);
-
-  // 1 month in -> true
-  const oneMonthIn = epochDayFromLocalDate(new Date(2024, 1, 1));
-  assert.equal(isHrtOnsetWindowCurrent([eEpisode], oneMonthIn, null), true);
-
-  // 6 months in -> true
-  const sixMonthsIn = epochDayFromLocalDate(new Date(2024, 6, 1));
-  assert.equal(isHrtOnsetWindowCurrent([eEpisode], sixMonthsIn, null), true);
-
-  // 12 months in (at max onset end, hair_changes at 12 months) -> true
-  const twelveMonthsIn = epochDayFromLocalDate(new Date(2025, 0, 1));
-  assert.equal(isHrtOnsetWindowCurrent([eEpisode], twelveMonthsIn, null), true);
-
-  // 12 months + 1 day (past all onset windows) -> false
-  const pastMaxOnset = epochDayFromLocalDate(new Date(2025, 0, 2));
-  assert.equal(isHrtOnsetWindowCurrent([eEpisode], pastMaxOnset, null), false);
-
-  // 24 months in -> false
-  const twentyFourMonthsIn = epochDayFromLocalDate(new Date(2026, 0, 1));
-  assert.equal(isHrtOnsetWindowCurrent([eEpisode], twentyFourMonthsIn, null), false);
-});
-
-test('isHrtOnsetWindowCurrent handles testosterone and unclassified drugs', () => {
-  const tEpisode: RegimenEpisode = {
-    id: 't1',
-    drug: 'testosterone cypionate',
-    drugClass: 'hrt',
-    ester: null,
-    dose: 50,
-    doseUnit: 'mg',
-    route: 'subcutaneous',
-    interval: 'weekly',
-    startEpochDay: ANCHOR,
-    endEpochDay: null,
-    endReason: null
-  };
-
-  // Active during onset window for testosterone
-  assert.equal(isHrtOnsetWindowCurrent([tEpisode], ANCHOR, null), true);
-  assert.equal(isHrtOnsetWindowCurrent([tEpisode], epochDayFromLocalDate(new Date(2025, 0, 1)), null), true);
-  assert.equal(isHrtOnsetWindowCurrent([tEpisode], epochDayFromLocalDate(new Date(2025, 0, 2)), null), false);
-
-  // Unclassified drug with no literature windows -> false
-  const unclassifiedEpisode: RegimenEpisode = {
-    id: 'u1',
-    drug: 'progesterone',
-    drugClass: 'hrt',
-    ester: null,
-    dose: 100,
-    doseUnit: 'mg',
-    route: 'oral',
-    interval: 'daily',
-    startEpochDay: ANCHOR,
-    endEpochDay: null,
-    endReason: null
-  };
-  assert.equal(isHrtOnsetWindowCurrent([unclassifiedEpisode], ANCHOR, null), false);
-});
-
 /* Phase 8 features ticket 49 item 1: the anchoring episode's end day.
 
    A band is a claim about a body on the hormone the table describes, so it
@@ -434,28 +350,3 @@ test('an effect the literature gives no ceiling for keeps its absent completion'
   assert.equal(days.completion, null);
   assert.equal(days.onset.end, epochDayMonthsAgo(ANCHOR, -6), 'onset ends at 6 months, before the end day');
 });
-
-test('isHrtOnsetWindowCurrent goes quiet once the anchoring episode has ended', () => {
-  // The quick-add effects prompt asks this. An episode stopped at 3 months
-  // has no live onset window left, even on a day the open-episode version of
-  // the same question would answer true for.
-  const stopped: RegimenEpisode = {
-    id: 'e1',
-    drug: 'estradiol valerate',
-    drugClass: 'hrt',
-    ester: null,
-    dose: 4,
-    doseUnit: 'mg',
-    route: 'oral',
-    interval: 'daily',
-    startEpochDay: ANCHOR,
-    endEpochDay: epochDayMonthsAgo(ANCHOR, -3),
-    endReason: null
-  };
-  const sixMonthsIn = epochDayMonthsAgo(ANCHOR, -6);
-  assert.equal(isHrtOnsetWindowCurrent([{ ...stopped, endEpochDay: null }], sixMonthsIn, null), true);
-  assert.equal(isHrtOnsetWindowCurrent([stopped], sixMonthsIn, null), false);
-  // Still true on a day the episode covered.
-  assert.equal(isHrtOnsetWindowCurrent([stopped], epochDayMonthsAgo(ANCHOR, -2), null), true);
-});
-
