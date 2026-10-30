@@ -54,9 +54,10 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Apply the saved capture choice before the first frame. A device
-        // with no saved choice allows capture by default. SharedPreferences
+        // with no saved choice allows capture by default; disguise forces
+        // it off. SharedPreferences
         // needs no bridge or WebView, so this runs before super.onCreate.
-        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
+        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.allowedNow(this));
         // Old retrospective channels can survive an app update after their plugin is removed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notifications = getSystemService(NotificationManager.class);
@@ -212,7 +213,7 @@ public class MainActivity extends BridgeActivity {
         if (!rendererGone && bridge != null && bridge.getWebView() != null) {
             bridge.getWebView().evaluateJavascript("window.__lockOnReturnFromNative && window.__lockOnReturnFromNative();", null);
         }
-        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
+        ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.allowedNow(this));
     }
 
     private void captureReminderRoute(Intent intent) {

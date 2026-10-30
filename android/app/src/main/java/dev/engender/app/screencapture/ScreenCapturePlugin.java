@@ -11,6 +11,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import dev.engender.app.disguise.DisguiseAlias;
+
 /**
  * Mirrors prefs.allowScreenCapture into SharedPreferences, so
  * MainActivity.onCreate can decide FLAG_SECURE before the window has a
@@ -32,13 +34,25 @@ public class ScreenCapturePlugin extends Plugin {
         prefs(getContext()).edit().putBoolean(KEY_ALLOWED, allowed).apply();
         Activity activity = getActivity();
         if (activity != null) {
-            activity.runOnUiThread(() -> applyWindowFlags(activity, allowed));
+            activity.runOnUiThread(() -> applyWindowFlags(activity, allowedNow(activity)));
         }
         call.resolve();
     }
 
+    /** The person's own capture choice, as stored. */
     public static boolean isAllowed(Context context) {
         return prefs(context).getBoolean(KEY_ALLOWED, true);
+    }
+
+    /** Whether the window may be captured right now. Disguise forces it off
+        (FA 43): capture is allowed by default, so a disguised app's Recents
+        card would otherwise show "Notes" over a thumbnail of the journal.
+        Read off the live launcher alias, as the widgets and notifications
+        do, so it holds from the first frame of a cold start with no WebView
+        and needs no second copy of the preference. The stored choice is
+        kept, and comes back when disguise goes off. */
+    public static boolean allowedNow(Context context) {
+        return isAllowed(context) && !DisguiseAlias.isDisguised(context);
     }
 
     /** The capture choice alone decides both screenshots and the Recents
