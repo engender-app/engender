@@ -79,7 +79,7 @@
       featureError = m.write_failed();
     }
   }
-  let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
+  let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingChoice));
   let genitalEffectsOn = $derived(
     vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
   );

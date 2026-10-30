@@ -42,7 +42,7 @@ const testosterone: RegimenEpisode = {
 describe("the editor's cycle affordance (ADR-0043)", () => {
   it('asks the shared gate rather than reading the preference', () => {
     expect(editor).toContain('cycleTrackingVisible(');
-    expect(editor).not.toContain('$derived(prefs.cycleTrackingEnabled)');
+    expect(editor).not.toContain('$derived(prefs.cycleTrackingChoice)');
   });
 
   it('gates the cycle panel on the gate it asked', () => {
@@ -54,16 +54,16 @@ describe("the editor's cycle affordance (ADR-0043)", () => {
     /* The reader the fix is for: somebody on testosterone who never opened
        Settings got the More row and the side-effects section and not this,
        which is the one surface a cycle event is logged from. */
-    expect(cycleTrackingVisible([testosterone], Date.now(), false, null)).toBe(true);
-    expect(cycleTrackingVisible([], Date.now(), false, null)).toBe(false);
-    expect(cycleTrackingVisible([], Date.now(), true, null)).toBe(true);
+    expect(cycleTrackingVisible([testosterone], Date.now(), null)).toBe(true);
+    expect(cycleTrackingVisible([], Date.now(), null)).toBe(false);
+    expect(cycleTrackingVisible([], Date.now(), true)).toBe(true);
   });
 });
 
 describe("the editor's effects card, and the cascade (ADR-0052)", () => {
   it('goes quiet when the personal effects area is quiet', () => {
     expect(editor).toContain("areaQuiet('personalEffects'");
-    expect(editor).toContain('prefs.entryHrtEffectsEnabled && isHrtActive && !effectsQuiet');
+    expect(editor).toContain('{#if isHrtActive && !effectsQuiet}');
   });
 
   it('is the only card on this screen belonging to a finishable area', () => {
@@ -72,7 +72,7 @@ describe("the editor's effects card, and the cascade (ADR-0052)", () => {
        (areaState.ts's NOT_FINISHABLE) - each already ends per record. So one
        gate here is the whole of the editor's share of the cascade, and the
        registry covers the tiles and the notifications. */
-    for (const card of ['entryTryoutPromptEnabled', 'entryDoseQuickLogEnabled', 'entryProcedureRecoveryEnabled']) {
+    for (const card of ['{#if activeTryout}', '{#if scheduleDose &&', '{#if recoveringProcedure}']) {
       expect(editor).toContain(card);
     }
     expect(editor.match(/effectsQuiet/g)?.length).toBe(2);

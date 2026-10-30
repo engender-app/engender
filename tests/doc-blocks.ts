@@ -182,7 +182,8 @@ export function renderUnprompted(): string {
   const tiles = new Set<string>(LIVE_TILE_ORDER);
   const where = (row: (typeof UNPROMPTED_ROWS)[number]) =>
     row.notify ? `notification (${code(row.notify.channel)} channel)` : tiles.has(row.key) ? 'Today (live tile)' : 'in the app';
-  const pref = (row: (typeof UNPROMPTED_ROWS)[number]) => code((row.surface ?? row.notify)!.prefKey);
+  const pref = (row: (typeof UNPROMPTED_ROWS)[number]) =>
+    code(row.surface ? `surfaceOverrides.${row.key}` : row.notify!.prefKey);
   return [
     `${UNPROMPTED_ROWS.length} kinds (\`unprompted/registry.ts\`), ${LIVE_TILE_ORDER.length} of them live tiles. "Quiet with" is the area whose hidden or finished state silences the kind besides its own switch.`,
     '',

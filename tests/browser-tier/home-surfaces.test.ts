@@ -20,7 +20,7 @@ import QuickAdd from '$lib/components/QuickAdd.svelte';
 import { ui } from '$lib/stores/ui.svelte';
 import { HOME_AREA_ROLE, tileRoleAt } from '$lib/theme/roles';
 import { activeFlag } from '$lib/theme/activeFlag.svelte';
-import { LIVE_TILE_ORDER, LIVE_TILE_PREF_KEY } from '$lib/data/liveTiles';
+import { LIVE_TILE_ORDER } from '$lib/data/liveTiles';
 import { calendarDuration } from '$lib/data/epochDay';
 import { journeyAnchorLine } from '$lib/data/journeyAnchor';
 
@@ -540,7 +540,7 @@ export async function homeContracts(): Promise<Result[]> {
   /* No pinned rows, because a pinned wear or letters row asks two of the
      same questions for its own line (rowForwardReads.ts). */
   const unpinned = { ...f.preferences, pinnedRows: [] };
-  const allTilesOff = Object.fromEntries(LIVE_TILE_ORDER.map((kind) => [LIVE_TILE_PREF_KEY[kind], false]));
+  const allTilesOff = { surfaceOverrides: Object.fromEntries(LIVE_TILE_ORDER.map((kind) => [kind, false])) };
   let counted = countedReads({ ...f, preferences: { ...unpinned, ...allTilesOff } });
   screen = await mountScreen('/', counted.fixture);
   await settledHome();

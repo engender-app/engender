@@ -203,7 +203,7 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
 
 describe('Home stock notice rendering and interaction', () => {
   it('gating derives on preference, depleting stock query, and snooze state', () => {
-    expect(home).toContain('let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);');
+    expect(home).toContain("let showStockNotice = $derived(surfaceOn(prefs.surfaceOverrides, 'stock-notice') && !!urgentDepletingStock && !isStockNoticeSnoozedState);");
     expect(home).toContain('j.stock.getProjections(today)');
     expect(home).toContain('depletingStocks(stockProjectionsQuery.rows, today)[0]');
   });
@@ -221,7 +221,7 @@ describe('Home stock notice rendering and interaction', () => {
     expect(homeMarkup).toContain('data-stock-snooze');
     expect(homeMarkup).toContain('data-stock-dont-show');
     expect(home).toContain('snoozeStockNotice()');
-    expect(home).toContain('prefs.stockNoticeEnabled = false');
+    expect(home).toContain("withSurface(prefs.surfaceOverrides, 'stock-notice', false)");
   });
 });
 
@@ -229,7 +229,7 @@ describe('Settings live-tiles registry integration', () => {
   it('registers stock-notice in live-tiles registry', () => {
     const row = UNPROMPTED_ROWS.find((r) => r.key === 'stock-notice');
     expect(row).toBeDefined();
-    expect(row?.surface?.prefKey).toBe('stockNoticeEnabled');
+    expect(row?.surface?.defaultOn).toBe(true);
     expect(row?.title()).toBe(enMessages.tile_stock_title);
   });
 });

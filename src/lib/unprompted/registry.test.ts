@@ -10,36 +10,55 @@ import {
   NOTIFICATION_ROWS,
   SURFACE_ROWS,
   UNPROMPTED_ROWS,
+  surfaceOn,
   unpromptedQuiet,
-  unregisteredKinds
+  unregisteredKinds,
+  withSurface
 } from './registry.ts';
 import type { AreaStates } from '../data/areaState.ts';
 
-const surfaceKeys = SURFACE_ROWS.map((row) => row.surface!.prefKey);
+const surfaceKeys = SURFACE_ROWS.map((row) => row.key);
 const notifyKeys = NOTIFICATION_ROWS.map((row) => row.notify!.prefKey);
 
 describe('the unprompted registry', () => {
   it('lists every kind that shows something in the app of its own', () => {
     expect(surfaceKeys).toEqual([
-      'wearTimerEnabled',
-      'dosePanelEnabled',
-      'readyLetterEnabled',
-      'surgeryCountdownEnabled',
-      'safeSpaceNudgeEnabled',
-      'stockNoticeEnabled',
-      'wrappedEnabled',
-      'onThisDayEnabled'
+      'wear-timer',
+      'dose-panel',
+      'ready-letter',
+      'surgery-countdown',
+      'safe-space-nudge',
+      'stock-notice',
+      'wrapped',
+      'on-this-day'
     ]);
   });
 
-  it('names a real, boolean preference for every switch either view draws', () => {
-    for (const key of [...surfaceKeys, ...notifyKeys]) {
+  it('names a real, boolean preference for every switch the notifications view draws', () => {
+    for (const key of notifyKeys) {
       expect(typeof PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe('boolean');
     }
   });
 
-  it('defaults every surface to on, on a fresh install', () => {
-    for (const key of surfaceKeys) expect(PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe(true);
+  it('defaults every surface to on, on a fresh install, with no stored override', () => {
+    for (const row of SURFACE_ROWS) {
+      expect(row.surface.defaultOn, row.key).toBe(true);
+      expect(surfaceOn(PREFERENCE_DEFAULTS.surfaceOverrides, row.key), row.key).toBe(true);
+    }
+  });
+
+  it('reads a surface off the map, and falls back to the registry default', () => {
+    expect(surfaceOn({ 'wear-timer': false }, 'wear-timer')).toBe(false);
+    expect(surfaceOn({ 'wear-timer': false }, 'dose-panel')).toBe(true);
+    expect(surfaceOn({ 'no-such-kind': false }, 'dose-panel')).toBe(true);
+  });
+
+  it('stores only what differs from the default, and leaves other entries alone', () => {
+    const off = withSurface({ 'dose-panel': false }, 'wear-timer', false);
+    expect(off).toEqual({ 'dose-panel': false, 'wear-timer': false });
+    const back = withSurface(off, 'wear-timer', true);
+    expect(back).toEqual({ 'dose-panel': false });
+    expect(off).toEqual({ 'dose-panel': false, 'wear-timer': false });
   });
 
   it('gives every row a key of its own, for the walkthrough handle', () => {

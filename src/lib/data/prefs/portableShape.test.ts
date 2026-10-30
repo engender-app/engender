@@ -39,7 +39,29 @@ describe('importing the archive named in the audit (S6)', () => {
   test('an archived cycle choice survives restore, while an older archive returns to automatic', () => {
     expect(portablePreferencePatch({ cycleTrackingChoice: false }).cycleTrackingChoice).toBe(false);
     expect(portablePreferencePatch({ cycleTrackingChoice: true }).cycleTrackingChoice).toBe(true);
-    expect(portablePreferencePatch({ cycleTrackingEnabled: false }).cycleTrackingChoice).toBe(null);
+    expect(portablePreferencePatch({ cycleTrackingEnabled: false } as never).cycleTrackingChoice).toBe(null);
+  });
+
+  test('an older archive with the legacy cycle opt-in on restores as an explicit yes (FA 44)', () => {
+    expect(portablePreferencePatch({ cycleTrackingEnabled: true } as never).cycleTrackingChoice).toBe(true);
+    expect(portablePreferencePatch({ cycleTrackingEnabled: true, cycleTrackingChoice: false } as never).cycleTrackingChoice)
+      .toBe(false);
+  });
+
+  test('the legacy opt-in itself is no longer a key the patch carries', () => {
+    expect(portablePreferencePatch({ cycleTrackingEnabled: true } as never)).not.toHaveProperty('cycleTrackingEnabled');
+  });
+});
+
+describe('the surface overrides map (FA 44)', () => {
+  test('a map of booleans is accepted', () => {
+    expect(portableValueForKey('surfaceOverrides', { 'wear-timer': false })).toEqual({ 'wear-timer': false });
+  });
+
+  test('anything else is rejected, so the device keeps its own', () => {
+    for (const bad of [null, [], 'off', { 'wear-timer': 'no' }, { a: null }]) {
+      expect(portableValueForKey('surfaceOverrides', bad), JSON.stringify(bad)).toBeUndefined();
+    }
   });
 });
 

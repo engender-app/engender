@@ -327,7 +327,7 @@
      pickers this list deliberately does not duplicate. */
   let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
   let cycleEvents = $derived(cycleEventsQuery.rows);
-  let cycleShown = $derived(cycleTrackingVisible(episodes, Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
+  let cycleShown = $derived(cycleTrackingVisible(episodes, Date.now(), prefs.cycleTrackingChoice));
   let recentCycleEvents = $derived([...cycleEvents].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
 
   /* What the axis at the top of the screen draws: the changes that carry a

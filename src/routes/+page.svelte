@@ -60,6 +60,7 @@
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { surfaceOn, withSurface } from '$lib/unprompted/registry';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -596,7 +597,7 @@
   let stockProjectionsQuery = liveList((j) => j.stock.getProjections(today));
   let isStockNoticeSnoozedState = $state(isStockNoticeSnoozed());
   let urgentDepletingStock = $derived(depletingStocks(stockProjectionsQuery.rows, today)[0] ?? null);
-  let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);
+  let showStockNotice = $derived(surfaceOn(prefs.surfaceOverrides, 'stock-notice') && !!urgentDepletingStock && !isStockNoticeSnoozedState);
   let stockNoticeCopy = $derived(
     urgentDepletingStock
       ? stockNotice(
@@ -1341,7 +1342,7 @@
           class="btn btn-ghost btn-block"
           data-letter-dont-show
           onclick={() => {
-            prefs.readyLetterEnabled = false;
+            prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, 'ready-letter', false);
             letterDismissSheetOpen = false;
             toast(m.notice_turned_off_toast());
           }}
@@ -1376,7 +1377,7 @@
           class="btn btn-ghost btn-block"
           data-stock-dont-show
           onclick={() => {
-            prefs.stockNoticeEnabled = false;
+            prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, 'stock-notice', false);
             stockDismissSheetOpen = false;
             toast(m.notice_turned_off_toast());
           }}

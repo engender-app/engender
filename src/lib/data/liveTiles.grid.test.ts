@@ -21,11 +21,9 @@ import {
   HOME_TILE_CAP,
   LIVE_TILE_DRAW_ORDER,
   LIVE_TILE_ORDER,
-  LIVE_TILE_PREF_KEY,
   LIVE_TILE_TIER,
   composeHomeTiles,
   isLiveTileKind,
-  liveTilePrefKeys,
   splitHomeTiles,
   type HomeTileActions,
   type HomeTileFormat,
@@ -200,20 +198,12 @@ describe('which kinds the grid is for', () => {
     }
   });
 
-  it('takes each tile\'s preference from the registry that declares it', () => {
+  it('gives each tile a row in the registry, which is where its switch and default live', () => {
     for (const kind of LIVE_TILE_ORDER) {
       const row = SURFACE_ROWS.find((r) => r.key === kind);
       expect(row, `${kind} has a surfaces row`).toBeDefined();
-      expect(LIVE_TILE_PREF_KEY[kind]).toBe(row!.surface.prefKey);
+      expect(typeof row!.surface.defaultOn).toBe('boolean');
     }
-  });
-
-  it('refuses a registry that has stopped declaring one of them', () => {
-    /* The rule run over a shortened registry rather than asserted never to
-       fail on the real one: filtering a row out and then checking it is
-       absent would restate `filter`. */
-    const withoutWear = SURFACE_ROWS.filter((row) => row.key !== 'wear-timer');
-    expect(() => liveTilePrefKeys(withoutWear)).toThrow(/wear-timer/);
   });
 });
 

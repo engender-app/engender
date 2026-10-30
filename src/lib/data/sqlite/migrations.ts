@@ -25,6 +25,7 @@ import { CLOSED_LISTS_REBUILD } from './closed-lists-migration.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
 import { migrateDrugClass } from './drug-class-migration.ts';
 import { migrateHairRemovalCost } from './cost-migration.ts';
+import { migratePrefsCleanup } from './prefs-cleanup-migration.ts';
 import { deviceDefaultCurrency } from '../cost.ts';
 import { migrateStockIdentity } from './stock-identity-migration.ts';
 import { WAITLIST_REBUILD } from './waitlist-migration.ts';
@@ -413,5 +414,15 @@ ALTER TABLE medication_stock ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0
   /* Functional audit ticket 15: the patch-schedule tile is folded into the
      dose panel, so the switch that turned it off has nothing left to turn
      off. The dose panel's own switch is untouched. */
-  { version: 116, sql: "DELETE FROM pref WHERE key = 'patchScheduleTileEnabled';" }
+  { version: 116, sql: "DELETE FROM pref WHERE key = 'patchScheduleTileEnabled';" },
+  /* Functional audit ticket 44: the preference catalogue sheds its dead and
+     legacy keys before 1.0 makes every rename a permanent shim. The eight
+     per-surface switches become one `surfaceOverrides` map, `lockOnLeave`
+     and the legacy cycle opt-in are read into their replacements, and the
+     entry editor's four never-written card switches go. Done in code
+     (prefs-cleanup-migration.ts) because it reads and rewrites JSON values. */
+  { version: 117, sql: `
+DELETE FROM pref WHERE key IN ('entryTryoutPromptEnabled', 'entryDoseQuickLogEnabled',
+  'entryProcedureRecoveryEnabled', 'entryHrtEffectsEnabled');
+`, apply: migratePrefsCleanup }
 ];

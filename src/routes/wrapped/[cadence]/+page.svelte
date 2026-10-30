@@ -7,6 +7,7 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { readWrappedPeriod } from '$lib/data/wrappedReads';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { surfaceOn } from '$lib/unprompted/registry';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { nameTagInsights, recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
@@ -26,7 +27,7 @@
   const consentQuery = liveQuery((j) => resurfacing('wrapped', j));
   const allowed = $derived(consentQuery.value?.mayResurface(period) ?? false);
   const muted = $derived(!!consentQuery.value && !allowed);
-  const on = $derived(prefs.wrappedEnabled);
+  const on = $derived(surfaceOn(prefs.surfaceOverrides, 'wrapped'));
   const periodQuery = liveQuery((j) =>
     on && allowed
       ? readWrappedPeriod(j, { ...period, today, metric: metricKey(prefs), year: cadence === 'year' })

@@ -63,9 +63,8 @@
     type PinnedRow
   } from '$lib/data/pinnedRows';
   import type { HubReading, HubRowKey } from '$lib/data/hubRows';
-  import { LIVE_TILE_DRAW_ORDER, LIVE_TILE_PREF_KEY, type LiveTileKind } from '$lib/data/liveTiles';
-  import { PREFERENCE_DEFAULTS } from '$lib/data/prefs/catalogue';
-  import { UNPROMPTED_ROWS } from '$lib/unprompted/registry';
+  import { LIVE_TILE_DRAW_ORDER, type LiveTileKind } from '$lib/data/liveTiles';
+  import { UNPROMPTED_ROWS, surfaceOn, withSurface } from '$lib/unprompted/registry';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { ListDrag, measureTops, travelFrom } from '$lib/motion/reorder.svelte';
   import { maskHeight } from '$lib/motion/reveal';
@@ -108,7 +107,7 @@
      query on every load to hand the answer down. */
   let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let cycleVisible = $derived(
-    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)
+    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingChoice)
   );
 
   let addable = $derived(addablePins(prefs, reading, { cycleVisible }));
@@ -148,7 +147,7 @@
   );
 
   function toggleTile(kind: LiveTileKind, on: boolean) {
-    prefs[LIVE_TILE_PREF_KEY[kind]] = on;
+    prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, kind, on);
   }
 
   /** Back to what onboarding was told, which is null rather than a list:
@@ -156,12 +155,12 @@
       chose, and the next answer to onboarding's question would not reach
       it. The tile switches go with it - one edit mode, one reset.
 
-      The tiles come back from `PREFERENCE_DEFAULTS` rather than from a
-      null, because each of them is its own boolean in the catalogue and
-      has no unset state to resolve. Read from that file rather than
-      written as `true` once per tile: what the app ships with is that
-      file's to say, and a default changed there would otherwise leave this
-      one handing back the old answer.
+      The tiles come back by losing their entry in `surfaceOverrides`, so
+      each reads the registry's default again: what the app ships with is the
+      registry's to say, and a default changed there would otherwise leave
+      this one handing back the old answer. Overrides for kinds this editor
+      does not draw (the stock notice, wrapped, on this day) stay as they
+      are.
 
       Behind a question, unlike every other write on this surface. The rest
       are each one row and each undone by one tap; this is the only one that
@@ -176,10 +175,9 @@
   function reset() {
     resetAsked = false;
     prefs.pinnedRows = null;
-    for (const kind of LIVE_TILE_DRAW_ORDER) {
-      const key = LIVE_TILE_PREF_KEY[kind];
-      prefs[key] = PREFERENCE_DEFAULTS[key];
-    }
+    let overrides = prefs.surfaceOverrides;
+    for (const kind of LIVE_TILE_DRAW_ORDER) overrides = withSurface(overrides, kind, surfaceOn({}, kind));
+    prefs.surfaceOverrides = overrides;
   }
 
   /* ---------- the drag ---------- */
@@ -403,7 +401,7 @@
         <ListRow static key={kind} {title} subtitle={label?.line?.()} data-edit-tile={kind}>
           {#snippet trailing()}
             <Switch
-              checked={prefs[LIVE_TILE_PREF_KEY[kind]]}
+              checked={surfaceOn(prefs.surfaceOverrides, kind)}
               label={title}
               onChange={(on) => toggleTile(kind, on)}
             />

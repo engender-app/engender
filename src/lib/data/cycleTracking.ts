@@ -1,5 +1,5 @@
 /* One cycle visibility rule for every offer. An explicit choice wins;
-   older journals without one keep the regimen rule and legacy opt-in. */
+   older journals without one keep the regimen rule. */
 
 import { activeEpisodesAt } from './regimenEpisode';
 import { resolveHormoneDrug } from './hormoneDrug';
@@ -14,6 +14,6 @@ export function testosteroneActive(episodes: readonly RegimenEpisode[], timestam
 
 /** Whether app-owned entry points and prompts offer cycle tracking.
     Saved events and direct links remain available either way. */
-export function cycleTrackingVisible(episodes: readonly RegimenEpisode[], timestamp: number, cycleTrackingEnabled: boolean, choice: boolean | null): boolean {
-  return choice ?? (testosteroneActive(episodes, timestamp) || cycleTrackingEnabled);
+export function cycleTrackingVisible(episodes: readonly RegimenEpisode[], timestamp: number, choice: boolean | null): boolean {
+  return choice ?? testosteroneActive(episodes, timestamp);
 }

@@ -86,7 +86,8 @@ function everyPreferenceSet(): PreferenceValues {
     lastBackupAt: 1_700_000_000_000,
     backupNoticeDismissed: true,
     pinnedRows: ['wear', 'hair-progress', 'care'],
-    onboardingAreas: ['hair-progress']
+    onboardingAreas: ['hair-progress'],
+    surfaceOverrides: { 'wear-timer': false }
   };
 }
 
