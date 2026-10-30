@@ -66,7 +66,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { dilationEligible, expectedSessionDays, sessionSlots, sessionsExpectedOn, stageOn, stagesFromInput } from '$lib/data/taperSchedule';
+  import { dilationEligible, expectedSessionDays, sessionSlots, sessionsExpectedOn, sessionsPerDay, stageOn, stagesFromInput } from '$lib/data/taperSchedule';
   import type { TaperSession, TaperStage } from '$lib/data/types';
   import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
@@ -250,6 +250,12 @@
      week's fade-out, while the box under them travels to its new height
      (cycle-events/+page.svelte draws its week the same way). The first
      week the screen shows is simply there. */
+  /* The arriving half of a word swap: the leaving words go through
+     crossfade, which lifts them out of flow, and these fade in over the
+     same --dur-fast in the place they keep. Not in:crossfade, which
+     feature-screens.test.ts keeps off a route's markup. */
+  const wordsIn = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
+
   let weekShown = false;
   function revealWeek(_node: Element) {
     const duration = weekShown || weeksBack > 0 ? motionDuration('--dur-fast') : 0;
@@ -275,7 +281,9 @@
   /** The stage the schedule is in today, in words for the schedule row. */
   function stageWords(stage: TaperStage | null): string | undefined {
     if (!stage) return undefined;
-    if (stage.timesPerDay !== undefined) return m.dilation_stage_now_times({ count: stage.timesPerDay });
+    // The count the schedule reads, not the raw field: an archive can carry
+    // a count the editor never wrote (sessionsPerDay clamps it).
+    if (stage.timesPerDay !== undefined) return m.dilation_stage_now_times({ count: sessionsPerDay(stage) });
     if (stage.everyNDays < 1) return m.dilation_stage_now_rest();
     return m.dilation_stage_now_every({ count: stage.everyNDays });
   }
@@ -293,7 +301,7 @@
      session is logged or deleted rather than swapped in one frame. -->
 {#snippet trailWord(word: string)}
   <span class="dilation-trail-word">
-    {#key word}<span in:crossfade out:crossfade>{word}</span>{/key}
+    {#key word}<span in:wordsIn out:crossfade>{word}</span>{/key}
   </span>
 {/snippet}
 
@@ -389,7 +397,7 @@
                        crossfades; the field beside it keeps its number. -->
                   <span class="dilation-stage-words">
                     {#key stage.kind}
-                      <span in:crossfade out:crossfade>
+                      <span in:wordsIn out:crossfade>
                         {stage.kind === 'perDay' ? m.dilation_stage_times_aria() : m.dilation_stage_frequency_aria()}
                       </span>
                     {/key}

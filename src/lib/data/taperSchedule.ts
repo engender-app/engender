@@ -64,7 +64,7 @@ export const MAX_TIMES_PER_DAY = 10;
 /** How many sessions each expected day of `stage` holds: its own
     `timesPerDay` when that is a whole count the editor could have saved,
     the ceiling when it is larger, and one otherwise. */
-function sessionsPerDay(stage: TaperStage): number {
+export function sessionsPerDay(stage: TaperStage): number {
   const times = stage.timesPerDay;
   if (typeof times !== 'number' || !Number.isInteger(times) || times < 1) return 1;
   return Math.min(times, MAX_TIMES_PER_DAY);
