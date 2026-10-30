@@ -65,6 +65,16 @@ describe('the Recents preview', () => {
     expect(java('screencapture/ScreenCapturePlugin.java')).toMatch(/isAllowed\(context\)\s*&&\s*!DisguiseAlias\.isDisguised\(context\)/);
   });
 
+  it('is named in the disguise sheet, beside the preview that follows the setting', () => {
+    const source = (path: string) => readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), 'utf8');
+    expect(source('src/lib/components/DisguiseSetting.svelte')).toContain('<DisguisePreview on={disguiseAnswer ?? prefs.disguise} />');
+    expect(source('src/lib/components/DisguisePreview.svelte')).toContain('m.disguise_android_gap_note()');
+    for (const locale of ['en', 'pl']) {
+      const note = (JSON.parse(source(`messages/${locale}.json`)) as Record<string, string>).disguise_android_gap_note;
+      expect(note, locale).toMatch(locale === 'en' ? /Recents/ : /ostatnio używanych/);
+    }
+  });
+
   it('is decided by that read on create, on return and on a change', () => {
     const main = java('MainActivity.java');
     expect(main.match(/applyWindowFlags\(this, ScreenCapturePlugin\.allowedNow\(this\)\)/g)).toHaveLength(2);
