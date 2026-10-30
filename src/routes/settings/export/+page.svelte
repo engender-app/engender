@@ -192,8 +192,11 @@
   let autoFolderSync = $state(false);
   let autoFolderOutcome = $state<FolderSyncOutcome | null>(null);
   let autoFolderAt = $state<number | null>(null);
-  /* Which wording the line under the switch shows. Null until the first
-     status read, so nothing is painted that the read then replaces. */
+  /* Which wording the line under the switch shows, and whether the switch
+     shows at all. Both wait for the first status read, so nothing is painted
+     that the read then replaces: the switch takes its state while hidden,
+     with its own transition off, and fades in a frame later rather than
+     sliding from off to on as the screen arrives. */
   let autoFolderLoaded = $state(false);
   const folderSyncState = $derived(
     !autoFolderLoaded ? null
@@ -218,7 +221,7 @@
     autoFolderSync = status.folderSync ?? false;
     autoFolderOutcome = status.folderLastOutcome ?? null;
     autoFolderAt = status.folderLastAt ?? null;
-    autoFolderLoaded = true;
+    if (!autoFolderLoaded) requestAnimationFrame(() => requestAnimationFrame(() => (autoFolderLoaded = true)));
   }
 
   async function refreshAutoStatus() {
@@ -1036,7 +1039,9 @@
          so switching it moves nothing on the screen. -->
     <div class="spread" data-folder-sync-row>
       <span class="small muted">{m.exp_folder_title()}</span>
-      <Switch checked={autoFolderSync} label={m.exp_folder_title()} onChange={setFolderSync} />
+      <span class="folder-switch" class:is-loaded={autoFolderLoaded}>
+        <Switch checked={autoFolderSync} label={m.exp_folder_title()} onChange={setFolderSync} />
+      </span>
     </div>
     <p class="muted small">{m.exp_folder_note()}</p>
     <!-- Every wording laid out in one cell and crossfaded, so the first
@@ -1502,6 +1507,17 @@
     transition:
       opacity var(--dur-fast) var(--ease-out),
       visibility 0s;
+  }
+  .folder-switch {
+    display: inline-flex;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .folder-switch.is-loaded {
+    opacity: 1;
+  }
+  .folder-switch:not(.is-loaded) :global(*) {
+    transition: none;
   }
   .backup-password-error {
     color: var(--danger);
