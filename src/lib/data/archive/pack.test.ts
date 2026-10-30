@@ -87,7 +87,13 @@ function everyPreferenceSet(): PreferenceValues {
     backupNoticeDismissed: true,
     pinnedRows: ['wear', 'hair-progress', 'care'],
     onboardingAreas: ['hair-progress'],
-    surfaceOverrides: { 'wear-timer': false }
+    surfaceOverrides: { 'wear-timer': false },
+    acknowledgements: {
+      snoozes: { 'ready-letter': 1_800_000_000_000 },
+      readLetterIds: ['0b2f6c1e-5d3a-4f7e-9a10-1c2d3e4f5a6b'],
+      greetedLetterIds: ['7e9d4c2a-8b1f-4a3c-b5d6-0f1e2d3c4b5a'],
+      hasEntries: true
+    }
   };
 }
 

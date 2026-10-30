@@ -129,6 +129,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       episodes: [episode],
       procedures: [procedure],
       letters,
+      readLetterIds: [],
       latestBadEntryId: 42,
       safeSpaceDismissedEntryId: null,
       schedules: [schedule],

@@ -85,6 +85,7 @@
   import { entryDayGroups, entryMarks, recentDayMonths } from '$lib/data/recentEntries';
   import type { Era } from '$lib/data/types';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { withHasEntries } from '$lib/data/acknowledgements';
   import {
     EASE_OUT,
     EASE_OUT_CSS,
@@ -125,29 +126,17 @@
      Ticket 109: determine presence from cached journal state on initial mount
      so hasEntries does not flip from false/null to true after mount, snapping
      month controls and heatmap into layout. */
-  const HAS_ENTRIES_KEY = 'engender-has-entries';
-
-  function readCachedHasEntries(): boolean | null {
-    if (typeof localStorage === 'undefined') return null;
-    try {
-      const raw = localStorage.getItem(HAS_ENTRIES_KEY);
-      if (raw === '1') return true;
-      if (raw === '0') return false;
-    } catch {}
-    return null;
-  }
-
   let entryCountQuery = liveQuery((j) => j.entries.countAll());
-  let cachedHasEntries = $state<boolean | null>(readCachedHasEntries());
+  /* The last answer lives in the encrypted acknowledgements preference now,
+     not in plaintext localStorage (functional audit ticket 45). */
+  let cachedHasEntries = $derived(prefs.acknowledgements.hasEntries);
 
   $effect(() => {
     if (!doorActive()) return;
     if (entryCountQuery.value != null) {
-      const has = entryCountQuery.value > 0;
-      cachedHasEntries = has;
-      try {
-        localStorage.setItem(HAS_ENTRIES_KEY, has ? '1' : '0');
-      } catch {}
+      const current = untrack(() => prefs.acknowledgements);
+      const next = withHasEntries(current, entryCountQuery.value > 0);
+      if (next !== current) prefs.acknowledgements = next;
     }
   });
 

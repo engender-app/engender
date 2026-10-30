@@ -39,6 +39,7 @@
     markLetterGreeted,
     markLetterRead
   } from '$lib/data/letterStatus';
+  import { acknowledgementStore } from '$lib/data/prefs/acknowledgementStore.svelte';
   import { safeSpaceLetters } from '$lib/data/letterRetrospective';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -84,11 +85,11 @@
   let letters = $derived(lettersQuery.rows);
 
   /* Which letters have been read, and which arrivals have been met. Both
-     live in localStorage rather than in the journal (ADR-0039), and both are
-     mirrored into state here so opening a letter re-draws its card without a
-     reload - a plain read of the store would be taken once and never again. */
-  let readIds = $state(getReadLetterIds());
-  let greetedIds = $state(getGreetedLetterIds());
+     live in the encrypted acknowledgements preference rather than in the
+     journal's tables (ADR-0039), read through the reactive store so opening
+     a letter re-draws its card without a reload. */
+  let readIds = $derived(getReadLetterIds(acknowledgementStore));
+  let greetedIds = $derived(getGreetedLetterIds(acknowledgementStore));
 
   /* Waiting first, soonest to open at the top, then the ones already open,
      most recently unlocked first. Rule 16's ordering, and the reason there
@@ -108,8 +109,7 @@
   let openId = $state<string | null>(null);
 
   function markRead(letter: Letter) {
-    markLetterRead(letter.id);
-    readIds = getReadLetterIds();
+    markLetterRead(letter.id, acknowledgementStore);
   }
 
   function openLetter(letter: Letter) {
@@ -135,8 +135,7 @@
   });
 
   function endArrival(letter: Letter) {
-    markLetterGreeted(letter.id);
-    greetedIds = getGreetedLetterIds();
+    markLetterGreeted(letter.id, acknowledgementStore);
     arrival = null;
   }
 

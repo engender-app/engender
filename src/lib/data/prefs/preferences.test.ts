@@ -270,3 +270,70 @@ test('a backup failure receipt and quiet-hours hold survive reopening SQLite', a
   expect(second.get('lastExportFailureNotifiedAt')).toBe(1_760_000_000_000);
   expect(second.get('heldExportFailureNotice')).toBe(true);
 });
+
+const LETTER = '0b2f6c1e-5d3a-4f7e-9a10-1c2d3e4f5a6b';
+const ACKNOWLEDGED = {
+  snoozes: { 'ready-letter': 1_800_000_000_000 },
+  readLetterIds: [LETTER],
+  greetedLetterIds: [],
+  hasEntries: true
+};
+
+test('the boot mirror names the default palette while disguised, and the real one otherwise (FA 45)', async () => {
+  const driver = await migratedDb();
+  const { cache, current } = recordingCache();
+  try {
+    const preferences = await openPreferences(driver, cache);
+    await preferences.set('palette', 'lesbian');
+    expect(current().palette).toBe('lesbian');
+
+    await preferences.set('disguise', true);
+    expect(current().palette).toBe(PREFERENCE_DEFAULTS.palette);
+    expect(current().disguise).toBe(true);
+    expect(preferences.get('palette')).toBe('lesbian');
+
+    await preferences.set('palette', 'rainbow');
+    expect(current().palette).toBe(PREFERENCE_DEFAULTS.palette);
+
+    await preferences.set('disguise', false);
+    expect(current().palette).toBe('rainbow');
+  } finally { await driver.close(); }
+});
+
+test('a reopen while disguised writes the neutral palette too (FA 45)', async () => {
+  const driver = await migratedDb();
+  try {
+    const first = await openPreferences(driver);
+    await first.set('palette', 'pansexual');
+    await first.set('disguise', true);
+    const { cache, writes } = recordingCache();
+    await openPreferences(driver, cache);
+    expect(writes.map((boot) => boot.palette)).toEqual([PREFERENCE_DEFAULTS.palette]);
+  } finally { await driver.close(); }
+});
+
+test('acknowledgements survive a restart (FA 45)', async () => {
+  const driver = await migratedDb();
+  try {
+    await (await openPreferences(driver)).set('acknowledgements', ACKNOWLEDGED);
+    expect((await openPreferences(driver)).get('acknowledgements')).toEqual(ACKNOWLEDGED);
+  } finally { await driver.close(); }
+});
+
+test('acknowledgements travel in a backup and come back sanitised on restore (FA 45)', async () => {
+  const source = await migratedDb();
+  const target = await migratedDb();
+  try {
+    const sourcePrefs = await openPreferences(source);
+    await sourcePrefs.set('acknowledgements', ACKNOWLEDGED);
+    const archived = portablePreferences(sourcePrefs.all());
+    expect(archived.acknowledgements).toEqual(ACKNOWLEDGED);
+
+    const hostile = { ...archived, acknowledgements: { ...ACKNOWLEDGED, readLetterIds: [LETTER, 42, 'let-1'] } };
+    await restorePortablePreferencesWithin(target, hostile);
+    expect((await openPreferences(target)).get('acknowledgements')).toEqual(ACKNOWLEDGED);
+  } finally {
+    await source.close();
+    await target.close();
+  }
+});

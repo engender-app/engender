@@ -60,6 +60,7 @@
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { withHasEntries } from '$lib/data/acknowledgements';
   import { surfaceOn, withSurface } from '$lib/unprompted/registry';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
@@ -253,13 +254,7 @@
      mirror below is the last answer this device saw, written for the
      calendar's own boot guess (ticket 109) and read here for the line's
      room (ticket 183). */
-  const hadEntries = (() => {
-    try {
-      return typeof localStorage !== 'undefined' && localStorage.getItem('engender-has-entries') === '1';
-    } catch {
-      return false;
-    }
-  })();
+  const hadEntries = prefs.acknowledgements.hasEntries === true;
   let countPending = $derived(entryCountQuery.loading || journalBoundsQuery.loading);
   const countFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
@@ -273,10 +268,10 @@
 
   $effect(() => {
     if (!doorActive()) return;
-    if (entryCountQuery.value != null && typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem('engender-has-entries', entryCountQuery.value > 0 ? '1' : '0');
-      } catch {}
+    if (entryCountQuery.value != null) {
+      const current = untrack(() => prefs.acknowledgements);
+      const next = withHasEntries(current, entryCountQuery.value > 0);
+      if (next !== current) prefs.acknowledgements = next;
     }
   });
 

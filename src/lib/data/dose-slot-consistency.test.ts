@@ -33,7 +33,7 @@ async function todayOf(journal: Journal): Promise<{ tiles: HomeTile[]; doseRows:
     enabled: every(true),
     snoozed: every(false),
     areaStates: {},
-    reads: { runningWear: null, wearDurationCue: false, episodes, procedures: [], letters: [],
+    reads: { runningWear: null, wearDurationCue: false, episodes, procedures: [], letters: [], readLetterIds: [],
       latestBadEntryId: null, safeSpaceDismissedEntryId: null, schedules, dosePauses, scheduleDoses, yesterdayDoses },
     actions: { stopWear() {}, dismissSafeSpace() {}, openLetterDismiss() {} },
     format: { fullDay: (day) => `full:${day}`, weekdayDay: (day) => `weekday:${day}`, time: String,

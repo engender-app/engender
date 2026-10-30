@@ -210,7 +210,8 @@ function portableWith(marker: string) {
     areaFinishOfferDeclined: values.areaFinishOfferDeclined,
     roadmapPolishStepsChoice: values.roadmapPolishStepsChoice,
     pinnedRows: values.pinnedRows,
-    onboardingAreas: values.onboardingAreas
+    onboardingAreas: values.onboardingAreas,
+    acknowledgements: values.acknowledgements
   };
 }
 

@@ -79,7 +79,8 @@ import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '
 import { androidResetTargets, clearBrowserMirrors, wipeLocalData } from '../data/reset';
 import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
-import { openPreferences } from '../data/prefs/preferences';
+import { openPreferences, type Preferences } from '../data/prefs/preferences';
+import { migrateLegacyAcknowledgements } from '../data/acknowledgements';
 import { activateLanguagePreference, applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
 import { beginSessionUnlock, isLocked, markUnlocked } from './lock.svelte';
 import { UnlockCancelledError } from '../lock/unlock-attempt';
@@ -411,6 +412,7 @@ async function reopenJournal(
      closed until every preparation step has finished under this lock. */
   await hydrateReference(preparing, current);
   current();
+  await moveLegacyAcknowledgements(preferences);
   await attachPreferences(preferences);
   current();
   activateLanguagePreference();
@@ -445,6 +447,24 @@ function reportReopenPreparationFailure(error: ReopenPreparationError, current: 
     it needs the file ops of the driver that failed (ticket 04). */
 let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
+
+/** Functional audit ticket 45: the tile snoozes, letter ids and entries hint
+    older builds kept in plaintext localStorage move into the encrypted
+    `acknowledgements` preference on the first unlock. Awaits the handle's own
+    write, which rejects on failure, rather than the reactive setter, which
+    logs and carries on - the plaintext keys are deleted only after it lands.
+    Runs before attach so the projection starts from the merged value. */
+async function moveLegacyAcknowledgements(preferences: Preferences): Promise<void> {
+  let storage: Storage | null = null;
+  try {
+    storage = localStorage;
+  } catch {
+    /* No storage, nothing to move. */
+  }
+  await migrateLegacyAcknowledgements(storage, preferences.get('acknowledgements'), (next) =>
+    preferences.set('acknowledgements', next)
+  );
+}
 
 /* Where each kind of reset lands, read by resetApp below. */
 const RESET_DESTINATION = {
@@ -1265,6 +1285,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
       await preferences.set(key, value);
     }
   }
+  await moveLegacyAcknowledgements(preferences);
   await attachPreferences(preferences);
   current();
   activateLanguagePreference();

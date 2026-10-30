@@ -33,6 +33,7 @@ import { fmtDay, fmtTime, fmtNumber } from './dates';
 import { SPINE_FORWARD_DAYS } from './careSpine';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
 import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
+import { acknowledgementStore } from './prefs/acknowledgementStore.svelte';
 import { routeLabel } from './vocabulary/doseLabels';
 import type { DoseRoute } from './types';
 import { UNPROMPTED_ROWS, surfaceOn, unpromptedQuiet } from '../unprompted/registry';
@@ -76,8 +77,8 @@ interface HomeTileGrid {
     gate can stay uniform across all eleven. */
 const snoozeStoreOf = (kind: LiveTileKind) =>
   kind === 'ready-letter'
-    ? { snoozed: (nowMs: number) => isLetterSnoozed(nowMs), snooze: () => snoozeLetterTile() }
-    : { snoozed: (nowMs: number) => isTileSnoozed(kind, nowMs), snooze: () => snoozeTile(kind) };
+    ? { snoozed: (nowMs: number) => isLetterSnoozed(acknowledgementStore, nowMs), snooze: () => snoozeLetterTile(acknowledgementStore) }
+    : { snoozed: (nowMs: number) => isTileSnoozed(kind, acknowledgementStore, nowMs), snooze: () => snoozeTile(kind, acknowledgementStore) };
 
 export function homeTiles(
   /** A getter, so the reads below follow the day across midnight. */
@@ -221,6 +222,7 @@ export function homeTiles(
         episodes: episodes.rows,
         procedures: procedures.rows,
         letters: letters.rows,
+        readLetterIds: prefs.acknowledgements.readLetterIds,
         latestBadEntryId: latestBadEntryId.value,
         wearDurationCue: prefs.wearDurationCueEnabled,
         safeSpaceDismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,

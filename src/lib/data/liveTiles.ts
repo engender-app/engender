@@ -243,6 +243,9 @@ export interface HomeTileReads {
   episodes: readonly RegimenEpisode[];
   procedures: readonly Procedure[];
   letters: LetterSeal[];
+  /** `prefs.acknowledgements.readLetterIds` - the letters already opened, a
+      preference rather than a read like `wearDurationCue` above. */
+  readLetterIds: readonly string[];
   latestBadEntryId: number | null | undefined;
   /** `prefs.safeSpaceNudgeDismissedEntryId` - a preference rather than a
       read, but it is the safe-space nudge's second input and belongs beside
@@ -528,7 +531,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 
     'ready-letter': (gate) => {
       if (!gate.enabled || gate.snoozed) return null;
-      const unread = unreadUnlockedLetters(reads.letters, today);
+      const unread = unreadUnlockedLetters(reads.letters, today, reads.readLetterIds);
       const letter = unread[0];
       if (!letter) return null;
       const others = Math.max(0, unread.length - 1);
