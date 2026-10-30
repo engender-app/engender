@@ -85,7 +85,7 @@ function stamp(
          app.html's own literal: the two are the second thing that file's
          header says has to be changed together, and a script reading a key
          nothing writes finds no mirror and silently paints the defaults. */
-      getItem: (key: string) => (key === BOOT_CACHE_KEY ? JSON.stringify(boot) : null)
+      getItem: (key: string) => (key === BOOT_CACHE_KEY ? (typeof boot === 'string' ? boot : JSON.stringify(boot)) : null)
     },
     matchMedia: (query: string) => ({
       matches: query.includes('prefers-color-scheme: dark') ? system.prefersDark : system.prefersReducedMotion
@@ -171,6 +171,9 @@ describe("app.html's pre-paint script against the shared fixture", () => {
     const off = stamp({ disguise: true }, calm, {}, [], false);
     expect(off.dataset.disguised).toBeUndefined();
     expect(off.icon).not.toBe('favicon-notes.svg');
+    /* A mirror that cannot be parsed must not hide the shell's answer. */
+    const damaged = stamp('{not json', calm, {}, [], true);
+    expect(damaged.dataset.disguised).toBe('');
   });
 
   it('gives the held module hints back once the document has parsed', () => {

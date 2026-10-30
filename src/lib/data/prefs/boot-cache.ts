@@ -64,16 +64,19 @@ export function nativeDisguise(): boolean | null {
 export function localStorageCache(): PreferenceCache {
   return {
     read() {
+      let boot: Partial<BootPreferences> = {};
       try {
         const raw = localStorage.getItem(BOOT_CACHE_KEY);
-        const boot = raw ? (JSON.parse(raw) as Partial<BootPreferences>) : {};
-        const disguise = nativeDisguise();
-        return disguise === null ? boot : { ...boot, disguise };
+        if (raw) boot = JSON.parse(raw) as Partial<BootPreferences>;
       } catch {
         // A damaged mirror is not worth failing a boot over: SQLite holds
         // the real values and is a few hundred milliseconds away.
-        return {};
       }
+      // Outside the try: the shell's answer must survive a mirror that
+      // cannot be read, or the lock screen would show the real name over a
+      // disguised alias.
+      const disguise = nativeDisguise();
+      return disguise === null ? boot : { ...boot, disguise };
     },
     write(boot) {
       try {

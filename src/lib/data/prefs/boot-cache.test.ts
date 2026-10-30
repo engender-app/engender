@@ -39,6 +39,18 @@ describe('the boot mirror read under the Android shell', () => {
     expect(localStorageCache().read()).toEqual({ disguise: true });
   });
 
+  it('still answers from the shell when the mirror is damaged or storage throws', () => {
+    vi.stubGlobal('localStorage', { getItem: () => '{not json' });
+    shell(true);
+    expect(localStorageCache().read()).toEqual({ disguise: true });
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('storage blocked');
+      }
+    });
+    expect(localStorageCache().read()).toEqual({ disguise: true });
+  });
+
   it('keeps the mirror when there is no shell', () => {
     mirror({ disguise: true });
     expect(nativeDisguise()).toBeNull();
