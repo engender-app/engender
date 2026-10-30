@@ -85,6 +85,11 @@ const REGISTRY_SURFACES = [
   'src/lib/components/searchHitRows.ts',
   'src/lib/data/pinnedRows.ts',
   'src/lib/data/vocabulary/hubLabels.ts',
+  /* The feature manifest (functional audit ticket 54) names each feature's
+     rows by `HubRowKey`, a type-only import, and claims every row once. It
+     draws nothing and a row it names that the registry lost stops the
+     typecheck, so it is a check on this module rather than a second list. */
+  'src/lib/features.ts',
   'src/lib/onboarding/features.ts',
   'src/routes/more/+page.svelte',
   'src/routes/onboarding/+page.svelte',
