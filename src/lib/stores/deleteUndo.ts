@@ -26,19 +26,19 @@ export function isUndoable(value: unknown): value is UndoableDelete {
     one until it closes (overlayLock.ts). */
 export function offerUndo(deletion: UndoableDelete, message: string): void {
   let id = 0;
-  const window = openUndoWindow(deletion, { held: overlayIsOpen, onClose: () => dismissToast(id) });
+  const undoWindow = openUndoWindow(deletion, { held: overlayIsOpen, onClose: () => dismissToast(id) });
   id = toast(message, {
     kind: 'record-deleted',
     actionLabel: m.delete_undo(),
     duration: null,
-    onAction: () => void putBack(window),
-    onExpire: () => void window.close()
+    onAction: () => void putBack(undoWindow),
+    onExpire: () => void undoWindow.close()
   });
 }
 
-async function putBack(window: UndoWindow): Promise<void> {
+async function putBack(undoWindow: UndoWindow): Promise<void> {
   try {
-    if (await window.undo()) toast(m.delete_undone(), { kind: 'saved' });
+    if (await undoWindow.undo()) toast(m.delete_undone(), { kind: 'saved' });
   } catch (error) {
     console.error(error);
     toast(m.delete_undo_failed(), { kind: 'failed' });

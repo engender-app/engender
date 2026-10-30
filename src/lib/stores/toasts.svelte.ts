@@ -18,8 +18,8 @@ interface ToastItem {
       the sheet's own buttons. Decided once, when the toast is made, so a
       toast never moves while it is up. */
   raised?: boolean;
-  /** Called when the toast goes without its action being taken: its time
-      ran out, or a lock cleared it. An undo toast closes its window here. */
+  /** Called when its own timer runs out or a lock clears it, not when a
+      caller dismisses it. An undo toast closes its window here on a lock. */
   onExpire?: () => void;
 }
 

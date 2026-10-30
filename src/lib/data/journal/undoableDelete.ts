@@ -55,6 +55,10 @@ interface Column {
 const ident = (name: string) => `"${name.replaceAll('"', '""')}"`;
 const literal = (text: string) => `'${text.replaceAll("'", "''")}'`;
 
+/** The shadow tables FTS5 keeps beside a virtual table, by their exact names,
+    so a real table that merely starts with an index's name is still captured. */
+const FTS5_SHADOWS = ['data', 'idx', 'content', 'docsize', 'config'];
+
 /** The temporary triggers for every ordinary table, and the statements that
     drop them again. FTS5 virtual tables and their shadow tables are left out:
     a trigger cannot be put on the first, and the second is the index's own
@@ -64,7 +68,7 @@ function captureScript(columns: Column[]): { create: string; drop: string } {
   const virtual = [...new Set(columns.filter((c) => c.isVirtual).map((c) => c.tbl))];
   const byTable = new Map<string, Column[]>();
   for (const column of columns) {
-    if (column.isVirtual || virtual.some((name) => column.tbl.startsWith(`${name}_`))) continue;
+    if (column.isVirtual || virtual.some((name) => FTS5_SHADOWS.some((suffix) => column.tbl === `${name}_${suffix}`))) continue;
     byTable.set(column.tbl, [...(byTable.get(column.tbl) ?? []), column]);
   }
 
