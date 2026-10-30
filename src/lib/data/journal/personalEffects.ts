@@ -16,7 +16,7 @@
    stops offering it. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { PersonalEffect, PersonalEffectCatalogEntry, PersonalEffectType } from '../types';
+import type { EffectDirection, PersonalEffect, PersonalEffectCatalogEntry, PersonalEffectType } from '../types';
 import { assertChanged, bool, mintUuid, now } from './support';
 
 interface PersonalEffectInput {
@@ -70,7 +70,7 @@ type PersonalEffectTypeRow = {
   name: string;
   is_built_in: number;
   category_key: string | null;
-  direction: 'feminizing' | 'masculinizing' | null;
+  direction: EffectDirection | null;
   hidden: number;
 };
 

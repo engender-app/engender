@@ -9,6 +9,7 @@
 
 import {
   CYCLE_EVENT_KINDS,
+  EFFECT_DIRECTIONS_STORED,
   HAIR_REMOVAL_METHODS,
   TALLY_KINDS,
   TRYOUT_KINDS
@@ -794,7 +795,7 @@ export type PersonalEffectType = string;
     first one. Null only for a custom effect: a person's own addition
     carries no direction pushed onto it by this app, and renders in
     neither the feminizing nor masculinizing group of the timeline. */
-export type EffectDirection = 'feminizing' | 'masculinizing';
+export type EffectDirection = (typeof EFFECT_DIRECTIONS_STORED)[number];
 
 /** A named, toggleable collection over the effect catalogue (phase 5
     ticket 41, CONTEXT: "Effect category"), the same semantics as `TagGroup`

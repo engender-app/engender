@@ -1,5 +1,6 @@
 import type { ArchiveJournal } from '../archive/payload';
 import { CorruptArchiveError } from '../archive/container';
+import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN, BODY_REGION_MIDPOINT } from '../bodyMap';
 import { isLegacyHairStaging } from '../hairStageScales';
 import {
   CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
@@ -29,9 +30,9 @@ const list = (check: Check): Check => (value) => Array.isArray(value) && value.e
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const numericRecord: Check = (value) => record(value) && Object.values(value).every(numeric);
-const bodyRegionValue = integerBetween(0, 100);
+const bodyRegionValue = integerBetween(BODY_REGION_INTENSITY_MIN, BODY_REGION_INTENSITY_MAX);
 const bodyRegionValues: Check = (value) => record(value) && Object.values(value).every((v) =>
-  bodyRegionValue(v) && v !== 50);
+  bodyRegionValue(v) && v !== BODY_REGION_MIDPOINT);
 const object = (fields: Record<string, Check>): Check => (value) =>
   record(value) && Object.entries(fields).every(([field, check]) => check(value[field]));
 
@@ -545,6 +546,9 @@ export function assertArchiveRows(
         Number.isInteger(slot) && slot >= 0;
       if (!none && !slotted) throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
+    /* Loose `== null` on purpose: undefined counts as absent, so a link with
+       one half missing entirely (what the strict fuzz produces) is refused
+       the same as one with a null half. */
     if (name === 'documents' && (row.targetKind == null) !== (row.targetId == null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }

@@ -19,7 +19,7 @@
    neither packing nor unpacking has to hold more than one photo at a time. */
 
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
-import type { DocumentTargetKind, DrugClass, EpisodeEndReason, ProcedureKind, WearKind } from '../types';
+import type { DocumentTargetKind, DrugClass, EffectDirection, EpisodeEndReason, ProcedureKind, WearKind } from '../types';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
 
 /** The preferences that describe the journal and travel with it
@@ -442,7 +442,7 @@ export interface ArchivePersonalEffectType {
   builtIn: boolean;
   hidden: boolean;
   categoryKey: string | null;
-  direction: 'feminizing' | 'masculinizing' | null;
+  direction: EffectDirection | null;
 }
 
 /** One staging against a published scale (phase 4 ticket 09, two scales

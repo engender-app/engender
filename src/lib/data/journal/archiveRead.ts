@@ -15,7 +15,7 @@
    sections and the manifest use the same reads. */
 
 import type { SqliteReader } from '../sqlite/driver';
-import type { ProcedureKind } from '../types';
+import type { EffectDirection, ProcedureKind } from '../types';
 import type {
   ArchiveBodyRegion,
   ArchiveChecklist,
@@ -426,7 +426,7 @@ export async function readPersonalEffectTypes({ driver }: SectionRead): Promise<
     name: string;
     is_built_in: number;
     category_key: string | null;
-    direction: 'feminizing' | 'masculinizing' | null;
+    direction: EffectDirection | null;
     hidden: number;
   }>('SELECT key, name, is_built_in, category_key, direction, hidden FROM personal_effect_type ORDER BY id');
   return rows.map((r) => ({

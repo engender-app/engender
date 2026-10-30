@@ -378,6 +378,7 @@ export async function verifyArchive(
   onProgress?: (done: number, total: number) => void
 ): Promise<void> {
   const { payload, files } = await openArchive(source, password);
+  // Called for its refusals only: it throws on an unrestorable journal, and the result is not needed.
   restorableJournal(payload.journal);
 
   /* One stage, so a pair rather than a RestoreProgress: the whole drill is
