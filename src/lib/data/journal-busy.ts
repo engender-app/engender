@@ -80,7 +80,7 @@ export function onJournalBusyChange(listener: (busy: boolean) => void): () => vo
     `sawWrite()` answers whether any write has been in flight since the watch
     started, itself included: a pass asks before every step it cannot take
     back, and gives up when the answer is yes. Giving up is safe by
-    construction - what a pass does not finish is what the next boot retries,
+    construction - what a pass does not finish is what the next due pass retries,
     which is what both of their failure paths already do.
 
     Not a lock. Nothing here can stop a write from starting; a screen saving an

@@ -299,7 +299,7 @@ async function restoreWithin(
   try {
     await writeArchiveFiles(files, stagedFiles(), contents.fileCount ?? 0, onProgress);
     // Once rows can own these files, a rejection cannot prove rollback.
-    // Keep replacements until ownership is known or the boot sweep runs.
+    // Keep replacements until ownership is known or the post-restore sweep runs.
     unpublished = new Set();
     await driver.transaction(async (driver) => {
       // Seeding first, unconditionally, and inside this transaction with

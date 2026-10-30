@@ -93,7 +93,7 @@ type BootResult =
       persistRequest: Promise<boolean>;
       /** Resolves when the housekeeping passes have finished, and never
           rejects - a failure in any of them is warned about and left for the
-          next boot. Nothing in the app awaits it; the benchmarks and the
+          next pass that is due. Nothing in the app awaits it; the benchmarks and the
           tests that prove the passes ran do. */
       housekeeping: Promise<void>;
     }
@@ -147,8 +147,8 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
          reconcileBuiltIns, which takes the guard itself on the way through the
          journal wrapper, and the photo sweep, which only ever deletes files no
          row references - so an update landing mid-sweep leaves orphans for the
-         next boot to reclaim, which is what its own failure path already
-         does. */
+         next due sweep to reclaim (weekly, after a restore or after a failed
+         delete), which is what its own failure path already does. */
       migrating(!failed);
     }
   }
@@ -206,7 +206,7 @@ async function housekeep(deps: BootDeps, driver: SqliteDriver): Promise<void> {
     await waitForJournalIdle();
     if (deps.shouldSweepOrphans?.() !== false) await deps.sweepOrphanPhotos?.(driver);
   } catch (error) {
-    console.warn('photo orphan sweep failed; unreferenced files stay until the next boot', error);
+    console.warn('photo orphan sweep failed; unreferenced files stay until the next due sweep (weekly, after a restore or after a failed delete)', error);
   }
 
   try {
