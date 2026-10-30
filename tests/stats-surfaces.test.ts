@@ -31,7 +31,8 @@ const readings = {
   tags: read('src/lib/components/readings/TagsReading.svelte'),
   bodyMap: read('src/lib/components/readings/BodyMapTile.svelte'),
   compare: read('src/lib/components/readings/CompareTile.svelte'),
-  tally: read('src/lib/components/readings/TallyTile.svelte')
+  tally: read('src/lib/components/readings/TallyTile.svelte'),
+  cost: read('src/lib/components/readings/CostReading.svelte')
 };
 const markup = (source: string) =>
   source
@@ -284,7 +285,8 @@ describe('the readings are tiles, each opening its own screen at the span', () =
       '<TagsReading span={resolvedSpan}',
       '<BodyMapTile span={resolvedSpan}',
       '<CompareTile span={resolvedSpan}',
-      '<TallyTile span={resolvedSpan}'
+      '<TallyTile span={resolvedSpan}',
+      '<CostReading span={resolvedSpan}'
     ];
     let last = body.indexOf('<ReadingGrid');
     for (const tag of order) {
@@ -292,12 +294,12 @@ describe('the readings are tiles, each opening its own screen at the span', () =
       expect(at, tag).toBeGreaterThan(last);
       last = at;
     }
-    expect((body.match(/view="tile"/g) ?? []).length).toBe(3);
+    expect((body.match(/view="tile"/g) ?? []).length).toBe(4);
     for (const gone of ['WordsReading', 'HighestReading', 'ThemesReading']) expect(stats).not.toContain(gone);
   });
 
   it('opens each reading at /stats/<reading> carrying the span, through one address rule', () => {
-    for (const key of ['dayByDay', 'plane', 'tags'] as const) {
+    for (const key of ['dayByDay', 'plane', 'tags', 'cost'] as const) {
       expect(readings[key], key).toMatch(/href=\{readingHref\('[a-z-]+', span\)\}/);
     }
     expect(readings.bodyMap).toContain('href={`/body-map${spanRangeQuery(span)}`}');
@@ -325,6 +327,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     expect(readings.bodyMap).toMatch(/\{#if !mapQuery\.loading && region\}\s*<ReadingTile/);
     expect(readings.compare).toMatch(/\{#if !short\}\s*<ReadingTile/);
     expect(readings.tally).toMatch(/\{#if !misgenderedQuery\.loading && !correctQuery\.loading && misgendered \+ correct > 0\}\s*<ReadingTile/);
+    expect(readings.cost).toMatch(/\{#if !costsQuery\.loading && first\}\s*<ReadingTile/);
   });
 
   /* The plane's tile is its drawing (Alicja on the spike: "drop the title -
@@ -332,7 +335,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   it('gives the plane\'s tile no headline and every other tile one', () => {
     const planeTile = markup(readings.plane).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
     expect(planeTile).not.toContain('headline=');
-    for (const key of ['dayByDay', 'tags', 'bodyMap', 'compare', 'tally'] as const) {
+    for (const key of ['dayByDay', 'tags', 'bodyMap', 'compare', 'tally', 'cost'] as const) {
       const tile = markup(readings[key]).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
       expect(tile, key).toContain('headline=');
     }

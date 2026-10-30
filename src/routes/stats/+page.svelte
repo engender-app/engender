@@ -47,7 +47,8 @@
      lives, and cut Words and Highest days. What was left behind the tile
      was the mood strip alone, so on Alicja's sign-off the tile and its
      screen went and the strip draws here over the grid, which leaves six
-     tiles, three rows of two.
+     tiles, three rows of two. Functional audit ticket 31 added a seventh,
+     What it cost, last and only when the span holds a cost.
 
      Redesign ticket 11: one span drives every read on this screen. The rail
      runs from the earliest day the person authored anything dated to today
@@ -99,6 +100,7 @@
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import TallyTile from '$lib/components/readings/TallyTile.svelte';
+  import CostReading from '$lib/components/readings/CostReading.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
@@ -708,6 +710,7 @@
       <BodyMapTile span={resolvedSpan} />
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
       <TallyTile span={resolvedSpan} />
+      <CostReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
     </ReadGroup>
     </div>
