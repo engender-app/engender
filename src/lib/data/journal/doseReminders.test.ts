@@ -181,7 +181,7 @@ test('reminders that are not about a scheduled dose are untouched by every one o
   assert.deepEqual(after, before);
 });
 
-test('a hand-made reminder for the drug is taken over when the schedule first gets reminders', async () => {
+test('an older hand-made reminder for the drug is replaced when the schedule first gets reminders', async () => {
   const { journal } = await journalWithBuiltIns();
   const handMade = await journal.reminders.upsertReminder({
     title: 'Progesterone', time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true
@@ -196,8 +196,9 @@ test('a hand-made reminder for the drug is taken over when the schedule first ge
 
   await journal.doses.upsertSchedule(schedule(id, ['22:00']));
   const all = await journal.reminders.getReminders();
-  assert.ok(!all.some((r) => r.id === handMade || r.id === named), 'both hand-made ones replaced');
-  assert.deepEqual(all.map((r) => [r.time, r.autoSource]), [['22:00', doseAutoSource(id)]]);
+  assert.ok(!all.some((r) => r.id === handMade), 'the titled one replaced');
+  assert.ok(all.some((r) => r.id === named), 'one made with the drug picker is the person\'s own act and stays');
+  assert.deepEqual(all.filter((r) => r.autoSource).map((r) => [r.time, r.autoSource]), [['22:00', doseAutoSource(id)]]);
 
   // Later hand-made ones for the same drug are the person's own business.
   const later = await journal.reminders.upsertReminder({
@@ -220,4 +221,17 @@ test('a derived reminder taken over in the reminders editor leaves the schedule\
   assert.equal(kept.time, '11:00');
   assert.equal(kept.recurrence, 'DAILY', 'no longer follows the schedule');
   assert.equal((await derived(journal, id)).length, 0);
+});
+
+test('a reminder taken over in the editor is not swallowed when the schedule gets reminders again', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await episode(journal, 'Progesterone');
+  await journal.doses.upsertSchedule(schedule(id, ['22:00']));
+  const [row] = await derived(journal, id);
+  await journal.reminders.upsertReminder({ ...row, autoSource: undefined, time: '23:00' });
+  assert.equal((await derived(journal, id)).length, 0, 'the schedule has none of its own now');
+
+  await journal.doses.upsertSchedule(schedule(id, ['08:00']));
+  const kept = (await journal.reminders.getReminders()).find((r) => r.id === row.id);
+  assert.equal(kept?.time, '23:00');
 });

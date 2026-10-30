@@ -83,9 +83,12 @@ test('a schedule\'s times read back from its reminders once each, in order', () 
   );
 });
 
-test('a hand-made reminder is about a drug when it names it, or is titled with it', () => {
-  assert.ok(isHandMadeReminderFor(reminder({ drug: 'Estradiol valerate', title: 'Shot' }), 'estradiol valerate'));
+test('an older hand-made reminder is about a drug when it names no drug and is titled with it', () => {
   assert.ok(isHandMadeReminderFor(reminder({ title: ' Progesterone ' }), 'Progesterone'));
+  // One that names its drug was made with ticket 20's picker, or taken over
+  // from a schedule in the reminders editor: the person's own act either way.
+  assert.ok(!isHandMadeReminderFor(reminder({ drug: 'Estradiol valerate', title: 'Shot' }), 'estradiol valerate'));
+  assert.ok(!isHandMadeReminderFor(reminder({ drug: 'Progesterone', title: 'Progesterone' }), 'Progesterone'));
   assert.ok(!isHandMadeReminderFor(reminder({ title: 'Progesterone refill' }), 'Progesterone'));
   assert.ok(!isHandMadeReminderFor(reminder({ title: 'Progesterone', drug: 'Sertraline' }), 'Progesterone'));
   assert.ok(!isHandMadeReminderFor(reminder({ title: 'Progesterone', autoSource: 'stock:progesterone' }), 'Progesterone'));

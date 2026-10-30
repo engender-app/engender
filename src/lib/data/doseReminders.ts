@@ -83,14 +83,14 @@ export function reminderTimesOf(reminders: readonly Pick<Reminder, 'time'>[]): s
   return [...new Set(reminders.map((reminder) => reminder.time))].sort();
 }
 
-/** Whether a reminder the person made themselves is about this drug: it
-    names the drug (functional audit ticket 20's picker), or names none and
-    is titled with the drug's name and nothing else, which is how one was
-    written before reminders could name a drug. These are what a schedule's
-    first reminders replace, so nothing rings twice for one dose. A title
-    that merely contains the name ("Progesterone refill") is left alone. */
+/** Whether a reminder made before reminders could name a drug is this
+    drug's: it names no drug and is titled with the drug's name and nothing
+    else. These are what a schedule's first reminders replace, so nothing
+    rings twice for one dose. A title that merely contains the name
+    ("Progesterone refill") is left alone, and so is any reminder that names
+    a drug: it was made with functional audit ticket 20's picker, or taken
+    over from a schedule in the reminders editor, and either is the
+    person's own decision to keep. */
 export function isHandMadeReminderFor(reminder: Reminder, drug: string): boolean {
-  if (reminder.autoSource !== null) return false;
-  if (reminder.drug !== null) return sameDrug(reminder.drug, drug);
-  return sameDrug(reminder.title, drug);
+  return reminder.autoSource === null && reminder.drug === null && sameDrug(reminder.title, drug);
 }
