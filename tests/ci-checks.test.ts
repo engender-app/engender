@@ -145,6 +145,7 @@ describe('Android release gates', () => {
     it(fails ? 'fails CI when assembleRelease fails and still writes its report' : 'reports non-reproducibility without failing a completed rebuild attempt', () => {
       const root = mkdtempSync(join(tmpdir(), 'fdroid-report-'));
       try {
+        writeFileSync(join(root, 'package.json'), '{"type":"commonjs"}\n');
         mkdirSync(join(root, 'android'));
         const gradlew = join(root, 'android/gradlew');
         writeFileSync(gradlew, `#!/usr/bin/env node

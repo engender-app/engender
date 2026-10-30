@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
+import { chipsFor, narrowTo } from '../photos/library.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 
@@ -184,13 +185,23 @@ test('an empty journal yields an empty library, not a broken join', async () => 
   assert.deepEqual(await journal.photoLibrary.inJournal(), []);
 });
 
-test('starred reads the library shape, and only the photo table can be starred', async () => {
+test('starred reads entry and milestone photos, excluding unstarred and trashed rows', async () => {
   const { journal } = await journalWithFiles();
-  const { ids, owners } = await oneOfEach(journal);
+  const { ids, owners, entryId } = await oneOfEach(journal);
 
+  await journal.photos.setStarred(ids.entryPhoto, true);
   await journal.photos.setStarred(ids.milestonePhoto, true);
 
   assert.deepEqual(await journal.photoLibrary.starred(), [
+    {
+      id: ids.entryPhoto,
+      fileName: `${ids.entryPhoto}.jpg`,
+      epochDay: 20000,
+      source: 'entry',
+      ownerId: String(entryId),
+      ownerName: null,
+      starred: true
+    },
     {
       id: ids.milestonePhoto,
       fileName: `${ids.milestonePhoto}.jpg`,
@@ -201,6 +212,15 @@ test('starred reads the library shape, and only the photo table can be starred',
       starred: true
     }
   ]);
+  const library = await journal.photoLibrary.inJournal();
+  assert.equal(chipsFor(library).includes('starred'), true);
+  assert.deepEqual(narrowTo(library, 'starred').map((photo) => photo.id), [ids.entryPhoto, ids.milestonePhoto]);
+
+  await journal.entries.deleteEntry(entryId);
+  assert.deepEqual((await journal.photoLibrary.starred()).map((photo) => photo.id), [ids.milestonePhoto]);
+
+  await journal.photos.setStarred(ids.milestonePhoto, false);
+  assert.deepEqual(await journal.photoLibrary.starred(), []);
 });
 
 test('the library agrees with the tables it reads: nothing is dropped and nothing is doubled', async () => {

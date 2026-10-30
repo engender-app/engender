@@ -21,17 +21,7 @@
      and the ones already open run underneath - Appointments' Coming up and
      Behind you, on the only fact that changes which of them you want. The
      next letter to open, and how long until it does, is then the first thing
-     on the screen and is not repeated anywhere.
-
-     **The starred photographs are here too** (phase 11 ticket 15). They and
-     the open letters were a screen of their own under Safe space,
-     `/doubt/moments`, showing the same two letters this screen already
-     showed one door away - two surfaces for one set of things somebody put
-     aside on purpose. That old route was removed, and its photo
-     half sits in the Open section under the words it already had. Safe
-     space still has its way down: the row points at `#opened`, so a person
-     arriving from their worst day lands on what is open rather than on
-     what is still sealed. */
+     on the screen and is not repeated anywhere. */
   import { scrollBehavior } from '$lib/motion/tokens';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
@@ -55,7 +45,6 @@
   import LetterArrival from '$lib/components/LetterArrival.svelte';
   import LetterCard from '$lib/components/LetterCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -91,17 +80,6 @@
 
   let lettersQuery = liveList((j) => j.letters.getLetters(HISTORY_LIMIT));
   let letters = $derived(lettersQuery.rows);
-
-  /* Starred photos shown beside the open letters, most recently
-     starred-shelf-worthy first - the bound and the order both carried over
-     from the screen this absorbed. `starredPhotos()` reads oldest first
-     (CONTEXT: "Starred", the shelf's own order) and somebody reaching for
-     what they kept wants the newest of it. Six, so a large starred
-     collection stays a glance. The full photo library remains available
-     from the Media group. */
-  const PHOTO_LIMIT = 6;
-  let starredPhotosQuery = liveList((j) => j.photos.starredPhotos());
-  let starredPhotos = $derived([...starredPhotosQuery.rows].reverse().slice(0, PHOTO_LIMIT));
 
   /* Which letters have been read, and which arrivals have been met. Both
      live in localStorage rather than in the journal (ADR-0039), and both are
@@ -254,45 +232,21 @@
         </div>
       {/if}
 
-      {#if opened.length || starredPhotos.length}
+      {#if opened.length}
         <SectionHeading id="opened" focusable text={m.letters_opened_title()} />
-        {#if opened.length}
-          <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
-            {#each opened as letter (letter.id)}
-              <LetterCard
-                {letter}
-                {today}
-                read={readIds.has(letter.id)}
-                open={openId === letter.id}
-                onopen={() => openLetter(letter)}
-                onclose={() => (openId = null)}
-                ondelete={() => record.askToDelete(letter)}
-              />
-            {/each}
-          </div>
-        {/if}
-
-        <!-- The photographs keep the words they had on the screen they came
-             from rather than taking a heading of their own: the section is
-             already named, and a second heading inside it would make two
-             areas out of one set of kept things. Absent rather than empty
-             when nothing is starred.
-
-             It arrives rather than being painted where it lands: this read
-             resolves after the letters' (SQLite answers them in turn, ~350ms
-             apart on the demo), so without the clip the grid would cut into
-             place on a settled screen. Same movement every block in the app
-             makes (rule 10, ADR-0078). -->
-        {#if starredPhotos.length}
-          <div class="letters-photos">
-            <p class="muted small">{m.safe_space_photos_intro()}</p>
-            <div class="photo-grid" data-safe-space-photos>
-              {#each starredPhotos as p (p.id)}
-                <PhotoThumb photo={p} size={104} />
-              {/each}
-            </div>
-          </div>
-        {/if}
+        <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
+          {#each opened as letter (letter.id)}
+            <LetterCard
+              {letter}
+              {today}
+              read={readIds.has(letter.id)}
+              open={openId === letter.id}
+              onopen={() => openLetter(letter)}
+              onclose={() => (openId = null)}
+              ondelete={() => record.askToDelete(letter)}
+            />
+          {/each}
+        </div>
       {/if}
     {/snippet}
     {#snippet empty()}
@@ -405,11 +359,5 @@
      none to be separated from. */
   .letter-list :global(.letter-card + .letter-card) {
     border-top: 1px solid var(--hairline);
-  }
-
-  .letters-photos {
-    display: grid;
-    gap: var(--space-2);
-    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
   }
 </style>

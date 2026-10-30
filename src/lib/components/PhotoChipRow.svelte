@@ -7,7 +7,7 @@
      else on the other would be worse than no chip at all.
 
      `.tag-chip` and not a Segmented: the number of chips is whatever the
-     journal happens to hold, between two and six, and a segmented control
+     journal happens to hold, between two and seven, and a segmented control
      is a fixed set of alternatives sized to fit. The reference is komoot's
      photo screen (Mobbin), where the same row sits over the same kind of
      grid.
@@ -26,7 +26,7 @@
     onPick
   }: {
     /** Which chips this library has anything behind. Empty draws nothing:
-        a library that answers to one chip has nothing to narrow
+        a library with one source and no starred photos has nothing to narrow
         (library.ts). */
     chips: PhotoChip[];
     chip: PhotoChip;

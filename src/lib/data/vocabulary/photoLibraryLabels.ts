@@ -28,7 +28,8 @@ const CHIP_LABEL: Record<PhotoChip, () => string> = {
   hair: m.ph_chip_hair,
   tryouts: m.ph_chip_tryouts,
   surgery: m.ph_chip_surgery,
-  video: m.ph_chip_video
+  video: m.ph_chip_video,
+  starred: m.ph_chip_starred
 };
 
 /** Where a photograph came from, in one or two words: the tile's label and

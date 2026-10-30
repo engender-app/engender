@@ -12,10 +12,9 @@
    tell a section that moved from a section that went.
 
    Phase 11 ticket 15 moves two of them again, and one of them out of Safe
-   space entirely. The letters and the starred photographs are the letters
-   screen's now - `/doubt/moments` was showing the same unlocked letters
-   `/transition/letters` already showed in its Open section - so the
-   assertions about them read that file. The readings were a Look back page
+   space entirely. The letters moved to `/transition/letters`, which already
+   showed the same unlocked letters in its Open section. Starred photographs
+   now sit behind the photo library's Starred chip. The readings were a Look back page
    on this door and ticket 07 gives them a reading of their own, so the
    assertions about a tile grid and two charts are gone rather than
    repointed: that is a section that went from here, and this file's job is
@@ -149,7 +148,7 @@ describe('what Safe Space is built from', () => {
   });
 });
 
-describe('the letters and photos, folded onto the letters screen (ticket 14, widened by 21, moved by 15)', () => {
+describe('letters on the letters screen (ticket 14, widened by 21, moved by 15)', () => {
   /* Ticket 14 showed one letter under Safe space; ticket 21 widened that to
      every unlocked one, capped, with the rest a tap away. Ticket 15 noticed
      that the tap went to `/transition/letters`, which was already showing
@@ -168,29 +167,8 @@ describe('the letters and photos, folded onto the letters screen (ticket 14, wid
     expect(letters).not.toMatch(/unlockEpochDay\s*[<>]=?\s*today/);
   });
 
-  it('shows the starred photos in the Open section, capped, beside the letters', () => {
-    expect(letters).toContain('j.photos.starredPhotos');
-    expect(letters).toContain("from '$lib/components/PhotoThumb.svelte'");
-    expect(letters).toMatch(/PHOTO_LIMIT\s*=\s*\d+/);
-    expect(lettersMarkup).toContain('<PhotoThumb');
-    // Inside the section the heading names, not a third area under it.
-    expect(lettersMarkup).toMatch(/letters_opened_title\(\)[\s\S]*?data-safe-space-photos/);
-    // Absent, never empty.
-    expect(lettersMarkup).toContain('{#if starredPhotos.length}');
-  });
-
-  it('names the Open section so Safe space can land on it', () => {
-    /* The way down from `/doubt` points at `#opened` (safeSpaceWays.ts):
-       somebody arriving from their worst day meets what is open rather than
-       what is still sealed. safeSpaceWays.test.ts holds the other half. */
+  it('names the Open section for the ready-letters jump', () => {
     expect(lettersMarkup).toMatch(/<SectionHeading[^>]*id="opened"/);
-  });
-
-  it('brings the photo grid in rather than cutting it into place', () => {
-    /* The two reads resolve about 350ms apart on the demo, letters first,
-       so without this the grid appears on a screen that has already
-       settled (ticket 113's finding, the phase 11 no-yank clause). */
-    expect(letters).toContain('animation: kit-block-in');
   });
 
   it('keeps the letter preview a preview, cut in code as well as in CSS', () => {
@@ -215,10 +193,6 @@ describe('the letters and photos, folded onto the letters screen (ticket 14, wid
     expect(safeSpace).not.toContain('voiceBenchmarkQuery');
   });
 
-  it('adds no click handler to the photo evidence - the grid stays a glance', () => {
-    const photoBlock = lettersMarkup.match(/<div class="photo-grid"[\s\S]*?<\/div>/)?.[0] ?? '';
-    expect(photoBlock).not.toContain('onclick');
-  });
 });
 
 describe('the support directory panel', () => {

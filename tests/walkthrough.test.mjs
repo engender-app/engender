@@ -4883,22 +4883,14 @@ try {
   }
 
   /* The other two of the audit's five gaps aren't caught by an empty-state
-     marker: the letters-and-photos surface already had unlocked letters to
-     show before this ticket, so its own Notice was never the empty one -
-     the gap was the photo half specifically. And /health/surgery already
-     showed its one archived procedure - the gap was a second, running one
-     beside it.
-
-     The photo half reads on /transition/letters since phase 11 ticket 15,
-     which absorbed the screen that used to draw it. */
-  await page.goto(BASE + '/transition/letters', { waitUntil: 'networkidle' });
-  await page
-    .locator('[data-safe-space-photos] > *')
-    .first()
-    .waitFor({ timeout: 10000 })
-    .catch(() => {});
-  if ((await page.locator('[data-safe-space-photos] > *').count()) === 0) {
-    throw new Error('the letters screen shows no starred photo after filling every feature');
+     marker: starred photos now sit behind the library's own chip, and
+     /health/surgery needs a second, running procedure beside its archived one. */
+  await page.goto(BASE + '/media/photos?source=starred', { waitUntil: 'networkidle' });
+  await page.locator('[data-photo-chip="starred"][aria-pressed="true"]').waitFor({ timeout: 10000 });
+  await page.waitForFunction(() => document.querySelectorAll('[data-photo-key]').length === 2);
+  const starredSources = await page.locator('[data-photo-source]').evaluateAll((cells) => cells.map((cell) => cell.dataset.photoSource));
+  if (JSON.stringify(starredSources) !== JSON.stringify(['milestone', 'entry'])) {
+    throw new Error(`the library does not show the two starred photo owners: ${JSON.stringify(starredSources)}`);
   }
 
   await page.goto(BASE + '/media/documents', { waitUntil: 'networkidle' });
@@ -5647,16 +5639,9 @@ try {
 }
 });
 
-/* Phase 8 features ticket 21, rewalked for phase 11 ticket 15: the letters
-   screen's Open section holds the open letters and the starred photographs
-   both. Safe Space's row down to it went with functional audit ticket 09
-   (it switched the lit tab mid-crisis), so this walks to the section
-   directly and checks the half that moved here: the photographs actually
-   being drawn there.
-
-   After "fill every feature", which is what puts unlocked letters and
-   starred photos in the journal at all - the persona alone writes no
-   letters, and the section is absent then on purpose. */
+/* The Open section holds unlocked letters alone. After "fill every feature"
+   it has two letters, so this checks the read action and the removed photo
+   grid in the same state. */
 await flow('letters open section', async () => {
 try {
   await fresh('/transition/letters#opened');
@@ -5671,14 +5656,8 @@ try {
     throw new Error('the Open section showed no unlocked letters with a journal that has two');
   }
 
-  /* The photo half specifically, which is what ticket 15 moved here. The
-     grid resolves after the letters do, so it is waited for rather than
-     counted on the frame the section appeared. */
-  const photos = page.locator('[data-safe-space-photos] > *');
-  await photos.first().waitFor({ timeout: 10000 }).catch(() => {});
-  const photoCount = await photos.count();
-  if (photoCount === 0) {
-    throw new Error('the Open section drew no starred photograph after filling every feature');
+  if (await page.locator('[data-safe-space-photos]').count()) {
+    throw new Error('the Open section still draws starred photographs');
   }
 
   await openLetters.first().click();
@@ -5688,9 +5667,7 @@ try {
     throw new Error('the letter opened from the Open section had no text on it');
   }
 
-  ok(
-    `the letters screen's Open section holds ${shown} unlocked letter(s) and ${photoCount} starred photo(s), and a card opens the whole letter`
-  );
+  ok(`the letters screen's Open section holds ${shown} unlocked letter(s), no photos, and a card opens the whole letter`);
 } catch (e) {
   fail('letters open section', e);
 }
@@ -8155,9 +8132,17 @@ try {
   const drawnChips = await page
     .locator('[data-photo-chip]')
     .evaluateAll((chips) => chips.map((chip) => chip.dataset.photoChip));
-  if (JSON.stringify(drawnChips) !== JSON.stringify(['everything', 'body', 'hair', 'tryouts', 'surgery', 'video'])) {
-    throw new Error(`the chip row is not the six this journal has: ${JSON.stringify(drawnChips)}`);
+  if (JSON.stringify(drawnChips) !== JSON.stringify(['everything', 'body', 'hair', 'tryouts', 'surgery', 'video', 'starred'])) {
+    throw new Error(`the chip row is not the seven this journal has: ${JSON.stringify(drawnChips)}`);
   }
+  await page.locator('[data-photo-chip="starred"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-photo-key]').length === 2);
+  const starredSources = await sourcesOn();
+  if (JSON.stringify(starredSources) !== JSON.stringify(['milestone', 'entry'])) {
+    throw new Error(`Starred did not narrow to both owners: ${JSON.stringify(starredSources)}`);
+  }
+  await page.locator('[data-photo-chip="everything"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-photo-key]').length === 37);
   await page.locator('[data-photo-chip="hair"]').click();
   /* Waited out rather than counted down: a narrowed-away tile is pinned out
      of the flow and fades, so it is still in the DOM for the length of its

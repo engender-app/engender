@@ -53,14 +53,15 @@ export interface LibraryPhoto {
 }
 
 /** The chips over the grid, in the order they are drawn. `everything` is
-    first because it is where the library opens. */
-const PHOTO_CHIPS = ['everything', 'body', 'hair', 'tryouts', 'surgery', 'video'] as const;
+    first because it is where the library opens; `starred` narrows by flag
+    across source chips. */
+const PHOTO_CHIPS = ['everything', 'body', 'hair', 'tryouts', 'surgery', 'video', 'starred'] as const;
 
 export type PhotoChip = (typeof PHOTO_CHIPS)[number];
 
 /** Which chip a source answers to. Exhaustive by construction: a new source
     added to PHOTO_SOURCES without a line here fails to compile. */
-const CHIP_OF: Record<PhotoSource, Exclude<PhotoChip, 'everything'>> = {
+const CHIP_OF: Record<PhotoSource, Exclude<PhotoChip, 'everything' | 'starred'>> = {
   entry: 'body',
   milestone: 'body',
   hair: 'hair',
@@ -74,17 +75,18 @@ export function chipOf(source: PhotoSource): PhotoChip {
   return CHIP_OF[source];
 }
 
-/** The chip row for a library, or none at all.
-
-    None when the whole library answers to one chip: "Everything" beside
-    "Hair" over a grid of nothing but hair photographs is a control with
-    one outcome, and a person tapping either gets the same grid. Two source
-    chips is where narrowing starts to mean something, and that is where
-    the row appears. */
+/** The chip row for a library, or none at all. A single source without
+    starred photos has nothing to narrow. Starred is available whenever
+    a photo carries the flag, including a library with one source. */
 export function chipsFor(photos: LibraryPhoto[]): PhotoChip[] {
   const present = new Set(photos.map((photo) => CHIP_OF[photo.source]));
-  if (present.size < 2) return [];
-  return PHOTO_CHIPS.filter((chip) => chip === 'everything' || present.has(chip));
+  const hasStarred = photos.some((photo) => photo.starred);
+  if (present.size < 2 && !hasStarred) return [];
+  return PHOTO_CHIPS.filter((chip) => {
+    if (chip === 'everything') return true;
+    if (chip === 'starred') return hasStarred;
+    return present.has(chip);
+  });
 }
 
 /** The photographs one chip shows, in the order they came in. Literal: a
@@ -94,6 +96,7 @@ export function chipsFor(photos: LibraryPhoto[]): PhotoChip[] {
     still be answered with the whole library. */
 export function narrowTo(photos: LibraryPhoto[], chip: PhotoChip): LibraryPhoto[] {
   if (chip === 'everything') return photos;
+  if (chip === 'starred') return photos.filter((photo) => photo.starred);
   return photos.filter((photo) => CHIP_OF[photo.source] === chip);
 }
 

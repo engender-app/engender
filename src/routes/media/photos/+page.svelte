@@ -216,7 +216,9 @@
        and the focus stay where the finger left them. */
     await replaceRoute(url, { noScroll: true, keepFocus: true });
     await tick();
-    travelCells(before, gridEl, 'data-photo-key');
+    /* The keyed grid finishes its query update after navigation resolves.
+       Measure its new boxes in the next frame, before that frame paints. */
+    requestAnimationFrame(() => travelCells(before, gridEl, 'data-photo-key'));
   }
 
   /* The scrubber appears once the grid is taller than the screen, which is

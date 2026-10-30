@@ -118,7 +118,8 @@
     // read from, and a replacing navigation owes the back-depth count a word.
     await replaceRoute(url, { noScroll: true, keepFocus: true });
     await tick();
-    travelCells(before, gridEl, 'data-photo-key');
+    /* The keyed grid needs the same post-navigation frame as the library. */
+    requestAnimationFrame(() => travelCells(before, gridEl, 'data-photo-key'));
   }
 
   let running = $state(false);
