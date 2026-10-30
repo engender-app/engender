@@ -16,7 +16,16 @@ export interface AutoExportStatus {
   deferredAt?: number | null;
   lastFailureAt: number | null;
   lastFailureReason: string | null;
+  /** Folder sync (FA 49): whether this device merges other devices'
+      archives from the folder, and how the last one it tried ended. */
+  folderSync?: boolean;
+  folderLastOutcome?: FolderSyncOutcome | null;
+  folderLastAt?: number | null;
 }
+
+/** How a folder archive ended: merged, or the archive's own failure kind
+    (archive/failure.ts). `cancelled` leaves the folder's position alone. */
+export type FolderSyncOutcome = 'merged' | 'wrong-password' | 'newer-version' | 'not-an-archive' | 'corrupt' | 'failed';
 
 interface AndroidAutoExportBridge {
   status(): Promise<AutoExportStatus>;
@@ -36,6 +45,12 @@ interface AndroidAutoExportBridge {
   finishBackup(options: { transferId: string; byteLength: number; sha256: string }): Promise<{ writtenAt: number | null; staged?: boolean }>;
   abortPendingTransfers(): Promise<void>;
   abortBackup(options: { transferId: string }): Promise<void>;
+  configureFolderSync(options: { enabled: boolean }): Promise<AutoExportStatus>;
+  /** Copies the newest archive another device wrote into the folder, newer
+      than the last one merged, to an app-private path; null when there is
+      none. This device's own backups are never staged. */
+  stageFolderArchive(): Promise<{ path: string | null; modifiedAt?: number }>;
+  finishFolderArchive(options: { modifiedAt: number; outcome: FolderSyncOutcome | 'cancelled' }): Promise<AutoExportStatus>;
   /** Posts the scheduled-backup failure notice (phase 6 ticket 04). The
       strings arrive from this side now, so the notice is localized and the
       registry's disguise rule can reach it - the plugin used to hold English
