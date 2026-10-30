@@ -67,6 +67,7 @@
     "release:tag": "node scripts/cut-release-tag.mjs",
     "docs:link": "node scripts/link-docs.mjs",
     "docs:blocks": "DOC_BLOCKS_WRITE=1 vitest run tests/doc-blocks.test.ts",
+    "features:tables": "FEATURE_TABLES_WRITE=1 vitest run tests/features.test.ts",
     "check:ai-directories": "node scripts/check-ai-directories.mjs",
     "check:copy": "node scripts/check-copy.mjs",
     "check:licences": "node scripts/check-licences.mjs",

@@ -12,14 +12,17 @@
    both sides.
 
      typecheck  every key is typed by its own registry, so a key the code no
-                longer has is a compile error here. The Every*Claimed lines
-                at the bottom refuse a section, journal member, hub row, area
-                group, unprompted kind or tile kind that no feature claims.
-     tests      features.test.ts does what a type cannot: tables against the
-                migrated schema, routes against the `+page.svelte` files,
-                string prefixes against messages/en.json, every key claimed
-                once, and a feature's hub rows, groups and tiles agreeing
-                with its own sections and routes.
+                longer has is a compile error here. Tables are typed by
+                sqlite/tableNames.ts, which is generated from the migrated
+                schema (`npm run features:tables`) and checked against it.
+                The Every*Claimed lines at the bottom refuse a section,
+                table, journal member, hub row, area group, unprompted kind
+                or tile kind that no feature claims.
+     tests      features.test.ts does what a type cannot: routes against the
+                `+page.svelte` files, string prefixes against
+                messages/en.json, every key claimed once, and a feature's
+                hub rows, groups and tiles agreeing with its own sections
+                and routes.
 
    The docs read this file too: the route table in SCREENS.md names each
    route's feature from here (tests/doc-blocks.test.ts, `npm run
@@ -33,6 +36,7 @@ import type { RouteId } from '$app/types';
 import type { AreaGroupKey } from './data/areaGroups';
 import type { HubRowKey } from './data/hubRows';
 import type { ArchiveSectionName } from './data/journal/archiveSections';
+import type { TableName } from './data/sqlite/tableNames';
 import type { Journal } from './data/journal/journal';
 import type { LiveTileKind } from './data/liveTiles';
 import type { UnpromptedKind } from './unprompted/registry';
@@ -54,7 +58,7 @@ export type MessagePrefix = MessageKey | PrefixOf<MessageKey>;
 export interface Feature {
   sections: readonly ArchiveSectionName[];
   /** SQLite tables and views, as the migrated schema names them. */
-  tables: readonly string[];
+  tables: readonly TableName[];
   journal: readonly (keyof Journal)[];
   hubRows: readonly HubRowKey[];
   areaGroups: readonly AreaGroupKey[];
@@ -549,10 +553,11 @@ type Claimed<Space extends keyof Feature> = (typeof FEATURES)[FeatureName][Space
 type AssertNoneUnclaimed<Missing extends never> = Missing;
 
 /* A key in one of these registries that no feature claims is a compile
-   error, so a new area, row or kind cannot land without its feature saying
-   so. Demonstrated by deleting `'wear'` from the wear feature's `hubRows`:
-   the hub row line below stops compiling. */
+   error, so a new area, table, row or kind cannot land without its feature
+   saying so. Demonstrated by deleting `'wear'` from the wear feature's
+   `hubRows`: the hub row line below stops compiling. */
 export type EverySectionClaimed = AssertNoneUnclaimed<Exclude<ArchiveSectionName, Claimed<'sections'>>>;
+export type EveryTableClaimed = AssertNoneUnclaimed<Exclude<TableName, Claimed<'tables'>>>;
 export type EveryJournalMemberClaimed = AssertNoneUnclaimed<Exclude<keyof Journal, Claimed<'journal'>>>;
 export type EveryHubRowClaimed = AssertNoneUnclaimed<Exclude<HubRowKey, Claimed<'hubRows'>>>;
 export type EveryAreaGroupClaimed = AssertNoneUnclaimed<Exclude<AreaGroupKey, Claimed<'areaGroups'>>>;

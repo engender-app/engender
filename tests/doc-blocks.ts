@@ -59,6 +59,24 @@ export function sectionTables(section: (typeof ARCHIVE_SECTIONS)[number]): strin
   return [...new Set(tables)];
 }
 
+/** The source of `src/lib/data/sqlite/tableNames.ts`: the migrated
+    schema's tables and views as a literal list, so the feature manifest can
+    type its table names the way it types every other key. */
+export function renderTableNames(names: readonly string[]): string {
+  return [
+    '/* Generated from the migrated schema by `npm run features:tables`; edit a',
+    '   migration, not this file. tests/features.test.ts fails while it differs',
+    "   from the schema, and src/lib/features.ts types each feature's tables",
+    '   against it (functional audit ticket 54). */',
+    'export const TABLE_NAMES = [',
+    ...names.map((name, i) => `  '${name}'${i < names.length - 1 ? ',' : ''}`),
+    '] as const;',
+    '',
+    'export type TableName = (typeof TABLE_NAMES)[number];',
+    ''
+  ].join('\n');
+}
+
 /** Every message key in the English catalogue. */
 export function messageKeys(root = ROOT): string[] {
   const catalogue = JSON.parse(readFileSync(join(root, 'messages', 'en.json'), 'utf8')) as Record<string, unknown>;

@@ -1,9 +1,12 @@
 /* The feature manifest against the code (functional audit ticket 54).
    src/lib/features.ts types every key by its own registry, so a key the code
-   lost fails the typecheck there. This file covers the key spaces no type
-   reaches (tables, routes, string prefixes), that each key has exactly one
-   owner, and that a feature's rows, groups and tiles agree with what the
-   same feature claims elsewhere. */
+   lost fails the typecheck there. This file keeps tableNames.ts, the
+   generated list that lets a type reach the schema, and covers what no
+   type reaches on its own: page routes, string prefixes, one owner per
+   key, and a feature's rows, groups and tiles agreeing with what the same
+   feature claims elsewhere. */
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AREA_GROUPS } from '../src/lib/data/areaGroups';
 import { HUB_ROWS } from '../src/lib/data/hubRows';
@@ -11,7 +14,7 @@ import { ARCHIVE_SECTIONS } from '../src/lib/data/journal/archiveSections';
 import { LIVE_TILE_ORDER } from '../src/lib/data/liveTiles';
 import { FEATURE_NAMES, FEATURES, type Feature } from '../src/lib/features';
 import { UNPROMPTED_KINDS } from '../src/lib/unprompted/registry';
-import { messageKeys, pageRoutes, schemaObjects, sectionTables } from './doc-blocks';
+import { ROOT, messageKeys, pageRoutes, renderTableNames, schemaObjects, sectionTables } from './doc-blocks';
 
 const sorted = (items: Iterable<string>) => [...items].sort();
 
@@ -39,6 +42,16 @@ describe('the feature manifest', () => {
 
   it('claims exactly the archive sections the registry holds', () => {
     expect(sorted(claims('sections'))).toEqual(sorted(ARCHIVE_SECTIONS.map((s) => s.name)));
+  });
+
+  /* Under `npm run features:tables` this rewrites tableNames.ts instead
+     of comparing; the typecheck then names any table the manifest still
+     claims that the schema lost. */
+  it('lists the migrated schema in tableNames.ts', async () => {
+    const path = join(ROOT, 'src', 'lib', 'data', 'sqlite', 'tableNames.ts');
+    const expected = renderTableNames(await schemaObjects());
+    if (process.env.FEATURE_TABLES_WRITE === '1') writeFileSync(path, expected);
+    expect(readFileSync(path, 'utf8'), 'tableNames.ts differs from the migrated schema; run npm run features:tables').toBe(expected);
   });
 
   it('claims exactly the tables and views the migrated schema holds', async () => {
