@@ -412,9 +412,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // reads below fold into what they hand an entry or milestone.
       setEpochDayOverride: ['photo', 'entry', 'milestone']
     },
-    // Both reads join the owners, to date each photo and to say which record
+    // The read joins the owners, to date each photo and to say which record
     // it hangs off.
-    reads: { inJournal: ['photo', 'entry', 'milestone'], starredPhotos: ['photo', 'entry', 'milestone'] }
+    reads: { inJournal: ['photo', 'entry', 'milestone'] }
   }),
   /* The library across all six photo-carrying tables (phase 11 ticket 14),
      and reads only - every one of those tables is written through the area

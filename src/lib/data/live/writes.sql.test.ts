@@ -940,7 +940,6 @@ beforeAll(async () => {
   await driveRead('milestones', 'getMilestonesOnDay', () => journal.milestones.getMilestonesOnDay(19000));
   await driveRead('milestones', 'lastWriteEpochDay', () => journal.milestones.lastWriteEpochDay(20000));
   await driveRead('photos', 'inJournal', () => journal.photos.inJournal());
-  await driveRead('photos', 'starredPhotos', () => journal.photos.starredPhotos());
   await driveRead('photoLibrary', 'inJournal', () => journal.photoLibrary.inJournal());
   await driveRead('photoLibrary', 'starred', () => journal.photoLibrary.starred());
   await driveRead('photoLibrary', 'hasAny', () => journal.photoLibrary.hasAny());

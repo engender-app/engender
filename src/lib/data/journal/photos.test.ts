@@ -356,7 +356,7 @@ test('starred photos hide trashed entries, return on restore, and keep milestone
     await journal.photos.setStarred(entryPhoto, true);
     await journal.photos.setStarred(milestonePhoto, true);
 
-    const starredIds = async () => (await journal.photos.starredPhotos()).map((photo) => photo.id);
+    const starredIds = async () => (await journal.photos.inJournal()).filter((photo) => photo.starred).map((photo) => photo.id);
     assert.deepEqual(await starredIds(), [milestonePhoto, entryPhoto]);
     await journal.entries.deleteEntry(entryId);
     assert.deepEqual(await starredIds(), [milestonePhoto]);
@@ -367,7 +367,7 @@ test('starred photos hide trashed entries, return on restore, and keep milestone
   }
 });
 
-test('an override takes precedence over the owner day in both inJournal and starredPhotos (ticket 47)', async () => {
+test('an override takes precedence over the owner day in inJournal (ticket 47)', async () => {
   const { journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
   const id = await journal.photos.attach({ entryId }, shot('e', 't'));
@@ -376,12 +376,10 @@ test('an override takes precedence over the owner day in both inJournal and star
   await journal.photos.setEpochDayOverride(id, 19000);
 
   assert.equal((await journal.photos.inJournal())[0].epochDay, 19000);
-  assert.equal((await journal.photos.starredPhotos())[0].epochDay, 19000);
 
   await journal.photos.setEpochDayOverride(id, null);
 
   assert.equal((await journal.photos.inJournal())[0].epochDay, 20100, 'clearing the override reverts to the inherited day');
-  assert.equal((await journal.photos.starredPhotos())[0].epochDay, 20100, 'clearing the override reverts to the inherited day');
 });
 
 test('setEpochDayOverride throws on an unknown id, the same way setStarred does', async () => {
@@ -467,26 +465,6 @@ test('setStarred toggles a photo and throws on an unknown id', async () => {
   assert.equal((await journal.entries.getEntry(entryId))?.photos[0].starred, false);
 
   await assert.rejects(journal.photos.setStarred('no-such-id', true), /unknown photo/);
-});
-
-test('starredPhotos lists only starred photos, oldest first, entry and milestone alike', async () => {
-  const { journal } = await journalWithFiles();
-  const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
-  const milestoneId = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 20000 });
-
-  const entryPhoto = await journal.photos.attach({ entryId }, shot('e1', 't1'));
-  const milestonePhoto = await journal.photos.attach({ milestoneId }, shot('m1', 't1'));
-  await journal.photos.attach({ entryId }, shot('e2', 't2')); // never starred - excluded
-
-  assert.deepEqual(await journal.photos.starredPhotos(), []);
-
-  await journal.photos.setStarred(milestonePhoto, true);
-  await journal.photos.setStarred(entryPhoto, true);
-
-  assert.deepEqual(
-    (await journal.photos.starredPhotos()).map((p) => p.id),
-    [milestonePhoto, entryPhoto]
-  );
 });
 
 test('the sweep declines to run while a journal write is in flight', async () => {

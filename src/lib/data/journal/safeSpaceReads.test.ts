@@ -49,7 +49,6 @@ test('opening Safe Space performs zero writes, across the pool, stats, letters a
   await reading.entries.countAll();
   await reading.stats.dayAverages('mood', TODAY - TIMELINE_DAYS + 1, TODAY);
   await reading.letters.getLetters(LETTER_LOOKBACK);
-  await reading.photos.starredPhotos();
   await reading.comfortItems.getItems();
 
   assert.equal(counting.roundTrips().run, 0, 'opening Safe Space must not run a single write statement');

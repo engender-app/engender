@@ -71,9 +71,6 @@ export interface PhotosArea {
       One query rather than a union assembled above the seam: both owners are
       rows in this one table (ADR-0008). */
   inJournal(): Promise<DatedPhoto[]>;
-  /** Starred photos only (CONTEXT: "Starred"), oldest first - the starred
-      shelf's photo half, reached from search. */
-  starredPhotos(): Promise<DatedPhoto[]>;
   /** Throws on an unknown id, the same way remove() does not but a toggle
       of curation metadata should: a typo'd id and a successful toggle must
       not look alike. */
@@ -340,24 +337,6 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
          LEFT JOIN entry e ON e.id = p.entry_id
          LEFT JOIN milestone m ON m.id = p.milestone_id
          WHERE p.entry_id IS NULL OR e.trashed_at IS NULL
-         ORDER BY epoch_day, p.order_index, p.id`
-      );
-      return rows.map((row) => ({
-        ...toPhoto(row),
-        epochDay: row.epoch_day,
-        milestoneName: row.milestone_name
-      }));
-    },
-
-    async starredPhotos() {
-      const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
-        `SELECT p.uuid, p.file_path, p.starred,
-                COALESCE(p.epoch_day_override, e.epoch_day, m.epoch_day) AS epoch_day,
-                m.name AS milestone_name
-         FROM photo p
-         LEFT JOIN entry e ON e.id = p.entry_id
-         LEFT JOIN milestone m ON m.id = p.milestone_id
-         WHERE p.starred = 1 AND (p.entry_id IS NULL OR e.trashed_at IS NULL)
          ORDER BY epoch_day, p.order_index, p.id`
       );
       return rows.map((row) => ({
