@@ -46,7 +46,7 @@ export function isCurrencyCode(value: unknown): value is string {
     an amount with a third would round when it is opened and saved. */
 export function isValidAmount(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= MAX_AMOUNT &&
-    Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
+    Math.round(value * 100) / 100 === value;
 }
 
 /** A blank amount drops its currency, and a code is upper-cased. */
