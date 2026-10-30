@@ -32,9 +32,9 @@ export interface PreferenceValues {
   name: string;
   /** The gender scales the entry screen offers, by dimension key (phase 5
       ticket 35). A list somebody ticked, not a preset key resolved to a
-      list: there are 32 subsets of five scales and the app used to ship
-      eight of them, so choosing meant finding the preset that was wrong in
-      the fewest places. Empty is a legitimate resting state - a mood, tags,
+      list: the app used to ship eight presets out of the 32 subsets of the
+      five scales it had then (64 of today's six), so choosing meant finding
+      the preset that was wrong in the fewest places. Empty is a legitimate resting state - a mood, tags,
       a note and a photo are still an entry - and never an error.
 
       Order here is the order they were ticked in and nothing reads it: the

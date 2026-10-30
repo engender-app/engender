@@ -672,6 +672,38 @@ test('replace applies the state the archive put on built-in rows; merge leaves i
   assert.equal(mergedActivities.tags.find((t) => t.id === 'a-therapy')?.label, 'my own wording');
 });
 
+test('a renamed, hidden custom scale travels as it now reads, by replace and by merge (FA 41)', async () => {
+  const source = await device();
+  const voice = await source.journal.dimensions.addCustomDimension({ name: 'Vocie', low: 'off', high: 'mine', min: 0, max: 10 });
+  await source.journal.dimensions.renameCustomDimension(voice.key, { name: 'Voice', low: 'strained', high: 'at ease' });
+  await source.journal.dimensions.setDimensionHidden(voice.key, true);
+  const expected = { key: voice.key, name: 'Voice', low: 'strained', high: 'at ease', min: 0, max: 10, builtIn: false, hidden: true };
+
+  const replaced = await device();
+  await replaced.journal.archive.replace(await exported(source.journal));
+  assert.deepEqual((await replaced.journal.dimensions.getDimensions()).find((d) => d.key === voice.key), expected);
+
+  const merged = await device();
+  await merged.journal.archive.merge(await exported(source.journal));
+  assert.deepEqual((await merged.journal.dimensions.getDimensions()).find((d) => d.key === voice.key), expected);
+});
+
+test('an archive from a journal that shows the duplicate built-ins restores them shown (FA 41)', async () => {
+  const source = await device();
+  // A journal seeded before FA 41 holds all three visible.
+  await source.journal.tags.setTagHidden('g-body-dys', false);
+  await source.journal.tags.setTagHidden('g-soc-dys', false);
+  await source.journal.bodyRegions.setRegionHidden('whole_body', false);
+
+  const target = await device();
+  await target.journal.archive.replace(await exported(source.journal));
+
+  const gender = (await target.journal.tags.getTagGroups()).find((g) => g.key === 'gender')!;
+  assert.equal(gender.tags.find((t) => t.id === 'g-body-dys')?.hidden, false);
+  assert.equal(gender.tags.find((t) => t.id === 'g-soc-dys')?.hidden, false);
+  assert.equal((await target.journal.bodyRegions.getBodyRegions()).find((r) => r.id === 'whole_body')?.hidden, false);
+});
+
 test('replace keeps archived feature visibility choices', async () => {
   const source = await device();
   await source.journal.areaStates.setAreasHidden(['hairStages', 'hairPhotos'], false);

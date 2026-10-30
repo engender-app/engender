@@ -539,7 +539,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // One custom entry template, alongside whatever built-ins ship.
   await journal.entryTemplates.addEntryTemplate({
     name: 'Hard day',
-    tags: ['g-body-dys', 'e-anxious'],
+    tags: ['dt-physical', 'e-anxious'],
     dims: { euphoria_dysphoria: 20 },
     noteScaffold: 'What was hard today: ',
     presentationId: null

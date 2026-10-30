@@ -371,7 +371,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       addCustomDimension: ['dimension'],
       addPreset: ['preset'],
-      setDimensionHidden: ['dimension']
+      setDimensionHidden: ['dimension'],
+      renameCustomDimension: ['dimension']
     },
     reads: { getDimensions: ['dimension'], getPresets: ['dimension', 'preset'] }
   }),

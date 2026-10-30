@@ -8,8 +8,8 @@
      this replaces had already drifted the same way: eight cards with chips
      on one, eight rows with a comma list on the other.
 
-     What it replaced was a preset - one of eight subsets of five scales,
-     picked by name. There are 32 subsets of five, so choosing meant finding
+     What it replaced was a preset - one of eight subsets of the five scales
+     there were then, picked by name. There were 32 subsets of five, so choosing meant finding
      the one that was wrong in the fewest places and then going and editing
      it, and the names ("Agender axis", "Partly masculine") described a
      person rather than a set of sliders. A list of scales describes the
@@ -53,17 +53,26 @@
     offered?: GenderDimension[];
   } = $props();
 
-  /* Every scale, not `visibleDimensions`. This list has to offer exactly
-     what the editor can draw, and `reference.activeDimensions` does not
-     filter on hidden - so filtering here would let a scale be ticked, drawn
-     on every entry screen, and absent from the only list that could untick
-     it. Nothing can set that flag on a dimension today anyway: no screen
-     calls `setDimensionHidden`, so the only way one arrives is an archive
-     from a build that had such a screen. If hiding a scale ever ships, it
-     is that ticket's job to decide whether hiding also unticks - and those
-     two answers have to be decided together, which is the argument for not
-     guessing at half of it here. */
-  let scales = $derived(offered ?? vocabulary.dimensions);
+  /* Every scale that is not hidden, plus any hidden one still ticked. This
+     list has to offer exactly what the editor can draw, and
+     `reference.activeDimensions` does not filter on hidden, so a ticked
+     scale must stay here to be unticked even if an archive or an older
+     build hid it. Hiding a scale on the custom-scales screen unticks it in
+     the same step (functional audit ticket 41), so a scale hidden there
+     simply leaves this list until it is shown again.
+
+     A row this list has drawn stays for as long as the list is mounted, so
+     unticking a hidden scale here leaves its row in place, unticked, rather
+     than taking it out from under the finger in one frame. `drawn` is a
+     plain Set on purpose: it only remembers, and nothing should re-run
+     because it grew. */
+  const drawn = new Set<string>();
+  let scales = $derived.by(() => {
+    if (offered) return offered;
+    const list = vocabulary.dimensions.filter((d) => !d.hidden || ticked.includes(d.key) || drawn.has(d.key));
+    for (const d of list) drawn.add(d.key);
+    return list;
+  });
   let isTicked = $derived((key: string) => ticked.includes(key));
 </script>
 

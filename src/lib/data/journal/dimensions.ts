@@ -25,6 +25,9 @@ export interface DimensionsArea {
   addCustomDimension(dim: Omit<GenderDimension, 'key' | 'builtIn' | 'hidden'>): Promise<GenderDimension>;
   addPreset(preset: { name: string; dims: string[] }): Promise<GenderPreset>;
   setDimensionHidden(key: string, hidden: boolean): Promise<void>;
+  /** Custom scales only: a built-in's wording is the catalogue's. A built-in
+      or unknown key throws. The range stays, since values were logged on it. */
+  renameCustomDimension(key: string, words: Pick<GenderDimension, 'name' | 'low' | 'high'>): Promise<void>;
 }
 
 export function makeDimensionsArea(driver: SqliteDriver): DimensionsArea {
@@ -108,6 +111,14 @@ export function makeDimensionsArea(driver: SqliteDriver): DimensionsArea {
         key
       ]);
       assertChanged(result, `dimension: ${key}`);
+    },
+
+    async renameCustomDimension(key, { name, low, high }) {
+      const result = await driver.run(
+        'UPDATE gender_dimension SET name = ?, low_label = ?, high_label = ?, updated_at = ? WHERE key = ? AND is_built_in = 0',
+        [name, low, high, now(), key]
+      );
+      assertChanged(result, `custom dimension: ${key}`);
     }
   };
 }

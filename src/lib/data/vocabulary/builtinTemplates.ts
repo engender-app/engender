@@ -128,7 +128,10 @@ export const REGIMEN_TEMPLATE_LEAN: Record<RegimenTemplateKey, Lean> = {
    from the "use template" sheet like any other. */
 export const ENTRY_TEMPLATES = [
   { key: 'euphoria_day', tags: ['g-euphoria', 'g-body-eu', 'g-soc-eu'], dims: { euphoria_dysphoria: 85 } },
-  { key: 'dysphoria_day', tags: ['g-body-dys', 'g-soc-dys'], dims: { euphoria_dysphoria: 20 } },
+  // The dysphoria types, not g-body-dys/g-soc-dys: a new journal seeds
+  // those two hidden (builtins.ts, FA 41) and a template never pre-fills a
+  // hidden tag. A journal seeded earlier keeps the links it was given.
+  { key: 'dysphoria_day', tags: ['dt-physical', 'dt-social'], dims: { euphoria_dysphoria: 20 } },
   { key: 'gendered_correctly', tags: ['g-gendered-ok'], dims: {} },
   { key: 'misgendered', tags: ['g-misgendered'], dims: {} },
   { key: 'good_day', tags: ['e-happy', 'e-calm'], dims: { euphoria_dysphoria: 75 } },

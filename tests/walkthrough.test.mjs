@@ -1100,16 +1100,16 @@ try {
   await page.locator('[data-save-new-tag-group]').click();
   const group = page.locator('[data-tag-group]').filter({ hasText: 'Duplicate label regression' }); // text-under-test: this flow's new group name
   await group.locator('[data-add-tag]').click();
-  await page.locator('#newtag-input').fill('social dysphoria');
+  await page.locator('#newtag-input').fill('social euphoria');
   await page.locator('[data-save-new-tag]').click();
-  await group.locator('[data-managed-tag-label]').filter({ hasText: /^social dysphoria$/ }).waitFor(); // text-under-test: the custom label typed above
+  await group.locator('[data-managed-tag-label]').filter({ hasText: /^social euphoria$/ }).waitFor(); // text-under-test: the custom label typed above
 
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('#ed-note').fill('Duplicate tag labels survive saving');
   await page.locator('[data-mood="3"]').click();
   await page.locator('[data-section-chip="tags"]').click();
-  const tags = page.locator('[data-tag]').filter({ hasText: /^social dysphoria$/ }); // text-under-test: the intentionally equal built-in and custom labels
+  const tags = page.locator('[data-tag]').filter({ hasText: /^social euphoria$/ }); // text-under-test: the intentionally equal built-in and custom labels
   if (await tags.count() !== 2) throw new Error('the editor did not offer both equal tag labels');
   await tags.nth(0).click();
   await tags.nth(1).click();
@@ -1129,7 +1129,7 @@ try {
     await booted();
     const entry = page.locator('[data-entry-card]').filter({ hasText: 'Duplicate tag labels survive saving' }); // text-under-test: the note typed by this flow
     await entry.waitFor();
-    if (await entry.locator('[data-entry-tag]').filter({ hasText: /^social dysphoria$/ }).count() !== 2) { // text-under-test: both saved equal labels
+    if (await entry.locator('[data-entry-tag]').filter({ hasText: /^social euphoria$/ }).count() !== 2) { // text-under-test: both saved equal labels
       throw new Error(path + ' did not render both equal tag labels');
     }
   }
@@ -1947,6 +1947,38 @@ try {
   const names = await page.locator('[data-dim-name]').allTextContents();
   if (!names.includes('Voice comfort')) throw new Error('editor scales: ' + JSON.stringify(names));
   ok('a custom scale previews, saves ticked, and appears like a built-in');
+
+  /* And it can be renamed and hidden afterwards (functional audit ticket
+     41). Hiding unticks it, so it leaves the checklist and the entry
+     screen together. */
+  await page.goto(BASE + '/settings/dimension', { waitUntil: 'networkidle' });
+  await booted();
+  const rename = page.locator('[data-scale-rename]').last();
+  const key = await rename.getAttribute('data-scale-rename');
+  await rename.click();
+  await page.locator('#rename-scale-name').fill('Voice ease');
+  await page.locator('[data-save-scale-name]').click();
+  await page.waitForFunction(
+    (k) => document.querySelector(`[data-scale-label="${k}"]`)?.textContent?.trim() === 'Voice ease',
+    key
+  );
+  await page.locator(`[data-scale-hide="${key}"]`).click();
+  await page.waitForFunction((k) => document.querySelector(`[data-scale-hide="${k}"]`)?.closest('.is-hidden') !== null, key);
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Gender scales/i }).click();
+  await page.locator('[data-list-row^="scale-"]').first().waitFor();
+  if ((await page.locator(`[data-list-row="scale-${key}"]`).count()) !== 0) {
+    throw new Error('a hidden scale is still offered in the checklist');
+  }
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  const after = await page.locator('[data-dim-name]').allTextContents();
+  if (after.includes('Voice ease') || after.includes('Voice comfort')) {
+    throw new Error('a hidden scale is still on the entry screen: ' + JSON.stringify(after));
+  }
+  ok('a custom scale renames, and hiding it takes it off the checklist and the entry screen');
 } catch (e) { fail('custom dimension', e); }
 });
 

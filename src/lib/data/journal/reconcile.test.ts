@@ -137,3 +137,58 @@ test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async
 
   assert.deepEqual([...written].toSorted(), [...RECONCILE_TABLES].toSorted());
 });
+
+/* Functional audit ticket 41: three built-ins repeat another one - the two
+   gender-group dysphoria flags repeat the physical and social dysphoria
+   types, and the whole-body region repeats the euphoria/dysphoria scale. A
+   journal created now seeds them hidden; a journal that already holds them
+   keeps whatever it had. */
+const hiddenOf = (db: Awaited<ReturnType<typeof migratedDb>>, table: string, key: string): number | undefined =>
+  (db.raw.prepare(`SELECT hidden FROM ${table} WHERE key = ?`).get(key) as { hidden: number } | undefined)?.hidden;
+
+test('a new journal seeds the duplicate built-ins hidden and their counterparts visible (FA 41)', async () => {
+  const db = await migratedDb();
+  await openJournal(db, fakeFileStore()).reconcileBuiltIns();
+
+  assert.equal(hiddenOf(db, 'tag', 'g-body-dys'), 1, 'g-body-dys repeats dt-physical');
+  assert.equal(hiddenOf(db, 'tag', 'g-soc-dys'), 1, 'g-soc-dys repeats dt-social');
+  assert.equal(hiddenOf(db, 'body_region', 'whole_body'), 1, 'whole body repeats the euphoria/dysphoria scale');
+
+  assert.equal(hiddenOf(db, 'tag', 'dt-physical'), 0);
+  assert.equal(hiddenOf(db, 'tag', 'dt-social'), 0);
+  assert.equal(hiddenOf(db, 'tag', 'g-body-eu'), 0);
+  assert.equal(hiddenOf(db, 'body_region', 'chest'), 0);
+  assert.equal(hiddenOf(db, 'gender_dimension', 'euphoria_dysphoria'), 0);
+});
+
+test('a reconcile over an existing journal leaves its duplicate built-ins as they were (FA 41)', async () => {
+  const db = await migratedDb();
+  const journal = openJournal(db, fakeFileStore());
+  await journal.reconcileBuiltIns();
+  // What a journal seeded before this ticket holds: all three visible.
+  db.raw.exec("UPDATE tag SET hidden = 0 WHERE key IN ('g-body-dys', 'g-soc-dys')");
+  db.raw.exec("UPDATE body_region SET hidden = 0 WHERE key = 'whole_body'");
+  await journal.reconcileBuiltIns();
+
+  assert.equal(hiddenOf(db, 'tag', 'g-body-dys'), 0);
+  assert.equal(hiddenOf(db, 'tag', 'g-soc-dys'), 0);
+  assert.equal(hiddenOf(db, 'body_region', 'whole_body'), 0);
+});
+
+test("a new journal's dysphoria-day template names the tags it can still pre-fill (FA 41)", async () => {
+  const db = await migratedDb();
+  await openJournal(db, fakeFileStore()).reconcileBuiltIns();
+
+  const tags = db.raw
+    .prepare(
+      `SELECT t.key, t.hidden FROM entry_template_tag ett
+       JOIN entry_template et ON et.id = ett.template_id
+       JOIN tag t ON t.id = ett.tag_id
+       WHERE et.key = 'dysphoria_day' ORDER BY t.key`
+    )
+    .all() as { key: string; hidden: number }[];
+  assert.deepEqual(tags.map((t) => ({ ...t })), [
+    { key: 'dt-physical', hidden: 0 },
+    { key: 'dt-social', hidden: 0 }
+  ]);
+});

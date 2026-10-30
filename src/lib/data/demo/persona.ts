@@ -200,7 +200,7 @@ function buildEntries(today: number): PersonaEntry[] {
       const tags: string[] = [];
       if (eu > 66) tags.push(r() < 0.5 ? 'g-soc-eu' : 'g-body-eu');
       if (eu > 74 && r() < 0.6) tags.push('g-gendered-ok');
-      if (eu < 34) tags.push(r() < 0.5 ? 'g-soc-dys' : 'g-body-dys');
+      if (eu < 34) tags.push(r() < 0.5 ? 'dt-social' : 'dt-physical');
       if (eu < 25 && r() < 0.3) tags.push('g-misgendered');
       if (mood >= 4) tags.push(r() < 0.5 ? 'e-happy' : 'e-calm');
       if (mood <= 2) tags.push(r() < 0.5 ? 'e-sad' : 'e-anxious');
@@ -261,7 +261,7 @@ function buildEntries(today: number): PersonaEntry[] {
     const mood = Math.max(1, Math.min(5, Math.round(eu / 24 + r() * 1.4)));
     const tags: string[] = [];
     if (eu > 66) tags.push(r() < 0.5 ? 'g-soc-eu' : 'g-body-eu');
-    if (eu < 34) tags.push(r() < 0.5 ? 'g-soc-dys' : 'g-body-dys');
+    if (eu < 34) tags.push(r() < 0.5 ? 'dt-social' : 'dt-physical');
     if (mood >= 4) tags.push(r() < 0.5 ? 'e-happy' : 'e-calm');
     if (mood <= 2) tags.push('e-anxious');
     entries.push({
