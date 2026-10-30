@@ -217,6 +217,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   eraMutes: 'presence naming a muted era, which is the era’s own state and not a series',
   comfortItems: 'a standing list with no dates in it at all',
   importLog: 'this device’s bookkeeping about where an import came from',
+  deletions: 'this device’s record of what was deleted, for an archive Merge to carry',
   areaStates: 'the record of which areas are finished, which cannot itself be one of them',
   dimensions: 'reference data, not a series (CONTEXT: "Reference data")',
   presets: 'reference data, not a series (CONTEXT: "Reference data")',

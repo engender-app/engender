@@ -11,13 +11,14 @@ export type PhotoRow = {
   milestone_id: number | null;
   starred: number;
   epoch_day_override: number | null;
+  updated_at: number;
 };
-export type RecordingRow = { uuid: string; file_path: string; entry_id: number };
-export type VideoRow = { uuid: string; file_path: string; entry_id: number };
-export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
-export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
-export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string };
-export type TryoutPhotoRow = { uuid: string; tryout_id: number; epoch_day: number; file_path: string };
+export type RecordingRow = { uuid: string; file_path: string; entry_id: number; updated_at: number };
+export type VideoRow = { uuid: string; file_path: string; entry_id: number; updated_at: number };
+export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string; updated_at: number };
+export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string; updated_at: number };
+export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string; updated_at: number };
+export type TryoutPhotoRow = { uuid: string; tryout_id: number; epoch_day: number; file_path: string; updated_at: number };
 
 type DocumentFileRow = { file_path: string };
 type BenchmarkFileRow = { passage_file_path: string; vowel_file_path: string | null };
@@ -49,13 +50,11 @@ const documentNames = (row: DocumentFileRow) => documentFilesOf(row.file_path);
 const benchmarkNames = (row: BenchmarkFileRow) =>
   row.vowel_file_path ? [row.passage_file_path, row.vowel_file_path] : [row.passage_file_path];
 
-// Archive reads omit trash; media_file retains every current owner for cleanup.
+// Archive reads carry Trash too (functional audit ticket 48); media_file retains every current owner for cleanup.
 export const FILE_OWNERS = {
   photos: owner<PhotoRow>(
     'photo', ['file_path'],
-    `SELECT p.uuid, p.file_path, p.entry_id, p.milestone_id, p.starred, p.epoch_day_override FROM photo p
-       LEFT JOIN entry e ON e.id = p.entry_id
-       WHERE p.entry_id IS NULL OR e.trashed_at IS NULL
+    `SELECT p.uuid, p.file_path, p.entry_id, p.milestone_id, p.starred, p.epoch_day_override, p.updated_at FROM photo p
        ORDER BY p.order_index, p.id`,
     photoNames,
     (journal) => [
@@ -68,27 +67,27 @@ export const FILE_OWNERS = {
   ),
   hairPhotos: owner<HairPhotoRow>(
     'hair_photo', ['file_path'],
-    'SELECT uuid, epoch_day, file_path FROM hair_photo ORDER BY epoch_day, id',
+    'SELECT uuid, epoch_day, file_path, updated_at FROM hair_photo ORDER BY epoch_day, id',
     photoNames,
     (journal) => journal.hairPhotos.map((photo) => claim([photo.id], photoNames({ file_path: photo.fileName })))
   ),
   hairRemovalPhotos: owner<HairRemovalPhotoRow>(
     'hair_removal_photo', ['file_path'],
-    'SELECT uuid, session_id, file_path FROM hair_removal_photo ORDER BY session_id, id',
+    'SELECT uuid, session_id, file_path, updated_at FROM hair_removal_photo ORDER BY session_id, id',
     photoNames,
     (journal) => journal.hairRemovalSessions.flatMap((session) => session.photos.map((photo) =>
       claim([session.id, photo.id], photoNames({ file_path: photo.fileName }))))
   ),
   procedurePhotos: owner<ProcedurePhotoRow>(
     'procedure_photo', ['file_path'],
-    'SELECT uuid, procedure_id, epoch_day, file_path FROM procedure_photo ORDER BY procedure_id, epoch_day, id',
+    'SELECT uuid, procedure_id, epoch_day, file_path, updated_at FROM procedure_photo ORDER BY procedure_id, epoch_day, id',
     photoNames,
     (journal) => journal.procedures.flatMap((procedure) => procedure.photos.map((photo) =>
       claim([procedure.id, photo.id], photoNames({ file_path: photo.fileName }))))
   ),
   tryoutPhotos: owner<TryoutPhotoRow>(
     'tryout_photo', ['file_path'],
-    'SELECT uuid, tryout_id, epoch_day, file_path FROM tryout_photo ORDER BY tryout_id, epoch_day, id',
+    'SELECT uuid, tryout_id, epoch_day, file_path, updated_at FROM tryout_photo ORDER BY tryout_id, epoch_day, id',
     photoNames,
     (journal) => journal.tryouts.flatMap((tryout) => tryout.photos.map((photo) =>
       claim([tryout.id, photo.id], photoNames({ file_path: photo.fileName }))))
@@ -101,9 +100,7 @@ export const FILE_OWNERS = {
   ),
   recordings: owner<RecordingRow>(
     'voice_recording', ['file_path'],
-    `SELECT v.uuid, v.file_path, v.entry_id FROM voice_recording v
-       JOIN entry e ON e.id = v.entry_id
-       WHERE e.trashed_at IS NULL
+    `SELECT v.uuid, v.file_path, v.entry_id, v.updated_at FROM voice_recording v
        ORDER BY v.order_index, v.id`,
     singleName,
     (journal) => journal.entries.flatMap((entry) => (entry.recordings ?? []).map((recording) =>
@@ -111,9 +108,7 @@ export const FILE_OWNERS = {
   ),
   videos: owner<VideoRow>(
     'video_note', ['file_path'],
-    `SELECT n.uuid, n.file_path, n.entry_id FROM video_note n
-       JOIN entry e ON e.id = n.entry_id
-       WHERE e.trashed_at IS NULL
+    `SELECT n.uuid, n.file_path, n.entry_id, n.updated_at FROM video_note n
        ORDER BY n.order_index, n.id`,
     singleName,
     (journal) => journal.entries.flatMap((entry) => (entry.videos ?? []).map((video) =>

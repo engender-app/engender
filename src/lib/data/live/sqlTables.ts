@@ -74,7 +74,8 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   importLog: ['import_log'],
   areaState: ['area_state'],
   marginNote: ['margin_note'],
-  document: ['document']
+  document: ['document'],
+  deletion: ['deletion']
 };
 
 /** Tables `SELECT name FROM sqlite_master` returns that no coarse name

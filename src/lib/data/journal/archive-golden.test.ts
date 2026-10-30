@@ -45,6 +45,7 @@ import {
     a value, so this file keeps saying what the archive carried on the day it
     was written even if the shape it is checked against moves. */
 const SECTIONS = [
+  'deletions',
   'dimensions',
   'presets',
   'tagGroups',

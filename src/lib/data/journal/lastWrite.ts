@@ -302,6 +302,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // This device's own bookkeeping about where an import came from, dated by
   // when the import ran rather than by anything the person wrote.
   importLog: 'device bookkeeping, dated by when the import ran, not a diary record',
+  deletions: 'which records were deleted, for an archive Merge to carry; not a diary record',
   // The record of which areas are hidden or finished; asking it for its own
   // last write answers nothing a consumer of this registry could use.
   areaStates: 'the record of which areas are finished, not itself a stream to ask about',

@@ -236,7 +236,11 @@ export const TABLE_NAMES = [
      name rather than folded into 'photo': a document belongs to no entry
      and no milestone, so nothing that reads a photo reads one of these,
      and filing a diagnosis must not re-run every entry query in the app. */
-  'document'
+  'document',
+  /* What this device has deleted (functional audit ticket 48). Written by a
+     trigger on every delete, which no SQL text names, and by an archive
+     restore; read only by the archive snapshot. No screen shows it. */
+  'deletion'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */

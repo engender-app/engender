@@ -28,6 +28,7 @@ import { migrateHairRemovalCost } from './cost-migration.ts';
 import { deviceDefaultCurrency } from '../cost.ts';
 import { migrateStockIdentity } from './stock-identity-migration.ts';
 import { WAITLIST_REBUILD } from './waitlist-migration.ts';
+import { DELETION_LOG } from './deletion-migration.ts';
 
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
@@ -409,5 +410,9 @@ ALTER TABLE lab_result ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE medication_stock ADD COLUMN cost_amount REAL;
 ALTER TABLE medication_stock ADD COLUMN cost_currency TEXT;
 ALTER TABLE medication_stock ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
-`, apply: (db) => migrateHairRemovalCost(db, deviceDefaultCurrency()) }
+`, apply: (db) => migrateHairRemovalCost(db, deviceDefaultCurrency()) },
+  /* Functional audit ticket 48: a deletion leaves a row behind for an
+     archive Merge to carry, and seeded built-ins stop reading as edits
+     (deletion-migration.ts). */
+  { version: 116, sql: DELETION_LOG }
 ];

@@ -207,14 +207,15 @@ async function exported(journal: Journal): Promise<RestoreContents> {
 const rowCount = async (db: SqliteDriver, sql: string): Promise<number> =>
   (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${sql}`))[0].n;
 
-test('archives omit margin notes owned by trashed entries', async () => {
+// Trash travels since functional audit ticket 48, and its margin notes with it.
+test('archives carry margin notes owned by trashed entries, with the entries', async () => {
   const { driver, journal } = await everySectionDevice();
   assert.equal(await rowCount(driver, 'entry WHERE trashed_at IS NOT NULL'), 1);
   assert.equal(await rowCount(driver, 'margin_note'), 2);
   const snapshot = await journal.archive.snapshot();
-  assert.equal(snapshot.journal.marginNotes.length, 1);
+  assert.equal(snapshot.journal.marginNotes.length, 2);
   const entryUuids = new Set(snapshot.journal.entries.map((entry) => entry.uuid));
-  assert.ok(entryUuids.has(snapshot.journal.marginNotes[0].entryId));
+  assert.ok(snapshot.journal.marginNotes.every((note) => entryUuids.has(note.entryId)));
 });
 
 test.each([
@@ -228,6 +229,8 @@ test.each([
   const contents = await exported(source.journal);
   const trash = (await source.driver.query<{ id: number; uuid: string }>('SELECT id, uuid FROM entry WHERE trashed_at IS NOT NULL'))[0];
   const margin = (await source.journal.marginNotes.forEntries([trash.id])).get(trash.id)![0];
+  // An archive written before ticket 48 left the trashed entry out.
+  contents.journal.entries = contents.journal.entries.filter((row) => row.uuid !== trash.uuid);
   contents.journal.marginNotes = contents.journal.marginNotes.filter((row) => row.entryId !== trash.uuid);
   contents.journal.marginNotes.push({
     id: margin.id, entryId: trash.uuid, epochDay: 20051, text: margin.text
@@ -235,7 +238,7 @@ test.each([
   assert.equal((await target.db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
   await target.journal.archive[mode](contents);
   const restored = (await target.journal.archive.snapshot()).journal;
-  assert.equal(restored.marginNotes.length, 1);
+  assert.equal(restored.marginNotes.filter((note) => note.entryId !== trash.uuid).length, 1);
   assert.deepEqual(await target.db.query('PRAGMA foreign_key_check'), []);
 });
 
@@ -651,7 +654,11 @@ test('a tag merged into a group this device already has lands after the tags in 
   assert.deepEqual(emotions.tags.slice(-2).map((t) => t.label), ['restless', 'wired']);
 });
 
-test('replace applies the state the archive put on built-in rows; merge leaves it alone', async () => {
+/* Merge takes the newer of the two copies of a built-in row (functional
+   audit ticket 48): the source's group and tag settings, made after the
+   target seeded its own, and the target's own rename, made after the
+   source's. */
+test('replace applies the state the archive put on built-in rows; merge takes the newer copy of each', async () => {
   const source = await populated();
   const replaced = await device();
   const merged = await device();
@@ -667,9 +674,9 @@ test('replace applies the state the archive put on built-in rows; merge leaves i
   assert.equal((await replaced.journal.dimensions.getDimensions()).find((d) => d.key === 'masculinity')?.hidden, true);
 
   const mergedActivities = (await merged.journal.tags.getTagGroups()).find((g) => g.key === 'activities')!;
-  assert.equal(mergedActivities.enabled, true, "a matched group keeps this device's setting");
-  assert.equal(mergedActivities.tags.find((t) => t.id === 'a-work')?.hidden, false);
-  assert.equal(mergedActivities.tags.find((t) => t.id === 'a-therapy')?.label, 'my own wording');
+  assert.equal(mergedActivities.enabled, false, "the source's setting is newer than the target's seeded group");
+  assert.equal(mergedActivities.tags.find((t) => t.id === 'a-work')?.hidden, true);
+  assert.equal(mergedActivities.tags.find((t) => t.id === 'a-therapy')?.label, 'my own wording', "the target's rename is the newer");
 });
 
 test('a renamed, hidden custom scale travels as it now reads, by replace and by merge (FA 41)', async () => {

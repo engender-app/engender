@@ -122,6 +122,12 @@ const READS_THE_JOURNAL = new Set([
   'archive.previewDaylioImport'
 ]);
 
+/** Coarse names whose tables only a whole-journal read reads, and why no
+    narrower read could. */
+const READ_BY_THE_ARCHIVE_ALONE: Partial<Record<TableName, string>> = {
+  deletion: 'the deletion log exists for the archive to carry (functional audit ticket 48); no screen shows it'
+};
+
 const declaredRead = (key: string): readonly TableName[] => {
   const [area, operation] = key.split('.', 2);
   return tablesReadBy(area, operation);
@@ -1238,6 +1244,7 @@ describe('every classified read declares the tables its SQL read', () => {
 
   test('every table a coarse name declares is actually read by some read that declares it', () => {
     const unread = TABLE_NAMES.flatMap((name) => {
+      if (name in READ_BY_THE_ARCHIVE_ALONE) return [];
       const declaringKeys = [...declaredReadsBy].filter((key) => declaredRead(key).includes(name));
       if (declaringKeys.every((key) => key in READ_OPT_OUTS)) return [];
       const owners = drivenReads.filter((d) => declaredRead(d.key).includes(name) && !READS_THE_JOURNAL.has(d.key));

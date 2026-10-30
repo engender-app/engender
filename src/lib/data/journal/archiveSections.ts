@@ -53,6 +53,7 @@ import { inferDrugClass } from '../drugClass';
 import { legacyHairStagingText } from '../hairStageScales';
 import * as read from './archiveRead';
 import * as apply from './archiveApply';
+import { applyDeletions, readDeletions } from './archiveMerge';
 import type { SectionRead } from './archiveRead';
 import type { Restoring } from './archiveApply';
 import type { FlatColumn, FlatTable } from './archiveTable';
@@ -160,9 +161,9 @@ const HAIR_STAGES = flat({
 
 type ArchiveHairStage = ArchiveJournal['hairStages'][number];
 
-function asFreeTextStaging({ id, epochDay, scale, stage, description }: ArchiveHairStage): ArchiveHairStage {
-  if (stage === undefined) return { id, epochDay, description };
-  return { id, epochDay, description: legacyHairStagingText(scale ?? 'norwood_hamilton', stage, description ?? '') };
+function asFreeTextStaging({ id, epochDay, scale, stage, description, updatedAt }: ArchiveHairStage): ArchiveHairStage {
+  if (stage === undefined) return { id, epochDay, description, updatedAt };
+  return { id, epochDay, description: legacyHairStagingText(scale ?? 'norwood_hamilton', stage, description ?? ''), updatedAt };
 }
 
 /** A flat section whose rows need one more statement once they have
@@ -230,6 +231,19 @@ const REMINDERS = {
 } as const satisfies FlatTable<ArchiveJournal['reminders'][number]>;
 
 const SECTIONS = [
+  /* What this device has deleted (functional audit ticket 48,
+     archiveMerge.ts). Declared first and depending on nothing, so it is
+     applied before every other section and discarded after all of them:
+     the deletion trigger records every row a Replace's discard removes, and
+     this statement is what empties those again. */
+  section({
+    name: 'deletions',
+    discard: ['DELETE FROM deletion'],
+    // Which records a person deleted is a record about them.
+    travels: 'none',
+    read: readDeletions,
+    apply: applyDeletions
+  }),
   section({
     name: 'dimensions',
     // Only the customs. A built-in dimension the archive does not carry keeps

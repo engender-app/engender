@@ -54,6 +54,12 @@ export async function reconcileBuiltIns(driver: SqliteDriver, stamp?: number): P
     has no nested transactions, which is why this is a second entry point and
     not a second implementation. */
 export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<void> {
+  /* A built-in row nobody has edited is stamped 0 rather than with the time
+     it was seeded (functional audit ticket 48): an archive Merge reads
+     `updated_at` as the time of the person's last edit, and a device
+     installed later must not undo a built-in another device hid. Retiring
+     a built-in below is an edit, and carries the clock. */
+  const seeded = 0;
   const ts = now();
 
   const dimensionKeys = await presentKeys(driver, 'gender_dimension');
@@ -62,7 +68,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     await driver.run(
       `INSERT INTO gender_dimension (key, name, low_label, high_label, min_value, max_value, is_built_in, updated_at)
        VALUES (?, '', '', '', ?, ?, 1, ?)`,
-      [d.key, d.min, d.max, ts]
+      [d.key, d.min, d.max, seeded]
     );
   }
 
@@ -99,7 +105,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
       await driver.run(`INSERT INTO tag_group (key, name, order_index, updated_at) VALUES (?, '', ?, ?)`, [
         g.key,
         orderIndex,
-        ts
+        seeded
       ]);
     }
     for (const [tagIndex, tagKey] of g.tags.entries()) {
@@ -107,7 +113,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
       await driver.run(
         `INSERT INTO tag (key, group_id, label, hidden, order_index, updated_at)
          SELECT ?, id, '', ?, ?, ? FROM tag_group WHERE key = ?`,
-        [tagKey, SEEDED_HIDDEN_TAGS.has(tagKey) ? 1 : 0, tagIndex, ts, g.key]
+        [tagKey, SEEDED_HIDDEN_TAGS.has(tagKey) ? 1 : 0, tagIndex, seeded, g.key]
       );
     }
   }
@@ -118,7 +124,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     await driver.run(`INSERT INTO body_region (key, name, hidden, updated_at) VALUES (?, '', ?, ?)`, [
       key,
       SEEDED_HIDDEN_BODY_REGIONS.has(key) ? 1 : 0,
-      ts
+      seeded
     ]);
   }
 
@@ -128,7 +134,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     await driver.run(`INSERT INTO effect_category (key, name, enabled, updated_at) VALUES (?, '', ?, ?)`, [
       c.key,
       c.defaultEnabled ? 1 : 0,
-      ts
+      seeded
     ]);
   }
 
@@ -137,7 +143,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     if (personalEffectTypeKeys.has(e.key)) continue;
     await driver.run(
       `INSERT INTO personal_effect_type (key, name, is_built_in, category_key, direction, updated_at) VALUES (?, '', 1, ?, ?, ?)`,
-      [e.key, e.category, e.direction, ts]
+      [e.key, e.category, e.direction, seeded]
     );
   }
 
@@ -151,7 +157,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     if (templateKeys.has(t.key)) continue;
     const result = await driver.run(
       `INSERT INTO entry_template (key, name, note_scaffold, presentation_id, hidden, updated_at) VALUES (?, '', '', NULL, ?, ?)`,
-      [t.key, builtInTemplateHidden(t) ? 1 : 0, ts]
+      [t.key, builtInTemplateHidden(t) ? 1 : 0, seeded]
     );
     for (const tagKey of t.tags) {
       await driver.run(
