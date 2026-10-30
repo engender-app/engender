@@ -24,7 +24,6 @@ import {
   LIVE_TILE_PREF_KEY,
   LIVE_TILE_TIER,
   composeHomeTiles,
-  dosePanelCoversEveryRegimen,
   isLiveTileKind,
   liveTilePrefKeys,
   splitHomeTiles,
@@ -59,7 +58,7 @@ const wearSession: WearSession = {
 };
 
 /* Every three days from fifteen days ago lands on today, and nothing is
-   logged, which is what the patch tile is for. */
+   logged, so the dose panel has a dose due today to state. */
 const episode: RegimenEpisode = {
   id: 'ep-1',
   drug: 'Estradiol patch',
@@ -142,8 +141,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
     actions: {
       stopWear: vi.fn(),
       dismissSafeSpace: vi.fn(),
-      openLetterDismiss: vi.fn(),
-      snooze: vi.fn()
+      openLetterDismiss: vi.fn()
     },
     format: {
       /* Deliberately not the app's formats: what is under test is that each
@@ -151,7 +149,8 @@ function input(overrides: Overrides = {}): HomeTilesInput {
          string would hide behind a locale. */
       fullDay: (epochDay) => `full:${epochDay}`,
       weekdayDay: (epochDay) => `weekday:${epochDay}`,
-      time: (timestamp) => `time:${timestamp}`
+      time: (timestamp) => `time:${timestamp}`,
+      doseRoute: (route) => `route:${route}`
     }
   };
   return {
@@ -173,7 +172,6 @@ const ORDER: LiveTileKind[] = [...LIVE_TILE_ORDER];
 const TIERED: LiveTileKind[] = [
   // Bound to today.
   'wear-timer',
-  'patch-schedule-tile',
   // A moment.
   'dose-panel',
   'surgery-countdown',
@@ -190,7 +188,6 @@ describe('which kinds the grid is for', () => {
     expect([...LIVE_TILE_ORDER].sort()).toEqual(
       [
         'dose-panel',
-        'patch-schedule-tile',
         'ready-letter',
         'safe-space-nudge',
         'surgery-countdown',
@@ -229,7 +226,7 @@ describe('the tier every kind is in', () => {
     const byTier = { today: [] as string[], moment: [] as string[], dormant: [] as string[] };
     for (const kind of LIVE_TILE_ORDER) byTier[LIVE_TILE_TIER[kind]].push(kind);
 
-    expect(byTier.today).toEqual(['wear-timer', 'patch-schedule-tile']);
+    expect(byTier.today).toEqual(['wear-timer']);
     expect(byTier.moment).toEqual([
       'dose-panel',
       'surgery-countdown',
@@ -240,7 +237,21 @@ describe('the tier every kind is in', () => {
   });
 
   it('carries the tier on the tile, which is what Home draws the weight from', () => {
-    for (const tile of composeHomeTiles(input())) expect(tile.tier).toBe(LIVE_TILE_TIER[tile.key]);
+    /* Logged today, so no tile has risen out of its band. */
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['scheduleDoses'];
+    for (const tile of composeHomeTiles(input({ reads: { scheduleDoses: logged } }))) {
+      expect(tile.tier).toBe(LIVE_TILE_TIER[tile.key]);
+    }
+  });
+
+  /* Functional-audit ticket 15: the patch-schedule tile was the `today`
+     tile for a dose due now. Folded into the panel, the panel takes that
+     band for that day and goes back to being a moment once it is logged. */
+  it('lifts the dose panel to the today band on a day a dose is due, after the wear timer', () => {
+    const due = composeHomeTiles(input());
+    expect(due.filter((t) => t.tier === 'today').map((t) => t.key)).toEqual(['wear-timer', 'dose-panel']);
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['scheduleDoses'];
+    expect(tileNamed('dose-panel', { reads: { scheduleDoses: logged } })!.tier).toBe('moment');
   });
 });
 
@@ -380,8 +391,21 @@ describe('what each tile says', () => {
      withheld while the panel is up (agendaReads.ts) and there is nowhere
      else on the screen the day is stated. The fixture's schedule falls
      every three days from fifteen days ago, which lands on today. */
-  it('the dose panel says a dose the day expects is today', () => {
-    expect(tileNamed('dose-panel')!.note).toBe(m.tile_dose_next_today());
+  it('the dose panel says a dose the day expects is today, with how much and how', () => {
+    /* What the patch-schedule tile used to say beside it (functional-audit
+       ticket 15): the episode's amount, since the schedule sets none, and
+       the route in words. */
+    expect(tileNamed('dose-panel')!.note).toBe(
+      m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:patch' })
+    );
+  });
+
+  it('the dose panel takes a due day\'s amount from the schedule where it sets one', () => {
+    const tile = tileNamed('dose-panel', {
+      reads: { schedules: [{ ...schedule, doseAmounts: [{ dose: 50, doseUnit: 'mcg' }] }] },
+      format: { number: (value) => `n${value}` }
+    })!;
+    expect(tile.note).toBe(m.tile_dose_today_detail({ dose: 'n50', unit: 'mcg', route: 'route:patch' }));
   });
 
   it('the dose panel names the next day once today has been logged', () => {
@@ -406,53 +430,68 @@ describe('what each tile says', () => {
     const byHand = [
       { id: 1, timestamp: NOW - 86_400_000, source: 'person', status: 'taken' }
     ] as unknown as HomeTileReads['yesterdayDoses'];
-    expect(tileNamed('dose-panel', { reads: { yesterdayDoses: byHand } })!.note).toBe(m.tile_dose_next_today());
+    expect(tileNamed('dose-panel', { reads: { yesterdayDoses: byHand } })!.note).toBe(
+      m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:patch' })
+    );
+  });
+
+  it('the dose panel skips a due day a pause covers', () => {
+    /* What the patch tile's own test held before ticket 15 folded it in:
+       a declared break is not a dose due. */
+    const pause = { id: 'pause-1', episodeId: 'ep-1', startEpochDay: TODAY - 1, endEpochDay: TODAY + 1, reason: 'planned' } as const;
+    expect(tileNamed('dose-panel', { reads: { dosePauses: [pause] } })!.note).toBe(
+      m.tile_dose_next({ date: `weekday:${TODAY + 3}` })
+    );
   });
 
   it('a regimen with no schedule gets a panel with no forward line', () => {
     expect(tileNamed('dose-panel', { reads: { schedules: [] } })!.note).toBeUndefined();
   });
 
-  /* What Today reads to decide whether to withhold the agenda's `doseSlot`
-     rows (agendaReads.ts). The panel names one drug - `activeEpisodesAt`'s
-     first - so it only accounts for the whole kind while that is the only
-     regimen running. With two, a row the panel does not stand for would be
-     stated nowhere at all, which is the thing the withholding exists to
-     prevent rather than to cause. */
-  describe('what the dose panel accounts for', () => {
-    const second: RegimenEpisode = { ...episode, id: 'ep-2', drug: 'Cyproterone', startEpochDay: TODAY - 8 };
-    const dailyFor = (episodeId: string): DoseSchedule => ({
+  /* Functional-audit ticket 15. Today withholds the agenda's `doseSlot`
+     rows whenever the panel is drawn (agendaReads.ts), so the panel names
+     every regimen the agenda would have drawn a row for: the one whose next
+     open slot comes first, and the others after it. A regimen taken daily
+     draws no row (ADR-0067) and is not named beside one that does. */
+  describe('which regimens the dose panel names', () => {
+    const second: RegimenEpisode = { ...episode, id: 'ep-2', drug: 'Cyproterone', route: 'oral', startEpochDay: TODAY - 8 };
+    const third: RegimenEpisode = { ...episode, id: 'ep-3', drug: 'Leuprorelin', route: 'im', startEpochDay: TODAY - 20 };
+    const everyFor = (episodeId: string, everyNDays: number): DoseSchedule => ({
       id: `sched-${episodeId}`,
       episodeId,
-      recurrence: { kind: 'everyNDays', everyNDays: 1 },
+      recurrence: { kind: 'everyNDays', everyNDays },
       dosesPerDay: 1,
       doseAmounts: null,
       autoLogFromEpochDay: null
     });
-    const weeklyFor = (episodeId: string): DoseSchedule => ({ ...dailyFor(episodeId), recurrence: { kind: 'everyNDays', everyNDays: 4 } });
-    const covers = (over?: Overrides) => {
-      const grid = input(over);
-      return dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, grid.reads.schedules, NOW);
-    };
+    const panel = (episodes: RegimenEpisode[], schedules: DoseSchedule[]) =>
+      tileNamed('dose-panel', { reads: { episodes, schedules } })!;
+    const dueToday = m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:patch' });
 
-    it('covers the whole kind while one regimen is running', () => {
-      expect(covers()).toBe(true);
+    it('names a regimen on a rhythm ahead of a daily one listed before it', () => {
+      const tile = panel([second, episode], [everyFor('ep-2', 1), schedule]);
+      expect(tile.value).toBe('Estradiol patch');
+      expect(tile.note).toBe(dueToday);
     });
 
-    /* A daily schedule earns no forward mark (ADR-0067), so a second
-       regimen taken every day puts no row on the band for the panel to be
-       standing in front of. This is the demo journal's own shape: an
-       injection on a rhythm beside an everyday pill. */
-    it('still covers it while a second regimen is taken daily', () => {
-      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, dailyFor('ep-2')] } })).toBe(true);
+    it('leads with the regimen due first and names the other after it', () => {
+      /* Leuprorelin every 28 days from twenty days ago falls in eight days;
+         the patch falls today. */
+      const tile = panel([third, episode], [everyFor('ep-3', 28), schedule]);
+      expect(tile.value).toBe('Estradiol patch');
+      expect(tile.note).toBe(`${dueToday} · ${m.tile_dose_also({ drugs: 'Leuprorelin' })}`);
     });
 
-    it('covers nothing while a second regimen earns marks of its own', () => {
-      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, weeklyFor('ep-2')] } })).toBe(false);
+    it('names a regimen that starts inside the agenda\'s month, whose first dose the agenda would have drawn', () => {
+      const starting = { ...third, startEpochDay: TODAY + 5 };
+      const tile = panel([episode, starting], [schedule, everyFor('ep-3', 28)]);
+      expect(tile.note).toBe(`${dueToday} · ${m.tile_dose_also({ drugs: 'Leuprorelin' })}`);
     });
 
-    it('covers nothing when the panel is switched off', () => {
-      expect(covers({ enabled: { ...allOn(true), 'dose-panel': false } })).toBe(false);
+    it('names only the first active episode when nothing runs on a rhythm', () => {
+      const tile = panel([second, { ...episode, id: 'ep-4', drug: 'Spironolactone' }], [everyFor('ep-2', 1), everyFor('ep-4', 1)]);
+      expect(tile.value).toBe('Cyproterone');
+      expect(tile.note).toBe(m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:oral' }));
     });
   });
 
@@ -520,27 +559,9 @@ describe('what each tile says', () => {
     expect(actions.openLetterDismiss).toHaveBeenCalled();
     expect(tile.action).toBeUndefined();
   });
-
-  it('the patch schedule names the dose that is due', () => {
-    const tile = tileNamed('patch-schedule-tile')!;
-    expect(tile.tileKey).toBe('patch-schedule');
-    expect(tile.attrs).toEqual({ 'data-patch-schedule-tile': true });
-    expect(tile.value).toBe('Estradiol patch');
-    expect(tile.note).toBe('100 mcg · patch');
-    expect(tile.action?.href).toBe('/care/doses?add=1');
-  });
 });
 
 describe('the dismiss controls', () => {
-  const SNOOZABLE = ['patch-schedule-tile'] as const;
-
-  it.each(SNOOZABLE)('%s snoozes itself and no other kind', (kind) => {
-    const snooze = vi.fn();
-    const tile = tileNamed(kind, { actions: { snooze } })!;
-    tile.dismiss!.onclick(CLICK);
-    expect(snooze).toHaveBeenCalledWith(kind);
-  });
-
   it('gives no dismiss to the three that close nothing', () => {
     /* Wear, dose and surgery each resolve themselves - a running session
        cannot be hidden while it runs (ADR-0039's amendment), and the other

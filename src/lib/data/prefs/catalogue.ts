@@ -140,8 +140,6 @@ export interface PreferenceValues {
       while an in-use regimen's stock is projected to run out. Same shape and
       reasoning as `wearTimerEnabled`. */
   stockNoticeEnabled: boolean;
-  /** Whether the patch-schedule live tile is ever shown (phase 5 deepening ticket 03). */
-  patchScheduleTileEnabled: boolean;
   /** A passage of somebody's own to read for a voice benchmark, empty for the
       one the app ships (phase 5 deepening ticket 15, CONTEXT: "Benchmark
       passage"). Kept because the next benchmark has to be read from the same
@@ -426,7 +424,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   safeSpaceNudgeEnabled: true,
   safeSpaceNudgeDismissedEntryId: null,
   stockNoticeEnabled: true,
-  patchScheduleTileEnabled: true,
   voiceBenchmarkPassage: '',
   voiceComfortLowHz: null,
   voiceComfortHighHz: null,
@@ -525,7 +522,6 @@ export const DEVICE_LOCAL_KEYS = [
   'safeSpaceNudgeEnabled',
   'safeSpaceNudgeDismissedEntryId',
   'stockNoticeEnabled',
-  'patchScheduleTileEnabled',
   'voiceBenchmarkPassage',
   'wrappedEnabled',
   'onThisDayEnabled',

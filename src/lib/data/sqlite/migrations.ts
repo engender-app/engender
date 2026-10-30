@@ -409,5 +409,9 @@ ALTER TABLE lab_result ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE medication_stock ADD COLUMN cost_amount REAL;
 ALTER TABLE medication_stock ADD COLUMN cost_currency TEXT;
 ALTER TABLE medication_stock ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
-`, apply: (db) => migrateHairRemovalCost(db, deviceDefaultCurrency()) }
+`, apply: (db) => migrateHairRemovalCost(db, deviceDefaultCurrency()) },
+  /* Functional audit ticket 15: the patch-schedule tile is folded into the
+     dose panel, so the switch that turned it off has nothing left to turn
+     off. The dose panel's own switch is untouched. */
+  { version: 116, sql: "DELETE FROM pref WHERE key = 'patchScheduleTileEnabled';" }
 ];

@@ -40,18 +40,18 @@ describe('liveTilesSnooze', () => {
   });
 
   it('generates predictable storage keys', () => {
-    expect(snoozeKey('patch-schedule-tile')).toBe('engender-tile-snooze-patch-schedule-tile');
+    expect(snoozeKey('surgery-countdown')).toBe('engender-tile-snooze-surgery-countdown');
   });
 
   it('reports unsnoozed when nothing is stored', () => {
-    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(false);
+    expect(isTileSnoozed('surgery-countdown', now, storage)).toBe(false);
   });
 
   it('snoozes tile for default 24h interval', () => {
-    snoozeTile('patch-schedule-tile', undefined, now, storage);
-    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(true);
-    expect(isTileSnoozed('patch-schedule-tile', now + DEFAULT_SNOOZE_DURATION_MS - 1, storage)).toBe(true);
-    expect(isTileSnoozed('patch-schedule-tile', now + DEFAULT_SNOOZE_DURATION_MS + 1, storage)).toBe(false);
+    snoozeTile('surgery-countdown', undefined, now, storage);
+    expect(isTileSnoozed('surgery-countdown', now, storage)).toBe(true);
+    expect(isTileSnoozed('surgery-countdown', now + DEFAULT_SNOOZE_DURATION_MS - 1, storage)).toBe(true);
+    expect(isTileSnoozed('surgery-countdown', now + DEFAULT_SNOOZE_DURATION_MS + 1, storage)).toBe(false);
   });
 
   it('snoozes tile for custom duration', () => {
@@ -62,15 +62,15 @@ describe('liveTilesSnooze', () => {
   });
 
   it('clears snooze explicitly', () => {
-    snoozeTile('patch-schedule-tile', DEFAULT_SNOOZE_DURATION_MS, now, storage);
-    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(true);
+    snoozeTile('surgery-countdown', DEFAULT_SNOOZE_DURATION_MS, now, storage);
+    expect(isTileSnoozed('surgery-countdown', now, storage)).toBe(true);
 
-    clearSnooze('patch-schedule-tile', storage);
-    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(false);
+    clearSnooze('surgery-countdown', storage);
+    expect(isTileSnoozed('surgery-countdown', now, storage)).toBe(false);
   });
 
   it('handles corrupted localStorage values safely', () => {
-    storage.setItem(snoozeKey('patch-schedule-tile'), 'invalid-json-and-not-a-number');
-    expect(isTileSnoozed('patch-schedule-tile', now, storage)).toBe(false);
+    storage.setItem(snoozeKey('surgery-countdown'), 'invalid-json-and-not-a-number');
+    expect(isTileSnoozed('surgery-countdown', now, storage)).toBe(false);
   });
 });

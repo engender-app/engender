@@ -73,8 +73,8 @@ publishFixture('locale-25', async () => {
   const home = await mountScreen('/', source);
   await until(() => home.target.querySelector('[data-home-hello]'), 'Home hello');
   await check('Home greeting renders Polish name and date', () => home.target.querySelector('[data-home-hello]')!.textContent!.startsWith('Cześć Alicja · '));
-  await check('Home patch schedule renders a decimal comma in its dose', async () => {
-    const tile = await until(() => home.target.querySelector('[data-patch-schedule-tile]'), 'patch schedule');
+  await check('Home dose panel renders a decimal comma in a patch due today', async () => {
+    const tile = await until(() => home.target.querySelector('[data-dose-panel-tile]'), 'dose panel');
     return tile.textContent!.includes('0,5 mg');
   });
   await home.remove();
