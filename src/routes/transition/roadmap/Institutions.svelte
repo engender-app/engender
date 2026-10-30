@@ -241,21 +241,36 @@
 <Sheet busy={recordWrite.busy || nameWrite.busy || visibilityWrite.busy} open={selectedId !== null} title={selectedName} onClose={close}>
   {#if selectedId !== null}
     {@const id = selectedId}
-    {@const state = stateOf(id)}
     <h3 class="inst-fade" use:resize>
       {#key selectedName}<span transition:fadeCount>{selectedName}</span>{/key}
     </h3>
     {#if selectedBuiltIn}
       <p class="small inst-note">{roadmapInstitutionNote(selectedBuiltIn)}</p>
     {/if}
-    <div class="kit-row is-static" data-institution-sheet-status={state.status ?? 'none'}>
-      {@render stateDisc(state.status)}
-      <span class="kit-row-text">
-        <span class="kit-row-title inst-fade" use:resize>
-          {#key institutionStateLine(state, dayLabel)}<span transition:fadeCount>{institutionStateLine(state, dayLabel)}</span>{/key}
-        </span>
-      </span>
-    </div>
+    {#if selectedChanges.length}
+      <div transition:collapse>
+        <SectionHeading text={m.roadmap_institution_changes()} />
+        <ListCard>
+          {#each selectedChanges as change (change.id)}
+            <div transition:collapse>
+              <ListRow
+                key={`institution-change-${change.id}`}
+                data-institution-change={change.id}
+                static
+                title={institutionStatusWord(change.status)}
+                subtitle={[dayLabel(change.epochDay), change.note]}
+                action={{
+                  icon: 'trash',
+                  label: m.roadmap_institution_change_delete_aria({ date: dayLabel(change.epochDay) }),
+                  onclick: () => deleteChange(change),
+                  attrs: { 'data-delete-institution-change': change.id }
+                }}
+              />
+            </div>
+          {/each}
+        </ListCard>
+      </div>
+    {/if}
 
     <FieldGroupHeading legend={m.roadmap_institution_record()} />
     <div class="inst-form">
@@ -286,31 +301,6 @@
         <span>{m.roadmap_institution_record_save()}</span>
       </button>
     </div>
-
-    {#if selectedChanges.length}
-      <div transition:collapse>
-        <SectionHeading text={m.roadmap_institution_changes()} />
-        <ListCard>
-          {#each selectedChanges as change (change.id)}
-            <div transition:collapse>
-              <ListRow
-                key={`institution-change-${change.id}`}
-                data-institution-change={change.id}
-                static
-                title={institutionStatusWord(change.status)}
-                subtitle={[dayLabel(change.epochDay), change.note]}
-                action={{
-                  icon: 'trash',
-                  label: m.roadmap_institution_change_delete_aria({ date: dayLabel(change.epochDay) }),
-                  onclick: () => deleteChange(change),
-                  attrs: { 'data-delete-institution-change': change.id }
-                }}
-              />
-            </div>
-          {/each}
-        </ListCard>
-      </div>
-    {/if}
 
     <LinkedDocuments kind="goal" {id} />
 
