@@ -74,10 +74,10 @@ try {
   await page.evaluate(async (today) => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     await journal.hairRemoval.upsertSession({
-      epochDay: today - 10, area: 'chin', method: 'laser', painRating: 2, cost: '', provider: 'Clinic A'
+      epochDay: today - 10, area: 'chin', method: 'laser', painRating: 2, provider: 'Clinic A'
     });
     await journal.hairRemoval.upsertSession({
-      epochDay: today - 30, area: 'legs', method: 'electrolysis', painRating: 4, cost: '', provider: ''
+      epochDay: today - 30, area: 'legs', method: 'electrolysis', painRating: 4, provider: ''
     });
   }, today);
   assert.equal(await count(), 2, 'fixture seeded two sessions');
@@ -88,7 +88,7 @@ try {
     try {
       const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
       await journal.hairRemoval.upsertSession({
-        epochDay: today - 1, area: 'nape_custom', method: 'laser', painRating: 1, cost: '', provider: ''
+        epochDay: today - 1, area: 'nape_custom', method: 'laser', painRating: 1, provider: ''
       });
       return null;
     } catch (err) {

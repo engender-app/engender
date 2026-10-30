@@ -38,6 +38,7 @@ import type { MilestonesArea } from './milestones';
 import { photosByMilestone, removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now } from './support';
 import { todayEpochDay } from '../epochDay';
+import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInput, type CostRow } from '../cost';
 
 /** What a procedure's checklist is owned by. A plain string rather than an
     enum of one, matching ChecklistOwner's own deliberately open `kind`
@@ -67,6 +68,10 @@ interface ProcedureInput {
   /** Only read for a `custom` kind (see `Procedure`). Defaults to false. */
   dilationOptIn?: boolean;
   archived?: boolean;
+  /** What it cost (FA 30). Absent leaves the stored cost as it is, like
+      `archived`, so an edit that is not about the cost cannot blank it; null
+      clears it. Throws if invalid. */
+  cost?: CostInput;
 }
 
 /** One dated recovery photo. Its own shape rather than hairProgress.ts's
@@ -162,7 +167,7 @@ export interface ProceduresArea {
   recordSurgeryMilestone(procedureId: string, options?: { name?: string; epochDay?: number }): Promise<string>;
 }
 
-type ProcedureRow = {
+type ProcedureRow = CostRow & {
   id: number;
   uuid: string;
   name: string;
@@ -200,7 +205,8 @@ export function makeProceduresArea(
       // would sort NULL to the front in SQLite, putting a procedure with no
       // date yet ahead of one already had.
       const rows = await driver.query<ProcedureRow>(
-        `SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived FROM procedure
+        `SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived,
+                cost_amount, cost_currency, cost_refunded FROM procedure
          ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id`
       );
       // The appointments that name a procedure, grouped by it and read in
@@ -217,7 +223,8 @@ export function makeProceduresArea(
         consults: consults.get(row.uuid) ?? [],
         kind: row.kind,
         dilationOptIn: row.dilation_opt_in !== 0,
-        archived: row.archived !== 0
+        archived: row.archived !== 0,
+        cost: costFromRow(row)
       }));
     },
 
@@ -226,11 +233,17 @@ export function makeProceduresArea(
       const kind = input.kind ?? 'custom';
       const dilationOptIn = input.dilationOptIn ?? false;
       const archived = input.archived;
+      const cost = input.cost === undefined ? null : normalizeCost(input.cost);
+      if (cost) assertValidCost(cost);
 
       if (input.id) {
         const result = await driver.run(
-          'UPDATE procedure SET name = ?, surgery_epoch_day = ?, kind = ?, dilation_opt_in = ?, archived = COALESCE(?, archived), updated_at = ? WHERE uuid = ?',
-          [input.name, surgeryEpochDay, kind, dilationOptIn ? 1 : 0, archived === undefined ? null : archived ? 1 : 0, now(), input.id]
+          `UPDATE procedure SET name = ?, surgery_epoch_day = ?, kind = ?, dilation_opt_in = ?, archived = COALESCE(?, archived),
+                  ${cost ? 'cost_amount = ?, cost_currency = ?, cost_refunded = ?, ' : ''}updated_at = ? WHERE uuid = ?`,
+          [
+            input.name, surgeryEpochDay, kind, dilationOptIn ? 1 : 0, archived === undefined ? null : archived ? 1 : 0,
+            ...(cost ? costColumns(cost) : []), now(), input.id
+          ]
         );
         assertChanged(result, `procedure: ${input.id}`);
         return input.id;
@@ -238,8 +251,9 @@ export function makeProceduresArea(
 
       const uuid = mintUuid();
       await driver.run(
-        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [uuid, input.name, surgeryEpochDay, input.notes ?? '', kind, dilationOptIn ? 1 : 0, archived ? 1 : 0, now()]
+        `INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived,
+                                cost_amount, cost_currency, cost_refunded, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuid, input.name, surgeryEpochDay, input.notes ?? '', kind, dilationOptIn ? 1 : 0, archived ? 1 : 0, ...costColumns(cost ?? normalizeCost(null)), now()]
       );
       return uuid;
     },

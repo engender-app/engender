@@ -82,7 +82,7 @@
   import type {
     Appointment, AppointmentStatusUpdate, ChecklistItem, Provider, ProviderCompetence, WaitingAppointment
   } from '$lib/data/types';
-  import { fmtDay, fmtDuration, fmtTime } from '$lib/data/dates';
+  import { fmtDay, fmtDuration, fmtTime, intlLocale } from '$lib/data/dates';
   import { epochDayFromDateInputValue, dateInputValueFromEpochDay, timestampAtLocalTime } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import {
@@ -104,6 +104,10 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import CostField from '$lib/components/CostField.svelte';
+  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { deviceDefaultCurrency } from '$lib/data/cost';
+  import { costLine } from '$lib/data/vocabulary/costLabel';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
   import { collapse, crossfade, resize } from '$lib/motion/reveal';
@@ -250,7 +254,8 @@
       withTime(dayLabel(appointment.epochDay), appointment),
       appointment.place ?? undefined,
       whoOf(appointment),
-      appointment.kind && journey ? journey : undefined
+      appointment.kind && journey ? journey : undefined,
+      costLine(appointment.cost) ?? undefined
     ].filter((part): part is string => part !== undefined);
   }
 
@@ -319,7 +324,10 @@
 
   function waitingSubtitle(appointment: WaitingAppointment): (string | undefined)[] {
     const latest = statusesOf.get(appointment.id)?.[0];
-    return [waitingLine(appointment), appointment.place ?? undefined, whoOf(appointment), latest ? updateLine(latest) : undefined];
+    return [
+      waitingLine(appointment), appointment.place ?? undefined, whoOf(appointment), latest ? updateLine(latest) : undefined,
+      costLine(appointment.cost) ?? undefined
+    ];
   }
 
   type Draft = {
@@ -333,6 +341,7 @@
     /** `HH:MM` or empty (ticket 27). */
     time: string;
     providerId: string | null;
+    cost: CostDraft;
   };
 
   /* A new wait opens with no day and today as the referred-on day; the
@@ -352,7 +361,8 @@
       note: '',
       procedureId: null,
       time: '',
-      providerId: null
+      providerId: null,
+      cost: blankCostDraft(deviceDefaultCurrency())
     }),
     fromRecord: (appointment) => ({
       id: appointment.id,
@@ -366,7 +376,8 @@
       // here leaves it on its journey.
       procedureId: appointment.procedureId,
       time: appointment.time ?? '',
-      providerId: appointment.providerId
+      providerId: appointment.providerId,
+      cost: costDraftFrom(appointment.cost, deviceDefaultCurrency(), intlLocale())
     }),
     async upsert(draft) {
       await journal.appointments.upsertAppointment({
@@ -380,7 +391,8 @@
         // A wait has no time: clearing the day hides the field, and what
         // it held is not kept behind it.
         time: draft.date ? draft.time : null,
-        providerId: draft.providerId
+        providerId: draft.providerId,
+        cost: costFromDraft(draft.cost)
       });
     },
     remove: (id) => undoable((j) => j.appointments.deleteAppointment(id)),
@@ -933,6 +945,7 @@
   <RecordSheet
     {record}
     handle="appointment"
+    canSave={(draft) => costDraftOk(draft.cost)}
     newTitle={() => (waitingDraft ? m.appointments_waiting_new_sheet() : m.appointments_new_sheet())}
     editTitle={(draft) =>
       waiting.some((a) => a.id === draft.id) ? m.appointments_waiting_edit_sheet() : m.appointments_edit_sheet()}
@@ -1040,6 +1053,7 @@
           ></textarea>
         {/snippet}
       </Field>
+      <CostField id="appointment-cost" bind:draft={editor.cost} />
       <!-- Day and its time in one box of their own (flow-root), so the
            time arriving and a wait's fields leaving below it on the same
            tick (a day set on a wait) do not read each other's margins

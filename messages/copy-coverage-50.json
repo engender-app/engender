@@ -1078,8 +1078,6 @@
   "hair_removal_area_never_used": {"owner":39,"sources":["src/routes/body/hair-removal/+page.svelte"]},
   "hair_removal_area_underarms": {"owner":39,"sources":["src/lib/data/vocabulary/labels.ts"]},
   "hair_removal_area_upper_lip": {"owner":39,"sources":["src/lib/data/vocabulary/labels.ts"]},
-  "hair_removal_cost_label": {"owner":39,"sources":["src/routes/body/hair-removal/+page.svelte"]},
-  "hair_removal_cost_placeholder": {"owner":39,"sources":["src/routes/body/hair-removal/+page.svelte"]},
   "hair_removal_date_label": {"owner":39,"sources":["src/routes/body/hair-removal/+page.svelte"]},
   "hair_removal_delete": {"owner":39,"sources":["src/routes/body/hair-removal/+page.svelte"]},
   "hair_removal_delete_hint": {"owner":39,"sources":["src/routes/body/hair-removal/+page.svelte"]},

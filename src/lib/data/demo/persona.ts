@@ -383,6 +383,8 @@ export function persona(today: number = todayEpochDay()): Persona {
         kind: 'Endocrinologist',
         place: 'Przychodnia na Kopernika',
         note: 'levels holding steady, no changes',
+        // A private visit, so it has a cost (functional audit ticket 30).
+        cost: { amount: 250, currency: 'PLN', refunded: false },
         debrief: {
           timestamp: startOfDayTimestamp(pastAppointmentDay) + 15 * 3600000,
           mood: 4,
@@ -433,9 +435,10 @@ export function persona(today: number = todayEpochDay()): Persona {
     labResults: [
       { epochDay: today - 700, analyte: 'estradiol', value: 41, unit: 'pg/mL', note: 'baseline', provider: 'Diagnostyka' },
       { epochDay: today - 610, analyte: 'estradiol', value: 96, unit: 'pg/mL', note: '', provider: 'Diagnostyka' },
-      { epochDay: today - 430, analyte: 'estradiol', value: 148, unit: 'pg/mL', note: 'dose up', provider: 'ALAB', drawTime: '07:50' },
-      { epochDay: today - 250, analyte: 'estradiol', value: 173, unit: 'pg/mL', note: '', provider: 'ALAB', drawTime: '08:10' },
-      { epochDay: today - 70, analyte: 'estradiol', value: 165, unit: 'pg/mL', note: 'patches', provider: 'ALAB', drawTime: '07:35' },
+      // Paid at ALAB, the last one refunded (functional audit ticket 30).
+      { epochDay: today - 430, analyte: 'estradiol', value: 148, unit: 'pg/mL', note: 'dose up', provider: 'ALAB', drawTime: '07:50', cost: { amount: 45, currency: 'PLN', refunded: false } },
+      { epochDay: today - 250, analyte: 'estradiol', value: 173, unit: 'pg/mL', note: '', provider: 'ALAB', drawTime: '08:10', cost: { amount: 45, currency: 'PLN', refunded: false } },
+      { epochDay: today - 70, analyte: 'estradiol', value: 165, unit: 'pg/mL', note: 'patches', provider: 'ALAB', drawTime: '07:35', cost: { amount: 49.5, currency: 'PLN', refunded: true } },
       { epochDay: today - 700, analyte: 'testosterone', value: 480, unit: 'ng/dL', note: 'baseline' },
       { epochDay: today - 610, analyte: 'testosterone', value: 120, unit: 'ng/dL', note: '' },
       { epochDay: today - 430, analyte: 'testosterone', value: 38, unit: 'ng/dL', note: '' },

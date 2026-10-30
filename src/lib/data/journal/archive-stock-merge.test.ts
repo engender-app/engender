@@ -139,7 +139,7 @@ test('healthy encrypted verification and Replace still restore the Archive stock
     const opened = await openArchive(oneShot(packed), password);
     await journal.archive.replace({ journal: opened.payload.journal, files: opened.files });
 
-    assert.deepEqual(await journal.stock.getEntries(), backup.journal.medicationStock);
+    assert.deepEqual((await journal.archive.snapshot()).journal.medicationStock, backup.journal.medicationStock);
     assert.deepEqual(await db.query('SELECT uuid, drug, quantity, unit FROM medication_stock'), [{
       uuid: id, drug: 'Estrofem', quantity: 28, unit: 'pills'
     }]);

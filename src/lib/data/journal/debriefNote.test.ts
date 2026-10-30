@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { answeredQuestions, debriefListItems } from './debriefNote';
 import type { ChecklistItem, LabResult, SideEffect } from '../types';
+import { NO_COST } from '../cost';
 
 function lab(epochDay: number, analyte: string, value: number, unit: string): LabResult {
   return {
@@ -12,7 +13,8 @@ function lab(epochDay: number, analyte: string, value: number, unit: string): La
     note: '',
     drawTime: null,
     provider: '',
-    timing: null
+    timing: null,
+    cost: NO_COST
   };
 }
 

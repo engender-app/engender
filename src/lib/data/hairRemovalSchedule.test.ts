@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { daysSinceLastSession } from './hairRemovalSchedule.ts';
 import { HAIR_REMOVAL_AREAS } from './hairRemovalAreas.ts';
 import type { HairRemovalSession } from './types.ts';
+import { NO_COST } from './cost.ts';
 
 const session = (epochDay: number, area: string): HairRemovalSession => ({
   id: `s-${epochDay}-${area}`,
@@ -15,8 +16,9 @@ const session = (epochDay: number, area: string): HairRemovalSession => ({
   method: 'laser',
   painRating: 2,
   minutes: null,
-  cost: '',
-  provider: ''
+  cost: NO_COST,
+  provider: '',
+  note: null
 });
 
 test('daysSinceLastSession has an entry for every area the vocabulary knows, even with no sessions at all', () => {

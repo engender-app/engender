@@ -7,6 +7,7 @@
    only, and ADR-0002 keeps the FTS link and the join-heavy queries on
    integer rowids. An entry's uuid travels in archives, not here. */
 
+import type { Cost } from './cost';
 import {
   CYCLE_EVENT_KINDS,
   EFFECT_DIRECTIONS_STORED,
@@ -339,6 +340,8 @@ export interface LabResult {
   /** Null when no dose preceded the draw, or when an hours figure would
       have needed a draw time nobody recorded. */
   timing: LabTiming | null;
+  /** What the test cost (functional audit ticket 30, cost.ts). */
+  cost: Cost;
 }
 
 /** The two counters ticket 10 tracks. Fixed rather than user-defined, so it
@@ -889,8 +892,13 @@ export interface HairRemovalSession {
   painRating: number | null;
   /** How long the session ran, in whole minutes; null when not written down. */
   minutes: number | null;
-  cost: string;
+  /** What the session cost (functional audit ticket 30, cost.ts). The
+      free-text cost before it was read into this, or into `note` where it
+      did not parse, by version 115. */
+  cost: Cost;
   provider: string;
+  /** The person's own words on the session, or null. */
+  note: string | null;
 }
 
 /* A free-write note to the person's future self, sealed until
@@ -955,6 +963,9 @@ export interface MedicationStock {
   /** Where the supply came from, in the person's words - a pharmacy, a
       batch. Null when empty. */
   pharmacyNote: string | null;
+  /** What the supply held now cost (functional audit ticket 30, cost.ts).
+      There is no purchase log: a fresh count replaces it like the expiry. */
+  cost: Cost;
 }
 
 /** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind
@@ -1101,6 +1112,8 @@ export interface Procedure {
   /** Chosen by the person. Age never decides whether a procedure belongs in
       their archive. */
   archived: boolean;
+  /** What the procedure cost (functional audit ticket 30, cost.ts). */
+  cost: Cost;
 }
 
 /** One consult on the way to a procedure, as the procedure's own screen
@@ -1150,6 +1163,8 @@ export interface Appointment {
   time: string | null;
   /** Who it is with, the person's own `Provider` record, or null. */
   providerId: string | null;
+  /** What the visit cost (functional audit ticket 30, cost.ts). */
+  cost: Cost;
 }
 
 /** How a provider was with trans care, in the person's own judgement

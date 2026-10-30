@@ -11,6 +11,7 @@ import {
   BUILT_IN_DIMENSIONS, BUILT_IN_EFFECT_CATEGORIES, BUILT_IN_TAG_GROUPS
 } from '../vocabulary/builtins';
 import { columnsOf, identityFieldOf, type FlatTable } from './archiveTable';
+import { isCurrencyCode, isValidAmount } from '../cost';
 
 type Check = (value: unknown) => boolean;
 const text: Check = (value) => typeof value === 'string';
@@ -26,6 +27,15 @@ const integerBetween = (min: number, max: number): Check => (value) =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
 // `HH:MM` on a 24-hour clock, appointments.ts's own rule for a stored time.
 const clockTime: Check = (value) => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+// A cost (functional audit ticket 30) is three fields on each costed row,
+// absent on an archive written before it; cost.ts's assertValidCost is the
+// rule, and the amount-and-currency pairing is checked per row below.
+const COST_FIELDS = {
+  costAmount: optional(nullable(isValidAmount)),
+  costCurrency: optional(nullable(isCurrencyCode)),
+  costRefunded: optional(bool)
+};
+const COSTED_SECTIONS: readonly string[] = ['hairRemovalSessions', 'appointments', 'procedures', 'labResults', 'medicationStock'];
 const list = (check: Check): Check => (value) => Array.isArray(value) && value.every(check);
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -160,7 +170,8 @@ const ROWS = {
     provider: text,
     timingRoute: nullable(text),
     timingHours: nullable(numeric),
-    timingDayOfInterval: nullable(numeric)
+    timingDayOfInterval: nullable(numeric),
+    ...COST_FIELDS
   },
   taper: {
     id: identity,
@@ -231,9 +242,12 @@ const ROWS = {
     method: oneOf(HAIR_REMOVAL_METHODS),
     painRating: nullable(integerBetween(1, 5)),
     minutes: optional(nullable(integerBetween(1, 1440))),
-    cost: text,
+    // The free text before ticket 30; restore reads it by cost.ts's rule.
+    cost: optional(text),
     provider: text,
-    photos: list(hairRemovalPhoto)
+    photos: list(hairRemovalPhoto),
+    note: optional(nullable(text)),
+    ...COST_FIELDS
   },
   procedures: {
     id: identity,
@@ -243,7 +257,8 @@ const ROWS = {
     photos: list(procedurePhoto),
     kind: optional(text),
     dilationOptIn: optional(bool),
-    archived: optional(bool)
+    archived: optional(bool),
+    ...COST_FIELDS
   },
   appointments: {
     id: identity,
@@ -255,7 +270,8 @@ const ROWS = {
     referredEpochDay: optional(nullable(numeric)),
     statuses: optional(list(appointmentStatus)),
     time: optional(nullable(clockTime)),
-    providerId: optional(nullable(text))
+    providerId: optional(nullable(text)),
+    ...COST_FIELDS
   },
   providers: {
     id: identity,
@@ -389,7 +405,8 @@ const ROWS = {
     leadTimeDays: nullable(numeric),
     dosesPerUnit: nullable(numeric),
     expiryEpochDay: optional(nullable(numeric)),
-    pharmacyNote: optional(nullable(text))
+    pharmacyNote: optional(nullable(text)),
+    ...COST_FIELDS
   },
   tryouts: {
     id: identity,
@@ -536,6 +553,9 @@ export function assertArchiveRows(
           (scale !== 'other' && row.description !== undefined && row.description !== '')) {
         throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
       }
+    }
+    if (COSTED_SECTIONS.includes(name) && (row.costAmount == null) !== (row.costCurrency == null)) {
+      throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
     if (name === 'sideEffects' && typeof row.resolvedEpochDay === 'number' && row.resolvedEpochDay < (row.epochDay as number)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);

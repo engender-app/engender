@@ -90,7 +90,7 @@ for (const mode of ['merge', 'replace'] as const) {
       // effect's resolved day; v104: milestone.celebrate; v107: a hair-removal
       // session's minutes; v110: the appointment's time and provider, and the
       // provider table; v111: the roadmap's category table; v113: the drug a
-      // reminder is for; v114: the roadmap's institution tables).
+      // reminder is for; v114: the roadmap's institution tables; v115: costs).
       await sourceDb.exec("ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other'");
       // And ticket 47's two stock columns (v99), for the same reason.
       await sourceDb.exec('ALTER TABLE medication_stock ADD COLUMN expiry_epoch_day INTEGER');
@@ -110,6 +110,14 @@ for (const mode of ['merge', 'replace'] as const) {
       await sourceDb.exec('CREATE TABLE roadmap_institution (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE, name TEXT NOT NULL, updated_at INTEGER NOT NULL)');
       await sourceDb.exec(`CREATE TABLE roadmap_institution_change (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE,
         institution TEXT NOT NULL, status TEXT NOT NULL, epoch_day INTEGER NOT NULL, note TEXT, updated_at INTEGER NOT NULL)`);
+      // v115: the three cost columns on each costed table, and the
+      // hair-removal note v94 added and FA 30 reads.
+      await sourceDb.exec('ALTER TABLE hair_removal_session ADD COLUMN note TEXT');
+      for (const table of ['hair_removal_session', 'appointment', 'procedure', 'lab_result', 'medication_stock']) {
+        await sourceDb.exec(`ALTER TABLE ${table} ADD COLUMN cost_amount REAL`);
+        await sourceDb.exec(`ALTER TABLE ${table} ADD COLUMN cost_currency TEXT`);
+        await sourceDb.exec(`ALTER TABLE ${table} ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0`);
+      }
       await source.reconcileBuiltIns();
       for (const [id, drug, quantity, day, updated] of [
         ['first', firstDrug, 7, 20010, 200], ['last', lastDrug, 59, 20000, 100]

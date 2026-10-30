@@ -16,7 +16,7 @@
   import { hairRemovalAreaName, hairRemovalMethodName, severityName } from '$lib/data/vocabulary/labels';
   import { daysSinceLastSession } from '$lib/data/hairRemovalSchedule';
   import { HAIR_REMOVAL_AREAS, type HairRemovalAreaKey } from '$lib/data/hairRemovalAreas';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, intlLocale } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import type { HairRemovalSession, HairRemovalMethod } from '$lib/data/types';
@@ -43,6 +43,10 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
   import { crossfade } from '$lib/motion/reveal';
+  import CostField from '$lib/components/CostField.svelte';
+  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { deviceDefaultCurrency } from '$lib/data/cost';
+  import { costLine } from '$lib/data/vocabulary/costLabel';
 
   /* The strip's fill shares the chromatic role with the recency figures
      (ticket 56, following ticket 44's own rule for dilation and wear):
@@ -70,8 +74,9 @@
       method: 'laser' as HairRemovalMethod,
       painRating: '',
       minutes: null as number | null,
-      cost: '',
-      provider: ''
+      cost: blankCostDraft(deviceDefaultCurrency()),
+      provider: '',
+      note: ''
     };
   }
 
@@ -154,7 +159,7 @@
 
   const record = recordEditor<
     HairRemovalSession,
-    { id?: string; date: string; area: string; method: HairRemovalMethod; painRating: string; minutes: number | null; cost: string; provider: string }
+    { id?: string; date: string; area: string; method: HairRemovalMethod; painRating: string; minutes: number | null; cost: CostDraft; provider: string; note: string }
   >({
     blank: () => blankDraft(HAIR_REMOVAL_AREAS[0]),
     fromRecord: (session) => ({
@@ -164,8 +169,9 @@
       method: session.method,
       painRating: session.painRating === null ? '' : String(session.painRating),
       minutes: session.minutes,
-      cost: session.cost,
-      provider: session.provider
+      cost: costDraftFrom(session.cost, deviceDefaultCurrency(), intlLocale()),
+      provider: session.provider,
+      note: session.note ?? ''
     }),
     async upsert(draft) {
       const id = await journal.hairRemoval.upsertSession({
@@ -175,8 +181,9 @@
         method: draft.method,
         painRating: draft.painRating === '' ? null : Number(draft.painRating),
         minutes: draft.minutes,
-        cost: draft.cost,
-        provider: draft.provider
+        cost: costFromDraft(draft.cost),
+        provider: draft.provider,
+        note: draft.note
       });
       if (!draft.id) savedId = id;
     },
@@ -188,6 +195,7 @@
   /** Empty is fine; a length is a whole number of minutes in a day. */
   const minutesOk = (draft: { minutes: number | null }) =>
     draft.minutes === null || (Number.isInteger(draft.minutes) && draft.minutes >= 1 && draft.minutes <= 1440);
+  const canSave = (draft: { minutes: number | null; cost: CostDraft }) => minutesOk(draft) && costDraftOk(draft.cost);
   let editor = $derived(record.editor);
   let deleteTarget = $derived(record.deleteTarget);
 
@@ -279,7 +287,7 @@
                     data-hair-removal-session={session.id}
                     icon="shuffle"
                     title={hairRemovalAreaName(session.area)}
-                    subtitle={[dayLabel(session.epochDay), hairRemovalMethodName(session.method), session.minutes === null ? null : m.hair_removal_minutes_short({ n: session.minutes }), severityName(session.painRating)].filter(Boolean).join(' · ')}
+                    subtitle={[dayLabel(session.epochDay), hairRemovalMethodName(session.method), session.minutes === null ? null : m.hair_removal_minutes_short({ n: session.minutes }), severityName(session.painRating), costLine(session.cost)].filter(Boolean).join(' · ')}
                     chevron={false}
                     onclick={() => record.openEditor(session)}
                   />
@@ -318,7 +326,7 @@
     newTitle={m.hair_removal_new_sheet()}
     editTitle={m.hair_removal_edit_sheet()}
     saveLabel={m.hair_removal_save()}
-    canSave={minutesOk}
+    canSave={canSave}
     deleteLabel={m.hair_removal_delete()}
     confirm={{
       title: m.hair_removal_delete_sheet(),
@@ -374,17 +382,7 @@
           />
         {/snippet}
       </Field>
-      <Field label={m.hair_removal_cost_label()} id="hair-removal-cost">
-        {#snippet children(id)}
-          <input autocomplete={journalTextAutocomplete()}
-            class="input"
-            {id}
-            name="hair-removal-cost"
-            placeholder={m.hair_removal_cost_placeholder()}
-            bind:value={draft.cost}
-          />
-        {/snippet}
-      </Field>
+      <CostField id="hair-removal-cost" bind:draft={draft.cost} />
       <Field label={m.hair_removal_provider_label()} id="hair-removal-provider">
         {#snippet children(id)}
           <input autocomplete={journalTextAutocomplete()}
@@ -394,6 +392,18 @@
             placeholder={m.hair_removal_provider_placeholder()}
             bind:value={draft.provider}
           />
+        {/snippet}
+      </Field>
+      <Field label={m.hair_removal_note_label()} id="hair-removal-note">
+        {#snippet children(id)}
+          <textarea autocomplete={journalTextAutocomplete()}
+            class="input"
+            {id}
+            name="hair-removal-note"
+            rows="3"
+            placeholder={m.hair_removal_note_placeholder()}
+            bind:value={draft.note}
+          ></textarea>
         {/snippet}
       </Field>
 

@@ -58,6 +58,10 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import CostField from '$lib/components/CostField.svelte';
+  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { deviceDefaultCurrency } from '$lib/data/cost';
+  import { costLine } from '$lib/data/vocabulary/costLabel';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -225,6 +229,7 @@
     /** Read-only: the context is frozen when the result is saved, so the
         sheet shows what was recorded rather than offering to change it. */
     timing: LabResult['timing'];
+    cost: CostDraft;
   };
 
   /* A number input binds the number it parsed, or null while it holds
@@ -247,7 +252,8 @@
       unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results[results.length - 1]?.unit ?? ''),
       note: '',
       provider: '',
-      timing: null
+      timing: null,
+      cost: blankCostDraft(deviceDefaultCurrency())
     }),
     fromRecord: (result) => ({
       id: result.id,
@@ -259,12 +265,13 @@
       unit: result.unit,
       note: result.note,
       provider: result.provider,
-      timing: result.timing
+      timing: result.timing,
+      cost: costDraftFrom(result.cost, deviceDefaultCurrency(), intlLocale())
     }),
     async upsert(draft) {
       const value = draft.value;
       const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
-      if (!validValue(value) || !resultAnalyte) return false;
+      if (!validValue(value) || !resultAnalyte || !costDraftOk(draft.cost)) return false;
 
       /* Which units this analyte already has, ignoring the result being edited,
          so that changing the unit on an analyte's only result does not announce
@@ -287,7 +294,8 @@
            derives the timing context from this; a blank one means no hours
            figure rather than a zero (labTiming.ts). */
         drawTime: draft.time || null,
-        provider: draft.provider
+        provider: draft.provider,
+        cost: costFromDraft(draft.cost)
       });
       analyte = resultAnalyte;
 
@@ -576,7 +584,7 @@
               <span class="kit-row-text">
                 <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
                 <span class="kit-row-sub">
-                  {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
+                  {[fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }), r.note, costLine(r.cost)].filter(Boolean).join(' · ')}
                 </span>
                 <!-- The context on its own line, not appended to the date: it is
                      two more facts about the draw, and three of them run together
@@ -632,7 +640,7 @@
     editTitle={m.labs_edit_sheet()}
     saveLabel={m.labs_save()}
     deleteLabel={m.labs_delete()}
-    canSave={(draft) => !!analyteOf(draft).trim() && validValue(draft.value)}
+    canSave={(draft) => !!analyteOf(draft).trim() && validValue(draft.value) && costDraftOk(draft.cost)}
     confirm={{
       title: m.labs_delete_sheet(),
       question: (result) => m.labs_delete_q({ analyte: result.analyte }),
@@ -700,6 +708,7 @@
           <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
         {/snippet}
       </Field>
+      <CostField id="lab-cost" bind:draft={editor.cost} />
 
       <!-- The detail view's copy of the context. Read-only, because it was
            recorded when the result was saved and is not recomputed

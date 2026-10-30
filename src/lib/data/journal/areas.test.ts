@@ -11,6 +11,7 @@ import { timestampAtLocalTime } from '../epochDay.ts';
 import type { Journal } from './journal.ts';
 import type { LabResultInput } from './labs.ts';
 import type { LabResult } from '../types.ts';
+import { NO_COST } from '../cost.ts';
 
 /* dimensions */
 
@@ -218,7 +219,8 @@ test('analytes are the presets plus whatever is in use; results order by day', a
     note: '',
     drawTime: null,
     provider: '',
-    timing: null
+    timing: null,
+    cost: NO_COST
   });
 });
 
@@ -828,7 +830,6 @@ test('a hair-removal session round-trips with no episode reference, ordered by d
     area: 'legs',
     method: 'laser',
     painRating: 2,
-    cost: '300 PLN',
     provider: 'Klinika Laserowa'
   });
   const id = await journal.hairRemoval.upsertSession({
@@ -837,7 +838,6 @@ test('a hair-removal session round-trips with no episode reference, ordered by d
     method: 'electrolysis',
     painRating: 4,
     minutes: 60,
-    cost: '',
     provider: ''
   });
 
@@ -850,8 +850,9 @@ test('a hair-removal session round-trips with no episode reference, ordered by d
     method: 'electrolysis',
     painRating: 4,
     minutes: 60,
-    cost: '',
-    provider: ''
+    cost: NO_COST,
+    provider: '',
+    note: null
   });
 });
 
@@ -862,15 +863,14 @@ test('hair-removal sessions update by id, throw on unknown ids and delete idempo
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '',
     provider: ''
   });
 
-  await journal.hairRemoval.upsertSession({ id, epochDay: 100, area: 'chin', method: 'laser', painRating: 3, cost: '', provider: '' });
+  await journal.hairRemoval.upsertSession({ id, epochDay: 100, area: 'chin', method: 'laser', painRating: 3, provider: '' });
   assert.equal((await journal.hairRemoval.getSessions())[0].painRating, 3);
 
   await assert.rejects(
-    journal.hairRemoval.upsertSession({ id: 'nope', epochDay: 1, area: 'chin', method: 'laser', painRating: 1, cost: '', provider: '' }),
+    journal.hairRemoval.upsertSession({ id: 'nope', epochDay: 1, area: 'chin', method: 'laser', painRating: 1, provider: '' }),
     /unknown hair removal session/
   );
 
@@ -887,8 +887,7 @@ test('an area outside the closed vocabulary is refused before it reaches the sch
       area: 'face_jaw', // a BODY_REGION_KEYS key, not a hair-removal area
       method: 'laser',
       painRating: 2,
-      cost: '',
-      provider: ''
+        provider: ''
     }),
     /invalid hair-removal area/
   );
@@ -897,33 +896,31 @@ test('an area outside the closed vocabulary is refused before it reaches the sch
 test('a pain rating outside the 1-5 scale is refused before it reaches the schema', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(
-    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 0, cost: '', provider: '' }),
+    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 0, provider: '' }),
     /invalid pain rating/
   );
   await assert.rejects(
-    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 6, cost: '', provider: '' }),
+    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 6, provider: '' }),
     /invalid pain rating/
   );
 });
 
-test('cost and provider are stored as typed, with no list and no normalization', async () => {
+/* The cost is a typed amount since FA 30 (costs.test.ts); the provider is
+   still the person's own text. */
+test('provider is stored as typed, with no list and no normalization', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.hairRemoval.upsertSession({
     epochDay: 100,
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '  250 PLN ',
-    provider: 'diagnostyka'
+    provider: ' diagnostyka'
   });
   await journal.hairRemoval.upsertSession({ epochDay: 101, area: 'chin', method: 'laser', painRating: 2 });
 
   assert.deepEqual(
-    (await journal.hairRemoval.getSessions()).map((s) => [s.cost, s.provider]),
-    [
-      ['  250 PLN ', 'diagnostyka'],
-      ['', '']
-    ]
+    (await journal.hairRemoval.getSessions()).map((s) => s.provider),
+    [' diagnostyka', '']
   );
 });
 
@@ -936,7 +933,6 @@ test('a session photo writes both files and its own row, distinct from `photo` a
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '',
     provider: ''
   });
 
@@ -969,7 +965,6 @@ test('session photos order oldest first and delete takes the row and its files; 
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '',
     provider: ''
   });
 
@@ -996,7 +991,6 @@ test('deleting a session cascades to its photos', async () => {
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '',
     provider: ''
   });
   await journal.hairRemoval.addPhoto(sessionId, { full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
@@ -1138,7 +1132,8 @@ test('a procedure round-trips with a free-text name and an optional surgery date
     consults: [],
     kind: 'custom',
     dilationOptIn: false,
-    archived: false
+    archived: false,
+    cost: NO_COST
   });
   assert.equal(procedures[2].surgeryEpochDay, null);
   assert.equal(procedures[2].id, unscheduled);

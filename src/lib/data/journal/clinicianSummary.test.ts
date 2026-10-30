@@ -20,6 +20,7 @@ import {
   type ClinicianSummarySection
 } from './clinicianSummary.ts';
 import type { Journal } from './journal.ts';
+import { NO_COST } from '../cost.ts';
 
 /* The areas openJournal hands the summary, taken off an open journal so a
    test can build the same area with a section of its own registered. */
@@ -293,7 +294,8 @@ test("a procedure prints its dates, notes, recovery photo days and checklist sta
       checklistItems: [{ id: item.id, content: 'buy gauze', checked: true, carriedForward: false }],
       kind: 'custom',
       dilationOptIn: false,
-      archived: false
+      archived: false,
+      cost: NO_COST
     }
   ]);
 });

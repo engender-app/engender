@@ -161,7 +161,6 @@ test('hair removal sessions and hair staging link to relevant regions', async ()
     area: 'chin',
     method: 'laser',
     painRating: 3,
-    cost: '50',
     provider: 'Clinic A'
   });
 

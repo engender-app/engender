@@ -651,7 +651,7 @@ export async function generateLongJournal(
       area: pick(HAIR_REMOVAL_AREAS),
       method: pick(HAIR_REMOVAL_METHODS),
       painRating: between(1, 5),
-      cost: random() < 0.7 ? `${between(150, 450)} PLN` : '',
+      cost: random() < 0.7 ? { amount: between(150, 450), currency: 'PLN', refunded: false } : null,
       provider: random() < 0.7 ? 'Klinika Laserowa' : ''
     });
     summary.hairRemovalSessions++;

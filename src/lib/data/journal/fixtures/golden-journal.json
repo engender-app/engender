@@ -772,7 +772,10 @@
       "provider": "Diagnostyka",
       "timingRoute": null,
       "timingHours": null,
-      "timingDayOfInterval": null
+      "timingDayOfInterval": null,
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": true
     }
   ],
   "taper": [
@@ -1469,14 +1472,17 @@
       "method": "laser",
       "painRating": 2,
       "minutes": 45,
-      "cost": "250 PLN",
       "provider": "Klinika Laserowa",
       "photos": [
         {
           "id": "35ddcc3d-6219-45bf-9362-d33d9f5743be",
           "fileName": "35ddcc3d-6219-45bf-9362-d33d9f5743be.jpg"
         }
-      ]
+      ],
+      "costAmount": 250,
+      "costCurrency": "PLN",
+      "costRefunded": true,
+      "note": "numbing cream helped"
     },
     {
       "id": "f89c85d9-6450-4ee4-a2ab-8bc59b4284be",
@@ -1485,9 +1491,12 @@
       "method": "electrolysis",
       "painRating": null,
       "minutes": 90,
-      "cost": "",
       "provider": "",
-      "photos": []
+      "photos": [],
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": false,
+      "note": null
     }
   ],
   "procedures": [
@@ -1499,7 +1508,10 @@
       "photos": [],
       "kind": "vaginoplasty",
       "dilationOptIn": false,
-      "archived": false
+      "archived": false,
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": false
     },
     {
       "id": "35bef3f4-7070-489e-8dbe-eb914cee4feb",
@@ -1515,7 +1527,10 @@
       ],
       "kind": "chest_reconstruction",
       "dilationOptIn": false,
-      "archived": false
+      "archived": false,
+      "costAmount": 9500,
+      "costCurrency": "EUR",
+      "costRefunded": false
     }
   ],
   "providers": [
@@ -1538,7 +1553,10 @@
       "referredEpochDay": null,
       "statuses": [],
       "time": null,
-      "providerId": null
+      "providerId": null,
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": false
     },
     {
       "id": "506e81cf-0205-4a32-a727-b24d97acf07b",
@@ -1550,7 +1568,10 @@
       "referredEpochDay": null,
       "statuses": [],
       "time": "14:30",
-      "providerId": "b665a08a-21e3-42ec-98cf-24216c2964de"
+      "providerId": "b665a08a-21e3-42ec-98cf-24216c2964de",
+      "costAmount": 200,
+      "costCurrency": "PLN",
+      "costRefunded": false
     },
     {
       "id": "f3cc950a-0183-4355-8fc5-3fff4784041f",
@@ -1568,7 +1589,10 @@
         }
       ],
       "time": null,
-      "providerId": null
+      "providerId": null,
+      "costAmount": null,
+      "costCurrency": null,
+      "costRefunded": false
     }
   ],
   "reminders": [
@@ -1761,7 +1785,10 @@
       "leadTimeDays": null,
       "dosesPerUnit": null,
       "expiryEpochDay": 20400,
-      "pharmacyNote": "Batch 7"
+      "pharmacyNote": "Batch 7",
+      "costAmount": 49.99,
+      "costCurrency": "PLN",
+      "costRefunded": false
     }
   ],
   "tryouts": [

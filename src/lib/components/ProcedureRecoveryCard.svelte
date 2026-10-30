@@ -48,6 +48,7 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { gapTo } from '$lib/data/vocabulary/hubLabels';
+  import { costLine } from '$lib/data/vocabulary/costLabel';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { Milestone, Procedure } from '$lib/data/types';
 
@@ -78,6 +79,7 @@
 
   let phase = $derived<ProcedurePhase>(procedurePhase(procedure.surgeryEpochDay, today, procedure.archived));
   let recDay = $derived(recoveryDay(procedure.surgeryEpochDay, today));
+  let cost = $derived(costLine(procedure.cost));
 
   /** Everything but the archived phase, which is the one with no live
       reading left to draw. */
@@ -281,7 +283,7 @@
        `collapse` because selecting a procedure is what brings the milestone
        and the checklist count in, and a row that cuts in is the yank the
        standing clause forbids. -->
-  {#if linkedMilestone || checklistCount > 0 || procedure.consults.length > 0 || (!open && photos.length > 0)}
+  {#if linkedMilestone || checklistCount > 0 || procedure.consults.length > 0 || (!open && photos.length > 0) || cost}
     <span class="proc-badges" transition:collapse|global>
       {#if linkedMilestone}
         <span class="proc-badge-tag" data-linked-milestone>
@@ -309,6 +311,11 @@
           <span aria-hidden="true">{checklistCount}</span>
           <span class="visually-hidden">{m.surgery_badge_checklist({ n: checklistCount })}</span>
         </span>
+      {/if}
+      <!-- What it cost (functional audit ticket 30), as words: no glyph in
+           the set says money, and the amount is its own label. -->
+      {#if cost}
+        <span class="proc-badge-tag" data-procedure-cost>{cost}</span>
       {/if}
     </span>
   {/if}

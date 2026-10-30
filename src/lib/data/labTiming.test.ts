@@ -10,6 +10,7 @@ import {
 } from './labTiming';
 import { startOfDayTimestamp, timestampAtLocalTime } from './epochDay';
 import type { LabResult, LabTiming, RegimenEpisode } from './types';
+import { NO_COST } from './cost.ts';
 
 const DAY = 20000;
 
@@ -192,6 +193,7 @@ const result = (over: Partial<LabResult> = {}): LabResult => ({
   drawTime: null,
   provider: '',
   timing: null,
+  cost: NO_COST,
   ...over
 });
 

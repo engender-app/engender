@@ -180,6 +180,14 @@ function withAfterApply<Section extends { apply: (restoring: Restoring) => Promi
   };
 }
 
+/* A cost's three columns (functional audit ticket 30), absent on an archive
+   written before it and read as no cost. */
+const COST_COLUMNS = {
+  cost_amount: { field: 'costAmount', whenAbsent: null },
+  cost_currency: { field: 'costCurrency', whenAbsent: null },
+  cost_refunded: { field: 'costRefunded', bool: true, whenAbsent: false }
+} as const;
+
 const MEDICATION_STOCK = {
   table: 'medication_stock',
   identity: 'drug',
@@ -198,7 +206,8 @@ const MEDICATION_STOCK = {
     lead_time_days: { field: 'leadTimeDays', whenAbsent: null },
     doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null },
     expiry_epoch_day: { field: 'expiryEpochDay', whenAbsent: null },
-    pharmacy_note: { field: 'pharmacyNote', whenAbsent: null }
+    pharmacy_note: { field: 'pharmacyNote', whenAbsent: null },
+    ...COST_COLUMNS
   }
 } as const satisfies FlatTable<ArchiveJournal['medicationStock'][number]>;
 
@@ -456,7 +465,8 @@ const SECTIONS = [
       provider: { field: 'provider', whenAbsent: '' },
       timing_route: { field: 'timingRoute', whenAbsent: null },
       timing_hours: { field: 'timingHours', whenAbsent: null },
-      timing_day_of_interval: { field: 'timingDayOfInterval', whenAbsent: null }
+      timing_day_of_interval: { field: 'timingDayOfInterval', whenAbsent: null },
+      ...COST_COLUMNS
     }
   }),
   /* The dilation taper schedule (ticket 12) - a plan the person typed in,

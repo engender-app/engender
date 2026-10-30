@@ -186,7 +186,18 @@ export interface ArchiveMilestone {
    ticket 02's four collections were added before the 1.0.0 format cutoff
    without a version step. From 1.0.0 on, wire changes require a format version
    and payload migration. */
-interface ArchiveLabResult {
+/** A cost as it travels (functional audit ticket 30, cost.ts): the three
+    columns each costed record holds, flat on its row. Optional on the hand-
+    written sections so an archive written before the ticket parses, where it
+    reads as no cost; the flat sections declare the same default
+    (archiveSections.ts). */
+export interface ArchiveCostFields {
+  costAmount?: number | null;
+  costCurrency?: string | null;
+  costRefunded?: boolean;
+}
+
+interface ArchiveLabResult extends ArchiveCostFields {
   id: string;
   epochDay: number;
   analyte: string;
@@ -374,7 +385,7 @@ export interface ArchiveProcedurePhoto {
     applying one reads an absent `kind` as `custom` and an absent
     `dilationOptIn` as false, the same defaults `upsertProcedure` gives a
     write that names neither. */
-export interface ArchiveProcedure {
+export interface ArchiveProcedure extends ArchiveCostFields {
   id: string;
   name: string;
   surgeryEpochDay: number | null;
@@ -399,7 +410,7 @@ export interface ArchiveProcedure {
     procedure's photos are because each belongs to exactly one appointment.
     Both are optional only so an archive written before the ticket parses;
     applying one reads them as null and none. */
-export interface ArchiveAppointment {
+export interface ArchiveAppointment extends ArchiveCostFields {
   id: string;
   epochDay: number | null;
   procedureId: string | null;
@@ -507,7 +518,7 @@ export interface ArchiveHairRemovalPhoto {
     ArchiveMeasurement loosens `type` and ArchiveHairStage loosens `stage`:
     the schema's CHECK enforces both on the way back in (restore.ts), not
     this boundary type. */
-export interface ArchiveHairRemovalSession {
+export interface ArchiveHairRemovalSession extends ArchiveCostFields {
   id: string;
   epochDay: number;
   area: string;
@@ -516,9 +527,14 @@ export interface ArchiveHairRemovalSession {
   /** Absent in an archive written before functional audit ticket 28, which
       reads as no length. */
   minutes?: number | null;
-  cost: string;
+  /** The free-text cost an archive written before functional audit ticket
+      30 carries. Never written now; restore reads it by cost.ts's rule into
+      the cost fields, or into `note` where it does not parse. */
+  cost?: string;
   provider: string;
   photos: ArchiveHairRemovalPhoto[];
+  /** The person's own words on the session (ticket 30), or null. */
+  note?: string | null;
 }
 
 /* An archive written before functional audit ticket 08 also carries a
@@ -723,7 +739,7 @@ interface ArchiveDocument {
     hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
     that is derived from the dose log, and the importing device has its
     own (CONTEXT: pending, stockProjection.ts). */
-interface ArchiveMedicationStock {
+interface ArchiveMedicationStock extends ArchiveCostFields {
   id: string;
   drug: string;
   quantity: number;

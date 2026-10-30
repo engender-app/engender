@@ -25,7 +25,9 @@ import { foldText } from '../fold';
 import { drugNameKey } from '../regimenEpisode';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource';
 import { LEGACY_ROADMAP_TRACKS, keptTick } from '../roadmap';
-import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
+import type { ArchiveAppointment, ArchiveCostFields, ArchiveHairRemovalSession, ArchiveJournal } from '../archive/payload';
+import { deviceDefaultCurrency, parseLegacyCostText } from '../cost';
+import { appendLegacyCost } from '../sqlite/cost-migration';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
 import { assertChanged, mintUuid, now, rowidWhere } from './support';
@@ -989,6 +991,25 @@ export async function applyHairPhotos({ driver, journal, ts }: Restoring): Promi
   );
 }
 
+/** A costed row's three cost columns from its archive fields; absent (an
+    archive written before functional audit ticket 30) is no cost. */
+function costValues(row: ArchiveCostFields): [number | null, string | null, number] {
+  return [row.costAmount ?? null, row.costCurrency ?? null, row.costRefunded ? 1 : 0];
+}
+
+/** A session's cost columns and note. An archive written before ticket 30
+    carries the free-text `cost` instead, read by the rule version 115 used
+    (cost.ts, cost-migration.ts): a clean parse is the amount, anything else
+    joins the note, so a restore loses no text the migration would have
+    kept. */
+function sessionCostAndNote(session: ArchiveHairRemovalSession): [number | null, string | null, number, string | null] {
+  const note = session.note ?? null;
+  const legacy = session.cost?.trim() ?? '';
+  if (session.costAmount != null || session.costRefunded || !legacy) return [...costValues(session), note];
+  const parsed = parseLegacyCostText(legacy, deviceDefaultCurrency());
+  return parsed ? [parsed.amount, parsed.currency, 0, note] : [null, null, 0, appendLegacyCost(note, session.cost ?? '')];
+}
+
 /* A session is matched and inserted directly by uuid like applySideEffects
    - nothing about one changes once logged, so there is no UPDATE branch to
    write. Its photos are walked in both modes regardless, the same reason
@@ -1003,8 +1024,9 @@ export async function applyHairRemovalSessions({ driver, journal, ts }: Restorin
   for (const session of journal.hairRemovalSessions) {
     if (!sessions.has(session.id)) {
       await driver.run(
-        `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, minutes, cost, provider, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, minutes,
+                                           cost_amount, cost_currency, cost_refunded, note, provider, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           session.id,
           session.epochDay,
@@ -1012,7 +1034,7 @@ export async function applyHairRemovalSessions({ driver, journal, ts }: Restorin
           session.method,
           session.painRating,
           session.minutes ?? null,
-          session.cost,
+          ...sessionCostAndNote(session),
           session.provider,
           ts
         ]
@@ -1056,7 +1078,8 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
   for (const procedure of journal.procedures) {
     if (!procedures.has(procedure.id)) {
       await driver.run(
-        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        `INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived,
+                                cost_amount, cost_currency, cost_refunded, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           procedure.id,
           procedure.name,
@@ -1067,6 +1090,7 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
           procedure.kind ?? 'custom',
           procedure.dilationOptIn ? 1 : 0,
           procedure.archived ? 1 : 0,
+          ...costValues(procedure),
           ts
         ]
       );
@@ -1171,8 +1195,8 @@ async function insertAppointment(driver: SqliteDriver, appointment: ArchiveAppoi
 
   await driver.run(
     `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, referred_epoch_day,
-                              time_of_day, provider_id, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                              time_of_day, provider_id, cost_amount, cost_currency, cost_refunded, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       appointment.id,
       rows[0]?.id ?? null,
@@ -1183,6 +1207,7 @@ async function insertAppointment(driver: SqliteDriver, appointment: ArchiveAppoi
       appointment.referredEpochDay ?? null,
       appointment.epochDay === null ? null : (appointment.time ?? null),
       providers[0]?.id ?? null,
+      ...costValues(appointment),
       ts
     ]
   );
