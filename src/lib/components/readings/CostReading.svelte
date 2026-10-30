@@ -102,8 +102,10 @@
 
           <h3 class="cost-sub">{m.cost_reading_by_area()}</h3>
           <ListCard role={roleAt(activeFlag.roles, CHART_ROLE)}>
-            {#each currency.byArea as area, i (area.source)}
-              <div class:rows-divide={i > 0}>
+            <!-- Every row wrapped the same way: .rows-divide draws the line
+                 between two neighbours that both carry it. -->
+            {#each currency.byArea as area (area.source)}
+              <div class="rows-divide">
                 <ListRow
                   static
                   data-cost-area={area.source}
