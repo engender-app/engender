@@ -26,7 +26,7 @@ interface PhotoSectionOptions<TPhoto extends { id: string }> {
   /** `false` keeps a reviewed shot open after a write that failed. */
   add(photo: NormalizedPhoto): void | boolean | Promise<void | boolean>;
   /** Delete a stored photo by id. */
-  remove(id: string): void | Promise<void>;
+  remove(id: string): unknown;
   /** What the toast says once `remove` lands; null where the removal is
       only from a draft and nothing is deleted until its Save. Omitted,
       "Deleted.". */

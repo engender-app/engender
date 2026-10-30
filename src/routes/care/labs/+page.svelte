@@ -14,6 +14,7 @@
      across the plot now names each reading as the finger passes it. The
      draw's context - the timing figure and the lab - rides on the scrub's
      own label, so it is still the same three facts as before. */
+  import { undoable } from '$lib/stores/deleteUndo';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
@@ -58,7 +59,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -301,7 +302,7 @@
     },
     // The new-unit toast already says the result went in; one toast at a time.
     saved: () => (unitStated ? null : m.saved()),
-    remove: (id) => journal.labs.deleteResult(id),
+    remove: (id) => undoable((j) => j.labs.deleteResult(id)),
     findById: (id) => results.find((result) => result.id === id)
   });
 
@@ -557,8 +558,13 @@
                context line carries .lab-context's own size and colour -
                both classes ListRow's plain title/subtitle strings have no
                room for. -->
+          <!-- Keyed by the analyte the rows belong to, so switching analyte
+               swaps the list in one piece rather than closing every old row
+               while the new ones open beside them; a delete or an Undo
+               inside one analyte still moves its row (functional audit 46). -->
+          {#key results[0]?.analyte}
           {#each [...results].reverse() as r (r.id)}
-            <button
+            <button transition:collapse
               class="kit-row"
               class:is-target-lab={r.id === deepLinkedLabId}
               id={r.id}
@@ -581,6 +587,7 @@
               </span>
             </button>
           {/each}
+          {/key}
         </ListCard>
       {/if}
     {/snippet}

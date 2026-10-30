@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
@@ -12,7 +13,7 @@
   import Field from '$lib/components/kit/Field.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { discloseWidth } from '$lib/motion/reveal';
+  import { collapse, discloseWidth } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
@@ -21,7 +22,7 @@
   let renameTarget = $state<{ id: string; label: string } | null>(null);
 
   const record = recordEditor<{ id: string; label: string }>({
-    remove: (id) => journal.tags.deleteTag(id),
+    remove: (id) => undoable((j) => j.tags.deleteTag(id)),
     findById: (id) => {
       const tg = vocabulary.tagGroups.flatMap((g) => g.tags).find((t) => t.id === id);
       return tg && { id: tg.id, label: tg.label };
@@ -90,7 +91,7 @@
       </div>
       <div class="managed-tags">
         {#each g.tags as tg, i (tg.id)}
-          <div class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
+          <div transition:collapse class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
             <span class="managed-label" data-managed-tag-label={tg.id}>{tg.label}</span>
             {#if tg.hidden}<span class="muted small" transition:discloseWidth>{m.tags_hidden()}</span>{/if}
             <span class="managed-actions">

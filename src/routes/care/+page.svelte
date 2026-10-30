@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
   import { rememberSourceLane, takeSourceLane } from '$lib/navigation/sourceLane';
   import { careEpisodeId } from '$lib/navigation/sourceRecord';
@@ -32,7 +34,7 @@
      anything (PRODUCT.md:109, and labTiming.ts as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
-  import { disclose, maskHeight } from '$lib/motion/reveal';
+  import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, EASE_OUT_SOFT_CSS } from '$lib/motion/tokens';
   import { flushSync, onDestroy } from 'svelte';
   import { deleter } from '$lib/stores/attempt.svelte';
@@ -75,7 +77,6 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { toast } from '$lib/stores/toasts.svelte';
 
   /* Two areas outside the lanes: the rail's own card, and the readings that
      do not fit on one. The rail takes role 0, the only index that is a
@@ -306,14 +307,15 @@
   async function deleteStockEntry() {
     const target = stockDeleteTarget;
     if (!target) return;
-    if (!(await stockRemoving.run(() => journal.stock.deleteEntry(target.id)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await stockRemoving.run(async () => { deletion = await undoable((j) => j.stock.deleteEntry(target.id)); }))) return;
     stockDeleteTarget = null;
     /* The whole sheet goes, rather than swapping the editor for the list
        inside it: that swap resized the open sheet in one frame. The editor
        stays as it was while the sheet slides away; the next opening sets
        its own. */
     stockSheetOpen = false;
-    toast(m.stock_deleted({ drug: target.drug }));
+    offerUndo(deletion!, m.stock_deleted({ drug: target.drug }));
   }
 
   /* The lane a spine mark was tapped from, for one return: written as a
@@ -954,27 +956,29 @@
         <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
           {#each stock as row (row.entry.id)}
             {@const rowRunOut = stockRunOutLabel(row.projection, today)}
-            <ListRow
-              key={row.entry.id}
-              data-stock={row.entry.id}
-              title={row.entry.drug}
-              subtitle={[
-                stockRemainingLabel(row.projection.remaining, row.entry.unit),
-                m.stock_recorded({
-                  date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-                }),
-                rowRunOut.text,
-                stockOpenedWindowLine(row.entry, today),
-                stockSupplyLine(row.entry, today)
-              ]}
-              onclick={() => editStock(stockEditorFromRow(row))}
-            >
-              {#snippet leading()}
-                <span class="kit-row-ico" class:is-warn={rowRunOut.warn}>
-                  <Icon name="package" size={22} />
-                </span>
-              {/snippet}
-            </ListRow>
+            <div class="rows-divide" transition:collapse>
+              <ListRow
+                key={row.entry.id}
+                data-stock={row.entry.id}
+                title={row.entry.drug}
+                subtitle={[
+                  stockRemainingLabel(row.projection.remaining, row.entry.unit),
+                  m.stock_recorded({
+                    date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+                  }),
+                  rowRunOut.text,
+                  stockOpenedWindowLine(row.entry, today),
+                  stockSupplyLine(row.entry, today)
+                ]}
+                onclick={() => editStock(stockEditorFromRow(row))}
+              >
+                {#snippet leading()}
+                  <span class="kit-row-ico" class:is-warn={rowRunOut.warn}>
+                    <Icon name="package" size={22} />
+                  </span>
+                {/snippet}
+              </ListRow>
+            </div>
           {/each}
         </ListCard>
         {#if stockExcludedDoses > 0}

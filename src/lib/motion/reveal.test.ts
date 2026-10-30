@@ -698,6 +698,21 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 0.5)).not.toContain('height:');
   });
 
+  /* FA 46, Trash's last row: the empty state arrived from above while the
+     list it replaced was still closing, its lower edge following the
+     list's down the screen. `after` holds the arrival back until the
+     close is over, at its first frame (clipped to nothing, no room). */
+  it('waits out a closing block when told to, and only on the way in', () => {
+    markScreenArrival(performance.now() - 1000);
+    const arriving = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '0px' });
+    const { css, delay } = collapse(arriving, { after: 380 }, { direction: 'in' });
+    expect(delay).toBe(380);
+    expect(frame(css!, 0)).toContain('clip-path: inset(100px 0 0 0)');
+    expect(frame(css!, 0)).toContain('margin-top: -100px');
+    const leaving = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px' });
+    expect(collapse(leaving, { after: 380 }, { direction: 'out' }).delay ?? 0).toBe(0);
+  });
+
   /* Last-audit UI ticket 41: one notice replacing another in the same spot
      (Reminders' "Could not check" and "Notifications are off"). The arriving
      notice stands behind the leaving one, so the kit's surface-after-surface
@@ -1138,6 +1153,84 @@ describe('tier 3, a box resizing under its own content', () => {
         [100, 240],
         [240, 390]
       ]);
+    } finally {
+      restore();
+    }
+  });
+
+  /* FA 46, Milestones: a milestone deleted with the page at its end. The
+     box was held at 1189px while its content closed to 959px; releasing
+     the hold to measure that let the scroller clamp to the shorter page,
+     and the second travel then held the page open again with the scroll
+     already gone - the screen moved 210px in one frame. */
+  it('keeps the scroll position across the release when it chases a shrink', async () => {
+    stubDocument(false);
+    const { node, calls, setHeight, trigger, finish, restore } = resizingNode(1169);
+    const scroller = { scrollTop: 736, parentElement: null };
+    const style = node.style as unknown as Record<string, string>;
+    const measure = node.getBoundingClientRect.bind(node);
+    // Laid out unheld, the page is 211px shorter and the scroller clamps.
+    node.getBoundingClientRect = () => {
+      const box = measure();
+      if (!style.height && box.height < 1000) scroller.scrollTop = Math.min(scroller.scrollTop, 525);
+      return box;
+    };
+    (node as unknown as { parentElement: unknown }).parentElement = scroller;
+    const animate = node.animate.bind(node);
+    const scrollAtStart: number[] = [];
+    node.animate = ((keyframes: Keyframe[], options?: KeyframeAnimationOptions) => {
+      if (keyframes[0].height !== undefined) scrollAtStart.push(scroller.scrollTop);
+      return animate(keyframes, options);
+    }) as typeof node.animate;
+    try {
+      resize(node);
+      setHeight(1189);
+      trigger();
+      setHeight(959);
+      trigger();
+      await finish();
+      expect(calls).toEqual([
+        [1169, 1189],
+        [1189, 959]
+      ]);
+      expect(scrollAtStart).toEqual([736, 736]);
+      expect(style.height).toBe('1189px');
+    } finally {
+      restore();
+    }
+  });
+
+  /* The same clamp one step earlier: the content shrank in the layout the
+     observer reports from, so the scroller at its end had already given up
+     the difference (Milestones' list closed at the page's end: 91px in one
+     frame). The position it last reported is put back under the hold. */
+  it('puts back a scroll position the shrinking layout clamped before the travel held it', () => {
+    stubDocument(false);
+    let onScroll: ((event: { target: unknown }) => void) | undefined;
+    ((globalThis as Record<string, unknown>).document as Record<string, unknown>).addEventListener = (type: string, listener: typeof onScroll) => {
+      if (type === 'scroll') onScroll = listener;
+    };
+    const { node, calls, setHeight, trigger, restore } = resizingNode(1169);
+    const scroller = { scrollTop: 736, scrollHeight: 1580, clientHeight: 844, parentElement: null };
+    (node as unknown as { parentElement: unknown }).parentElement = scroller;
+    const style = node.style as unknown as Record<string, string>;
+    const animate = node.animate.bind(node);
+    const scrollAtStart: number[] = [];
+    node.animate = ((keyframes: Keyframe[], options?: KeyframeAnimationOptions) => {
+      if (keyframes[0].height !== undefined) scrollAtStart.push(scroller.scrollTop);
+      return animate(keyframes, options);
+    }) as typeof node.animate;
+    try {
+      resize(node);
+      onScroll?.({ target: scroller });
+      // The content closes by 91px and the layout clamps the scroller.
+      setHeight(1078);
+      scroller.scrollHeight = 1489;
+      scroller.scrollTop = 645;
+      trigger();
+      expect(calls).toEqual([[1169, 1078]]);
+      expect(scrollAtStart).toEqual([736]);
+      expect(style.height).toBe('1169px');
     } finally {
       restore();
     }

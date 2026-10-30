@@ -35,12 +35,13 @@
      the actual pressable button and onto a wrapping div
      (appointment-prep's own note on the same conflict), which would break
      the exact contract this picker needs. */
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { onDestroy, tick } from 'svelte';
   import { EASE_OUT_CSS, isReducedMotion, motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { toast } from '$lib/stores/toasts.svelte';
   import { deleter } from '$lib/stores/attempt.svelte';
   import { getLocale } from '$lib/paraglide/runtime';
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
@@ -92,7 +93,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -341,9 +342,10 @@
   async function confirmDeleteBenchmark() {
     const target = deleteTarget;
     if (!target) return;
-    if (!(await removing.run(() => journal.voiceBenchmarks.deleteBenchmark(target)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.voiceBenchmarks.deleteBenchmark(target)); }))) return;
     deleteTarget = null;
-    toast(m.record_deleted(), { kind: 'record-deleted' });
+    offerUndo(deletion!, m.record_deleted());
   }
 
   /** A delta figure as the screen states it: signed, so +35 and -35 are told
@@ -575,7 +577,7 @@
           </p>
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
             {#each anchors as b (b.id)}
-              <div class="kit-row is-split" data-voice-cell={b.id}>
+              <div transition:collapse class="kit-row is-split" data-voice-cell={b.id}>
                 <button
                   type="button"
                   class="kit-row-main"

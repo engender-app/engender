@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { collapse } from '$lib/motion/reveal';
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
   /* A margin note: a visibly later layer under the entry it annotates
      (phase 8 features ticket 07, CONTEXT: "Margin note").
@@ -86,16 +89,17 @@
   async function confirmDelete() {
     if (!deleting) return;
     const id = deleting.id;
-    if (!(await removing.run(() => journal.marginNotes.remove(id)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.marginNotes.remove(id)); }))) return;
     deleting = null;
-    toast(m.record_deleted(), { kind: 'record-deleted' });
+    offerUndo(deletion!, m.record_deleted());
   }
 </script>
 
 {#if notes.length}
   <div class="margin-note-list">
     {#each notes as note (note.id)}
-      <div class="margin-note" data-margin-note={note.id}>
+      <div transition:collapse class="margin-note" data-margin-note={note.id}>
         <button class="margin-note-open" data-margin-note-edit onclick={() => openEdit(note)}>
           <span class="margin-note-date">{fmtDay(note.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           <span class="margin-note-text">{note.text}</span>

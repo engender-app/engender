@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -50,7 +51,7 @@
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -152,7 +153,7 @@
         description
       });
     },
-    remove: (id) => journal.hairProgress.deleteStage(id),
+    remove: (id) => undoable((j) => j.hairProgress.deleteStage(id)),
     findById: (id) => stages.find((s) => s.id === id)
   });
 
@@ -163,7 +164,7 @@
   const hairPhotos = photoSection<HairPhoto>({
     photos: () => photos,
     add: storePhoto,
-    remove: (id) => journal.hairProgress.deletePhoto(id),
+    remove: (id) => undoable((j) => j.hairProgress.deletePhoto(id)),
     reference: () => lastPhotoReference(photos)
   });
 
@@ -259,15 +260,17 @@
       {#snippet rows()}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
           {#each newestStages as s (s.id)}
-            <ListRow
-              key={s.id}
-              data-hair-stage={s.id}
-              icon="comb"
-              title={hairStagingText(s)}
-              subtitle={stageSubtitle(s.epochDay)}
-              chevron={false}
-              onclick={() => stageRecord.openEditor(s)}
-            />
+            <div class="rows-divide" transition:collapse>
+              <ListRow
+                key={s.id}
+                data-hair-stage={s.id}
+                icon="comb"
+                title={hairStagingText(s)}
+                subtitle={stageSubtitle(s.epochDay)}
+                chevron={false}
+                onclick={() => stageRecord.openEditor(s)}
+              />
+            </div>
           {/each}
         </ListCard>
       {/snippet}

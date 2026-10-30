@@ -299,6 +299,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
       // Brings a trashed entry, its photos, recordings and video notes back.
       restoreEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
+      // Delete forever (functional audit 46): the trashed entry and every
+      // row hanging off it, margin notes included, and a debrief link to it
+      // set to null by its foreign key.
+      purgeEntry: ['entry', 'photo', 'voiceRecording', 'videoNote', 'marginNote', 'checklist'],
       setEntryStarred: ['entry']
     },
     reads: {
@@ -1037,7 +1041,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
    a facade of operations for, and the proxy has no other way to tell them
    apart. It knew only `reconcileBuiltIns` by name until ticket 13 added the
    second, which is exactly the shape that forgets the third. */
-export const JOURNAL_WIDE = ['reconcileBuiltIns', 'discardEverything'] as const;
+export const JOURNAL_WIDE = ['reconcileBuiltIns', 'discardEverything', 'undoable'] as const;
 
 type JournalWideOperation = (typeof JOURNAL_WIDE)[number];
 
@@ -1098,7 +1102,26 @@ export function observeWrites(journal: Journal, onWrite: (tables: TableName[]) =
     reconcileBuiltIns: announcing(journal.reconcileBuiltIns.bind(journal), RECONCILE_TABLES, onWrite),
     // Every table, for the same reason an Archive import announces every
     // table: it empties all of them.
-    discardEverything: announcing(journal.discardEverything.bind(journal), [...TABLE_NAMES], onWrite)
+    discardEverything: announcing(journal.discardEverything.bind(journal), [...TABLE_NAMES], onWrite),
+    /* The deletion runs through this same wrapper over its own transaction,
+       so it announces what its operation declares, as an ordinary delete
+       would. An undo writes those tables back, and announces them again. */
+    undoable: async (remove: (journal: Journal) => Promise<unknown>) => {
+      const written = new Set<TableName>();
+      const deletion = await journal.undoable((inner) =>
+        remove(
+          observeWrites(inner, (tables) => {
+            for (const table of tables) written.add(table);
+            onWrite(tables);
+          })
+        )
+      );
+      return {
+        tables: deletion.tables,
+        undo: announcing(() => deletion.undo(), [...written], onWrite),
+        finish: () => deletion.finish()
+      };
+    }
   };
 
   for (const [areaName, area] of Object.entries(journal)) {

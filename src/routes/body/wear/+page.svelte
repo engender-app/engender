@@ -7,6 +7,7 @@
      (shiftStartToDay) - its time-of-day is never re-typed, so a session
      that was started live keeps its real hour even if its day is corrected
      later, and a backfilled one stays anchored at local midnight. */
+  import { undoable } from '$lib/stores/deleteUndo';
   import { dayRangeOptions } from '$lib/components/dayRangeOptions';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -329,7 +330,7 @@
       });
     },
     saved: (draft) => (draft.isRunning ? m.wear_session_stopped() : m.saved()),
-    remove: (id) => journal.wearSessions.deleteSession(id),
+    remove: (id) => undoable((j) => j.wearSessions.deleteSession(id)),
     findById: (id) => sessions.find((s) => s.id === id) ?? (running?.id === id ? running : undefined)
   });
 

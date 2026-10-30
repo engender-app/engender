@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -96,7 +98,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { disclose, resize } from '$lib/motion/reveal';
+  import { collapse, disclose, resize } from '$lib/motion/reveal';
   import Institutions from './Institutions.svelte';
   import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -324,10 +326,11 @@
   const deleteGoal = async () => {
     if (!selectedGoal) return;
     const id = selectedGoal.key;
-    if (!(await removing.run(() => journal.roadmap.deleteCustomGoal(id)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.roadmap.deleteCustomGoal(id)); }))) return;
     confirmingDelete = false;
     closeGoalSheet();
-    toast(m.record_deleted(), { kind: 'record-deleted' });
+    offerUndo(deletion!, m.record_deleted());
   };
 
   const addGoalWrite = writer();
@@ -428,7 +431,7 @@
 
 <!-- A goal the person wrote, in whichever group it sits. -->
 {#snippet customRow(goal: { id: string; track: string; text: string; status: RoadmapGoalStatus })}
-  <div class="kit-row is-split" data-goal={goal.id} data-status={goal.status}>
+  <div transition:collapse class="kit-row is-split" data-goal={goal.id} data-status={goal.status}>
     <button
       type="button"
       class="kit-row-main"

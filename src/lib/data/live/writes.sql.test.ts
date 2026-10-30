@@ -100,7 +100,10 @@ const photo = (seed: string) => ({ full: bytes(`full ${seed}`), thumb: bytes(`th
 /** The Daylio backup parser needs a real zip fixture, so this SQL sweep
     leaves that operation to its dedicated import test. */
 const WRITE_OPT_OUTS: Record<string, string> = {
-  'archive.commitDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for'
+  'archive.commitDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for',
+  undoable:
+    'has no tables of its own: it runs one of the deletes driven above through the same wrapper, ' +
+    'and undoable-delete.test.ts holds its rows table by table'
 };
 
 /** The Daylio backup preview has the same zip fixture requirement. */
@@ -323,6 +326,11 @@ beforeAll(async () => {
   )) as number;
   await drive('entries', 'deleteEntry', () => journal.entries.deleteEntry(secondEntryId));
   await drive('entries', 'restoreEntry', () => journal.entries.restoreEntry(secondEntryId));
+  const purgedEntryId = (await drive('entries', 'upsertEntry', () =>
+    journal.entries.upsertEntry({ epochDay: 20002, mood: 2, attachPhotos: [photo('purged entry')] })
+  )) as number;
+  await drive('entries', 'deleteEntry', () => journal.entries.deleteEntry(purgedEntryId));
+  await drive('entries', 'purgeEntry', () => journal.entries.purgeEntry(purgedEntryId));
 
   // --- entryTemplates -------------------------------------------------
   const template = (await drive('entryTemplates', 'addEntryTemplate', () =>

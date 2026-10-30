@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import { tick } from 'svelte';
   import { travelOnChange } from '$lib/motion/reorder.svelte';
@@ -201,7 +202,7 @@
     },
     async remove(id) {
       if (selectedId === id) selectedId = null;
-      await journal.procedures.deleteProcedure(id);
+      return undoable((j) => j.procedures.deleteProcedure(id));
     },
     findById: (id) => procedures.find((p) => p.id === id)
   });
@@ -236,14 +237,14 @@
   const recoveryPhotos = photoSection<ProcedurePhoto>({
     photos: () => photos,
     add: storePhoto,
-    remove: (id) => journal.procedures.deletePhoto(id),
+    remove: (id) => undoable((j) => j.procedures.deletePhoto(id)),
     reference: () => lastPhotoReference(photos)
   });
 
   /* A consult date asks before it goes and says that it went
      (after-release 07); it used to vanish on one tap. */
   const consultRecord = recordEditor<ProcedureConsult>({
-    remove: (id) => journal.procedures.deleteConsult(id),
+    remove: (id) => undoable((j) => j.procedures.deleteConsult(id)),
     deleted: () => m.surgery_consult_deleted(),
     findById: (id) => selected?.consults.find((consult) => consult.id === id)
   });
@@ -251,7 +252,7 @@
   let itemSheet = $state(false);
   let itemText = $state('');
   const itemRecord = recordEditor<ChecklistItem>({
-    remove: (id) => journal.checklists.deleteItem(id),
+    remove: (id) => undoable((j) => j.checklists.deleteItem(id)),
     findById: (id) => checklistItems.find((i) => i.id === id)
   });
 
@@ -478,7 +479,7 @@
           <div style="margin-bottom:var(--space-3)">
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
               {#each checklistItems as item (item.id)}
-                <div class="kit-row is-split" data-procedure-item={item.id}>
+                <div transition:collapse class="kit-row is-split" data-procedure-item={item.id}>
                   <button
                     class="kit-row-main"
                     role="checkbox"

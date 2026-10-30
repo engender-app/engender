@@ -760,10 +760,18 @@ function sharesItsLine(node: Element): boolean {
  *
  * `skip` is the same escape `disclose` documents, for the caller that can see
  * a SvelteKit navigation and this module cannot.
+ *
+ * `after` holds a column arrival back by that many milliseconds, for a block
+ * that replaces another closing in the same place. Arriving from above, the
+ * new block's lower edge follows the closing one's down the screen, so the
+ * two travel at once and the empty state read as sliding down over a list
+ * still closing (FA 46, Trash's last row). Held back, the old block is gone
+ * before the new one starts; until then it is clipped to nothing and takes
+ * no room, which is its first frame anyway.
  */
 export function collapse(
   node: Element,
-  params?: { skip?: boolean },
+  params?: { skip?: boolean; after?: number },
   options?: { direction?: 'in' | 'out' | 'both' }
 ): TransitionConfig {
   /* Every caller reaches this through `transition:`, which is bidirectional,
@@ -834,7 +842,7 @@ export function collapse(
        leaving, it gives its height back from the bottom up, which is
        `disclose` run backwards and the closing Alicja signed off. */
     if (options?.direction === 'in' && node.getBoundingClientRect().height <= FROM_ABOVE_MAX) {
-      return arrivesFromAbove(node);
+      return { ...arrivesFromAbove(node), delay: params?.after ?? 0 };
     }
     /* A tall panel arriving opens in place with no fade; only a close fades
        its edges out. */
@@ -1101,8 +1109,54 @@ export function crossfade(
  * rather than backward from a stale `lastHeight`, is what keeps the chain
  * moving the one direction the content actually went.
  */
+/** Every scrolled ancestor of `node` with its scroll position, so a
+    layout that briefly shortens the page can be undone before it paints. */
+function scrollPositionsAbove(node: HTMLElement): Array<[Element, number]> {
+  const found: Array<[Element, number]> = [];
+  for (let el = node.parentElement; el; el = el.parentElement) {
+    if (el.scrollTop > 0) found.push([el, el.scrollTop]);
+  }
+  return found;
+}
+
+/* The last scroll position each scroller reported, read before a layout
+   clamps it. A scroll event fires in the frame after the scroll it reports,
+   so when a box's observer runs, the position recorded here is still the one
+   from before the layout that shortened the page. One listener for every
+   `resize`, installed by the first. */
+const lastScrollTop = new WeakMap<Element, number>();
+let watchingScrolls = false;
+function watchScrolls() {
+  if (watchingScrolls || typeof document === 'undefined' || typeof document.addEventListener !== 'function') return;
+  watchingScrolls = true;
+  document.addEventListener('scroll', (event) => {
+    const el = (event.target === document ? document.scrollingElement : event.target) as Element | null;
+    if (typeof el?.scrollTop === 'number') lastScrollTop.set(el, el.scrollTop);
+  }, { capture: true, passive: true });
+}
+
+/** Scrolled ancestors of `node` sitting at their end, shorter than the
+    position they last reported: clamped by the layout that just shrank
+    `node`, with the position to put back. */
+function scrollPositionsClampedAbove(node: HTMLElement): Array<[Element, number]> {
+  const found: Array<[Element, number]> = [];
+  for (let el = node.parentElement; el; el = el.parentElement) {
+    const before = lastScrollTop.get(el);
+    if (before === undefined || before <= el.scrollTop + 0.5) continue;
+    if (el.scrollTop >= el.scrollHeight - el.clientHeight - 1) found.push([el, before]);
+  }
+  return found;
+}
+
+function restoreScrollPositions(positions: Array<[Element, number]>) {
+  for (const [el, top] of positions) {
+    if (el.scrollTop !== top) el.scrollTop = top;
+  }
+}
+
 export const resize: Action<HTMLElement, unknown> = (node) => {
   if (isReducedMotion() || typeof ResizeObserver === 'undefined') return;
+  watchScrolls();
 
   let lastHeight = node.getBoundingClientRect().height;
   let hidden = !isDoorActive(node);
@@ -1142,20 +1196,40 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     return Math.min(height, Math.max(0, innerHeight - top));
   };
 
-  const animateTo = (oldHeight: number, newHeight: number) => {
-    const from = onScreen(oldHeight);
+  /* The box held at a height, and what its own style said before the
+     hold, so a hold taken again before a travel (to put a scroll position
+     back, below) is never mistaken for the resting value. */
+  let holding = false;
+  let restoreOverflow = '';
+  let restoreHeight = '';
+  const hold = (height: number) => {
+    if (!holding) {
+      restoreOverflow = node.style.overflow;
+      restoreHeight = node.style.height;
+      holding = true;
+    }
+    node.style.overflow = 'clip';
+    node.style.height = `${height}px`;
+  };
+  const release = () => {
+    if (!holding) return;
+    node.style.height = restoreHeight;
+    node.style.overflow = restoreOverflow;
+    holding = false;
+  };
+
+  const animateTo = (oldHeight: number, newHeight: number, heldAt?: number) => {
+    const from = heldAt ?? onScreen(oldHeight);
     const to = onScreen(newHeight);
     if (Math.abs(to - from) < 1) {
+      release();
       lastHeight = newHeight;
       return;
     }
     animating = true;
-    const restoreOverflow = node.style.overflow;
-    const restoreHeight = node.style.height;
-    node.style.overflow = 'clip';
     // Android can paint before a pending Web Animation owns the height.
     // Its underlying box keeps the previous height until the handover.
-    node.style.height = `${from}px`;
+    hold(from);
     const duration = readRevealDuration('--dur-med');
     current = node.animate(
       [{ height: `${from}px` }, { height: `${to}px` }],
@@ -1183,9 +1257,19 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
         // quietly is what stops the two fighting over it.
       })
       .finally(() => {
-        node.style.height = restoreHeight;
+        /* Releasing the hold to measure the content lays the box out at
+           its real height, and a scroller whose end that box sits at
+           clamps its scroll position to the shorter extent in that same
+           layout. When the content shrank mid-travel, the second travel
+           below then held the extent open again, but the scroll position
+           had already gone: on Milestones, deleting a milestone with the
+           page at its end moved the whole screen 210px in one frame at
+           340ms (FA 46). So every scroll position above the box is read
+           before the release and put back once the hold is on again, and
+           the scroll then travels with the height frame by frame. */
+        const scrolled = scrollPositionsAbove(node);
+        release();
         current?.cancel();
-        node.style.overflow = restoreOverflow;
         animating = false;
         current = undefined;
         if (destroyed) return;
@@ -1202,7 +1286,12 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
         const settled = node.getBoundingClientRect().height;
         if (hidden) { hidden = false; lastHeight = settled; return; }
         if (Math.abs(settled - newHeight) >= 1) {
-          animateTo(newHeight, settled);
+          // Held again at the height the box was showing, then the scroll
+          // positions back, then the travel from there: measured against
+          // the restored scroll, so the far end is the one on screen.
+          hold(to);
+          restoreScrollPositions(scrolled);
+          animateTo(newHeight, settled, to);
         } else {
           lastHeight = settled;
         }
@@ -1231,6 +1320,20 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     // run a 240ms transition over nothing to look at.
     if (Math.abs(newHeight - oldHeight) < 1) return;
 
+    /* The same clamp, one step earlier: the content shrank in the layout
+       this observer reports from, so a scroller whose end the box sits at
+       has already given up the difference before the travel holds the old
+       height back. Closing Milestones' list at the page's end moved the
+       screen 91px in that frame. The scroll position from before that
+       layout is put back under the held height, and the travel from there
+       measured against it. */
+    if (newHeight < oldHeight) {
+      const clamped = scrollPositionsClampedAbove(node);
+      if (clamped.length) {
+        hold(oldHeight);
+        restoreScrollPositions(clamped);
+      }
+    }
     animateTo(oldHeight, newHeight);
   };
   const observer = new ResizeObserver(changed);

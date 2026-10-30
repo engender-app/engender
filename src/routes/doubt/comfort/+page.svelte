@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* The comfort list (phase 6 ticket 14, CONTEXT: "Comfort list"), lifted
      out of Safe space by phase 10 redesign ticket 47.
@@ -28,7 +29,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
   import { motionDuration } from '$lib/motion/tokens';
   import { ListDrag, measureTops, travelFrom } from '$lib/motion/reorder.svelte';
 
@@ -60,7 +61,7 @@
       if (draft.id) await journal.comfortItems.editItem(draft.id, text);
       else await journal.comfortItems.addItem(text);
     },
-    remove: (id) => journal.comfortItems.deleteItem(id),
+    remove: (id) => undoable((j) => j.comfortItems.deleteItem(id)),
     findById: (id) => comfortItems.find((item) => item.id === id)
   });
 
@@ -156,7 +157,7 @@
                  one row: the main half and its text never change, and only
                  the trailing end does - the chevron closes as the handle
                  opens beside it, so nothing is redrawn and nothing cuts. -->
-            <div
+            <div transition:collapse
               class="kit-row is-split"
               data-list-row={item.id}
               data-comfort-item={item.id}

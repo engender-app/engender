@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
   import { SvelteSet } from 'svelte/reactivity';
   import { page } from '$app/state';
@@ -479,8 +481,9 @@
     const target = pauseDeleteTarget;
     if (!target) return;
     pauseDeleteTarget = null;
-    if (!await write('pause', () => journal.doses.deletePause(target.id), m.regimen_pause_delete_failed())) return;
-    toast(m.regimen_pause_deleted());
+    let deletion: UndoableDelete | undefined;
+    if (!await write('pause', async () => { deletion = await undoable((j) => j.doses.deletePause(target.id)); }, m.regimen_pause_delete_failed())) return;
+    offerUndo(deletion!, m.regimen_pause_deleted());
   }
 
   /* Hiding is the episode's only removal (phase 4 ticket 01: hide, never

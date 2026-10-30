@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { collapse } from '$lib/motion/reveal';
   /* Sealed practice takes, read back (phase 8 features ticket 10).
 
      A take reuses the time-capsule letter's own seal mechanics rather than
@@ -22,6 +23,7 @@
      The distinction from a benchmark's p10-p90 span is written under the
      list rather than assumed, because a "fix" that makes one match the
      other would be wrong in both directions (schema.ts's own note). */
+  import { undoable } from '$lib/stores/deleteUndo';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -49,7 +51,7 @@
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
   const record = recordEditor<VoicePracticeTake>({
-    remove: (id) => journal.voicePracticeTakes.deleteTake(id),
+    remove: (id) => undoable((j) => j.voicePracticeTakes.deleteTake(id)),
     findById: (id) => takes.find((take) => take.id === id)
   });
 </script>
@@ -62,38 +64,40 @@
         {#each takes as take (take.id)}
           {@const sealedUntilEpochDay = take.epochDay + 1}
           {@const sealed = isSealedUntil(sealedUntilEpochDay, today)}
-          {#snippet takeDisc()}
-            {#if sealed}
-              <span class="kit-row-ico"><Icon name="lock" size={20} /></span>
-            {:else if take.feltSense !== null}
-              <MoodFace step={take.feltSense} size={36} />
-            {:else}
-              <span class="kit-row-ico"><Icon name="mic" size={20} /></span>
-            {/if}
-          {/snippet}
-          <ListRow
-            key={take.id}
-            data-practice-take={take.id}
-            leading={takeDisc}
-            title={sealed ? m.letters_sealed_title() : dayLabel(take.epochDay)}
-            subtitle={sealed
-              ? m.letters_sealed_until({ date: dayLabel(sealedUntilEpochDay) })
-              : [
-                  m.vb_practice_take_figures({
-                    median: String(Math.round(take.medianHz)),
-                    low: String(Math.round(take.minHz)),
-                    high: String(Math.round(take.maxHz)),
-                    range: String(Math.round(take.maxHz - take.minHz))
-                  }),
-                  take.feltSense !== null ? moodName(take.feltSense) : undefined
-                ]}
-            chevron={false}
-            action={{
-              icon: 'trash',
-              label: m.vb_practice_delete_aria({ date: dayLabel(take.epochDay) }),
-              onclick: () => record.askToDelete(take)
-            }}
-          />
+          <div class="rows-divide" transition:collapse>
+            {#snippet takeDisc()}
+              {#if sealed}
+                <span class="kit-row-ico"><Icon name="lock" size={20} /></span>
+              {:else if take.feltSense !== null}
+                <MoodFace step={take.feltSense} size={36} />
+              {:else}
+                <span class="kit-row-ico"><Icon name="mic" size={20} /></span>
+              {/if}
+            {/snippet}
+            <ListRow
+              key={take.id}
+              data-practice-take={take.id}
+              leading={takeDisc}
+              title={sealed ? m.letters_sealed_title() : dayLabel(take.epochDay)}
+              subtitle={sealed
+                ? m.letters_sealed_until({ date: dayLabel(sealedUntilEpochDay) })
+                : [
+                    m.vb_practice_take_figures({
+                      median: String(Math.round(take.medianHz)),
+                      low: String(Math.round(take.minHz)),
+                      high: String(Math.round(take.maxHz)),
+                      range: String(Math.round(take.maxHz - take.minHz))
+                    }),
+                    take.feltSense !== null ? moodName(take.feltSense) : undefined
+                  ]}
+              chevron={false}
+              action={{
+                icon: 'trash',
+                label: m.vb_practice_delete_aria({ date: dayLabel(take.epochDay) }),
+                onclick: () => record.askToDelete(take)
+              }}
+            />
+          </div>
         {/each}
       </ListCard>
       <p class="muted small vpt-note">{m.vb_practice_range_note()}</p>

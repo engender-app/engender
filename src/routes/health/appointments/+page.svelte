@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
   import { untrack } from 'svelte';
   import type { TransitionConfig } from 'svelte/transition';
@@ -381,7 +383,7 @@
         providerId: draft.providerId
       });
     },
-    remove: (id) => journal.appointments.deleteAppointment(id),
+    remove: (id) => undoable((j) => j.appointments.deleteAppointment(id)),
     findById: (id) =>
       appointments.find((appointment) => appointment.id === id) ?? waiting.find((appointment) => appointment.id === id)
   });
@@ -407,8 +409,15 @@
     newUpdateText = '';
   }
   const updateDelete = rowWriter();
-  function deleteUpdate(update: AppointmentStatusUpdate) {
-    updateDelete(update.id, () => journal.appointments.deleteStatusUpdate(update.id), m.write_failed());
+  /* One tap, no confirmation: the toast's Undo is the way back (functional
+     audit ticket 46). */
+  async function deleteUpdate(update: AppointmentStatusUpdate) {
+    let deletion: UndoableDelete | undefined;
+    const write = async () => {
+      deletion = await undoable((j) => j.appointments.deleteStatusUpdate(update.id));
+    };
+    if (!(await updateDelete(update.id, write, m.write_failed()))) return;
+    offerUndo(deletion!, m.record_deleted());
   }
   // A freshly opened editor starts its update field empty, dated today.
   let editingId = $derived(record.editor ? (record.editor.id ?? '') : null);
@@ -422,7 +431,7 @@
      confirmation for. Separate from the appointment's above because they
      delete different records and carry different confirmations. */
   const prepRecord = recordEditor<ChecklistItem>({
-    remove: (id) => journal.checklists.deleteItem(id),
+    remove: (id) => undoable((j) => j.checklists.deleteItem(id)),
     findById: (id) => items.find((item) => item.id === id)
   });
 
@@ -464,7 +473,7 @@
       });
       if (attachNewProvider && !draft.id && record.editor) record.editor.providerId = id;
     },
-    remove: (id) => journal.appointments.deleteProvider(id),
+    remove: (id) => undoable((j) => j.appointments.deleteProvider(id)),
     findById: (id) => providersQuery.rows.find((provider) => provider.id === id)
   });
 

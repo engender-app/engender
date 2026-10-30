@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* When you first noticed each change, on the surface kit (phase 5 UX
      ticket 25).
@@ -77,7 +78,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -270,7 +271,7 @@
         resolvedEpochDay: epochDayFromDateInputValue(draft.resolved)
       });
     },
-    remove: (id) => journal.sideEffects.deleteSideEffect(id),
+    remove: (id) => undoable((j) => j.sideEffects.deleteSideEffect(id)),
     findById: (id) => effects.find((effect) => effect.id === id)
   });
 
@@ -606,15 +607,17 @@
             {#each [...effects].reverse() as effect (effect.id)}
               {@const severity = severityName(effect.severity)}
               {@const day = sideEffectSpan(effect)}
-              <ListRow
-                key={effect.id}
-                data-side-effect={effect.id}
-                icon="zap"
-                title={effect.name}
-                subtitle={severity ? `${day} · ${severity}` : day}
-                chevron={false}
-                onclick={() => record.openEditor(effect)}
-              />
+              <div class="rows-divide" transition:collapse>
+                <ListRow
+                  key={effect.id}
+                  data-side-effect={effect.id}
+                  icon="zap"
+                  title={effect.name}
+                  subtitle={severity ? `${day} · ${severity}` : day}
+                  chevron={false}
+                  onclick={() => record.openEditor(effect)}
+                />
+              </div>
             {/each}
           </ListCard>
         {/snippet}
@@ -641,7 +644,7 @@
                they name nothing to press, and routing them through ListRow
                would add a tab stop and a wash to text that does nothing.
                The trailing row below is the way in. -->
-          <div class="kit-row is-static" data-cycle-event={event.id}>
+          <div transition:collapse class="kit-row is-static" data-cycle-event={event.id}>
             <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
             <span class="kit-row-text">
               <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>

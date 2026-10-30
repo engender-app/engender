@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { collapse } from '$lib/motion/reveal';
   /* Tryouts, on the surface kit (phase 5 UX ticket 25), rebuilt by phase 10
      redesign ticket 53.
 
@@ -21,6 +22,7 @@
      Appointments is the worked example this follows - the same records
      split by the one fact that changes which of them you want, with a
      heading over each half. */
+  import { undoable } from '$lib/stores/deleteUndo';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
@@ -96,7 +98,7 @@
     `${tryoutKindName(t.kind)} · ${m.tryout_range({ start: dayLabel(t.startEpochDay), end: dayLabel(t.endEpochDay ?? t.startEpochDay) })} · ${m.tryout_ran_days({ n: tryoutReading(t, [], today).dayCount })}`;
 
   const record = recordEditor<Tryout>({
-    remove: (id) => journal.tryouts.deleteTryout(id),
+    remove: (id) => undoable((j) => j.tryouts.deleteTryout(id)),
     findById: (id) => tryouts.find((t) => t.id === id)
   });
 </script>
@@ -115,12 +117,14 @@
         <div class="screen-part" data-running>
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.running)}>
             {#each running as t (t.id)}
-              <TryoutCard
-                tryout={t}
-                entries={feltByTryout.get(t.id) ?? []}
-                {today}
-                ondelete={() => record.askToDelete(t)}
-              />
+              <div transition:collapse>
+                <TryoutCard
+                  tryout={t}
+                  entries={feltByTryout.get(t.id) ?? []}
+                  {today}
+                  ondelete={() => record.askToDelete(t)}
+                />
+              </div>
             {/each}
           </ListCard>
         </div>
@@ -130,15 +134,17 @@
         <div class="screen-part" data-ended>
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.ended)}>
             {#each ended as t (t.id)}
-              <ListRow
-                key={t.id}
-                data-tryout={t.id}
-                icon="tag"
-                title={t.label}
-                subtitle={endedSubtitle(t)}
-                href="/transition/tryouts/{t.id}"
-                action={{ icon: 'trash', label: m.tryout_delete_sheet(), onclick: () => record.askToDelete(t) }}
-              />
+              <div transition:collapse>
+                <ListRow
+                  key={t.id}
+                  data-tryout={t.id}
+                  icon="tag"
+                  title={t.label}
+                  subtitle={endedSubtitle(t)}
+                  href="/transition/tryouts/{t.id}"
+                  action={{ icon: 'trash', label: m.tryout_delete_sheet(), onclick: () => record.askToDelete(t) }}
+                />
+              </div>
             {/each}
           </ListCard>
         </div>

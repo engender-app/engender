@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { collapse } from '$lib/motion/reveal';
+  import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* Naming the person's own eras (phase 6 ticket 01, ADR-0049, CONTEXT:
      "Era"): list, add, rename, move either bound, delete.
@@ -103,7 +105,7 @@
       if (candidate === null || eraConflict(eras, candidate)) return false;
       await journal.eras.upsertEra(candidate);
     },
-    remove: (id) => journal.eras.deleteEra(id),
+    remove: (id) => undoable((j) => j.eras.deleteEra(id)),
     findById: (id) => eras.find((era) => era.id === id)
   });
 
@@ -213,15 +215,17 @@
     {#snippet rows(list)}
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each list as era (era.id)}
-          <ListRow
-            key={era.id}
-            data-era={era.id}
-            icon="columns"
-            title={era.name}
-            subtitle={spanText(era)}
-            chevron={false}
-            onclick={() => record.openEditor(era)}
-          />
+          <div class="rows-divide" transition:collapse>
+            <ListRow
+              key={era.id}
+              data-era={era.id}
+              icon="columns"
+              title={era.name}
+              subtitle={spanText(era)}
+              chevron={false}
+              onclick={() => record.openEditor(era)}
+            />
+          </div>
         {/each}
       </ListCard>
     {/snippet}
