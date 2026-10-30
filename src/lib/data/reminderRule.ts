@@ -82,6 +82,34 @@ export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
   return todayAt > now ? todayAt : occurrenceOn(today + 1, rule.time);
 }
 
+/** The latest moment the rule fired at or before `at`, or null when it had
+    not fired yet. Which firing a Taken or Skip tap answers (functional
+    audit ticket 20): the tap can land after midnight, after quiet hours
+    held the alarm, or days later, and the dose belongs to the occurrence's
+    own day. JavaScript only - the alarm side never needs to look back. */
+export function previousOccurrence(rule: ReminderRule, at: Date): Date | null {
+  if (rule.recurrence === null) {
+    if (rule.epochDay == null) throw new Error('one-off reminder has no epochDay');
+    const once = occurrenceOn(rule.epochDay, rule.time);
+    return once <= at ? once : null;
+  }
+
+  const today = epochDayFromLocalDate(at);
+
+  if (rule.recurrence === 'EVERY_N_DAYS') {
+    if (rule.interval == null || rule.anchorEpochDay == null) {
+      throw new Error('EVERY_N_DAYS reminder has no interval or anchor');
+    }
+    if (today < rule.anchorEpochDay) return null;
+    let day = rule.anchorEpochDay + Math.floor((today - rule.anchorEpochDay) / rule.interval) * rule.interval;
+    if (occurrenceOn(day, rule.time) > at) day -= rule.interval;
+    return day < rule.anchorEpochDay ? null : occurrenceOn(day, rule.time);
+  }
+
+  const todayAt = occurrenceOn(today, rule.time);
+  return todayAt <= at ? todayAt : occurrenceOn(today - 1, rule.time);
+}
+
 /* The editor's own vocabulary (F25). The segmented control offers four
    options where the stored rule has three shapes: a one-off, DAILY, and
    anchored EVERY_N_DAYS split into the two intervals worth a button. The

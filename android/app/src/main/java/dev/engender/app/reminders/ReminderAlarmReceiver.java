@@ -19,6 +19,7 @@ import dev.engender.app.launch.AppLaunch;
 import org.json.JSONObject;
 
 import java.time.ZonedDateTime;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -43,6 +44,10 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             }
             if (ReminderScheduler.KIND_CHECK_IN.equals(kind)) {
                 handleCheckIn(context, payload);
+                return;
+            }
+            if (ReminderScheduler.KIND_DOSE_ACTION.equals(kind)) {
+                handleDoseAction(context, payload, intent);
             }
         }
     }
@@ -73,6 +78,59 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         ReminderScheduler.scheduleCheckIn(payload, now, scheduleAlarm);
     }
 
+    /** Where tapping the notification lands, once the app is unlocked. A
+        medication reminder opens its drug's dose log with the add form open
+        (functional audit ticket 20); the route carries the reminder's id
+        only, and the app looks the drug up. Any other reminder opens its
+        editor. */
+    static String routeFor(JSONObject reminder) {
+        String id = reminder.optString("id", "");
+        if (isDoseReminder(reminder) && !id.isBlank()) return "/care/doses?add=1&reminder=" + id;
+        return "/settings/reminders" + (id.isBlank() ? "" : "/" + id);
+    }
+
+    static boolean isDoseReminder(JSONObject reminder) {
+        return !ReminderScheduler.drugOf(reminder).isEmpty();
+    }
+
+    /** Taken and Skip, kept until the journal is open (ReminderScheduler.
+        recordDoseAction). The notification is then replaced by a quiet one
+        that says where the answer went, and that goes by itself. */
+    private void handleDoseAction(Context context, JSONObject payload, Intent intent) {
+        String reminderId = intent.getStringExtra(ReminderScheduler.EXTRA_REMINDER_ID);
+        String action = intent.getStringExtra(ReminderScheduler.EXTRA_DOSE_ACTION);
+        long postedAt = intent.getLongExtra(ReminderScheduler.EXTRA_POSTED_AT, System.currentTimeMillis());
+        if (reminderId == null || reminderId.isBlank()) return;
+
+        boolean kept;
+        try {
+            kept = ReminderScheduler.recordDoseAction(context, UUID.randomUUID().toString(), reminderId, action,
+                postedAt, System.currentTimeMillis(), intent.getStringExtra(ReminderScheduler.EXTRA_RULE));
+        } catch (Exception failedStore) {
+            kept = false;
+        }
+        NotificationManagerCompat manager = NotificationManagerCompat.from(context);
+        JSONObject reminder = ReminderScheduler.findReminder(payload, reminderId);
+        if (!kept || reminder == null || !notificationsAllowed(context)) {
+            manager.cancel("reminder:" + reminderId, 7000);
+            return;
+        }
+        JSONObject texts = payload.optJSONObject("texts");
+        Notification noted = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
+            .setSmallIcon(DisguiseAlias.isDisguised(context)
+                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_stat_mark)
+            .setContentTitle(resolveNotificationTitle(payload, reminder))
+            .setContentText(texts != null ? texts.optString("doseNoted", "Noted") : "Noted")
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setAutoCancel(true)
+            .setTimeoutAfter(8000)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setContentIntent(AppLaunch.openAppIntent(context, routeFor(reminder), "reminder:" + reminderId, 1))
+            .build();
+        manager.notify("reminder:" + reminderId, 7000, noted);
+    }
+
     static void postReminderNotification(Context context, JSONObject payload, JSONObject reminder) {
         if (!notificationsAllowed(context)) return;
 
@@ -80,8 +138,8 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         String id = reminder.optString("id", "");
         String time = reminder.optString("time", "");
 
-        String route = "/settings/reminders" + (id.isBlank() ? "" : "/" + id);
-        Notification notification = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
+        String route = routeFor(reminder);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
             .setSmallIcon(DisguiseAlias.isDisguised(context)
                     ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_stat_mark)
             .setContentTitle(title)
@@ -102,10 +160,23 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
                This call is kept anyway, for the phones that do have
                concealment configured. AutoExportPlugin makes the same call. */
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1))
-            .build();
+            .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1));
 
-        NotificationManagerCompat.from(context).notify("reminder:" + id, 7000, notification);
+        if (isDoseReminder(reminder) && !id.isBlank()) {
+            /* Under disguise the first button says Done rather than Taken:
+               a notification is one of the outside surfaces disguise still
+               covers (functional audit spec, Disguise). */
+            JSONObject texts = payload.optJSONObject("texts");
+            String taken = texts == null ? "Taken"
+                : texts.optString(DisguiseAlias.isDisguised(context) ? "doseDone" : "doseTaken", "Taken");
+            String skip = texts == null ? "Skip" : texts.optString("doseSkip", "Skip");
+            long postedAt = System.currentTimeMillis();
+            String rule = ReminderScheduler.ruleOf(reminder);
+            builder.addAction(0, taken, ReminderScheduler.doseActionIntent(context, id, "taken", postedAt, rule));
+            builder.addAction(0, skip, ReminderScheduler.doseActionIntent(context, id, "skipped", postedAt, rule));
+        }
+
+        NotificationManagerCompat.from(context).notify("reminder:" + id, 7000, builder.build());
     }
 
     private void postCheckInNotification(Context context, JSONObject payload, int epochDay) {

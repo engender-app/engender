@@ -12,7 +12,11 @@
       "channelReminders": "Reminders",
       "channelCheckIn": "Check-in",
       "checkInTitle": "Daily check-in",
-      "checkInBody": "How are you today?"
+      "checkInBody": "How are you today?",
+      "doseTaken": "Taken",
+      "doseDone": "Done",
+      "doseSkip": "Skip",
+      "doseNoted": "Noted"
     }
   },
   "expected": {
@@ -27,7 +31,11 @@
       "channelReminders": "Reminders",
       "channelCheckIn": "Check-in",
       "checkInTitle": "Daily check-in",
-      "checkInBody": "How are you today?"
+      "checkInBody": "How are you today?",
+      "doseTaken": "Taken",
+      "doseDone": "Done",
+      "doseSkip": "Skip",
+      "doseNoted": "Noted"
     }
   }
 }

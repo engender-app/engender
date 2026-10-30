@@ -1046,6 +1046,22 @@ test('a reminder carries no type, in the row or in the table', async () => {
   assert.ok(!columns.includes('type'));
 });
 
+/* Functional audit ticket 20: a medication reminder names its drug, which
+   is what sends its notification to that drug's dose log and gives it
+   Taken and Skip. Every other reminder stores none. */
+test('a medication reminder keeps its drug, and a save that names none clears it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const rule = { time: '08:00', enabled: true, recurrence: 'DAILY' as const, interval: null, anchorEpochDay: null, epochDay: null };
+  const id = await journal.reminders.upsertReminder({ ...rule, title: 'Estradiol', drug: 'Estradiol valerate' });
+  const plain = await journal.reminders.upsertReminder({ ...rule, title: 'Water the plants' });
+  const read = async () => new Map((await journal.reminders.getReminders()).map((r) => [r.id, r.drug]));
+  assert.equal((await read()).get(id), 'Estradiol valerate');
+  assert.equal((await read()).get(plain), null);
+
+  await journal.reminders.upsertReminder({ ...rule, id, title: 'Estradiol' });
+  assert.equal((await read()).get(id), null);
+});
+
 test("the seed's old vocabulary is rejected before it reaches the schema", async () => {
   const { journal } = await journalWithBuiltIns();
   const base = { title: 'x', time: '20:00', enabled: true };

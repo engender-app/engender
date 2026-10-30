@@ -12,10 +12,12 @@ import {
   assertValidRule,
   choiceFromRule,
   nextOccurrence,
+  previousOccurrence,
   ruleFromChoice,
   type ReminderRule
 } from './reminderRule.ts';
 import fixture from '../android/fixtures/reminder-rule.json';
+import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay.ts';
 
 interface Case {
   name: string;
@@ -181,4 +183,32 @@ it('rejects the pre-rc WEEKLY recurrence like any word it does not know', () => 
     time: '20:00', recurrence: 'WEEKLY', interval: null, anchorEpochDay: null, epochDay: null
   } as unknown as ReminderRule;
   expect(() => assertValidRule(rule)).toThrow('invalid reminder rule: WEEKLY');
+});
+
+/* Functional audit ticket 20: which firing a Taken or Skip tap answers. The
+   tap can come long after the alarm, after midnight or after quiet hours
+   held it, and the slot it fills is the occurrence's own day. */
+describe('the occurrence a moment answers to', () => {
+  const none = { interval: null, anchorEpochDay: null, epochDay: null };
+  const local = (day: number, time: string) => new Date(timestampAtLocalTime(day, time));
+  const dayOf = (date: Date | null) => (date === null ? null : epochDayFromLocalDate(date));
+
+  it('is today once the time has come, and yesterday before it', () => {
+    const rule: ReminderRule = { ...none, time: '20:00', recurrence: 'DAILY' };
+    expect(previousOccurrence(rule, local(20400, '20:00'))?.getTime()).toBe(local(20400, '20:00').getTime());
+    expect(dayOf(previousOccurrence(rule, local(20401, '07:00')))).toBe(20400);
+  });
+
+  it('steps back along an every-N-days progression, and has none before its anchor', () => {
+    const rule: ReminderRule = { ...none, time: '09:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: 20400 };
+    expect(dayOf(previousOccurrence(rule, local(20404, '10:00')))).toBe(20403);
+    expect(dayOf(previousOccurrence(rule, local(20403, '08:00')))).toBe(20400);
+    expect(previousOccurrence(rule, local(20400, '08:59'))).toBeNull();
+  });
+
+  it('is a one-off\'s own day once it has gone by', () => {
+    const rule: ReminderRule = { ...none, time: '09:00', recurrence: null, epochDay: 20400 };
+    expect(dayOf(previousOccurrence(rule, local(20402, '12:00')))).toBe(20400);
+    expect(previousOccurrence(rule, local(20400, '08:00'))).toBeNull();
+  });
 });

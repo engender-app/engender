@@ -219,6 +219,16 @@ export async function seedCompleteArchiveJournal(
     epochDay: null,
     enabled: true
   });
+  await journal.reminders.upsertReminder({
+    title: 'Estradiol',
+    time: '09:00',
+    recurrence: 'DAILY',
+    interval: null,
+    anchorEpochDay: null,
+    epochDay: null,
+    enabled: true,
+    drug: 'Estradiol valerate'
+  });
   await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
   await journal.letters.addLetter({ epochDay: 20000, text: 'read this in a year', unlockEpochDay: 20365 });
   await journal.voicePracticeTakes.addTake({ epochDay: 20000, minHz: 150, maxHz: 220, medianHz: 180, feltSense: 4 });

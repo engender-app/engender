@@ -519,6 +519,9 @@
       import('$lib/disguise/android-bridge'),
       import('$lib/lock/lock-timing-bridge'),
       import('$lib/lock/screen-capture-bridge'),
+      import('$lib/reminders/doseActions'),
+      import('$lib/reminders/doseActionToast'),
+      import('$lib/data/vocabulary/doseLabels'),
     ]).then(
       ([
         { startAndroidPlatformSync },
@@ -526,7 +529,10 @@
         { androidReminders },
         { androidDisguise },
         { androidLockTiming },
-        { androidScreenCapture }
+        { androidScreenCapture },
+        { applyPendingDoseAction, resolveDoseReminderRoute },
+        { confirmDoseAction },
+        { ROUTE_OPTIONS }
       ]) => {
         if (unmounted) return;
         cleanup = startAndroidPlatformSync({
@@ -560,6 +566,11 @@
           androidDisguise,
           androidLockTiming,
           androidScreenCapture,
+          doseActions: {
+            apply: (action) => applyPendingDoseAction(journal, action, ROUTE_OPTIONS),
+            confirm: (outcome) => confirmDoseAction(outcome, (href) => void goto(href)),
+            resolveLaunchRoute: (route) => resolveDoseReminderRoute(route, journal, Date.now())
+          },
           androidBackButton,
           isGateActive: () => locked || needsPassphrase || needsAuthentication ||
             needsDeviceRecovery || needsAccessModeAfterRecovery,
@@ -571,7 +582,11 @@
                ends in the mechanic ("skipped on days you already logged"),
                which is what a person reading the row needs and not what a
                notification should say. */
-            checkInBody: m.checkin_notification_body()
+            checkInBody: m.checkin_notification_body(),
+            doseTaken: m.rem_dose_taken(),
+            doseDone: m.rem_dose_done(),
+            doseSkip: m.rem_dose_skip(),
+            doseNoted: m.rem_dose_noted()
           }),
           isValidLaunchRoute: isValidAndroidLaunchRoute,
           currentPathname: () => page.url.pathname,

@@ -62,7 +62,8 @@ async function populated() {
     interval: 7,
     anchorEpochDay: 20000,
     epochDay: null,
-    enabled: true
+    enabled: true,
+    drug: 'estradiol valerate'
   });
   const episode = await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',
@@ -320,7 +321,8 @@ test('milestones, lab results, tally events, side effects, cycle events, reminde
       anchorEpochDay: 20000,
       epochDay: null,
       enabled: true,
-      autoSource: null
+      autoSource: null,
+      drug: 'estradiol valerate'
     }
   ]);
   assert.deepEqual(snapshot.journal.regimenEpisodes, [

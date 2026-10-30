@@ -6,6 +6,13 @@
   { "route": "/settings/reminders/r-1?evil=1", "accepted": false },
   { "route": "/settings/reminders/new", "accepted": true },
 
+  { "route": "/care/doses?add=1&reminder=r-1", "accepted": true },
+  { "route": "/care/doses?add=1&reminder=", "accepted": false },
+  { "route": "/care/doses?add=1&reminder=R-1", "accepted": false },
+  { "route": "/care/doses?add=1&reminder=r-1&x=1", "accepted": false },
+  { "route": "/care/doses?add=1", "accepted": false },
+  { "route": "/care/doses", "accepted": false },
+
   { "route": "/entry/new/20313", "accepted": true },
   { "route": "/entry/new/0", "accepted": true },
   { "route": "/entry/new/", "accepted": false },

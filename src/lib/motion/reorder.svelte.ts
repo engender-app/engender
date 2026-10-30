@@ -81,7 +81,16 @@ export function travelOnChange(rows: () => HTMLElement[], keyOf: (el: HTMLElemen
   });
   $effect(() => {
     track();
-    travelFrom(rows(), keyOf, before);
+    /* A microtask later, not now: Svelte applies an arriving row's intro
+       styles in a microtask of its own, queued while the DOM updated, so
+       measuring here saw that row at full height. The rows below it were
+       then started a whole row too high and travelled down while the row
+       also opened under them, crossing the day heading for a frame
+       (functional-audit ticket 20, a dose arriving in the log). Measured
+       after the intro, an arriving row is at its first-frame height and
+       the rows below move only as it opens. Still before the next paint. */
+    const measured = before;
+    queueMicrotask(() => travelFrom(rows(), keyOf, measured));
   });
 }
 

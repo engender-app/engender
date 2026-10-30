@@ -333,5 +333,10 @@ DELETE FROM taper WHERE id NOT IN (
     FROM taper t GROUP BY t.procedure_id
 );
 CREATE UNIQUE INDEX idx_taper_procedure ON taper(procedure_id);
-` }
+` },
+  /* Functional audit ticket 20: a medication reminder names the drug it is
+     for, in the regimen's own words, so its notification can open that
+     drug's dose log and carry Taken and Skip. Null for every other reminder,
+     which is every reminder stored before this. */
+  { version: 113, sql: 'ALTER TABLE reminder ADD COLUMN drug TEXT;' }
 ];

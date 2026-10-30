@@ -215,7 +215,8 @@ const REMINDERS = {
     anchor_epoch_day: 'anchorEpochDay',
     epoch_day: 'epochDay',
     enabled: { field: 'enabled', bool: true },
-    auto_source: { field: 'autoSource', whenAbsent: null }
+    auto_source: { field: 'autoSource', whenAbsent: null },
+    drug: { field: 'drug', whenAbsent: null }
   }
 } as const satisfies FlatTable<ArchiveJournal['reminders'][number]>;
 

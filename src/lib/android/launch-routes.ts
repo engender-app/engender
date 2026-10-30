@@ -8,6 +8,8 @@
 export function isValidAndroidLaunchRoute(route: string): boolean {
   return (
     /^\/settings\/reminders(?:\/[a-z0-9-]+)?$/.test(route) ||
+    // A medication reminder's notification (functional audit ticket 20).
+    /^\/care\/doses\?add=1&reminder=[a-z0-9-]+$/.test(route) ||
     /^\/entry\/new\/\d+$/.test(route) ||
     // The quick-log widget's mood buttons.
     /^\/entry\/new\/today\?seedMood=[1-5]$/.test(route) ||

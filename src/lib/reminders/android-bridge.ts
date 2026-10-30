@@ -1,12 +1,21 @@
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 import type { Reminder } from '$lib/data/types';
 import type { QuietHours } from '$lib/unprompted/quietHours';
+import type { PendingDoseAction } from './doseActions';
 
 export interface AndroidReminderTexts {
   channelReminders: string;
   channelCheckIn: string;
   checkInTitle: string;
   checkInBody: string;
+  /** A medication reminder's two buttons (functional audit ticket 20).
+      `doseDone` stands in for `doseTaken` while the app is disguised. */
+  doseTaken: string;
+  doseDone: string;
+  doseSkip: string;
+  /** What the notification says once a button was pressed: the answer is
+      kept, and goes into the journal when it is next opened. */
+  doseNoted: string;
 }
 
 export interface AndroidReminderSyncPayload {
@@ -43,6 +52,10 @@ interface AndroidRemindersBridge {
   openNotificationSettings(): Promise<void>;
   openBatterySettings(): Promise<void>;
   consumeLaunchRoute(): Promise<{ route: string | null }>;
+  /** Taken and Skip taps kept since the journal was last open. */
+  pendingDoseActions(): Promise<{ actions: PendingDoseAction[] }>;
+  /** Forgets the taps whose doses are written, and only those. */
+  clearDoseActions(options: { ids: string[] }): Promise<void>;
 }
 
 export const androidReminders = registerAndroidPlugin<AndroidRemindersBridge>(androidPluginOwners.reminders);

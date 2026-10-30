@@ -98,11 +98,13 @@ export type DoseEventInput =
   /* The entry chip records a dose the person confirms without opening the
      site picker. Unknown sites stay unknown; this is still their own log,
      not a schedule's standing instruction. The context is input-only and
-     leaves the detailed dose editor's required sites unchanged. */
+     leaves the detailed dose editor's required sites unchanged. A Taken or
+     Skip tap on a dose reminder's notification (functional audit ticket 20)
+     is the same kind of confirmation, made where no picker can be shown. */
   | (DoseInputFields & {
       route: DoseRoute;
       source: 'person';
-      context: 'entry';
+      context: 'entry' | 'reminder';
       injectionSite?: InjectionSiteKey;
       vehicle?: InjectionVehicle;
       applicationSite?: ApplicationSiteKey;

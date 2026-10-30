@@ -1581,7 +1581,8 @@
       "anchorEpochDay": 20000,
       "epochDay": null,
       "enabled": true,
-      "autoSource": null
+      "autoSource": null,
+      "drug": null
     },
     {
       "id": "5f95f7b3-e55c-4080-99fb-45763187ecbc",
@@ -1592,7 +1593,20 @@
       "anchorEpochDay": null,
       "epochDay": 19676,
       "enabled": true,
-      "autoSource": "wear:f85256ab-b54d-4367-b63b-c788fa85e373"
+      "autoSource": "wear:f85256ab-b54d-4367-b63b-c788fa85e373",
+      "drug": null
+    },
+    {
+      "id": "f208f04e-0018-4d3d-a5f7-585224462530",
+      "title": "Estradiol",
+      "time": "09:00",
+      "recurrence": "DAILY",
+      "interval": null,
+      "anchorEpochDay": null,
+      "epochDay": null,
+      "enabled": true,
+      "autoSource": null,
+      "drug": "Estradiol valerate"
     }
   ],
   "tallyEvents": [

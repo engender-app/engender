@@ -20,7 +20,8 @@ describe('buildAndroidReminderPayload', () => {
           anchorEpochDay: 20300,
           epochDay: null,
           enabled: true,
-          autoSource: null
+          autoSource: null,
+          drug: null
         }
       ],
       checkInEnabled: true,
@@ -33,7 +34,11 @@ describe('buildAndroidReminderPayload', () => {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
         checkInTitle: 'Daily check-in',
-        checkInBody: 'How are you today?'
+        checkInBody: 'How are you today?',
+        doseTaken: 'Taken',
+        doseDone: 'Done',
+        doseSkip: 'Skip',
+        doseNoted: 'Noted'
       }
     });
 
@@ -50,7 +55,8 @@ describe('buildAndroidReminderPayload', () => {
           anchorEpochDay: 20300,
           epochDay: null,
           enabled: true,
-          autoSource: null
+          autoSource: null,
+          drug: null
         }
       ],
       checkInEnabled: true,
@@ -63,7 +69,11 @@ describe('buildAndroidReminderPayload', () => {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
         checkInTitle: 'Daily check-in',
-        checkInBody: 'How are you today?'
+        checkInBody: 'How are you today?',
+        doseTaken: 'Taken',
+        doseDone: 'Done',
+        doseSkip: 'Skip',
+        doseNoted: 'Noted'
       }
     });
   });
@@ -79,7 +89,8 @@ describe('buildAndroidReminderPayload', () => {
         anchorEpochDay: null,
         epochDay: null,
         enabled: true,
-        autoSource: null
+        autoSource: null,
+        drug: null
       }
     ];
 
@@ -95,7 +106,11 @@ describe('buildAndroidReminderPayload', () => {
         channelReminders: 'A',
         channelCheckIn: 'B',
         checkInTitle: 'C',
-        checkInBody: 'D'
+        checkInBody: 'D',
+        doseTaken: 'Taken',
+        doseDone: 'Done',
+        doseSkip: 'Skip',
+        doseNoted: 'Noted'
       }
     });
 

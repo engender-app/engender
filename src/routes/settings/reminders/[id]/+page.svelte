@@ -1,7 +1,8 @@
 <script lang="ts">
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
-  import { journal } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { activeEpisodesAt, sameDrug } from '$lib/data/regimenEpisode';
   import {
     choiceFromRule,
     nextOccurrence,
@@ -21,7 +22,7 @@
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import SaveBar from '$lib/components/SaveBar.svelte';
@@ -43,15 +44,31 @@
      moment it arrives and never again, and refilled if the route moves to
      another id - both are detailDraft.ts's rules, node-tested there. Back
      with an unsaved change asks first, which is detailDraft's default. */
-  const detail = detailDraft<Reminder, { title: string; time: string; choice: RecurrenceChoice }>({
+  const detail = detailDraft<Reminder, { title: string; time: string; choice: RecurrenceChoice; drug: string }>({
     read: async (j, id) => (await j.reminders.getReminders()).find((r) => r.id === id),
-    blank: () => ({ title: '', time: '20:00', choice: 'DAILY' }),
-    fromRecord: (found) => ({ title: found.title, time: found.time, choice: choiceFromRule(found) }),
+    blank: () => ({ title: '', time: '20:00', choice: 'DAILY', drug: '' }),
+    fromRecord: (found) => ({ title: found.title, time: found.time, choice: choiceFromRule(found), drug: found.drug ?? '' }),
     // Leaving waits while a save runs, so a late success never lands on another screen.
     saving: () => saving.busy
   });
   let draft = $derived(detail.draft);
   let origin = $derived(detail.record ? resolveReminderOrigin(detail.record) : null);
+
+  /* Which drug the reminder is for (functional audit ticket 20): one of the
+     regimens running today, or the one it already names. Picking one makes
+     its notification open that drug's dose log, with Taken and Skip; the
+     chip picked again un-picks it. A reminder the app manages (stock, wear)
+     is offered none: it is about something other than a dose. */
+  const episodes = liveList((j) => j.regimen.getEpisodes());
+  let drugChoices = $derived.by(() => {
+    if (detail.record?.autoSource) return [];
+    const names: string[] = [];
+    for (const name of [...activeEpisodesAt(episodes.rows, Date.now()).map((e) => e.drug), detail.record?.drug ?? '']) {
+      if (name && !names.some((known) => sameDrug(known, name))) names.push(name);
+    }
+    return names;
+  });
+  const pickDrug = (name: string) => (draft.drug = sameDrug(draft.drug, name) ? '' : name);
 
   const ruleFromDraft = (): ReminderRule =>
     ruleFromChoice(draft.choice, draft.time, detail.record ?? null, new Date());
@@ -83,8 +100,9 @@
       () =>
         journal.reminders.upsertReminder({
           id: detail.record?.id,
-          title: draft.title || m.rem_default_name(),
+          title: draft.title || draft.drug || m.rem_default_name(),
           enabled: detail.record?.enabled ?? true,
+          drug: draft.drug || null,
           ...ruleFromDraft(),
         }),
       m.write_failed()
@@ -165,6 +183,31 @@
     <Icon name="clock" size={14} />
     {#if isWeb}{m.rem_next_web({ when: nextPreview })}{:else}{m.rem_next({ when: nextPreview })}{/if}
   </p>
+
+  {#if drugChoices.length > 0}
+    <!-- Disclosed rather than drawn: the regimens answer after the form is
+         already up, and a new reminder's form is up from the first frame. -->
+    <div transition:disclose|local data-reminder-drug-field>
+      <Field label={m.rem_drug_label()} hint={m.rem_drug_hint()} legend>
+        {#snippet children(labelId, hintId)}
+          <div class="tag-row" role="group" aria-labelledby={labelId} aria-describedby={hintId}>
+            {#each drugChoices as name (name)}
+              <button
+                type="button"
+                class="tag-chip press"
+                class:is-selected={sameDrug(draft.drug, name)}
+                aria-pressed={sameDrug(draft.drug, name)}
+                data-reminder-drug={name}
+                onclick={() => pickDrug(name)}
+              >
+                {name}
+              </button>
+            {/each}
+          </div>
+        {/snippet}
+      </Field>
+    </div>
+  {/if}
 
   {#if !isWeb}
     <div class="notice notice-info">
