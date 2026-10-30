@@ -66,7 +66,8 @@ function stamp(
   boot: unknown,
   system: { prefersDark: boolean; prefersReducedMotion: boolean },
   window: Record<string, unknown> = {},
-  heldLinks: Array<{ rel: string }> = []
+  heldLinks: Array<{ rel: string }> = [],
+  nativeDisguise?: boolean
 ) {
   const dataset = documentElementDataset();
   const links = documentLinks();
@@ -76,6 +77,9 @@ function stamp(
   };
   runInNewContext(prePaintScript(), {
     JSON,
+    /* The Android shell's synchronous hand-over (DisguiseState.java), absent
+       on the web. */
+    ...(nativeDisguise === undefined ? {} : { window: { androidDisguiseState: { isDisguised: () => nativeDisguise } } }),
     localStorage: {
       /* Answered by the constant boot-cache.ts writes under, not by
          app.html's own literal: the two are the second thing that file's
@@ -154,6 +158,19 @@ describe("app.html's pre-paint script against the shared fixture", () => {
     const calm = { prefersDark: false, prefersReducedMotion: false };
     expect(stamp({ disguise: true }, calm).dataset.disguised).toBe('');
     expect(stamp({ disguise: false }, calm).dataset.disguised).toBeUndefined();
+  });
+
+  it('takes the Android shell\'s live disguise over a mirror the flip\'s process kill left stale', () => {
+    const calm = { prefersDark: false, prefersReducedMotion: false };
+    /* Disguise just turned on: the alias is flipped, the mirror still says off. */
+    const on = stamp({ disguise: false }, calm, {}, [], true);
+    expect(on.dataset.disguised).toBe('');
+    expect(on.icon).toBe('favicon-notes.svg');
+    expect(on.manifest).toBe('manifest-notes.webmanifest');
+    /* And the other way: just turned off, the mirror still says on. */
+    const off = stamp({ disguise: true }, calm, {}, [], false);
+    expect(off.dataset.disguised).toBeUndefined();
+    expect(off.icon).not.toBe('favicon-notes.svg');
   });
 
   it('gives the held module hints back once the document has parsed', () => {

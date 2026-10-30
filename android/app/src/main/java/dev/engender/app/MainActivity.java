@@ -19,6 +19,7 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.WebViewListener;
 
+import dev.engender.app.disguise.DisguiseState;
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
 import dev.engender.app.lock.OwnSystemUi;
@@ -110,6 +111,10 @@ public class MainActivity extends BridgeActivity {
                     return true;
                 }
             });
+            // Before the first document's scripts: the lock screen and the
+            // pre-paint script read the live alias instead of a mirror the
+            // disguise flip's process kill can outrun.
+            bridge.getWebView().addJavascriptInterface(new DisguiseState(this), DisguiseState.INTERFACE_NAME);
             PhotoWriteChannel.registerIfSupported(this, bridge.getWebView(), APP_ORIGIN);
             PhotoPickChannel.registerIfSupported(bridge.getWebView(), APP_ORIGIN);
         }

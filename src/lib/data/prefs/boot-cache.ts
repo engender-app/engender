@@ -47,12 +47,28 @@ export function writeCachedAccessMode(mode: CachedAccessMode | null): void {
   }
 }
 
+/** The disguise the Android shell reports for this very start, or null off
+    Android. The shell's alias is written before the disguise flip kills the
+    process, while the localStorage mirror below is flushed to disk after a
+    delay and is lost to that kill, so on the first start after a flip the
+    mirror still holds the old answer. Same read as src/app.html. */
+export function nativeDisguise(): boolean | null {
+  try {
+    const bridge = (globalThis as { androidDisguiseState?: { isDisguised(): boolean } }).androidDisguiseState;
+    return bridge ? bridge.isDisguised() === true : null;
+  } catch {
+    return null;
+  }
+}
+
 export function localStorageCache(): PreferenceCache {
   return {
     read() {
       try {
         const raw = localStorage.getItem(BOOT_CACHE_KEY);
-        return raw ? (JSON.parse(raw) as Partial<BootPreferences>) : {};
+        const boot = raw ? (JSON.parse(raw) as Partial<BootPreferences>) : {};
+        const disguise = nativeDisguise();
+        return disguise === null ? boot : { ...boot, disguise };
       } catch {
         // A damaged mirror is not worth failing a boot over: SQLite holds
         // the real values and is a few hundred milliseconds away.
