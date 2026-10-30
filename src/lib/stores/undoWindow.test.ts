@@ -52,6 +52,33 @@ test('closing the window early, as a lock does, makes it final at once', async (
   assert.equal(await window.undo(), false);
 });
 
+test('the window does not run out while its Undo cannot be reached, and starts over once it can', async () => {
+  // A deletion made inside an open sheet (a photo in a session's editor, a
+  // waiting-list update): the toast stands over the scrim, but its button is
+  // inert behind the sheet until the sheet closes.
+  const { handle, calls } = deletion();
+  let sheetOpen = true;
+  const window = openUndoWindow(handle, { held: () => sheetOpen });
+  await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS * 3);
+  assert.deepEqual(calls, [], 'still undoable after three windows behind the sheet');
+  sheetOpen = false;
+  await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS - 1000);
+  assert.deepEqual(calls, [], 'the whole window again once the sheet has closed');
+  assert.equal(await window.undo(), true);
+  assert.deepEqual(calls, ['undo']);
+});
+
+test('a window that runs out says so, so its toast goes with it', async () => {
+  const { handle, calls } = deletion();
+  let closed = 0;
+  openUndoWindow(handle, { onClose: () => closed++ });
+  await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS - 1);
+  assert.equal(closed, 0);
+  await vi.advanceTimersByTimeAsync(1);
+  assert.equal(closed, 1);
+  assert.deepEqual(calls, ['finish']);
+});
+
 test('an undo that fails leaves the deletion final and says so', async () => {
   const calls: string[] = [];
   const window = openUndoWindow({

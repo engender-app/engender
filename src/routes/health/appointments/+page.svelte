@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { undoable } from '$lib/stores/deleteUndo';
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
   import { untrack } from 'svelte';
   import type { TransitionConfig } from 'svelte/transition';
@@ -408,8 +409,15 @@
     newUpdateText = '';
   }
   const updateDelete = rowWriter();
-  function deleteUpdate(update: AppointmentStatusUpdate) {
-    updateDelete(update.id, () => journal.appointments.deleteStatusUpdate(update.id), m.write_failed());
+  /* One tap, no confirmation: the toast's Undo is the way back (functional
+     audit ticket 46). */
+  async function deleteUpdate(update: AppointmentStatusUpdate) {
+    let deletion: UndoableDelete | undefined;
+    const write = async () => {
+      deletion = await undoable((j) => j.appointments.deleteStatusUpdate(update.id));
+    };
+    if (!(await updateDelete(update.id, write, m.write_failed()))) return;
+    offerUndo(deletion!, m.record_deleted());
   }
   // A freshly opened editor starts its update field empty, dated today.
   let editingId = $derived(record.editor ? (record.editor.id ?? '') : null);

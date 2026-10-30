@@ -28,10 +28,12 @@ export const toasts = $state<ToastItem[]>([]);
 export const toastLifetime = $state({ generation: 0 });
 const pending = new Map<number, ReturnType<typeof setTimeout>>();
 
+/** Shows a toast and returns its id. `duration` null keeps it up until the
+    caller dismisses it (an undo toast, whose window owns the clock). */
 export function toast(
   message: string,
-  opts: { actionLabel?: string; onAction?: () => void; onExpire?: () => void; duration?: number; kind?: string } = {}
-) {
+  opts: { actionLabel?: string; onAction?: () => void; onExpire?: () => void; duration?: number | null; kind?: string } = {}
+): number {
   const raised = opts.kind === 'failed' && typeof document !== 'undefined' && !!document.querySelector('[data-sheet-scrim]');
   const item: ToastItem = {
     id: seq++,
@@ -44,10 +46,13 @@ export function toast(
   };
   toasts.push(item);
   announce(message, opts.kind === 'failed');
-  pending.set(item.id, setTimeout(() => {
-    item.onExpire?.();
-    dismissToast(item.id);
-  }, opts.duration ?? 4000));
+  if (opts.duration !== null) {
+    pending.set(item.id, setTimeout(() => {
+      item.onExpire?.();
+      dismissToast(item.id);
+    }, opts.duration ?? 4000));
+  }
+  return item.id;
 }
 
 export function dismissToast(id: number) {
