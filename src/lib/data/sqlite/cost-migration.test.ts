@@ -29,7 +29,7 @@ function session(db: ReturnType<typeof makeNodeSqliteDb>, uuid: string, cost: st
     .run(uuid, cost, note);
 }
 
-const read = (db: ReturnType<typeof makeNodeSqliteDb>, uuid: string) =>
+const read = (db: ReturnType<typeof makeNodeSqliteDb>, uuid: string): Record<string, unknown> =>
   ({ ...(db.raw
     .prepare('SELECT cost, cost_amount, cost_currency, cost_refunded, note, updated_at FROM hair_removal_session WHERE uuid = ?')
     .get(uuid) as object) });

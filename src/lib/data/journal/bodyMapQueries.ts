@@ -3,9 +3,10 @@
    and laser/hair removal sessions & staging for an anatomical zone. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { HairRemovalMethod, HairRemovalSession, HairStage } from '../types';
+import type { HairRemovalSession, HairStage } from '../types';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
 import { bool, entryPresentationFilter } from './support';
+import { SESSION_COLUMNS, toHairRemovalSession, type HairRemovalSessionRow } from './hairRemoval';
 
 interface RegionFeelingTrajectory {
   entryId: number;
@@ -83,17 +84,6 @@ type HairPhotoRow = {
   uuid: string;
   file_path: string;
   epoch_day: number;
-};
-
-type HairRemovalSessionRow = {
-  uuid: string;
-  epoch_day: number;
-  area: string;
-  method: HairRemovalMethod;
-  pain_rating: number | null;
-  minutes: number | null;
-  cost: string;
-  provider: string;
 };
 
 type HairStageRow = {
@@ -210,22 +200,13 @@ export async function getRegionSomaticBreakdown(
   if (hairAreas.length > 0) {
     const placeholders = hairAreas.map(() => '?').join(', ');
     const sRows = await driver.query<HairRemovalSessionRow>(
-      `SELECT uuid, epoch_day, area, method, pain_rating, minutes, cost, provider
+      `SELECT ${SESSION_COLUMNS}
        FROM hair_removal_session
        WHERE area IN (${placeholders})
        ORDER BY epoch_day DESC, id DESC`,
       hairAreas
     );
-    hairRemovalSessions = sRows.map((r) => ({
-      id: r.uuid,
-      epochDay: r.epoch_day,
-      area: r.area,
-      method: r.method,
-      painRating: r.pain_rating,
-      minutes: r.minutes,
-      cost: r.cost,
-      provider: r.provider
-    }));
+    hairRemovalSessions = sRows.map(toHairRemovalSession);
   }
 
   // 5. Hair staging, in the person's own words

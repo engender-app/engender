@@ -41,6 +41,7 @@ import type {
   RegimenEpisode,
   WearSession
 } from './types';
+import { NO_COST } from './cost';
 
 const TODAY = 20_000;
 /* Midday, so a timezone that moves the day boundary cannot move which day
@@ -90,7 +91,8 @@ const procedure: Procedure = {
   notes: '',
   kind: 'vaginoplasty',
   dilationOptIn: false,
-  archived: false
+  archived: false,
+  cost: NO_COST
 };
 
 const letters: LetterSeal[] = [

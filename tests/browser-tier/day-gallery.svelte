@@ -31,6 +31,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { PALETTES } from '../palettes.mjs';
+  import { NO_COST } from '$lib/data/cost';
 
   const DAY = 20690;
 
@@ -168,7 +169,8 @@
         note: '',
         drawTime: '09:20',
         provider: 'Diagnostyka',
-        timing: null
+        timing: null,
+        cost: NO_COST
       },
       {
         id: 'l2',
@@ -179,7 +181,8 @@
         note: '',
         drawTime: '09:20',
         provider: 'Diagnostyka',
-        timing: null
+        timing: null,
+        cost: NO_COST
       }
     ],
     taperSessions: [{ id: 'ts1', epochDay: DAY, note: 'went fine' }],

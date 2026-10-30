@@ -81,7 +81,7 @@ export interface HairRemovalArea {
   deletePhoto(id: string): Promise<void>;
 }
 
-type HairRemovalSessionRow = CostRow & {
+export type HairRemovalSessionRow = CostRow & {
   uuid: string;
   epoch_day: number;
   area: string;
@@ -95,11 +95,11 @@ type HairRemovalSessionRow = CostRow & {
 /* The old free-text `cost` column is neither read nor written: version 112
    moved what it held into the cost columns or the note, and ticket 50 drops
    it. */
-const SESSION_COLUMNS =
+export const SESSION_COLUMNS =
   'uuid, epoch_day, area, method, pain_rating, minutes, cost_amount, cost_currency, cost_refunded, provider, note';
 type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
 
-const toHairRemovalSession = (row: HairRemovalSessionRow): HairRemovalSession => ({
+export const toHairRemovalSession = (row: HairRemovalSessionRow): HairRemovalSession => ({
   id: row.uuid,
   epochDay: row.epoch_day,
   area: row.area,

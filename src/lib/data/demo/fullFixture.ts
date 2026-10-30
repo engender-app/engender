@@ -196,7 +196,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       method: pick(['laser', 'electrolysis', 'other'] as const),
       painRating: r() < 0.25 ? null : between(1, 5),
       minutes: r() < 0.5 ? between(15, 120) : null,
-      cost: r() < 0.7 ? `${between(150, 450)} PLN` : '',
+      cost: r() < 0.7 ? { amount: between(150, 450), currency: 'PLN', refunded: false } : null,
       provider: r() < 0.7 ? 'Klinika Laserowa' : ''
     });
     if (r() < 0.25) {
@@ -343,7 +343,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     surgeryEpochDay: today - 400,
     notes: 'Double incision, drains out on day 5.',
     dilationOptIn: true,
-    archived: true
+    archived: true,
+    cost: { amount: 24000, currency: 'PLN', refunded: false }
   });
   await journal.procedures.addConsult(procedureId, today - 460);
   await journal.procedures.addConsult(procedureId, today - 420);
@@ -395,7 +396,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     name: 'facial feminization surgery',
     kind: 'facial_feminization',
     surgeryEpochDay: today + 60,
-    notes: 'Consult went well, surgeon proposed a date.'
+    notes: 'Consult went well, surgeon proposed a date.',
+    cost: { amount: 9800, currency: 'EUR', refunded: false }
   });
   await journal.procedures.addConsult(secondProcedureId, today - 10);
   await journal.procedures.addConsult(secondProcedureId, today + 12);
@@ -414,7 +416,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     unit: 'mL',
     recordedEpochDay: today - 3,
     openedEpochDay: today - 40,
-    inUseWindowDays: 28
+    inUseWindowDays: 28,
+    cost: { amount: 38.9, currency: 'PLN', refunded: false }
   });
   await journal.stock.upsertEntry({
     drug: 'Progesterone',

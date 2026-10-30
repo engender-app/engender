@@ -20,6 +20,7 @@ import {
 } from '../src/lib/data/stockProjection.ts';
 import type { MedicationStock } from '../src/lib/data/types.ts';
 import { UNPROMPTED_ROWS } from '../src/lib/unprompted/registry.ts';
+import { NO_COST } from '../src/lib/data/cost.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -127,7 +128,8 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       leadTimeDays: null,
       dosesPerUnit: null,
       expiryEpochDay: null,
-      pharmacyNote: null
+      pharmacyNote: null,
+      cost: NO_COST
     };
     const stockB: MedicationStock = {
       id: 'stock-b',
@@ -143,7 +145,8 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       leadTimeDays: null,
       dosesPerUnit: null,
       expiryEpochDay: null,
-      pharmacyNote: null
+      pharmacyNote: null,
+      cost: NO_COST
     };
     const stockC: MedicationStock = {
       id: 'stock-c',
@@ -159,7 +162,8 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       leadTimeDays: null,
       dosesPerUnit: null,
       expiryEpochDay: null,
-      pharmacyNote: null
+      pharmacyNote: null,
+      cost: NO_COST
     };
 
     const rows = [
