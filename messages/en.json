@@ -846,6 +846,7 @@
   "dose_injection_site_required": "Choose an injection site.",
   "dose_new_sheet": "Log a dose",
   "dose_reminder_already": "{drug} was already logged for that day.",
+  "dose_reminder_multiple_regimens": "Nothing logged: {drug} has more than one running regimen. Log it in the dose log.",
   "dose_reminder_no_regimen": "Nothing logged: {drug} has no running regimen.",
   "dose_reminder_nothing_due": "No {drug} dose was due that day, so the skip wasn't logged.",
   "dose_reminder_skipped": "{drug} logged as skipped, from your reminder.",

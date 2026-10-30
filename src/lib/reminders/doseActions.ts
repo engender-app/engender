@@ -54,6 +54,9 @@ export type DoseActionOutcome = {
   /** No regimen for the drug was running that day, so there was nothing to
       take the route and the amount from. */
   | { result: 'noRegimen' }
+  /** More than one regimen for the drug was running that day, so which one
+      the dose belongs to is the person's call, made in the dose log. */
+  | { result: 'multipleRegimens' }
 );
 
 type DoseActionJournal = Pick<Journal, 'reminders' | 'doses'>;
@@ -77,7 +80,8 @@ export async function applyPendingDoseAction(
   const base = { id: action.id, drug: action.drug, action: action.action, slotEpochDay };
 
   const found = await journal.doses.getComparison({ fromEpochDay: slotEpochDay, toEpochDay: slotEpochDay, drug: action.drug });
-  if (found.reason === 'noEpisode' || found.reason === 'multipleEpisodes' || !sameDrug(found.activeEpisode.drug, action.drug)) {
+  if (found.reason === 'multipleEpisodes') return { ...base, result: 'multipleRegimens' };
+  if (found.reason === 'noEpisode' || !sameDrug(found.activeEpisode.drug, action.drug)) {
     return { ...base, result: 'noRegimen' };
   }
   const episode = found.activeEpisode;

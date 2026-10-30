@@ -854,6 +854,7 @@
   "dose_injection_site_required": "Wybierz miejsce iniekcji.",
   "dose_new_sheet": "Zapisz dawkę",
   "dose_reminder_already": "Dawka z tego dnia była już zapisana: {drug}.",
+  "dose_reminder_multiple_regimens": "Nic nie zapisano: {drug} ma więcej niż jedną trwającą kurację. Dodaj dawkę w dzienniku dawek.",
   "dose_reminder_no_regimen": "Nic nie zapisano: {drug} nie ma trwającej kuracji.",
   "dose_reminder_nothing_due": "Tego dnia nie było zaplanowanej dawki: {drug}. Pominięcia nie zapisano.",
   "dose_reminder_skipped": "Zapisano pominięcie z przypomnienia: {drug}.",

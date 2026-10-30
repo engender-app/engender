@@ -27,5 +27,8 @@ export function confirmDoseAction(outcome: DoseActionOutcome, open: (href: strin
       return;
     case 'noRegimen':
       toast(m.dose_reminder_no_regimen({ drug }), { kind: 'dose-reminder-no-regimen', duration: 6000 });
+      return;
+    case 'multipleRegimens':
+      toast(m.dose_reminder_multiple_regimens({ drug }), { kind: 'dose-reminder-multiple-regimens', duration: 6000 });
   }
 }

@@ -147,6 +147,24 @@ test('a drug with no running regimen writes nothing and says so', async () => {
   assert.deepEqual(await dosesOn(journal, DAY), []);
 });
 
+test('two regimens running for the drug write nothing and say that, not that none is running', async () => {
+  const { journal, reminderId } = await onRegimen();
+  await journal.regimen.upsertEpisode({
+    drug: 'Estradiol valerate',
+    ester: null,
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'intramuscular',
+    interval: 'weekly',
+    startEpochDay: DAY - 3,
+    endEpochDay: null,
+    endReason: null
+  });
+  const outcome = await applyPendingDoseAction(journal, action(reminderId, 'taken', at(DAY, '20:00'), at(DAY, '20:02')), []);
+  assert.equal(outcome.result, 'multipleRegimens');
+  assert.deepEqual(await dosesOn(journal, DAY), []);
+});
+
 test('tapping the notification opens the dose log on that drug with the add form open', async () => {
   const { journal, episodeId, reminderId } = await onRegimen();
   assert.equal(
