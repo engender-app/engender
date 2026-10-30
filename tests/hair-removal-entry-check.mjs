@@ -38,12 +38,17 @@ async function close() {
 async function fieldOrder(copy) {
   const method = page.getByRole('radiogroup', { name: copy.hair_removal_method_label, exact: true });
   const pain = page.getByRole('radiogroup', { name: copy.hair_removal_pain_label, exact: true });
+  // FA 30: the cost is an amount beside its currency, then a Refunded
+  // switch; the note follows the provider.
   const controls = [method, page.locator('#hair-removal-area'), page.locator('#hair-removal-minutes'), pain,
-    page.locator('#hair-removal-cost'), page.locator('#hair-removal-provider'), page.locator('#hair-removal-date')];
+    page.locator('#hair-removal-cost'), page.locator('#hair-removal-cost-currency'),
+    page.getByRole('switch', { name: copy.cost_refunded, exact: true }), page.locator('#hair-removal-provider'),
+    page.locator('#hair-removal-note'), page.locator('#hair-removal-date')];
   for (let i = 1; i < controls.length; i++) {
+    if (i === 5) continue; // the currency sits beside the amount, not below it
     const previous = await controls[i - 1].boundingBox();
     const current = await controls[i].boundingBox();
-    assert.ok(current.y > previous.y, 'Method, area, minutes, pain, cost and provider precede date');
+    assert.ok(current.y > previous.y, 'Method, area, minutes, pain, cost, provider and note precede date');
   }
   const selectedMethod = method.getByRole('radio', { checked: true });
   await selectedMethod.focus();
@@ -72,7 +77,7 @@ try {
   assert.equal(await page.locator('[data-add-photo]').count(), 0);
   assert.ok((await page.locator('[data-sheet]').innerText()).includes(en.hair_removal_photo_hint));
   await page.locator('#hair-removal-area').selectOption('chin');
-  await page.locator('#hair-removal-cost').fill('125 PLN');
+  await page.locator('#hair-removal-cost').fill('125');
   await page.locator('#hair-removal-provider').fill('Clinic fixture');
   await fillDate(page, '#hair-removal-date', '2024-03-12');
   await page.keyboard.press('Escape');

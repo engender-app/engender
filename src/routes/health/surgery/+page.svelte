@@ -23,7 +23,7 @@
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { dilationEligible } from '$lib/data/taperSchedule';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, intlLocale } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import type { ChecklistItem, Procedure, ProcedureConsult, ProcedureKind } from '$lib/data/types';
@@ -51,6 +51,9 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import ProcedureRecoveryCard from '$lib/components/ProcedureRecoveryCard.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import CostField from '$lib/components/CostField.svelte';
+  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { deviceDefaultCurrency } from '$lib/data/cost';
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
@@ -167,20 +170,21 @@
 
   const record = recordEditor<
     Procedure,
-    { id?: string; name: string; date: string; kind: ProcedureKind; dilationOptIn: boolean; archived: boolean }
+    { id?: string; name: string; date: string; kind: ProcedureKind; dilationOptIn: boolean; archived: boolean; cost: CostDraft }
   >({
-    blank: () => ({ name: '', date: '', kind: 'custom', dilationOptIn: false, archived: false }),
+    blank: () => ({ name: '', date: '', kind: 'custom', dilationOptIn: false, archived: false, cost: blankCostDraft(deviceDefaultCurrency()) }),
     fromRecord: (procedure) => ({
       id: procedure.id,
       name: procedure.name,
       date: procedure.surgeryEpochDay === null ? '' : dateInputValueFromEpochDay(procedure.surgeryEpochDay),
       kind: procedure.kind,
       dilationOptIn: procedure.dilationOptIn,
-      archived: procedure.archived
+      archived: procedure.archived,
+      cost: costDraftFrom(procedure.cost, deviceDefaultCurrency(), intlLocale())
     }),
     async upsert(draft) {
       const name = draft.name.trim();
-      if (!name) return false;
+      if (!name || !costDraftOk(draft.cost)) return false;
       const id = await journal.procedures.upsertProcedure({
         id: draft.id,
         name,
@@ -189,7 +193,8 @@
         surgeryEpochDay: epochDayFromDateInputValue(draft.date) ?? null,
         kind: draft.kind,
         dilationOptIn: draft.kind === 'custom' && draft.dilationOptIn,
-        archived: draft.archived
+        archived: draft.archived,
+        cost: costFromDraft(draft.cost)
       });
       /* Editing the open procedure keeps notes typed beside it, and saving
          another one leaves unsaved notes open where they are rather than
@@ -752,6 +757,7 @@
   <RecordSheet
     {record}
     handle="procedure"
+    canSave={(draft) => costDraftOk(draft.cost)}
     newTitle={m.surgery_new_sheet()}
     editTitle={m.surgery_edit_sheet()}
     saveLabel={m.surgery_save()}
@@ -781,6 +787,7 @@
           <DatePicker name="surgery-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
+      <CostField id="surgery-cost" bind:draft={editor.cost} />
       <Field label={m.surgery_kind_label()} legend>
         {#snippet children()}
           <ListCard>

@@ -51,7 +51,10 @@ async function fieldOrder() {
   // the kind's; the time follows the day it belongs to.
   const controls = [page.locator('#appointment-kind'), ...await page.locator('[data-kind]').all(),
     ...await page.locator('[data-who]').all(), page.locator('[data-who-new]'),
-    ...['appointment-place', 'appointment-note', 'appointment-date', 'appointment-time'].map((id) => page.locator(`#${id}`))];
+    ...['appointment-place', 'appointment-note', 'appointment-cost', 'appointment-cost-currency'].map((id) => page.locator(`#${id}`)),
+    // The cost (FA 30) follows the note: an amount beside its currency, then Refunded.
+    page.locator('[data-sheet] [role="switch"]'),
+    ...['appointment-date', 'appointment-time'].map((id) => page.locator(`#${id}`))];
   const positions = [];
   for (const control of controls) {
     positions.push(await control.evaluate((el) => {
@@ -62,7 +65,7 @@ async function fieldOrder() {
   for (let i = 1; i < positions.length; i++) {
     const previous = positions[i - 1], current = positions[i];
     assert.ok(current.top > previous.top || (current.top === previous.top && current.left > previous.left),
-      'Kind, its suggestions, who, place and note precede day and time in reading order');
+      'Kind, its suggestions, who, place, note and cost precede day and time in reading order');
   }
   await controls[0].focus();
   for (const control of controls.slice(1)) {

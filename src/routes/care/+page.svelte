@@ -64,12 +64,16 @@
   } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { readCare, CARE_DOSE_TOTAL_WINDOW_DAYS } from '$lib/data/careReads';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, intlLocale } from '$lib/data/dates';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import type { RegimenEpisode } from '$lib/data/types';
   import { sameDrug } from '$lib/data/regimenEpisode';
   import { ROUTE_OPTIONS, routeLabel } from '$lib/data/vocabulary/doseLabels';
   import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine, stockSupplyLine } from '$lib/data/vocabulary/stockLabel';
+  import { costLine } from '$lib/data/vocabulary/costLabel';
+  import CostField from '$lib/components/CostField.svelte';
+  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { deviceDefaultCurrency } from '$lib/data/cost';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
   import { CLINICIAN_SUMMARY_SECTION_KEYS } from '$lib/data/journal/clinicianSummary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -182,6 +186,7 @@
     windowEndDate: string;
     expiryDate: string;
     pharmacyNote: string;
+    cost: CostDraft;
   } | null>(null);
 
   const STOCK_WINDOW_MODES = [
@@ -207,7 +212,8 @@
       windowDays: row.entry.inUseWindowDays === null ? '' : String(row.entry.inUseWindowDays),
       windowEndDate: row.entry.inUseEndEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.inUseEndEpochDay),
       expiryDate: row.entry.expiryEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.expiryEpochDay),
-      pharmacyNote: row.entry.pharmacyNote ?? ''
+      pharmacyNote: row.entry.pharmacyNote ?? '',
+      cost: costDraftFrom(row.entry.cost, deviceDefaultCurrency(), intlLocale())
     };
   }
 
@@ -224,7 +230,8 @@
       windowDays: '',
       windowEndDate: '',
       expiryDate: '',
-      pharmacyNote: ''
+      pharmacyNote: '',
+      cost: blankCostDraft(deviceDefaultCurrency())
     };
   }
 
@@ -256,7 +263,7 @@
     const quantity = parseFloat(stockEditor.quantity);
     const drug = stockEditor.drug.trim();
     const unit = stockEditor.unit.trim();
-    if (isNaN(quantity) || !drug || !unit) return;
+    if (isNaN(quantity) || !drug || !unit || !costDraftOk(stockEditor.cost)) return;
 
     /* A number field hands over null once emptied; anything not above zero
        is read as nothing typed, one dose per unit. A fraction is allowed:
@@ -285,7 +292,8 @@
       inUseWindowDays,
       inUseEndEpochDay,
       expiryEpochDay: stockEditor.expiryDate ? epochDayFromDateInputValue(stockEditor.expiryDate) : null,
-      pharmacyNote: stockEditor.pharmacyNote
+      pharmacyNote: stockEditor.pharmacyNote,
+      cost: costFromDraft(stockEditor.cost)
     });
     if (stockEditor === editor) stockSavedId = id;
   }
@@ -938,6 +946,7 @@
           <input autocomplete={journalTextAutocomplete()} class="input" {id} name="stock-pharmacy-note" placeholder={m.stock_pharmacy_note_placeholder()} bind:value={stockEditor!.pharmacyNote} />
         {/snippet}
       </Field>
+      <CostField id="care-stock-cost" bind:draft={stockEditor!.cost} />
 
       <div class="stack-3">
         <button class="btn btn-primary" data-save-stock onclick={saveStockEntry}><span>{m.stock_save()}</span></button>
@@ -965,7 +974,8 @@
                 }),
                 rowRunOut.text,
                 stockOpenedWindowLine(row.entry, today),
-                stockSupplyLine(row.entry, today)
+                stockSupplyLine(row.entry, today),
+                costLine(row.entry.cost)
               ]}
               onclick={() => editStock(stockEditorFromRow(row))}
             >
