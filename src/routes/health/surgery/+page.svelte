@@ -479,7 +479,7 @@
           <div style="margin-bottom:var(--space-3)">
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
               {#each checklistItems as item (item.id)}
-                <div class="kit-row is-split" data-procedure-item={item.id}>
+                <div transition:collapse class="kit-row is-split" data-procedure-item={item.id}>
                   <button
                     class="kit-row-main"
                     role="checkbox"

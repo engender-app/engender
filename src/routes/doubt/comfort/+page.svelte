@@ -29,7 +29,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
   import { motionDuration } from '$lib/motion/tokens';
   import { ListDrag, measureTops, travelFrom } from '$lib/motion/reorder.svelte';
 
@@ -157,7 +157,7 @@
                  one row: the main half and its text never change, and only
                  the trailing end does - the chevron closes as the handle
                  opens beside it, so nothing is redrawn and nothing cuts. -->
-            <div
+            <div transition:collapse
               class="kit-row is-split"
               data-list-row={item.id}
               data-comfort-item={item.id}

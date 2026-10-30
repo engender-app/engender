@@ -34,7 +34,7 @@
      anything (PRODUCT.md:109, and labTiming.ts as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
-  import { disclose, maskHeight } from '$lib/motion/reveal';
+  import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, EASE_OUT_SOFT_CSS } from '$lib/motion/tokens';
   import { flushSync, onDestroy } from 'svelte';
   import { deleter } from '$lib/stores/attempt.svelte';
@@ -956,27 +956,29 @@
         <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
           {#each stock as row (row.entry.id)}
             {@const rowRunOut = stockRunOutLabel(row.projection, today)}
-            <ListRow
-              key={row.entry.id}
-              data-stock={row.entry.id}
-              title={row.entry.drug}
-              subtitle={[
-                stockRemainingLabel(row.projection.remaining, row.entry.unit),
-                m.stock_recorded({
-                  date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-                }),
-                rowRunOut.text,
-                stockOpenedWindowLine(row.entry, today),
-                stockSupplyLine(row.entry, today)
-              ]}
-              onclick={() => editStock(stockEditorFromRow(row))}
-            >
-              {#snippet leading()}
-                <span class="kit-row-ico" class:is-warn={rowRunOut.warn}>
-                  <Icon name="package" size={22} />
-                </span>
-              {/snippet}
-            </ListRow>
+            <div class="rows-divide" transition:collapse>
+              <ListRow
+                key={row.entry.id}
+                data-stock={row.entry.id}
+                title={row.entry.drug}
+                subtitle={[
+                  stockRemainingLabel(row.projection.remaining, row.entry.unit),
+                  m.stock_recorded({
+                    date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+                  }),
+                  rowRunOut.text,
+                  stockOpenedWindowLine(row.entry, today),
+                  stockSupplyLine(row.entry, today)
+                ]}
+                onclick={() => editStock(stockEditorFromRow(row))}
+              >
+                {#snippet leading()}
+                  <span class="kit-row-ico" class:is-warn={rowRunOut.warn}>
+                    <Icon name="package" size={22} />
+                  </span>
+                {/snippet}
+              </ListRow>
+            </div>
           {/each}
         </ListCard>
         {#if stockExcludedDoses > 0}

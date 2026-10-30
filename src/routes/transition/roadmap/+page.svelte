@@ -93,7 +93,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { disclose, resize } from '$lib/motion/reveal';
+  import { collapse, disclose, resize } from '$lib/motion/reveal';
   import { trackPanel } from './trackPanel';
   import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -531,7 +531,7 @@
           </div>
         {/each}
         {#each section.customGoals as goal (goal.id)}
-          <div class="kit-row is-split" data-goal={goal.id} data-status={goal.status}>
+          <div transition:collapse class="kit-row is-split" data-goal={goal.id} data-status={goal.status}>
             <button
               type="button"
               class="kit-row-main"

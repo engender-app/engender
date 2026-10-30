@@ -13,7 +13,7 @@
   import Field from '$lib/components/kit/Field.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { discloseWidth } from '$lib/motion/reveal';
+  import { collapse, discloseWidth } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
@@ -91,7 +91,7 @@
       </div>
       <div class="managed-tags">
         {#each g.tags as tg, i (tg.id)}
-          <div class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
+          <div transition:collapse class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
             <span class="managed-label" data-managed-tag-label={tg.id}>{tg.label}</span>
             {#if tg.hidden}<span class="muted small" transition:discloseWidth>{m.tags_hidden()}</span>{/if}
             <span class="managed-actions">

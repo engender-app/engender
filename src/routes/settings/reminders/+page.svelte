@@ -23,7 +23,7 @@
   import Switch from '$lib/components/Switch.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { isAndroid } from '$lib/platform';
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
   import { watchStatus } from '$lib/permissions/watchStatus';
@@ -158,19 +158,21 @@
         <ListCard>
           {#each reminders.rows as r (r.id)}
             {@const origin = resolveReminderOrigin(r)}
-            <ListRow
-              static
-              key={r.id}
-              data-reminder={r.id}
-              icon="bell"
-              title={r.title}
-              subtitle={[reminderScheduleLabel(r), origin?.text]}
-              action={{
-                icon: 'trash',
-                label: m.rem_delete_aria({ title: r.title }),
-                onclick: () => record.askToDelete(r)
-              }}
-            />
+            <div class="rows-divide" transition:collapse>
+              <ListRow
+                static
+                key={r.id}
+                data-reminder={r.id}
+                icon="bell"
+                title={r.title}
+                subtitle={[reminderScheduleLabel(r), origin?.text]}
+                action={{
+                  icon: 'trash',
+                  label: m.rem_delete_aria({ title: r.title }),
+                  onclick: () => record.askToDelete(r)
+                }}
+              />
+            </div>
           {/each}
         </ListCard>
       {/if}
@@ -320,7 +322,7 @@
                would toggle the switch by navigating past it; `action` renders
                one icon button, not a Switch (ticket 18). -->
           {@const origin = resolveReminderOrigin(r)}
-          <div class="kit-row" data-list-row={r.id}>
+          <div transition:collapse class="kit-row" data-list-row={r.id}>
             <span class="kit-row-ico"><Icon name="bell" size={22} /></span>
             <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
               <span class="kit-row-title">{r.title}</span>

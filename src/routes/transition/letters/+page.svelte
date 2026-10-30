@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { collapse } from '$lib/motion/reveal';
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* Letters to your future self (phase 5 UX ticket 25, redrawn by phase 10
@@ -244,13 +245,15 @@
         </SectionHeading>
         <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
           {#each waiting as letter (letter.id)}
-            <LetterCard
-              {letter}
-              {today}
-              read={readIds.has(letter.id)}
-              oncalendar={() => (calendarFor = letter)}
-              ondelete={() => record.askToDelete(letter)}
-            />
+            <div transition:collapse>
+              <LetterCard
+                {letter}
+                {today}
+                read={readIds.has(letter.id)}
+                oncalendar={() => (calendarFor = letter)}
+                ondelete={() => record.askToDelete(letter)}
+              />
+            </div>
           {/each}
         </div>
       {/if}

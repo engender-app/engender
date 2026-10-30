@@ -59,7 +59,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -559,7 +559,7 @@
                both classes ListRow's plain title/subtitle strings have no
                room for. -->
           {#each [...results].reverse() as r (r.id)}
-            <button
+            <button transition:collapse
               class="kit-row"
               class:is-target-lab={r.id === deepLinkedLabId}
               id={r.id}

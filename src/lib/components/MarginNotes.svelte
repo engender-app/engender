@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { collapse } from '$lib/motion/reveal';
   import { offerUndo, undoable } from '$lib/stores/deleteUndo';
   import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
@@ -98,7 +99,7 @@
 {#if notes.length}
   <div class="margin-note-list">
     {#each notes as note (note.id)}
-      <div class="margin-note" data-margin-note={note.id}>
+      <div transition:collapse class="margin-note" data-margin-note={note.id}>
         <button class="margin-note-open" data-margin-note-edit onclick={() => openEdit(note)}>
           <span class="margin-note-date">{fmtDay(note.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           <span class="margin-note-text">{note.text}</span>

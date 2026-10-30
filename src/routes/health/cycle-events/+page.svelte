@@ -13,7 +13,7 @@
      no prediction of a next period, no fertility framing, no assumption
      that a regular cycle exists. */
   import { undoable } from '$lib/stores/deleteUndo';
-  import { crossfade, resize } from '$lib/motion/reveal';
+  import { collapse, crossfade, resize } from '$lib/motion/reveal';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -223,15 +223,17 @@
             {:else}
               <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
                 {#each weekEvents as event (event.id)}
-                  <ListRow
-                    key={event.id}
-                    data-cycle-event={event.id}
-                    icon="calendar"
-                    title={cycleEventKindName(event.kind)}
-                    subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-                    chevron={false}
-                    onclick={() => record.openEditor(event)}
-                  />
+                  <div class="rows-divide" transition:collapse>
+                    <ListRow
+                      key={event.id}
+                      data-cycle-event={event.id}
+                      icon="calendar"
+                      title={cycleEventKindName(event.kind)}
+                      subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+                      chevron={false}
+                      onclick={() => record.openEditor(event)}
+                    />
+                  </div>
                 {/each}
               </ListCard>
             {/if}

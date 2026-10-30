@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { collapse } from '$lib/motion/reveal';
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   /* The paper somebody keeps (phase 8 features ticket 52, ADR-0065; phase
@@ -233,19 +234,21 @@
           <ListCard role={roleAt(activeFlag.roles, 0)}>
             {#each group.documents as document (document.id)}
               {@const kind = documentKind(document.fileName)}
-              <ListRow
-                key={document.id}
-                title={document.title}
-                subtitle={[dayAndKind(document, kind.word), attachmentLine(document)]}
-                href={`/media/documents/${document.id}`}
-              >
-                <!-- The page itself where there is one, and the kind mark
-                     the row used to draw where there is not (audit item 9;
-                     ADR-0065's own note carries the reversal). -->
-                {#snippet leading()}
-                  <DocumentThumb fileName={document.fileName} title={document.title} />
-                {/snippet}
-              </ListRow>
+              <div class="rows-divide" transition:collapse>
+                <ListRow
+                  key={document.id}
+                  title={document.title}
+                  subtitle={[dayAndKind(document, kind.word), attachmentLine(document)]}
+                  href={`/media/documents/${document.id}`}
+                >
+                  <!-- The page itself where there is one, and the kind mark
+                       the row used to draw where there is not (audit item 9;
+                       ADR-0065's own note carries the reversal). -->
+                  {#snippet leading()}
+                    <DocumentThumb fileName={document.fileName} title={document.title} />
+                  {/snippet}
+                </ListRow>
+              </div>
             {/each}
           </ListCard>
         </div>

@@ -93,7 +93,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -577,7 +577,7 @@
           </p>
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
             {#each anchors as b (b.id)}
-              <div class="kit-row is-split" data-voice-cell={b.id}>
+              <div transition:collapse class="kit-row is-split" data-voice-cell={b.id}>
                 <button
                   type="button"
                   class="kit-row-main"

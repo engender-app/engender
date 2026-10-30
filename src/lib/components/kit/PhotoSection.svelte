@@ -17,6 +17,7 @@
      since only one add control is ever on screen at a time. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
+  import { collapse } from '$lib/motion/reveal';
   import type { LiveList } from '$lib/data/live/journal.svelte';
   import type { Role } from '$lib/theme/roles';
   import Icon from '../Icon.svelte';
@@ -114,9 +115,11 @@
     <ListCard {role}>
       {#each reverse ? [...photos].reverse() : photos as photo (photo.id)}
         {@const rowAttrs = rowHandle(photo.id)}
-        <ListRow static {...rowAttrs} title={title?.(photo)} subtitle={subtitle?.(photo)} action={deleteAction(photo)}>
-          {#snippet leading()}<PhotoThumb {photo} size={48} />{/snippet}
-        </ListRow>
+        <div class="rows-divide" transition:collapse>
+          <ListRow static {...rowAttrs} title={title?.(photo)} subtitle={subtitle?.(photo)} action={deleteAction(photo)}>
+            {#snippet leading()}<PhotoThumb {photo} size={48} />{/snippet}
+          </ListRow>
+        </div>
       {/each}
     </ListCard>
   </div>
