@@ -257,7 +257,7 @@ async function main() {
 
   write(join(RES, 'drawable', 'ic_stat_mark.xml'), notificationMark());
 
-  /* LauncherDefault keeps the existing icon and roundIcon resource names.
+  /* The default alias (Launch01) keeps the existing icon and roundIcon resource names.
      Its round-artwork sibling takes ic_launcher_trans_round. */
   write(join(RES, 'mipmap-anydpi-v26', 'ic_launcher.xml'), adaptiveIcon(DEFAULT_FLAG));
   write(join(RES, 'mipmap-anydpi-v26', 'ic_launcher_round.xml'), adaptiveIcon(DEFAULT_FLAG));

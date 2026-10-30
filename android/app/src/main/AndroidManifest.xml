@@ -116,8 +116,16 @@
              file rather than keeping a second list of them.
 
              Each flag has current and round artwork aliases, plus one
-             disguised alias. LauncherDefault is the default palette's
-             current artwork, so an untouched install never flips an alias.
+             disguised alias. Launch01 is the default palette's current
+             artwork, so an untouched install never flips an alias.
+
+             The names are numbers on purpose. Apps that list launcher
+             activities print them, and they are fixed for good from 1.0,
+             so a name such as LauncherDisguised or LauncherTrigender would
+             say what the app is to anyone holding the phone (FA 43). What
+             each alias draws is its LAUNCHER_IDENTITY meta-data: a palette,
+             the palette with "-round", or "disguised". New aliases take the
+             next number; a number is never reused or renamed.
 
              Android kills and restarts the app process on the disguise
              flip, which is the "closes briefly to switch"
@@ -134,13 +142,14 @@
              lands, the same one the launcher starts. MainActivity must not
              declare the action, or it would match too. -->
         <activity-alias
-            android:name=".disguise.LauncherDefault"
+            android:name=".Launch01"
             android:targetActivity=".MainActivity"
             android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
             android:roundIcon="@mipmap/ic_launcher_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="trans" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -153,13 +162,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDefaultRound"
+            android:name=".Launch02"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_trans_round"
             android:roundIcon="@mipmap/ic_launcher_trans_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="trans-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -172,13 +182,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDisguised"
+            android:name=".Launch03"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_disguised"
             android:roundIcon="@mipmap/ic_launcher_disguised"
             android:label="@string/app_name_disguised">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="disguised" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -191,13 +202,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherNonbinary"
+            android:name=".Launch04"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_nonbinary"
             android:roundIcon="@mipmap/ic_launcher_nonbinary"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="nonbinary" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -210,13 +222,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherNonbinaryRound"
+            android:name=".Launch05"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_nonbinary_round"
             android:roundIcon="@mipmap/ic_launcher_nonbinary_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="nonbinary-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -229,13 +242,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGenderfluid"
+            android:name=".Launch06"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_genderfluid"
             android:roundIcon="@mipmap/ic_launcher_genderfluid"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="genderfluid" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -248,13 +262,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGenderfluidRound"
+            android:name=".Launch07"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_genderfluid_round"
             android:roundIcon="@mipmap/ic_launcher_genderfluid_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="genderfluid-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -267,13 +282,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherBisexual"
+            android:name=".Launch08"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_bisexual"
             android:roundIcon="@mipmap/ic_launcher_bisexual"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="bisexual" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -286,13 +302,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherBisexualRound"
+            android:name=".Launch09"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_bisexual_round"
             android:roundIcon="@mipmap/ic_launcher_bisexual_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="bisexual-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -305,13 +322,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherLesbian"
+            android:name=".Launch10"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_lesbian"
             android:roundIcon="@mipmap/ic_launcher_lesbian"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="lesbian" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -324,13 +342,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherLesbianRound"
+            android:name=".Launch11"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_lesbian_round"
             android:roundIcon="@mipmap/ic_launcher_lesbian_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="lesbian-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -343,13 +362,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherPansexual"
+            android:name=".Launch12"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_pansexual"
             android:roundIcon="@mipmap/ic_launcher_pansexual"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="pansexual" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -362,13 +382,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherPansexualRound"
+            android:name=".Launch13"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_pansexual_round"
             android:roundIcon="@mipmap/ic_launcher_pansexual_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="pansexual-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -381,13 +402,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherRainbow"
+            android:name=".Launch14"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_rainbow"
             android:roundIcon="@mipmap/ic_launcher_rainbow"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="rainbow" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -400,13 +422,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherRainbowRound"
+            android:name=".Launch15"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_rainbow_round"
             android:roundIcon="@mipmap/ic_launcher_rainbow_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="rainbow-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -419,13 +442,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherAgender"
+            android:name=".Launch16"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_agender"
             android:roundIcon="@mipmap/ic_launcher_agender"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="agender" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -438,13 +462,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherAgenderRound"
+            android:name=".Launch17"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_agender_round"
             android:roundIcon="@mipmap/ic_launcher_agender_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="agender-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -457,13 +482,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGaymen"
+            android:name=".Launch18"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_gaymen"
             android:roundIcon="@mipmap/ic_launcher_gaymen"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="gaymen" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -476,13 +502,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGaymenRound"
+            android:name=".Launch19"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_gaymen_round"
             android:roundIcon="@mipmap/ic_launcher_gaymen_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="gaymen-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -495,13 +522,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGenderqueer"
+            android:name=".Launch20"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_genderqueer"
             android:roundIcon="@mipmap/ic_launcher_genderqueer"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="genderqueer" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -514,13 +542,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGenderqueerRound"
+            android:name=".Launch21"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_genderqueer_round"
             android:roundIcon="@mipmap/ic_launcher_genderqueer_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="genderqueer-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -533,13 +562,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherIntersex"
+            android:name=".Launch22"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_intersex"
             android:roundIcon="@mipmap/ic_launcher_intersex"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="intersex" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -552,13 +582,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherIntersexRound"
+            android:name=".Launch23"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_intersex_round"
             android:roundIcon="@mipmap/ic_launcher_intersex_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="intersex-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -571,13 +602,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherAsexual"
+            android:name=".Launch24"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_asexual"
             android:roundIcon="@mipmap/ic_launcher_asexual"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="asexual" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -590,13 +622,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherAsexualRound"
+            android:name=".Launch25"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_asexual_round"
             android:roundIcon="@mipmap/ic_launcher_asexual_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="asexual-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -609,13 +642,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDemiboy"
+            android:name=".Launch26"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_demiboy"
             android:roundIcon="@mipmap/ic_launcher_demiboy"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="demiboy" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -628,13 +662,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDemiboyRound"
+            android:name=".Launch27"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_demiboy_round"
             android:roundIcon="@mipmap/ic_launcher_demiboy_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="demiboy-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -647,13 +682,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDemigirl"
+            android:name=".Launch28"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_demigirl"
             android:roundIcon="@mipmap/ic_launcher_demigirl"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="demigirl" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -666,13 +702,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDemigirlRound"
+            android:name=".Launch29"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_demigirl_round"
             android:roundIcon="@mipmap/ic_launcher_demigirl_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="demigirl-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -685,13 +722,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherTrigender"
+            android:name=".Launch30"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_trigender"
             android:roundIcon="@mipmap/ic_launcher_trigender"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="trigender" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -704,13 +742,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherTrigenderRound"
+            android:name=".Launch31"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_trigender_round"
             android:roundIcon="@mipmap/ic_launcher_trigender_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="trigender-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -723,13 +762,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherPolish"
+            android:name=".Launch32"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_polish"
             android:roundIcon="@mipmap/ic_launcher_polish"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="polish" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -742,13 +782,14 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherPolishRound"
+            android:name=".Launch33"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_polish_round"
             android:roundIcon="@mipmap/ic_launcher_polish_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="polish-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

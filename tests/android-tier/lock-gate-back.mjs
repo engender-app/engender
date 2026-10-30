@@ -11,7 +11,7 @@ assert.ok(serial && pkg && output, 'Pass serial, isolated package, pin|key, outp
 assert.match(pkg, /^dev\.engender\.app\.test\.[a-z0-9]+$/);
 assert.ok(mode === 'pin' || mode === 'key');
 const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8', timeout: 30000 });
-const launch = () => adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.disguise.LauncherDefault`);
+const launch = () => adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.Launch01`);
 const back = () => adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
 const resumedActivities = () => adb('shell', 'dumpsys', 'activity', 'activities').split('\n')
   .filter(line => /^\s*(?:mResumedActivity|topResumedActivity|ResumedActivity)\s*[:=]/.test(line));

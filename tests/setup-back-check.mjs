@@ -85,7 +85,7 @@ try {
   if (serial) {
     assert.match(pkg, /^dev\.engender\.app\.test\.ui10$/);
     adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP');
-    adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.disguise.LauncherDefault`);
+    adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.Launch01`);
     let pid;
     await until(() => { try { pid = adb('shell', 'pidof', pkg).trim().split(/\s+/)[0]; return !!pid; } catch { return false; } }, 'process');
     forward = adb('forward', 'tcp:0', `localabstract:webview_devtools_remote_${pid}`).trim();
@@ -139,7 +139,7 @@ try {
   if (serial) {
     receipt.welcome = { before: activities() }; await back(); await until(() => !foreground(), 'Welcome Back backgrounds');
     receipt.welcome.after = activities();
-    adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.disguise.LauncherDefault`);
+    adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.Launch01`);
     await until(foreground, 'return');
   } else { await back(); await settle(); }
   assert.equal(await question(), welcome);
@@ -183,7 +183,7 @@ try {
   } else {
     await back();
     await until(() => !foreground(), 'Today Back backgrounds');
-    adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.disguise.LauncherDefault`);
+    adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.Launch01`);
     await until(foreground, 'Today return');
   }
   await page.locator('[data-nav-item="home"]:visible, [data-rail-item="home"]:visible').first().waitFor();

@@ -98,7 +98,7 @@ export async function lockedProcessDeath({ device, pkg, evidenceDir, reporter })
     } finally { required(['shell', 'rm', '-f', path]); }
   }
   const launch = () => required(['shell', 'am', 'start', '-a', 'android.intent.action.MAIN', '-c',
-    'android.intent.category.LAUNCHER', '-n', `${pkg}/dev.engender.app.disguise.LauncherDefault`]);
+    'android.intent.category.LAUNCHER', '-n', `${pkg}/dev.engender.app.Launch01`]);
   const rows = [];
   try {
     required(['shell', 'pm', 'clear', pkg]);

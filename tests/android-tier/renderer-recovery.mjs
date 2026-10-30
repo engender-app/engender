@@ -51,7 +51,7 @@ async function connect() {
   return page;
 }
 const launch = () => adb('shell', 'am', 'start', '-a', 'android.intent.action.MAIN', '-c',
-  'android.intent.category.LAUNCHER', '-n', `${pkg}/dev.engender.app.disguise.LauncherDefault`);
+  'android.intent.category.LAUNCHER', '-n', `${pkg}/dev.engender.app.Launch01`);
 async function gate(page) {
   await page.locator(mode === 'pin' ? '[data-key="1"]' : 'input[autocomplete="current-password"]').waitFor();
   const result = await page.evaluate(() => ({

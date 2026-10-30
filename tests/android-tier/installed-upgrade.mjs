@@ -95,7 +95,9 @@ async function connect() {
   throw new Error('Installed-upgrade WebView did not become available');
 }
 async function launch() {
-  device('shell', 'am', 'start', '-W', '-n', `${packageId}/dev.engender.app.disguise.LauncherDefault`);
+  /* By intent rather than by component: the launch runs on both APKs, and
+     the launcher aliases were renamed between them (FA 43). */
+  device('shell', 'am', 'start', '-W', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-p', packageId);
   return connect();
 }
 async function unlock(page, failure = false) {
