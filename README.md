@@ -281,8 +281,8 @@ the English and Polish catalogues and prevents the number of untranslated
 literals from increasing. The licence check inspects installed dependencies;
 the first-load check measures the built app's initial assets.
 
-`npm test` includes 480 seeded importer and sniffer fuzz cases. Run
-`FUZZ_LONG=1 FUZZ_SEED=7 npm test` for 24,000 cases. Failures keep their exact
+`npm test` includes 320 seeded importer and sniffer fuzz cases. Run
+`FUZZ_LONG=1 FUZZ_SEED=7 npm test` for 16,000 cases. Failures keep their exact
 inputs and seed/index receipts in `ci-logs/fuzz/`; see
 [tests/PROBES.md](tests/PROBES.md) for replay and strict typed-refusal checks.
 
