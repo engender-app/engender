@@ -471,14 +471,17 @@
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
             <!-- One row per session today expects (ticket 25). A row each
                  owns its height, so a session logged past the count opens
-                 under the others rather than appearing in one frame. -->
+                 under the others rather than appearing in one frame. The
+                 day is named once, on its first row; the rows under it are
+                 titled by their number, so "Today" is not said three times.
+                 A session past the count has no number and keeps the day. -->
             {#each todaySlots as { session: logged, slot }, i (i)}
               <div class="rows-divide" transition:disclose>
                 <ListRow
                   key={i === 0 ? 'dilation-today' : `dilation-today-${i}`}
                   data-dilation-today={i}
-                  title={m.today()}
-                  subtitle={todaySlots.length > 1 ? [numbered(slot), logged?.note] : logged?.note || dayLong(today)}
+                  title={i > 0 && slot ? numbered(slot) : m.today()}
+                  subtitle={i > 0 && slot ? logged?.note : todaySlots.length > 1 ? [numbered(slot), logged?.note] : logged?.note || dayLong(today)}
                   onclick={() => openSlot(today, logged)}
                 >
                   {#snippet trailing()}
@@ -516,8 +519,8 @@
                     key={i === 0 ? String(epochDay) : `${epochDay}-${i}`}
                     data-session-day={epochDay}
                     data-session-slot={i}
-                    title={dayLong(epochDay)}
-                    subtitle={[numbered(slot), logged?.note]}
+                    title={i > 0 && slot ? numbered(slot) : dayLong(epochDay)}
+                    subtitle={i > 0 && slot ? logged?.note : [numbered(slot), logged?.note]}
                     onclick={() => openSlot(epochDay, logged)}
                   >
                     {#snippet trailing()}
