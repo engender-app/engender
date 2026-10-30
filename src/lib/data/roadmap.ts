@@ -220,7 +220,9 @@ export const isBuiltInInstitution = (key: string): key is RoadmapInstitutionKey 
 interface StoredTick {
   readonly packKey: string;
   readonly goalKey: string;
-  readonly status: RoadmapGoalStatus;
+  /** A string rather than RoadmapGoalStatus: an archive's tick is read as
+      whatever word it carries. */
+  readonly status: string;
   readonly hidden: boolean;
 }
 
