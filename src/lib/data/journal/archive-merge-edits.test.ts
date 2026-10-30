@@ -315,6 +315,18 @@ describe('a deletion made on one side', () => {
     assert.ok(!(await present(b.driver, 'letter', id)));
   });
 
+  test('a deletion taken back with Undo does not travel', async () => {
+    const { a, b } = await twoDevices();
+    const id = await firstId(a.driver, 'letter');
+    const deletion = await a.journal.undoable((j) => j.letters.deleteLetter(id));
+    await deletion.undo();
+
+    await b.journal.archive.merge(await exported(a));
+
+    assert.ok(await present(b.driver, 'letter', id));
+    assert.deepEqual(await a.driver.query("SELECT 1 FROM deletion WHERE tbl = 'letter'"), []);
+  });
+
   test('a deletion travels on to a third device', async () => {
     const { a, b } = await twoDevices();
     const id = await firstId(a.driver, 'letter');
