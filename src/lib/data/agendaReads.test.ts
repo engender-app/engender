@@ -83,11 +83,10 @@ test('every kind reaches the projection, and the cap folds the fourth', async ()
    running, and that panel now carries the next slot's own day - so a
    doseSlot row in the band beside it is the same medication stated twice,
    which is the defect the ticket is named after. The flag the caller passes
-   is not "a panel is drawn" but "the panel accounts for every dose slot the
-   band could draw" (`dosePanelCoversEveryRegimen`, liveTiles.ts): with the
-   tile switched off, snoozed, or standing for one of two running regimens,
-   the band keeps the kind, because otherwise a day some schedule expects
-   would be on the screen nowhere at all. */
+   is whether the panel is drawn: since functional-audit ticket 15 the panel
+   names every regimen the band could draw a row for (liveTiles.ts), and
+   with the tile switched off the band keeps the kind, because otherwise a
+   day some schedule expects would be on the screen nowhere at all. */
 test('the dose kind is withheld while the panel accounts for every dose', async () => {
   const marks: DayAheadMark[] = [
     { kind: 'doseSlot', epochDay: TODAY + 6 },

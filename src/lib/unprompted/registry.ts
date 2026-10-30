@@ -70,7 +70,6 @@ export type UnpromptedKind =
   | 'surgery-countdown'
   | 'safe-space-nudge'
   | 'stock-notice'
-  | 'patch-schedule-tile'
   | 'wrapped'
   | 'on-this-day'
   | 'reminders'
@@ -195,13 +194,6 @@ const ROWS = [
     area: null,
     title: () => m.tile_stock_title(),
     surface: { subtitle: () => m.tile_stock_sub(), prefKey: 'stockNoticeEnabled' }
-  },
-  {
-    key: 'patch-schedule-tile',
-    // the dose log again, for the same reason as the dose panel.
-    area: null,
-    title: () => m.tile_patch_schedule_title(),
-    surface: { subtitle: () => m.tile_patch_schedule_sub(), prefKey: 'patchScheduleTileEnabled' }
   },
   {
     key: 'wrapped',

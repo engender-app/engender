@@ -19,7 +19,7 @@ publishFixture('dose-slot-screens', async () => {
   f.preferences = { ...f.preferences, language: locale,
     theme: params.get('theme') === 'light' ? 'light' : 'dark',
     palette: params.get('palette') ?? 'trans', disguise: params.has('disguise'), pinnedRows: ['care'],
-    [LIVE_TILE_PREF_KEY['dose-panel']]: true, [LIVE_TILE_PREF_KEY['patch-schedule-tile']]: true };
+    [LIVE_TILE_PREF_KEY['dose-panel']]: true };
   const episodeId = await f.journal.regimen.upsertEpisode({ drug: 'Weekly patch proof', ester: null,
     dose: 100, doseUnit: 'mcg', route: 'patch', interval: 'weekly', startEpochDay: today - 14,
     endEpochDay: null, endReason: null });
@@ -44,8 +44,10 @@ publishFixture('dose-slot-screens', async () => {
       }, `${route} next uncovered slot`);
       results.push({ route, text: row.textContent! });
       if (route === '/') {
+        /* The covered slot prompts no dose today: the panel names the next
+           uncovered one (functional-audit ticket 15 folded the patch tile
+           that used to prompt beside it into this line). */
         await until(() => screen.target.querySelector('[data-dose-panel-tile]')?.textContent?.includes(m.tile_dose_next({ date })), 'dose panel next uncovered slot');
-        if (screen.target.querySelector('[data-patch-schedule-tile]')) throw new Error('covered patch slot still prompts another dose');
       }
       if (params.get('view') === route) {
         (window as unknown as { doseSlotView: typeof screen }).doseSlotView = screen;

@@ -27,7 +27,6 @@ describe('the unprompted registry', () => {
       'surgeryCountdownEnabled',
       'safeSpaceNudgeEnabled',
       'stockNoticeEnabled',
-      'patchScheduleTileEnabled',
       'wrappedEnabled',
       'onThisDayEnabled'
     ]);

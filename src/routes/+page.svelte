@@ -279,15 +279,14 @@
     }
   });
 
-  /* Read the facts alongside the tiles. Only the projection needs the
-     dose panel's coverage; waiting for all tiles before issuing SQL adds
-     their round trips to the agenda's own. Coverage changes
-     project these same facts without another read. */
-  let dosePanelCoversEveryDose = $derived(liveTiles.dosePanelCoversEveryRegimen);
+  /* Read the facts alongside the tiles. Only the projection needs to know
+     whether the dose panel is drawn; waiting for all tiles before issuing
+     SQL adds their round trips to the agenda's own. The panel arriving or
+     leaving projects these same facts without another read. */
   let agendaQuery = liveQuery((j) => readAgenda(j, today));
   let agenda = $derived(
     liveTiles.ready
-      ? projectAgenda(agendaQuery.value, dosePanelCoversEveryDose)
+      ? projectAgenda(agendaQuery.value, liveTiles.dosePanelDrawn)
       : null
   );
   let agendaExpanded = $state(false);

@@ -33,12 +33,13 @@ import { fmtDay, fmtTime, fmtNumber } from './dates';
 import { SPINE_FORWARD_DAYS } from './careSpine';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
 import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
+import { routeLabel } from './vocabulary/doseLabels';
+import type { DoseRoute } from './types';
 import { UNPROMPTED_ROWS, unpromptedQuiet } from '../unprompted/registry';
 import {
   LIVE_TILE_ORDER,
   LIVE_TILE_PREF_KEY,
   composeHomeTiles,
-  dosePanelCoversEveryRegimen,
   type HomeTile,
   type LiveTileKind
 } from './liveTiles';
@@ -54,11 +55,11 @@ interface HomeTileGrid {
   /** The grid's own second hand, so a surface next to it that also counts
       up reads the same tick rather than starting a loop of its own. */
   readonly nowMs: number;
-  /** Whether the dose panel accounts for every dose slot the agenda could
-      draw, which is what Today withholds the `doseSlot` kind on (phase 11
-      ticket 03). The rule itself is `liveTiles.ts`'s, so it has a Node test;
-      this is the grid's own reads applied to it. */
-  readonly dosePanelCoversEveryRegimen: boolean;
+  /** Whether the dose panel is drawn, which is what Today withholds the
+      agenda's `doseSlot` kind on (phase 11 ticket 03). Drawn is enough since
+      functional-audit ticket 15: the panel names every regimen the agenda
+      would have drawn a row for (`liveTiles.ts`, `panelDoses`). */
+  readonly dosePanelDrawn: boolean;
   /** Snoozes a tile for 24 hours. Home calls it for the ready letter, whose
       dismiss opens a sheet on the route rather than acting in place; the
       other ten dismiss themselves. */
@@ -141,18 +142,16 @@ export function homeTiles(
     return () => clearInterval(id);
   });
 
-  /* The dose panel and the patch tile share the regimen and schedule
-     reads; yesterday's doses are the panel's alone. */
-  const episodes = liveList((j) => (wanted('dose-panel', 'patch-schedule-tile') ? j.regimen.getEpisodes() : none([])));
+  const episodes = liveList((j) => (wanted('dose-panel') ? j.regimen.getEpisodes() : none([])));
   const procedures = liveList((j) => (wanted('surgery-countdown') ? j.procedures.getProcedures() : none([])));
   const letters = liveList((j) => (wanted('ready-letter') ? j.letters.getLetterSeals(100) : none([])));
   const latestBadEntryId = liveQuery((j) =>
     wanted('safe-space-nudge') ? j.entries.latestBadMomentEntryId() : none(null)
   );
-  const schedules = liveList((j) => (wanted('dose-panel', 'patch-schedule-tile') ? j.doses.getSchedules() : none([])));
-  const dosePauses = liveList((j) => (wanted('dose-panel', 'patch-schedule-tile') ? j.doses.getPauses() : none([])));
+  const schedules = liveList((j) => (wanted('dose-panel') ? j.doses.getSchedules() : none([])));
+  const dosePauses = liveList((j) => (wanted('dose-panel') ? j.doses.getPauses() : none([])));
   const scheduleDoses = liveList((j) =>
-    wanted('dose-panel', 'patch-schedule-tile')
+    wanted('dose-panel')
       ? j.doses.getDosesForSlots(todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS)
       : none([])
   );
@@ -244,8 +243,7 @@ export function homeTiles(
         dismissSafeSpace: (entryId) => {
           prefs.safeSpaceNudgeDismissedEntryId = entryId;
         },
-        openLetterDismiss: handlers.onLetterDismiss,
-        snooze
+        openLetterDismiss: handlers.onLetterDismiss
       },
       format: {
         number: fmtNumber,
@@ -254,7 +252,10 @@ export function homeTiles(
            and the rows under "Coming up" write a day the same way on the
            one screen that draws both. */
         weekdayDay: (epochDay) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' }),
-        time: (timestamp) => fmtTime(timestamp)
+        time: (timestamp) => fmtTime(timestamp),
+        /* An episode's route is free text in the type; routeLabel answers an
+           unknown one with the text itself. */
+        doseRoute: (route) => routeLabel(route as DoseRoute)
       }
     });
   });
@@ -274,8 +275,8 @@ export function homeTiles(
     get nowMs() {
       return nowTick;
     },
-    get dosePanelCoversEveryRegimen() {
-      return dosePanelCoversEveryRegimen(tiles, episodes.rows, schedules.rows, nowTick);
+    get dosePanelDrawn() {
+      return tiles.some((tile) => tile.key === 'dose-panel');
     },
     snooze
   };

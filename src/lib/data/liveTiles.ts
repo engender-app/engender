@@ -23,17 +23,19 @@ import type {
   DoseEvent,
   DosePause,
   DoseSchedule,
+  DoseScheduleAmount,
   Procedure,
   RegimenEpisode,
   WearSession
 } from './types';
-import { expectedAmountOn, isDailySchedule } from './doseSchedule';
-import { activeEpisodesAt, attributeDose } from './regimenEpisode';
-import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
+import { isDailySchedule } from './doseSchedule';
+import { activeEpisodesAt, attributeDose, lastDayWithin } from './regimenEpisode';
+import { epochDayFromTimestamp } from './epochDay';
 import { binderCueShowing, hoursMinutesSecondsOf } from './journal/wearSessions';
 import { wearTileTitle } from './vocabulary/wearLabels';
 import { activeSurgeryProcedure, recoveryDay } from './recoveryDay';
 import { SPINE_FORWARD_DAYS } from './careSpine';
+import { AGENDA_DAYS } from './agenda';
 import { pairDoseSchedule } from './journal/doses';
 import { shouldShowSafeSpaceNudge } from './safeSpaceNudge';
 import { unreadUnlockedLetters } from './letterStatus';
@@ -41,57 +43,6 @@ import type { BooleanPrefKey, SurfaceRow, UnpromptedKind } from '../unprompted/r
 import { SURFACE_ROWS, unpromptedQuiet } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
 import type { LetterSeal } from './journal/letters';
-
-interface PatchScheduleTileResult {
-  episode: RegimenEpisode;
-  schedule: DoseSchedule;
-  doseAmount: string;
-  route: string;
-}
-
-/* shouldShowPatchScheduleTile stays exported only for its own test (AU-09
-   test-only review). */
-export function shouldShowPatchScheduleTile(params: {
-  episodes: readonly RegimenEpisode[];
-  schedules: readonly DoseSchedule[];
-  doses: readonly DoseEvent[];
-  pauses: readonly DosePause[];
-  todayEpochDay: number;
-  formatNumber?: (value: number) => string;
-  enabled: boolean;
-  snoozed: boolean;
-}): PatchScheduleTileResult | null {
-  if (!params.enabled || params.snoozed) return null;
-
-  const active = activeEpisodesAt(params.episodes, startOfDayTimestamp(params.todayEpochDay));
-
-  for (const episode of active) {
-    const schedule = params.schedules.find((s) => s.episodeId === episode.id);
-    if (!schedule) continue;
-
-    if (isDailySchedule(schedule)) continue;
-
-    const adh = pairDoseSchedule(params.episodes, params.doses, schedule, params.pauses,
-      params.todayEpochDay, params.todayEpochDay);
-    const unloggedSlot = adh.rows.find((r) => r.slot.epochDay === params.todayEpochDay && r.dose === null);
-
-    if (unloggedSlot) {
-      const expAmount = expectedAmountOn(adh, params.todayEpochDay);
-      const doseAmount = expAmount
-        ? m.tile_patch_schedule_amount({ dose: (params.formatNumber ?? String)(expAmount.dose), unit: expAmount.doseUnit })
-        : m.tile_patch_schedule_amount({ dose: (params.formatNumber ?? String)(episode.dose), unit: episode.doseUnit });
-
-      return {
-        episode,
-        schedule,
-        doseAmount,
-        route: episode.route
-      };
-    }
-  }
-
-  return null;
-}
 
 /* ------------------------------------------------------------------------
    Home's grid (phase 8 deepening ticket 07)
@@ -122,8 +73,7 @@ export type LiveTileKind =
   | 'dose-panel'
   | 'surgery-countdown'
   | 'safe-space-nudge'
-  | 'ready-letter'
-  | 'patch-schedule-tile';
+  | 'ready-letter';
 
 /** The order Home draws them in, and the only place that order is written.
 
@@ -137,8 +87,7 @@ export const LIVE_TILE_ORDER = [
   'dose-panel',
   'surgery-countdown',
   'safe-space-nudge',
-  'ready-letter',
-  'patch-schedule-tile'
+  'ready-letter'
 ] as const satisfies readonly LiveTileKind[];
 
 /** How much of the screen a tile is worth (phase 8 UX ticket 01, ADR-0055).
@@ -148,9 +97,10 @@ export const LIVE_TILE_ORDER = [
     priority would be a fourth thing to keep in step with them and would
     still have to be bucketed to draw.
 
-    - `today` is true today and false tomorrow: a wear session running now,
-      a dose slot the day expects. An appointment on today's date is the
-      agenda's today row since functional-audit ticket 14, not a tile.
+    - `today` is true today and false tomorrow: a wear session running now.
+      An appointment on today's date is the agenda's today row since
+      functional-audit ticket 14, and a dose slot the day expects is the
+      dose panel's since ticket 15, not a tile of its own.
     - `moment` is something that has happened and is waiting: a letter that
       unlocked, a bad moment Safe Space can answer, the days after a
       surgery.
@@ -160,8 +110,8 @@ export const LIVE_TILE_ORDER = [
 
     The dose panel is a moment rather than bound to today on purpose. It
     qualifies for as long as an episode is active, which would make it a
-    permanent full-width row; what says a dose is actually due today is the
-    patch-schedule tile beside it. */
+    permanent full-width row. A dose due today is a line on it rather than a
+    second tile (functional-audit ticket 15). */
 type HomeTileTier = 'today' | 'moment' | 'dormant';
 
 /** The three bands, in the order Home draws them. */
@@ -178,7 +128,6 @@ const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies readon
    cross-checks against it (AU-09 test-only review). */
 export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'wear-timer': 'today',
-  'patch-schedule-tile': 'today',
   'dose-panel': 'moment',
   'surgery-countdown': 'moment',
   'safe-space-nudge': 'moment',
@@ -331,7 +280,6 @@ export interface HomeTileActions {
   stopWear: (session: WearSession) => void;
   dismissSafeSpace: (entryId: number) => void;
   openLetterDismiss: () => void;
-  snooze: (kind: LiveTileKind) => void;
 }
 
 /** The display formats, as callbacks: every one of them reaches
@@ -350,6 +298,9 @@ export interface HomeTileFormat {
   weekdayDay: (epochDay: number) => string;
   /** A wall-clock time - when a wear session started. */
   time: (timestamp: number) => string;
+  /** How a dose goes in, in words - the dose panel's line for a dose due
+      today names the route the way the dose log does. */
+  doseRoute: (route: RegimenEpisode['route']) => string;
 }
 
 /* HomeTilesInput stays exported only for liveTiles.grid.test.ts, which
@@ -384,42 +335,45 @@ interface TileGate {
     builder can disagree with the table the ordering reads. */
 type TileBuilder = (gate: TileGate) => Omit<HomeTile, 'tier'> | null;
 
-/** Whether Today's dose panel accounts for every dose slot the agenda could
-    draw, which is what the screen withholds the `doseSlot` kind on
-    (agendaReads.ts, phase 11 ticket 03).
+/** What the dose panel states about one regimen: the episode, and the
+    next slot its schedule still expects nothing logged against. */
+interface PanelDose {
+  episode: RegimenEpisode;
+  next: { epochDay: number; amount: DoseScheduleAmount | null } | null;
+}
 
-    The panel states one drug - `activeEpisodesAt`'s first - while
-    `dayAhead`'s `doseSlot` section reads every active episode, so the
-    question is not how many regimens are running but how many of them put a
-    row on the band. That section skips an episode with no schedule and one
-    on a daily schedule (ADR-0067: a daily slot marks every day a screen can
-    draw, which is wallpaper), so an everyday pill beside an injection on a
-    rhythm earns no rows at all and the panel still stands for the whole of
-    what is drawn. This is the demo journal's own shape, and taking the
-    count of running regimens instead put both of the injection's rows back
-    beside the panel that already stated them.
+/** The regimens Today's dose panel states, the one it leads with first
+    (functional-audit ticket 15).
 
-    What is refused is the case that would hide something: a second regimen
-    that does earn rows of its own, which the panel never names. Then the
-    band keeps every row and the cost is one drug stated twice - the
-    direction ADR-0074 already errs in rather than state one drug's
-    arrangement under another's name. */
-export function dosePanelCoversEveryRegimen(
-  tiles: readonly HomeTile[],
-  episodes: readonly RegimenEpisode[],
-  schedules: readonly DoseSchedule[],
-  nowMs: number
-): boolean {
-  if (!tiles.some((tile) => tile.key === 'dose-panel')) return false;
-  const active = activeEpisodesAt(episodes, nowMs);
-  const marking = active.filter((episode) => {
-    const schedule = schedules.find((s) => s.episodeId === episode.id);
-    return schedule !== undefined && !isDailySchedule(schedule);
+    The panel stands for every regimen the agenda would have drawn a
+    `doseSlot` row for, which is what lets Today withhold that kind whenever
+    the panel is up (agendaReads.ts) with no drug left off the screen. That
+    section reads every episode whose span meets the agenda's month and
+    skips one with no schedule or a daily one (ADR-0067: a daily slot marks
+    every day, which is wallpaper), so this reads the same set. The lead is
+    the one whose next open slot comes first - a patch due today before an
+    injection due on Sunday - and the rest are named after it.
+
+    With none of those running, the panel names the first active episode,
+    as it always has: an everyday pill draws no row anywhere else, and the
+    panel is its one line on Today. */
+function panelDoses(input: HomeTilesInput, active: readonly RegimenEpisode[]): PanelDose[] {
+  const { todayEpochDay: today, reads } = input;
+  const nextOf = (episode: RegimenEpisode): PanelDose => {
+    const schedule = reads.schedules.find((s) => s.episodeId === episode.id);
+    if (!schedule) return { episode, next: null };
+    const slot = pairDoseSchedule(reads.episodes, reads.scheduleDoses, schedule, reads.dosePauses, today,
+      today + SPINE_FORWARD_DAYS).rows.find((row) => row.dose === null)?.slot;
+    return { episode, next: slot ? { epochDay: slot.epochDay, amount: slot.amount } : null };
+  };
+  const marking = reads.episodes.filter((episode) => {
+    const schedule = reads.schedules.find((s) => s.episodeId === episode.id);
+    return schedule !== undefined && !isDailySchedule(schedule) &&
+      lastDayWithin(episode, today, today + AGENDA_DAYS - 1) !== null;
   });
-  /* `active[0]` is the episode the panel names (the builder below). A lone
-     marking episode that is not that one would be a drug the panel does not
-     stand for, so it is refused the same as two. */
-  return marking.length === 0 || (marking.length === 1 && marking[0].id === active[0].id);
+  if (marking.length === 0) return [nextOf(active[0])];
+  /* A stable sort, so two regimens due the same day keep episode order. */
+  return marking.map(nextOf).sort((a, b) => (a.next?.epochDay ?? Infinity) - (b.next?.epochDay ?? Infinity));
 }
 
 /** Home's grid: every kind, gated, in `LIVE_TILE_ORDER`, with nothing
@@ -428,10 +382,6 @@ export function dosePanelCoversEveryRegimen(
     here as well as a missing entry in the order. */
 function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
   const { todayEpochDay: today, nowMs, reads, actions, format } = input;
-  const dismissSnooze = (kind: LiveTileKind): HomeTileDismiss => ({
-    label: m.dismiss(),
-    onclick: () => actions.snooze(kind)
-  });
 
   return {
     'wear-timer': (gate) => {
@@ -477,17 +427,18 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       if (!gate.enabled || gate.snoozed) return null;
       const active = activeEpisodesAt(reads.episodes, nowMs);
       if (active.length === 0) return null;
-      const episode = active[0];
-      /* When the next one falls (phase 11 ticket 03). The panel is the
-         dose's one home on Today now - the agenda withholds its `doseSlot`
-         rows while this tile is up (agendaReads.ts) - so the day the
-         schedule expects is stated here or nowhere.
+      /* When the next one falls (phase 11 ticket 03), for every regimen the
+         agenda would have drawn a row for. The panel is the dose's one home
+         on Today - the agenda withholds its `doseSlot` rows while this tile
+         is up (agendaReads.ts), and the patch-schedule tile that used to
+         stand beside it on a due day is folded in here (functional-audit
+         ticket 15) - so the day each schedule expects is stated here or
+         nowhere.
 
-         The dose owner pairs this episode's full tolerance window. An early
+         The dose owner pairs each episode's full tolerance window. An early
          dose can cover today, while another episode's dose cannot. */
-      const schedule = reads.schedules.find((s) => s.episodeId === episode.id) ?? null;
-      const next = schedule ? pairDoseSchedule(reads.episodes, reads.scheduleDoses, schedule,
-        reads.dosePauses, today, today + SPINE_FORWARD_DAYS).rows.find((row) => row.dose === null)?.slot ?? null : null;
+      const [lead, ...others] = panelDoses(input, active);
+      const { episode, next } = lead;
       /* What the app did on the person's behalf yesterday, which the panel
          states ahead of the next day it expects (phase 11 ticket 11,
          ADR-0086). Ahead, not beside: the line holds one sentence, and on
@@ -498,19 +449,32 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         (dose) =>
           dose.source === 'schedule' && attributeDose(reads.episodes, dose).episode?.id === episode.id
       );
+      /* A dose due today says how much and how, which is what the patch
+         tile carried: the slot's own amount where the schedule sets one,
+         the episode's otherwise. */
+      const amount = next?.amount ?? { dose: episode.dose, doseUnit: episode.doseUnit };
+      const when = autoLoggedYesterday
+        ? m.tile_dose_auto_logged_yesterday()
+        : !next
+          ? undefined
+          : next.epochDay === today
+            ? m.tile_dose_today_detail({
+                dose: (format.number ?? String)(amount.dose),
+                unit: amount.doseUnit,
+                route: format.doseRoute(episode.route)
+              })
+            : m.tile_dose_next({ date: format.weekdayDay(next.epochDay) });
+      /* A second regimen on a rhythm is named rather than left to the
+         agenda, whose rows are withheld while the panel is up. Its own day
+         is one tap away on the dose log. */
+      const also = others.length > 0 ? m.tile_dose_also({ drugs: others.map((o) => o.episode.drug).join(', ') }) : undefined;
       return {
         key: 'dose-panel',
         tileKey: 'dose-panel',
         attrs: { 'data-dose-panel-tile': true },
         title: m.tile_dose_title(),
         value: episode.drug,
-        note: autoLoggedYesterday
-          ? m.tile_dose_auto_logged_yesterday()
-          : !next
-            ? undefined
-            : next.epochDay === today
-              ? m.tile_dose_next_today()
-              : m.tile_dose_next({ date: format.weekdayDay(next.epochDay) }),
+        note: [when, also].filter(Boolean).join(' · ') || undefined,
         href: '/care/doses',
         action: {
           icon: 'plus',
@@ -593,36 +557,6 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
           attrs: { 'data-letter-dismiss': '' },
           onclick: () => actions.openLetterDismiss()
         }
-      };
-    },
-
-    'patch-schedule-tile': (gate) => {
-      const qualifying = shouldShowPatchScheduleTile({
-        formatNumber: format.number,
-        episodes: reads.episodes,
-        schedules: reads.schedules,
-        doses: reads.scheduleDoses,
-        pauses: reads.dosePauses,
-        todayEpochDay: today,
-        enabled: gate.enabled,
-        snoozed: gate.snoozed
-      });
-      if (!qualifying) return null;
-      return {
-        key: 'patch-schedule-tile',
-        tileKey: 'patch-schedule',
-        attrs: { 'data-patch-schedule-tile': true },
-        title: m.tile_patch_schedule_title(),
-        value: qualifying.episode.drug,
-        note: m.tile_patch_schedule_detail({ amount: qualifying.doseAmount, route: qualifying.route }),
-        href: '/care/doses',
-        action: {
-          icon: 'plus',
-          text: m.tile_dose_log_action(),
-          label: m.tile_dose_log_action(),
-          href: '/care/doses?add=1'
-        },
-        dismiss: dismissSnooze('patch-schedule-tile')
       };
     }
   };

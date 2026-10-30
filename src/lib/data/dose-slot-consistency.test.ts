@@ -5,9 +5,53 @@ import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { readCare } from './careReads';
 import { readRowForward } from './rowForwardReads';
 import { readDoseLog } from './doseLogReads';
-import { shouldShowPatchScheduleTile } from './liveTiles';
+import { m } from '../paraglide/messages';
+import { composeHomeTiles, LIVE_TILE_ORDER, type HomeTile, type LiveTileKind } from './liveTiles';
+import { projectAgenda, readAgenda } from './agendaReads';
+import { SPINE_FORWARD_DAYS } from './careSpine';
+import type { Journal } from './journal/journal';
 
 const TODAY = 20000;
+const NOW = startOfDayTimestamp(TODAY) + 12 * 3600000;
+
+/** What Today states about doses for a journal: its tiles, and the agenda
+    projected the way the route projects it - the `doseSlot` rows withheld
+    while the dose panel is drawn (functional-audit ticket 15). Formats are
+    stand-ins so the assertions read which day and route were asked for. */
+async function todayOf(journal: Journal): Promise<{ tiles: HomeTile[]; doseRows: number }> {
+  const [episodes, schedules, dosePauses, scheduleDoses, yesterdayDoses] = await Promise.all([
+    journal.regimen.getEpisodes(),
+    journal.doses.getSchedules(),
+    journal.doses.getPauses(),
+    journal.doses.getDosesForSlots(TODAY, TODAY + SPINE_FORWARD_DAYS),
+    journal.doses.getDoses(TODAY - 1, TODAY - 1)
+  ]);
+  const every = <T,>(value: T) => Object.fromEntries(LIVE_TILE_ORDER.map((kind) => [kind, value])) as Record<LiveTileKind, T>;
+  const tiles = composeHomeTiles({
+    todayEpochDay: TODAY,
+    nowMs: NOW,
+    enabled: every(true),
+    snoozed: every(false),
+    areaStates: {},
+    reads: { runningWear: null, wearDurationCue: false, episodes, procedures: [], letters: [],
+      latestBadEntryId: null, safeSpaceDismissedEntryId: null, schedules, dosePauses, scheduleDoses, yesterdayDoses },
+    actions: { stopWear() {}, dismissSafeSpace() {}, openLetterDismiss() {} },
+    format: { fullDay: (day) => `full:${day}`, weekdayDay: (day) => `weekday:${day}`, time: String,
+      doseRoute: (route) => `route:${route}` }
+  });
+  const agenda = projectAgenda(await readAgenda(journal, TODAY), tiles.some((tile) => tile.key === 'dose-panel'));
+  const rows = agenda ? [...agenda.shown, ...agenda.folded] : [];
+  return { tiles, doseRows: rows.filter((row) => row.kind === 'doseSlot').length };
+}
+
+async function regimen(journal: Journal, drug: string, route: 'oral' | 'patch' | 'im', everyNDays: number,
+  startEpochDay = TODAY - 14): Promise<string> {
+  const episodeId = await journal.regimen.upsertEpisode({ drug, ester: null, dose: 100, doseUnit: 'mcg', route,
+    interval: everyNDays === 1 ? 'daily' : 'weekly', startEpochDay, endEpochDay: null, endReason: null });
+  await journal.doses.upsertSchedule({ episodeId, recurrence: { kind: 'everyNDays', everyNDays },
+    dosesPerDay: 1, doseAmounts: null, autoLogFromEpochDay: null });
+  return episodeId;
+}
 
 for (const offset of [-3, -1, 0, 2, 3]) {
   test(`weekly patch dose on slot day ${offset >= 0 ? '+' : ''}${offset} covers the same slot across readers`, async () => {
@@ -31,9 +75,8 @@ for (const offset of [-3, -1, 0, 2, 3]) {
     assert.equal(log.scheduleView.comparison.rows.find((row) => row.slot.epochDay === TODAY)?.dose?.id, doseId);
     assert.equal(log.scheduleView.comparison.unmatched.length, 0);
     assert.equal(log.logRows.some((row) => row.dose.id === doseId), offset <= 0, 'pairing input does not widen the visible log');
-    const doses = await journal.doses.getDoses(TODAY - 3, TODAY + 3);
-    assert.equal(shouldShowPatchScheduleTile({ episodes: log.episodes, schedules: await journal.doses.getSchedules(),
-      doses, pauses: [], todayEpochDay: TODAY, enabled: true, snoozed: false }), null);
+    const panel = (await todayOf(journal)).tiles.find((tile) => tile.key === 'dose-panel');
+    assert.equal(panel?.note, m.tile_dose_next({ date: `weekday:${TODAY + 7}` }), 'a covered patch slot prompts no dose today');
   });
 }
 
@@ -176,4 +219,48 @@ test('invalid partial or reused automatic provenance cannot alter stored doses',
   await assert.rejects(() => db.run('UPDATE dose_event SET auto_log_epoch_day = NULL WHERE uuid = ?', [id]), /CHECK constraint/);
   await assert.rejects(() => db.run("UPDATE dose_event SET source = 'person' WHERE uuid = ?", [id]), /CHECK constraint/);
   assert.deepEqual((await journal.doses.getDosesForSlots(TODAY, TODAY)).map((dose) => dose.autoLogSlot), [input.autoLogSlot]);
+});
+
+/* Functional-audit ticket 15. The patch-schedule tile is folded into the
+   dose panel, so Today states each regimen's dose once: in the panel, never
+   in a second tile beside it and never again as an agenda row. A regimen
+   on a daily schedule draws no agenda row at all (ADR-0067); one on a
+   rhythm draws rows, and the panel names it instead. */
+const todayCases: [string, (journal: Journal) => Promise<string[]>][] = [
+  ['a daily dose', async (journal) => {
+    await regimen(journal, 'Spironolactone', 'oral', 1);
+    return [];
+  }],
+  ['a patch changed every three days', async (journal) => {
+    await regimen(journal, 'Estradiol patch', 'patch', 3, TODAY - 15);
+    return ['Estradiol patch'];
+  }],
+  ['an injection, a daily pill and a second regimen on a rhythm', async (journal) => {
+    await regimen(journal, 'Estradiol valerate', 'im', 7);
+    await regimen(journal, 'Progesterone', 'oral', 1);
+    await regimen(journal, 'Leuprorelin', 'im', 28, TODAY - 20);
+    return ['Estradiol valerate', 'Leuprorelin'];
+  }]
+];
+for (const [name, seed] of todayCases) {
+  test(`Today states every dose once with ${name}`, async () => {
+    const { journal } = await journalWithBuiltIns();
+    const marking = await seed(journal);
+    const { tiles, doseRows } = await todayOf(journal);
+    assert.deepEqual(tiles.map((tile) => tile.key), ['dose-panel'], 'one dose tile and no other');
+    const panel = tiles[0];
+    const stated = `${panel.value} | ${panel.note ?? ''}`;
+    for (const drug of marking) {
+      assert.equal(stated.split(drug).length - 1, 1, `${drug} is named once on the panel: ${stated}`);
+    }
+    assert.equal(doseRows, 0, 'no agenda row restates a dose the panel names');
+  });
+}
+
+test('the panel states the patch change that falls today, with its amount and route', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await regimen(journal, 'Estradiol patch', 'patch', 3, TODAY - 15);
+  const panel = (await todayOf(journal)).tiles.find((tile) => tile.key === 'dose-panel');
+  assert.equal(panel?.value, 'Estradiol patch');
+  assert.equal(panel?.note, m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:patch' }));
 });

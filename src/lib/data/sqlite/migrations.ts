@@ -333,5 +333,9 @@ DELETE FROM taper WHERE id NOT IN (
     FROM taper t GROUP BY t.procedure_id
 );
 CREATE UNIQUE INDEX idx_taper_procedure ON taper(procedure_id);
-` }
+` },
+  /* Functional audit ticket 15: the patch-schedule tile is folded into the
+     dose panel, so the switch that turned it off has nothing left to turn
+     off. The dose panel's own switch is untouched. */
+  { version: 113, sql: "DELETE FROM pref WHERE key = 'patchScheduleTileEnabled';" }
 ];
