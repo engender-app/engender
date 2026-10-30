@@ -921,9 +921,25 @@ test('merging a second taper for a procedure that has one keeps one', async () =
     await select(driver, 'SELECT t.uuid AS uuid, p.uuid AS procedure, t.stages AS stages FROM taper t JOIN procedure p ON p.id = t.procedure_id ORDER BY p.uuid'),
     [
       { uuid: 'here', procedure: 'proc1', stages: '[]' },
-      { uuid: 'other1', procedure: 'proc2', stages: '[]' }
+      { uuid: 'other2', procedure: 'proc2', stages: '[]' }
     ]
   );
+});
+
+/* An archive written before schema v111 can carry two tapers for one
+   procedure. The export lists them in row order and carries no updated_at,
+   so the later one stands for the newer, and a restore keeps it: the same
+   survivor the v111 migration picks on a journal it upgrades. */
+test('restoring an archive with two tapers for one procedure keeps the later one', async () => {
+  const driver = await migratedDb();
+  await seedProcedure(driver, 'proc1');
+  const taper = (id: string, startEpochDay: number): ArchiveTaper => ({ id, procedureId: 'proc1', startEpochDay, stagesJson: '[]' });
+
+  await applyTaper(restoring(driver, { taper: [taper('older', 20100), taper('newer', 20200)] }, 'replace', 9));
+
+  assert.deepEqual(await select(driver, 'SELECT uuid, start_epoch_day FROM taper'), [
+    { uuid: 'newer', start_epoch_day: 20200 }
+  ]);
 });
 
 // applyAppointments -------------------------------------------------------------

@@ -1073,11 +1073,15 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
     One taper per procedure (functional audit ticket 25, schema v111's
     UNIQUE index): a merge that brings a second schedule for a procedure
     this journal already has one for keeps the one already here, the same
-    insert-if-absent rule a matched uuid gets. */
+    insert-if-absent rule a matched uuid gets. An archive written before
+    v111 can itself carry two for a procedure; the export lists them in row
+    order with no updated_at, so the later one stands for the newer and is
+    the one offered, the survivor the v111 migration picks too. */
 export async function applyTaper({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM taper');
+  const latestPerProcedure = new Map(journal.taper.map((taper) => [taper.procedureId, taper]));
 
-  for (const taper of journal.taper) {
+  for (const taper of latestPerProcedure.values()) {
     if (present.has(taper.id)) continue;
 
     const rows = await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [taper.procedureId]);
