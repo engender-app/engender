@@ -46,8 +46,8 @@ export const MARK_TILE = '#FFFFFF';
 
 /** The monochrome mark's ring count, fixed whatever the flag is: one colour
     has no bands to count, and fixing the count is what keeps the print
-    header, the disguise fallback and a single-colour reproduction the same
-    shape every time (ticket 38, round one's sub-decision, kept). */
+    header and a single-colour reproduction the same shape every time
+    (ticket 38, round one's sub-decision, kept). */
 export const MARK_MONO_RINGS = 4;
 
 /** How big the tile is inside a full-bleed canvas a launcher will mask.
@@ -95,8 +95,7 @@ export type MarkCrop = 'tile' | 'round' | 'launcher-round' | 'bleed';
 
 export interface MarkOptions {
   /** One ink and four rings, drawn as outlines, the edge included: the
-      printed surfaces, the disguise fallback and any single-colour
-      reproduction. The stripes are ignored when this is set, and so is the
+      printed surfaces and any single-colour reproduction. The stripes are ignored when this is set, and so is the
       ground - paper is the ground there. */
   ink?: string;
   /** The ground under the drawing. Defaults to the white tile, or to
