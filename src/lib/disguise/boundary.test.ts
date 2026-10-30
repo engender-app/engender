@@ -32,6 +32,7 @@ const outsideOwners = new Set([
   'src/lib/data/archive/android-auto-export.ts',
   'src/lib/data/archive/backup.ts',
   'src/lib/data/prefs/documentChrome.ts',
+  'src/lib/data/prefs/preferences.ts',
   'src/lib/disguise/identity.ts',
   'src/routes/onboarding/+page.svelte'
 ]);
