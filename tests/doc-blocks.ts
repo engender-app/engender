@@ -145,10 +145,10 @@ export function renderPreferences(): string {
   const keys = Object.keys(PREFERENCE_DEFAULTS).sort();
   const kind = (key: string) => (portable.has(key) ? 'portable' : local.has(key) ? 'device-local' : '**neither**');
   return [
-    `${keys.length} preferences (\`prefs/catalogue.ts\`): ${PORTABLE_KEYS.length} portable, ${DEVICE_LOCAL_KEYS.length} device-local. "Before unlock" marks the ${BOOT_KEYS.length} a locked app reads to draw its gate.`,
+    `${keys.length} preferences (\`prefs/catalogue.ts\`): ${PORTABLE_KEYS.length} portable, ${DEVICE_LOCAL_KEYS.length} device-local. "Before the database" marks the ${BOOT_KEYS.length} mirrored outside SQLite because boot needs them before the journal opens (ADR-0009).`,
     '',
     table(
-      ['Preference', 'Kind', 'Before unlock', 'Default'],
+      ['Preference', 'Kind', 'Before the database', 'Default'],
       keys.map((key) => [
         code(key),
         kind(key),
@@ -163,7 +163,7 @@ export function renderPreferences(): string {
 export function renderUnprompted(): string {
   const tiles = new Set<string>(LIVE_TILE_ORDER);
   const where = (row: (typeof UNPROMPTED_ROWS)[number]) =>
-    row.notify ? `notification (${code(row.notify.channel)} channel)` : tiles.has(row.key) ? 'Today, live tile' : 'Today';
+    row.notify ? `notification (${code(row.notify.channel)} channel)` : tiles.has(row.key) ? 'Today (live tile)' : 'in the app';
   const pref = (row: (typeof UNPROMPTED_ROWS)[number]) => code((row.surface ?? row.notify)!.prefKey);
   return [
     `${UNPROMPTED_ROWS.length} kinds (\`unprompted/registry.ts\`), ${LIVE_TILE_ORDER.length} of them live tiles. "Quiet with" is the area whose hidden or finished state silences the kind besides its own switch.`,
