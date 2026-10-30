@@ -216,6 +216,23 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
   await journal.roadmap.addCustomGoal('Tell my manager', comingOut.id);
 
+  // Name and document changes (functional audit ticket 35): a few offices
+  // at different stages, a diploma that bounced, and one office of the
+  // person's own. Fixed, not drawn from r(), so the rest of the persona's
+  // random stream stays where it was.
+  const change = (institution: string, status: string, epochDay: number, note: string | null = null) =>
+    journal.roadmap.addInstitutionChange({ institution, status, epochDay, note });
+  await change('pl-legal-pesel', 'submitted', today - 60);
+  await change('pl-legal-pesel', 'done', today - 32);
+  await change('pl-legal-id-card', 'submitted', today - 30);
+  await change('pl-legal-id-card', 'done', today - 9);
+  await change('pl-legal-bank', 'submitted', today - 8);
+  await change('pl-legal-bank', 'waiting', today - 6, 'Branch asked for a copy of the ruling');
+  await change('pl-legal-diplomas', 'submitted', today - 25, 'Sent to the university');
+  await change('pl-legal-diplomas', 'waiting', today - 12, 'Passed on to the kuratorium');
+  const gym = await journal.roadmap.addInstitution('Gym membership');
+  await change(gym.id, 'submitted', today - 4);
+
   // Letters: two already unlockable, two still sealed.
   await journal.letters.addLetter({ epochDay: today - 400, text: 'Dear future me, HRT starts next month.', unlockEpochDay: today - 200 });
   await journal.letters.addLetter({ epochDay: today - 150, text: 'One year in and the mirror is different now.', unlockEpochDay: today - 5 });

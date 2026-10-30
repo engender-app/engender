@@ -1345,11 +1345,11 @@ test('an archive from before auto-logging reads its doses as the person\'s own, 
 
 test.each(['replace', 'merge'] as const)('hidden goal visibility and linked records survive archive %s', async (mode) => {
   const source = await device();
-  const keys = ['pl-legal-id-card', 'pl-legal-appeal', 'pl-legal-passport'];
+  const keys = ['pl-legal-name-usc', 'pl-legal-appeal', 'pl-legal-final-copy'];
   await source.journal.roadmap.setGoalStatus('pl', keys[0], 'checked');
   await source.journal.roadmap.setGoalStatus('pl', keys[1], 'not-my-path');
   for (const key of keys) await source.journal.roadmap.setGoalHidden('pl', key, true);
-  const milestone = await source.journal.milestones.upsertMilestone({ name: 'ID card', epochDay: 20500, roadmapGoalKey: keys[0] });
+  const milestone = await source.journal.milestones.upsertMilestone({ name: 'Name decision', epochDay: 20500, roadmapGoalKey: keys[0] });
   const document = await source.journal.documents.addDocument({ title: 'Receipt', epochDay: 20500 }, { full: bytes('receipt'), thumb: bytes('thumb') });
   await source.journal.documents.setDocumentTarget(document, { kind: 'goal', id: keys[0] });
   const target = await device();
@@ -1369,15 +1369,15 @@ test.each(['checked', 'not-my-path'] as const)('merging a status into a locally 
   await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', status);
   const target = await device();
   await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-appeal', true);
-  await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-passport', true);
+  await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-final-copy', true);
   const contents = await exported(source.journal);
   await target.journal.archive.merge(contents);
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': status });
-  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-appeal', 'pl-legal-passport']);
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-appeal', 'pl-legal-final-copy']);
   await target.journal.archive.merge(await exported(source.journal));
   await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-appeal', false);
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': status });
-  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-passport']);
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-final-copy']);
   const reopened = await device();
   await reopened.journal.archive.replace(await exported(target.journal));
   assert.deepEqual(await reopened.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': status });
@@ -1387,10 +1387,47 @@ test('merging hidden goals preserves local visibility and status while legacy ch
   const source = await device();
   await source.journal.roadmap.setGoalHidden('pl', 'pl-legal-appeal', true);
   await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
-  await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-passport', 'checked');
+  await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-final-copy', 'checked');
   const target = await device();
   await target.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'checked');
   await target.journal.archive.merge(await exported(source.journal));
   assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), []);
-  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': 'checked', 'pl-legal-passport': 'checked' });
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': 'checked', 'pl-legal-final-copy': 'checked' });
+});
+
+/* Functional audit ticket 35: an archive written before the institution
+   list carries ticks on steps that became institutions. They arrive the way
+   migration 114 left the journal: a tick goes, a hidden flag stays, and the
+   retired "bank, insurers, clinic" step goes entirely. The institutions and
+   their dated changes travel both ways. */
+test.each(['replace', 'merge'] as const)('an older archive\'s ticks on steps that became institutions keep only their hidden flag on %s', async (mode) => {
+  const older = await device();
+  await older.journal.roadmap.setGoalStatus('pl', 'pl-legal-final-copy', 'checked');
+  const contents = await exported(older.journal);
+  contents.journal.roadmapChecks.push(
+    { packKey: 'pl', goalKey: 'pl-legal-passport', status: 'checked', hidden: false },
+    { packKey: 'pl', goalKey: 'pl-legal-driving-licence', status: 'checked', hidden: true },
+    { packKey: 'pl', goalKey: 'pl-legal-institutions', status: 'checked', hidden: false }
+  );
+  const target = await device();
+  await target.journal.archive[mode](contents);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-final-copy': 'checked' });
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-driving-licence']);
+});
+
+test.each(['replace', 'merge'] as const)('institutions and their dated changes travel on %s', async (mode) => {
+  const source = await device();
+  const gym = await source.journal.roadmap.addInstitution('Gym');
+  await source.journal.roadmap.addInstitutionChange({ institution: 'pl-legal-bank', status: 'waiting', epochDay: 20400, note: 'Branch asked for the ruling' });
+  await source.journal.roadmap.addInstitutionChange({ institution: gym.id, status: 'done', epochDay: 20401, note: null });
+  const target = await device();
+  await target.journal.archive[mode](await exported(source.journal));
+  assert.deepEqual(await target.journal.roadmap.getInstitutions(), [gym]);
+  assert.deepEqual(
+    (await target.journal.roadmap.getInstitutionChanges()).map(({ id: _id, ...rest }) => rest),
+    [
+      { institution: 'pl-legal-bank', status: 'waiting', epochDay: 20400, note: 'Branch asked for the ruling' },
+      { institution: gym.id, status: 'done', epochDay: 20401, note: null }
+    ]
+  );
 });

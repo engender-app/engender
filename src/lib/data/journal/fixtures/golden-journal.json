@@ -1666,6 +1666,28 @@
       "status": "unchecked"
     }
   ],
+  "roadmapInstitutions": [
+    {
+      "id": "06d42b0a-2537-40a9-a08a-a41275cb8cb8",
+      "name": "Gym"
+    }
+  ],
+  "roadmapInstitutionChanges": [
+    {
+      "id": "42e8386e-5f7b-4c82-8568-a265a19e640c",
+      "institution": "pl-legal-passport",
+      "status": "submitted",
+      "epochDay": 20400,
+      "note": "Voivode office"
+    },
+    {
+      "id": "67bf2ee0-2c0b-4d95-b1b7-74beebb73707",
+      "institution": "06d42b0a-2537-40a9-a08a-a41275cb8cb8",
+      "status": "done",
+      "epochDay": 20401,
+      "note": null
+    }
+  ],
   "regimenEpisodes": [
     {
       "id": "2b0a7e91-46fb-4caf-b919-3952c0616ece",

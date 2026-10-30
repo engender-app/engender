@@ -779,6 +779,29 @@ const SECTIONS = [
     }),
     apply.adoptLegacyRoadmapTracks
   ),
+  /* The institutions the person added to the roadmap's list of name and
+     document changes (functional audit ticket 35), and the dated changes at
+     every institution, built-in or added. Both uuid-identified, so a merge
+     skips a row already here. Changes name their institution by a built-in
+     key or an added one's uuid, the way a goal names its group, so the
+     institutions land first. An added institution is structure the way a
+     category is; the changes are what happened to this person, and stay. */
+  flat({
+    name: 'roadmapInstitutions',
+    travels: 'whole',
+    table: 'roadmap_institution',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: { uuid: 'id', name: 'name' }
+  }),
+  flat({
+    name: 'roadmapInstitutionChanges',
+    travels: 'none',
+    table: 'roadmap_institution_change',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: { uuid: 'id', institution: 'institution', status: 'status', epoch_day: 'epochDay', note: 'note' }
+  }),
   // `end_epoch_day` is absent on an archive from before ticket 38 - read as
   // still ongoing, the same as every pre-existing episode's backfill (v40).
   // `end_reason` is absent the same way on an archive from before ticket 43 -

@@ -404,3 +404,63 @@ test('removing a category removes its goals, unfiles their paper, and leaves eve
   assert.equal(unfiled.title, 'Letter');
   assert.equal(unfiled.targetId, null);
 });
+
+/* Name and document changes per institution (functional audit ticket 35).
+   An institution the person adds is a row of its own; a built-in one is
+   only a key, and both collect dated changes. */
+test('an institution the person adds gets a uuid, keeps its name, and can be renamed', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const gym = await journal.roadmap.addInstitution('Gym');
+  const library = await journal.roadmap.addInstitution('Library');
+  assert.match(gym.id, UUID_PATTERN);
+  await journal.roadmap.renameInstitution(gym.id, 'Climbing gym');
+  assert.deepEqual(await journal.roadmap.getInstitutions(), [
+    { id: gym.id, name: 'Climbing gym' },
+    { id: library.id, name: 'Library' }
+  ]);
+  await assert.rejects(journal.roadmap.renameInstitution('nope', 'x'));
+  await assert.rejects(journal.roadmap.addInstitution('   '));
+});
+
+test('changes are dated, read back oldest first, and a status outside the three is refused', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const late = await journal.roadmap.addInstitutionChange({ institution: 'pl-legal-passport', status: 'done', epochDay: 20420, note: null });
+  const early = await journal.roadmap.addInstitutionChange({
+    institution: 'pl-legal-passport',
+    status: 'submitted',
+    epochDay: 20400,
+    note: '  Filed at the voivode office  '
+  });
+  assert.deepEqual(await journal.roadmap.getInstitutionChanges(), [
+    { id: early, institution: 'pl-legal-passport', status: 'submitted', epochDay: 20400, note: 'Filed at the voivode office' },
+    { id: late, institution: 'pl-legal-passport', status: 'done', epochDay: 20420, note: null }
+  ]);
+  await assert.rejects(
+    journal.roadmap.addInstitutionChange({ institution: 'pl-legal-passport', status: 'checked', epochDay: 20400, note: null }),
+    /invalid institution status/
+  );
+  await journal.roadmap.deleteInstitutionChange(early);
+  await journal.roadmap.deleteInstitutionChange(early);
+  assert.deepEqual((await journal.roadmap.getInstitutionChanges()).map((one) => one.id), [late]);
+});
+
+test('removing an institution removes its changes, unfiles its paper, and leaves the rest', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const gone = await journal.roadmap.addInstitution('Gym');
+  const kept = await journal.roadmap.addInstitution('Library');
+  await journal.roadmap.addInstitutionChange({ institution: gone.id, status: 'submitted', epochDay: 20400, note: null });
+  const keptChange = await journal.roadmap.addInstitutionChange({ institution: kept.id, status: 'waiting', epochDay: 20401, note: null });
+  const builtInChange = await journal.roadmap.addInstitutionChange({ institution: 'pl-legal-bank', status: 'done', epochDay: 20402, note: null });
+  const page = () => ({ full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+  const filed = await journal.documents.addDocument({ epochDay: 20400, title: 'Membership card' }, page());
+  await journal.documents.setDocumentTarget(filed, { kind: 'goal', id: gone.id });
+
+  await journal.roadmap.deleteInstitution(gone.id);
+  await journal.roadmap.deleteInstitution(gone.id);
+
+  assert.deepEqual(await journal.roadmap.getInstitutions(), [{ id: kept.id, name: 'Library' }]);
+  assert.deepEqual((await journal.roadmap.getInstitutionChanges()).map((one) => one.id), [keptChange, builtInChange]);
+  const unfiled = (await journal.documents.getDocument(filed))!;
+  assert.equal(unfiled.title, 'Membership card');
+  assert.equal(unfiled.targetId, null);
+});

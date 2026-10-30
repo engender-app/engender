@@ -4384,7 +4384,9 @@ try {
 
   const boxes = page.locator('[data-goal^="pl-"]');
   const before = await boxes.count();
-  if (before !== 24) throw new Error('the Polish pack rendered ' + before + ' goals, not the 24 legal steps');
+  if (before !== 17) throw new Error('the Polish pack rendered ' + before + ' goals, not the 17 legal steps');
+  // Functional audit ticket 35: the post-ruling offices are institutions now.
+  if ((await page.locator('[data-institution^="pl-legal-"]').count()) !== 8) throw new Error('the eight institutions do not show');
   if (await page.locator('[data-goal^="pl-social-"], [data-goal^="pl-medical-"], [data-goal^="pl-presentational-"]').count()) {
     throw new Error('a cut track still shows a step');
   }

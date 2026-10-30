@@ -282,6 +282,8 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   roadmapChecks: 'no date of its own',
   roadmapCategories: 'no date of its own',
   roadmapGoals: 'no date of its own',
+  roadmapInstitutions: 'no date of its own',
+  roadmapInstitutionChanges: 'part of the roadmap, which has no hub date',
   checklists: 'no date of its own',
   providers: 'no date of its own: notes on somebody the person sees (functional-audit ticket 27)',
 

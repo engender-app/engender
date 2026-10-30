@@ -21,7 +21,8 @@
    made for that track, its uuid the track key. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { CustomRoadmapGoal, RoadmapCategory, RoadmapGoalStatus } from '../types';
+import type { CustomRoadmapGoal, InstitutionChange, RoadmapCategory, RoadmapGoalStatus, RoadmapInstitution } from '../types';
+import { INSTITUTION_STATUSES, assertOneOf } from '../rowValues';
 import { assertChanged, mintUuid, now } from './support';
 
 export interface RoadmapArea {
@@ -68,7 +69,34 @@ export interface RoadmapArea {
       against those goals the way `deleteCustomGoal` does; a milestone one
       of them minted keeps its link. Idempotent (ADR-0053). */
   deleteCategory(id: string): Promise<void>;
+
+  /** Institutions the person added to the list of name and document
+      changes (functional audit ticket 35), in the order added. The built-in
+      ones are keys in roadmap.ts and have no row. */
+  getInstitutions(): Promise<RoadmapInstitution[]>;
+  /** Refuses a blank name: a nameless row has nothing to be told apart by. */
+  addInstitution(name: string): Promise<RoadmapInstitution>;
+  /** Throws on an unknown id, like `renameCategory`. */
+  renameInstitution(id: string, name: string): Promise<void>;
+  /** Removes the institution and every change recorded at it, and unfiles
+      the paper filed against it the way `deleteCustomGoal` does.
+      Idempotent (ADR-0053). */
+  deleteInstitution(id: string): Promise<void>;
+  /** Every change at every institution, oldest first by day, then by the
+      order written. */
+  getInstitutionChanges(): Promise<InstitutionChange[]>;
+  /** `institution` is a built-in key or an added institution's uuid.
+      Refuses a status outside INSTITUTION_STATUSES; a blank note is none. */
+  addInstitutionChange(input: Omit<InstitutionChange, 'id'>): Promise<string>;
+  /** Idempotent (ADR-0053). */
+  deleteInstitutionChange(id: string): Promise<void>;
 }
+
+const nameOf = (name: string): string => {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('an institution needs a name');
+  return trimmed;
+};
 
 export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
   return {
@@ -206,6 +234,64 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
         await driver.run('DELETE FROM roadmap_goal WHERE track = ?', [id]);
         await driver.run('DELETE FROM roadmap_category WHERE uuid = ?', [id]);
       });
+    },
+
+    async getInstitutions() {
+      const rows = await driver.query<{ uuid: string; name: string }>('SELECT uuid, name FROM roadmap_institution ORDER BY id');
+      return rows.map((row) => ({ id: row.uuid, name: row.name }));
+    },
+
+    async addInstitution(name) {
+      const uuid = mintUuid();
+      const trimmed = nameOf(name);
+      await driver.run('INSERT INTO roadmap_institution (uuid, name, updated_at) VALUES (?, ?, ?)', [uuid, trimmed, now()]);
+      return { id: uuid, name: trimmed };
+    },
+
+    async renameInstitution(id, name) {
+      const result = await driver.run('UPDATE roadmap_institution SET name = ?, updated_at = ? WHERE uuid = ?', [
+        nameOf(name),
+        now(),
+        id
+      ]);
+      assertChanged(result, `roadmap institution: ${id}`);
+    },
+
+    async deleteInstitution(id) {
+      await driver.transaction(async (driver) => {
+        await driver.run("UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'goal' AND target_id = ?", [
+          id
+        ]);
+        await driver.run('DELETE FROM roadmap_institution_change WHERE institution = ?', [id]);
+        await driver.run('DELETE FROM roadmap_institution WHERE uuid = ?', [id]);
+      });
+    },
+
+    async getInstitutionChanges() {
+      const rows = await driver.query<{ uuid: string; institution: string; status: string; epoch_day: number; note: string | null }>(
+        'SELECT uuid, institution, status, epoch_day, note FROM roadmap_institution_change ORDER BY epoch_day, id'
+      );
+      return rows.map((row) => ({
+        id: row.uuid,
+        institution: row.institution,
+        status: row.status,
+        epochDay: row.epoch_day,
+        note: row.note
+      }));
+    },
+
+    async addInstitutionChange({ institution, status, epochDay, note }) {
+      assertOneOf(INSTITUTION_STATUSES, 'institution status', status);
+      const uuid = mintUuid();
+      await driver.run(
+        'INSERT INTO roadmap_institution_change (uuid, institution, status, epoch_day, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [uuid, institution, status, epochDay, note?.trim() || null, now()]
+      );
+      return uuid;
+    },
+
+    async deleteInstitutionChange(id) {
+      await driver.run('DELETE FROM roadmap_institution_change WHERE uuid = ?', [id]);
     }
   };
 }

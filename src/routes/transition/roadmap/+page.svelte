@@ -55,6 +55,7 @@
   import { getLocale } from '$lib/paraglide/runtime';
   import {
     LEGAL_GROUP,
+    POLISH_INSTITUTIONS,
     POLISH_PACK,
     ownStepsLeft,
     polishLegalStepsShown,
@@ -70,6 +71,7 @@
     roadmapGoalNoteSecondary,
     roadmapCategoryName,
     roadmapGoalTitle,
+    roadmapInstitutionName,
     roadmapPackCaveat,
     roadmapPackMarkerNote,
     roadmapPackName,
@@ -95,6 +97,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { disclose, resize } from '$lib/motion/reveal';
+  import Institutions from './Institutions.svelte';
   import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -117,6 +120,12 @@
   let categoryQuery = liveList((j) => j.roadmap.getCategories());
   let categories = $derived(categoryQuery.rows);
 
+  /* The institution list (functional audit ticket 35), read here rather
+     than in its own component so the reserve below waits for it too. */
+  let institutionQuery = liveList((j) => j.roadmap.getInstitutions());
+  let institutionChangeQuery = liveList((j) => j.roadmap.getInstitutionChanges());
+  let institutionsPanel = $state<ReturnType<typeof Institutions> | null>(null);
+
   /* The switch (functional audit ticket 34). Null until somebody touches
      it, and null follows the language: on for Polish, off otherwise. The
      ticks stay stored either way, so switching back brings back exactly
@@ -126,11 +135,19 @@
   let hiddenQuery = liveQuery((j) => j.roadmap.getHiddenGoals(pack.key));
   let hiddenGoals = $derived(hiddenQuery.value ?? []);
   let hiddenBuiltIns = $derived(pack.goals.filter((goal) => hiddenGoals.includes(goal.key)));
+  let hiddenInstitutions = $derived(POLISH_INSTITUTIONS.filter((one) => hiddenGoals.includes(one.key)));
   let hiddenGoalsOpen = $state(false);
   let list = $derived(roadmapList(pack, polishShown, customGoals, hiddenGoals, categories));
   let stepsLeft = $derived(roadmapStepsLeft(list, (key) => statuses[key] ?? 'unchecked'));
   let anySteps = $derived(list.goals.length + list.legalGoals.length > 0);
-  let loaded = $derived(!statusQuery.loading && !customQuery.loading && !hiddenQuery.loading && !categoryQuery.loading);
+  let loaded = $derived(
+    !statusQuery.loading &&
+      !customQuery.loading &&
+      !hiddenQuery.loading &&
+      !categoryQuery.loading &&
+      !institutionQuery.loading &&
+      !institutionChangeQuery.loading
+  );
   const fadeCount = (_node: Element) =>
     fadeOnly(Math.max(motionDuration('--dur-fast'), crossfadeDuration()));
 
@@ -375,6 +392,16 @@
   let sourceId = $derived(page.url.searchParams.get('goal'));
   let sourceBuiltin = $derived(pack.goals.find((goal) => goal.key === sourceId));
   let sourceCustom = $derived(customGoals.find((goal) => goal.id === sourceId));
+  /* A document filed under an institution links here with the same
+     `?goal=`, since the six that were steps kept their keys. */
+  let sourceInstitution = $derived(
+    sourceId !== null && (POLISH_INSTITUTIONS.some((one) => one.key === sourceId) || institutionQuery.rows.some((one) => one.id === sourceId))
+  );
+  function openSource() {
+    if (sourceBuiltin) openBuiltInGoal(sourceBuiltin.key);
+    else if (sourceCustom) openCustomGoal(sourceCustom);
+    else if (sourceInstitution && sourceId !== null) institutionsPanel?.open(sourceId);
+  }
 
   function closeGoalSheet() {
     selectedGoal = null;
@@ -457,7 +484,12 @@
 
 <div class="screen">
   <ScreenHeader title={m.roadmap_title()} back="/more" />
-  <SourceRecordHandoff id={sourceId} ready={!!sourceBuiltin || (!customQuery.loading && !customQuery.failed)} found={!!sourceBuiltin || !!sourceCustom} onOpen={() => sourceBuiltin ? openBuiltInGoal(sourceBuiltin.key) : openCustomGoal(sourceCustom!)} />
+  <SourceRecordHandoff
+    id={sourceId}
+    ready={!!sourceBuiltin || (!customQuery.loading && !customQuery.failed && !institutionQuery.loading && !institutionQuery.failed)}
+    found={!!sourceBuiltin || !!sourceCustom || sourceInstitution}
+    onOpen={openSource}
+  />
 
   <!-- The two questions this screen answers for itself, above what they
        govern (functional audit ticket 34): whether the Polish steps show
@@ -520,9 +552,9 @@
             </div>
           </div>
         {/if}
-        {#if hiddenBuiltIns.length > 0}
+        {#if hiddenBuiltIns.length + hiddenInstitutions.length > 0}
           <button class="btn btn-ghost press" data-show-hidden-goals onclick={() => (hiddenGoalsOpen = true)} transition:disclose>
-            <span>{m.roadmap_hidden_goals_count({ n: hiddenBuiltIns.length })}</span>
+            <span>{m.roadmap_hidden_goals_count({ n: hiddenBuiltIns.length + hiddenInstitutions.length })}</span>
           </button>
         {/if}
       </div>
@@ -627,8 +659,24 @@
         <p class="roadmap-sources muted small" data-roadmap-sources>
           {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
         </p>
+        <!-- After the court steps, the offices to update once the ruling is
+             final (functional audit ticket 35). Inside this section rather
+             than beside it, so the switch moves one block: two blocks
+             collapsing at once on two curves made the second one rise into
+             view and sink again, and its margin dropped the categories 20px
+             in the frame it left. -->
+        <Institutions
+          part="list"
+          onOpen={(id) => institutionsPanel?.open(id)}
+          shown={polishShown}
+          own={institutionQuery.rows}
+          changes={institutionChangeQuery.rows}
+          {hiddenGoals}
+          packKey={pack.key}
+        />
       </section>
     {/if}
+
 
     <!-- The person's own categories, whatever the switch says. A category
          arrives and leaves as one block, heading and card together, and a
@@ -765,6 +813,18 @@
   failed={removingCategory.failed}
 />
 
+<!-- The institution's sheet (functional audit ticket 35), outside the
+     switch's block so a document's link opens it whatever the switch says. -->
+<Institutions
+  part="sheet"
+  bind:this={institutionsPanel}
+  shown={polishShown}
+  own={institutionQuery.rows}
+  changes={institutionChangeQuery.rows}
+  {hiddenGoals}
+  packKey={pack.key}
+/>
+
 <RoadmapMilestonePromptSheet
   open={promptGoal !== null}
   copy={MILESTONE_OFFER.copy}
@@ -867,6 +927,14 @@
         title={roadmapGoalTitle(goal.key)}
         subtitle={stateLabel(statuses[goal.key] ?? 'unchecked')}
         onclick={() => { hiddenGoalsOpen = false; openBuiltInGoal(goal.key); }}
+      />
+    {/each}
+    {#each hiddenInstitutions as one (one.key)}
+      <ListRow
+        key={one.key}
+        data-hidden-goal={one.key}
+        title={roadmapInstitutionName(one.key)}
+        onclick={() => { hiddenGoalsOpen = false; institutionsPanel?.open(one.key); }}
       />
     {/each}
   </ListCard>

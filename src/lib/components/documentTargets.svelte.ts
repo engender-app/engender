@@ -19,8 +19,8 @@ import { liveList } from '$lib/data/live/journal.svelte';
 import { fmtDay } from '$lib/data/dates';
 import { getLocale } from '$lib/paraglide/runtime';
 import { prefs } from '$lib/data/prefs/store.svelte';
-import { POLISH_PACK, polishLegalStepsShown } from '$lib/data/roadmap';
-import { roadmapGoalTitle } from '$lib/data/vocabulary/roadmapLabels';
+import { POLISH_INSTITUTIONS, POLISH_PACK, isBuiltInInstitution, polishLegalStepsShown } from '$lib/data/roadmap';
+import { roadmapGoalTitle, roadmapInstitutionName } from '$lib/data/vocabulary/roadmapLabels';
 import { DOCUMENT_TARGET_SECTION_HEADING } from '$lib/data/vocabulary/documentTargetLabels';
 import type { DocumentTarget } from '$lib/data/types';
 import { documentTargetHref, orderedSections, type TargetSection } from './documentTargets';
@@ -37,6 +37,7 @@ export function documentTargets() {
   const procedures = liveList((j) => j.procedures.getProcedures());
   const episodes = liveList((j) => j.regimen.getEpisodes());
   const customGoals = liveList((j) => j.roadmap.getCustomGoals());
+  const institutions = liveList((j) => j.roadmap.getInstitutions());
 
   const sections = $derived<TargetSection[]>([
     {
@@ -74,7 +75,17 @@ export function documentTargets() {
       kind: 'goal',
       heading: DOCUMENT_TARGET_SECTION_HEADING.goal(),
       rows: [
-        ...(polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale()) ? POLISH_PACK.goals : []).map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
+        ...(polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale())
+          ? [
+              ...POLISH_PACK.goals.map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
+              /* The institutions (functional audit ticket 35) sit under the
+                 same switch and file under the same 'goal' link: the six
+                 that were steps kept their keys, so their paper did not
+                 move. */
+              ...POLISH_INSTITUTIONS.map((one) => ({ id: one.key, title: roadmapInstitutionName(one.key) })),
+              ...institutions.rows.map((one) => ({ id: one.id, title: one.name }))
+            ]
+          : []),
         ...[...customGoals.rows].reverse().map((goal) => ({ id: goal.id, title: goal.text }))
       ]
     }
@@ -92,9 +103,12 @@ export function documentTargets() {
            it resolves without waiting for a read at all. */
         const builtIn = POLISH_PACK.goals.find((goal) => goal.key === target.id);
         if (builtIn) return found(roadmapGoalTitle(builtIn.key));
-        if (customGoals.loading) return { state: 'loading' };
+        if (isBuiltInInstitution(target.id)) return found(roadmapInstitutionName(target.id));
+        if (customGoals.loading || institutions.loading) return { state: 'loading' };
         const custom = customGoals.rows.find((goal) => goal.id === target.id);
-        return custom ? found(custom.text) : { state: 'gone' };
+        if (custom) return found(custom.text);
+        const institution = institutions.rows.find((one) => one.id === target.id);
+        return institution ? found(institution.name) : { state: 'gone' };
       }
 
       if (target.kind === 'milestone') {

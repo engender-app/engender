@@ -179,6 +179,11 @@ export const TABLE_NAMES = [
      from 'roadmapGoal' so that ticking a goal does not re-read the
      category names. */
   'roadmapCategory',
+  /* The institutions on the roadmap's list of name and document changes
+     (functional audit ticket 35), the added ones and the dated changes
+     together: no screen reads one without the other, the reason 'dose'
+     gives for its own pair. */
+  'roadmapInstitution',
   /* Checklists and their items alike (phase 5 ticket 05): nothing reads a
      checklist without its items, the same reasoning 'dose' gives. */
   'checklist',
@@ -775,13 +780,20 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteCustomGoal: ['roadmapGoal', 'document'],
       addCategory: ['roadmapCategory'],
       renameCategory: ['roadmapCategory'],
-      deleteCategory: ['roadmapCategory', 'roadmapGoal', 'document']
+      deleteCategory: ['roadmapCategory', 'roadmapGoal', 'document'],
+      addInstitution: ['roadmapInstitution'],
+      renameInstitution: ['roadmapInstitution'],
+      deleteInstitution: ['roadmapInstitution', 'document'],
+      addInstitutionChange: ['roadmapInstitution'],
+      deleteInstitutionChange: ['roadmapInstitution']
     },
     reads: {
       getHiddenGoals: ['roadmapCheck'],
       getGoalStatuses: ['roadmapCheck'],
       getCustomGoals: ['roadmapGoal'],
-      getCategories: ['roadmapCategory']
+      getCategories: ['roadmapCategory'],
+      getInstitutions: ['roadmapInstitution'],
+      getInstitutionChanges: ['roadmapInstitution']
     }
   }),
   checklists: classify<Journal['checklists']>()({

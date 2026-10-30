@@ -24,7 +24,7 @@
 import { foldText } from '../fold';
 import { drugNameKey } from '../regimenEpisode';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource';
-import { LEGACY_ROADMAP_TRACKS, isCutTrackGoal } from '../roadmap';
+import { LEGACY_ROADMAP_TRACKS, keptTick } from '../roadmap';
 import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
@@ -674,10 +674,15 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
     'SELECT pack_key, goal_key, status FROM roadmap_check'
   );
   const present = new Map(rows.map((row) => [`${row.pack_key}\n${row.goal_key}`, row.status]));
-  /* Ticks against the tracks functional audit ticket 34 cut are skipped,
-     the same rows migration 111 deleted, so an older archive cannot bring
-     them back as invisible rows. */
-  const checks = journal.roadmapChecks.filter((check) => !isCutTrackGoal(check.goalKey));
+  /* An older archive's ticks go through the rules migrations 111 and 114
+     applied to the journal (keptTick): a tick on a track ticket 34 cut or
+     on the retired "bank, insurers, clinic" step is skipped, and one on a
+     step that became an institution (ticket 35) keeps only its hidden
+     flag, so nothing comes back as an invisible row. */
+  const checks = journal.roadmapChecks.flatMap((check) => {
+    const kept = keptTick({ ...check, hidden: check.hidden ?? false });
+    return kept ? [kept] : [];
+  });
 
   for (const check of checks) {
     if (check.status !== 'unchecked' && present.get(`${check.packKey}\n${check.goalKey}`) === 'unchecked') {

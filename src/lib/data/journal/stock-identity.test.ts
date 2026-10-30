@@ -90,7 +90,7 @@ for (const mode of ['merge', 'replace'] as const) {
       // effect's resolved day; v104: milestone.celebrate; v107: a hair-removal
       // session's minutes; v110: the appointment's time and provider, and the
       // provider table; v111: the roadmap's category table; v113: the drug a
-      // reminder is for).
+      // reminder is for; v114: the roadmap's institution tables).
       await sourceDb.exec("ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other'");
       // And ticket 47's two stock columns (v99), for the same reason.
       await sourceDb.exec('ALTER TABLE medication_stock ADD COLUMN expiry_epoch_day INTEGER');
@@ -107,6 +107,9 @@ for (const mode of ['merge', 'replace'] as const) {
       await sourceDb.exec('ALTER TABLE hair_removal_session ADD COLUMN minutes INTEGER');
       await sourceDb.exec('CREATE TABLE roadmap_category (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE, name TEXT NOT NULL, updated_at INTEGER NOT NULL)');
       await sourceDb.exec('ALTER TABLE reminder ADD COLUMN drug TEXT');
+      await sourceDb.exec('CREATE TABLE roadmap_institution (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE, name TEXT NOT NULL, updated_at INTEGER NOT NULL)');
+      await sourceDb.exec(`CREATE TABLE roadmap_institution_change (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE,
+        institution TEXT NOT NULL, status TEXT NOT NULL, epoch_day INTEGER NOT NULL, note TEXT, updated_at INTEGER NOT NULL)`);
       await source.reconcileBuiltIns();
       for (const [id, drug, quantity, day, updated] of [
         ['first', firstDrug, 7, 20010, 200], ['last', lastDrug, 59, 20000, 100]

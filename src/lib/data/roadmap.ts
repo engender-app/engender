@@ -23,7 +23,7 @@
    checkable. Order is the order the procedure usually runs in, and it is a
    suggestion the screen renders rather than a rule anything enforces. */
 
-import type { RoadmapGoalStatus } from './types';
+import type { InstitutionChange, RoadmapGoalStatus } from './types';
 
 interface RoadmapGoal<K extends string = string> {
   readonly key: K;
@@ -62,15 +62,8 @@ const POLISH_GOALS = [
   { key: 'pl-legal-written-reasons' },
   { key: 'pl-legal-appeal' },
   { key: 'pl-legal-final-copy' },
-  { key: 'pl-legal-pesel' },
   { key: 'pl-legal-new-birth-copy' },
   { key: 'pl-legal-name-usc' },
-  { key: 'pl-legal-id-card' },
-  { key: 'pl-legal-passport' },
-  { key: 'pl-legal-driving-licence' },
-  { key: 'pl-legal-zus-ceidg' },
-  { key: 'pl-legal-diplomas' },
-  { key: 'pl-legal-institutions' },
   { key: 'pl-legal-document-set' }
 ] as const satisfies readonly RoadmapGoal[];
 
@@ -179,4 +172,108 @@ export function roadmapStepsLeft<K extends string, C extends OwnGoal, Cat>(
 /** The same count for goals the person wrote, which carry their own tick. */
 export function ownStepsLeft(goals: readonly { readonly status: RoadmapGoalStatus }[]): number {
   return goals.filter((goal) => goal.status === 'unchecked').length;
+}
+
+/* Name and document changes, per institution (functional audit ticket 35).
+   After the ruling every institution is updated on its own, and one of
+   them can take months: the Ombudsman documents a diploma from a closed
+   university that was passed from the kuratorium to the ministry to the
+   state archive, none of which would reissue it. So the
+   post-ruling steps that each named an office (a new PESEL, the ID card,
+   the passport, the driving licence, ZUS, the diplomas, and one step for
+   "bank, insurers, clinic, phone operator") became a list of institutions,
+   each moved through submitted, waiting and done on the days it happened.
+
+   The six that were steps keep their goal keys, so a document filed
+   against "the driving licence" before is filed against the driving
+   licence still, with no migration of the link. `pl-legal-zus-ceidg` is
+   NFZ and ZUS now; the key is only a name. Bank and employer are new.
+   Wording is in vocabulary/roadmapLabels.ts, like the steps'. */
+export const POLISH_INSTITUTIONS = [
+  { key: 'pl-legal-pesel' },
+  { key: 'pl-legal-id-card' },
+  { key: 'pl-legal-passport' },
+  { key: 'pl-legal-driving-licence' },
+  { key: 'pl-legal-bank' },
+  { key: 'pl-legal-zus-ceidg' },
+  { key: 'pl-legal-employer' },
+  { key: 'pl-legal-diplomas' }
+] as const satisfies readonly RoadmapGoal[];
+
+/** The day the institution notes were last checked against their sources,
+    as an ISO day. Its own date rather than the pack's: the court steps were
+    checked on POLISH_PACK.reviewedOn and the institutions later, and the
+    reviewed-on guard (functional audit ticket 40) warns on each by its own
+    age. */
+export const INSTITUTIONS_REVIEWED_ON = '2026-10-30';
+
+export type RoadmapInstitutionKey = (typeof POLISH_INSTITUTIONS)[number]['key'];
+
+/** The step that said "bank, insurers, clinic, phone operator" in one line,
+    which the institution list replaces with one row per institution. */
+const RETIRED_INSTITUTIONS_STEP = 'pl-legal-institutions';
+
+const INSTITUTION_KEYS: ReadonlySet<string> = new Set(POLISH_INSTITUTIONS.map((one) => one.key));
+
+export const isBuiltInInstitution = (key: string): key is RoadmapInstitutionKey => INSTITUTION_KEYS.has(key);
+
+interface StoredTick {
+  readonly packKey: string;
+  readonly goalKey: string;
+  /** A string rather than RoadmapGoalStatus: an archive's tick is read as
+      whatever word it carries. */
+  readonly status: string;
+  readonly hidden: boolean;
+}
+
+/** What is left of a stored tick once ticket 35 has run: the same rule
+    migration 114 applies to the journal and a restore applies to an older
+    archive. A tick on a cut track goes (ticket 34), and so does one on the
+    retired "bank, insurers, clinic" step. A tick on a step that became an
+    institution goes too, since an institution moves by dated changes and a
+    tick has no date to give one; only its hidden flag stays, because the
+    person said that row was not theirs to see. Every other tick is kept as
+    it was. */
+export function keptTick<T extends StoredTick>(tick: T): T | null {
+  if (isCutTrackGoal(tick.goalKey) || tick.goalKey === RETIRED_INSTITUTIONS_STEP) return null;
+  if (!isBuiltInInstitution(tick.goalKey)) return tick;
+  return tick.hidden ? { ...tick, status: 'unchecked' } : null;
+}
+
+/** Where one institution stands: the status its latest change gave it and
+    the day of that change, or nulls while nothing has been recorded.
+    "Latest" is by the day the change happened, then by the order it was
+    written, so a change dated back is history and does not move the
+    present. `changes` are this institution's, oldest first. */
+export function institutionState(changes: readonly Pick<InstitutionChange, 'status' | 'epochDay'>[]): {
+  status: string | null;
+  epochDay: number | null;
+} {
+  let latest: Pick<InstitutionChange, 'status' | 'epochDay'> | null = null;
+  for (const one of changes) if (latest === null || one.epochDay >= latest.epochDay) latest = one;
+  return latest ? { status: latest.status, epochDay: latest.epochDay } : { status: null, epochDay: null };
+}
+
+/** The institutions as the screen draws them: the built-ins still in view
+    and the ones the person added, in the order they were added. All of it
+    sits behind the "Polish legal steps" switch, so with it off the list is
+    empty and nothing stored changes. */
+export function institutionList<Own>(
+  shown: boolean,
+  own: readonly Own[],
+  hiddenGoals: readonly string[]
+): { builtIns: readonly RoadmapGoal<RoadmapInstitutionKey>[]; own: readonly Own[] } {
+  if (!shown) return { builtIns: [], own: [] };
+  const hidden = new Set(hiddenGoals);
+  return { builtIns: POLISH_INSTITUTIONS.filter((one) => !hidden.has(one.key)), own };
+}
+
+/** How many institutions shown are not done yet, a plain count like
+    roadmapStepsLeft's. */
+export function institutionsLeft(
+  list: { builtIns: readonly RoadmapGoal[]; own: readonly { readonly id: string }[] },
+  changes: readonly InstitutionChange[]
+): number {
+  const ids = [...list.builtIns.map((one) => one.key), ...list.own.map((one) => one.id)];
+  return ids.filter((id) => institutionState(changes.filter((one) => one.institution === id)).status !== 'done').length;
 }

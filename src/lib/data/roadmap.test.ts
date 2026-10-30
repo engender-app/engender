@@ -10,6 +10,12 @@ import {
   ROADMAP_PACKS,
   LEGACY_ROADMAP_TRACKS,
   isCutTrackGoal,
+  INSTITUTIONS_REVIEWED_ON,
+  POLISH_INSTITUTIONS,
+  institutionList,
+  institutionState,
+  institutionsLeft,
+  keptTick,
   ownStepsLeft,
   polishLegalStepsShown,
   roadmapList,
@@ -25,7 +31,7 @@ const allGoals = ROADMAP_PACKS.flatMap((pack) => pack.goals);
    the most clinical text outside Care, so only the court procedure and its
    paperwork stay. */
 test('the Polish pack holds the legal steps and nothing else', () => {
-  expect(POLISH_PACK.goals.length).toBe(24);
+  expect(POLISH_PACK.goals.length).toBe(17);
   for (const goal of POLISH_PACK.goals) expect(goal.key.startsWith('pl-legal-')).toBe(true);
   expect(POLISH_PACK.goals[0].key).toBe('pl-legal-birth-certificate');
   expect(POLISH_PACK.goals.at(-1)!.key).toBe('pl-legal-document-set');
@@ -177,4 +183,85 @@ test('the roadmap screen draws the legal group and the person\'s categories, gat
   expect(screen).not.toContain('<Segmented');
   expect(screen).not.toContain('data-track-toggle');
   expect(screen).toContain('prefs.roadmapMilestoneSyncEnabled = v');
+});
+
+/* Functional audit ticket 35: after the ruling every institution is
+   updated on its own, so the generic post-ruling steps became a list of
+   institutions, each moved through submitted, waiting and done with a date.
+   The six that were steps keep their keys, so paper filed against one
+   before stays filed against it. */
+test('the post-ruling goals are now institutions, and the legal steps keep the court procedure', () => {
+  const steps = POLISH_PACK.goals.map((goal) => goal.key) as string[];
+  const institutions = POLISH_INSTITUTIONS.map((one) => one.key) as string[];
+  expect(institutions).toEqual([
+    'pl-legal-pesel',
+    'pl-legal-id-card',
+    'pl-legal-passport',
+    'pl-legal-driving-licence',
+    'pl-legal-bank',
+    'pl-legal-zus-ceidg',
+    'pl-legal-employer',
+    'pl-legal-diplomas'
+  ]);
+  for (const key of institutions) expect(steps).not.toContain(key);
+  expect(steps).not.toContain('pl-legal-institutions');
+  expect(steps).toContain('pl-legal-final-copy');
+  expect(steps).toContain('pl-legal-name-usc');
+  expect(new Set([...steps, ...institutions]).size).toBe(steps.length + institutions.length);
+});
+
+test('the institution list carries its own reviewed-on day for the release guard', () => {
+  expect(INSTITUTIONS_REVIEWED_ON).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  expect(Number.isNaN(Date.parse(INSTITUTIONS_REVIEWED_ON))).toBe(false);
+});
+
+const change = (id: string, institution: string, status: string, epochDay: number) => ({ id, institution, status, epochDay, note: null });
+
+test('an institution with no change has not started, and otherwise stands where its latest dated change put it', () => {
+  expect(institutionState([])).toEqual({ status: null, epochDay: null });
+  /* Read oldest first, the order the journal returns. Two on one day: the
+     one written later is the later change. */
+  const changes = [change('a', 'x', 'submitted', 10), change('b', 'x', 'waiting', 12), change('c', 'x', 'done', 12)];
+  expect(institutionState(changes)).toEqual({ status: 'done', epochDay: 12 });
+  /* A change dated back before the others is history, not the present. */
+  expect(institutionState([...changes, change('d', 'x', 'submitted', 5)])).toEqual({ status: 'done', epochDay: 12 });
+});
+
+test('the institutions show with the switch, hidden built-ins leave, and the person\'s own follow in the order made', () => {
+  const own = [{ id: 'u1', name: 'Gym' }, { id: 'u2', name: 'Library' }];
+  const on = institutionList(true, own, ['pl-legal-driving-licence']);
+  expect(on.builtIns.map((one) => one.key)).toEqual(
+    POLISH_INSTITUTIONS.map((one) => one.key).filter((key) => key !== 'pl-legal-driving-licence')
+  );
+  expect(on.own).toEqual(own);
+  expect(institutionList(false, own, [])).toEqual({ builtIns: [], own: [] });
+});
+
+test('institutions left counts every one shown that is not done', () => {
+  const list = institutionList(true, [{ id: 'u1', name: 'Gym' }], []);
+  const changes = [change('a', 'pl-legal-pesel', 'done', 3), change('b', 'pl-legal-bank', 'waiting', 4), change('c', 'u1', 'done', 5)];
+  expect(institutionsLeft(list, changes)).toBe(POLISH_INSTITUTIONS.length + 1 - 2);
+});
+
+/* A tick on a step that became an institution is history the institution
+   does not read: it is dropped, and only a hidden flag carries over (the
+   person said the step was not theirs to see). The generic "bank, insurers,
+   clinic" step is gone entirely. */
+test('a stored tick on a step that became an institution keeps only its hidden flag', () => {
+  const tick = (goalKey: string, status: RoadmapGoalStatus, hidden: boolean) => ({ packKey: 'pl', goalKey, status, hidden });
+  expect(keptTick(tick('pl-legal-court-fee', 'checked', false))).toEqual(tick('pl-legal-court-fee', 'checked', false));
+  expect(keptTick(tick('pl-legal-passport', 'checked', false))).toBeNull();
+  expect(keptTick(tick('pl-legal-passport', 'checked', true))).toEqual(tick('pl-legal-passport', 'unchecked', true));
+  expect(keptTick(tick('pl-legal-institutions', 'unchecked', true))).toBeNull();
+  expect(keptTick(tick('pl-social-tell-one-person', 'checked', false))).toBeNull();
+});
+
+test('the roadmap screen draws the institutions under the same switch, from the shared list', () => {
+  const screen = readFileSync(new URL('../../routes/transition/roadmap/+page.svelte', import.meta.url), 'utf8');
+  const panel = readFileSync(new URL('../../routes/transition/roadmap/Institutions.svelte', import.meta.url), 'utf8');
+  expect(screen).toContain('<Institutions');
+  expect(screen).toContain('shown={polishShown}');
+  expect(panel).toContain('institutionList(shown, own, hiddenGoals)');
+  expect(panel).toContain('journal.roadmap.addInstitutionChange(');
+  expect(panel).toContain('<LinkedDocuments kind="goal" {id} />');
 });

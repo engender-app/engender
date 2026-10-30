@@ -187,6 +187,8 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   procedures: 'one dated event and a recovery window; the course ends when the recovery does',
   roadmapGoals: 'a goal is answered per goal and a roadmap has no last one',
   roadmapCategories: 'a category only holds goals, which are answered per goal',
+  roadmapInstitutions: 'each institution is done on its own dated change, and a list of them has no last one',
+  roadmapInstitutionChanges: 'a dated change at one institution, which ends when that institution is done',
   roadmapChecks: 'a tick against one bundled goal, answered per goal like the goals themselves',
   milestones: 'one dated point each, and the list of them never closes',
   appointments: 'one dated visit each, and nobody declares themselves done seeing people',

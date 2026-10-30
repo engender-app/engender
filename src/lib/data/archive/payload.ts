@@ -296,6 +296,23 @@ interface ArchiveRoadmapCategory {
   name: string;
 }
 
+/** An institution the person added to the roadmap's list of name and
+    document changes (functional audit ticket 35), by its own uuid. */
+interface ArchiveRoadmapInstitution {
+  id: string;
+  name: string;
+}
+
+/** One dated change at an institution (functional audit ticket 35).
+    `institution` is a built-in key or an added institution's uuid. */
+interface ArchiveRoadmapInstitutionChange {
+  id: string;
+  institution: string;
+  status: string;
+  epochDay: number;
+  note: string | null;
+}
+
 interface ArchiveRoadmapGoal {
   id: string;
   track: string;
@@ -808,6 +825,8 @@ export interface ArchiveJournal {
   roadmapChecks: ArchiveRoadmapCheck[];
   roadmapCategories: ArchiveRoadmapCategory[];
   roadmapGoals: ArchiveRoadmapGoal[];
+  roadmapInstitutions: ArchiveRoadmapInstitution[];
+  roadmapInstitutionChanges: ArchiveRoadmapInstitutionChange[];
   regimenEpisodes: ArchiveRegimenEpisode[];
   doseEvents: ArchiveDoseEvent[];
   doseSchedules: ArchiveDoseSchedule[];
@@ -1014,6 +1033,8 @@ const postAlphaSections = [
   'roadmapChecks',
   'roadmapCategories',
   'roadmapGoals',
+  'roadmapInstitutions',
+  'roadmapInstitutionChanges',
   'regimenEpisodes',
   'doseEvents',
   'doseSchedules',

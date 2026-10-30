@@ -2,6 +2,7 @@
    on both sides of its edge with a fixture, so moving a limit or getting the
    month arithmetic wrong fails here rather than in a release log. */
 
+import { INSTITUTIONS_REVIEWED_ON } from './data/roadmap';
 import { expect, test } from 'vitest';
 import { REVIEWED_CONTENT, REVIEW_LIMIT_MONTHS, reviewDueOn, staleContent, type ReviewedContent } from './reviewedContent';
 import { wearSafetyFacts } from './data/vocabulary/wearLabels';
@@ -63,4 +64,10 @@ test('nothing shipped is past its limit on the day it was last reviewed', () => 
   const newest = REVIEWED_CONTENT.map((entry) => entry.reviewedOn).sort().at(-1)!;
 
   expect(staleContent(REVIEWED_CONTENT, newest)).toEqual([]);
+});
+
+/* Functional audit ticket 35: the institution notes were checked on a day
+   of their own, so they fall due on their own and not with the court steps. */
+test('the roadmap institutions are registered under their own reviewed-on day', () => {
+  expect(REVIEWED_CONTENT).toContainEqual({ area: 'Roadmap', item: 'institutions to update after the ruling', kind: 'legal', reviewedOn: INSTITUTIONS_REVIEWED_ON });
 });
