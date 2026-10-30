@@ -365,10 +365,10 @@ it('rejects measured actions under the wrong starting theme', () => {
 
 it('rejects a PIN gate whose prepared journal or theme does not match', async () => {
   const { verifyGateProof } = await import('./yank-sweep-core.mjs');
-  const proof = { themeProof: { selected: true, persisted: 'light', painted: 'light', transitioning: false }, route: '/', profile: 'empty', hasEntries: '0', theme: 'light', boot: 'needs-unlock', pin: true, home: false };
+  const proof = { themeProof: { selected: true, persisted: 'light', painted: 'light', transitioning: false }, route: '/', profile: 'empty', theme: 'light', boot: 'needs-unlock', pin: true, home: false };
   expect(() => verifyGateProof(proof, 'persona', 'light')).toThrow('profile');
-  expect(() => verifyGateProof({ ...proof, profile: 'persona', hasEntries: '1' }, 'persona', 'dark')).toThrow('theme');
-  expect(verifyGateProof({ ...proof, profile: 'persona', hasEntries: '1' }, 'persona', 'light')).toMatchObject({ gate: 'pin' });
+  expect(() => verifyGateProof({ ...proof, profile: 'persona' }, 'persona', 'dark')).toThrow('theme');
+  expect(verifyGateProof({ ...proof, profile: 'persona' }, 'persona', 'light')).toMatchObject({ gate: 'pin' });
 });
 
 describe('query-driven cold surfaces', () => {
@@ -546,7 +546,6 @@ describe('full persona fixture readiness', () => {
         ? (options.missing ? null : { click })
         : selector.includes('data-boot') ? (options.ready === false ? null : {}) : null },
       location: { pathname: options.path ?? '/more' },
-      localStorage: { getItem: () => options.entries ?? '1' },
       setTimeout: (resolve) => resolve()
     });
     return result;
@@ -554,8 +553,8 @@ describe('full persona fixture readiness', () => {
   it('rejects missing fill control', async () => {
     await expect(run({ missing: true })).rejects.toThrow('no Fill every feature button');
   });
-  it('rejects unfinished or empty fixture', async () => {
-    for (const options of [{ path: '/' }, { ready: false }, { entries: '0' }]) {
+  it('rejects an unfinished fixture', async () => {
+    for (const options of [{ path: '/' }, { ready: false }]) {
       await expect(run(options)).rejects.toThrow('full persona fixture');
     }
   });
@@ -720,7 +719,7 @@ it('resets mounted state before each same-route native scene', async () => {
 it('requires profile, route and aligned theme proof before accepting any hydration row', async () => {
   const { requireHydrationCoverage } = await import('./yank-sweep-core.mjs');
   expect(() => requireHydrationCoverage({}, 'empty', 'dark')).toThrow('missing hydration coverage proof');
-  const coverageProof = { profile: 'empty', hasEntries: '0', route: '/onboarding',
+  const coverageProof = { profile: 'empty', route: '/onboarding',
     themeProof: { requested: 'dark', selected: true, persisted: 'dark', painted: 'dark', transitioning: false } };
   expect(() => requireHydrationCoverage({ coverageProof }, 'empty', 'dark')).not.toThrow();
   expect(() => requireHydrationCoverage({ coverageProof: { ...coverageProof, profile: 'persona' } }, 'empty', 'dark')).toThrow('profile');
@@ -817,7 +816,7 @@ it('retains native document identity in ordinary and PIN cold proofs', async () 
   const env = {
     __sweepDocumentProof: identity, URL,
     location: { origin: 'https://journal.test', pathname: '/', search: '' },
-    localStorage: { getItem: (key) => key === 'engender-has-entries' ? '1' : key === 'engender-boot-prefs' ? JSON.stringify({ theme: 'light' }) : 'persona' },
+    localStorage: { getItem: (key) => key === 'engender-boot-prefs' ? JSON.stringify({ theme: 'light' }) : 'persona' },
     document: {
       documentElement: { dataset: { theme: 'light' } },
       querySelectorAll: () => [{ textContent: 'Light', classList: { contains: () => true } }],

@@ -329,7 +329,7 @@ test('acknowledgements travel in a backup and come back sanitised on restore (FA
     const archived = portablePreferences(sourcePrefs.all());
     expect(archived.acknowledgements).toEqual(ACKNOWLEDGED);
 
-    const hostile = { ...archived, acknowledgements: { ...ACKNOWLEDGED, readLetterIds: [LETTER, 42, 'let-1'] } };
+    const hostile = { ...archived, acknowledgements: { ...ACKNOWLEDGED, readLetterIds: [LETTER, 42, 'let-1'] } } as never;
     await restorePortablePreferencesWithin(target, hostile);
     expect((await openPreferences(target)).get('acknowledgements')).toEqual(ACKNOWLEDGED);
   } finally {

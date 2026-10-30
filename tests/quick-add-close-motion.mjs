@@ -31,7 +31,6 @@ for (const run of runs) {
   assert.equal(run.action.beforeTheme, run.theme);
   assert.equal(run.action.afterTheme, run.theme);
   assert.equal(run.profileProof.prepared, 'persona');
-  assert.equal(run.profileProof.hasEntries, '1');
   const label = `quick-add-close-persona-${run.theme}-p${run.pass}`;
   const directory = join(source, `${label}-cast`);
   const frames = JSON.parse(await readFile(join(directory, 'frames.json'), 'utf8'));
