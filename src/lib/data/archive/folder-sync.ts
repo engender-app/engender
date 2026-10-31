@@ -15,8 +15,7 @@
    behind it, as for packing an auto-export - and reports how it ended, so
    the plugin can move past it.
 
-   Android only. The web build has no folder sync (ADR draft
-   folder-sync-merges-another-devices-auto-export): a browser either cannot
+   Android only. The web build has no folder sync (ADR-0099): a browser either cannot
    keep a folder at all or asks for it again every visit. */
 
 import { isAndroid } from '../../platform';
