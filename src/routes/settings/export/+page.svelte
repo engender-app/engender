@@ -3,7 +3,7 @@
   import { m } from '$lib/paraglide/messages';
   import { runExport, type ExportPath } from '$lib/data/archive/backup';
   import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
-  import { androidAutoExport, type AutoExportStatus } from '$lib/data/archive/android-auto-export-bridge';
+  import { androidAutoExport, type AutoExportStatus, type FolderSyncOutcome } from '$lib/data/archive/android-auto-export-bridge';
   import { backupAgeDays, backupStanding } from '$lib/data/backupHealth';
   import { preferencesAttached, prefs } from '$lib/data/prefs/store.svelte';
   import { disclose, resize } from '$lib/motion/reveal';
@@ -187,6 +187,24 @@
   let autoSnapshotAt = $state<number | null>(null);
   let autoStagedAt = $state<number | null>(null);
   let autoDeferredAt = $state<number | null>(null);
+  /* Folder sync (FA 49): this device's own switch, and how the last archive
+     from another device ended. */
+  let autoFolderSync = $state(false);
+  let autoFolderOutcome = $state<FolderSyncOutcome | null>(null);
+  let autoFolderAt = $state<number | null>(null);
+  /* Which wording the line under the switch shows, and whether the switch
+     shows at all. Both wait for the first status read, so nothing is painted
+     that the read then replaces: the switch takes its state while hidden,
+     with its own transition off, and fades in a frame later rather than
+     sliding from off to on as the screen arrives. */
+  let autoFolderLoaded = $state(false);
+  const folderSyncState = $derived(
+    !autoFolderLoaded ? null
+      : autoFolderOutcome == null || autoFolderAt == null ? 'never'
+      : autoFolderOutcome === 'merged' || autoFolderOutcome === 'wrong-password' ? autoFolderOutcome
+      : 'failed'
+  );
+  const folderWhen = $derived(stampText(autoFolderAt));
 
   function applyAutoStatus(status: AutoExportStatus) {
     prefs.autoExportEnabled = status.enabled;
@@ -200,6 +218,10 @@
     autoDeferredAt = status.deferredAt ?? null;
     autoLastFailureAt = status.lastFailureAt;
     autoLastFailureReason = status.lastFailureReason;
+    autoFolderSync = status.folderSync ?? false;
+    autoFolderOutcome = status.folderLastOutcome ?? null;
+    autoFolderAt = status.folderLastAt ?? null;
+    if (!autoFolderLoaded) requestAnimationFrame(() => requestAnimationFrame(() => (autoFolderLoaded = true)));
   }
 
   async function refreshAutoStatus() {
@@ -300,6 +322,18 @@
     }
     prefs.autoExportEnabled = enabled;
     await configureAutoExport(enabled, prefs.autoExportSchedule);
+  }
+
+  async function setFolderSync(enabled: boolean) {
+    if (!android) return;
+    autoFolderSync = enabled;
+    try {
+      applyAutoStatus(await androidAutoExport.configureFolderSync({ enabled }));
+    } catch (error) {
+      console.error('could not configure folder sync', error);
+      autoFolderSync = !enabled;
+      toast(m.exp_auto_config_failed());
+    }
   }
 
   async function setAutoSchedule(value: string) {
@@ -1001,6 +1035,25 @@
       <span class:is-on={!autoHasPassword} aria-hidden={autoHasPassword}>{m.exp_auto_password_missing()}</span>
     </p>
 
+    <!-- Folder sync (FA 49): the folder above, read back. Always laid out,
+         so switching it moves nothing on the screen. -->
+    <div class="spread" data-folder-sync-row>
+      <span class="small muted">{m.exp_folder_title()}</span>
+      <span class="folder-switch" class:is-loaded={autoFolderLoaded}>
+        <Switch checked={autoFolderSync} label={m.exp_folder_title()} onChange={setFolderSync} />
+      </span>
+    </div>
+    <p class="muted small">{m.exp_folder_note()}</p>
+    <!-- Every wording laid out in one cell and crossfaded, so the first
+         status read and a later outcome change no height and swap no text
+         in a frame (the backup password line's own pattern). -->
+    <p class="muted small swap" data-folder-sync-state={folderSyncState ?? 'loading'}>
+      <span class:is-on={folderSyncState === 'never'} aria-hidden={folderSyncState !== 'never'}>{m.exp_folder_never()}</span>
+      <span class:is-on={folderSyncState === 'merged'} aria-hidden={folderSyncState !== 'merged'}>{m.exp_folder_last_merged({ when: folderWhen })}</span>
+      <span class:is-on={folderSyncState === 'wrong-password'} aria-hidden={folderSyncState !== 'wrong-password'}>{m.exp_folder_last_wrong_password({ when: folderWhen })}</span>
+      <span class:is-on={folderSyncState === 'failed'} aria-hidden={folderSyncState !== 'failed'}>{m.exp_folder_last_failed({ when: folderWhen })}</span>
+    </p>
+
     {#if prefs.autoExportEnabled}
       <div class="spread">
         <span class="small muted">{m.exp_schedule()}</span>
@@ -1454,6 +1507,17 @@
     transition:
       opacity var(--dur-fast) var(--ease-out),
       visibility 0s;
+  }
+  .folder-switch {
+    display: inline-flex;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .folder-switch.is-loaded {
+    opacity: 1;
+  }
+  .folder-switch:not(.is-loaded) :global(*) {
+    transition: none;
   }
   .backup-password-error {
     color: var(--danger);

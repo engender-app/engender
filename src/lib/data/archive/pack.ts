@@ -124,14 +124,18 @@ async function* watched(
 /** Reads an archive far enough to hand back its payload. The header is
     checked first, so an unknown format is refused before the password is
     put anywhere near a key derivation that takes a second. */
-export async function openArchive(source: AsyncIterable<Uint8Array>, password: string): Promise<OpenedArchive> {
+export async function openArchive(
+  source: AsyncIterable<Uint8Array>,
+  keyOrPassword: string | KeyDerivation
+): Promise<OpenedArchive> {
   const reader = byteReader(source);
   const { header, headerBytes } = await readArchiveHeader(reader);
-  const key = await deriveKey(
-    password,
-    header.salt,
-    resolveCredentialProfile('archive-import', { persistedParams: header.kdf })
-  );
+  const kdf = resolveCredentialProfile('archive-import', { persistedParams: header.kdf });
+  /* A derivation is the saved backup password behind the Android bridge
+     (folder sync, FA 49), the same door packing an auto-export uses. */
+  const key = typeof keyOrPassword === 'function'
+    ? await keyOrPassword(header.salt, kdf)
+    : await deriveKey(keyOrPassword, header.salt, kdf);
   const plaintext = byteReader(unframeArchive(reader, header, headerBytes, key));
   return decodeArchive(plaintext, header.formatVersion);
 }

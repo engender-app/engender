@@ -74,6 +74,15 @@ public class AutoExportPlugin extends Plugin {
     private static final String KEY_LAST_SUCCESS_AT = "lastSuccessAt";
     private static final String KEY_LAST_FAILURE_AT = "lastFailureAt";
     private static final String KEY_LAST_FAILURE_REASON = "lastFailureReason";
+    private static final String KEY_FOLDER_SYNC = "folderSync";
+    private static final String KEY_FOLDER_MERGED_THROUGH = "folderMergedThrough";
+    private static final String KEY_FOLDER_TRIED = "folderTriedAtMergedThrough";
+    private static final String KEY_FOLDER_LAST_OUTCOME = "folderLastOutcome";
+    private static final String KEY_FOLDER_LAST_AT = "folderLastAt";
+    /** The copy of another device's archive a folder sync reads, in the
+        cache rather than read through the bridge: the WebView fetches it
+        from the local server as bytes (android-file-store.ts). */
+    static final String FOLDER_STAGE = "folder-sync.ttbackup";
 
     private static final String KEYSTORE = "AndroidKeyStore";
     public static final String PASSWORD_ALIAS = "engender-auto-export-password";
@@ -101,6 +110,8 @@ public class AutoExportPlugin extends Plugin {
     private long pendingDue;
     private long pendingSnapshotAt;
     private boolean pendingScheduled;
+    /** The folder archive last staged, for finishFolderArchive to record. */
+    private String stagedFolderUri;
 
     @Override public void load() {
         if (!preferences().getBoolean(KEY_ENABLED, false)) return;
@@ -139,7 +150,7 @@ public class AutoExportPlugin extends Plugin {
                 SharedPreferences.Editor update = preferences().edit().putBoolean(KEY_ENABLED, enabled)
                     .putString(KEY_SCHEDULE, schedule)
                     .putLong("backupGeneration", preferences().getLong("backupGeneration", 0) + 1);
-                if (!enabledArg) update.remove(KEY_DESTINATION_URI).remove(KEY_DESTINATION_LABEL);
+                if (!enabledArg) update.remove(KEY_DESTINATION_URI).remove(KEY_DESTINATION_LABEL).remove(KEY_FOLDER_MERGED_THROUGH).remove(KEY_FOLDER_TRIED);
                 commitState(preferences(), update);
                 BackupWork.schedule(getContext());
                 PersistentBackup.clear(getContext());
@@ -322,6 +333,8 @@ public class AutoExportPlugin extends Plugin {
                 preferences().edit()
                     .putString(KEY_DESTINATION_URI, uri.toString())
                     .putString(KEY_DESTINATION_LABEL, label)
+                    .remove(KEY_FOLDER_MERGED_THROUGH)
+                    .remove(KEY_FOLDER_TRIED)
                     .remove(KEY_LAST_FAILURE_AT)
                     .remove(KEY_LAST_FAILURE_REASON)
                     .apply();
@@ -587,6 +600,143 @@ public class AutoExportPlugin extends Plugin {
      * side because this plugin never sees a preference. An empty body is
      * posted as no body at all rather than as a blank line.
      */
+    /** Folder sync's switch (FA 49). Per device, like the folder itself:
+        it lives here rather than among the journal's preferences, so an
+        archive never carries it to another phone. */
+    @PluginMethod
+    public void configureFolderSync(PluginCall call) {
+        synchronized (BackupWork.OWNER) {
+            Boolean enabled = call.getBoolean("enabled");
+            if (enabled == null) {
+                call.reject("configureFolderSync requires enabled");
+                return;
+            }
+            try {
+                commitState(preferences(), preferences().edit().putBoolean(KEY_FOLDER_SYNC, enabled));
+                call.resolve(statusObject());
+            } catch (Exception error) {
+                call.reject(message(error), error);
+            }
+        }
+    }
+
+    /**
+     * Copies the archive a folder sync should merge into the cache and says
+     * where it is, or resolves with a null path when there is none: folder
+     * sync off, no folder, or nothing newer from another device
+     * ({@link FolderArchives}). Under the backup lock, so a backup being
+     * delivered is either recorded as this device's own before the folder
+     * is listed or not in the folder yet.
+     */
+    @PluginMethod
+    public void stageFolderArchive(PluginCall call) {
+        synchronized (BackupWork.OWNER) {
+            JSObject out = new JSObject();
+            out.put("path", JSObject.NULL);
+            try {
+                File stage = new File(getContext().getCacheDir(), FOLDER_STAGE);
+                if (stage.exists() && !stage.delete()) throw new IOException("staging-cleanup-unavailable");
+                Uri destination = destinationUri();
+                if (!preferences().getBoolean(KEY_FOLDER_SYNC, false) || destination == null) {
+                    call.resolve(out);
+                    return;
+                }
+                DocumentFile folder = DocumentFile.fromTreeUri(getContext(), destination);
+                if (folder == null || !folder.canRead()) {
+                    call.resolve(out);
+                    return;
+                }
+                List<String> own = new ArrayList<>();
+                JSONArray recorded = new JSONArray(preferences().getString(KEY_VERIFIED_BACKUPS, "[]"));
+                for (int i = 0; i < recorded.length(); i++) own.add(recorded.getString(i));
+                List<FolderDocument> documents = new ArrayList<>();
+                for (DocumentFile file : folder.listFiles()) {
+                    if (file.isFile()) documents.add(new FolderDocument(file));
+                }
+                List<String> tried = new ArrayList<>();
+                JSONArray triedJson = new JSONArray(preferences().getString(KEY_FOLDER_TRIED, "[]"));
+                for (int i = 0; i < triedJson.length(); i++) tried.add(triedJson.getString(i));
+                FolderDocument chosen = FolderArchives.newest(documents, own,
+                    preferences().getLong(KEY_FOLDER_MERGED_THROUGH, 0), tried);
+                if (chosen == null) {
+                    call.resolve(out);
+                    return;
+                }
+                try (java.io.InputStream in = getContext().getContentResolver().openInputStream(chosen.file.getUri());
+                     java.io.OutputStream copy = new java.io.FileOutputStream(stage)) {
+                    if (in == null) throw new IOException("destination-unavailable");
+                    byte[] buffer = new byte[64 * 1024];
+                    for (int read; (read = in.read(buffer)) != -1; ) copy.write(buffer, 0, read);
+                }
+                stagedFolderUri = chosen.uri();
+                out.put("path", stage.getAbsolutePath());
+                out.put("modifiedAt", chosen.lastModified());
+                call.resolve(out);
+            } catch (Exception error) {
+                new File(getContext().getCacheDir(), FOLDER_STAGE).delete();
+                call.reject(message(error), error);
+            }
+        }
+    }
+
+    /**
+     * Records how a staged folder archive ended and removes the copy. Any
+     * outcome but {@code cancelled} moves the folder's position past it, so
+     * an archive that would not open is reported once rather than on every
+     * open; the same file written again later is newer and is tried again.
+     */
+    @PluginMethod
+    public void finishFolderArchive(PluginCall call) {
+        synchronized (BackupWork.OWNER) {
+            Long modifiedAt = call.getLong("modifiedAt");
+            String outcome = call.getString("outcome");
+            new File(getContext().getCacheDir(), FOLDER_STAGE).delete();
+            String stagedUri = stagedFolderUri;
+            stagedFolderUri = null;
+            if (modifiedAt == null || outcome == null) {
+                call.reject("finishFolderArchive requires modifiedAt and outcome");
+                return;
+            }
+            try {
+                if (!"cancelled".equals(outcome)) {
+                    long previous = preferences().getLong(KEY_FOLDER_MERGED_THROUGH, 0);
+                    long through = Math.max(modifiedAt, previous);
+                    // The archives tried at the watermark: one more when it holds, a fresh list when it moves.
+                    JSONArray tried = through == previous
+                        ? new JSONArray(preferences().getString(KEY_FOLDER_TRIED, "[]")) : new JSONArray();
+                    if (through == modifiedAt && stagedUri != null) tried.put(stagedUri);
+                    commitState(preferences(), preferences().edit()
+                        .putLong(KEY_FOLDER_MERGED_THROUGH, through)
+                        .putString(KEY_FOLDER_TRIED, tried.toString())
+                        .putString(KEY_FOLDER_LAST_OUTCOME, outcome)
+                        .putLong(KEY_FOLDER_LAST_AT, System.currentTimeMillis()));
+                }
+                call.resolve(statusObject());
+            } catch (Exception error) {
+                call.reject(message(error), error);
+            }
+        }
+    }
+
+    private static final class FolderDocument implements FolderArchives.Document {
+        final DocumentFile file;
+        private final String uri;
+        private final String name;
+        private final long modified;
+        private final long length;
+        FolderDocument(DocumentFile file) {
+            this.file = file;
+            this.uri = file.getUri().toString();
+            this.name = file.getName();
+            this.modified = file.lastModified();
+            this.length = file.length();
+        }
+        public String uri() { return uri; }
+        public String name() { return name; }
+        public long lastModified() { return modified; }
+        public long length() { return length; }
+    }
+
     @PluginMethod
     public void notifyFailure(PluginCall call) {
         try {
@@ -628,7 +778,7 @@ public class AutoExportPlugin extends Plugin {
             BackupWork.await(JournalApplication.workManager(context).cancelUniqueWork(BackupWork.NAME));
             PersistentBackup.clear(context);
             File[] pendingFiles = context.getCacheDir().listFiles((directory, name) ->
-                name.equals("auto-export.pending") || name.matches("auto-export-[a-f0-9-]{36}\\.pending"));
+                name.equals("auto-export.pending") || name.equals(FOLDER_STAGE) || name.matches("auto-export-[a-f0-9-]{36}\\.pending"));
             if (pendingFiles != null) for (File pending : pendingFiles) {
                 if (!pending.delete()) throw new IOException("staging-cleanup-unavailable");
             }
@@ -770,6 +920,11 @@ public class AutoExportPlugin extends Plugin {
             ? "backup-scheduling-unavailable" : prefs.getString(KEY_LAST_FAILURE_REASON, null);
         if (schedulingFailureAt != 0) out.put("lastFailureAt", schedulingFailureAt);
         out.put("lastFailureReason", reason == null ? JSObject.NULL : reason);
+
+        out.put("folderSync", prefs.getBoolean(KEY_FOLDER_SYNC, false));
+        String folderOutcome = prefs.getString(KEY_FOLDER_LAST_OUTCOME, null);
+        out.put("folderLastOutcome", folderOutcome == null ? JSObject.NULL : folderOutcome);
+        out.put("folderLastAt", prefs.contains(KEY_FOLDER_LAST_AT) ? prefs.getLong(KEY_FOLDER_LAST_AT, 0) : JSObject.NULL);
 
         Long due = schedulingFailureAt != 0 ? null : nextDueAt(prefs);
         out.put("nextDueAt", due == null ? JSObject.NULL : due);

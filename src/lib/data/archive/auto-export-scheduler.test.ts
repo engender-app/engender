@@ -6,8 +6,12 @@ const {
   runAndroidAutoExport,
   snapshot,
   toast,
+  runFolderSync,
+  merge,
   preferenceState
 } = vi.hoisted(() => ({
+  runFolderSync: vi.fn(),
+  merge: vi.fn(),
   status: vi.fn(),
   notifyFailure: vi.fn(),
   runAndroidAutoExport: vi.fn(),
@@ -32,7 +36,10 @@ vi.mock('$lib/paraglide/messages', () => ({
     exp_auto_reselect_needed: () => 'reselect',
     notif_export_failure_channel: () => 'Backups',
     notif_export_failure_notice_title: () => 'Scheduled backup failed',
-    notif_export_failure_notice_body: () => 'Nothing was saved.'
+    notif_export_failure_notice_body: () => 'Nothing was saved.',
+    exp_folder_merged_toast: () => 'merged from folder',
+    exp_folder_wrong_password_toast: () => 'folder wrong password',
+    exp_folder_failed_toast: () => 'folder failed'
   }
 }));
 vi.mock('$lib/stores/toasts.svelte', () => ({ toast }));
@@ -43,7 +50,14 @@ vi.mock('$lib/data/prefs/store.svelte', () => ({
   })
 }));
 vi.mock('$lib/data/live/journal.svelte', () => ({
-  journal: { archive: { snapshot } }
+  journal: { archive: { snapshot, merge } }
+}));
+vi.mock('@capacitor/core', () => ({ Capacitor: { convertFileSrc: (path: string) => `https://localhost/_capacitor_file_${path}` } }));
+vi.mock('./folder-sync', () => ({
+  runFolderSync,
+  folderSyncReady: (status: { folderSync?: boolean; destinationUri?: string | null; hasPassword?: boolean }) =>
+    !!status.folderSync && !!status.destinationUri && !!status.hasPassword,
+  localFileBytes: vi.fn()
 }));
 vi.mock('./android-auto-export-bridge', () => ({
   androidAutoExport: {
@@ -124,6 +138,58 @@ describe('auto-export scheduler', () => {
     expect(status).toHaveBeenCalled();
     expect(snapshot).toHaveBeenCalled();
     expect(runAndroidAutoExport).toHaveBeenCalled();
+  });
+
+  describe('folder sync (FA 49)', () => {
+    const syncing = () => status.mockResolvedValue({
+      enabled: true, schedule: 'weekly', destinationUri: 'content://tree/backup', destinationLabel: 'backup',
+      hasPassword: true, nextDueAt: 0, lastSuccessAt: null, lastFailureAt: null, lastFailureReason: null,
+      folderSync: true
+    });
+
+    test('a newer archive in the folder is merged on open, before the backup, and the person is told', async () => {
+      syncing();
+      runFolderSync.mockResolvedValue({ outcome: 'merged', modifiedAt: 5 });
+      startAutoExportScheduler();
+      await flush();
+
+      expect(runFolderSync).toHaveBeenCalledTimes(1);
+      const [, deps] = runFolderSync.mock.calls[0];
+      await deps.merge({ journal: {} });
+      expect(merge).toHaveBeenCalledWith({ journal: {} });
+      expect(toast).toHaveBeenCalledWith('merged from folder', { kind: 'folder-sync' });
+      expect(runFolderSync.mock.invocationCallOrder[0]).toBeLessThan(runAndroidAutoExport.mock.invocationCallOrder[0]);
+    });
+
+    test('an archive that would not open is said once, in its own words', async () => {
+      syncing();
+      runFolderSync.mockResolvedValueOnce({ outcome: 'wrong-password', modifiedAt: 5 })
+        .mockResolvedValueOnce({ outcome: 'corrupt', modifiedAt: 6 });
+      startAutoExportScheduler();
+      await flush();
+      expect(toast).toHaveBeenLastCalledWith('folder wrong password', { kind: 'folder-sync' });
+      await stopAutoExportScheduler();
+      startAutoExportScheduler();
+      await flush();
+      expect(toast).toHaveBeenLastCalledWith('folder failed', { kind: 'folder-sync' });
+    });
+
+    test('nothing new in the folder, or folder sync off, says nothing', async () => {
+      syncing();
+      runFolderSync.mockResolvedValue({ outcome: 'none' });
+      startAutoExportScheduler();
+      await flush();
+      expect(runFolderSync).toHaveBeenCalledTimes(1);
+      expect(toast).not.toHaveBeenCalled();
+      expect(runAndroidAutoExport).toHaveBeenCalled();
+
+      await stopAutoExportScheduler();
+      runFolderSync.mockClear();
+      status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true, nextDueAt: 0, folderSync: false });
+      startAutoExportScheduler();
+      await flush();
+      expect(runFolderSync).not.toHaveBeenCalled();
+    });
   });
 
   test('overlapping startup and visibility checks write one backup', async () => {
