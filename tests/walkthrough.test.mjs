@@ -2135,7 +2135,7 @@ try {
   /* Merge only adds, so it runs without the confirm Replace asks for. */
   if (await page.locator('[data-sheet]').count()) throw new Error('Merge opened a confirm sheet');
   await page.waitForFunction(
-    () => [...document.querySelectorAll('[data-toast]')].some((t) => /Archive imported|Archiwum zaimportowane/.test(t.textContent)),
+    () => [...document.querySelectorAll('[data-toast]')].some((t) => /Archive merged|Archive imported|Dołączono archiwum|Archiwum zaimportowane/.test(t.textContent)),
     null,
     { timeout: 120000 }
   );
@@ -3523,8 +3523,13 @@ try {
      round-trip away. */
   await page.waitForFunction(() => {
     const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
-    return boot.theme === 'dark' && boot.palette === 'lesbian' && boot.disguise === true;
+    return boot.theme === 'dark' && boot.disguise === true;
   });
+  /* While disguised the plaintext mirror names the default palette, never
+     the person's flag (functional audit ticket 45); the real one stays in
+     the journal and is worn once the app is open. */
+  const mirrored = await page.evaluate(() => JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}').palette);
+  if (mirrored !== 'trans') throw new Error('the disguised boot mirror names the flag: ' + mirrored);
 
   /* Records the first time anything writes data-theme or the tab icon, and
      whether <body> existed yet. The pre-paint script sits in <head>, so it
@@ -3551,9 +3556,10 @@ try {
   await page.reload({ waitUntil: 'networkidle' });
 
   const first = await page.evaluate(() => window.__firstStamp);
-  if (first?.theme !== 'dark' || first?.palette !== 'lesbian' || first.hadBody) {
+  if (first?.theme !== 'dark' || first?.palette !== 'trans' || first.hadBody) {
     throw new Error('first stamp on <html>: ' + JSON.stringify(first));
   }
+  await page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian', null, { timeout: 10000 });
   const firstIcon = await page.evaluate(() => window.__firstIcon);
   if (!firstIcon || firstIcon.hadBody) {
     throw new Error('first disguised tab icon: ' + JSON.stringify(firstIcon));
