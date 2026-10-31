@@ -93,7 +93,10 @@ async function mergeStaged(path: string, deps: FolderSyncDeps): Promise<FolderSy
     });
     return 'merged';
   } catch (error) {
-    if ((error as Error)?.name === 'AbortError') throw error;
+    /* A lock during the open stays a lock even when the open then fails on
+       its own (a wrong password, say): the archive is tried again next time
+       rather than reported and moved past while nobody was looking. */
+    if ((error as Error)?.name === 'AbortError' || deps.signal?.aborted) throw error;
     console.error('folder sync could not merge an archive', error);
     return archiveFailureKind(error);
   }

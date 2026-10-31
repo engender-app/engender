@@ -30,20 +30,20 @@ public class FolderArchivesTest {
 
     @Test public void takesTheNewestArchiveAnotherDeviceWrote() {
         List<Document> folder = Arrays.asList(archive("a", 10), archive("b", 30), archive("c", 20));
-        assertEquals("b", FolderArchives.newest(folder, Collections.emptyList(), 0).uri);
+        assertEquals("b", FolderArchives.newest(folder, Collections.emptyList(), 0, Collections.emptyList()).uri);
     }
 
     @Test public void neverTakesAnArchiveThisDeviceWrote() {
         List<Document> folder = Arrays.asList(archive("mine", 50), archive("theirs", 20));
-        assertEquals("theirs", FolderArchives.newest(folder, Collections.singletonList("mine"), 0).uri);
+        assertEquals("theirs", FolderArchives.newest(folder, Collections.singletonList("mine"), 0, Collections.emptyList()).uri);
         assertNull(FolderArchives.newest(
-            Collections.singletonList(archive("mine", 50)), Collections.singletonList("mine"), 0));
+            Collections.singletonList(archive("mine", 50)), Collections.singletonList("mine"), 0, Collections.emptyList()));
     }
 
     @Test public void takesNothingAtOrBeforeTheLastOneMerged() {
         List<Document> folder = Arrays.asList(archive("a", 10), archive("b", 20));
-        assertNull(FolderArchives.newest(folder, Collections.emptyList(), 20));
-        assertEquals("b", FolderArchives.newest(folder, Collections.emptyList(), 19).uri);
+        assertNull(FolderArchives.newest(folder, Collections.emptyList(), 20, Collections.singletonList("b")));
+        assertEquals("b", FolderArchives.newest(folder, Collections.emptyList(), 19, Collections.emptyList()).uri);
     }
 
     @Test public void skipsWhatIsNotAnArchiveOrIsEmpty() {
@@ -53,6 +53,12 @@ public class FolderArchivesTest {
             new Document("empty", "auto-backup.ttbackup", 70, 0),
             new Document("unnamed", null, 60, 100),
             archive("real", 10));
-        assertEquals("real", FolderArchives.newest(folder, Collections.emptyList(), 0).uri);
+        assertEquals("real", FolderArchives.newest(folder, Collections.emptyList(), 0, Collections.emptyList()).uri);
+    }
+
+    @Test public void anArchiveModifiedInTheSameMillisecondAsTheLastOneTriedIsStillTaken() {
+        List<Document> folder = Arrays.asList(archive("tried", 20), archive("twin", 20));
+        assertEquals("twin", FolderArchives.newest(folder, Collections.emptyList(), 20, Collections.singletonList("tried")).uri);
+        assertNull(FolderArchives.newest(folder, Collections.emptyList(), 20, Arrays.asList("tried", "twin")));
     }
 }

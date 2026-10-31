@@ -13,7 +13,9 @@ import java.util.List;
  * so a file that list names is never merged back into the journal that
  * wrote it. Among the others the newest one modified after the last one
  * merged is taken: an auto-export is the whole journal, so the newest says
- * everything the older ones did.
+ * everything the older ones did. Two archives can share a modification
+ * time, so the ones already tried at the last one's time are named rather
+ * than all of that millisecond being skipped.
  */
 final class FolderArchives {
     static final String EXTENSION = ".ttbackup";
@@ -27,14 +29,16 @@ final class FolderArchives {
 
     private FolderArchives() { }
 
-    static <D extends Document> D newest(List<D> documents, Collection<String> own, long mergedThrough) {
+    static <D extends Document> D newest(List<D> documents, Collection<String> own, long mergedThrough,
+                                         Collection<String> triedAtMergedThrough) {
         D newest = null;
         for (D document : documents) {
             String name = document.name();
             if (name == null || !name.endsWith(EXTENSION)) continue;
             if (document.length() <= 0) continue;
             if (own.contains(document.uri())) continue;
-            if (document.lastModified() <= mergedThrough) continue;
+            if (document.lastModified() < mergedThrough) continue;
+            if (document.lastModified() == mergedThrough && triedAtMergedThrough.contains(document.uri())) continue;
             if (newest == null || document.lastModified() > newest.lastModified()) newest = document;
         }
         return newest;

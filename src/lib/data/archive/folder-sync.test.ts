@@ -165,4 +165,17 @@ describe('runFolderSync', () => {
     assert.equal(merge.mock.calls.length, 0);
     assert.deepEqual(vi.mocked(androidAutoExport.finishFolderArchive).mock.calls, [[{ modifiedAt: 7000, outcome: 'cancelled' }]]);
   });
+
+  test('a lock while the archive is being opened leaves it to be tried again, even when opening then fails', async () => {
+    const { a } = await twoDevices();
+    const read = folderHolds(await autoExport(a, OTHER_KEY), 8000);
+    const stop = new AbortController();
+    vi.mocked(androidAutoExport.deriveKey).mockImplementation(async () => {
+      stop.abort();
+      return { key: base64(SAVED_KEY) };
+    });
+
+    await assert.rejects(runFolderSync(ready, { merge: vi.fn(), read, signal: stop.signal }));
+    assert.deepEqual(vi.mocked(androidAutoExport.finishFolderArchive).mock.calls, [[{ modifiedAt: 8000, outcome: 'cancelled' }]]);
+  });
 });

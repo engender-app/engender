@@ -76,6 +76,7 @@ public class AutoExportPlugin extends Plugin {
     private static final String KEY_LAST_FAILURE_REASON = "lastFailureReason";
     private static final String KEY_FOLDER_SYNC = "folderSync";
     private static final String KEY_FOLDER_MERGED_THROUGH = "folderMergedThrough";
+    private static final String KEY_FOLDER_TRIED = "folderTriedAtMergedThrough";
     private static final String KEY_FOLDER_LAST_OUTCOME = "folderLastOutcome";
     private static final String KEY_FOLDER_LAST_AT = "folderLastAt";
     /** The copy of another device's archive a folder sync reads, in the
@@ -109,6 +110,8 @@ public class AutoExportPlugin extends Plugin {
     private long pendingDue;
     private long pendingSnapshotAt;
     private boolean pendingScheduled;
+    /** The folder archive last staged, for finishFolderArchive to record. */
+    private String stagedFolderUri;
 
     @Override public void load() {
         if (!preferences().getBoolean(KEY_ENABLED, false)) return;
@@ -147,7 +150,7 @@ public class AutoExportPlugin extends Plugin {
                 SharedPreferences.Editor update = preferences().edit().putBoolean(KEY_ENABLED, enabled)
                     .putString(KEY_SCHEDULE, schedule)
                     .putLong("backupGeneration", preferences().getLong("backupGeneration", 0) + 1);
-                if (!enabledArg) update.remove(KEY_DESTINATION_URI).remove(KEY_DESTINATION_LABEL).remove(KEY_FOLDER_MERGED_THROUGH);
+                if (!enabledArg) update.remove(KEY_DESTINATION_URI).remove(KEY_DESTINATION_LABEL).remove(KEY_FOLDER_MERGED_THROUGH).remove(KEY_FOLDER_TRIED);
                 commitState(preferences(), update);
                 BackupWork.schedule(getContext());
                 PersistentBackup.clear(getContext());
@@ -331,6 +334,7 @@ public class AutoExportPlugin extends Plugin {
                     .putString(KEY_DESTINATION_URI, uri.toString())
                     .putString(KEY_DESTINATION_LABEL, label)
                     .remove(KEY_FOLDER_MERGED_THROUGH)
+                    .remove(KEY_FOLDER_TRIED)
                     .remove(KEY_LAST_FAILURE_AT)
                     .remove(KEY_LAST_FAILURE_REASON)
                     .apply();
@@ -649,8 +653,11 @@ public class AutoExportPlugin extends Plugin {
                 for (DocumentFile file : folder.listFiles()) {
                     if (file.isFile()) documents.add(new FolderDocument(file));
                 }
+                List<String> tried = new ArrayList<>();
+                JSONArray triedJson = new JSONArray(preferences().getString(KEY_FOLDER_TRIED, "[]"));
+                for (int i = 0; i < triedJson.length(); i++) tried.add(triedJson.getString(i));
                 FolderDocument chosen = FolderArchives.newest(documents, own,
-                    preferences().getLong(KEY_FOLDER_MERGED_THROUGH, 0));
+                    preferences().getLong(KEY_FOLDER_MERGED_THROUGH, 0), tried);
                 if (chosen == null) {
                     call.resolve(out);
                     return;
@@ -661,6 +668,7 @@ public class AutoExportPlugin extends Plugin {
                     byte[] buffer = new byte[64 * 1024];
                     for (int read; (read = in.read(buffer)) != -1; ) copy.write(buffer, 0, read);
                 }
+                stagedFolderUri = chosen.uri();
                 out.put("path", stage.getAbsolutePath());
                 out.put("modifiedAt", chosen.lastModified());
                 call.resolve(out);
@@ -683,15 +691,23 @@ public class AutoExportPlugin extends Plugin {
             Long modifiedAt = call.getLong("modifiedAt");
             String outcome = call.getString("outcome");
             new File(getContext().getCacheDir(), FOLDER_STAGE).delete();
+            String stagedUri = stagedFolderUri;
+            stagedFolderUri = null;
             if (modifiedAt == null || outcome == null) {
                 call.reject("finishFolderArchive requires modifiedAt and outcome");
                 return;
             }
             try {
                 if (!"cancelled".equals(outcome)) {
-                    long through = Math.max(modifiedAt, preferences().getLong(KEY_FOLDER_MERGED_THROUGH, 0));
+                    long previous = preferences().getLong(KEY_FOLDER_MERGED_THROUGH, 0);
+                    long through = Math.max(modifiedAt, previous);
+                    // The archives tried at the watermark: one more when it holds, a fresh list when it moves.
+                    JSONArray tried = through == previous
+                        ? new JSONArray(preferences().getString(KEY_FOLDER_TRIED, "[]")) : new JSONArray();
+                    if (through == modifiedAt && stagedUri != null) tried.put(stagedUri);
                     commitState(preferences(), preferences().edit()
                         .putLong(KEY_FOLDER_MERGED_THROUGH, through)
+                        .putString(KEY_FOLDER_TRIED, tried.toString())
                         .putString(KEY_FOLDER_LAST_OUTCOME, outcome)
                         .putLong(KEY_FOLDER_LAST_AT, System.currentTimeMillis()));
                 }
