@@ -150,10 +150,20 @@ export function dumpRows(raw: DatabaseSync): string {
 
   return tables
     .map(({ name }) => {
-      const rows = (raw.prepare(`SELECT * FROM "${name.replace(/"/g, '""')}"`).all() as Record<string, unknown>[])
+      /* Read as BigInt: a populated FTS5 index keys its segment rows above
+         2^53 (entry_fts_data in the rc.1 fixture), which node:sqlite refuses
+         to hand over as a number. A safe integer is written as the number it
+         always was, so the empty-schema dumps read the same as before. */
+      const statement = raw.prepare(`SELECT * FROM "${name.replace(/"/g, '""')}"`);
+      statement.setReadBigInts(true);
+      const rows = (statement.all() as Record<string, unknown>[])
         .map((row) =>
           JSON.stringify(row, (_key, value: unknown) =>
-            value instanceof Uint8Array ? `x'${Buffer.from(value).toString('hex')}'` : value
+            value instanceof Uint8Array
+              ? `x'${Buffer.from(value).toString('hex')}'`
+              : typeof value === 'bigint'
+                ? (Number.isSafeInteger(Number(value)) ? Number(value) : `${value}n`)
+                : value
           )
         )
         .sort();
