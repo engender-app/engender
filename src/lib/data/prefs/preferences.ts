@@ -76,6 +76,12 @@ function bootSubset(values: PreferenceValues): BootPreferences {
     // across a loop over a union of key types.
     boot[key] = values[key] as never;
   }
+  /* The mirror is plaintext and the first paint and the lock screen read
+     it, so while the journal is disguised it names the default palette and
+     not the person's own flag (functional audit ticket 45). The real choice
+     stays in the table, and the mirror is rewritten with it the moment
+     disguise goes off. */
+  if (boot.disguise) boot.palette = PREFERENCE_DEFAULTS.palette;
   return boot;
 }
 

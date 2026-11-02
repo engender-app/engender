@@ -697,7 +697,6 @@ const markProfile = async (profile) => {
 };
 async function requirePersona() {
   const persona = await ev(`localStorage.getItem(${JSON.stringify(profileKey)}) === 'persona' &&
-    localStorage.getItem('engender-has-entries') === '1' &&
     !!document.querySelector('[data-home-hello]')?.textContent?.includes('Alice')`);
   if (!persona) throw new Error('--skip-seed needs a journal seeded as persona by a previous device sweep');
 }

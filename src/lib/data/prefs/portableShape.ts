@@ -8,6 +8,7 @@
 
 import type { PortablePreferences } from '../archive/payload';
 import { sanitizePreferredLabUnits, type PreferredLabUnits } from '../labs/units';
+import { sanitizeAcknowledgements } from '../acknowledgements';
 import { PORTABLE_KEYS } from './catalogue';
 
 export type PortableKey = (typeof PORTABLE_KEYS)[number];
@@ -54,7 +55,8 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
   areaFinishOfferDeclined: isStringArray,
   roadmapPolishStepsChoice: (v) => v === null || typeof v === 'boolean',
   pinnedRows: (v) => v === null || isStringArray(v),
-  onboardingAreas: (v) => v === null || isStringArray(v)
+  onboardingAreas: (v) => v === null || isStringArray(v),
+  acknowledgements: (v) => typeof v === 'object' && v !== null && !Array.isArray(v)
 };
 
 /** The value to write for a portable key, or undefined when the archive's
@@ -66,13 +68,16 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
 
     preferredLabUnits additionally runs its own allowlist (ADR-0026):
     PORTABLE_SHAPE only confirms it is an object, so a valid shape still goes
-    through sanitizePreferredLabUnits to drop a unit this app doesn't know. */
+    through sanitizePreferredLabUnits to drop a unit this app doesn't know.
+    acknowledgements is the same: an object is only the outer shape, and its
+    ids and deadlines are sanitised field by field. */
 export function portableValueForKey<K extends PortableKey>(
   key: K,
   value: unknown
 ): PortablePreferences[K] | undefined {
   if (!PORTABLE_SHAPE[key](value)) return undefined;
   if (key === 'preferredLabUnits') return sanitizePreferredLabUnits(value as PreferredLabUnits) as never;
+  if (key === 'acknowledgements') return sanitizeAcknowledgements(value) as never;
   return value as PortablePreferences[K];
 }
 

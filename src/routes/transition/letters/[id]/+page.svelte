@@ -36,6 +36,7 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { isLetterSealed, markLetterRead } from '$lib/data/letterStatus';
+  import { acknowledgementStore } from '$lib/data/prefs/acknowledgementStore.svelte';
   import LetterCard from '$lib/components/LetterCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -52,7 +53,7 @@
   let letter = $derived(letterQuery.value);
 
   $effect(() => {
-    if (letter?.id === id && !isLetterSealed(letter, today)) markLetterRead(id);
+    if (letter?.id === id && !isLetterSealed(letter, today)) markLetterRead(id, acknowledgementStore);
   });
 </script>
 

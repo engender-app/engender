@@ -103,6 +103,20 @@ describe('a hostile or corrupted value, key by key', () => {
   });
 });
 
+describe('the acknowledgements (FA 45)', () => {
+  test('an object is accepted and sanitised field by field', () => {
+    expect(
+      portableValueForKey('acknowledgements', { snoozes: { a: 1 }, readLetterIds: ['x'], hasEntries: 'maybe' })
+    ).toEqual({ snoozes: { a: 1 }, readLetterIds: [], greetedLetterIds: [], hasEntries: null });
+  });
+
+  test('anything that is not an object is rejected, so the device keeps its own', () => {
+    expect(portableValueForKey('acknowledgements', null)).toBeUndefined();
+    expect(portableValueForKey('acknowledgements', ['x'])).toBeUndefined();
+    expect(portableValueForKey('acknowledgements', 'x')).toBeUndefined();
+  });
+});
+
 describe('a valid archive', () => {
   test('every default value passes its own key unchanged', () => {
     for (const key of PORTABLE_KEYS) {

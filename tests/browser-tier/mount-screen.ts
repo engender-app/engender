@@ -2,6 +2,7 @@ import { flushSync, tick, type Component } from 'svelte';
 import type { Journal } from '$lib/data/journal/journal';
 import type { PreferenceValues } from '$lib/data/prefs/catalogue';
 import { prefs } from '$lib/data/prefs/store.svelte';
+import { withHasEntries } from '$lib/data/acknowledgements';
 import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
 import { mountInto } from './mount';
 import { prepareScreenJournal } from './screen-journal';
@@ -75,7 +76,7 @@ export async function mountScreen(route: string, fixture: ScreenFixture) {
   document.documentElement.dataset.theme = prefs.theme === 'dark' ? 'dark' : 'light';
   document.documentElement.dataset.a11yMotion = prefs.a11yMotionReduce ? 'reduce' : 'full';
   refreshActiveFlag(document);
-  localStorage.setItem('engender-has-entries', fixture.hasEntries === false ? '0' : '1');
+  prefs.acknowledgements = withHasEntries(prefs.acknowledgements, fixture.hasEntries !== false);
   setScreenRoute(route);
   const target = document.createElement('div');
   target.className = 'app-viewport';

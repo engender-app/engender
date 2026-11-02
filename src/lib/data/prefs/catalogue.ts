@@ -22,6 +22,8 @@
    catalogue.test.ts fails if a preference lands in neither of the first
    two lists. */
 
+import type { Acknowledgements } from '../acknowledgements';
+
 /** The four answers to "when does it ask again", in the order screens list
     them. */
 export const LOCK_AFTER_CHOICES = ['immediately', 'one-minute', 'five-minutes', 'restart'] as const;
@@ -342,6 +344,13 @@ export interface PreferenceValues {
       somebody who unticked everything, and it means a front page with no
       pinned rows, the same way an empty `pinnedRows` does. */
   onboardingAreas: string[] | null;
+  /** What the person has already been told: tile snoozes, letters read and
+      met, and the last answer to "are there entries" (functional audit
+      ticket 45). Four facts that used to sit in plaintext localStorage,
+      where they showed which features a journal uses. Portable, so letter
+      read state finally travels with a backup. The shape and its rules are
+      data/acknowledgements.ts's. */
+  acknowledgements: Acknowledgements;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -406,7 +415,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   clinicianSummaryDrugExcluded: {},
   adherenceRegimenPick: null,
   pinnedRows: null,
-  onboardingAreas: null
+  onboardingAreas: null,
+  acknowledgements: { snoozes: {}, readLetterIds: [], greetedLetterIds: [], hasEntries: null }
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -442,7 +452,8 @@ export const PORTABLE_KEYS = [
      choice about what one screen shows right now - and stays device-local
      for it. */
   'pinnedRows',
-  'onboardingAreas'
+  'onboardingAreas',
+  'acknowledgements'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
