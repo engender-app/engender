@@ -709,6 +709,17 @@ export function makeEntriesArea(
     await driver.run('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)', [entryId, foldText(note)]);
   };
 
+  /* Contextual cards (tryout felt-sense, dose log, procedure recovery note,
+     HRT effect markers, cycle event) each add a second write beside the
+     entry. The entry and that row describe one moment, so they commit
+     together or not at all: a crash or a thrown error between two commits
+     would leave a felt-sense row with no entry, or an entry claiming a dose
+     that never reached the dose log. resolveContextual does every check that
+     needs a read, and stages files, before the transaction, so a bad card
+     blocks the save with nothing written. commitContextual only writes,
+     inside the same driver.transaction as the entry insert or update, and
+     anything it throws rolls the entry back too. A new contextual card
+     follows the same two steps. (This comment is where ADR-0044 lives now.) */
   const resolveContextual = async (input: EntryInput) => {
     let tryoutRowId: number | null = null;
     if (input.tryoutFeltSense) {

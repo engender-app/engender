@@ -1,8 +1,8 @@
 /* The motion materials that reach past transform and opacity (phase 5
    ticket 28), at the level a stylesheet can carry them.
 
-   DIRECTION.md's performance contract, which lives on ticket 15's branch,
-   said only transform and opacity animate, because the target is a Capacitor
+   DIRECTION.md's performance contract (its motion section) said only
+   transform and opacity animate, because the target is a Capacitor
    WebView on a mid-range Android phone rather than a desktop browser. This
    ticket amends that: the palette gains bounded blur, a clip-path reveal
    (tier 3, in reveal.ts) and an animated shadow (tier 1, in press.css). The

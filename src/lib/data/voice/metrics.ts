@@ -1,8 +1,12 @@
-/* Benchmark metric keys and comparison tiers (ADR-0060). Pitch survives a
+/* Benchmark metric keys and comparison tiers (ADR-0061). Pitch survives a
    microphone change better than other figures, but no metric draws a
    population reference band (ADR-0059). */
 
-/** Comparison tier for one metric. */
+/** Comparison tier for one metric. `referenced` is an older name kept
+    because the panel's `data-metric-tier` attribute and the voice probe read
+    it: it now means only that the figure can be read against published
+    research as context (no band is drawn), where `ownSeries` compares only
+    with the person's own earlier takes on the same capture chain. */
 type MetricTier = 'referenced' | 'ownSeries';
 
 interface VoiceMetricShape {

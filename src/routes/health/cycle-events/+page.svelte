@@ -53,8 +53,8 @@
   const KINDS: CycleEventKind[] = ['period_occurred', 'spotting', 'nothing_this_month'];
 
   /* The strip's fill takes role 0 (ticket 56, following ticket 44's rule for
-     dilation and wear): index 0 is the only role guaranteed chromatic on all
-     8 palettes, and a logged day filled in a palette's achromatic band is a
+     dilation and wear): index 0 is the only role guaranteed chromatic on every
+     palette, and a logged day filled in a palette's achromatic band is a
      day drawn as nothing. The chart draws its own line colour
      (CycleEventChart.svelte) and takes no role here. */
   const SECTION_ROLE = { strip: 0, sessions: 1 };

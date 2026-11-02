@@ -1,5 +1,5 @@
-/* The motion system set out in DIRECTION.md, which lives on ticket 15's
-   branch, at the level a stylesheet can be held to.
+/* The motion system set out in DIRECTION.md's motion section, at the
+   level a stylesheet can be held to.
 
    The load-bearing one is the reduced-motion invariant. Both reduced-motion
    paths in theme/base.css work by forcing every duration to 1ms rather than

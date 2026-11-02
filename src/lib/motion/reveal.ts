@@ -1,5 +1,4 @@
-/* Tier 3 of the motion system set out in DIRECTION.md, which lives on
-   ticket 15's branch: change within a screen.
+/* Tier 3 of the motion system (DIRECTION.md tier 3): change within a screen.
 
    Phase 5 ticket 28's third material, and the only one that is geometry
    rather than a value, which is why it is here rather than in materials.css

@@ -310,7 +310,7 @@
   };
 
   /* Two areas, so two roles in reading order. Role 0 for the entries, which
-     is the only index guaranteed to be a colour on all 8 palettes, and role 1
+     is the only index guaranteed to be a colour on every palette, and role 1
      for everything around them. */
   let entriesRole = $derived(roleAt(activeFlag.roles, 0));
   let alsoRole = $derived(roleAt(activeFlag.roles, 1));

@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
    a temp directory and run the script with each checkout as the cwd. */
 
 const script = fileURLToPath(new URL('../scripts/link-docs.mjs', import.meta.url));
-const LINKS = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'docs'];
+const LINKS = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md', 'docs'];
 const env = {
   ...process.env,
   GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@example.invalid',
@@ -40,13 +40,13 @@ beforeEach(() => {
   docs = join(base, 'engender-docs');
   mkdirSync(app);
   execFileSync('git', ['init', '-q', '-b', 'main', app], { env });
-  writeFileSync(join(app, '.gitignore'), 'CONTEXT.md\nPRODUCT.md\nSCREENS.md\ndocs/\n/docs\n');
+  writeFileSync(join(app, '.gitignore'), 'CONTEXT.md\nPRODUCT.md\nSCREENS.md\nDIRECTION.md\ndocs/\n/docs\n');
   git(app, 'add', '.gitignore');
   git(app, 'commit', '-q', '-m', 'app');
   mkdirSync(join(docs, 'docs', 'adr'), { recursive: true });
   execFileSync('git', ['init', '-q', '-b', 'main', docs], { env });
   writeFileSync(join(docs, '.gitignore'), '/.worktrees/\n');
-  for (const f of ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md']) writeFileSync(join(docs, f), `${f} on main\n`);
+  for (const f of ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md']) writeFileSync(join(docs, f), `${f} on main\n`);
   writeFileSync(join(docs, 'docs', 'adr', '0001-first.md'), 'adr one\n');
   git(docs, 'add', '-A');
   git(docs, 'commit', '-q', '-m', 'docs');
@@ -54,7 +54,7 @@ beforeEach(() => {
 afterEach(() => rmSync(base, { recursive: true, force: true }));
 
 describe('primary checkout', () => {
-  it('links the four paths to the docs repo main checkout', () => {
+  it('links the five paths to the docs repo main checkout', () => {
     const r = run(app);
     expect(r.status, r.stderr).toBe(0);
     for (const name of LINKS) {

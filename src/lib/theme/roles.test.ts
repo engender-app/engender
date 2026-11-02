@@ -46,7 +46,7 @@ describe("Home's area colours", () => {
 
   it('gives the week strip the one index guaranteed to be a colour', () => {
     /* Roles run colours before shades, so index 0 is the only one
-       chromatic on all 8 palettes, and the strip is the one area on Home
+       chromatic on every palette, and the strip is the one area on Home
        where the stripe is a value rather than a decoration. On trans,
        reading order handed it the white band and a heat ramp from white
        into a white page is not a ramp. */

@@ -215,7 +215,7 @@
   let foundNothing = $derived(settled && matches.length === 0 && hitRows.length === 0);
 
   /* One area of colour per list, in reading order: the areas take role 0, the
-     only index guaranteed to be a colour on all eight palettes, and the
+     only index guaranteed to be a colour on every palette, and the
      records take role 1 (the search screen's own split). */
   let matchesRole = $derived(roleAt(activeFlag.roles, 0));
   let recordsRole = $derived(roleAt(activeFlag.roles, 1));

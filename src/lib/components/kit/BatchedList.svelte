@@ -15,8 +15,15 @@
      A log is grazing, which is the whole of the distinction (ADR-0069).
      DIRECTION.md tier 4 refuses scroll-triggered reveals, and this is not
      one: what the scroll triggers is rendering, and the rows are simply
-     there when they arrive. Whether the card's height travels as they do is
-     ticket 68's measurement.
+     there when they arrive.
+
+     The control at the end stays even with the sentinel, because a keyboard
+     reaches it, and the dose log (autoGrow false) grows only by it. Known
+     cost, accepted: a row not yet rendered is not in the DOM, so find-in-page
+     and print miss it, and that control is the way out. The batch count is
+     remembered per path and list key (scroll-region.ts) and restored before
+     the scroll position, or the region would be too short to land where the
+     person left it. This comment is where ADR-0069 lives now.
 
      The caller keeps its own `{#each}` and its own key, over the slice this
      hands it. That is deliberate rather than a row-shaped prop: the rows are

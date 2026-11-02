@@ -163,7 +163,7 @@ export function renderPreferences(): string {
   const keys = Object.keys(PREFERENCE_DEFAULTS).sort();
   const kind = (key: string) => (portable.has(key) ? 'portable' : local.has(key) ? 'device-local' : '**neither**');
   return [
-    `${keys.length} preferences (\`prefs/catalogue.ts\`): ${PORTABLE_KEYS.length} portable, ${DEVICE_LOCAL_KEYS.length} device-local. "Before the database" marks the ${BOOT_KEYS.length} mirrored outside SQLite because boot needs them before the journal opens (ADR-0009).`,
+    `${keys.length} preferences (\`prefs/catalogue.ts\`): ${PORTABLE_KEYS.length} portable, ${DEVICE_LOCAL_KEYS.length} device-local. "Before the database" marks the ${BOOT_KEYS.length} mirrored outside SQLite because boot needs them before the journal opens (ADR-0003).`,
     '',
     table(
       ['Preference', 'Kind', 'Before the database', 'Default'],

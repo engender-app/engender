@@ -84,7 +84,7 @@
 
   /* Two areas outside the lanes: the rail's own card, and the readings that
      do not fit on one. The rail takes role 0, the only index that is a
-     colour on all eight palettes (roles.ts). Each lane inside it then takes
+     colour on every palette (roles.ts). Each lane inside it then takes
      its own stripe by index, which is where the stripe is carrying the most
      meaning on this screen - it is what says which line belongs to which
      drug. */

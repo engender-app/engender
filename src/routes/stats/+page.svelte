@@ -119,7 +119,7 @@
      reaches the whole app, categorically"). Every drawing on the door
      shares role 0, the brief's own exception rather than a shortcut:
      "colour that carries a value takes role 0", because index 0 is the only
-     one guaranteed to be a colour on all 8 palettes. The facts and the
+     one guaranteed to be a colour on every palette. The facts and the
      resurfacing pair take the stripe after it, where an achromatic band is
      not a problem. `1` was the two interval folds' own stripe, moved to
      Care with them (redesign ticket 05); `lookBack` keeps its index. */

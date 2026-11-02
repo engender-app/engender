@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /* Links the private docs repo into this checkout (npm run docs:link).
 
-   CONTEXT.md, PRODUCT.md, SCREENS.md and docs/ live in a private sibling git
-   repo, `engender-docs`, next to the primary checkout. Git worktrees do not
-   share untracked files, so each checkout gets gitignored symlinks at the old
-   paths:
+   CONTEXT.md, PRODUCT.md, SCREENS.md, DIRECTION.md and docs/ live in a
+   private sibling git repo, `engender-docs`, next to the primary checkout.
+   Git worktrees do not share untracked files, so each checkout gets
+   gitignored symlinks at the old paths:
 
    - the primary checkout, and any detached worktree (merge and testing
      worktrees), link the docs repo's own main checkout;
@@ -18,7 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readlinkSync, rmSync, symlinkSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-const NAMES = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'docs'];
+const NAMES = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md', 'docs'];
 
 function git(cwd, ...args) {
   return execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
