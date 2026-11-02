@@ -695,10 +695,17 @@ export async function runBootHousekeepingContract(driver: SqliteDriver, files: P
       for (const file of incomingFiles) yield file;
     })() });
     await driver.run('UPDATE entry SET trashed_at = ? WHERE uuid = ?', [Date.now() - 31 * 86400000, expiredRow.uuid]);
+    /* Trash travels with its files (FA 48): the expired entry's row still
+       owns them, so the archive carries them and only the purge below
+       removes them. They are the old media boot housekeeping must clear. */
+    const [expiredPhoto] = await driver.query<{ file_path: string }>(
+      'SELECT p.file_path FROM photo p JOIN entry e ON e.id = p.entry_id WHERE e.uuid = ?', [expiredRow.uuid]
+    );
+    const orphans = [expiredPhoto.file_path, thumbFileName(expiredPhoto.file_path)];
     const restored = await journal.archive.snapshot();
-    const owned = new Set(restored.files.map((file) => file.name));
-    const orphans = (await files.list()).filter((name) => !owned.has(name));
-    r.equal('Replace leaves proven old media for boot housekeeping', orphans.length >= 2, true);
+    const carried = new Set(restored.files.map((file) => file.name));
+    r.equal('Replace leaves proven old media for boot housekeeping',
+      (await files.list()).filter((name) => orphans.includes(name)).length === 2 && orphans.every((name) => carried.has(name)), true);
 
     hold = true;
     reconciliation = journal.stock.reconcileRunOutReminders(31003);
