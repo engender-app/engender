@@ -13,6 +13,7 @@
 import { batchWrites, journal, onTablesWritten } from '../live/journal.svelte';
 import { prefs } from '../prefs/store.svelte';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue';
+import { withHasEntries } from '../acknowledgements';
 import { clearJournal, seedPersonaJournal } from './journal-seed';
 import { demoPreferences } from './persona';
 
@@ -49,7 +50,7 @@ onTablesWritten((tables) => {
    rather than once per write against a growing one. */
 async function reseed(seed: () => Promise<void>): Promise<void> {
   Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
-  try { localStorage.setItem('engender-has-entries', '1'); } catch {}
+  prefs.acknowledgements = withHasEntries(prefs.acknowledgements, true);
   await batchWrites(async () => {
     await clearJournal(journal);
     try {
@@ -95,6 +96,6 @@ export async function markFirstRun(): Promise<void> {
   prefs.name = PREFERENCE_DEFAULTS.name;
   prefs.lastBackupAt = PREFERENCE_DEFAULTS.lastBackupAt;
   prefs.activeScales = [...PREFERENCE_DEFAULTS.activeScales];
-  try { localStorage.setItem('engender-has-entries', '0'); } catch {}
+  prefs.acknowledgements = withHasEntries(prefs.acknowledgements, false);
   await clearJournal(journal);
 }

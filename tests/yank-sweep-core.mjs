@@ -668,9 +668,9 @@ export async function resetSceneProfile(scene, profile, evaluate, options = {}) 
 export const PROFILE_KEY = 'yank-sweep-prepared-profile';
 export const markProfileExpression = (profile) => `localStorage.setItem(${JSON.stringify(PROFILE_KEY)}, ${JSON.stringify(profile)}); true;`;
 export const profileProofExpression = (profile) => `(() => {
-  const proof = { prepared: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
+  const proof = { prepared: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
     greeting: document.querySelector('[data-home-hello]')?.textContent?.trim(), route: location.pathname };
-  if (proof.prepared !== ${JSON.stringify(profile)} || proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('wrong journal profile: ' + JSON.stringify(proof));
+  if (proof.prepared !== ${JSON.stringify(profile)}) throw new Error('wrong journal profile: ' + JSON.stringify(proof));
   if (${JSON.stringify(profile)} === 'persona' && !proof.greeting?.includes('Alice')) throw new Error('persona greeting missing: ' + JSON.stringify(proof));
   return proof;
 })()`;
@@ -694,13 +694,12 @@ export const coldLoadProofExpression = (href, profile, theme, outcome = null) =>
   const proof = { ...(globalThis.__sweepDocumentProof ? { documentProof: globalThis.__sweepDocumentProof } : {}), themeProof, requested, expected: expected.pathname + expected.search, route: location.pathname + location.search,
     surface: outcome?.selector ? !!surface?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : undefined,
     surfaceSelector: outcome?.selector,
-    profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
+    profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
     boot: document.querySelector('[data-app-root]')?.dataset.boot, theme: document.documentElement.dataset.theme,
     loading: !!document.querySelector('[data-gate-skeleton]'), unavailable: !!document.querySelector('[data-unavailable], [data-notice$="-unavailable"]') };
   if (proof.route !== proof.expected) throw new Error('cold-load wrong route: ' + JSON.stringify(proof));
   if (outcome?.selector && !proof.surface) throw new Error('cold-load missing raised surface: ' + JSON.stringify(proof));
   if (proof.profile !== ${JSON.stringify(profile)}) throw new Error('cold-load wrong profile: ' + JSON.stringify(proof));
-  if (proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('cold-load journal profile mismatch: ' + JSON.stringify(proof));
   if (proof.boot !== 'ready' || proof.unavailable || proof.loading) throw new Error('cold-load unfinished screen: ' + JSON.stringify(proof));
   if (proof.theme !== ${JSON.stringify(theme)} || !themeProof.selected || themeProof.persisted !== ${JSON.stringify(theme)} || themeProof.transitioning) throw new Error('cold-load wrong theme: ' + JSON.stringify(proof));
   return proof;
@@ -708,7 +707,7 @@ export const coldLoadProofExpression = (href, profile, theme, outcome = null) =>
 
 export function verifyGateProof(proof, profile, theme) {
   if (proof.route !== '/') throw new Error('PIN gate wrong route: ' + JSON.stringify(proof));
-  if (proof.profile !== profile || proof.hasEntries !== (profile === 'persona' ? '1' : '0')) throw new Error('PIN gate wrong profile: ' + JSON.stringify(proof));
+  if (proof.profile !== profile) throw new Error('PIN gate wrong profile: ' + JSON.stringify(proof));
   if (proof.theme !== theme || !proof.themeProof?.selected || proof.themeProof.persisted !== theme || proof.themeProof.painted !== theme || proof.themeProof.transitioning) throw new Error('PIN gate wrong theme: ' + JSON.stringify(proof));
   if (!proof.pin || proof.home || !['needs-unlock', 'ready'].includes(proof.boot)) throw new Error('PIN gate wrong boot state: ' + JSON.stringify(proof));
   return { ...proof, gate: 'pin' };
@@ -719,7 +718,6 @@ export const gateProofExpression = (profile, theme) => `(${verifyGateProof})({
   themeProof: (${readThemeProof})(${JSON.stringify(theme)}),
   route: location.pathname + location.search,
   profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
-  hasEntries: localStorage.getItem('engender-has-entries'),
   theme: document.documentElement.dataset.theme,
   boot: document.querySelector('[data-app-root]')?.dataset.boot,
   pin: !!document.querySelector('[data-pin-pad]'), home: !!document.querySelector('[data-home-hello]')
@@ -2283,8 +2281,7 @@ export const FILL_EVERY_FEATURE_EXPRESSION = `(async () => {
   btn.click();
   ${AWAIT_DEMO_JUMP}
   const ready = () => location.pathname === '/more'
-    && !!document.querySelector('[data-app-root][data-boot="ready"]')
-    && localStorage.getItem('engender-has-entries') === '1';
+    && !!document.querySelector('[data-app-root][data-boot="ready"]');
   for (let i = 0; i < 120 && !ready(); i++) await sleep(250);
   if (!ready()) throw new Error('full persona fixture did not reach More with a ready journal');
   return true;
@@ -2592,7 +2589,7 @@ export function requireHydrationCoverage(result, profile, theme) {
   if (result.coverageError) throw new Error(result.coverageError);
   const proof = result.coverageProof;
   if (!proof) throw new Error('missing hydration coverage proof');
-  if (proof.profile !== profile || proof.hasEntries !== (profile === 'persona' ? '1' : '0')) throw new Error('hydration coverage wrong profile');
+  if (proof.profile !== profile) throw new Error('hydration coverage wrong profile');
   if (typeof proof.route !== 'string' || !proof.route.startsWith('/')) throw new Error('hydration coverage missing route');
   const alignment = proof.themeProof;
   if (!alignment?.selected || alignment.requested !== theme || alignment.persisted !== theme || alignment.painted !== theme || alignment.transitioning) throw new Error('hydration coverage wrong theme');

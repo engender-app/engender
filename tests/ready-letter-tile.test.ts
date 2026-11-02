@@ -20,6 +20,7 @@ import {
   unreadUnlockedLetters
 } from '../src/lib/data/letterStatus.ts';
 import type { Letter } from '../src/lib/data/types.ts';
+import { NO_ACKNOWLEDGEMENTS, type Acknowledgements, type AcknowledgementStore } from '../src/lib/data/acknowledgements.ts';
 import { UNPROMPTED_ROWS } from '../src/lib/unprompted/registry.ts';
 import { LIVE_TILE_ORDER } from '../src/lib/data/liveTiles.ts';
 
@@ -33,26 +34,9 @@ const letterIdPage = read('src/routes/transition/letters/[id]/+page.svelte');
 const enMessages = JSON.parse(read('messages/en.json'));
 const plMessages = JSON.parse(read('messages/pl.json'));
 
-class MemoryStorage implements Storage {
-  private store = new Map<string, string>();
-  get length(): number {
-    return this.store.size;
-  }
-  clear(): void {
-    this.store.clear();
-  }
-  getItem(key: string): string | null {
-    return this.store.get(key) ?? null;
-  }
-  key(index: number): string | null {
-    return Array.from(this.store.keys())[index] ?? null;
-  }
-  removeItem(key: string): void {
-    this.store.delete(key);
-  }
-  setItem(key: string, value: string): void {
-    this.store.set(key, value);
-  }
+function memoryStore(): AcknowledgementStore {
+  let value: Acknowledgements = NO_ACKNOWLEDGEMENTS;
+  return { read: () => value, write: (next) => { value = next; } };
 }
 
 describe('Ready letter status logic (ticket 01)', () => {
@@ -80,7 +64,7 @@ describe('Ready letter status logic (ticket 01)', () => {
   });
 
   it('marks letters as read and excludes them from unreadUnlockedLetters', () => {
-    const storage = new MemoryStorage();
+    const storage = memoryStore();
     const letters: Letter[] = [
       { id: 'let-1', epochDay: 50, text: 'Letter 1', unlockEpochDay: 100 },
       { id: 'let-2', epochDay: 60, text: 'Letter 2', unlockEpochDay: 120 }
@@ -99,23 +83,23 @@ describe('Ready letter status logic (ticket 01)', () => {
   });
 
   it('manages 24-hour snooze suppression and restores after 24 hours', () => {
-    const storage = new MemoryStorage();
+    const storage = memoryStore();
     const now = 1700000000000;
 
-    expect(isLetterSnoozed(now, storage)).toBe(false);
+    expect(isLetterSnoozed(storage, now)).toBe(false);
 
-    snoozeLetterTile(now, storage);
-    expect(isLetterSnoozed(now, storage)).toBe(true);
-    expect(isLetterSnoozed(now + 12 * 3600_000, storage)).toBe(true);
-    expect(isLetterSnoozed(now + 24 * 3600_000 - 100, storage)).toBe(true);
+    snoozeLetterTile(storage, now);
+    expect(isLetterSnoozed(storage, now)).toBe(true);
+    expect(isLetterSnoozed(storage, now + 12 * 3600_000)).toBe(true);
+    expect(isLetterSnoozed(storage, now + 24 * 3600_000 - 100)).toBe(true);
 
     // After 24 hours elapse, snooze expires and tile restores
-    expect(isLetterSnoozed(now + 24 * 3600_000 + 1, storage)).toBe(false);
+    expect(isLetterSnoozed(storage, now + 24 * 3600_000 + 1)).toBe(false);
 
     // Explicit clear
-    snoozeLetterTile(now, storage);
+    snoozeLetterTile(storage, now);
     clearLetterSnooze(storage);
-    expect(isLetterSnoozed(now, storage)).toBe(false);
+    expect(isLetterSnoozed(storage, now)).toBe(false);
   });
 });
 
@@ -128,9 +112,8 @@ describe('Home ready-letter live tile rendering and behavior', () => {
   it('gating derives on preference, unread letters query, and snooze state', () => {
     const tiles = read('src/lib/data/liveTiles.svelte.ts');
     expect(tiles).toContain('j.letters.getLetterSeals(100)');
-    // The letter keeps its own storage key rather than liveTilesSnooze's.
-    expect(tiles).toContain('isLetterSnoozed(nowMs)');
-    expect(read('src/lib/data/liveTiles.ts')).toContain('unreadUnlockedLetters(reads.letters, today)');
+    expect(tiles).toContain('isLetterSnoozed(acknowledgementStore, nowMs)');
+    expect(read('src/lib/data/liveTiles.ts')).toContain('unreadUnlockedLetters(reads.letters, today, reads.readLetterIds)');
     expect(home).not.toContain('getLetters(');
   });
 
@@ -169,12 +152,12 @@ describe('Settings and letter route integration', () => {
   });
 
   it('marks letter as read on opening /transition/letters or [id]', () => {
-    expect(lettersPage).toContain('markLetterRead(letter.id)');
+    expect(lettersPage).toContain('markLetterRead(letter.id, acknowledgementStore)');
     expect(lettersPage).toContain("page.url.searchParams.get('read')");
     // The [id] route (phase 5 deepening ticket 13) renders the letter's own
     // text in place rather than bouncing back to the list; it marks read
     // once that text has actually been shown.
-    expect(letterIdPage).toContain('markLetterRead(id)');
+    expect(letterIdPage).toContain('markLetterRead(id, acknowledgementStore)');
     expect(letterIdPage).toContain('!isLetterSealed(letter, today)');
   });
 });
