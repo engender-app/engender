@@ -3,22 +3,31 @@
 
    Version 88 is the squashed baseline (after-release ticket 42, which
    replaced ticket 34's v78 baseline and the steps 79 to 88 after it), not a
-   step: it builds the whole schema in one statement. It keeps the number the
-   chain had reached, so a journal already on the current schema opens with
-   nothing running against it - the runner sees `current === latestVersion`
-   and never even loads this list.
+   step: it builds the whole schema in one statement. rc.1 shipped at 88, so
+   it stays the baseline, and an rc.1 journal opens on it.
 
-   A journal left anywhere from 1 to 87 cannot be opened by this build. Only
-   development builds ever wrote one, since no release had shipped, and that
-   was the price of squashing before the 1.0.0 cutoff. From 1.0.0 on, every
-   released migration stays in the chain and cannot be edited or squashed.
-   Such a journal is behind, not ahead, so SchemaTooNewError never fires for
-   it. `baseline: true` is what lets the runner tell it apart from a first run:
-   a journal with a schema below the baseline is refused with
-   JournalBelowBaselineError before anything is copied or written, and the
-   failure screen says it comes from a development build and offers the way
-   out (after-release ticket 09). The journal is intact. Its content can still
-   be carried over through an archive exported by the build that wrote it. */
+   One step follows it: version 119 (pre-publish ticket 01), which runs what
+   were migrations 89 to 119 in their original order, data conversions
+   included, inside one transaction. An rc.1 journal updates in place in that
+   one step, and a process killed partway leaves it at 88 with its rows, never
+   in between. POST_RC1_STEPS below keeps those steps under the numbers
+   development builds ran them at, because their comments say what each part
+   is for and their tests drive them one at a time; no release ever runs them
+   that way.
+
+   From 1.0.0 on nothing is squashed or edited: every released migration
+   stays in the chain, appended after 119.
+
+   Two kinds of journal cannot be opened by this build, and only development
+   and test builds ever wrote either. One at 1 to 87 is below the baseline,
+   refused with JournalBelowBaselineError; one at 89 to 118 sits between the
+   baseline and the step at 119, refused with JournalBetweenStepsError. Both
+   are refused before anything is copied or written, and the failure screen
+   says the journal comes from a development build and offers the way out
+   (after-release ticket 09): its content can still be carried over through
+   an archive exported by the build that wrote it. Such a journal is behind,
+   not ahead, so SchemaTooNewError never fires for it. `baseline: true` is
+   what lets the runner tell either apart from a first run. */
 
 import type { Migration } from './migration-runner.ts';
 import { CLOSED_LISTS_REBUILD } from './closed-lists-migration.ts';
@@ -32,8 +41,9 @@ import { WAITLIST_REBUILD } from './waitlist-migration.ts';
 import { DELETION_LOG } from './deletion-migration.ts';
 import { MIGRATION_HYGIENE } from './hygiene-migration.ts';
 
-export const migrations: Migration[] = [
-  { version: 88, sql: BASELINE_SCHEMA, baseline: true },
+/** What were migrations 89 to 119, as development builds ran them. The
+    released chain runs them as the one step at 119 (see the header). */
+export const POST_RC1_STEPS: Migration[] = [
   { version: 89, sql: 'ALTER TABLE roadmap_check ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;' },
   { version: 90, sql: `
 ALTER TABLE dose_event ADD COLUMN auto_log_episode_uuid TEXT;
@@ -435,4 +445,28 @@ DELETE FROM pref WHERE key IN ('entryTryoutPromptEnabled', 'entryDoseQuickLogEna
      `*_id` columns become `*_uuid`, the debrief state leaves `checklist`, and
      a voice benchmark names its analyzer (hygiene-migration.ts). */
   { version: 119, sql: MIGRATION_HYGIENE }
+];
+
+/** `steps` as one migration numbered `version`: the first step's SQL is the
+    migration's own, and the rest run from its `apply`, in order, each data
+    conversion right after the SQL it was written against. The runner wraps
+    the whole of it in one transaction and sets the version once, at the end. */
+function asOneStep(version: number, steps: Migration[]): Migration {
+  const [first, ...rest] = steps;
+  return {
+    version,
+    sql: first.sql,
+    apply: async (db) => {
+      await first.apply?.(db);
+      for (const step of rest) {
+        await db.exec(step.sql);
+        await step.apply?.(db);
+      }
+    }
+  };
+}
+
+export const migrations: Migration[] = [
+  { version: 88, sql: BASELINE_SCHEMA, baseline: true },
+  asOneStep(119, POST_RC1_STEPS)
 ];

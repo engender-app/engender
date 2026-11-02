@@ -7,7 +7,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { runMigrations } from './migration-runner.ts';
-import { migrations } from './migrations.ts';
+import { preSquashChain } from './test-support/pre-squash-chain.ts';
 import { migrateHairRemovalCost } from './cost-migration.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
@@ -16,7 +16,7 @@ const COSTED = ['hair_removal_session', 'appointment', 'procedure', 'lab_result'
 
 async function journalAt114() {
   const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 114));
+  await runMigrations(db, noopFileOps(), preSquashChain.filter((m) => m.version <= 114));
   return db;
 }
 
@@ -37,7 +37,7 @@ const read = (db: ReturnType<typeof makeNodeSqliteDb>, uuid: string): Record<str
 test('version 115 adds the three cost columns to every costed table, empty', async () => {
   const db = await journalAt114();
   db.raw.exec(`INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, updated_at) VALUES ('l1', 1, 'E2', 100, 'pg/mL', 1)`);
-  await runMigrations(db, noopFileOps(), migrations);
+  await runMigrations(db, noopFileOps(), preSquashChain);
   assert.ok((await db.getUserVersion()) >= 115);
   for (const table of COSTED) {
     const columns = db.raw.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string; notnull: number; dflt_value: unknown }>;
@@ -59,8 +59,8 @@ test('a cleanly parsed text cost becomes the amount and the old column is left n
   session(db, 'eur', '€80,50');
   session(db, 'bare', '300');
   await runMigrations(db, noopFileOps(), [
-    ...migrations.filter((m) => m.version <= 114),
-    ...migrations.filter((m) => m.version === 115).map((m) => ({ ...m, apply: (d: Parameters<typeof migrateHairRemovalCost>[0]) => migrateHairRemovalCost(d, 'GBP') }))
+    ...preSquashChain.filter((m) => m.version <= 114),
+    ...preSquashChain.filter((m) => m.version === 115).map((m) => ({ ...m, apply: (d: Parameters<typeof migrateHairRemovalCost>[0]) => migrateHairRemovalCost(d, 'GBP') }))
   ]);
   assert.deepEqual(read(db, 'zl'), { cost: null, cost_amount: 250, cost_currency: 'PLN', cost_refunded: 0, note: null, updated_at: 1000 });
   assert.deepEqual(read(db, 'eur'), { cost: null, cost_amount: 80.5, cost_currency: 'EUR', cost_refunded: 0, note: null, updated_at: 1000 });
@@ -86,5 +86,5 @@ test('a text cost that does not parse moves into the note, after any note alread
 
 async function migrateToVersion118(db: ReturnType<typeof makeNodeSqliteDb>) {
   // Version 119 drops the column this test reads back as null.
-  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 118));
+  await runMigrations(db, noopFileOps(), preSquashChain.filter((m) => m.version <= 118));
 }

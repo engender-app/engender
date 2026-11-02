@@ -160,14 +160,16 @@ test('release coverage refuses empty and missing fixtures but excludes alpha tag
   requireReleasedFixtures(['v1.0.0-alpha.1', 'v1.0.0-rc.1'], ['1.0.0-rc.1']);
 });
 
-test('the rc.1 fixture detects a row-deleting migration 90', async () => {
+test('the rc.1 fixture detects a row-deleting first step after 88', async () => {
+  /* The step after the baseline is the squash of 89 to 119 (pre-publish
+     ticket 01), the one an rc.1 journal takes on update. */
   const directory = join(releasedRoot, '1.0.0-rc.1');
   const original = readFileSync(join(directory, 'journal.sqlite'));
   assert.equal(original.readUInt32BE(60), 88);
-  const mutant = migrations.map((migration) => migration.version === 90
+  const mutant = migrations.map((migration) => migration.version === 119
     ? { ...migration, sql: `${migration.sql}\nDELETE FROM entry;` }
     : migration);
-  assert.ok(mutant.some((migration) => migration.version === 90));
+  assert.ok(mutant.some((migration) => migration.version === 119));
   await assert.rejects(checkReleasedFixture(directory, mutant),
     /Foreign key violations after migration|released SQLite table entry/);
   assert.deepEqual(readFileSync(join(directory, 'journal.sqlite')), original);

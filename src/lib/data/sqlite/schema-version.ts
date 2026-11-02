@@ -12,6 +12,12 @@
    at it (ADR-0006): the migration runner, and ticket 10's conversion, which
    has no array to hand and asks here.
 
+   The chain is the v88 baseline (what rc.1 shipped) and one step to 119
+   (pre-publish ticket 01, which folded 89 to 119 into it). A journal at 89
+   to 118 came from a development build and is refused, as one below 88 is.
+   Nothing is squashed after 1.0.0: a release's migrations are appended here
+   and stay.
+
    A merge hazard, and the second one in this area: the next migration's number
    already collides between parallel branches, and now the number is written
    down in two places. Whoever adds a migration bumps this too, and

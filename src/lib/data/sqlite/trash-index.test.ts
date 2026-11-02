@@ -4,7 +4,7 @@ import { openJournal } from '../journal/journal.ts';
 import { countingDriver } from '../journal/test-support.ts';
 import { purgeExpiredTrash, TRASH_WINDOW_DAYS } from '../journal/entries.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
-import { migrations } from './migrations.ts';
+import { preSquashChain } from './test-support/pre-squash-chain.ts';
 import { runMigrations } from './migration-runner.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
@@ -15,7 +15,7 @@ const DAY_COUNT = 3653;
 test('schema 92 keeps live reads on day indexes and trash reads on the trash index without changing results', async () => {
   const db = makeNodeSqliteDb();
   try {
-    await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 88));
+    await runMigrations(db, noopFileOps(), preSquashChain.filter((migration) => migration.version <= 88));
     // The journal reads this build's column name; version 119 is what renames
     // it, and this test stops at 92, so the rename is made by hand here.
     db.raw.exec('ALTER TABLE entry RENAME COLUMN presentation_id TO presentation_uuid');
@@ -38,7 +38,7 @@ test('schema 92 keeps live reads on day indexes and trash reads on the trash ind
 
     // Start at the released schema, then isolate the index migration from
     // earlier migrations that add columns to other tables.
-    await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 91));
+    await runMigrations(db, noopFileOps(), preSquashChain.filter((migration) => migration.version <= 91));
     const beforeRows = dumpRows(db.raw);
     const queries: { sql: string; params: unknown[] }[] = [];
     const { driver } = countingDriver(db, {
@@ -63,7 +63,7 @@ test('schema 92 keeps live reads on day indexes and trash reads on the trash ind
       ...noopFileOps(),
       copyDatabaseFile() { copies += 1; },
       cleanupPreMigrationCopy() { assert.fail('migration must retain its recovery copy'); }
-    }, migrations.filter((migration) => migration.version <= 92));
+    }, preSquashChain.filter((migration) => migration.version <= 92));
     assert.equal(db.getUserVersion(), 92);
     assert.equal(copies, 1);
     assert.equal(dumpRows(db.raw), beforeRows);

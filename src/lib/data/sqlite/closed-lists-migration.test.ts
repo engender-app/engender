@@ -6,7 +6,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { runMigrations } from './migration-runner.ts';
-import { migrations } from './migrations.ts';
+import { preSquashChain } from './test-support/pre-squash-chain.ts';
 import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
@@ -17,7 +17,7 @@ const REBUILT = ['hair_removal_session', 'tryout', 'tally_event', 'cycle_event',
 async function journalAt92() {
   const db = makeNodeSqliteDb();
   const fileOps = noopFileOps();
-  await runMigrations(db, fileOps, migrations.filter((m) => m.version <= 92));
+  await runMigrations(db, fileOps, preSquashChain.filter((m) => m.version <= 92));
   const exec = (sql: string) => db.raw.exec(sql);
   exec(`INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, cost, provider, updated_at)
         VALUES ('h1', 100, 'chin', 'laser', 3, '40 EUR', 'Clinic', 1000), ('h2', 101, 'legs', 'other', 5, '', '', 1000)`);
@@ -100,7 +100,7 @@ test('migrating a populated 92 keeps every row, child link and id counter, and c
 
   // Stops before ticket 30's v115, which reads the text cost into its own
   // columns (cost-migration.test.ts); this test is about the rebuild.
-  await runMigrations(db, fileOps, migrations.filter((m) => m.version <= 114));
+  await runMigrations(db, fileOps, preSquashChain.filter((m) => m.version <= 114));
 
   for (const table of REBUILT) {
     assert.equal(count(db, table), before[table].rows, `${table} row count`);

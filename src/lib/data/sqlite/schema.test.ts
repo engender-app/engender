@@ -8,9 +8,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
 import { JournalBelowBaselineError, runMigrations, SchemaTooNewError } from './migration-runner.ts';
-import { migrations } from './migrations.ts';
+import { migrations, POST_RC1_STEPS } from './migrations.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
+import { preSquashChain } from './test-support/pre-squash-chain.ts';
 import { dumpRows, dumpSchema, readSchemaFixture } from './test-support/schema-dump.ts';
 
 /* The version the second squash landed on (after-release ticket 42): one
@@ -20,6 +21,10 @@ import { dumpRows, dumpSchema, readSchemaFixture } from './test-support/schema-d
    than read off LATEST_SCHEMA_VERSION, which moves on as migrations are added
    after it. */
 const SQUASH_BASELINE_VERSION = 88;
+
+/* The step pre-publish ticket 01 folded 89 to 119 into, numbered where that
+   chain had reached. */
+const POST_RC1_SQUASH_VERSION = 119;
 
 const fixture = (name: string) =>
   readSchemaFixture(readFileSync(new URL(`./test-support/${name}`, import.meta.url), 'utf8'));
@@ -961,17 +966,23 @@ test('the hand-written latest version and the migration list agree', async () =>
      case, where two branches each add a version and the loser renumbers. */
   assert.equal(LATEST_SCHEMA_VERSION, Math.max(...migrations.map((migration) => migration.version)));
 
-  /* Contiguous from the squashed baseline rather than from 1 (ticket 42): the
-     versions below it were retired into one statement and no longer exist to
-     be applied, so a gap there is the squash and a gap above it is a
-     migration that went missing. */
+  /* The squashed baseline (ticket 42), then the one step that folds 89 to
+     119 (pre-publish ticket 01), then contiguous: a gap below the baseline is
+     the first squash, the gap between 88 and 119 is the second, and a gap
+     above 119 is a migration that went missing. */
   assert.deepEqual(
     migrations.map((migration) => migration.version),
-    Array.from(
-      { length: LATEST_SCHEMA_VERSION - SQUASH_BASELINE_VERSION + 1 },
-      (_, index) => SQUASH_BASELINE_VERSION + index
-    ),
-    'the list is contiguous from the baseline, in order, with no version applied twice'
+    [
+      SQUASH_BASELINE_VERSION,
+      POST_RC1_SQUASH_VERSION,
+      ...Array.from({ length: LATEST_SCHEMA_VERSION - POST_RC1_SQUASH_VERSION }, (_, index) => POST_RC1_SQUASH_VERSION + 1 + index)
+    ],
+    'the baseline, the squashed step, then every later version in order, none applied twice'
+  );
+  /* And the steps the squash runs are the whole of 89 to 119, in order. */
+  assert.deepEqual(
+    POST_RC1_STEPS.map((step) => step.version),
+    Array.from({ length: POST_RC1_SQUASH_VERSION - SQUASH_BASELINE_VERSION }, (_, index) => SQUASH_BASELINE_VERSION + 1 + index)
   );
 });
 
@@ -1041,7 +1052,7 @@ test('the saved-questions cut drops saved_question and nothing else', async () =
    (an older legal key included) and documents themselves stay. */
 test('the roadmap trim drops cut-track ticks and roadmap_track, and keeps custom goals in categories', async () => {
   const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 110));
+  await runMigrations(db, noopFileOps(), preSquashChain.filter((migration) => migration.version <= 110));
   await db.run(`INSERT INTO roadmap_check (pack_key, goal_key, status, hidden, updated_at) VALUES
     ('pl', 'pl-social-tell-one-person', 'checked', 0, 1), ('pl', 'pl-presentational-voice', 'unchecked', 1, 1),
     ('pl', 'pl-medical-bloodwork', 'not-my-path', 0, 1), ('pl', 'pl-legal-court-fee', 'checked', 0, 1),
@@ -1054,7 +1065,7 @@ test('the roadmap trim drops cut-track ticks and roadmap_track, and keeps custom
     ('d1', 100, 'Opinion', 'a.pdf', 'goal', 'pl-medical-psych-opinion', 1),
     ('d2', 100, 'Fee', 'b.pdf', 'goal', 'pl-legal-court-fee', 1)`);
   await db.run("INSERT INTO area_state (area, hidden, updated_at) VALUES ('roadmapTracks', 1, 1), ('roadmapGoals', 1, 1)");
-  await runMigrations(db, noopFileOps(), migrations);
+  await runMigrations(db, noopFileOps(), preSquashChain);
   assert.deepEqual(await db.query('SELECT goal_key FROM roadmap_check ORDER BY goal_key'), [
     { goal_key: 'pl-legal-court-fee' },
     { goal_key: 'pl-legal-court-file' }
@@ -1091,14 +1102,14 @@ test('the roadmap trim drops cut-track ticks and roadmap_track, and keeps custom
    key did not change. */
 test('the institution list adds its two tables and keeps only hidden flags of the steps it replaced', async () => {
   const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 113));
+  await runMigrations(db, noopFileOps(), preSquashChain.filter((migration) => migration.version <= 113));
   await db.run(`INSERT INTO roadmap_check (pack_key, goal_key, status, hidden, updated_at) VALUES
     ('pl', 'pl-legal-passport', 'checked', 0, 1), ('pl', 'pl-legal-driving-licence', 'checked', 1, 1),
     ('pl', 'pl-legal-institutions', 'checked', 0, 1), ('pl', 'pl-legal-court-fee', 'checked', 0, 1)`);
   await db.run(`INSERT INTO document (uuid, epoch_day, title, file_path, target_kind, target_id, updated_at) VALUES
     ('d1', 100, 'Bank letter', 'a.pdf', 'goal', 'pl-legal-institutions', 1),
     ('d2', 100, 'Old passport', 'b.pdf', 'goal', 'pl-legal-passport', 1)`);
-  await runMigrations(db, noopFileOps(), migrations);
+  await runMigrations(db, noopFileOps(), preSquashChain);
   assert.deepEqual(await db.query('SELECT goal_key, status, hidden FROM roadmap_check ORDER BY goal_key'), [
     { goal_key: 'pl-legal-court-fee', status: 'checked', hidden: 0 },
     { goal_key: 'pl-legal-driving-licence', status: 'unchecked', hidden: 1 }

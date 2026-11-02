@@ -6,7 +6,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { runMigrations } from './migration-runner.ts';
-import { migrations } from './migrations.ts';
+import { preSquashChain } from './test-support/pre-squash-chain.ts';
 import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
@@ -42,14 +42,14 @@ test('an appointment stores a time and a provider, and outlives the provider', a
 test('migrating a populated 109 keeps every appointment column, the wait and its updates', async () => {
   const db = makeNodeSqliteDb();
   const fileOps = noopFileOps();
-  await runMigrations(db, fileOps, migrations.filter((m) => m.version <= 109));
+  await runMigrations(db, fileOps, preSquashChain.filter((m) => m.version <= 109));
   db.raw.exec(`INSERT INTO appointment (uuid, epoch_day, kind, place, note, referred_epoch_day, updated_at)
                VALUES ('a1', 100, 'endo', 'Clinic', 'dose', NULL, 1000),
                       ('w1', NULL, 'Gender clinic', NULL, NULL, 90, 1000)`);
   db.raw.exec(`INSERT INTO appointment_status (uuid, appointment_id, epoch_day, status, updated_at)
                VALUES ('s1', (SELECT id FROM appointment WHERE uuid = 'w1'), 95, 'Letter came', 1000)`);
 
-  await runMigrations(db, fileOps, migrations);
+  await runMigrations(db, fileOps, preSquashChain);
 
   const rows = db.raw
     .prepare(`SELECT uuid, epoch_day, kind, place, note, referred_epoch_day, time_of_day, provider_id

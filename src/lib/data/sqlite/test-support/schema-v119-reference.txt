@@ -1,0 +1,541 @@
+# The schema the v88 baseline plus migrations 89 through 119 built, dumped
+# through dumpSchema() in this directory's schema-dump.ts. This is the ground
+# truth the post-rc.1 squash is held to (pre-publish ticket 01, ADR-0006), and
+# squash-v119.test.ts compares against it. Its rows twin is
+# schema-v119-reference-rows.txt; the rc.1 released journal's rows after the
+# same chain are in schema-v119-rc1-rows.txt and schema-v119-rc1-seeded-rows.txt.
+#
+# Source: the chain at fec24e701 (functional-audit after FA 50 and FA 55),
+# the tip this squash branched from. The commit that adds this file still
+# carries that chain unchanged, and its squash-v119.test.ts builds an empty
+# database and the rc.1 released journal through every entry of it and
+# compares the dumps with these files. To reproduce:
+#
+#   git checkout $(git log --diff-filter=A --format=%H -- <this file>)
+#   npx vitest run src/lib/data/sqlite/squash-v119.test.ts
+#
+# The rc.1 journal, migrated by the same chain, dumps to this same text.
+#
+# This file is frozen. It was not derived from the squash and is never
+# regenerated from it; a migration added after v119 changes the live schema
+# and leaves this file alone.
+index idx_appointment_epoch_day on appointment
+  CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day)
+index idx_appointment_procedure on appointment
+  CREATE INDEX idx_appointment_procedure ON appointment(procedure_id)
+index idx_appointment_provider on appointment
+  CREATE INDEX idx_appointment_provider ON appointment(provider_id)
+index idx_appointment_status_appointment on appointment_status
+  CREATE INDEX idx_appointment_status_appointment ON appointment_status(appointment_id,epoch_day)
+index idx_appointment_status_epoch_day on appointment_status
+  CREATE INDEX idx_appointment_status_epoch_day ON appointment_status(epoch_day)
+index idx_checklist_item_checklist on checklist_item
+  CREATE INDEX idx_checklist_item_checklist ON checklist_item(checklist_id)
+index idx_checklist_owner on checklist
+  CREATE INDEX idx_checklist_owner ON checklist(owner_kind,owner_uuid)
+index idx_cycle_event_epoch_day on cycle_event
+  CREATE INDEX idx_cycle_event_epoch_day ON cycle_event(epoch_day)
+index idx_document_epoch_day on document
+  CREATE INDEX idx_document_epoch_day ON document(epoch_day)
+index idx_dose_event_auto_log_day on dose_event
+  CREATE INDEX idx_dose_event_auto_log_day ON dose_event(auto_log_epoch_day)WHERE auto_log_epoch_day IS NOT NULL
+index idx_dose_event_auto_log_slot on dose_event
+  CREATE UNIQUE INDEX idx_dose_event_auto_log_slot ON dose_event(auto_log_episode_uuid,auto_log_epoch_day,auto_log_index)WHERE auto_log_episode_uuid IS NOT NULL
+index idx_dose_event_timestamp on dose_event
+  CREATE INDEX idx_dose_event_timestamp ON dose_event(timestamp)
+index idx_dose_pause_episode on dose_pause
+  CREATE INDEX idx_dose_pause_episode ON dose_pause(episode_id)
+index idx_ebr_region on entry_body_region
+  CREATE INDEX idx_ebr_region ON entry_body_region(region)
+index idx_edv_dimension on entry_dimension_value
+  CREATE INDEX idx_edv_dimension ON entry_dimension_value(dimension_id)
+index idx_entry_epoch_day on entry
+  CREATE INDEX idx_entry_epoch_day ON entry(epoch_day)
+index idx_entry_presentation_uuid on entry
+  CREATE INDEX idx_entry_presentation_uuid ON entry(presentation_uuid,timestamp)
+index idx_entry_tag_tag_id on entry_tag
+  CREATE INDEX idx_entry_tag_tag_id ON entry_tag(tag_id)
+index idx_entry_trashed_at on entry
+  CREATE INDEX idx_entry_trashed_at ON entry(trashed_at)WHERE trashed_at IS NOT NULL
+index idx_felt_sense_epoch_day on felt_sense
+  CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day)
+index idx_felt_sense_tryout on felt_sense
+  CREATE INDEX idx_felt_sense_tryout ON felt_sense(tryout_id)
+index idx_hair_photo_epoch_day on hair_photo
+  CREATE INDEX idx_hair_photo_epoch_day ON hair_photo(epoch_day)
+index idx_hair_removal_photo_session on hair_removal_photo
+  CREATE INDEX idx_hair_removal_photo_session ON hair_removal_photo(session_id)
+index idx_hair_removal_session_area on hair_removal_session
+  CREATE INDEX idx_hair_removal_session_area ON hair_removal_session(area)
+index idx_hair_removal_session_epoch_day on hair_removal_session
+  CREATE INDEX idx_hair_removal_session_epoch_day ON hair_removal_session(epoch_day)
+index idx_hair_stage_epoch_day on hair_stage
+  CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day)
+index idx_lab_analyte on lab_result
+  CREATE INDEX idx_lab_analyte ON lab_result(analyte,epoch_day)
+index idx_letter_epoch_day on letter
+  CREATE INDEX idx_letter_epoch_day ON letter(epoch_day)
+index idx_margin_note_entry_id on margin_note
+  CREATE INDEX idx_margin_note_entry_id ON margin_note(entry_id)
+index idx_medication_stock_drug_key on medication_stock
+  CREATE UNIQUE INDEX idx_medication_stock_drug_key ON medication_stock(drug_key)
+index idx_milestone_epoch_day on milestone
+  CREATE INDEX idx_milestone_epoch_day ON milestone(epoch_day)
+index idx_photo_entry on photo
+  CREATE INDEX idx_photo_entry ON photo(entry_id)
+index idx_photo_milestone on photo
+  CREATE INDEX idx_photo_milestone ON photo(milestone_id)
+index idx_procedure_photo_procedure on procedure_photo
+  CREATE INDEX idx_procedure_photo_procedure ON procedure_photo(procedure_id,epoch_day)
+index idx_procedure_surgery_epoch_day on procedure
+  CREATE INDEX idx_procedure_surgery_epoch_day ON procedure(surgery_epoch_day)
+index idx_regimen_episode_start on regimen_episode
+  CREATE INDEX idx_regimen_episode_start ON regimen_episode(start_epoch_day)
+index idx_roadmap_institution_change on roadmap_institution_change
+  CREATE INDEX idx_roadmap_institution_change ON roadmap_institution_change(institution,epoch_day)
+index idx_roadmap_institution_change_epoch_day on roadmap_institution_change
+  CREATE INDEX idx_roadmap_institution_change_epoch_day ON roadmap_institution_change(epoch_day)
+index idx_side_effect_epoch_day on side_effect
+  CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day)
+index idx_tally_kind_day on tally_event
+  CREATE INDEX idx_tally_kind_day ON tally_event(kind,epoch_day)
+index idx_taper_procedure on taper
+  CREATE UNIQUE INDEX idx_taper_procedure ON taper(procedure_id)
+index idx_taper_session_epoch_day on taper_session
+  CREATE INDEX idx_taper_session_epoch_day ON taper_session(epoch_day)
+index idx_tryout_photo_tryout on tryout_photo
+  CREATE INDEX idx_tryout_photo_tryout ON tryout_photo(tryout_id,epoch_day)
+index idx_tryout_start on tryout
+  CREATE INDEX idx_tryout_start ON tryout(start_epoch_day)
+index idx_video_note_entry on video_note
+  CREATE INDEX idx_video_note_entry ON video_note(entry_id)
+index idx_voice_benchmark_epoch_day on voice_benchmark
+  CREATE INDEX idx_voice_benchmark_epoch_day ON voice_benchmark(epoch_day)
+index idx_voice_practice_take_epoch_day on voice_practice_take
+  CREATE INDEX idx_voice_practice_take_epoch_day ON voice_practice_take(epoch_day)
+index idx_voice_recording_entry on voice_recording
+  CREATE INDEX idx_voice_recording_entry ON voice_recording(entry_id)
+index idx_wear_session_start on wear_session
+  CREATE INDEX idx_wear_session_start ON wear_session(start_timestamp)
+index sqlite_autoindex_appointment_1 on appointment
+  (implicit)
+index sqlite_autoindex_appointment_debrief_1 on appointment_debrief
+  (implicit)
+index sqlite_autoindex_appointment_status_1 on appointment_status
+  (implicit)
+index sqlite_autoindex_area_state_1 on area_state
+  (implicit)
+index sqlite_autoindex_body_region_1 on body_region
+  (implicit)
+index sqlite_autoindex_body_region_2 on body_region
+  (implicit)
+index sqlite_autoindex_checklist_1 on checklist
+  (implicit)
+index sqlite_autoindex_checklist_item_1 on checklist_item
+  (implicit)
+index sqlite_autoindex_comfort_item_1 on comfort_item
+  (implicit)
+index sqlite_autoindex_cycle_event_1 on cycle_event
+  (implicit)
+index sqlite_autoindex_deletion_1 on deletion
+  (implicit)
+index sqlite_autoindex_document_1 on document
+  (implicit)
+index sqlite_autoindex_dose_event_1 on dose_event
+  (implicit)
+index sqlite_autoindex_dose_pause_1 on dose_pause
+  (implicit)
+index sqlite_autoindex_dose_schedule_1 on dose_schedule
+  (implicit)
+index sqlite_autoindex_dose_schedule_2 on dose_schedule
+  (implicit)
+index sqlite_autoindex_dose_schedule_dose_amount_1 on dose_schedule_dose_amount
+  (implicit)
+index sqlite_autoindex_dose_schedule_weekday_1 on dose_schedule_weekday
+  (implicit)
+index sqlite_autoindex_effect_category_1 on effect_category
+  (implicit)
+index sqlite_autoindex_entry_1 on entry
+  (implicit)
+index sqlite_autoindex_entry_body_region_1 on entry_body_region
+  (implicit)
+index sqlite_autoindex_entry_dimension_value_1 on entry_dimension_value
+  (implicit)
+index sqlite_autoindex_entry_tag_1 on entry_tag
+  (implicit)
+index sqlite_autoindex_entry_template_1 on entry_template
+  (implicit)
+index sqlite_autoindex_entry_template_2 on entry_template
+  (implicit)
+index sqlite_autoindex_entry_template_dimension_value_1 on entry_template_dimension_value
+  (implicit)
+index sqlite_autoindex_entry_template_tag_1 on entry_template_tag
+  (implicit)
+index sqlite_autoindex_era_1 on era
+  (implicit)
+index sqlite_autoindex_era_mute_1 on era_mute
+  (implicit)
+index sqlite_autoindex_felt_sense_1 on felt_sense
+  (implicit)
+index sqlite_autoindex_gender_dimension_1 on gender_dimension
+  (implicit)
+index sqlite_autoindex_gender_dimension_2 on gender_dimension
+  (implicit)
+index sqlite_autoindex_gender_preset_1 on gender_preset
+  (implicit)
+index sqlite_autoindex_gender_preset_2 on gender_preset
+  (implicit)
+index sqlite_autoindex_hair_photo_1 on hair_photo
+  (implicit)
+index sqlite_autoindex_hair_removal_photo_1 on hair_removal_photo
+  (implicit)
+index sqlite_autoindex_hair_removal_session_1 on hair_removal_session
+  (implicit)
+index sqlite_autoindex_hair_stage_1 on hair_stage
+  (implicit)
+index sqlite_autoindex_import_log_1 on import_log
+  (implicit)
+index sqlite_autoindex_lab_result_1 on lab_result
+  (implicit)
+index sqlite_autoindex_letter_1 on letter
+  (implicit)
+index sqlite_autoindex_margin_note_1 on margin_note
+  (implicit)
+index sqlite_autoindex_medication_stock_1 on medication_stock
+  (implicit)
+index sqlite_autoindex_medication_stock_2 on medication_stock
+  (implicit)
+index sqlite_autoindex_milestone_1 on milestone
+  (implicit)
+index sqlite_autoindex_personal_effect_1 on personal_effect
+  (implicit)
+index sqlite_autoindex_personal_effect_2 on personal_effect
+  (implicit)
+index sqlite_autoindex_personal_effect_type_1 on personal_effect_type
+  (implicit)
+index sqlite_autoindex_personal_effect_type_2 on personal_effect_type
+  (implicit)
+index sqlite_autoindex_photo_1 on photo
+  (implicit)
+index sqlite_autoindex_pref_1 on pref
+  (implicit)
+index sqlite_autoindex_presentation_1 on presentation
+  (implicit)
+index sqlite_autoindex_preset_dimension_1 on preset_dimension
+  (implicit)
+index sqlite_autoindex_procedure_1 on procedure
+  (implicit)
+index sqlite_autoindex_procedure_photo_1 on procedure_photo
+  (implicit)
+index sqlite_autoindex_provider_1 on provider
+  (implicit)
+index sqlite_autoindex_regimen_episode_1 on regimen_episode
+  (implicit)
+index sqlite_autoindex_reminder_1 on reminder
+  (implicit)
+index sqlite_autoindex_roadmap_category_1 on roadmap_category
+  (implicit)
+index sqlite_autoindex_roadmap_check_1 on roadmap_check
+  (implicit)
+index sqlite_autoindex_roadmap_goal_1 on roadmap_goal
+  (implicit)
+index sqlite_autoindex_roadmap_institution_1 on roadmap_institution
+  (implicit)
+index sqlite_autoindex_roadmap_institution_change_1 on roadmap_institution_change
+  (implicit)
+index sqlite_autoindex_side_effect_1 on side_effect
+  (implicit)
+index sqlite_autoindex_tag_1 on tag
+  (implicit)
+index sqlite_autoindex_tag_2 on tag
+  (implicit)
+index sqlite_autoindex_tag_group_1 on tag_group
+  (implicit)
+index sqlite_autoindex_tag_group_2 on tag_group
+  (implicit)
+index sqlite_autoindex_tally_event_1 on tally_event
+  (implicit)
+index sqlite_autoindex_taper_1 on taper
+  (implicit)
+index sqlite_autoindex_taper_session_1 on taper_session
+  (implicit)
+index sqlite_autoindex_tryout_1 on tryout
+  (implicit)
+index sqlite_autoindex_tryout_photo_1 on tryout_photo
+  (implicit)
+index sqlite_autoindex_video_note_1 on video_note
+  (implicit)
+index sqlite_autoindex_voice_benchmark_1 on voice_benchmark
+  (implicit)
+index sqlite_autoindex_voice_practice_take_1 on voice_practice_take
+  (implicit)
+index sqlite_autoindex_voice_recording_1 on voice_recording
+  (implicit)
+index sqlite_autoindex_wear_session_1 on wear_session
+  (implicit)
+table appointment on appointment
+  CREATE TABLE appointment(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,procedure_id INTEGER REFERENCES procedure(id)ON DELETE CASCADE,epoch_day INTEGER,kind TEXT,place TEXT,note TEXT,updated_at INTEGER NOT NULL,referred_epoch_day INTEGER,time_of_day TEXT,provider_id INTEGER REFERENCES provider(id)ON DELETE SET NULL,cost_amount REAL,cost_currency TEXT,cost_refunded INTEGER NOT NULL DEFAULT 0)
+table appointment_debrief on appointment_debrief
+  CREATE TABLE appointment_debrief(appointment_uuid TEXT PRIMARY KEY,entry_id INTEGER REFERENCES entry(id)ON DELETE SET NULL,dismissed INTEGER NOT NULL DEFAULT 0)
+table appointment_status on appointment_status
+  CREATE TABLE appointment_status(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,appointment_id INTEGER NOT NULL REFERENCES appointment(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,status TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table area_state on area_state
+  CREATE TABLE area_state(area TEXT PRIMARY KEY,hidden INTEGER NOT NULL DEFAULT 0,finished_epoch_day INTEGER,updated_at INTEGER NOT NULL,suspended_epoch_day INTEGER)
+table body_region on body_region
+  CREATE TABLE body_region(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT UNIQUE,name TEXT NOT NULL DEFAULT '',hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table checklist on checklist
+  CREATE TABLE checklist(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,owner_kind TEXT,owner_uuid TEXT,updated_at INTEGER NOT NULL,CHECK((owner_kind IS NULL)=(owner_uuid IS NULL)))
+table checklist_item on checklist_item
+  CREATE TABLE checklist_item(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,checklist_id INTEGER NOT NULL REFERENCES checklist(id)ON DELETE CASCADE,content TEXT NOT NULL,checked INTEGER NOT NULL DEFAULT 0,carried_forward INTEGER NOT NULL DEFAULT 0,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table comfort_item on comfort_item
+  CREATE TABLE comfort_item(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,text TEXT NOT NULL,position INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table cycle_event on cycle_event
+  CREATE TABLE cycle_event(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,kind TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table deletion on deletion
+  CREATE TABLE deletion(id INTEGER PRIMARY KEY,tbl TEXT NOT NULL,row_key TEXT NOT NULL,deleted_at INTEGER NOT NULL,UNIQUE(tbl,row_key))
+table document on document
+  CREATE TABLE document(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,title TEXT NOT NULL,file_path TEXT NOT NULL,target_kind TEXT CHECK(target_kind IN('goal','milestone','procedure','episode')),target_id TEXT,updated_at INTEGER NOT NULL,CHECK((target_kind IS NULL)=(target_id IS NULL)))
+table dose_event on dose_event
+  CREATE TABLE dose_event(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,timestamp INTEGER NOT NULL,route TEXT NOT NULL,dose REAL NOT NULL,dose_unit TEXT NOT NULL,injection_site TEXT,vehicle TEXT,application_site TEXT,status TEXT NOT NULL,scheduled_dose REAL,scheduled_route TEXT,scheduled_timestamp INTEGER,updated_at INTEGER NOT NULL,drug TEXT,source TEXT NOT NULL DEFAULT 'person',auto_log_episode_uuid TEXT,auto_log_epoch_day INTEGER,auto_log_index INTEGER CHECK((auto_log_episode_uuid IS NULL AND auto_log_epoch_day IS NULL AND auto_log_index IS NULL)OR(source = 'schedule' AND typeof(auto_log_episode_uuid)= 'text' AND length(trim(auto_log_episode_uuid))> 0 AND typeof(auto_log_epoch_day)= 'integer' AND typeof(auto_log_index)= 'integer' AND auto_log_index >= 0)))
+table dose_pause on dose_pause
+  CREATE TABLE dose_pause(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,episode_id INTEGER NOT NULL REFERENCES regimen_episode(id)ON DELETE CASCADE,start_epoch_day INTEGER NOT NULL,end_epoch_day INTEGER,reason TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table dose_schedule on dose_schedule
+  CREATE TABLE dose_schedule(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,episode_id INTEGER NOT NULL UNIQUE REFERENCES regimen_episode(id)ON DELETE CASCADE,recurrence_kind TEXT NOT NULL DEFAULT 'everyNDays' CHECK(recurrence_kind IN('everyNDays','weekdays')),every_n_days INTEGER,doses_per_day INTEGER NOT NULL,updated_at INTEGER NOT NULL,auto_log_from_epoch_day INTEGER,CHECK((recurrence_kind = 'everyNDays')=(every_n_days IS NOT NULL)))
+table dose_schedule_dose_amount on dose_schedule_dose_amount
+  CREATE TABLE dose_schedule_dose_amount(schedule_id INTEGER NOT NULL REFERENCES dose_schedule(id)ON DELETE CASCADE,position INTEGER NOT NULL,dose REAL NOT NULL,dose_unit TEXT NOT NULL,PRIMARY KEY(schedule_id,position))
+table dose_schedule_weekday on dose_schedule_weekday
+  CREATE TABLE dose_schedule_weekday(schedule_id INTEGER NOT NULL REFERENCES dose_schedule(id)ON DELETE CASCADE,weekday INTEGER NOT NULL CHECK(weekday BETWEEN 0 AND 6),PRIMARY KEY(schedule_id,weekday))
+table effect_category on effect_category
+  CREATE TABLE effect_category(id INTEGER PRIMARY KEY AUTOINCREMENT,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL DEFAULT '',enabled INTEGER NOT NULL DEFAULT 1,updated_at INTEGER NOT NULL)
+table entry on entry
+  CREATE TABLE entry(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,timestamp INTEGER NOT NULL,mood INTEGER,note TEXT,updated_at INTEGER NOT NULL,trashed_at INTEGER,starred INTEGER NOT NULL DEFAULT 0,presentation_uuid TEXT REFERENCES presentation(uuid))
+table entry_body_region on entry_body_region
+  CREATE TABLE entry_body_region(entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,region TEXT NOT NULL,value INTEGER NOT NULL,PRIMARY KEY(entry_id,region),CHECK(value BETWEEN 0 AND 100 AND value <> 50))
+table entry_dimension_value on entry_dimension_value
+  CREATE TABLE entry_dimension_value(entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,dimension_id INTEGER NOT NULL REFERENCES gender_dimension(id)ON DELETE CASCADE,value INTEGER NOT NULL,PRIMARY KEY(entry_id,dimension_id))
+table entry_fts on entry_fts
+  CREATE VIRTUAL TABLE entry_fts USING fts5(folded_text,content='',contentless_delete=1)
+table entry_fts_config on entry_fts_config
+  CREATE TABLE 'entry_fts_config'(k PRIMARY KEY,v)WITHOUT ROWID
+table entry_fts_data on entry_fts_data
+  CREATE TABLE 'entry_fts_data'(id INTEGER PRIMARY KEY,block BLOB)
+table entry_fts_docsize on entry_fts_docsize
+  CREATE TABLE 'entry_fts_docsize'(id INTEGER PRIMARY KEY,sz BLOB,origin INTEGER)
+table entry_fts_idx on entry_fts_idx
+  CREATE TABLE 'entry_fts_idx'(segid,term,pgno,PRIMARY KEY(segid,term))WITHOUT ROWID
+table entry_tag on entry_tag
+  CREATE TABLE entry_tag(entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,tag_id INTEGER NOT NULL REFERENCES tag(id)ON DELETE CASCADE,PRIMARY KEY(entry_id,tag_id))
+table entry_template on entry_template
+  CREATE TABLE entry_template(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT UNIQUE,name TEXT NOT NULL,note_scaffold TEXT NOT NULL DEFAULT '',presentation_uuid TEXT,hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table entry_template_dimension_value on entry_template_dimension_value
+  CREATE TABLE entry_template_dimension_value(template_id INTEGER NOT NULL REFERENCES entry_template(id)ON DELETE CASCADE,dimension_id INTEGER NOT NULL REFERENCES gender_dimension(id)ON DELETE CASCADE,value INTEGER NOT NULL,PRIMARY KEY(template_id,dimension_id))
+table entry_template_tag on entry_template_tag
+  CREATE TABLE entry_template_tag(template_id INTEGER NOT NULL REFERENCES entry_template(id)ON DELETE CASCADE,tag_id INTEGER NOT NULL REFERENCES tag(id)ON DELETE CASCADE,PRIMARY KEY(template_id,tag_id))
+table era on era
+  CREATE TABLE era(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,start_epoch_day INTEGER,end_epoch_day INTEGER,updated_at INTEGER NOT NULL)
+table era_mute on era_mute
+  CREATE TABLE era_mute(id INTEGER PRIMARY KEY AUTOINCREMENT,era_uuid TEXT NOT NULL UNIQUE,updated_at INTEGER NOT NULL)
+table felt_sense on felt_sense
+  CREATE TABLE felt_sense(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,tryout_id INTEGER NOT NULL REFERENCES tryout(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,mood INTEGER NOT NULL CHECK(mood BETWEEN 1 AND 5),note TEXT,updated_at INTEGER NOT NULL)
+table gender_dimension on gender_dimension
+  CREATE TABLE gender_dimension(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL,low_label TEXT NOT NULL,high_label TEXT NOT NULL,min_value INTEGER NOT NULL DEFAULT 0,max_value INTEGER NOT NULL DEFAULT 100,is_built_in INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0)
+table gender_preset on gender_preset
+  CREATE TABLE gender_preset(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT UNIQUE,name TEXT NOT NULL,is_built_in INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table hair_photo on hair_photo
+  CREATE TABLE hair_photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,file_path TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table hair_removal_photo on hair_removal_photo
+  CREATE TABLE hair_removal_photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,session_id INTEGER NOT NULL REFERENCES hair_removal_session(id)ON DELETE CASCADE,file_path TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table hair_removal_session on hair_removal_session
+  CREATE TABLE hair_removal_session(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,area TEXT NOT NULL,method TEXT NOT NULL,pain_rating INTEGER CHECK(pain_rating IS NULL OR pain_rating BETWEEN 1 AND 5),provider TEXT NOT NULL,updated_at INTEGER NOT NULL,note TEXT,minutes INTEGER,cost_amount REAL,cost_currency TEXT,cost_refunded INTEGER NOT NULL DEFAULT 0)
+table hair_stage on hair_stage
+  CREATE TABLE hair_stage(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,description TEXT NOT NULL DEFAULT '',updated_at INTEGER NOT NULL)
+table import_log on import_log
+  CREATE TABLE import_log(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE NOT NULL,source TEXT NOT NULL,counts TEXT NOT NULL,imported_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table lab_result on lab_result
+  CREATE TABLE lab_result(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,analyte TEXT NOT NULL,value REAL NOT NULL,unit TEXT NOT NULL,note TEXT,updated_at INTEGER NOT NULL,provider TEXT NOT NULL DEFAULT '',draw_time TEXT,timing_route TEXT,timing_hours REAL,timing_day_of_interval INTEGER,cost_amount REAL,cost_currency TEXT,cost_refunded INTEGER NOT NULL DEFAULT 0)
+table letter on letter
+  CREATE TABLE letter(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,text TEXT NOT NULL,unlock_epoch_day INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table margin_note on margin_note
+  CREATE TABLE margin_note(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,text TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table medication_stock on medication_stock
+  CREATE TABLE medication_stock(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,drug TEXT NOT NULL UNIQUE,quantity REAL NOT NULL,unit TEXT NOT NULL,recorded_epoch_day INTEGER NOT NULL,reminder_ever_created INTEGER NOT NULL DEFAULT 0,reminder_dismissed INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,opened_epoch_day INTEGER,in_use_window_days INTEGER,in_use_end_epoch_day INTEGER,lead_time_days INTEGER,doses_per_unit REAL,drug_key TEXT NOT NULL DEFAULT '',expiry_epoch_day INTEGER,pharmacy_note TEXT,cost_amount REAL,cost_currency TEXT,cost_refunded INTEGER NOT NULL DEFAULT 0)
+table milestone on milestone
+  CREATE TABLE milestone(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,epoch_day INTEGER NOT NULL,template_key TEXT,updated_at INTEGER NOT NULL,roadmap_goal_key TEXT,procedure_uuid TEXT REFERENCES procedure(uuid),tryout_uuid TEXT REFERENCES tryout(uuid),description TEXT NOT NULL DEFAULT '',celebrate INTEGER NOT NULL DEFAULT 1)
+table personal_effect on personal_effect
+  CREATE TABLE personal_effect(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,effect TEXT NOT NULL UNIQUE,first_noticed_epoch_day INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table personal_effect_type on personal_effect_type
+  CREATE TABLE personal_effect_type(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL DEFAULT '',is_built_in INTEGER NOT NULL DEFAULT 0,category_key TEXT REFERENCES effect_category(key),direction TEXT CHECK(direction IN('feminizing','masculinizing')OR direction IS NULL),hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table photo on photo
+  CREATE TABLE photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,entry_id INTEGER REFERENCES entry(id)ON DELETE CASCADE,milestone_id INTEGER REFERENCES milestone(id)ON DELETE CASCADE,file_path TEXT NOT NULL,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,starred INTEGER NOT NULL DEFAULT 0,epoch_day_override INTEGER,CHECK((entry_id IS NOT NULL)+(milestone_id IS NOT NULL)= 1))
+table pref on pref
+  CREATE TABLE pref(key TEXT PRIMARY KEY,value TEXT NOT NULL)
+table presentation on presentation
+  CREATE TABLE presentation(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,role_index INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table preset_dimension on preset_dimension
+  CREATE TABLE preset_dimension(preset_id INTEGER NOT NULL REFERENCES gender_preset(id)ON DELETE CASCADE,dimension_id INTEGER NOT NULL REFERENCES gender_dimension(id)ON DELETE CASCADE,order_index INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(preset_id,dimension_id))
+table procedure on procedure
+  CREATE TABLE procedure(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,surgery_epoch_day INTEGER,notes TEXT NOT NULL,updated_at INTEGER NOT NULL,kind TEXT NOT NULL DEFAULT 'custom',dilation_opt_in INTEGER NOT NULL DEFAULT 0,archived INTEGER NOT NULL DEFAULT 0,cost_amount REAL,cost_currency TEXT,cost_refunded INTEGER NOT NULL DEFAULT 0)
+table procedure_photo on procedure_photo
+  CREATE TABLE procedure_photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,procedure_id INTEGER NOT NULL REFERENCES procedure(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,file_path TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table provider on provider
+  CREATE TABLE provider(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,contact TEXT,competence TEXT,impressions TEXT,updated_at INTEGER NOT NULL)
+table regimen_episode on regimen_episode
+  CREATE TABLE regimen_episode(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,drug TEXT NOT NULL,ester TEXT,dose REAL NOT NULL,dose_unit TEXT NOT NULL,route TEXT NOT NULL,interval TEXT NOT NULL,start_epoch_day INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,end_epoch_day INTEGER,end_reason TEXT,drug_class TEXT NOT NULL DEFAULT 'other')
+table reminder on reminder
+  CREATE TABLE reminder(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,title TEXT NOT NULL,time TEXT NOT NULL,recurrence TEXT CHECK(recurrence IN('DAILY','EVERY_N_DAYS')),interval INTEGER,anchor_epoch_day INTEGER,epoch_day INTEGER,enabled INTEGER NOT NULL DEFAULT 1,updated_at INTEGER NOT NULL,auto_source TEXT,drug TEXT,CHECK((recurrence IS NULL AND epoch_day IS NOT NULL AND interval IS NULL AND anchor_epoch_day IS NULL)OR(recurrence IS 'EVERY_N_DAYS' AND interval IS NOT NULL AND anchor_epoch_day IS NOT NULL AND epoch_day IS NULL)OR(recurrence IS 'DAILY' AND interval IS NULL AND anchor_epoch_day IS NULL AND epoch_day IS NULL)))
+table roadmap_category on roadmap_category
+  CREATE TABLE roadmap_category(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table roadmap_check on roadmap_check
+  CREATE TABLE roadmap_check(id INTEGER PRIMARY KEY AUTOINCREMENT,pack_key TEXT NOT NULL,goal_key TEXT NOT NULL,updated_at INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'checked',hidden INTEGER NOT NULL DEFAULT 0,UNIQUE(pack_key,goal_key))
+table roadmap_goal on roadmap_goal
+  CREATE TABLE roadmap_goal(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,track TEXT NOT NULL,text TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'unchecked',updated_at INTEGER NOT NULL)
+table roadmap_institution on roadmap_institution
+  CREATE TABLE roadmap_institution(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table roadmap_institution_change on roadmap_institution_change
+  CREATE TABLE roadmap_institution_change(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,institution TEXT NOT NULL,status TEXT NOT NULL,epoch_day INTEGER NOT NULL,note TEXT,updated_at INTEGER NOT NULL)
+table side_effect on side_effect
+  CREATE TABLE side_effect(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,severity INTEGER CHECK(severity IS NULL OR severity BETWEEN 1 AND 5),epoch_day INTEGER NOT NULL,updated_at INTEGER NOT NULL,resolved_epoch_day INTEGER)
+table sqlite_sequence on sqlite_sequence
+  CREATE TABLE sqlite_sequence(name,seq)
+table tag on tag
+  CREATE TABLE tag(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT UNIQUE,group_id INTEGER NOT NULL REFERENCES tag_group(id)ON DELETE CASCADE,label TEXT NOT NULL,hidden INTEGER NOT NULL DEFAULT 0,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table tag_group on tag_group
+  CREATE TABLE tag_group(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table tally_event on tally_event
+  CREATE TABLE tally_event(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,kind TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table taper on taper
+  CREATE TABLE taper(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,procedure_id INTEGER NOT NULL REFERENCES procedure(id)ON DELETE CASCADE,start_epoch_day INTEGER NOT NULL,stages TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table taper_session on taper_session
+  CREATE TABLE taper_session(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,note TEXT NOT NULL DEFAULT '',updated_at INTEGER NOT NULL)
+table tryout on tryout
+  CREATE TABLE tryout(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,kind TEXT NOT NULL,label TEXT NOT NULL,description TEXT,start_epoch_day INTEGER NOT NULL,end_epoch_day INTEGER,updated_at INTEGER NOT NULL)
+table tryout_photo on tryout_photo
+  CREATE TABLE tryout_photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,tryout_id INTEGER NOT NULL REFERENCES tryout(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,file_path TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table video_note on video_note
+  CREATE TABLE video_note(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,file_path TEXT NOT NULL,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table voice_benchmark on voice_benchmark
+  CREATE TABLE voice_benchmark(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,timestamp INTEGER NOT NULL,passage_key TEXT NOT NULL,passage_file_path TEXT NOT NULL,vowel_file_path TEXT,f0_median_hz REAL NOT NULL,f0_p10_hz REAL NOT NULL,f0_p90_hz REAL NOT NULL,semitone_sd REAL NOT NULL,words_per_minute REAL NOT NULL,f1_hz REAL,f2_hz REAL,snr_db REAL,note TEXT,updated_at INTEGER NOT NULL,pitch_track TEXT,capture_chain TEXT,resonance_scale REAL,analyzer_version INTEGER)
+table voice_practice_take on voice_practice_take
+  CREATE TABLE voice_practice_take(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,min_hz REAL NOT NULL,max_hz REAL NOT NULL,median_hz REAL NOT NULL,felt_sense INTEGER,updated_at INTEGER NOT NULL)
+table voice_recording on voice_recording
+  CREATE TABLE voice_recording(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,file_path TEXT NOT NULL,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table wear_session on wear_session
+  CREATE TABLE wear_session(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,start_timestamp INTEGER NOT NULL,duration_ms INTEGER,note TEXT,updated_at INTEGER NOT NULL,kind TEXT NOT NULL DEFAULT 'binder')
+trigger deletion_appointment on appointment
+  CREATE TRIGGER deletion_appointment AFTER DELETE ON appointment BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('appointment',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_appointment_status on appointment_status
+  CREATE TRIGGER deletion_appointment_status AFTER DELETE ON appointment_status BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('appointment_status',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_area_state on area_state
+  CREATE TRIGGER deletion_area_state AFTER DELETE ON area_state BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('area_state',OLD.area,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_body_region on body_region
+  CREATE TRIGGER deletion_body_region AFTER DELETE ON body_region BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('body_region',COALESCE(OLD.key,OLD.uuid),CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_checklist on checklist
+  CREATE TRIGGER deletion_checklist AFTER DELETE ON checklist BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('checklist',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_checklist_item on checklist_item
+  CREATE TRIGGER deletion_checklist_item AFTER DELETE ON checklist_item BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('checklist_item',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_comfort_item on comfort_item
+  CREATE TRIGGER deletion_comfort_item AFTER DELETE ON comfort_item BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('comfort_item',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_cycle_event on cycle_event
+  CREATE TRIGGER deletion_cycle_event AFTER DELETE ON cycle_event BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('cycle_event',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_document on document
+  CREATE TRIGGER deletion_document AFTER DELETE ON document BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('document',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_dose_event on dose_event
+  CREATE TRIGGER deletion_dose_event AFTER DELETE ON dose_event BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('dose_event',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_dose_pause on dose_pause
+  CREATE TRIGGER deletion_dose_pause AFTER DELETE ON dose_pause BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('dose_pause',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_dose_schedule on dose_schedule
+  CREATE TRIGGER deletion_dose_schedule AFTER DELETE ON dose_schedule BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('dose_schedule',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_effect_category on effect_category
+  CREATE TRIGGER deletion_effect_category AFTER DELETE ON effect_category BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('effect_category',OLD.key,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_entry on entry
+  CREATE TRIGGER deletion_entry AFTER DELETE ON entry BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('entry',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_entry_template on entry_template
+  CREATE TRIGGER deletion_entry_template AFTER DELETE ON entry_template BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('entry_template',COALESCE(OLD.key,OLD.uuid),CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_era on era
+  CREATE TRIGGER deletion_era AFTER DELETE ON era BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('era',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_era_mute on era_mute
+  CREATE TRIGGER deletion_era_mute AFTER DELETE ON era_mute BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('era_mute',OLD.era_uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_felt_sense on felt_sense
+  CREATE TRIGGER deletion_felt_sense AFTER DELETE ON felt_sense BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('felt_sense',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_gender_dimension on gender_dimension
+  CREATE TRIGGER deletion_gender_dimension AFTER DELETE ON gender_dimension BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('gender_dimension',OLD.key,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_gender_preset on gender_preset
+  CREATE TRIGGER deletion_gender_preset AFTER DELETE ON gender_preset BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('gender_preset',COALESCE(OLD.key,OLD.uuid),CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_hair_photo on hair_photo
+  CREATE TRIGGER deletion_hair_photo AFTER DELETE ON hair_photo BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('hair_photo',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_hair_removal_photo on hair_removal_photo
+  CREATE TRIGGER deletion_hair_removal_photo AFTER DELETE ON hair_removal_photo BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('hair_removal_photo',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_hair_removal_session on hair_removal_session
+  CREATE TRIGGER deletion_hair_removal_session AFTER DELETE ON hair_removal_session BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('hair_removal_session',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_hair_stage on hair_stage
+  CREATE TRIGGER deletion_hair_stage AFTER DELETE ON hair_stage BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('hair_stage',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_import_log on import_log
+  CREATE TRIGGER deletion_import_log AFTER DELETE ON import_log BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('import_log',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_lab_result on lab_result
+  CREATE TRIGGER deletion_lab_result AFTER DELETE ON lab_result BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('lab_result',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_letter on letter
+  CREATE TRIGGER deletion_letter AFTER DELETE ON letter BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('letter',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_margin_note on margin_note
+  CREATE TRIGGER deletion_margin_note AFTER DELETE ON margin_note BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('margin_note',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_medication_stock on medication_stock
+  CREATE TRIGGER deletion_medication_stock AFTER DELETE ON medication_stock BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('medication_stock',OLD.drug_key,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_milestone on milestone
+  CREATE TRIGGER deletion_milestone AFTER DELETE ON milestone BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('milestone',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_personal_effect on personal_effect
+  CREATE TRIGGER deletion_personal_effect AFTER DELETE ON personal_effect BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('personal_effect',OLD.effect,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_personal_effect_type on personal_effect_type
+  CREATE TRIGGER deletion_personal_effect_type AFTER DELETE ON personal_effect_type BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('personal_effect_type',OLD.key,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_photo on photo
+  CREATE TRIGGER deletion_photo AFTER DELETE ON photo BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('photo',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_presentation on presentation
+  CREATE TRIGGER deletion_presentation AFTER DELETE ON presentation BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('presentation',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_procedure on procedure
+  CREATE TRIGGER deletion_procedure AFTER DELETE ON procedure BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('procedure',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_procedure_photo on procedure_photo
+  CREATE TRIGGER deletion_procedure_photo AFTER DELETE ON procedure_photo BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('procedure_photo',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_provider on provider
+  CREATE TRIGGER deletion_provider AFTER DELETE ON provider BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('provider',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_regimen_episode on regimen_episode
+  CREATE TRIGGER deletion_regimen_episode AFTER DELETE ON regimen_episode BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('regimen_episode',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_reminder on reminder
+  CREATE TRIGGER deletion_reminder AFTER DELETE ON reminder BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('reminder',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_roadmap_category on roadmap_category
+  CREATE TRIGGER deletion_roadmap_category AFTER DELETE ON roadmap_category BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('roadmap_category',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_roadmap_check on roadmap_check
+  CREATE TRIGGER deletion_roadmap_check AFTER DELETE ON roadmap_check BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('roadmap_check',OLD.pack_key || char(10)|| OLD.goal_key,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_roadmap_goal on roadmap_goal
+  CREATE TRIGGER deletion_roadmap_goal AFTER DELETE ON roadmap_goal BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('roadmap_goal',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_roadmap_institution on roadmap_institution
+  CREATE TRIGGER deletion_roadmap_institution AFTER DELETE ON roadmap_institution BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('roadmap_institution',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_roadmap_institution_change on roadmap_institution_change
+  CREATE TRIGGER deletion_roadmap_institution_change AFTER DELETE ON roadmap_institution_change BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('roadmap_institution_change',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_side_effect on side_effect
+  CREATE TRIGGER deletion_side_effect AFTER DELETE ON side_effect BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('side_effect',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_tag on tag
+  CREATE TRIGGER deletion_tag AFTER DELETE ON tag BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('tag',COALESCE(OLD.key,OLD.uuid),CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_tag_group on tag_group
+  CREATE TRIGGER deletion_tag_group AFTER DELETE ON tag_group BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('tag_group',OLD.key,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_tally_event on tally_event
+  CREATE TRIGGER deletion_tally_event AFTER DELETE ON tally_event BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('tally_event',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_taper on taper
+  CREATE TRIGGER deletion_taper AFTER DELETE ON taper BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('taper',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_taper_session on taper_session
+  CREATE TRIGGER deletion_taper_session AFTER DELETE ON taper_session BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('taper_session',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_tryout on tryout
+  CREATE TRIGGER deletion_tryout AFTER DELETE ON tryout BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('tryout',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_tryout_photo on tryout_photo
+  CREATE TRIGGER deletion_tryout_photo AFTER DELETE ON tryout_photo BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('tryout_photo',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_video_note on video_note
+  CREATE TRIGGER deletion_video_note AFTER DELETE ON video_note BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('video_note',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_voice_benchmark on voice_benchmark
+  CREATE TRIGGER deletion_voice_benchmark AFTER DELETE ON voice_benchmark BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('voice_benchmark',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_voice_practice_take on voice_practice_take
+  CREATE TRIGGER deletion_voice_practice_take AFTER DELETE ON voice_practice_take BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('voice_practice_take',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_voice_recording on voice_recording
+  CREATE TRIGGER deletion_voice_recording AFTER DELETE ON voice_recording BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('voice_recording',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger deletion_wear_session on wear_session
+  CREATE TRIGGER deletion_wear_session AFTER DELETE ON wear_session BEGIN INSERT INTO deletion(tbl,row_key,deleted_at)VALUES('wear_session',OLD.uuid,CAST((julianday('now')- 2440587.5)* 86400000 AS INTEGER))ON CONFLICT(tbl,row_key)DO UPDATE SET deleted_at = MAX(deleted_at,excluded.deleted_at); END
+trigger entry_fts_after_delete on entry
+  CREATE TRIGGER entry_fts_after_delete AFTER DELETE ON entry BEGIN DELETE FROM entry_fts WHERE rowid = old.id; END
+view media_file on media_file
+  CREATE VIEW media_file AS SELECT p.uuid AS id,p.file_path AS file_name,CASE WHEN p.milestone_id IS NULL THEN 'entry' ELSE 'milestone' END AS source,COALESCE(p.epoch_day_override,e.epoch_day,m.epoch_day)AS epoch_day,m.name AS owner_name,COALESCE(m.uuid,CAST(e.id AS TEXT))AS owner_id,p.starred AS starred,0 AS source_rank,p.order_index AS owner_order,p.id AS row_id,CASE WHEN e.trashed_at IS NULL THEN 1 ELSE 0 END AS visible FROM photo p LEFT JOIN entry e ON e.id = p.entry_id LEFT JOIN milestone m ON m.id = p.milestone_id UNION ALL SELECT h.uuid,h.file_path,'hair',h.epoch_day,NULL,h.uuid,0,1,0,h.id,1 FROM hair_photo h UNION ALL SELECT r.uuid,r.file_path,'hairRemoval',s.epoch_day,NULL,s.uuid,0,2,0,r.id,1 FROM hair_removal_photo r JOIN hair_removal_session s ON s.id = r.session_id UNION ALL SELECT t.uuid,t.file_path,'tryout',t.epoch_day,y.label,y.uuid,0,3,0,t.id,1 FROM tryout_photo t JOIN tryout y ON y.id = t.tryout_id UNION ALL SELECT c.uuid,c.file_path,'procedure',c.epoch_day,d.name,d.uuid,0,4,0,c.id,1 FROM procedure_photo c JOIN procedure d ON d.id = c.procedure_id UNION ALL SELECT v.uuid,v.file_path,'video',n.epoch_day,NULL,CAST(n.id AS TEXT),0,5,v.order_index,v.id,CASE WHEN n.trashed_at IS NULL THEN 1 ELSE 0 END FROM video_note v JOIN entry n ON n.id = v.entry_id UNION ALL SELECT a.uuid,a.file_path,'voiceRecording',NULL,NULL,CAST(a.entry_id AS TEXT),0,NULL,a.order_index,a.id,1 FROM voice_recording a UNION ALL SELECT d.uuid,d.file_path,'document',d.epoch_day,NULL,d.uuid,0,NULL,0,d.id,1 FROM document d UNION ALL SELECT b.uuid,b.passage_file_path,'voiceBenchmarkPassage',b.epoch_day,NULL,b.uuid,0,NULL,0,b.id,1 FROM voice_benchmark b UNION ALL SELECT b.uuid,b.vowel_file_path,'voiceBenchmarkVowel',b.epoch_day,NULL,b.uuid,0,NULL,0,b.id,1 FROM voice_benchmark b WHERE b.vowel_file_path IS NOT NULL

@@ -401,7 +401,7 @@ function classifyFailure(error: unknown): BootFailure {
   if (error instanceof JournalBelowBaselineError) return 'below-baseline';
   if (error instanceof Fts5UnavailableError) return 'engine';
   const text = typeof error === 'string' ? error : describeError(error);
-  if (/older than this build's baseline/i.test(text)) return 'below-baseline';
+  if (/older than this build's baseline|between two steps of this build's migrations/i.test(text)) return 'below-baseline';
   if (/not a database|SQLITE_NOTADB/i.test(text)) return 'unreadable';
   if (/database worker stopped|FTS5 is not available/i.test(text)) return 'engine';
   if (spaceShortage(error) === 'device') return 'storage-full';

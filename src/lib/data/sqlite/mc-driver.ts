@@ -23,7 +23,7 @@ import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import type { WebSqlite } from './driver.ts';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
-import { InterruptedRestoreError, JournalBelowBaselineError, SchemaTooNewError } from './migration-runner';
+import { InterruptedRestoreError, JournalBelowBaselineError, JournalBetweenStepsError, SchemaTooNewError } from './migration-runner';
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -361,7 +361,13 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
         .then((result) => {
           if (typeof result === 'boolean') return result;
           if ('foundVersion' in result) throw new SchemaTooNewError(result.foundVersion, result.knownVersion);
-          if ('belowBaseline' in result) throw new JournalBelowBaselineError(result.belowBaseline, result.baselineVersion);
+          /* Above the baseline means between two steps (pre-publish ticket
+             01); the worker sends both kinds in one shape. */
+          if ('belowBaseline' in result) {
+            throw result.belowBaseline > result.baselineVersion
+              ? new JournalBetweenStepsError(result.belowBaseline, result.baselineVersion)
+              : new JournalBelowBaselineError(result.belowBaseline, result.baselineVersion);
+          }
           throw new InterruptedRestoreError();
         }) } : {})
   };
