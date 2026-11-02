@@ -896,7 +896,7 @@
 
          If something here ever does need a socket, put the line back with a
          comment naming what needed it, and supersede the decision this keeps
-         (ADR draft-the-app-makes-no-network-request). -->
+         (ADR-0100). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />

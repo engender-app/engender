@@ -18,7 +18,7 @@
    read the source again", not "this is wrong".
 
    The rule this enforces:
-   ADR draft-shipped-reference-content-carries-a-source-and-a-reviewed-on-date.
+   ADR-0102.
 
    To register new content, export its reviewed-on day next to the content
    and add a row below. A row is one date: when an area records one date per
