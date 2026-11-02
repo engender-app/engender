@@ -147,7 +147,7 @@ for (const failure of ['star', 'debrief'] as const) {
     await db.exec(failure === 'star'
       ? `CREATE TRIGGER fail_creation BEFORE INSERT ON entry WHEN NEW.starred = 1
          BEGIN SELECT RAISE(ABORT, 'injected star failure'); END`
-      : `CREATE TRIGGER fail_creation BEFORE UPDATE OF debrief_entry_id ON checklist
+      : `CREATE TRIGGER fail_creation BEFORE INSERT ON appointment_debrief
          BEGIN SELECT RAISE(ABORT, 'injected debrief failure'); END`);
     const input = {
       epochDay: 100,

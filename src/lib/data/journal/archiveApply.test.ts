@@ -374,7 +374,7 @@ test('applyEntries inserts an entry with its dims, tags, body regions and files'
   await applyEntries(restoring(driver, { entries: [entry] }, 'merge', 7));
 
   assert.deepEqual(
-    await select(driver, 'SELECT uuid, epoch_day, timestamp, mood, note, starred, presentation_id, updated_at FROM entry'),
+    await select(driver, 'SELECT uuid, epoch_day, timestamp, mood, note, starred, presentation_uuid, updated_at FROM entry'),
     [
       {
         uuid: 'e1',
@@ -383,7 +383,7 @@ test('applyEntries inserts an entry with its dims, tags, body regions and files'
         mood: 3,
         note: 'first entry',
         starred: 0,
-        presentation_id: null,
+        presentation_uuid: null,
         updated_at: 7
       }
     ]
@@ -537,9 +537,7 @@ test('applyChecklists inserts a checklist with its items', async () => {
 
   await applyChecklists(restoring(driver, { checklists: [checklist] }, 'merge', 4));
 
-  assert.deepEqual(await select(driver, 'SELECT uuid, appointment_epoch_day FROM checklist'), [
-    { uuid: 'prep', appointment_epoch_day: 20000 }
-  ]);
+  assert.deepEqual(await select(driver, 'SELECT uuid, owner_kind FROM checklist'), [{ uuid: 'prep', owner_kind: null }]);
   assert.deepEqual(await select(driver, 'SELECT uuid, content, order_index FROM checklist_item'), [
     { uuid: 'item-1', content: 'Bring ID', order_index: 0 }
   ]);

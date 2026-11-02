@@ -46,12 +46,12 @@ test('an unknown value in each closed-list column inserts at the SQL level', asy
   const db = await migratedDb();
   const run = (sql: string) => db.raw.exec(sql);
   assert.doesNotThrow(() =>
-    run(`INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, cost, provider, updated_at)
-         VALUES ('h-area', 1, 'knees', 'laser', 3, '', '', 1)`)
+    run(`INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, provider, updated_at)
+         VALUES ('h-area', 1, 'knees', 'laser', 3, '', 1)`)
   );
   assert.doesNotThrow(() =>
-    run(`INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, cost, provider, updated_at)
-         VALUES ('h-method', 1, 'chin', 'wax', 3, '', '', 1)`)
+    run(`INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, provider, updated_at)
+         VALUES ('h-method', 1, 'chin', 'wax', 3, '', 1)`)
   );
   assert.doesNotThrow(() =>
     run(`INSERT INTO tryout (uuid, kind, label, start_epoch_day, updated_at) VALUES ('t-kind', 'hat', 'x', 1, 1)`)
@@ -80,8 +80,8 @@ test('hair_removal_session takes no pain, no cost and a note; tally_event has no
   const db = await migratedDb();
   db.raw.exec(`INSERT INTO hair_removal_session (uuid, epoch_day, area, method, provider, note, updated_at)
                VALUES ('h1', 1, 'chin', 'laser', '', 'cost was unclear', 1)`);
-  const row = db.raw.prepare('SELECT pain_rating, cost, note FROM hair_removal_session').get() as Record<string, unknown>;
-  assert.deepEqual({ ...row }, { pain_rating: null, cost: null, note: 'cost was unclear' });
+  const row = db.raw.prepare('SELECT pain_rating, cost_amount, note FROM hair_removal_session').get() as Record<string, unknown>;
+  assert.deepEqual({ ...row }, { pain_rating: null, cost_amount: null, note: 'cost was unclear' });
   const tally = (db.raw.prepare('PRAGMA table_info(tally_event)').all() as Array<{ name: string }>).map((c) => c.name);
   assert.ok(!tally.includes('context'));
 });

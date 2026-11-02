@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { ANALYZER_VERSION } from '../../audio/analyzerVersion.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
@@ -62,6 +63,24 @@ test('a benchmark saves its metrics and both audio files', async () => {
   assert.deepEqual(await files.read(saved.vowelFileName), vowelAudio());
   // Two files, not one file under two names.
   assert.notEqual(saved.passageFileName, saved.vowelFileName);
+});
+
+test('a new benchmark records the analyzer version it was measured under', async () => {
+  const { journal, db } = await journalWithFiles();
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20300,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null
+  });
+
+  assert.deepEqual(await db.query('SELECT analyzer_version FROM voice_benchmark'), [
+    { analyzer_version: ANALYZER_VERSION }
+  ]);
 });
 
 test('a session with a skipped vowel saves with nulls rather than failing', async () => {

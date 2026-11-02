@@ -205,7 +205,7 @@ export const TABLE_NAMES = [
   /* The fluidity engine's named presentations (phase 5 deepening ticket 17,
      ADR-0048, CONTEXT: "Presentation"): a name and a flag-role colour, built
      and hidden the way a tag is. An entry's own
-     `presentation_id` is announced under 'entry' instead, the same split
+     `presentation_uuid` is announced under 'entry' instead, the same split
      'tag' and 'entry_tag' get - resolving which presentation an id names is
      this table's business, not the entry's. */
   'presentation',
@@ -733,7 +733,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       upsertTryout: ['tryout'],
       // Takes its felt-sense history along too, and unlinks any milestone
-      // it was adopted into rather than leaving its tryout_id dangling
+      // it was adopted into rather than leaving its tryout_uuid dangling
       // (phase 5 deepening ticket 22, ADR-0045).
       deleteTryout: ['tryout', 'feltSense', 'milestone'],
       addPhoto: ['tryout'],
@@ -1006,7 +1006,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       tallyTrend: ['tally'],
       bodyRegionMap: ['entry'],
       entryCountsByDay: ['entry'],
-      // Filters entry.presentation_id directly, the same reason
+      // Filters entry.presentation_uuid directly, the same reason
       // bodyRegionTrend above depends on 'entry' alone: which days match
       // never changes when a presentation is renamed, recoloured or hidden.
       presentationDays: ['entry'],

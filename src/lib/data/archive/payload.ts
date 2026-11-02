@@ -368,10 +368,11 @@ export interface ArchiveChecklistItem extends ArchiveStamped {
     same nullable pairing the row itself keeps (schema.ts) - there is
     no owner table to resolve either against yet.
 
-    `appointmentEpochDay` (schema.ts, phase 5 deepening ticket 25) is
-    the standalone checklist's own date, null on every owned one - the same
-    column travels for both because there is one `checklist` table, not
-    because an owned checklist has an appointment of its own. */
+    `appointmentEpochDay` was the standalone checklist's own date (phase 5
+    deepening ticket 25), retired by phase 8 ticket 58 and its column dropped
+    by schema v119. It stays in the shape, always written null and ignored on
+    read, so an archive from before still restores and one written now still
+    reads on an older build. */
 export interface ArchiveChecklist extends ArchiveStamped {
   id: string;
   ownerKind: string | null;

@@ -26,7 +26,7 @@
    journal reconciling once on its next boot. */
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
 
-export const BUILT_INS_FINGERPRINT = 'b123172c7e6a0ac4';
+export const BUILT_INS_FINGERPRINT = '0c78d5d230285cae';
 
 /** The value a journal reconciled by this build carries in its header: the
     catalogue's fingerprint and the schema version, since a migration may

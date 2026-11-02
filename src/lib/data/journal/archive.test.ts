@@ -949,7 +949,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // speaks for one table, and a photo/recording/video/dimension-link/
   // tag-link/region-link is six more.
   // Trash travels since functional audit ticket 48.
-  entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred', 'presentation_id', 'trashed_at'],
+  entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred', 'presentation_uuid', 'trashed_at'],
   // Child of entry, and its own rowid is resolved against dimensions.
   entry_dimension_value: ['entry_id', 'dimension_id', 'value'],
   // Child of entry, and its own rowid is resolved against tagGroups' tags.
@@ -959,14 +959,14 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   entry_body_region: ['entry_id', 'region', 'value'],
   // Built-in rows are updated in place, not just inserted, and the two
   // children below are its own (applyEntryTemplates).
-  entry_template: ['uuid', 'key', 'name', 'note_scaffold', 'presentation_id', 'hidden'],
+  entry_template: ['uuid', 'key', 'name', 'note_scaffold', 'presentation_uuid', 'hidden'],
   entry_template_tag: ['template_id', 'tag_id'],
   entry_template_dimension_value: ['template_id', 'dimension_id', 'value'],
   // Shared between two owners (entry, milestone) rather than one section's
   // own table - a descriptor names one table for one section.
   photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred', 'epoch_day_override'],
   // Owns a child (photo), the same reason `entry` above is hand-written.
-  milestone: ['uuid', 'name', 'epoch_day', 'description', 'template_key', 'roadmap_goal_key', 'procedure_id', 'tryout_id', 'celebrate'],
+  milestone: ['uuid', 'name', 'epoch_day', 'description', 'template_key', 'roadmap_goal_key', 'procedure_uuid', 'tryout_uuid', 'celebrate'],
   // A matched built-in row is UPDATEd in place (applyDimensions), which a
   // descriptor's insert-if-absent has no branch for.
   gender_dimension: ['uuid', 'key', 'name', 'low_label', 'high_label', 'min_value', 'max_value', 'is_built_in', 'hidden'],
@@ -1063,7 +1063,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // Owns a child (checklist_item) below; unlike a vocabulary table its own
   // row has nothing to UPDATE once created (checklists.ts has no rename or
   // move setter), only the item below is walked in both modes.
-  checklist: ['uuid', 'owner_kind', 'owner_uuid', 'appointment_epoch_day'],
+  checklist: ['uuid', 'owner_kind', 'owner_uuid'],
   // checklist_id travels as the checklist's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
@@ -1074,6 +1074,8 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   import_log: ['uuid', 'source', 'counts', 'imported_at'],
   // What this device deleted, carried whole for a Merge to apply (ticket 48).
   deletion: ['tbl', 'row_key', 'deleted_at'],
+  // Device-local: every column of it is left behind (below).
+  appointment_debrief: [],
   // Filtered by the portable allowlist rather than carried whole
   // (ADR-0003), which is not a table shape a descriptor's plain column
   // list can express.
@@ -1085,33 +1087,19 @@ const CARRIED: Record<string, string[]> = { ...HAND_WRITTEN_CARRIED, ...FLAT_CAR
 /* `id` is this device's rowid and means nothing anywhere else (ADR-0002).
    `updated_at` is carried on every row that has it since functional audit
    ticket 48 (CARRIED_EVERYWHERE below): it is what a Merge compares.
-   `tally_event.context` (register finding 32.4) is the same shape: nothing
-   in the app writes it any more, so it stays in the schema for rows that
-   already have it but never travels for a device that has stopped
-   producing it. `regimen_episode.hidden` is that same shape again: the
+   `regimen_episode.hidden` stays in the schema and never travels: the
    only control that ever set it is gone (Alicja, 2026-08-27, "get rid of
    the show/hide progesterone button" - it never did more than add a badge
    to the row), and every other table's own `hidden` column stays carried
    as before - this is scoped to `regimen_episode` alone by the per-table
    CARRIED lists above, not by this flat list. */
-// debrief_entry_id/debrief_dismissed_epoch_day (phase 6 ticket 08) and their
-// appointment-id-keyed successors (schema.ts, ticket 58): device-
-// local bookkeeping for the appointment debrief offer, scoped to `checklist`
-// alone - never part of what the checklist travels, the same reason `id`
-// and `updated_at` never are. debrief_dismissed_epoch_day itself is also
-// retained-but-unwritten now (ticket 58 rekeys dismissal to an appointment
-// id), which changes nothing about it belonging on this list.
+// The debrief offer's bookkeeping (phase 6 ticket 08, ticket 58) is
+// device-local: it names an entry row this device holds. It sat on `checklist`
+// until schema v119 moved it to `appointment_debrief`, whose columns are left
+// behind per table below, never part of what an archive carries.
 const CARRIED_EVERYWHERE = ['updated_at'];
 
-const LEFT_BEHIND = [
-  'id',
-  'context',
-  'hidden',
-  'debrief_entry_id',
-  'debrief_entry_appointment_id',
-  'debrief_dismissed_epoch_day',
-  'debrief_dismissed_appointment_id'
-];
+const LEFT_BEHIND = ['id', 'hidden'];
 
 test('every column in the schema is either carried or deliberately left behind', async () => {
   const { db } = await populated();
@@ -1131,8 +1119,11 @@ test('every column in the schema is either carried or deliberately left behind',
     const columns = await db.query<{ name: string }>(`PRAGMA table_info(${name})`);
     // Stock identity is rebuilt from the drug's wire spelling on this device.
     const known = [...CARRIED[name], ...CARRIED_EVERYWHERE, ...LEFT_BEHIND, ...(name === 'medication_stock' ? ['drug_key'] : []),
-      // The free-text cost FA 30 emptied; FA 50 drops the column.
-      ...(name === 'hair_removal_session' ? ['cost'] : [])];
+      // Device-local debrief state (schema v119): nothing of it travels.
+      ...(name === 'appointment_debrief' ? ['appointment_uuid', 'entry_id', 'dismissed'] : []),
+      // Which analyzer measured a take (schema v119): stored, not yet on the
+      // wire, so the golden archive stays as it was.
+      ...(name === 'voice_benchmark' ? ['analyzer_version'] : [])];
     for (const column of columns) {
       assert.ok(known.includes(column.name), `${name}.${column.name} is neither carried nor left behind`);
     }

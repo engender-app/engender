@@ -294,7 +294,7 @@ const SECTIONS = [
   /* The fluidity engine's presentations (phase 5 deepening ticket 17,
      ADR-0048). Flat: one table, no children, no built-ins to preserve -
      there is no "only the customs" discard statement. No `after`: an
-     entry's own `presentation_id` is plain text (entries' own section
+     entry's own `presentation_uuid` is plain text (entries' own section
      resolves no rowid against it), the same reason milestones needs none
      for procedureId/tryoutId. */
   flat({
@@ -428,7 +428,7 @@ const SECTIONS = [
   section({
     name: 'milestones',
     // A milestone linked to a procedure or a tryout stores that owner's
-    // uuid directly (applyMilestones inserts procedure_id/tryout_id as
+    // uuid directly (applyMilestones inserts procedure_uuid/tryout_uuid as
     // given), and neither column carries ON DELETE CASCADE - so applying a
     // milestone before its owner exists fails the same FK the reverse
     // order would fail on discard. `after` fixes both at once: reversed,
@@ -699,7 +699,7 @@ const SECTIONS = [
   section({
     name: 'appointments',
     after: ['procedures', 'providers'],
-    discard: ['DELETE FROM appointment_status', 'DELETE FROM appointment'],
+    discard: ['DELETE FROM appointment_status', 'DELETE FROM appointment_debrief', 'DELETE FROM appointment'],
     // Where somebody's medical appointments were and what they were about.
     travels: 'none',
     read: read.readAppointments,

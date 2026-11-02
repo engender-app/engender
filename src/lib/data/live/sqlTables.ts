@@ -64,7 +64,9 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   roadmapInstitution: ['roadmap_institution', 'roadmap_institution_change'],
   // The recovery checklist is an ordinary checklist row (writes.ts's own
   // comment on `procedures`), so it lives here and not under 'procedure'.
-  checklist: ['checklist', 'checklist_item'],
+  // The debrief link and dismissal sit beside it (appointment_debrief), the
+  // way the columns they left sat on the checklist row.
+  checklist: ['checklist', 'checklist_item', 'appointment_debrief'],
   wearSession: ['wear_session'],
   bodyRegion: ['body_region'],
   effectCategory: ['effect_category'],

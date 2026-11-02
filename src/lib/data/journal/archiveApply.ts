@@ -399,7 +399,7 @@ export async function applyEntryTemplates(restoring: Restoring): Promise<void> {
     if (fate === 'keep') continue;
     if (fate === 'update') {
       await driver.run(
-        `UPDATE entry_template SET name = ?, note_scaffold = ?, presentation_id = ?, hidden = ?, updated_at = ?
+        `UPDATE entry_template SET name = ?, note_scaffold = ?, presentation_uuid = ?, hidden = ?, updated_at = ?
          WHERE COALESCE(key, uuid) = ?`,
         [template.name, template.noteScaffold, template.presentationId ?? null, flag(template.hidden), stampOf(template, ts), template.id]
       );
@@ -414,7 +414,7 @@ export async function applyEntryTemplates(restoring: Restoring): Promise<void> {
       await driver.run('DELETE FROM entry_template_dimension_value WHERE template_id = ?', [templateId]);
     } else {
       await driver.run(
-        `INSERT INTO entry_template (uuid, key, name, note_scaffold, presentation_id, hidden, updated_at)
+        `INSERT INTO entry_template (uuid, key, name, note_scaffold, presentation_uuid, hidden, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           template.builtIn ? null : template.id,
@@ -611,12 +611,12 @@ export async function applyEntries(restoring: Restoring): Promise<void> {
 
   await insertRows(
     driver,
-    'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, starred, presentation_id, trashed_at, updated_at)',
+    'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, starred, presentation_uuid, trashed_at, updated_at)',
     inserting.map((entry) => [entry.uuid, ...columns(entry)])
   );
   for (const entry of updating) {
     await driver.run(
-      `UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, starred = ?, presentation_id = ?,
+      `UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, starred = ?, presentation_uuid = ?,
          trashed_at = ?, updated_at = ? WHERE uuid = ?`,
       [...columns(entry), entry.uuid]
     );
@@ -769,14 +769,14 @@ export async function applyMilestones(restoring: Restoring): Promise<void> {
     ];
     if (fate === 'insert') {
       await driver.run(
-        `INSERT INTO milestone (name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id,
+        `INSERT INTO milestone (name, epoch_day, description, template_key, roadmap_goal_key, procedure_uuid, tryout_uuid,
                                 celebrate, updated_at, uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [...values, milestone.id]
       );
     } else {
       await driver.run(
         `UPDATE milestone SET name = ?, epoch_day = ?, description = ?, template_key = ?, roadmap_goal_key = ?,
-           procedure_id = ?, tryout_id = ?, celebrate = ?, updated_at = ? WHERE uuid = ?`,
+           procedure_uuid = ?, tryout_uuid = ?, celebrate = ?, updated_at = ? WHERE uuid = ?`,
         [...values, milestone.id]
       );
     }
@@ -880,7 +880,7 @@ const nextChecklistItemOrderIndex = async (driver: SqliteDriver, checklistId: nu
 
 /* A checklist's identity - its uuid and owner - is fixed at creation and
    never edited above this seam (checklists.ts has no setter for either), so
-   the one column a newer copy writes over is the appointment day. The
+   a newer copy only moves the row's stamp: its content is its items. The
    screen has one list per owner, so a list the other device made for the
    same owner under its own uuid is this one. Its items are walked in both
    modes, each by its own uuid and `updated_at`, the same reason an existing
@@ -899,16 +899,12 @@ export async function applyChecklists(restoring: Restoring): Promise<void> {
     if (checklistRowId === undefined) {
       if (fateOf(lists, checklist.id, checklist, ts) !== 'insert') continue;
       const inserted = await driver.run(
-        'INSERT INTO checklist (uuid, owner_kind, owner_uuid, appointment_epoch_day, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [checklist.id, checklist.ownerKind, checklist.ownerId, checklist.appointmentEpochDay ?? null, stampOf(checklist, ts)]
+        'INSERT INTO checklist (uuid, owner_kind, owner_uuid, updated_at) VALUES (?, ?, ?, ?)',
+        [checklist.id, checklist.ownerKind, checklist.ownerId, stampOf(checklist, ts)]
       );
       checklistRowId = inserted.lastInsertRowid;
     } else if (mode === 'merge' && checklist.updatedAt !== undefined && checklist.updatedAt > existing[0].updated_at) {
-      await driver.run('UPDATE checklist SET appointment_epoch_day = ?, updated_at = ? WHERE id = ?', [
-        checklist.appointmentEpochDay ?? null,
-        checklist.updatedAt,
-        checklistRowId
-      ]);
+      await driver.run('UPDATE checklist SET updated_at = ? WHERE id = ?', [checklist.updatedAt, checklistRowId]);
     }
 
     for (const [itemIndex, item] of checklist.items.entries()) {

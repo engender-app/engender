@@ -26,6 +26,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { VoiceBenchmark } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { removeRecordingFilesAfterCommit, stageRecording } from './voiceRecordings';
+import { ANALYZER_VERSION } from '../../audio/analyzerVersion';
 import { mintUuid, now } from './support';
 
 /** What the recording flow hands over: a day, which passage was read, the
@@ -166,8 +167,8 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
       const uuid = mintUuid();
       const timestamp = now();
       await driver.run(
-        `INSERT INTO voice_benchmark (${BENCHMARK_COLUMNS}, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO voice_benchmark (${BENCHMARK_COLUMNS}, updated_at, analyzer_version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uuid,
           input.epochDay,
@@ -187,7 +188,10 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
           input.pitchTrack ?? null,
           input.captureChain ?? null,
           input.resonanceScale ?? null,
-          timestamp
+          timestamp,
+          // The figures above were measured by the analyzers in lib/audio/
+          // as they stand now, whichever flow handed them over.
+          ANALYZER_VERSION
         ]
       );
       return uuid;

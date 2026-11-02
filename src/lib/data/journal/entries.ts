@@ -317,7 +317,7 @@ type EntryRow = {
   mood: number | null;
   note: string | null;
   starred: number;
-  presentation_id: string | null;
+  presentation_uuid: string | null;
 };
 
 type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: string };
@@ -572,7 +572,7 @@ export function makeEntriesArea(
       videos: videos.get(row.id) ?? [],
       bodyRegions: bodyRegions.get(row.id) ?? {},
       starred: bool(row.starred),
-      presentationId: row.presentation_id
+      presentationId: row.presentation_uuid
     }));
   };
 
@@ -675,7 +675,7 @@ export function makeEntriesArea(
       clauses.push('e.starred = 1');
     }
     if ((filters.presentationIds ?? []).length > 0) {
-      clauses.push(`e.presentation_id IN (${filters.presentationIds!.map(() => '?').join(', ')})`);
+      clauses.push(`e.presentation_uuid IN (${filters.presentationIds!.map(() => '?').join(', ')})`);
       params.push(...filters.presentationIds!);
     }
     if ((filters.bodyRegions ?? []).length > 0) {
@@ -865,7 +865,7 @@ export function makeEntriesArea(
   return {
     async getEntry(id) {
       const rows = await driver.query<EntryRow>(
-        'SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry WHERE id = ? AND trashed_at IS NULL',
+        'SELECT id, epoch_day, timestamp, mood, note, starred, presentation_uuid FROM entry WHERE id = ? AND trashed_at IS NULL',
         [id]
       );
       return rows[0] && (await hydrate(rows))[0];
@@ -873,7 +873,7 @@ export function makeEntriesArea(
 
     async entriesForDay(epochDay) {
       const rows = await driver.query<EntryRow>(
-        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_uuid FROM entry
          WHERE epoch_day = ? AND trashed_at IS NULL ORDER BY timestamp, id`,
         [epochDay]
       );
@@ -887,7 +887,7 @@ export function makeEntriesArea(
          excluded from both: a day whose only entry is trashed must not
          count towards the days this picks. */
       const rows = await driver.query<EntryRow>(
-        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_uuid FROM entry
          WHERE trashed_at IS NULL
            AND epoch_day IN (
              SELECT DISTINCT epoch_day FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day DESC LIMIT ?
@@ -914,7 +914,7 @@ export function makeEntriesArea(
       if (tagPk == null) return [];
 
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_uuid FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
          WHERE et.tag_id = ? AND e.epoch_day BETWEEN ? AND ? AND e.trashed_at IS NULL
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
@@ -953,7 +953,7 @@ export function makeEntriesArea(
       const placeholders = tagIds.map(() => '?').join(', ');
       const dysphoriaPlaceholders = DYSPHORIA_TAG_KEYS.map(() => '?').join(', ');
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_uuid FROM entry e
          WHERE e.trashed_at IS NULL
            AND (
              e.starred = 1
@@ -991,7 +991,7 @@ export function makeEntriesArea(
 
     async latestBadMomentEntry(dysphoriaTagIds = DYSPHORIA_TAG_KEYS) {
       const rows = await latestBadMomentRow(
-        'e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id',
+        'e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_uuid',
         dysphoriaTagIds
       );
       if (rows.length === 0) return undefined;
@@ -1010,7 +1010,7 @@ export function makeEntriesArea(
       if (!matches) return [];
 
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_uuid FROM entry e
          WHERE e.trashed_at IS NULL AND ${matches.where}
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          ${args.limit == null ? '' : 'LIMIT ?'}`,
@@ -1031,7 +1031,7 @@ export function makeEntriesArea(
 
     async trashedEntries() {
       const rows = await driver.query<EntryRow & { trashed_at: number }>(
-        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id, trashed_at FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_uuid, trashed_at FROM entry
          WHERE trashed_at IS NOT NULL ORDER BY trashed_at DESC`
       );
       const trashedAtById = new Map(rows.map((row) => [row.id, row.trashed_at]));
@@ -1043,7 +1043,7 @@ export function makeEntriesArea(
       if (input.id != null) {
         const current = (
           await driver.query<EntryRow>(
-            'SELECT id, epoch_day, timestamp, mood, note, presentation_id FROM entry WHERE id = ? AND trashed_at IS NULL',
+            'SELECT id, epoch_day, timestamp, mood, note, presentation_uuid FROM entry WHERE id = ? AND trashed_at IS NULL',
             [input.id]
           )
         )[0];
@@ -1080,7 +1080,7 @@ export function makeEntriesArea(
         // undefined leaves the entry's current presentation alone; an
         // explicit null clears it, and only a non-null value is checked
         // against the table.
-        const presentationId = input.presentationId !== undefined ? input.presentationId : current.presentation_id;
+        const presentationId = input.presentationId !== undefined ? input.presentationId : current.presentation_uuid;
         if (presentationId !== null) await assertKnownPresentation(presentationId);
         const contextual = await resolveContextual(input);
         // The note that will be stored, whether this edit supplied one or
@@ -1097,7 +1097,7 @@ export function makeEntriesArea(
         const targetEpochDay = input.epochDay ?? current.epoch_day;
         await driver.transaction(async (driver) => {
           await driver.run(
-            'UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, presentation_id = ?, updated_at = ? WHERE id = ?',
+            'UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, presentation_uuid = ?, updated_at = ? WHERE id = ?',
             [
               targetEpochDay,
               input.timestamp ?? current.timestamp,
@@ -1190,7 +1190,7 @@ export function makeEntriesArea(
       const uuid = mintUuid();
       return driver.transaction(async (driver) => {
         await driver.run(
-          'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, presentation_id, starred, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, presentation_uuid, starred, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
           [uuid, input.epochDay, input.timestamp ?? now(), mood, input.note ?? '', presentationId, input.starred ? 1 : 0, now()]
         );
         const entryId = await rowidByUuid(driver, 'entry', uuid);
