@@ -30,6 +30,7 @@ import { deviceDefaultCurrency } from '../cost.ts';
 import { migrateStockIdentity } from './stock-identity-migration.ts';
 import { WAITLIST_REBUILD } from './waitlist-migration.ts';
 import { DELETION_LOG } from './deletion-migration.ts';
+import { MIGRATION_HYGIENE } from './hygiene-migration.ts';
 
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
@@ -429,5 +430,9 @@ ALTER TABLE medication_stock ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0
   { version: 118, sql: `
 DELETE FROM pref WHERE key IN ('entryTryoutPromptEnabled', 'entryDoseQuickLogEnabled',
   'entryProcedureRecoveryEnabled', 'entryHrtEffectsEnabled');
-`, apply: migratePrefsCleanup }
+`, apply: migratePrefsCleanup },
+  /* Functional audit ticket 50: the writerless columns go, the uuid-holding
+     `*_id` columns become `*_uuid`, the debrief state leaves `checklist`, and
+     a voice benchmark names its analyzer (hygiene-migration.ts). */
+  { version: 119, sql: MIGRATION_HYGIENE }
 ];
