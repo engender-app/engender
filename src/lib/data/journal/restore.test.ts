@@ -23,6 +23,7 @@ import { discardStatements, emptyArchiveJournal } from './archiveSections.ts';
 import { builtInsOnlyDevice, countsOf, everySection, everySectionDevice } from './golden-archive-fixture.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
+import { orphanSweepRequestVersion } from '../sqlite/orphan-sweep-schedule.ts';
 import { restoreArchive, verifyArchive, type RestoreContents, type RestoreProgress } from './restore.ts';
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
@@ -770,6 +771,27 @@ test('the archive\'s photo files land, and replace sweeps the files it orphaned'
   // removes them only after the imported rows own their new files.
   assert.equal(await target.files.read(`${myPhoto}.jpg`), null);
   assert.equal(await rowCount(target.db, 'photo'), 2);
+});
+
+test('a restore marks the orphan sweep due before it writes its first file, so a killed process still gets swept', async () => {
+  const source = await populated();
+
+  for (const mode of ['replace', 'merge'] as const) {
+    const target = await device();
+    const contents = await exported(source.journal);
+    const write = target.files.write.bind(target.files);
+    const markedAtFirstWrite: number[] = [];
+    const before = orphanSweepRequestVersion().local;
+    vi.spyOn(target.files, 'write').mockImplementation(async (name, data) => {
+      markedAtFirstWrite.push(orphanSweepRequestVersion().local - before);
+      return write(name, data);
+    });
+
+    await target.journal.archive[mode](contents);
+
+    assert.ok(markedAtFirstWrite.length > 0, `${mode} wrote no files`);
+    assert.equal(markedAtFirstWrite[0] >= 1, true, `${mode} wrote a file before the sweep was marked due`);
+  }
 });
 
 test('a failure after the files are written and before the commit leaves the journal exactly as it was', async () => {
