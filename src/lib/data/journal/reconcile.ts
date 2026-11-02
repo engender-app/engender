@@ -156,7 +156,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
   for (const t of ENTRY_TEMPLATES) {
     if (templateKeys.has(t.key)) continue;
     const result = await driver.run(
-      `INSERT INTO entry_template (key, name, note_scaffold, presentation_id, hidden, updated_at) VALUES (?, '', '', NULL, ?, ?)`,
+      `INSERT INTO entry_template (key, name, note_scaffold, presentation_uuid, hidden, updated_at) VALUES (?, '', '', NULL, ?, ?)`,
       [t.key, builtInTemplateHidden(t) ? 1 : 0, seeded]
     );
     for (const tagKey of t.tags) {

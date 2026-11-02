@@ -34,7 +34,7 @@ type TemplateRow = {
   key: string | null;
   name: string;
   note_scaffold: string;
-  presentation_id: string | null;
+  presentation_uuid: string | null;
   hidden: number;
 };
 
@@ -62,7 +62,7 @@ export function makeEntryTemplatesArea(driver: SqliteDriver): EntryTemplatesArea
   return {
     async getEntryTemplates() {
       const rows = await driver.query<TemplateRow>(
-        'SELECT id, uuid, key, name, note_scaffold, presentation_id, hidden FROM entry_template ORDER BY id'
+        'SELECT id, uuid, key, name, note_scaffold, presentation_uuid, hidden FROM entry_template ORDER BY id'
       );
       const tagLinks = await driver.query<{ template_id: number; key: string | null; uuid: string | null }>(
         `SELECT ett.template_id, t.key, t.uuid FROM entry_template_tag ett
@@ -79,7 +79,7 @@ export function makeEntryTemplatesArea(driver: SqliteDriver): EntryTemplatesArea
         tags: tagLinks.filter((l) => l.template_id === row.id).map((l) => domainIdOf(l, 'tag')),
         dims: Object.fromEntries(dimLinks.filter((l) => l.template_id === row.id).map((l) => [l.key, l.value])),
         noteScaffold: row.note_scaffold,
-        presentationId: row.presentation_id,
+        presentationId: row.presentation_uuid,
         builtIn: row.key !== null,
         hidden: bool(row.hidden)
       }));
@@ -89,7 +89,7 @@ export function makeEntryTemplatesArea(driver: SqliteDriver): EntryTemplatesArea
       const uuid = mintUuid();
       await driver.transaction(async (driver) => {
         const result = await driver.run(
-          `INSERT INTO entry_template (uuid, name, note_scaffold, presentation_id, updated_at)
+          `INSERT INTO entry_template (uuid, name, note_scaffold, presentation_uuid, updated_at)
            VALUES (?, ?, ?, ?, ?)`,
           [uuid, input.name, input.noteScaffold, input.presentationId, now()]
         );
@@ -110,7 +110,7 @@ export function makeEntryTemplatesArea(driver: SqliteDriver): EntryTemplatesArea
     async updateEntryTemplate(id, input) {
       await driver.transaction(async (driver) => {
         const result = await driver.run(
-          `UPDATE entry_template SET name = ?, note_scaffold = ?, presentation_id = ?, updated_at = ?
+          `UPDATE entry_template SET name = ?, note_scaffold = ?, presentation_uuid = ?, updated_at = ?
            WHERE key = ? OR uuid = ?`,
           [input.name, input.noteScaffold, input.presentationId, now(), id, id]
         );

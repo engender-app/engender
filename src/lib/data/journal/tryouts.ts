@@ -160,12 +160,12 @@ export function makeTryoutsArea(
       );
       await driver.transaction(async (driver) => {
         // Unlinked before the tryout row goes, the same order procedures.ts
-        // keeps for procedure_id: milestone.tryout_id references tryout(uuid)
+        // keeps for procedure_uuid: milestone.tryout_uuid references tryout(uuid)
         // with no ON DELETE clause, so the FK would refuse the delete
         // otherwise, and a milestone this adoption minted is preserved on
         // the timeline rather than taken down with the tryout it came from
         // (ADR-0045).
-        await driver.run('UPDATE milestone SET tryout_id = NULL WHERE tryout_id = ?', [id]);
+        await driver.run('UPDATE milestone SET tryout_uuid = NULL WHERE tryout_uuid = ?', [id]);
         await driver.run('DELETE FROM felt_sense WHERE tryout_id IN (SELECT id FROM tryout WHERE uuid = ?)', [id]);
         await driver.run('DELETE FROM tryout_photo WHERE tryout_id IN (SELECT id FROM tryout WHERE uuid = ?)', [id]);
         await driver.run('DELETE FROM tryout WHERE uuid = ?', [id]);

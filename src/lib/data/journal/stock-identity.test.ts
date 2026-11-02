@@ -91,7 +91,7 @@ for (const mode of ['merge', 'replace'] as const) {
       // session's minutes; v110: the appointment's time and provider, and the
       // provider table; v111: the roadmap's category table; v113: the drug a
       // reminder is for; v114: the roadmap's institution tables; v115: costs;
-      // v117: the deletion log).
+      // v117: the deletion log; v119: the uuid renames).
       await sourceDb.exec("ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other'");
       // And ticket 47's two stock columns (v99), for the same reason.
       await sourceDb.exec('ALTER TABLE medication_stock ADD COLUMN expiry_epoch_day INTEGER');
@@ -122,6 +122,11 @@ for (const mode of ['merge', 'replace'] as const) {
       }
       await sourceDb.exec(`CREATE TABLE deletion (id INTEGER PRIMARY KEY, tbl TEXT NOT NULL, row_key TEXT NOT NULL,
         deleted_at INTEGER NOT NULL, UNIQUE (tbl, row_key))`);
+      // v119: the uuid-holding id columns the archive sections read by name.
+      await sourceDb.exec('ALTER TABLE entry RENAME COLUMN presentation_id TO presentation_uuid');
+      await sourceDb.exec('ALTER TABLE entry_template RENAME COLUMN presentation_id TO presentation_uuid');
+      await sourceDb.exec('ALTER TABLE milestone RENAME COLUMN procedure_id TO procedure_uuid');
+      await sourceDb.exec('ALTER TABLE milestone RENAME COLUMN tryout_id TO tryout_uuid');
       await source.reconcileBuiltIns();
       for (const [id, drug, quantity, day, updated] of [
         ['first', firstDrug, 7, 20010, 200], ['last', lastDrug, 59, 20000, 100]

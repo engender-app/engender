@@ -27,10 +27,10 @@ test('migration drops cut tryout kinds and children but keeps linked milestones'
     await runMigrations(db, noopFileOps(), migrations);
 
     assert.deepEqual(db.raw.prepare('SELECT uuid FROM tryout ORDER BY uuid').all().map((row: any) => row.uuid), ['kept']);
-    assert.deepEqual(db.raw.prepare('SELECT uuid, tryout_id FROM milestone ORDER BY uuid').all().map((row: any) => ({ ...row })), [
-      { uuid: 'garment-milestone', tryout_id: null },
-      { uuid: 'kept-milestone', tryout_id: 'kept' },
-      { uuid: 'step-milestone', tryout_id: null }
+    assert.deepEqual(db.raw.prepare('SELECT uuid, tryout_uuid FROM milestone ORDER BY uuid').all().map((row: any) => ({ ...row })), [
+      { uuid: 'garment-milestone', tryout_uuid: null },
+      { uuid: 'kept-milestone', tryout_uuid: 'kept' },
+      { uuid: 'step-milestone', tryout_uuid: null }
     ]);
     assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM felt_sense').get() as { n: number }).n, 0);
     assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM tryout_photo').get() as { n: number }).n, 0);

@@ -16,6 +16,9 @@ test('schema 92 keeps live reads on day indexes and trash reads on the trash ind
   const db = makeNodeSqliteDb();
   try {
     await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 88));
+    // The journal reads this build's column name; version 119 is what renames
+    // it, and this test stops at 92, so the rename is made by hand here.
+    db.raw.exec('ALTER TABLE entry RENAME COLUMN presentation_id TO presentation_uuid');
     const freshTrash = Date.now();
     const expiredTrash = freshTrash - (TRASH_WINDOW_DAYS + 1) * 86_400_000;
     const insert = db.raw.prepare(`INSERT INTO entry

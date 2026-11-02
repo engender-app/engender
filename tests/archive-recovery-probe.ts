@@ -18,6 +18,7 @@ import { packArchive, openArchive } from '../src/lib/data/archive/pack';
 import { collect } from '../src/lib/data/archive/container';
 import { portablePreferences, type PortablePreferences } from '../src/lib/data/archive/payload';
 import { PREFERENCE_DEFAULTS } from '../src/lib/data/prefs/catalogue';
+import { ARCHIVE_SECTION_NAMES } from '../src/lib/data/journal/archiveSections';
 import { seedRecoveryJournal, journalEvidence, reconcileRecovery, RECOVERY_PASSWORD, digest, type RecoveryEvidence } from './archive-recovery-fixture';
 import PhotoViewer from '../src/lib/components/PhotoViewer.svelte';
 import VoicePlayer from '../src/lib/components/VoicePlayer.svelte';
@@ -151,7 +152,7 @@ export function installRecoveryProbe(kind: 'web' | 'android') {
       ensure(after.destinationUri === nativeBefore.destinationUri && after.schedule === nativeBefore.schedule && after.enabled === nativeBefore.enabled, 'native backup destination or schedule changed');
     }
     const media = await openMedia(entries[0], input!.expected.journal.documents[0]);
-    return { identity, failures, interruptedRestart: true, sections: Object.keys(input!.expected.journal).length, attachments: Object.keys(input!.expected.attachments).length, localPreserved: true, accessMode: 'passphrase', destinationCredentialVerified: true, portableApplied: true, restarted: true, merge: true, media, archiveSha256: await digest(archive) };
+    return { identity, failures, interruptedRestart: true, sections: Object.keys(input!.expected.journal).length, archiveSections: ARCHIVE_SECTION_NAMES.length, attachments: Object.keys(input!.expected.attachments).length, localPreserved: true, accessMode: 'passphrase', destinationCredentialVerified: true, portableApplied: true, restarted: true, merge: true, media, archiveSha256: await digest(archive) };
   }
   Object.assign(window, { recoveryProbe: probe });
 }

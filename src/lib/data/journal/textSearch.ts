@@ -225,14 +225,12 @@ const AREAS = [
      which screen the hit belongs to (checklists.ts).
 
      `date: null`, for both kinds of item. A procedure's recovery checklist
-     was never dated - it has no `appointment_epoch_day` of its own
-     (checklists.ts). The standing appointment prep list used to borrow that
-     same column's manually-set value; ticket 58 (ADR-0066) retires writing
-     to it, since the list itself is standing and unowned by any one
-     appointment. Referencing the now-frozen column here would silently
-     date every future question by whichever appointment happened to be on
-     record before that ticket, or leave it null forever for a journal
-     started after - neither is a date this hit can honestly claim. */
+     was never dated - it has no day of its own (checklists.ts). The standing
+     appointment prep list used to borrow a manually-set `appointment_epoch_day`
+     on its checklist row; ticket 58 (ADR-0066) retired writing it, since the
+     list itself is standing and unowned by any one appointment, and schema
+     v119 dropped the column. Nothing here could honestly date a question by
+     an appointment it does not belong to. */
   area({
     key: 'checklistItems',
     covers: ['checklists'],
@@ -375,10 +373,9 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['description']
   }),
-  /* Both free-text fields, and `cost` is one of them: the column is TEXT
-     because somebody types "800" or "covered by insurance" into it, unlike a
-     lab result's `value`, which is a REAL and is left out above. What the
-     rule turns on is the column, not whether digits show up in it. */
+  /* The provider is the one free-text field left: the cost became an amount
+     and a currency (a REAL and a code, like a lab result's `value` above),
+     and what was typed into the old text column moved into the note. */
   area({
     key: 'hairRemovalSessions',
     covers: ['hairRemovalSessions'],
@@ -386,7 +383,7 @@ const AREAS = [
     from: 'hair_removal_session',
     uuid: 'uuid',
     date: { kind: 'epochDay', column: 'epoch_day' },
-    columns: ['provider', 'cost']
+    columns: ['provider']
   }),
   /* The drug and the ester somebody typed for an episode (regimen.ts's own
      text fields), dated by the day the episode started. The dose, the unit

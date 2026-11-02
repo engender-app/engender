@@ -4,6 +4,7 @@
    against it (functional audit ticket 54). */
 export const TABLE_NAMES = [
   'appointment',
+  'appointment_debrief',
   'appointment_status',
   'area_state',
   'body_region',

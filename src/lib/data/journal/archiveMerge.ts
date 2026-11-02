@@ -62,6 +62,7 @@ const parent = (table: string): MergeClass => ({ by: 'parent', parent: table });
 
 export const MERGE_CLASSES: Readonly<Record<string, MergeClass>> = {
   appointment: uuid,
+  appointment_debrief: { by: 'none', why: 'device-local: it names an entry row this device holds, which another device cannot adopt' },
   appointment_status: uuid,
   area_state: column('area'),
   body_region: keyOrUuid,
@@ -201,7 +202,7 @@ export async function readDeletions({ driver }: { driver: Pick<SqliteDriver, 'qu
 }
 
 /** The references to `table` that neither cascade nor set null on their
-    own (milestone.procedure_id, milestone.tryout_id, entry.presentation_id,
+    own (milestone.procedure_uuid, milestone.tryout_uuid, entry.presentation_uuid,
     personal_effect_type.category_key), each as the statement that unlinks
     one record's children. The areas' own deletes unlink them by hand
     (procedures.ts, tryouts.ts) without touching the child's `updated_at`,

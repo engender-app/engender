@@ -9,7 +9,7 @@ import { costTotalsByCurrency, NO_COST } from '../cost.ts';
 const PLN = { amount: 250, currency: 'PLN', refunded: false };
 const EUR_REFUNDED = { amount: 80.5, currency: 'EUR', refunded: true };
 
-test('a hair-removal session keeps a cost and a note, and leaves the old text column empty', async () => {
+test('a hair-removal session keeps a cost and a note, and has no old text column any more', async () => {
   const { journal, db } = await journalWithBuiltIns();
   const id = await journal.hairRemoval.upsertSession({
     epochDay: 100, area: 'chin', method: 'laser', cost: PLN, note: '  numbing cream helped  '
@@ -17,7 +17,7 @@ test('a hair-removal session keeps a cost and a note, and leaves the old text co
   let [session] = await journal.hairRemoval.getSessions();
   assert.deepEqual(session.cost, PLN);
   assert.equal(session.note, 'numbing cream helped');
-  assert.equal((db.raw.prepare('SELECT cost FROM hair_removal_session').get() as { cost: unknown }).cost, null);
+  assert.ok(!(db.raw.prepare('PRAGMA table_info(hair_removal_session)').all() as Array<{ name: string }>).some((c) => c.name === 'cost'));
 
   await journal.hairRemoval.upsertSession({ id, epochDay: 100, area: 'chin', method: 'laser', note: ' ' });
   [session] = await journal.hairRemoval.getSessions();

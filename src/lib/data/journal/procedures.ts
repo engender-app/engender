@@ -270,7 +270,7 @@ export function makeProceduresArea(
       const checklist = await checklists.getChecklistByOwner(procedureChecklistOwner(id));
 
       await driver.transaction(async (driver) => {
-        await driver.run('UPDATE milestone SET procedure_id = NULL WHERE procedure_id = ?', [id]);
+        await driver.run('UPDATE milestone SET procedure_uuid = NULL WHERE procedure_uuid = ?', [id]);
         await driver.run("UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'procedure' AND target_id = ?", [id]);
         await driver.run('DELETE FROM procedure WHERE uuid = ?', [id]);
         if (checklist) await driver.run('DELETE FROM checklist WHERE uuid = ?', [checklist.id]);
@@ -418,9 +418,9 @@ export function makeProceduresArea(
         epoch_day: number;
         description: string;
         template_key: string | null;
-        procedure_id: string | null;
+        procedure_uuid: string | null;
       }>(
-        'SELECT id, uuid, name, epoch_day, description, template_key, procedure_id FROM milestone WHERE procedure_id = ? LIMIT 1',
+        'SELECT id, uuid, name, epoch_day, description, template_key, procedure_uuid FROM milestone WHERE procedure_uuid = ? LIMIT 1',
         [procedureId]
       );
       if (rows.length === 0) return null;
@@ -431,7 +431,7 @@ export function makeProceduresArea(
         epochDay: rows[0].epoch_day,
         description: rows[0].description,
         templateKey: rows[0].template_key,
-        procedureId: rows[0].procedure_id,
+        procedureId: rows[0].procedure_uuid,
         photo: photos.get(rows[0].id) ?? null
       };
     },
@@ -448,7 +448,7 @@ export function makeProceduresArea(
       const epochDay = options?.epochDay ?? procedure.surgery_epoch_day ?? todayEpochDay();
 
       const existing = await driver.query<{ uuid: string }>(
-        'SELECT uuid FROM milestone WHERE procedure_id = ?',
+        'SELECT uuid FROM milestone WHERE procedure_uuid = ?',
         [procedureId]
       );
 

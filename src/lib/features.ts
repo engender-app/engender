@@ -291,7 +291,7 @@ export const FEATURES = {
   },
   appointments: {
     sections: ['providers', 'appointments'],
-    tables: ['provider', 'appointment', 'appointment_status'],
+    tables: ['provider', 'appointment', 'appointment_debrief', 'appointment_status'],
     journal: ['appointments'],
     hubRows: ['appointments'],
     areaGroups: none,

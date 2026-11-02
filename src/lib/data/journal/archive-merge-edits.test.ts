@@ -76,17 +76,18 @@ async function edit(driver: SqliteDriver, table: string, column: string, value: 
 }
 
 /* [table, column, the edit, which row]. Every table merged by updated_at
-   has a row here except the four whose only content is a file name, an
-   identity or a position in its parent's list (era_mute,
+   has a row here except the five whose only content is a file name, an
+   identity or a position in its parent's list (checklist, era_mute,
    hair_removal_photo, video_note, voice_recording) - their changes travel
-   as a deletion and an insert, covered below. */
+   as a deletion and an insert, covered below. A checklist's content is its
+   items, which have their own row above, and its owner is fixed when it is
+   made. */
 const EDITS: [string, string, string, string?][] = [
   ['appointment', 'note', "'edited'"],
   ['appointment_status', 'epoch_day', 'epoch_day + 1'],
   ['area_state', 'hidden', '1 - hidden'],
   ['body_region', 'hidden', '1 - hidden', 'key IS NOT NULL'],
   ['body_region', 'name', "'edited'", 'key IS NULL'],
-  ['checklist', 'appointment_epoch_day', 'COALESCE(appointment_epoch_day, 20000) + 1'],
   ['checklist_item', 'content', "'edited'"],
   ['comfort_item', 'text', "'edited'"],
   ['cycle_event', 'epoch_day', 'epoch_day + 1'],
@@ -177,7 +178,7 @@ describe('an edit made on one side', () => {
 
 test('every table merged by updated_at has an edit case or a reason it has none', () => {
   const covered = new Set(EDITS.map(([table]) => table));
-  const contentless = ['era_mute', 'hair_removal_photo', 'video_note', 'voice_recording'];
+  const contentless = ['checklist', 'era_mute', 'hair_removal_photo', 'video_note', 'voice_recording'];
   const missing = Object.entries(MERGE_CLASSES)
     .filter(([table, merge]) => merge.by === 'updatedAt' && !covered.has(table) && !contentless.includes(table))
     .map(([table]) => table);
@@ -269,8 +270,8 @@ describe('a deletion made on one side', () => {
     ['a photo', 'photo', 'entry_id IS NOT NULL', (d, id) => d.driver.run('DELETE FROM photo WHERE uuid = ?', [id])],
     ['a checklist item', 'checklist_item', '1', (d, id) => d.journal.checklists.deleteItem(id)],
     ['a custom tag', 'tag', 'key IS NULL', (d, id) => d.journal.tags.deleteTag(id)],
-    ['a procedure a milestone names', 'procedure', '1', linked('procedure_id', (d, id) => d.journal.procedures.deleteProcedure(id))],
-    ['a tryout a milestone names', 'tryout', '1', linked('tryout_id', (d, id) => d.journal.tryouts.deleteTryout(id))],
+    ['a procedure a milestone names', 'procedure', '1', linked('procedure_uuid', (d, id) => d.journal.procedures.deleteProcedure(id))],
+    ['a tryout a milestone names', 'tryout', '1', linked('tryout_uuid', (d, id) => d.journal.tryouts.deleteTryout(id))],
     ['an added institution and its changes', 'roadmap_institution', '1', (d, id) => d.journal.roadmap.deleteInstitution(id)],
     ['a stock row', 'medication_stock', '1', (d, id) => d.driver.run('DELETE FROM medication_stock WHERE drug_key = ?', [id])],
     ['a roadmap tick', 'roadmap_check', '1', (d, id) => d.driver.run("DELETE FROM roadmap_check WHERE pack_key || char(10) || goal_key = ?", [id])],

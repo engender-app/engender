@@ -18,7 +18,7 @@
    The link is nulled by the three deletes that can reach it -
    `deleteMilestone`, `deleteProcedure`, `deleteCustomGoal` - each running a
    cross-table UPDATE before its own row's DELETE, the same order the first
-   two already use for `milestone.procedure_id`/`tryout_id`. A regimen episode
+   two already use for `milestone.procedure_uuid`/`tryout_uuid`. A regimen episode
    is the one kind with no delete to null it from (regimen.ts: "episodes are
    never deleted"), so a link to one cannot dangle in practice today. A
    built-in roadmap goal is the same by construction: it has no row, so there

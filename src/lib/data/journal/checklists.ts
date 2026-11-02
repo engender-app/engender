@@ -54,10 +54,8 @@ export interface ChecklistsArea {
     dismissed: boolean;
     debriefEntryId: number | null;
   }>;
-  /** Dismissing the offer for one appointment. Creates the standalone
-      checklist on first use like every other write here, though in
-      practice the offer cannot show before a checklist with items
-      exists. */
+  /** Dismissing the offer for one appointment. Kept per appointment in
+      `appointment_debrief`, so it needs no checklist. */
   setDebriefDismissed(appointmentId: string): Promise<void>;
   /** The entry that debriefs `appointmentId`, or null - both when nothing
       has been recorded yet and when the entry on file was recorded for a
@@ -68,7 +66,8 @@ export interface ChecklistsArea {
       keying this replaces, there is no "the appointment has moved on"
       race to guard against - an id never changes out from under a write,
       so every read of it is scoped to the exact appointment the link was
-      made for. */
+      made for. Each appointment keeps its own link; a later one does not
+      overwrite an earlier one's. */
   recordDebriefEntry(entryId: number, appointmentId: string): Promise<void>;
   editItem(itemId: string, content: string): Promise<void>;
   setItemChecked(itemId: string, checked: boolean): Promise<void>;
@@ -82,13 +81,7 @@ export interface ChecklistsArea {
 }
 
 type ChecklistRow = { id: number; uuid: string; owner_kind: string | null; owner_uuid: string | null };
-type StandaloneDebriefRow = {
-  id: number;
-  uuid: string;
-  debrief_entry_id: number | null;
-  debrief_entry_appointment_id: string | null;
-  debrief_dismissed_appointment_id: string | null;
-};
+type DebriefRow = { entry_id: number | null; dismissed: number };
 type ItemRow = { uuid: string; content: string; checked: number; carried_forward: number };
 
 const toItem = (row: ItemRow): ChecklistItem => ({
@@ -120,35 +113,19 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     return rows[0] ? toChecklist(rows[0]) : undefined;
   };
 
-  /* The one raw read every debrief accessor below shares, rather than each
-     repeating the same `WHERE owner_kind IS NULL LIMIT 1` query with its
-     own column list (phase 6 ticket 08). Undefined when no standalone
-     checklist exists yet, the same resting state `standaloneChecklist`
-     above gives. */
-  const standaloneDebriefRow = async (): Promise<StandaloneDebriefRow | undefined> => {
-    const rows = await driver.query<StandaloneDebriefRow>(
-      `SELECT id, uuid, debrief_entry_id, debrief_entry_appointment_id, debrief_dismissed_appointment_id
-         FROM checklist WHERE owner_kind IS NULL LIMIT 1`
+  /* The one raw read the debrief accessors below share. The state is
+     device-local and sits in its own table, one row per appointment
+     (`appointment_debrief`), so a read for an appointment can only ever
+     meet that appointment's own row: a link left over from a since
+     superseded appointment is simply a row nobody asks for. */
+  const debriefRow = async (appointmentId: string | null): Promise<DebriefRow | undefined> => {
+    if (appointmentId === null) return undefined;
+    const rows = await driver.query<DebriefRow>(
+      'SELECT entry_id, dismissed FROM appointment_debrief WHERE appointment_uuid = ?',
+      [appointmentId]
     );
     return rows[0];
   };
-
-  /* Both debrief writers below store their column on the standalone
-     checklist, so both need one to exist; before ticket 58 the retired
-     `setAppointmentDate` was what created it and they could assume it had.
-     Neither is reached in the app without a prep question already standing,
-     but the demo seed writes a debrief link into a journal that has no prep
-     list at all (journal-seed.ts), and the alternative is a zero-row UPDATE
-     that reports success. */
-  const standaloneChecklistId = async (): Promise<string> =>
-    (await standaloneChecklist())?.id ?? (await area.createChecklist()).id;
-
-  /* The one comparison `getDebriefState` and `getDebriefEntryId` both need:
-     the linked entry only answers for the appointment it was actually
-     recorded against (ticket 58) - a row left over from a since-superseded
-     appointment reads as no entry rather than the wrong one. */
-  const debriefEntryIdFor = (row: StandaloneDebriefRow | undefined, appointmentId: string | null): number | null =>
-    appointmentId !== null && row?.debrief_entry_appointment_id === appointmentId ? row.debrief_entry_id : null;
 
   /* The one create-on-first-item rule, for both entry points: an owner pair
      is looked up by that pair and a standalone checklist by having no owner
@@ -209,32 +186,32 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     addToOwnedChecklist: (owner, content) => addToLazyChecklist(owner, content),
 
     async getDebriefState(appointmentId) {
-      const [row, checklist] = await Promise.all([standaloneDebriefRow(), standaloneChecklist()]);
+      const [row, checklist] = await Promise.all([debriefRow(appointmentId), standaloneChecklist()]);
       return {
         appointmentId,
         itemCount: checklist?.items.length ?? 0,
-        dismissed: appointmentId !== null && row?.debrief_dismissed_appointment_id === appointmentId,
-        debriefEntryId: debriefEntryIdFor(row, appointmentId)
+        dismissed: row?.dismissed === 1,
+        debriefEntryId: row?.entry_id ?? null
       };
     },
 
     async setDebriefDismissed(appointmentId) {
-      await driver.run('UPDATE checklist SET debrief_dismissed_appointment_id = ?, updated_at = ? WHERE uuid = ?', [
-        appointmentId,
-        now(),
-        await standaloneChecklistId()
-      ]);
+      await driver.run(
+        `INSERT INTO appointment_debrief (appointment_uuid, dismissed) VALUES (?, 1)
+         ON CONFLICT (appointment_uuid) DO UPDATE SET dismissed = 1`,
+        [appointmentId]
+      );
     },
 
     async getDebriefEntryId(appointmentId) {
-      return debriefEntryIdFor(await standaloneDebriefRow(), appointmentId);
+      return (await debriefRow(appointmentId))?.entry_id ?? null;
     },
 
     async recordDebriefEntry(entryId, appointmentId) {
       await driver.run(
-        `UPDATE checklist SET debrief_entry_id = ?, debrief_entry_appointment_id = ?, updated_at = ?
-         WHERE uuid = ?`,
-        [entryId, appointmentId, now(), await standaloneChecklistId()]
+        `INSERT INTO appointment_debrief (appointment_uuid, entry_id) VALUES (?, ?)
+         ON CONFLICT (appointment_uuid) DO UPDATE SET entry_id = excluded.entry_id`,
+        [appointmentId, entryId]
       );
     },
 
