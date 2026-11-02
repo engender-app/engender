@@ -26,6 +26,9 @@ describe('reading citations', () => {
       'rule 12', 'rule 13', 'rule 14', 'rule 10', 'rule 12', 'decision 2', 'decision 3'
     ]);
   });
+  it('reads a comma before a named family, but not before a bare number', () => {
+    expect(directionCitationsIn(`(${D}, tier 2) and (DIRECTION, tier 4) but ${D}, 3 columns`)).toEqual(['tier 2', 'tier 4']);
+  });
   it('ignores a mention with no number', () => {
     expect(directionCitationsIn(`${D} names the field; DIRECTIONS`)).toEqual([]);
   });

@@ -8,7 +8,9 @@
      `DIRECTION.md rules 10 and 12`, and a bare `DIRECTION.md 6`: rules;
    - `DIRECTION.md decision 2`, `DIRECTION.md's decision 2b`, and a bare
      `DIRECTION.md 3b` (a number with a letter): decisions;
-   - `DIRECTION.md tier 1`, `DIRECTION's tier 4`: motion tiers.
+   - `DIRECTION.md tier 1`, `DIRECTION's tier 4`, `DIRECTION.md, tier 2`:
+     motion tiers. A comma is read only before a named family, since
+     "DIRECTION.md, 3 columns" is prose.
    A cited key resolves when DIRECTION.md has a heading that opens with it:
    `### Rule 7: ...`, `### Decision 2b: ...`, `### Tier 4: ...`. */
 import { execFileSync } from 'node:child_process';
@@ -17,7 +19,7 @@ import { join } from 'node:path';
 
 const SCANNED = ['src', 'tests', 'android'];
 const CITATION =
-  /\bDIRECTION(?:\.md)?(?:'s)? (?:(rules?|decisions?|tier) )?(\d+[a-z]?)(?:(?: and| to) (\d+[a-z]?))?/g;
+  /\bDIRECTION(?:\.md)?(?:'s)?(?: |, (?=(?:rules?|decisions?|tier) ))(?:(rules?|decisions?|tier) )?(\d+[a-z]?)(?:(?: and| to) (\d+[a-z]?))?/g;
 const HEADING = /^#{2,4} (Rule|Decision|Tier) (\d+[a-z]?)\b/gm;
 
 /** @param {string} text @returns {string[]} keys like `rule 7`, `decision 2b`, `tier 1` */
