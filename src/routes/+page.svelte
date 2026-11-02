@@ -882,9 +882,9 @@
          than the strip below jumping 90px a frame after Today painted. -->
     <!-- The anniversary, as one line rather than a card with a confetti loop
          falling through it. The words are the ones it always said; what went
-         is the loop, because the flag sun is the whole of the app's ambient
-         motion budget and a second one on the same screen spends it twice
-         (DIRECTION.md, tiers 0 and 4). It takes the agenda's colour, since a
+         is the loop, because the app's ambient budget is two loops, the
+         sun's breath and the mood faces, and a third on the same screen
+         needs its own argument (DIRECTION.md, tiers 0 and 4). It takes the agenda's colour, since a
          milestone landing today is the agenda's own kind of fact. -->
     {#if celebrate}
       <!-- Nine pieces over the notice that says which milestone it is (Alicja,
@@ -1568,8 +1568,8 @@
   /* The authored moment: on a milestone day, arriving on Home throws a
      little confetti over the notice naming it, once.
 
-     It plays and stops. DIRECTION.md's tier 4 rules out a second ambient
-     *loop*, which is why the celebration card's infinite `cf-fall` was
+     It plays and stops. DIRECTION.md's tier 4 rules out a third ambient
+     *loop* beside the sun and the mood faces, which is why the celebration card's infinite `cf-fall` was
      deleted rather than moved here; a moment with an end is the same
      category as the sun's entrance, and it spends the authored duration
      twice over.

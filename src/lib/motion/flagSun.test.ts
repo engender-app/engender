@@ -8,7 +8,7 @@ import { SUN_OUTER, parseMotifStripes, ringRadii, sunRings } from './flagSun';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
 /** Reads the app's real `--motif-stripes` per palette from the stylesheet
-    itself, so this test exercises the same 8 flags production does rather
+    itself, so this test exercises the same flags production does rather
     than a second, hand-copied list that could drift from palettes.css. */
 function realPalettes(): Record<string, string[]> {
   const css = readFileSync(join(root, 'src/lib/theme/palettes.css'), 'utf8');

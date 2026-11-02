@@ -248,7 +248,7 @@
    the dark one, both under the 4.5:1 body floor, and on the Transition
    door the placeholder is the field's only visible label. --text-2 is what
    `.input::placeholder` already uses (components.css) and what
-   palette-contrast.test.ts holds against the page on all eight flags.
+   palette-contrast.test.ts holds against the page on every flag.
    `opacity: 1` because Firefox dims a placeholder by default and would
    take the token back under the floor. */
 .search-input::placeholder {

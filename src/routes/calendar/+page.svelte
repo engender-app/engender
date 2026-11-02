@@ -53,7 +53,7 @@
      different month appear - it opens.
 
      Colour: the strip and the grid are one reading of one day, so both take
-     role 0 - the only index guaranteed to be a colour on all 8 palettes
+     role 0 - the only index guaranteed to be a colour on every palette
      (roles.ts; DIRECTION.md, "colour that carries a value takes role 0").
      Written out rather than through that table because here
      it is the rule about value-carrying colour and not this screen's turn in

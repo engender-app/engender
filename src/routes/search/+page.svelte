@@ -467,7 +467,7 @@
   const chipTravel = () => (isReducedMotion() ? 0 : motionDuration('--dur-fast'));
 
   /* One area of colour on this screen, and it is the days. Role 0, the only
-     index guaranteed to be a colour on all 8 palettes, since a screen with a
+     index guaranteed to be a colour on every palette, since a screen with a
      single coloured area has no reading order to follow. */
   let role = $derived(roleAt(activeFlag.roles, 0));
   /* Two areas now, so two roles in reading order (the day screen's rule):

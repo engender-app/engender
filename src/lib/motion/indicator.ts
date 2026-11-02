@@ -55,8 +55,8 @@ export type Insets = { left: number; right: number; top: number; bottom: number 
     fractional device pixel ratio lands a third of a pixel either side of
     where it landed last time, and a resize that reports the same position
     as a new one would replay the stretch on every observer tick - which
-    would turn a moment into a loop, the one thing DIRECTION.md's motion
-    system spends nowhere but the flag sun. */
+    would turn a moment into a loop, which DIRECTION.md's motion system
+    spends only on the flag sun and the mood faces. */
 const SAME = 0.5;
 
 export function boxesMatch(a: Box, b: Box): boolean {

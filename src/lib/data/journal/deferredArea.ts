@@ -4,10 +4,10 @@
    journal.ts composes the whole journal in one call, which is what lets
    live/writes.ts classify every method by walking the object and what lets a
    screen name any area without knowing how it was built (ADR-0017). The cost
-   is that composing is also a static import: opening Home parsed the
-   pharmacokinetics of injectable esters and the whole archive pack/apply
-   pipeline on the way to a greeting, about 9,100 lines of code no first
-   screen runs.
+   is that composing is also a static import: opening Home parsed the whole
+   archive pack/apply pipeline (and, until the hormone curve was cut, the
+   pharmacokinetics of injectable esters) on the way to a greeting, thousands
+   of lines no first screen runs.
 
    A deferred area keeps the facade exactly as it was above the seam. Its
    type is still static, so nothing above changes and writes.ts still checks
@@ -23,9 +23,9 @@
    deferredArea.test.ts compares each deferred facade's keys against the
    eager area's, so a name that drifts fails a test rather than a screen.
 
-   NOT A GENERAL WRAPPER for the other forty-odd areas. Most are a few
+   NOT A GENERAL WRAPPER for the other areas. Most are a few
    hundred lines and splitting them all would trade one clear module for
-   fifty lazy ones and a list of names each - the ticket's own "out of
+   dozens of lazy ones and a list of names each - the ticket's own "out of
    scope". This is for the few that carry real weight. */
 
 /** The names of an area's callable members, and only those - the same shape

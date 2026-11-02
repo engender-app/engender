@@ -50,7 +50,7 @@
 
   /* The strip's fill shares the chromatic role with the recency figures
      (ticket 56, following ticket 44's own rule for dilation and wear):
-     index 0 is the only role guaranteed chromatic on all 8 palettes, and a
+     index 0 is the only role guaranteed chromatic on every palette, and a
      logged day filled in a palette's achromatic band is a day drawn as
      nothing. */
   const SECTION_ROLE = { recency: 0, strip: 0, sessions: 1 };

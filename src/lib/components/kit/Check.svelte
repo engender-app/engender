@@ -16,7 +16,7 @@
      is the difference a checkbox is for. Ticked wears exactly the treatment
      `.tag-chip.is-selected` wears - soft fill, accent edge, `--on-accent-soft`
      ink - because that is this app's settled answer for a control that is
-     on, and it is already proven across the eight palettes on both themes.
+     on, and it is already proven across every palette on both themes.
 
      Decoration, not a control: `aria-hidden`, no tab stop, no press handler
      of its own. The row is the checkbox and carries `role="checkbox"` and

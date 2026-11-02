@@ -139,7 +139,7 @@ export function tallyRows(tally: WrappedTallyCounts | null): BarRow[] {
     Every chart shares role 0, which is the brief's own exception rather than
     a shortcut: "colour that carries a value takes role 0", because roles run
     a flag's colours before its shades and index 0 is the only one guaranteed
-    to be a colour on all 8 palettes. Taken in reading order instead, a chart
+    to be a colour on every palette. Taken in reading order instead, a chart
     landed on trans's white band, and white bars on a dark card read as a set
     of disabled bars rather than as the flag.
 

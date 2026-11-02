@@ -7,7 +7,7 @@
      and the gate; this owns the composition, which is the part of the ticket
      that needed deciding and the part that gets looked at
      (tests/browser-tier/day-gallery.svelte drives it across the three day
-     shapes, all 8 palettes and both themes).
+     shapes, every palette and both themes).
 
      The composition, and the reasoning it answers to:
 
@@ -22,7 +22,7 @@
      row. A section with nothing in it produces no row and therefore no DOM.
 
      *Two areas, so two roles, in reading order.* The day card takes role 0 -
-     the only index guaranteed to be a colour on all 8 palettes - and the list
+     the only index guaranteed to be a colour on every palette - and the list
      around it takes role 1.
 
      *No motion, but one earned exception.* Arriving here is the shared axis

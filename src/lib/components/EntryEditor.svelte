@@ -101,7 +101,7 @@
      so it spends almost none of the flag: what colour it does take goes on
      the two things that are not fields - the guided prompt, and the template
      list inside its sheet. Role 0, the only index guaranteed to be a colour
-     on all 8 palettes, since there is no reading order to follow with one
+     on every palette, since there is no reading order to follow with one
      role in play. The attachments surface below is deliberately uncoloured;
      everything inside it is a photograph or a waveform bringing its own. */
   let role = $derived(roleAt(activeFlag.roles, 0));

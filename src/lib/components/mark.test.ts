@@ -38,7 +38,7 @@ import { parseMotifStripes, ringRadii } from '../motion/flagSun.ts';
 const root = new URL('../../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
 
-/** The same eight flags the app ships, read off the stylesheet that owns
+/** The flags the app ships, read off the stylesheet that owns
     them rather than a second list here. */
 function palettes(): Record<string, string[]> {
   const css = read('src/lib/theme/palettes.css');

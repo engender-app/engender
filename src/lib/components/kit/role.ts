@@ -20,7 +20,7 @@
    --role-fill-ink-in is the fourth, and it is the one a label written on
    top of a fill takes. --role-ink-in will not do there: it is proven
    against the surfaces and the two tints a role paints, never against the
-   stripe itself, and 59 of the 66 stripe/theme pairs the eight flags hold
+   stripe itself, and 59 of 66 stripe/theme pairs measured when it was written
    put it below 4.5:1 on their own stripe. On trans's dark theme the ink for
    the blue band is the blue band, so a label in it is not dim, it is gone.
 

@@ -16,7 +16,7 @@ export type PortableKey = (typeof PORTABLE_KEYS)[number];
 const TIME_SHAPE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /* Free-form identifiers with no list to check membership against -
-   palettes.css is the one place the 8 flags are written down
+   palettes.css is the one place the flags are written down
    (theme/roles.ts argues against a second copy), and moodPreset's four
    presets are the same kind of thing. A slug shape is enough to keep a
    script tag or a path out of a value that ends up in a favicon href

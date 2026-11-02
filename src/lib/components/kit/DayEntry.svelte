@@ -190,7 +190,7 @@
      about itself rather than as words somebody wrote. It keeps the note's
      own --text-2 rather than stepping quieter, because it is still text
      somebody reads and the palette contrast test holds --text-2 to the
-     4.5:1 floor across all 8 palettes - a paler grey invented here would
+     4.5:1 floor across every palette - a paler grey invented here would
      answer to nothing. */
   .kit-entry-note.is-absent {
     font-style: italic;
