@@ -94,6 +94,14 @@ final class SqliteConnection {
         // SQLCipher applies its configuration after postKey, overwriting a
         // pragma set in that hook. Enable enforcement on the opened database.
         database.setForeignKeyConstraintsEnabled(true);
+        /* The connection opens at NORMAL, and in rollback-journal mode that
+           lets a power cut right after a commit returned undo it (carpet 09:
+           an upgrade and a folder-sync Merge reopened as before). FULL syncs
+           the journal and the database before COMMIT returns. Set after the
+           configuration pass, which would overwrite it in the hook. This is
+           the only writable connection; the read-only backup check never
+           commits. */
+        database.execSQL("PRAGMA synchronous = FULL;");
     }
 
     /**
