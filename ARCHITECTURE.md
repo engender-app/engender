@@ -138,7 +138,7 @@ Two policies apply to dependencies. [scripts/check-licences.mjs](scripts/check-l
 ```text
 .
 ├── src/                 the app (SvelteKit)
-│   ├── routes/          69 screens (+page.svelte), root +layout.svelte, root +error.svelte (unknown addresses)
+│   ├── routes/          every screen (+page.svelte; SCREENS.md lists them), root +layout.svelte, root +error.svelte (unknown addresses)
 │   ├── lib/             everything else, see section 4
 │   ├── app.html         document template + pre-paint boot script
 │   ├── hooks.server.ts  build-time only: holds module preloads
@@ -1150,7 +1150,7 @@ flowchart LR
   First -. "import()" .-> Later
 ```
 
-**First load has a budget.** [scripts/check-first-load-budget.mjs](scripts/check-first-load-budget.mjs) gzips every `/_app/immutable` URL that `build/index.html` asks for and compares the total with [scripts/first-load-budget.json](scripts/first-load-budget.json). Each build compiles one language, so it measures the English and the Polish graph and gates the larger. The budget is 15 files and 235,087 bytes (recorded 2026-10-14 UTC, last-audit backend ticket 61, for final-audit 10's startup grouping). The accepted backend integration at `ad44a0b4f` measures 15 files in each locale, 233,012 bytes English and 234,063 bytes Polish, including the selector. The file count gets no headroom, and the byte budget adds exactly 1,024 bytes to the larger measurement for hash wobble. A rebaseline has to name the change that caused it in the same file. The script records OCR installation transfer and stored bytes separately. OCR installation does not add eager execution to this graph. PDF fonts remain precached. CI gates the production build only.
+**First load has a budget.** [scripts/check-first-load-budget.mjs](scripts/check-first-load-budget.mjs) gzips every `/_app/immutable` URL that `build/index.html` asks for and compares the total with [scripts/first-load-budget.json](scripts/first-load-budget.json). Each build compiles one language, so it measures the English and the Polish graph and gates the larger. The numbers live in that file (`firstLoad.filesBudget` and `gzipBytesBudget`), recorded against the larger of the English and Polish graphs with the selector included, and its note names the change behind every re-recording; this page does not repeat them, because a copy here went stale twice. The file count gets no headroom, and the byte budget adds exactly 1,024 bytes to the larger measurement for hash wobble. A rebaseline has to name the change that caused it in the same file. The script records OCR installation transfer and stored bytes separately. OCR installation does not add eager execution to this graph. PDF fonts remain precached. CI gates the production build only.
 
 **What stays out of first load:**
 - deferred journal areas (section 6.3)

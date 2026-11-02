@@ -82,7 +82,13 @@ const SPEECH_CHECKS: readonly QualityCheck[] = ['clipping', 'noise'];
     word count times this, which is what makes a short custom passage and
     the bundled one answer to the same rule rather than to the same number.
 
-    Measured, not derived - see ADR-0082 for the takes and the arithmetic.
+    Measured, not derived: the two bundled passages synthesized with
+    espeak-ng at four paces each and run through trackPitch and takeSignals,
+    each number 0.70 of the brisk end of those takes, so an unhurried whole
+    read clears it and a half read at a brisk pace does not. The takes are
+    synthetic, so 0.70 leaves room for the synthesiser being 30 percent off;
+    a recorded human read should be checked against these figures. (This and
+    the note on MAX_PLAUSIBLE_WPM are where ADR-0082 lives now.)
     Both languages have their own because they really do differ: 98 English
     words at 1.32 syllables each against 82 Polish words at 1.74 came out as
     a 1.35 ratio in seconds of voice per word, which is the syllable
@@ -136,8 +142,9 @@ export function passageGate(wordCount: number, language: BandLanguage): QualityG
     Each is about 1.3 times the fastest read its language was measured at,
     which is high enough that no honest read reaches it and low enough to
     catch a half-read of the same passage at the slowest pace measured -
-    the one case the length floor above deliberately lets through. ADR-0082
-    has both measurements and the gap between them. */
+    the one case the length floor above deliberately lets through: half a
+    passage read slowly carries as much voice as the whole read fast, and
+    voiced time alone cannot tell them apart. */
 const MAX_PLAUSIBLE_WPM: Record<BandLanguage, number> = { en: 300, pl: 200 };
 
 /** Whether a stored speaking rate is one a person could have read at.

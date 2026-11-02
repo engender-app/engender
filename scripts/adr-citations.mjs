@@ -61,6 +61,7 @@ export function unresolvedInRepo(root, adrDir) {
 }
 
 const MAX_WORDS = 1000;
+/** @type {Array<[string, RegExp]>} */
 const HEADER = [
   ['Status', /^Status: \S/m],
   ['Decided', /^Decided: \d{4}-\d{2}-\d{2}\b/m],
