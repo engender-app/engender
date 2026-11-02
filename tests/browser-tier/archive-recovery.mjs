@@ -30,7 +30,7 @@ export async function browserRecoveryDestination(browser, origin, input) {
 }
 
 export function assertRecoveryResult(result) {
-  if (result.sections !== 46 || result.attachments < 10 || result.failures?.length !== 4 ||
+  if (!(result.archiveSections > 0) || result.sections !== result.archiveSections || result.attachments < 10 || result.failures?.length !== 4 ||
       !result.interruptedRestart || !result.restarted || !result.merge ||
       !result.localPreserved || result.accessMode !== 'passphrase' || !result.destinationCredentialVerified || !result.portableApplied ||
       !result.media?.image || !result.media.audioPlayback || !result.media.videoPlayback || !result.media.documentRendered) {
