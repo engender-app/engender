@@ -79,7 +79,8 @@ async function edit(driver: SqliteDriver, table: string, column: string, value: 
    has a row here except the five whose only content is a file name, an
    identity or a position in its parent's list (checklist, era_mute,
    hair_removal_photo, video_note, voice_recording) - their changes travel
-   as a deletion and an insert, covered below. A checklist's content is its
+   as a deletion and an insert, covered below; a newer stamp alone is
+   covered for every table by the describe after this one. A checklist's content is its
    items, which have their own row above, and its owner is fixed when it is
    made. */
 const EDITS: [string, string, string, string?][] = [
@@ -183,6 +184,32 @@ test('every table merged by updated_at has an edit case or a reason it has none'
     .filter(([table, merge]) => merge.by === 'updatedAt' && !covered.has(table) && !contentless.includes(table))
     .map(([table]) => table);
   assert.deepEqual(missing, []);
+});
+
+/* The edit cases above change a column; these change nothing but the stamp,
+   which is all a newer copy of a table with no data column (era_mute: a key
+   and updated_at) can differ by. Every table merged by updated_at takes a
+   newer row, so a table added later with no column of its own cannot hide
+   the way era_mute's raw SQL error did. */
+describe('a newer copy of a row with nothing but its stamp changed', () => {
+  const tables = Object.entries(MERGE_CLASSES).filter(([, merge]) => merge.by === 'updatedAt').map(([table]) => table);
+
+  test.each(tables)('%s takes the newer stamp', async (table) => {
+    const { a, b } = await twoDevices();
+    const id = await firstId(a.driver, table);
+    const at = later();
+    await a.driver.run(`UPDATE ${table} SET updated_at = ? WHERE ${identity(table)} = ?`, [at, id]);
+
+    await b.journal.archive.merge(await exported(a));
+
+    assert.equal(await read(b.driver, table, 'updated_at', id), at);
+  });
+
+  test('era_mute is among them, and A holds a mute to test', async () => {
+    const { a } = await twoDevices();
+    assert.ok(Object.keys(MERGE_CLASSES).includes('era_mute'));
+    assert.ok((await a.driver.query('SELECT 1 FROM era_mute')).length > 0);
+  });
 });
 
 describe('the rows that follow their parent', () => {

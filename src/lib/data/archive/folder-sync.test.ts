@@ -113,6 +113,20 @@ describe('runFolderSync', () => {
     assert.deepEqual(vi.mocked(androidAutoExport.finishFolderArchive).mock.calls, [[{ modifiedAt: 5000, outcome: 'merged' }]]);
   });
 
+  test("a muted era the other device stamped later is merged, so sync does not stop on it", async () => {
+    const { a, b } = await twoDevices();
+    const stamp = Date.now() + 60_000;
+    const [{ era_uuid }] = await a.driver.query<{ era_uuid: string }>('SELECT era_uuid FROM era_mute ORDER BY rowid LIMIT 1');
+    await a.driver.run('UPDATE era_mute SET updated_at = ? WHERE era_uuid = ?', [stamp, era_uuid]);
+    const read = folderHolds(await autoExport(a, SAVED_KEY), 5500);
+
+    const result = await runFolderSync(ready, { merge: (contents) => b.journal.archive.merge(contents), read });
+
+    assert.deepEqual(result, { outcome: 'merged', modifiedAt: 5500 });
+    const [row] = await b.driver.query<{ updated_at: number }>('SELECT updated_at FROM era_mute WHERE era_uuid = ?', [era_uuid]);
+    assert.equal(row.updated_at, stamp);
+  });
+
   test('an archive locked with another password is reported and moved past, and nothing is written', async () => {
     const { a, b } = await twoDevices();
     const before = await firstEntry(b.driver);
