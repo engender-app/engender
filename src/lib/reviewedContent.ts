@@ -17,6 +17,9 @@
    warns. It never fails a release, because a stale date means "go and
    read the source again", not "this is wrong".
 
+   The rule this enforces:
+   ADR draft-shipped-reference-content-carries-a-source-and-a-reviewed-on-date.
+
    To register new content, export its reviewed-on day next to the content
    and add a row below. A row is one date: when an area records one date per
    item (the onset bands do), map its items to one row each. */
