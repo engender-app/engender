@@ -1180,7 +1180,7 @@ export function orderedSections(sections: readonly ArchiveSection[] = ARCHIVE_SE
     are declared children-first. Today the reversal is what keeps the five
     foreign keys that do not cascade from firing: each child's section
     inserts after its parent's, so it clears first, by `after` for milestones
-    and by declaration order for the rest. checklist.debrief_entry_id sets
+    and by declaration order for the rest. appointment_debrief.entry_id sets
     null. The rest cascade, and every child table is emptied wholesale anyway.
     The one ordering a statement depends on is inside a section: `presets`
     filters preset_dimension by a subselect over gender_preset, and has to
