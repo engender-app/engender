@@ -50,11 +50,18 @@ async function journalOn118(): Promise<Db> {
   );
   run("INSERT INTO checklist (uuid, owner_kind, owner_uuid, updated_at) VALUES ('c-2', 'procedure', 'proc-1', 6)");
   run("INSERT INTO checklist_item (uuid, checklist_id, content, updated_at) VALUES ('i-1', 1, 'ask', 1)");
+  // A deleted row leaves each AUTOINCREMENT counter above the highest id.
+  run("INSERT INTO checklist (uuid, updated_at) VALUES ('c-gone', 1)");
+  run("DELETE FROM checklist WHERE uuid = 'c-gone'");
   run(
     `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, provider, updated_at, note, cost_amount, cost_currency)
      VALUES ('s-1', 100, 'face', 'laser', 'Clinic', 7, 'ok', 12.5, 'PLN')`
   );
   run("INSERT INTO hair_removal_photo (uuid, session_id, file_path, updated_at) VALUES ('hp-1', 1, 'a.jpg', 1)");
+  run(
+    `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, provider, updated_at) VALUES ('s-gone', 1, 'face', 'laser', '', 1)`
+  );
+  run("DELETE FROM hair_removal_session WHERE uuid = 's-gone'");
   run(
     `INSERT INTO voice_benchmark (uuid, epoch_day, timestamp, passage_key, passage_file_path, f0_median_hz,
        f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute, updated_at)
@@ -91,10 +98,13 @@ test('version 119 keeps every row, counter and index of the tables it rebuilds',
     { uuid: 's-1', note: 'ok', amount: 12.5, currency: 'PLN', at: 7 }
   );
   assert.deepEqual(db.raw.prepare('SELECT session_id FROM hair_removal_photo').all().map((r) => ({ ...r })), [{ session_id: 1 }]);
-  // An id that was deleted is not handed out again.
-  db.raw.prepare("DELETE FROM checklist WHERE uuid = 'c-2'").run();
+  // An id that was deleted before the rebuild is not handed out again.
   db.raw.prepare("INSERT INTO checklist (uuid, updated_at) VALUES ('c-3', 1)").run();
-  assert.equal((db.raw.prepare("SELECT id FROM checklist WHERE uuid = 'c-3'").get() as { id: number }).id, 3);
+  assert.equal((db.raw.prepare("SELECT id FROM checklist WHERE uuid = 'c-3'").get() as { id: number }).id, 4);
+  db.raw
+    .prepare("INSERT INTO hair_removal_session (uuid, epoch_day, area, method, provider, updated_at) VALUES ('s-3', 1, 'face', 'laser', '', 1)")
+    .run();
+  assert.equal((db.raw.prepare("SELECT id FROM hair_removal_session WHERE uuid = 's-3'").get() as { id: number }).id, 3);
   const indexes = (table: string) =>
     (db.raw.prepare(`PRAGMA index_list(${table})`).all() as Array<{ name: string }>).map((i) => i.name);
   assert.ok(indexes('checklist').includes('idx_checklist_owner'));
@@ -110,7 +120,7 @@ test('version 119 puts the deletion trigger back on every table it rebuilds', as
   db.raw.prepare("DELETE FROM hair_removal_session WHERE uuid = 's-1'").run();
   db.raw.prepare("DELETE FROM checklist WHERE uuid = 'c-1'").run();
   assert.deepEqual(
-    db.raw.prepare("SELECT tbl, row_key FROM deletion WHERE tbl IN ('checklist', 'hair_removal_session') ORDER BY tbl").all().map((r) => ({ ...r })),
+    db.raw.prepare("SELECT tbl, row_key FROM deletion WHERE row_key IN ('c-1', 's-1') ORDER BY tbl").all().map((r) => ({ ...r })),
     [
       { tbl: 'checklist', row_key: 'c-1' },
       { tbl: 'hair_removal_session', row_key: 's-1' }
