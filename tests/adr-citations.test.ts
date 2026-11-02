@@ -48,6 +48,12 @@ describe('the record shape (functional audit ticket 55)', () => {
     write('README.md', '## Tombstones\n\n- ADR-0002: merged into the first\n');
     expect(adrShapeProblems(shapeDir)).toEqual([]);
   });
+  it('wants the header as the block right under the title, not further down', () => {
+    write('0001-one.md', `# One\n\nA paragraph first.\n\n${header}\nBody.\n`);
+    write('0003-three.md', `# Three\n\n${header}\nBody.\n`);
+    write('README.md', '## Tombstones\n\n- ADR-0002: merged into the first\n');
+    expect(adrShapeProblems(shapeDir)).toEqual(['0001-one.md: header lacks Status, Decided, Last reviewed, Supersedes or Amends']);
+  });
   it('names a missing header line, an overlong record, a gap and a number that is both', () => {
     write('0001-one.md', `# One\n\nStatus: Accepted\n\n${'word '.repeat(1001)}\n`);
     rmSync(join(shapeDir, '0003-three.md'), { force: true });

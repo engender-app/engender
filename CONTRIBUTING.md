@@ -113,6 +113,7 @@ and adds to the one `History:` line at the end, rather than stacking a
 section. The decision itself is 150 words or fewer, the record about 600 and
 1,000 at most. Name things instead of quoting values that rot: no hex
 colours, frame counts, or counts of areas, tables, sections or palettes.
-`tests/adr-citations.test.ts` holds the citations, the header, the size and
-the tombstones; `tests/direction-citations.test.ts` holds every
+`tests/adr-citations.test.ts` holds the citations, the header block, the
+1,000-word ceiling and the tombstones (the 150-word decision is the
+author's to keep, since no check can tell which paragraph is the decision); `tests/direction-citations.test.ts` holds every
 DIRECTION.md rule, decision and tier the code cites.

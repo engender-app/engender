@@ -9,9 +9,10 @@
    with the number: `- ADR-0080: ...`.
 
    adrShapeProblems holds the shape functional audit ticket 55 gave the
-   records: every numbered file opens with Status, Decided, Last reviewed and
-   Supersedes or Amends lines, stays at 1,000 words or fewer, and every number
-   up to the highest is either a file or a tombstone, never both. */
+   records: every numbered file opens, in the block under its title, with
+   Status, Decided, Last reviewed and Supersedes or Amends lines, stays at
+   1,000 words or fewer, and every number up to the highest is either a file
+   or a tombstone, never both. */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -76,7 +77,12 @@ export function adrShapeProblems(adrDir) {
   const problems = [];
   for (const file of readdirSync(adrDir).filter((f) => /^\d{4}-.+\.md$/.test(f)).sort()) {
     const text = readFileSync(join(adrDir, file), 'utf8');
-    const head = text.split('\n').slice(0, 12).join('\n');
+    // The header is the first block after the title: skip the blank line,
+    // then read up to the next blank one.
+    const lines = text.split('\n').slice(1);
+    const start = lines.findIndex((l) => l.trim() !== '');
+    const end = lines.findIndex((l, i) => i > start && l.trim() === '');
+    const head = start < 0 ? '' : lines.slice(start, end < 0 ? undefined : end).join('\n');
     const missing = HEADER.filter(([, re]) => !re.test(head)).map(([name]) => name);
     if (missing.length) problems.push(`${file}: header lacks ${missing.join(', ')}`);
     const words = text.split(/\s+/).filter(Boolean).length;
