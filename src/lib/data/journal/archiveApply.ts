@@ -153,7 +153,8 @@ export async function applyFlatTable<Row>(
   const identity = identityFieldOf(table);
   const gate = await rowGate(restoring, table.table, table.identity);
   const written = columns.map((c) => c.column !== table.identity && (table.identity === 'uuid' || c.column !== 'uuid'));
-  const assignments = columns.filter((_, i) => written[i]).map((c) => `${c.column} = ?`).join(', ');
+  // A table with no column besides its key (era_mute) is written over by its stamp alone.
+  const assignments = [...columns.filter((_, i) => written[i]).map((c) => `${c.column} = ?`), 'updated_at = ?'].join(', ');
 
   const inserting: unknown[][] = [];
   for (const row of rows) {
@@ -166,7 +167,7 @@ export async function applyFlatTable<Row>(
       inserting.push([...values, stampOf(stamped, ts)]);
       continue;
     }
-    await driver.run(`UPDATE ${table.table} SET ${assignments}, updated_at = ? WHERE ${table.identity} = ?`, [
+    await driver.run(`UPDATE ${table.table} SET ${assignments} WHERE ${table.identity} = ?`, [
       ...values.filter((_, i) => written[i]),
       stampOf(stamped, ts),
       id
