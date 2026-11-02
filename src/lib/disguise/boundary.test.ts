@@ -1,5 +1,6 @@
 /* The FA 42 boundary guard: unlocked screens never read the disguise
-   preference; only the owners listed below do.
+   preference; only the owners listed below do. The rule:
+   ADR draft-disguise-hides-the-app-from-the-outside-and-stops-at-unlock.
 
    Blind spots, so nobody takes a green run for more than it says: the scan
    looks for `.disguise` property access, bracket access with the literal
