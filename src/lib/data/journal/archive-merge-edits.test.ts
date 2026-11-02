@@ -196,16 +196,13 @@ describe('a newer copy of a row with nothing but its stamp changed', () => {
 
   test.each(tables)('%s takes the newer stamp', async (table) => {
     const { a, b } = await twoDevices();
-    const [row] = await a.driver.query<{ id: string }>(
-      `SELECT ${identity(table)} AS id FROM ${table} ORDER BY rowid LIMIT 1`
-    );
-    if (!row) return;
+    const id = await firstId(a.driver, table);
     const at = later();
-    await a.driver.run(`UPDATE ${table} SET updated_at = ? WHERE ${identity(table)} = ?`, [at, row.id]);
+    await a.driver.run(`UPDATE ${table} SET updated_at = ? WHERE ${identity(table)} = ?`, [at, id]);
 
     await b.journal.archive.merge(await exported(a));
 
-    assert.equal(await read(b.driver, table, 'updated_at', row.id), at);
+    assert.equal(await read(b.driver, table, 'updated_at', id), at);
   });
 
   test('era_mute is among them, and A holds a mute to test', async () => {
