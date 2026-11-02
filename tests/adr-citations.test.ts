@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { citationsIn, readAdrIndex, unresolved, unresolvedInRepo } from '../scripts/adr-citations.mjs';
+import { adrShapeProblems, citationsIn, readAdrIndex, unresolved, unresolvedInRepo } from '../scripts/adr-citations.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const adrDir = join(root, 'docs', 'adr');
@@ -36,9 +36,38 @@ describe('the citation guard', () => {
   });
 });
 
+describe('the record shape (functional audit ticket 55)', () => {
+  const header = 'Status: Accepted\nDecided: 2026-08-11\nLast reviewed: 2026-11-02\nSupersedes: none\n';
+  const shapeDir = mkdtempSync(join(tmpdir(), 'adr-shape-'));
+  afterAll(() => rmSync(shapeDir, { recursive: true, force: true }));
+  const write = (name: string, text: string) => writeFileSync(join(shapeDir, name), text);
+
+  it('passes a headed record, and a gap covered by a tombstone', () => {
+    write('0001-one.md', `# One\n\n${header}\nBody.\n`);
+    write('0003-three.md', `# Three\n\n${header.replace('Supersedes: none', 'Amends: ' + 'ADR-' + '0001')}\nBody.\n`);
+    write('README.md', '## Tombstones\n\n- ADR-0002: merged into the first\n');
+    expect(adrShapeProblems(shapeDir)).toEqual([]);
+  });
+  it('names a missing header line, an overlong record, a gap and a number that is both', () => {
+    write('0001-one.md', `# One\n\nStatus: Accepted\n\n${'word '.repeat(1001)}\n`);
+    rmSync(join(shapeDir, '0003-three.md'), { force: true });
+    write('0004-four.md', `# Four\n\n${header}\nBody.\n`);
+    write('README.md', '## Tombstones\n\n- ADR-0002: gone\n- ADR-0004: gone too\n');
+    expect(adrShapeProblems(shapeDir)).toEqual([
+      '0001-one.md: header lacks Decided, Last reviewed, Supersedes or Amends',
+      '0001-one.md: 1005 words, over 1000',
+      'ADR-0004: both a file and a tombstone',
+      'ADR-0003: neither a file nor a tombstone'
+    ]);
+  });
+});
+
 describe.skipIf(!existsSync(adrDir))('every citation in src, tests and android', () => {
   it('resolves to an ADR file or a tombstone line', () => {
     expect(unresolvedInRepo(root, adrDir)).toEqual([]);
+  });
+  it('every record has its header and size, and every number up to the highest is a file or a tombstone', () => {
+    expect(adrShapeProblems(adrDir)).toEqual([]);
   });
 });
 
