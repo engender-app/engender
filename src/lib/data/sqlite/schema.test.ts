@@ -203,7 +203,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 118);
+  assert.equal(db.getUserVersion(), 119);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -722,31 +722,31 @@ test('a milestone records where it came from in three nullable columns, all unse
   );
 
   const row = db.raw
-    .prepare('SELECT uuid, name, roadmap_goal_key, procedure_id, tryout_id FROM milestone WHERE uuid = ?')
+    .prepare('SELECT uuid, name, roadmap_goal_key, procedure_uuid, tryout_uuid FROM milestone WHERE uuid = ?')
     .get('m-1') as {
     uuid: string;
     name: string;
     roadmap_goal_key: string | null;
-    procedure_id: string | null;
-    tryout_id: string | null;
+    procedure_uuid: string | null;
+    tryout_uuid: string | null;
   };
   assert.equal(row.uuid, 'm-1');
   assert.equal(row.name, 'HRT Start');
   // A milestone someone typed for themselves came from nowhere, which is a
   // resting state rather than three gaps (ADR-0045).
   assert.equal(row.roadmap_goal_key, null);
-  assert.equal(row.procedure_id, null);
-  assert.equal(row.tryout_id, null);
+  assert.equal(row.procedure_uuid, null);
+  assert.equal(row.tryout_uuid, null);
 });
 
-test('the presentation table and entry.presentation_id are both nullable and unfilled by default', async () => {
+test('the presentation table and entry.presentation_uuid are both nullable and unfilled by default', async () => {
   const db = await migratedDb();
   db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e-1', 100, 1000, '', 1000)");
 
-  const entryRow = db.raw.prepare("SELECT presentation_id FROM entry WHERE uuid = 'e-1'").get() as {
-    presentation_id: string | null;
+  const entryRow = db.raw.prepare("SELECT presentation_uuid FROM entry WHERE uuid = 'e-1'").get() as {
+    presentation_uuid: string | null;
   };
-  assert.equal(entryRow.presentation_id, null);
+  assert.equal(entryRow.presentation_uuid, null);
 
   db.raw.exec(
     "INSERT INTO presentation (uuid, name, role_index, updated_at) VALUES ('p-1', 'femme', 0, 1000)"
@@ -760,11 +760,11 @@ test('the presentation table and entry.presentation_id are both nullable and unf
   assert.equal(presentationRow.role_index, 0);
   assert.equal(presentationRow.hidden, 0);
 
-  db.raw.exec("UPDATE entry SET presentation_id = 'p-1' WHERE uuid = 'e-1'");
-  const linked = db.raw.prepare("SELECT presentation_id FROM entry WHERE uuid = 'e-1'").get() as {
-    presentation_id: string | null;
+  db.raw.exec("UPDATE entry SET presentation_uuid = 'p-1' WHERE uuid = 'e-1'");
+  const linked = db.raw.prepare("SELECT presentation_uuid FROM entry WHERE uuid = 'e-1'").get() as {
+    presentation_uuid: string | null;
   };
-  assert.equal(linked.presentation_id, 'p-1');
+  assert.equal(linked.presentation_uuid, 'p-1');
 });
 
 test('the era table has both bounds nullable and no fifth column', async () => {

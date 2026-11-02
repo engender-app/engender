@@ -2,7 +2,7 @@
    currency and a refunded flag, and reads hair removal's free-text cost by
    the recorded rule (cost.ts, parseLegacyCostText): a clean parse becomes
    the amount, anything else moves into the session's note, and the old
-   column is left null for FA 50 to drop. */
+   column is left null for FA 50 to drop (version 119, migration-hygiene.test.ts). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -75,7 +75,7 @@ test('a text cost that does not parse moves into the note, after any note alread
   session(db, 'empty', '');
   session(db, 'none', null, 'kept');
   session(db, 'padded', '  paid  in cash ');
-  await migrateHairRemovalCostAfter111(db);
+  await migrateToVersion118(db);
   assert.equal(read(db, 'padded').note, '  paid  in cash ', 'the text moves exactly as typed');
   assert.deepEqual(read(db, 'words'), { cost: null, cost_amount: null, cost_currency: null, cost_refunded: 0, note: 'covered by NFZ', updated_at: 1000 });
   assert.deepEqual(read(db, 'range'), { cost: null, cost_amount: null, cost_currency: null, cost_refunded: 0, note: 'second pass\n200-300 zł', updated_at: 1000 });
@@ -84,6 +84,7 @@ test('a text cost that does not parse moves into the note, after any note alread
   assert.equal(read(db, 'none').note, 'kept');
 });
 
-async function migrateHairRemovalCostAfter111(db: ReturnType<typeof makeNodeSqliteDb>) {
-  await runMigrations(db, noopFileOps(), migrations);
+async function migrateToVersion118(db: ReturnType<typeof makeNodeSqliteDb>) {
+  // Version 119 drops the column this test reads back as null.
+  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 118));
 }

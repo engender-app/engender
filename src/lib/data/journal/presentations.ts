@@ -45,7 +45,7 @@ export function makePresentationsArea(driver: SqliteDriver): PresentationsArea {
       const rows = await driver.query<PresentationRow & { last_used: number | null }>(
         `SELECT p.uuid, p.name, p.role_index, p.hidden,
                 (SELECT MAX(e.timestamp) FROM entry e
-                 WHERE e.presentation_id = p.uuid AND e.trashed_at IS NULL) AS last_used
+                 WHERE e.presentation_uuid = p.uuid AND e.trashed_at IS NULL) AS last_used
          FROM presentation p
          ORDER BY last_used IS NULL, last_used DESC, p.id`
       );

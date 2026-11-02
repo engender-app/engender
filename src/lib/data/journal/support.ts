@@ -102,8 +102,8 @@ export function entryPresentationFilter(presentationId: string | null | undefine
   params: string[];
 } {
   if (presentationId === undefined) return { sql: '', params: [] };
-  if (presentationId === null) return { sql: ' AND e.presentation_id IS NULL', params: [] };
-  return { sql: ' AND e.presentation_id = ?', params: [presentationId] };
+  if (presentationId === null) return { sql: ' AND e.presentation_uuid IS NULL', params: [] };
+  return { sql: ' AND e.presentation_uuid = ?', params: [presentationId] };
 }
 
 /* Tag and dimension ids by their travelling key or uuid, for the two areas

@@ -68,8 +68,8 @@ type MilestoneRow = {
   description: string;
   template_key: string | null;
   roadmap_goal_key: string | null;
-  procedure_id: string | null;
-  tryout_id: string | null;
+  procedure_uuid: string | null;
+  tryout_uuid: string | null;
   celebrate: number;
   procedure_name: string | null;
   tryout_label: string | null;
@@ -84,11 +84,11 @@ type MilestoneRow = {
    title isn't joined - it's a compiled string, resolved by key in code
    instead, so roadmap_goal only ever matches a custom one. */
 const MILESTONE_SELECT = `
-  SELECT ms.id, ms.uuid, ms.name, ms.epoch_day, ms.description, ms.template_key, ms.roadmap_goal_key, ms.procedure_id, ms.tryout_id, ms.celebrate,
+  SELECT ms.id, ms.uuid, ms.name, ms.epoch_day, ms.description, ms.template_key, ms.roadmap_goal_key, ms.procedure_uuid, ms.tryout_uuid, ms.celebrate,
          p.name AS procedure_name, t.label AS tryout_label, rg.text AS custom_goal_text
     FROM milestone ms
-    LEFT JOIN procedure p ON p.uuid = ms.procedure_id
-    LEFT JOIN tryout t ON t.uuid = ms.tryout_id
+    LEFT JOIN procedure p ON p.uuid = ms.procedure_uuid
+    LEFT JOIN tryout t ON t.uuid = ms.tryout_uuid
     LEFT JOIN roadmap_goal rg ON rg.uuid = ms.roadmap_goal_key
 `;
 
@@ -110,8 +110,8 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       description: r.description,
       templateKey: r.template_key,
       roadmapGoalKey: r.roadmap_goal_key,
-      procedureId: r.procedure_id ?? null,
-      tryoutId: r.tryout_id ?? null,
+      procedureId: r.procedure_uuid ?? null,
+      tryoutId: r.tryout_uuid ?? null,
       celebrate: r.celebrate !== 0,
       procedureName: r.procedure_name ?? null,
       tryoutLabel: r.tryout_label ?? null,
@@ -123,7 +123,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
   return {
     async getNonProcedureDaysInRange(fromEpochDay, toEpochDay) {
       const rows = await driver.query<{ epoch_day: number }>(
-        'SELECT DISTINCT epoch_day FROM milestone WHERE procedure_id IS NULL AND epoch_day BETWEEN ? AND ? ORDER BY epoch_day',
+        'SELECT DISTINCT epoch_day FROM milestone WHERE procedure_uuid IS NULL AND epoch_day BETWEEN ? AND ? ORDER BY epoch_day',
         [fromEpochDay, toEpochDay]
       );
       return rows.map((row) => row.epoch_day);
@@ -171,8 +171,8 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       const hasCelebrate = input.celebrate !== undefined;
       const extraColumns = [
         ...(hasRoadmap ? ['roadmap_goal_key'] : []),
-        ...(hasProc ? ['procedure_id'] : []),
-        ...(hasTryout ? ['tryout_id'] : []),
+        ...(hasProc ? ['procedure_uuid'] : []),
+        ...(hasTryout ? ['tryout_uuid'] : []),
         ...(hasDescription ? ['description'] : []),
         ...(hasCelebrate ? ['celebrate'] : [])
       ];
@@ -204,7 +204,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         return input.id;
       }
       const uuid = mintUuid();
-      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id, celebrate, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_uuid, tryout_uuid, celebrate, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       const insertParams = [
         uuid,
         input.name,

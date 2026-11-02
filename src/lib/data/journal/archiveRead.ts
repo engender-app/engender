@@ -181,10 +181,10 @@ export async function readEntryTemplates({ driver }: SectionRead): Promise<Archi
     key: string | null;
     name: string;
     note_scaffold: string;
-    presentation_id: string | null;
+    presentation_uuid: string | null;
     hidden: number;
     updated_at: number;
-  }>('SELECT id, uuid, key, name, note_scaffold, presentation_id, hidden, updated_at FROM entry_template ORDER BY id');
+  }>('SELECT id, uuid, key, name, note_scaffold, presentation_uuid, hidden, updated_at FROM entry_template ORDER BY id');
 
   const tagLinks = await driver.query<{ template_id: number; key: string | null; uuid: string | null }>(
     `SELECT ett.template_id, t.key, t.uuid FROM entry_template_tag ett
@@ -205,7 +205,7 @@ export async function readEntryTemplates({ driver }: SectionRead): Promise<Archi
     tags: tagsByTemplate.get(r.id) ?? [],
     dims: Object.fromEntries(dimsByTemplate.get(r.id) ?? []),
     noteScaffold: r.note_scaffold,
-    presentationId: r.presentation_id,
+    presentationId: r.presentation_uuid,
     builtIn: r.key !== null,
     hidden: bool(r.hidden),
     updatedAt: r.updated_at
@@ -260,14 +260,14 @@ export async function readEntries({ driver, photos, recordings, videos }: Sectio
     mood: number | null;
     note: string | null;
     starred: number;
-    presentation_id: string | null;
+    presentation_uuid: string | null;
     updated_at: number;
     trashed_at: number | null;
   }>(
     // Trashed entries travel with their Trash time (functional audit ticket
     // 48), so moving one to Trash, restoring it, or deleting it for good on
     // one device reaches the other through a Merge.
-    `SELECT id, uuid, epoch_day, timestamp, mood, note, starred, presentation_id, updated_at, trashed_at
+    `SELECT id, uuid, epoch_day, timestamp, mood, note, starred, presentation_uuid, updated_at, trashed_at
        FROM entry ORDER BY epoch_day, timestamp, id`
   );
 
@@ -303,7 +303,7 @@ export async function readEntries({ driver, photos, recordings, videos }: Sectio
     videos: videosByEntry.get(r.id) ?? [],
     bodyRegions: Object.fromEntries(bodyRegions.get(r.id) ?? []),
     starred: bool(r.starred),
-    presentationId: r.presentation_id,
+    presentationId: r.presentation_uuid,
     trashedAt: r.trashed_at,
     updatedAt: r.updated_at
   }));
@@ -318,12 +318,12 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
     description: string;
     template_key: string | null;
     roadmap_goal_key: string | null;
-    procedure_id: string | null;
-    tryout_id: string | null;
+    procedure_uuid: string | null;
+    tryout_uuid: string | null;
     celebrate: number;
     updated_at: number;
   }>(
-    'SELECT id, uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id, celebrate, updated_at FROM milestone ORDER BY epoch_day, id'
+    'SELECT id, uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_uuid, tryout_uuid, celebrate, updated_at FROM milestone ORDER BY epoch_day, id'
   );
   const byMilestone = groupBy(photos.filter((p) => p.milestone_id !== null), (p) => p.milestone_id!, toArchivePhoto);
   return rows.map((r) => ({
@@ -333,8 +333,8 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
     description: r.description,
     templateKey: r.template_key,
     roadmapGoalKey: r.roadmap_goal_key,
-    procedureId: r.procedure_id,
-    tryoutId: r.tryout_id,
+    procedureId: r.procedure_uuid,
+    tryoutId: r.tryout_uuid,
     ...(r.celebrate === 0 ? { celebrate: false as const } : {}),
     // A milestone shows one photo; a second row for the same one would
     // be a bug elsewhere, and the earliest wins rather than throwing -
@@ -360,9 +360,8 @@ export async function readChecklists({ driver }: SectionRead): Promise<ArchiveCh
     uuid: string;
     owner_kind: string | null;
     owner_uuid: string | null;
-    appointment_epoch_day: number | null;
     updated_at: number;
-  }>('SELECT id, uuid, owner_kind, owner_uuid, appointment_epoch_day, updated_at FROM checklist ORDER BY id');
+  }>('SELECT id, uuid, owner_kind, owner_uuid, updated_at FROM checklist ORDER BY id');
   const items = await driver.query<{
     checklist_id: number; uuid: string; content: string; checked: number; carried_forward: number; updated_at: number;
   }>('SELECT checklist_id, uuid, content, checked, carried_forward, updated_at FROM checklist_item ORDER BY order_index, id');
@@ -381,7 +380,9 @@ export async function readChecklists({ driver }: SectionRead): Promise<ArchiveCh
     id: c.uuid,
     ownerKind: c.owner_kind,
     ownerId: c.owner_uuid,
-    appointmentEpochDay: c.appointment_epoch_day,
+    // The retired prep date (schema v119 dropped its column): still on the
+    // wire as null so an older build reads the file it always read.
+    appointmentEpochDay: null,
     items: byChecklist.get(c.id) ?? [],
     updatedAt: c.updated_at
   }));

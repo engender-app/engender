@@ -192,7 +192,7 @@ export interface StatsArea {
       overlays the results. Days where the axis is null are absent, not
       zero - "said nothing" is not "said none".
 
-      `presentationId` filters by entry.presentation_id (ADR-0048, ticket
+      `presentationId` filters by entry.presentation_uuid (ADR-0048, ticket
       18): omitted or absent keeps every entry - the unfiltered view, byte
       for byte what this returned before the filter existed - `null` keeps
       only entries carrying no presentation, and a uuid keeps only that
@@ -492,9 +492,9 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         epoch_day: number;
         x: number;
         y: number;
-        presentation_id: string | null;
+        presentation_uuid: string | null;
       }>(
-        `SELECT e.uuid, e.epoch_day, xv.value AS x, yv.value AS y, e.presentation_id
+        `SELECT e.uuid, e.epoch_day, xv.value AS x, yv.value AS y, e.presentation_uuid
          FROM entry e
          JOIN entry_dimension_value xv ON xv.entry_id = e.id
          JOIN gender_dimension gx ON gx.id = xv.dimension_id AND gx.key = ?
@@ -512,7 +512,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         day: row.epoch_day,
         x: row.x,
         y: row.y,
-        presentationId: row.presentation_id
+        presentationId: row.presentation_uuid
       }));
     },
 
@@ -621,7 +621,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     async presentationDays(presentationId, fromEpochDay, toEpochDay) {
       const rows = await driver.query<{ day: number }>(
         `SELECT DISTINCT epoch_day AS day FROM entry
-         WHERE presentation_id = ? AND epoch_day BETWEEN ? AND ? AND trashed_at IS NULL
+         WHERE presentation_uuid = ? AND epoch_day BETWEEN ? AND ? AND trashed_at IS NULL
          ORDER BY epoch_day`,
         [presentationId, fromEpochDay, toEpochDay]
       );

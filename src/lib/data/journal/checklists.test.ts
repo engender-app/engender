@@ -235,20 +235,39 @@ test('recordDebriefEntry links an entry to the appointment it names', async () =
   assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), entryId);
 });
 
-test('recordDebriefEntry creates the standalone checklist when there is none yet', async () => {
-  /* The link is state about the standalone checklist, so it needs a row to
-     live in, and until ticket 58 the retired `setAppointmentDate` was what
-     created one. Nothing in the app reaches here without a prep question
-     already standing - the offer requires `itemCount > 0` - but the demo
-     seed does (journal-seed.ts), and a silent zero-row UPDATE is the kind
-     of thing that shows up as a persona whose debrief simply isn't there.
-     `setDebriefDismissed`, the other writer of a debrief column, has
-     created on first use all along. */
+test('recordDebriefEntry needs no checklist and makes none', async () => {
+  /* The link lives in appointment_debrief, keyed by the appointment, so it no
+     longer needs a standalone checklist to hang on. The demo seed writes one
+     into a journal with no prep list at all (journal-seed.ts), and the prep
+     list must not appear as a side effect. */
   const { journal } = await journalWithBuiltIns();
   const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
   await journal.checklists.recordDebriefEntry(entryId, 'appt-1');
+  await journal.checklists.setDebriefDismissed('appt-2');
 
   assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), entryId);
+  assert.equal((await journal.checklists.getDebriefState('appt-2')).dismissed, true);
+  assert.equal(await journal.checklists.getStandaloneChecklist(), undefined);
+});
+
+test('the debriefs of two appointments are kept apart, not overwritten by the later one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const first = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
+  const second = await journal.entries.upsertEntry({ epochDay: 19900, mood: 4 });
+  await journal.checklists.recordDebriefEntry(first, 'appt-1');
+  await journal.checklists.recordDebriefEntry(second, 'appt-2');
+  await journal.checklists.setDebriefDismissed('appt-1');
+
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), first);
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-2'), second);
+  assert.equal((await journal.checklists.getDebriefState('appt-1')).dismissed, true);
+  assert.equal((await journal.checklists.getDebriefState('appt-2')).dismissed, false);
+
+  // Linking again moves the link and keeps the dismissal.
+  const third = await journal.entries.upsertEntry({ epochDay: 19802, mood: 2 });
+  await journal.checklists.recordDebriefEntry(third, 'appt-1');
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), third);
+  assert.equal((await journal.checklists.getDebriefState('appt-1')).dismissed, true);
 });
 
 test('a dismissal or entry link recorded for one appointment does not answer for another', async () => {
