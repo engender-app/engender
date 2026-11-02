@@ -15,7 +15,8 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 
 async function openProfile() {
   const profile = await mkdtemp(join(tmpdir(), 'oldaddr-'));
-  const context = await launchPersistentBrowser(profile, { viewport: { width: 390, height: 844 } });
+  const context = await launchPersistentBrowser(profile, { viewport: { width: 390, height: 844 } })
+    .catch(async (error) => { await rm(profile, { recursive: true, force: true }); throw error; });
   return { page: await context.newPage(), close: async () => { await context.close(); await rm(profile, { recursive: true, force: true }); } };
 }
 
