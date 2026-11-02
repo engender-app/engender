@@ -8,7 +8,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { runMigrations } from './migration-runner.ts';
-import { migrations } from './migrations.ts';
+import { preSquashChain } from './test-support/pre-squash-chain.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 import { dumpSchema } from './test-support/schema-dump.ts';
@@ -26,7 +26,7 @@ const triggerNames = (db: Db) =>
 /** A journal on version 118 holding one of everything the migration touches. */
 async function journalOn118(): Promise<Db> {
   const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 118));
+  await runMigrations(db, noopFileOps(), preSquashChain.filter((m) => m.version <= 118));
   const run = (sql: string, ...params: Array<string | number | null>) => db.raw.prepare(sql).run(...params);
   run("INSERT INTO presentation (uuid, name, role_index, updated_at) VALUES ('pres-1', 'Fem', 0, 1)");
   run(
@@ -72,7 +72,7 @@ async function journalOn118(): Promise<Db> {
 
 async function migrated(): Promise<Db> {
   const db = await journalOn118();
-  await runMigrations(db, noopFileOps(), migrations);
+  await runMigrations(db, noopFileOps(), preSquashChain);
   return db;
 }
 

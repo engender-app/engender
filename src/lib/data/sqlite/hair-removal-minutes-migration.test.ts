@@ -4,21 +4,21 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { runMigrations } from './migration-runner.ts';
-import { migrations } from './migrations.ts';
+import { preSquashChain } from './test-support/pre-squash-chain.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
 test('version 107 adds minutes and leaves existing sessions untouched', async () => {
   const db = makeNodeSqliteDb();
   const fileOps = noopFileOps();
-  await runMigrations(db, fileOps, migrations.filter((m) => m.version <= 106));
+  await runMigrations(db, fileOps, preSquashChain.filter((m) => m.version <= 106));
   db.raw
     .prepare(
       "INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, cost, provider, updated_at) VALUES ('s1', 100, 'chin', 'laser', 3, '200 PLN', 'Clinic', 1000)"
     )
     .run();
 
-  await runMigrations(db, fileOps, migrations.filter((m) => m.version <= 107));
+  await runMigrations(db, fileOps, preSquashChain.filter((m) => m.version <= 107));
 
   assert.ok((await db.getUserVersion()) >= 107);
   const row = db.raw.prepare('SELECT * FROM hair_removal_session').get() as Record<string, unknown>;

@@ -7,7 +7,7 @@ import { startOfDayTimestamp } from '../epochDay.ts';
 import { readCare } from '../careReads.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { runMigrations } from '../sqlite/migration-runner.ts';
-import { migrations } from '../sqlite/migrations.ts';
+import { preSquashChain } from '../sqlite/test-support/pre-squash-chain.ts';
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
 import { migratedDb, noopFileOps } from '../sqlite/test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from '../sqlite/test-support/node-sqlite-driver.ts';
@@ -82,7 +82,7 @@ for (const mode of ['merge', 'replace'] as const) {
     const source = openJournal(sourceDb, fakeFileStore());
     const target = openJournal(targetDb, fakeFileStore());
     try {
-      await runMigrations(sourceDb, noopFileOps(), migrations.filter((migration) => migration.version <= 90));
+      await runMigrations(sourceDb, noopFileOps(), preSquashChain.filter((migration) => migration.version <= 90));
       // The snapshot below reads with this build's sections. The legacy shape
       // under test is the stock table's, so the columns later migrations add
       // to other archived tables are added here (v93: drug_class; v100: the
@@ -215,7 +215,7 @@ for (const version of [88, 90]) {
   test(`schema ${version} stock duplicates keep the latest complete choice and its reminder on upgrade`, async () => {
     const db = makeNodeSqliteDb();
     try {
-      await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= version));
+      await runMigrations(db, noopFileOps(), preSquashChain.filter((migration) => migration.version <= version));
       for (const [uuid, drug, quantity, updated] of [
         ['older', 'Estradiol', 7, 100], ['winner', 'estradiol', 59, 200],
         ['tie-old', 'ŻEL', 4, 300], ['tie-new', 'żel', 9, 300]
@@ -229,7 +229,7 @@ for (const version of [88, 90]) {
       }
       await db.run(`INSERT INTO reminder(uuid, title, type, time, epoch_day, updated_at)
         VALUES ('manual', 'A manual reminder', 'med', '09:00', 20001, 400)`);
-      await runMigrations(db, noopFileOps(), migrations);
+      await runMigrations(db, noopFileOps(), preSquashChain);
       assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
       assert.deepEqual(await db.query(`SELECT uuid, drug, drug_key, quantity, opened_epoch_day,
         in_use_window_days, lead_time_days, doses_per_unit, reminder_ever_created, reminder_dismissed
@@ -244,7 +244,7 @@ for (const version of [88, 90]) {
         { uuid: 'reminder-tie-new', auto_source: 'stock:żel' }, { uuid: 'manual', auto_source: null }
       ]);
       assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
-      await runMigrations(db, noopFileOps(), migrations);
+      await runMigrations(db, noopFileOps(), preSquashChain);
       assert.equal((await db.query('SELECT uuid FROM medication_stock')).length, 2);
       await assert.rejects(db.run(`INSERT INTO medication_stock(uuid, drug, drug_key, quantity, unit, recorded_epoch_day, updated_at)
         VALUES ('duplicate', 'ESTRADIOL', 'estradiol', 1, 'pills', 20000, 500)`), /UNIQUE constraint/);
@@ -255,14 +255,14 @@ for (const version of [88, 90]) {
 test('a failed identity repair rolls back stock, reminders and schema, then a retry succeeds', async () => {
   const db = makeNodeSqliteDb();
   try {
-    await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 90));
+    await runMigrations(db, noopFileOps(), preSquashChain.filter((migration) => migration.version <= 90));
     await db.run(`INSERT INTO medication_stock(uuid, drug, quantity, unit, recorded_epoch_day, updated_at)
       VALUES ('first', 'Estradiol', 7, 'pills', 20000, 100), ('last', 'estradiol', 59, 'pills', 20001, 200)`);
     await db.run(`INSERT INTO reminder(uuid, title, type, time, epoch_day, auto_source, updated_at)
       VALUES ('first-reminder', 'Estradiol', 'med', '09:00', 20001, 'stock:Estradiol', 100)`);
     const stock = await db.query('SELECT * FROM medication_stock ORDER BY id');
     const reminders = await db.query('SELECT * FROM reminder ORDER BY id');
-    const interrupted = migrations.map((migration) => migration.version !== 91 ? migration : {
+    const interrupted = preSquashChain.map((migration) => migration.version !== 91 ? migration : {
       ...migration,
       apply: async (scope: Parameters<NonNullable<typeof migration.apply>>[0]) => {
         await migration.apply!(scope);
@@ -274,7 +274,7 @@ test('a failed identity repair rolls back stock, reminders and schema, then a re
     assert.deepEqual(await db.query('SELECT * FROM medication_stock ORDER BY id'), stock);
     assert.deepEqual(await db.query('SELECT * FROM reminder ORDER BY id'), reminders);
     assert.equal((await db.query<{ name: string }>('PRAGMA table_info(medication_stock)')).some((row) => row.name === 'drug_key'), false);
-    await runMigrations(db, noopFileOps(), migrations);
+    await runMigrations(db, noopFileOps(), preSquashChain);
     assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
     assert.deepEqual(await db.query('SELECT uuid, quantity FROM medication_stock'), [{ uuid: 'last', quantity: 59 }]);
     assert.deepEqual(await db.query('SELECT uuid FROM reminder'), []);

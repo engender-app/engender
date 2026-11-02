@@ -3,6 +3,7 @@ import {
   Fts5UnavailableError,
   InterruptedRestoreError,
   JournalBelowBaselineError,
+  JournalBetweenStepsError,
   SchemaTooNewError
 } from '../data/sqlite/migration-runner.ts';
 import { interpretAuthentication } from '../lock/biometric-outcome.ts';
@@ -362,6 +363,17 @@ test('a journal from below the baseline names itself and asks for no restore', (
 test('a below-baseline refusal that arrives as text is still named', () => {
   /* A bridge or a worker hands over the message, not the class. */
   const text = new JournalBelowBaselineError(50, 78).message;
+  expect(walk(started('web'), { type: 'boot-failed', message: text }).machine.boot.failure).toBe('below-baseline');
+});
+
+/* Pre-publish ticket 01: a development journal between the baseline and the
+   squashed step gets the same screen, by type and as text. */
+test('a journal between the baseline and the squashed step is named like one below the baseline', () => {
+  const { machine, effects } = failedOpen(new JournalBetweenStepsError(100, 88));
+  expect(machine.boot).toMatchObject({ status: 'error', failure: 'below-baseline', recoverable: false });
+  expect(effects).toEqual([]);
+
+  const text = new JournalBetweenStepsError(100, 88).message;
   expect(walk(started('web'), { type: 'boot-failed', message: text }).machine.boot.failure).toBe('below-baseline');
 });
 

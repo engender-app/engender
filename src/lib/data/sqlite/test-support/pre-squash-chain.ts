@@ -1,0 +1,9 @@
+/* The chain as development builds ran it before pre-publish ticket 01: the
+   v88 baseline, then migrations 89 to 119 one transaction each. No release
+   runs it. Tests that drive one of those steps from the state before it, or
+   build a development journal at a version between 88 and 119, use this. */
+
+import type { Migration } from '../migration-runner.ts';
+import { migrations, POST_RC1_STEPS } from '../migrations.ts';
+
+export const preSquashChain: Migration[] = [migrations[0], ...POST_RC1_STEPS];

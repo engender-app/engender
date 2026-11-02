@@ -92,6 +92,23 @@ export class JournalBelowBaselineError extends Error {
   }
 }
 
+/** Thrown when the journal sits between two migrations of the chain: a
+    development or test build ran steps one at a time that a release runs as
+    one. Pre-publish ticket 01 folded 89 to 119 into the step at 119, so a
+    journal at 89 to 118 has no step that starts from it, and running the
+    step over its tables would fail halfway. It is refused before anything is
+    copied or written, and it reaches the same failure screen as a journal
+    below the baseline - the same development-build sentence, the same way
+    out through an archive - which is why it is one of those rather than a
+    sibling: every place that names that failure names this one too. */
+export class JournalBetweenStepsError extends JournalBelowBaselineError {
+  constructor(foundVersion: number, baselineVersion: number) {
+    super(foundVersion, baselineVersion);
+    this.name = 'JournalBetweenStepsError';
+    this.message = `Database schema version ${foundVersion} lies between two steps of this build's migrations (baseline ${baselineVersion}). It comes from a development build and cannot be migrated.`;
+  }
+}
+
 /** Thrown when the live database has no schema at all while a readable copy is
     sitting beside it (ticket 04) - the window inside restorePreMigrationCopy,
     where the database has been unlinked and the copy is being written over it.
@@ -187,6 +204,13 @@ export async function runMigrations(
   const baseline = chain[0];
   if (current > 0 && baseline?.baseline && current < baseline.version) {
     throw new JournalBelowBaselineError(current, baseline.version);
+  }
+
+  /* A journal above the baseline at a version no migration carries: a
+     development build's, from a step the chain has since folded into a later
+     one. Nothing in the chain starts from it. */
+  if (current > 0 && baseline?.baseline && current > baseline.version && !chain.some((m) => m.version === current)) {
+    throw new JournalBetweenStepsError(current, baseline.version);
   }
 
   const pending = chain.filter((m) => m.version > current);
