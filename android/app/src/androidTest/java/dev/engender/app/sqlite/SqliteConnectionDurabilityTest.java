@@ -17,16 +17,20 @@ import org.junit.runner.RunWith;
 
 /**
  * A committed transaction has to survive a power cut that follows the
- * commit's return. In rollback-journal mode only {@code synchronous = FULL}
- * promises that; NORMAL leaves the last journal and database writes to the
- * kernel's writeback. Carpet 09 saw a power cut right after
- * {@code commitTransaction} resolved undo that commit, so the setting is
- * asserted on the connection the bridge really opens rather than assumed.
+ * commit's return. In rollback-journal mode the commit point is the journal
+ * file's deletion, and only {@code synchronous = EXTRA} syncs the directory
+ * after that delete: NORMAL leaves the journal and database writes to the
+ * kernel, and FULL still leaves the unlink unsynced, so a cut right after
+ * COMMIT can bring the journal back and roll the commit undone. Carpet 09
+ * saw that after {@code commitTransaction} resolved, and the emulator power
+ * cut reproduces it under NORMAL (8 of 8) and FULL (8 of 8) and not under
+ * EXTRA. The setting is asserted on the connection the bridge really opens
+ * rather than assumed.
  */
 @RunWith(AndroidJUnit4.class)
 public class SqliteConnectionDurabilityTest {
 
-    private static final int FULL = 2;
+    private static final int EXTRA = 3;
     private static final String NAME = "durability-test.db";
     private static final String RAW_KEY =
         "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
@@ -54,31 +58,31 @@ public class SqliteConnectionDurabilityTest {
     }
 
     @Test
-    public void anEncryptedJournalOpensFull() throws Exception {
+    public void anEncryptedJournalOpensExtra() throws Exception {
         connection.open(context(), NAME, RAW_KEY);
-        assertEquals(FULL, synchronous());
+        assertEquals(EXTRA, synchronous());
     }
 
     @Test
-    public void aPlainDatabaseOpensFull() throws Exception {
+    public void aPlainDatabaseOpensExtra() throws Exception {
         connection.open(context(), NAME, null);
-        assertEquals(FULL, synchronous());
+        assertEquals(EXTRA, synchronous());
     }
 
     @Test
-    public void reopeningTheSameDatabaseKeepsFull() throws Exception {
+    public void reopeningTheSameDatabaseKeepsExtra() throws Exception {
         connection.open(context(), NAME, RAW_KEY);
         connection.open(context(), NAME, RAW_KEY);
-        assertEquals(FULL, synchronous());
+        assertEquals(EXTRA, synchronous());
     }
 
     @Test
-    public void staysFullAfterATransactionAndAStatementThatNeedsTheConfigPass() throws Exception {
+    public void staysExtraAfterATransactionAndAStatementThatNeedsTheConfigPass() throws Exception {
         connection.open(context(), NAME, RAW_KEY);
         connection.exec("CREATE TABLE t (a INTEGER)");
         connection.transactionStep(SqliteConnection.TransactionStep.BEGIN);
         connection.exec("INSERT INTO t VALUES (1)");
         connection.transactionStep(SqliteConnection.TransactionStep.COMMIT);
-        assertEquals(FULL, synchronous());
+        assertEquals(EXTRA, synchronous());
     }
 }

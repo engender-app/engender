@@ -96,12 +96,16 @@ final class SqliteConnection {
         database.setForeignKeyConstraintsEnabled(true);
         /* The connection opens at NORMAL, and in rollback-journal mode that
            lets a power cut right after a commit returned undo it (carpet 09:
-           an upgrade and a folder-sync Merge reopened as before). FULL syncs
-           the journal and the database before COMMIT returns. Set after the
-           configuration pass, which would overwrite it in the hook. This is
-           the only writable connection; the read-only backup check never
+           an upgrade and a folder-sync Merge reopened as before). FULL is not
+           enough either: the commit point is the journal's deletion, and only
+           EXTRA syncs the directory after that unlink. Measured on the
+           emulator with a power cut right after each reported commit, the
+           last commit was lost 8 of 8 under NORMAL and 8 of 8 under FULL, and
+           kept 8 of 8 under EXTRA. Set after the configuration pass, which
+           would overwrite it in the hook. This is the only writable
+           connection; the read-only check of the pre-migration copy never
            commits. */
-        database.execSQL("PRAGMA synchronous = FULL;");
+        database.execSQL("PRAGMA synchronous = EXTRA;");
     }
 
     /**
