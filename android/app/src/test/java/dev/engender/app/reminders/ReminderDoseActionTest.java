@@ -110,4 +110,33 @@ public class ReminderDoseActionTest {
         assertEquals(1, kept.length());
         assertEquals("a2", kept.getJSONObject(0).getString("id"));
     }
+
+    @Test
+    public void aTapKeepsTheDayTheNotificationRangForAndAnOlderOneKeepsNone() throws Exception {
+        AtomicReference<JSONObject> stored = new AtomicReference<>(payload());
+        ReminderScheduler.recordDoseAction(stored::get, stored::set, "a1", "med", "taken", 1L, 2L, null, 20775L);
+        ReminderScheduler.recordDoseAction(stored::get, stored::set, "a2", "med", "taken", 3L, 4L, null);
+
+        JSONArray kept = stored.get().getJSONArray(ReminderScheduler.PENDING_DOSE_ACTIONS);
+        assertEquals(20775L, kept.getJSONObject(0).getLong("slotEpochDay"));
+        assertFalse(kept.getJSONObject(1).has("slotEpochDay"));
+    }
+
+    @Test
+    public void aDeliveredReminderNamesTheDayItRangForWhateverItsRecurrence() throws Exception {
+        for (String recurrence : new String[] { "DAILY", "EVERY_N_DAYS" }) {
+            JSONObject row = reminder("med", "Estradiol valerate").put("time", "22:30").put("recurrence", recurrence);
+            if (recurrence.equals("EVERY_N_DAYS")) row.put("interval", 3).put("anchorEpochDay", 20775L - 6);
+            JSONObject payload = new JSONObject().put("reminders", new JSONArray().put(row));
+            ZonedDateTime ring = ZonedDateTime.of(2026, 11, 18, 22, 30, 0, 0, ZONE);
+            ReminderScheduler.saveAndSchedule(payload, ring.minusMinutes(1), () -> null, saved -> {}, old -> {}, saved -> {});
+            assertNull(ReminderScheduler.slotDayOf(row));
+
+            AtomicReference<Long> posted = new AtomicReference<>();
+            ReminderScheduler.deliverReminder(payload, row, ring, saved -> {},
+                delivered -> posted.set(ReminderScheduler.slotDayOf(delivered)), delivered -> {});
+
+            assertEquals(recurrence, Long.valueOf(20775L), posted.get());
+        }
+    }
 }

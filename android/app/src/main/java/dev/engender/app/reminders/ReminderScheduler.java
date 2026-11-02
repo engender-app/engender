@@ -28,6 +28,10 @@ public final class ReminderScheduler {
     static final String BOOT_CATCH_UP = "bootCatchUp";
     static final String PENDING_DAY = "pendingDay";
     static final String PENDING_ZONE = "pendingZone";
+    /** The local calendar day (epoch day) of the occurrence last delivered, for
+        every recurrence. Taken and Skip carry it so the app answers the day the
+        notification rang for, in whatever zone it opens in. */
+    static final String POSTED_DAY = "postedDay";
     static final String DELIVERED_DAY = "deliveredDay";
     static final String DELIVERED_ZONE = "deliveredZone";
     static final String DELIVERED_AT = "deliveredAt";
@@ -42,6 +46,7 @@ public final class ReminderScheduler {
     static final String EXTRA_DOSE_ACTION = "doseAction";
     static final String EXTRA_POSTED_AT = "postedAt";
     static final String EXTRA_RULE = "rule";
+    static final String EXTRA_SLOT_DAY = "slotDay";
 
     /** Taken and Skip taps on a medication reminder's notification
         (functional audit ticket 20), kept in the encrypted payload until
@@ -219,6 +224,7 @@ public final class ReminderScheduler {
     }
 
     private static void recordDelivery(JSONObject reminder, ZonedDateTime now) throws Exception {
+        reminder.put(POSTED_DAY, reminder.optLong(PENDING_DAY, now.toLocalDate().toEpochDay()));
         if (!"DAILY".equals(reminder.optString("recurrence"))) return;
         reminder.put(DELIVERED_DAY, reminder.optLong(PENDING_DAY, now.toLocalDate().toEpochDay()));
         reminder.put(DELIVERED_ZONE, reminder.optString(PENDING_ZONE, now.getZone().getId()));
@@ -252,6 +258,15 @@ public final class ReminderScheduler {
     static synchronized boolean recordDoseAction(PayloadReader reader, PayloadWriter writer, String id,
                                                  String reminderId, String action, long postedAt, long at,
                                                  String rule) throws Exception {
+        return recordDoseAction(reader, writer, id, reminderId, action, postedAt, at, rule, null);
+    }
+
+    /** `slotDay` is the epoch day the notification rang for (POSTED_DAY), or
+        null for a tap whose notification was posted by a build that did not
+        carry it. */
+    static synchronized boolean recordDoseAction(PayloadReader reader, PayloadWriter writer, String id,
+                                                 String reminderId, String action, long postedAt, long at,
+                                                 String rule, Long slotDay) throws Exception {
         if (!"taken".equals(action) && !"skipped".equals(action)) return false;
         JSONObject payload = reader.read();
         JSONObject reminder = findReminder(payload, reminderId);
@@ -264,6 +279,7 @@ public final class ReminderScheduler {
             .put("action", action).put("postedAt", postedAt).put("at", at);
         JSONObject posted = parseRule(rule);
         if (posted != null) kept.put("rule", posted);
+        if (slotDay != null) kept.put("slotEpochDay", slotDay.longValue());
         actions.put(kept);
         payload.put(PENDING_DOSE_ACTIONS, actions);
         writer.write(payload);
@@ -278,9 +294,9 @@ public final class ReminderScheduler {
     }
 
     static synchronized boolean recordDoseAction(Context context, String id, String reminderId, String action,
-                                                 long postedAt, long at, String rule) throws Exception {
+                                                 long postedAt, long at, String rule, Long slotDay) throws Exception {
         return recordDoseAction(() -> loadPayload(context), saved -> ReminderPayloadStore.write(context, saved),
-            id, reminderId, action, postedAt, at, rule);
+            id, reminderId, action, postedAt, at, rule, slotDay);
     }
 
     /** The reminder's rule as the notification was posted with it, so a rule
@@ -331,7 +347,13 @@ public final class ReminderScheduler {
         clearDoseActions(() -> loadPayload(context), saved -> ReminderPayloadStore.write(context, saved), ids);
     }
 
-    static PendingIntent doseActionIntent(Context context, String reminderId, String action, long postedAt, String rule) {
+    /** The day the notification rang for, or null when the row has none. */
+    static Long slotDayOf(JSONObject reminder) {
+        return reminder.has(POSTED_DAY) ? Long.valueOf(reminder.optLong(POSTED_DAY)) : null;
+    }
+
+    static PendingIntent doseActionIntent(Context context, String reminderId, String action, long postedAt, String rule,
+                                          Long slotDay) {
         Intent intent = new Intent(context, ReminderAlarmReceiver.class)
             .setAction("dev.engender.app.DOSE_ACTION")
             .setData(Uri.parse("engender://dose-action/" + Uri.encode(reminderId) + "/" + action))
@@ -340,6 +362,7 @@ public final class ReminderScheduler {
             .putExtra(EXTRA_DOSE_ACTION, action)
             .putExtra(EXTRA_POSTED_AT, postedAt)
             .putExtra(EXTRA_RULE, rule);
+        if (slotDay != null) intent.putExtra(EXTRA_SLOT_DAY, slotDay.longValue());
         return PendingIntent.getBroadcast(context, REQUEST_DOSE_ACTION, intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
