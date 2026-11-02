@@ -13,7 +13,7 @@
    writes nothing. That is also what makes a replay harmless, if the app
    dies between writing a dose and clearing the action that wrote it. */
 
-import { epochDayFromTimestamp } from '../data/epochDay';
+import { epochDayFromTimestamp, timestampAtLocalTime } from '../data/epochDay';
 import { matchDoseRoute, type RouteOption } from '../data/doseSchedule';
 import type { Journal } from '../data/journal/journal';
 import { activeEpisodesAt, sameDrug } from '../data/regimenEpisode';
@@ -37,6 +37,12 @@ export interface PendingDoseAction {
       Absent only if the native side could not read one, and then the
       reminder's current rule stands in. */
   rule?: ReminderRule;
+  /** The calendar day the notification rang for, in the zone it rang in
+      (an epoch day). The rule has no zone, so without this a journal opened
+      in another zone would work the slot out against its own wall clock and
+      could pick the day before. Absent on an action kept by an older build,
+      and then the slot is recomputed from the rule as before. */
+  slotEpochDay?: number;
 }
 
 export type DoseActionOutcome = {
@@ -71,9 +77,17 @@ export async function applyPendingDoseAction(
 ): Promise<DoseActionOutcome> {
   const reminder = (await journal.reminders.getReminders()).find((r) => r.id === action.reminderId);
   const rule = action.rule ?? reminder;
-  const fired = rule ? previousOccurrence(rule, new Date(action.postedAt)) : null;
-  const firedAt = fired?.getTime() ?? action.postedAt;
-  const slotEpochDay = epochDayFromTimestamp(firedAt);
+  const carriedDay = Number.isInteger(action.slotEpochDay) ? action.slotEpochDay! : null;
+  let firedAt: number;
+  if (carriedDay !== null) {
+    /* The ringing day is the native side's record. The rule's time on that
+       day, read in this zone, keeps the dose on it. */
+    firedAt = rule ? timestampAtLocalTime(carriedDay, rule.time) : timestampAtLocalTime(carriedDay, '12:00');
+  } else {
+    const fired = rule ? previousOccurrence(rule, new Date(action.postedAt)) : null;
+    firedAt = fired?.getTime() ?? action.postedAt;
+  }
+  const slotEpochDay = carriedDay ?? epochDayFromTimestamp(firedAt);
   /* The tap is when the dose was taken, unless it came on a later day: then
      the slot's own day keeps it, at the time the reminder was set for. */
   const timestamp = epochDayFromTimestamp(action.at) === slotEpochDay ? action.at : firedAt;

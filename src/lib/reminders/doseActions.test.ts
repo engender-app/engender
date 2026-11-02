@@ -2,7 +2,7 @@
    reminder write into the journal once it is unlocked, and where tapping
    the notification itself lands. */
 
-import { test } from 'vitest';
+import { afterAll, test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from '../data/journal/test-support.ts';
 import { epochDayFromTimestamp, timestampAtLocalTime } from '../data/epochDay.ts';
@@ -175,4 +175,59 @@ test('tapping the notification opens the dose log on that drug with the add form
   assert.equal(await resolveDoseReminderRoute('/care/doses?add=1&reminder=gone', journal, at(DAY, '20:01')), '/care/doses?add=1');
   // Every other route passes through untouched.
   assert.equal(await resolveDoseReminderRoute('/settings/reminders/abc', journal, at(DAY, '20:01')), '/settings/reminders/abc');
+});
+
+/* A notification rings in one zone and the journal opens in another (a flight
+   in between, or a phone zone change). The tap answers the slot the person
+   saw ring, the day the native side recorded, whatever zone applies it. */
+const ringedIn = process.env.TZ;
+afterAll(() => {
+  if (ringedIn === undefined) delete process.env.TZ;
+  else process.env.TZ = ringedIn;
+});
+
+const RING_DAY = 20775; // 2026-11-18, the calendar day in Warsaw when the reminder rang
+const ZONES_AFTER_A_FLIGHT = ['America/Los_Angeles', 'UTC', 'Australia/Lord_Howe', 'Asia/Kolkata', 'Pacific/Chatham', 'Pacific/Kiritimati'];
+
+for (const ring of ['09:00', '22:30']) {
+  for (const zone of ZONES_AFTER_A_FLIGHT) {
+    for (const yesterdayTaken of [false, true]) {
+      test(`Taken after a zone change (${ring} Warsaw ring, applied in ${zone}, yesterday ${yesterdayTaken ? 'taken' : 'empty'}) lands on the ringing day, once`, async () => {
+        process.env.TZ = zone;
+        const { journal, reminderId } = await onRegimen();
+        const [hour, minute] = ring.split(':').map(Number);
+        const rang = Date.UTC(2026, 10, 18, hour - 1, minute); // Warsaw is UTC+1 in November
+        if (yesterdayTaken) {
+          await journal.doses.upsertDose({
+            timestamp: at(RING_DAY - 1, ring), route: 'sublingual', dose: 2, doseUnit: 'mg', status: 'taken',
+            drug: 'Estradiol valerate', source: 'person'
+          });
+        }
+        const tap: PendingDoseAction = {
+          ...action(reminderId, 'taken', rang, rang + 30e3),
+          rule: { time: ring, recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null },
+          slotEpochDay: RING_DAY
+        };
+        const outcome = await applyPendingDoseAction(journal, tap, []);
+        assert.equal(outcome.result, 'logged');
+        assert.equal(outcome.slotEpochDay, RING_DAY);
+        assert.equal((await dosesOn(journal, RING_DAY)).filter((d) => d.status === 'taken').length, 1);
+        assert.equal((await applyPendingDoseAction(journal, tap, [])).result, 'already');
+        assert.equal((await dosesOn(journal, RING_DAY)).filter((d) => d.status === 'taken').length, 1);
+      });
+    }
+  }
+}
+
+test('a pending action written before the slot day was carried still applies by recomputing it', async () => {
+  process.env.TZ = 'Europe/Warsaw';
+  const { journal, reminderId } = await onRegimen();
+  const posted = at(DAY, '20:00');
+  const outcome = await applyPendingDoseAction(
+    journal,
+    { ...action(reminderId, 'taken', posted, posted + 4 * 60e3), rule: { time: '20:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null } },
+    []
+  );
+  assert.equal(outcome.result, 'logged');
+  assert.equal(outcome.slotEpochDay, DAY);
 });
