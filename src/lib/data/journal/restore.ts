@@ -299,6 +299,13 @@ async function restoreWithin(
   let unpublished = staged;
   let added: Record<string, number> = {};
   try {
+    /* Due before the first file lands, not in the finally below: a process
+       killed or a power cut between the file writes and the transaction
+       never reaches the finally, and the staged files would stay
+       unreferenced until the next Merge or the weekly stamp (carpet 09:
+       47 of them after every cut). The stamp is what boot housekeeping
+       reads on the next open. */
+    markOrphanSweepDue();
     await writeArchiveFiles(files, stagedFiles(), contents.fileCount ?? 0, onProgress);
     // Once rows can own these files, a rejection cannot prove rollback.
     // Keep replacements until ownership is known or the post-restore sweep runs.
@@ -335,7 +342,6 @@ async function restoreWithin(
   } finally {
     // Cleanup cannot turn a committed restore into a reported failure.
     await Promise.allSettled([...unpublished].map(async (name) => files.remove(name)));
-    markOrphanSweepDue();
     const sweep = () => sweepOrphanPhotos(driver, files).catch((error) => {
       console.warn('post-restore orphan sweep failed', error);
     });
