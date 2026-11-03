@@ -100,11 +100,11 @@ final class SqliteConnection {
            enough either: the commit point is the journal's deletion, and only
            EXTRA syncs the directory after that unlink. Measured on the
            emulator with a power cut right after each reported commit, the
-           last commit was lost 8 of 8 under NORMAL and 8 of 8 under FULL, and
-           kept 8 of 8 under EXTRA. Set after the configuration pass, which
-           would overwrite it in the hook. This is the only writable
-           connection; the read-only check of the pre-migration copy never
-           commits. */
+           last commit was lost in 19 of 20 cuts under NORMAL and 18 of 22
+           under FULL, and kept in 13 of 13 under EXTRA. Set after the
+           configuration pass, which would overwrite it in the hook. This is
+           the only writable connection; the read-only check of the
+           pre-migration copy never commits. */
         database.execSQL("PRAGMA synchronous = EXTRA;");
     }
 
