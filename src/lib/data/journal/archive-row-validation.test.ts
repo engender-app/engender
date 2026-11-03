@@ -13,6 +13,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { journalPath, goldenContents, countsOf, CHEAP_KDF, GOLDEN_PASSWORD, oneShot } from './golden-archive-fixture.ts';
 import { openJournal } from './journal.ts';
 import { restoreArchive, verifyArchive } from './restore.ts';
+import { assertArchiveRows } from './archiveRowValidation.ts';
 
 const golden = (): ArchiveJournal => JSON.parse(readFileSync(journalPath, 'utf8'));
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -334,3 +335,53 @@ for (const mode of ['merge', 'replace'] as const) {
     }
   });
 }
+
+/* Re-check carpet 15, row 13 after the Stryker rerun: the row-shape checks
+   still let single-condition mutants through, because each shape was only
+   ever handed rows its own refusal caught. Each case below changes one
+   field of a golden row: the edges a check allows must pass, and each
+   other shape must be refused, so no one condition can be dropped. */
+test('each row-shape check accepts its edges and refuses each half-shape', () => {
+  type Row = Record<string, unknown>;
+  const base = golden() as unknown as Record<string, Row[]>;
+  const row = (section: string, index: number, change: Row): Row => ({ ...base[section][index], ...change });
+  const accepts: [string, string, Row][] = [
+    ['side effect resolved the day it began', 'sideEffects', row('sideEffects', 0, { resolvedEpochDay: 20000 })],
+    ['side effect not resolved', 'sideEffects', row('sideEffects', 0, { resolvedEpochDay: null })],
+    ['dose event in the first slot of day 0', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: 'episode', autoLogEpochDay: 0, autoLogIndex: 0 })],
+    ['document with no target', 'documents', row('documents', 0, { targetKind: null, targetId: null })],
+    ['checklist with no owner', 'checklists', row('checklists', 0, { ownerKind: null, ownerId: null })]
+  ];
+  for (const [what, section, value] of accepts) {
+    assert.doesNotThrow(() => assertArchiveRows(section as keyof ArchiveJournal, [value]), what);
+  }
+  const [everyN, daily, oneOff] = [0, 1, 2];
+  const refuses: [string, string, Row][] = [
+    ['one-off with no day', 'reminders', row('reminders', oneOff, { epochDay: null })],
+    ['one-off with an interval', 'reminders', row('reminders', oneOff, { interval: 7 })],
+    ['one-off with an anchor', 'reminders', row('reminders', oneOff, { anchorEpochDay: 20000 })],
+    ['every-N with no interval', 'reminders', row('reminders', everyN, { interval: null })],
+    ['every-N with a day', 'reminders', row('reminders', everyN, { epochDay: 20000 })],
+    ['daily with an interval', 'reminders', row('reminders', daily, { interval: 7 })],
+    ['daily with an anchor', 'reminders', row('reminders', daily, { anchorEpochDay: 20000 })],
+    ['daily with a day', 'reminders', row('reminders', daily, { epochDay: 20000 })],
+    ['slot with a blank episode', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: ' ', autoLogEpochDay: 1, autoLogIndex: 0 })],
+    ['slot on a fractional day', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: 'e', autoLogEpochDay: 1.5, autoLogIndex: 0 })],
+    ['slot with a fractional index', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: 'e', autoLogEpochDay: 1, autoLogIndex: 0.5 })],
+    ['slot with only an episode', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: 'e', autoLogEpochDay: null, autoLogIndex: null })],
+    ['slot with only a day', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: null, autoLogEpochDay: 1, autoLogIndex: null })],
+    ['slot with only an index', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: 0 })],
+    ['document with a target id and no kind', 'documents', row('documents', 0, { targetKind: null })],
+    ['checklist with an owner id and no kind', 'checklists', row('checklists', 0, { ownerKind: null })]
+  ];
+  for (const [what, section, value] of refuses) {
+    assert.throws(() => assertArchiveRows(section as keyof ArchiveJournal, [value]), CorruptArchiveError, what);
+  }
+});
