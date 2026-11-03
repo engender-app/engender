@@ -35,6 +35,7 @@ import type {
 import { deviceDefaultCurrency, parseLegacyCostText } from '../cost';
 import { appendLegacyCost } from '../sqlite/cost-migration';
 import type { SqliteDriver } from '../sqlite/driver';
+import { CorruptArchiveError } from '../archive/wire';
 import type { RestoreMode } from './restore';
 import { mintUuid, now, rowidWhere } from './support';
 import { columnsOf, identityFieldOf, type FlatTable } from './archiveTable';
@@ -549,7 +550,9 @@ export async function applyBodyRegions(restoring: Restoring): Promise<void> {
 /** Rowids for names a column of `table` holds, for the names this device
     still has; a name it has deleted (archiveMerge.ts) is left out rather
     than failing the import, and any other name it cannot resolve throws,
-    the archive being unreadable then. */
+    the archive being unreadable then. Its own rows have passed
+    assertArchiveReferences, so that takes an archive whose own deletion
+    record kept out the group its tags hang from (re-check carpet 11, F3). */
 async function resolveNames(
   driver: SqliteDriver,
   table: 'gender_dimension' | 'tag',
@@ -575,7 +578,7 @@ async function resolveNames(
   }
   const deleted = await presentIds(driver, `SELECT row_key AS id FROM deletion WHERE tbl = '${table}'`);
   for (const name of names) {
-    if (!ids.has(name) && !deleted.has(name)) throw new Error(`unknown ${what}: ${name}`);
+    if (!ids.has(name) && !deleted.has(name)) throw new CorruptArchiveError(`the archive's ${what} reference is not readable`);
   }
   return ids;
 }

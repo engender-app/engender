@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import type { ArchiveJournal } from '../archive/payload.ts';
+import { CorruptArchiveError } from '../archive/wire.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
@@ -73,4 +74,21 @@ test('merging twice an archive that deletes a built-in tag group leaves every to
 
   assert.deepEqual(await deletions(b.driver), once);
   assert.equal((await b.driver.query('SELECT 1 FROM tag_group WHERE key = ?', [key])).length, 1);
+});
+
+test('an archive that deletes its own custom tag group while its entries use the tags is refused as damaged', async () => {
+  const a = await everySectionDevice();
+  const used = await a.driver.query<{ key: string }>(
+    `SELECT DISTINCT g.key FROM tag_group g JOIN tag t ON t.group_id = g.id JOIN entry_tag et ON et.tag_id = t.id
+      WHERE g.uuid IS NOT NULL LIMIT 1`
+  );
+  assert.equal(used.length, 1, 'the seed tags an entry with a custom group tag');
+  const b = await freshDevice();
+
+  await assert.rejects(
+    b.journal.archive.merge(await exported(a, (journal) => {
+      journal.deletions.push({ table: 'tag_group', id: used[0].key, deletedAt: FAR_FUTURE });
+    })),
+    CorruptArchiveError
+  );
 });
