@@ -23,8 +23,9 @@ export interface SetupCompletion {
   /** Every answer setup has been holding, `onboarded` among them. */
   writeAnswers: () => void | Promise<void>;
   /** Resolves once `writeAnswers`' writes are in SQLite rather than in
-      flight. On web this is a formality. On Android it is the difference
-      between a finished install and a lost one. */
+      flight. On Android it is the difference between a finished install and
+      a lost one. On web a page left in the next moments kills the worker
+      mid-write, and `onboarded` is lost with it. */
   flushWrites: () => Promise<void>;
   /** Whether the person turned disguise on during setup. False covers both
       "left it alone" and "skipped the step", which are the same act: the
@@ -41,11 +42,16 @@ export interface SetupCompletion {
   leaveSetup: () => void | Promise<void>;
 }
 
+/** Longest the finish screen waits for the pref table when no disguise
+    depends on it: normally a few milliseconds, and a stuck table must not
+    hold the person on a screen whose only control has been pressed. */
+const FLUSH_LIMIT_MS = 2000;
+
 export async function completeSetup(completion: SetupCompletion): Promise<void> {
   await completion.writeAnswers();
 
   /* Answers have been submitted. Preferences need a flush before disguise can
-     kill the Android process; without disguise, the normal write path runs. */
+     kill the Android process, and before the page can be left on web. */
   if (completion.disguise) {
     /* Whatever happens in here, the person gets out of setup. They pressed
        the last button of a first run, and a failure to write one
@@ -59,6 +65,14 @@ export async function completeSetup(completion: SetupCompletion): Promise<void> 
       await completion.turnOnDisguise();
     } catch (error) {
       console.error('Could not apply the disguise at the end of setup', error);
+    }
+  } else {
+    try {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const limit = new Promise<void>((resolve) => { timer = setTimeout(resolve, FLUSH_LIMIT_MS); });
+      await Promise.race([completion.flushWrites(), limit]).finally(() => clearTimeout(timer));
+    } catch (error) {
+      console.error('Could not confirm the setup answers were saved', error);
     }
   }
 

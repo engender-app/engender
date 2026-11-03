@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { epochDayFromTimestamp } from '../epochDay.ts';
 import { JournalBelowBaselineError, runMigrations, type Migration } from './migration-runner.ts';
 import { migrations } from './migrations.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
@@ -77,7 +78,17 @@ test('every data conversion gives the rows the unsquashed chain gave', async () 
   try {
     assert.equal(db.getUserVersion(), SQUASHED_VERSION);
     assert.equal(dumpSchema(db.raw) + '\n', fixture('schema-v119-reference.txt'));
-    assert.equal(dumpRows(db.raw) + '\n', fixture('schema-v119-rc1-seeded-rows.txt'));
+    /* Migration 109 anchors the weekly row on its local date, so that one
+       day depends on the zone the run is in. The fixture holds the day the
+       frozen chain gave in UTC (20740); here it is read in the run's own zone. */
+    const weeklyAnchor = epochDayFromTimestamp(1791979200000);
+    assert.equal(
+      dumpRows(db.raw) + '\n',
+      fixture('schema-v119-rc1-seeded-rows.txt').replace(
+        '"uuid":"seed-weekly","title":"weekly gel","time":"09:00","recurrence":"EVERY_N_DAYS","interval":7,"anchor_epoch_day":20740,',
+        `"uuid":"seed-weekly","title":"weekly gel","time":"09:00","recurrence":"EVERY_N_DAYS","interval":7,"anchor_epoch_day":${weeklyAnchor},`
+      )
+    );
     assert.deepEqual(await db.query('PRAGMA integrity_check'), [{ integrity_check: 'ok' }]);
     assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
   } finally {
