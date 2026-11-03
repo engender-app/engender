@@ -826,10 +826,13 @@ test('a restore whose commit reply was lost settles without waiting on a sweep b
     const query = target.db.query.bind(target.db);
     vi.spyOn(target.db, 'query').mockImplementation(((sql: string, params?: unknown[]) =>
       disposed ? new Promise(() => {}) : query(sql, params)) as typeof target.db.query);
-    vi.spyOn(target.db, 'transaction').mockImplementation(async () => {
-      disposed = true;
-      throw new Error('the database was disposed');
-    });
+    const transaction = target.db.transaction.bind(target.db);
+    vi.spyOn(target.db, 'transaction').mockImplementation((work) =>
+      transaction(async (inside) => {
+        await work(inside);
+        disposed = true;
+        throw new Error('the database was disposed');
+      }));
     const before = orphanSweepRequestVersion().local;
 
     const outcome = await Promise.race([
