@@ -33,8 +33,10 @@ const NO_CRASH_REPORTER = ['--disable-crash-reporter', '--disable-breakpad'];
     "Target page, context or browser has been closed" on the first line
     (re-check carpet 05: a 130-character TMPDIR turned 32 matrix rows into
     silent not-runs). This names the cause on the first line instead. */
+/** @param {unknown} error
+ * @returns {never} */
 function explainLaunchFailure(error) {
-  if (!/Socket path too long/.test(String(error?.message))) throw error;
+  if (!/Socket path too long/.test(String(/** @type {Error} */ (error)?.message))) throw error;
   throw new Error(
     `Chromium could not start: TMPDIR (${tmpdir().length} characters) makes its socket path longer than ` +
     `a Unix socket allows. Point TMPDIR at a shorter directory. ${tmpdir()}`,
