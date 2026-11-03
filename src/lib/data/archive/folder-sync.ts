@@ -20,6 +20,7 @@
 
 import { isAndroid } from '../../platform';
 import { archiveFailureKind } from './failure';
+import { spaceShortage } from '../spaceShortage';
 import { openArchive, type KeyDerivation } from './pack';
 import type { RestoreContents } from '../journal/restore';
 import { androidAutoExport, type AutoExportStatus, type FolderSyncOutcome } from './android-auto-export-bridge';
@@ -97,6 +98,9 @@ async function mergeStaged(path: string, deps: FolderSyncDeps): Promise<FolderSy
        rather than reported and moved past while nobody was looking. */
     if ((error as Error)?.name === 'AbortError' || deps.signal?.aborted) throw error;
     console.error('folder sync could not merge an archive', error);
+    /* A full device is not the archive's fault: reported as what it is, and
+       left to be tried again (re-check carpet 13, finding 1). */
+    if (spaceShortage(error) === 'device') return 'no-space';
     return archiveFailureKind(error);
   }
 }

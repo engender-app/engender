@@ -25,7 +25,10 @@ export interface AutoExportStatus {
 
 /** How a folder archive ended: merged, or the archive's own failure kind
     (archive/failure.ts). `cancelled` leaves the folder's position alone. */
-export type FolderSyncOutcome = 'merged' | 'wrong-password' | 'newer-version' | 'not-an-archive' | 'corrupt' | 'failed';
+/** `no-space`: this device ran out of room part way. Unlike the others it
+    leaves the folder's position where it was, so the same archive is tried
+    again once space is freed (re-check carpet 13). */
+export type FolderSyncOutcome = 'merged' | 'wrong-password' | 'newer-version' | 'not-an-archive' | 'corrupt' | 'failed' | 'no-space';
 
 interface AndroidAutoExportBridge {
   status(): Promise<AutoExportStatus>;

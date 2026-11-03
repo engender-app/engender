@@ -140,6 +140,20 @@ describe('runFolderSync', () => {
     assert.deepEqual(vi.mocked(androidAutoExport.finishFolderArchive).mock.calls, [[{ modifiedAt: 6000, outcome: 'wrong-password' }]]);
   });
 
+  /* Re-check carpet 13, finding 1: a Merge that filled the device was
+     recorded as "could not be read", and the folder moved past an archive
+     that would merge fine once space was freed. */
+  test('a Merge that runs out of space is reported as such and left to be tried again', async () => {
+    const { a } = await twoDevices();
+    const read = folderHolds(await autoExport(a, SAVED_KEY), 6500);
+    const merge = vi.fn(async () => { throw new Error('write failed: ENOSPC (No space left on device)'); });
+
+    const result = await runFolderSync(ready, { merge, read });
+
+    assert.deepEqual(result, { outcome: 'no-space', modifiedAt: 6500 });
+    assert.deepEqual(vi.mocked(androidAutoExport.finishFolderArchive).mock.calls, [[{ modifiedAt: 6500, outcome: 'no-space' }]]);
+  });
+
   test('nothing new in the folder merges nothing', async () => {
     vi.mocked(androidAutoExport.stageFolderArchive).mockResolvedValue({ path: null });
     const merge = vi.fn();

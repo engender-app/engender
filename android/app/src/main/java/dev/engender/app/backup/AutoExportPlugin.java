@@ -681,9 +681,12 @@ public class AutoExportPlugin extends Plugin {
 
     /**
      * Records how a staged folder archive ended and removes the copy. Any
-     * outcome but {@code cancelled} moves the folder's position past it, so
-     * an archive that would not open is reported once rather than on every
-     * open; the same file written again later is newer and is tried again.
+     * outcome but {@code cancelled} and {@code no-space} moves the folder's
+     * position past it, so an archive that would not open is reported once
+     * rather than on every open; the same file written again later is newer
+     * and is tried again. {@code no-space} is recorded for the settings line
+     * but leaves the position alone: the archive was fine, the device was
+     * full, and it merges once space is freed (re-check carpet 13).
      */
     @PluginMethod
     public void finishFolderArchive(PluginCall call) {
@@ -698,7 +701,11 @@ public class AutoExportPlugin extends Plugin {
                 return;
             }
             try {
-                if (!"cancelled".equals(outcome)) {
+                if ("no-space".equals(outcome)) {
+                    commitState(preferences(), preferences().edit()
+                        .putString(KEY_FOLDER_LAST_OUTCOME, outcome)
+                        .putLong(KEY_FOLDER_LAST_AT, System.currentTimeMillis()));
+                } else if (!"cancelled".equals(outcome)) {
                     long previous = preferences().getLong(KEY_FOLDER_MERGED_THROUGH, 0);
                     long through = Math.max(modifiedAt, previous);
                     // The archives tried at the watermark: one more when it holds, a fresh list when it moves.
