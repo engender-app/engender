@@ -23,6 +23,7 @@ import { discardStatements, emptyArchiveJournal } from './archiveSections.ts';
 import { builtInsOnlyDevice, countsOf, everySection, everySectionDevice } from './golden-archive-fixture.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
+import { orphanSweepRequestVersion } from '../sqlite/orphan-sweep-schedule.ts';
 import { restoreArchive, verifyArchive, type RestoreContents, type RestoreProgress } from './restore.ts';
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
@@ -772,6 +773,27 @@ test('the archive\'s photo files land, and replace sweeps the files it orphaned'
   assert.equal(await rowCount(target.db, 'photo'), 2);
 });
 
+test('a restore marks the orphan sweep due before it writes its first file, so a killed process still gets swept', async () => {
+  const source = await populated();
+
+  for (const mode of ['replace', 'merge'] as const) {
+    const target = await device();
+    const contents = await exported(source.journal);
+    const write = target.files.write.bind(target.files);
+    const markedAtFirstWrite: number[] = [];
+    const before = orphanSweepRequestVersion().local;
+    vi.spyOn(target.files, 'write').mockImplementation(async (name, data) => {
+      markedAtFirstWrite.push(orphanSweepRequestVersion().local - before);
+      return write(name, data);
+    });
+
+    await target.journal.archive[mode](contents);
+
+    assert.ok(markedAtFirstWrite.length > 0, `${mode} wrote no files`);
+    assert.equal(markedAtFirstWrite[0] >= 1, true, `${mode} wrote a file before the sweep was marked due`);
+  }
+});
+
 test('a failure after the files are written and before the commit leaves the journal exactly as it was', async () => {
   const source = await populated();
   const target = await populated();
@@ -789,7 +811,52 @@ test('a failure after the files are written and before the commit leaves the jou
   assert.deepEqual(after.files, before.files);
   // The archive's files landed before the refused transaction. Cleanup now
   // removes them while preserving every file the original rows still own.
-  assert.equal(await target.files.read(`${source.photo}.jpg`), null);
+  await vi.waitFor(async () => assert.equal(await target.files.read(`${source.photo}.jpg`), null));
+});
+
+test('a restore whose COMMIT or ROLLBACK reply was lost or refused settles without waiting on a sweep behind the open transaction, and leaves the sweep due', async () => {
+  const source = await populated();
+
+  for (const lost of ['COMMIT', 'ROLLBACK', 'REFUSED ROLLBACK'] as const) for (const mode of ['replace', 'merge'] as const) {
+    const target = await populated();
+    const contents = await exported(source.journal);
+    // The worker still holds the transaction: the call fails only when the
+    // lock disposes it, and any query sent in between queues behind it.
+    let disposed = false;
+    const query = target.db.query.bind(target.db);
+    vi.spyOn(target.db, 'query').mockImplementation(((sql: string, params?: unknown[]) =>
+      disposed ? new Promise(() => {}) : query(sql, params)) as typeof target.db.query);
+    const transaction = target.db.transaction.bind(target.db);
+    vi.spyOn(target.db, 'transaction').mockImplementation((work) =>
+      transaction(async (inside) => {
+        if (lost !== 'COMMIT') {
+          // The rows fail, so the real transaction rolls back and answers; the
+          // catch below swaps that answer for the dispose a lost reply ends in.
+          const failing = { ...inside, run: async () => { throw new Error('rows failed'); }, exec: async () => { throw new Error('rows failed'); } };
+          return work(failing as typeof inside);
+        }
+        await work(inside);
+        disposed = true;
+        throw new Error('the database was disposed');
+      }).catch((error: Error) => {
+        // A rollback whose reply is lost ends in the dispose, not in the rows' own error.
+        if (lost === 'COMMIT') throw error;
+        disposed = true;
+        // A refused ROLLBACK reaches the caller wrapped, with the rows' error as the cause.
+        if (lost === 'REFUSED ROLLBACK') throw new AggregateError([error, new Error('rollback refused')], error.message, { cause: error });
+        throw new Error('the database was disposed');
+      }));
+    const before = orphanSweepRequestVersion().local;
+
+    const outcome = await Promise.race([
+      target.journal.archive[mode](contents).then(() => 'resolved', (error: Error) => error.message),
+      new Promise((resolve) => setTimeout(() => resolve('still pending'), 1000))
+    ]);
+
+    assert.equal(outcome, lost === 'REFUSED ROLLBACK' ? 'rows failed' : 'the database was disposed', `${mode} hung behind its own lost ${lost}`);
+    assert.ok(orphanSweepRequestVersion().local > before, `${mode} left no sweep due`);
+    vi.restoreAllMocks();
+  }
 });
 
 test('a refused commit rolls the whole restore back in both replace and merge', async () => {
