@@ -160,3 +160,51 @@ test('a reminder that is not about a drug is left as it is', () => {
   assert.deepEqual(describeReminder(r, context), { title: 'Call the clinic', detail: null });
   assert.deepEqual(reminderNotification(r, context), { title: 'Call the clinic', text: '11:30' });
 });
+
+/* Re-check carpet 12, row 14: the amount and autoSource branches below had
+   surviving mutants. */
+test('an empty list of amounts reads as the regimen\'s own dose', () => {
+  const r = reminder({ title: 'Estradiol valerate', drug: 'Estradiol valerate', autoSource: 'dose:ep-ev' });
+  const context = { reminders: [r], episodes: [ev], schedules: [schedule({ episodeId: 'ep-ev', doseAmounts: [] })], todayEpochDay: TODAY };
+  inLocale('en', () => assert.equal(describeReminder(r, context).title, 'Estradiol valerate 4 mg, intramuscular'));
+});
+
+test('amounts that agree in number but not in unit are left out', () => {
+  const r = reminder({ title: 'Estradiol valerate', drug: 'Estradiol valerate', autoSource: 'dose:ep-ev' });
+  const context = {
+    reminders: [r],
+    episodes: [ev],
+    schedules: [schedule({ episodeId: 'ep-ev', doseAmounts: [{ dose: 4, doseUnit: 'mg' }, { dose: 4, doseUnit: 'ml' }] })],
+    todayEpochDay: TODAY
+  };
+  inLocale('en', () => assert.equal(describeReminder(r, context).title, 'Estradiol valerate, intramuscular'));
+});
+
+test('with fewer reminder times than doses a day, an amount is named only when the whole cycle agrees', () => {
+  const ep = episode({ id: 'ep-q', drug: 'Progesterone', dose: 100, route: 'oral' });
+  const a = reminder({ title: 'Progesterone', drug: 'Progesterone', autoSource: 'dose:ep-q', time: '08:00' });
+  const b = reminder({ title: 'Progesterone', drug: 'Progesterone', autoSource: 'dose:ep-q', time: '22:00' });
+  const amounts = (second: number) => [{ dose: 100, doseUnit: 'mg' }, { dose: second, doseUnit: 'mg' }, { dose: 100, doseUnit: 'mg' }];
+  const context = (second: number) => ({
+    reminders: [a, b],
+    episodes: [ep],
+    schedules: [schedule({ episodeId: 'ep-q', dosesPerDay: 3, doseAmounts: amounts(second) })],
+    todayEpochDay: TODAY
+  });
+  inLocale('en', () => {
+    assert.equal(describeReminder(a, context(200)).title, 'Progesterone, oral');
+    assert.equal(describeReminder(a, context(100)).title, 'Progesterone 100 mg, oral');
+  });
+});
+
+test('a reminder another feature made for a drug reads as a hand-made one, not as a schedule\'s', () => {
+  const r = reminder({ title: 'Estradiol valerate', drug: 'Estradiol valerate', autoSource: 'stock:ep-ev' });
+  const twin = reminder({ title: 'Estradiol valerate', drug: 'Estradiol valerate', autoSource: 'stock:ep-ev', time: '21:00' });
+  const context = {
+    reminders: [r, twin],
+    episodes: [ev],
+    schedules: [schedule({ episodeId: 'ep-ev', dosesPerDay: 2, doseAmounts: [{ dose: 3, doseUnit: 'mg' }, { dose: 5, doseUnit: 'mg' }] })],
+    todayEpochDay: TODAY
+  };
+  inLocale('en', () => assert.deepEqual(describeReminder(r, context), { title: 'Estradiol valerate, intramuscular', detail: null }));
+});
