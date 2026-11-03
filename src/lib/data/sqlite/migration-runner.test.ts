@@ -11,6 +11,8 @@ import {
   SchemaTooNewError,
   Fts5UnavailableError,
   InterruptedRestoreError,
+  JournalBelowBaselineError,
+  JournalBetweenStepsError,
   assertFts5Available
 } from './migration-runner.ts';
 import type { MigrationDb, MigrationFileOps, Migration } from './migration-runner.ts';
@@ -451,4 +453,53 @@ test('a clean boot opens a journal with an orphan and logs the foreign key viola
   assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
   assert.equal((await db.query('SELECT parent_id FROM child'))[0].parent_id, 99);
   assert.equal(fileOps.cleanupCalls, 0, 'an orphan does not prove a recovery copy safe to retire');
+});
+
+/* Re-check carpet 12, row 15: the guard against a journal that sits
+   between two steps of the chain, at each of its edges. */
+const steppedChain: Migration[] = [
+  { version: 10, baseline: true, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' },
+  { version: 12, sql: 'CREATE TABLE gadget (id INTEGER PRIMARY KEY);' }
+];
+
+test('a journal between two steps is refused with its version and the baseline named, before any copy', async () => {
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy();
+  db.raw.exec('CREATE TABLE widget (id INTEGER PRIMARY KEY); PRAGMA user_version = 11');
+
+  await assert.rejects(() => runMigrations(db, fileOps, steppedChain), (error: unknown) => {
+    assert.ok(error instanceof JournalBetweenStepsError);
+    assert.equal(error.name, 'JournalBetweenStepsError');
+    assert.match(error.message, /version 11 lies between two steps .*baseline 10/);
+    return true;
+  });
+  assert.equal(fileOps.copyCalls, 0);
+  assert.equal(db.getUserVersion(), 11);
+});
+
+test('a journal on the baseline, or on a later step, is not between steps', async () => {
+  for (const [version, schema] of [[10, 'CREATE TABLE widget (id INTEGER PRIMARY KEY);'], [12, 'CREATE TABLE widget (id INTEGER PRIMARY KEY); CREATE TABLE gadget (id INTEGER PRIMARY KEY);']] as const) {
+    const db = makeDb();
+    db.raw.exec(`${schema} PRAGMA user_version = ${version}`);
+    await runMigrations(db, makeFileOpsSpy(), steppedChain);
+    assert.equal(db.getUserVersion(), 12);
+  }
+});
+
+test('an empty journal runs the baseline, and a chain with no baseline never refuses a gap', async () => {
+  const empty = makeDb();
+  await runMigrations(empty, makeFileOpsSpy(), steppedChain);
+  assert.equal(empty.getUserVersion(), 12);
+
+  const unmarked = makeDb();
+  unmarked.raw.exec('CREATE TABLE widget (id INTEGER PRIMARY KEY); PRAGMA user_version = 11');
+  await runMigrations(unmarked, makeFileOpsSpy(), steppedChain.map(({ baseline: _, ...step }) => step));
+  assert.equal(unmarked.getUserVersion(), 12);
+});
+
+test('a journal below the baseline is not reported as between steps', async () => {
+  const db = makeDb();
+  db.raw.exec('CREATE TABLE old (id INTEGER PRIMARY KEY); PRAGMA user_version = 9');
+  await assert.rejects(() => runMigrations(db, makeFileOpsSpy(), steppedChain), (error: unknown) =>
+    error instanceof JournalBelowBaselineError && !(error instanceof JournalBetweenStepsError));
 });
