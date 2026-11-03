@@ -349,12 +349,13 @@ async function restoreWithin(
       }
     }));
   } catch (error) {
-    /* The error the rows themselves raised comes back unchanged (or as the
-       cause of a refused ROLLBACK): the worker answered, so the outcome is
-       known. Anything else from a transaction that was asked for - a COMMIT
-       or ROLLBACK whose reply never came, ended only by a dispose - is not. */
-    uncertain = transacting &&
-      !(rowsFailure !== undefined && (error === rowsFailure || (error as { cause?: unknown })?.cause === rowsFailure));
+    /* The error the rows themselves raised comes back unchanged: the worker
+       answered with a ROLLBACK, so the outcome is known. Anything else from
+       a transaction that was asked for is not: a COMMIT or ROLLBACK whose
+       reply never came (ended only by a dispose), or a ROLLBACK that was
+       itself refused (the transactor wraps the rows' error in an
+       AggregateError), which may have left the transaction open. */
+    uncertain = transacting && !(rowsFailure !== undefined && error === rowsFailure);
     throw error;
   } finally {
     // Cleanup cannot turn a committed restore into a reported failure.
