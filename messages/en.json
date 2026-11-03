@@ -1353,7 +1353,7 @@
   "exp_folder_failed_toast": "A backup from another device could not be merged.",
   "exp_folder_last_failed": "Not merged on {when}: the backup from another device could not be read.",
   "exp_folder_last_merged": "Last merged: {when}",
-  "exp_folder_last_no_space": "Not merged on {when}: not enough free space. Once you free some, the app tries again.",
+  "exp_folder_last_no_space": "Not merged on {when}: not enough free space. Free some, then open the app again.",
   "exp_folder_last_wrong_password": "Not merged on {when}: the backup from another device uses a different password.",
   "exp_folder_merged_toast": "Merged changes from another device's backup.",
   "exp_folder_never": "Nothing merged from the folder yet",
