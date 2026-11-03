@@ -280,3 +280,31 @@ test('a hand-made reminder for the drug stays when the schedule already has its 
   await syncDoseReminders(db, today, { episodeId: other, times: [] });
   assert.equal(await handMade(), 1, 'the schedule asked for none');
 });
+
+/* Re-check carpet 15, row 14 after the Stryker rerun: rows are matched to
+   rules by their timing, not by position, and each schedule reads only its
+   own weekdays. */
+test('the same times in another order rewrite nothing, and each row keeps its time', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  const id = await episode(journal);
+  await journal.doses.upsertSchedule(schedule(id, ['09:00', '21:00'], { kind: 'everyNDays', everyNDays: 1 }, 2));
+  const before = new Map((await derived(journal, id)).map((r) => [r.id, r.time]));
+  assert.equal(before.size, 2);
+  assert.equal(await syncDoseReminders(db, today, { episodeId: id, times: ['21:00', '09:00'] }), false);
+  assert.deepEqual(new Map((await derived(journal, id)).map((r) => [r.id, r.time])), before);
+});
+
+test('two weekday schedules each keep reminders for their own weekdays only', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  const first = await episode(journal, 'Estradiol valerate');
+  const second = await episode(journal, 'Progesterone');
+  await journal.doses.upsertSchedule(schedule(first, ['09:00'], { kind: 'weekdays', weekdays: [1] }));
+  await journal.doses.upsertSchedule(schedule(second, ['09:00'], { kind: 'weekdays', weekdays: [3, 5] }));
+  const shape = async (episodeId: string) => (await derived(journal, episodeId))
+    .map((r) => `${r.recurrence}|${r.interval}|${r.anchorEpochDay}`).sort();
+  const [one, two] = [await shape(first), await shape(second)];
+  assert.equal(one.length, 1);
+  assert.equal(two.length, 2);
+  assert.equal(await syncDoseReminders(db, today), false, 'already in line');
+  assert.deepEqual([await shape(first), await shape(second)], [one, two]);
+});
