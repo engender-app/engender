@@ -28,6 +28,20 @@ const NO_CRASH_REPORTER = ['--disable-crash-reporter', '--disable-breakpad'];
     seven times on 2026-09-24, and each core dump raised a notification on
     the desktop. Neither flag touches rendering. A caller's own `args`
     are kept after them. */
+/** Chromium puts its singleton socket under TMPDIR, and a Unix socket path
+    stops at 108 bytes, so a long TMPDIR kills it at launch with only
+    "Target page, context or browser has been closed" on the first line
+    (re-check carpet 05: a 130-character TMPDIR turned 32 matrix rows into
+    silent not-runs). This names the cause on the first line instead. */
+function explainLaunchFailure(error) {
+  if (!/Socket path too long/.test(String(error?.message))) throw error;
+  throw new Error(
+    `Chromium could not start: TMPDIR (${tmpdir().length} characters) makes its socket path longer than ` +
+    `a Unix socket allows. Point TMPDIR at a shorter directory. ${tmpdir()}`,
+    { cause: error }
+  );
+}
+
 /** @param {import('playwright-core').LaunchOptions} options */
 export function launchChromium(options = {}) {
   return chromium.launch({
@@ -35,7 +49,7 @@ export function launchChromium(options = {}) {
     headless: true,
     ...options,
     args: [...NO_CRASH_REPORTER, ...(options.args ?? [])],
-  });
+  }).catch(explainLaunchFailure);
 }
 
 /** Launches headless Chromium against a real profile directory and returns
@@ -51,7 +65,7 @@ export function launchPersistentChromium(userDataDir, options = {}) {
     headless: true,
     ...options,
     args: [...NO_CRASH_REPORTER, ...(options.args ?? [])],
-  });
+  }).catch(explainLaunchFailure);
 }
 
 /** Selects the runtime for capability checks without changing Chromium callers. */

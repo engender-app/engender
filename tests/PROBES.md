@@ -1012,6 +1012,12 @@ case results and invocation failures. A dirty source tree, stale build or failed
 nonzero. This is a pre-release check, outside routine CI. `npm run verify:capabilities:lifecycle` runs only
 the lifecycle portion through the same container owner.
 
+Keep TMPDIR short for this and every Chromium probe. Chromium puts its singleton
+socket under TMPDIR and a Unix socket path stops at 108 bytes, so a long one
+(130 characters in re-check carpet 05) kills it at launch: the matrix then
+reports every Chromium row as not-run and exits 1. `tests/browser-harness.mjs`
+names TMPDIR in the launch error when that happens.
+
 The lifecycle matrix first measures fresh static BFCache controls in the same
 runtime. Chromium must restore the plain page and refuse the unload-blocked
 page before exercising the app's actual retained return. Other engines mark
