@@ -94,19 +94,6 @@ final class SqliteConnection {
         // SQLCipher applies its configuration after postKey, overwriting a
         // pragma set in that hook. Enable enforcement on the opened database.
         database.setForeignKeyConstraintsEnabled(true);
-        /* The connection opens at NORMAL, and in rollback-journal mode that
-           lets a power cut right after a commit returned undo it (carpet 09:
-           an upgrade and a folder-sync Merge reopened as before). FULL is not
-           enough either: the commit point is the journal's deletion, and only
-           EXTRA syncs the directory after that unlink. Measured on the
-           emulator with a power cut right after each reported commit, one
-           commit per 1.5 s so no later commit can sync the unlink, the last
-           commit was lost in 7 of 7 cuts under NORMAL and 8 of 9 under FULL,
-           and kept in 8 of 8 under EXTRA. Set after the configuration pass,
-           which would overwrite it in the hook. This is the only writable
-           connection; the read-only check of the pre-migration copy never
-           commits. */
-        database.execSQL("PRAGMA synchronous = EXTRA;");
     }
 
     /**
