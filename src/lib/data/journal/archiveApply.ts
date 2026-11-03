@@ -157,6 +157,14 @@ export async function applyFlatTable<Row>(
   // A table with no column besides its key (era_mute) is written over by its stamp alone.
   const assignments = [...columns.filter((_, i) => written[i]).map((c) => `${c.column} = ?`), 'updated_at = ?'].join(', ');
 
+  /* A table matched by a natural key still holds each row's uuid as a
+     unique column. A row whose key is new here but whose uuid is not names
+     two rows at once, which only a hand-edited archive does (re-check
+     carpet 11, F6: a raw UNIQUE failure on personal_effect.uuid before). */
+  const uuidAt = table.identity === 'uuid' ? -1 : columns.findIndex((c) => c.column === 'uuid');
+  const uuids = new Set(uuidAt < 0 ? [] :
+    (await driver.query<{ uuid: string }>(`SELECT uuid FROM ${table.table}`)).map((row) => row.uuid));
+
   const inserting: unknown[][] = [];
   for (const row of rows) {
     const stamped = row as Row & ArchiveStamped;
@@ -165,6 +173,11 @@ export async function applyFlatTable<Row>(
     if (fate === 'keep') continue;
     const values = flatValues(table, row);
     if (fate === 'insert') {
+      if (uuidAt >= 0) {
+        const uuid = values[uuidAt] as string;
+        if (uuids.has(uuid)) throw new CorruptArchiveError(`the archive's ${table.table} row reuses an id`);
+        uuids.add(uuid);
+      }
       inserting.push([...values, stampOf(stamped, ts)]);
       continue;
     }

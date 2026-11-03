@@ -92,3 +92,16 @@ test('an archive that deletes its own custom tag group while its entries use the
     CorruptArchiveError
   );
 });
+
+test('a personal effect whose key changed but whose id this journal holds is refused as damaged', async () => {
+  const a = await everySectionDevice();
+  const b = await freshDevice();
+  await b.journal.archive.merge(await exported(a, () => {}));
+
+  await assert.rejects(
+    b.journal.archive.merge(await exported(a, (journal) => {
+      journal.personalEffects[0] = { ...journal.personalEffects[0], effect: 'renamed-by-hand' };
+    })),
+    CorruptArchiveError
+  );
+});
