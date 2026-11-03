@@ -696,7 +696,9 @@ public class AutoExportPlugin extends Plugin {
             new File(getContext().getCacheDir(), FOLDER_STAGE).delete();
             String stagedUri = stagedFolderUri;
             stagedFolderUri = null;
-            if (modifiedAt == null || outcome == null) {
+            // A no-space ending never reads modifiedAt: a copy that failed
+            // staged nothing, and Capacitor reads that call's 0 as no Long.
+            if (outcome == null || (modifiedAt == null && !"no-space".equals(outcome))) {
                 call.reject("finishFolderArchive requires modifiedAt and outcome");
                 return;
             }
