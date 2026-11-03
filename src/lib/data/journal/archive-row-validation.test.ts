@@ -219,6 +219,23 @@ for (const mode of ['merge', 'replace'] as const) {
     }
   });
 
+  // Re-check carpet 11, F4: the first Merge stored such an id, and the second
+  // could no longer match it and failed on a raw UNIQUE constraint.
+  test(`${mode} refuses an id or key holding a NUL character`, async () => {
+    const nul = String.fromCharCode(0);
+    for (const [section, field] of [
+      ['personalEffects', 'effect'], ['dimensions', 'key'], ['marginNotes', 'id'], ['bodyRegions', 'id']
+    ] as const) {
+      const incoming = golden();
+      const row = incoming[section][0] as unknown as Record<string, unknown>;
+      assert.equal(typeof row[field], 'string', `golden covers ${section}.${field}`);
+      row[field] = nul;
+      await refusesWithoutChanges(mode, incoming);
+      row[field] = `${row.id ?? 'x'}${nul}`;
+      await refusesWithoutChanges(mode, incoming);
+    }
+  });
+
   test(`${mode} refuses auto-log fields the dose_event CHECK would reject`, async () => {
     const shapes: Record<string, unknown>[] = [
       { autoLogEpisodeId: 'ep', autoLogEpochDay: null, autoLogIndex: null },
