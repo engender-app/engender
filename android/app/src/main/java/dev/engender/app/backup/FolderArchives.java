@@ -1,5 +1,6 @@
 package dev.engender.app.backup;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -42,5 +43,31 @@ final class FolderArchives {
             if (newest == null || document.lastModified() > newest.lastModified()) newest = document;
         }
         return newest;
+    }
+
+    /** The folder's position: the last archive's time and the ones tried at it. */
+    static final class Position {
+        final long mergedThrough;
+        final List<String> tried;
+        Position(long mergedThrough, List<String> tried) {
+            this.mergedThrough = mergedThrough;
+            this.tried = tried;
+        }
+    }
+
+    /**
+     * Where the position goes once an archive ends. Null leaves it where it
+     * was: a cancelled Merge, and one this device ran out of space for
+     * (re-check carpet 13), take the same archive again on the next open.
+     * Any other outcome moves past it, so an archive that would not open is
+     * reported once rather than on every open.
+     */
+    static Position after(Position before, long modifiedAt, String stagedUri, String outcome) {
+        if ("cancelled".equals(outcome) || "no-space".equals(outcome)) return null;
+        long through = Math.max(modifiedAt, before.mergedThrough);
+        // The archives tried at the watermark: one more when it holds, a fresh list when it moves.
+        List<String> tried = through == before.mergedThrough ? new ArrayList<>(before.tried) : new ArrayList<>();
+        if (through == modifiedAt && stagedUri != null) tried.add(stagedUri);
+        return new Position(through, tried);
     }
 }

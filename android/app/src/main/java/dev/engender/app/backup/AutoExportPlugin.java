@@ -703,22 +703,21 @@ public class AutoExportPlugin extends Plugin {
                 return;
             }
             try {
-                if ("no-space".equals(outcome)) {
-                    commitState(preferences(), preferences().edit()
+                if (!"cancelled".equals(outcome)) {
+                    List<String> tried = new ArrayList<>();
+                    JSONArray triedJson = new JSONArray(preferences().getString(KEY_FOLDER_TRIED, "[]"));
+                    for (int i = 0; i < triedJson.length(); i++) tried.add(triedJson.getString(i));
+                    FolderArchives.Position next = FolderArchives.after(
+                        new FolderArchives.Position(preferences().getLong(KEY_FOLDER_MERGED_THROUGH, 0), tried),
+                        modifiedAt == null ? 0 : modifiedAt, stagedUri, outcome);
+                    SharedPreferences.Editor edit = preferences().edit()
                         .putString(KEY_FOLDER_LAST_OUTCOME, outcome)
-                        .putLong(KEY_FOLDER_LAST_AT, System.currentTimeMillis()));
-                } else if (!"cancelled".equals(outcome)) {
-                    long previous = preferences().getLong(KEY_FOLDER_MERGED_THROUGH, 0);
-                    long through = Math.max(modifiedAt, previous);
-                    // The archives tried at the watermark: one more when it holds, a fresh list when it moves.
-                    JSONArray tried = through == previous
-                        ? new JSONArray(preferences().getString(KEY_FOLDER_TRIED, "[]")) : new JSONArray();
-                    if (through == modifiedAt && stagedUri != null) tried.put(stagedUri);
-                    commitState(preferences(), preferences().edit()
-                        .putLong(KEY_FOLDER_MERGED_THROUGH, through)
-                        .putString(KEY_FOLDER_TRIED, tried.toString())
-                        .putString(KEY_FOLDER_LAST_OUTCOME, outcome)
-                        .putLong(KEY_FOLDER_LAST_AT, System.currentTimeMillis()));
+                        .putLong(KEY_FOLDER_LAST_AT, System.currentTimeMillis());
+                    if (next != null) {
+                        edit.putLong(KEY_FOLDER_MERGED_THROUGH, next.mergedThrough)
+                            .putString(KEY_FOLDER_TRIED, new JSONArray(next.tried).toString());
+                    }
+                    commitState(preferences(), edit);
                 }
                 call.resolve(statusObject());
             } catch (Exception error) {
