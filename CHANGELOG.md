@@ -516,7 +516,11 @@ Search queries held for returning from an entry stay in memory and are
 cleared on lock. They no longer leave plaintext copies in browser storage.
 Reloading an entry clears the held query and filters.
 
-Pre-squash development journals are not supported; export text or PDF from the old build before starting a new journal.
+Pre-squash development journals are not supported, and this release does not
+open one. It says so at start and offers to restore a saved archive or start
+over. An archive from a released version restores; one made by a development
+build may not, so export text or PDF from the old build too before starting a
+new journal.
 
 - Schema changes: this release uses schema {{schema}}. Journals from 1.0.0-rc.1 start at schema 88 and migrate forward on first open.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore. Archives from development builds are not a supported restore path.
