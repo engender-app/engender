@@ -455,7 +455,7 @@ say "daily" and "weekly" in English, and an episode still running read "lut
 lut 2026". The clinician summary's interval column follows the same words.
 An interval you typed yourself is shown as you wrote it.
 
-- Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Schema 91 unifies medication stock by its trimmed, case-insensitive drug key. Schema 92 limits the trash index to trashed entries so live date-range reads use the day index. Released schema 88 journals upgrade through schema 89, 90, 91 and 92 without rewriting old dose rows.
+- Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Schema 91 unifies medication stock by its trimmed, case-insensitive drug key. Schema 92 limits the trash index to trashed entries so live date-range reads use the day index. Since the migrations after rc.1 were folded into one step, released schema 88 journals upgrade straight to schema 119 on first open, without rewriting old dose rows.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
 - Security migrations: none.
 - Minimum supported version: 1.0.0-rc.1.
