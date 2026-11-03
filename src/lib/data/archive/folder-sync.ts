@@ -65,7 +65,20 @@ export function folderSyncReady(status: Pick<AutoExportStatus, 'folderSync' | 'd
 export async function runFolderSync(status: AutoExportStatus, deps: FolderSyncDeps): Promise<FolderSyncResult> {
   if (!isAndroid() || !folderSyncReady(status)) return { outcome: 'none' };
   deps.signal?.throwIfAborted();
-  const staged = await androidAutoExport.stageFolderArchive();
+  let staged: Awaited<ReturnType<typeof androidAutoExport.stageFolderArchive>>;
+  try {
+    staged = await androidAutoExport.stageFolderArchive();
+  } catch (error) {
+    /* Copying the archive out of the folder can fill the device before
+       Merge starts (re-check carpet 13, finding 2), and that used to reach
+       only the console. Nothing was staged, so there is no position to
+       keep: the outcome is recorded for the settings line, at 0. */
+    if (spaceShortage(error) !== 'device') throw error;
+    console.error('folder sync could not copy an archive', error);
+    await androidAutoExport.finishFolderArchive({ modifiedAt: 0, outcome: 'no-space' })
+      .catch((failure: unknown) => console.error('folder sync could not record its outcome', failure));
+    return { outcome: 'no-space', modifiedAt: 0 };
+  }
   if (!staged.path || staged.modifiedAt == null) return { outcome: 'none' };
   const modifiedAt = staged.modifiedAt;
 
