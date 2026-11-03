@@ -1357,7 +1357,7 @@
   "exp_folder_last_wrong_password": "Not merged on {when}: the backup from another device uses a different password.",
   "exp_folder_merged_toast": "Merged changes from another device's backup.",
   "exp_folder_never": "Nothing merged from the folder yet",
-  "exp_folder_no_space_toast": "There isn’t enough free space left to merge the backup from another device. Once you free some, the app tries again the next time it opens.",
+  "exp_folder_no_space_toast": "Not enough free space to merge another device's backup. Free some and the app tries again the next time it opens.",
   "exp_folder_note": "When you open the app, a newer backup that another device saved in this folder is merged into this journal. Both devices need the same backup password.",
   "exp_folder_title": "Merge backups from other devices",
   "exp_folder_wrong_password_toast": "A backup from another device uses a different password, so nothing was merged.",

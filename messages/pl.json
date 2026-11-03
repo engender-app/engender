@@ -1381,7 +1381,7 @@
   "exp_folder_last_wrong_password": "Nie dołączono {when}: kopia z innego urządzenia ma inne hasło.",
   "exp_folder_merged_toast": "Dołączono zmiany z kopii innego urządzenia.",
   "exp_folder_never": "Z folderu nic jeszcze nie dołączono",
-  "exp_folder_no_space_toast": "Brakuje wolnego miejsca, żeby dołączyć kopię z innego urządzenia. Po jego zwolnieniu aplikacja spróbuje ponownie przy następnym otwarciu.",
+  "exp_folder_no_space_toast": "Za mało wolnego miejsca, żeby dołączyć kopię z innego urządzenia. Zwolnij trochę miejsca, a aplikacja spróbuje ponownie przy następnym otwarciu.",
   "exp_folder_note": "Po otwarciu aplikacji nowsza kopia, którą inne urządzenie zapisało w tym folderze, trafia do tego dziennika. Oba urządzenia potrzebują tego samego hasła do kopii.",
   "exp_folder_title": "Dołączaj kopie z innych urządzeń",
   "exp_folder_wrong_password_toast": "Kopia z innego urządzenia ma inne hasło, więc nic nie dołączono.",
