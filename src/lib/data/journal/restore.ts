@@ -298,6 +298,7 @@ async function restoreWithin(
   };
   let unpublished = staged;
   let added: Record<string, number> = {};
+  let finished = false;
   try {
     /* Due before the first file lands, not in the finally below: a process
        killed or a power cut between the file writes and the transaction
@@ -339,15 +340,24 @@ async function restoreWithin(
         unpublished = new Set([...staged].filter((name) => !owned.has(name)));
       }
     });
+    finished = true;
   } finally {
     // Cleanup cannot turn a committed restore into a reported failure.
     await Promise.allSettled([...unpublished].map(async (name) => files.remove(name)));
     const sweep = () => sweepOrphanPhotos(driver, files).catch((error) => {
       console.warn('post-restore orphan sweep failed', error);
     });
+    /* Awaited only after a transaction that returned. One that threw may be
+       one whose COMMIT reply was lost: it is still open on the worker, a
+       sweep query queues behind it, and the lock that waits for this restore
+       to settle never closes the driver (carpet 09 finding 1: pending 60 s
+       after the lock). So a failed restore does not wait: the sweep runs
+       alongside when the journal answers, and when it never does, the due
+       stamp set above leaves it to the next open. */
     // The live journal's write guard covers this call until it returns.
     if (journalIsBusy()) void waitForJournalIdle().then(sweep);
-    else await sweep();
+    else if (finished) await sweep();
+    else void sweep();
   }
   return added;
 }

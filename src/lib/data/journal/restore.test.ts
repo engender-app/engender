@@ -811,7 +811,36 @@ test('a failure after the files are written and before the commit leaves the jou
   assert.deepEqual(after.files, before.files);
   // The archive's files landed before the refused transaction. Cleanup now
   // removes them while preserving every file the original rows still own.
-  assert.equal(await target.files.read(`${source.photo}.jpg`), null);
+  await vi.waitFor(async () => assert.equal(await target.files.read(`${source.photo}.jpg`), null));
+});
+
+test('a restore whose commit reply was lost settles without waiting on a sweep behind the open transaction, and leaves the sweep due', async () => {
+  const source = await populated();
+
+  for (const mode of ['replace', 'merge'] as const) {
+    const target = await populated();
+    const contents = await exported(source.journal);
+    // The worker still holds the transaction: the call fails only when the
+    // lock disposes it, and any query sent in between queues behind it.
+    let disposed = false;
+    const query = target.db.query.bind(target.db);
+    vi.spyOn(target.db, 'query').mockImplementation(((sql: string, params?: unknown[]) =>
+      disposed ? new Promise(() => {}) : query(sql, params)) as typeof target.db.query);
+    vi.spyOn(target.db, 'transaction').mockImplementation(async () => {
+      disposed = true;
+      throw new Error('the database was disposed');
+    });
+    const before = orphanSweepRequestVersion().local;
+
+    const outcome = await Promise.race([
+      target.journal.archive[mode](contents).then(() => 'resolved', (error: Error) => error.message),
+      new Promise((resolve) => setTimeout(() => resolve('still pending'), 1000))
+    ]);
+
+    assert.equal(outcome, 'the database was disposed', `${mode} hung behind its own lost transaction`);
+    assert.ok(orphanSweepRequestVersion().local > before, `${mode} left no sweep due`);
+    vi.restoreAllMocks();
+  }
 });
 
 test('a refused commit rolls the whole restore back in both replace and merge', async () => {
