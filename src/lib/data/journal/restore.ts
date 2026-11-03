@@ -298,7 +298,14 @@ async function restoreWithin(
   };
   let unpublished = staged;
   let added: Record<string, number> = {};
-  let committing = false;
+  // Set once the transaction has been asked for; see the finally below.
+  let transacting = false;
+  let uncertain = false;
+  let rowsFailure: unknown;
+  // Remembers what the rows themselves threw, to tell it from a lost reply.
+  const rowsFailing = <T>(work: (scope: SqliteDriver) => Promise<T>) => async (scope: SqliteDriver) => {
+    try { return await work(scope); } catch (error) { rowsFailure = error; throw error; }
+  };
   try {
     /* Due before the first file lands, not in the finally below: a process
        killed or a power cut between the file writes and the transaction
@@ -311,7 +318,8 @@ async function restoreWithin(
     // Once rows can own these files, a rejection cannot prove rollback.
     // Keep replacements until ownership is known or the post-restore sweep runs.
     unpublished = new Set();
-    await driver.transaction(async (driver) => {
+    transacting = true;
+    await driver.transaction(rowsFailing(async (driver) => {
       // Seeding first, unconditionally, and inside this transaction with
       // everything else (reconcile.ts explains the second entry point).
       await reconcileBuiltInsWithin(driver);
@@ -339,26 +347,32 @@ async function restoreWithin(
         const owned = new Set(await readCleanupFileNames(driver));
         unpublished = new Set([...staged].filter((name) => !owned.has(name)));
       }
-      committing = true;
-    });
-    committing = false;
+    }));
+  } catch (error) {
+    /* The error the rows themselves raised comes back unchanged (or as the
+       cause of a refused ROLLBACK): the worker answered, so the outcome is
+       known. Anything else from a transaction that was asked for - a COMMIT
+       or ROLLBACK whose reply never came, ended only by a dispose - is not. */
+    uncertain = transacting &&
+      !(rowsFailure !== undefined && (error === rowsFailure || (error as { cause?: unknown })?.cause === rowsFailure));
+    throw error;
   } finally {
     // Cleanup cannot turn a committed restore into a reported failure.
     await Promise.allSettled([...unpublished].map(async (name) => files.remove(name)));
     const sweep = () => sweepOrphanPhotos(driver, files).catch((error) => {
       console.warn('post-restore orphan sweep failed', error);
     });
-    /* Not awaited when the failure came at COMMIT: all the rows were
-       written, so the reply may be the one that was lost. The transaction
-       is then still open on the worker, a sweep query queues behind it, and
-       the lock that waits for this restore to settle never closes the
-       driver (carpet 09 finding 1: pending 60 s after the lock). The sweep
-       runs alongside when the journal answers, and when it never does, the
-       due stamp set above leaves it to the next open. A failure while
-       applying rows rolled back and answered, so it is awaited as before. */
+    /* Not awaited when the transaction's outcome is uncertain: a COMMIT or
+       ROLLBACK reply that was lost leaves the transaction open on the
+       worker, a sweep query queues behind it, and the lock that waits for
+       this restore to settle never closes the driver (carpet 09 finding 1:
+       pending 60 s after the lock). The sweep runs alongside when the
+       journal answers, and when it never does, the due stamp set above
+       leaves it to the next open. A failure the rows raised was answered
+       by a ROLLBACK, so its sweep is awaited as before. */
     // The live journal's write guard covers this call until it returns.
     if (journalIsBusy()) void waitForJournalIdle().then(sweep);
-    else if (committing) void sweep();
+    else if (uncertain) void sweep();
     else await sweep();
   }
   return added;

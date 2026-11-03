@@ -814,10 +814,10 @@ test('a failure after the files are written and before the commit leaves the jou
   await vi.waitFor(async () => assert.equal(await target.files.read(`${source.photo}.jpg`), null));
 });
 
-test('a restore whose commit reply was lost settles without waiting on a sweep behind the open transaction, and leaves the sweep due', async () => {
+test('a restore whose COMMIT or ROLLBACK reply was lost settles without waiting on a sweep behind the open transaction, and leaves the sweep due', async () => {
   const source = await populated();
 
-  for (const mode of ['replace', 'merge'] as const) {
+  for (const lost of ['COMMIT', 'ROLLBACK'] as const) for (const mode of ['replace', 'merge'] as const) {
     const target = await populated();
     const contents = await exported(source.journal);
     // The worker still holds the transaction: the call fails only when the
@@ -829,9 +829,19 @@ test('a restore whose commit reply was lost settles without waiting on a sweep b
     const transaction = target.db.transaction.bind(target.db);
     vi.spyOn(target.db, 'transaction').mockImplementation((work) =>
       transaction(async (inside) => {
+        if (lost === 'ROLLBACK') {
+          // The rows fail, so the real transaction rolls back and answers; the
+          // catch below swaps that answer for the dispose a lost reply ends in.
+          const failing = { ...inside, run: async () => { throw new Error('rows failed'); }, exec: async () => { throw new Error('rows failed'); } };
+          return work(failing as typeof inside);
+        }
         await work(inside);
         disposed = true;
         throw new Error('the database was disposed');
+      }).catch((error: Error) => {
+        // A rollback whose reply is lost ends in the dispose, not in the rows' own error.
+        if (lost === 'ROLLBACK') { disposed = true; throw new Error('the database was disposed'); }
+        throw error;
       }));
     const before = orphanSweepRequestVersion().local;
 
@@ -840,7 +850,7 @@ test('a restore whose commit reply was lost settles without waiting on a sweep b
       new Promise((resolve) => setTimeout(() => resolve('still pending'), 1000))
     ]);
 
-    assert.equal(outcome, 'the database was disposed', `${mode} hung behind its own lost transaction`);
+    assert.equal(outcome, 'the database was disposed', `${mode} hung behind its own lost ${lost}`);
     assert.ok(orphanSweepRequestVersion().local > before, `${mode} left no sweep due`);
     vi.restoreAllMocks();
   }
