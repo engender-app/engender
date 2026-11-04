@@ -51,6 +51,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import RegimenEditorSheet from '$lib/components/RegimenEditorSheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
@@ -452,6 +453,8 @@
       name is free text and a fragment is not. */
   const blockAnchor = (episodeId: string) => `care-med-${episodeId}`;
 
+  let regimenSheet: ReturnType<typeof RegimenEditorSheet>;
+
   /** The lane's name travels down to its block rather than taking the
       fragment's own jump, which landed the whole way in one frame (prh12
       bug 14, "should take you lower smoothly"). The eased scroll is
@@ -698,7 +701,10 @@
         tabindex="-1"
         data-care-regimen-block={lane.episode.drug}
       >
-        <a class="care-regimen" href="/care/regimen" data-care-regimen>
+        <!-- Opens this episode's own editor over Care (prh12 bug 16): the
+             same sheet the regimen screen opens, without the trip to that
+             screen to tap the episode a second time. -->
+        <button type="button" class="care-regimen" data-care-regimen={lane.episode.drug} onclick={() => regimenSheet.open(lane.episode)}>
           <span class="care-regimen-lines">
             <span class="care-regimen-drug">{blockName(lane.episode)}</span>
             <span class="care-regimen-detail"
@@ -713,7 +719,7 @@
             <span class="care-regimen-detail" data-care-regimen-since>{m.care_regimen_since({ date: longDay(lane.takingSinceEpochDay) })}</span>
           </span>
           <Icon name="chevronRight" size={22} cls="care-regimen-go" />
-        </a>
+        </button>
         <!-- The two days the lane above draws, said in words with their
              weekday: the rail states where they fall against each other and
              this states which days they are. -->
@@ -1050,6 +1056,8 @@
     busy={stockRemoving.busy}
     failed={stockRemoving.failed}
   />
+
+  <RegimenEditorSheet bind:this={regimenSheet} allEpisodesLink />
 </div>
 
 <style>
@@ -1081,10 +1089,15 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    width: 100%;
     min-height: var(--touch-target);
     padding: var(--space-2) 0;
-    text-decoration: none;
+    border: 0;
+    background: none;
     color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
   }
   /* Also the block a lane's name jumps to: enough room over it that the
      drug's name is not against the top of the scroll region, and no focus

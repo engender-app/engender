@@ -2557,6 +2557,7 @@
   "regimen": "Regimen",
   "regimen_active_badge": "Current",
   "regimen_add_aria": "Add a regimen episode",
+  "regimen_all_episodes": "All regimen episodes",
   "regimen_amount_required": "Enter an amount and unit for each scheduled dose, or remove the empty row.",
   "regimen_auto_log_hint": "Each expected dose is written down as taken at its usual time, unless you log it yourself or mark it skipped. You can undo any of them.",
   "regimen_auto_log_label": "Log doses from this schedule for me",

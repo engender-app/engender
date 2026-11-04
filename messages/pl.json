@@ -2613,6 +2613,7 @@
   "regimen": "Kuracja",
   "regimen_active_badge": "Aktualny",
   "regimen_add_aria": "Dodaj etap kuracji",
+  "regimen_all_episodes": "Wszystkie etapy kuracji",
   "regimen_amount_required": "Wpisz ilość i jednostkę każdej zaplanowanej dawki lub usuń pusty wiersz.",
   "regimen_auto_log_hint": "Aplikacja zapisze każdą planowaną dawkę jako przyjętą o jej zwykłej porze, chyba że zapiszesz ją samodzielnie albo oznaczysz jako pominiętą. Każdy taki zapis możesz cofnąć.",
   "regimen_auto_log_label": "Zapisuj dawki z tego harmonogramu za mnie",
