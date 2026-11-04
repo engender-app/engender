@@ -25,7 +25,7 @@ import { demoNow } from './demoClock';
 import { demoAudioBytes, demoVideoBytes } from '../demoAudioBytes';
 import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
-import { POLISH_PACK } from '../roadmap';
+import { POLISH_PACK, SOCIAL_PACK } from '../roadmap';
 import { expectedSessionDays } from '../taperSchedule';
 import { encodePitchTrack } from '../../audio/track';
 import { percentileOfSorted } from '../../audio/series';
@@ -217,6 +217,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     if (r() < 0.65) continue;
     await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, r() < 0.85 ? 'checked' : 'not-my-path');
   }
+  // Fixed rather than drawn, so the seeded stream the rest of the fixture reads is unchanged.
+  for (const goal of SOCIAL_PACK.goals.slice(0, 3)) await journal.roadmap.setGoalStatus(SOCIAL_PACK.key, goal.key, 'checked');
   const comingOut = await journal.roadmap.addCategory('Coming out');
   const customGoal = await journal.roadmap.addCustomGoal('Tell my sister', comingOut.id);
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');

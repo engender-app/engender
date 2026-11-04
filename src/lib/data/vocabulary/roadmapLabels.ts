@@ -73,7 +73,15 @@ const GOAL_TITLE: Record<RoadmapGoalKey, Message> = {
   'pl-legal-final-copy': m.roadmap_goal_pl_legal_final_copy,
   'pl-legal-new-birth-copy': m.roadmap_goal_pl_legal_new_birth_copy,
   'pl-legal-name-usc': m.roadmap_goal_pl_legal_name_usc,
-  'pl-legal-document-set': m.roadmap_goal_pl_legal_document_set
+  'pl-legal-document-set': m.roadmap_goal_pl_legal_document_set,
+  'social-family': m.roadmap_goal_social_family,
+  'social-friends': m.roadmap_goal_social_friends,
+  'social-work': m.roadmap_goal_social_work,
+  'social-name-pronouns': m.roadmap_goal_social_name_pronouns,
+  'social-accounts': m.roadmap_goal_social_accounts,
+  'social-clothes': m.roadmap_goal_social_clothes,
+  'social-voice': m.roadmap_goal_social_voice,
+  'social-hair-makeup': m.roadmap_goal_social_hair_makeup
 };
 
 const GOAL_NOTE: Partial<Record<RoadmapGoalKey, Message>> = {
