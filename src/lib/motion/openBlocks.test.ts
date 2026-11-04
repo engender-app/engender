@@ -68,7 +68,7 @@ describe('openBlocks start', () => {
     isConnected: true
   });
 
-  async function run(withBetween = false) {
+  async function run(withBetween = false, followerBefore = 500) {
     const g = globalThis as Record<string, unknown>;
     const frames: Array<() => void> = [];
     g.innerHeight = 800;
@@ -83,7 +83,7 @@ describe('openBlocks start', () => {
       section: section as unknown as HTMLElement,
       between: withBetween ? [social as unknown as HTMLElement] : [],
       followers: [follower as unknown as HTMLElement],
-      before: new Map<unknown, number>([[follower, 500], [social, 700]]) as unknown as Map<Element, number>,
+      before: new Map<unknown, number>([[follower, followerBefore], [social, 700]]) as unknown as Map<Element, number>,
       onSettled: () => {}
     });
     const flush = () => frames.splice(0).forEach((cb) => cb());
@@ -111,6 +111,18 @@ describe('openBlocks start', () => {
     expect(log.some((l) => l.startsWith('play'))).toBe(false);
     // Reversing at progress 0 would seek to the end first.
     expect(log.some((l) => l.startsWith('reverse'))).toBe(false);
+  });
+
+  it('still carries a visible between element when the followers stood under the screen', async () => {
+    const { log, opening } = await run(true, 1200);
+    expect(opening).not.toBeNull();
+    expect(log).toContain('kf b 0 -200px > 0 0px');
+    expect(log.some((l) => l.startsWith('kf f') || l.startsWith('kf s'))).toBe(false);
+  });
+
+  it('builds nothing when everything it would move is under the screen', async () => {
+    const { opening } = await run(false, 1200);
+    expect(opening).toBeNull();
   });
 
   it('reverses an opening that is already running', async () => {

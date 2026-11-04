@@ -86,8 +86,14 @@ export function openBlocks(opts: {
   if (from === undefined) return null;
   const added = followers[0].getBoundingClientRect().top - from;
   const travel = Math.min(added, Math.max(0, innerHeight - from));
-  if (!(travel >= 1)) return null;
   const betweenShifts = between.map((el) => (opts.before.get(el) ?? NaN) - el.getBoundingClientRect().top);
+  /* Followers that stood under the screen's bottom edge travel nothing
+     painted, and neither does the section behind them. What sits between
+     the pack and the section can still be on screen and still has to be
+     carried down by the pack's room. */
+  const followersShow = travel >= 1;
+  const betweenShows = between.some((el, i) => Number.isFinite(betweenShifts[i]) && (opts.before.get(el) as number) < innerHeight);
+  if (!followersShow && !betweenShows) return null;
   const packSpace = !pack
     ? 0
     : between.length > 0 && Number.isFinite(betweenShifts[0])
@@ -107,10 +113,10 @@ export function openBlocks(opts: {
     play(box, box_);
     for (const kid of Array.from(box.children) as HTMLElement[]) play(kid, kids);
   };
-  for (const follower of followers) play(follower, shifts.followers);
+  if (followersShow) for (const follower of followers) play(follower, shifts.followers);
   between.forEach((el, i) => Number.isFinite(betweenShifts[i]) && play(el, [betweenShifts[i], 0]));
   if (pack) hold(pack, shifts.packBox, shifts.packKids);
-  hold(section, shifts.sectionBox, shifts.sectionKids);
+  if (followersShow) hold(section, shifts.sectionBox, shifts.sectionKids);
 
   let live = true;
   let retreating = false;
