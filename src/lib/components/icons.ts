@@ -200,7 +200,7 @@ export const PATHS: Record<string, string> = {
   envelope: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.6 6.4 10.4 11.6M20.4 6.4 13.6 11.6"/><circle cx="12" cy="12.8" r="1.9"/>',
   // A heart under a roof, somewhere to shelter. Walls and a door would make
   // it `home`, the Today tab.
-  shelter: '<path d="M3.5 11.5 12 4.5l8.5 7"/><path d="M12 20.5 7.6 15.9a2.5 2.5 0 1 1 4.4-2.3 2.5 2.5 0 1 1 4.4 2.3z"/>',
+  shelter: '<path d="M4 10.5 12 3.5l8 7"/><path d="M12 21 7.35 16.35A2.9 2.9 0 1 1 12 13a2.9 2.9 0 1 1 4.65 3.35z"/>',
   // Help to hold on to, for the helplines and support groups. Four bands on
   // a ring, symmetric, so centred by construction.
   lifebuoy: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.64 5.64 3.53 3.53M14.83 9.17l3.53-3.53M14.83 14.83l3.53 3.53M9.17 14.83l-3.53 3.53"/>'
