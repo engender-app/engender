@@ -61,6 +61,8 @@
   import { roleAt } from '$lib/theme/roles';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { dilationGated } from '$lib/data/taperSchedule';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -77,6 +79,10 @@
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let statesQuery = liveQuery(async (j) => dilationGated(await j.areaStates.getAreaStates(), await j.procedures.getProcedures()));
+  /* The cycle row's positive gate (ADR-0043): an active testosterone regimen
+     or the explicit opt-in, so it needs the episodes. Read with the others,
+     so the row is not drawn and then taken back. */
+  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   /* The forward half (phase 11 all-four-doors ticket 02): what is running
      and what is next, which is what nine of this door's rows were getting
      wrong by reporting a gap over a screen full of dated plans. One
@@ -104,15 +110,23 @@
   let landed = $derived(
     lastWritesQuery.value !== undefined &&
       statesQuery.value !== undefined &&
+      episodesQuery.value !== undefined &&
       forwardQuery.value !== undefined &&
       voiceMemoLastWriteQuery.value !== undefined
       ? {
           lastWrites: lastWritesQuery.value,
           states: statesQuery.value,
           forward: forwardQuery.value,
-          voiceMemoLastWriteEpochDay: voiceMemoLastWriteQuery.value
+          voiceMemoLastWriteEpochDay: voiceMemoLastWriteQuery.value,
+          cycleVisible: cycleTrackingVisible(episodesQuery.value, Date.now(), prefs.cycleTrackingChoice)
         }
-      : { lastWrites: {}, states: AREA_STATES_BEFORE_READ, forward: {} as RowForwardMap, voiceMemoLastWriteEpochDay: null }
+      : {
+          lastWrites: {},
+          states: AREA_STATES_BEFORE_READ,
+          forward: {} as RowForwardMap,
+          voiceMemoLastWriteEpochDay: null,
+          cycleVisible: false
+        }
   );
 
   let reading = $derived({ todayEpochDay: today, ...landed });

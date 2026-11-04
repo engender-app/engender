@@ -76,7 +76,12 @@ const AREA_ROWS: Record<
     href: (hit) => `${hubRow('letters').href}/${hit.id}`
   },
   milestones: { ...iconOf('milestones'), label: () => m.milestones(), href: () => hubRow('milestones').href },
-  procedures: { ...iconOf('surgery'), label: () => m.surgery_journey_title(), href: () => hubRow('surgery').href },
+  procedures: {
+    ...iconOf('surgery'),
+    label: () => m.surgery_journey_title(),
+    // Its own screen (prh12), the way an appointment's hit opens that appointment.
+    href: (hit) => `${hubRow('surgery').href}/${encodeURIComponent(hit.id)}`
+  },
   appointments: {
     ...iconOf('appointments'),
     label: () => m.appointments_title(),

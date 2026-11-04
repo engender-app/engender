@@ -91,18 +91,17 @@ describe('what the More hub is built from', () => {
     expect(more).not.toContain('readFlagRoles(');
   });
 
-  it('asks nothing about cycle tracking, since it draws no cycle row (ADR-0043)', () => {
-    /* The row is hosted by /care now (ticket 16 put it on
-       /health/side-effects, ticket 13 moved it to /care/changes, and
-       pre-release-human 12 moved it onto Care beside dilation), which
-       gates it on `cycleTrackingVisible`. ADR-0043's decision is unchanged and stronger
-       for it: the hub cannot show a cycle prompt at all, rather than showing
-       one behind a rule it had to fetch an episode list to evaluate. */
-    expect(more).not.toContain('cycleTracking');
-    expect(more).not.toMatch(/cycleShown/);
-    const care = read('src/routes/care/+page.svelte');
-    expect(care).toContain("from '$lib/data/cycleTracking'");
-    expect(care).toContain('cycleTrackingVisible');
+  it('answers the cycle gate before it draws the cycle row (ADR-0043)', () => {
+    /* The cycle row is a hub row again (pre-release-human 12: "cycle and
+       dilation should be appearing in care"), so the hub screen is the one
+       that asks `cycleTrackingVisible`, reads the episodes with its other
+       reads, and hands the answer to the registry, which leaves the row out
+       of the list and of search until it is true. Until the reads land the
+       answer is no. */
+    expect(more).toContain("from '$lib/data/cycleTracking'");
+    expect(more).toContain('cycleTrackingVisible(');
+    expect(more).toContain('cycleVisible: false');
+    expect(more).toContain('episodesQuery.value !== undefined');
   });
 
   it('issues three live reads for twenty rows, not one per row', () => {
@@ -126,10 +125,15 @@ describe('what the More hub is built from', () => {
        memo's last write, which has no place in the first call because a
        memo has no archive section of its own to be registered under
        (ADR-0036) - one more assembled call rather than a read hubRows.ts
-       forces onto the registry it does not belong in. */
+       forces onto the registry it does not belong in.
+
+       Six since pre-release-human 12: the regimen episode list, which only
+       ADR-0043's gate for the cycle row needs, is back as it was before
+       ticket 16 took the row off the hub. */
     const reads = more.match(/live(?:Query|List)\(/g) ?? [];
 
-    expect(reads).toHaveLength(5);
+    expect(reads).toHaveLength(6);
+    expect(more).toContain('j.regimen.getEpisodes()');
     expect(more).toContain('j.lastWrite.getLastWrites(today)');
     expect(more).toContain('j.areaStates.getAreaStates()');
     expect(more).toContain('readRowForward(j, today)');
@@ -175,18 +179,16 @@ describe('what the door and its groups are called', () => {
     expect(catalogue('pl').hub_group_transition).toBe('Kroki');
   });
 
-  it("names the same four groups in the hidden screen title, which is what the title is for", () => {
+  it("names the same five groups in the hidden screen title, which is what the title is for", () => {
     /* `hubRows.ts` says this string goes stale the moment a group is added,
        renamed or reordered. The rename is exactly that moment. */
-    expect(catalogue('en').hub_screen_title).toBe('Health, steps, support and media');
-    expect(catalogue('pl').hub_screen_title).toBe('Zdrowie, kroki, wsparcie i media');
-    expect(HUB_GROUP_KEYS).toHaveLength(4);
+    expect(catalogue('en').hub_screen_title).toBe('Health, body, steps, support and media');
+    expect(catalogue('pl').hub_screen_title).toBe('Zdrowie, ciało, kroki, wsparcie i media');
+    expect(HUB_GROUP_KEYS).toHaveLength(5);
 
-    // The folded group's own heading goes with it, in both catalogues
-    // (audit item 10) - a string nothing renders is a string that goes
-    // stale where nobody sees it.
-    expect(catalogue('en').hub_group_body).toBeUndefined();
-    expect(catalogue('pl').hub_group_body).toBeUndefined();
+    // Body was folded in audit item 10 and came back in pre-release-human 12.
+    expect(catalogue('en').hub_group_body).toBe('Body');
+    expect(catalogue('pl').hub_group_body).toBe('Ciało');
   });
 
   it('keeps no string for the Settings row that left the door', () => {
@@ -257,24 +259,24 @@ describe('every row the hub carries', () => {
      shots split off the photo library, which became browse-only. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['care', 'pill', '/care', 'health', 'written'],
+    ['cycle-events', 'calendar', '/health/cycle-events', 'health', 'read'],
     ['appointments', 'appointment', '/health/appointments', 'health', 'read'],
     ['surgery', 'clipboard', '/health/surgery', 'health', 'read'],
+    ['dilation', 'repeat', '/health/dilation', 'health', 'read'],
+    ['progress-photos', 'progressShot', '/transition/progress-photos', 'body', 'read'],
+    ['effects', 'sprout', '/care/changes', 'body', 'read'],
+    ['hair-removal', 'razor', '/body/hair-removal', 'body', 'read'],
+    ['wear', 'watch', '/body/wear', 'body', 'read'],
+    ['voice-benchmark', 'waveform', '/voice', 'body', 'read'],
     ['roadmap', 'route', '/transition/roadmap', 'transition', 'written'],
     ['milestones', 'summit', '/transition/milestones', 'transition', 'read'],
-    ['progress-photos', 'progressShot', '/transition/progress-photos', 'transition', 'read'],
     ['tryouts', 'hanger', '/transition/tryouts', 'transition', 'read'],
-    ['wear', 'watch', '/body/wear', 'transition', 'read'],
-    ['hair-removal', 'razor', '/body/hair-removal', 'transition', 'read'],
-    ['voice-benchmark', 'waveform', '/voice', 'transition', 'read'],
     ['letters', 'envelope', '/transition/letters', 'support', 'written'],
     ['doubt', 'shelter', '/doubt', 'support', 'written'],
     ['resources', 'lifebuoy', '/support/resources', 'support', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
     ['documents', 'documents', '/media/documents', 'media', 'read'],
-    ['effects', 'sprout', '/care/changes', 'care', 'read'],
-    ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read'],
-    ['cycle-events', 'calendar', '/health/cycle-events', 'care', 'read'],
-    ['dilation', 'repeat', '/health/dilation', 'care', 'read']
+    ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read']
   ];
 
   it('is exactly this list, in this order', () => {
@@ -300,49 +302,45 @@ describe('every row the hub carries', () => {
        both a second copy of the icon and href and a row no `hidden` flag can
        reach.
 
-       `cycle-events` is the one exception, held by key rather than by host:
-       its way-in row is drawn behind `cycleTrackingVisible`, carries copy of
-       its own, and fronts the one area no `hidden` flag can reach at all
-       (ADR-0043). It is held to the href instead, and `HostedRows.svelte`
-       draws it only where its host hands it a row - Care, since
-       pre-release-human 12, beside dilation. */
-    const BY_HAND = new Set(['cycle-events']);
-
+       Hosted means `home` names a screen in `HUB_ROW_HOSTS`. Two rows are
+       on the hub and also linked from a screen (pre-release-human 12),
+       which is a link rather than a home: the next test holds those. */
     for (const [key, , href, home] of EXPECTED) {
       if ((HUB_GROUP_KEYS as readonly string[]).includes(home)) continue;
       const host = HUB_ROW_HOSTS[home as HubRowHostKey];
       expect(host, `${key} names ${home}, which hosts nothing`).toBeTruthy();
       const source = read(`src/routes${host}/+page.svelte`);
 
-      if (BY_HAND.has(key)) {
-        expect(source, `${host} does not link to ${key}`).toContain(href);
-        continue;
-      }
       expect(source, `${host} does not draw its rows through HostedRows`).toContain(`<HostedRows host="${home}"`);
       expect(source, `${host} writes ${key} out by hand instead`).not.toContain(href);
     }
   });
 
-  it('puts cycle events and dilation on Care and nowhere else', () => {
-    /* "cycle and dilation should be appearing in care" (Alicja, 2026-11-04).
-       A hosted row is reachable from exactly one place, so the screens that
-       used to carry them let go: the changes screen drew the cycle block
-       behind its gate, the surgery list drew the dilation card. */
+  it('links to cycle events and dilation from the screens that sit next to them', () => {
+    /* Alicja, 2026-11-05: both are modules on the hub in Health, and a link
+       to each stays where it was useful - dilation on the surgery list, a
+       link to the cycle log on Meds. So "a hosted row is reachable from one
+       place" does not hold for these two, on purpose. Both go through
+       HostedRows, which keeps the hidden-area rule and the ended-day line;
+       Meds' link is gated on `cycleTrackingVisible`, and dilation's by
+       `dilationGated` inside the component. */
+    const hosted = read('src/lib/components/HostedRows.svelte');
+    expect(hosted).toContain('dilationGated(');
+
+    const surgery = read('src/routes/health/surgery/+page.svelte');
+    expect(surgery).toContain(`<HostedRows host="surgery" keys={['dilation']}`);
+    expect(surgery).not.toContain('href="/health/dilation"');
+
     const care = read('src/routes/care/+page.svelte');
-    expect(care).toContain('<HostedRows host="care"');
-    expect(care).toContain('byHand={cycleShown ? cycleEventsRow : undefined}');
+    expect(care).toContain(`keys={cycleShown ? ['cycle-events'] : []}`);
     expect(care).toContain('cycleTrackingVisible(');
-    expect(care).toContain('href="/health/cycle-events"');
-    expect(read('src/lib/components/HostedRows.svelte')).toContain('dilationGated(');
+    expect(care).not.toContain('href="/health/cycle-events"');
 
     const changes = read('src/routes/care/changes/+page.svelte');
     expect(changes).not.toContain('/health/cycle-events');
     expect(changes).not.toContain('cycleTrackingVisible');
-    expect(changes).toContain('<HostedRows host="effects"');
 
-    const surgery = read('src/routes/health/surgery/+page.svelte');
-    expect(surgery).not.toContain('HostedRows');
-    expect(surgery).not.toContain('/health/dilation');
+    expect(HUB_ROW_HOSTS).not.toHaveProperty('care');
     expect(HUB_ROW_HOSTS).not.toHaveProperty('surgery');
   });
 
@@ -408,14 +406,14 @@ describe("a module's own screen draws the hub's mark for it", () => {
     expect(targets).toContain(`milestone: '${icon('milestones')}'`);
     expect(dayAhead).toContain(`milestone: () => ({ icon: '${icon('milestones')}'`);
     expect(read('src/routes/coming-back/+page.svelte')).toMatch(new RegExp(`data-coming-back-item="milestone"\\s+icon="${icon('milestones')}"`));
+    /* The take-a-photo button keeps its camera: that is an action, not the module. */
+    expect(read('src/routes/transition/progress-photos/+page.svelte')).toContain(`icon="${icon('progress-photos')}"`);
     const comingBack = read('src/routes/coming-back/+page.svelte');
     expect(comingBack).toMatch(new RegExp(`data-coming-back-item="letter"\\s+icon="${icon('letters')}"`));
     expect(comingBack).toMatch(new RegExp(`data-coming-back-item="wear-session"\\s+icon="${icon('wear')}"`));
     const today = read('src/routes/+page.svelte');
     expect(today).toContain(`area: 'milestones', icon: '${icon('milestones')}'`);
     expect(today).toContain(`area: 'letters', icon: '${icon('letters')}'`);
-    /* The take-a-photo button keeps its camera: that is an action, not the module. */
-    expect(read('src/routes/transition/progress-photos/+page.svelte')).toContain(`icon="${icon('progress-photos')}"`);
     expect(read('src/lib/data/safeSpaceWays.ts')).toContain(`{ key: 'resources', icon: '${icon('resources')}'`);
   });
 });

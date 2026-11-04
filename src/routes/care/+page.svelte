@@ -105,10 +105,9 @@
      says nothing about a day that long ago. */
   const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* Cycle events are a hosted row drawn by hand (ADR-0043), so the gate is
-     read here: an active testosterone regimen or the explicit opt-in. The
-     row waits for the episodes before the card is drawn, so it never
-     arrives after the rows around it. */
+  /* The link to cycle events is gated here (ADR-0043): an active testosterone
+     regimen or the explicit opt-in. The card waits for the episodes, so the
+     row never arrives after the rows around it. */
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingChoice));
 
@@ -841,32 +840,10 @@
     />
   </ListCard>
 
-  <!-- What came of all of it (phase 9 carpet ticket 16). The card above is
-       what is going in, on what schedule and how much is left; this is the
-       one row about what the person has noticed since, and the two screens
-       under it - side effects, and hair - hang off that one rather than off
-       the hub.
-
-       No SectionHeading: a heading over "Changes you've noticed" would be
-       that title said twice. What separates it from the hormones card is the
-       --space-5 `.screen > .screen-part > *` gives two unrelated blocks.
-
-       Pre-release-human 12 put cycle events and dilation in the same card
-       ("cycle and dilation should be appearing in care"): the rows about
-       what came of the regimen and what a surgery asks of you, one place
-       each. Cycle events shows only behind `cycleTrackingVisible`;
-       dilation only once a procedure can carry it (`dilationGated`, applied
-       by HostedRows). -->
-  {#snippet cycleEventsRow()}
-    <ListRow
-      key="all-cycle-events"
-      icon="calendar"
-      title={m.cycle_events_open_row_title()}
-      subtitle={m.cycle_events_open_row_sub()}
-      href="/health/cycle-events"
-    />
-  {/snippet}
-  <HostedRows host="care" card ready={!episodesQuery.loading} byHand={cycleShown ? cycleEventsRow : undefined} />
+  <!-- A link to the cycle log (pre-release-human 12), only behind
+       `cycleTrackingVisible` (ADR-0043). The module itself is on the More
+       hub, in Health. -->
+  <HostedRows host="care" keys={cycleShown ? ['cycle-events'] : []} ready={!episodesQuery.loading} card />
     {/snippet}
   </ReadGate>
 

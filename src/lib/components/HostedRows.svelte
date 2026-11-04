@@ -29,13 +29,12 @@
      host screen the assembled last-write call, which is the hub's own
      measured read (`hub-last-writes`), for a date the screen one tap away
      opens on. */
-  import { collapse } from '$lib/motion/reveal';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
-  import { untrack, type Snippet } from 'svelte';
+  import { untrack } from 'svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { dilationGated } from '$lib/data/taperSchedule';
-  import { rowLine, rowsHostedBy, rowHidden, type HubRowHostKey } from '$lib/data/hubRows';
+  import { HUB_ROWS, rowLine, rowsHostedBy, rowHidden, type HubRow, type HubRowHostKey, type HubRowKey } from '$lib/data/hubRows';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
@@ -44,25 +43,28 @@
 
   let {
     host,
+    keys,
     card = false,
-    ready = true,
-    byHand
+    ready = true
   }: {
-    /** Which screen's rows to draw, from `HUB_ROW_HOSTS`. */
-    host: HubRowHostKey;
+    /** Which screen's rows to draw, from `HUB_ROW_HOSTS`. Where `keys` is
+        given it only names the screen, for its reserve and its data
+        attribute. */
+    host: HubRowHostKey | 'care' | 'surgery';
+    /** Rows to link to that live on the hub rather than being hosted here:
+        Meds links to cycle events and the surgery list to dilation
+        (pre-release-human 12). The same rules apply to them - a hidden area
+        takes the row out, an ended one says so. A caller whose own gate is
+        shut passes none, and the card is not drawn. */
+    keys?: readonly HubRowKey[];
     /** Whether these rows are a card of their own. False where they join a
         list the host screen already draws - Settings' tracking card, Stats'
         look-back list - and true where they are the whole of a trailing
         block, which is also what makes the block disappear along with its
         last row. */
     card?: boolean;
-    /** The host's own reads, when what it draws by hand waits on them. */
+    /** The host's own reads, when `keys` waits on them. */
     ready?: boolean;
-    /** The one row this component never writes itself: `cycle-events`, which
-        carries copy of its own and a gate no area record holds, so its host
-        draws it and passes it here. Without it the row is not drawn at all,
-        which is how a host says the gate is shut. */
-    byHand?: Snippet;
   } = $props();
 
   const today = $derived(currentDay());
@@ -74,7 +76,9 @@
      than the person's: `dilationGated` hides its area until some procedure
      can carry a dilation journey. Read only for a host that has the row, which is
      fixed for the life of a screen. */
-  const readsProcedures = untrack(() => rowsHostedBy(host)).some((row) => row.key === 'dilation');
+  const drawn = (): HubRow[] =>
+    keys ? HUB_ROWS.filter((row) => keys.includes(row.key)) : rowsHostedBy(host as HubRowHostKey);
+  const readsProcedures = untrack(drawn).some((row) => row.key === 'dilation');
   let proceduresQuery = readsProcedures ? liveList((j) => j.procedures.getProcedures()) : null;
   let states = $derived(
     statesQuery.value === undefined || proceduresQuery?.loading
@@ -87,14 +91,10 @@
   let rows = $derived(
     states === undefined
       ? []
-      : rowsHostedBy(host)
-          /* Its own hand-drawn row wherever it lives, not a generic row
-             here (ADR-0043): `cycleEvents` reads `rowHidden` as always false,
-             so a row drawn through this component would show regardless of
-             `cycleTrackingVisible`, which is the one gate that is allowed to
-             make it not exist at all. It is drawn only when the host hands
-             it over, and the host hands it over only behind that gate. */
-          .filter((row) => row.key !== 'cycle-events' || byHand !== undefined)
+      : drawn()
+          /* `cycle-events` reads `rowHidden` as always false (ADR-0043), so
+             the gate that decides it exists - `cycleTrackingVisible` - is the
+             caller's: Meds passes the key only behind it. */
           .filter((row) => !rowHidden(row, states))
           /* No last write and nothing forward: a hosted row is drawn beside
              the very records it would report on (dilation on the surgery
@@ -109,19 +109,15 @@
 
 {#snippet hostedRows()}
   {#each rows as { row, line } (row.key)}
-    {#if row.key === 'cycle-events'}
-      <div class="rows-divide" transition:collapse>{@render byHand?.()}</div>
-    {:else}
-      <ListRow
-        key={row.key}
-        icon={row.icon}
-        title={hubRowTitle(row.key)}
-        subtitle={hubRowLine(row.key, line, today, Date.now())}
-        href={row.href}
-        data-hub-host={host}
-        data-hub-line={line.kind}
-      />
-    {/if}
+    <ListRow
+      key={row.key}
+      icon={row.icon}
+      title={hubRowTitle(row.key)}
+      subtitle={hubRowLine(row.key, line, today, Date.now())}
+      href={row.href}
+      data-hub-host={host}
+      data-hub-line={line.kind}
+    />
   {/each}
 {/snippet}
 
