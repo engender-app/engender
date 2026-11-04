@@ -210,7 +210,7 @@
       <div class="stack-3">
         <div class="spread">
           <span class="kit-row-text">
-            <span class="kit-row-title"><Icon name="sparkle" size={16} /> {m.checkin_title()}</span>
+            <span class="kit-row-title"><Icon name="mood" size={16} /> {m.checkin_title()}</span>
             <span class="kit-row-sub">{m.checkin_sub()}</span>
           </span>
           <Switch

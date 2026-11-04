@@ -477,7 +477,7 @@
          day instead of calendar months. -->
     {#if anchorEpochDay == null}
       <Notice
-        icon="sparkle"
+        icon="sprout"
         key="effects-no-regimen"
         role={roleAt(activeFlag.roles, 0)}
         title={m.effects_no_regimen_title()}

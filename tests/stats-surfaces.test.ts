@@ -260,7 +260,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   it('waits for the rail and has a day-one shape', () => {
     expect(stats).toContain('if (railReleased()) railRevealed = true');
     expect(stats).toMatch(/\{#if !railRevealed\}\s*<div out:crossfade data-lookback-rail-wait><Skeleton/);
-    expect(stats).toMatch(/\{:else if railStart === null\}\s*<Notice icon="clock" key="lookback-empty"/);
+    expect(stats).toMatch(/\{:else if railStart === null\}\s*<Notice icon="stats" key="lookback-empty"/);
   });
 
   it('fades in what replaced the rail within the tab arrival, or holds it through the arrival', () => {

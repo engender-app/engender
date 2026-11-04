@@ -231,7 +231,7 @@
        one useful figure is that block's own dose-total line. -->
   <div class="regimen-elsewhere">
     <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.elsewhere)}>
-      <ListRow key="doses" icon="timeline" title={m.regimen_doses_link()} subtitle={m.doses_row_sub()} href="/care/doses" />
+      <ListRow key="doses" icon="pill" title={m.regimen_doses_link()} subtitle={m.doses_row_sub()} href="/care/doses" />
     </ListCard>
   </div>
 

@@ -266,13 +266,13 @@
     <span class="proc-badges" transition:collapse|global>
       {#if linkedMilestone}
         <span class="proc-badge-tag" data-linked-milestone>
-          <Icon name="flag" size={13} />
+          <Icon name="summit" size={13} />
           <span>{m.surgery_milestone_linked_badge()}</span>
         </span>
       {/if}
       {#if procedure.consults.length > 0}
         <span class="proc-badge-tag">
-          <Icon name="calendar" size={13} />
+          <Icon name="appointment" size={13} />
           <span aria-hidden="true">{procedure.consults.length}</span>
           <span class="visually-hidden">{m.surgery_badge_consults({ n: procedure.consults.length })}</span>
         </span>

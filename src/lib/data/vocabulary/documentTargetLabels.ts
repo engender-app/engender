@@ -25,7 +25,7 @@ const KIND_LABEL: Record<DocumentTargetKind, () => string> = {
 export const DOCUMENT_TARGET_ICON: Record<DocumentTargetKind, string> = {
   milestone: 'summit',
   procedure: 'clipboard',
-  episode: 'timeline',
+  episode: 'pill',
   goal: 'route'
 };
 

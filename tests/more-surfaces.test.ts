@@ -435,3 +435,83 @@ describe("a module's own screen draws the hub's mark for it", () => {
     expect(read('src/lib/data/safeSpaceWays.ts')).toContain(`{ key: 'resources', icon: '${icon('resources')}'`);
   });
 });
+
+describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
+  /* The audit after the hub redo found marks that still meant what they
+     meant before it: a dose drawn as a clock, a milestone as the old flag,
+     surgery's phases as three borrowed marks, and Settings rows wearing
+     marks that already stood for something else one row away. Each line is
+     a file, the place in it (with ICON where the mark goes), the mark it
+     draws now and the one it drew before. */
+  const icon = (key: string) => HUB_ROWS.find((row) => row.key === key)!.icon;
+  const PLACES: [string, string, string, string][] = [
+    ['src/lib/components/QuickAdd.svelte', 'onclick={ACTIONS.dose}\\s*>\\s*<span class="fan-icon"><Icon name="ICON"', icon('care'), 'clock'],
+    ['src/lib/components/QuickAdd.svelte', "<Icon name={running \\? 'stop' : 'ICON'}", icon('wear'), 'timeline'],
+    ['src/routes/coming-back/+page.svelte', 'data-coming-back-item="dose"\\s+icon="ICON"', icon('care'), 'clock'],
+    ['src/routes/care/regimen/+page.svelte', 'key="doses" icon="ICON"', icon('care'), 'timeline'],
+    ['src/lib/data/vocabulary/documentTargetLabels.ts', "episode: 'ICON'", icon('care'), 'timeline'],
+    ['src/lib/components/ProcedureRecoveryCard.svelte', 'data-linked-milestone>\\s*<Icon name="ICON"', icon('milestones'), 'flag'],
+    ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-milestone-linked"', icon('milestones'), 'flag'],
+    ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-milestone-prompt"', icon('milestones'), 'flag'],
+    ['src/routes/transition/letters/+page.svelte', '<Icon name="ICON" size=\\{14\\} />{mi.name}', icon('milestones'), 'flag'],
+    ['src/routes/health/appointments/[id]/+page.svelte', 'data-appointment-procedure={stored.procedureId}\\s+icon="ICON"', icon('surgery'), 'flag'],
+    ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-preop"', icon('surgery'), 'clock'],
+    ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-today"', icon('surgery'), 'flag'],
+    ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-recovery"', icon('surgery'), 'heart'],
+    ['src/routes/health/appointments/in-the-room/+page.svelte', 'data-visit-pick={appointment.id}\\s+icon="ICON"', icon('appointments'), 'calendar'],
+    ['src/lib/components/ProcedureRecoveryCard.svelte', '<Icon name="ICON" size=\\{13\\} />\\s*<span aria-hidden="true">{procedure.consults.length}', icon('appointments'), 'calendar'],
+    ['src/routes/+page.svelte', 'icon="ICON"\\s+key="debrief-offer"', icon('appointments'), 'calendar'],
+    ['src/routes/settings/+page.svelte', 'data-cycle-tracking-toggle>\\s*<span class="kit-row-ico"><Icon name="ICON"', icon('cycle-events'), 'curve'],
+    ['src/routes/settings/+page.svelte', 'data-genital-effects-toggle>\\s*<span class="kit-row-ico"><Icon name="ICON"', icon('effects'), 'sparkle'],
+    ['src/routes/care/changes/+page.svelte', 'icon="ICON"\\s+key="effects-no-regimen"', icon('effects'), 'sparkle'],
+    ['src/lib/components/BodyRegionInspectorSheet.svelte', 'icon="ICON"\\s+title={`\\${hairRemovalAreaName', icon('hair-removal'), 'sparkle'],
+    ['src/lib/components/BodyRegionInspectorSheet.svelte', 'icon="ICON"\\s+title={hairStagingText\\(st\\)}', icon('hair-progress'), 'eye'],
+    ['src/routes/transition/tryouts/[id]/+page.svelte', 'icon="ICON"\\s+key="tryout-compare"', 'columns', 'shuffle'],
+    ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-compare"', 'columns', 'shuffle'],
+    ['src/routes/compare/+page.svelte', 'key="compare-shortcut"\\s+icon="ICON"', 'columns', 'shuffle'],
+    ['src/routes/stats/+page.svelte', '<Notice icon="ICON" key="lookback-empty"', 'stats', 'clock'],
+    ['src/routes/voice/+page.svelte', 'icon="ICON"\\s+key="voice-benchmark-empty"', icon('voice-benchmark'), 'mic'],
+    ['src/lib/components/VoicePracticeTakes.svelte', 'icon="ICON"\\s+key="voice-practice-takes-empty"', icon('voice-benchmark'), 'mic'],
+    ['src/lib/components/VoicePracticeTakes.svelte', '{:else}\\s*<span class="kit-row-ico"><Icon name="ICON" size=\\{20\\} />', icon('voice-benchmark'), 'mic'],
+    ['src/lib/components/ProcedureFields.svelte', 'aria-haspopup="dialog"\\s+icon="ICON"', icon('surgery'), 'tag'],
+    ['src/lib/permissions/catalogue.ts', "print: 'ICON'", 'print', 'documents'],
+    ['src/lib/components/EntryEditor.svelte', 'data-add-recording-file[^\\n]*\\n\\s*<Icon name="ICON"', 'upload', 'image'],
+    ['src/lib/components/EntryEditor.svelte', '<Icon name="ICON" size=\\{22\\} /><span>{m.add_video_file\\(\\)}', 'upload', 'image'],
+    ['src/routes/health/appointments/+page.svelte', 'data-provider={provider.id}\\s+icon="ICON"', 'person', 'note'],
+    ['src/routes/health/appointments/+page.svelte', 'icon="ICON"\\s+key="providers-empty"', 'person', 'note'],
+    ['src/routes/settings/+page.svelte', 'key="scales"\\s+icon="ICON"', 'scales', 'heart'],
+    ['src/routes/settings/+page.svelte', 'key="body-regions" icon="ICON"', 'figure', 'heart'],
+    ['src/routes/settings/+page.svelte', 'key="entry-templates" icon="ICON"', 'template', 'grid'],
+    ['src/lib/components/EntryEditor.svelte', 'data-use-template[^\\n]*\\n\\s*<Icon name="ICON"', 'template', 'sparkle'],
+    ['src/routes/settings/+page.svelte', 'key="mood-colours" icon="ICON"', 'mood', 'sparkle'],
+    ['src/routes/settings/reminders/+page.svelte', '<Icon name="ICON" size=\\{16\\} /> {m.checkin_title\\(\\)}', 'mood', 'sparkle'],
+    ['src/routes/settings/+page.svelte', 'key="notifications" icon="ICON"', 'badge', 'zap'],
+    ['src/routes/settings/+page.svelte', 'key="permissions" icon="ICON"', 'toggle', 'key'],
+    ['src/routes/settings/+page.svelte', 'key="accessibility" icon="ICON"', 'access', 'eye'],
+    /* An era is a sun coming up over a horizon, a new stretch of life
+       starting. columns stays the mark for side by side (compare). */
+    ['src/routes/settings/+page.svelte', 'key="eras" icon="ICON"', 'era', 'columns'],
+    ['src/routes/settings/eras/+page.svelte', 'data-era={era.id}\\s+icon="ICON"', 'era', 'columns'],
+    ['src/routes/settings/eras/+page.svelte', 'icon="ICON"\\s+key="eras-empty"', 'era', 'columns'],
+    ['src/routes/coming-back/+page.svelte', 'data-coming-back-item="era"\\s+icon="ICON"', 'era', 'columns'],
+    ['src/routes/transition/milestones/+page.svelte', 'data-manage-eras href="/settings/eras">\\s*<Icon name="ICON"', 'era', 'columns'],
+    ['src/routes/day/[day]/+page.svelte', '<Icon name="ICON" size=\\{20\\} /><span>{m.era_start_here\\(\\)}', 'era', 'columns'],
+    ['src/routes/stats/+page.svelte', 'era-offer-said">\\s*<span class="kit-row-ico"><Icon name="ICON"', 'era', 'columns'],
+    ['src/lib/components/searchHitRows.ts', "eras: { icon: 'ICON'", 'era', 'columns'],
+    ['src/routes/compare/+page.svelte', 'key="compare-era-row-a"\\s+icon="ICON"', 'era', 'curve'],
+    ['src/routes/compare/+page.svelte', 'key="compare-era-row-b"\\s+icon="ICON"', 'era', 'curve']
+  ];
+
+  it.each(PLACES)('%s: %s draws %s, not %s', (file, place, mark, old) => {
+    const source = read(file);
+    const at = (name: string) => new RegExp(place.replace('ICON', name));
+    expect(source).not.toMatch(at(old));
+    expect(source).toMatch(at(mark));
+  });
+
+  it('draws a gendered tally on a day the way quick add does', () => {
+    const rows = read('src/lib/components/dayRows.ts');
+    expect(rows).toContain("icon: kind === 'misgendered' ? 'x' : 'check'");
+    expect(rows).not.toContain("icon: 'stats'");
+  });
+});
