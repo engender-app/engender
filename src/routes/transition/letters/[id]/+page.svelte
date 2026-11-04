@@ -67,7 +67,7 @@
          does not re-check, and the letter may have been deleted from the
          letters screen in between. Say so rather than showing nothing. -->
     <Notice
-      icon="book"
+      icon="envelope"
       key="letters-gone"
       title={m.letters_gone_title()}
       text={m.letters_gone_body()}

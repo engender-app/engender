@@ -88,7 +88,7 @@
                 <ListRow
                   key="coming-back-letter"
                   data-coming-back-item="letter"
-                  icon="book"
+                  icon="envelope"
                   title={m.coming_back_letter_title()}
                   subtitle={m.coming_back_letter_sub({ date: dayLong(item.unlockEpochDay) })}
                   href="/transition/letters"
@@ -117,7 +117,7 @@
                 <ListRow
                   key="coming-back-wear-session"
                   data-coming-back-item="wear-session"
-                  icon="clock"
+                  icon="watch"
                   title={wearReturningRowTitle(item.wearKind)}
                   subtitle={m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) })}
                   href="/body/wear"

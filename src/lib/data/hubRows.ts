@@ -247,7 +247,9 @@ const ROWS = [
        Ticket 16 gave it a fifth thing: the changes somebody has noticed,
        hosted below. */
     key: 'care',
-    icon: 'timeline',
+    /* `pill` (pre-release-human 12), the medication mark the screen behind
+       it already draws; it drew `timeline`, two dots on a rail. */
+    icon: 'pill',
     href: '/care',
     home: 'health',
     areas: [],
@@ -259,9 +261,10 @@ const ROWS = [
     /* Renamed from `appointment-prep` by ticket 57 rather than joined by a
        second row: prep, the record and the debrief were three descriptions
        of one thing, and the one that names it is the one that stays
-       (ADR-0066). Keeps `check` - no new icon. */
+       (ADR-0066). `appointment`, a page with a clock (pre-release-human
+       12); it drew `check`, which said "done" rather than "a visit". */
     key: 'appointments',
-    icon: 'check',
+    icon: 'appointment',
     href: '/health/appointments',
     home: 'health',
     areas: ['appointments'],
@@ -269,8 +272,9 @@ const ROWS = [
     line: 'read'
   },
   {
+    /* `clipboard` (pre-release-human 12); it drew `flag`. */
     key: 'surgery',
-    icon: 'flag',
+    icon: 'clipboard',
     href: '/health/surgery',
     home: 'health',
     areas: ['procedures'],
@@ -380,8 +384,9 @@ const ROWS = [
   },
   // --- Support -------------------------------------------------------------
   {
+    /* `envelope`, sealed (pre-release-human 12); it drew `book`. */
     key: 'letters',
-    icon: 'book',
+    icon: 'envelope',
     href: '/transition/letters',
     home: 'support',
     /* Sealed until its unlock day, which is why the registry has no last
@@ -392,8 +397,10 @@ const ROWS = [
     line: 'written'
   },
   {
+    /* `shelter`, a heart under a roof (pre-release-human 12); it drew a
+       bare `heart`, which is also the comfort list's and the body map's. */
     key: 'doubt',
-    icon: 'heart',
+    icon: 'shelter',
     href: '/doubt',
     home: 'support',
     /* ADR-0037/0040: a Safe Space artefact is not a diary record with a day
@@ -404,9 +411,10 @@ const ROWS = [
     line: 'written'
   },
   {
-    /* `info` rather than the `globe` it shared with the roadmap. */
+    /* `lifebuoy` (pre-release-human 12). It drew `info`, which every
+       notice in the app draws, and before that the roadmap's `globe`. */
     key: 'resources',
-    icon: 'info',
+    icon: 'lifebuoy',
     href: '/support/resources',
     home: 'support',
     areas: [],

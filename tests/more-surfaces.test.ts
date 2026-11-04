@@ -257,9 +257,9 @@ describe('every row the hub carries', () => {
      Pre-release-human 12 added `progress-photos` after Milestones: posed
      shots split off the photo library, which became browse-only. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
-    ['care', 'timeline', '/care', 'health', 'written'],
-    ['appointments', 'check', '/health/appointments', 'health', 'read'],
-    ['surgery', 'flag', '/health/surgery', 'health', 'read'],
+    ['care', 'pill', '/care', 'health', 'written'],
+    ['appointments', 'appointment', '/health/appointments', 'health', 'read'],
+    ['surgery', 'clipboard', '/health/surgery', 'health', 'read'],
     ['roadmap', 'route', '/transition/roadmap', 'transition', 'written'],
     ['milestones', 'sparkle', '/transition/milestones', 'transition', 'read'],
     ['progress-photos', 'camera', '/transition/progress-photos', 'transition', 'read'],
@@ -267,9 +267,9 @@ describe('every row the hub carries', () => {
     ['wear', 'watch', '/body/wear', 'transition', 'read'],
     ['hair-removal', 'razor', '/body/hair-removal', 'transition', 'read'],
     ['voice-benchmark', 'waveform', '/voice', 'transition', 'read'],
-    ['letters', 'book', '/transition/letters', 'support', 'written'],
-    ['doubt', 'heart', '/doubt', 'support', 'written'],
-    ['resources', 'info', '/support/resources', 'support', 'written'],
+    ['letters', 'envelope', '/transition/letters', 'support', 'written'],
+    ['doubt', 'shelter', '/doubt', 'support', 'written'],
+    ['resources', 'lifebuoy', '/support/resources', 'support', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
     ['documents', 'documents', '/media/documents', 'media', 'read'],
     ['effects', 'eye', '/care/changes', 'care', 'read'],
@@ -341,5 +341,49 @@ describe('every row the hub carries', () => {
        `hubLabels.ts`'s full records over the row keys, the same rule the hub
        screen itself is held to above. */
     expect(hosted.match(/\bm\.[a-z_]+\(/g)).toBeNull();
+  });
+});
+
+describe("a module's own screen draws the hub's mark for it", () => {
+  /* pre-release-human 12 redrew the hub's marks, and a screen that still
+     drew the row's old one for its own records said the module was
+     something else once you were inside it: hair removal's sessions were
+     still the shuffle arrows under a razor row. Each line is a file, the
+     hub row whose records it draws, and the mark that row drew before. */
+  const SCREENS: [string, string, string][] = [
+    ['src/routes/body/hair-removal/+page.svelte', 'hair-removal', 'shuffle'],
+    ['src/routes/body/wear/+page.svelte', 'wear', 'clock'],
+    ['src/routes/transition/tryouts/+page.svelte', 'tryouts', 'tag'],
+    ['src/routes/health/appointments/+page.svelte', 'appointments', 'calendar'],
+    ['src/routes/health/surgery/+page.svelte', 'surgery', 'flag'],
+    ['src/routes/transition/letters/+page.svelte', 'letters', 'book'],
+    ['src/routes/transition/letters/[id]/+page.svelte', 'letters', 'book'],
+    ['src/lib/components/LookBackLetterCard.svelte', 'letters', 'book'],
+    ['src/lib/components/LetterCard.svelte', 'letters', 'book']
+  ];
+
+  it.each(SCREENS)('%s draws %s with its hub mark', (file, key, old) => {
+    const source = read(file);
+    const mark = HUB_ROWS.find((row) => row.key === key)!.icon;
+    expect(source).not.toMatch(new RegExp(`(icon|name)="${old}"`));
+    expect(source).toMatch(new RegExp(`(icon|name)="${mark}"`));
+  });
+
+  it('marks a day-ahead row, a filed document and a returning row the same way', () => {
+    const icon = (key: string) => HUB_ROWS.find((row) => row.key === key)!.icon;
+    const dayAhead = read('src/lib/components/dayAheadRows.ts');
+    expect(dayAhead).toContain(`appointment: () => ({ icon: '${icon('appointments')}'`);
+    expect(dayAhead).toContain(`surgery: () => ({ icon: '${icon('surgery')}'`);
+    expect(dayAhead).toContain(`letterUnlock: () => ({ icon: '${icon('letters')}'`);
+    const targets = read('src/lib/data/vocabulary/documentTargetLabels.ts');
+    expect(targets).toContain(`procedure: '${icon('surgery')}'`);
+    expect(targets).toContain(`goal: '${icon('roadmap')}'`);
+    const comingBack = read('src/routes/coming-back/+page.svelte');
+    expect(comingBack).toMatch(new RegExp(`data-coming-back-item="letter"\\s+icon="${icon('letters')}"`));
+    expect(comingBack).toMatch(new RegExp(`data-coming-back-item="wear-session"\\s+icon="${icon('wear')}"`));
+    const today = read('src/routes/+page.svelte');
+    expect(today).toContain(`area: 'milestones', icon: '${icon('milestones')}'`);
+    expect(today).toContain(`area: 'letters', icon: '${icon('letters')}'`);
+    expect(read('src/lib/data/safeSpaceWays.ts')).toContain(`{ key: 'resources', icon: '${icon('resources')}'`);
   });
 });

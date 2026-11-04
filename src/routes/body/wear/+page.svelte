@@ -458,7 +458,7 @@
           <ListRow
             key="running"
             data-wear-running
-            icon="clock"
+            icon="watch"
             title={wearRunningCardTitle(running.kind)}
             subtitle={runningElapsed
               ? `${m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })} · ${m.wear_session_duration_hm({ hours: String(runningElapsed.hours), minutes: String(runningElapsed.minutes) })}`
@@ -488,7 +488,7 @@
           <ListRow
             key="wear-today"
             data-wear-today
-            icon="clock"
+            icon="watch"
             title={m.today()}
             subtitle={fmtDayLong(today)}
             onclick={() => openSessionFor(today)}
@@ -504,7 +504,7 @@
 
       {#if earliest === null && !running}
         <Notice
-          icon="clock"
+          icon="watch"
           key="wear-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
           title={m.wear_session_empty_title()}
@@ -527,7 +527,7 @@
               <ListRow
                 key={session.id}
                 data-wear-session={session.id}
-                icon="clock"
+                icon="watch"
                 title={`${wearKindLabel(session.kind)} · ${m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}`}
                 subtitle={session.note
                   ? `${fmtDayLong(dayOf(session))} · ${session.note}`

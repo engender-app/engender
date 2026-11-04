@@ -138,7 +138,7 @@
                 <ListRow
                   key={t.id}
                   data-tryout={t.id}
-                  icon="tag"
+                  icon="hanger"
                   title={t.label}
                   subtitle={endedSubtitle(t)}
                   href="/transition/tryouts/{t.id}"
@@ -152,7 +152,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="tag"
+        icon="hanger"
         key="tryouts-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.running)}
         title={m.tryout_none()}
