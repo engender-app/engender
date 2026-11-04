@@ -183,9 +183,10 @@
 
   /* A theme or flag pick blooming out of the sun (paletteChange.ts, prh12
      bug 9): long enough for a circle from the field's corner to cross the
-     whole window with the rings on its edge, which --dur-authored's 700ms
-     dragged and --dur-slow's 380ms threw. */
-  --dur-bloom: 600ms;
+     whole window with the rings on its edge. 800ms since Alicja asked for
+     "a little longer" than the 600 it shipped at; --dur-slow's 380ms threw
+     it. */
+  --dur-bloom: 800ms;
 
   /* One pass of the progress bar's indeterminate sweep (Progress.svelte,
      ADR-0070). Its own token rather than a tier duration, because it is

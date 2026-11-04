@@ -219,7 +219,7 @@
             <ListRow
               key={era.id}
               data-era={era.id}
-              icon="columns"
+              icon="era"
               title={era.name}
               subtitle={spanText(era)}
               chevron={false}
@@ -231,7 +231,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="columns"
+        icon="era"
         key="eras-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.eras_empty_title()}

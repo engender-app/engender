@@ -227,7 +227,8 @@ test('it writes the fixture every More-hub area reads (ticket 36)', async () => 
 
   expect(summary.personalEffects).toBeGreaterThan(0);
   const enabledCategories = await journal.effectCategories.getEffectCategories();
-  expect(enabledCategories.find((c) => c.key === 'genital_sexual')?.enabled).toBe(true);
+  expect(enabledCategories.find((c) => c.key === 'genital')?.enabled).toBe(true);
+  expect(enabledCategories.find((c) => c.key === 'sexual')?.enabled).toBe(true);
 
   expect(summary.wearSessions).toBeGreaterThan(0);
   expect(summary.cycleEvents).toBeGreaterThan(0);

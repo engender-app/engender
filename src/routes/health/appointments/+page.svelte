@@ -645,7 +645,7 @@
               <ListRow
                 key={provider.id}
                 data-provider={provider.id}
-                icon="note"
+                icon="person"
                 title={provider.name}
                 subtitle={providerSubtitle(provider)}
                 chevron={false}
@@ -659,7 +659,7 @@
       <Notice key="providers-failed" title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => providersQuery.retry() }} />
     {:else if !providersQuery.loading}
       <Notice
-        icon="note"
+        icon="person"
         key="providers-empty"
         role={roleAt(activeFlag.roles, 2)}
         title={m.provider_empty_title()}

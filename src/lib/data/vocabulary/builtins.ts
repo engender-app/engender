@@ -120,7 +120,7 @@ export const BUILT_IN_BODY_REGIONS = [
 
 export type BuiltInBodyRegionKey = (typeof BUILT_IN_BODY_REGIONS)[number];
 
-/* The five effect categories personal effects are grouped under (phase 5
+/* The effect categories personal effects are grouped under (phase 5
    ticket 41, CONTEXT: "Effect category"), taken from genderdysphoria.fyi's
    own grouping across its two second-puberty pages. Body shape and
    composition, and skin and hair, are on by default - together they hold
@@ -133,13 +133,23 @@ export type BuiltInBodyRegionKey = (typeof BUILT_IN_BODY_REGIONS)[number];
    the rest of the catalogue is not, on a screen in an app whose disguise
    mode exists because its readers sometimes hand
    their phone to someone. Built-in only: no custom-category creation is
-   asked for, so unlike a tag group there is no per-row `builtIn` flag. */
+   asked for, so unlike a tag group there is no per-row `builtIn` flag.
+
+   Pre-release-human 12 split genital and sexual in two, so a person can
+   show one without the other; there are six now. Both new ones go last,
+   where version 121 (effect-category-split-migration.ts) leaves them in a
+   journal that had the old one, so a fresh journal and a migrated one list
+   the categories in the same order. Cycle cessation is filed under genital:
+   no non-sensitive category fits a period stopping, it is retired
+   (retiredEffects.ts) so only a person who already marked it ever sees it,
+   and under genital it keeps the default-off visibility it always had. */
 export const BUILT_IN_EFFECT_CATEGORIES = [
   { key: 'body_shape', defaultEnabled: true },
   { key: 'skin_hair', defaultEnabled: true },
-  { key: 'genital_sexual', defaultEnabled: false },
   { key: 'cognitive_emotional', defaultEnabled: false },
-  { key: 'sensory', defaultEnabled: false }
+  { key: 'sensory', defaultEnabled: false },
+  { key: 'genital', defaultEnabled: false },
+  { key: 'sexual', defaultEnabled: false }
 ] as const;
 
 export type BuiltInEffectCategoryKey = (typeof BUILT_IN_EFFECT_CATEGORIES)[number]['key'];
@@ -181,9 +191,9 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'skin_softening', category: 'skin_hair', direction: 'feminizing' },
   { key: 'hair_changes', category: 'skin_hair', direction: 'feminizing' },
   { key: 'decreased_muscle_mass_strength', category: 'body_shape', direction: 'feminizing' },
-  { key: 'decreased_libido', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'decreased_spontaneous_erections', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'decreased_testicular_volume', category: 'genital_sexual', direction: 'feminizing' },
+  { key: 'decreased_libido', category: 'sexual', direction: 'feminizing' },
+  { key: 'decreased_spontaneous_erections', category: 'sexual', direction: 'feminizing' },
+  { key: 'decreased_testicular_volume', category: 'genital', direction: 'feminizing' },
   // Tier 2 since ticket 22 (see the header above).
   { key: 'male_pattern_baldness_ceasing', category: 'skin_hair', direction: 'feminizing' },
 
@@ -210,26 +220,26 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'improved_spatial_awareness_feminizing', category: 'sensory', direction: 'feminizing' },
   { key: 'taste_perception_change_feminizing', category: 'sensory', direction: 'feminizing' },
   { key: 'reduced_confidence_feminizing', category: 'cognitive_emotional', direction: 'feminizing' },
-  { key: 'genital_sensitivity_increase_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'genital_moisture_odor_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'genital_skin_texture_change_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'fewer_erections_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'ejaculate_change_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'testicular_atrophy_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'heightened_erogenous_zones_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'orgasm_change_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'attraction_change_feminizing', category: 'genital_sexual', direction: 'feminizing' },
+  { key: 'genital_sensitivity_increase_feminizing', category: 'genital', direction: 'feminizing' },
+  { key: 'genital_moisture_odor_feminizing', category: 'genital', direction: 'feminizing' },
+  { key: 'genital_skin_texture_change_feminizing', category: 'genital', direction: 'feminizing' },
+  { key: 'fewer_erections_feminizing', category: 'sexual', direction: 'feminizing' },
+  { key: 'ejaculate_change_feminizing', category: 'sexual', direction: 'feminizing' },
+  { key: 'testicular_atrophy_feminizing', category: 'genital', direction: 'feminizing' },
+  { key: 'heightened_erogenous_zones_feminizing', category: 'sexual', direction: 'feminizing' },
+  { key: 'orgasm_change_feminizing', category: 'sexual', direction: 'feminizing' },
+  { key: 'attraction_change_feminizing', category: 'sexual', direction: 'feminizing' },
 
   // Masculinizing, tier 1: the original four (phase 5 ticket 02) plus
   // ticket 41's four-effect widening.
   { key: 'voice_drop', category: 'body_shape', direction: 'masculinizing' },
   { key: 'facial_body_hair', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'masculinizing_fat_redistribution', category: 'body_shape', direction: 'masculinizing' },
-  { key: 'cycle_cessation', category: 'genital_sexual', direction: 'masculinizing' },
+  { key: 'cycle_cessation', category: 'genital', direction: 'masculinizing' },
   { key: 'skin_oiliness_acne_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'increased_muscle_mass_strength_masculinizing', category: 'body_shape', direction: 'masculinizing' },
-  { key: 'clitoral_enlargement_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'vaginal_atrophy_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
+  { key: 'clitoral_enlargement_masculinizing', category: 'genital', direction: 'masculinizing' },
+  { key: 'vaginal_atrophy_masculinizing', category: 'genital', direction: 'masculinizing' },
 
   // Masculinizing, tier 2: named by genderdysphoria.fyi, no usable
   // literature figure. Scalp hair loss is the exception, tier 1 since
@@ -248,12 +258,12 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'temperature_sensitivity_masculinizing', category: 'sensory', direction: 'masculinizing' },
   { key: 'perspiration_pattern_masculinizing', category: 'body_shape', direction: 'masculinizing' },
   { key: 'body_odor_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
-  { key: 'decreased_lubrication_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'increased_ejaculate_emissions_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'genital_sensitivity_change_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'increased_libido_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'orgasm_change_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'attraction_change_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
+  { key: 'decreased_lubrication_masculinizing', category: 'genital', direction: 'masculinizing' },
+  { key: 'increased_ejaculate_emissions_masculinizing', category: 'sexual', direction: 'masculinizing' },
+  { key: 'genital_sensitivity_change_masculinizing', category: 'genital', direction: 'masculinizing' },
+  { key: 'increased_libido_masculinizing', category: 'sexual', direction: 'masculinizing' },
+  { key: 'orgasm_change_masculinizing', category: 'sexual', direction: 'masculinizing' },
+  { key: 'attraction_change_masculinizing', category: 'sexual', direction: 'masculinizing' },
   { key: 'epidermis_thickening_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'vein_prominence_masculinizing', category: 'skin_hair', direction: 'masculinizing' }
 ] as const;

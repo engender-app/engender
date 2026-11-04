@@ -276,7 +276,7 @@
     {/snippet}
   </ScreenHeader>
   <a class="btn btn-ghost press" data-manage-eras href="/settings/eras">
-    <Icon name="columns" size={20} />
+    <Icon name="era" size={20} />
     <span>{m.eras_manage()}</span>
   </a>
   <SourceRecordHandoff id={sourceId} ready={bootState.status === 'ready'} found={!!sourceMilestone} onOpen={() => openEditor(sourceMilestone!, null)} />

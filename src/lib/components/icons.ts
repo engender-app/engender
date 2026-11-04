@@ -216,7 +216,44 @@ export const PATHS: Record<string, string> = {
   // Posed shots over time: a portrait frame with a figure and the outline of
   // a second head behind it, the earlier shot. It took `camera`, which any
   // photo screen could draw and which Photos' own tabs already do.
-  progressShot: '<rect x="3.5" y="3" width="17" height="18" rx="3"/><circle cx="10.5" cy="9.5" r="2.3"/><path d="M6.5 18a4 4 0 0 1 8 0"/><path d="M15.6 7.3a2.3 2.3 0 0 1 0 4.4"/>'
+  progressShot: '<rect x="3.5" y="3" width="17" height="18" rx="3"/><circle cx="10.5" cy="9.5" r="2.3"/><path d="M6.5 18a4 4 0 0 1 8 0"/><path d="M15.6 7.3a2.3 2.3 0 0 1 0 4.4"/>',
+  // Eight marks from the icon audit after the hub redo (pre-release-human
+  // 12), each for a place that borrowed a mark already standing for
+  // something else.
+  //
+  // Somebody you see: a head and shoulders, for providers. It took `note`,
+  // which is a page of writing.
+  person: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>',
+  // Three sliders, each knob somewhere else along its track: the gender
+  // scales an entry is scored on. It took `heart`, which also stood for
+  // body regions, recovery, feelings and support.
+  scales: '<path d="M4 6h3.5M11.5 6H20M4 12h9.5M17.5 12H20M4 18h5M13 18h7"/><circle cx="9.5" cy="6" r="2"/><circle cx="15.5" cy="12" r="2"/><circle cx="11" cy="18" r="2"/>',
+  // A whole standing body, for the body regions behind the body map. Kept a
+  // full figure so it does not read as `person`'s bust.
+  figure: '<circle cx="12" cy="5" r="2.5"/><path d="M12 9.5c-2.9 0-4.6 1.7-4.6 4.2v3.1h2.1l.5 4.2h4l.5-4.2h2.1v-3.1c0-2.5-1.7-4.2-4.6-4.2z"/>',
+  // A page laid out before anything is written on it: a header and a
+  // column, for entry templates. Settings drew `grid` (the More tab) and the
+  // editor `sparkle` for the same thing.
+  template: '<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 9h17M10 9v11.5"/>',
+  // A face, the shape the mood scale is drawn in, for mood colours and the
+  // daily check-in that asks for a mood.
+  mood: '<circle cx="12" cy="12" r="9"/><path d="M9 9.5v1M15 9.5v1"/><path d="M8.5 14.5a4.2 4.2 0 0 0 7 0"/>',
+  // A screen with a dot on its corner: something waiting to be seen, for
+  // notices and notifications. Apart from the reminders' `bell` above it,
+  // and from `zap`, which is battery optimisation in Permissions.
+  badge: '<path d="M13 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><circle cx="18" cy="6" r="2.5"/>',
+  // A switch, turned on: the permissions list, which is things switched on
+  // or off. It took `key`, the recovery key a row up.
+  toggle: '<rect x="2" y="6.5" width="19" height="11" rx="5.5"/><circle cx="15.5" cy="12" r="2.5"/>',
+  // The accessibility figure in a circle. It took `eye`, which is show and
+  // hide everywhere else.
+  access: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="7.6" r="1.1"/><path d="M7.5 10.6 12 11.6l4.5-1M12 11.6v2.9l-2.4 3.6M12 14.5l2.4 3.6"/>',
+  // An era of somebody's life: a sun coming up over a horizon, a new stretch
+  // starting. It took `columns`, which reads as side by side and stays the
+  // mark for comparing. Three short rays and a ground line under the
+  // horizon keep it apart from `sun` (a whole disc) and from the logo's
+  // corner sun.
+  era: '<path d="M3 14.5h18"/><path d="M7 14.5a5 5 0 0 1 10 0"/><path d="M12 4v2.5M5.6 7.1l1.7 1.7M18.4 7.1l-1.7 1.7"/><path d="M8 18h8"/>'
 };
 
 /* The two parameters are constrained rather than escaped, because both have

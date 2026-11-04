@@ -716,7 +716,7 @@ test('an archive from a journal that shows the duplicate built-ins restores them
 test('replace keeps archived feature visibility choices', async () => {
   const source = await device();
   await source.journal.areaStates.setAreasHidden(['hairStages', 'hairPhotos'], false);
-  await source.journal.effectCategories.setCategoryEnabled('genital_sexual', true);
+  await source.journal.effectCategories.setCategoryEnabled('sexual', true);
   const target = await device();
   await target.journal.areaStates.setAreasHidden(['hairStages', 'hairPhotos'], true);
 
@@ -725,8 +725,51 @@ test('replace keeps archived feature visibility choices', async () => {
   const states = await target.journal.areaStates.getAreaStates();
   assert.equal(states.hairStages?.hidden ?? false, false);
   assert.equal(states.hairPhotos?.hidden ?? false, false);
-  assert.equal((await target.journal.effectCategories.getEffectCategories()).find((c) => c.key === 'genital_sexual')?.enabled, true);
+  const categories = await target.journal.effectCategories.getEffectCategories();
+  assert.equal(categories.find((c) => c.key === 'sexual')?.enabled, true);
+  assert.equal(categories.find((c) => c.key === 'genital')?.enabled, false);
 });
+
+/** What a build before the effect-category split (version 121) exported:
+    one 'genital_sexual' category, in the state given, holding every effect
+    the split now files under genital or sexual. Made from a real snapshot,
+    the way procedure-kind-restore.test.ts makes its legacy payload. */
+async function writtenBeforeTheSplit(journal: Journal, enabled: boolean): Promise<RestoreContents> {
+  const contents = await exported(journal);
+  const old = (key: string | null) => (key === 'genital' || key === 'sexual' ? 'genital_sexual' : key);
+  const categories = contents.journal.effectCategories.filter((c) => c.key !== 'genital' && c.key !== 'sexual');
+  contents.journal = {
+    ...contents.journal,
+    effectCategories: [...categories, { key: 'genital_sexual', name: '', enabled, updatedAt: 777 }],
+    personalEffectTypes: contents.journal.personalEffectTypes.map((t) => ({ ...t, categoryKey: old(t.categoryKey) }))
+  };
+  return contents;
+}
+
+for (const mode of ['replace', 'merge'] as const) {
+  test(`an archive written before the split ${mode}s into genital and sexual`, async () => {
+    const source = await device();
+    const custom = await source.journal.personalEffects.addCustomEffectType('bottom growth', 'genital');
+    const legacy = await writtenBeforeTheSplit(source.journal, true);
+    // The premise: the old shape really does name the old category.
+    assert.ok(legacy.journal.personalEffectTypes.some((t) => t.categoryKey === 'genital_sexual'));
+
+    const target = await device();
+    await target.journal.archive[mode](legacy);
+
+    const categories = await target.journal.effectCategories.getEffectCategories();
+    assert.deepEqual(
+      categories.filter((c) => /genital|sexual/.test(c.key)).map((c) => [c.key, c.enabled]),
+      [['genital', true], ['sexual', true]]
+    );
+    const types = new Map((await target.journal.personalEffects.getEffectTypes()).map((t) => [t.key, t.categoryKey]));
+    assert.equal(types.get('orgasm_change_feminizing'), 'sexual');
+    assert.equal(types.get('vaginal_atrophy_masculinizing'), 'genital');
+    assert.equal(types.get('cycle_cessation'), 'genital');
+    assert.equal(types.get(custom.key), 'genital');
+    assert.equal([...types.values()].includes('genital_sexual'), false);
+  });
+}
 
 test('replace leaves the PIN, the app-lock flags and the disguise settings alone', async () => {
   const source = await populated();

@@ -15,7 +15,7 @@ test('version 120 adds progress_photo to a journal at 119 and keeps its rows', a
   await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 119));
   db.raw.exec("INSERT INTO hair_photo (uuid, epoch_day, file_path, updated_at) VALUES ('h1', 10, 'h1.jpg', 1)");
 
-  await runMigrations(db, noopFileOps(), migrations);
+  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 120));
 
   assert.equal(db.getUserVersion(), 120);
   db.raw.exec(

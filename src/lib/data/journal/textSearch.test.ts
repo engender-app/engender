@@ -327,6 +327,18 @@ test('a felt sense carries the tryout it belongs to', async () => {
   assert.equal(contexts.get('żółć one'), tryoutId);
 });
 
+test('a procedure checklist line carries its procedure, a prep question carries nothing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const procedureId = await journal.procedures.upsertProcedure({ name: 'plain journey' });
+  await journal.procedures.addChecklistItem(procedureId, 'żółć line');
+  await journal.checklists.addToStandaloneChecklist('żółć question');
+
+  const results = await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 30 });
+  const contexts = new Map(results.hits.map((hit) => [hit.value, hit.context]));
+  assert.equal(contexts.get('żółć line'), procedureId);
+  assert.equal(contexts.get('żółć question'), null);
+});
+
 test('the limit bounds the page, and the count is of every match', async () => {
   const { journal } = await journalWithBuiltIns();
   for (let i = 0; i < 5; i++) await journal.milestones.upsertMilestone({ name: `żółć ${i}`, epochDay: DAY - i });

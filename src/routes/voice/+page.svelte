@@ -629,7 +629,7 @@
         {/snippet}
         {#snippet empty()}
           <Notice
-            icon="mic"
+            icon="waveform"
             key="voice-benchmark-empty"
             role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
             title={m.vc_benchmarks_empty_title()}

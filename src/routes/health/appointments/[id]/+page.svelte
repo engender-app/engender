@@ -466,7 +466,7 @@
               <ListRow
                 key="appointment-procedure"
                 data-appointment-procedure={stored.procedureId}
-                icon="flag"
+                icon="clipboard"
                 title={procedureName}
                 href={`/health/surgery/${stored.procedureId}`}
               />

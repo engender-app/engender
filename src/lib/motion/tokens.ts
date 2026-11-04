@@ -94,7 +94,7 @@ export const DURATION_FALLBACK: Record<DurationToken, number> = {
   '--dur-press': 260,
   '--dur-authored': 700,
   '--dur-sun-open': 900,
-  '--dur-bloom': 600
+  '--dur-bloom': 800
 };
 
 /* DISTANCE_FALLBACK stays exported only for its own test (AU-09 test-only

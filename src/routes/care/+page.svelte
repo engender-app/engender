@@ -77,6 +77,7 @@
   import { ROUTE_OPTIONS, routeLabel } from '$lib/data/vocabulary/doseLabels';
   import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine, stockSupplyLine } from '$lib/data/vocabulary/stockLabel';
   import { costLine } from '$lib/data/vocabulary/costLabel';
+  import { cycleEventKindName } from '$lib/data/vocabulary/labels';
   import CostField from '$lib/components/CostField.svelte';
   import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
   import { deviceDefaultCurrency } from '$lib/data/cost';
@@ -110,6 +111,10 @@
      row never arrives after the rows around it. */
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingChoice));
+  /* The three most recent cycle events, drawn at the head of that link's card
+     (they went with it when the log left Changes, pre-release-human 12). */
+  let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
+  let recentCycleEvents = $derived([...cycleEventsQuery.rows].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
 
   let careQuery = liveQuery((j) => readCare(j, today));
   // A successful answer exists even when no medication has been recorded.
@@ -841,9 +846,29 @@
   </ListCard>
 
   <!-- A link to the cycle log (pre-release-human 12), only behind
-       `cycleTrackingVisible` (ADR-0043). The module itself is on the More
-       hub, in Health. -->
-  <HostedRows host="care" keys={cycleShown ? ['cycle-events'] : []} ready={!episodesQuery.loading} card />
+       `cycleTrackingVisible` (ADR-0043), with the last three events above
+       it. The module itself is on the More hub, in Health. The events are
+       static rows (the shape regimen's pause rows use): they name nothing to
+       press, and the link row under them is the way in. They sit in the
+       link's own reserve, so the card waits for their read and arrives whole. -->
+  <HostedRows
+    host="care"
+    keys={cycleShown ? ['cycle-events'] : []}
+    ready={!episodesQuery.loading && (!cycleShown || !cycleEventsQuery.loading)}
+    card
+  >
+    {#snippet before()}
+      {#each recentCycleEvents as event (event.id)}
+        <div class="kit-row is-static" data-cycle-event={event.id}>
+          <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>
+            <span class="kit-row-sub">{longDay(event.epochDay)}</span>
+          </span>
+        </div>
+      {/each}
+    {/snippet}
+  </HostedRows>
     {/snippet}
   </ReadGate>
 

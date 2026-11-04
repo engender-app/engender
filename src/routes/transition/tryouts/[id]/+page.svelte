@@ -468,7 +468,7 @@
       {@const compareNotice = compareStretchNoticeProps(compareLink.state, openEnded, TRYOUT_COMPARE_COPY)}
       <div class="screen-part">
         <Notice
-          icon="shuffle"
+          icon="columns"
           key="tryout-compare"
           role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}
           title={compareNotice.title}

@@ -145,7 +145,7 @@
           <ListCard>
             {#each breakdown.hairRemovalSessions as s (s.id)}
               <ListRow
-                icon="sparkle"
+                icon="razor"
                 title={`${hairRemovalAreaName(s.area)} · ${hairRemovalMethodName(s.method)}`}
                 subtitle={[
                   fmtDay(s.epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -175,7 +175,7 @@
           <ListCard>
             {#each breakdown.hairStages as st (st.id)}
               <ListRow
-                icon="eye"
+                icon="comb"
                 title={hairStagingText(st)}
                 subtitle={fmtDay(st.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
                 static

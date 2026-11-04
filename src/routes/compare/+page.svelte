@@ -273,7 +273,7 @@
   {#if showShortcut && originSpan && preceding}
     <Notice
       key="compare-shortcut"
-      icon="shuffle"
+      icon="columns"
       title={m.compare_shortcut_title()}
       text={m.compare_shortcut_body({
         current: formatSpanLabel(originSpan.start, originSpan.end),
@@ -296,7 +296,7 @@
     <ListCard role={roleAt(activeFlag.roles, 0)}>
       <ListRow
         key="compare-era-row-a"
-        icon="curve"
+        icon="era"
         title={erasQuery.rows.find((e) => e.id === aEraId)?.name ?? m.compare_pick_era()}
         onclick={() => (eraPickerSide = 'a')}
       />
@@ -328,7 +328,7 @@
     <ListCard role={roleAt(activeFlag.roles, 1)}>
       <ListRow
         key="compare-era-row-b"
-        icon="curve"
+        icon="era"
         title={erasQuery.rows.find((e) => e.id === bEraId)?.name ?? m.compare_pick_era()}
         onclick={() => (eraPickerSide = 'b')}
       />

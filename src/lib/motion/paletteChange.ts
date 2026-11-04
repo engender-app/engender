@@ -1,7 +1,11 @@
 import { tick } from 'svelte';
 import { EASE_OUT_SOFT_CSS, isReducedMotion, motionDuration } from './tokens';
+import { holdTaps, type TapHold } from './tapReplay';
 
 let latestChange = 0;
+/* One hold across choices that land on each other: a tap made during the
+   first bloom is replayed when the last one ends, not into the next. */
+let taps: TapHold | null = null;
 type Appearance = 'palette' | 'theme';
 const pending: Partial<Record<Appearance, () => void>> = {};
 
@@ -57,6 +61,14 @@ function sunCentre(doc: Document): { x: number; y: number } {
   return box ? { x: box.left, y: box.top } : { x: doc.documentElement.clientWidth, y: 0 };
 }
 
+/** The rings of the sun on screen after the change. Setup keeps the sun it
+    is leaving under the new one's redraw, and Svelte makes an element inert
+    while it transitions out, so a ring under `[inert]` belongs to the flag
+    being left. */
+export function incomingRings(doc: Document): HTMLElement[] {
+  return [...doc.querySelectorAll<HTMLElement>('[data-flag-sun] > i')].filter((ring) => !ring.closest('[inert]'));
+}
+
 function reducedMotion(doc: Document): boolean {
   return isReducedMotion(doc) || !!doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
@@ -77,7 +89,7 @@ function prepareBloom(doc: Document): Bloom | null {
   return {
     addRings() {
       /* The new sun's own colours, outermost ring first. */
-      const stripes = [...doc.querySelectorAll<HTMLElement>('[data-flag-sun] > i')]
+      const stripes = incomingRings(doc)
         .sort((a, b) => b.offsetWidth - a.offsetWidth)
         .map((ring) => getComputedStyle(ring).backgroundColor);
       if (!stripes.length) return;
@@ -137,6 +149,7 @@ function changeAppearance(commit: () => void, kind: Appearance, doc: Document): 
   if (pending.palette) root.dataset.paletteTransition = '';
   else delete root.dataset.paletteTransition;
   const bloom = prepareBloom(doc);
+  if (!taps && typeof doc.addEventListener === 'function') taps = holdTaps(doc);
   const transition = doc.startViewTransition(async () => {
     if (change !== latestChange) return;
     applyPending();
@@ -153,6 +166,8 @@ function changeAppearance(commit: () => void, kind: Appearance, doc: Document): 
       delete root.dataset.appearanceTransition;
       delete root.dataset.paletteTransition;
       root.style?.removeProperty('--bloom-at');
+      taps?.finish();
+      taps = null;
     }
   });
 }

@@ -414,7 +414,7 @@
         <Icon name="plus" size={20} /><span>{m.add_another_entry()}</span>
       </button>
       <a class="btn btn-ghost" data-start-era href={`/settings/eras?start=${epochDay}`}>
-        <Icon name="columns" size={20} /><span>{m.era_start_here()}</span>
+        <Icon name="era" size={20} /><span>{m.era_start_here()}</span>
       </a>
     </div>
   {/if}
