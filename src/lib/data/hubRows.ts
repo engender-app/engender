@@ -101,11 +101,15 @@ import { ROW_FORWARD_KEYS, type RowForward, type RowForwardKey, type RowForwardM
     that are about somebody needing help rather than tracking anything got a
     group that says so.
 
-    Four groups remain; Care owns its medication lanes and hosted rows. */
-/* hub_screen_title (messages/*.json) names these four by hand for the
+    Four groups remained until pre-release-human 12, when Steps had grown
+    to seven rows. Body came back for what the body is doing and practising
+    (progress photos, changes noticed, hair removal, wear, voice), which left
+    Steps with the plan and the path (roadmap, milestones, tryouts). Care
+    owns its medication lanes and hosted rows. */
+/* hub_screen_title (messages/*.json) names these five by hand for the
    hub's own hidden screen title - add, rename or reorder a group here and
    that string goes stale until it's edited too (ticket 08). */
-export const HUB_GROUP_KEYS = ['health', 'transition', 'support', 'media'] as const;
+export const HUB_GROUP_KEYS = ['health', 'body', 'transition', 'support', 'media'] as const;
 
 export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
 
@@ -281,7 +285,91 @@ const ROWS = [
     finishes: null,
     line: 'read'
   },
-  // --- Transition ----------------------------------------------------------
+  // --- Body --------------------------------------------------------------
+  {
+    /* Pre-release-human 12, bug 25: shots taken on purpose, pose by pose,
+       split off the photo library, which keeps every photograph in the
+       journal. `camera` for now, an existing glyph no other row uses; the
+       Transition icons are being redrawn separately. Not finishable
+       (areaState.ts's NOT_FINISHABLE says why). */
+    key: 'progress-photos',
+    icon: 'camera',
+    href: '/transition/progress-photos',
+    home: 'body',
+    areas: ['progressPhotos'],
+    finishes: null,
+    line: 'read'
+  },
+  {
+    /* `eye` rather than `sparkle`, which milestones took: what this screen
+       asks is when you first *noticed* each change, and the route and the
+       title both say so now (see `personal-effects`).
+
+       Under /care because a change you noticed is what a regimen is for.
+       The hormones list above it says what is going in; this says what
+       came of it.
+
+       Two sections, one row, since ticket 13: a side effect and a change you
+       were hoping for are both something you noticed after starting a
+       regimen, and having them as sibling top-level rows made the reader
+       classify their own symptom before they could write it down. The row
+       reports whichever half was written last (`groupLastWrite`'s own
+       reasoning), the way `hair-progress` already does for its own two. */
+    key: 'effects',
+    icon: 'eye',
+    href: '/care/changes',
+    home: 'body',
+    areas: ['personalEffects', 'sideEffects'],
+    finishes: 'effects',
+    line: 'read'
+  },
+  {
+    /* `razor` (pre-release-human 12); it drew `shuffle`, which said
+       nothing about hair. */
+    key: 'hair-removal',
+    icon: 'razor',
+    href: '/body/hair-removal',
+    home: 'body',
+    areas: ['hairRemovalSessions'],
+    finishes: 'hair-removal',
+    line: 'read'
+  },
+  {
+    /* `watch`, something worn for a length of time (pre-release-human
+       12); it drew `clock`. */
+    key: 'wear',
+    icon: 'watch',
+    href: '/body/wear',
+    home: 'body',
+    areas: ['wearSessions'],
+    finishes: 'wear',
+    line: 'read'
+  },
+  {
+    /* `waveform` (pre-release-human 12). It drew `curve`, a line over
+       takes, which at row size read as a hill rather than a voice. The
+       recordings ticket 17 folded in here keep `mic` on the screen's own
+       Recordings tab rather than taking the row's icon with them. */
+    key: 'voice-benchmark',
+    icon: 'waveform',
+    /* No `?tab=record`: the flow's own tab is already the screen's default,
+       so the two addresses opened on the same tab (ticket 17). */
+    href: '/voice',
+    home: 'body',
+    /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them
+       together - but only the benchmarks have a last write here, since a
+       practice take is sealed until the day after it was taken. The
+       recordings the Media group's own `voice` row used to front (ticket 17
+       folded that row's screen into this one, as the Recordings tab) have no
+       archive section of their own to register either (ADR-0036: a memo is
+       entry content) - `voiceMemoLastWriteEpochDay` on `HubReading` is the
+       second, non-registry read this row alone asks, and `rowLine` folds it
+       in below. */
+    areas: ['voiceBenchmarks', 'voicePracticeTakes'],
+    finishes: 'voice',
+    line: 'read'
+  },
+  // --- Transition --------------------------------------------------------
   {
     /* `route`, a way from one point to another (pre-release-human 12). It
        drew `globe`, which said "the world" rather than "a plan". */
@@ -308,20 +396,6 @@ const ROWS = [
     line: 'read'
   },
   {
-    /* Pre-release-human 12, bug 25: shots taken on purpose, pose by pose,
-       split off the photo library, which keeps every photograph in the
-       journal. `camera` for now, an existing glyph no other row uses; the
-       Transition icons are being redrawn separately. Not finishable
-       (areaState.ts's NOT_FINISHABLE says why). */
-    key: 'progress-photos',
-    icon: 'camera',
-    href: '/transition/progress-photos',
-    home: 'transition',
-    areas: ['progressPhotos'],
-    finishes: null,
-    line: 'read'
-  },
-  {
     /* `hanger`, for trying something on (pre-release-human 12); it drew
        `tag`. */
     key: 'tryouts',
@@ -336,53 +410,7 @@ const ROWS = [
     finishes: null,
     line: 'read'
   },
-  {
-    /* `watch`, something worn for a length of time (pre-release-human
-       12); it drew `clock`. */
-    key: 'wear',
-    icon: 'watch',
-    href: '/body/wear',
-    home: 'transition',
-    areas: ['wearSessions'],
-    finishes: 'wear',
-    line: 'read'
-  },
-  {
-    /* `razor` (pre-release-human 12); it drew `shuffle`, which said
-       nothing about hair. */
-    key: 'hair-removal',
-    icon: 'razor',
-    href: '/body/hair-removal',
-    home: 'transition',
-    areas: ['hairRemovalSessions'],
-    finishes: 'hair-removal',
-    line: 'read'
-  },
-  {
-    /* `waveform` (pre-release-human 12). It drew `curve`, a line over
-       takes, which at row size read as a hill rather than a voice. The
-       recordings ticket 17 folded in here keep `mic` on the screen's own
-       Recordings tab rather than taking the row's icon with them. */
-    key: 'voice-benchmark',
-    icon: 'waveform',
-    /* No `?tab=record`: the flow's own tab is already the screen's default,
-       so the two addresses opened on the same tab (ticket 17). */
-    href: '/voice',
-    home: 'transition',
-    /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them
-       together - but only the benchmarks have a last write here, since a
-       practice take is sealed until the day after it was taken. The
-       recordings the Media group's own `voice` row used to front (ticket 17
-       folded that row's screen into this one, as the Recordings tab) have no
-       archive section of their own to register either (ADR-0036: a memo is
-       entry content) - `voiceMemoLastWriteEpochDay` on `HubReading` is the
-       second, non-registry read this row alone asks, and `rowLine` folds it
-       in below. */
-    areas: ['voiceBenchmarks', 'voicePracticeTakes'],
-    finishes: 'voice',
-    line: 'read'
-  },
-  // --- Support -------------------------------------------------------------
+  // --- Support -----------------------------------------------------------
   {
     /* `envelope`, sealed (pre-release-human 12); it drew `book`. */
     key: 'letters',
@@ -421,8 +449,7 @@ const ROWS = [
     finishes: null,
     line: 'written'
   },
-
-  // --- Media ---------------------------------------------------------------
+  // --- Media -------------------------------------------------------------
   {
     /* Fronts content that travels inside an entry rather than a stream of
        its own, so it has no section in the archive to ask about and cannot
@@ -469,29 +496,6 @@ const ROWS = [
   },
 
   // --- Drawn on another screen rather than on the hub (ticket 16) ----------
-  {
-    /* `eye` rather than `sparkle`, which milestones took: what this screen
-       asks is when you first *noticed* each change, and the route and the
-       title both say so now (see `personal-effects`).
-
-       Under /care because a change you noticed is what a regimen is for.
-       The hormones list above it says what is going in; this says what
-       came of it.
-
-       Two sections, one row, since ticket 13: a side effect and a change you
-       were hoping for are both something you noticed after starting a
-       regimen, and having them as sibling top-level rows made the reader
-       classify their own symptom before they could write it down. The row
-       reports whichever half was written last (`groupLastWrite`'s own
-       reasoning), the way `hair-progress` already does for its own two. */
-    key: 'effects',
-    icon: 'eye',
-    href: '/care/changes',
-    home: 'care',
-    areas: ['personalEffects', 'sideEffects'],
-    finishes: 'effects',
-    line: 'read'
-  },
   {
     key: 'hair-progress',
     icon: 'comb',

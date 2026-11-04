@@ -1160,6 +1160,7 @@
   "home_start_title": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "home_tiles_fewer": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "home_tiles_more": {"owner":38,"sources":["src/routes/+page.svelte"]},
+  "hub_group_body": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
   "hub_group_finished": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
   "hub_group_health": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
   "hub_group_media": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},

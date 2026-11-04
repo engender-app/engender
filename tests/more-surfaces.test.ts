@@ -176,18 +176,16 @@ describe('what the door and its groups are called', () => {
     expect(catalogue('pl').hub_group_transition).toBe('Kroki');
   });
 
-  it("names the same four groups in the hidden screen title, which is what the title is for", () => {
+  it("names the same five groups in the hidden screen title, which is what the title is for", () => {
     /* `hubRows.ts` says this string goes stale the moment a group is added,
        renamed or reordered. The rename is exactly that moment. */
-    expect(catalogue('en').hub_screen_title).toBe('Health, steps, support and media');
-    expect(catalogue('pl').hub_screen_title).toBe('Zdrowie, kroki, wsparcie i media');
-    expect(HUB_GROUP_KEYS).toHaveLength(4);
+    expect(catalogue('en').hub_screen_title).toBe('Health, body, steps, support and media');
+    expect(catalogue('pl').hub_screen_title).toBe('Zdrowie, ciało, kroki, wsparcie i media');
+    expect(HUB_GROUP_KEYS).toHaveLength(5);
 
-    // The folded group's own heading goes with it, in both catalogues
-    // (audit item 10) - a string nothing renders is a string that goes
-    // stale where nobody sees it.
-    expect(catalogue('en').hub_group_body).toBeUndefined();
-    expect(catalogue('pl').hub_group_body).toBeUndefined();
+    // Body was folded in audit item 10 and came back in pre-release-human 12.
+    expect(catalogue('en').hub_group_body).toBe('Body');
+    expect(catalogue('pl').hub_group_body).toBe('Ciało');
   });
 
   it('keeps no string for the Settings row that left the door', () => {
@@ -260,19 +258,19 @@ describe('every row the hub carries', () => {
     ['care', 'pill', '/care', 'health', 'written'],
     ['appointments', 'appointment', '/health/appointments', 'health', 'read'],
     ['surgery', 'clipboard', '/health/surgery', 'health', 'read'],
+    ['progress-photos', 'camera', '/transition/progress-photos', 'body', 'read'],
+    ['effects', 'eye', '/care/changes', 'body', 'read'],
+    ['hair-removal', 'razor', '/body/hair-removal', 'body', 'read'],
+    ['wear', 'watch', '/body/wear', 'body', 'read'],
+    ['voice-benchmark', 'waveform', '/voice', 'body', 'read'],
     ['roadmap', 'route', '/transition/roadmap', 'transition', 'written'],
     ['milestones', 'sparkle', '/transition/milestones', 'transition', 'read'],
-    ['progress-photos', 'camera', '/transition/progress-photos', 'transition', 'read'],
     ['tryouts', 'hanger', '/transition/tryouts', 'transition', 'read'],
-    ['wear', 'watch', '/body/wear', 'transition', 'read'],
-    ['hair-removal', 'razor', '/body/hair-removal', 'transition', 'read'],
-    ['voice-benchmark', 'waveform', '/voice', 'transition', 'read'],
     ['letters', 'envelope', '/transition/letters', 'support', 'written'],
     ['doubt', 'shelter', '/doubt', 'support', 'written'],
     ['resources', 'lifebuoy', '/support/resources', 'support', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
     ['documents', 'documents', '/media/documents', 'media', 'read'],
-    ['effects', 'eye', '/care/changes', 'care', 'read'],
     ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read'],
     ['cycle-events', 'calendar', '/health/cycle-events', 'effects', 'read'],
     ['dilation', 'repeat', '/health/dilation', 'surgery', 'read']

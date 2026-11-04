@@ -589,7 +589,7 @@ test('the hub draws its groups in order and leaves out the ones with nothing in 
 
   assert.deepEqual(
     sections.map((section) => section.key),
-    ['health', 'transition', 'support', 'media']
+    ['health', 'body', 'transition', 'support', 'media']
   );
 });
 
@@ -658,7 +658,7 @@ test('a hosted row is not on the hub at all, and its screen is named (ticket 16)
   }
   assert.deepEqual(
     HUB_ROWS.filter((row) => !isHubGroup(row.home)).map((row) => row.key),
-    ['effects', 'hair-progress', 'cycle-events', 'dilation']
+    ['hair-progress', 'cycle-events', 'dilation']
   );
 });
 
@@ -679,7 +679,7 @@ test('a finished row leaves its group for the finished set, and the set comes la
     sections.at(-1)?.rows.map((row) => row.spec.key),
     ['wear']
   );
-  const transition = sections.find((section) => section.key === 'transition');
+  const transition = sections.find((section) => section.key === 'body');
   assert.ok(!transition?.rows.some((row) => row.spec.key === 'wear'), 'the row is in two places at once');
 });
 
@@ -690,7 +690,7 @@ test('a suspended row stays under its own group, unlike a finished one - it is n
     !sections.some((section) => section.key === 'finished'),
     'nothing is finished, so there is no finished set at all'
   );
-  const transition = sections.find((section) => section.key === 'transition');
+  const transition = sections.find((section) => section.key === 'body');
   assert.ok(transition?.rows.some((row) => row.spec.key === 'hair-removal'), 'the suspended row left its own group');
 });
 
@@ -725,18 +725,10 @@ test('every group is in the order Alicja set in pre-release-human 12', () => {
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
-  // `body` is gone and its one row opens Health (audit item 10).
-  assert.deepEqual(group('body'), []);
+  // Body came back in pre-release-human 12 to even out a seven-row Steps.
   assert.deepEqual(group('health'), ['care', 'appointments', 'surgery']);
-  assert.deepEqual(group('transition'), [
-    'roadmap',
-    'milestones',
-    'progress-photos',
-    'tryouts',
-    'wear',
-    'hair-removal',
-    'voice-benchmark'
-  ]);
+  assert.deepEqual(group('body'), ['progress-photos', 'effects', 'hair-removal', 'wear', 'voice-benchmark']);
+  assert.deepEqual(group('transition'), ['roadmap', 'milestones', 'tryouts']);
   assert.deepEqual(group('support'), ['letters', 'doubt', 'resources']);
   assert.deepEqual(group('media'), ['photos', 'documents']);
 });
@@ -801,7 +793,7 @@ test('a match that has not ended names the group it belongs to', () => {
 
   assert.deepEqual(
     rows.map((row) => row.where),
-    ['transition']
+    ['body']
   );
 });
 
