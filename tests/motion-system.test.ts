@@ -1608,4 +1608,15 @@ describe('carpet 15 row 51 colour and name arrivals', () => {
     const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
     expect(source).toMatch(/@starting-style\s*\{\s*\.is-active \.span-tl-era-name\s*\{\s*clip-path:\s*inset\(100% 0 0 0\);/);
   });
+
+  /* The look-back tiles' settle travel restarted on every push while the
+     offer opened, so it never left --ease-out-soft's slow start: 22px in
+     one frame, then four frames still. A push mid-travel retargets the
+     running animation instead. */
+  it('retargets the look-back tiles\' running travel instead of restarting it on a push', () => {
+    const source = stripComments(readFileSync(join(root, 'src/routes/stats/+page.svelte'), 'utf8'));
+    const action = source.slice(source.indexOf('const settleReadingSpace'), source.indexOf('observer.observe(node.parentElement!)'));
+    const observer = action.slice(action.indexOf('new ResizeObserver'));
+    expect(observer).toMatch(/playState === 'running'[\s\S]*?setKeyframes\([\s\S]*?return;[\s\S]*?stopMotion\(\)/);
+  });
 });
