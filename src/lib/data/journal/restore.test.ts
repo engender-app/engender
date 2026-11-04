@@ -1439,6 +1439,19 @@ test.each(['replace', 'merge'] as const)('hidden goal visibility and linked reco
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { [keys[0]]: 'checked', [keys[1]]: 'not-my-path' });
 });
 
+test.each(['replace', 'merge'] as const)('social-group ticks and hidden steps survive archive %s', async (mode) => {
+  const source = await device();
+  await source.journal.roadmap.setGoalStatus('social', 'social-family', 'checked');
+  await source.journal.roadmap.setGoalStatus('social', 'social-voice', 'not-my-path');
+  await source.journal.roadmap.setGoalHidden('social', 'social-hair-makeup', true);
+  const target = await device();
+  await target.journal.archive[mode](await exported(source.journal));
+
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('social'), { 'social-family': 'checked', 'social-voice': 'not-my-path' });
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('social'), ['social-hair-makeup']);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), {});
+});
+
 test.each(['checked', 'not-my-path'] as const)('merging a status into a locally hidden unchecked goal keeps %s after unhiding', async (status) => {
   const source = await device();
   await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', status);

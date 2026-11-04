@@ -6,6 +6,13 @@
    procedure and the paperwork around it, shown behind the "Polish legal
    steps" switch (`polishLegalStepsShown` below).
 
+   Pre-release human ticket 17 reversed the cut in part: the roadmap gained
+   a second built-in group, the social and presentation steps (coming out,
+   name and pronouns, clothes, voice, hair). Alicja asked why transition's
+   social side was missing and chose a built-in group over the cut tracks
+   or starter goals in a category of her own. It is not Polish content, so
+   it is a pack of its own (`SOCIAL_PACK`) with its own switch.
+
    A country pack is bundled content, not reference data (CONTEXT:
    "Reference data"): nothing about it is per-install, so there is no row
    to seed and no table to migrate when a pack gains an item. It is
@@ -88,9 +95,51 @@ export const ROADMAP_PACKS = [POLISH_PACK] as const satisfies readonly RoadmapPa
     must cover on its own: the pack list is the single place a new pack is
     declared, which is what makes it content work and not a schema
     change. */
-export type RoadmapGoalKey = (typeof ROADMAP_PACKS)[number]['goals'][number]['key'];
+export type RoadmapGoalKey = (typeof ROADMAP_PACKS)[number]['goals'][number]['key'] | SocialGoalKey;
 
 export type RoadmapPackKey = (typeof ROADMAP_PACKS)[number]['key'];
+
+/* The social and presentation group (pre-release human ticket 17): eight
+   plain steps, none of them a legal or medical claim, so the pack has no
+   review date and sits outside ROADMAP_PACKS, which the reviewed-on guard
+   reads. Its keys start `social-`, never `pl-social-`: isCutTrackGoal
+   below drops a tick by that older prefix, and these must survive it. The
+   person trims the list with each step's own "hide" and the group with its
+   switch (`prefs.roadmapSocialStepsShown`). */
+const SOCIAL_GOALS = [
+  { key: 'social-family' },
+  { key: 'social-friends' },
+  { key: 'social-work' },
+  { key: 'social-name-pronouns' },
+  { key: 'social-accounts' },
+  { key: 'social-clothes' },
+  { key: 'social-voice' },
+  { key: 'social-hair-makeup' }
+] as const satisfies readonly RoadmapGoal[];
+
+export type SocialGoalKey = (typeof SOCIAL_GOALS)[number]['key'];
+
+export const SOCIAL_PACK = { key: 'social', goals: SOCIAL_GOALS } as const;
+
+/** Every built-in step on the roadmap, legal then social. */
+export const BUILT_IN_GOALS: readonly RoadmapGoal<RoadmapGoalKey>[] = [...POLISH_PACK.goals, ...SOCIAL_PACK.goals];
+
+const BUILT_IN_GOAL_KEYS: ReadonlySet<string> = new Set(BUILT_IN_GOALS.map((goal) => goal.key));
+
+export const isBuiltInGoal = (key: string): key is RoadmapGoalKey => BUILT_IN_GOAL_KEYS.has(key);
+
+const SOCIAL_GOAL_KEYS: ReadonlySet<string> = new Set(SOCIAL_GOALS.map((goal) => goal.key));
+
+/** The pack a built-in step's tick is stored under (`roadmap_check.pack_key`). */
+export const packKeyOf = (goalKey: RoadmapGoalKey): string => (SOCIAL_GOAL_KEYS.has(goalKey) ? SOCIAL_PACK.key : POLISH_PACK.key);
+
+/** The social steps in view: none while the group's switch is off, and
+    never one the person hid. Ticks stay stored either way. */
+export function socialGoalsInView(shown: boolean, hiddenGoals: readonly string[]): readonly RoadmapGoal<SocialGoalKey>[] {
+  if (!shown) return [];
+  const hidden = new Set(hiddenGoals);
+  return SOCIAL_GOALS.filter((goal) => !hidden.has(goal.key));
+}
 
 /** Whether a stored tick names a goal from one of the three tracks
     functional audit ticket 34 cut (social, presentational, medical).

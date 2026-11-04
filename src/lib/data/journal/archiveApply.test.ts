@@ -486,6 +486,19 @@ test('applyRoadmapChecks inserts a check and leaves a matched pack/goal pair alo
   assert.deepEqual((await select<{ status: string }>(driver, 'SELECT status FROM roadmap_check'))[0].status, 'checked');
 });
 
+/* Pre-release human ticket 17: the social group's ticks are named 'social-',
+   not 'pl-social-', so the rule that drops the old cut track leaves them. */
+test('applyRoadmapChecks keeps a social-group tick beside a cut-track one', async () => {
+  const driver = await migratedDb();
+  const checks: ArchiveRoadmapCheck[] = [
+    { packKey: 'pl', goalKey: 'pl-social-tell-one-person', status: 'checked' },
+    { packKey: 'social', goalKey: 'social-family', status: 'checked' }
+  ];
+
+  await applyRoadmapChecks(restoring(driver, { roadmapChecks: checks }, 'replace', 2));
+  assert.deepEqual(await select(driver, 'SELECT pack_key, goal_key FROM roadmap_check'), [{ pack_key: 'social', goal_key: 'social-family' }]);
+});
+
 /* Functional audit ticket 34: an archive written before the trim still
    carries ticks against the three cut tracks. They are skipped, the way
    migration 111 deleted them, and a legal tick beside them still lands. */

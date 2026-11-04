@@ -29,7 +29,7 @@
 
 import { m } from '$lib/paraglide/messages';
 import { DOSE_PREFIX, STOCK_PREFIX, WEAR_PREFIX } from './autoSource';
-import { POLISH_PACK, isBuiltInInstitution, type RoadmapGoalKey } from './roadmap';
+import { isBuiltInGoal, isBuiltInInstitution } from './roadmap';
 import { roadmapGoalTitle, roadmapInstitutionName } from './vocabulary/roadmapLabels';
 import type { Milestone, Reminder } from './types';
 
@@ -42,8 +42,7 @@ interface Origin {
 }
 
 function builtinGoalTitle(key: string): string | null {
-  const found = POLISH_PACK.goals.find((g) => g.key === key);
-  if (found) return roadmapGoalTitle(found.key as RoadmapGoalKey);
+  if (isBuiltInGoal(key)) return roadmapGoalTitle(key);
   /* A milestone minted from a post-ruling step that became an institution
      (functional audit ticket 35) keeps its key, which now names the
      institution. */
