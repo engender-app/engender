@@ -53,7 +53,7 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   wear: m.wear_log,
   effects: m.effects_timeline,
   resources: m.resources_title,
-  photos: m.progress_photos,
+  photos: m.photos_label,
   documents: m.documents_title
 };
 

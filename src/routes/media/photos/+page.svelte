@@ -331,10 +331,10 @@
 </script>
 
 <div class="screen">
-    <ScreenHeader title={m.progress_photos()} back="/more" />
+    <ScreenHeader title={m.photos_label()} back="/more" />
     <div class="screen-part">
       <Segmented
-        name={m.progress_photos()}
+        name={m.photos_label()}
         options={[
           { value: 'browse', label: m.ph_tab_browse() },
           { value: 'compare', label: m.ph_tab_compare() }
