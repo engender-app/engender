@@ -26,7 +26,7 @@ baza i media są zaszyfrowane na urządzeniu. Autorka nie może odzyskać ich
 za ciebie.
 
 Strona w przeglądarce zlicza otwarcia przy połączeniu z siecią bez profilowania odwiedzających. Liczniki nie zawierają danych z dziennika.
-Android nie wysyła takich zgłoszeń: jest w 100% lokalna. 
+Android nie wysyła takich zgłoszeń: jest w 100% lokalna.
 
 ## Co aplikacja przechowuje i gdzie
 
