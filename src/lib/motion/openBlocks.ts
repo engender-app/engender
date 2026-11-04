@@ -69,18 +69,30 @@ const tr = (px: number) => `0 ${px}px`;
 export function openBlocks(opts: {
   pack: HTMLElement | null;
   section: HTMLElement;
+  /** Elements that stood before the blocks arrived and sit between the pack
+      and the section (the roadmap's social group): they move down by the
+      pack's room alone. */
+  between: HTMLElement[];
   followers: HTMLElement[];
-  /** Where the first follower stood before the blocks arrived. */
-  from: number;
+  /** Where each element that was already there stood before the blocks
+      arrived. */
+  before: Map<Element, number>;
   /** After the opening ends (`retreated` false) or has played back. */
   onSettled: (retreated: boolean) => void;
 }): Opening | null {
-  const { pack, section, followers } = opts;
+  const { pack, section, between, followers } = opts;
   if (typeof section.animate !== 'function' || followers.length === 0) return null;
-  const added = followers[0].getBoundingClientRect().top - opts.from;
-  const travel = Math.min(added, Math.max(0, innerHeight - opts.from));
+  const from = opts.before.get(followers[0]);
+  if (from === undefined) return null;
+  const added = followers[0].getBoundingClientRect().top - from;
+  const travel = Math.min(added, Math.max(0, innerHeight - from));
   if (!(travel >= 1)) return null;
-  const packSpace = pack ? section.getBoundingClientRect().top - pack.getBoundingClientRect().top : 0;
+  const betweenShifts = between.map((el) => (opts.before.get(el) ?? NaN) - el.getBoundingClientRect().top);
+  const packSpace = !pack
+    ? 0
+    : between.length > 0 && Number.isFinite(betweenShifts[0])
+      ? -betweenShifts[0]
+      : section.getBoundingClientRect().top - pack.getBoundingClientRect().top;
   const shifts = openingShifts({ added, travel, packSpace });
 
   const timing: KeyframeAnimationOptions = { duration: motionDuration('--dur-med'), easing: EASE_OUT_CSS, fill: 'both' };
@@ -96,6 +108,7 @@ export function openBlocks(opts: {
     for (const kid of Array.from(box.children) as HTMLElement[]) play(kid, kids);
   };
   for (const follower of followers) play(follower, shifts.followers);
+  between.forEach((el, i) => Number.isFinite(betweenShifts[i]) && play(el, [betweenShifts[i], 0]));
   if (pack) hold(pack, shifts.packBox, shifts.packKids);
   hold(section, shifts.sectionBox, shifts.sectionKids);
 

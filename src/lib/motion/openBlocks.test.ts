@@ -49,9 +49,10 @@ describe('openingShifts', () => {
 describe('openBlocks start', () => {
   type Fake = { animate: (...args: unknown[]) => unknown; getBoundingClientRect: () => { top: number }; children: unknown[]; style: Record<string, string>; isConnected: boolean };
   const make = (top: number, log: string[], name: string): Fake => ({
-    animate: () => {
+    animate: (keyframes: Array<{ translate: string }>) => {
       let id = `${name}${log.length}`;
       log.push(`create ${id}`);
+      log.push(`kf ${name} ${keyframes.map((k) => k.translate).join(' > ')}`);
       return {
         pause: () => log.push(`pause ${id}`),
         play: () => log.push(`play ${id}`),
@@ -67,7 +68,7 @@ describe('openBlocks start', () => {
     isConnected: true
   });
 
-  async function run() {
+  async function run(withBetween = false) {
     const g = globalThis as Record<string, unknown>;
     const frames: Array<() => void> = [];
     g.innerHeight = 800;
@@ -76,11 +77,13 @@ describe('openBlocks start', () => {
     const log: string[] = [];
     const section = make(500, log, 's');
     const follower = make(1500, log, 'f');
+    const social = make(900, log, 'b');
     const opening = openBlocks({
       pack: null,
       section: section as unknown as HTMLElement,
+      between: withBetween ? [social as unknown as HTMLElement] : [],
       followers: [follower as unknown as HTMLElement],
-      from: 500,
+      before: new Map<unknown, number>([[follower, 500], [social, 700]]) as unknown as Map<Element, number>,
       onSettled: () => {}
     });
     const flush = () => frames.splice(0).forEach((cb) => cb());
@@ -116,6 +119,12 @@ describe('openBlocks start', () => {
     flush();
     opening!.retreat();
     expect(log.some((l) => l.startsWith('reverse'))).toBe(true);
+  });
+
+  it('moves what sits between the pack and the section by the pack\'s room alone', async () => {
+    const { log } = await run(true);
+    // Stood at 700, now at 900 (the pack's 200px moved it): starts 200px up, ends in place.
+    expect(log).toContain('kf b 0 -200px > 0 0px');
   });
 });
 

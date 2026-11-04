@@ -212,8 +212,7 @@
        opening ran and the group was cut in. */
     const body = screenEl?.querySelector<HTMLElement>('[data-read-reserve-body]') ?? null;
     if (on && !isReducedMotion() && body && !body.querySelector('[data-roadmap-legal]')) {
-      const first = body.firstElementChild as HTMLElement | null;
-      const from = first?.getBoundingClientRect().top ?? 0;
+      const before = new Map([...body.children].map((el) => [el, el.getBoundingClientRect().top] as const));
       const row = screenEl?.querySelector('[data-roadmap-polish-steps]');
       const below = innerHeight - (row?.getBoundingClientRect().bottom ?? 0);
       legalLimit = Math.max(1, Math.ceil(Math.max(0, below) / LEGAL_ROW_GUESS) + 1);
@@ -231,13 +230,16 @@
       void tick().then(() => {
         if (seq !== switchSeq || !polishShown) return;
         const section = body.querySelector<HTMLElement>('[data-roadmap-legal]');
-        if (!section || !first) return;
+        if (!section) return;
+        const pack = body.querySelector<HTMLElement>('[data-roadmap-pack]');
         const followers = followersAfter(section, body.children);
+        const between = pack ? followersAfter(pack, body.children).filter((el) => el !== section && !followers.includes(el)) : [];
         opening = openBlocks({
-          pack: body.querySelector<HTMLElement>('[data-roadmap-pack]'),
+          pack,
           section,
+          between,
           followers,
-          from,
+          before,
           onSettled: (retreated) => {
             opening = null;
             skipOpening = false;
