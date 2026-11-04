@@ -159,7 +159,7 @@ async function verifyEmptyTimeline(page, { gallery, out }) {
       await regimen.waitFor();
       assert.equal(await rail.count(), 0);
       assert.equal(await empty.count(), 0);
-      assert.equal(await page.locator('[data-screen-title="care"]').innerText(), locale === 'pl' ? 'Opieka' : 'Care');
+      assert.equal(await page.locator('[data-screen-title="care"]').innerText(), locale === 'pl' ? 'Leki' : 'Meds');
     }
     for (const locale of ['en', 'pl']) {
       await galleryLocale(locale);
