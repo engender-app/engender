@@ -100,12 +100,21 @@ describe('openBlocks start', () => {
     expect(log.filter((l) => l.startsWith('play')).length).toBe(created);
   });
 
-  it('does not start a held opening that is played back first', async () => {
+  it('does not start, or reverse, an opening played back while still held', async () => {
     const { opening, log, flush } = await run();
     opening!.retreat();
     flush();
     flush();
     expect(log.some((l) => l.startsWith('play'))).toBe(false);
+    // Reversing at progress 0 would seek to the end first.
+    expect(log.some((l) => l.startsWith('reverse'))).toBe(false);
+  });
+
+  it('reverses an opening that is already running', async () => {
+    const { opening, log, flush } = await run();
+    flush();
+    flush();
+    opening!.retreat();
     expect(log.some((l) => l.startsWith('reverse'))).toBe(true);
   });
 });

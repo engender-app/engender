@@ -90,6 +90,7 @@ export function openBlocks(opts: {
 
   let live = true;
   let retreating = false;
+  let started = false;
   /* Created paused, played from the second frame after. The first frame
      lays the new rows out, and on a phone that takes 70 to 124 ms before it
      is presented: an animation takes its clock from the frame it starts in,
@@ -100,7 +101,9 @@ export function openBlocks(opts: {
   for (const animation of animations) animation.pause();
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
-      if (live && !retreating) for (const animation of animations) animation.play();
+      if (!live || retreating) return;
+      started = true;
+      for (const animation of animations) animation.play();
     })
   );
   const settle = (retreated: boolean) => {
@@ -126,17 +129,25 @@ export function openBlocks(opts: {
     retreat: () => {
       if (!retreating) {
         retreating = true;
-        for (const animation of animations) animation.reverse();
         /* The animations hold the start state until the section has left
            the document: cancelling them a frame early would show it whole. */
-        ended().then(() => {
+        const gone = () => {
           let frames = 0;
           const wait = () => {
             if (!section.isConnected || ++frames > 60) settle(true);
             else requestAnimationFrame(wait);
           };
           wait();
-        }, () => settle(true));
+        };
+        if (started) {
+          for (const animation of animations) animation.reverse();
+          ended().then(gone, () => settle(true));
+        } else {
+          /* Still held at progress 0: reversing there would seek to the end
+             first (a negative rate at time 0 starts from the end), showing
+             the group whole. It is already at its start. */
+          gone();
+        }
       }
       const at = Number(animations[0]?.currentTime ?? 0);
       return { duration: Math.max(1, Math.round(at)) };
