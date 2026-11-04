@@ -1221,8 +1221,8 @@
      the sun's corner outwards on the sun's own clock. First in the paint's
      DOM order and so under the sun, which keeps drawing over both.
 
-     The rest of the palette still arrives in one frame - the accent under
-     Skip, a tick's fill, a row's icon block - because `--accent` and the
+     The rest of the palette still arrives in one frame - a tick's fill, a
+     row's icon block (Skip's words fade, see .setup-outs) - because `--accent` and the
      role colours are published on <html> and nothing in the app transitions
      them. That is the cohesion sweep's to answer (ticket 20) rather than a
      step's; what this rule owns is the surface this step is about. */
@@ -1597,8 +1597,16 @@
     justify-content: space-between;
     gap: var(--space-2);
   }
+  /* Colour joins .btn's list here because picking a flag changes
+     --accent-ink under these words: without it Skip and "straight to the
+     app" changed colour in one frame while the field beside them wiped
+     (carpet 15 row 51). Text, so the sRGB mix the field avoids is not
+     visible at this size. */
   .setup-outs .btn {
     padding: 0 var(--space-3);
+    transition-property: transform, background, filter, opacity, color;
+    transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast), var(--dur-authored);
+    transition-timing-function: var(--ease-press), var(--ease-out), ease, var(--ease-out), var(--ease-out);
   }
 
   /* ---------- the short form (rule 14) ----------
