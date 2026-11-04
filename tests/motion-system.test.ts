@@ -1686,6 +1686,16 @@ describe('carpet 15 row 51 colour and name arrivals', () => {
     }
   });
 
+  /* The handles' keyboard ring sat on the grip, inside the grip's own
+     clip, so it was never painted. It is a box of its own over the grip's
+     place, outside every clip the rise moves. */
+  it("draws the span handles' focus ring outside the grip's clip", () => {
+    const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
+    const css = source.slice(source.indexOf('<style>'));
+    expect(css).toMatch(/\.span-tl-handle:focus-visible::after \{\s*outline: 2px solid var\(--focus-ring\);\s*outline-offset: 2px;/);
+    expect(css).not.toMatch(/\.span-tl-grip[\w-]*[^{]*\{[^}]*outline:/);
+  });
+
   /* The look-back tiles' settle travel restarted on every push while the
      offer opened, so it never left --ease-out-soft's slow start: 22px in
      one frame, then four frames still. A push mid-travel retargets the

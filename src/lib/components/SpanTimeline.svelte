@@ -1275,10 +1275,27 @@
     scale: 1.25 1;
   }
 
+  /* The keyboard's ring goes round the grip, as a box of its own over the
+     grip's place at full height: drawn on the grip, it sat inside the
+     grip's clip and was never painted (carpet 15 row 51), and the grip's
+     box travels with the rise, so a ring on it would rise from below the
+     rail. Focus raises the rail, so the grip fills this box a moment
+     later. Instant, like every other control's ring in the kit. */
   .span-tl-handle:focus-visible {
     outline: none;
   }
-  .span-tl-handle:focus-visible .span-tl-grip-ink {
+  .span-tl-handle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--grip);
+    border-radius: var(--r-block);
+    pointer-events: none;
+  }
+  .span-tl-handle.is-start::after { left: calc(var(--handle) - var(--grip)); }
+  .span-tl-handle.is-end::after { left: 6px; }
+  .span-tl-handle:focus-visible::after {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
   }
