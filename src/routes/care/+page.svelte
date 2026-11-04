@@ -97,6 +97,9 @@
      as a day of their week, where the rail's captions state a date under a
      mark and have no room for more. */
   const dayWithWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
+  /* When a course began, with its year: it can be years back, and a weekday
+     says nothing about a day that long ago. */
+  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
   let careQuery = liveQuery((j) => readCare(j, today));
   // A successful answer exists even when no medication has been recorded.
@@ -694,6 +697,7 @@
                     route: route.charAt(0).toLowerCase() + route.slice(1)
                   })}</span
             >
+            <span class="care-regimen-detail" data-care-regimen-since>{m.care_regimen_since({ date: longDay(lane.takingSinceEpochDay) })}</span>
           </span>
           <Icon name="chevronRight" size={22} cls="care-regimen-go" />
         </a>

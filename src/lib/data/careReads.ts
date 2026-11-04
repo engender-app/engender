@@ -2,7 +2,7 @@ import { railEpisodes, scheduleDoseFacts, SPINE_FORWARD_DAYS } from './careSpine
 import { startOfDayTimestamp } from './epochDay';
 import { cumulativeDoseTotals } from './exposureCounters';
 import type { Journal } from './journal/journal';
-import { activeEpisodesAt, sameDrug } from './regimenEpisode';
+import { activeEpisodesAt, continuousSince, sameDrug } from './regimenEpisode';
 import { depletingStocks } from './stockProjection';
 import type { DoseEvent } from './types';
 
@@ -58,6 +58,7 @@ export async function readCare(
   }
   const lanes = running.map((episode, i) => ({
     episode,
+    takingSinceEpochDay: continuousSince(episodes, episode),
     ...facts[i],
     runOut: depleting.find((row) => sameDrug(row.entry.drug, episode.drug)) ?? null,
     doseTotals: totals.filter((total) => sameDrug(total.drug, episode.drug))

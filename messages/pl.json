@@ -331,6 +331,7 @@
   "care_regimen_dose": "{dose} {unit}",
   "care_regimen_dose_route": "{dose} {unit}, {route}",
   "care_regimen_dose_total": "{total} {unit} {route} w ciągu ostatnich {days} dni",
+  "care_regimen_since": "Przyjmujesz od {date}",
   "care_row_labs": "{analyte} {value} {unit}, {when}",
   "care_row_stock": "{drug}, {left}",
   "care_row_stock_none": "Jeszcze nic nie policzono",

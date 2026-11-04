@@ -5,6 +5,7 @@ import {
   activeEpisodesAt,
   attributeDose,
   attributeDrug,
+  continuousSince,
   drugSpans,
   expectedDosesOnDay,
   lastDayWithin,
@@ -404,4 +405,17 @@ test('an episode that misses the range on either side answers null', () => {
 
 test('an episode ending on the first day of the range keeps that one day', () => {
   assert.equal(lastDayWithin(episode('a', 100, 150), 150, 160), 150);
+});
+
+test('continuousSince walks back over the same drug while the episodes touch, and stops at a gap', () => {
+  const current = episode('now', 300, null);
+  // A dose change the day after the last one ended, and an overlap before that.
+  const episodes = [episode('old', 100, 150), episode('a', 160, 249), episode('b', 240, 299), current, episode('other', 50, null, 'spironolactone')];
+  assert.equal(continuousSince(episodes, current), 160);
+  // The same drug written another way still counts as the same drug.
+  assert.equal(continuousSince([episode('a', 200, 299, ' Estradiol '), current], current), 200);
+  // Nothing before it: its own start.
+  assert.equal(continuousSince([current], current), 300);
+  // A one-day gap is a break.
+  assert.equal(continuousSince([episode('a', 200, 298), current], current), 300);
 });
