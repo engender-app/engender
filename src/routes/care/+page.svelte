@@ -34,6 +34,7 @@
      anything (PRODUCT.md:109, and labTiming.ts as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
+  import { scrollToHash } from '$lib/navigation/scroll-region';
   import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, EASE_OUT_SOFT_CSS } from '$lib/motion/tokens';
   import { flushSync, onDestroy } from 'svelte';
@@ -50,6 +51,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import RegimenEditorSheet from '$lib/components/RegimenEditorSheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
@@ -97,6 +99,9 @@
      as a day of their week, where the rail's captions state a date under a
      mark and have no room for more. */
   const dayWithWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
+  /* When a course began, with its year: it can be years back, and a weekday
+     says nothing about a day that long ago. */
+  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
   let careQuery = liveQuery((j) => readCare(j, today));
   // A successful answer exists even when no medication has been recorded.
@@ -448,6 +453,20 @@
       name is free text and a fragment is not. */
   const blockAnchor = (episodeId: string) => `care-med-${episodeId}`;
 
+  let regimenSheet: ReturnType<typeof RegimenEditorSheet>;
+
+  /** The lane's name travels down to its block rather than taking the
+      fragment's own jump, which landed the whole way in one frame (prh12
+      bug 14, "should take you lower smoothly"). The eased scroll is
+      scroll-region.ts's, the same one a linked record lands with; the
+      focus still moves to the block, without a scroll of its own. */
+  function travelToBlock(event: MouseEvent, episodeId: string) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    document.getElementById(blockAnchor(episodeId))?.focus({ preventScroll: true });
+    scrollToHash(`#${blockAnchor(episodeId)}`);
+  }
+
   /** Where to log this lane's next dose: the same sheet the dose panel on
       Today opens (`/care/doses?add=1`), seeded with the drug whose block the
       button sits in, so a person on three regimens does not land in a picker
@@ -590,7 +609,7 @@
                    and offers Log a dose, with the whole rail in between.
                    Sized to the name rather than to the lane, so the press
                    is a control's press and not a full-width row's. -->
-              <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug}>
+              <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug} onclick={(event) => travelToBlock(event, lane.episodeId)}>
                 <span class="care-lane-drug">{lane.drug}</span>
                 <Icon name="chevronDown" size={18} cls="care-lane-go" />
               </a>
@@ -682,7 +701,10 @@
         tabindex="-1"
         data-care-regimen-block={lane.episode.drug}
       >
-        <a class="care-regimen" href="/care/regimen" data-care-regimen>
+        <!-- Opens this episode's own editor over Care (prh12 bug 16): the
+             same sheet the regimen screen opens, without the trip to that
+             screen to tap the episode a second time. -->
+        <button type="button" class="care-regimen" data-care-regimen={lane.episode.drug} onclick={() => regimenSheet.open(lane.episode)}>
           <span class="care-regimen-lines">
             <span class="care-regimen-drug">{blockName(lane.episode)}</span>
             <span class="care-regimen-detail"
@@ -694,9 +716,10 @@
                     route: route.charAt(0).toLowerCase() + route.slice(1)
                   })}</span
             >
+            <span class="care-regimen-detail" data-care-regimen-since>{m.care_regimen_since({ date: longDay(lane.takingSinceEpochDay) })}</span>
           </span>
           <Icon name="chevronRight" size={22} cls="care-regimen-go" />
-        </a>
+        </button>
         <!-- The two days the lane above draws, said in words with their
              weekday: the rail states where they fall against each other and
              this states which days they are. -->
@@ -1033,6 +1056,8 @@
     busy={stockRemoving.busy}
     failed={stockRemoving.failed}
   />
+
+  <RegimenEditorSheet bind:this={regimenSheet} allEpisodesLink />
 </div>
 
 <style>
@@ -1064,10 +1089,15 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    width: 100%;
     min-height: var(--touch-target);
     padding: var(--space-2) 0;
-    text-decoration: none;
+    border: 0;
+    background: none;
     color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
   }
   /* Also the block a lane's name jumps to: enough room over it that the
      drug's name is not against the top of the scroll region, and no focus
