@@ -628,39 +628,6 @@
           title={m.appointments_nothing_booked()}
         />
       {/if}
-      <!-- The waits, inside the opening's gate so they land in the same
-           resize as the block above rather than a frame after it. The
-           section opens and closes its own height when the first wait is
-           added or the last one is given a day, and each row does the same
-           inside it, so nothing under it is teleported. -->
-      {#if waiting.length}
-        <div data-waiting transition:collapse>
-          <SectionHeading text={m.appointments_waiting_heading()}>
-            {#snippet action()}
-              <button class="icon-btn" data-add-waiting aria-label={m.appointments_waiting_add_aria()} onclick={() => openNew(true)}>
-                <Icon name="plus" size={22} />
-              </button>
-            {/snippet}
-          </SectionHeading>
-          <div class="screen-part">
-            <ListCard role={roleAt(activeFlag.roles, 0)}>
-              {#each waiting as appointment (appointment.id)}
-                <div transition:collapse>
-                  <ListRow
-                    key={appointment.id}
-                    data-waiting-appointment={appointment.id}
-                    icon="clock"
-                    title={titleOf(appointment)}
-                    subtitle={waitingSubtitle(appointment)}
-                    chevron={false}
-                    onclick={() => record.openEditor(appointment)}
-                  />
-                </div>
-              {/each}
-            </ListCard>
-          </div>
-        </div>
-      {/if}
     {/snippet}
     {#snippet empty()}
       <Notice
@@ -757,6 +724,40 @@
       />
     {/snippet}
   </ReadGate>
+
+  <!-- The waits, under the prep list: what to raise belongs directly under
+       the visit it is for. Outside the opening's gate, so the section opens
+       and closes its own height when the first wait is added or the last one
+       is given a day, and each row does the same inside it, so nothing under
+       it is teleported. -->
+  {#if waiting.length}
+    <div data-waiting transition:collapse>
+      <SectionHeading text={m.appointments_waiting_heading()}>
+        {#snippet action()}
+          <button class="icon-btn" data-add-waiting aria-label={m.appointments_waiting_add_aria()} onclick={() => openNew(true)}>
+            <Icon name="plus" size={22} />
+          </button>
+        {/snippet}
+      </SectionHeading>
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each waiting as appointment (appointment.id)}
+            <div transition:collapse>
+              <ListRow
+                key={appointment.id}
+                data-waiting-appointment={appointment.id}
+                icon="clock"
+                title={titleOf(appointment)}
+                subtitle={waitingSubtitle(appointment)}
+                chevron={false}
+                onclick={() => record.openEditor(appointment)}
+              />
+            </div>
+          {/each}
+        </ListCard>
+      </div>
+    </div>
+  {/if}
 
   <!-- The two verbs. Both are things done at the visit rather than records of
        it, which is why they are a section and not two more rows on a list. -->
