@@ -444,6 +444,28 @@
     };
   }
 
+  /* The action card sits in its own `{#if}`, so a transition written
+     plainly on it never plays when the fan opens or closes: the block that
+     changed is the fan's, an ancestor (carpet 15 row 45, the card painted
+     opaque in the first frame and gone opaque in one). Global, and it picks
+     its motion by what changed. While the fan is arriving or leaving it
+     travels with the other cards; a change of availability while the fan
+     stays up discloses its height. */
+  let fanSettled = false;
+  $effect(() => {
+    if (!ui.chooserOpen) fanSettled = false;
+  });
+  function fanArrived() {
+    fanSettled = true;
+    focusFirstTarget();
+  }
+  function availableIn(node: Element) {
+    return fanSettled ? disclose(node) : fanIn(node);
+  }
+  function availableOut(node: Element) {
+    return ui.chooserOpen ? disclose(node) : fanOut(node);
+  }
+
   /* Press-and-slide. Listened for on the window rather than on the button,
      because the gesture starts on the add control and finishes wherever the
      finger got to, which is a different component and usually a different
@@ -638,7 +660,7 @@
     <!-- The entry card. Everything in it makes an entry, and the mood row
          at the bottom is the one that makes today's - which is why "Today"
          is not a row of its own any more. -->
-    <div class="fan-card" in:fanIn out:fanOut onintroend={focusFirstTarget}>
+    <div class="fan-card" in:fanIn out:fanOut onintroend={fanArrived}>
       <button
         class="fan-item"
         class:is-armed={armed === 'another-day'}
@@ -692,7 +714,7 @@
     </div>
 
     {#if doseAvailable || wearAvailable}
-      <div class="fan-card" transition:disclose>
+      <div class="fan-card" in:availableIn|global out:availableOut|global>
         {#if doseAvailable}
           <button
             class="fan-item"
