@@ -197,3 +197,15 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(standalone?.items.map((item) => item.content)).toEqual(['How long before I can lift?']);
   });
 });
+
+/* prh12: rows about a procedure open its own screen, not the surgery list. */
+describe('rows elsewhere open the procedure screen', () => {
+  it('opens a search hit and a day recovery-photo row on /health/surgery/<id>', () => {
+    expect(read('src/lib/components/searchHitRows.ts')).toContain(
+      "href: (hit) => `${hubRow('surgery').href}/${encodeURIComponent(hit.id)}`"
+    );
+    expect(read('src/lib/components/dayRows.ts')).toContain(
+      'href: `${hubRow(\'surgery\').href}/${encodeURIComponent(group[0].procedureId)}`'
+    );
+  });
+});
