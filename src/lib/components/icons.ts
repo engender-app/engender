@@ -208,7 +208,15 @@ export const PATHS: Record<string, string> = {
   // `sparkle`, which said "celebrate" but not "milestone" and was already the
   // mark on Today's offers and the roadmap. Not `flag`, which the surgery
   // journey used before it took `clipboard`.
-  summit: '<path d="M3 20 10 9l3.2 5 2.3-3L21 20z"/><path d="M10 9V3.5h5l-1.4 1.75L15 7h-5"/>'
+  summit: '<path d="M3 20 10 9l3.2 5 2.3-3L21 20z"/><path d="M10 9V3.5h5l-1.4 1.75L15 7h-5"/>',
+  // Something that grew since you looked: a seedling with two leaves, for the
+  // changes somebody has noticed. It took `eye`, which says "watching" about
+  // a screen that is a record of what came of a regimen.
+  sprout: '<path d="M12 21v-9"/><path d="M12 14c-4.2 0-6.5-2.1-6.5-6 4.2 0 6.5 2.1 6.5 6z"/><path d="M12 12c0-4 2.4-6.5 6.5-6.5 0 4-2.4 6.5-6.5 6.5z"/>',
+  // Posed shots over time: a portrait frame with a figure and the outline of
+  // a second head behind it, the earlier shot. It took `camera`, which any
+  // photo screen could draw and which Photos' own tabs already do.
+  progressShot: '<rect x="3.5" y="3" width="17" height="18" rx="3"/><circle cx="10.5" cy="9.5" r="2.3"/><path d="M6.5 18a4 4 0 0 1 8 0"/><path d="M15.6 7.3a2.3 2.3 0 0 1 0 4.4"/>'
 };
 
 /* The two parameters are constrained rather than escaped, because both have

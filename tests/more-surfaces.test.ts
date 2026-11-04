@@ -92,18 +92,17 @@ describe('what the More hub is built from', () => {
   });
 
   it('asks nothing about cycle tracking, since it draws no cycle row (ADR-0043)', () => {
-    /* The row is hosted by /care/changes now (ticket 16 put it on
-       /health/side-effects, ticket 13 moved it again with the rest of what
-       that screen drew, and ticket 21 moved the screen's own address off
-       the retired Practice prefix), which was already gating its own
-       cycle block on
-       `cycleTrackingVisible`. ADR-0043's decision is unchanged and stronger
+    /* The row is hosted by /care now (ticket 16 put it on
+       /health/side-effects, ticket 13 moved it to /care/changes, and
+       pre-release-human 12 moved it onto Care beside dilation), which
+       gates it on `cycleTrackingVisible`. ADR-0043's decision is unchanged and stronger
        for it: the hub cannot show a cycle prompt at all, rather than showing
        one behind a rule it had to fetch an episode list to evaluate. */
     expect(more).not.toContain('cycleTracking');
     expect(more).not.toMatch(/cycleShown/);
-    expect(personalEffects).toContain("from '$lib/data/cycleTracking'");
-    expect(personalEffects).toContain('cycleTrackingVisible');
+    const care = read('src/routes/care/+page.svelte');
+    expect(care).toContain("from '$lib/data/cycleTracking'");
+    expect(care).toContain('cycleTrackingVisible');
   });
 
   it('issues three live reads for twenty rows, not one per row', () => {
@@ -262,7 +261,7 @@ describe('every row the hub carries', () => {
     ['surgery', 'clipboard', '/health/surgery', 'health', 'read'],
     ['roadmap', 'route', '/transition/roadmap', 'transition', 'written'],
     ['milestones', 'summit', '/transition/milestones', 'transition', 'read'],
-    ['progress-photos', 'camera', '/transition/progress-photos', 'transition', 'read'],
+    ['progress-photos', 'progressShot', '/transition/progress-photos', 'transition', 'read'],
     ['tryouts', 'hanger', '/transition/tryouts', 'transition', 'read'],
     ['wear', 'watch', '/body/wear', 'transition', 'read'],
     ['hair-removal', 'razor', '/body/hair-removal', 'transition', 'read'],
@@ -272,10 +271,10 @@ describe('every row the hub carries', () => {
     ['resources', 'lifebuoy', '/support/resources', 'support', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
     ['documents', 'documents', '/media/documents', 'media', 'read'],
-    ['effects', 'eye', '/care/changes', 'care', 'read'],
+    ['effects', 'sprout', '/care/changes', 'care', 'read'],
     ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read'],
-    ['cycle-events', 'calendar', '/health/cycle-events', 'effects', 'read'],
-    ['dilation', 'repeat', '/health/dilation', 'surgery', 'read']
+    ['cycle-events', 'calendar', '/health/cycle-events', 'care', 'read'],
+    ['dilation', 'repeat', '/health/dilation', 'care', 'read']
   ];
 
   it('is exactly this list, in this order', () => {
@@ -301,13 +300,12 @@ describe('every row the hub carries', () => {
        both a second copy of the icon and href and a row no `hidden` flag can
        reach.
 
-       `cycle-events` is the one exception, held by key rather than by host
-       now that ticket 13 gave it the same host as `hair-progress`: its
-       way-in row is inside a block that screen gates on
-       `cycleTrackingVisible`, carries copy of its own, and fronts the one
-       area no `hidden` flag can reach at all (ADR-0043). It is held to the
-       href instead, and `HostedRows.svelte` excludes it by key so the two
-       rows sharing `effects` do not collide. */
+       `cycle-events` is the one exception, held by key rather than by host:
+       its way-in row is drawn behind `cycleTrackingVisible`, carries copy of
+       its own, and fronts the one area no `hidden` flag can reach at all
+       (ADR-0043). It is held to the href instead, and `HostedRows.svelte`
+       draws it only where its host hands it a row - Care, since
+       pre-release-human 12, beside dilation. */
     const BY_HAND = new Set(['cycle-events']);
 
     for (const [key, , href, home] of EXPECTED) {
@@ -323,6 +321,29 @@ describe('every row the hub carries', () => {
       expect(source, `${host} does not draw its rows through HostedRows`).toContain(`<HostedRows host="${home}"`);
       expect(source, `${host} writes ${key} out by hand instead`).not.toContain(href);
     }
+  });
+
+  it('puts cycle events and dilation on Care and nowhere else', () => {
+    /* "cycle and dilation should be appearing in care" (Alicja, 2026-11-04).
+       A hosted row is reachable from exactly one place, so the screens that
+       used to carry them let go: the changes screen drew the cycle block
+       behind its gate, the surgery list drew the dilation card. */
+    const care = read('src/routes/care/+page.svelte');
+    expect(care).toContain('<HostedRows host="care"');
+    expect(care).toContain('byHand={cycleShown ? cycleEventsRow : undefined}');
+    expect(care).toContain('cycleTrackingVisible(');
+    expect(care).toContain('href="/health/cycle-events"');
+    expect(read('src/lib/components/HostedRows.svelte')).toContain('dilationGated(');
+
+    const changes = read('src/routes/care/changes/+page.svelte');
+    expect(changes).not.toContain('/health/cycle-events');
+    expect(changes).not.toContain('cycleTrackingVisible');
+    expect(changes).toContain('<HostedRows host="effects"');
+
+    const surgery = read('src/routes/health/surgery/+page.svelte');
+    expect(surgery).not.toContain('HostedRows');
+    expect(surgery).not.toContain('/health/dilation');
+    expect(HUB_ROW_HOSTS).not.toHaveProperty('surgery');
   });
 
   it('leaves the hidden rule and the row line to hubRows, not to the component', () => {
@@ -364,7 +385,8 @@ describe("a module's own screen draws the hub's mark for it", () => {
     ['src/routes/transition/milestones/+page.svelte', 'milestones', 'sparkle'],
     ['src/routes/transition/roadmap/+page.svelte', 'milestones', 'sparkle'],
     ['src/lib/components/WrappedYear.svelte', 'milestones', 'flag'],
-    ['src/lib/components/WrappedCompact.svelte', 'milestones', 'flag']
+    ['src/lib/components/WrappedCompact.svelte', 'milestones', 'flag'],
+    ['src/routes/care/changes/+page.svelte', 'effects', 'zap']
   ];
 
   it.each(SCREENS)('%s draws %s with its hub mark', (file, key, old) => {
@@ -392,6 +414,8 @@ describe("a module's own screen draws the hub's mark for it", () => {
     const today = read('src/routes/+page.svelte');
     expect(today).toContain(`area: 'milestones', icon: '${icon('milestones')}'`);
     expect(today).toContain(`area: 'letters', icon: '${icon('letters')}'`);
+    /* The take-a-photo button keeps its camera: that is an action, not the module. */
+    expect(read('src/routes/transition/progress-photos/+page.svelte')).toContain(`icon="${icon('progress-photos')}"`);
     expect(read('src/lib/data/safeSpaceWays.ts')).toContain(`{ key: 'resources', icon: '${icon('resources')}'`);
   });
 });

@@ -247,7 +247,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="camera"
+        icon="progressShot"
         key="progress-photos-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.pph_empty_title()}

@@ -69,6 +69,8 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { readCare, CARE_DOSE_TOTAL_WINDOW_DAYS } from '$lib/data/careReads';
   import { fmtDay, intlLocale } from '$lib/data/dates';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import type { RegimenEpisode } from '$lib/data/types';
   import { sameDrug } from '$lib/data/regimenEpisode';
@@ -102,6 +104,13 @@
   /* When a course began, with its year: it can be years back, and a weekday
      says nothing about a day that long ago. */
   const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* Cycle events are a hosted row drawn by hand (ADR-0043), so the gate is
+     read here: an active testosterone regimen or the explicit opt-in. The
+     row waits for the episodes before the card is drawn, so it never
+     arrives after the rows around it. */
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingChoice));
 
   let careQuery = liveQuery((j) => readCare(j, today));
   // A successful answer exists even when no medication has been recorded.
@@ -838,11 +847,26 @@
        under it - side effects, and hair - hang off that one rather than off
        the hub.
 
-       No SectionHeading: it is one row, and a heading over "Changes you've
-       noticed" would be that title said twice. What separates it from the
-       hormones card is the --space-5 `.screen > .screen-part > *` gives
-       two unrelated blocks. -->
-  <HostedRows host="care" card />
+       No SectionHeading: a heading over "Changes you've noticed" would be
+       that title said twice. What separates it from the hormones card is the
+       --space-5 `.screen > .screen-part > *` gives two unrelated blocks.
+
+       Pre-release-human 12 put cycle events and dilation in the same card
+       ("cycle and dilation should be appearing in care"): the rows about
+       what came of the regimen and what a surgery asks of you, one place
+       each. Cycle events shows only behind `cycleTrackingVisible`;
+       dilation only once a procedure can carry it (`dilationGated`, applied
+       by HostedRows). -->
+  {#snippet cycleEventsRow()}
+    <ListRow
+      key="all-cycle-events"
+      icon="calendar"
+      title={m.cycle_events_open_row_title()}
+      subtitle={m.cycle_events_open_row_sub()}
+      href="/health/cycle-events"
+    />
+  {/snippet}
+  <HostedRows host="care" card ready={!episodesQuery.loading} byHand={cycleShown ? cycleEventsRow : undefined} />
     {/snippet}
   </ReadGate>
 

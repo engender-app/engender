@@ -599,12 +599,21 @@ test('a hidden area takes a hosted row out of its host, the way it took it off t
      `hubSections` any more, so nothing on the hub can answer for it.
      `HostedRows.svelte` applies exactly this filter over the area record. */
   const hosted = rowsHostedBy('effects').map((row) => row.key);
-  assert.deepEqual(hosted, ['hair-progress', 'cycle-events']);
+  assert.deepEqual(hosted, ['hair-progress']);
 
   const left = rowsHostedBy('effects')
     .filter((row) => !rowHidden(row, { hairStages: hidden, hairPhotos: hidden }))
     .map((row) => row.key);
-  assert.deepEqual(left, ['cycle-events']);
+  assert.deepEqual(left, []);
+
+  /* Care hosts the two that moved there from the changes screen and the
+     surgery list (pre-release-human 12), in this order. */
+  assert.deepEqual(
+    rowsHostedBy('care')
+      .map((row) => row.key)
+      .filter((key) => key === 'cycle-events' || key === 'dilation'),
+    ['cycle-events', 'dilation']
+  );
 
   /* Both sections behind hair progress, or the row stays - the same
      every-section rule the hub applies. */
@@ -826,7 +835,7 @@ test('a row drawn on another screen is searchable, and names its host', () => {
 
   assert.deepEqual(
     rows.map((row) => [row.spec.key, row.where, row.spec.href]),
-    [['dilation', 'surgery', '/health/dilation']]
+    [['dilation', 'care', '/health/dilation']]
   );
 });
 
@@ -835,7 +844,7 @@ test('a hosted row states the day its area ended, like any other match', () => {
 
   assert.deepEqual(
     rows.map((row) => [row.where, row.line.kind]),
-    [['surgery', 'finished']]
+    [['care', 'finished']]
   );
 });
 

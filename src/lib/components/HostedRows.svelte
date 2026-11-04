@@ -29,9 +29,12 @@
      host screen the assembled last-write call, which is the hub's own
      measured read (`hub-last-writes`), for a date the screen one tap away
      opens on. */
+  import { collapse } from '$lib/motion/reveal';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { untrack, type Snippet } from 'svelte';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { dilationGated } from '$lib/data/taperSchedule';
   import { rowLine, rowsHostedBy, rowHidden, type HubRowHostKey } from '$lib/data/hubRows';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -41,7 +44,9 @@
 
   let {
     host,
-    card = false
+    card = false,
+    ready = true,
+    byHand
   }: {
     /** Which screen's rows to draw, from `HUB_ROW_HOSTS`. */
     host: HubRowHostKey;
@@ -51,6 +56,13 @@
         block, which is also what makes the block disappear along with its
         last row. */
     card?: boolean;
+    /** The host's own reads, when what it draws by hand waits on them. */
+    ready?: boolean;
+    /** The one row this component never writes itself: `cycle-events`, which
+        carries copy of its own and a gate no area record holds, so its host
+        draws it and passes it here. Without it the row is not drawn at all,
+        which is how a host says the gate is shut. */
+    byHand?: Snippet;
   } = $props();
 
   const today = $derived(currentDay());
@@ -58,21 +70,31 @@
   const remember = (px: number) => rememberReserve(`hosted-${host}`, px);
 
   let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
-  let states = $derived(statesQuery.value);
+  /* Dilation is the one hosted row whose presence is the journal's rather
+     than the person's: `dilationGated` hides its area until some procedure
+     can carry a dilation journey. Read only for a host that has the row, which is
+     fixed for the life of a screen. */
+  const readsProcedures = untrack(() => rowsHostedBy(host)).some((row) => row.key === 'dilation');
+  let proceduresQuery = readsProcedures ? liveList((j) => j.procedures.getProcedures()) : null;
+  let states = $derived(
+    statesQuery.value === undefined || proceduresQuery?.loading
+      ? undefined
+      : proceduresQuery
+        ? dilationGated(statesQuery.value, proceduresQuery.rows)
+        : statesQuery.value
+  );
 
   let rows = $derived(
     states === undefined
       ? []
       : rowsHostedBy(host)
-          /* Its own hand-drawn block wherever it lives, not a generic row
+          /* Its own hand-drawn row wherever it lives, not a generic row
              here (ADR-0043): `cycleEvents` reads `rowHidden` as always false,
              so a row drawn through this component would show regardless of
              `cycleTrackingVisible`, which is the one gate that is allowed to
-             make it not exist at all. Ticket 13 moved that block onto
-             /care/changes, sharing a host with hair progress
-             for the first time, which is what makes this filter load-bearing
-             rather than always a no-op. */
-          .filter((row) => row.key !== 'cycle-events')
+             make it not exist at all. It is drawn only when the host hands
+             it over, and the host hands it over only behind that gate. */
+          .filter((row) => row.key !== 'cycle-events' || byHand !== undefined)
           .filter((row) => !rowHidden(row, states))
           /* No last write and nothing forward: a hosted row is drawn beside
              the very records it would report on (dilation on the surgery
@@ -87,15 +109,19 @@
 
 {#snippet hostedRows()}
   {#each rows as { row, line } (row.key)}
-    <ListRow
-      key={row.key}
-      icon={row.icon}
-      title={hubRowTitle(row.key)}
-      subtitle={hubRowLine(row.key, line, today, Date.now())}
-      href={row.href}
-      data-hub-host={host}
-      data-hub-line={line.kind}
-    />
+    {#if row.key === 'cycle-events'}
+      <div class="rows-divide" transition:collapse>{@render byHand?.()}</div>
+    {:else}
+      <ListRow
+        key={row.key}
+        icon={row.icon}
+        title={hubRowTitle(row.key)}
+        subtitle={hubRowLine(row.key, line, today, Date.now())}
+        href={row.href}
+        data-hub-host={host}
+        data-hub-line={line.kind}
+      />
+    {/if}
   {/each}
 {/snippet}
 
@@ -106,7 +132,7 @@
        cold open (ux-carpet ticket 193) - and at full opacity (ticket 184).
        The reserve keeps the card's room from the last visit and fades the
        rows in over it; a card whose height changed travels. -->
-  <ReadReserve ready={!statesQuery.loading} {estimate} onrest={remember} data-hosted-reserve={host}>
+  <ReadReserve ready={!statesQuery.loading && !proceduresQuery?.loading && ready} {estimate} onrest={remember} data-hosted-reserve={host}>
     {#if rows.length}
       <ListCard>{@render hostedRows()}</ListCard>
     {/if}

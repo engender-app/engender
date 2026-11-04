@@ -11,14 +11,12 @@
      the name, type and date editable only in a sheet behind a pencil. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { dilationEligible } from '$lib/data/taperSchedule';
   import { epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import type { Procedure, ProcedureKind } from '$lib/data/types';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import { disclose, resize } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
-  import HostedRows from '$lib/components/HostedRows.svelte';
   import ProcedureFields from '$lib/components/ProcedureFields.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -132,16 +130,6 @@
       />
     {/snippet}
   </ReadGate>
-
-  <!-- Dilation, hosted here (phase 9 carpet ticket 16). It was a top-level
-       Health row, which put a dilation log in front of everyone who opened
-       More whatever their surgery was or was not. The gate is ticket 17's:
-       a vaginoplasty, or a custom procedure whose own dilation toggle is
-       on. Vulvoplasty is deliberately not in this OR - there is no canal to
-       keep. Directly under the cards since audit item 13. -->
-  {#if procedures.some(dilationEligible)}
-    <HostedRows host="surgery" card />
-  {/if}
 
   <RecordSheet
     {record}

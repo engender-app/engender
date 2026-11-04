@@ -133,22 +133,26 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     13 put side effects on the same axis and the same screen as the changes
     somebody was hoping for (rule 16's new strip-versus-axis paragraph): the
     `side-effects` row is not hosted anywhere any more because it is not a
-    screen of its own to link to, and `/health/side-effects` has been removed. Three hosts for four rows now, keyed by the row key of the screen
-    that hosts them where there is one and by the tab otherwise. What this
-    map is for is naming the one screen that owes each row its link, which is
-    what `more-surfaces.test.ts` holds them to - a hosted row whose host
-    forgot it is a screen nothing reaches.
+    screen of its own to link to, and `/health/side-effects` has been removed.
+
+    Pre-release-human 12 then moved two more onto Care: cycle events and
+    dilation, which Alicja wanted "appearing in care" rather than under
+    the changes screen and the surgery list. Two hosts for four rows now,
+    and `surgery` is not a host any more, so the surgery list draws no
+    hosted row at all. What this map is for is naming the one screen that
+    owes each row its link, which is what `more-surfaces.test.ts` holds them
+    to - a hosted row whose host forgot it is a screen nothing reaches.
 
     Three of the four are drawn by `HostedRows.svelte`, which reads
-    `rowsHostedBy` below. `cycle-events` is the exception and stays written by
-    hand, now on /care/changes (it moved there with the rest of
-    what /health/side-effects drew): it sits inside a block that screen
-    already gates on `cycleTrackingVisible`, its way-in row carries copy
-    about the chart behind it rather than the standing line, and
-    `cycleEvents` is the one area no `hidden` flag can reach (ADR-0043), so
-    the rule the component exists to apply has nothing to do there -
-    `HostedRows.svelte` excludes it by key for the same reason, now that it
-    shares a host with a row the component does draw.
+    `rowsHostedBy` below, and dilation's gate (`dilationGated`,
+    taperSchedule.ts) is applied there over the procedures it reads.
+    `cycle-events` is the exception and stays written by hand, now on /care
+    in the slot `HostedRows.svelte` leaves for it: it sits behind
+    `cycleTrackingVisible`, its way-in row carries copy about the chart
+    behind it rather than the standing line, and `cycleEvents` is the one
+    area no `hidden` flag can reach (ADR-0043), so the rule the component
+    exists to apply has nothing to do there - `HostedRows.svelte` draws it
+    only where the host hands it a row.
 
     Eras never was one of the seven - it kept a plain row in the Transition
     group until redesign ticket 16 (ADR-0084) found it a reference area too,
@@ -157,8 +161,7 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     Transition an era is still drawn, as a band rather than a row. */
 export const HUB_ROW_HOSTS = {
   care: '/care',
-  effects: '/care/changes',
-  surgery: '/health/surgery'
+  effects: '/care/changes'
 } as const;
 
 export type HubRowHostKey = keyof typeof HUB_ROW_HOSTS;
@@ -310,11 +313,11 @@ const ROWS = [
   {
     /* Pre-release-human 12, bug 25: shots taken on purpose, pose by pose,
        split off the photo library, which keeps every photograph in the
-       journal. `camera` for now, an existing glyph no other row uses; the
-       Transition icons are being redrawn separately. Not finishable
+       journal. `progressShot`, a portrait with the earlier shot's head behind
+       it; it drew `camera` as a placeholder. Not finishable
        (areaState.ts's NOT_FINISHABLE says why). */
     key: 'progress-photos',
-    icon: 'camera',
+    icon: 'progressShot',
     href: '/transition/progress-photos',
     home: 'transition',
     areas: ['progressPhotos'],
@@ -484,8 +487,9 @@ const ROWS = [
        classify their own symptom before they could write it down. The row
        reports whichever half was written last (`groupLastWrite`'s own
        reasoning), the way `hair-progress` already does for its own two. */
+    /* `sprout`, a change that grew (pre-release-human 12); it drew `eye`. */
     key: 'effects',
-    icon: 'eye',
+    icon: 'sprout',
     href: '/care/changes',
     home: 'care',
     areas: ['personalEffects', 'sideEffects'],
@@ -516,13 +520,15 @@ const ROWS = [
        than being weakened: /health/side-effects drew a cycle block behind
        `cycleTrackingVisible`, and that block's own way in was the only one.
        Ticket 13 moved the block again, onto /care/changes with
-       the rest of what that screen drew, so this row's home moved with it -
-       the gate itself is untouched, and the hub still cannot show a cycle
-       prompt at all. */
+       the rest of what that screen drew, so this row's home moved with it.
+       Pre-release-human 12 moved it onto /care itself ("cycle and dilation
+       should be appearing in care"), beside the other hosted rows - the gate
+       itself is untouched, and the hub still cannot show a cycle prompt at
+       all. */
     key: 'cycle-events',
     icon: 'calendar',
     href: '/health/cycle-events',
-    home: 'effects',
+    home: 'care',
     areas: ['cycleEvents'],
     finishes: null,
     line: 'read'
@@ -531,7 +537,7 @@ const ROWS = [
     key: 'dilation',
     icon: 'repeat',
     href: '/health/dilation',
-    home: 'surgery',
+    home: 'care',
     /* The sessions, not the schedule. `taper` is what was meant to happen
        and opts out of the last-write registry for the reason a dose schedule
        does; `taperSessions` is the practice, and the practice is what ends. */
@@ -995,8 +1001,8 @@ export function hubSectionRoleIndex(key: HubSection['key']): number {
     a row goes when every area behind it is hidden, and states the day the
     person said it ended. `HostedRows.svelte` reads this and applies
     `rowHidden` and `rowLine` over the area record, so the rule lives once -
-    except for `cycle-events`, which that component excludes by key and
-    /care/changes draws by hand instead (ADR-0043). */
+    except for `cycle-events`, which that component draws only where its
+    host hands it a row, and /care does so by hand (ADR-0043). */
 export function rowsHostedBy(host: HubRowHostKey): HubRow[] {
   return HUB_ROWS.filter((row) => row.home === host);
 }
