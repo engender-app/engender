@@ -21,7 +21,7 @@
   import { calendarDuration, todayEpochDay } from '$lib/data/epochDay';
   import { PROGRESS_POSES, type ProgressPhoto, type ProgressPose } from '$lib/data/journal/progressPhotos';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { orderAnchorsByJourney, toComparePair, type ComparePair } from '$lib/data/photos/compare-state';
+  import { orderAnchorsByJourney, toComparePair } from '$lib/data/photos/compare-state';
   import { readPhoto } from '$lib/stores/photoFiles';
   import { undoable } from '$lib/stores/deleteUndo';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -98,12 +98,6 @@
   function toggle(id: string) {
     if (selected.includes(id)) selected = selected.filter((anchor) => anchor !== id);
     else if (selected.length < 2) selected = [...selected, id];
-  }
-
-  /* The wipe hands back the pair its own earlier/later controls landed on;
-     held as ids, like the selection it came from. */
-  function setPair(next: ComparePair) {
-    selected = [shots[next.left].id, shots[next.right].id];
   }
 
   const cellDate = (photo: ProgressPhoto) => fmtDay(photo.epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -271,7 +265,6 @@
       <PhotoWipe
         photos={shots}
         {pair}
-        onPair={setPair}
         role={roleAt(activeFlag.roles, 0)}
         date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
       />
