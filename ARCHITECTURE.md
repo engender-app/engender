@@ -208,7 +208,7 @@ Naming conventions you'll meet everywhere:
 | [android/](src/lib/android) | Plugin registry, launch routes, [platform-sync.ts](src/lib/android/platform-sync.ts), back button, status bar |
 | [pwa/](src/lib/pwa) | Service-worker registration, update rule, shell asset split, SW messages |
 | [audio/](src/lib/audio), [charts/](src/lib/charts) | Voice analysis (pitch, resonance, bands) and chart geometry |
-| [disguise/](src/lib/disguise), [unprompted/](src/lib/unprompted), [reminders/](src/lib/reminders), [retrospective/](src/lib/retrospective), [onboarding/](src/lib/onboarding), [permissions/](src/lib/permissions), [print/](src/lib/print), [media/](src/lib/media), [a11y/](src/lib/a11y), [resources/](src/lib/resources), [document/](src/lib/document) | One concern each |
+| [disguise/](src/lib/disguise), [unprompted/](src/lib/unprompted), [reminders/](src/lib/reminders), [onboarding/](src/lib/onboarding), [permissions/](src/lib/permissions), [print/](src/lib/print), [media/](src/lib/media), [a11y/](src/lib/a11y), [resources/](src/lib/resources), [document/](src/lib/document) | One concern each |
 
 ```mermaid
 flowchart TD
@@ -377,6 +377,8 @@ slots with invalid saved amounts open while recording other valid due doses.
 erDiagram
   procedure ||--o{ procedure_photo : has
   procedure ||--o{ appointment : procedure_id
+  provider ||--o{ appointment : provider_id
+  appointment ||--o{ appointment_status : has
   procedure ||--o{ taper : has
   procedure ||--o{ milestone : procedure_id
   tryout ||--o{ milestone : tryout_id
@@ -396,7 +398,8 @@ The rest, without SQL edges:
 | Logs | `tally_event`, `cycle_event` (ADR-0043), `wear_session` (ADR-0064) |
 | Self | `letter` (seal derived from dates), `document` (ADR-0065), `roadmap_check`, `roadmap_goal` (ADR-0068), `roadmap_category`, `roadmap_institution`, `roadmap_institution_change` |
 | Eras and resurfacing | `era` (ADR-0049), `era_mute`, `comfort_item` |
-| Housekeeping | `reminder`, `pref`, `import_log`, `area_state` (hidden and finished areas, ADR-0052) |
+| Appointments | `appointment_debrief` (keyed by the appointment's uuid, no FK) |
+| Housekeeping | `reminder`, `pref`, `import_log`, `area_state` (hidden and finished areas, ADR-0052), `deletion` (what a delete leaves behind for Merge) |
 
 [unprompted/resurfacing.ts](src/lib/unprompted/resurfacing.ts) loads eras
 and mutes for each registered resurfacing surface. On this day filters out
@@ -405,8 +408,9 @@ period if it overlaps a muted era. The interface requires a registered surface k
 missing and unknown keys. Direct Journal reads remain possible; code review
 must check that resurfacing surfaces use this interface.
 
-The current schema has 66 ordinary tables after migrations 95 through 97 drop
-six from the 72-table baseline. The FTS5 virtual table is separate.
+The current schema has 68 ordinary tables at version 119. The step from the
+72-table baseline drops the tables of the areas the functional audit cut and
+adds the ones its additions needed. The FTS5 virtual table is separate.
 
 ### 6.3 The journal facade
 
@@ -421,7 +425,7 @@ flowchart LR
   Def -. "import() on first call" .-> Mod[area module chunk]
 ```
 
-The journal is one handle bound to a driver (ADR-0017). `openJournal(driver, files)` in [src/lib/data/journal/journal.ts](src/lib/data/journal/journal.ts) composes 60 facade members covering stored areas and computed views. A domain Area owns a kind of journal content and has an archive section that makes it portable. Code also uses the `*Area` type suffix for computed views: `day`, `lastWrite`, `dayAhead` and `textSearch` own no table. Facade operations are async and rune-free. Thirteen heavy members are deferred with `deferredArea()` ([journal/deferredArea.ts](src/lib/data/journal/deferredArea.ts)), so their code loads on the first call while their type stays static. [deferredArea.test.ts](src/lib/data/journal/deferredArea.test.ts) checks the archive facade's method list against the eager interface.
+The journal is one handle bound to a driver (ADR-0017). `openJournal(driver, files)` in [src/lib/data/journal/journal.ts](src/lib/data/journal/journal.ts) composes 55 facade members covering stored areas and computed views. A domain Area owns a kind of journal content and has an archive section that makes it portable. Code also uses the `*Area` type suffix for computed views: `day`, `lastWrite`, `dayAhead` and `textSearch` own no table. Facade operations are async and rune-free. Nine heavy members are deferred with `deferredArea()` ([journal/deferredArea.ts](src/lib/data/journal/deferredArea.ts)), so their code loads on the first call while their type stays static. [deferredArea.test.ts](src/lib/data/journal/deferredArea.test.ts) checks the archive facade's method list against the eager interface.
 
 Facade-wide rules:
 
@@ -443,7 +447,7 @@ flowchart LR
   B --> M[reference mirror<br/>reference.svelte.ts]
 ```
 
-- **Every operation is declared.** [data/live/writes.ts](src/lib/data/live/writes.ts) classifies every journal operation as a read or a write and names the tables it touches (52 coarse table names in `TABLE_NAMES`). The `OPERATIONS` table is checked at compile time against the `Journal` interface, and `observeWrites` throws at boot on anything unclassified.
+- **Every operation is declared.** [data/live/writes.ts](src/lib/data/live/writes.ts) classifies every journal operation as a read or a write and names the tables it touches (46 coarse table names in `TABLE_NAMES`). The `OPERATIONS` table is checked at compile time against the `Journal` interface, and `observeWrites` throws at boot on anything unclassified.
 - **The declarations are checked against SQL.** For operations and branches exercised by its fixtures, [writes.sql.test.ts](src/lib/data/live/writes.sql.test.ts) checks that observed SQL tables fit within each operation's declarations. A separate union check requires coverage of the tables behind each coarse name. Redundant declarations can still pass, and unexercised branches, trigger/view internals and the file's explicit importer opt-outs remain outside that proof. Extend the fixtures when adding behavior.
 - **Writes bump versions.** [live/journal.svelte.ts](src/lib/data/live/journal.svelte.ts) exports `journal`, a proxy over the open journal. A successful write bumps a version for each of its declared tables ([tableVersions.svelte.ts](src/lib/data/live/tableVersions.svelte.ts)). A write that knows it changed nothing can return `NOTHING_WRITTEN` from [journal/nothingWritten.ts](src/lib/data/journal/nothingWritten.ts); the wrapper returns `undefined` without a version bump. `doses.autoLogDueDoses` instead preserves its count and skips the bump when that count is zero. These exceptions keep reconciliation from waking itself on unchanged data. `batchWrites()` coalesces the bumps from a batch into one.
 - **Reads re-run on their own tables.** `liveQuery(run)` records which operations its run called, maps them to tables with `tablesReadBy`, and re-runs only when one of those tables' versions moves. Saving a lab result doesn't re-run the entry list.
@@ -547,7 +551,7 @@ flowchart TB
 - **[container.ts](src/lib/data/archive/container.ts) (ADR-0007)** owns the frame. Each chunk is about 1 MB and its AAD is the whole header plus the chunk index, so truncating, reordering or relabelling the file fails authentication. Header size and KDF parameters are bounded before key derivation. The key comes from the archive password through the archive Argon2id profile and has nothing to do with the journal's data key.
 - **[codec.ts](src/lib/data/archive/codec.ts)** owns the versioned body encoding. `ARCHIVE_CODECS` holds versions 1 and 2. New payloads carry `writer.app` from the build version and `writer.schema` from `LATEST_SCHEMA_VERSION`. The stamp is informational; rc.1 payloads without it still read.
 - **`payload.ts`** is the wire shape. It is deliberately separate from the domain types, so renaming something in the app can't change the format. `PAYLOAD_MIGRATIONS` brings old payloads forward one step at a time. [tests/released-formats.test.ts](tests/released-formats.test.ts) opens Archives and migrates populated SQLite journals from released versions in [fixtures/released/](fixtures/released). It requires a fixture directory for every non-alpha `v*` tag and rejects an empty fixture set. CI fetches the release tags before running it.
-- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 56 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that. Restore and verification read an absent known section as `[]`, skip names in `DROPPED_ARCHIVE_SECTION_NAMES`, and refuse every other unknown name as a newer-version archive. The dropped list holds `doubtEntries` and `counterevidenceSnapshots`.
+- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 49 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that. Restore and verification read an absent known section as `[]`, skip names in `DROPPED_ARCHIVE_SECTION_NAMES`, and refuse every other unknown name as a newer-version archive. The dropped list holds `doubtEntries` and the ten sections of areas the functional audit cut, `counterevidenceSnapshots` and `affirmations` among them.
 
 Archive import admits at most 65,536 KiB of Argon2id memory, six iterations,
 one lane and a 32-byte output (ADR-0013). The released export profile remains
@@ -882,7 +886,7 @@ Catalogue sentences that name the app take an `appName` parameter from
 contains the literal name. The identity tests guard catalogue entries and
 their consumers; the rendered wordmark probe checks both languages and modes.
 
-[disguise/identity.ts](src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in [src/app.html](src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Setup and the Settings switch both write disguise with `setPreferenceDurably`, which saves it to SQLite before the projection moves, because the projection moving is what flips the alias and restarts the app. Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, journey and wrapped export file names omit the person's name under disguise. Setup doesn't change with disguise and offers it last (ADR-0079).
+[disguise/identity.ts](src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in [src/app.html](src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Setup and the Settings switch both write disguise with `setPreferenceDurably`, which saves it to SQLite before the projection moves, because the projection moving is what flips the alias and restarts the app. Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, export and journey file names omit the person's name under disguise. Inside the unlocked app nothing else changes (ADR-0101). Setup doesn't change with disguise and offers it last (ADR-0079).
 
 ### 7.6 Web hardening
 
@@ -973,7 +977,7 @@ flowchart LR
   T --> S[/settings/]
 ```
 
-The `TAB_ROUTES` table in [navigation/active-tab.ts](src/lib/navigation/active-tab.ts) maps route prefixes to tabs. The fourth door's `href` is `/more` and its key is `settings`, a split ADR-0036 makes on purpose. The bar and the rail light what `litTabKey` answers: an open entry borrows the door it was opened from, and `/settings` borrows the last door on the bar without claiming `aria-current`. Each borrowing page keeps the door it was opened from per history entry, keyed by history depth and path ([navigation/chrome-tab-origin.ts](src/lib/navigation/chrome-tab-origin.ts)), so browser Back and Forward land on it lit the same way, a cold-opened one included. The desktop rail has a Settings row of its own, which `railTabKey` lights on every `/settings` route. Screen transitions still read the table. Under disguise it is labelled "More". Settings holds only preferences. Feature surfaces live in the hub, whose rows are declared in [data/hubRows.ts](src/lib/data/hubRows.ts) (ADR-0072). Today's front page is pinned by the person and nothing ranks it centrally (ADR-0073). Live tiles are gated on data (ADR-0039). An area can be hidden and can be finished, and those are separate states (ADR-0052).
+The `TAB_ROUTES` table in [navigation/active-tab.ts](src/lib/navigation/active-tab.ts) maps route prefixes to tabs. The fourth door's `href` is `/more` and its key is `settings`, a split ADR-0036 makes on purpose. The bar and the rail light what `litTabKey` answers: an open entry borrows the door it was opened from, and `/settings` borrows the last door on the bar without claiming `aria-current`. Each borrowing page keeps the door it was opened from per history entry, keyed by history depth and path ([navigation/chrome-tab-origin.ts](src/lib/navigation/chrome-tab-origin.ts)), so browser Back and Forward land on it lit the same way, a cold-opened one included. The desktop rail has a Settings row of its own, which `railTabKey` lights on every `/settings` route. Screen transitions still read the table. Settings holds only preferences. Feature surfaces live in the hub, whose rows are declared in [data/hubRows.ts](src/lib/data/hubRows.ts) (ADR-0072). Today's front page is pinned by the person and nothing ranks it centrally (ADR-0073). Live tiles are gated on data (ADR-0039). An area can be hidden and can be finished, and those are separate states (ADR-0052).
 
 ### 8.4 Kit, tokens, palettes and theme
 
@@ -991,7 +995,7 @@ flowchart LR
 - A secondary button is a block of the page (ADR-0093).
 - One pattern, one way (after-release 28). A `Segmented` only ever swaps what a screen shows; scrolling to a part of a long screen is `kit/SectionJump.svelte` (names over a rule, a mark that follows the scroll). Every fold is `kit/Disclosure.svelte` or the `.disclosure-toggle` row it is built on, never a native `<details>`. Areas are named by `kit/SectionHeading.svelte`, and small labels take the field label's type in sentence case, never letterspaced capitals. Each icon in [icons.ts](src/lib/components/icons.ts) means one thing: `pill` is medication, `flask` a lab result, `repeat` dilation, `dice` a random pick.
 - Dates a person reads come from [data/dates.ts](src/lib/data/dates.ts): `fmtDateValue` for a picked day ("3 Oct 2026", what a `DatePicker` field shows), `fmtDayBar` for a day card's bar. `yyyy-mm-dd` is only the stored value and the picker's typed entry; the field carries it on `data-date-value`, which the guards read through `dateValue()`/`fieldValue()` in `tests/browser-harness.mjs`.
-- The pride flag motif appears only on Home and never under disguise (ADR-0035).
+- The pride flag motif appears only on Home.
 - Every `var(--x)` without a stated fallback must name a property the tree defines, whether in a stylesheet, a `style:` directive, `setProperty` or `@property`. An undefined one is invalid at computed-value time and falls back to the inherited value without any error. [tests/css-tokens-resolve.test.ts](tests/css-tokens-resolve.test.ts) walks `src` and fails on one. The scale has no `--muted`, `--text-1` or `--weight-semibold`; use `--text-2`, `--text` and `--weight-medium`.
 - [kit.css](src/lib/styles/kit.css), [components.css](src/lib/styles/components.css) and [screens.css](src/lib/styles/screens.css) keep class baselines (`src/lib/styles/*-classes-baseline.txt`). `check:screens-classes` stops a screen-only class from spreading.
 

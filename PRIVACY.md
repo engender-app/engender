@@ -1,6 +1,6 @@
 # Privacy policy
 
-Last updated: 2026-10-14
+Last updated: 2026-11-04
 
 engender is a journal for tracking a gender transition. It is made and
 published by Alicja Barankiewicz in Warsaw, Poland. This policy covers the
@@ -24,13 +24,14 @@ stays on your device unless you export or share it. Its database and media
 are encrypted at rest. The developer cannot recover it for you.
 
 The website and hosted web app count online page openings without visitor
-profiles. These counts contain no journal data. Android sends no counts - it is 100% local.
+profiles. These counts contain no journal data. Android sends no counts: it is 100% local.
 
 ## What the app stores, and where
 
 Everything you enter stays in the app's storage on your device: entries,
-notes and moods, scales, doses and regimens, lab results, measurements,
-appointments, milestones, letters, photos, voice and video recordings,
+notes and moods, scales, doses and regimens, lab results, appointments,
+referrals and waiting lists, notes on the people you see, costs, name and
+document changes, milestones, letters, photos, voice and video recordings,
 documents you import, reminders and your settings. The journal database and
 your photos are encrypted at rest. NONE of it is sent to the developer or to
 anyone else.
@@ -43,7 +44,10 @@ not mean that every temporary file or preference is encrypted.
 
 The web app and the Android app keep separate journals. To move a journal
 from one to the other, you export an encrypted backup and import it.
-A functionality that would allow for synchronizing a journal between 2 devices over LAN (PC and or Android). Unfortunately, that would mean asking the user for INTERNET permission on Android because that is the permission required even for local connections on Android.
+The app cannot sync a journal between two devices over your local network.
+On Android even a local connection needs the INTERNET permission, which the
+app does not request. Two Android phones can instead share a backup folder,
+as described under Encrypted backups.
 
 ## Hosted web app
 
@@ -210,6 +214,22 @@ phone or clearing the app's data makes that copy of the journal unreadable.
 An optional recovery key opens the journal on the same phone if unlocking
 fails, but cannot bring anything back once the phone or its storage is gone.
 
+## Disguise
+
+Disguise changes what other people can see of the app from the outside. The
+launcher icon and name become a neutral "Notes", and the lock screen,
+widgets, notifications, the names of backup and export files, printed
+letterheads and, on the web, the browser tab and the installed app's name
+stop naming engender. While disguise is on, Android also blocks screenshots
+and the app's preview in Recents. Once you unlock the journal, the app looks
+the same as without disguise.
+
+Android still shows the real name in App info, in permission prompts, in
+notification headers and in the widget picker. On the web, the app's address
+still appears in the address bar, browser history, bookmarks and site
+settings. Disguise is not encryption and does not change who can read the
+journal.
+
 ## Backups, exports and shared files
 
 When you export or share a file, you choose where it goes. Other apps handle
@@ -237,6 +257,12 @@ is reported complete only after the file and folder are synced and the delivered
 bytes are checked. The app reports incomplete delivery for
 other providers. It does not verify cloud uploads.
 
+If you turn on merging backups from other devices, the Android app reads
+that same folder when you open it. When another device has saved a newer
+backup there, the app opens it with the backup password and merges it into
+your journal on the phone. Nothing is sent anywhere; both devices only read
+and write the folder you picked.
+
 ### Exports meant to be read
 
 Some exports are deliberately unencrypted because they are meant to be read,
@@ -244,13 +270,12 @@ shared or printed:
 
 - CSV and JSON data files exported from Settings.
 - Keepsake journal books prepared for printing or PDF.
-- Clinician summaries of regimens, vitals, labs and notes, to share with a
-  healthcare provider.
+- Clinician summaries of regimens, labs, procedures, side effects and the
+  changes you noticed, to share with a healthcare provider.
 - Progress photo collages and timelapse videos.
-- Wrapped cards shared as images.
 - PDF documents exported back to your device storage.
 - Single-event calendar files (`.ics`) for appointments, surgeries or
-  milestones.
+  the day a letter opens.
 
 Anyone who gets one of these files or a printout can read what it contains.
 The app asks you to confirm, or to take a deliberate step, before it writes
@@ -265,7 +290,7 @@ statement applies to pages on GitHub.
 
 ## Deleting your data
 
-The app does not send your journal to the developer. or anyone else You can delete the
+The app does not send your journal to the developer or anyone else. You can delete the
 local journal yourself. Support messages and hosting logs have the separate
 retention periods described in this policy:
 
