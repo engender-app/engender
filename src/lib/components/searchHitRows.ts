@@ -80,7 +80,8 @@ const AREA_ROWS: Record<
   appointments: {
     ...iconOf('appointments'),
     label: () => m.appointments_title(),
-    href: () => hubRow('appointments').href
+    // Its own screen (prh12), the way a tryout's hit opens that tryout.
+    href: (hit) => `${hubRow('appointments').href}/${hit.id}`
   },
   /* One area, two screens. A question written for an appointment belongs to
      the prep list, which is a section of the visit screen since phase 11

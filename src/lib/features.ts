@@ -297,7 +297,7 @@ export const FEATURES = {
     areaGroups: none,
     unprompted: none,
     tiles: none,
-    routes: ['/health/appointments', '/health/appointments/in-the-room'],
+    routes: ['/health/appointments', '/health/appointments/in-the-room', '/health/appointments/[id]'],
     messages: ['appointments', 'appointment', 'provider', 'in_the', 'debrief']
   },
   checklists: {

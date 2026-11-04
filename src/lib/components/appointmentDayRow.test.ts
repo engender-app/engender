@@ -12,7 +12,7 @@ vi.mock('$lib/paraglide/messages', async () => await import('../paraglide/messag
 const { appointmentDayRow } = await import('./appointmentDayRow.ts');
 const { m } = await import('../paraglide/messages.js');
 
-const base = { kind: 'Gender clinic', place: 'Charing Cross', procedureId: null, procedureName: null };
+const base = { kind: 'Gender clinic', place: 'Charing Cross', procedureId: null, procedureName: null, appointmentId: 'appt' };
 
 test('a visit, a referral and an update each read as what happened that day', () => {
   const records: AppointmentDayRecord[] = [
@@ -21,9 +21,9 @@ test('a visit, a referral and an update each read as what happened that day', ()
     { ...base, id: 's', event: 'status', status: 'Letter came' }
   ];
   assert.deepEqual(records.map(appointmentDayRow), [
-    { key: 'appointment-v', title: 'Gender clinic', subtitle: 'Charing Cross' },
-    { key: 'appointment-referred-w', title: 'Gender clinic', subtitle: `${m.day_appointment_referred()} · Charing Cross` },
-    { key: 'appointment-status-s', title: 'Gender clinic', subtitle: 'Letter came' }
+    { key: 'appointment-v', title: 'Gender clinic', subtitle: 'Charing Cross', href: '/health/appointments/appt' },
+    { key: 'appointment-referred-w', title: 'Gender clinic', subtitle: `${m.day_appointment_referred()} · Charing Cross`, href: '/health/appointments/appt' },
+    { key: 'appointment-status-s', title: 'Gender clinic', subtitle: 'Letter came', href: '/health/appointments/appt' }
   ]);
 });
 
@@ -33,4 +33,17 @@ test('a visit with no kind falls back to its journey, then to the plain word', (
     appointmentDayRow({ ...base, kind: null, id: 'a', event: 'status', status: 'x' }).title,
     m.appointments_untitled()
   );
+});
+
+/* prh12: each appointment has its own screen, and every row about one -
+   its visit, its referral, an update on its wait - opens that screen. */
+test("every row opens its own appointment's screen", () => {
+  const records: AppointmentDayRecord[] = [
+    { ...base, id: 'v', event: 'visit', status: null },
+    { ...base, id: 'w', event: 'referred', status: null },
+    { ...base, id: 's', event: 'status', status: 'Letter came' }
+  ];
+  assert.deepEqual(records.map((record) => appointmentDayRow(record).href), [
+    '/health/appointments/appt', '/health/appointments/appt', '/health/appointments/appt'
+  ]);
 });
