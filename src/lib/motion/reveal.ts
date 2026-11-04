@@ -29,7 +29,7 @@ import type { Action } from 'svelte/action';
 import { isDoorActive } from '../navigation/doorActivity';
 import type { TransitionConfig } from 'svelte/transition';
 
-import { EASE_OUT, EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from './tokens';
+import { EASE_OUT, EASE_OUT_CSS, EASE_OUT_SOFT_CSS, fadeOnly, isReducedMotion, motionDuration } from './tokens';
 import { markScreenArrival, endScreenArrival, stillArriving, readRevealDuration } from './screenArrival';
 
 export { markScreenArrival, endScreenArrival, stillArriving, readRevealDuration };
@@ -1230,9 +1230,16 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     // Its underlying box keeps the previous height until the handover.
     hold(from);
     const duration = readRevealDuration('--dur-med');
+    /* A travel chained on from a finished one (heldAt, below) sets off
+       from an edge that has come to rest, and --ease-out would spend 44% of
+       it in the first frame: on a first door into the Journal the clamped
+       edge stopped 85px short, then lunged 37px in one frame and uncovered
+       the day's tag pills whole (carpet 15 row 51). --ease-out-soft is the
+       curve for a travel setting off. */
+    const easing = heldAt === undefined ? EASE_OUT_CSS : EASE_OUT_SOFT_CSS;
     current = node.animate(
       [{ height: `${from}px` }, { height: `${to}px` }],
-      { duration, easing: EASE_OUT_CSS, fill: 'both' }
+      { duration, easing, fill: 'both' }
     );
     /* A box that empties, or fills from empty, also loses or gains its own
        bottom margin at one end of the travel (ux-carpet ticket 196). Empty
@@ -1247,7 +1254,7 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     if (margin > 0 && (oldHeight < 1 || newHeight < 1)) {
       const open = { marginTop: '0px' };
       const shut = { marginTop: `${-margin}px` };
-      node.animate(oldHeight < 1 ? [shut, open] : [open, shut], { duration, easing: EASE_OUT_CSS });
+      node.animate(oldHeight < 1 ? [shut, open] : [open, shut], { duration, easing });
     }
     current.finished
       .catch(() => {

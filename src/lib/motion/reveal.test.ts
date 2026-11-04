@@ -13,6 +13,7 @@ import {
   slideMonit,
   wipe
 } from './reveal';
+import { EASE_OUT_CSS, EASE_OUT_SOFT_CSS } from './tokens';
 
 /* Same stub the tier-2 tests use: reveal.ts reads its duration and its easing
    out of the token layer through $lib/motion/tokens, which asks
@@ -1010,18 +1011,20 @@ describe('tier 3, a box resizing under its own content', () => {
     };
     const calls: Array<[number, number]> = [];
     const margins: Array<[number, number]> = [];
+    const easings: string[] = [];
     let settle: (() => void) | undefined;
     let cancelPending: (() => void) | undefined;
     let measurements = 0;
     const node = {
       style: { overflow: '' },
       getBoundingClientRect: () => { measurements++; return { height, top } as DOMRect; },
-      animate: (keyframes: Keyframe[]) => {
+      animate: (keyframes: Keyframe[], options?: KeyframeAnimationOptions) => {
         if (keyframes[0].marginTop !== undefined) {
           margins.push([parseFloat(String(keyframes[0].marginTop)), parseFloat(String(keyframes[1].marginTop))]);
           return { finished: Promise.resolve(), cancel: () => {} };
         }
         calls.push([parseFloat(String(keyframes[0].height)), parseFloat(String(keyframes[1].height))]);
+        easings.push(String(options?.easing));
         return {
           finished: new Promise<void>((resolve, reject) => {
             settle = resolve;
@@ -1035,6 +1038,7 @@ describe('tier 3, a box resizing under its own content', () => {
       node,
       calls,
       margins,
+      easings,
       measurements: () => measurements,
       setHeight: (h: number) => (height = h),
       setTop: (t: number) => (top = t),
@@ -1390,7 +1394,7 @@ describe('tier 3, a box resizing under its own content', () => {
     stubDocument(false);
     const g = globalThis as Record<string, unknown>;
     g.innerHeight = 844;
-    const { node, calls, setHeight, setTop, trigger, finish, restore } = resizingNode(100, 600);
+    const { node, calls, easings, setHeight, setTop, trigger, finish, restore } = resizingNode(100, 600);
     try {
       resize(node);
       setHeight(1072);
@@ -1399,6 +1403,10 @@ describe('tier 3, a box resizing under its own content', () => {
       setTop(516);
       await finish();
       expect(calls).toEqual([[100, 244], [244, 328]]);
+      /* The second travel sets off from an edge at rest. On --ease-out it
+         lunged 37 of its 85px in the first frame and uncovered the pills
+         whole on a first visit; it starts on --ease-out-soft instead. */
+      expect(easings).toEqual([EASE_OUT_CSS, EASE_OUT_SOFT_CSS]);
     } finally {
       delete g.innerHeight;
       restore();
