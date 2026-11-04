@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { migrations } from '../src/lib/data/sqlite/migrations.ts';
+import { androidVersionCode } from '../scripts/android-version.mjs';
 import { REQUIRED_CALL_OUTS, extractReleaseNotes, validateStableReleaseNotes } from '../scripts/release-notes.mjs';
 
 /** A changelog section with every call-out answered. */
@@ -109,5 +110,41 @@ describe('published stable release notes', () => {
       .toThrow(/candidate schema/);
     expect(() => extractReleaseNotes(changelog.replace('## 1.0.0\n', '## 1.0.1\n'), '1.0.0'))
       .toThrow(/no section for 1\.0\.0/);
+  });
+});
+
+describe('the 1.0.0 notes describe what ships', () => {
+  const notes = () => extractReleaseNotes(readFileSync('CHANGELOG.md', 'utf8'), '1.0.0');
+  const removed = [
+    'Measurements and sizes', 'hormone curve', 'Affirmations', 'See this',
+    'journaling pause', 'Saved questions', 'counterevidence snapshots', 'Words reading',
+    'Highest days', 'Wrapped share card', 'On this day notifications', 'roadmap', 'presentation step',
+    'garment', 'reference pitch bands', 'Day One', 'TransTracks', 'Track & Graph', 'Pixels',
+    'old addresses', 'automatic archiving', 'Disguise inside the unlocked app'
+  ];
+
+  it('has no Unreleased section left beside the 1.0.0 one', () => {
+    expect(readFileSync('CHANGELOG.md', 'utf8')).not.toMatch(/^## Unreleased/m);
+  });
+
+  it('names every removed area and says to export an archive first', () => {
+    const text = notes().replace(/\s+/g, ' ');
+    for (const area of removed) expect(text, area).toContain(area);
+    expect(text).toMatch(/Export an encrypted archive from rc\.1 first/);
+  });
+
+  it('does not offer a removed area as a feature', () => {
+    expect(notes()).not.toMatch(/lab results, appointments and measurements/);
+    expect(notes()).not.toMatch(/Day One imports use/);
+  });
+
+  it('carries the same removal advice in both store changelogs', () => {
+    const code = androidVersionCode('1.0.0');
+    const en = readFileSync(`fastlane/metadata/android/en-US/changelogs/${code}.txt`, 'utf8');
+    const pl = readFileSync(`fastlane/metadata/android/pl-PL/changelogs/${code}.txt`, 'utf8');
+    expect(en).toMatch(/removes measurements, affirmations/);
+    expect(en).toMatch(/export an encrypted archive first/);
+    expect(pl).toMatch(/usuwa pomiary, afirmacje/);
+    expect(pl).toMatch(/najpierw wyeksportuj zaszyfrowane archiwum/);
   });
 });
