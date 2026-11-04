@@ -70,7 +70,6 @@ export interface DoseDrugFact {
 }
 
 const HAIR_PROGRESS = '/body/hair-progress';
-const APPOINTMENTS = '/health/appointments';
 
 /* Photographs by whatever they hang off - the owning tryout or procedure -
    so each owner collapses to one row rather than one per shot. Insertion
@@ -316,9 +315,8 @@ const SECTION_ROWS: Record<
      (appointmentDayRow.ts). */
   appointments: (day) =>
     day.appointments.map((appointment) => ({
-      ...appointmentDayRow(appointment),
       ...iconOf('appointments'),
-      href: APPOINTMENTS
+      ...appointmentDayRow(appointment)
     })),
 
   tryoutPhotos: (day) =>

@@ -12,27 +12,35 @@
    the row says, and on each day an update came, which the row quotes. Same
    title as the visit, so the three read as one appointment's history. A
    visit keeps the key it always had; the other two name their event, since
-   a referral carries its appointment's id too. */
+   a referral carries its appointment's id too.
+
+   Each of the three opens the appointment's own screen (prh12), an update
+   too, since it is a line of that appointment's wait. */
 
 import { m } from '$lib/paraglide/messages';
 import type { AppointmentDayRecord } from '$lib/data/journal/appointments';
 
-export function appointmentDayRow(record: AppointmentDayRecord): { key: string; title: string; subtitle?: string } {
+export function appointmentDayRow(
+  record: AppointmentDayRecord
+): { key: string; title: string; subtitle?: string; href: string } {
   const title = record.kind ?? record.procedureName ?? m.appointments_untitled();
+  const href = `/health/appointments/${encodeURIComponent(record.appointmentId)}`;
   switch (record.event) {
     case 'visit':
       return {
         key: `appointment-${record.id}`,
         title,
-        subtitle: record.place ?? (record.kind ? record.procedureName ?? undefined : undefined)
+        subtitle: record.place ?? (record.kind ? record.procedureName ?? undefined : undefined),
+        href
       };
     case 'referred':
       return {
         key: `appointment-referred-${record.id}`,
         title,
-        subtitle: [m.day_appointment_referred(), record.place].filter(Boolean).join(' · ')
+        subtitle: [m.day_appointment_referred(), record.place].filter(Boolean).join(' · '),
+        href
       };
     case 'status':
-      return { key: `appointment-status-${record.id}`, title, subtitle: record.status ?? undefined };
+      return { key: `appointment-status-${record.id}`, title, subtitle: record.status ?? undefined, href };
   }
 }

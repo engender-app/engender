@@ -211,8 +211,8 @@
       { id: 'hr1', epochDay: DAY, area: 'chin', method: 'laser', painRating: 3, minutes: 60, cost: { amount: 250, currency: 'PLN', refunded: false }, provider: 'Klinika', note: null }
     ],
     appointments: [
-      { id: 'ap1', event: 'visit', status: null, kind: 'endokrynolog', place: 'Poradnia', procedureId: null, procedureName: null },
-      { id: 'ap2', event: 'visit', status: null, kind: null, place: null, procedureId: 'pr1', procedureName: 'Orchiectomy' }
+      { id: 'ap1', event: 'visit', status: null, kind: 'endokrynolog', place: 'Poradnia', procedureId: null, procedureName: null, appointmentId: 'ap1' },
+      { id: 'ap2', event: 'visit', status: null, kind: null, place: null, procedureId: 'pr1', procedureName: 'Orchiectomy', appointmentId: 'ap2' }
     ],
     procedureRecords: [
       { id: 'pp1', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() },

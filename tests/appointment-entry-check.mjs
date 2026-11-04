@@ -24,10 +24,16 @@ async function close() {
   await page.locator('[data-close-record]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
 }
-async function discard() {
-  await page.locator('[data-close-record]').click();
-  await page.locator('[data-discard-record]').click();
-  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+/* Each appointment opens its own screen (prh12); back leaves it for the
+   list. */
+async function openScreen(row) {
+  await row.click();
+  await page.waitForSelector('[data-appointment-screen]');
+}
+async function back() {
+  await page.locator('[data-screen-back]').click();
+  await page.waitForURL((url) => url.pathname === '/health/appointments');
+  await page.waitForSelector('[data-appointment-screen]', { state: 'detached' });
 }
 async function navigate(path) {
   await page.evaluate((path) => {
@@ -129,7 +135,9 @@ try {
   await page.locator('[data-save-appointment]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   const row = page.locator('[data-past] [data-appointment]').filter({ hasText: 'Follow-up' });
-  await row.click();
+  const rowId = await row.getAttribute('data-appointment');
+  assert.equal(await row.getAttribute('href'), `/health/appointments/${rowId}`, 'The row is a link to its own screen');
+  await openScreen(row);
   await valuesMatch();
   await page.locator('[data-kind="Follow-up"]').waitFor();
   await page.locator('#appointment-kind').fill('');
@@ -147,17 +155,33 @@ try {
   console.log('PASS calendar handoff uses committed appointment while draft day differs');
   assert.equal(await dateValue(page.locator('#appointment-date')), '2024-03-14', 'Handoff retains draft');
   await page.locator('#appointment-note').fill('Unsaved questions');
-  await page.keyboard.press('Escape');
+  await page.locator('[data-screen-back]').click();
   await page.locator('[data-keep-editing]').click();
   await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
+  assert.equal(new URL(page.url()).pathname, `/health/appointments/${rowId}`, 'Keep editing stays on the screen');
   assert.equal(await page.locator('#appointment-note').inputValue(), 'Unsaved questions');
-  assert.equal(await page.locator('[data-sheet]').evaluate((el) => el.contains(document.activeElement)), true);
-  await discard();
-  await row.click();
+  await page.locator('[data-screen-back]').click();
+  await page.locator('[data-discard-record]').click();
+  await page.waitForURL((url) => url.pathname === '/health/appointments');
+  await openScreen(row);
   await valuesMatch();
-  await close();
-  assert.equal(await row.evaluate((el) => el.contains(document.activeElement)), true, 'Dismissal restores opener focus');
-  console.log('PASS create/reopen retains all fields; suggestions fill kind; discard preserves saved record and restores focus');
+  /* The note saves on its own, and the day saves with the details: each
+     button writes only its own half. */
+  await page.locator('#appointment-note').fill('Ask about bloods, and the scan');
+  await fillDate(page, '#appointment-date', '2024-03-14');
+  await page.locator('[data-save-appointment-note]').click();
+  await page.waitForFunction(() => document.querySelector('[data-save-appointment-note]') && !document.querySelector('[data-save-appointment-note]').disabled);
+  await page.locator('[data-screen-back]').click();
+  await page.locator('[data-discard-record]').click();
+  await page.waitForURL((url) => url.pathname === '/health/appointments');
+  await openScreen(row);
+  assert.equal(await page.locator('#appointment-note').inputValue(), 'Ask about bloods, and the scan', 'The note saved');
+  assert.equal(await dateValue(page.locator('#appointment-date')), '2024-03-12', 'and the unsaved day did not');
+  await page.locator('#appointment-note').fill('Ask about bloods');
+  await page.locator('[data-save-appointment-note]').click();
+  await page.waitForFunction(() => !document.querySelector('[data-save-appointment-note]').disabled);
+  await back();
+  console.log('PASS create/reopen retains all fields; suggestions fill kind; discard preserves saved record; note and details save apart');
 
   /* Waiting lists (functional-audit ticket 26): an appointment saved with no
      day waits, says how long as a fact, collects dated updates, and later
@@ -182,14 +206,14 @@ try {
   const screenText = await page.locator('main, body').first().innerText();
   assert.ok(!/\b(left to wait|expected|estimate|likely|remaining)\b|in \d+ (days?|months?|years?)[^)]*Gender clinic/i.test(screenText),
     'No prediction appears on the screen');
-  await waitRow.click();
+  await openScreen(waitRow);
   assert.equal(await page.locator('[data-add-to-calendar]').count(), 0, 'A wait has nothing to hand to a calendar');
   await page.locator('#appointment-update').fill('Letter came');
   await fillDate(page, '#appointment-update-date', '2024-02-01');
   await page.locator('[data-add-status-update]').click();
   await page.locator('[data-status-update]').waitFor();
   assert.equal(await page.locator('#appointment-update').inputValue(), '', 'The update field empties once added');
-  await close();
+  await back();
   assert.ok((await waitRow.innerText()).includes('1 Feb: Letter came'), 'The row quotes the latest update');
   await page.locator('[data-add-waiting]').click();
   assert.equal(await dateValue(page.locator('#appointment-date')), '', 'A new wait opens with no day');
@@ -199,24 +223,29 @@ try {
 
   await navigate('/day/2024-01-10');
   await page.locator(`[data-list-row="appointment-referred-${waitId}"]`).waitFor();
+  assert.equal(await page.locator(`a[href="/health/appointments/${waitId}"]`).count(), 1, 'The referral row opens its appointment');
   await navigate('/day/2024-02-01');
   assert.ok((await page.locator('[data-list-row^="appointment-status-"]').innerText()).includes('Letter came'));
+  await page.locator(`[data-list-row^="appointment-status-"]`).click();
+  await page.waitForURL((url) => url.pathname === `/health/appointments/${waitId}`);
+  await page.waitForSelector(`[data-appointment-screen="${waitId}"]`);
   await navigate('/health/appointments');
-  await waitRow.click();
+  await openScreen(waitRow);
   await fillDate(page, '#appointment-date', '2024-03-20');
   await page.locator('[data-save-appointment]').click();
-  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  await page.waitForSelector('[data-appointment-screen][data-state="past"]');
+  await back();
   await page.locator('[data-waiting]').waitFor({ state: 'detached' });
-  await page.locator(`[data-past] [data-appointment="${waitId}"]`).click();
+  await openScreen(page.locator(`[data-past] [data-appointment="${waitId}"]`));
   assert.equal(await dateValue(page.locator('#appointment-referred')), '2024-01-10', 'The referred-on day stays');
   assert.equal(await page.locator('[data-status-update]').count(), 1, 'and so do its updates');
-  await close();
+  await back();
   console.log('PASS the referral and its update show in the day view on their dates, and it later takes a day as the same record');
 
   /* A time and a who (functional-audit ticket 27): somebody made from
      inside the editor is attached to it, the time is kept, and the calendar
      hand-off uses it without asking. */
-  await row.click();
+  await openScreen(row);
   await page.locator('[data-who-new]').click();
   await page.locator('#provider-name').fill('Dr Nowak');
   await page.locator('#provider-contact').fill('22 123 45 67');
@@ -228,10 +257,11 @@ try {
   assert.equal(await who.getAttribute('aria-pressed'), 'true', 'Someone made from the editor is picked in it');
   await fillTime(page, '#appointment-time', '14:30');
   await page.locator('[data-save-appointment]').click();
-  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  await page.waitForFunction(() => document.querySelector('[data-appointment-screen] [data-section-heading]')?.textContent.includes('14:30'));
+  await back();
   const rowText = await row.innerText();
   assert.ok(rowText.includes('14:30') && rowText.includes('Dr Nowak'), `The row states the time and who: ${rowText}`);
-  await row.click();
+  await openScreen(row);
   assert.equal(await page.locator('#appointment-time').inputValue(), '14:30', 'The time is kept');
   await page.locator('[data-add-to-calendar]').click();
   await page.locator('#calendar-handoff-title').waitFor();
@@ -242,7 +272,7 @@ try {
   assert.ok(timedIcs.includes('DTSTART:20240312T143000'), 'The calendar file carries the stored time');
   assert.ok(!timedIcs.includes('Nowak'), 'and nothing about who it is with');
   await page.locator('#calendar-handoff-title').waitFor({ state: 'detached' });
-  await close();
+  await back();
   console.log('PASS a provider made in the editor is attached, the time is kept, and the hand-off uses it without asking');
 
   const providerRow = page.locator('[data-providers] [data-provider]').filter({ hasText: 'Dr Nowak' });
@@ -295,24 +325,25 @@ try {
   for (const line of leadFaces.lines) assert.equal(line, leadFaces.body, 'The opening reads in the body face');
   assert.equal(leadFaces.gap, leadFaces.display, 'The opening gap keeps the display face');
   console.log('PASS the opening reads in the body face and its gap in the display face');
-  await linkedRow.click();
+  await openScreen(linkedRow);
+  assert.equal(await page.locator('[data-add-prep]').count(), 1, 'An upcoming visit carries What to raise');
   await page.locator('#appointment-kind').fill('Consultation updated');
   await fillDate(page, '#appointment-date', '2024-03-13');
   await page.locator('[data-save-appointment]').click();
-  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  await page.waitForSelector('[data-appointment-screen][data-state="past"]');
+  await page.locator('[data-add-prep]').waitFor({ state: 'detached' });
+  await back();
   const linkedPast = page.locator(`[data-past] [data-appointment="${linked}"]`);
   assert.ok((await linkedPast.innerText()).includes('Fixture journey'), 'Procedure link survives editing');
-  await linkedPast.click();
+  await openScreen(linkedPast);
   assert.equal(await page.locator('#appointment-kind').inputValue(), 'Consultation updated');
   assert.equal(await dateValue(page.locator('#appointment-date')), '2024-03-13');
-  await close();
-  await navigate('/health/surgery');
-  await page.getByRole('button', { name: /Fixture journey/ }).first().click();
+  await page.locator('[data-appointment-procedure]').click();
   await page.locator(`[data-consult="${linked}"]`).waitFor();
   await navigate('/health/appointments');
   await page.locator('[data-list-row="in-the-room"]').waitFor();
   await page.locator('[data-screen-back]').click();
-  await page.waitForURL('**/health/surgery');
+  await page.waitForURL((url) => url.pathname.startsWith('/health/surgery/'));
   await navigate('/health/appointments');
   console.log('PASS procedure-linked appointment moves from future to past, stays on surgery journey, preserves prep and return context');
 
@@ -325,7 +356,8 @@ try {
       setLocale(locale, { reload: false });
     }, locale);
     await settlePage(page, server.resolvedUrls.local[0], 'health/appointments', 'light');
-    await row.click();
+    await page.locator('[data-add]').click();
+    await page.locator('#appointment-kind').waitFor();
     for (const key of ['appointments_kind_label', 'appointments_place_label', 'appointments_note_label', 'appointments_day_label']) {
       assert.equal(await page.getByRole('textbox', { name: copy[key], exact: true }).count(), 1, `${locale} ${key}`);
     }
@@ -352,15 +384,15 @@ try {
     console.log(`PASS ${locale} accessible labels, reading and keyboard order, 48px targets and readable day at 390px and 200% zoom`);
   }
   const polish = JSON.parse(await readFile('messages/pl.json', 'utf8'));
-  await linkedRow.click();
+  await openScreen(linkedRow);
   await page.locator('[data-delete-appointment]').click();
   await page.locator('[data-confirm-delete-appointment]').waitFor();
   assert.ok((await page.getByRole('dialog', { name: polish.appointments_delete_sheet, exact: true }).innerText()).includes('2024'), 'Deletion identifies saved day');
   await page.getByRole('button', { name: polish.keep_it, exact: true }).click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
-  await linkedRow.click();
   await page.locator('[data-delete-appointment]').click();
   await page.locator('[data-confirm-delete-appointment]').click();
+  await page.waitForURL((url) => url.pathname === '/health/appointments');
   await linkedRow.waitFor({ state: 'detached' });
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   console.log('PASS deletion confirmation identifies appointment; cancellation keeps it; confirmation removes it');

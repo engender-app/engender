@@ -98,6 +98,9 @@ export interface AgendaAppointment {
   title: string | null;
   place: string | null;
   more: number;
+  /** The appointment the row names, whose own screen it opens while it is
+      the day's only one (prh12). */
+  id: string;
 }
 
 /** One dated thing, and where to go to read more about it. Carries the day
@@ -157,7 +160,7 @@ export interface AgendaInput {
 function todayAppointment(records: readonly AppointmentDayRecord[]): AgendaAppointment | undefined {
   const [first, ...rest] = records.filter((record) => record.event === 'visit');
   if (!first) return undefined;
-  return { title: first.kind ?? first.procedureName, place: first.place, more: rest.length };
+  return { title: first.kind ?? first.procedureName, place: first.place, more: rest.length, id: first.appointmentId };
 }
 
 /** The window Today asks `dayAhead` for: `AGENDA_DAYS` days starting today,
@@ -236,7 +239,12 @@ export function agenda(input: AgendaInput): Agenda | null {
         epochDay: mark.epochDay,
         route: DAY_AHEAD_ROUTES[mark.kind]
       };
-      if (mark.kind === 'appointment' && mark.epochDay === input.todayEpochDay && today) item.appointment = today;
+      if (mark.kind === 'appointment' && mark.epochDay === input.todayEpochDay && today) {
+        item.appointment = today;
+        /* The day's only appointment opens its own screen (prh12). Two on
+           the day keep the list: the row names only the first of them. */
+        if (today.more === 0) item.route = `${item.route}/${encodeURIComponent(today.id)}`;
+      }
       return item;
     });
 

@@ -6609,11 +6609,13 @@ try {
   await booted();
   await page.waitForSelector('[data-appointment-item]');
 
-  /* Editing opens on what is stored, and the kind just used is offered as a
-     chip - the only suggestion the app is entitled to make, since nothing
-     ships in either language. Tapping one fills the field rather than
-     storing anything of its own. */
+  /* Editing opens on what is stored, on the appointment's own screen
+     (prh12), and the kind just used is offered as a chip - the only
+     suggestion the app is entitled to make, since nothing ships in either
+     language. Tapping one fills the field rather than storing anything of
+     its own. */
   await row.click();
+  await page.waitForSelector('[data-appointment-screen]', { timeout: 8000 });
   await page.waitForSelector('[data-kind="ortopeda"]', { timeout: 8000 });
   if ((await page.inputValue('#appointment-place')) !== 'Poradnia') {
     throw new Error('the editor did not open on the appointment that was stored');
@@ -6625,6 +6627,8 @@ try {
 
   await page.fill('#appointment-kind', 'ortopeda dziecięcy');
   await page.click('[data-save-appointment]');
+  await page.waitForSelector('[data-appointment-screen] [data-section-heading]:has-text("ortopeda dziecięcy")', { timeout: 8000 }); // text-under-test
+  await page.click('[data-screen-back]');
   await page.waitForSelector('[data-appointment]:has-text("ortopeda dziecięcy")', { timeout: 8000 }); // text-under-test
 
   await page.locator('[data-appointment]', { hasText: 'ortopeda dziecięcy' }).click(); // text-under-test

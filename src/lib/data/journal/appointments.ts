@@ -94,6 +94,9 @@ export interface AppointmentDayRecord {
   place: string | null;
   procedureId: string | null;
   procedureName: string | null;
+  /** The appointment the row is about - for a status update, the one its
+      wait belongs to - so the row can open that appointment's own screen. */
+  appointmentId: string;
 }
 
 export interface AppointmentsArea {
@@ -411,9 +414,10 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
         place: string | null;
         procedure_uuid: string | null;
         procedure_name: string | null;
+        appointment_uuid: string;
       }>(
         `SELECT x.id AS id, x.event AS event, x.status AS status, a.kind AS kind, a.place AS place,
-                r.uuid AS procedure_uuid, r.name AS procedure_name
+                r.uuid AS procedure_uuid, r.name AS procedure_name, a.uuid AS appointment_uuid
            FROM (
              SELECT id AS appointment_id, uuid AS id, 'visit' AS event, NULL AS status, 0 AS rank, id AS seq
                FROM appointment WHERE epoch_day = ?
@@ -435,7 +439,8 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
           kind: row.kind,
           place: row.place,
           procedureId: row.procedure_uuid,
-          procedureName: row.procedure_name
+          procedureName: row.procedure_name,
+          appointmentId: row.appointment_uuid
         })
       );
     },

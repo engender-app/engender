@@ -394,10 +394,10 @@ test('the day view shows a referral on its referred-on day and each status updat
   const update = await journal.appointments.addStatusUpdate({ appointmentId: id, epochDay: 19050, status: 'Letter came' });
 
   assert.deepEqual(await journal.appointments.getDayRecords(19000), [
-    { id, event: 'referred', status: null, kind: 'Gender clinic', place: 'Charing Cross', procedureId: null, procedureName: null }
+    { id, event: 'referred', status: null, kind: 'Gender clinic', place: 'Charing Cross', procedureId: null, procedureName: null, appointmentId: id }
   ]);
   assert.deepEqual(await journal.appointments.getDayRecords(19050), [
-    { id: update, event: 'status', status: 'Letter came', kind: 'Gender clinic', place: 'Charing Cross', procedureId: null, procedureName: null }
+    { id: update, event: 'status', status: 'Letter came', kind: 'Gender clinic', place: 'Charing Cross', procedureId: null, procedureName: null, appointmentId: id }
   ]);
 
   await journal.appointments.upsertAppointment({ ...referral, id, epochDay: 19400, referredEpochDay: 19000 });
