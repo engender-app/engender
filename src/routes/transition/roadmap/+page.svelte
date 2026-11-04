@@ -76,6 +76,7 @@
     socialGoalsInView,
     type RoadmapGoalKey
   } from '$lib/data/roadmap';
+  import { tick } from 'svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { RoadmapGoalStatus } from '$lib/data/types';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
@@ -110,6 +111,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { collapse, disclose, resize } from '$lib/motion/reveal';
+  import { followersAfter, openBlocks, type Opening } from '$lib/motion/openBlocks';
   import Institutions from './Institutions.svelte';
   import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -183,19 +185,72 @@
   let legalFilling = $state(false);
   let shownGoals = $derived(legalLimit >= list.goals.length ? list.goals : list.goals.slice(0, legalLimit));
 
+  /* The opening itself (carpet 15 row 47). `disclose` would animate the
+     pack's and the section's heights, a main-thread layout travel that
+     Svelte starts a frame after the switch's commit: on the phone the
+     switch's thumb (a transform) set off while the list under the group
+     waited, then caught up in a lump. So both boxes arrive without a
+     disclose (`skipOpening`) and `openBlocks` runs the same opening, on the
+     same duration and curve, as transforms the compositor carries: what
+     follows the group slides down, the group's boxes are clipped to its
+     edge. The rest of the rows start when that ends. A switch turned off
+     while it runs plays it back (`openOrDisclose`'s out). */
+  let screenEl = $state<HTMLElement | null>(null);
+  let skipOpening = false;
+  let opening: Opening | null = null;
+  let switchSeq = 0;
   let legalFallback: ReturnType<typeof setTimeout> | undefined;
+  function openOrDisclose(node: Element, params?: { onScreen?: boolean }, options?: { direction?: string }) {
+    if (options?.direction === 'out' && opening?.claims(node)) return opening.retreat();
+    return disclose(node, { ...params, skip: skipOpening });
+  }
   function switchPolishSteps(on: boolean) {
     /* Reduced motion cuts the group in whole: there is no travel to wait
        for, and a cut that then went on growing below would be two. */
-    if (on && !isReducedMotion()) {
-      const row = document.querySelector('[data-roadmap-polish-steps]');
+    /* This screen's own body: the app keeps other doors' screens mounted,
+       and a document-wide query found one of theirs on the phone, so no
+       opening ran and the group was cut in. */
+    const body = screenEl?.querySelector<HTMLElement>('[data-read-reserve-body]') ?? null;
+    if (on && !isReducedMotion() && body && !body.querySelector('[data-roadmap-legal]')) {
+      const first = body.firstElementChild as HTMLElement | null;
+      const from = first?.getBoundingClientRect().top ?? 0;
+      const row = screenEl?.querySelector('[data-roadmap-polish-steps]');
       const below = innerHeight - (row?.getBoundingClientRect().bottom ?? 0);
       legalLimit = Math.max(1, Math.ceil(Math.max(0, below) / LEGAL_ROW_GUESS) + 1);
-      /* The opening's end starts the rest (`onintroend`); this is for an
-         opening that never ran. */
+      skipOpening = true;
+      /* Where the opening has nothing to move (the list starts under the
+         screen, or this runtime cannot animate), the rest follows after
+         the time the opening would have taken. */
       clearTimeout(legalFallback);
-      legalFallback = setTimeout(fillLegalGroup, motionDuration('--dur-med') + 200);
+      legalFallback = setTimeout(() => {
+        if (!opening) skipOpening = false;
+        fillLegalGroup();
+      }, motionDuration('--dur-med') + 200);
+      prefs.roadmapPolishStepsChoice = on;
+      const seq = ++switchSeq;
+      void tick().then(() => {
+        if (seq !== switchSeq || !polishShown) return;
+        const section = body.querySelector<HTMLElement>('[data-roadmap-legal]');
+        if (!section || !first) return;
+        const followers = followersAfter(section, body.children);
+        opening = openBlocks({
+          pack: body.querySelector<HTMLElement>('[data-roadmap-pack]'),
+          section,
+          followers,
+          from,
+          onSettled: (retreated) => {
+            opening = null;
+            skipOpening = false;
+            if (!retreated) {
+              clearTimeout(legalFallback);
+              fillLegalGroup();
+            }
+          }
+        });
+      });
+      return;
     }
+    switchSeq += 1;
     prefs.roadmapPolishStepsChoice = on;
   }
 
@@ -617,7 +672,7 @@
   </button>
 {/snippet}
 
-<div class="screen">
+<div class="screen" bind:this={screenEl}>
   <ScreenHeader title={m.roadmap_title()} back="/more" />
   <SourceRecordHandoff
     id={sourceId}
@@ -667,7 +722,7 @@
          and only while its steps show: with the switch off there is no
          Polish procedure on screen for it to qualify. -->
     {#if polishShown}
-      <div data-roadmap-pack transition:disclose>
+      <div data-roadmap-pack transition:openOrDisclose>
         <ListCard role={roleAt(activeFlag.roles, 0)}>
           <ListRow
             data-roadmap-pack-toggle
@@ -740,7 +795,7 @@
          screen in one frame). The sources and the checked-on date close the
          group rather than the screen, since they are about these steps. -->
     {#if polishShown}
-      <section class="roadmap-group" data-roadmap-legal transition:disclose={{ onScreen: true }} onintroend={fillLegalGroup}>
+      <section class="roadmap-group" data-roadmap-legal transition:openOrDisclose={{ onScreen: true }}>
         <SectionHeading text={m.roadmap_polish_steps_title()}>
           {#snippet action()}
             <span class="roadmap-steps" data-roadmap-steps-left>

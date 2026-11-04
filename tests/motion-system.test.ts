@@ -1619,9 +1619,35 @@ describe('carpet 15 row 47, the legal group mounts in parts', () => {
   it('mounts the roadmap\'s Polish steps a screen first and fills the rest after the opening', () => {
     const source = stripComments(readFileSync(join(root, 'src/routes/transition/roadmap/+page.svelte'), 'utf8'));
     expect(source).toContain('{#each shownGoals as goal (goal.key)}');
-    expect(source).toMatch(/data-roadmap-legal transition:disclose=\{\{ onScreen: true \}\} onintroend=\{fillLegalGroup\}/);
+    expect(source).not.toContain('onintroend');
     expect(source).toMatch(/data-goal=\{goal\.key\}[^>]*transition:disclose=\{\{ belowFold: legalFilling \}\}/);
     expect(source).toMatch(/shown=\{polishShown && legalLimit === Infinity\}\s*belowFold=\{legalFilling\}/);
+  });
+
+  /* The disclose that opened the group was a main-thread height animation
+     that Svelte starts a frame after the switch's commit, so on the phone
+     the list waited for the main thread while the composited thumb ran. The
+     group's two boxes skip it and open as transforms in the commit's own
+     flush (openBlocks.ts), on the same duration and curve. */
+  it('opens the pack and the section as composited transforms, not a height disclose', () => {
+    const source = stripComments(readFileSync(join(root, 'src/routes/transition/roadmap/+page.svelte'), 'utf8'));
+    expect(source).toMatch(/<div data-roadmap-pack transition:openOrDisclose>/);
+    expect(source).toMatch(/data-roadmap-legal transition:openOrDisclose=\{\{ onScreen: true \}\}/);
+    expect(source).toMatch(/openBlocks\(\{/);
+    expect(source).toMatch(/disclose\(node, \{ \.\.\.params, skip: skipOpening \}\)/);
+    // The app keeps other doors' screens mounted: a document-wide query found
+    // one of theirs on the phone and no opening ran.
+    expect(source).not.toMatch(/document\.querySelector[^;]*read-reserve-body/);
+    expect(source).toMatch(/screenEl\?\.querySelector<HTMLElement>\('\[data-read-reserve-body\]'\)/);
+    const opening = stripComments(readFileSync(join(root, 'src/lib/motion/openBlocks.ts'), 'utf8'));
+    expect(opening).toContain("duration: motionDuration('--dur-med'), easing: EASE_OUT_CSS");
+    expect(opening).not.toMatch(/\bheight\b\s*:/);
+  });
+
+  it("resize's mount does not read layout it never uses", () => {
+    const source = stripComments(readFileSync(join(root, 'src/lib/motion/reveal.ts'), 'utf8'));
+    const body = source.slice(source.indexOf('export const resize'));
+    expect(body.slice(0, body.indexOf('let hidden'))).not.toContain('getBoundingClientRect');
   });
 });
 
