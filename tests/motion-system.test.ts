@@ -1692,7 +1692,7 @@ describe('carpet 15 row 51 colour and name arrivals', () => {
   it("draws the span handles' focus ring outside the grip's clip", () => {
     const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
     const css = source.slice(source.indexOf('<style>'));
-    expect(css).toMatch(/\.span-tl-handle:focus-visible::after \{\s*outline: 2px solid var\(--focus-ring\);\s*outline-offset: 2px;/);
+    expect(css).toMatch(/\.span-tl-handle:focus-visible::after \{\s*border: 2px solid var\(--bg\);\s*outline: 2px solid var\(--focus-ring\);/);
     expect(css).not.toMatch(/\.span-tl-grip[\w-]*[^{]*\{[^}]*outline:/);
   });
 

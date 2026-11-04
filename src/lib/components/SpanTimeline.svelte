@@ -1280,24 +1280,29 @@
      grip's clip and was never painted (carpet 15 row 51), and the grip's
      box travels with the rise, so a ring on it would rise from below the
      rail. Focus raises the rail, so the grip fills this box a moment
-     later. Instant, like every other control's ring in the kit. */
+     later. Instant, like every other control's ring in the kit. The 2px
+     between grip and ring is filled with the page's ground rather than
+     left open: in dark the ring is a light pink, and across the light
+     blue of an era band it measured 1.09:1, so the ground keeps it at
+     least 6:1 against what touches it on one side wherever it runs. */
   .span-tl-handle:focus-visible {
     outline: none;
   }
   .span-tl-handle::after {
     content: '';
     position: absolute;
-    top: 0;
-    bottom: 0;
-    width: var(--grip);
-    border-radius: var(--r-block);
+    top: -2px;
+    bottom: -2px;
+    box-sizing: border-box;
+    width: calc(var(--grip) + 4px);
+    border-radius: calc(var(--r-block) + 2px);
     pointer-events: none;
   }
-  .span-tl-handle.is-start::after { left: calc(var(--handle) - var(--grip)); }
-  .span-tl-handle.is-end::after { left: 6px; }
+  .span-tl-handle.is-start::after { left: calc(var(--handle) - var(--grip) - 2px); }
+  .span-tl-handle.is-end::after { left: 4px; }
   .span-tl-handle:focus-visible::after {
+    border: 2px solid var(--bg);
     outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
   }
 
   /* The one-time hint, a line of small type under the reading. */
