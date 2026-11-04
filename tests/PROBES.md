@@ -835,6 +835,7 @@ available for the surface or device it measures.
 
 | Probe | Purpose |
 | --- | --- |
+| `palette-name-wrap` | every flag name in the palette picker wraps only between words and stays over its own flag, English and Polish, at 320, 360, 390 and 430px; dev server, run with `node tests/palette-name-wrap.mjs` |
 | `quick-add-mood-withdrawal` | check scrim withdrawal before mood navigation, chosen mood and heading focus for tap, keyboard and slide in both themes and motion preferences; requires a demo build, run with `node tests/quick-add-mood-withdrawal.mjs` |
 | `quick-add-close-check` | keep the bottom bar above the scrim until its outro ends; check cancellation focus and navigation in both themes and motion preferences against a demo build |
 | `quick-add-close-motion` | measure navigation edge detail in full physical compositor captures from three dedicated Quick add closes per theme; record source frame numbers and milliseconds, and fail on blurred intermediate frames |
