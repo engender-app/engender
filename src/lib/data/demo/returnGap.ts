@@ -26,16 +26,21 @@ import type { Journal } from '../journal/journal';
 import { todayEpochDay } from '../epochDay';
 import { seedPersonaJournal } from './journal-seed';
 import { seedFullFixture } from './fullFixture';
-import { persona } from './persona';
+import { persona, type PersonaLocale } from './persona';
 
 /** How far back the journal stops. */
 const DEMO_GAP_DAYS = 35;
 
-export async function seedReturnGap(journal: Journal, today: number = todayEpochDay()): Promise<void> {
+export async function seedReturnGap(
+  journal: Journal,
+  today: number = todayEpochDay(),
+  locale: PersonaLocale = 'en'
+): Promise<void> {
   const anchor = today - DEMO_GAP_DAYS;
+  const say = (en: string, pl: string) => (locale === 'pl' ? pl : en);
 
-  await seedPersonaJournal(journal, anchor);
-  await seedFullFixture(journal, anchor);
+  await seedPersonaJournal(journal, anchor, locale);
+  await seedFullFixture(journal, anchor, locale);
 
   /* One regimen episode active through the gap, not three.
 
@@ -56,7 +61,7 @@ export async function seedReturnGap(journal: Journal, today: number = todayEpoch
      a real limit rather than a demo artefact, and it belongs to
      `getComparison` rather than here. */
   for (const episode of await journal.regimen.getEpisodes()) {
-    if (episode.drug !== 'Estradiol valerate') await journal.regimen.endEpisode(episode.id, anchor);
+    if (episode.drug !== say('Estradiol valerate', 'Walerianian estradiolu')) await journal.regimen.endEpisode(episode.id, anchor);
   }
 
   /* The era the person is in. Open at the end on purpose: an era with no end
@@ -67,7 +72,7 @@ export async function seedReturnGap(journal: Journal, today: number = todayEpoch
      reached backward into them, tripping eras.ts's no-overlap invariant and
      leaving the whole reseed clearing itself out on the throw (ticket 23). */
   await journal.eras.upsertEra({
-    name: 'Second year',
+    name: say('Second year', 'Drugi rok'),
     startEpochDay: firstDayAfterPersonaEras(persona(anchor).eras),
     endEpochDay: null
   });
@@ -77,13 +82,13 @@ export async function seedReturnGap(journal: Journal, today: number = todayEpoch
      that is unambiguously good news. */
   await journal.letters.addLetter({
     epochDay: anchor - 120,
-    text: 'Whatever this month was, you got here. That was the whole ask.',
+    text: say('Whatever this month was, you got here. That was the whole ask.', 'Jakikolwiek był ten miesiąc, to już tutaj. O nic więcej nie chodziło.'),
     unlockEpochDay: anchor + 9
   });
 
   /* And a milestone whose day arrived while nobody looked. */
   await journal.milestones.upsertMilestone({
-    name: 'Two years on HRT',
+    name: say('Two years on HRT', 'Dwa lata na HRT'),
     epochDay: anchor + 16,
     description: ''
   });

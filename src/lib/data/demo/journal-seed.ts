@@ -19,7 +19,7 @@
 
 import type { Journal } from '../journal/journal';
 import type { NormalizedPhoto } from '../journal/photos';
-import { persona } from './persona';
+import { persona, type PersonaLocale } from './persona';
 import { todayEpochDay } from '../epochDay';
 
 /** Deletes every journal row, leaving preferences alone. Only the demo bar's
@@ -47,8 +47,12 @@ export async function clearJournal(journal: Journal): Promise<void> {
   await journal.discardEverything();
 }
 
-export async function seedPersonaJournal(journal: Journal, today: number = todayEpochDay()): Promise<void> {
-  await writePersonaJournal(journal, persona(today));
+export async function seedPersonaJournal(
+  journal: Journal,
+  today: number = todayEpochDay(),
+  locale: PersonaLocale = 'en'
+): Promise<void> {
+  await writePersonaJournal(journal, persona(today, locale));
 }
 
 /** Every seed `writePersonaJournal` will ask `makePhoto` for, one per photo

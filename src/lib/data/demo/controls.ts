@@ -16,6 +16,7 @@ import { PREFERENCE_DEFAULTS } from '../prefs/catalogue';
 import { withHasEntries } from '../acknowledgements';
 import { clearJournal, seedPersonaJournal } from './journal-seed';
 import { demoPreferences } from './persona';
+import { getLocale } from '$lib/paraglide/runtime';
 
 /* The device sweep records which demo profile it prepared. Any journal
    write outside that preparation makes the record stale. The sweep stamps
@@ -63,7 +64,7 @@ async function reseed(seed: () => Promise<void>): Promise<void> {
 }
 
 export async function resetDemo(): Promise<void> {
-  await reseed(() => seedPersonaJournal(journal));
+  await reseed(() => seedPersonaJournal(journal, undefined, getLocale()));
 }
 
 /** The persona plus every other More-hub area (phase 5 ticket 36) - a
@@ -73,8 +74,8 @@ export async function resetDemo(): Promise<void> {
 export async function resetDemoFull(): Promise<void> {
   const { seedFullFixture } = await import('./fullFixture');
   await reseed(async () => {
-    await seedPersonaJournal(journal);
-    await seedFullFixture(journal);
+    await seedPersonaJournal(journal, undefined, getLocale());
+    await seedFullFixture(journal, undefined, getLocale());
   });
 }
 
@@ -85,7 +86,7 @@ export async function resetDemoFull(): Promise<void> {
     is empty in it. returnGap.ts says what it adds and why. */
 export async function resetDemoComingBack(): Promise<void> {
   const { seedReturnGap } = await import('./returnGap');
-  await reseed(() => seedReturnGap(journal));
+  await reseed(() => seedReturnGap(journal, undefined, getLocale()));
 }
 
 /** True first-run state, for the demo bar's "Onboarding (first run)". Only

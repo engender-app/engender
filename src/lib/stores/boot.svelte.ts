@@ -87,6 +87,7 @@ import { UnlockCancelledError } from '../lock/unlock-attempt';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { demoPreferences, persona } from '../data/demo/persona';
+import { getLocale } from '$lib/paraglide/runtime';
 import { PREFERENCE_DEFAULTS, type PreferenceKey } from '../data/prefs/catalogue';
 import { bootGate, isReadyState, type BootState } from './boot-state';
 import { journalSession } from './journal-session';
@@ -1194,7 +1195,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
     },
     prepareDatabase: __DEMO__ ? async (driver, fileOps) => {
       if (activeSqlite!.prepareDemoPersona) {
-        personaPrepared = await activeSqlite!.prepareDemoPersona(persona());
+        personaPrepared = await activeSqlite!.prepareDemoPersona(persona(todayEpochDay(), getLocale()));
       } else {
         await migrateJournal(driver, fileOps);
       }
