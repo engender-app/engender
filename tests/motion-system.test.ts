@@ -1013,6 +1013,23 @@ describe('ticket 28: the field is a blind over the content', () => {
     );
   });
 
+  /* carpet 15, cost-reading-open. The status strip was .app's ::before, so a
+     navigation left it in the root group under every named one, and a
+     scrolled screen's snapshot or a travelling field painted through the
+     band. It is an element with a group of its own, above all the others. */
+  it('gives the status strip its own transition group above every other group', () => {
+    const layout = readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8');
+    expect(layout).toMatch(/<div class="app-strip" aria-hidden="true"><\/div>/);
+    expect(declarations(ruleOf(app, '.app-strip')?.body ?? '')['view-transition-name']).toBe('status-strip');
+    const strip = zIndex('::view-transition-group(status-strip)');
+    const others = rules(stripComments(app))
+      .filter((r) => r.prelude.startsWith('::view-transition-group(') && !r.prelude.includes('status-strip'))
+      .map((r) => Number(declarations(r.body)['z-index']))
+      .filter(Number.isFinite);
+    expect(others.length).toBeGreaterThan(4);
+    for (const z of others) expect(strip).toBeGreaterThan(z);
+  });
+
   /* The bottom corners stay exact on every frame of the slide, which is
      what the clip buys: the block itself is never resized, so there is no
      frame in which a 175px snapshot is being squashed into 102. The group

@@ -720,6 +720,10 @@
       </div>
     </main>
 
+    <!-- The status strip (app.css): an element rather than .app's ::before,
+         so a navigation's view transition can give it a group of its own. -->
+    <div class="app-strip" aria-hidden="true"></div>
+
     <div inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : 'contents'}>
     <QuickAdd />
     {#if managersRequested && !replacesApp}
