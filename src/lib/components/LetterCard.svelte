@@ -179,7 +179,7 @@
          the layout) rather than by being gone. -->
     {#if !read}
       <span class="letter-ready" out:collapse>
-        <Icon name="book" size={14} />
+        <Icon name="envelope" size={14} />
         <span>{m.letters_ready_title()}</span>
       </span>
     {/if}

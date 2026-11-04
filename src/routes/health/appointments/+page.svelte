@@ -558,7 +558,7 @@
   <ListRow
     key={appointment.id}
     data-appointment={appointment.id}
-    icon="calendar"
+    icon="appointment"
     title={titleOf(appointment)}
     subtitle={subtitleOf(appointment)}
     chevron={false}
@@ -622,7 +622,7 @@
              prep list under this is standing and is still worth reading,
              and the add control is in the header where it always is. -->
         <Notice
-          icon="calendar"
+          icon="appointment"
           key="appointments-nothing-booked"
           role={roleAt(activeFlag.roles, 0)}
           title={m.appointments_nothing_booked()}
@@ -631,7 +631,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="calendar"
+        icon="appointment"
         key="appointments-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.appointments_empty_title()}

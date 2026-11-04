@@ -24,9 +24,9 @@ const KIND_LABEL: Record<DocumentTargetKind, () => string> = {
     on its own screen: a milestone is a sparkle wherever it appears. */
 export const DOCUMENT_TARGET_ICON: Record<DocumentTargetKind, string> = {
   milestone: 'sparkle',
-  procedure: 'flag',
+  procedure: 'clipboard',
   episode: 'timeline',
-  goal: 'globe'
+  goal: 'route'
 };
 
 /** The area's own screen title, one per kind - what a group of documents

@@ -81,7 +81,7 @@ export const PATHS: Record<string, string> = {
   /* A routine kept up on a schedule: dilation, which drew the lab's flask. */
   repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
   /* A random pick (Milestones' "show me others"). It drew `shuffle`, which
-     is Hair removal's mark on the More hub. */
+     was Hair removal's mark on the More hub. */
   dice: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="16" cy="16" r="1.3"/>',
   download: '<path d="M12 1.79v12M7 8.79l5 5 5-5"/><path d="M5 19.79h14"/>',
   upload: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 21h14"/>',

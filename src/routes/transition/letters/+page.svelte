@@ -256,7 +256,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="book"
+        icon="envelope"
         key="letters-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.letters_empty_title()}

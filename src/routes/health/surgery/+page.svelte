@@ -123,7 +123,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="flag"
+        icon="clipboard"
         key="surgery-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
         title={m.surgery_empty_title()}

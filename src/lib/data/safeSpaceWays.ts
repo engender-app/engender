@@ -45,6 +45,6 @@ export type SafeSpaceWay = {
 };
 
 export const SAFE_SPACE_WAYS: readonly SafeSpaceWay[] = [
-  { key: 'resources', icon: 'info', href: '/support/resources' },
+  { key: 'resources', icon: 'lifebuoy', href: '/support/resources' },
   { key: 'evidence', icon: 'sparkle', href: '/doubt/evidence' }
 ];
