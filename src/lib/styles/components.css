@@ -661,6 +661,9 @@
   min-width: var(--touch-target); min-height: var(--touch-target);
   border: none; background: none; padding: 0;
   cursor: pointer;
+  /* The browser's disabled-button colour is not drawn anywhere on a
+     switch, but it changed in one frame with the opacity below. */
+  color: inherit;
   /* Opacity is the disabled state below. Without it a switch going
      disabled while a sheet saves dropped to 0.45 in one frame (carpet 15
      row 46), the yank .btn already fixed for itself. */
