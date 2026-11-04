@@ -161,7 +161,27 @@ export const PATHS: Record<string, string> = {
   // behind is drawn only where it shows, so the two outlines never cross
   // through each other's middle.
   documents:
-    '<rect x="4" y="7" width="12" height="14" rx="1.5"/><path d="M8 7V4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 20 4.5v11A1.5 1.5 0 0 1 18.5 17H16"/>'
+    '<rect x="4" y="7" width="12" height="14" rx="1.5"/><path d="M8 7V4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 20 4.5v11A1.5 1.5 0 0 1 18.5 17H16"/>',
+  // Five marks for the Transition group's rows (pre-release-human 12), each
+  // drawn to say what its module is. Roadmap drew `globe`, tryouts `tag`,
+  // wear `clock`, hair removal `shuffle` and voice `curve`.
+  //
+  // A road from where you are to where you are going: two waypoints and the
+  // way between them. Point-symmetric about the centre, so centred by
+  // construction. Not `timeline`, which is a straight rail of two dates.
+  route: '<circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="6" r="2.5"/><path d="M9 18h7.5a3 3 0 0 0 0-6h-9a3 3 0 0 1 0-6H15"/>',
+  // Trying something on. A hanger rather than a garment, so it holds a
+  // name or pronouns as well as a style, and favours no one's wardrobe.
+  hanger: '<path d="M9.8 5.1a2.2 2.2 0 1 1 3.2 2L12 7.8v1.2"/><path d="M12 9 3.4 16.6a1.3 1.3 0 0 0 .8 2.4h15.6a1.3 1.3 0 0 0 .8-2.4z"/>',
+  // Something worn, for a length of time: a face on a strap. It names the
+  // timing without drawing a binder, which would leave out tucking.
+  watch: '<circle cx="12" cy="12" r="6"/><path d="M12 9.5V12l1.6 1.6"/><path d="M8.7 6.99 9.3 4.3A1.6 1.6 0 0 1 10.9 3h2.2a1.6 1.6 0 0 1 1.6 1.3l.6 2.69"/><path d="M8.7 17.01l.6 2.69A1.6 1.6 0 0 0 10.9 21h2.2a1.6 1.6 0 0 0 1.6-1.3l.6-2.69"/>',
+  // A razor at 45 degrees: a head with its blade, and a handle. Upright it
+  // read as a T, and without the blade line as a hammer.
+  razor: '<path d="M12.41 4.52 19.48 11.59a1.5 1.5 0 0 1 0 2.12l-2.12 2.12a1.5 1.5 0 0 1-2.12 0L8.17 8.76a1.5 1.5 0 0 1 0-2.12l2.12-2.12a1.5 1.5 0 0 1 2.12 0z"/><path d="M11.35 7.7 16.3 12.65"/><path d="M11.71 12.29 3.22 20.78"/>',
+  // A voice as sound: bars about a midline with no baseline, which keeps it
+  // apart from `stats`'s three bars standing on one.
+  waveform: '<path d="M4.5 10.5v3M8.25 7.5v9M12 4v16M15.75 6.5v11M19.5 9.5v5"/>'
 };
 
 /* The two parameters are constrained rather than escaped, because both have
