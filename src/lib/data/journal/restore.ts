@@ -166,6 +166,7 @@ function replacementNames(journal: ArchiveJournal, existing: Set<string>, names:
     })),
     milestones: journal.milestones.map((row) => ({ ...row, photo: row.photo ? photos([row.photo])[0] : null })),
     hairPhotos: photos(journal.hairPhotos),
+    progressPhotos: photos(journal.progressPhotos),
     hairRemovalSessions: journal.hairRemovalSessions.map((row) => ({ ...row, photos: photos(row.photos) })),
     procedures: journal.procedures.map((row) => ({ ...row, photos: photos(row.photos) })),
     tryouts: journal.tryouts.map((row) => ({ ...row, photos: photos(row.photos) })),

@@ -304,6 +304,20 @@ const ROWS = [
     line: 'read'
   },
   {
+    /* Pre-release-human 12, bug 25: shots taken on purpose, pose by pose,
+       split off the photo library, which keeps every photograph in the
+       journal. `camera` for now, an existing glyph no other row uses; the
+       Transition icons are being redrawn separately. Not finishable
+       (areaState.ts's NOT_FINISHABLE says why). */
+    key: 'progress-photos',
+    icon: 'camera',
+    href: '/transition/progress-photos',
+    home: 'transition',
+    areas: ['progressPhotos'],
+    finishes: null,
+    line: 'read'
+  },
+  {
     /* `hanger`, for trying something on (pre-release-human 12); it drew
        `tag`. */
     key: 'tryouts',

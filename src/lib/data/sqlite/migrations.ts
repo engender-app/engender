@@ -40,6 +40,7 @@ import { migrateStockIdentity } from './stock-identity-migration.ts';
 import { WAITLIST_REBUILD } from './waitlist-migration.ts';
 import { DELETION_LOG } from './deletion-migration.ts';
 import { MIGRATION_HYGIENE } from './hygiene-migration.ts';
+import { PROGRESS_PHOTOS } from './progress-photo-migration.ts';
 
 /** What were migrations 89 to 119, as development builds ran them. The
     released chain runs them as the one step at 119 (see the header). */
@@ -468,5 +469,8 @@ function asOneStep(version: number, steps: Migration[]): Migration {
 
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
-  asOneStep(119, POST_RC1_STEPS)
+  asOneStep(119, POST_RC1_STEPS),
+  /* Pre-release-human 12, bug 25: progress photos, a pose-by-pose record
+     of shots taken on purpose (progress-photo-migration.ts). */
+  { version: 120, sql: PROGRESS_PHOTOS }
 ];

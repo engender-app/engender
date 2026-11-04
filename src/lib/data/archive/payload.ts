@@ -526,6 +526,17 @@ export interface ArchiveHairPhoto extends ArchiveStamped {
   fileName: string;
 }
 
+/** One progress photo (pre-release-human 12, bug 25): dated in its own
+    right like a hair photo, with the pose it was taken in. `pose` is plain
+    text on the wire, as in the table: a pose this build does not know reads
+    as front (progressPhotos.ts). */
+export interface ArchiveProgressPhoto extends ArchiveStamped {
+  id: string;
+  epochDay: number;
+  pose: string;
+  fileName: string;
+}
+
 /** One hair-removal session photo (phase 5 ticket 08). Nested under its
     session rather than a top-level section, the way `ArchiveChecklistItem`
     is nested under its checklist: a session photo belongs to exactly one
@@ -853,6 +864,7 @@ export interface ArchiveJournal {
   personalEffectTypes: ArchivePersonalEffectType[];
   hairStages: ArchiveHairStage[];
   hairPhotos: ArchiveHairPhoto[];
+  progressPhotos: ArchiveProgressPhoto[];
   hairRemovalSessions: ArchiveHairRemovalSession[];
   procedures: ArchiveProcedure[];
   providers: ArchiveProvider[];
@@ -1065,6 +1077,7 @@ const postAlphaSections = [
   'personalEffects',
   'hairStages',
   'hairPhotos',
+  'progressPhotos',
   'hairRemovalSessions',
   'procedures',
   'appointments',

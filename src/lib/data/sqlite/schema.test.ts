@@ -208,7 +208,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 119);
+  assert.equal(db.getUserVersion(), 120);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -240,6 +240,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'personal_effect_type',
     'photo',
     'presentation',
+    'progress_photo',
     'provider',
     'pref',
     'preset_dimension',

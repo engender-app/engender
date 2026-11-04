@@ -1605,44 +1605,9 @@ try {
   await page.waitForSelector('[data-photo-cell] img');
   const thumbnailSrc = await page.locator('[data-photo-cell] img').first().getAttribute('src');
   if (!thumbnailSrc?.startsWith('blob:')) throw new Error('the photo grid did not load stored thumbnails');
-  await page.locator('[data-segment="compare"]').click();
-  const photoCells = page.locator('[data-photo-cell]');
-  if ((await photoCells.count()) < 4) throw new Error('not enough photos to exercise both compare controls');
-  await photoCells.nth(0).click();
-  await photoCells.nth(2).click();
-  await page.locator('[data-compare-open]').click();
-  /* One frame with a draggable divider, not two thumbnails side by side
-     (redesign ticket 55). Both dates are pinned to the frame's own corners,
-     and the four earlier/later controls move each side through the
-     journey. The demo persona's photos have stored files, so this is the
-     wipe rather than its side-by-side fallback. */
-  await page.waitForSelector('[data-photo-wipe]');
-  const gap = await page.locator('[data-compare-gap]').textContent();
-  if ((await page.locator('[data-wipe-date]').count()) !== 2 || !gap?.includes('apart')) {
-    throw new Error('compare dates or gap missing');
-  }
-  if (await page.locator('[data-wipe-fallback]').count()) {
-    throw new Error('the wipe fell back to side by side with two stored photographs');
-  }
-  const leftDate = page.locator('[data-wipe-date="left"]');
-  const rightDate = page.locator('[data-wipe-date="right"]');
-  const leftBefore = await leftDate.textContent();
-  await page.locator('[data-wipe-forward="left"]').click();
-  if ((await leftDate.textContent()) === leftBefore) throw new Error('the left photo did not move through time');
-  const rightBefore = await rightDate.textContent();
-  await page.locator('[data-wipe-forward="right"]').click();
-  if ((await rightDate.textContent()) === rightBefore) throw new Error('the right photo did not move through time');
-
-  // The divider is a slider a keyboard can drive, and End takes it to the
-  // far edge without a pointer anywhere near it.
-  const handle = page.locator('[data-wipe-handle]');
-  const startedAt = await handle.getAttribute('aria-valuenow');
-  await handle.press('End');
-  if ((await handle.getAttribute('aria-valuenow')) === startedAt) {
-    throw new Error('the divider did not move on a key press');
-  }
-
-  ok('timeline and progress-photo compare');
+  // Comparing moved to Progress photos (pre-release-human 12); the wipe's
+  // controls are walked there, in the photo library flow below.
+  ok('timeline and photo library thumbnails');
 } catch (e) { fail('ticket 18 view-only screens', e); }
 });
 
@@ -8097,7 +8062,7 @@ try {
   const sourcesOn = async () =>
     page.locator('[data-photo-source]').evaluateAll((cells) => cells.map((cell) => cell.dataset.photoSource));
   const everySource = await sourcesOn();
-  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video']) {
+  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video', 'progress']) {
     if (!everySource.includes(source)) {
       throw new Error(`the library is missing its ${source} photographs: ${JSON.stringify([...new Set(everySource)])}`);
     }
@@ -8122,8 +8087,8 @@ try {
   const drawnChips = await page
     .locator('[data-photo-chip]')
     .evaluateAll((chips) => chips.map((chip) => chip.dataset.photoChip));
-  if (JSON.stringify(drawnChips) !== JSON.stringify(['everything', 'body', 'hair', 'tryouts', 'surgery', 'video', 'starred'])) {
-    throw new Error(`the chip row is not the seven this journal has: ${JSON.stringify(drawnChips)}`);
+  if (JSON.stringify(drawnChips) !== JSON.stringify(['everything', 'body', 'progress', 'hair', 'tryouts', 'surgery', 'video', 'starred'])) {
+    throw new Error(`the chip row is not the eight this journal has: ${JSON.stringify(drawnChips)}`);
   }
   await page.locator('[data-photo-chip="starred"]').click();
   await page.waitForFunction(() => document.querySelectorAll('[data-photo-key]').length === 2);
@@ -8144,27 +8109,51 @@ try {
   }
   if (!new URL(page.url()).searchParams.get('source')) throw new Error('the chip is not in the query');
 
-  // Two photographs from two different tables, which is the comparison
-  // neither the hair screen nor the surgery screen can offer.
-  await page.locator('[data-segment="compare"]').click();
-  await page.locator('[data-photo-source="hair"] [data-photo-cell]').first().click();
-  await page.locator('[data-photo-chip="everything"]').click();
-  await page.waitForSelector('[data-photo-source="procedure"]');
-  await page.locator('[data-photo-source="procedure"] [data-photo-cell]').first().click();
-  await page.locator('[data-compare-open]').click();
-  await page.waitForSelector('[data-photo-wipe]');
-  if ((await page.locator('[data-wipe-date]').count()) !== 2) {
-    throw new Error('the wipe inside the library did not open on two photographs');
-  }
-  // Closing comparison returns to the library with its selection intact.
-  await page.locator('[data-photos-back-to-all]').click();
-  await page.waitForSelector('[data-photo-key]');
+  // The library browses; comparing lives on Progress photos.
+  if (await page.locator('[data-segment="compare"]').count()) throw new Error('the photo library still offers compare');
 
   // A video note plays rather than being picked.
   await page.locator('[data-photo-video]').first().click();
   await page.waitForSelector('[data-sheet] video');
 
-  ok('the photo library holds all six sources, says where each came from, narrows by chip and wipes across tables');
+  await page.keyboard.press('Escape');
+
+  /* Two shots of one pose on Progress photos, which the full fixture gives
+     four of per pose (pre-release-human 12): picked, wiped, and each side
+     walked through the pose's own timeline. */
+  await page.goto(BASE + '/transition/progress-photos', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-progress-grid="front"] [data-photo-cell]');
+  await page.locator('[data-segment="compare"]').click();
+  const photoCells = page.locator('[data-progress-grid="front"] [data-photo-cell]');
+  if ((await photoCells.count()) < 4) throw new Error('not enough progress photos to exercise both compare controls');
+  await photoCells.nth(0).click();
+  await photoCells.nth(2).click();
+  await page.locator('[data-compare-open]').click();
+  await page.waitForSelector('[data-photo-wipe]');
+  const gap = await page.locator('[data-compare-gap]').textContent();
+  if ((await page.locator('[data-wipe-date]').count()) !== 2 || !gap?.includes('apart')) {
+    throw new Error('compare dates or gap missing');
+  }
+  if (await page.locator('[data-wipe-fallback]').count()) {
+    throw new Error('the wipe fell back to side by side with two stored photographs');
+  }
+  const leftDate = page.locator('[data-wipe-date="left"]');
+  const rightDate = page.locator('[data-wipe-date="right"]');
+  const leftBefore = await leftDate.textContent();
+  await page.locator('[data-wipe-forward="left"]').click();
+  if ((await leftDate.textContent()) === leftBefore) throw new Error('the left photo did not move through time');
+  const rightBefore = await rightDate.textContent();
+  await page.locator('[data-wipe-forward="right"]').click();
+  if ((await rightDate.textContent()) === rightBefore) throw new Error('the right photo did not move through time');
+  const handle = page.locator('[data-wipe-handle]');
+  const startedAt = await handle.getAttribute('aria-valuenow');
+  await handle.press('End');
+  if ((await handle.getAttribute('aria-valuenow')) === startedAt) {
+    throw new Error('the divider did not move on a key press');
+  }
+
+  ok('the photo library holds every source, says where each came from and narrows by chip; progress photos compare within a pose');
 } catch (e) { fail('the photo library', e); }
 });
 

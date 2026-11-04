@@ -127,6 +127,9 @@ for (const mode of ['merge', 'replace'] as const) {
       await sourceDb.exec('ALTER TABLE entry_template RENAME COLUMN presentation_id TO presentation_uuid');
       await sourceDb.exec('ALTER TABLE milestone RENAME COLUMN procedure_id TO procedure_uuid');
       await sourceDb.exec('ALTER TABLE milestone RENAME COLUMN tryout_id TO tryout_uuid');
+      // v120: progress photos, read by the snapshot's file manifest.
+      await sourceDb.exec(`CREATE TABLE progress_photo (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE,
+        epoch_day INTEGER NOT NULL, pose TEXT NOT NULL, file_path TEXT NOT NULL, updated_at INTEGER NOT NULL)`);
       await source.reconcileBuiltIns();
       for (const [id, drug, quantity, day, updated] of [
         ['first', firstDrug, 7, 20010, 200], ['last', lastDrug, 59, 20000, 100]

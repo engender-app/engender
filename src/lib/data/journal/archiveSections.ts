@@ -651,6 +651,15 @@ const SECTIONS = [
     read: read.readHairPhotos,
     apply: apply.applyHairPhotos
   }),
+  // A posed photograph of the person, so it stays out of a structure file
+  // the way every other photograph does.
+  section({
+    name: 'progressPhotos',
+    discard: ['DELETE FROM progress_photo'],
+    travels: 'none',
+    read: read.readProgressPhotos,
+    apply: apply.applyProgressPhotos
+  }),
   // Inserts its own photo children, the same reasoning `hairPhotos` gives -
   // it depends on no other section.
   section({

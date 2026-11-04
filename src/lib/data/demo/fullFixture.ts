@@ -21,6 +21,8 @@
 import type { Journal } from '../journal/journal';
 import { todayEpochDay, weekdayOfEpochDay } from '../epochDay';
 import { demoPhoto } from './journal-seed';
+import { PROGRESS_POSES, type ProgressPose } from '../journal/progressPhotos';
+import type { NormalizedPhoto } from '../journal/photos';
 import { demoNow } from './demoClock';
 import { demoAudioBytes, demoVideoBytes } from '../demoAudioBytes';
 import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
@@ -583,6 +585,53 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     feltSense: 4
   });
 
+  /* Progress photos (pre-release-human 12, bug 25): four shots in each pose,
+     a season apart and ending this week, so every pose has a timeline, a
+     pair to compare and a last shot for the camera to lay over its
+     picture. Seeded last and off no draw of `r`, so nothing above moves. */
+  for (const [poseIndex, pose] of PROGRESS_POSES.entries()) {
+    for (let shot = 0; shot < 4; shot++) {
+      const day = today - (3 - shot) * 90 - poseIndex;
+      await journal.progressPhotos.addPhoto(day, pose, await demoProgressPhoto(poseIndex * 4 + shot, pose));
+    }
+  }
+}
+
+/** A 3:4 placeholder with a plain figure on it, for the progress-photo
+    fixture above: the gradient demoPhoto draws (journal-seed.ts) says
+    nothing a ghost could be lined up against, and a figure that sits a
+    little differently in each shot does. A side pose is drawn narrower. */
+async function demoProgressPhoto(seed: number, pose: ProgressPose): Promise<NormalizedPhoto> {
+  const draw = async (width: number): Promise<Uint8Array> => {
+    const height = Math.round((width * 4) / 3);
+    // OffscreenCanvas off the main thread, the way demoPhoto draws.
+    const canvas = typeof document === 'undefined' ? new OffscreenCanvas(width, height) : document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d')! as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+    const hue = (seed * 23 + 200) % 360;
+    const gradient = context.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, `hsl(${hue} 30% 82%)`);
+    gradient.addColorStop(1, `hsl(${hue} 25% 66%)`);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, width, height);
+    const unit = width / 100;
+    const shift = ((seed % 4) - 1.5) * 2 * unit;
+    const body = pose === 'side' ? 16 : 24;
+    context.fillStyle = `hsl(${hue} 20% 38%)`;
+    context.beginPath();
+    context.arc(50 * unit + shift, 26 * unit, 10 * unit, 0, Math.PI * 2);
+    context.fill();
+    context.beginPath();
+    context.roundRect((50 - body / 2) * unit + shift, 40 * unit, body * unit, 72 * unit, 10 * unit);
+    context.fill();
+    const blob = 'convertToBlob' in canvas
+      ? await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 })
+      : await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+    if (!blob) throw new Error('the demo could not encode a progress photo');
+    return new Uint8Array(await blob.arrayBuffer());
+  };
+  return { full: await draw(480), thumb: await draw(240) };
 }
 
 /** A minimal, valid one-page PDF (phase 11 ticket 01), built the same way

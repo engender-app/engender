@@ -1220,6 +1220,25 @@ export async function applyHairPhotos(restoring: Restoring): Promise<void> {
   await insertRows(driver, 'INSERT INTO hair_photo (uuid, epoch_day, file_path, updated_at)', inserting);
 }
 
+/* A progress photo owns no other row either, so it is matched and written by
+   uuid the way a hair photo is. */
+export async function applyProgressPhotos(restoring: Restoring): Promise<void> {
+  const { driver, journal, ts } = restoring;
+  const gate = await rowGate(restoring, 'progress_photo');
+
+  const inserting: unknown[][] = [];
+  for (const photo of journal.progressPhotos) {
+    const fate = fateOf(gate, photo.id, photo, ts);
+    if (fate === 'insert') inserting.push([photo.id, photo.epochDay, photo.pose, photo.fileName, stampOf(photo, ts)]);
+    if (fate === 'update') {
+      await driver.run('UPDATE progress_photo SET epoch_day = ?, pose = ?, file_path = ?, updated_at = ? WHERE uuid = ?', [
+        photo.epochDay, photo.pose, photo.fileName, stampOf(photo, ts), photo.id
+      ]);
+    }
+  }
+  await insertRows(driver, 'INSERT INTO progress_photo (uuid, epoch_day, pose, file_path, updated_at)', inserting);
+}
+
 /** A costed row's three cost columns from its archive fields; absent (an
     archive written before functional audit ticket 30) is no cost. */
 function costValues(row: ArchiveCostFields): [number | null, string | null, number] {

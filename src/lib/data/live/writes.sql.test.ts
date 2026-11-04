@@ -718,6 +718,13 @@ beforeAll(async () => {
   // Redone so a photo row survives into the read sweep below.
   await drive('hairProgress', 'addPhoto', () => journal.hairProgress.addPhoto(19200, photo('hairline again')));
 
+  // --- progressPhotos ------------------------------------------------
+  const progressPhotoId = (await drive('progressPhotos', 'addPhoto', () =>
+    journal.progressPhotos.addPhoto(19210, 'side', photo('posed'))
+  )) as string;
+  await drive('progressPhotos', 'deletePhoto', () => journal.progressPhotos.deletePhoto(progressPhotoId));
+  await journal.progressPhotos.addPhoto(19211, 'front', photo('posed again'));
+
   // --- hairRemoval ---------------------------------------------------
   const hairRemovalId = (await drive('hairRemoval', 'upsertSession', () =>
     journal.hairRemoval.upsertSession({
@@ -1097,6 +1104,8 @@ beforeAll(async () => {
   await driveRead('hairProgress', 'getPhotos', () => journal.hairProgress.getPhotos());
   await driveRead('hairProgress', 'getPhotosOnDay', () => journal.hairProgress.getPhotosOnDay(19200));
   await driveRead('hairProgress', 'lastPhotoWriteEpochDay', () => journal.hairProgress.lastPhotoWriteEpochDay(19200));
+  await driveRead('progressPhotos', 'getPhotos', () => journal.progressPhotos.getPhotos());
+  await driveRead('progressPhotos', 'lastWriteEpochDay', () => journal.progressPhotos.lastWriteEpochDay(19300));
   await driveRead('hairRemoval', 'getSessions', () => journal.hairRemoval.getSessions());
   await driveRead('hairRemoval', 'getSessionsOnDay', () => journal.hairRemoval.getSessionsOnDay(20000));
   await driveRead('hairRemoval', 'lastWriteEpochDay', () => journal.hairRemoval.lastWriteEpochDay(20000));

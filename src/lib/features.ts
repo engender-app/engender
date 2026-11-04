@@ -333,6 +333,17 @@ export const FEATURES = {
     routes: ['/transition/milestones'],
     messages: ['ms', 'milestones']
   },
+  'progress-photos': {
+    sections: ['progressPhotos'],
+    tables: ['progress_photo'],
+    journal: ['progressPhotos'],
+    hubRows: ['progress-photos'],
+    areaGroups: none,
+    unprompted: none,
+    tiles: none,
+    routes: ['/transition/progress-photos'],
+    messages: ['pph']
+  },
   tryouts: {
     sections: ['tryouts', 'feltSenseEntries'],
     tables: ['tryout', 'tryout_photo', 'felt_sense'],

@@ -24,7 +24,8 @@
     ['/transition/milestones', 'New milestone'],
     ['/settings/dimension', 'Custom dimension'],
     ['/settings/export', 'Export & import'],
-    ['/media/photos', 'Progress photos'],
+    ['/media/photos', 'Photos'],
+    ['/transition/progress-photos', 'Progress photos'],
     ['/care/labs', 'Lab results'],
   ];
 

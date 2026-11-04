@@ -48,6 +48,7 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   eraMute: ['era_mute'],
   hairProgress: ['hair_stage', 'hair_photo'],
   hairRemoval: ['hair_removal_session', 'hair_removal_photo'],
+  progressPhoto: ['progress_photo'],
   procedure: ['procedure', 'procedure_photo'],
   appointment: ['appointment', 'appointment_status', 'provider'],
   comfortItem: ['comfort_item'],
