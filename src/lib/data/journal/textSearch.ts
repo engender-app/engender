@@ -31,7 +31,7 @@
      columns   the text columns, in the order a hit prefers them when more
               than one matched
      context   one more column the presentation needs and cannot derive: a
-              checklist's owner kind, a felt sense's tryout. Nothing else.
+              checklist's owning procedure, a felt sense's tryout. Nothing else.
      where     a restriction the area itself imposes, with its parameters.
               One area has one: a sealed letter is not searchable.
 
@@ -222,7 +222,9 @@ const AREAS = [
   }),
   /* Every question anybody wrote for an appointment, and every line of a
      procedure's recovery checklist - one table, and the owner is what says
-     which screen the hit belongs to (checklists.ts).
+     which screen the hit belongs to (checklists.ts). `context` is the
+     owner's travelling id: only a procedure owns a checklist, so a hit with
+     one opens that procedure and a hit without one is an appointment question.
 
      `date: null`, for both kinds of item. A procedure's recovery checklist
      was never dated - it has no day of its own (checklists.ts). The standing
@@ -239,7 +241,7 @@ const AREAS = [
     uuid: 'ci.uuid',
     date: null,
     columns: ['ci.content'],
-    context: 'c.owner_kind'
+    context: 'c.owner_uuid'
   }),
   area({
     key: 'sideEffects',

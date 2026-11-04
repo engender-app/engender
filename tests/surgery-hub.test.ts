@@ -204,6 +204,9 @@ describe('rows elsewhere open the procedure screen', () => {
     expect(read('src/lib/components/searchHitRows.ts')).toContain(
       "href: (hit) => `${hubRow('surgery').href}/${encodeURIComponent(hit.id)}`"
     );
+    expect(read('src/lib/components/searchHitRows.ts')).toContain(
+      "hit.context ? `${hubRow('surgery').href}/${encodeURIComponent(hit.context)}`"
+    );
     expect(read('src/lib/components/dayRows.ts')).toContain(
       'href: `${hubRow(\'surgery\').href}/${encodeURIComponent(group[0].procedureId)}`'
     );

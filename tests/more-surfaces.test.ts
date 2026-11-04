@@ -344,6 +344,24 @@ describe('every row the hub carries', () => {
     expect(HUB_ROW_HOSTS).not.toHaveProperty('surgery');
   });
 
+  it('draws the last three cycle events inside the Cycle link card, held with it', () => {
+    /* Alicja, 2026-11-05: the preview that left Changes comes back on Meds,
+       with the link. It is a `before` snippet of the same HostedRows card, so
+       it sits in the link's own ReadReserve and fades in with it, and the
+       card's `ready` waits for the events' read when the gate is open. A
+       preview drawn beside the card, or released before its read, would
+       arrive after the link. */
+    const hosted = read('src/lib/components/HostedRows.svelte');
+    expect(hosted).toContain('{@render before?.()}');
+
+    const care = read('src/routes/care/+page.svelte');
+    expect(care).toContain('j.cycleEvents.getCycleEvents()');
+    expect(care).toContain('.slice(0, 3)');
+    expect(care).toContain('{#snippet before()}');
+    expect(care).toContain('(!cycleShown || !cycleEventsQuery.loading)');
+    expect(care).toContain('data-cycle-event={event.id}');
+  });
+
   it('leaves the hidden rule and the row line to hubRows, not to the component', () => {
     /* The component is a .svelte file, so the Node tier cannot mount it and
        `hubRows.test.ts` holds the rules themselves. What is checkable here is

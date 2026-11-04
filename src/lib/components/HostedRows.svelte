@@ -31,7 +31,7 @@
      opens on. */
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
-  import { untrack } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { dilationGated } from '$lib/data/taperSchedule';
   import { HUB_ROWS, rowLine, rowsHostedBy, rowHidden, type HubRow, type HubRowHostKey, type HubRowKey } from '$lib/data/hubRows';
@@ -45,7 +45,8 @@
     host,
     keys,
     card = false,
-    ready = true
+    ready = true,
+    before
   }: {
     /** Which screen's rows to draw, from `HUB_ROW_HOSTS`. Where `keys` is
         given it only names the screen, for its reserve and its data
@@ -65,6 +66,10 @@
     card?: boolean;
     /** The host's own reads, when `keys` waits on them. */
     ready?: boolean;
+    /** Static rows drawn at the head of the card, inside the same reserve, so
+        they arrive with the link rather than after it. The host owns their
+        reads and holds `ready` for them. */
+    before?: Snippet;
   } = $props();
 
   const today = $derived(currentDay());
@@ -130,7 +135,10 @@
        rows in over it; a card whose height changed travels. -->
   <ReadReserve ready={!statesQuery.loading && !proceduresQuery?.loading && ready} {estimate} onrest={remember} data-hosted-reserve={host}>
     {#if rows.length}
-      <ListCard>{@render hostedRows()}</ListCard>
+      <ListCard>
+        {@render before?.()}
+        {@render hostedRows()}
+      </ListCard>
     {/if}
   </ReadReserve>
 {:else}
