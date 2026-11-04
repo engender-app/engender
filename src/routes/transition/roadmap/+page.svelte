@@ -176,6 +176,7 @@
      while it runs plays it back (`openOrDisclose`'s out). */
   let skipOpening = false;
   let opening: Opening | null = null;
+  let switchSeq = 0;
   let legalFallback: ReturnType<typeof setTimeout> | undefined;
   function openOrDisclose(node: Element, params?: { onScreen?: boolean }, options?: { direction?: string }) {
     if (options?.direction === 'out' && opening?.claims(node)) return opening.retreat();
@@ -201,7 +202,9 @@
         fillLegalGroup();
       }, motionDuration('--dur-med') + 200);
       prefs.roadmapPolishStepsChoice = on;
+      const seq = ++switchSeq;
       void tick().then(() => {
+        if (seq !== switchSeq || !polishShown) return;
         const section = body.querySelector<HTMLElement>('[data-roadmap-legal]');
         if (!section || !first) return;
         const followers = [...body.children].filter((el) => el !== section && el.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_PRECEDING) as HTMLElement[];
@@ -222,6 +225,7 @@
       });
       return;
     }
+    switchSeq += 1;
     prefs.roadmapPolishStepsChoice = on;
   }
 
