@@ -49,6 +49,7 @@
   import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
+  import { trackPointerFocus } from '$lib/a11y/pointerFocus';
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { routeGate } from '$lib/navigation/routeGates';
   import { navigateWithTransition } from '$lib/navigation/navigationTransition';
@@ -87,6 +88,7 @@
   }
 
   onMount(countPageLoad);
+  onMount(() => trackPointerFocus());
 
   if (isAndroid()) {
     void import('$lib/android/plugin-registry').then(({ assertAndroidRuntimePluginRegistry }) => {

@@ -1247,6 +1247,9 @@
   .dose-amount:focus-within {
     border-color: var(--accent);
   }
+  :global(:root[data-input='pointer']) .dose-amount:focus-within {
+    border-color: var(--outline);
+  }
 
   /* The floor stays on the inputs, not only on the box around them. The box
      is a plain div: it labels nothing and focuses nothing, so 48px of it

@@ -14,7 +14,7 @@
 * { scrollbar-width: none; }
 *::-webkit-scrollbar { display: none; }
 
-:is(button, a, input, select, label) { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+:is(button, a, input, select, textarea, label) { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 h1, h2, h3 { text-wrap: balance; }
 
 html { color-scheme: light dark; }
