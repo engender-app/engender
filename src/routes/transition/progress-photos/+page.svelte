@@ -42,6 +42,8 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import PhotoWipe from '$lib/components/kit/PhotoWipe.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import HoldSelectBar from '$lib/components/HoldSelectBar.svelte';
+  import { checkIn, holdSelection } from '$lib/components/kit/holdSelect.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
 
@@ -65,6 +67,11 @@
   let comparing = $state(false);
   let capturing = $state(false);
   let viewing = $state<ProgressPhoto | null>(null);
+  /* Holding a shot picks shots to delete (holdSelect.svelte.ts). Its own
+     selection, apart from compare's pick-two: the two never run at once,
+     since a hold starts nothing while comparing and comparing clears it. */
+  const held = holdSelection();
+  let screenEl = $state<HTMLElement>();
 
   export const snapshot = {
     capture: () => ({ pose, selecting, selected: [...selected] }),
@@ -79,10 +86,12 @@
   function pickPose(next: string) {
     pose = next as ProgressPose;
     selected = [];
+    held.clear();
   }
 
   function setSelecting(next: boolean) {
     selecting = next;
+    held.clear();
     if (!next) selected = [];
   }
 
@@ -159,7 +168,7 @@
   const fast = () => motionDuration('--dur-fast');
 </script>
 
-<div class="screen">
+<div class="screen" bind:this={screenEl}>
   <ScreenHeader title={m.pph_title()} back="/more" />
   <SourceRecordHandoff id={sourceId} ready={!photosQuery.loading && !photosQuery.failed} found={!!sourcePhoto} onOpen={openSource} />
 
@@ -216,19 +225,21 @@
 
       <div class="photo-grid" bind:this={gridEl} data-progress-grid={pose}>
         {#each shots as p (p.id)}
+          {@const picked = (selecting && selected.includes(p.id)) || held.has(p.id)}
           <div class="photo-cell-wrap" data-photo-key={p.id} in:tileIn={{ when: painted }} out:pinnedOut>
             <button
               class="photo-cell"
               data-photo-cell
-              class:is-selected={selecting && selected.includes(p.id)}
-              aria-pressed={selecting ? selected.includes(p.id) : undefined}
+              class:is-selected={picked}
+              aria-pressed={selecting || held.active ? picked : undefined}
+              {@attach held.cell(p.id, !selecting)}
               disabled={selecting && selected.length === 2 && !selected.includes(p.id)}
               aria-label={m.pph_cell_aria({ pose: POSE_LABEL[p.pose](), date: cellDate(p) })}
               onclick={() => (selecting ? toggle(p.id) : (viewing = p))}
             >
               <PhotoThumb photo={p} size={104} />
               <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
-              {#if selecting && selected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+              {#if picked}<span class="photo-check" transition:checkIn><Icon name="check" size={14} /></span>{/if}
             </button>
           </div>
         {/each}
@@ -250,6 +261,14 @@
       />
     {/snippet}
   </ReadGate>
+
+  <HoldSelectBar
+    selection={held}
+    scope={screenEl}
+    remove={async (j, ids) => {
+      for (const id of ids) await j.progressPhotos.deletePhoto(id);
+    }}
+  />
 
   <ProgressCamera
     open={capturing}

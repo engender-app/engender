@@ -2337,6 +2337,24 @@
   "photo_wipe_no_file": "A stored photo file is missing. Only the previews are available for comparison.",
   "photo_wipe_value": "{percent}% from the earlier photo",
   "photos_label": "Photos",
+  "photos_select_delete": "Delete",
+  "photos_select_delete_hint": "Deleted photos go from everywhere they appear. You can undo it for 10 seconds.",
+  "photos_select_delete_q": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Delete this photo?",
+        "countPlural=other": "Delete {count} photos?"
+      }
+    }
+  ],
+  "photos_select_delete_sheet": "Delete photos",
   "pin_access_unavailable": "Could not read how your journal opens. Close the app and open it again to check its access settings.",
   "pin_again_title": "Type it once more",
   "pin_backspace": "Delete digit",

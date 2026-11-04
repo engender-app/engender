@@ -2391,6 +2391,26 @@
   "photo_wipe_no_file": "Brakuje zapisanego pliku zdjęcia. Porównać można tylko podglądy.",
   "photo_wipe_value": "{percent}% z wcześniejszego zdjęcia",
   "photos_label": "Zdjęcia",
+  "photos_select_delete": "Usuń",
+  "photos_select_delete_hint": "Usunięte zdjęcia znikną ze wszystkich miejsc, w których są. Możesz to cofnąć przez 10 sekund.",
+  "photos_select_delete_q": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Usunąć to zdjęcie?",
+        "countPlural=few": "Usunąć {count} zdjęcia?",
+        "countPlural=many": "Usunąć {count} zdjęć?",
+        "countPlural=other": "Usunąć {count} zdjęcia?"
+      }
+    }
+  ],
+  "photos_select_delete_sheet": "Usuń zdjęcia",
   "pin_access_unavailable": "Nie można odczytać sposobu otwierania dziennika. Zamknij aplikację i otwórz ją ponownie, żeby sprawdzić ustawienia dostępu.",
   "pin_again_title": "Wpisz go jeszcze raz",
   "pin_backspace": "Usuń cyfrę",

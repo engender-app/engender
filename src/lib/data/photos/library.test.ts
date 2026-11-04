@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import type { Journal } from '../journal/journal';
 import {
   chipOf,
   chipsFor,
+  deleteFromOwner,
+  libraryDeletable,
   narrowTo,
   photoChipFromQuery,
   yearMarks,
@@ -127,4 +130,40 @@ test('a year mark is the first photograph of each year, and one year gets none',
 
   assert.deepEqual(yearMarks([photo('a', 'entry', 19723), photo('b', 'entry', 19800)]), []);
   assert.deepEqual(yearMarks([]), []);
+});
+
+const fakeJournal = () => {
+  const calls: string[] = [];
+  const record = (area: string) => async (id: string) => { calls.push(`${area}:${id}`); };
+  const journal = {
+    photos: { remove: record('photos') },
+    hairProgress: { deletePhoto: record('hairProgress') },
+    hairRemoval: { deletePhoto: record('hairRemoval') },
+    tryouts: { deletePhoto: record('tryouts') },
+    procedures: { deletePhoto: record('procedures') },
+    progressPhotos: { deletePhoto: record('progressPhotos') }
+  } as unknown as Journal;
+  return { journal, calls };
+};
+
+test('a photograph deleted from the library goes through the area that owns it', async () => {
+  const { journal, calls } = fakeJournal();
+  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'progress'] as const) {
+    await deleteFromOwner(journal, photo(`${source}-1`, source, 0));
+  }
+  assert.deepEqual(calls, [
+    'photos:entry-1',
+    'photos:milestone-1',
+    'hairProgress:hair-1',
+    'hairRemoval:hairRemoval-1',
+    'tryouts:tryout-1',
+    'procedures:procedure-1',
+    'progressPhotos:progress-1'
+  ]);
+});
+
+test('a video note cannot be deleted from the library: only its entry deletes it', async () => {
+  assert.equal(libraryDeletable(photo('v', 'video', 0)), false);
+  assert.equal(libraryDeletable(photo('e', 'entry', 0)), true);
+  await assert.rejects(deleteFromOwner(fakeJournal().journal, photo('v', 'video', 0)));
 });

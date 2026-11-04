@@ -34,9 +34,12 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, photoCaptionDate } from '$lib/data/dates';
+  import type { Journal } from '$lib/data/journal/journal';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday } from '$lib/data/epochDay';
   import {
     chipsFor,
+    deleteFromOwner,
+    libraryDeletable,
     narrowTo,
     photoChipFromQuery,
     yearMarks,
@@ -58,6 +61,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import HoldSelectBar from '$lib/components/HoldSelectBar.svelte';
+  import { checkIn, holdSelection } from '$lib/components/kit/holdSelect.svelte';
   import { batchesFor, nextCount, remainingCount, shownCount } from '$lib/components/kit/batchedList';
   import { rememberBatches, restoredBatches } from '$lib/navigation/scroll-region';
 
@@ -92,6 +97,19 @@
   }
 
   let gridEl = $state<HTMLElement>();
+
+  /* Holding a photograph picks photographs to delete, the same hold as on
+     Progress photos (holdSelect.svelte.ts). Each goes through the area
+     that owns it (library.ts, deleteFromOwner); a video note is left out,
+     since only its entry deletes one. */
+  const held = holdSelection();
+  let screenEl = $state<HTMLElement>();
+  async function removeHeld(j: Journal, ids: string[]) {
+    for (const id of ids) {
+      const photo = library.find((p) => p.id === id);
+      if (photo) await deleteFromOwner(j, photo);
+    }
+  }
 
   /* Batches of the grid rendered into the DOM, so a journal with thousands
      of photos paints as fast as one with a few hundred (this ticket, audit
@@ -152,6 +170,9 @@
   const countIn = (node: Element) => crossfade(node, undefined, { direction: 'in' });
 
   async function pickChip(next: PhotoChip) {
+    /* A chip narrows the grid, and a pick that the grid no longer shows
+       would be deleted unseen. */
+    held.clear();
     const before = measureCells(gridEl, 'data-photo-key');
     const followers = measureFollowers(gridEl?.closest<HTMLElement>('.screen') ?? undefined);
     const url = new URL(page.url);
@@ -275,7 +296,7 @@
     fmtDay(photo.epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 </script>
 
-<div class="screen">
+<div class="screen" bind:this={screenEl}>
     <ScreenHeader title={m.photos_label()} back="/more" />
     <ReadGate read={libraryQuery} variant="block" count={2}>
       {#snippet rows()}
@@ -286,7 +307,7 @@
           {#key shown.length}<span in:countIn out:crossfade>{m.ph_count({ count: shown.length })}</span>{/key}
         </p>
         <div class="photo-library">
-          <div class="photo-grid" bind:this={gridEl}>
+          <div class="photo-grid" class:is-picking={held.active} bind:this={gridEl}>
             {#each rendered as p (p.id)}
               <div class="photo-cell-wrap" data-photo-key={p.id} data-photo-source={p.source} in:tileIn={{ when: painted }} out:pinnedOut>
                 {#if p.source === 'video'}
@@ -302,7 +323,9 @@
                     data-photo-video={p.id}
                     data-photo-view={p.id}
                     aria-label={m.ph_video_open({ date: cellDate(p) })}
+                    aria-disabled={held.active ? 'true' : undefined}
                     onclick={() => viewPhoto(p.id)}
+                    {@attach held.cell(p.id, false)}
                   >
                     <span class="photo-thumb photo-video-thumb">
                       <Icon name="play" size={26} />
@@ -316,14 +339,18 @@
                     class="photo-cell"
                     data-photo-cell
                     data-photo-view={p.id}
+                    class:is-selected={held.has(p.id)}
+                    aria-pressed={held.active ? held.has(p.id) : undefined}
                     aria-label={m.ph_cell_aria_sourced({ source: photoSourceLabel(p.source), date: cellDate(p) })}
                     onclick={() => viewPhoto(p.id)}
+                    {@attach held.cell(p.id, libraryDeletable(p))}
                   >
                     <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
                     <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
+                    {#if held.has(p.id)}<span class="photo-check" transition:checkIn><Icon name="check" size={14} /></span>{/if}
                   </button>
                   {#if datedByItsOwner(p)}
-                    <button class="photo-edit-day" data-photo-edit-day aria-label={m.ph_edit_day()} onclick={() => openDayEditor(p)}>
+                    <button class="photo-edit-day" data-photo-edit-day aria-label={m.ph_edit_day()} inert={held.active} onclick={() => openDayEditor(p)}>
                       <Icon name="calendar" size={14} />
                     </button>
                   {/if}
@@ -378,6 +405,8 @@
       {/snippet}
     </ReadGate>
 
+  <HoldSelectBar selection={held} scope={screenEl} remove={removeHeld} />
+
   <SourceRecordHandoff id={viewingId} ready={!libraryQuery.loading && !libraryQuery.failed} found={!!viewing} />
   <PhotoViewer caption={viewing ? `${photoSourceLabel(viewing.source)}, ${cellDate(viewing)}` : undefined} photo={viewing?.source !== 'video' ? viewing : null} {ownerHref} onClose={() => viewPhoto(null)} />
 
@@ -425,6 +454,15 @@
      the disc covered the caption's first letter while the 48px target
      took taps meant for the tile (audit U44). */
   .photo-cell-controls { position: relative; }
+  /* While picking, the day button steps back (a tap there would open a
+     sheet over the picking) and a video note's tile dims, since a note is
+     deleted in its entry and not here. Both fade: picking starts in the
+     frame of a hold, and nothing on the grid jumps with it. */
+  .photo-edit-day, .photo-grid :global([data-photo-video]) {
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .photo-grid.is-picking .photo-edit-day { opacity: 0; }
+  .photo-grid.is-picking :global([data-photo-video]) { opacity: 0.4; }
   .photo-edit-day {
     position: absolute; top: -8px; left: -8px;
     width: var(--touch-target); height: var(--touch-target);
