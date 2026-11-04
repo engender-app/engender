@@ -167,7 +167,7 @@ export function spread(_node: Element, params?: { authored?: boolean }): Transit
  */
 export function disclose(
   node: Element,
-  params?: { skip?: boolean; onScreen?: boolean },
+  params?: { skip?: boolean; onScreen?: boolean; belowFold?: boolean },
   /* `fadeEdges`: the panel primitive's closing (redesign ticket 25). A
      box's hairlines were cut to nothing on the first frame of a close,
      because a border cannot shrink below a device pixel and stalled the
@@ -180,6 +180,17 @@ export function disclose(
   options?: { fadeEdges?: boolean }
 ): TransitionConfig {
   if (isReducedMotion() || params?.skip) return { duration: 0 };
+  /* `belowFold` (carpet 15 row 47): a box that arrives wholly under the
+     screen's bottom edge arrives at once, since nothing of its travel would
+     be painted, and one that lands where it can be seen still opens. The
+     roadmap fills its legal group this way a few rows a frame. */
+  if (
+    params?.belowFold &&
+    typeof innerHeight === 'number' &&
+    typeof node.getBoundingClientRect === 'function' &&
+    node.getBoundingClientRect().top >= innerHeight
+  )
+    return { duration: 0 };
   const fadeEdges = options?.fadeEdges === true;
 
   const style = getComputedStyle(node);

@@ -1612,6 +1612,19 @@ describe('disabled dimming', () => {
 
 /* Carpet 15 row 51: two one-frame changes found by the yank sweep and fixed
    in CSS alone, guarded here so a later edit cannot quietly undo them. */
+describe('carpet 15 row 47, the legal group mounts in parts', () => {
+  /* Mounting the whole 3000px group in the switch's frame held the phone's
+     frame loop for 50 to 107ms. The steps mount a screen's worth first and
+     the rest after the opening, opening only where they land on screen. */
+  it('mounts the roadmap\'s Polish steps a screen first and fills the rest after the opening', () => {
+    const source = stripComments(readFileSync(join(root, 'src/routes/transition/roadmap/+page.svelte'), 'utf8'));
+    expect(source).toContain('{#each shownGoals as goal (goal.key)}');
+    expect(source).toMatch(/data-roadmap-legal transition:disclose=\{\{ onScreen: true \}\} onintroend=\{fillLegalGroup\}/);
+    expect(source).toMatch(/data-goal=\{goal\.key\}[^>]*transition:disclose=\{\{ belowFold: legalFilling \}\}/);
+    expect(source).toMatch(/shown=\{polishShown && legalLimit === Infinity\}\s*belowFold=\{legalFilling\}/);
+  });
+});
+
 describe('carpet 15 row 51 colour and name arrivals', () => {
   it("fades setup's Skip words with the field when a flag is picked, keeping .btn's list", () => {
     const source = stripComments(readFileSync(join(root, 'src/routes/onboarding/+page.svelte'), 'utf8'));

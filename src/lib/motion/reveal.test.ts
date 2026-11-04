@@ -165,6 +165,24 @@ describe('tier 3, a group opening its own height', () => {
     }
   });
 
+  /* Carpet 15 row 47: the roadmap's legal group fills in a few rows a
+     frame after its opening. A row landing under the screen's bottom edge
+     has nothing of its travel painted and arrives at once; one landing on
+     screen still opens. */
+  it('arrives at once below the fold when asked, and still opens on screen', () => {
+    stubDocument(false, true, { height: '120px', paddingTop: '0px', paddingBottom: '0px' });
+    (globalThis as Record<string, unknown>).innerHeight = 844;
+    const at = (top: number) => ({ getBoundingClientRect: () => ({ top }) }) as unknown as Element;
+    try {
+      expect(disclose(at(844), { belowFold: true }).duration).toBe(0);
+      expect(disclose(at(900), { belowFold: true }).duration).toBe(0);
+      expect(disclose(at(700), { belowFold: true }).duration).toBe(240);
+      expect(disclose(at(900)).duration).toBe(240);
+    } finally {
+      delete (globalThis as Record<string, unknown>).innerHeight;
+    }
+  });
+
   /* Tier 3's substitute is an instant cut rather than tier 2's crossfade: a
      group opening inside a screen has no journey for a fade to stand in for,
      and the chevron beside it has already said what happened. */

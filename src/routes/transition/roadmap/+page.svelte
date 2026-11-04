@@ -100,7 +100,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { collapse, disclose, resize } from '$lib/motion/reveal';
   import Institutions from './Institutions.svelte';
-  import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -140,6 +140,65 @@
   let hiddenInstitutions = $derived(POLISH_INSTITUTIONS.filter((one) => hiddenGoals.includes(one.key)));
   let hiddenGoalsOpen = $state(false);
   let list = $derived(roadmapList(pack, polishShown, customGoals, hiddenGoals, categories));
+
+  /* The switch mounts the legal group in parts (carpet 15 row 47). Whole,
+     it is about 3000px of rows, and building all of it in the frame the
+     switch turns held the phone's frame loop for 50 to 107ms, so the list
+     under it sat still and then caught up in lumps. The first part is
+     about the rows the screen below the switch can show, which is all the
+     opening travels (`onScreen`); the rest follows a few rows a frame once
+     that travel has ended, inserted above the goals the person added and
+     the sources, which mount with the group, and the offices come last.
+     Only when the switch turns it on: a group already on when the screen
+     opens arrives with the screen, and plays no opening to wait for. A
+     Polish step with its note is 94 to 267px at 390px wide. */
+  const LEGAL_ROW_GUESS = 96;
+  const LEGAL_ROWS_PER_FRAME = 4;
+  let legalLimit = $state(Infinity);
+  /* The rows a later part adds open only where they land on screen
+     (`belowFold`): under the bottom edge nothing of a travel is painted,
+     and twenty height travels there would cost the frames this saves. A
+     guess that came up short is the case that still opens. */
+  let legalFilling = $state(false);
+  let shownGoals = $derived(legalLimit >= list.goals.length ? list.goals : list.goals.slice(0, legalLimit));
+
+  let legalFallback: ReturnType<typeof setTimeout> | undefined;
+  function switchPolishSteps(on: boolean) {
+    /* Reduced motion cuts the group in whole: there is no travel to wait
+       for, and a cut that then went on growing below would be two. */
+    if (on && !isReducedMotion()) {
+      const row = document.querySelector('[data-roadmap-polish-steps]');
+      const below = innerHeight - (row?.getBoundingClientRect().bottom ?? 0);
+      legalLimit = Math.max(1, Math.ceil(Math.max(0, below) / LEGAL_ROW_GUESS) + 1);
+      /* The opening's end starts the rest (`onintroend`); this is for an
+         opening that never ran. */
+      clearTimeout(legalFallback);
+      legalFallback = setTimeout(fillLegalGroup, motionDuration('--dur-med') + 200);
+    }
+    prefs.roadmapPolishStepsChoice = on;
+  }
+
+  function fillLegalGroup() {
+    if (legalLimit === Infinity || legalFilling) return;
+    legalFilling = true;
+    const step = () => {
+      if (!polishShown) return;
+      if (legalLimit + LEGAL_ROWS_PER_FRAME < list.goals.length) {
+        legalLimit += LEGAL_ROWS_PER_FRAME;
+        requestAnimationFrame(step);
+      } else {
+        legalLimit = Infinity;
+        requestAnimationFrame(() => (legalFilling = false));
+      }
+    };
+    step();
+  }
+  $effect(() => {
+    if (!polishShown) {
+      legalLimit = Infinity;
+      legalFilling = false;
+    }
+  });
   let stepsLeft = $derived(roadmapStepsLeft(list, (key) => statuses[key] ?? 'unchecked'));
   let anySteps = $derived(list.goals.length + list.legalGoals.length > 0);
   let loaded = $derived(
@@ -507,7 +566,7 @@
         <span class="kit-row-sub">{m.roadmap_polish_steps_sub()}</span>
       </span>
       <span class="kit-row-trail">
-        <Switch checked={polishShown} label={m.roadmap_polish_steps_title()} onChange={(v) => (prefs.roadmapPolishStepsChoice = v)} />
+        <Switch checked={polishShown} label={m.roadmap_polish_steps_title()} onChange={switchPolishSteps} />
       </span>
     </div>
     <div class="kit-row" data-roadmap-milestone-sync>
@@ -571,7 +630,7 @@
          screen in one frame). The sources and the checked-on date close the
          group rather than the screen, since they are about these steps. -->
     {#if polishShown}
-      <section class="roadmap-group" data-roadmap-legal transition:disclose={{ onScreen: true }}>
+      <section class="roadmap-group" data-roadmap-legal transition:disclose={{ onScreen: true }} onintroend={fillLegalGroup}>
         <SectionHeading text={m.roadmap_polish_steps_title()}>
           {#snippet action()}
             <span class="roadmap-steps" data-roadmap-steps-left>
@@ -603,9 +662,9 @@
                the first goal of the person's own under them. -->
           {#if list.goals.length > 0}
             <div class="rows-divide" data-roadmap-pack-goals>
-              {#each list.goals as goal (goal.key)}
+              {#each shownGoals as goal (goal.key)}
                 {@const status = statuses[goal.key] ?? 'unchecked'}
-                <div class="kit-row is-split" data-goal={goal.key} data-status={status} transition:disclose>
+                <div class="kit-row is-split" data-goal={goal.key} data-status={status} transition:disclose={{ belowFold: legalFilling }}>
                   <button
                     type="button"
                     class="kit-row-main"
@@ -672,7 +731,8 @@
         <Institutions
           part="list"
           onOpen={(id) => institutionsPanel?.open(id)}
-          shown={polishShown}
+          shown={polishShown && legalLimit === Infinity}
+          belowFold={legalFilling}
           own={institutionQuery.rows}
           changes={institutionChangeQuery.rows}
           {hiddenGoals}
