@@ -852,7 +852,6 @@ describe('the token layer behind the five tiers', () => {
 describe('ticket 25: every state change moves', () => {
   const kit = stripComments(readFileSync(join(root, 'src/lib/styles/kit.css'), 'utf8'));
   const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
-  const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
   const keyframesOf = (css: string, name: string) =>
     rules(css).find((rule) => rule.prelude === `@keyframes ${name}`);
   const ruleOf = (css: string, prelude: string) =>
