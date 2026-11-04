@@ -296,11 +296,11 @@ const ROWS = [
     line: 'written'
   },
   {
-    /* `sparkle` rather than the `flag` it shared with the surgery journey. A
-       flag is planted on a map, which is what a surgery journey has: one
-       dated event and a recovery window either side of it. */
+    /* `summit`, a flag on a mountain (pre-release-human 12): a day reached.
+       It drew `sparkle` before that, and `flag` before that, which it shared
+       with the surgery journey. */
     key: 'milestones',
-    icon: 'sparkle',
+    icon: 'summit',
     href: '/transition/milestones',
     home: 'transition',
     areas: ['milestones'],

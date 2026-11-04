@@ -21,9 +21,9 @@ const KIND_LABEL: Record<DocumentTargetKind, () => string> = {
 };
 
 /** A name from `$lib/components/icons.ts`, and the same one each kind wears
-    on its own screen: a milestone is a sparkle wherever it appears. */
+    on its own screen: a milestone is a summit wherever it appears. */
 export const DOCUMENT_TARGET_ICON: Record<DocumentTargetKind, string> = {
-  milestone: 'sparkle',
+  milestone: 'summit',
   procedure: 'clipboard',
   episode: 'timeline',
   goal: 'route'

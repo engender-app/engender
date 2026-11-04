@@ -25,9 +25,10 @@ import type { DayRow } from './dayRows';
 const MARK_ROWS: Record<DayAheadMarkKind, () => Pick<DayRow, 'icon' | 'title'>> = {
   appointment: () => ({ icon: 'appointment', title: m.appointments_untitled() }),
   surgery: () => ({ icon: 'clipboard', title: m.surgery_date_label() }),
-  // `sparkle` rather than the `flag` surgery used to take: the two can share
-  // a day, and a duplicate icon reads as one row drawn twice.
-  milestone: () => ({ icon: 'sparkle', title: m.ms_default_name() }),
+  // `summit`, the hub row's mark (pre-release-human 12). It drew `sparkle`,
+  // and `flag` before that, which surgery shared: the two can fall on one
+  // day, and a duplicate icon reads as one row drawn twice.
+  milestone: () => ({ icon: 'summit', title: m.ms_default_name() }),
   letterUnlock: () => ({ icon: 'envelope', title: m.day_ahead_letter_unlock() }),
   doseSlot: () => ({ icon: 'pill', title: m.dose_amount_label() })
 };

@@ -261,7 +261,7 @@ describe('every row the hub carries', () => {
     ['appointments', 'appointment', '/health/appointments', 'health', 'read'],
     ['surgery', 'clipboard', '/health/surgery', 'health', 'read'],
     ['roadmap', 'route', '/transition/roadmap', 'transition', 'written'],
-    ['milestones', 'sparkle', '/transition/milestones', 'transition', 'read'],
+    ['milestones', 'summit', '/transition/milestones', 'transition', 'read'],
     ['progress-photos', 'camera', '/transition/progress-photos', 'transition', 'read'],
     ['tryouts', 'hanger', '/transition/tryouts', 'transition', 'read'],
     ['wear', 'watch', '/body/wear', 'transition', 'read'],
@@ -359,7 +359,12 @@ describe("a module's own screen draws the hub's mark for it", () => {
     ['src/routes/transition/letters/+page.svelte', 'letters', 'book'],
     ['src/routes/transition/letters/[id]/+page.svelte', 'letters', 'book'],
     ['src/lib/components/LookBackLetterCard.svelte', 'letters', 'book'],
-    ['src/lib/components/LetterCard.svelte', 'letters', 'book']
+    ['src/lib/components/LetterCard.svelte', 'letters', 'book'],
+    ['src/routes/transition/milestones/+page.svelte', 'milestones', 'flag'],
+    ['src/routes/transition/milestones/+page.svelte', 'milestones', 'sparkle'],
+    ['src/routes/transition/roadmap/+page.svelte', 'milestones', 'sparkle'],
+    ['src/lib/components/WrappedYear.svelte', 'milestones', 'flag'],
+    ['src/lib/components/WrappedCompact.svelte', 'milestones', 'flag']
   ];
 
   it.each(SCREENS)('%s draws %s with its hub mark', (file, key, old) => {
@@ -378,6 +383,9 @@ describe("a module's own screen draws the hub's mark for it", () => {
     const targets = read('src/lib/data/vocabulary/documentTargetLabels.ts');
     expect(targets).toContain(`procedure: '${icon('surgery')}'`);
     expect(targets).toContain(`goal: '${icon('roadmap')}'`);
+    expect(targets).toContain(`milestone: '${icon('milestones')}'`);
+    expect(dayAhead).toContain(`milestone: () => ({ icon: '${icon('milestones')}'`);
+    expect(read('src/routes/coming-back/+page.svelte')).toMatch(new RegExp(`data-coming-back-item="milestone"\\s+icon="${icon('milestones')}"`));
     const comingBack = read('src/routes/coming-back/+page.svelte');
     expect(comingBack).toMatch(new RegExp(`data-coming-back-item="letter"\\s+icon="${icon('letters')}"`));
     expect(comingBack).toMatch(new RegExp(`data-coming-back-item="wear-session"\\s+icon="${icon('wear')}"`));

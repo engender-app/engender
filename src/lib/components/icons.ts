@@ -203,7 +203,12 @@ export const PATHS: Record<string, string> = {
   shelter: '<path d="M4 10.5 12 3.5l8 7"/><path d="M12 21 7.35 16.35A2.9 2.9 0 1 1 12 13a2.9 2.9 0 1 1 4.65 3.35z"/>',
   // Help to hold on to, for the helplines and support groups. Four bands on
   // a ring, symmetric, so centred by construction.
-  lifebuoy: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.64 5.64 3.53 3.53M14.83 9.17l3.53-3.53M14.83 14.83l3.53 3.53M9.17 14.83l-3.53 3.53"/>'
+  lifebuoy: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.64 5.64 3.53 3.53M14.83 9.17l3.53-3.53M14.83 14.83l3.53 3.53M9.17 14.83l-3.53 3.53"/>',
+  // A flag planted on a summit, for the milestones: a day reached. It took
+  // `sparkle`, which said "celebrate" but not "milestone" and was already the
+  // mark on Today's offers and the roadmap. Not `flag`, which the surgery
+  // journey used before it took `clipboard`.
+  summit: '<path d="M3 20 10 9l3.2 5 2.3-3L21 20z"/><path d="M10 9V3.5h5l-1.4 1.75L15 7h-5"/>'
 };
 
 /* The two parameters are constrained rather than escaped, because both have
