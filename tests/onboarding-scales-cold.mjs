@@ -64,7 +64,7 @@ async function once() {
   await page.waitForTimeout(delay + 2500);
   const samples = await page.evaluate(() => window.__samples);
   await context.close();
-  const onStep = samples.filter((s) => /track gender/i.test(s.question));
+  const onStep = samples.filter((s) => /gender scales/i.test(s.question));
   const empty = onStep.filter((s) => s.rows === 0 && !s.reserve);
   return { onStep: onStep.length, empty: empty.length, last: onStep.at(-1) };
 }
