@@ -1568,3 +1568,28 @@ describe('the curves the tiers reach for', () => {
     expect(offenders, 'a keyframe that needs an overshoot writes the overshoot into its frames').toEqual([]);
   });
 });
+
+/* Carpet 15 row 46. A control that dims when it goes disabled does so while
+   something else is moving (a sheet saving, a write in flight), and with no
+   transition on opacity it drops to its dimmed figure in one frame. .btn and
+   .icon-btn fade; the switch did not. Every `X:disabled` rule in the kit that
+   sets opacity needs X's own rule to transition opacity. */
+describe('disabled dimming', () => {
+  it('fades every control that dims when disabled', () => {
+    const css = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
+    const all = rules(css).filter((rule) => !rule.context.length);
+    const offenders: string[] = [];
+    for (const rule of all) {
+      const match = /^([.\w-]+):disabled$/.exec(rule.prelude);
+      if (!match || declarations(rule.body).opacity === undefined) continue;
+      const base = all.find((candidate) => candidate.prelude === match[1]);
+      const decls = declarations(base?.body ?? '');
+      const named = [
+        ...splitTopLevel(decls.transition ?? '').map((part) => words(part)[0]),
+        ...splitTopLevel(decls['transition-property'] ?? '').map((part) => part.trim())
+      ];
+      if (!named.includes('opacity') && !named.includes('all')) offenders.push(match[1]);
+    }
+    expect(offenders).toEqual([]);
+  });
+});
