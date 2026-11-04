@@ -36,7 +36,6 @@
 import { m } from '$lib/paraglide/messages';
 import { photoCaptionDate } from '$lib/data/dates';
 import { hubRow, type HubRow } from '$lib/data/hubRows';
-import { PROCEDURE_CHECKLIST_OWNER_KIND } from '$lib/data/journal/procedures';
 import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
 import { matchWindow } from '$lib/data/searchQuery';
 import { iconOf } from './rowIcon';
@@ -91,13 +90,14 @@ const AREA_ROWS: Record<
   /* One area, two screens. A question written for an appointment belongs to
      the prep list, which is a section of the visit screen since phase 11
      all-four-doors ticket 12; a line of a procedure's recovery checklist
-     belongs to that journey, and the owner kind on the row is what tells
-     them apart (procedures.ts). The prep list is the more common of the two,
+     belongs to that journey, and the owner's id on the row is what tells
+     them apart and names the procedure to open (textSearch.ts). The prep list is the more common of the two,
      so its screen is what the row's own icon names. */
   checklistItems: {
     ...iconOf('appointments'),
     label: () => m.appointment_prep_title(),
-    href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? hubRow('surgery').href : hubRow('appointments').href)
+    href: (hit) =>
+      hit.context ? `${hubRow('surgery').href}/${encodeURIComponent(hit.context)}` : hubRow('appointments').href
   },
   sideEffects: { ...iconOf('effects'), label: () => m.side_effects(), href: () => hubRow('effects').href },
   /* A felt sense hangs off a tryout, and the tryout's id travels with the
