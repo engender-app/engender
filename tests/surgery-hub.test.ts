@@ -209,3 +209,11 @@ describe('rows elsewhere open the procedure screen', () => {
     );
   });
 });
+
+describe('the calendar button opens its own height', () => {
+  it('keeps one button to a line and collapses the calendar slot in', () => {
+    const screen = read(PROCEDURE_SCREEN);
+    expect(screen).toContain('class="details-actions"');
+    expect(screen).toMatch(/<div class="action-slot" transition:collapse>\s*<button[^>]*data-add-to-calendar/);
+  });
+});

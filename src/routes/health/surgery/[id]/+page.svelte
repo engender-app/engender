@@ -711,18 +711,27 @@
           bind:archived={draft.archived}
           showArchive
         />
-        <div class="stack-3">
+        <!-- One button to a line. Laid inline, the way a `.stack-3` of
+             buttons lays out, the calendar button arriving beside Save when
+             a date was saved dropped Save in one frame. -->
+        <div class="details-actions">
           <button class="btn btn-primary press" data-save-procedure disabled={!canSaveDetails} onclick={saveDetails}>
             <span>{m.surgery_save_changes()}</span>
           </button>
+          <!-- It opens its own height when a save gives the procedure its
+               date, so Delete travels down rather than jumping. -->
           {#if stored.surgeryEpochDay !== null}
-            <button class="btn btn-soft press" data-add-to-calendar onclick={() => (calendarSheet = true)}>
-              <span>{m.calendar_handoff_button()}</span>
-            </button>
+            <div class="action-slot" transition:collapse>
+              <button class="btn btn-soft press" data-add-to-calendar onclick={() => (calendarSheet = true)}>
+                <span>{m.calendar_handoff_button()}</span>
+              </button>
+            </div>
           {/if}
-          <button class="btn btn-ghost press" data-delete-procedure onclick={() => (confirmingDelete = true)}>
-            <span>{m.surgery_delete_sheet()}</span>
-          </button>
+          <div class="action-slot">
+            <button class="btn btn-ghost press" data-delete-procedure onclick={() => (confirmingDelete = true)}>
+              <span>{m.surgery_delete_sheet()}</span>
+            </button>
+          </div>
         </div>
       </fieldset>
     </div>
@@ -873,6 +882,18 @@
     padding: 0;
     margin: 0;
     min-width: 0;
+  }
+
+  .details-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* The gap is inside each slot rather than between them, so a slot that
+     opens or closes takes its gap with it. */
+  .action-slot {
+    padding-top: var(--space-3);
   }
 
   .sj-box {
