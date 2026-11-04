@@ -29,7 +29,7 @@ import type { Action } from 'svelte/action';
 import { isDoorActive } from '../navigation/doorActivity';
 import type { TransitionConfig } from 'svelte/transition';
 
-import { EASE_OUT, EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from './tokens';
+import { EASE_OUT, EASE_OUT_CSS, EASE_OUT_SOFT_CSS, fadeOnly, isReducedMotion, motionDuration } from './tokens';
 import { markScreenArrival, endScreenArrival, stillArriving, readRevealDuration } from './screenArrival';
 
 export { markScreenArrival, endScreenArrival, stillArriving, readRevealDuration };
@@ -167,7 +167,7 @@ export function spread(_node: Element, params?: { authored?: boolean }): Transit
  */
 export function disclose(
   node: Element,
-  params?: { skip?: boolean; onScreen?: boolean },
+  params?: { skip?: boolean; onScreen?: boolean; belowFold?: boolean },
   /* `fadeEdges`: the panel primitive's closing (redesign ticket 25). A
      box's hairlines were cut to nothing on the first frame of a close,
      because a border cannot shrink below a device pixel and stalled the
@@ -180,6 +180,17 @@ export function disclose(
   options?: { fadeEdges?: boolean }
 ): TransitionConfig {
   if (isReducedMotion() || params?.skip) return { duration: 0 };
+  /* `belowFold` (carpet 15 row 47): a box that arrives wholly under the
+     screen's bottom edge arrives at once, since nothing of its travel would
+     be painted, and one that lands where it can be seen still opens. The
+     roadmap fills its legal group this way a few rows a frame. */
+  if (
+    params?.belowFold &&
+    typeof innerHeight === 'number' &&
+    typeof node.getBoundingClientRect === 'function' &&
+    node.getBoundingClientRect().top >= innerHeight
+  )
+    return { duration: 0 };
   const fadeEdges = options?.fadeEdges === true;
 
   const style = getComputedStyle(node);
@@ -1230,9 +1241,16 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     // Its underlying box keeps the previous height until the handover.
     hold(from);
     const duration = readRevealDuration('--dur-med');
+    /* A travel chained on from a finished one (heldAt, below) sets off
+       from an edge that has come to rest, and --ease-out would spend 44% of
+       it in the first frame: on a first door into the Journal the clamped
+       edge stopped 85px short, then lunged 37px in one frame and uncovered
+       the day's tag pills whole (carpet 15 row 51). --ease-out-soft is the
+       curve for a travel setting off. */
+    const easing = heldAt === undefined ? EASE_OUT_CSS : EASE_OUT_SOFT_CSS;
     current = node.animate(
       [{ height: `${from}px` }, { height: `${to}px` }],
-      { duration, easing: EASE_OUT_CSS, fill: 'both' }
+      { duration, easing, fill: 'both' }
     );
     /* A box that empties, or fills from empty, also loses or gains its own
        bottom margin at one end of the travel (ux-carpet ticket 196). Empty
@@ -1247,7 +1265,7 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     if (margin > 0 && (oldHeight < 1 || newHeight < 1)) {
       const open = { marginTop: '0px' };
       const shut = { marginTop: `${-margin}px` };
-      node.animate(oldHeight < 1 ? [shut, open] : [open, shut], { duration, easing: EASE_OUT_CSS });
+      node.animate(oldHeight < 1 ? [shut, open] : [open, shut], { duration, easing });
     }
     current.finished
       .catch(() => {
@@ -1288,6 +1306,16 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
           // Held again at the height the box was showing, then the scroll
           // positions back, then the travel from there: measured against
           // the restored scroll, so the far end is the one on screen.
+          hold(to);
+          restoreScrollPositions(scrolled);
+          animateTo(newHeight, settled, to);
+        } else if (onScreen(settled) - to >= 1) {
+          /* The box rose while it travelled - a door's field settling
+             above it - so the clamp taken at the start now stops short of
+             the viewport's edge, and releasing would land the rest in one
+             frame: the Journal's tag pills sat clipped 84px above the
+             bottom for 100ms and then appeared whole (carpet 15 row 51).
+             Travel on from the clamped edge to the one now on screen. */
           hold(to);
           restoreScrollPositions(scrolled);
           animateTo(newHeight, settled, to);

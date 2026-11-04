@@ -13,6 +13,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { journalPath, goldenContents, countsOf, CHEAP_KDF, GOLDEN_PASSWORD, oneShot } from './golden-archive-fixture.ts';
 import { openJournal } from './journal.ts';
 import { restoreArchive, verifyArchive } from './restore.ts';
+import { assertArchiveRows } from './archiveRowValidation.ts';
 
 const golden = (): ArchiveJournal => JSON.parse(readFileSync(journalPath, 'utf8'));
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -130,6 +131,87 @@ for (const mode of ['merge', 'replace'] as const) {
     }
   });
 
+  /* Re-check carpet 12, row 13: each primitive check and each row-shape
+     and reference refusal below survived its own mutants, because no row
+     reached it with the wrong value. One case per check, named. */
+  test(`${mode} refuses a wrong value at each check, one check at a time`, async () => {
+    const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+    const cases: [string, (journal: ArchiveJournal) => void][] = [
+      ['text', (j) => { (j.entries[0] as { note: unknown }).note = 1; }],
+      ['bool', (j) => { (j.entries[0] as { starred: unknown }).starred = 'true'; }],
+      ['numeric type', (j) => { (j.entries[0] as { epochDay: unknown }).epochDay = '20000'; }],
+      ['numeric NaN', (j) => { j.entries[0].epochDay = Number.NaN; }],
+      ['oneOf type', (j) => { (j.cycleEvents[0] as { kind: unknown }).kind = 1; }],
+      ['integerBetween fraction', (j) => { j.sideEffects[0].severity = 2.5; }],
+      ['integerBetween low', (j) => { j.sideEffects[0].severity = 0; }],
+      ['integerBetween type', (j) => { (j.sideEffects[0] as { severity: unknown }).severity = '3'; }],
+      ['clockTime hour', (j) => { j.appointments[0].time = '24:00'; }],
+      ['clockTime shape', (j) => { j.appointments[0].time = '9:00'; }],
+      ['clockTime type', (j) => { (j.appointments[0] as { time: unknown }).time = 900; }],
+      ['record', (j) => { (j.importLog[0] as { counts: unknown }).counts = [5]; }],
+      ['numericRecord value', (j) => { (j.entries[0] as { dims: unknown }).dims = { femininity: '60' }; }],
+      ['list', (j) => { (j.entries[0] as { tags: unknown }).tags = 'e-happy'; }],
+      ['object', (j) => { (j.entries[0] as { photos: unknown[] }).photos = ['x']; }],
+      ['instant', (j) => { j.entries[0].trashedAt = -1; }],
+      ['stamp', (j) => { j.entries[0].updatedAt = 1.5; }],
+      ['costed pair', (j) => { j.labResults[0].costAmount = 10; j.labResults[0].costCurrency = null; }],
+      ['side effect resolved before it began', (j) => { j.sideEffects[0].resolvedEpochDay = j.sideEffects[0].epochDay - 1; }],
+      ['reminder every-N without its anchor', (j) => { j.reminders[0].anchorEpochDay = null; }],
+      ['reminder one-off with a recurrence', (j) => {
+        Object.assign(j.reminders[0], { recurrence: 'DAILY', epochDay: 20000, interval: null, anchorEpochDay: null });
+      }],
+      ['dose schedule every-N without a count', (j) => { j.doseSchedules[0].everyNDays = null; }],
+      ['dose event slot without its source', (j) => {
+        Object.assign(j.doseEvents[0], { autoLogEpisodeId: 'e', autoLogEpochDay: 1, autoLogIndex: 0 });
+      }],
+      ['dose event slot below zero', (j) => {
+        Object.assign(j.doseEvents[0], { source: 'schedule', autoLogEpisodeId: 'e', autoLogEpochDay: 1, autoLogIndex: -1 });
+      }],
+      ['document target half set', (j) => { j.documents[0].targetId = null; }],
+      ['checklist owner half set', (j) => { j.checklists[0].ownerId = null; }],
+      ['legacy hair stage with a scale and no stage', (j) => { Object.assign(j.hairStages[0], { scale: 'ludwig' }); }],
+      ['legacy hair stage with text beside a named scale', (j) => {
+        Object.assign(j.hairStages[0], { scale: 'norwood_hamilton', stage: '2a', description: 'and more' });
+      }],
+      ['repeated preset dimension', (j) => { j.presets[0].dims = [j.presets[0].dims[0], j.presets[0].dims[0]]; }],
+      ['repeated schedule weekday', (j) => {
+        Object.assign(j.doseSchedules[0], { recurrenceKind: 'weekdays', everyNDays: null, weekdays: [1, 1] });
+      }],
+      ['repeated tag id', (j) => { j.tagGroups[1].tags.push({ ...clone(j.tagGroups[1].tags[0]), label: 'twin' }); }],
+      ['repeated entry photo id', (j) => {
+        j.entries[1].photos.push({ ...clone(j.entries[0].photos[0]), fileName: 'twin.jpg' });
+      }],
+      ['repeated recording id', (j) => {
+        const from = j.entries.find((e) => (e.recordings ?? []).length > 0)!;
+        j.entries.find((e) => e !== from)!.recordings = [{ ...clone(from.recordings![0]), fileName: 'twin.webm' }];
+      }],
+      ['repeated video id', (j) => {
+        const from = j.entries.find((e) => (e.videos ?? []).length > 0)!;
+        j.entries.find((e) => e !== from)!.videos = [{ ...clone(from.videos![0]), fileName: 'twin.webm' }];
+      }],
+      ['repeated tryout photo id', (j) => { j.tryouts[0].photos.push({ ...clone(j.tryouts[0].photos[0]), fileName: 'twin.jpg' }); }],
+      ['repeated procedure photo id', (j) => {
+        const from = j.procedures.find((row) => row.photos.length > 0)!;
+        from.photos.push({ ...clone(from.photos[0]), fileName: 'twin.jpg' });
+      }],
+      ['repeated hair removal photo id', (j) => {
+        j.hairRemovalSessions[0].photos.push({ ...clone(j.hairRemovalSessions[0].photos[0]), fileName: 'twin.jpg' });
+      }],
+      ['repeated checklist item id', (j) => { j.checklists[0].items.push({ ...clone(j.checklists[0].items[0]), content: 'twin' }); }],
+      ['repeated template tag', (j) => {
+        const template = j.entryTemplates.find((t) => (t.tags ?? []).length > 0)!;
+        template.tags = [template.tags![0], template.tags![0]];
+      }],
+      ['milestone tryout reference', (j) => { j.milestones[0].tryoutId = 'missing_tryout'; }]
+    ];
+    for (const [what, mutate] of cases) {
+      const incoming = golden(); mutate(incoming);
+      await refusesWithoutChanges(mode, incoming).catch((error: unknown) => {
+        throw new Error(`${what}: ${(error as Error).message}`);
+      });
+    }
+  });
+
   test(`${mode} refuses missing reference data before storage access`, async () => {
     const mutations: ((journal: ArchiveJournal) => void)[] = [
       (j) => { j.presets[0].dims[0] = 'missing_dimension'; },
@@ -219,6 +301,23 @@ for (const mode of ['merge', 'replace'] as const) {
     }
   });
 
+  // Re-check carpet 11, F4: the first Merge stored such an id, and the second
+  // could no longer match it and failed on a raw UNIQUE constraint.
+  test(`${mode} refuses an id or key holding a NUL character`, async () => {
+    const nul = String.fromCharCode(0);
+    for (const [section, field] of [
+      ['personalEffects', 'effect'], ['dimensions', 'key'], ['marginNotes', 'id'], ['bodyRegions', 'id']
+    ] as const) {
+      const incoming = golden();
+      const row = incoming[section][0] as unknown as Record<string, unknown>;
+      assert.equal(typeof row[field], 'string', `golden covers ${section}.${field}`);
+      row[field] = nul;
+      await refusesWithoutChanges(mode, incoming);
+      row[field] = `${row.id ?? 'x'}${nul}`;
+      await refusesWithoutChanges(mode, incoming);
+    }
+  });
+
   test(`${mode} refuses auto-log fields the dose_event CHECK would reject`, async () => {
     const shapes: Record<string, unknown>[] = [
       { autoLogEpisodeId: 'ep', autoLogEpochDay: null, autoLogIndex: null },
@@ -236,3 +335,53 @@ for (const mode of ['merge', 'replace'] as const) {
     }
   });
 }
+
+/* Re-check carpet 15, row 13 after the Stryker rerun: the row-shape checks
+   still let single-condition mutants through, because each shape was only
+   ever handed rows its own refusal caught. Each case below changes one
+   field of a golden row: the edges a check allows must pass, and each
+   other shape must be refused, so no one condition can be dropped. */
+test('each row-shape check accepts its edges and refuses each half-shape', () => {
+  type Row = Record<string, unknown>;
+  const base = golden() as unknown as Record<string, Row[]>;
+  const row = (section: string, index: number, change: Row): Row => ({ ...base[section][index], ...change });
+  const accepts: [string, string, Row][] = [
+    ['side effect resolved the day it began', 'sideEffects', row('sideEffects', 0, { resolvedEpochDay: 20000 })],
+    ['side effect not resolved', 'sideEffects', row('sideEffects', 0, { resolvedEpochDay: null })],
+    ['dose event in the first slot of day 0', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: 'episode', autoLogEpochDay: 0, autoLogIndex: 0 })],
+    ['document with no target', 'documents', row('documents', 0, { targetKind: null, targetId: null })],
+    ['checklist with no owner', 'checklists', row('checklists', 0, { ownerKind: null, ownerId: null })]
+  ];
+  for (const [what, section, value] of accepts) {
+    assert.doesNotThrow(() => assertArchiveRows(section as keyof ArchiveJournal, [value]), what);
+  }
+  const [everyN, daily, oneOff] = [0, 1, 2];
+  const refuses: [string, string, Row][] = [
+    ['one-off with no day', 'reminders', row('reminders', oneOff, { epochDay: null })],
+    ['one-off with an interval', 'reminders', row('reminders', oneOff, { interval: 7 })],
+    ['one-off with an anchor', 'reminders', row('reminders', oneOff, { anchorEpochDay: 20000 })],
+    ['every-N with no interval', 'reminders', row('reminders', everyN, { interval: null })],
+    ['every-N with a day', 'reminders', row('reminders', everyN, { epochDay: 20000 })],
+    ['daily with an interval', 'reminders', row('reminders', daily, { interval: 7 })],
+    ['daily with an anchor', 'reminders', row('reminders', daily, { anchorEpochDay: 20000 })],
+    ['daily with a day', 'reminders', row('reminders', daily, { epochDay: 20000 })],
+    ['slot with a blank episode', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: ' ', autoLogEpochDay: 1, autoLogIndex: 0 })],
+    ['slot on a fractional day', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: 'e', autoLogEpochDay: 1.5, autoLogIndex: 0 })],
+    ['slot with a fractional index', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: 'e', autoLogEpochDay: 1, autoLogIndex: 0.5 })],
+    ['slot with only an episode', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: 'e', autoLogEpochDay: null, autoLogIndex: null })],
+    ['slot with only a day', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: null, autoLogEpochDay: 1, autoLogIndex: null })],
+    ['slot with only an index', 'doseEvents',
+      row('doseEvents', 0, { source: 'schedule', autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: 0 })],
+    ['document with a target id and no kind', 'documents', row('documents', 0, { targetKind: null })],
+    ['checklist with an owner id and no kind', 'checklists', row('checklists', 0, { ownerKind: null })]
+  ];
+  for (const [what, section, value] of refuses) {
+    assert.throws(() => assertArchiveRows(section as keyof ArchiveJournal, [value]), CorruptArchiveError, what);
+  }
+});

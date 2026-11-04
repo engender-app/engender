@@ -93,3 +93,15 @@ test('an older hand-made reminder is about a drug when it names no drug and is t
   assert.ok(!isHandMadeReminderFor(reminder({ title: 'Progesterone', drug: 'Sertraline' }), 'Progesterone'));
   assert.ok(!isHandMadeReminderFor(reminder({ title: 'Progesterone', autoSource: 'stock:progesterone' }), 'Progesterone'));
 });
+
+// Re-check carpet 12, row 14: the half-hour spacing and the count guards.
+test('default times land on the half hour where the spacing does', () => {
+  assert.deepEqual(defaultReminderTimes(6), ['08:00', '10:30', '13:00', '15:00', '17:30', '20:00']);
+});
+
+test('a count that is not a whole number of at least one gives no defaults and leaves the list alone', () => {
+  for (const count of [0, -1, 1.5, Number.NaN]) {
+    assert.deepEqual(defaultReminderTimes(count), [], String(count));
+    assert.deepEqual(resizeReminderTimes(['07:00', '19:00'], count), ['07:00', '19:00'], String(count));
+  }
+});

@@ -141,6 +141,13 @@
     return transition;
   };
 
+  /* The arriving words fade in over the leaving ones. `crossfade` alone is
+     the leaving half, so with only that the new line was painted at full
+     opacity in the frame the words changed (carpet 15 row 51, Look back's
+     "Femininity, 3 to 7" line on a span change). */
+  const lineIn = (node: Element) =>
+    fadeSwap ? crossfade(node, undefined, { direction: 'in' }) : { duration: 0 };
+
   /* And a row whose words cross also travels its height: the old line leaves
      out of flow, so a new line shorter or longer than it resized the row in
      one frame and moved every row under it. The More hub's lines land
@@ -164,12 +171,12 @@
   <span class="kit-row-text" class:fade-swap={fadeSwap} use:textTravel>
     {#if title}
       <span class="kit-row-title" data-row-title>
-        {#key title}<span out:lineOut>{title}</span>{/key}
+        {#key title}<span in:lineIn out:lineOut>{title}</span>{/key}
       </span>
     {/if}
     {#each subtitles as line, i (i)}
       <span class="kit-row-sub">
-        {#key line}<span out:lineOut>{line}</span>{/key}
+        {#key line}<span in:lineIn out:lineOut>{line}</span>{/key}
       </span>
     {/each}
   </span>

@@ -13,6 +13,7 @@ import {
   slideMonit,
   wipe
 } from './reveal';
+import { EASE_OUT_CSS, EASE_OUT_SOFT_CSS } from './tokens';
 
 /* Same stub the tier-2 tests use: reveal.ts reads its duration and its easing
    out of the token layer through $lib/motion/tokens, which asks
@@ -159,6 +160,24 @@ describe('tier 3, a group opening its own height', () => {
       expect(frame(css!, 0.5)).toContain('height: 188px');
       expect(Number(/height: ([\d.]+)px/.exec(frame(css!, 0.99))![1])).toBeCloseTo(372.24, 2);
       expect(frame(css!, 1)).toContain('height: 2967px');
+    } finally {
+      delete (globalThis as Record<string, unknown>).innerHeight;
+    }
+  });
+
+  /* Carpet 15 row 47: the roadmap's legal group fills in a few rows a
+     frame after its opening. A row landing under the screen's bottom edge
+     has nothing of its travel painted and arrives at once; one landing on
+     screen still opens. */
+  it('arrives at once below the fold when asked, and still opens on screen', () => {
+    stubDocument(false, true, { height: '120px', paddingTop: '0px', paddingBottom: '0px' });
+    (globalThis as Record<string, unknown>).innerHeight = 844;
+    const at = (top: number) => ({ getBoundingClientRect: () => ({ top }) }) as unknown as Element;
+    try {
+      expect(disclose(at(844), { belowFold: true }).duration).toBe(0);
+      expect(disclose(at(900), { belowFold: true }).duration).toBe(0);
+      expect(disclose(at(700), { belowFold: true }).duration).toBe(240);
+      expect(disclose(at(900)).duration).toBe(240);
     } finally {
       delete (globalThis as Record<string, unknown>).innerHeight;
     }
@@ -1010,18 +1029,20 @@ describe('tier 3, a box resizing under its own content', () => {
     };
     const calls: Array<[number, number]> = [];
     const margins: Array<[number, number]> = [];
+    const easings: string[] = [];
     let settle: (() => void) | undefined;
     let cancelPending: (() => void) | undefined;
     let measurements = 0;
     const node = {
       style: { overflow: '' },
       getBoundingClientRect: () => { measurements++; return { height, top } as DOMRect; },
-      animate: (keyframes: Keyframe[]) => {
+      animate: (keyframes: Keyframe[], options?: KeyframeAnimationOptions) => {
         if (keyframes[0].marginTop !== undefined) {
           margins.push([parseFloat(String(keyframes[0].marginTop)), parseFloat(String(keyframes[1].marginTop))]);
           return { finished: Promise.resolve(), cancel: () => {} };
         }
         calls.push([parseFloat(String(keyframes[0].height)), parseFloat(String(keyframes[1].height))]);
+        easings.push(String(options?.easing));
         return {
           finished: new Promise<void>((resolve, reject) => {
             settle = resolve;
@@ -1035,8 +1056,10 @@ describe('tier 3, a box resizing under its own content', () => {
       node,
       calls,
       margins,
+      easings,
       measurements: () => measurements,
       setHeight: (h: number) => (height = h),
+      setTop: (t: number) => (top = t),
       trigger: () => notify(),
       finish: async () => {
         settle?.();
@@ -1373,6 +1396,35 @@ describe('tier 3, a box resizing under its own content', () => {
       expect(calls).toEqual([[100, 244]]);
       await finish();
       expect(calls).toHaveLength(1);
+    } finally {
+      delete g.innerHeight;
+      restore();
+    }
+  });
+
+  /* Carpet 15 row 51: a door into the Journal pulls the field up 84px
+     while the gate's answer arrives, so the clamp taken at the travel's
+     start stopped 84px above the viewport's bottom once the box had risen.
+     The day's tag pills sat clipped at that line for 100ms and then landed
+     whole in the frame the hold came off. The travel goes on from the
+     clamped edge to the one the viewport now shows. */
+  it('travels on to the viewport edge when the box rose during the travel', async () => {
+    stubDocument(false);
+    const g = globalThis as Record<string, unknown>;
+    g.innerHeight = 844;
+    const { node, calls, easings, setHeight, setTop, trigger, finish, restore } = resizingNode(100, 600);
+    try {
+      resize(node);
+      setHeight(1072);
+      trigger();
+      expect(calls).toEqual([[100, 244]]);
+      setTop(516);
+      await finish();
+      expect(calls).toEqual([[100, 244], [244, 328]]);
+      /* The second travel sets off from an edge at rest. On --ease-out it
+         lunged 37 of its 85px in the first frame and uncovered the pills
+         whole on a first visit; it starts on --ease-out-soft instead. */
+      expect(easings).toEqual([EASE_OUT_CSS, EASE_OUT_SOFT_CSS]);
     } finally {
       delete g.innerHeight;
       restore();

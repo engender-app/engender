@@ -424,6 +424,11 @@ describe('the charts', () => {
     for (const selector of legends) expect(selector).toMatch(/^\.kit-(area|donut)-legend/);
   });
 
+  it('breaks a row subtitle inside a word, like its title, so it never runs under a trailing control', () => {
+    const rule = /\.kit-row-sub\s*\{([^}]*)\}/.exec(kitNoComments);
+    expect(rule?.[1]).toMatch(/overflow-wrap:\s*break-word/);
+  });
+
   it('caps how many points a chart draws, whatever range it is given', async () => {
     const { MAX_POSITIONS, atGrain } = await import('../src/lib/charts/grain');
     const threeYears = Array.from({ length: 1095 }, (_, i) => ({ x: i, y: i % 5 }));

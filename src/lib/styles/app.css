@@ -94,9 +94,20 @@ body {
 }
 
 /* The system icons keep the page's ground while fields move or scroll
-   beneath them. This strip belongs to the frame, not the scrolling screen. */
-.app::before {
-  content: '';
+   beneath them. This strip belongs to the frame, not the scrolling screen.
+
+   It is an element (+layout.svelte) rather than .app's ::before because of
+   view transitions. A navigation paints every named group in an overlay
+   above the page, and the strip, left in the root group, went under them:
+   the outgoing screen's snapshot showed whatever the scroll region had
+   under the strip, and a field travelling up ran through it. From a
+   scrolled Look back opening the cost reading, the page showed in the band
+   from the second frame (73 ms on desktop, 285 ms on the phone), and the
+   same on returning to Transition from scrolled hair removal or letters and
+   on Settings into tags. Named, it gets a group above all the others, the
+   same picture on both sides, and nothing to animate. */
+.app-strip {
+  view-transition-name: status-strip;
   position: absolute;
   inset: 0 0 auto;
   height: max(0px, calc(var(--inset-top) - var(--field-bleed-top)));
@@ -903,6 +914,13 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 .app-nav { view-transition-name: nav; }
 ::view-transition-group(screen) { z-index: 1; }
 ::view-transition-group(nav) { z-index: 2; }
+/* Above every group a screen sends up (the sun's rings are 5, the update
+   notice 6), as the strip is above the whole scroll region outside a
+   transition. The two pictures are the same band of --bg, so the new one
+   simply stays. */
+::view-transition-group(status-strip) { z-index: 7; animation: none; }
+::view-transition-old(status-strip) { display: none; }
+::view-transition-new(status-strip) { animation: none; }
 /* The update notice sits under a screen's field (last-audit UI ticket 21),
    so in the screen's snapshot it would fade and scale with every
    navigation, though it is the same notice on both sides. It gets a group
@@ -1202,9 +1220,12 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
     field-part-out var(--dur-fast) var(--ease-in-out) both,
     blind-lead var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
+/* The arrival eases in and out, like the leave: on --ease-out the first
+   painted frame already carried 70% of the fade (0.004 to 0.719 between two
+   frames at 1280, carpet 15 row 51), which read as the words popping in. */
 ::view-transition-new(*.field-part) {
   animation:
-    field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both,
+    field-part-in var(--dur-fast) var(--ease-in-out) var(--dur-fast) both,
     part-follow var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
 /* `--fp-from` is how far the part had faded in when a navigation landed on

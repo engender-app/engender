@@ -3,7 +3,7 @@
 //
 // Every scene a sweep runs leaves its whole compositor cast in
 // <out>/<scene>-<profile>-<theme>-p<pass>-cast/NNN-<ms>.png. The strip is
-// `.app::before`: `--inset-top` minus `--field-bleed-top` tall, painted in
+// `.app-strip`: `--inset-top` minus `--field-bleed-top` tall, painted in
 // `--bg`. A screencast carries only web content, never the system icons, so
 // in every frame of every gesture that band has to be exactly `--bg`. This
 // reads each frame's band and names the first frame that leaves it.

@@ -201,7 +201,8 @@
   const folderSyncState = $derived(
     !autoFolderLoaded ? null
       : autoFolderOutcome == null || autoFolderAt == null ? 'never'
-      : autoFolderOutcome === 'merged' || autoFolderOutcome === 'wrong-password' ? autoFolderOutcome
+      : autoFolderOutcome === 'merged' || autoFolderOutcome === 'wrong-password' || autoFolderOutcome === 'no-space'
+        ? autoFolderOutcome
       : 'failed'
   );
   const folderWhen = $derived(stampText(autoFolderAt));
@@ -1052,6 +1053,7 @@
       <span class:is-on={folderSyncState === 'merged'} aria-hidden={folderSyncState !== 'merged'}>{m.exp_folder_last_merged({ when: folderWhen })}</span>
       <span class:is-on={folderSyncState === 'wrong-password'} aria-hidden={folderSyncState !== 'wrong-password'}>{m.exp_folder_last_wrong_password({ when: folderWhen })}</span>
       <span class:is-on={folderSyncState === 'failed'} aria-hidden={folderSyncState !== 'failed'}>{m.exp_folder_last_failed({ when: folderWhen })}</span>
+      <span class:is-on={folderSyncState === 'no-space'} aria-hidden={folderSyncState !== 'no-space'}>{m.exp_folder_last_no_space({ when: folderWhen })}</span>
     </p>
 
     {#if prefs.autoExportEnabled}

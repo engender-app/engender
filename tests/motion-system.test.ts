@@ -852,7 +852,6 @@ describe('the token layer behind the five tiers', () => {
 describe('ticket 25: every state change moves', () => {
   const kit = stripComments(readFileSync(join(root, 'src/lib/styles/kit.css'), 'utf8'));
   const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
-  const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
   const keyframesOf = (css: string, name: string) =>
     rules(css).find((rule) => rule.prelude === `@keyframes ${name}`);
   const ruleOf = (css: string, prelude: string) =>
@@ -1013,6 +1012,23 @@ describe('ticket 28: the field is a blind over the content', () => {
     );
   });
 
+  /* carpet 15, cost-reading-open. The status strip was .app's ::before, so a
+     navigation left it in the root group under every named one, and a
+     scrolled screen's snapshot or a travelling field painted through the
+     band. It is an element with a group of its own, above all the others. */
+  it('gives the status strip its own transition group above every other group', () => {
+    const layout = readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8');
+    expect(layout).toMatch(/<div class="app-strip" aria-hidden="true"><\/div>/);
+    expect(declarations(ruleOf(app, '.app-strip')?.body ?? '')['view-transition-name']).toBe('status-strip');
+    const strip = zIndex('::view-transition-group(status-strip)');
+    const others = rules(stripComments(app))
+      .filter((r) => r.prelude.startsWith('::view-transition-group(') && !r.prelude.includes('status-strip'))
+      .map((r) => Number(declarations(r.body)['z-index']))
+      .filter(Number.isFinite);
+    expect(others.length).toBeGreaterThan(4);
+    for (const z of others) expect(strip).toBeGreaterThan(z);
+  });
+
   /* The bottom corners stay exact on every frame of the slide, which is
      what the clip buys: the block itself is never resized, so there is no
      frame in which a 175px snapshot is being squashed into 102. The group
@@ -1104,7 +1120,7 @@ describe('ticket 28: the field is a blind over the content', () => {
     const fresh = declarations(ruleOf(app, '::view-transition-new(*.field-part)')?.body ?? '');
     expect(out.animation).toContain('field-part-out var(--dur-fast) var(--ease-in-out) both');
     expect(fresh.animation, 'the incoming one waits for the outgoing one').toContain(
-      'field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both'
+      'field-part-in var(--dur-fast) var(--ease-in-out) var(--dur-fast) both'
     );
     for (const name of ['field-part-out', 'field-part-in']) {
       /* The leave also names where it starts from opacity-wise, for a
@@ -1566,5 +1582,128 @@ describe('the curves the tiers reach for', () => {
     }
 
     expect(offenders, 'a keyframe that needs an overshoot writes the overshoot into its frames').toEqual([]);
+  });
+});
+
+/* Carpet 15 row 46. A control that dims when it goes disabled does so while
+   something else is moving (a sheet saving, a write in flight), and with no
+   transition on opacity it drops to its dimmed figure in one frame. .btn and
+   .icon-btn fade; the switch did not. Every `X:disabled` rule in the kit that
+   sets opacity needs X's own rule to transition opacity. */
+describe('disabled dimming', () => {
+  it('fades every control that dims when disabled', () => {
+    const css = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
+    const all = rules(css).filter((rule) => !rule.context.length);
+    const offenders: string[] = [];
+    for (const rule of all) {
+      const match = /^([.\w-]+):disabled$/.exec(rule.prelude);
+      if (!match || declarations(rule.body).opacity === undefined) continue;
+      const base = all.find((candidate) => candidate.prelude === match[1]);
+      const decls = declarations(base?.body ?? '');
+      const named = [
+        ...splitTopLevel(decls.transition ?? '').map((part) => words(part)[0]),
+        ...splitTopLevel(decls['transition-property'] ?? '').map((part) => part.trim())
+      ];
+      if (!named.includes('opacity') && !named.includes('all')) offenders.push(match[1]);
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
+/* Carpet 15 row 51: two one-frame changes found by the yank sweep and fixed
+   in CSS alone, guarded here so a later edit cannot quietly undo them. */
+describe('carpet 15 row 47, the legal group mounts in parts', () => {
+  /* Mounting the whole 3000px group in the switch's frame held the phone's
+     frame loop for 50 to 107ms. The steps mount a screen's worth first and
+     the rest after the opening, opening only where they land on screen. */
+  it('mounts the roadmap\'s Polish steps a screen first and fills the rest after the opening', () => {
+    const source = stripComments(readFileSync(join(root, 'src/routes/transition/roadmap/+page.svelte'), 'utf8'));
+    expect(source).toContain('{#each shownGoals as goal (goal.key)}');
+    expect(source).toMatch(/data-roadmap-legal transition:disclose=\{\{ onScreen: true \}\} onintroend=\{fillLegalGroup\}/);
+    expect(source).toMatch(/data-goal=\{goal\.key\}[^>]*transition:disclose=\{\{ belowFold: legalFilling \}\}/);
+    expect(source).toMatch(/shown=\{polishShown && legalLimit === Infinity\}\s*belowFold=\{legalFilling\}/);
+  });
+});
+
+describe('carpet 15 row 51 colour and name arrivals', () => {
+  it("fades setup's Skip words with the field when a flag is picked, keeping .btn's list", () => {
+    const source = stripComments(readFileSync(join(root, 'src/routes/onboarding/+page.svelte'), 'utf8'));
+    const rule = source.match(/\.setup-outs \.btn \{([^}]*)\}/)?.[1] ?? '';
+    const property = rule.match(/transition-property:\s*([^;]+);/)?.[1].split(',').map((p) => p.trim()) ?? [];
+    expect(property).toEqual(['transform', 'background', 'filter', 'opacity', 'color']);
+  });
+
+  it("opens an era's name from closed when it is drawn into an already open band", () => {
+    const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
+    expect(source).toMatch(
+      /@starting-style\s*\{\s*\.is-active \.span-tl-era-name\s*\{\s*translate:\s*0 100%;\s*\}\s*\.is-active \.span-tl-era-text\s*\{\s*translate:\s*0 -100%;/
+    );
+  });
+
+  /* The rail's window was a clip-path transition, which Chromium runs on
+     the main thread: it stood still through Look back's 80-110ms update
+     after a span change (6x CPU) and then caught up 125px in one frame,
+     a pop on the phone. The window, the era names and the grips now move
+     by translate, each clipping box paired with contents moved back by the
+     same values, on the same duration and curve. */
+  it('moves the span rail\'s window, names and grips by translate pairs, never a clip-path transition', () => {
+    const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
+    const css = source.slice(source.indexOf('<style>'));
+    const rule = (selector: string) => {
+      const at = css.search(new RegExp('(^|\\n)\\s*' + selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{'));
+      expect(at, selector).toBeGreaterThanOrEqual(0);
+      return css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
+    };
+    expect(css).not.toMatch(/transition:[^;]*clip-path/);
+    const pairs: [string, string][] = [
+      ['.span-tl-window-start', '.span-tl-window-in'],
+      ['.span-tl-window-end', '.span-tl-full'],
+      ['.span-tl-era-name', '.span-tl-era-text'],
+      ['.span-tl-grip', '.span-tl-grip-ink']
+    ];
+    for (const [box, contents] of pairs) {
+      expect(rule(box), box).toMatch(/overflow:\s*clip;/);
+      for (const selector of [box, contents]) expect(rule(selector), selector).toMatch(/transition:\s*translate var\(--dur-med\) var\(--ease-out\)/);
+    }
+    expect(css).toMatch(/\n\s*\.span-tl-window \{\s*overflow: clip;\s*\}/);
+    expect(rule('.span-tl-window-start')).toContain('translate: var(--tl-span-start) calc(100% - var(--rest-h));');
+    expect(rule('.span-tl-window-in')).toContain('translate: calc(-1 * var(--tl-span-start)) calc(var(--rest-h) - 100%);');
+    expect(rule('.span-tl-window-end')).toContain('translate: calc(-1 * var(--tl-clip-right)) 0;');
+    expect(rule('.span-tl-full')).toContain('translate: var(--tl-clip-right) 0;');
+    // Raised, each pair stands at values that still cancel.
+    expect(css).toMatch(/\.is-active \.span-tl-window-start \{\s*translate: var\(--tl-span-start\) 0;/);
+    expect(css).toMatch(/\.is-active \.span-tl-window-in \{\s*translate: calc\(-1 \* var\(--tl-span-start\)\) 0;/);
+    expect(css).toMatch(/\.is-active \.span-tl-era-name,\s*\.is-active \.span-tl-era-text \{\s*translate: 0 0;/);
+    expect(css).toMatch(/\.is-active \.span-tl-grip,\s*\.is-active \.span-tl-grip-ink \{\s*translate: 0 0;/);
+    expect(rule('.span-tl-era-name')).toContain('translate: 0 100%;');
+    expect(rule('.span-tl-era-text')).toContain('translate: 0 -100%;');
+    expect(rule('.span-tl-grip')).toContain('translate: 0 calc(100% - var(--rest-grip));');
+    expect(rule('.span-tl-grip-ink')).toContain('translate: 0 calc(var(--rest-grip) - 100%);');
+    // A held handle follows the finger: both halves of both window pairs drop their transition together.
+    const held = css.match(/((?:\.is-dragging [^,{]+,\s*)*\.is-dragging [^,{]+)\{\s*transition: none;/)?.[1] ?? '';
+    for (const selector of ['.span-tl-window-start', '.span-tl-window-in', '.span-tl-window-end', '.span-tl-full']) {
+      expect(held, selector).toContain(`.is-dragging ${selector}`);
+    }
+  });
+
+  /* The handles' keyboard ring sat on the grip, inside the grip's own
+     clip, so it was never painted. It is a box of its own over the grip's
+     place, outside every clip the rise moves. */
+  it("draws the span handles' focus ring outside the grip's clip", () => {
+    const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
+    const css = source.slice(source.indexOf('<style>'));
+    expect(css).toMatch(/\.span-tl-handle:focus-visible::after \{\s*border: 2px solid var\(--bg\);\s*outline: 2px solid var\(--focus-ring\);/);
+    expect(css).not.toMatch(/\.span-tl-grip[\w-]*[^{]*\{[^}]*outline:/);
+  });
+
+  /* The look-back tiles' settle travel restarted on every push while the
+     offer opened, so it never left --ease-out-soft's slow start: 22px in
+     one frame, then four frames still. A push mid-travel retargets the
+     running animation instead. */
+  it('retargets the look-back tiles\' running travel instead of restarting it on a push', () => {
+    const source = stripComments(readFileSync(join(root, 'src/routes/stats/+page.svelte'), 'utf8'));
+    const action = source.slice(source.indexOf('const settleReadingSpace'), source.indexOf('observer.observe(node.parentElement!)'));
+    const observer = action.slice(action.indexOf('new ResizeObserver'));
+    expect(observer).toMatch(/playState === 'running'[\s\S]*?setKeyframes\([\s\S]*?return;[\s\S]*?stopMotion\(\)/);
   });
 });

@@ -28,6 +28,7 @@ import {
   missingProofYanks,
   parseCssColor,
   readRenderYanks,
+  clipInsetBox,
   replySlices,
   scenesFor,
   scrapeIdExpression
@@ -941,5 +942,31 @@ describe('deviceTargetFromArgs', () => {
     expect(() => deviceTargetFromArgs(['--package', 'dev.engender.app.test.mr02'])).toThrow('serial');
     for (const port of ['0', 'abc', '70000'])
       expect(() => deviceTargetFromArgs([...ok, '--port', port])).toThrow('--port');
+  });
+});
+
+/* Carpet 15 row 51: a clip travelling from a percentage to a length
+   computes to calc() while it runs, and the sampler read that as the whole
+   box, so every kit-block-in wipe looked like an arrival in one frame. */
+describe('clipInsetBox', () => {
+  const box = { left: 100, top: 200, right: 124, bottom: 224, width: 24, height: 24 };
+  it('reads plain lengths and percentages, and ignores the corner radius', () => {
+    expect(clipInsetBox(box, 'inset(-6px 100% -6px -6px round 6px)')).toEqual({ left: 94, top: 194, right: 100, bottom: 230 });
+    expect(clipInsetBox(box, 'none')).toBe(box);
+  });
+  it('reads a calc() that mixes a percentage and a length mid-travel', () => {
+    const r = clipInsetBox(box, 'inset(-6px calc(50% - 3px) -6px -6px round 6px)');
+    expect(r.left).toBe(94);
+    expect(r.right).toBeCloseTo(124 - (12 - 3));
+  });
+});
+
+describe('clipInsetBox on a mark\'s own clip', () => {
+  const box = { left: 100, top: 200, right: 124, bottom: 224, width: 24, height: 24 };
+  it('counts none of the outset, so a closed kit-block-in shows nothing of the mark', () => {
+    const r = clipInsetBox(box, 'inset(-6px 100% -6px -6px round 6px)', true);
+    expect(Math.max(0, r.right - r.left)).toBe(0);
+    const q = clipInsetBox(box, 'inset(-6px calc(75% + 0px) -6px -6px round 6px)', true);
+    expect((q.right - q.left) * (q.bottom - q.top)).toBe(6 * 24);
   });
 });

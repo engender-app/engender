@@ -20,6 +20,7 @@
 
 import { isAndroid } from '../../platform';
 import { archiveFailureKind } from './failure';
+import { spaceShortage } from '../spaceShortage';
 import { openArchive, type KeyDerivation } from './pack';
 import type { RestoreContents } from '../journal/restore';
 import { androidAutoExport, type AutoExportStatus, type FolderSyncOutcome } from './android-auto-export-bridge';
@@ -64,7 +65,20 @@ export function folderSyncReady(status: Pick<AutoExportStatus, 'folderSync' | 'd
 export async function runFolderSync(status: AutoExportStatus, deps: FolderSyncDeps): Promise<FolderSyncResult> {
   if (!isAndroid() || !folderSyncReady(status)) return { outcome: 'none' };
   deps.signal?.throwIfAborted();
-  const staged = await androidAutoExport.stageFolderArchive();
+  let staged: Awaited<ReturnType<typeof androidAutoExport.stageFolderArchive>>;
+  try {
+    staged = await androidAutoExport.stageFolderArchive();
+  } catch (error) {
+    /* Copying the archive out of the folder can fill the device before
+       Merge starts (re-check carpet 13, finding 2), and that used to reach
+       only the console. Nothing was staged, so there is no position to
+       keep: the outcome is recorded for the settings line, at 0. */
+    if (spaceShortage(error) !== 'device') throw error;
+    console.error('folder sync could not copy an archive', error);
+    await androidAutoExport.finishFolderArchive({ modifiedAt: 0, outcome: 'no-space' })
+      .catch((failure: unknown) => console.error('folder sync could not record its outcome', failure));
+    return { outcome: 'no-space', modifiedAt: 0 };
+  }
   if (!staged.path || staged.modifiedAt == null) return { outcome: 'none' };
   const modifiedAt = staged.modifiedAt;
 
@@ -97,6 +111,9 @@ async function mergeStaged(path: string, deps: FolderSyncDeps): Promise<FolderSy
        rather than reported and moved past while nobody was looking. */
     if ((error as Error)?.name === 'AbortError' || deps.signal?.aborted) throw error;
     console.error('folder sync could not merge an archive', error);
+    /* A full device is not the archive's fault: reported as what it is, and
+       left to be tried again (re-check carpet 13, finding 1). */
+    if (spaceShortage(error) === 'device') return 'no-space';
     return archiveFailureKind(error);
   }
 }

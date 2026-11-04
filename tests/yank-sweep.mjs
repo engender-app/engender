@@ -88,7 +88,7 @@
 
    `--force-inset <px>` gives the page the phone's status-bar inset (58 on
    the Pixel 10a) and the Android platform answer, so the strip
-   `.app::before` is `inset - 9` px tall and visible to the casts; every
+   `.app-strip` is `inset - 9` px tall and visible to the casts; every
    settle asserts that height and the report's runtime records
    `forceInset`. It also makes the desktop sweep keep Android's retained
    doors. `tests/yank-sweep-strip-check.mjs` reads the saved casts of such
@@ -176,7 +176,7 @@ const gate = args.includes('--gate');
 
 /** The phone's status-bar inset, forced on a desktop page (`--force-inset
     58` is the Pixel 10a). A desktop browser has no safe area, so
-    `--inset-top` is 0px and the strip `.app::before` is 0px tall; without
+    `--inset-top` is 0px and the strip `.app-strip` is 0px tall; without
     this the sweep cannot see a defect there. Set the way
     tests/android-tab-status-strip.mjs sets it: the two custom properties on
     the root, and Capacitor.getPlatform answering android once boot is done
@@ -190,7 +190,8 @@ const FORCE_INSET_EXPRESSION = `(() => {
   root.style.setProperty('--inset-top', '${forceInset}px');
   root.style.setProperty('--field-bleed-top', '9px');
   if (window.Capacitor) window.Capacitor.getPlatform = () => 'android';
-  return getComputedStyle(document.querySelector('.app') ?? root, '::before').height;
+  const strip = document.querySelector('.app-strip');
+  return strip ? getComputedStyle(strip).height : getComputedStyle(document.querySelector('.app') ?? root, '::before').height;
 })()`;
 const FORCE_INSET_INIT = `document.addEventListener('DOMContentLoaded', () => {
   document.documentElement.style.setProperty('--inset-top', '${forceInset}px');

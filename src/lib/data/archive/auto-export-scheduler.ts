@@ -86,6 +86,7 @@ async function syncFromFolder(status: AutoExportStatus, signal: AbortSignal) {
   if (result.outcome === 'none') return;
   if (result.outcome === 'merged') toast(m.exp_folder_merged_toast(), { kind: 'folder-sync' });
   else if (result.outcome === 'wrong-password') toast(m.exp_folder_wrong_password_toast(), { kind: 'folder-sync' });
+  else if (result.outcome === 'no-space') toast(m.exp_folder_no_space_toast(), { kind: 'folder-sync' });
   else toast(m.exp_folder_failed_toast(), { kind: 'folder-sync' });
 }
 

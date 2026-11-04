@@ -13,7 +13,8 @@ import { runMigrations } from '../sqlite/migration-runner.ts';
 import { migrations } from '../sqlite/migrations.ts';
 import { makeNodeSqliteDb } from '../sqlite/test-support/node-sqlite-driver.ts';
 import { migratedDb, noopFileOps } from '../sqlite/test-support/migrated-db.ts';
-import { MERGE_CLASSES } from './archiveMerge.ts';
+import type { ArchiveJournal } from '../archive/payload.ts';
+import { MERGE_CLASSES, applyDeletions, rowGate } from './archiveMerge.ts';
 import { openJournal } from './journal.ts';
 
 async function schemaTables() {
@@ -117,4 +118,94 @@ test('version 117 resets the stamp a seeding batch left on built-ins, and keeps 
     { id: 't-2', updated_at: 2000 },
     { id: 't-3', updated_at: 0 }
   ]);
+});
+
+/* The decision matrix in the header, one boundary at a time (re-check
+   carpet 12: equal stamps and the tombstone rules had no test, so their
+   mutants survived). */
+async function letters(rows: [string, number][], deletions: [string, number][] = []) {
+  const db = await migratedDb();
+  for (const [uuid, at] of rows) {
+    await db.run('INSERT INTO letter (uuid, epoch_day, text, unlock_epoch_day, updated_at) VALUES (?, 1, ?, 2, ?)', [uuid, uuid, at]);
+  }
+  for (const [uuid, at] of deletions) {
+    await db.run("INSERT INTO deletion (tbl, row_key, deleted_at) VALUES ('letter', ?, ?)", [uuid, at]);
+  }
+  return db;
+}
+
+test("a Merge takes the archive's row only when it is strictly newer, and an unstamped one never", async () => {
+  const gate = await rowGate({ driver: await letters([['here', 100]]), mode: 'merge' }, 'letter');
+  assert.equal(gate.fate('here', 101), 'update');
+  assert.equal(gate.fate('here', 100), 'keep', 'a tie keeps this device');
+  assert.equal(gate.fate('here', 99), 'keep');
+  assert.equal(gate.fate('here', undefined), 'keep');
+});
+
+test('a Merge inserts a row this device deleted only when the archive wrote it after the deletion', async () => {
+  const gate = await rowGate({ driver: await letters([], [['gone', 100]]), mode: 'merge' }, 'letter');
+  assert.equal(gate.fate('gone', 101), 'insert');
+  assert.equal(gate.fate('gone', 100), 'keep', 'a tie keeps the deletion');
+  assert.equal(gate.fate('gone', undefined), 'keep');
+  assert.equal(gate.fate('never-here', undefined), 'insert');
+  assert.equal(gate.fate('never-here', 1), 'insert');
+});
+
+test("a Replace writes every row, over this device's copy or past its deletion", async () => {
+  const gate = await rowGate({ driver: await letters([['here', 100]], [['gone', 100]]), mode: 'replace' }, 'letter');
+  assert.equal(gate.fate('here', 1), 'update');
+  assert.equal(gate.fate('gone', 1), 'insert');
+});
+
+test('a row the same import has just written meets a later copy of itself as present', async () => {
+  const gate = await rowGate({ driver: await letters([]), mode: 'merge' }, 'letter');
+  assert.equal(gate.fate('twice', 50), 'insert');
+  gate.wrote('twice', 50);
+  assert.equal(gate.fate('twice', 50), 'keep');
+  assert.equal(gate.fate('twice', 51), 'update');
+});
+
+test('a table with no identity of its own cannot be gated', async () => {
+  await assert.rejects(rowGate({ driver: await migratedDb(), mode: 'merge' }, 'entry_tag'), /entry_tag has no identity a Merge can match rows by/);
+});
+
+const deleting = (id: string, deletedAt: number) =>
+  ({ deletions: [{ table: 'letter', id, deletedAt }] }) as unknown as ArchiveJournal;
+const tombstone = async (db: Awaited<ReturnType<typeof migratedDb>>, id: string) =>
+  (await db.query<{ deleted_at: number }>("SELECT deleted_at FROM deletion WHERE tbl = 'letter' AND row_key = ?", [id]))[0]?.deleted_at;
+const present = async (db: Awaited<ReturnType<typeof migratedDb>>, id: string) =>
+  (await db.query('SELECT 1 FROM letter WHERE uuid = ?', [id])).length === 1;
+
+test("a Merged deletion removes this device's row up to and including an equal stamp, and records the archive's time", async () => {
+  const db = await letters([['same', 100], ['newer', 101]]);
+  await applyDeletions({ driver: db, mode: 'merge', journal: deleting('same', 100), ts: 0 });
+  await applyDeletions({ driver: db, mode: 'merge', journal: deleting('newer', 100), ts: 0 });
+  assert.equal(await present(db, 'same'), false);
+  assert.equal(await present(db, 'newer'), true, 'written here after the deletion');
+  assert.equal(await tombstone(db, 'same'), 100);
+  assert.equal(await tombstone(db, 'newer'), 100, 'recorded all the same');
+});
+
+test("a Replace installs the archive's deletions without deleting a row", async () => {
+  const db = await letters([['kept', 100]]);
+  await applyDeletions({ driver: db, mode: 'replace', journal: deleting('kept', 200), ts: 0 });
+  assert.equal(await present(db, 'kept'), true);
+  assert.equal(await tombstone(db, 'kept'), 200);
+});
+
+test('a deletion this device already recorded keeps the later of the two times', async () => {
+  const db = await letters([], [['early', 100], ['late', 300]]);
+  await applyDeletions({ driver: db, mode: 'merge', journal: deleting('early', 200), ts: 0 });
+  await applyDeletions({ driver: db, mode: 'merge', journal: deleting('late', 200), ts: 0 });
+  assert.equal(await tombstone(db, 'early'), 200);
+  assert.equal(await tombstone(db, 'late'), 300);
+});
+
+test('a deletion naming a table this build does not merge is left out', async () => {
+  const db = await letters([]);
+  await applyDeletions({
+    driver: db, mode: 'merge', ts: 0,
+    journal: { deletions: [{ table: 'entry_tag', id: 'x', deletedAt: 1 }, { table: 'nonsense', id: 'x', deletedAt: 1 }] } as unknown as ArchiveJournal
+  });
+  assert.deepEqual(await db.query('SELECT * FROM deletion'), []);
 });

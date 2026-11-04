@@ -61,7 +61,10 @@
   import { placeEraLabel, timelineEraBands } from '$lib/data/timelineEraBands';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import type { Era, Milestone } from '$lib/data/types';
+  import { tick } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { collapse } from '$lib/motion/reveal';
+  import { EASE_OUT_CSS, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { eraBandRoles, roleAt, type Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
@@ -158,6 +161,40 @@
 
   let bandRects = $state<BandRect[]>([]);
 
+  /* Deleting or restoring a milestone changes the bands under the rows
+     while those rows are still collapsing or opening (carpet 15 row 48):
+     a band whose era lost its last row was gone at full opacity in one
+     frame, and a name whose biggest dot-free stretch moved jumped there,
+     101px in one frame. A band leaving fades where it stood, one arriving
+     after the rail first placed its bands fades in, and a name that is
+     placed somewhere else within its band travels there. */
+  let nameEls: Record<string, HTMLElement | undefined> = {};
+  let bandsPlaced = false;
+  const bandFade = () => ({ duration: bandsPlaced ? motionDuration('--dur-fast') : 0 });
+
+  /** The name's centre, which is where its text is drawn (it is centred in
+      its own box), measured from its band's top. */
+  function centreIn(name: HTMLElement, band: HTMLElement) {
+    const box = name.getBoundingClientRect();
+    return box.top + box.height / 2 - band.getBoundingClientRect().top;
+  }
+
+  function followNames(from: Map<string, number>) {
+    if (isReducedMotion()) return;
+    for (const [id, offset] of from) {
+      const name = nameEls[id];
+      const band = name?.parentElement;
+      if (!name?.isConnected || !band) continue;
+      for (const running of name.getAnimations()) running.cancel();
+      const dy = offset - centreIn(name, band);
+      if (Math.abs(dy) < 2) continue;
+      name.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], {
+        duration: motionDuration('--dur-med'),
+        easing: EASE_OUT_CSS
+      });
+    }
+  }
+
   function measureBands() {
     const el = rail;
     if (!el) {
@@ -193,7 +230,18 @@
 
       next.push({ id: band.id, name: band.name, role: roleAt(bandRoles, index), ...placed });
     });
+    /* Where each name is drawn now, relative to its band, so only a change
+       of placement travels and the name never lags the band itself. */
+    const from = new Map<string, number>();
+    for (const [id, name] of Object.entries(nameEls)) {
+      const band = name?.parentElement;
+      if (name?.isConnected && band) from.set(id, centreIn(name, band));
+    }
     bandRects = next;
+    void tick().then(() => {
+      if (next.length) bandsPlaced = true;
+      followNames(from);
+    });
   }
 
   /* Re-measured whenever the rows or the eras themselves change, and on
@@ -262,8 +310,9 @@
       aria-label={m.era_band_open_aria({ name: band.name })}
       onclick={() => onOpenEra(band.id)}
       {...roleAttrs(band.role)}
+      transition:fade={bandFade()}
     >
-      <span class="tl-era-name" style:top="{band.labelTop - BAND_EDGE_PX}px" style:height="{band.labelHeight}px">{band.name}</span>
+      <span class="tl-era-name" bind:this={nameEls[band.id]} style:top="{band.labelTop - BAND_EDGE_PX}px" style:height="{band.labelHeight}px">{band.name}</span>
     </button>
   {/each}
   {#each items as item, index (item.id)}
@@ -409,6 +458,11 @@
     color: var(--role-fill-ink);
     font: inherit;
     cursor: pointer;
+    /* A band's colour is its place in the role order, so a band before it
+       leaving recolours it; that change fades rather than cutting. */
+    transition-property: background-color, border-color, color;
+    transition-duration: var(--dur-med);
+    transition-timing-function: var(--ease-out);
   }
 
   /* Placed by `measureBands`' `largestGap`, not the band's own centre - the

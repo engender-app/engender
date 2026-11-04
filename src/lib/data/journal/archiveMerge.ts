@@ -220,12 +220,33 @@ async function unlinkStatements(driver: SqliteDriver, table: string): Promise<st
   );
 }
 
+/** Which rows of a table are built-ins: the rows a Replace keeps
+    (archiveSections.ts discards only the others). No area deletes one - a
+    built-in tag hides instead (tags.ts), and every effect category is
+    built in - and reconcile seeds a missing one back on the next open, so a
+    deletion naming one is something only a hand-edited archive carries. */
+const BUILT_IN: Readonly<Record<string, string>> = {
+  body_region: 'key IS NOT NULL',
+  effect_category: '1',
+  entry_template: 'key IS NOT NULL',
+  gender_dimension: 'is_built_in = 1',
+  gender_preset: 'key IS NOT NULL',
+  personal_effect_type: 'is_built_in = 1',
+  tag: 'key IS NOT NULL',
+  tag_group: 'uuid IS NULL'
+};
+
 /** The archive's deletions. Replace installs them as they are, so the
     restored journal goes on refusing what the archived one had deleted.
     Merge applies each one that is newer than this device's row, by the rule
     in the header, and records it either way. A deletion naming a table this
     build does not classify (one from a newer or an older schema) is left
-    out.
+    out, and so, in a Merge, is one naming a built-in: applying it took the
+    rows that use the built-in down with it or failed on their foreign key,
+    and the next Merge, finding the built-in reseeded, deleted it again and
+    moved its tags' tombstones to that Merge's clock (re-check carpet 11,
+    F2 and F5). Reconcile has already seeded every built-in by the time this
+    runs, so the row is here to be asked.
 
     The first section the registry applies, and so the last it discards: a
     Replace's discard fires the trigger for every row it removes, and this
@@ -240,6 +261,10 @@ export async function applyDeletions({ driver, mode, journal }: Restoring): Prom
     );
     if (mode === 'merge') {
       const identity = identityOf(deletion.table)('');
+      const builtIn = BUILT_IN[deletion.table];
+      if (builtIn && (await driver.query(
+        `SELECT 1 FROM ${deletion.table} WHERE ${identity} = ? AND ${builtIn}`, [deletion.id]
+      )).length > 0) continue;
       const [row] = await driver.query<{ updated_at: number }>(
         `SELECT updated_at FROM ${deletion.table} WHERE ${identity} = ?`, [deletion.id]
       );
