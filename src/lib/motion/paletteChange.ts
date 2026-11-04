@@ -1,7 +1,11 @@
 import { tick } from 'svelte';
 import { EASE_OUT_SOFT_CSS, isReducedMotion, motionDuration } from './tokens';
+import { holdTaps, type TapHold } from './tapReplay';
 
 let latestChange = 0;
+/* One hold across choices that land on each other: a tap made during the
+   first bloom is replayed when the last one ends, not into the next. */
+let taps: TapHold | null = null;
 type Appearance = 'palette' | 'theme';
 const pending: Partial<Record<Appearance, () => void>> = {};
 
@@ -145,6 +149,7 @@ function changeAppearance(commit: () => void, kind: Appearance, doc: Document): 
   if (pending.palette) root.dataset.paletteTransition = '';
   else delete root.dataset.paletteTransition;
   const bloom = prepareBloom(doc);
+  if (!taps && typeof doc.addEventListener === 'function') taps = holdTaps(doc);
   const transition = doc.startViewTransition(async () => {
     if (change !== latestChange) return;
     applyPending();
@@ -161,6 +166,8 @@ function changeAppearance(commit: () => void, kind: Appearance, doc: Document): 
       delete root.dataset.appearanceTransition;
       delete root.dataset.paletteTransition;
       root.style?.removeProperty('--bloom-at');
+      taps?.finish();
+      taps = null;
     }
   });
 }
