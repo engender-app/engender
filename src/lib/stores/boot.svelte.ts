@@ -1280,7 +1280,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
     if (!personaPrepared) {
       const { clearJournal, seedPersonaJournal } = await import('../data/demo/journal-seed');
       await clearJournal(journal!);
-      await seedPersonaJournal(journal!);
+      await seedPersonaJournal(journal!, todayEpochDay(), getLocale());
     }
     for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
       await preferences.set(key, value);

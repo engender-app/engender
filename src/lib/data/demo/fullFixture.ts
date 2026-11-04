@@ -227,6 +227,8 @@ export async function seedFullFixture(
     if (r() < 0.65) continue;
     await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, r() < 0.85 ? 'checked' : 'not-my-path');
   }
+  // "Coming out" here and "top surgery" below stay as they are in Polish:
+  // that is how Polish trans people write both.
   const comingOut = await journal.roadmap.addCategory('Coming out');
   const customGoal = await journal.roadmap.addCustomGoal(say('Tell my sister', 'Powiedzieć siostrze'), comingOut.id);
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
