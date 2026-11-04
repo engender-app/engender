@@ -178,6 +178,13 @@
     if (photo) await save(photo);
   }
 
+  /* What the line under the frame says: how to use the ghost while the
+     camera is live, nothing once a shot is taken or when there is no
+     camera (the frame itself says so then). */
+  let hint = $derived(
+    mode === 'shot' || mode === 'unavailable' ? '' : ghost ? m.pph_ghost_hint() : m.pph_first_hint()
+  );
+
   const fast = () => motionDuration('--dur-fast');
   const med = () => motionDuration('--dur-med');
   const swapIn = (node: Element) => crossfade(node, undefined, { direction: 'in' });
@@ -186,7 +193,10 @@
 <Sheet {open} {title} {onClose} onClosed={closed} busy={saving}>
   <h3>{title}</h3>
   <div class="frame" data-progress-camera data-mode={mode}>
-    <div class="layers">
+    <!-- Without a camera the ghost has nothing to be lined up against, so
+         it fades away with the picture rather than staying under the
+         message that says so. -->
+    <div class="layers" class:is-off={mode === 'unavailable'}>
       <!-- svelte-ignore a11y_media_has_caption -->
       <video
         bind:this={video}
@@ -225,7 +235,9 @@
     {/if}
   </div>
 
-  <p class="muted small hint">{ghost && mode !== 'unavailable' ? m.pph_ghost_hint() : m.pph_first_hint()}</p>
+  <p class="muted small hint" data-progress-hint>
+    {#key hint}<span in:swapIn out:crossfade>{hint}</span>{/key}
+  </p>
 
   <div class="controls">
     {#key mode === 'shot' ? 'shot' : mode === 'unavailable' ? 'fallback' : 'live'}
@@ -262,16 +274,18 @@
   .frame {
     position: relative;
     width: 100%;
-    max-height: 60vh;
+    max-height: 55vh;
     aspect-ratio: 3 / 4;
     margin: var(--space-3) auto 0;
     border-radius: var(--r-block);
     overflow: clip;
     background: var(--surface-2);
   }
-  /* Keeps the 3:4 when 60vh is the tighter bound, rather than squashing it. */
+  /* Keeps the 3:4 when 55vh is the tighter bound, rather than squashing
+     it, and leaves the heading, the hint and the buttons on a phone screen
+     with the frame. */
   @supports (aspect-ratio: 3 / 4) {
-    .frame { width: min(100%, calc(60vh * 3 / 4)); }
+    .frame { width: min(100%, calc(55vh * 3 / 4)); }
   }
   .layers,
   .layers video,
@@ -307,7 +321,17 @@
     text-align: center;
     color: var(--text-2);
   }
-  .hint { margin: var(--space-3) 0; text-align: center; }
+  /* Two lines held whatever it says, so the line changing or emptying
+     never moves the buttons under it. */
+  .hint {
+    position: relative;
+    min-height: calc(2 * 1.5em);
+    margin: var(--space-3) 0;
+    text-align: center;
+  }
+  .hint span { display: block; width: 100%; }
+  .layers { transition: opacity var(--dur-med) var(--ease-out); }
+  .layers.is-off { opacity: 0; }
   /* The row keeps its height while its buttons change, and the leaving set
      is taken out of the flow by `crossfade`, so nothing below it moves. */
   .controls { position: relative; }
