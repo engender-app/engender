@@ -6,6 +6,7 @@ import { procedurePhase, recoveryDay } from '../src/lib/data/recoveryDay.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
+const PROCEDURE_SCREEN = 'src/routes/health/surgery/[id]/+page.svelte';
 
 describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
   it('derives the 5 lifecycle phases accurately', () => {
@@ -25,7 +26,7 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(cardCode).toContain('data-phase');
     expect(cardCode).toContain('data-phase-pill');
     expect(cardCode).toContain('data-linked-milestone');
-    expect(cardCode).toContain('data-edit-procedure');
+    expect(cardCode).toContain('data-open-procedure');
     // Ticket 52: the reading is the number on the card and the journey is
     // the rail beside it, so both are hooks a probe can find.
     expect(cardCode).toContain('data-procedure-reading');
@@ -38,14 +39,14 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(cardCode).toMatch(/\{#if phase !== 'archived'\}\s*<span class="kit-pill proc-phase-pill"/);
   });
 
-  it('surgery page implements all 4 active lifecycle sections and prompt for milestone on surgery day', () => {
-    const pageCode = read('src/routes/health/surgery/+page.svelte');
+  it('the procedure screen implements all 4 active lifecycle sections and prompt for milestone on surgery day', () => {
+    const pageCode = read(PROCEDURE_SCREEN);
     expect(pageCode).toContain('data-recovery-log');
     expect(pageCode).toContain('data-phase');
     expect(pageCode).toContain('data-record-milestone-prompt');
     expect(pageCode).toContain('data-confirm-record-milestone');
     expect(pageCode).toContain('PhotoSection');
-    expect(pageCode).toContain('ProcedureRecoveryCard');
+    expect(read('src/routes/health/surgery/+page.svelte')).toContain('ProcedureRecoveryCard');
     expect(pageCode).toContain('data-add-procedure-item');
     expect(pageCode).toContain('data-add-consult');
     expect(pageCode).toContain('data-save-notes');
@@ -133,7 +134,7 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
      feelings diary", "Clearance & packing list" and four more), which made
      one field look like five. */
   it('shows one Notes and one Checklist in every phase', () => {
-    const pageCode = read('src/routes/health/surgery/+page.svelte');
+    const pageCode = read(PROCEDURE_SCREEN);
     const notes = [...pageCode.matchAll(/\{@render notesBlock\(([^)]*)\)\}/g)].map((match) => match[1]);
     const checklists = [...pageCode.matchAll(/\{@render checklistBlock\(([^)]*)\)\}/g)].map((match) => match[1]);
     expect(notes).toEqual(['', '', '', '', '']);
@@ -151,8 +152,40 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(JSON.parse(read('messages/en.json')).surgery_checklist_title).toBe('Checklist');
   });
 
-  it('sends a consult question to the appointment prep list, not the procedure notes', async () => {
+  /* prh12 bug 18: the kind used to default to Custom and sit in a static
+     row with a small pencil, so nothing said a type was to be chosen. */
+  it('asks for a procedure type on a new procedure and will not save without one', () => {
     const pageCode = read('src/routes/health/surgery/+page.svelte');
+    expect(pageCode).toMatch(/blank: \(\) => \(\{[^}]*kind: null/);
+    expect(pageCode).toMatch(/canSave=\{\(draft\) => draft\.kind !== null && /);
+    expect(read('src/lib/components/ProcedureFields.svelte')).toMatch(/title=\{kind \? procedureKindName\(kind\) : m\.surgery_kind_choose\(\)\}/);
+    for (const lang of ['en', 'pl']) {
+      const messages = JSON.parse(read(`messages/${lang}.json`)) as Record<string, string>;
+      expect(messages.surgery_kind_choose, lang).toBeTruthy();
+      expect(messages.surgery_kind_needed, lang).toBeTruthy();
+    }
+  });
+
+  /* prh12 bug 20: a procedure opens its own screen rather than sliding its
+     log open under the list, and its facts are edited there in place. */
+  it('opens each procedure on its own screen, with its facts editable there', () => {
+    const cardCode = read('src/lib/components/ProcedureRecoveryCard.svelte');
+    expect(cardCode).toMatch(/<a\s+class="proc-face"\s+href="\/health\/surgery\/\{procedure\.id\}"/);
+    expect(cardCode).not.toContain('aria-expanded');
+    const listCode = read('src/routes/health/surgery/+page.svelte');
+    expect(listCode).not.toContain('data-recovery-log');
+    expect(listCode).not.toContain('selectedId');
+    const screenCode = read(PROCEDURE_SCREEN);
+    expect(screenCode).toContain('detailDraft<Procedure');
+    expect(screenCode).toContain('<ProcedureFields');
+    expect(screenCode).toContain('showArchive');
+    expect(screenCode).toContain('data-save-procedure');
+    expect(screenCode).toContain('data-delete-procedure');
+    expect(screenCode).toContain('<DiscardSheet guard={detail.guard} />');
+  });
+
+  it('sends a consult question to the appointment prep list, not the procedure notes', async () => {
+    const pageCode = read(PROCEDURE_SCREEN);
     expect(pageCode).toContain('data-add-consult-question');
     expect(pageCode).toMatch(/journal\.checklists\.addToStandaloneChecklist\(/);
 

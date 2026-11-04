@@ -54,17 +54,13 @@
 
   let {
     procedure,
-    selected = false,
     today = currentDay(),
     linkedMilestone = null,
     photos = [],
     checklistCount = 0,
-    onclick,
-    onedit,
     ...rest
   }: {
     procedure: Procedure;
-    selected?: boolean;
     today?: number;
     linkedMilestone?: Milestone | null;
     /** This procedure's recovery photos, oldest first. The strip is drawn
@@ -72,8 +68,6 @@
         rather than reporting how much of it was photographed. */
     photos?: readonly ProcedurePhoto[];
     checklistCount?: number;
-    onclick?: () => void;
-    onedit?: () => void;
     [key: string]: unknown;
   } = $props();
 
@@ -185,26 +179,22 @@
   data-procedure={procedure.id}
   data-phase={phase}
   class:is-open={open}
-  class:is-active-card={selected}
   {...rest}
 >
   <div class="proc-top">
     <!-- A row the width of the card answers a press with a wash rather than
          a scale: 0.94 on a 330px card walks its edges 10px inward while the
          list holds still, which reads as a yank (DIRECTION.md tier 1). -->
-    <!-- No aria-label. One used to read `Open {name}`, which replaced the
-         button's own content for a screen reader - so the name, the phase,
-         the number and the date it counts from, all of which are inside
-         this button, were announced as the single word `Open`. The content
-         is the name now, and `aria-expanded` is what says the button
-         toggles. -->
-    <button
-      type="button"
+    <!-- A link to the procedure's own screen (prh12 bug 20), the way a
+         tryout's card links to its own (TryoutCard). It used to be a button
+         that slid the procedure's log open under the list. No aria-label:
+         the name, the phase, the number and the date are all inside the
+         link, and a label would replace them for a screen reader. -->
+    <a
       class="proc-face"
+      href="/health/surgery/{procedure.id}"
       data-no-press
-      aria-expanded={selected}
-      aria-controls="procedure-log-{procedure.id}"
-      {onclick}
+      data-open-procedure={procedure.id}
     >
       <span class="proc-head">
         <span class="proc-name">{procedure.name}</span>
@@ -230,18 +220,7 @@
       {:else}
         <span class="proc-when">{dateDetail}</span>
       {/if}
-    </button>
-    {#if onedit}
-      <button
-        type="button"
-        class="proc-act"
-        data-edit-procedure={procedure.id}
-        aria-label={m.surgery_edit_sheet()}
-        onclick={onedit}
-      >
-        <Icon name="pencil" size={18} />
-      </button>
-    {/if}
+    </a>
   </div>
 
   <!-- Between the reading and the rail: the block says how far off the
@@ -350,9 +329,9 @@
      and the badges are the card's own reading and there is nothing on any
      of them to reach - a 44px wound photo that answers no touch at all is
      the worst of the three, because every convention says a thumbnail
-     opens. So the button's own box stays where its content is, for layout
+     opens. So the link's own box stays where its content is, for layout
      and for the accessible name, and its hit area is stretched over the
-     card by a pseudo-element. The pencil lifts above it. */
+     card by a pseudo-element. */
   .proc-face::after {
     content: '';
     position: absolute;
@@ -376,6 +355,7 @@
     color: inherit;
     font: inherit;
     text-align: start;
+    text-decoration: none;
     cursor: pointer;
   }
 
@@ -470,23 +450,6 @@
     color: var(--text-2);
   }
 
-  /* The kit's own row action size (--touch-target, Android's 48px floor),
-     and above the face's stretched hit area rather than under it. */
-  .proc-act {
-    position: relative;
-    z-index: 2;
-    flex: 0 0 auto;
-    display: grid;
-    place-items: center;
-    width: var(--touch-target);
-    height: var(--touch-target);
-    background: none;
-    border: 0;
-    border-radius: var(--r-block);
-    color: var(--text-2);
-    cursor: pointer;
-  }
-
   .proc-strip {
     display: flex;
     flex-wrap: wrap;
@@ -536,14 +499,12 @@
     color: var(--text-2);
   }
 
-  /* The wash a full-width row answers a press with, and the one the card
-     wears while its log is showing below. Both are the control's own ground
-     rather than a container's, which is the distinction carpet 30 settled -
-     and it holds here because the face's hit area is the card, so the card
-     is the control rather than a box around one. The wash fades rather than
-     cutting in: selecting a procedure is a state change like any other. */
-  .proc-card:has(.proc-face:active),
-  .is-active-card {
+  /* The wash a full-width row answers a press with. It is the control's
+     own ground rather than a container's, which is the distinction carpet
+     30 settled - and it holds here because the face's hit area is the
+     card, so the card is the control rather than a box around one. The
+     wash fades rather than cutting in. */
+  .proc-card:has(.proc-face:active) {
     background: var(--role-wash);
   }
 

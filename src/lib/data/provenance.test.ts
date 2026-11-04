@@ -51,7 +51,7 @@ test('a hand-written milestone carries no provenance', () => {
 
 test('a milestone linked to a procedure names it and links to the surgery journey screen', () => {
   const origin = resolveMilestoneOrigin(milestone({ procedureId: 'p-1', procedureName: 'Top surgery' }));
-  assert.deepEqual(origin, { text: 'From your surgery journey: Top surgery', href: '/health/surgery?procedure=p-1' });
+  assert.deepEqual(origin, { text: 'From your surgery journey: Top surgery', href: '/health/surgery/p-1' });
 });
 
 test('a milestone linked to a built-in roadmap goal names the goal and links to the roadmap screen', () => {
@@ -94,7 +94,7 @@ test('a procedure link takes precedence over a roadmap or tryout link on the sam
   const origin = resolveMilestoneOrigin(
     milestone({ procedureId: 'p-1', procedureName: 'Top surgery', roadmapGoalKey: 'pl-legal-id-card', tryoutId: 't-1' })
   );
-  assert.equal(origin?.href, '/health/surgery?procedure=p-1');
+  assert.equal(origin?.href, '/health/surgery/p-1');
 });
 
 test('a reminder nobody has touched has no provenance', () => {

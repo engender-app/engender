@@ -275,7 +275,7 @@ export const FEATURES = {
     areaGroups: none,
     unprompted: ['surgery-countdown'],
     tiles: ['surgery-countdown'],
-    routes: ['/health/surgery'],
+    routes: ['/health/surgery', '/health/surgery/[id]'],
     messages: ['surgery', 'procedure', 'tile_surgery']
   },
   dilation: {

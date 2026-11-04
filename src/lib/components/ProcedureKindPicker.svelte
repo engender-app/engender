@@ -19,7 +19,7 @@
     onClose
   }: {
     open: boolean;
-    current: ProcedureKind;
+    current: ProcedureKind | null;
     onPick: (kind: ProcedureKind) => void;
     onClose: () => void;
   } = $props();

@@ -140,6 +140,6 @@ export function photoOwnerHref(photo: LibraryPhoto): string {
     case 'hair': return `/body/hair-progress?photo=${id}`;
     case 'hairRemoval': return `/body/hair-removal?session=${id}`;
     case 'tryout': return `/transition/tryouts/${id}`;
-    case 'procedure': return `/health/surgery?procedure=${id}`;
+    case 'procedure': return `/health/surgery/${id}`;
   }
 }
