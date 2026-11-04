@@ -57,11 +57,17 @@
   let saving = $state(false);
   let video = $state<HTMLVideoElement>();
 
-  /* The camera runs while the sheet is open and only then. A late stream -
-     the sheet closed or the camera switched while it was being asked for -
-     is stopped as soon as it lands rather than kept. */
+  /* The camera runs from the sheet opening until it has finished leaving:
+     stopped at the close itself, the picture would go blank in one frame on
+     a sheet still sliding away. A late stream - the sheet gone or the
+     camera switched while it was being asked for - is stopped as soon as it
+     lands rather than kept. */
+  let held = $state(false);
   $effect(() => {
-    if (!open) return;
+    if (open) held = true;
+  });
+  $effect(() => {
+    if (!held) return;
     const wanted = facing;
     let live: MediaStream | null = null;
     let cancelled = false;
@@ -89,8 +95,11 @@
     if (video && video.srcObject !== stream) video.srcObject = stream;
   });
 
-  /* Reset for the next opening once this one has gone. */
+  /* Reset for the next opening once this one has gone, the picture's
+     opacity included, so the next one fades in from nothing. */
   function closed() {
+    held = false;
+    playing = false;
     shot = null;
     facing = 'user';
   }
@@ -100,7 +109,7 @@
      (memory: a blanked image is a yank). */
   let ghostUrls = $state<string[]>([]);
   $effect(() => {
-    const name = open ? ghost?.fileName : undefined;
+    const name = held ? ghost?.fileName : undefined;
     if (!name) {
       ghostUrls = [];
       return;
