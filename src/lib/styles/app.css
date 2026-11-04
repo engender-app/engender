@@ -1777,8 +1777,9 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   }
 }
 
-/* A Settings appearance pick changes every token at once. Reveal the new
-   document on a diagonal, while a palette pick moves its swatch outline. */
+/* A Settings appearance pick changes every token at once. The new document
+   blooms out of the sun (paletteChange.ts runs the circle and the rings),
+   while a palette pick moves its swatch outline. */
 html[data-palette-transition] .palette-selection-ring {
   view-transition-name: palette-ring;
 }
@@ -1788,12 +1789,11 @@ html[data-appearance-transition] .app-column,
 html[data-appearance-transition] .app-nav,
 html[data-appearance-transition] .update-band { view-transition-name: none; }
 html[data-appearance-transition]::view-transition-old(root) { animation: none; }
+/* Closed on the sun's centre until the bloom starts at `ready`, so no frame
+   shows the new colours before they grow out of it. */
 html[data-appearance-transition]::view-transition-new(root) {
-  animation: appearance-swipe var(--dur-slow) var(--ease-in-out) both;
-}
-@keyframes appearance-swipe {
-  from { clip-path: polygon(0 0, -100vh 0, 0 100%, 0 100%); }
-  to { clip-path: polygon(0 0, 100vw 0, calc(100vw + 100vh) 100%, 0 100%); }
+  animation: none;
+  clip-path: circle(0px at var(--bloom-at, 100% 0px));
 }
 html[data-palette-transition]::view-transition-group(palette-ring) {
   animation-duration: var(--dur-slow);
@@ -1805,6 +1805,7 @@ html[data-palette-transition]::view-transition-group(palette-ring) {
 html[data-appearance-transition][data-a11y-motion='reduce']::view-transition-old(root),
 html[data-appearance-transition][data-a11y-motion='reduce']::view-transition-new(root) {
   animation: palette-fade var(--dur-crossfade) linear both;
+  clip-path: none;
 }
 html[data-appearance-transition][data-a11y-motion='reduce']::view-transition-old(root) {
   animation-direction: reverse;
@@ -1814,6 +1815,7 @@ html[data-appearance-transition][data-a11y-motion='reduce']::view-transition-old
   html[data-appearance-transition]::view-transition-new(root) {
     animation: palette-fade var(--dur-crossfade) linear both;
     animation-duration: var(--dur-crossfade) !important;
+    clip-path: none;
   }
   html[data-appearance-transition]::view-transition-old(root) {
     animation-direction: reverse;
