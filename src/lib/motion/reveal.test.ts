@@ -1037,6 +1037,7 @@ describe('tier 3, a box resizing under its own content', () => {
       margins,
       measurements: () => measurements,
       setHeight: (h: number) => (height = h),
+      setTop: (t: number) => (top = t),
       trigger: () => notify(),
       finish: async () => {
         settle?.();
@@ -1373,6 +1374,31 @@ describe('tier 3, a box resizing under its own content', () => {
       expect(calls).toEqual([[100, 244]]);
       await finish();
       expect(calls).toHaveLength(1);
+    } finally {
+      delete g.innerHeight;
+      restore();
+    }
+  });
+
+  /* Carpet 15 row 51: a door into the Journal pulls the field up 84px
+     while the gate's answer arrives, so the clamp taken at the travel's
+     start stopped 84px above the viewport's bottom once the box had risen.
+     The day's tag pills sat clipped at that line for 100ms and then landed
+     whole in the frame the hold came off. The travel goes on from the
+     clamped edge to the one the viewport now shows. */
+  it('travels on to the viewport edge when the box rose during the travel', async () => {
+    stubDocument(false);
+    const g = globalThis as Record<string, unknown>;
+    g.innerHeight = 844;
+    const { node, calls, setHeight, setTop, trigger, finish, restore } = resizingNode(100, 600);
+    try {
+      resize(node);
+      setHeight(1072);
+      trigger();
+      expect(calls).toEqual([[100, 244]]);
+      setTop(516);
+      await finish();
+      expect(calls).toEqual([[100, 244], [244, 328]]);
     } finally {
       delete g.innerHeight;
       restore();

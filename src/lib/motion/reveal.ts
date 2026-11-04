@@ -1291,6 +1291,16 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
           hold(to);
           restoreScrollPositions(scrolled);
           animateTo(newHeight, settled, to);
+        } else if (onScreen(settled) - to >= 1) {
+          /* The box rose while it travelled - a door's field settling
+             above it - so the clamp taken at the start now stops short of
+             the viewport's edge, and releasing would land the rest in one
+             frame: the Journal's tag pills sat clipped 84px above the
+             bottom for 100ms and then appeared whole (carpet 15 row 51).
+             Travel on from the clamped edge to the one now on screen. */
+          hold(to);
+          restoreScrollPositions(scrolled);
+          animateTo(newHeight, settled, to);
         } else {
           lastHeight = settled;
         }
