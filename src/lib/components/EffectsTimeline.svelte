@@ -253,7 +253,6 @@
   }
   .timeline-tracks {
     overflow-x: auto;
-    scrollbar-width: thin;
   }
   .effect-axis {
     display: block;
