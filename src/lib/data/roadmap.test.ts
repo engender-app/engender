@@ -6,8 +6,10 @@
 import { readFileSync } from 'node:fs';
 import { test, expect } from 'vitest';
 import {
+  BUILT_IN_GOALS,
   POLISH_PACK,
   ROADMAP_PACKS,
+  SOCIAL_PACK,
   LEGACY_ROADMAP_TRACKS,
   isCutTrackGoal,
   INSTITUTIONS_REVIEWED_ON,
@@ -20,6 +22,9 @@ import {
   polishLegalStepsShown,
   roadmapList,
   roadmapStepsLeft,
+  isBuiltInGoal,
+  packKeyOf,
+  socialGoalsInView,
   type RoadmapPack
 } from './roadmap.ts';
 import type { RoadmapGoalStatus } from './types.ts';
@@ -265,4 +270,50 @@ test('the roadmap screen draws the institutions under the same switch, from the 
   expect(panel).toContain('institutionList(shown, own, hiddenGoals)');
   expect(panel).toContain('journal.roadmap.addInstitutionChange(');
   expect(panel).toContain('<LinkedDocuments kind="goal" {id} />');
+});
+
+/* Pre-release human ticket 17: a built-in social and presentation group
+   beside the Polish legal one. It is not Polish content, so it is a pack of
+   its own: a tick names pack 'social', and nothing here carries a review
+   date because nothing in it is a legal claim. */
+test('the social group is eight plain steps in a pack of its own, named like no cut track', () => {
+  expect(SOCIAL_PACK.key).toBe('social');
+  expect(SOCIAL_PACK.goals.length).toBe(8);
+  for (const goal of SOCIAL_PACK.goals) {
+    expect(goal.key.startsWith('social-')).toBe(true);
+    // isCutTrackGoal drops ticks by key prefix: a new step must never match it.
+    expect(isCutTrackGoal(goal.key)).toBe(false);
+  }
+  expect(ROADMAP_PACKS.some((pack) => (pack.key as string) === SOCIAL_PACK.key)).toBe(false);
+});
+
+test('every built-in goal key is unique across the legal and social groups, and maps back to its pack', () => {
+  const keys = BUILT_IN_GOALS.map((goal) => goal.key);
+  expect(new Set(keys).size).toBe(keys.length);
+  expect(keys.length).toBe(POLISH_PACK.goals.length + SOCIAL_PACK.goals.length);
+  expect(packKeyOf('pl-legal-court-fee')).toBe('pl');
+  expect(packKeyOf('social-family')).toBe('social');
+  expect(isBuiltInGoal('social-voice')).toBe(true);
+  expect(isBuiltInGoal('pl-legal-appeal')).toBe(true);
+  expect(isBuiltInGoal('pl-social-tell-one-person')).toBe(false);
+});
+
+test('a stored tick on a social step is kept whole, hidden flag included', () => {
+  const tick = { packKey: 'social', goalKey: 'social-family', status: 'checked', hidden: true };
+  expect(keptTick(tick)).toEqual(tick);
+});
+
+test('the social group shows with its switch, hidden steps leave it, and the count follows', () => {
+  expect(socialGoalsInView(false, []).length).toBe(0);
+  expect(socialGoalsInView(true, []).map((goal) => goal.key)).toEqual(SOCIAL_PACK.goals.map((goal) => goal.key));
+  const trimmed = socialGoalsInView(true, ['social-voice', 'pl-legal-appeal']);
+  expect(trimmed.some((goal) => goal.key === 'social-voice')).toBe(false);
+  expect(trimmed.length).toBe(SOCIAL_PACK.goals.length - 1);
+});
+
+test('the roadmap screen draws the social group behind its own switch', () => {
+  const screen = readFileSync(new URL('../../routes/transition/roadmap/+page.svelte', import.meta.url), 'utf8');
+  expect(screen).toContain('prefs.roadmapSocialStepsShown');
+  expect(screen).toContain('socialGoalsInView(prefs.roadmapSocialStepsShown, hiddenGoals)');
+  expect(screen).toContain('data-roadmap-social');
 });

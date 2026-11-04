@@ -209,6 +209,7 @@ function portableWith(marker: string) {
     surfaceOverrides: values.surfaceOverrides,
     areaFinishOfferDeclined: values.areaFinishOfferDeclined,
     roadmapPolishStepsChoice: values.roadmapPolishStepsChoice,
+    roadmapSocialStepsShown: values.roadmapSocialStepsShown,
     pinnedRows: values.pinnedRows,
     onboardingAreas: values.onboardingAreas,
     acknowledgements: values.acknowledgements

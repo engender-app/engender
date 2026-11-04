@@ -46,7 +46,14 @@
      a percentage or a ring (ADR-0012, ticket 54's "no score, anywhere").
      The caveat and the marker note stay at the top, since both change how
      the list below is read; the sources line and the reviewed-on date
-     carry no such warning and sit at the foot. */
+     carry no such warning and sit at the foot.
+
+     Pre-release human ticket 17 added a second built-in group above the
+     legal one, the social and presentation steps, under a switch of its
+     own that is on until somebody turns it off (nothing in it is tied to a
+     country, so there is no language to follow). Its steps are ticked,
+     hidden and given documents exactly like the legal ones; its ticks are
+     stored under pack 'social'. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { attempt, deleter, writer } from '$lib/stores/attempt.svelte';
@@ -59,10 +66,14 @@
     LEGAL_GROUP,
     POLISH_INSTITUTIONS,
     POLISH_PACK,
+    SOCIAL_PACK,
+    isBuiltInGoal,
     ownStepsLeft,
+    packKeyOf,
     polishLegalStepsShown,
     roadmapList,
     roadmapStepsLeft,
+    socialGoalsInView,
     type RoadmapGoalKey
   } from '$lib/data/roadmap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -113,8 +124,11 @@
      to be the first thing the screen said. */
   let packDetailsOpen = $state(false);
 
+  /* Both groups' ticks in one map: a goal key names its group
+     (`social-` or `pl-`), so the two packs' keys never meet. */
   let statusQuery = liveQuery((j) => j.roadmap.getGoalStatuses(pack.key));
-  let statuses = $derived(statusQuery.value ?? {});
+  let socialStatusQuery = liveQuery((j) => j.roadmap.getGoalStatuses(SOCIAL_PACK.key));
+  let statuses = $derived({ ...statusQuery.value, ...socialStatusQuery.value });
 
   let customQuery = liveList((j) => j.roadmap.getCustomGoals());
   let customGoals = $derived(customQuery.rows);
@@ -135,9 +149,16 @@
   let polishShown = $derived(polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale()));
 
   let hiddenQuery = liveQuery((j) => j.roadmap.getHiddenGoals(pack.key));
-  let hiddenGoals = $derived(hiddenQuery.value ?? []);
-  let hiddenBuiltIns = $derived(pack.goals.filter((goal) => hiddenGoals.includes(goal.key)));
-  let hiddenInstitutions = $derived(POLISH_INSTITUTIONS.filter((one) => hiddenGoals.includes(one.key)));
+  let socialHiddenQuery = liveQuery((j) => j.roadmap.getHiddenGoals(SOCIAL_PACK.key));
+  let hiddenGoals = $derived([...(hiddenQuery.value ?? []), ...(socialHiddenQuery.value ?? [])]);
+  /* Only what the screen is showing a group for: the "Hidden goals" list
+     is a way back to rows of a group that is on. */
+  let hiddenBuiltIns = $derived(
+    [...(polishShown ? pack.goals : []), ...(prefs.roadmapSocialStepsShown ? SOCIAL_PACK.goals : [])].filter((goal) =>
+      hiddenGoals.includes(goal.key)
+    )
+  );
+  let hiddenInstitutions = $derived(polishShown ? POLISH_INSTITUTIONS.filter((one) => hiddenGoals.includes(one.key)) : []);
   let hiddenGoalsOpen = $state(false);
   let list = $derived(roadmapList(pack, polishShown, customGoals, hiddenGoals, categories));
 
@@ -201,8 +222,12 @@
   });
   let stepsLeft = $derived(roadmapStepsLeft(list, (key) => statuses[key] ?? 'unchecked'));
   let anySteps = $derived(list.goals.length + list.legalGoals.length > 0);
+  let socialGoals = $derived(socialGoalsInView(prefs.roadmapSocialStepsShown, hiddenGoals));
+  let socialLeft = $derived(socialGoals.filter((goal) => (statuses[goal.key] ?? 'unchecked') === 'unchecked').length);
   let loaded = $derived(
     !statusQuery.loading &&
+      !socialStatusQuery.loading &&
+      !socialHiddenQuery.loading &&
       !customQuery.loading &&
       !hiddenQuery.loading &&
       !categoryQuery.loading &&
@@ -255,7 +280,7 @@
   const toggleBuiltIn = (goalKey: RoadmapGoalKey) => {
     const current = statuses[goalKey] ?? 'unchecked';
     const next = nextStatus(current);
-    attempt(() => journal.roadmap.setGoalStatus(pack.key, goalKey, next), m.write_failed());
+    attempt(() => journal.roadmap.setGoalStatus(packKeyOf(goalKey), goalKey, next), m.write_failed());
     if (current === 'unchecked' && next === 'checked') offerMilestone(goalKey, roadmapGoalTitle(goalKey));
   };
 
@@ -360,10 +385,10 @@
   const visibilityWrite = writer();
   let selectedHidden = $derived(!!selectedGoal?.builtin && hiddenGoals.includes(selectedGoal.key));
   const toggleGoalVisibility = async () => {
-    if (!selectedGoal?.builtin) return;
+    if (!selectedGoal?.builtin || !isBuiltInGoal(selectedGoal.key)) return;
     const key = selectedGoal.key;
     const hidden = !selectedHidden;
-    if (await visibilityWrite.run(() => journal.roadmap.setGoalHidden(pack.key, key, hidden), m.write_failed())) {
+    if (await visibilityWrite.run(() => journal.roadmap.setGoalHidden(packKeyOf(key), key, hidden), m.write_failed())) {
       closeGoalSheet();
     }
   };
@@ -453,7 +478,7 @@
   };
 
   let sourceId = $derived(page.url.searchParams.get('goal'));
-  let sourceBuiltin = $derived(pack.goals.find((goal) => goal.key === sourceId));
+  let sourceBuiltin = $derived(sourceId !== null && isBuiltInGoal(sourceId) ? sourceId : null);
   let sourceCustom = $derived(customGoals.find((goal) => goal.id === sourceId));
   /* A document filed under an institution links here with the same
      `?goal=`, since the six that were steps kept their keys. */
@@ -461,7 +486,7 @@
     sourceId !== null && (POLISH_INSTITUTIONS.some((one) => one.key === sourceId) || institutionQuery.rows.some((one) => one.id === sourceId))
   );
   function openSource() {
-    if (sourceBuiltin) openBuiltInGoal(sourceBuiltin.key);
+    if (sourceBuiltin) openBuiltInGoal(sourceBuiltin);
     else if (sourceCustom) openCustomGoal(sourceCustom);
     else if (sourceInstitution && sourceId !== null) institutionsPanel?.open(sourceId);
   }
@@ -487,6 +512,53 @@
      clip-path alone (after-release 28, audit V08). -->
 {#snippet struck(text: string)}
   <span class="roadmap-strike-text">{text}<span class="roadmap-strike-lines" aria-hidden="true"><span>{text}</span></span></span>
+{/snippet}
+
+<!-- A step of a built-in group: the tick that cycles, and the control that
+     opens the step's own sheet. The row's own div, and the transition on it,
+     stay in each group's each block. -->
+{#snippet builtInRow(key: RoadmapGoalKey, status: RoadmapGoalStatus)}
+  <button
+    type="button"
+    class="kit-row-main"
+    aria-label={`${roadmapGoalTitle(key)} — ${stateLabel(status)}`}
+    onclick={() => toggleBuiltIn(key)}
+  >
+    <!-- Both glyphs stay in the markup and cross on opacity and a
+         scale rather than being added and removed (ux-carpet
+         ticket 236, the same fix appointment-prep's .ap-tick
+         already carries): a glyph that appears in one frame is a
+         yank in both directions, and which one shows is on the
+         box's own classes. -->
+    <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
+      <span class="roadmap-tick" class:roadmap-tick-shown={status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
+      <span class="roadmap-tick" class:roadmap-tick-shown={status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
+    </span>
+    <span class="kit-row-text">
+      <span
+        class="kit-row-title"
+        class:roadmap-done={status === 'checked'}
+        class:roadmap-skip-text={status === 'not-my-path'}
+      >
+        {@render struck(roadmapGoalTitle(key))}
+      </span>
+      {#if roadmapGoalNote(key)}
+        <span class="kit-row-sub">{roadmapGoalNote(key)}</span>
+      {/if}
+      {#if roadmapGoalNoteSecondary(key)}
+        <span class="kit-row-sub">{roadmapGoalNoteSecondary(key)}</span>
+      {/if}
+    </span>
+  </button>
+  <button
+    type="button"
+    class="kit-row-act press"
+    data-open-goal={key}
+    aria-label={m.roadmap_goal_open_aria({ goal: roadmapGoalTitle(key) })}
+    onclick={() => openBuiltInGoal(key)}
+  >
+    <Icon name="chevronRight" size={18} />
+  </button>
 {/snippet}
 
 <!-- A goal the person wrote, in whichever group it sits. -->
@@ -560,6 +632,15 @@
        rule the notifications screen keeps for its switch rows: the row
        does nothing when tapped, the switch inside it does. -->
   <ListCard role={roleAt(activeFlag.roles, 0)}>
+    <div class="kit-row" data-roadmap-social-steps>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.roadmap_social_steps_title()}</span>
+        <span class="kit-row-sub">{m.roadmap_social_steps_sub()}</span>
+      </span>
+      <span class="kit-row-trail">
+        <Switch checked={prefs.roadmapSocialStepsShown} label={m.roadmap_social_steps_title()} onChange={(v) => (prefs.roadmapSocialStepsShown = v)} />
+      </span>
+    </div>
     <div class="kit-row" data-roadmap-polish-steps>
       <span class="kit-row-text">
         <span class="kit-row-title">{m.roadmap_polish_steps_title()}</span>
@@ -615,12 +696,41 @@
             </div>
           </div>
         {/if}
-        {#if hiddenBuiltIns.length + hiddenInstitutions.length > 0}
-          <button class="btn btn-ghost press" data-show-hidden-goals onclick={() => (hiddenGoalsOpen = true)} transition:disclose>
-            <span>{m.roadmap_hidden_goals_count({ n: hiddenBuiltIns.length + hiddenInstitutions.length })}</span>
-          </button>
-        {/if}
       </div>
+    {/if}
+
+    {#if hiddenBuiltIns.length + hiddenInstitutions.length > 0}
+      <button class="btn btn-ghost press" data-show-hidden-goals onclick={() => (hiddenGoalsOpen = true)} transition:disclose>
+        <span>{m.roadmap_hidden_goals_count({ n: hiddenBuiltIns.length + hiddenInstitutions.length })}</span>
+      </button>
+    {/if}
+
+    <!-- The social and presentation steps (pre-release human ticket 17),
+         above the legal group: nothing in them is tied to a country, so
+         they are the part of the roadmap every reader has. With the switch
+         off, or every step hidden, there is nothing to draw. -->
+    {#if socialGoals.length > 0}
+      <section class="roadmap-group" data-roadmap-social transition:disclose>
+        <SectionHeading text={m.roadmap_social_steps_title()}>
+          {#snippet action()}
+            <span class="roadmap-steps" data-roadmap-social-steps-left>
+              {#key socialLeft}
+                <span transition:fadeCount>{m.roadmap_track_steps_left({ n: socialLeft })}</span>
+              {/key}
+            </span>
+          {/snippet}
+        </SectionHeading>
+        <ListCard role={roleAt(activeFlag.roles, 2)}>
+          <div class="rows-divide" data-roadmap-social-goals>
+            {#each socialGoals as goal (goal.key)}
+              {@const status = statuses[goal.key] ?? 'unchecked'}
+              <div class="kit-row is-split" data-goal={goal.key} data-status={status} transition:disclose>
+                {@render builtInRow(goal.key, status)}
+              </div>
+            {/each}
+          </div>
+        </ListCard>
+      </section>
     {/if}
 
     <!-- The Polish legal steps, the one built-in group, and the goals the
@@ -665,47 +775,7 @@
               {#each shownGoals as goal (goal.key)}
                 {@const status = statuses[goal.key] ?? 'unchecked'}
                 <div class="kit-row is-split" data-goal={goal.key} data-status={status} transition:disclose={{ belowFold: legalFilling }}>
-                  <button
-                    type="button"
-                    class="kit-row-main"
-                    aria-label={`${roadmapGoalTitle(goal.key)} — ${stateLabel(status)}`}
-                    onclick={() => toggleBuiltIn(goal.key)}
-                  >
-                    <!-- Both glyphs stay in the markup and cross on opacity and a
-                         scale rather than being added and removed (ux-carpet
-                         ticket 236, the same fix appointment-prep's .ap-tick
-                         already carries): a glyph that appears in one frame is a
-                         yank in both directions, and which one shows is on the
-                         box's own classes. -->
-                    <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
-                      <span class="roadmap-tick" class:roadmap-tick-shown={status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
-                      <span class="roadmap-tick" class:roadmap-tick-shown={status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
-                    </span>
-                    <span class="kit-row-text">
-                      <span
-                        class="kit-row-title"
-                        class:roadmap-done={status === 'checked'}
-                        class:roadmap-skip-text={status === 'not-my-path'}
-                      >
-                        {@render struck(roadmapGoalTitle(goal.key))}
-                      </span>
-                      {#if roadmapGoalNote(goal.key)}
-                        <span class="kit-row-sub">{roadmapGoalNote(goal.key)}</span>
-                      {/if}
-                      {#if roadmapGoalNoteSecondary(goal.key)}
-                        <span class="kit-row-sub">{roadmapGoalNoteSecondary(goal.key)}</span>
-                      {/if}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    class="kit-row-act press"
-                    data-open-goal={goal.key}
-                    aria-label={m.roadmap_goal_open_aria({ goal: roadmapGoalTitle(goal.key) })}
-                    onclick={() => openBuiltInGoal(goal.key)}
-                  >
-                    <Icon name="chevronRight" size={18} />
-                  </button>
+                  {@render builtInRow(goal.key, status)}
                 </div>
               {/each}
             </div>

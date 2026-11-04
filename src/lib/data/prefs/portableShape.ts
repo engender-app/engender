@@ -54,6 +54,7 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
     typeof v === 'object' && v !== null && !Array.isArray(v) && Object.values(v).every((on) => typeof on === 'boolean'),
   areaFinishOfferDeclined: isStringArray,
   roadmapPolishStepsChoice: (v) => v === null || typeof v === 'boolean',
+  roadmapSocialStepsShown: (v) => typeof v === 'boolean',
   pinnedRows: (v) => v === null || isStringArray(v),
   onboardingAreas: (v) => v === null || isStringArray(v),
   acknowledgements: (v) => typeof v === 'object' && v !== null && !Array.isArray(v)

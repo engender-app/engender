@@ -246,6 +246,11 @@ export interface PreferenceValues {
       argument: whether a Polish court procedure is somebody's path is
       something they said about their own journal. */
   roadmapPolishStepsChoice: boolean | null;
+  /** Whether the roadmap's built-in "Social and presentation" group shows
+      (pre-release human ticket 17). On until switched off: unlike the
+      Polish steps it is not tied to a country, so there is no locale to
+      follow. Portable, on `roadmapPolishStepsChoice`'s argument. */
+  roadmapSocialStepsShown: boolean;
   /** The areas whose finish offer has been answered no (phase 8 features
       ticket 04, ADR-0045). `ArchiveSectionName`s - the same key space
       `area_state` rows use.
@@ -410,6 +415,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lastVerifiedAt: null,
   roadmapMilestoneSyncEnabled: true,
   roadmapPolishStepsChoice: null,
+  roadmapSocialStepsShown: true,
   areaFinishOfferDeclined: [],
   comingBackSeenSince: null,
   clinicianSummaryDrugExcluded: {},
@@ -443,6 +449,7 @@ export const PORTABLE_KEYS = [
   'surfaceOverrides',
   'areaFinishOfferDeclined',
   'roadmapPolishStepsChoice',
+  'roadmapSocialStepsShown',
   /* Both of phase 10's remaining front-page preferences travel, on
      `areaFinishOfferDeclined`'s own argument next door: each is something
      the person said about their own journal rather than something this

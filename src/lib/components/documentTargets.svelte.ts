@@ -19,7 +19,7 @@ import { liveList } from '$lib/data/live/journal.svelte';
 import { fmtDay } from '$lib/data/dates';
 import { getLocale } from '$lib/paraglide/runtime';
 import { prefs } from '$lib/data/prefs/store.svelte';
-import { POLISH_INSTITUTIONS, POLISH_PACK, isBuiltInInstitution, polishLegalStepsShown } from '$lib/data/roadmap';
+import { POLISH_INSTITUTIONS, POLISH_PACK, isBuiltInGoal, isBuiltInInstitution, polishLegalStepsShown, socialGoalsInView } from '$lib/data/roadmap';
 import { roadmapGoalTitle, roadmapInstitutionName } from '$lib/data/vocabulary/roadmapLabels';
 import { DOCUMENT_TARGET_SECTION_HEADING } from '$lib/data/vocabulary/documentTargetLabels';
 import type { DocumentTarget } from '$lib/data/types';
@@ -75,6 +75,9 @@ export function documentTargets() {
       kind: 'goal',
       heading: DOCUMENT_TARGET_SECTION_HEADING.goal(),
       rows: [
+        /* The social steps, while their switch is on. Like the legal ones
+           below, hiding a single step does not take it off this list. */
+        ...socialGoalsInView(prefs.roadmapSocialStepsShown, []).map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
         ...(polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale())
           ? [
               ...POLISH_PACK.goals.map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
@@ -101,8 +104,7 @@ export function documentTargets() {
       if (target.kind === 'goal') {
         /* A bundled goal is compiled from roadmap.ts rather than stored, so
            it resolves without waiting for a read at all. */
-        const builtIn = POLISH_PACK.goals.find((goal) => goal.key === target.id);
-        if (builtIn) return found(roadmapGoalTitle(builtIn.key));
+        if (isBuiltInGoal(target.id)) return found(roadmapGoalTitle(target.id));
         if (isBuiltInInstitution(target.id)) return found(roadmapInstitutionName(target.id));
         if (customGoals.loading || institutions.loading) return { state: 'loading' };
         const custom = customGoals.rows.find((goal) => goal.id === target.id);
