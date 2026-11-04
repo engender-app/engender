@@ -1,5 +1,6 @@
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
+  import { paletteNameFit } from '$lib/components/paletteNameFit';
   /* The first run (F16), rebuilt for phase 5 ticket 26.
 
      Six settings, one pass. What a person had to leave here and go and find
@@ -882,7 +883,7 @@
                      by screens.css's .palette-grid the same way Settings
                      draws it: four across, the name under it on the page,
                      the chosen one framed in the section rule's 3px. -->
-                <div class="palette-grid setup-flags" role="radiogroup" use:rovingRadio aria-label={m.colour_palette()}>
+                <div class="palette-grid setup-flags" role="radiogroup" use:rovingRadio use:paletteNameFit aria-label={m.colour_palette()}>
                   {#each PALETTES as [key, label] (key)}
                     <button
                       class="palette-swatch"
@@ -1673,6 +1674,15 @@
     }
     .setup-paint {
       clip-path: inset(0 0 calc(100% - var(--blind-edge)) 0 round var(--r-block));
+    }
+    /* screens.css sets the flags eight across here, so a row of the grid is
+       eight: the fifth to eighth arrive with the first four, the second
+       eight together after them. */
+    .setup-flags .palette-swatch:nth-child(n + 5) {
+      --row-index: 0;
+    }
+    .setup-flags .palette-swatch:nth-child(n + 9) {
+      --row-index: 1;
     }
   }
 </style>

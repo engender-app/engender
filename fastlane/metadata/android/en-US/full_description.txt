@@ -1,6 +1,6 @@
 Keep a record of your transition you can return to. Write down how a new name feels or what's changed since starting HRT, with photos and care records alongside your notes.
 
-engender is made by trans people for other trans people. Use whichever parts fit your life, whether you're questioning, planning your next step or years into transition. It's free, no ads, subscriptions or accounts to create.
+engender is made by a trans person for other trans people. Use whichever parts fit your life, whether you're questioning, planning your next step or years into transition. It's free, with no ads, subscriptions or accounts to create.
 
 Room for how you feel
 
@@ -8,13 +8,13 @@ A mood is enough for an entry. When you have more to say, add a note, photo or v
 
 Keep your care records together
 
-Track HRT and other medication with dose logs, schedules and reminders. Keep lab results alongside body measurements and changes you notice, including hair changes and cycle tracking if you use it. For surgery, keep your plans and recovery notes together. Before an appointment, gather your questions and prepare a clinician summary to take with you.
+Track HRT and other medication with dose logs, schedules and reminders. Keep lab results alongside the changes you notice, including hair changes and cycle tracking if you use it. For surgery, keep your plans and recovery notes together. Note referrals and how long you've been on a waiting list, who you see, and what each visit or prescription cost. Before an appointment, gather your questions and prepare a clinician summary to take with you.
 
 engender does not diagnose conditions, interpret lab results, recommend doses or replace medical advice. Consult a qualified healthcare professional about treatment decisions.
 
 The things you want to try and remember
 
-Trying a name, different pronouns or a new look? Note how it feels over time. Record voice practice and compare it with your earlier recordings. Keep track of hair removal and time spent binding or tucking. Mark your milestones, plan your next steps, or write yourself a letter to open on a date you choose.
+Trying a name, different pronouns or a new look? Note how it feels over time. Record voice practice and compare it with your earlier recordings. Keep track of hair removal and time spent binding or tucking. Mark your milestones, plan your next steps and follow a name change through each office that needs it. Or write yourself a letter to open on a date you choose.
 
 See what has changed
 
@@ -30,11 +30,11 @@ You can unlock with a passphrase, PIN or your phone's biometric or screen lock. 
 
 Keep a copy, take it with you
 
-Save a password-encrypted backup or schedule backups to a folder you choose. An archive lets you move your journal to another device or the web app. You can bring in entries from Daylio CSV, too.
+Save a password-encrypted backup or schedule backups to a folder you choose. If another phone saves its backups to the same folder, engender can merge in the newer one when you open it. An archive lets you move your journal to another device or the web app. You can bring in entries from Daylio, too.
 
 CSV, JSON, printable journal books and other readable exports are not encrypted. Anyone with those files can read them. Keep a backup off your device if you want to be able to restore your journal after losing it.
 
-Choose your flag colours, switch between light and dark, and pin the areas you use to Today. 
+Choose your flag colours, switch between light and dark, and pin the areas you use to Today.
 
 engender is available in English and Polish, with public source code under the GPLv3 licence.
 

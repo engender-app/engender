@@ -30,6 +30,7 @@ import { expectedSessionDays } from '../taperSchedule';
 import { encodePitchTrack } from '../../audio/track';
 import { percentileOfSorted } from '../../audio/series';
 import { acceptDocumentFile } from '../documents/accept';
+import type { PersonaLocale } from './persona';
 
 function rng(seed: number) {
   return function () {
@@ -41,8 +42,17 @@ function rng(seed: number) {
   };
 }
 
-export async function seedFullFixture(journal: Journal, today: number = todayEpochDay()): Promise<void> {
+export async function seedFullFixture(
+  journal: Journal,
+  today: number = todayEpochDay(),
+  locale: PersonaLocale = 'en'
+): Promise<void> {
   const now = demoNow(today);
+  // The persona's language (persona.ts): free text only, never a draw.
+  const say = (en: string, pl: string) => (locale === 'pl' ? pl : en);
+  const estradiol = say('Estradiol valerate', 'Walerianian estradiolu');
+  const progesterone = say('Progesterone', 'Progesteron');
+  const sertraline = say('Sertraline', 'Sertralina');
   const r = rng(90210);
   const pick = <T>(from: readonly T[]): T => from[Math.floor(r() * from.length)];
   const between = (low: number, high: number) => low + Math.floor(r() * (high - low + 1));
@@ -53,7 +63,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // adherence view has something to read.
   const estradiolStart = today - 500;
   const estradiolEpisodeId = await journal.regimen.upsertEpisode({
-    drug: 'Estradiol valerate',
+    drug: estradiol,
     ester: 'valerate',
     dose: 4,
     doseUnit: 'mg',
@@ -84,7 +94,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       dose: 4,
       doseUnit: 'mg',
       status: 'taken',
-      drug: 'Estradiol valerate',
+      drug: estradiol,
       injectionSite: injectionSites[injectionCount % injectionSites.length],
       vehicle: 'oil'
     });
@@ -93,7 +103,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
 
   const progesteroneStart = today - 300;
   const progesteroneEpisodeId = await journal.regimen.upsertEpisode({
-    drug: 'Progesterone',
+    drug: progesterone,
     ester: null,
     dose: 100,
     doseUnit: 'mg',
@@ -120,7 +130,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       dose: 100,
       doseUnit: 'mg',
       status: 'taken',
-      drug: 'Progesterone'
+      drug: progesterone
     });
   }
 
@@ -131,7 +141,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // resolveHormoneDrug returns null for it.
   const sertralineStart = today - 250;
   const sertralineEpisodeId = await journal.regimen.upsertEpisode({
-    drug: 'Sertraline',
+    drug: sertraline,
     ester: null,
     dose: 50,
     doseUnit: 'mg',
@@ -157,20 +167,20 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       dose: 50,
       doseUnit: 'mg',
       status: 'taken',
-      drug: 'Sertraline'
+      drug: sertraline
     });
   }
 
   const trackingStart = today - 365;
   const hairStages = [
-    'Hairline where it was',
-    'Temples a little further back',
-    'Temples the same, crown fuller',
-    'Thinner at the crown in bright light',
-    'Crown about the same',
-    'Parting looks narrower',
-    'Temples filling in',
-    'No change I can see'
+    say('Hairline where it was', 'Linia włosów tam, gdzie była'),
+    say('Temples a little further back', 'Zakola trochę głębsze'),
+    say('Temples the same, crown fuller', 'Zakola bez zmian, czubek gęstszy'),
+    say('Thinner at the crown in bright light', 'W mocnym świetle czubek rzadszy'),
+    say('Crown about the same', 'Czubek mniej więcej bez zmian'),
+    say('Parting looks narrower', 'Przedziałek chyba węższy'),
+    say('Temples filling in', 'Zakola zarastają'),
+    say('No change I can see', 'Nie widzę zmian')
   ];
   let hairPhotoCount = 0;
   for (let day = trackingStart, i = 0; day <= today; day += between(60, 140), i++) {
@@ -219,10 +229,12 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   }
   // Fixed rather than drawn, so the seeded stream the rest of the fixture reads is unchanged.
   for (const goal of SOCIAL_PACK.goals.slice(0, 3)) await journal.roadmap.setGoalStatus(SOCIAL_PACK.key, goal.key, 'checked');
+  // "Coming out" here and "top surgery" below stay as they are in Polish:
+  // that is how Polish trans people write both.
   const comingOut = await journal.roadmap.addCategory('Coming out');
-  const customGoal = await journal.roadmap.addCustomGoal('Tell my sister', comingOut.id);
+  const customGoal = await journal.roadmap.addCustomGoal(say('Tell my sister', 'Powiedzieć siostrze'), comingOut.id);
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
-  await journal.roadmap.addCustomGoal('Tell my manager', comingOut.id);
+  await journal.roadmap.addCustomGoal(say('Tell my manager', 'Powiedzieć szefowej'), comingOut.id);
 
   // Name and document changes (functional audit ticket 35): a few offices
   // at different stages, a diploma that bounced, and one office of the
@@ -235,30 +247,30 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   await change('pl-legal-id-card', 'submitted', today - 30);
   await change('pl-legal-id-card', 'done', today - 9);
   await change('pl-legal-bank', 'submitted', today - 8);
-  await change('pl-legal-bank', 'waiting', today - 6, 'Branch asked for a copy of the ruling');
-  await change('pl-legal-diplomas', 'submitted', today - 25, 'Sent to the university');
-  await change('pl-legal-diplomas', 'waiting', today - 12, 'Passed on to the kuratorium');
-  const gym = await journal.roadmap.addInstitution('Gym membership');
+  await change('pl-legal-bank', 'waiting', today - 6, say('Branch asked for a copy of the ruling', 'Oddział chce kopii wyroku'));
+  await change('pl-legal-diplomas', 'submitted', today - 25, say('Sent to the university', 'Wysłane na uczelnię'));
+  await change('pl-legal-diplomas', 'waiting', today - 12, say('Passed on to the kuratorium', 'Przekazane do kuratorium'));
+  const gym = await journal.roadmap.addInstitution(say('Gym membership', 'Karnet na siłownię'));
   await change(gym.id, 'submitted', today - 4);
 
   // Letters: two already unlockable, two still sealed.
-  await journal.letters.addLetter({ epochDay: today - 400, text: 'Dear future me, HRT starts next month.', unlockEpochDay: today - 200 });
-  await journal.letters.addLetter({ epochDay: today - 150, text: 'One year in and the mirror is different now.', unlockEpochDay: today - 5 });
-  await journal.letters.addLetter({ epochDay: today - 20, text: 'For the day the court hearing is scheduled.', unlockEpochDay: today + 45 });
-  await journal.letters.addLetter({ epochDay: today - 3, text: 'For five years from now.', unlockEpochDay: today + 1800 });
+  await journal.letters.addLetter({ epochDay: today - 400, text: say('Dear future me, HRT starts next month.', 'Do mnie z przyszłości: w przyszłym miesiącu zaczynam HRT.'), unlockEpochDay: today - 200 });
+  await journal.letters.addLetter({ epochDay: today - 150, text: say('One year in and the mirror is different now.', 'Rok za mną i lustro jest już inne.'), unlockEpochDay: today - 5 });
+  await journal.letters.addLetter({ epochDay: today - 20, text: say('For the day the court hearing is scheduled.', 'Na dzień, w którym sąd wyznaczy termin rozprawy.'), unlockEpochDay: today + 45 });
+  await journal.letters.addLetter({ epochDay: today - 3, text: say('For five years from now.', 'Na za pięć lat.'), unlockEpochDay: today + 1800 });
 
   // Tryouts: dated inside the persona's own 150-day entry window, so the
   // detail route has real entries to read back by date overlap.
   const tryoutSpecs: { kind: 'name' | 'pronouns' | 'style' | 'makeup'; label: string; startEpochDay: number; endEpochDay: number | null }[] = [
     { kind: 'name', label: 'Alex', startEpochDay: today - 120, endEpochDay: today - 60 },
-    { kind: 'pronouns', label: 'she/her', startEpochDay: today - 100, endEpochDay: null },
-    { kind: 'style', label: 'layered look', startEpochDay: today - 40, endEpochDay: today - 10 }
+    { kind: 'pronouns', label: say('she/her', 'ona/jej'), startEpochDay: today - 100, endEpochDay: null },
+    { kind: 'style', label: say('layered look', 'na warstwy'), startEpochDay: today - 40, endEpochDay: today - 10 }
   ];
   for (const spec of tryoutSpecs) {
     const tryoutId = await journal.tryouts.upsertTryout({
       kind: spec.kind,
       label: spec.label,
-      description: spec.kind === 'name' ? null : `Notes on trying out ${spec.label}.`,
+      description: spec.kind === 'name' ? null : say(`Notes on trying out ${spec.label}.`, `Jak mi z tym: ${spec.label}.`),
       startEpochDay: spec.startEpochDay,
       endEpochDay: spec.endEpochDay
     });
@@ -320,7 +332,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       kind: kindFor(r()),
       startTimestamp: (day * 24 + 8) * 3_600_000,
       durationMs: between(2, 8) * 3_600_000,
-      note: r() < 0.2 ? 'a bit tight by the end' : null
+      note: r() < 0.2 ? say('a bit tight by the end', 'pod koniec trochę uciska') : null
     });
   }
   // Its elapsed reminder is what ticket 31's web reminders list has to show
@@ -333,7 +345,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     startTimestamp: now - 9 * 3_600_000,
     durationMs: null,
     reminderHoursAfterStart: 8,
-    reminderTitle: 'Binder check-in'
+    reminderTitle: say('Binder check-in', 'Sprawdzić binder')
   });
 
   // Cycle events: roughly monthly over two years.
@@ -345,7 +357,9 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // resolved a few weeks in, the two newest still going on (functional
   // audit ticket 23), so both states show. No extra rolls: the seeded
   // sequence after this stays where it was.
-  const sideEffectNames = ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
+  const sideEffectNames = locale === 'pl'
+    ? ['uderzenia gorąca', 'mdłości', 'tkliwość piersi', 'ból głowy', 'zmęczenie', 'wahania nastroju']
+    : ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
   for (let i = 0; i < 8; i++) {
     const epochDay = today - 730 + Math.floor((i / 8) * 730);
     await journal.sideEffects.upsertSideEffect({
@@ -366,14 +380,16 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   const procedureId = await journal.procedures.upsertProcedure({
     name: 'top surgery',
     surgeryEpochDay: today - 400,
-    notes: 'Double incision, drains out on day 5.',
+    notes: say('Double incision, drains out on day 5.', 'Podwójne cięcie, dreny wyjęte piątego dnia.'),
     dilationOptIn: true,
     archived: true,
     cost: { amount: 24000, currency: 'PLN', refunded: false }
   });
   await journal.procedures.addConsult(procedureId, today - 460);
   await journal.procedures.addConsult(procedureId, today - 420);
-  for (const item of ['buy gauze', 'arrange time off work', 'ask about lifting restrictions']) {
+  for (const item of locale === 'pl'
+    ? ['kupić gazę', 'załatwić wolne w pracy', 'zapytać, ile wolno dźwigać']
+    : ['buy gauze', 'arrange time off work', 'ask about lifting restrictions']) {
     await journal.procedures.addChecklistItem(procedureId, item);
   }
   await journal.procedures.addPhoto(procedureId, today - 390, await demoPhoto(7000));
@@ -394,7 +410,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   await journal.taper.upsertTaper(taper);
   for (const day of expectedSessionDays(taper, today)) {
     if (r() < 0.15) continue;
-    await journal.taper.upsertSession({ epochDay: day, note: r() < 0.2 ? 'a bit more resistance today' : '' });
+    await journal.taper.upsertSession({ epochDay: day, note: r() < 0.2 ? say('a bit more resistance today', 'dziś trochę większy opór') : '' });
   }
 
   // A document attached to the procedure, kind PDF - so documentGroups.ts
@@ -405,8 +421,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // hits - a page pdf.js could fail to render only costs the thumbnail
   // (renderPdfThumbnail swallows that itself), never the document.
   const preOpClearanceId = await journal.documents.addDocument(
-    { epochDay: today - 405, title: 'Pre-op clearance' },
-    await acceptDocumentFile(demoDocumentPdf('Cleared for surgery.'))
+    { epochDay: today - 405, title: say('Pre-op clearance', 'Kwalifikacja do zabiegu') },
+    await acceptDocumentFile(demoDocumentPdf(say('Cleared for surgery.', 'Zakwalifikowano do zabiegu.')))
   );
   await journal.documents.setDocumentTarget(preOpClearanceId, { kind: 'procedure', id: procedureId });
 
@@ -418,17 +434,19 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // item 13): with both consults behind it, the card that is meant to say
   // what is next has nothing to say.
   const secondProcedureId = await journal.procedures.upsertProcedure({
-    name: 'facial feminization surgery',
+    name: say('facial feminization surgery', 'feminizacja twarzy (FFS)'),
     kind: 'facial_feminization',
     surgeryEpochDay: today + 60,
-    notes: 'Consult went well, surgeon proposed a date.',
+    notes: say('Consult went well, surgeon proposed a date.', 'Konsultacja dobra, chirurg zaproponował termin.'),
     cost: { amount: 9800, currency: 'EUR', refunded: false }
   });
   await journal.procedures.addConsult(secondProcedureId, today - 10);
   await journal.procedures.addConsult(secondProcedureId, today + 12);
 
   // Appointment prep: a standalone checklist, unrelated to the procedure's.
-  for (const item of ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {
+  for (const item of locale === 'pl'
+    ? ['zapytać o dawkę spironolaktonu', 'zabrać wyniki badań', 'zapytać o skierowanie na depilację']
+    : ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {
     await journal.checklists.addToStandaloneChecklist(item);
   }
 
@@ -436,18 +454,18 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // opened date and an in-use window (ticket 13), past it on purpose - the
   // demo persona is the one place "past it, with no adjective" gets seen.
   await journal.stock.upsertEntry({
-    drug: 'Estradiol valerate',
+    drug: estradiol,
     quantity: 6,
-    unit: 'mL',
+    unit: say('mL', 'ml'),
     recordedEpochDay: today - 3,
     openedEpochDay: today - 40,
     inUseWindowDays: 28,
     cost: { amount: 38.9, currency: 'PLN', refunded: false }
   });
   await journal.stock.upsertEntry({
-    drug: 'Progesterone',
+    drug: progesterone,
     quantity: 40,
-    unit: 'tablets',
+    unit: say('tablets', 'tabletek'),
     recordedEpochDay: today - 3,
     openedEpochDay: today - 3,
     inUseEndEpochDay: today + 60
@@ -468,7 +486,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   for (const take of demoBenchmarks(r, today)) {
     await journal.voiceBenchmarks.saveBenchmark({
       ...take,
-      passageKey: 'builtin-en',
+      // A Polish persona reads the Polish passage, as the flow offers it.
+      passageKey: say('builtin-en', 'builtin-pl'),
       passageAudio: demoAudioBytes(r),
       vowelAudio: take.f1Hz === null ? null : demoAudioBytes(r)
     });
@@ -530,7 +549,9 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
 
   // Comfort list: who to text, which walk, which song - the editor's own
   // register (comfort_list_item_placeholder).
-  for (const text of ['Text Ola', 'Walk by the river', 'Rewatch Steven Universe', 'Call my sister']) {
+  for (const text of locale === 'pl'
+    ? ['Napisać do Oli', 'Spacer nad rzeką', 'Jeszcze raz Steven Universe', 'Zadzwonić do siostry']
+    : ['Text Ola', 'Walk by the river', 'Rewatch Steven Universe', 'Call my sister']) {
     await journal.comfortItems.addItem(text);
   }
 
@@ -551,7 +572,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     await journal.marginNotes.add({
       entryId: goodOldEntry.id,
       epochDay: today,
-      text: 'Reading this again - I remember exactly how nervous I was.'
+      text: say('Reading this again - I remember exactly how nervous I was.', 'Czytam to jeszcze raz i dokładnie pamiętam tamten stres.')
     });
   }
 
@@ -566,10 +587,10 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
 
   // One custom entry template, alongside whatever built-ins ship.
   await journal.entryTemplates.addEntryTemplate({
-    name: 'Hard day',
+    name: say('Hard day', 'Trudny dzień'),
     tags: ['dt-physical', 'e-anxious'],
     dims: { euphoria_dysphoria: 20 },
-    noteScaffold: 'What was hard today: ',
+    noteScaffold: say('What was hard today: ', 'Co dziś było trudne: '),
     presentationId: null
   });
 

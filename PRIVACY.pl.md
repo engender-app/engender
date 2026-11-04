@@ -1,6 +1,6 @@
 # Polityka prywatności
 
-Ostatnia aktualizacja: 14 października 2026
+Ostatnia aktualizacja: 4 listopada 2026
 
 engender to dziennik tranzycji. Tworzy go i publikuje Alicja Barankiewicz
 w Warszawie. Ta polityka dotyczy aplikacji w przeglądarce i na Androida,
@@ -26,13 +26,14 @@ baza i media są zaszyfrowane na urządzeniu. Autorka nie może odzyskać ich
 za ciebie.
 
 Strona w przeglądarce zlicza otwarcia przy połączeniu z siecią bez profilowania odwiedzających. Liczniki nie zawierają danych z dziennika.
-Android nie wysyła takich zgłoszeń - jest w 100% lokalna. 
+Android nie wysyła takich zgłoszeń: jest w 100% lokalna.
 
 ## Co aplikacja przechowuje i gdzie
 
 Wszystko, co wpiszesz w aplikacji, zostaje w pamięci lokalnej na twoim urządzeniu:
 wpisy, notatki i nastroje, skale, dawki i schematy dawkowania, wyniki badań,
-pomiary, wizyty, kamienie milowe, listy, zdjęcia, nagrania głosowe i wideo,
+wizyty, skierowania i kolejki, notatki o osobach, do których chodzisz,
+koszty, zmiany danych w instytucjach, kamienie milowe, listy, zdjęcia, nagrania głosowe i wideo,
 zaimportowane dokumenty, przypomnienia i ustawienia. Baza dziennika i zdjęcia
 są zaszyfrowane na urządzeniu. Ani strona, ani aplikacja nie wysyłają tych danych NIGDZIE.
 
@@ -46,7 +47,11 @@ tymczasowego.
 Aplikacja w przeglądarce i aplikacja na Androida mają osobne dzienniki. Żeby
 przenieść dziennik z jednej do drugiej, eksportujesz zaszyfrowaną kopię
 zapasową i ją importujesz na drugim urządzeniu.
-W planach jest funkcjonalność polegająca na synchronizacji dziennika pomiędzy dwoma urządzeniami w tej samej sieci LAN. Niestety to wymagałoby pozwolenia INTERNET w aplikacji Android - system jest tak skonstruowany, że nawet otwarcie lokalnego połączenia wymaga tego samego pozwolenia, co połączenie z Internetem.
+Aplikacja nie synchronizuje dziennika między dwoma urządzeniami w sieci
+lokalnej. Na Androidzie nawet połączenie lokalne wymaga uprawnienia
+INTERNET, a aplikacja o nie nie prosi. Dwa telefony z Androidem mogą za to
+korzystać z jednego folderu na kopie zapasowe, jak opisano w części
+Zaszyfrowane kopie zapasowe.
 
 ## Aplikacja w przeglądarce
 
@@ -227,6 +232,22 @@ odczytać. Opcjonalny klucz odzyskiwania otworzy dziennik na tym samym
 telefonie, gdy odblokowanie zawiedzie, ale niczego nie przywróci, jeśli
 telefon albo jego pamięć przepadną.
 
+## Kamuflaż
+
+Kamuflaż zmienia to, co inni widzą z zewnątrz. Ikona i nazwa w launcherze
+zmieniają się w neutralne „Notatki”, a ekran blokady, widżety, powiadomienia,
+nazwy plików kopii i eksportów, nagłówek wydruku oraz w przeglądarce karta
+i nazwa zainstalowanej aplikacji przestają nazywać engender. Gdy kamuflaż
+jest włączony, Android blokuje też zrzuty ekranu i podgląd aplikacji na
+liście ostatnio używanych. Po odblokowaniu dziennika aplikacja wygląda tak
+samo jak bez kamuflażu.
+
+Prawdziwa nazwa nadal widnieje w informacjach o aplikacji, przy prośbach
+o uprawnienia, w nagłówkach powiadomień i w wyborze widżetów. W przeglądarce
+adres aplikacji nadal widać na pasku adresu, w historii, zakładkach
+i ustawieniach witryny. Kamuflaż to nie szyfrowanie i nie zmienia tego, kto
+może odczytać dziennik.
+
 ## Kopie zapasowe, eksporty i udostępniane pliki
 
 Kiedy eksportujesz albo udostępniasz plik, wybierasz, dokąd trafi.
@@ -256,6 +277,12 @@ Zapis jest uznawany za zakończony po synchronizacji pliku i folderu oraz
 sprawdzeniu zapisanych bajtów. Inni dostawcy nie mogą otrzymać takiego
 potwierdzenia. Nie oznacza ono sprawdzenia przesłania pliku do chmury.
 
+Jeśli włączysz dołączanie kopii z innych urządzeń, aplikacja na Androida
+przy otwarciu zagląda do tego samego folderu. Gdy inne urządzenie zapisało
+tam nowszą kopię, aplikacja otwiera ją hasłem do kopii i dołącza do
+dziennika na telefonie. Nic nie jest nigdzie wysyłane: oba urządzenia tylko
+czytają i zapisują wybrany folder.
+
 ### Eksporty do czytania
 
 Niektóre eksporty celowo nie są szyfrowane, bo służą do czytania,
@@ -263,13 +290,12 @@ udostępniania albo druku:
 
 - pliki CSV i JSON eksportowane w Ustawieniach,
 - pamiątkowa książka dziennika przygotowana do druku albo do PDF,
-- zestawienie dla lekarza ze schematami dawkowania, pomiarami, wynikami badań
-  i notatkami,
+- zestawienie dla lekarza ze schematami dawkowania, wynikami badań,
+  zabiegami, skutkami ubocznymi i zauważonymi zmianami,
 - kolaże zdjęć i filmy poklatkowe,
-- karty podsumowań udostępniane jako obrazy,
 - dokumenty PDF zapisane z powrotem w pamięci urządzenia,
 - pojedyncze pliki kalendarza (`.ics`) z terminami wizyt, operacji albo
-  kamieni milowych.
+  dniem otwarcia listu.
 
 Każdy, kto dostanie taki plik albo wydruk, może odczytać jego treść. Zanim
 aplikacja zapisze niezaszyfrowany plik, prosi o potwierdzenie albo wymaga

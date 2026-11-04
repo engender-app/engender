@@ -39,8 +39,8 @@ it is reachable from Today.
 ### Today
 
 Today shows the areas you pin, an agenda of upcoming events and a way to
-start an entry. You decide which areas appear, which kinds of events count
-as upcoming, and which live tiles stay visible.
+start an entry. You decide which areas appear and which live tiles stay
+visible.
 
 Quick add lets you log a mood, a backdated entry, a dose, a tally or a wear
 session from the navigation bar. Each tracking screen also has its own add
@@ -58,21 +58,23 @@ entries, or use search and filters to find something across the journal.
 
 ### Look back
 
-Choose a period to review day-by-day charts, tag insights, recaps and entries
-that resurface from your history. The period you choose carries through the
-section's readings. You can also prepare a journal book for printing or PDF
-export, or share retrospective cards as images. Muted eras stay out of
-On this day and Wrapped, including their notifications and share cards.
+Choose a period to review day-by-day charts, tag insights, what you spent,
+recaps and entries that resurface from your history. The period you choose
+carries through the section's readings. You can also prepare a journal book
+for printing or PDF export. Muted eras stay out of On this day and Wrapped.
 
 ### Transition
 
 Transition brings the other tracking areas together:
 
 - Medication regimens, dose logs, lab results, appointments and a summary you
-  can prepare for a clinician.
+  can prepare for a clinician. Appointments also hold referrals and waiting
+  lists, and your own notes on the people you see. Costs can be recorded on
+  appointments, procedures, labs, medication stock and hair removal.
 - Surgery records, hair progress and changes you
   notice during a regimen.
-- Milestones, named eras, a roadmap and letters you write now to read later.
+- Milestones, named eras, a roadmap with name and document changes tracked
+  per institution, and letters you write now to read later.
 - Presentation tryouts, voice practice and recordings, binder or tucking
   wear sessions, and hair removal.
 - Safe Space and a resource directory.
@@ -94,8 +96,10 @@ genderfluid, bisexual, lesbian, pansexual, rainbow, agender, gay men,
 genderqueer, intersex, asexual, demiboy, demigirl, trigender and Polish.
 On Android, the launcher icon follows your chosen palette.
 
-Disguise mode uses a neutral name and icon and hides pride motifs. An app
-lock controls access to the journal, and lock screens show no entries or
+Disguise mode changes what shows outside the unlocked app: the launcher icon
+and name, the lock screen, widgets, notifications, the Recents preview, export
+file names, printed letterheads and the web tab. Inside the unlocked app
+nothing changes. An app lock controls access to the journal, and lock screens show no entries or
 other journal data. Lock timing decides when the lock comes back: as soon as
 you leave the app, after one or five minutes away, or only on a restart.
 On the web, locking also closes the journal's database and lets go of its
@@ -144,7 +148,9 @@ storage provider. Delivery syncs the file and folder, then checks the bytes read
 back before reporting success. Providers without that boundary report an
 incomplete backup. Android keeps
 the five newest verified automatic backups and prunes older automatic backups
-only after a new one verifies. Manual backups remain untouched.
+only after a new one verifies. Manual backups remain untouched. When two
+Android devices back up to the same folder, each can merge in the other's
+newer backup when the app opens; both need the same backup password.
 
 Daylio is the only app you can import from, through its CSV export or its
 `.daylio` backup. Plain CSV and JSON exports are available when you want to

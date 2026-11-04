@@ -32,6 +32,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { changePalette, changeTheme, isAppearancePending } from '$lib/motion/paletteChange';
   import { paletteRing } from '$lib/motion/paletteRing';
+  import { paletteNameFit } from '$lib/components/paletteNameFit';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import { collapse, resize } from '$lib/motion/reveal';
@@ -209,7 +210,7 @@
        it: a flag is a block of its own (rule 13), the grid is the one setup
        draws (screens.css), and the card's padding left each flag too narrow
        for its name. The frame travels between flags (paletteRing). -->
-  <div class="palette-grid" role="radiogroup" use:rovingRadio use:paletteRing aria-label={m.colour_palette()}>
+  <div class="palette-grid" role="radiogroup" use:rovingRadio use:paletteRing use:paletteNameFit aria-label={m.colour_palette()}>
     <span class="palette-selection-ring" aria-hidden="true"></span>
     {#each PALETTES as [key, label] (key)}
       <button

@@ -8,13 +8,13 @@ Czasem wystarczy zaznaczyć nastrój. Jeśli chcesz zapisać więcej, dodaj nota
 
 HRT i zdrowie
 
-Zapisuj dawki HRT i innych leków, ustaw harmonogram i przypomnienia. Notuj wyniki badań, wymiary ciała i zmiany, które zauważasz na HRT. Jeśli cię to dotyczy, śledź zmiany owłosienia i cykl. Jest też miejsce na przygotowania do operacji i późniejsze notatki z rekonwalescencji. Przed wizytą spiszesz pytania i przygotujesz podsumowanie, które zabierzesz do gabinetu.
+Zapisuj dawki HRT i innych leków, ustaw harmonogram i przypomnienia. Notuj wyniki badań i zmiany, które zauważasz na HRT. Jeśli cię to dotyczy, śledź zmiany owłosienia i cykl. Jest też miejsce na przygotowania do operacji i późniejsze notatki z rekonwalescencji. Zapiszesz skierowania i to, od kiedy czekasz w kolejce, do kogo chodzisz i ile kosztowała wizyta albo recepta. Przed wizytą spiszesz pytania i przygotujesz podsumowanie, które zabierzesz do gabinetu.
 
 engender nie stawia diagnoz, nie interpretuje wyników badań, nie dobiera dawek ani nie zastępuje porady medycznej. Decyzje o leczeniu konsultuj z lekarzem.
 
 Próby i kamienie milowe
 
-Sprawdzasz nowe imię, inne zaimki albo styl? Zapisuj, jak się z nimi czujesz. Nagrywaj ćwiczenia głosu i porównuj kolejne nagrania. Notuj zabiegi depilacji oraz czas bindowania i tuckingu. Zaznaczaj kamienie milowe i planuj następne kroki. Możesz też napisać list do siebie i zamknąć go w kapsule czasu. Otworzy się w dniu, który wybierzesz.
+Sprawdzasz nowe imię, inne zaimki albo styl? Zapisuj, jak się z nimi czujesz. Nagrywaj ćwiczenia głosu i porównuj kolejne nagrania. Notuj zabiegi depilacji oraz czas bindowania i tuckingu. Zaznaczaj kamienie milowe, planuj następne kroki i śledź zmianę danych w każdej instytucji, która jej wymaga. Możesz też napisać list do siebie i zamknąć go w kapsule czasu. Otworzy się w dniu, który wybierzesz.
 
 Zobacz, co się zmieniło
 
@@ -30,7 +30,7 @@ Dziennik otworzysz hasłem, PIN-em, odciskiem palca albo inną blokadą ekranu t
 
 Kopia na później albo na nowy telefon
 
-Zrób kopię zapasową zaszyfrowaną hasłem albo ustaw automatyczne kopie do wybranego folderu. Z archiwum przeniesiesz dziennik na inne urządzenie albo do wersji w przeglądarce. Wpisy z Daylio zaimportujesz z pliku CSV.
+Zrób kopię zapasową zaszyfrowaną hasłem albo ustaw automatyczne kopie do wybranego folderu. Jeśli inny telefon zapisuje kopie w tym samym folderze, engender po otwarciu dołączy nowszą z nich. Z archiwum przeniesiesz dziennik na inne urządzenie albo do wersji w przeglądarce. Wpisy z Daylio zaimportujesz z pliku CSV albo z kopii zapasowej Daylio.
 
 Wybierz barwy swojej flagi i jasny albo ciemny motyw. Części aplikacji, z których korzystasz, przypniesz do ekranu Dziś.
 
