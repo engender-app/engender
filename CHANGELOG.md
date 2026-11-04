@@ -104,7 +104,9 @@ a record of what you had but does not bring it back.
 
 ### Changed since rc.1
 
-- Today shows fewer tiles. Quick add offers "Log dose" only while a regimen is
+- Today shows fewer tiles: the voice benchmark nudge, the hair removal recovery
+  notice, the active tryout tile and the appointment-today tile are gone, and
+  the patch schedule now sits in the dose panel. Quick add offers "Log dose" only while a regimen is
   running. Onboarding no longer asks which areas you want.
 - The onset bands in Changes sit behind "What the literature says", sourced from
   SOC8 or the studies it cites. Duplicate and stereotype-coded effects are hidden
