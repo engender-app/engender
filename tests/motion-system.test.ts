@@ -1593,3 +1593,19 @@ describe('disabled dimming', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/* Carpet 15 row 51: two one-frame changes found by the yank sweep and fixed
+   in CSS alone, guarded here so a later edit cannot quietly undo them. */
+describe('carpet 15 row 51 colour and name arrivals', () => {
+  it("fades setup's Skip words with the field when a flag is picked, keeping .btn's list", () => {
+    const source = stripComments(readFileSync(join(root, 'src/routes/onboarding/+page.svelte'), 'utf8'));
+    const rule = source.match(/\.setup-outs \.btn \{([^}]*)\}/)?.[1] ?? '';
+    const property = rule.match(/transition-property:\s*([^;]+);/)?.[1].split(',').map((p) => p.trim()) ?? [];
+    expect(property).toEqual(['transform', 'background', 'filter', 'opacity', 'color']);
+  });
+
+  it("opens an era's name from closed when it is drawn into an already open band", () => {
+    const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
+    expect(source).toMatch(/@starting-style\s*\{\s*\.is-active \.span-tl-era-name\s*\{\s*clip-path:\s*inset\(100% 0 0 0\);/);
+  });
+});
