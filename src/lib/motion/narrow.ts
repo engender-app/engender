@@ -77,6 +77,41 @@ export function travelCells(before: CellBox[], root: HTMLElement | undefined, at
   }
 }
 
+/** What stands under a narrowing grid: the "more" button and the links
+    after it. The grid reaches its new height in the frame the chip is
+    pressed, so without this they sit at their new place in that frame
+    (carpet 15 row 49: Starred brought "Make a collage or timelapse" up
+    from below the fold over the leaving tiles in one frame). Measured with
+    the cells, before the list changes. */
+export function measureFollowers(scope: HTMLElement | undefined): Map<HTMLElement, number> {
+  const tops = new Map<HTMLElement, number>();
+  for (const node of scope?.querySelectorAll<HTMLElement>('[data-narrow-follow]') ?? []) {
+    tops.set(node, node.getBoundingClientRect().top);
+  }
+  return tops;
+}
+
+/** Walks each follower from where it stood to where it stands now, in the
+    same frame and over the same duration as `travelCells`. One that stood
+    below the screen starts at the screen's bottom edge rather than its old
+    place, so it travels only what the viewport shows; one that is below the
+    screen both before and after does not move at all. */
+export function travelFollowers(before: Map<HTMLElement, number>): void {
+  if (isReducedMotion() || typeof innerHeight !== 'number') return;
+  const duration = motionDuration('--dur-med');
+  for (const [node, top] of before) {
+    if (!node.isConnected) continue;
+    const now = node.getBoundingClientRect().top;
+    if (top >= innerHeight && now >= innerHeight) continue;
+    const dy = Math.min(top, innerHeight) - now;
+    if (Math.abs(dy) < 1) continue;
+    node.animate([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }], {
+      duration,
+      easing: EASE_OUT_CSS
+    });
+  }
+}
+
 /** A tile that a chip has narrowed away: it leaves the flow in the frame it
     is dropped and fades where it stood.
 

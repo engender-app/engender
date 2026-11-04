@@ -31,7 +31,7 @@
      full JPEG bytes through readPhoto (PhotoWipe.svelte) and a `.webm` is
      not a frame. Its tile plays it instead of picking it. */
   import { tick } from 'svelte';
-  import { collapse } from '$lib/motion/reveal';
+  import { collapse, crossfade } from '$lib/motion/reveal';
   import { page } from '$app/state';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
@@ -66,7 +66,7 @@
   import Field from '$lib/components/kit/Field.svelte';
   import PhotoWipe from '$lib/components/kit/PhotoWipe.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import { measureCells, pinnedOut, tileIn, travelCells } from '$lib/motion/narrow';
+  import { measureCells, measureFollowers, pinnedOut, tileIn, travelCells, travelFollowers } from '$lib/motion/narrow';
   import { scrollBehavior } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -203,6 +203,7 @@
       rewraps once instead of twice. */
   async function pickChip(next: PhotoChip) {
     const before = measureCells(gridEl, 'data-photo-key');
+    const followers = measureFollowers(gridEl?.closest<HTMLElement>('.screen') ?? undefined);
     const url = new URL(page.url);
     if (next === 'everything') url.searchParams.delete(SOURCE_PARAM);
     else url.searchParams.set(SOURCE_PARAM, next);
@@ -218,7 +219,10 @@
     await tick();
     /* The keyed grid finishes its query update after navigation resolves.
        Measure its new boxes in the next frame, before that frame paints. */
-    requestAnimationFrame(() => travelCells(before, gridEl, 'data-photo-key'));
+    requestAnimationFrame(() => {
+      travelCells(before, gridEl, 'data-photo-key');
+      travelFollowers(followers);
+    });
   }
 
   /* The scrubber appears once the grid is taller than the screen, which is
@@ -360,7 +364,11 @@
     <ReadGate read={libraryQuery} variant="block" count={2}>
       {#snippet rows()}
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
-        <p class="photo-count" data-photo-count>{m.ph_count({ count: shown.length })}</p>
+        <!-- The number changes with a chip, so it crossfades rather than
+             swapping in the frame of the press (carpet 15 row 49). -->
+        <p class="photo-count" data-photo-count>
+          {#key shown.length}<span in:crossfade out:crossfade>{m.ph_count({ count: shown.length })}</span>{/key}
+        </p>
         <div class="photo-library">
           <div class="photo-grid" bind:this={gridEl}>
             {#each rendered as p (p.id)}
@@ -418,7 +426,7 @@
                hidden: it is a position in the layout, not content. -->
           <div class="photo-grid-edge" bind:this={gridSentinel} aria-hidden="true"></div>
           {#if remaining > 0}
-            <button class="btn btn-soft press photo-grid-more" data-photo-grid-more onclick={growGrid}>
+            <button class="btn btn-soft press photo-grid-more" data-photo-grid-more data-narrow-follow onclick={growGrid}>
               <span>{moreLabel}</span>
             </button>
           {/if}
@@ -440,7 +448,7 @@
             </div>
           {/if}
         </div>
-        <div>
+        <div data-narrow-follow>
           <a class="btn btn-soft press" href="/media/photos/export" data-journey-export>
             <Icon name="image" size={20} /><span>{m.pj_open()}</span>
           </a>
