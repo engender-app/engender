@@ -697,7 +697,7 @@ test('a finished row keeps its icon and its screen', () => {
   const sections = hubSections(reading({ states: { wearSessions: finished(TODAY - 90) } }));
   const row = sections.at(-1)?.rows[0];
 
-  assert.equal(row?.spec.icon, 'clock');
+  assert.equal(row?.spec.icon, 'watch');
   assert.equal(row?.spec.href, '/body/wear');
 });
 

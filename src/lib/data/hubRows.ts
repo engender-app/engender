@@ -279,11 +279,10 @@ const ROWS = [
   },
   // --- Transition ----------------------------------------------------------
   {
-    /* Keeps `globe`, which resources gave up: a roadmap is the closest thing
-       in the icon set to a map, and support and resources is a list of places
-       outside the app rather than a route through it. */
+    /* `route`, a way from one point to another (pre-release-human 12). It
+       drew `globe`, which said "the world" rather than "a plan". */
     key: 'roadmap',
-    icon: 'globe',
+    icon: 'route',
     href: '/transition/roadmap',
     home: 'transition',
     /* A goal and a tick against one both opt out of the last-write registry
@@ -305,8 +304,10 @@ const ROWS = [
     line: 'read'
   },
   {
+    /* `hanger`, for trying something on (pre-release-human 12); it drew
+       `tag`. */
     key: 'tryouts',
-    icon: 'tag',
+    icon: 'hanger',
     href: '/transition/tryouts',
     home: 'transition',
     /* The tryout photos only, which is the registry's own bound: a tryout's
@@ -318,8 +319,10 @@ const ROWS = [
     line: 'read'
   },
   {
+    /* `watch`, something worn for a length of time (pre-release-human
+       12); it drew `clock`. */
     key: 'wear',
-    icon: 'clock',
+    icon: 'watch',
     href: '/body/wear',
     home: 'transition',
     areas: ['wearSessions'],
@@ -327,8 +330,10 @@ const ROWS = [
     line: 'read'
   },
   {
+    /* `razor` (pre-release-human 12); it drew `shuffle`, which said
+       nothing about hair. */
     key: 'hair-removal',
-    icon: 'shuffle',
+    icon: 'razor',
     href: '/body/hair-removal',
     home: 'transition',
     areas: ['hairRemovalSessions'],
@@ -336,12 +341,12 @@ const ROWS = [
     line: 'read'
   },
   {
-    /* `curve` still, from when this fronted the benchmark alone: a line over
-       takes is still most of what is behind the row, and the recordings
-       ticket 17 folded in here keep `mic` on the screen's own Recordings
-       tab rather than taking the row's icon with them. */
+    /* `waveform` (pre-release-human 12). It drew `curve`, a line over
+       takes, which at row size read as a hill rather than a voice. The
+       recordings ticket 17 folded in here keep `mic` on the screen's own
+       Recordings tab rather than taking the row's icon with them. */
     key: 'voice-benchmark',
-    icon: 'curve',
+    icon: 'waveform',
     /* No `?tab=record`: the flow's own tab is already the screen's default,
        so the two addresses opened on the same tab (ticket 17). */
     href: '/voice',
