@@ -4,8 +4,9 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { MAX_TIMES_PER_DAY, expectedSessionDays, sessionsExpectedOn, stageOn, stagesFromInput } from './taperSchedule.ts';
+import { MAX_TIMES_PER_DAY, dilationGated, expectedSessionDays, sessionsExpectedOn, stageOn, stagesFromInput } from './taperSchedule.ts';
 import type { TaperStage } from './types.ts';
+import { hubRowsMatching } from './hubRows.ts';
 
 const taper = (startEpochDay: number, stages: TaperStage[]) => ({ startEpochDay, stages });
 
@@ -159,4 +160,28 @@ test('a times-a-day stage saves as a daily stage with its count, and needs a who
   }
   // An every-N-days stage still saves without a count.
   assert.deepEqual(stagesFromInput([{ everyNDays: 2, days: 7 }]), [{ everyNDays: 2, days: 7 }]);
+});
+
+/* Alicja, 2026-11-04: dilation should not be visible unless a vaginoplasty
+   was logged. A custom procedure that opted in is the other way into the
+   same eligibility (`dilationEligible`), a vulvoplasty or nothing is not. */
+test('dilation is gated off until an eligible procedure exists', () => {
+  const procedure = (kind: 'vaginoplasty' | 'vulvoplasty' | 'custom', dilationOptIn = false) => ({ kind, dilationOptIn });
+  assert.equal(dilationGated({}, []).taperSessions?.hidden, true);
+  assert.equal(dilationGated({}, [procedure('vulvoplasty'), procedure('custom')]).taperSessions?.hidden, true);
+  assert.deepEqual(dilationGated({}, [procedure('vaginoplasty')]), {});
+  assert.deepEqual(dilationGated({}, [procedure('custom', true)]), {});
+});
+
+test('the gate keeps what was already said about the dilation area', () => {
+  const states = { taperSessions: { hidden: false, finishedEpochDay: 5, suspendedEpochDay: null }, wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
+  const gated = dilationGated(states, []);
+  assert.deepEqual(gated.taperSessions, { hidden: true, finishedEpochDay: 5, suspendedEpochDay: null });
+  assert.equal(gated.wearSessions, states.wearSessions);
+});
+
+test('a gated dilation row cannot be searched up on the More hub', () => {
+  const reading = { todayEpochDay: 100, lastWrites: {}, forward: {}, states: dilationGated({}, []) };
+  assert.deepEqual(hubRowsMatching(reading, 'dilation', (key) => key), []);
+  assert.equal(hubRowsMatching({ ...reading, states: dilationGated({}, [{ kind: 'vaginoplasty', dilationOptIn: false }]) }, 'dilation', (key) => key).length, 1);
 });

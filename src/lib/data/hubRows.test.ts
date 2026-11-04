@@ -811,10 +811,8 @@ test('a hidden module cannot be searched up, while dilation follows surgery visi
     hubRowsMatching(reading({ states: { hairStages: hidden, hairPhotos: hidden } }), 'hair progress', titleOf),
     []
   );
-  assert.deepEqual(
-    hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf).map((row) => row.spec.key),
-    ['dilation']
-  );
+  /* taperSessions hidden is `dilationGated`'s signal: no eligible procedure. */
+  assert.deepEqual(hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf), []);
   assert.deepEqual(hubRowsMatching(reading({ states: { procedures: hidden } }), 'dilation', titleOf), []);
 });
 

@@ -74,7 +74,7 @@ import {
   latestWrite,
   type AreaGroupKey
 } from './areaGroups';
-import { areasHidden, type AreaStates, type HideableArea } from './areaState';
+import { areaHidden, areasHidden, type AreaStates, type HideableArea } from './areaState';
 import { foldText } from './fold';
 import type { ArchiveSectionName } from './journal/archiveSections';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
@@ -612,6 +612,11 @@ export function rowReads(spec: HubRowSpec): LastWriteKey[] {
     it fronts, which is where the rule lives now that the stats tab's cards
     ask it too (`areaState.ts`). */
 export function rowHidden(spec: HubRowSpec, states: AreaStates): boolean {
+  /* Dilation also goes when its own area is hidden, which nothing but
+     `dilationGated` (taperSchedule.ts) does: no procedure that can carry a
+     dilation journey is logged. Its visibility area stays `procedures`, so
+     hiding Surgery still takes it too. */
+  if (spec.key === 'dilation' && areaHidden('taperSessions', states)) return true;
   return areasHidden(spec.visibilityAreas ?? spec.areas, states);
 }
 
