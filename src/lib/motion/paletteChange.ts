@@ -57,6 +57,14 @@ function sunCentre(doc: Document): { x: number; y: number } {
   return box ? { x: box.left, y: box.top } : { x: doc.documentElement.clientWidth, y: 0 };
 }
 
+/** The rings of the sun on screen after the change. Setup keeps the sun it
+    is leaving under the new one's redraw, and Svelte makes an element inert
+    while it transitions out, so a ring under `[inert]` belongs to the flag
+    being left. */
+export function incomingRings(doc: Document): HTMLElement[] {
+  return [...doc.querySelectorAll<HTMLElement>('[data-flag-sun] > i')].filter((ring) => !ring.closest('[inert]'));
+}
+
 function reducedMotion(doc: Document): boolean {
   return isReducedMotion(doc) || !!doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
@@ -77,7 +85,7 @@ function prepareBloom(doc: Document): Bloom | null {
   return {
     addRings() {
       /* The new sun's own colours, outermost ring first. */
-      const stripes = [...doc.querySelectorAll<HTMLElement>('[data-flag-sun] > i')]
+      const stripes = incomingRings(doc)
         .sort((a, b) => b.offsetWidth - a.offsetWidth)
         .map((ring) => getComputedStyle(ring).backgroundColor);
       if (!stripes.length) return;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { bloomGeometry, bloomGradient, changePalette, changeTheme, isAppearancePending } from './paletteChange';
+import { DURATION_FALLBACK } from './tokens';
+import { bloomGeometry, bloomGradient, incomingRings, changePalette, changeTheme, isAppearancePending } from './paletteChange';
 
 describe('palette change', () => {
   it('saves immediately when view transitions are unavailable', () => {
@@ -191,6 +192,21 @@ describe('palette change', () => {
        each with the black seam on its own outer edge. */
     expect(gradient).toContain('blue 100px 114px, #000 114px 120px');
     expect(gradient).toContain('red 140px 154px, #000 154px 160px)');
+  });
+  /* Alicja, after living with it at 600ms: "a little longer". */
+  it('blooms over 800ms', () => {
+    expect(DURATION_FALLBACK['--dur-bloom']).toBe(800);
+  });
+  /* Setup holds the flag it is leaving under the new sun's redraw, so two
+     suns are in the document when the band is built; the leaving one is
+     inert while it goes. Reading both made a band of both flags' rings. */
+  it('builds the band from the sun that is arriving, not one on its way out', () => {
+    const ring = (width: number, leaving: boolean) =>
+      ({ offsetWidth: width, closest: (sel: string) => (sel === '[inert]' && leaving ? {} : null) }) as unknown as HTMLElement;
+    const old = [ring(204, true), ring(136, true)];
+    const fresh = [ring(198, false), ring(99, false)];
+    const doc = { querySelectorAll: () => [...old, ...fresh] } as unknown as Document;
+    expect(incomingRings(doc)).toEqual(fresh);
   });
 });
 

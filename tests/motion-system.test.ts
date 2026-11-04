@@ -1746,3 +1746,15 @@ describe('the Journal month opens and folds without a smear or a squeeze', () =>
     expect(rule('.cal-dows').transition).toBe('opacity var(--dur-med) var(--ease-out) var(--dur-fast)');
   });
 });
+
+/* prh12: setup's flag step picked a flag by writing the preference, so the
+   whole screen cut to the new colours in one frame. It goes through the same
+   bloom out of the sun that Settings uses. */
+describe('setup picks a flag the way Settings does', () => {
+  it('routes the flag step through changePalette', () => {
+    const setup = readFileSync(join(root, 'src/routes/onboarding/+page.svelte'), 'utf8');
+    expect(setup).toContain("import { changePalette, isAppearancePending } from '$lib/motion/paletteChange'");
+    expect(setup).toMatch(/data-palette-pick=\{key\}\s+onclick=\{\(\) => pickPalette\(key\)\}/);
+    expect(setup).toContain("if (prefs.palette !== key || isAppearancePending('palette')) changePalette(() => { prefs.palette = key; });");
+  });
+});
