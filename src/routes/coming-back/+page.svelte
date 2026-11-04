@@ -106,7 +106,7 @@
                 <ListRow
                   key="coming-back-era"
                   data-coming-back-item="era"
-                  icon="columns"
+                  icon="era"
                   title={item.name}
                   subtitle={item.startEpochDay === null
                     ? m.coming_back_era_sub_no_start()

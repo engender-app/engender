@@ -118,7 +118,7 @@ const AREA_ROWS: Record<
     label: () => m.presentations_title(),
     href: () => '/settings'
   },
-  eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/settings/eras' },
+  eras: { icon: 'era', label: () => m.eras_title(), href: () => '/settings/eras' },
   roadmapGoals: { ...iconOf('roadmap'), label: () => m.roadmap_title(), href: () => hubRow('roadmap').href },
   /* Goes to the document itself rather than to the list: a hit is one
      piece of paper somebody is looking for, and its own screen is the only

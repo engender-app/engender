@@ -247,7 +247,13 @@ export const PATHS: Record<string, string> = {
   toggle: '<rect x="2" y="6.5" width="19" height="11" rx="5.5"/><circle cx="15.5" cy="12" r="2.5"/>',
   // The accessibility figure in a circle. It took `eye`, which is show and
   // hide everywhere else.
-  access: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="7.6" r="1.1"/><path d="M7.5 10.6 12 11.6l4.5-1M12 11.6v2.9l-2.4 3.6M12 14.5l2.4 3.6"/>'
+  access: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="7.6" r="1.1"/><path d="M7.5 10.6 12 11.6l4.5-1M12 11.6v2.9l-2.4 3.6M12 14.5l2.4 3.6"/>',
+  // An era of somebody's life: a sun coming up over a horizon, a new stretch
+  // starting. It took `columns`, which reads as side by side and stays the
+  // mark for comparing. Three short rays and a ground line under the
+  // horizon keep it apart from `sun` (a whole disc) and from the logo's
+  // corner sun.
+  era: '<path d="M3 14.5h18"/><path d="M7 14.5a5 5 0 0 1 10 0"/><path d="M12 4v2.5M5.6 7.1l1.7 1.7M18.4 7.1l-1.7 1.7"/><path d="M8 18h8"/>'
 };
 
 /* The two parameters are constrained rather than escaped, because both have

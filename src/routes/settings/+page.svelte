@@ -343,7 +343,7 @@
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
     <ListRow key="body-regions" icon="figure" title={m.body_regions_row_title()} href="/settings/body-regions" />
-    <ListRow key="eras" icon="columns" title={m.eras_title()} href="/settings/eras" />
+    <ListRow key="eras" icon="era" title={m.eras_title()} href="/settings/eras" />
   </ListCard>
 
   <SectionHeading text={m.settings_privacy()} />

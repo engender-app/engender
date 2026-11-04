@@ -487,7 +487,19 @@ describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
     ['src/routes/settings/reminders/+page.svelte', '<Icon name="ICON" size=\\{16\\} /> {m.checkin_title\\(\\)}', 'mood', 'sparkle'],
     ['src/routes/settings/+page.svelte', 'key="notifications" icon="ICON"', 'badge', 'zap'],
     ['src/routes/settings/+page.svelte', 'key="permissions" icon="ICON"', 'toggle', 'key'],
-    ['src/routes/settings/+page.svelte', 'key="accessibility" icon="ICON"', 'access', 'eye']
+    ['src/routes/settings/+page.svelte', 'key="accessibility" icon="ICON"', 'access', 'eye'],
+    /* An era is a sun coming up over a horizon, a new stretch of life
+       starting. columns stays the mark for side by side (compare). */
+    ['src/routes/settings/+page.svelte', 'key="eras" icon="ICON"', 'era', 'columns'],
+    ['src/routes/settings/eras/+page.svelte', 'data-era={era.id}\\s+icon="ICON"', 'era', 'columns'],
+    ['src/routes/settings/eras/+page.svelte', 'icon="ICON"\\s+key="eras-empty"', 'era', 'columns'],
+    ['src/routes/coming-back/+page.svelte', 'data-coming-back-item="era"\\s+icon="ICON"', 'era', 'columns'],
+    ['src/routes/transition/milestones/+page.svelte', 'data-manage-eras href="/settings/eras">\\s*<Icon name="ICON"', 'era', 'columns'],
+    ['src/routes/day/[day]/+page.svelte', '<Icon name="ICON" size=\\{20\\} /><span>{m.era_start_here\\(\\)}', 'era', 'columns'],
+    ['src/routes/stats/+page.svelte', 'era-offer-said">\\s*<span class="kit-row-ico"><Icon name="ICON"', 'era', 'columns'],
+    ['src/lib/components/searchHitRows.ts', "eras: { icon: 'ICON'", 'era', 'columns'],
+    ['src/routes/compare/+page.svelte', 'key="compare-era-row-a"\\s+icon="ICON"', 'era', 'curve'],
+    ['src/routes/compare/+page.svelte', 'key="compare-era-row-b"\\s+icon="ICON"', 'era', 'curve']
   ];
 
   it.each(PLACES)('%s: %s draws %s, not %s', (file, place, mark, old) => {

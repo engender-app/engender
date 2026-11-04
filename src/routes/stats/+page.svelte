@@ -666,7 +666,7 @@
       {#key `${offerSpan.start}:${offerSpan.end}`}
       <div class="era-offer" class:is-ready={offerContentReady} data-era-offer role="group" aria-labelledby="era-offer-title" inert={!offerContentReady} transition:discloseOffer|global use:markOfferOpened={offerSpan}>
         <div class="era-offer-said">
-          <span class="kit-row-ico"><Icon name="columns" size={22} /></span>
+          <span class="kit-row-ico"><Icon name="era" size={22} /></span>
           <span class="kit-row-text">
             <span class="kit-row-title" id="era-offer-title">{m.lookback_era_offer_title()}</span>
             <span class="kit-row-sub">{m.lookback_era_offer_body()}</span>
