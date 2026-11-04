@@ -145,7 +145,11 @@ for (const CPU of CPUS) for (let run = 0; run < RUNS; run += 1) {
   const worstJump = Math.max(0, ...jumps.map((j) => j.step));
   /* Each arrival's opacity on the first frame it exists. */
   const arrivals = {};
-  for (const key of ['heading', 'lane', 'hosted']) arrivals[key] = frames.find((f) => f.seen[key] !== null)?.seen[key] ?? null;
+  /* `hosted` is sampled but not required: Meds draws its Cycle link only
+     with cycle tracking on (pre-release-human 12). */
+  for (const key of ['heading', 'lane']) arrivals[key] = frames.find((f) => f.seen[key] !== null)?.seen[key] ?? null;
+  const hostedArrival = frames.find((f) => f.seen.hosted !== null)?.seen.hosted;
+  if (hostedArrival !== undefined) arrivals.hosted = hostedArrival;
   const popped = Object.entries(arrivals).filter(([, o]) => o === null || o >= 0.5);
   /* The widest the pill was ever painted past its tab, at any opacity. */
   const pillOver = Math.max(0, ...frames.filter((f) => f.pill && f.pill.o > 0).map((f) => f.pill.w - f.pill.tab));
