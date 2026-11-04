@@ -1670,6 +1670,20 @@ describe('carpet 15 row 51 colour and name arrivals', () => {
     expect(rule('.span-tl-window-in')).toContain('translate: calc(-1 * var(--tl-span-start)) calc(var(--rest-h) - 100%);');
     expect(rule('.span-tl-window-end')).toContain('translate: calc(-1 * var(--tl-clip-right)) 0;');
     expect(rule('.span-tl-full')).toContain('translate: var(--tl-clip-right) 0;');
+    // Raised, each pair stands at values that still cancel.
+    expect(css).toMatch(/\.is-active \.span-tl-window-start \{\s*translate: var\(--tl-span-start\) 0;/);
+    expect(css).toMatch(/\.is-active \.span-tl-window-in \{\s*translate: calc\(-1 \* var\(--tl-span-start\)\) 0;/);
+    expect(css).toMatch(/\.is-active \.span-tl-era-name,\s*\.is-active \.span-tl-era-text \{\s*translate: 0 0;/);
+    expect(css).toMatch(/\.is-active \.span-tl-grip,\s*\.is-active \.span-tl-grip-ink \{\s*translate: 0 0;/);
+    expect(rule('.span-tl-era-name')).toContain('translate: 0 100%;');
+    expect(rule('.span-tl-era-text')).toContain('translate: 0 -100%;');
+    expect(rule('.span-tl-grip')).toContain('translate: 0 calc(100% - var(--rest-grip));');
+    expect(rule('.span-tl-grip-ink')).toContain('translate: 0 calc(var(--rest-grip) - 100%);');
+    // A held handle follows the finger: both halves of both window pairs drop their transition together.
+    const held = css.match(/((?:\.is-dragging [^,{]+,\s*)*\.is-dragging [^,{]+)\{\s*transition: none;/)?.[1] ?? '';
+    for (const selector of ['.span-tl-window-start', '.span-tl-window-in', '.span-tl-window-end', '.span-tl-full']) {
+      expect(held, selector).toContain(`.is-dragging ${selector}`);
+    }
   });
 
   /* The look-back tiles' settle travel restarted on every push while the
