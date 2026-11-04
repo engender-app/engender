@@ -34,6 +34,7 @@
      anything (PRODUCT.md:109, and labTiming.ts as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
+  import { scrollToHash } from '$lib/navigation/scroll-region';
   import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, EASE_OUT_SOFT_CSS } from '$lib/motion/tokens';
   import { flushSync, onDestroy } from 'svelte';
@@ -451,6 +452,18 @@
       name is free text and a fragment is not. */
   const blockAnchor = (episodeId: string) => `care-med-${episodeId}`;
 
+  /** The lane's name travels down to its block rather than taking the
+      fragment's own jump, which landed the whole way in one frame (prh12
+      bug 14, "should take you lower smoothly"). The eased scroll is
+      scroll-region.ts's, the same one a linked record lands with; the
+      focus still moves to the block, without a scroll of its own. */
+  function travelToBlock(event: MouseEvent, episodeId: string) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    document.getElementById(blockAnchor(episodeId))?.focus({ preventScroll: true });
+    scrollToHash(`#${blockAnchor(episodeId)}`);
+  }
+
   /** Where to log this lane's next dose: the same sheet the dose panel on
       Today opens (`/care/doses?add=1`), seeded with the drug whose block the
       button sits in, so a person on three regimens does not land in a picker
@@ -593,7 +606,7 @@
                    and offers Log a dose, with the whole rail in between.
                    Sized to the name rather than to the lane, so the press
                    is a control's press and not a full-width row's. -->
-              <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug}>
+              <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug} onclick={(event) => travelToBlock(event, lane.episodeId)}>
                 <span class="care-lane-drug">{lane.drug}</span>
                 <Icon name="chevronDown" size={18} cls="care-lane-go" />
               </a>
