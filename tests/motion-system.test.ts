@@ -1111,6 +1111,19 @@ describe('ticket 28: the field is a blind over the content', () => {
     }
   });
 
+  /* prh12 bug 10. Settings scrolled, then Today: the scrolled side names no
+     rings, so Today's shared sun was a new image with no old one, painted at
+     its resting place from the first frame while the blue it sits on was
+     still 213px above the window. The shared sun rides the travelling blind
+     on both legs instead. */
+  it('carries the shared sun with a blind that travels in or out whole', () => {
+    const enter = declarations(ruleOf(app, "html[data-blind-scroll='enter']::view-transition-new(*.sun-shared-ring)")?.body ?? '');
+    const exit = declarations(ruleOf(app, "html[data-blind-scroll='exit']::view-transition-old(*.sun-shared-ring)")?.body ?? '');
+    expect(enter.animation).toBe('blind-scroll-in var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both');
+    expect(exit.animation).toBe('blind-scroll-out var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both');
+    expect(exit.opacity).toBe('1');
+  });
+
   /* No frame carries two of the field's contents: the outgoing element
      spends --dur-fast, the incoming one waits exactly that long before it
      starts, and both travel 12-16px rather than sliding between two

@@ -1075,6 +1075,18 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 }
 ::view-transition-old(*.sun-shared-ring) { opacity: 0; animation: none; }
 ::view-transition-new(*.sun-shared-ring) { opacity: 1; animation: none; }
+/* A scrolled side names no rings, so the other side's sun is a group of one
+   image that never moves. Painted where it rests, it stood on the page from
+   the first frame while its blue travelled in from above the window
+   (prh12 bug 10, Settings scrolled to Today). It rides the blind instead,
+   in with it or out with it. */
+html[data-blind-scroll='enter']::view-transition-new(*.sun-shared-ring) {
+  animation: blind-scroll-in var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
+}
+html[data-blind-scroll='exit']::view-transition-old(*.sun-shared-ring) {
+  opacity: 1;
+  animation: blind-scroll-out var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
+}
 
 /* The field, named only so the blind - nested under it via
    view-transition-group: nearest (fieldBlind.ts) - inherits an ancestor
