@@ -294,6 +294,10 @@
            16). The rail carries today's place among the milestones and the
            hollow marks ahead of it; the list under it is the same set as
            rows, which is where a milestone is opened, edited or deleted. -->
+      <!-- Wrapped so the whole of it can leave as one when the last
+           milestone is deleted, and the empty notice can arrive, instead of
+           one swapping for the other in a frame (carpet 15 row 48). -->
+      <div out:crossfade>
       <MilestoneRail
         milestones={sorted}
         eras={erasQuery.rows}
@@ -354,14 +358,17 @@
           </div>
         {/if}
       </ListCard>
+      </div>
     {:else}
-      <Notice
-        icon="flag"
-        key="milestones-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.ms_none()}
-        action={{ label: m.ms_add(), primary: true, onclick: openPicker }}
-      />
+      <div in:crossfade>
+        <Notice
+          icon="flag"
+          key="milestones-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.ms_none()}
+          action={{ label: m.ms_add(), primary: true, onclick: openPicker }}
+        />
+      </div>
     {/if}
   </div>
 

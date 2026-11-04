@@ -110,7 +110,9 @@ public class AutoExportDeliveryTest extends BackupDeliveryTestSupport {
 
             resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "blocked", null);
             probe.evaluate("window.backupProbe.run(1)");
-            long blockedDeadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(10);
+            // run(1) packs a 386 MiB archive before the write pauses: 22.5 s on a
+            // Pixel 3 of 3 (re-check carpet 06), well under 10 s on the emulator.
+            long blockedDeadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(60);
             while (!resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "blocked", null, null)
                     .getBoolean("blocked") && System.nanoTime() < blockedDeadline) Thread.sleep(50);
             assertTrue("destination write did not pause after staging preparation",

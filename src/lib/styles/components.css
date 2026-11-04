@@ -661,7 +661,15 @@
   min-width: var(--touch-target); min-height: var(--touch-target);
   border: none; background: none; padding: 0;
   cursor: pointer;
-  transition: transform var(--dur-press) var(--ease-press);
+  /* The browser's disabled-button colour is not drawn anywhere on a
+     switch, but it changed in one frame with the opacity below. */
+  color: inherit;
+  /* Opacity is the disabled state below. Without it a switch going
+     disabled while a sheet saves dropped to 0.45 in one frame (carpet 15
+     row 46), the yank .btn already fixed for itself. */
+  transition-property: transform, opacity;
+  transition-duration: var(--dur-press), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out);
 }
 .switch-track {
   width: 44px; height: 28px; border-radius: var(--r-block);
@@ -2535,6 +2543,11 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
   letter-spacing: var(--display-track); color: var(--text);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  /* press.css's default names transform only; the dimmed lockout state
+     below fades rather than cutting (carpet 15 row 46). */
+  transition-property: transform, opacity;
+  transition-duration: var(--dur-press), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out);
 }
 .pin-key:hover { background: var(--surface-2); }
 /* A 62px key is a compact control, so it takes the default depth every

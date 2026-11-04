@@ -618,8 +618,14 @@
     <!-- The same history at full height, clipped to the span, with the
          frame as this layer's own two edges. Drawing only: the clip would
          hide a control that stood outside the span, so the controls are
-         the layer under this one. -->
-    <div class="span-tl-full" aria-hidden="true">
+         the layer under this one. The clip is two windows moved by
+         translate, each with its drawing moved back by the same amount
+         (the styles say why), so the five wrappers stand at one indent. -->
+    <div class="span-tl-window" aria-hidden="true">
+    <div class="span-tl-window-start">
+    <div class="span-tl-window-in">
+    <div class="span-tl-window-end">
+    <div class="span-tl-full">
       {#if firstEntryDay !== null}
         {@const journal = segment(firstEntryDay, today)}
         <span class="span-tl-band span-tl-journal" style:left="{journal.left}%" style:width="{journal.width}%"></span>
@@ -643,10 +649,14 @@
           {...roleAttrs(bandRole(i))}
         >
           {#if shownTo - shownFrom >= NAME_MIN_PX}
-            <span class="span-tl-era-name" style:left="{shownFrom - left + 8}px" style:max-width="{shownTo - shownFrom - 16}px">{band.name}</span>
+            <span class="span-tl-era-name" style:left="{shownFrom - left + 8}px" style:max-width="{shownTo - shownFrom - 16}px"><span class="span-tl-era-text">{band.name}</span></span>
           {/if}
         </span>
       {/each}
+    </div>
+    </div>
+    </div>
+    </div>
     </div>
 
     <!-- The eras as targets: one transparent button per era, the rail's
@@ -768,7 +778,7 @@
         onpointercancel={() => onHandleUp(handle)}
         onkeydown={(e) => onHandleKey(e, handle)}
       >
-        <span class="span-tl-grip" aria-hidden="true"></span>
+        <span class="span-tl-grip" aria-hidden="true"><span class="span-tl-grip-ink"></span></span>
       </div>
     {/each}
   </div>
@@ -891,7 +901,7 @@
   /* Both layers stop above the history lanes: a band drawn behind the span
      would be covered by it exactly where somebody is looking. */
   .span-tl-low,
-  .span-tl-full {
+  .span-tl-window {
     position: absolute;
     top: 0;
     left: 0;
@@ -921,15 +931,60 @@
   }
 
   /* The lifted layer: the bands at full height, framed top and bottom in
-     ink, revealed only across the span. The clip is the object that moves. */
+     ink, revealed only across the span. The clip is the object that moves.
+
+     It used to be one clip-path inset on the layer, and Chromium runs a
+     clip-path transition on the main thread: when the span changes, Look
+     back redraws its readings in a task of 80-110ms on a 6x throttled CPU,
+     the window stood still through it while the handles (transforms) went
+     on, and then it caught up 125px in one frame - on the phone the lifted
+     band popped open whole in 19 of 20 runs (carpet 15 row 51). So the
+     window is two clipping boxes moved by translate, which the compositor
+     runs whatever the main thread is doing: the outer one carries the
+     start and the top edge, the inner one the end edge, and each one's
+     contents are moved back by exactly what moved it, so the drawing
+     stands still and only the edges travel. Each pair transitions the
+     same values with opposite signs on the same duration and curve, so
+     the two always cancel, retargeted or reversed alike. Same edges, same
+     timing and curve as the inset had. The layer's own box, which does
+     not move, clips them all, so a window slid right never widens the
+     page. */
+  .span-tl-window {
+    overflow: clip;
+  }
+  .span-tl-window-start {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    translate: var(--tl-span-start) calc(100% - var(--rest-h));
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+  .span-tl-window-in {
+    position: absolute;
+    inset: 0;
+    translate: calc(-1 * var(--tl-span-start)) calc(var(--rest-h) - 100%);
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+  .is-active .span-tl-window-start {
+    translate: var(--tl-span-start) 0;
+  }
+  .is-active .span-tl-window-in {
+    translate: calc(-1 * var(--tl-span-start)) 0;
+  }
+  .span-tl-window-end {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    translate: calc(-1 * var(--tl-clip-right)) 0;
+    transition: translate var(--dur-med) var(--ease-out);
+  }
   .span-tl-full {
+    position: absolute;
+    inset: 0;
     border-top: 3px solid var(--text);
     border-bottom: 3px solid var(--text);
-    clip-path: inset(calc(100% - var(--rest-h)) var(--tl-clip-right) 0 var(--tl-span-start));
-    transition: clip-path var(--dur-med) var(--ease-out);
-  }
-  .is-active .span-tl-full {
-    clip-path: inset(0 var(--tl-clip-right) 0 var(--tl-span-start));
+    translate: var(--tl-clip-right) 0;
+    transition: translate var(--dur-med) var(--ease-out);
   }
 
   .span-tl-full .span-tl-band {
@@ -965,7 +1020,10 @@
      the span is shorter than a name is tall, so a resting rail showed the
      bottom five pixels of every era's name. So the name carries a clip of
      its own, opening upward on the same duration and curve the band's does
-     - a wipe rather than a fade, which is rule 10's own answer. */
+     - a wipe rather than a fade, which is rule 10's own answer. Drawn the
+     way the window is, so it opens on the compositor with the band: the
+     name's box slides up from a whole height below and its words slide
+     down by the same, so only the box's top edge travels. */
   .span-tl-era-name {
     position: absolute;
     top: 6px;
@@ -973,14 +1031,34 @@
     font-weight: var(--weight-bold);
     letter-spacing: 0.02em;
     line-height: 1.2;
+    overflow: clip;
+    translate: 0 100%;
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+  .span-tl-era-text {
+    display: block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    clip-path: inset(100% 0 0 0);
-    transition: clip-path var(--dur-med) var(--ease-out);
+    translate: 0 -100%;
+    transition: translate var(--dur-med) var(--ease-out);
   }
-  .is-active .span-tl-era-name {
-    clip-path: inset(0);
+  .is-active .span-tl-era-name,
+  .is-active .span-tl-era-text {
+    translate: 0 0;
+  }
+  /* A name drawn while its band is already open - the part of the band the
+     span shows has just grown past NAME_MIN_PX - had no closed state to
+     travel from, so it was painted whole in one frame (carpet 15 row 51,
+     span-offer-appear, 0 to 0.9 between 51 and 68ms). It opens from closed
+     like one that opens with its band. */
+  @starting-style {
+    .is-active .span-tl-era-name {
+      translate: 0 100%;
+    }
+    .is-active .span-tl-era-text {
+      translate: 0 -100%;
+    }
   }
 
   .span-tl-targets {
@@ -1143,24 +1221,37 @@
     transform: translateX(var(--tl-end));
   }
 
+  /* The grip rises with the window, on the compositor the same way: its
+     rounded box slides up from where only the resting 26px show, and the
+     ink inside slides down by the same, so the grip and the band it
+     frames keep rising together through a busy main thread. */
   .span-tl-grip {
     position: absolute;
     top: 0;
     bottom: 0;
     width: var(--grip);
+    border-radius: var(--r-block);
+    overflow: clip;
+    translate: 0 calc(100% - var(--rest-grip));
+    transition:
+      translate var(--dur-med) var(--ease-out),
+      scale var(--dur-fast) var(--ease-out);
+  }
+  .span-tl-grip-ink {
+    position: absolute;
+    inset: 0;
     background: var(--text);
     border-radius: var(--r-block);
-    clip-path: inset(calc(100% - var(--rest-grip)) 0 0 0 round var(--r-block));
-    transition:
-      clip-path var(--dur-med) var(--ease-out),
-      transform var(--dur-fast) var(--ease-out);
+    translate: 0 calc(var(--rest-grip) - 100%);
+    transition: translate var(--dur-med) var(--ease-out);
   }
   .is-start .span-tl-grip { left: calc(var(--handle) - var(--grip)); }
   .is-end .span-tl-grip { left: 6px; }
-  .is-active .span-tl-grip {
-    clip-path: inset(0 round var(--r-block));
+  .is-active .span-tl-grip,
+  .is-active .span-tl-grip-ink {
+    translate: 0 0;
   }
-  .span-tl-grip::after {
+  .span-tl-grip-ink::after {
     content: '';
     position: absolute;
     top: 14px;
@@ -1174,19 +1265,44 @@
      handle, and the clip follows the same way. A held grip grows, which is
      the tier-1 response a control that cannot scale gives. */
   .is-dragging .span-tl-handle.is-held,
+  .is-dragging .span-tl-window-start,
+  .is-dragging .span-tl-window-in,
+  .is-dragging .span-tl-window-end,
   .is-dragging .span-tl-full {
     transition: none;
   }
   .span-tl-handle.is-held .span-tl-grip {
-    transform: scaleX(1.25);
+    scale: 1.25 1;
   }
 
+  /* The keyboard's ring goes round the grip, as a box of its own over the
+     grip's place at full height: drawn on the grip, it sat inside the
+     grip's clip and was never painted (carpet 15 row 51), and the grip's
+     box travels with the rise, so a ring on it would rise from below the
+     rail. Focus raises the rail, so the grip fills this box a moment
+     later. Instant, like every other control's ring in the kit. The 2px
+     between grip and ring is filled with the page's ground rather than
+     left open: in dark the ring is a light pink, and across the light
+     blue of an era band it measured 1.09:1, so the ground keeps it at
+     least 6:1 against what touches it on one side wherever it runs. */
   .span-tl-handle:focus-visible {
     outline: none;
   }
-  .span-tl-handle:focus-visible .span-tl-grip {
+  .span-tl-handle::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    box-sizing: border-box;
+    width: calc(var(--grip) + 4px);
+    border-radius: calc(var(--r-block) + 2px);
+    pointer-events: none;
+  }
+  .span-tl-handle.is-start::after { left: calc(var(--handle) - var(--grip) - 2px); }
+  .span-tl-handle.is-end::after { left: 4px; }
+  .span-tl-handle:focus-visible::after {
+    border: 2px solid var(--bg);
     outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
   }
 
   /* The one-time hint, a line of small type under the reading. */

@@ -840,7 +840,7 @@ available for the surface or device it measures.
 | `quick-add-close-motion` | measure navigation edge detail in full physical compositor captures from three dedicated Quick add closes per theme; record source frame numbers and milliseconds, and fail on blurred intermediate frames |
 | `device-bound-writes` | verify wrapping-key reuse and failed metadata writes on real OPFS and IndexedDB; run with `node tests/device-bound-writes.mjs` |
 | `android-tab-status-strip` | sample tab and system-icon backgrounds in an Android WebView; requires a demo build and attached device |
-| `yank-sweep-strip-check` | read a sweep's saved casts and check the status strip (`.app::before`, inset minus 9 CSS px) against `--bg` in every frame, naming the first frame and millisecond that leaves it; a band a sheet's scrim dims evenly is not counted. Run `node tests/yank-sweep-strip-check.mjs <sweep out dir>` over a device sweep or a desktop `yank-sweep --force-inset 58` run; exits 1 when any cast moves. Seen failing on a demo build copy with `.app::before` transparent (11 of 14 door and mood casts) before passing on the real build (`mood-pick` only, where the screen and editor field cover the band on both builds) |
+| `yank-sweep-strip-check` | read a sweep's saved casts and check the status strip (`.app-strip`, inset minus 9 CSS px) against `--bg` in every frame, naming the first frame and millisecond that leaves it; a band a sheet's scrim dims evenly is not counted. Run `node tests/yank-sweep-strip-check.mjs <sweep out dir>` over a device sweep or a desktop `yank-sweep --force-inset 58` run; exits 1 when any cast moves. Seen failing on a demo build copy with `.app::before` transparent (the strip before carpet 15) (11 of 14 door and mood casts) before passing on the real build (`mood-pick` only, where the screen and editor field cover the band on both builds) |
 | `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
 | `journal-book-print-diff` | compare printed journal output between demo builds (`measure:journal-book-print`) |
 | `journal-book-summary-gallery` | capture journal book summary crops (`gallery:journal-book-summary`) |
@@ -1011,6 +1011,12 @@ revision, dirty status, release/build identity, engine version, duration,
 case results and invocation failures. A dirty source tree, stale build or failed app check exits
 nonzero. This is a pre-release check, outside routine CI. `npm run verify:capabilities:lifecycle` runs only
 the lifecycle portion through the same container owner.
+
+Keep TMPDIR short for this and every Chromium probe. Chromium puts its singleton
+socket under TMPDIR and a Unix socket path stops at 108 bytes, so a long one
+(130 characters in re-check carpet 05) kills it at launch: the matrix then
+reports every Chromium row as not-run and exits 1. `tests/browser-harness.mjs`
+names TMPDIR in the launch error when that happens.
 
 The lifecycle matrix first measures fresh static BFCache controls in the same
 runtime. Chromium must restore the plain page and refuse the unload-blocked

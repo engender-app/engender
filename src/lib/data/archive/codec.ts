@@ -8,6 +8,7 @@ import {
 import type { ArchiveContents, OpenedArchive } from './pack';
 import { CorruptArchiveError, u32 } from './wire';
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
+import { isStorableFileName } from '../photos/names';
 
 const JSON_LENGTH_PREFIX = 4;
 
@@ -168,7 +169,8 @@ function parsePayload(json: Uint8Array): ArchivePayload {
     throw new CorruptArchiveError('the archive contents are not readable');
   }
   const files = payload?.files;
-  if (!payload?.journal || !Array.isArray(files) || !files.every((file) => typeof file?.name === 'string' && Number.isInteger(file?.length) && file.length >= 0)) {
+  if (!payload?.journal || !Array.isArray(files) || !files.every((file) => typeof file?.name === 'string' &&
+      isStorableFileName(file.name) && Number.isInteger(file?.length) && file.length >= 0)) {
     throw new CorruptArchiveError('the archive contents are not readable');
   }
   return payload;

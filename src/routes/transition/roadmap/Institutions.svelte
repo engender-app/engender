@@ -63,7 +63,8 @@
     hiddenGoals,
     packKey,
     part,
-    onOpen
+    onOpen,
+    belowFold = false
   }: {
     /** The list sits inside the court steps' section so the switch moves
         one block; the institution's sheet is mounted beside the screen so a
@@ -77,6 +78,10 @@
     changes: readonly InstitutionChange[];
     hiddenGoals: readonly string[];
     packKey: string;
+    /** The list arrives after the court steps have filled in (carpet 15
+        row 47): at once where it lands below the screen, opening where it
+        can be seen. */
+    belowFold?: boolean;
   } = $props();
 
   const today = $derived(currentDay());
@@ -230,7 +235,7 @@
 {/snippet}
 
 {#if part === 'list' && shown}
-  <section class="roadmap-group inst-group" data-roadmap-institutions transition:disclose>
+  <section class="roadmap-group inst-group" data-roadmap-institutions transition:disclose={{ belowFold }}>
     <SectionHeading text={m.roadmap_institutions_title()}>
       {#snippet action()}
         <span class="inst-left" data-institutions-left>

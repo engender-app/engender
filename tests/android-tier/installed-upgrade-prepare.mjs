@@ -114,8 +114,9 @@ try {
   await page.locator('[data-pick-file]').click();
   await page.locator('#imp-pass').fill('upgrade40'); await page.locator('[data-import-mode="merge"]').click();
   await page.locator('[data-import]').click();
-  await page.waitForFunction(() => /Archive imported|Nothing new|failed|error/i.test(document.body.innerText), null, { timeout: 180000 });
-  if (!/Archive imported/i.test(await page.locator('body').innerText())) throw new Error('Synthetic Archive import did not complete');
+  // rc.1 says "Archive imported"; builds since the Merge rules say "Archive merged." (carpet 08, finding 3).
+  await page.waitForFunction(() => /Archive merged|Archive imported|Nothing new|failed|error/i.test(document.body.innerText), null, { timeout: 180000 });
+  if (!/Archive merged|Archive imported/i.test(await page.locator('body').innerText())) throw new Error('Synthetic Archive import did not complete');
   await navigate('/settings/reminders');
   const checkIn = page.locator('button[role="switch"][aria-label="Daily check-in"]');
   if (await checkIn.getAttribute('aria-checked') !== 'true') await checkIn.click();

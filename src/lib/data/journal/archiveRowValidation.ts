@@ -15,8 +15,12 @@ import { isCurrencyCode, isValidAmount } from '../cost';
 
 type Check = (value: unknown) => boolean;
 const text: Check = (value) => typeof value === 'string';
-// A lone surrogate is not text SQLite can round-trip, so an id holding one is unreadable.
-const identity: Check = (value) => typeof value === 'string' && value.trim().length > 0 && value.isWellFormed();
+// A lone surrogate is not text SQLite can round-trip, so an id holding one is
+// unreadable. Nor is a NUL: the driver reads the stored text back cut short
+// at it, so the next Merge could not match the row (re-check carpet 11, F4).
+const NUL = String.fromCharCode(0);
+const identity: Check = (value) => typeof value === 'string' && value.trim().length > 0 && value.isWellFormed() &&
+  !value.includes(NUL);
 const bool: Check = (value) => typeof value === 'boolean';
 const numeric: Check = (value) => typeof value === 'number' && Number.isFinite(value) &&
   (!Number.isInteger(value) || Number.isSafeInteger(value));

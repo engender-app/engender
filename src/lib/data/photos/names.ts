@@ -18,3 +18,12 @@ export const thumbFileName = (fileName: string): string => fileName.replace(/\.j
 
 /** Both files a photo row owns, in the order they are written. */
 export const filesOf = (fileName: string): string[] => [fileName, thumbFileName(fileName)];
+
+/** Whether both file stores can hold a file of this name: OPFS cannot take
+    a '/', and Android's PhotoFiles.fileFor refuses a blank name, '/', a
+    backslash and '..' (PhotoFiles.java). An archive's manifest is checked
+    against it before any of its files are read (re-check carpet 11, F7). */
+export const isStorableFileName = (name: string): boolean => {
+  const trimmed = name.trim();
+  return trimmed.length > 0 && !trimmed.includes('/') && !trimmed.includes('\\') && !trimmed.includes('..');
+};

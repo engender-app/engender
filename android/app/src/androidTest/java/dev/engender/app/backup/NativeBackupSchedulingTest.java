@@ -332,6 +332,10 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
     }
 
     @Test public void mountedScreenRefreshesNativeDeliveryInBothLocales() throws Exception {
+        // The protected journal it mounts is written by the defer stage, which
+        // only tests/android-tier/run.mjs drives; run as a bare class it is skipped.
+        org.junit.Assume.assumeTrue("needs run.mjs's defer stage first",
+            app.getDatabasePath("native-backup-protected.sqlite3").exists());
         prepareNativeStage(false);
         java.nio.file.Files.copy(app.getDatabasePath("native-backup-protected.sqlite3").toPath(),
             app.getDatabasePath("engender.sqlite3").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);

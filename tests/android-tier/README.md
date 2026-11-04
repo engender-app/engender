@@ -105,6 +105,12 @@ list, for example `defer,verify-deferred,catch-up,cleanup`. The report names the
 selection. Unknown stages and selected stages that never execute fail the run;
 unselected stages are explicit skips. Omit the variable for the full roster.
 
+The class only works through the runner. Its stages depend on each other:
+`mountedScreenRefreshesNativeDeliveryInBothLocales` mounts the protected journal
+that the `defer` stage writes, and is skipped (an `Assume`) when that journal is
+not there, so running the class bare with `am instrument` skips it rather than
+failing with NoSuchFileException.
+
 ## Locked journal after process death
 
 Run `ANDROID_TIER_LOCK_ONLY=1 ANDROID_TIER_AVDS=tracker35 npm run test:android`

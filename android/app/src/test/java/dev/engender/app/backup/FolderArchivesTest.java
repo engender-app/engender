@@ -2,6 +2,7 @@ package dev.engender.app.backup;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,5 +61,32 @@ public class FolderArchivesTest {
         List<Document> folder = Arrays.asList(archive("tried", 20), archive("twin", 20));
         assertEquals("twin", FolderArchives.newest(folder, Collections.emptyList(), 20, Collections.singletonList("tried")).uri);
         assertNull(FolderArchives.newest(folder, Collections.emptyList(), 20, Arrays.asList("tried", "twin")));
+    }
+
+    /* Re-check carpet 13: a device that ran out of space keeps the folder's
+       position, so the same archive is taken on the next open; any other
+       ending moves past it, and a cancelled one leaves it too. */
+    @Test public void aMergeThatRanOutOfSpaceLeavesThePositionSoTheArchiveIsTakenAgain() {
+        FolderArchives.Position before = new FolderArchives.Position(10, Collections.singletonList("older"));
+        assertNull(FolderArchives.after(before, 30, "b", "no-space"));
+        assertNull(FolderArchives.after(before, 0, null, "no-space"));
+        assertNull(FolderArchives.after(before, 30, "b", "cancelled"));
+        List<Document> folder = Arrays.asList(archive("a", 10), archive("b", 30));
+        assertEquals("b", FolderArchives.newest(folder, Collections.emptyList(), before.mergedThrough, before.tried).uri);
+    }
+
+    @Test public void anyOtherEndingMovesPastTheArchive() {
+        FolderArchives.Position before = new FolderArchives.Position(10, Collections.singletonList("older"));
+        for (String outcome : Arrays.asList("merged", "failed", "corrupt", "wrong-password")) {
+            FolderArchives.Position next = FolderArchives.after(before, 30, "b", outcome);
+            assertNotNull(outcome, next);
+            assertEquals(outcome, 30, next.mergedThrough);
+            assertEquals(outcome, Collections.singletonList("b"), next.tried);
+            List<Document> folder = Arrays.asList(archive("a", 10), archive("b", 30));
+            assertNull(outcome, FolderArchives.newest(folder, Collections.emptyList(), next.mergedThrough, next.tried));
+        }
+        FolderArchives.Position twin = FolderArchives.after(before, 10, "a", "failed");
+        assertEquals(10, twin.mergedThrough);
+        assertEquals(Arrays.asList("older", "a"), twin.tried);
     }
 }

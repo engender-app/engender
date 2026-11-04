@@ -423,6 +423,10 @@
 /* 15 at weight 600, not 14 at 450 (phase 10, rule 2). */
 .kit-row-sub {
   display: block;
+  /* Breaks inside a word like the title above: an unbroken 56-character
+     note ran out of the row and under the trailing delete icon in Trash
+     at 390 px. */
+  overflow-wrap: break-word;
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--text-2);

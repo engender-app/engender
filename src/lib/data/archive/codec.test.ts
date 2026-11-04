@@ -294,3 +294,15 @@ test('plaintext bytes after the declared files are refused as corrupt', async ()
     for await (const _ of opened.files) { /* Include the final boundary check. */ }
   }, CorruptArchiveError);
 });
+
+// Re-check carpet 11, F7: a name the file stores refuse reached the store
+// mid-restore and failed there with an untyped "invalid photo file name".
+for (const name of ['a/b.jpg', '../b.jpg', 'a\\b.jpg', '..', '   ', '']) {
+  test(`a manifest naming the file ${JSON.stringify(name)} is refused before its files are read`, async () => {
+    const json = new TextEncoder().encode(JSON.stringify({ ...payload('x'), files: [{ name, length: 0 }] }));
+    await assert.rejects(
+      decodeArchive(byteReader((async function* () { yield u32(json.length); yield json; })()), ARCHIVE_FORMAT_VERSION),
+      CorruptArchiveError
+    );
+  });
+}
