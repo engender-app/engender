@@ -341,8 +341,8 @@ export const FEATURES = {
     areaGroups: none,
     unprompted: none,
     tiles: none,
-    routes: none,
-    messages: none
+    routes: ['/transition/progress-photos'],
+    messages: ['pph']
   },
   tryouts: {
     sections: ['tryouts', 'feltSenseEntries'],

@@ -90,9 +90,6 @@ try {
     await page.locator('[data-row-main="document-target"]').waitFor();
   }
   await visit('/media/photos');
-  await page.locator('[data-segment="compare"]').click();
-  await page.locator('[data-photo-cell]').nth(0).click();
-  await page.locator('[data-photo-cell]').nth(1).click();
   for (const photo of fixture.ownerPhotos) {
     console.log(`Checking photo owner ${photo.source}`);
     await page.locator(`[data-photo-view="${photo.id}"]`).click();
@@ -141,7 +138,6 @@ try {
     }
     await page.locator('[data-photo-owner]').waitFor();
     await page.keyboard.press('Escape');
-    assert.equal(await page.locator('[data-photo-cell][aria-pressed="true"]').count(), 2);
   }
   // Provenance links retain the source record identity too.
   for (const kind of ['procedure', 'goal']) {

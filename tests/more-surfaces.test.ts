@@ -252,13 +252,17 @@ describe('every row the hub carries', () => {
      Audit item 10 folded the `body` group into `health`: it was one row
      under a heading, and the row is what says what it is about. Nothing
      about the row itself moved - the same key, icon and address - so this
-     table changes in one column. */
+     table changes in one column.
+
+     Pre-release-human 12 added `progress-photos` after Milestones: posed
+     shots split off the photo library, which became browse-only. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['care', 'timeline', '/care', 'health', 'written'],
     ['appointments', 'check', '/health/appointments', 'health', 'read'],
     ['surgery', 'flag', '/health/surgery', 'health', 'read'],
     ['roadmap', 'globe', '/transition/roadmap', 'transition', 'written'],
     ['milestones', 'sparkle', '/transition/milestones', 'transition', 'read'],
+    ['progress-photos', 'camera', '/transition/progress-photos', 'transition', 'read'],
     ['tryouts', 'tag', '/transition/tryouts', 'transition', 'read'],
     ['wear', 'clock', '/body/wear', 'transition', 'read'],
     ['hair-removal', 'shuffle', '/body/hair-removal', 'transition', 'read'],
