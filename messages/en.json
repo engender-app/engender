@@ -3354,7 +3354,7 @@
   "surgery_delete_hint": "Its consult dates, notes, photos and checklist go with it. You can undo it for 10 seconds.",
   "surgery_delete_q": "Delete {name}?",
   "surgery_delete_sheet": "Delete procedure",
-  "surgery_edit_sheet": "Edit procedure",
+  "surgery_details_title": "Details",
   "surgery_empty_body": "Add a procedure when you have one to keep track of.",
   "surgery_empty_title": "Nothing here yet",
   "surgery_intro": "Keep consults, dates and notes for each procedure. Several can stay open at once.",
@@ -3416,6 +3416,7 @@
   "surgery_post_op_day": "Day {days} post-op",
   "surgery_reading_no_date": "No date yet",
   "surgery_save": "Save",
+  "surgery_save_changes": "Save changes",
   "surgery_set_date": "Set the date",
   "surgery_unit_post_op": [
     {

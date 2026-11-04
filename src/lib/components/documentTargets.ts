@@ -7,7 +7,7 @@ export type TargetSection = { kind: DocumentTargetKind; heading: string; rows: T
 
 export function documentTargetHref(target: DocumentTarget): string {
   if (target.kind === 'milestone') return `/transition/milestones?edit=${encodeURIComponent(target.id)}`;
-  if (target.kind === 'procedure') return `/health/surgery?procedure=${encodeURIComponent(target.id)}`;
+  if (target.kind === 'procedure') return `/health/surgery/${encodeURIComponent(target.id)}`;
   if (target.kind === 'episode') return `/care/regimen?episode=${encodeURIComponent(target.id)}#${encodeURIComponent(target.id)}`;
   return `/transition/roadmap?goal=${encodeURIComponent(target.id)}`;
 }

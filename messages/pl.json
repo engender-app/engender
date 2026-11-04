@@ -3428,7 +3428,7 @@
   "surgery_delete_hint": "Razem z nią znikną terminy konsultacji, notatki, zdjęcia i lista. Przez 10 sekund możesz to cofnąć.",
   "surgery_delete_q": "Usunąć „{name}”?",
   "surgery_delete_sheet": "Usuń operację",
-  "surgery_edit_sheet": "Edytuj operację",
+  "surgery_details_title": "Szczegóły",
   "surgery_empty_body": "Tu możesz wpisać swoje operacje.",
   "surgery_empty_title": "Jeszcze nic tu nie ma",
   "surgery_intro": "Zapisuj konsultacje, daty i notatki dla każdej operacji. Możesz prowadzić kilka zapisów równolegle.",
@@ -3492,6 +3492,7 @@
   "surgery_post_op_day": "Dzień {days} po operacji",
   "surgery_reading_no_date": "Brak daty",
   "surgery_save": "Zapisz",
+  "surgery_save_changes": "Zapisz zmiany",
   "surgery_set_date": "Ustaw datę",
   "surgery_unit_post_op": [
     {

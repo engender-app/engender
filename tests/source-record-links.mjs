@@ -188,7 +188,7 @@ try {
   await page.locator('[data-source-return]').click();
   const missing = '00000000-0000-4000-8000-000000000000';
   const missingRoutes = [
-    `/transition/milestones?edit=${missing}`, `/health/surgery?procedure=${missing}`,
+    `/transition/milestones?edit=${missing}`, `/health/surgery/${missing}`,
     `/care/regimen?episode=${missing}`, `/transition/roadmap?goal=${missing}`,
     `/body/hair-progress?photo=${missing}`, `/body/hair-removal?session=${missing}`,
     `/transition/tryouts/${missing}`, '/entry/2147483647'

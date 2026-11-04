@@ -53,6 +53,9 @@ const REACHED_FROM_INSIDE = [
   'care/regimen',
   'care/doses',
   'transition/tryouts/[id]',
+  /* One procedure (prh12 bug 20), reached from a card on /health/surgery
+     and from anything filed against it; the hub row is the list. */
+  'health/surgery/[id]',
   /* The metric reference (phase 8 features ticket 27) held this place
      until phase 11 ticket 17 folded it into a sheet over the voice screen
      itself - its markup is `VoiceMetricSection.svelte` and
@@ -180,8 +183,10 @@ describe('every feature screen', () => {
        its route for this file to read (feature-screens.test.ts's own
        NOT_A_FEATURE_SCREEN equivalent for a non-hub route is simply not
        listing it at all) - and fifteen since functional audit ticket 12
-       cut the Words reading and its `settings/words` ignore list. */
-    expect(REACHED_FROM_INSIDE.length).toBe(15);
+       cut the Words reading and its `settings/words` ignore list, and
+       sixteen again since prh12 bug 20 gave each procedure its own
+       screen at `health/surgery/[id]`. */
+    expect(REACHED_FROM_INSIDE.length).toBe(16);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
