@@ -1635,7 +1635,41 @@ describe('carpet 15 row 51 colour and name arrivals', () => {
 
   it("opens an era's name from closed when it is drawn into an already open band", () => {
     const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
-    expect(source).toMatch(/@starting-style\s*\{\s*\.is-active \.span-tl-era-name\s*\{\s*clip-path:\s*inset\(100% 0 0 0\);/);
+    expect(source).toMatch(
+      /@starting-style\s*\{\s*\.is-active \.span-tl-era-name\s*\{\s*translate:\s*0 100%;\s*\}\s*\.is-active \.span-tl-era-text\s*\{\s*translate:\s*0 -100%;/
+    );
+  });
+
+  /* The rail's window was a clip-path transition, which Chromium runs on
+     the main thread: it stood still through Look back's 80-110ms update
+     after a span change (6x CPU) and then caught up 125px in one frame,
+     a pop on the phone. The window, the era names and the grips now move
+     by translate, each clipping box paired with contents moved back by the
+     same values, on the same duration and curve. */
+  it('moves the span rail\'s window, names and grips by translate pairs, never a clip-path transition', () => {
+    const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
+    const css = source.slice(source.indexOf('<style>'));
+    const rule = (selector: string) => {
+      const at = css.search(new RegExp('(^|\\n)\\s*' + selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{'));
+      expect(at, selector).toBeGreaterThanOrEqual(0);
+      return css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
+    };
+    expect(css).not.toMatch(/transition:[^;]*clip-path/);
+    const pairs: [string, string][] = [
+      ['.span-tl-window-start', '.span-tl-window-in'],
+      ['.span-tl-window-end', '.span-tl-full'],
+      ['.span-tl-era-name', '.span-tl-era-text'],
+      ['.span-tl-grip', '.span-tl-grip-ink']
+    ];
+    for (const [box, contents] of pairs) {
+      expect(rule(box), box).toMatch(/overflow:\s*clip;/);
+      for (const selector of [box, contents]) expect(rule(selector), selector).toMatch(/transition:\s*translate var\(--dur-med\) var\(--ease-out\)/);
+    }
+    expect(css).toMatch(/\n\s*\.span-tl-window \{\s*overflow: clip;\s*\}/);
+    expect(rule('.span-tl-window-start')).toContain('translate: var(--tl-span-start) calc(100% - var(--rest-h));');
+    expect(rule('.span-tl-window-in')).toContain('translate: calc(-1 * var(--tl-span-start)) calc(var(--rest-h) - 100%);');
+    expect(rule('.span-tl-window-end')).toContain('translate: calc(-1 * var(--tl-clip-right)) 0;');
+    expect(rule('.span-tl-full')).toContain('translate: var(--tl-clip-right) 0;');
   });
 
   /* The look-back tiles' settle travel restarted on every push while the
