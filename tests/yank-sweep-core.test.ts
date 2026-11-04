@@ -960,3 +960,13 @@ describe('clipInsetBox', () => {
     expect(r.right).toBeCloseTo(124 - (12 - 3));
   });
 });
+
+describe('clipInsetBox on a mark\'s own clip', () => {
+  const box = { left: 100, top: 200, right: 124, bottom: 224, width: 24, height: 24 };
+  it('counts none of the outset, so a closed kit-block-in shows nothing of the mark', () => {
+    const r = clipInsetBox(box, 'inset(-6px 100% -6px -6px round 6px)', true);
+    expect(Math.max(0, r.right - r.left)).toBe(0);
+    const q = clipInsetBox(box, 'inset(-6px calc(75% + 0px) -6px -6px round 6px)', true);
+    expect((q.right - q.left) * (q.bottom - q.top)).toBe(6 * 24);
+  });
+});

@@ -1121,8 +1121,14 @@ export const SETTLE_PAGE_EXPRESSION = (theme) =>
     first version of this split on spaces, failed to read and answered with
     the whole box: setup-step-forward at 1280 reported every scale tick
     "0.33 to 1 in one frame" in the frame its wipe began, while the cast
-    shows the tick clipping open over 100ms (carpet 15 row 51). */
-export function clipInsetBox(box, clipPath) {
+    shows the tick clipping open over 100ms (carpet 15 row 51).
+
+    `own` is for a mark's own clip: an outset (the -6px that keeps a
+    block's focus ring) shows nothing of the mark itself, so what counts
+    is cut to the box. Counted, a fully closed kit-block-in read as 0.375
+    of the tick and a quarter-open one as 0.73. An ancestor's clip keeps
+    its outset, since a child overflowing into it does show. */
+export function clipInsetBox(box, clipPath, own = false) {
   const raw = /^inset\((.*)\)$/.exec(clipPath ?? '')?.[1];
   if (!raw) return box;
   const parts = [];
@@ -1150,11 +1156,12 @@ export function clipInsetBox(box, clipPath) {
   };
   const edges = [px(values[0], box.height), px(values[1], box.width), px(values[2], box.height), px(values[3], box.width)];
   if (edges.some((value) => !Number.isFinite(value))) return box;
+  const cut = (edge) => (own ? Math.max(0, edge) : edge);
   return {
-    left: box.left + edges[3],
-    top: box.top + edges[0],
-    right: box.right - edges[1],
-    bottom: box.bottom - edges[2]
+    left: box.left + cut(edges[3]),
+    top: box.top + cut(edges[0]),
+    right: box.right - cut(edges[1]),
+    bottom: box.bottom - cut(edges[2])
   };
 }
 
@@ -1303,7 +1310,7 @@ export function samplerExpression(act, ms, names) {
             if (cs.display === 'none') continue;
             const box = el.getBoundingClientRect();
             if (!box.width || !box.height) continue;
-            let visibleBox = intersection(clipBox(box, cs), viewport);
+            let visibleBox = intersection(insetBox(box, cs.clipPath, true), viewport);
             if (visibleBox.right > visibleBox.left && visibleBox.bottom > visibleBox.top) {
               for (let up = el.parentElement; up && up !== live; up = up.parentElement) {
                 let clip = ancestorClips.get(up);
