@@ -51,7 +51,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { calendarDuration, durationParts } from '$lib/data/epochDay';
   import type { DurationUnit } from '$lib/data/epochDay';
-  import { collapse, maskHeight } from '$lib/motion/reveal';
+  import { collapse, crossfade, maskHeight } from '$lib/motion/reveal';
   import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { Letter } from '$lib/data/types';
 
@@ -191,7 +191,10 @@
        2026-10-05, after audit L04-18). Opening it puts the text under the
        mask below the folded edge, so it is uncovered by the same travel. -->
   {#if open || read}
-    <span class="letter-text" class:is-folded={!open} data-letter-text={open ? '' : undefined}>{letter.text}</span>
+    <!-- The first line sits above the folded edge, so the mask uncovers
+         only what is under it: without a fade of its own that line was
+         painted whole in the frame the letter opened (carpet 15 row 51). -->
+    <span class="letter-text" class:is-folded={!open} data-letter-text={open ? '' : undefined} in:crossfade>{letter.text}</span>
   {/if}
 {/snippet}
 
