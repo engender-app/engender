@@ -617,7 +617,7 @@ beforeAll(async () => {
 
   // --- personalEffects --------------------------------------------------
   await drive('effectCategories', 'setCategoryEnabled', () =>
-    journal.effectCategories.setCategoryEnabled('genital_sexual', true)
+    journal.effectCategories.setCategoryEnabled('genital', true)
   );
   const customEffect = (await drive('personalEffects', 'addCustomEffectType', () =>
     journal.personalEffects.addCustomEffectType('a feeling only I have a word for', 'body_shape')

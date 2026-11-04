@@ -35,7 +35,7 @@ try {
   const launcher = page.locator('[data-list-row="features"]');
   const manager = page.locator('[data-sheet]');
   const close = page.locator('[data-features-close]');
-  const handles = ['genital-effects', 'cycle-tracking'];
+  const handles = ['genital-effects', 'sexual-effects', 'cycle-tracking'];
   const geometry = () => page.evaluate(() => {
     const sheet = document.querySelector('[data-sheet]');
     const main = document.querySelector('.app-main');
@@ -55,7 +55,7 @@ try {
     const layout = await geometry();
     assert.ok(layout.mainOverflow <= 1, `${label}: Settings horizontal overflow`);
     assert.ok(layout.sheetOverflow <= 1, `${label}: manager horizontal overflow`);
-    assert.equal(layout.switches.length, 2);
+    assert.equal(layout.switches.length, handles.length);
     for (const control of layout.switches) {
       assert.ok(control.width >= 47.99 && control.height >= 47.99, `${label}: switch touch target ${JSON.stringify(control)}`);
       assert.ok(control.name);

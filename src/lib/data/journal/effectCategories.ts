@@ -10,7 +10,7 @@ import type { EffectCategory } from '../types';
 import { assertChanged, bool, now } from './support';
 
 export interface EffectCategoriesArea {
-  /** All five (or six) built-in categories, in seed order. */
+  /** All six built-in categories, in seed order. */
   getEffectCategories(): Promise<EffectCategory[]>;
   /** Turning a category off hides its effects from the timeline and the
       "mark a change" picker; every marker already recorded against one of

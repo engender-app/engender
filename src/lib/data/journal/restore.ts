@@ -84,6 +84,7 @@ import { recordImport } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS, DROPPED_ARCHIVE_SECTION_NAMES, emptyArchiveJournal } from './archiveSections';
 import { assertArchiveReferences, assertArchiveRows } from './archiveRowValidation';
 import { DROPPED_TRYOUT_KINDS } from '../rowValues';
+import { splitArchivedEffectCategories } from '../sqlite/effect-category-split-migration';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -455,6 +456,10 @@ function restorableJournal(journal: ArchiveJournal, externalImport = false): Arc
     const section = name as keyof ArchiveJournal;
     assertArchiveRows(section, complete[section], flatTable);
   }
+  // An archive written before version 121 still names 'genital_sexual'.
+  const split = splitArchivedEffectCategories(complete.effectCategories, complete.personalEffectTypes);
+  complete.effectCategories = split.categories;
+  complete.personalEffectTypes = split.types;
   assertArchiveReferences(complete, externalImport);
   assertArchiveFileOwnership(complete);
   const dropped = new Set(complete.tryouts

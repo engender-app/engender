@@ -986,12 +986,6 @@
       "updatedAt": 0
     },
     {
-      "key": "genital_sexual",
-      "name": "",
-      "enabled": false,
-      "updatedAt": 0
-    },
-    {
       "key": "cognitive_emotional",
       "name": "",
       "enabled": false,
@@ -1002,6 +996,18 @@
       "name": "",
       "enabled": true,
       "updatedAt": 1793388955713
+    },
+    {
+      "key": "genital",
+      "name": "",
+      "enabled": false,
+      "updatedAt": 0
+    },
+    {
+      "key": "sexual",
+      "name": "",
+      "enabled": false,
+      "updatedAt": 0
     }
   ],
   "personalEffectTypes": [
@@ -1055,7 +1061,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1064,7 +1070,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1073,7 +1079,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1280,7 +1286,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1289,7 +1295,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1298,7 +1304,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1307,7 +1313,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1316,7 +1322,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1325,7 +1331,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1334,7 +1340,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1343,7 +1349,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1352,7 +1358,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "feminizing",
       "updatedAt": 0
     },
@@ -1388,7 +1394,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "masculinizing",
       "updatedAt": 0
     },
@@ -1415,7 +1421,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "masculinizing",
       "updatedAt": 0
     },
@@ -1424,7 +1430,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "masculinizing",
       "updatedAt": 0
     },
@@ -1559,7 +1565,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "masculinizing",
       "updatedAt": 0
     },
@@ -1568,7 +1574,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "masculinizing",
       "updatedAt": 0
     },
@@ -1577,7 +1583,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "genital",
       "direction": "masculinizing",
       "updatedAt": 0
     },
@@ -1586,7 +1592,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "masculinizing",
       "updatedAt": 0
     },
@@ -1595,7 +1601,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "masculinizing",
       "updatedAt": 0
     },
@@ -1604,7 +1610,7 @@
       "name": "",
       "builtIn": true,
       "hidden": false,
-      "categoryKey": "genital_sexual",
+      "categoryKey": "sexual",
       "direction": "masculinizing",
       "updatedAt": 0
     },

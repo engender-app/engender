@@ -707,9 +707,10 @@ export async function generateLongJournal(
   }
 
   // Personal effects: several feminizing markers across categories, plus
-  // one non-default category switched on so its disclosure group has
-  // something in it too.
-  await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
+  // the two non-default genital and sexual categories switched on so their
+  // disclosure groups have something in them too.
+  await journal.effectCategories.setCategoryEnabled('genital', true);
+  await journal.effectCategories.setCategoryEnabled('sexual', true);
   const effectTypes = BUILT_IN_PERSONAL_EFFECT_TYPES.filter((t) => t.direction === 'feminizing').filter(
     (_, i) => i % 3 === 0
   );
