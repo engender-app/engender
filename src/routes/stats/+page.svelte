@@ -606,7 +606,7 @@
             </ListRow>
             {#if closingFacts.activeAverage}
               <div class="rows-divide" transition:collapse>
-                <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })}>
+                <ListRow static fadeSwap data-lookback-fact title={m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })}>
                   {#snippet trailing()}<b class="wrapped-figure-value">{closingFacts.activeAverage}</b>{/snippet}
                 </ListRow>
               </div>
@@ -616,6 +616,7 @@
               <div class="rows-divide" transition:collapse>
                 <ListRow
                   static
+                  fadeSwap
                   data-lookback-fact
                   title={m.wrapped_scale_arc()}
                   subtitle={m.wrapped_scale_arc_body({
