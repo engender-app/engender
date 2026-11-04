@@ -93,6 +93,7 @@
   import PermissionList from '$lib/components/PermissionList.svelte';
 
   import { PALETTES } from '$lib/theme/paletteChoices';
+  import { changePalette, isAppearancePending } from '$lib/motion/paletteChange';
 
   const restoreOnEntry = untrack(() => page.url.searchParams.get('restore') === '1');
   /* Settings' "Delete everything" lands here (phase 14 ticket 15). The
@@ -526,6 +527,14 @@
     go(stepAfter(steps, 'restore'));
   }
 
+  /* The same bloom out of the sun as a flag picked in Settings (prh12): the
+     new colours grow from this field's sun with its rings on the edge,
+     where writing the preference alone cut the whole screen in one frame.
+     Skip's reset below stays a plain write, since it leaves the step. */
+  function pickPalette(key: string) {
+    if (prefs.palette !== key || isAppearancePending('palette')) changePalette(() => { prefs.palette = key; });
+  }
+
   function skip() {
     if (step === 'name') name = '';
     else if (step === 'flag') prefs.palette = paletteOnEntry;
@@ -895,7 +904,7 @@
                       role="radio"
                       aria-checked={prefs.palette === key}
                       data-palette-pick={key}
-                      onclick={() => (prefs.palette = key)}
+                      onclick={() => pickPalette(key)}
                     >
                       <span class="swatch-preview" data-swatch={key}></span>
                       <span class="swatch-name">{label()}</span>
