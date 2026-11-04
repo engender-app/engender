@@ -90,6 +90,19 @@ export function openBlocks(opts: {
 
   let live = true;
   let retreating = false;
+  /* Created paused, played from the second frame after. The first frame
+     lays the new rows out, and on a phone that takes 70 to 124 ms before it
+     is presented: an animation takes its clock from the frame it starts in,
+     so one started there showed up already half its duration in, the whole
+     travel in the first presented frame (carpet 15 row 47, phone proof).
+     Paused at progress 0 the first frame presents the old layout, and the
+     clock starts on a frame that follows a presented one. */
+  for (const animation of animations) animation.pause();
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      if (live && !retreating) for (const animation of animations) animation.play();
+    })
+  );
   const settle = (retreated: boolean) => {
     if (!live) return;
     live = false;

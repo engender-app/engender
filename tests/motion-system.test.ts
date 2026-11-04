@@ -1635,6 +1635,10 @@ describe('carpet 15 row 47, the legal group mounts in parts', () => {
     expect(source).toMatch(/data-roadmap-legal transition:openOrDisclose=\{\{ onScreen: true \}\}/);
     expect(source).toMatch(/openBlocks\(\{/);
     expect(source).toMatch(/disclose\(node, \{ \.\.\.params, skip: skipOpening \}\)/);
+    // The app keeps other doors' screens mounted: a document-wide query found
+    // one of theirs on the phone and no opening ran.
+    expect(source).not.toMatch(/document\.querySelector[^;]*read-reserve-body/);
+    expect(source).toMatch(/screenEl\?\.querySelector<HTMLElement>\('\[data-read-reserve-body\]'\)/);
     const opening = stripComments(readFileSync(join(root, 'src/lib/motion/openBlocks.ts'), 'utf8'));
     expect(opening).toContain("duration: motionDuration('--dur-med'), easing: EASE_OUT_CSS");
     expect(opening).not.toMatch(/\bheight\b\s*:/);

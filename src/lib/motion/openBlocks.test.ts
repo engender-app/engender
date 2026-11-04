@@ -42,3 +42,70 @@ describe('openingShifts', () => {
     }
   });
 });
+
+/* The opening's clock must start on a presented frame. The first frame after
+   the switch lays the new rows out and takes 70 to 124 ms on a phone; an
+   animation started there is already half through when it is first shown. */
+describe('openBlocks start', () => {
+  type Fake = { animate: (...args: unknown[]) => unknown; getBoundingClientRect: () => { top: number }; children: unknown[]; style: Record<string, string>; isConnected: boolean };
+  const make = (top: number, log: string[], name: string): Fake => ({
+    animate: () => {
+      let id = `${name}${log.length}`;
+      log.push(`create ${id}`);
+      return {
+        pause: () => log.push(`pause ${id}`),
+        play: () => log.push(`play ${id}`),
+        reverse: () => log.push(`reverse ${id}`),
+        cancel: () => log.push(`cancel ${id}`),
+        finished: new Promise(() => {}),
+        currentTime: 0
+      };
+    },
+    getBoundingClientRect: () => ({ top }),
+    children: [],
+    style: {},
+    isConnected: true
+  });
+
+  async function run() {
+    const g = globalThis as Record<string, unknown>;
+    const frames: Array<() => void> = [];
+    g.innerHeight = 800;
+    g.requestAnimationFrame = (cb: () => void) => frames.push(cb);
+    const { openBlocks } = await import('./openBlocks');
+    const log: string[] = [];
+    const section = make(500, log, 's');
+    const follower = make(1500, log, 'f');
+    const opening = openBlocks({
+      pack: null,
+      section: section as unknown as HTMLElement,
+      followers: [follower as unknown as HTMLElement],
+      from: 500,
+      onSettled: () => {}
+    });
+    const flush = () => frames.splice(0).forEach((cb) => cb());
+    return { opening, log, flush, frames };
+  }
+
+  it('creates every animation paused and plays them only from the second frame', async () => {
+    const { opening, log, flush } = await run();
+    expect(opening).not.toBeNull();
+    const created = log.filter((l) => l.startsWith('create')).length;
+    expect(created).toBeGreaterThan(0);
+    expect(log.filter((l) => l.startsWith('pause')).length).toBe(created);
+    expect(log.some((l) => l.startsWith('play'))).toBe(false);
+    flush();
+    expect(log.some((l) => l.startsWith('play'))).toBe(false);
+    flush();
+    expect(log.filter((l) => l.startsWith('play')).length).toBe(created);
+  });
+
+  it('does not start a held opening that is played back first', async () => {
+    const { opening, log, flush } = await run();
+    opening!.retreat();
+    flush();
+    flush();
+    expect(log.some((l) => l.startsWith('play'))).toBe(false);
+    expect(log.some((l) => l.startsWith('reverse'))).toBe(true);
+  });
+});

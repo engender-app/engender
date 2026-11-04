@@ -174,6 +174,7 @@
      follows the group slides down, the group's boxes are clipped to its
      edge. The rest of the rows start when that ends. A switch turned off
      while it runs plays it back (`openOrDisclose`'s out). */
+  let screenEl = $state<HTMLElement | null>(null);
   let skipOpening = false;
   let opening: Opening | null = null;
   let switchSeq = 0;
@@ -185,11 +186,14 @@
   function switchPolishSteps(on: boolean) {
     /* Reduced motion cuts the group in whole: there is no travel to wait
        for, and a cut that then went on growing below would be two. */
-    const body = document.querySelector<HTMLElement>('.screen [data-read-reserve-body]');
+    /* This screen's own body: the app keeps other doors' screens mounted,
+       and a document-wide query found one of theirs on the phone, so no
+       opening ran and the group was cut in. */
+    const body = screenEl?.querySelector<HTMLElement>('[data-read-reserve-body]') ?? null;
     if (on && !isReducedMotion() && body && !body.querySelector('[data-roadmap-legal]')) {
       const first = body.firstElementChild as HTMLElement | null;
       const from = first?.getBoundingClientRect().top ?? 0;
-      const row = document.querySelector('[data-roadmap-polish-steps]');
+      const row = screenEl?.querySelector('[data-roadmap-polish-steps]');
       const below = innerHeight - (row?.getBoundingClientRect().bottom ?? 0);
       legalLimit = Math.max(1, Math.ceil(Math.max(0, below) / LEGAL_ROW_GUESS) + 1);
       skipOpening = true;
@@ -596,7 +600,7 @@
   </button>
 {/snippet}
 
-<div class="screen">
+<div class="screen" bind:this={screenEl}>
   <ScreenHeader title={m.roadmap_title()} back="/more" />
   <SourceRecordHandoff
     id={sourceId}
