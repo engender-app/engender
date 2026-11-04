@@ -1168,7 +1168,9 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
   if (isReducedMotion() || typeof ResizeObserver === 'undefined') return;
   watchScrolls();
 
-  let lastHeight = node.getBoundingClientRect().height;
+  /* Read when the box is first painted (below), not at mount: a mount-time
+     read forced a layout inside whatever flush mounted the box. */
+  let lastHeight = 0;
   let hidden = !isDoorActive(node);
   let animating = false;
   let destroyed = false;
@@ -1180,7 +1182,8 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
      moved every tile under the reading grid 850px across the tab's first
      170ms. */
   let painted = typeof requestAnimationFrame !== 'function';
-  if (!painted) requestAnimationFrame(() => {
+  if (painted) lastHeight = node.getBoundingClientRect().height;
+  else requestAnimationFrame(() => {
     if (destroyed) return;
     setTimeout(() => {
       // The first observer notification can arrive after this paint. Start
