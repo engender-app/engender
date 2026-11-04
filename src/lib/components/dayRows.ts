@@ -306,7 +306,7 @@ const SECTION_ROWS: Record<
       ...iconOf('surgery'),
       title: group[0].procedureName,
       subtitle: m.day_recovery_photos(),
-      href: hubRow('surgery').href,
+      href: `${hubRow('surgery').href}/${encodeURIComponent(group[0].procedureId)}`,
       photo: group[0],
       count: group.length
     })),
