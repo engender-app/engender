@@ -201,6 +201,11 @@
       where they were and release them (ADR-0078, motion/narrow.ts). The
       tiles the chip drops leave the flow in the same frame, so the grid
       rewraps once instead of twice. */
+  /* The count's new number fading in. Only a change plays it: the {#key}
+     is created with the grid, so the screen's own arrival gets no second
+     entrance (feature-screens.test.ts). */
+  const countIn = (node: Element) => crossfade(node, undefined, { direction: 'in' });
+
   async function pickChip(next: PhotoChip) {
     const before = measureCells(gridEl, 'data-photo-key');
     const followers = measureFollowers(gridEl?.closest<HTMLElement>('.screen') ?? undefined);
@@ -367,7 +372,7 @@
         <!-- The number changes with a chip, so it crossfades rather than
              swapping in the frame of the press (carpet 15 row 49). -->
         <p class="photo-count" data-photo-count>
-          {#key shown.length}<span in:crossfade out:crossfade>{m.ph_count({ count: shown.length })}</span>{/key}
+          {#key shown.length}<span in:countIn out:crossfade>{m.ph_count({ count: shown.length })}</span>{/key}
         </p>
         <div class="photo-library">
           <div class="photo-grid" bind:this={gridEl}>
