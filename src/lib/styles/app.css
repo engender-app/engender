@@ -1202,9 +1202,12 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
     field-part-out var(--dur-fast) var(--ease-in-out) both,
     blind-lead var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
+/* The arrival eases in and out, like the leave: on --ease-out the first
+   painted frame already carried 70% of the fade (0.004 to 0.719 between two
+   frames at 1280, carpet 15 row 51), which read as the words popping in. */
 ::view-transition-new(*.field-part) {
   animation:
-    field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both,
+    field-part-in var(--dur-fast) var(--ease-in-out) var(--dur-fast) both,
     part-follow var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
 /* `--fp-from` is how far the part had faded in when a navigation landed on

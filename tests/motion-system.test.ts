@@ -1104,7 +1104,7 @@ describe('ticket 28: the field is a blind over the content', () => {
     const fresh = declarations(ruleOf(app, '::view-transition-new(*.field-part)')?.body ?? '');
     expect(out.animation).toContain('field-part-out var(--dur-fast) var(--ease-in-out) both');
     expect(fresh.animation, 'the incoming one waits for the outgoing one').toContain(
-      'field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both'
+      'field-part-in var(--dur-fast) var(--ease-in-out) var(--dur-fast) both'
     );
     for (const name of ['field-part-out', 'field-part-in']) {
       /* The leave also names where it starts from opacity-wise, for a
