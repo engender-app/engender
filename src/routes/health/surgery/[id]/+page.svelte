@@ -552,7 +552,7 @@
     {@const compareNotice = compareStretchNoticeProps(compareLink.state, recoveryOpenEnded, SURGERY_COMPARE_COPY)}
     <div style="margin-top:var(--space-4);margin-bottom:var(--space-4)">
       <Notice
-        icon="shuffle"
+        icon="columns"
         key="surgery-compare"
         role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
         title={compareNotice.title}
@@ -606,7 +606,7 @@
 
       {:else if phase === 'pre_op'}
         <Notice
-          icon="clock"
+          icon="clipboard"
           key="surgery-preop"
           role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
           title={recoveryText(stored)}
@@ -619,7 +619,7 @@
 
       {:else if phase === 'surgery_day'}
         <Notice
-          icon="flag"
+          icon="clipboard"
           key="surgery-today"
           role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
           title={m.surgery_day_title()}
@@ -630,7 +630,7 @@
         {#if linkedMilestone}
           <div style="margin-bottom:var(--space-4)">
             <Notice
-              icon="flag"
+              icon="summit"
               key="surgery-milestone-linked"
               role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
               title={m.surgery_milestone_linked_badge()}
@@ -640,7 +640,7 @@
         {:else}
           <div style="margin-bottom:var(--space-4)">
             <Notice
-              icon="flag"
+              icon="summit"
               key="surgery-milestone-prompt"
               role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
               title={m.surgery_milestone_prompt_title()}
@@ -655,7 +655,7 @@
 
       {:else if phase === 'recovery'}
         <Notice
-          icon="heart"
+          icon="clipboard"
           key="surgery-recovery"
           role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
           title={recDay?.type === 'since' ? m.surgery_post_op_day({ days: String(recDay.days) }) : recoveryText(stored)}

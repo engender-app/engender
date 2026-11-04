@@ -71,7 +71,7 @@
               {:else if take.feltSense !== null}
                 <MoodFace step={take.feltSense} size={36} />
               {:else}
-                <span class="kit-row-ico"><Icon name="mic" size={20} /></span>
+                <span class="kit-row-ico"><Icon name="waveform" size={20} /></span>
               {/if}
             {/snippet}
             <ListRow
@@ -104,7 +104,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="mic"
+        icon="waveform"
         key="voice-practice-takes-empty"
         {role}
         title={m.vb_practice_takes_empty_title()}

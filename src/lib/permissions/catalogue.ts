@@ -122,7 +122,7 @@ const AMBIENT_ICON: Record<AmbientKey, string> = {
   takePhoto: 'camera',
   pickFile: 'image',
   backupFolder: 'download',
-  print: 'documents',
+  print: 'print',
   /* Not `key`, though what is copied is the recovery key: `/settings`' own
      row into this list wears that glyph, and the same icon meaning two
      things one navigation apart is the kind of small lie a list like this

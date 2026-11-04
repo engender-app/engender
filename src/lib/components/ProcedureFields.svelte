@@ -67,7 +67,7 @@
         data-procedure-kind
         data-pick-procedure-kind="true"
         aria-haspopup="dialog"
-        icon="tag"
+        icon="clipboard"
         title={kind ? procedureKindName(kind) : m.surgery_kind_choose()}
         subtitle={kind ? null : m.surgery_kind_needed()}
         fadeSwap

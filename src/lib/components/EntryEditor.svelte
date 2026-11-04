@@ -889,7 +889,7 @@
 
   {#if entryId == null}
     <button class="btn btn-ghost" data-use-template onclick={() => (templateSheetOpen = true)}>
-      <Icon name="sparkle" size={18} /><span>{m.use_template()}</span>
+      <Icon name="template" size={18} /><span>{m.use_template()}</span>
     </button>
   {/if}
 
@@ -1090,7 +1090,7 @@
           <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
         </button>
         <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={() => prepareDraft(addRecordingFile)}>
-          <Icon name="image" size={22} /><span>{m.add_recording_file()}</span>
+          <Icon name="upload" size={22} /><span>{m.add_recording_file()}</span>
         </button>
       </div>
     </div>
@@ -1145,7 +1145,7 @@
           aria-label={m.add_video_file()}
           onclick={() => prepareDraft(addVideoFile)}
         >
-          <Icon name="image" size={22} /><span>{m.add_video_file()}</span>
+          <Icon name="upload" size={22} /><span>{m.add_video_file()}</span>
         </button>
       </div>
     </div>

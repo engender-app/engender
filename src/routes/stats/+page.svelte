@@ -573,7 +573,7 @@
   {#if !railRevealed}
     <div out:crossfade data-lookback-rail-wait><Skeleton variant="block" count={1} /></div>
   {:else if railStart === null}
-    <Notice icon="clock" key="lookback-empty" title={m.lookback_empty_title()} text={m.lookback_empty_body()}
+    <Notice icon="stats" key="lookback-empty" title={m.lookback_empty_title()} text={m.lookback_empty_body()}
       action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }} />
   {:else if span}
     <div class="lookback-rail" data-lookback-rail>

@@ -311,7 +311,7 @@
         <ListRow
           key={appointment.id}
           data-visit-pick={appointment.id}
-          icon="calendar"
+          icon="appointment"
           title={nameOf(appointment)}
           subtitle={appointment.place ?? undefined}
           onclick={() => pickAppointment(appointment.id)}

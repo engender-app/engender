@@ -273,7 +273,7 @@
   {#if showShortcut && originSpan && preceding}
     <Notice
       key="compare-shortcut"
-      icon="shuffle"
+      icon="columns"
       title={m.compare_shortcut_title()}
       text={m.compare_shortcut_body({
         current: formatSpanLabel(originSpan.start, originSpan.end),

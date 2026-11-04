@@ -1119,7 +1119,7 @@
          recorded, not one of the journal's own coloured areas. -->
     {#if showDebriefOffer}
       <Notice
-        icon="calendar"
+        icon="appointment"
         key="debrief-offer"
         title={m.debrief_offer_title()}
         action={{
