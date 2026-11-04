@@ -217,7 +217,7 @@ describe('More hub row for Safe Space', () => {
     /* The row list moved into `hubRows.ts` with phase 8 UX ticket 02, and the
        titles with it into `vocabulary/hubLabels.ts`, so this asks the module
        for the row and the label module for the key it draws the title from. */
-    expect(HUB_ROWS.find((row) => row.key === 'doubt')).toMatchObject({ href: '/doubt', icon: 'heart' });
+    expect(HUB_ROWS.find((row) => row.key === 'doubt')).toMatchObject({ href: '/doubt', icon: 'shelter' });
     expect(read('src/lib/data/vocabulary/hubLabels.ts')).toContain('doubt: m.safe_space_title');
   });
 });

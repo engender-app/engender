@@ -181,7 +181,29 @@ export const PATHS: Record<string, string> = {
   razor: '<path d="M12.41 4.52 19.48 11.59a1.5 1.5 0 0 1 0 2.12l-2.12 2.12a1.5 1.5 0 0 1-2.12 0L8.17 8.76a1.5 1.5 0 0 1 0-2.12l2.12-2.12a1.5 1.5 0 0 1 2.12 0z"/><path d="M11.35 7.7 16.3 12.65"/><path d="M11.71 12.29 3.22 20.78"/>',
   // A voice as sound: bars about a midline with no baseline, which keeps it
   // apart from `stats`'s three bars standing on one.
-  waveform: '<path d="M4.5 10.5v3M8.25 7.5v9M12 4v16M15.75 6.5v11M19.5 9.5v5"/>'
+  waveform: '<path d="M4.5 10.5v3M8.25 7.5v9M12 4v16M15.75 6.5v11M19.5 9.5v5"/>',
+  // Five marks for the Health and Support rows (pre-release-human 12), drawn
+  // the same way. Appointments drew `check`, surgery `flag`, letters `book`,
+  // Safe Space `heart` and resources `info`. Care took `pill`, which is
+  // already the medication mark on its own screen.
+  //
+  // A visit: a calendar page with a clock over its corner, a day and a time
+  // booked. Not plain `calendar`, which is the Journal tab's and the cycle's.
+  appointment: '<path d="M20 11V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5.5"/><path d="M7.5 3v4M15.5 3v4"/><path d="M3 10.5h7.5"/><circle cx="16.5" cy="16.5" r="4.5"/><path d="M16.5 14.5v2l1.4 1.4"/>',
+  // A medical chart on a clipboard, for the prep, the consults and the
+  // recovery. Nothing sharp and nothing red. A plaster was tried and drawn
+  // at row size it was `pill` again: a capsule on the diagonal with a line
+  // across it.
+  clipboard: '<path d="M8.5 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1.5"/><rect x="8.5" y="3" width="7" height="4" rx="1"/><path d="M12 11v6M9 14h6"/>',
+  // A letter kept shut: an envelope with a seal where its flap meets. The
+  // seal is what says it waits for a day rather than being mail.
+  envelope: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.6 6.4 10.4 11.6M20.4 6.4 13.6 11.6"/><circle cx="12" cy="12.8" r="1.9"/>',
+  // A heart under a roof, somewhere to shelter. Walls and a door would make
+  // it `home`, the Today tab.
+  shelter: '<path d="M3.5 11.5 12 4.5l8.5 7"/><path d="M12 20.5 7.6 15.9a2.5 2.5 0 1 1 4.4-2.3 2.5 2.5 0 1 1 4.4 2.3z"/>',
+  // Help to hold on to, for the helplines and support groups. Four bands on
+  // a ring, symmetric, so centred by construction.
+  lifebuoy: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.64 5.64 3.53 3.53M14.83 9.17l3.53-3.53M14.83 14.83l3.53 3.53M9.17 14.83l-3.53 3.53"/>'
 };
 
 /* The two parameters are constrained rather than escaped, because both have
