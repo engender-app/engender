@@ -94,10 +94,13 @@ export function openBlocks(opts: {
   const followersShow = travel >= 1;
   const betweenShows = between.some((el, i) => Number.isFinite(betweenShifts[i]) && (opts.before.get(el) as number) < innerHeight);
   if (!followersShow && !betweenShows) return null;
+  /* The pack's room is how far the first between element that was already
+     there moved; with none, the section follows the pack directly. */
+  const known = betweenShifts.findIndex((shift) => Number.isFinite(shift));
   const packSpace = !pack
     ? 0
-    : between.length > 0 && Number.isFinite(betweenShifts[0])
-      ? -betweenShifts[0]
+    : known >= 0
+      ? -betweenShifts[known]
       : section.getBoundingClientRect().top - pack.getBoundingClientRect().top;
   const shifts = openingShifts({ added, travel, packSpace });
 
