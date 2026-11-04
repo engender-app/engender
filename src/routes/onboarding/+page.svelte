@@ -75,7 +75,7 @@
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { featureAreas, type HubRow, type HubRowKey } from '$lib/data/hubRows';
-  import { firstRunModuleWrites } from '$lib/onboarding/features';
+  import { DEFAULT_MODULES, firstRunModuleWrites } from '$lib/onboarding/features';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import FlagSun from '$lib/components/FlagSun.svelte';
@@ -151,14 +151,19 @@
       : false)
   );
 
+  /* Null until the features step is touched, which reads as the default
+     set both here and in complete() - so the step opens with what a skip
+     would keep. */
+  let tickedModules = $derived(moduleChoices ?? DEFAULT_MODULES);
+
   function moduleEnabled(row: HubRow): boolean {
-    return (moduleChoices ?? []).includes(row.key);
+    return tickedModules.includes(row.key);
   }
 
   function chooseModule(row: HubRow, enabled: boolean) {
     moduleChoices = enabled
-      ? [...(moduleChoices ?? []), row.key]
-      : (moduleChoices ?? []).filter((key) => key !== row.key);
+      ? [...tickedModules, row.key]
+      : tickedModules.filter((key) => key !== row.key);
   }
 
   /* The lock step's own answer once a mode is set up: when that mode's

@@ -2369,17 +2369,18 @@ try {
   // FEATURE_MODULE_ROWS in src/lib/data/hubRows.ts: one row per optional area.
   const featureCount = await modules.count();
   if (featureCount !== 14) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 14`);
-  for (const key of ['care', 'milestones', 'tryouts', 'voice-benchmark']) {
-    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== 'false') {
-      throw new Error(`${key} started on instead of keeping the first run to journal basics`);
+  // DEFAULT_MODULES in src/lib/onboarding/features.ts: the core set arrives
+  // ticked, the specialist modules do not (pre-release-human 12).
+  for (const [key, on] of [['care', 'true'], ['milestones', 'true'], ['voice-benchmark', 'true'], ['tryouts', 'false']]) {
+    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== on) {
+      throw new Error(`${key} did not arrive ${on === 'true' ? 'on' : 'off'} with the default set`);
     }
   }
-  await page.locator('[data-feature-module="care"]').click();
-  await page.locator('[data-feature-module="voice-benchmark"]').click();
+  await page.locator('[data-feature-module="milestones"]').click();
   await page.locator('[data-back]').click(); // features -> scales
   await page.locator('[data-next]').click(); // scales -> features
-  for (const key of ['care', 'voice-benchmark']) {
-    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== 'true') {
+  for (const [key, on] of [['care', 'true'], ['voice-benchmark', 'true'], ['milestones', 'false']]) {
+    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== on) {
       throw new Error(`${key} choice was lost after Back`);
     }
   }
