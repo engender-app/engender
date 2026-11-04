@@ -65,6 +65,7 @@ import type { EntriesArea } from './entries';
 import type { FeltSenseArea } from './feltSense';
 import type { HairProgressArea } from './hairProgress';
 import type { HairRemovalArea } from './hairRemoval';
+import type { ProgressPhotosArea } from './progressPhotos';
 import type { LabsArea } from './labs';
 import type { MilestonesArea } from './milestones';
 import type { PersonalEffectsArea } from './personalEffects';
@@ -93,6 +94,7 @@ interface LastWriteAreas {
   feltSense: FeltSenseArea;
   hairProgress: HairProgressArea;
   hairRemoval: HairRemovalArea;
+  progressPhotos: ProgressPhotosArea;
   appointments: AppointmentsArea;
   procedures: ProceduresArea;
   tryouts: TryoutsArea;
@@ -196,6 +198,11 @@ const ENTRIES = [
     key: 'hairPhotos',
     tables: ['hairProgress'],
     read: ({ hairProgress, todayEpochDay }) => hairProgress.lastPhotoWriteEpochDay(todayEpochDay)
+  }),
+  entry({
+    key: 'progressPhotos',
+    tables: ['progressPhoto'],
+    read: ({ progressPhotos, todayEpochDay }) => progressPhotos.lastWriteEpochDay(todayEpochDay)
   }),
   entry({
     key: 'hairRemovalSessions',

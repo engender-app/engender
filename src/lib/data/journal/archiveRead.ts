@@ -30,6 +30,7 @@ import type {
   ArchiveMarginNote,
   ArchiveJournal,
   ArchiveHairPhoto,
+  ArchiveProgressPhoto,
   ArchiveHairRemovalPhoto,
   ArchiveHairRemovalSession,
   ArchiveImportLogRecord,
@@ -482,6 +483,12 @@ export async function readPersonalEffectTypes({ driver }: SectionRead): Promise<
 /* Reads its rows from the context rather than the driver, the way the entry
    and milestone readers do with photos: the same query feeds the file
    manifest, and one read of the table serves both. */
+export async function readProgressPhotos({ progressPhotos }: SectionRead): Promise<ArchiveProgressPhoto[]> {
+  return progressPhotos.map((r) => ({
+    id: r.uuid, epochDay: r.epoch_day, pose: r.pose, fileName: r.file_path, updatedAt: r.updated_at
+  }));
+}
+
 export async function readHairPhotos({ hairPhotos }: SectionRead): Promise<ArchiveHairPhoto[]> {
   return hairPhotos.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, fileName: r.file_path, updatedAt: r.updated_at }));
 }

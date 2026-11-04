@@ -205,7 +205,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('twelve rows can report a reading and six never can', () => {
+test('thirteen rows can report a reading and six never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
@@ -222,8 +222,9 @@ test('twelve rows can report a reading and six never can', () => {
   // since redesign ticket 16 took `eras` - also 'written' - off the same
   // way. Six since phase 11 ticket 17 folded `voice` - also 'written' -
   // into `voice-benchmark`'s own Recordings tab rather than giving it a
-  // row of its own.
-  assert.equal(reads.length, 12);
+  // row of its own. Thirteen since pre-release-human 12 added
+  // `progress-photos`, a reading row.
+  assert.equal(reads.length, 13);
   assert.equal(HUB_ROWS.length - reads.length, 6);
 });
 
@@ -730,6 +731,7 @@ test('every group is in the order Alicja set in pre-release-human 12', () => {
   assert.deepEqual(group('transition'), [
     'roadmap',
     'milestones',
+    'progress-photos',
     'tryouts',
     'wear',
     'hair-removal',

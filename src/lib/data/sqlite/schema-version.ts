@@ -16,7 +16,7 @@
    (pre-publish ticket 01, which folded 89 to 119 into it). A journal at 89
    to 118 came from a development build and is refused, as one below 88 is.
    Nothing is squashed after 1.0.0: a release's migrations are appended here
-   and stay.
+   and stay. Version 120 (progress photos) is the first appended step.
 
    A merge hazard, and the second one in this area: the next migration's number
    already collides between parallel branches, and now the number is written
@@ -25,4 +25,4 @@
    assertions in that file get checked, by running the schema suite after a
    merge rather than by trusting that both sides of it were touched. */
 
-export const LATEST_SCHEMA_VERSION = 119;
+export const LATEST_SCHEMA_VERSION = 120;

@@ -1678,6 +1678,15 @@
       "updatedAt": 1793388955713
     }
   ],
+  "progressPhotos": [
+    {
+      "id": "3b0f6c52-9d1e-4a7b-8c2f-5e6a7d8b9c01",
+      "epochDay": 19210,
+      "pose": "front",
+      "fileName": "3b0f6c52-9d1e-4a7b-8c2f-5e6a7d8b9c01.jpg",
+      "updatedAt": 1793388955713
+    }
+  ],
   "hairRemovalSessions": [
     {
       "id": "fb669714-b155-4bfa-acfb-84113fbf8f42",

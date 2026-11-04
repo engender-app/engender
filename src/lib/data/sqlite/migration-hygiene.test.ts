@@ -72,7 +72,7 @@ async function journalOn118(): Promise<Db> {
 
 async function migrated(): Promise<Db> {
   const db = await journalOn118();
-  await runMigrations(db, noopFileOps(), preSquashChain);
+  await runMigrations(db, noopFileOps(), preSquashChain.filter((m) => m.version <= 119));
   return db;
 }
 

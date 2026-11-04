@@ -29,7 +29,8 @@ const PHOTO_SOURCES = [
   'hairRemoval',
   'tryout',
   'procedure',
-  'video'
+  'video',
+  'progress'
 ] as const;
 
 export type PhotoSource = (typeof PHOTO_SOURCES)[number];
@@ -55,7 +56,12 @@ export interface LibraryPhoto {
 /** The chips over the grid, in the order they are drawn. `everything` is
     first because it is where the library opens; `starred` narrows by flag
     across source chips. */
-const PHOTO_CHIPS = ['everything', 'body', 'hair', 'tryouts', 'surgery', 'video', 'starred'] as const;
+/* `progress` sits next to `body`: both are the person photographing
+   themselves, and a progress shot is the one taken on purpose for it
+   (pre-release-human 12, bug 25). Its own chip rather than folded into
+   Body, because finding the posed shots among every other photograph is
+   what the chip is for. */
+const PHOTO_CHIPS = ['everything', 'body', 'progress', 'hair', 'tryouts', 'surgery', 'video', 'starred'] as const;
 
 export type PhotoChip = (typeof PHOTO_CHIPS)[number];
 
@@ -68,7 +74,8 @@ const CHIP_OF: Record<PhotoSource, Exclude<PhotoChip, 'everything' | 'starred'>>
   hairRemoval: 'hair',
   tryout: 'tryouts',
   procedure: 'surgery',
-  video: 'video'
+  video: 'video',
+  progress: 'progress'
 };
 
 export function chipOf(source: PhotoSource): PhotoChip {
@@ -141,5 +148,6 @@ export function photoOwnerHref(photo: LibraryPhoto): string {
     case 'hairRemoval': return `/body/hair-removal?session=${id}`;
     case 'tryout': return `/transition/tryouts/${id}`;
     case 'procedure': return `/health/surgery?procedure=${id}`;
+    case 'progress': return `/transition/progress-photos?photo=${id}`;
   }
 }

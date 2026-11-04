@@ -273,6 +273,13 @@ const ROWS = {
     epochDay: numeric,
     fileName: text
   },
+  progressPhotos: {
+    ...STAMP,
+    id: identity,
+    epochDay: numeric,
+    pose: text,
+    fileName: text
+  },
   hairRemovalSessions: {
     ...STAMP,
     id: identity,

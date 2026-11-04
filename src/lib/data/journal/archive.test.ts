@@ -1007,6 +1007,8 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // rows come from SectionRead rather than a second query the way a flat
   // section's own read would issue.
   hair_photo: ['uuid', 'epoch_day', 'file_path'],
+  // Read once for the file manifest, the same reason hair_photo above is.
+  progress_photo: ['uuid', 'epoch_day', 'pose', 'file_path'],
   // Owns a child (hair_removal_photo) below.
   // The old free-text `cost` is left behind: version 115 emptied it into the
   // cost columns or the note (FA 30), and FA 50 drops it.

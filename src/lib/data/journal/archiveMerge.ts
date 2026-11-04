@@ -113,6 +113,7 @@ export const MERGE_CLASSES: Readonly<Record<string, MergeClass>> = {
   preset_dimension: parent('gender_preset'),
   procedure: uuid,
   procedure_photo: uuid,
+  progress_photo: uuid,
   provider: uuid,
   regimen_episode: uuid,
   reminder: uuid,

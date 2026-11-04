@@ -56,6 +56,7 @@ export const TABLE_NAMES = [
   'preset_dimension',
   'procedure',
   'procedure_photo',
+  'progress_photo',
   'provider',
   'regimen_episode',
   'reminder',

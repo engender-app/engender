@@ -120,6 +120,7 @@ const EDITS: [string, string, string, string?][] = [
   ['presentation', 'name', "'edited'"],
   ['procedure', 'notes', "'edited'"],
   ['procedure_photo', 'epoch_day', 'epoch_day + 1'],
+  ['progress_photo', 'pose', "'side'"],
   ['provider', 'name', "'edited'"],
   ['regimen_episode', 'dose', 'dose + 1'],
   ['reminder', 'title', "'edited'"],

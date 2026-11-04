@@ -304,6 +304,7 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   // Hair photos have no schedule since functional audit ticket 23, which
   // removed the 28-day photo-due prompt; there is no next day to mark.
   hairPhotos: 'hair photos have no schedule, so there is no next day to mark',
+  progressPhotos: 'taken when taken, with no schedule, so there is no next day to mark',
   // The screen this row belongs to refuses due framing outright
   // (hairRemovalSchedule.ts's own header), so there is no due day to carry
   // forward even before the calendar-mark objection above applies.

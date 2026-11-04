@@ -427,7 +427,11 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // ticket). Keyed by the day it was written on, a margin note would need a
   // second section here just to point back at its entry; keyed by the day
   // it belongs to, it already is one - the entry's own row.
-  marginNotes: 'drawn beside the entry it annotates, not as a section of its own'
+  marginNotes: 'drawn beside the entry it annotates, not as a section of its own',
+
+  // Pre-release-human 12, bug 25: read pose by pose on its own timeline
+  // and in the photo library, which is where a progress photo is looked at.
+  progressPhotos: 'its own pose timeline and the photo library are where it is read'
 };
 
 /* DAY_SECTIONS stays exported only for its own test (AU-09 test-only review). */

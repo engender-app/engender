@@ -59,6 +59,7 @@ const reading = (driver: SqliteDriver): SectionRead =>
     recordings: [],
     videos: [],
     hairPhotos: [],
+    progressPhotos: [],
     hairRemovalPhotos: [],
     procedurePhotos: [],
     tryoutPhotos: [],

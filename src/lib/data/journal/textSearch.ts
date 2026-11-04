@@ -537,6 +537,7 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   roadmapInstitutions: 'the name of an office on the roadmap list, read there',
   roadmapInstitutionChanges: 'a status and a short line about one office, read on the roadmap',
   hairPhotos: 'no text of its own: a dated photograph',
+  progressPhotos: 'no text of its own: a dated photograph and its pose',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',
   taper: 'no text of its own: a surgery day, a start day and a stage sequence (ticket 12)',
   doseEvents: 'no text of its own: a drug, a dose and sites picked from closed lists',

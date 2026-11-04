@@ -117,6 +117,7 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['hairProgress', 'lastStageWriteEpochDay'],
       ['hairProgress', 'lastPhotoWriteEpochDay'],
       ['hairRemoval', 'lastWriteEpochDay'],
+      ['progressPhotos', 'lastWriteEpochDay'],
       ['procedures', 'lastWriteEpochDay'],
       ['tryouts', 'lastWriteEpochDay'],
       ['documents', 'lastWriteEpochDay']
