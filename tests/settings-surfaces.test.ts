@@ -226,6 +226,16 @@ describe('what Settings is built from', () => {
     }
   });
 
+  it('sizes the flag bands to the border box so no edge row shows the far end (prh12)', () => {
+    /* The swatch's 1px edge is translucent and a gradient defaults to the
+       padding box and tiles, so the border row drew the opposite end of the
+       flag: the last band along the top, the first along the bottom. */
+    const screens = read('src/lib/styles/screens.css');
+    const rule = /\.palette-grid \.swatch-preview\s*\{([^}]+)\}/.exec(screens)?.[1] ?? '';
+    expect(rule).toContain('border: 1px solid var(--outline)');
+    expect(rule).toContain('background-origin: border-box');
+  });
+
   it('has no Home & calendar colour row (functional-audit ticket 14)', () => {
     /* The metric preference stays: Calendar and Look back's day-by-day
        reading set it from their own pickers. Only the Settings row and its

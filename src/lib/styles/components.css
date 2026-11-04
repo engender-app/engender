@@ -638,6 +638,17 @@
    reader says where you are (navigation/arrivalFocus.ts). It is not a
    control and nothing can be done to it, so it wears no ring. */
 [data-arrival-focus]:focus-visible { outline: none; }
+/* A text field pressed with a finger or a mouse wears no ring and no coloured
+   edge (Alicja, 2026-11-04: "pls remove those ugly borders around textbars on
+   press"). Chromium's :focus-visible matches a text field on every focus, tap
+   included, so the ring above could not tell a press from a Tab. pointerFocus.ts
+   marks the document after a press and clears it on Tab, so a keyboard keeps
+   the ring and the edge cue exactly as drawn. The caret is the answer to a
+   press. Selects and buttons are not text fields and keep their ring. */
+:root[data-input='pointer'] :is(input, textarea):focus-visible { outline: none; }
+:root[data-input='pointer'] :is(input, textarea).input:focus { border-color: var(--input-edge); }
+:root[data-input='pointer'] .search-box:focus-within { border-color: var(--outline); outline: none; }
+:root[data-input='pointer'] .screen-field .search-box:focus-within { border-color: var(--field-ink); }
 
 /* ---------- switch ---------- */
 /* One switch, and one accessibility contract for it. This was styled twice:

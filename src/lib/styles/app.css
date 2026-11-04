@@ -7,7 +7,14 @@
 
 * { box-sizing: border-box; margin: 0; }
 
-:is(button, a, input, select, label) { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+/* No scrollbar is ever drawn, on any scroll container (Alicja, 2026-11-04:
+   "sometimes a scroll bar appears on the right in the app. that should NOT
+   happen ever"). Scrolling itself is untouched. A class selector that sets
+   its own scrollbar-width outranks this, so none may. */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
+
+:is(button, a, input, select, textarea, label) { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 h1, h2, h3 { text-wrap: balance; }
 
 html { color-scheme: light dark; }
@@ -140,13 +147,11 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  scrollbar-width: thin;
-  /* Reserves the scrollbar's own width whether or not one is drawn, so
-     Sheet.svelte locking this element to `overflow: hidden` while a sheet
-     is open does not also remove the scrollbar and shift the content under
-     it (Alicja, 2026-08-27: the list jumps when an entry is selected, in
-     hair removal). */
-  scrollbar-gutter: stable;
+  /* No `scrollbar-gutter: stable` here any more: with no scrollbar drawn
+     there is no width to reserve, so Sheet.svelte locking this element to
+     `overflow: hidden` while a sheet is open still shifts nothing (it was
+     the gutter that fixed the jump in hair removal, Alicja, 2026-08-27,
+     when the scrollbar was drawn). */
   overscroll-behavior: contain;
   /* Scroll position here is scroll-region.ts's own to manage - it remembers
      and restores per path deliberately, because this element rather than
