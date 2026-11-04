@@ -171,9 +171,11 @@
 
   const record = recordEditor<
     Procedure,
-    { id?: string; name: string; date: string; kind: ProcedureKind; dilationOptIn: boolean; archived: boolean; cost: CostDraft }
+    { id?: string; name: string; date: string; kind: ProcedureKind | null; dilationOptIn: boolean; archived: boolean; cost: CostDraft }
   >({
-    blank: () => ({ name: '', date: '', kind: 'custom', dilationOptIn: false, archived: false, cost: blankCostDraft(deviceDefaultCurrency()) }),
+    /* No kind until one is picked (prh12 bug 18): a default of Custom read
+       as an answer already given, so nobody saw a type was being asked for. */
+    blank: () => ({ name: '', date: '', kind: null, dilationOptIn: false, archived: false, cost: blankCostDraft(deviceDefaultCurrency()) }),
     fromRecord: (procedure) => ({
       id: procedure.id,
       name: procedure.name,
@@ -185,7 +187,7 @@
     }),
     async upsert(draft) {
       const name = draft.name.trim();
-      if (!name || !costDraftOk(draft.cost)) return false;
+      if (!name || !draft.kind || !costDraftOk(draft.cost)) return false;
       const id = await journal.procedures.upsertProcedure({
         id: draft.id,
         name,
@@ -758,7 +760,7 @@
   <RecordSheet
     {record}
     handle="procedure"
-    canSave={(draft) => costDraftOk(draft.cost)}
+    canSave={(draft) => draft.kind !== null && costDraftOk(draft.cost)}
     newTitle={m.surgery_new_sheet()}
     editTitle={m.surgery_edit_sheet()}
     saveLabel={m.surgery_save()}
@@ -783,31 +785,36 @@
           />
         {/snippet}
       </Field>
-      <Field label={m.surgery_date_label()} id="surgery-date">
-        {#snippet children(id)}
-          <DatePicker name="surgery-date" bind:value={editor.date} {id} />
-        {/snippet}
-      </Field>
-      <CostField id="surgery-cost" bind:draft={editor.cost} />
+      <!-- Right under the name and drawn as a choice to make (prh12 bug 18):
+           the whole row opens the list, it says "Choose a type" until one is
+           picked, and Save waits for it. It used to be a static row reading
+           "Custom" with a small pencil, which looked like an answer. -->
       <Field label={m.surgery_kind_label()} legend>
         {#snippet children()}
           <ListCard>
             <ListRow
               key="procedure-kind"
               data-procedure-kind
+              data-pick-procedure-kind="true"
+              aria-haspopup="dialog"
               icon="tag"
-              title={procedureKindName(editor.kind)}
-              static
-              action={{
-                icon: 'pencil',
-                label: m.surgery_kind_change(),
-                onclick: () => (pickingKind = true),
-                attrs: { 'data-pick-procedure-kind': 'true' }
-              }}
-            />
+              title={editor.kind ? procedureKindName(editor.kind) : m.surgery_kind_choose()}
+              subtitle={editor.kind ? null : m.surgery_kind_needed()}
+              fadeSwap
+              chevron={false}
+              onclick={() => (pickingKind = true)}
+            >
+              {#snippet trailing()}<Icon name="chevronDown" size={22} />{/snippet}
+            </ListRow>
           </ListCard>
         {/snippet}
       </Field>
+      <Field label={m.surgery_date_label()} id="surgery-date">
+        {#snippet children(id)}
+          <DatePicker name="surgery-date" bind:value={editor.date} {id} />
+        {/snippet}
+      </Field>
+      <CostField id="surgery-cost" bind:draft={editor.cost} />
       {#if editor.kind === 'custom'}
         <div class="disclosed" transition:disclose>
           <Field label={m.surgery_kind_dilation_toggle_label()} legend spread>

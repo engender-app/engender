@@ -151,6 +151,20 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(JSON.parse(read('messages/en.json')).surgery_checklist_title).toBe('Checklist');
   });
 
+  /* prh12 bug 18: the kind used to default to Custom and sit in a static
+     row with a small pencil, so nothing said a type was to be chosen. */
+  it('asks for a procedure type on a new procedure and will not save without one', () => {
+    const pageCode = read('src/routes/health/surgery/+page.svelte');
+    expect(pageCode).toMatch(/blank: \(\) => \(\{[^}]*kind: null/);
+    expect(pageCode).toMatch(/canSave=\{\(draft\) => draft\.kind !== null && /);
+    expect(pageCode).toMatch(/title=\{editor\.kind \? procedureKindName\(editor\.kind\) : m\.surgery_kind_choose\(\)\}/);
+    for (const lang of ['en', 'pl']) {
+      const messages = JSON.parse(read(`messages/${lang}.json`)) as Record<string, string>;
+      expect(messages.surgery_kind_choose, lang).toBeTruthy();
+      expect(messages.surgery_kind_needed, lang).toBeTruthy();
+    }
+  });
+
   it('sends a consult question to the appointment prep list, not the procedure notes', async () => {
     const pageCode = read('src/routes/health/surgery/+page.svelte');
     expect(pageCode).toContain('data-add-consult-question');
