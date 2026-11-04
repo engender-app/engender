@@ -719,24 +719,23 @@ test('a fresh journal draws every row the hub owns, each saying what is behind i
   }
 });
 
-test('every group is the list phase 9 carpet ticket 16 asked for', () => {
+test('every group is in the order Alicja set in pre-release-human 12', () => {
   const sections = hubSections(reading());
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
   // `body` is gone and its one row opens Health (audit item 10).
   assert.deepEqual(group('body'), []);
-  assert.deepEqual(group('health'), ['care', 'surgery', 'appointments']);
+  assert.deepEqual(group('health'), ['care', 'appointments', 'surgery']);
   assert.deepEqual(group('transition'), [
+    'roadmap',
     'milestones',
     'tryouts',
-    'voice-benchmark',
     'wear',
     'hair-removal',
-    'roadmap',
-    'letters'
+    'voice-benchmark'
   ]);
-  assert.deepEqual(group('support'), ['doubt', 'resources']);
+  assert.deepEqual(group('support'), ['letters', 'doubt', 'resources']);
   assert.deepEqual(group('media'), ['photos', 'documents']);
 });
 

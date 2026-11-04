@@ -230,9 +230,9 @@ export interface HubRowSpec {
     knowing about because the ticket did not settle them:
 
       - hair removal is not on the ticket's Transition list at all. Alicja
-        put it in Transition, and it sits after the wear log because those
-        two are the group's dated practice logs and everything after them is
-        a plan or a letter.
+        put it in Transition, after the wear log.
+      - pre-release-human 12 reordered all three groups to Alicja's list and
+        moved letters from Transition to Support.
       - the hosted rows are declared last, in the order their hosts appear
         above, so reading this list top to bottom is reading the hub and then
         reading what came off it. */
@@ -256,15 +256,6 @@ const ROWS = [
     line: 'written'
   },
   {
-    key: 'surgery',
-    icon: 'flag',
-    href: '/health/surgery',
-    home: 'health',
-    areas: ['procedures'],
-    finishes: null,
-    line: 'read'
-  },
-  {
     /* Renamed from `appointment-prep` by ticket 57 rather than joined by a
        second row: prep, the record and the debrief were three descriptions
        of one thing, and the one that names it is the one that stays
@@ -277,7 +268,30 @@ const ROWS = [
     finishes: null,
     line: 'read'
   },
+  {
+    key: 'surgery',
+    icon: 'flag',
+    href: '/health/surgery',
+    home: 'health',
+    areas: ['procedures'],
+    finishes: null,
+    line: 'read'
+  },
   // --- Transition ----------------------------------------------------------
+  {
+    /* Keeps `globe`, which resources gave up: a roadmap is the closest thing
+       in the icon set to a map, and support and resources is a list of places
+       outside the app rather than a route through it. */
+    key: 'roadmap',
+    icon: 'globe',
+    href: '/transition/roadmap',
+    home: 'transition',
+    /* A goal and a tick against one both opt out of the last-write registry
+       for the same reason: neither carries a date of its own. */
+    areas: ['roadmapGoals', 'roadmapCategories', 'roadmapChecks'],
+    finishes: null,
+    line: 'written'
+  },
   {
     /* `sparkle` rather than the `flag` it shared with the surgery journey. A
        flag is planted on a map, which is what a surgery journey has: one
@@ -304,6 +318,24 @@ const ROWS = [
     line: 'read'
   },
   {
+    key: 'wear',
+    icon: 'clock',
+    href: '/body/wear',
+    home: 'transition',
+    areas: ['wearSessions'],
+    finishes: 'wear',
+    line: 'read'
+  },
+  {
+    key: 'hair-removal',
+    icon: 'shuffle',
+    href: '/body/hair-removal',
+    home: 'transition',
+    areas: ['hairRemovalSessions'],
+    finishes: 'hair-removal',
+    line: 'read'
+  },
+  {
     /* `curve` still, from when this fronted the benchmark alone: a line over
        takes is still most of what is behind the row, and the recordings
        ticket 17 folded in here keep `mic` on the screen's own Recordings
@@ -327,43 +359,12 @@ const ROWS = [
     finishes: 'voice',
     line: 'read'
   },
-  {
-    key: 'wear',
-    icon: 'clock',
-    href: '/body/wear',
-    home: 'transition',
-    areas: ['wearSessions'],
-    finishes: 'wear',
-    line: 'read'
-  },
-  {
-    key: 'hair-removal',
-    icon: 'shuffle',
-    href: '/body/hair-removal',
-    home: 'transition',
-    areas: ['hairRemovalSessions'],
-    finishes: 'hair-removal',
-    line: 'read'
-  },
-  {
-    /* Keeps `globe`, which resources gave up: a roadmap is the closest thing
-       in the icon set to a map, and support and resources is a list of places
-       outside the app rather than a route through it. */
-    key: 'roadmap',
-    icon: 'globe',
-    href: '/transition/roadmap',
-    home: 'transition',
-    /* A goal and a tick against one both opt out of the last-write registry
-       for the same reason: neither carries a date of its own. */
-    areas: ['roadmapGoals', 'roadmapCategories', 'roadmapChecks'],
-    finishes: null,
-    line: 'written'
-  },
+  // --- Support -------------------------------------------------------------
   {
     key: 'letters',
     icon: 'book',
     href: '/transition/letters',
-    home: 'transition',
+    home: 'support',
     /* Sealed until its unlock day, which is why the registry has no last
        write for it - asking when one was last written is a second way to
        meet it before the seal does. So this row states what it is. */
@@ -371,7 +372,6 @@ const ROWS = [
     finishes: null,
     line: 'written'
   },
-  // --- Support -------------------------------------------------------------
   {
     key: 'doubt',
     icon: 'heart',
