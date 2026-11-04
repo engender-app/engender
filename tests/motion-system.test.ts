@@ -1111,6 +1111,19 @@ describe('ticket 28: the field is a blind over the content', () => {
     }
   });
 
+  /* prh12 bug 10. Settings scrolled, then Today: the scrolled side names no
+     rings, so Today's shared sun was a new image with no old one, painted at
+     its resting place from the first frame while the blue it sits on was
+     still 213px above the window. The shared sun rides the travelling blind
+     on both legs instead. */
+  it('carries the shared sun with a blind that travels in or out whole', () => {
+    const enter = declarations(ruleOf(app, "html[data-blind-scroll='enter']::view-transition-new(*.sun-shared-ring)")?.body ?? '');
+    const exit = declarations(ruleOf(app, "html[data-blind-scroll='exit']::view-transition-old(*.sun-shared-ring)")?.body ?? '');
+    expect(enter.animation).toBe('blind-scroll-in var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both');
+    expect(exit.animation).toBe('blind-scroll-out var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both');
+    expect(exit.opacity).toBe('1');
+  });
+
   /* No frame carries two of the field's contents: the outgoing element
      spends --dur-fast, the incoming one waits exactly that long before it
      starts, and both travel 12-16px rather than sliding between two
@@ -1705,5 +1718,31 @@ describe('carpet 15 row 51 colour and name arrivals', () => {
     const action = source.slice(source.indexOf('const settleReadingSpace'), source.indexOf('observer.observe(node.parentElement!)'));
     const observer = action.slice(action.indexOf('new ResizeObserver'));
     expect(observer).toMatch(/playState === 'running'[\s\S]*?setKeyframes\([\s\S]*?return;[\s\S]*?stopMotion\(\)/);
+  });
+});
+
+/* prh12 bug 11, the Journal month opening and folding. Opening, the dates
+   faded in from the frame of the tap while every one of them still stood at
+   its 9px bar, so the first frames drew thirty numbers piled on one line.
+   Folding, the weekday letters went out of flow at full width's opacity and
+   shrank to their content, "MTWTFSS" squeezed to the left for the length of
+   their fade. */
+describe('the Journal month opens and folds without a smear or a squeeze', () => {
+  const heatMap = readFileSync(join(root, 'src/lib/components/HeatMap.svelte'), 'utf8');
+  const css = stripComments(heatMap.match(/<style[^>]*>([\s\S]*?)<\/style>/)![1]);
+  const rule = (prelude: string) => declarations(rules(css).find((r) => r.prelude === prelude)?.body ?? '');
+
+  it('fades the dates in only once the days have spread out', () => {
+    expect(rule('.cal-grid.is-opening .cal-date').transition).toBe(
+      'opacity var(--dur-med) var(--ease-out) var(--dur-fast)'
+    );
+  });
+
+  it('fades the weekday letters with the faces and keeps their width while out of flow', () => {
+    expect(heatMap).toMatch(/<div class="cal-dows" class:is-compact=\{compact\} aria-hidden="true" data-cal-sits-out>/);
+    const folded = rule('.cal-dows.is-compact');
+    expect(folded['inset-inline']).toBe('0');
+    expect(folded.transition).toBe('opacity 0s');
+    expect(rule('.cal-dows').transition).toBe('opacity var(--dur-med) var(--ease-out) var(--dur-fast)');
   });
 });
