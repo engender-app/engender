@@ -8,6 +8,7 @@
    answers "what day was a session expected", and stops. Whether one was
    logged against it, and what that means, is the screen's own question. */
 
+import type { AreaStates } from './areaState';
 import type { Procedure, Taper, TaperStage } from './types';
 
 /** Whether a procedure is one dilation can follow (audit item 7): the
@@ -20,6 +21,22 @@ import type { Procedure, Taper, TaperStage } from './types';
     migration cannot drift on what "eligible" means. */
 export function dilationEligible(procedure: Pick<Procedure, 'kind' | 'dilationOptIn'>): boolean {
   return procedure.kind === 'vaginoplasty' || (procedure.kind === 'custom' && procedure.dilationOptIn);
+}
+
+/** The area record as the screens that draw dilation rows should read it:
+    `taperSessions` hidden until some procedure is `dilationEligible`, so the
+    More search, the pin chooser and the pinned rows stop offering a Dilation
+    row to a journal with no vaginoplasty in it (Alicja, 2026-11-04). Derived,
+    never written: the stored hide choice and any finished day are kept, and
+    the row comes back the moment an eligible procedure is logged, planned or
+    done. The surgery screen already gates its own hosted row the same way. */
+export function dilationGated(
+  states: AreaStates,
+  procedures: readonly Pick<Procedure, 'kind' | 'dilationOptIn'>[]
+): AreaStates {
+  if (procedures.some(dilationEligible)) return states;
+  const said = states.taperSessions ?? { finishedEpochDay: null, suspendedEpochDay: null };
+  return { ...states, taperSessions: { ...said, hidden: true } };
 }
 
 /** The days `stages` expects a session on, starting at `startEpochDay` and

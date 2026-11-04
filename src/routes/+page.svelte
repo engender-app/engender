@@ -67,6 +67,7 @@
   import { roleAttrs } from '$lib/components/kit/role';
   import { readAgenda, projectAgenda } from '$lib/data/agendaReads';
   import { passedSlotSentence, type AgendaItem } from '$lib/data/agenda';
+  import { dilationGated } from '$lib/data/taperSchedule';
   import { fallbackReading, pinnedRows, pinReadScope, type PinnedRow } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { readRowForward } from '$lib/data/rowForwardReads';
@@ -353,7 +354,7 @@
     const value = await j.lastWrite.getLastWrites(today, pinReads.lastWrites);
     return { key, value };
   });
-  let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
+  let areaStatesQuery = liveQuery(async (j) => dilationGated(await j.areaStates.getAreaStates(), await j.procedures.getProcedures()));
   /* The forward half (phase 11 all-four-doors ticket 02). A pinned row draws
      the same line its hub row does, so it asks the same assembled question -
      the milestones pin said "Nothing logged for 1 year 4 months" over the

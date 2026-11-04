@@ -60,6 +60,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { dilationGated } from '$lib/data/taperSchedule';
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -75,7 +76,7 @@
   const today = $derived(currentDay());
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
-  let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
+  let statesQuery = liveQuery(async (j) => dilationGated(await j.areaStates.getAreaStates(), await j.procedures.getProcedures()));
   /* The forward half (phase 11 all-four-doors ticket 02): what is running
      and what is next, which is what nine of this door's rows were getting
      wrong by reporting a gap over a screen full of dated plans. One

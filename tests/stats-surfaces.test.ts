@@ -61,7 +61,7 @@ describe('the summary panels wait for the floor', () => {
   });
 
   it('draws no mood strip under the floor', () => {
-    expect(readings.days).toMatch(/\{#if !moodQuery\.loading && enoughEntries && anyDays\}\s*<ChartCard[^>]*>\s*<OrderedStrip steps=\{moodSteps\} \/>/);
+    expect(readings.days).toMatch(/\{#if !moodQuery\.loading && enoughEntries && anyDays\}\s*<ChartCard[^>]*>\s*<OrderedStrip\s+steps=\{moodSteps\}/);
   });
 
   /* Cards hand BarRows a position between 0 and 1 in something's own
