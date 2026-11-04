@@ -47,7 +47,7 @@ describe('openingShifts', () => {
    the switch lays the new rows out and takes 70 to 124 ms on a phone; an
    animation started there is already half through when it is first shown. */
 describe('openBlocks start', () => {
-  type Fake = { animate: (...args: unknown[]) => unknown; getBoundingClientRect: () => { top: number }; children: unknown[]; style: Record<string, string>; isConnected: boolean };
+  type Fake = { animate: (keyframes: Array<{ translate: string }>) => unknown; getBoundingClientRect: () => { top: number }; children: unknown[]; style: Record<string, string>; isConnected: boolean };
   const make = (top: number, log: string[], name: string): Fake => ({
     animate: (keyframes: Array<{ translate: string }>) => {
       let id = `${name}${log.length}`;
