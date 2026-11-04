@@ -460,10 +460,10 @@
    320px a column is 58.5px) and the name gives way instead: each swatch is
    an inline-size container, paletteNameFit hands its name the longest
    word's width in ems as --word-em, and the type is the column divided by
-   that, between 0.875 and 1 times --text-xs. A name that fits keeps
+   that, between 0.75 and 1 times --text-xs (9px to 12px). A name that fits keeps
    --text-xs; "Panseksualna", 75.2px at 12px, is set at 10.95px in a 68.5px
-   column at 360px. At 320px it would need 9.3px, so it stops at the 10.5px
-   floor and runs 7.3px into the 12px gap, clear of the next name.
+   column at 360px. At 320px it needs 9.3px, which the 9px floor allows, so no name
+   reaches past its flag at any phone width.
    tests/palette-name-wrap.mjs sweeps 320 to 430px and 1280px in both
    languages, in Settings and in setup. */
 .palette-grid {
@@ -471,7 +471,7 @@
   grid-template-columns: repeat(auto-fill, minmax(max(56px, calc((100% - 3 * var(--space-3)) / 4)), 1fr));
   gap: var(--space-4) var(--space-3);
   /* The smallest a long name steps down to, as a share of --text-xs. */
-  --name-floor: 0.875;
+  --name-floor: 0.75;
 }
 .palette-grid .palette-swatch {
   flex-direction: column; align-items: stretch; gap: var(--space-2);

@@ -6,12 +6,11 @@
    overflow-wrap: anywhere. A three-column grid kept the words whole but
    left the sixteenth flag alone on its last row, which Alicja rejected
    (2026-11-04). So a name whose longest word does not fit its column
-   steps its type down from --text-xs, as far as 0.875 of it; a name that
+   steps its type down from --text-xs, as far as 0.75 of it (9px); a name that
    fits keeps --text-xs. Every name, both languages, at the widths a phone
    gives: no break inside a word, four columns, the type size as small as
-   the name needs and no smaller, and nothing painted past its own flag
-   unless the type is already at the floor (only at 320px), and then never
-   within 4px of the next name.
+   the name needs and no smaller, and nothing painted past its own flag.
+   At 320px "Panseksualna" needs 9.3px, which the 9px floor allows.
 
    Setup's flags arrive row by row (onboarding's .setup-flags stagger),
    so the same sweep reads each flag's wipe delay there and checks that
@@ -26,11 +25,11 @@ import { launchChromium, setAppLanguage, settlePage, untilSplashLets } from './b
 
 /* Four across on a phone; eight across from the 1024px desktop layout up. */
 const WIDTHS = [[320, 4], [360, 4], [390, 4], [430, 4], [1280, 8]];
-const FLOOR = 0.875;
-/* At 320px a column is 58.5px and "Panseksualna" needs 9.3px type to fit
-   it, under the 10.5px floor. There the name keeps the floor and runs into
-   the 12px gap, at most 7.3px, so it must stay this far from the next. */
-const CLEAR = 4;
+const FLOOR = 0.75;
+/* Nothing may reach past its own flag, even by a pixel (sub-pixel noise
+   only): at 320px a column is 58.5px and "Panseksualna" needs 9.3px type
+   to fit it, so the floor sits under that. */
+const OVERHANG = 0.25;
 
 const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
 await server.listen();
@@ -75,18 +74,16 @@ const readNames = () => {
     return { value, breaks, overhang: right - flag.right, column: flag.width, top: Math.round(flag.top), size: parseFloat(style.fontSize), xs, word, delay };
   });
   ruler.remove();
-  return { names, columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length, gap: parseFloat(getComputedStyle(grid).columnGap) };
+  return { names, columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length };
 };
 
 /** @param {string} where @param {number} expected @param {Awaited<ReturnType<typeof readNames>>} read */
-function checkNames(where, expected, { names, columns, gap }) {
+function checkNames(where, expected, { names, columns }) {
   if (names.length !== 16) failures.push(`${where}: expected 16 palettes, found ${names.length}`);
   if (columns !== expected) failures.push(`${where}: ${columns} columns, expected ${expected}`);
   for (const { value, breaks, overhang, column, size, xs, word } of names) {
     for (const at of breaks) failures.push(`${where}: "${value}" breaks inside a word as "${at}"`);
-    const atFloor = size <= xs * FLOOR + 0.05;
-    if (overhang > 0.5 && !atFloor) failures.push(`${where}: "${value}" runs ${overhang.toFixed(1)}px past its flag at ${size.toFixed(2)}px, above the floor`);
-    if (overhang > gap - CLEAR) failures.push(`${where}: "${value}" runs ${overhang.toFixed(1)}px past its flag, under ${CLEAR}px from the next name`);
+    if (overhang > OVERHANG) failures.push(`${where}: "${value}" runs ${overhang.toFixed(1)}px past its flag at ${size.toFixed(2)}px`);
     if (word <= column && Math.abs(size - xs) > 0.05) failures.push(`${where}: "${value}" fits at ${xs}px but is set at ${size.toFixed(2)}px`);
     if (size < xs * FLOOR - 0.05) failures.push(`${where}: "${value}" is set at ${size.toFixed(2)}px, under the ${(xs * FLOOR).toFixed(2)}px floor`);
   }
