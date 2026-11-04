@@ -138,6 +138,7 @@
   }
 
   let genitalEffectsChoice = $state<boolean | null>(null);
+  let sexualEffectsChoice = $state<boolean | null>(null);
   let cycleChoice = $state<boolean | null>(null);
   let restoring = $state(restoreOnEntry);
   let moduleChoices = $state<HubRowKey[] | null>(null);
@@ -145,11 +146,12 @@
   let cycleShown = $derived(cycleChoice ?? (restoring || prefs.onboarded
     ? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingChoice)
     : false));
-  let genitalEffectsShown = $derived(
-    genitalEffectsChoice ?? (restoring || prefs.onboarded
-      ? vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
-      : false)
-  );
+  /* Stored state once there is a journal to read it from, off before. */
+  const effectCategoryOn = (key: string) => restoring || prefs.onboarded
+    ? vocabulary.effectCategories.find((category) => category.key === key)?.enabled ?? false
+    : false;
+  let genitalEffectsShown = $derived(genitalEffectsChoice ?? effectCategoryOn('genital'));
+  let sexualEffectsShown = $derived(sexualEffectsChoice ?? effectCategoryOn('sexual'));
 
   /* Null until the features step is touched, which reads as the default
      set both here and in complete() - so the step opens with what a skip
@@ -448,6 +450,7 @@
   function beginRestore() {
     restoring = true;
     genitalEffectsChoice = null;
+    sexualEffectsChoice = null;
     cycleChoice = null;
     moduleChoices = null;
     archiveError = '';
@@ -532,6 +535,7 @@
     else if (step === 'scales') scales = null;
     else if (step === 'features') {
       genitalEffectsChoice = null;
+      sexualEffectsChoice = null;
       cycleChoice = null;
       moduleChoices = null;
     } else if (step === 'lock') lockAfter = null;
@@ -593,7 +597,10 @@
             await journal.areaStates.setAreasHidden(modules.filter(({ hidden }) => !hidden).flatMap(({ row }) => featureAreas(row)), false);
           }
           if (firstRun || genitalEffectsChoice !== null) {
-            await journal.effectCategories.setCategoryEnabled('genital_sexual', genitalEffectsChoice ?? false);
+            await journal.effectCategories.setCategoryEnabled('genital', genitalEffectsChoice ?? false);
+          }
+          if (firstRun || sexualEffectsChoice !== null) {
+            await journal.effectCategories.setCategoryEnabled('sexual', sexualEffectsChoice ?? false);
           }
           if (!restoring && !wasOnboarded) prefs.cycleTrackingChoice = cycleChoice ?? false;
           else if (cycleChoice !== null) prefs.cycleTrackingChoice = cycleChoice;
@@ -928,6 +935,14 @@
                     checked={genitalEffectsShown}
                     chevron={false}
                     onclick={() => (genitalEffectsChoice = !genitalEffectsShown)}
+                  />
+                  <ListRow
+                    key="feature-sexual-effects"
+                    title={m.feature_sexual_effects()}
+                    subtitle={m.feature_sexual_effects_sub()}
+                    checked={sexualEffectsShown}
+                    chevron={false}
+                    onclick={() => (sexualEffectsChoice = !sexualEffectsShown)}
                   />
                   <ListRow
                     key="feature-cycle-tracking"

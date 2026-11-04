@@ -41,6 +41,7 @@ import { WAITLIST_REBUILD } from './waitlist-migration.ts';
 import { DELETION_LOG } from './deletion-migration.ts';
 import { MIGRATION_HYGIENE } from './hygiene-migration.ts';
 import { PROGRESS_PHOTOS } from './progress-photo-migration.ts';
+import { EFFECT_CATEGORY_SPLIT, EFFECT_CATEGORY_SPLIT_VERSION } from './effect-category-split-migration.ts';
 
 /** What were migrations 89 to 119, as development builds ran them. The
     released chain runs them as the one step at 119 (see the header). */
@@ -472,5 +473,8 @@ export const migrations: Migration[] = [
   asOneStep(119, POST_RC1_STEPS),
   /* Pre-release-human 12, bug 25: progress photos, a pose-by-pose record
      of shots taken on purpose (progress-photo-migration.ts). */
-  { version: 120, sql: PROGRESS_PHOTOS }
+  { version: 120, sql: PROGRESS_PHOTOS },
+  /* Pre-release-human 12: 'genital_sexual' splits into 'genital' and
+     'sexual' (effect-category-split-migration.ts). */
+  { version: EFFECT_CATEGORY_SPLIT_VERSION, sql: EFFECT_CATEGORY_SPLIT }
 ];

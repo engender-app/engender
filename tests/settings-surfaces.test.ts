@@ -175,10 +175,21 @@ describe('what Settings is built from', () => {
     expect(manager).toContain('title={m.features_to_show()}');
     expect(manager).toContain('m.features_to_show_sub()');
     expect(manager).toContain('data-features-close');
-    for (const handle of ['data-genital-effects-toggle', 'data-cycle-tracking-toggle']) {
+    for (const handle of ['data-genital-effects-toggle', 'data-sexual-effects-toggle', 'data-cycle-tracking-toggle']) {
       expect(outsideSheets).not.toContain(handle);
       expect(manager.match(new RegExp(handle, 'g'))).toHaveLength(1);
     }
+  });
+
+  it('gives genital and sexual changes a switch each, writing only its own category', () => {
+    // Pre-release-human 12: one 'genital_sexual' switch became two.
+    const manager = /<Sheet bind:open=\{featuresSheet\}[\s\S]*?<\/Sheet>/.exec(withoutScript)?.[0] ?? '';
+    const row = (handle: string) => new RegExp(`<div class="kit-row" ${handle}>[\\s\\S]*?</div>`).exec(manager)?.[0] ?? '';
+    expect(row('data-genital-effects-toggle')).toContain("setCategoryEnabled('genital', on)");
+    expect(row('data-genital-effects-toggle')).not.toContain("'sexual'");
+    expect(row('data-sexual-effects-toggle')).toContain("setCategoryEnabled('sexual', on)");
+    expect(row('data-sexual-effects-toggle')).not.toContain("'genital'");
+    expect(settings).not.toContain('genital_sexual');
   });
 
   it('keeps no switch for a prompt the notifications screen now carries', () => {

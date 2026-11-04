@@ -213,6 +213,15 @@ describe('what a gate may show', () => {
 });
 
 describe('the first run', () => {
+  it('asks about genital and sexual changes as two rows and writes each category from its own answer', () => {
+    // Pre-release-human 12: one 'genital_sexual' switch became two.
+    expect(onboarding).not.toContain('genital_sexual');
+    expect(onboardingMarkup).toContain('key="feature-genital-effects"');
+    expect(onboardingMarkup).toContain('key="feature-sexual-effects"');
+    expect(onboarding).toContain("setCategoryEnabled('genital', genitalEffectsChoice ?? false)");
+    expect(onboarding).toContain("setCategoryEnabled('sexual', sexualEffectsChoice ?? false)");
+  });
+
   it('takes its sequence from the step model rather than from numbers here', () => {
     expect(onboarding).toContain("from '$lib/onboarding/steps'");
     /* `step === 3` is the shape this replaced: the order, the count, the

@@ -278,9 +278,11 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     }
   }
 
-  // Personal effects: several feminizing markers, plus one non-default
-  // category switched on so its disclosure group has something in it too.
-  await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
+  // Personal effects: several feminizing markers, plus the two non-default
+  // categories split from genital and sexual switched on so their
+  // disclosure groups have something in them too.
+  await journal.effectCategories.setCategoryEnabled('genital', true);
+  await journal.effectCategories.setCategoryEnabled('sexual', true);
   const effectTypes = BUILT_IN_PERSONAL_EFFECT_TYPES.filter((t) => t.direction === 'feminizing').filter((_, i) => i % 3 === 0);
   /* Written out rather than stepped, because the axis at the top of that
      screen (ticket 57) has two shapes to show and an even 45-day step only

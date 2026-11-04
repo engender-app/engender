@@ -27,7 +27,7 @@ const effects = [
 
 const base = {
   effects,
-  categoryOrder: ['body_shape', 'skin_hair', 'genital_sexual', 'cognitive_emotional', 'sensory'],
+  categoryOrder: ['body_shape', 'skin_hair', 'cognitive_emotional', 'sensory', 'genital', 'sexual'],
   categoryName: (key: string) => `cat:${key}`,
   customHeading: 'Your own',
   drugs: [] as string[],
@@ -92,7 +92,7 @@ test('a query folds case and diacritics, searches flat, and stays inside the fil
    code, never deleted, because a marker names its effect by key. */
 test('a retired built-in is not offered for a new pick', () => {
   const offered = offeredEffectTypes(
-    [effect('cycle_cessation', 'masculinizing', 'genital_sexual'), effect('voice_drop', 'masculinizing', 'body_shape')],
+    [effect('cycle_cessation', 'masculinizing', 'genital'), effect('voice_drop', 'masculinizing', 'body_shape')],
     new Set()
   );
   assert.deepEqual(offered.map((e) => e.key), ['voice_drop']);

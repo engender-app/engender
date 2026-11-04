@@ -81,7 +81,10 @@
   }
   let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingChoice));
   let genitalEffectsOn = $derived(
-    vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
+    vocabulary.effectCategories.find((category) => category.key === 'genital')?.enabled ?? false
+  );
+  let sexualEffectsOn = $derived(
+    vocabulary.effectCategories.find((category) => category.key === 'sexual')?.enabled ?? false
   );
 
   /* The lock row's reading, the same line the Security screen's mode row
@@ -412,7 +415,18 @@
             <Switch
               checked={genitalEffectsOn}
               label={m.feature_genital_effects()}
-              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital_sexual', on)}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital', on)}
+            />
+          </span>
+        </div>
+        <div class="kit-row" data-sexual-effects-toggle>
+          <span class="kit-row-ico"><Icon name="heart" size={22} /></span>
+          <span class="kit-row-text"><span class="kit-row-title">{m.feature_sexual_effects()}</span></span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={sexualEffectsOn}
+              label={m.feature_sexual_effects()}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('sexual', on)}
             />
           </span>
         </div>
