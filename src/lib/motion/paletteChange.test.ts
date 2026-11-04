@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DURATION_FALLBACK } from './tokens';
 import { bloomGeometry, bloomGradient, changePalette, changeTheme, isAppearancePending } from './paletteChange';
 
 describe('palette change', () => {
@@ -192,5 +193,8 @@ describe('palette change', () => {
     expect(gradient).toContain('blue 100px 114px, #000 114px 120px');
     expect(gradient).toContain('red 140px 154px, #000 154px 160px)');
   });
+  /* Alicja, after living with it at 600ms: "a little longer". */
+  it('blooms over 800ms', () => {
+    expect(DURATION_FALLBACK['--dur-bloom']).toBe(800);
+  });
 });
-
