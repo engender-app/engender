@@ -58,7 +58,14 @@
     count: number;
   }
 
-  let { steps }: { steps: StripStep[] } = $props();
+  /* `countShort` is the count under its percentage (a second line, so a
+     narrow card needs no more width), `countFull` the same count in words
+     for the accessible label. Props, since kit components take no copy. */
+  let {
+    steps,
+    countShort = String,
+    countFull = String
+  }: { steps: StripStep[]; countShort?: (count: number) => string; countFull?: (count: number) => string } = $props();
 
   /* Under this, a percentage does not fit in its own segment. Ten percent
      of a card-width track is around 30px, which is what "34%" needs at
@@ -129,7 +136,7 @@
         class:is-hovered={hovered === step.step}
         data-strip-step={step.step}
         role="img"
-        aria-label={`${step.name} ${step.label} · ${step.count}`}
+        aria-label={`${step.name} ${step.label} · ${countFull(step.count)}`}
         style={`--bar-share: ${step.percent}; --dist-fill: var(--mood-${step.step})`}
         onpointerenter={(e) => enter(e, step.step)}
         onpointerleave={(e) => leave(e, step.step)}
@@ -161,7 +168,9 @@
   <p class="kit-ordered-shares" aria-hidden="true">
     {#each drawn as step (step.step)}
       <span class="kit-ordered-share" style={`--bar-share: ${step.percent}`}>
-        {step.percent >= MIN_LABEL_SHARE ? step.label : ''}
+        {#if step.percent >= MIN_LABEL_SHARE}
+          {step.label}<span class="kit-ordered-count" data-strip-days>{countShort(step.count)}</span>
+        {/if}
       </span>
     {/each}
   </p>
@@ -290,6 +299,12 @@
     transition-property: width;
     transition-duration: var(--dur-slow);
     transition-timing-function: var(--ease-out);
+  }
+
+  /* The day count under its percentage: the same narrow cell, a second
+     line, so a 360px card needs no more width than the percentage did. */
+  .kit-ordered-count {
+    display: block;
   }
 
   /* Which way the scale runs. Further off the bar than the percentages

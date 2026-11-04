@@ -3318,6 +3318,7 @@
   "storage_notice_title": "Ta przeglądarka może usunąć dziennik",
   "strip_day_state": "{day}: {state}",
   "strip_day_today_state": "Dzisiaj, {state}",
+  "strip_days_short": "{n} d",
   "strip_week_earlier": "Tydzień wcześniej",
   "strip_week_later": "Tydzień później",
   "strip_week_nothing": "W tym tygodniu nic",
