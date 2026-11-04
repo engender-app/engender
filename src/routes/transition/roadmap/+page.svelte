@@ -100,7 +100,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { collapse, disclose, resize } from '$lib/motion/reveal';
-  import { openBlocks, type Opening } from '$lib/motion/openBlocks';
+  import { followersAfter, openBlocks, type Opening } from '$lib/motion/openBlocks';
   import Institutions from './Institutions.svelte';
   import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -211,7 +211,7 @@
         if (seq !== switchSeq || !polishShown) return;
         const section = body.querySelector<HTMLElement>('[data-roadmap-legal]');
         if (!section || !first) return;
-        const followers = [...body.children].filter((el) => el !== section && el.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_PRECEDING) as HTMLElement[];
+        const followers = followersAfter(section, body.children);
         opening = openBlocks({
           pack: body.querySelector<HTMLElement>('[data-roadmap-pack]'),
           section,

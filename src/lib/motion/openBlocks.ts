@@ -53,6 +53,17 @@ export type Opening = {
   retreat: () => TransitionConfig;
 };
 
+const DOCUMENT_POSITION_PRECEDING = 2;
+
+/** The siblings that come after `section` in the document. DOM's
+    `a.compareDocumentPosition(b)` has PRECEDING set when `b` comes before
+    `a`, so an element follows the section when the section precedes it. */
+export function followersAfter(section: Element, siblings: Iterable<Element>): HTMLElement[] {
+  return [...siblings].filter(
+    (el) => el !== section && (el.compareDocumentPosition(section) & DOCUMENT_POSITION_PRECEDING) !== 0
+  ) as HTMLElement[];
+}
+
 const tr = (px: number) => `0 ${px}px`;
 
 export function openBlocks(opts: {

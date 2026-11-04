@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { openingShifts } from './openBlocks';
+import { followersAfter, openingShifts } from './openBlocks';
 
 /* The geometry of the roadmap's opening: at progress e (0 to 1) the
    followers stand at from + travel * e, the section's clip must end where
@@ -116,5 +116,25 @@ describe('openBlocks start', () => {
     flush();
     opening!.retreat();
     expect(log.some((l) => l.startsWith('reverse'))).toBe(true);
+  });
+});
+
+/* Which elements the opening moves. A fake with DOM's contract:
+   a.compareDocumentPosition(b) has PRECEDING (2) set when b is before a, and
+   FOLLOWING (4) when b is after a. */
+describe('followersAfter', () => {
+  const order = ['pack', 'section', 'category', 'new-category'];
+  const node = (name: string) => ({
+    name,
+    compareDocumentPosition: (other: { name: string }) =>
+      order.indexOf(other.name) < order.indexOf(name) ? 2 : order.indexOf(other.name) > order.indexOf(name) ? 4 : 0
+  });
+  it('picks what comes after the section, never the pack above it or the section itself', () => {
+    const nodes = order.map(node);
+    const section = nodes[1];
+    const names = followersAfter(section as unknown as Element, nodes as unknown as Element[]).map(
+      (el) => (el as unknown as { name: string }).name
+    );
+    expect(names).toEqual(['category', 'new-category']);
   });
 });
