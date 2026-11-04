@@ -998,7 +998,7 @@
       <ListCard>
         <ListRow
           key="goal-milestone"
-          icon="sparkle"
+          icon="summit"
           title={selectedMilestone.name}
           subtitle={m.roadmap_goal_milestone_sub()}
           href="/transition/milestones"

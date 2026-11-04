@@ -97,7 +97,7 @@
                 <ListRow
                   key="coming-back-milestone"
                   data-coming-back-item="milestone"
-                  icon="flag"
+                  icon="summit"
                   title={item.name}
                   subtitle={m.coming_back_milestone_sub({ date: dayLong(item.epochDay) })}
                   href="/transition/milestones"

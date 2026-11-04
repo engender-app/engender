@@ -637,8 +637,6 @@
   "cycle_event_save": "Save",
   "cycle_events": "Cycle",
   "cycle_events_intro": "Log cycle events and view them alongside your regimen history. No predictions.",
-  "cycle_events_open_row_sub": "Every event, and the chart against the regimen.",
-  "cycle_events_open_row_title": "All cycle events",
   "cycle_tracking_regimen_row_sub": "Log bleeding and spotting against this regimen.",
   "cycle_tracking_toggle_sub": "Automatic while a testosterone regimen is active until you choose on or off",
   "cycle_tracking_toggle_title": "Cycle tracking",

@@ -69,6 +69,8 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { readCare, CARE_DOSE_TOTAL_WINDOW_DAYS } from '$lib/data/careReads';
   import { fmtDay, intlLocale } from '$lib/data/dates';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import type { RegimenEpisode } from '$lib/data/types';
   import { sameDrug } from '$lib/data/regimenEpisode';
@@ -102,6 +104,12 @@
   /* When a course began, with its year: it can be years back, and a weekday
      says nothing about a day that long ago. */
   const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* The link to cycle events is gated here (ADR-0043): an active testosterone
+     regimen or the explicit opt-in. The card waits for the episodes, so the
+     row never arrives after the rows around it. */
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingChoice));
 
   let careQuery = liveQuery((j) => readCare(j, today));
   // A successful answer exists even when no medication has been recorded.
@@ -832,17 +840,10 @@
     />
   </ListCard>
 
-  <!-- What came of all of it (phase 9 carpet ticket 16). The card above is
-       what is going in, on what schedule and how much is left; this is the
-       one row about what the person has noticed since, and the two screens
-       under it - side effects, and hair - hang off that one rather than off
-       the hub.
-
-       No SectionHeading: it is one row, and a heading over "Changes you've
-       noticed" would be that title said twice. What separates it from the
-       hormones card is the --space-5 `.screen > .screen-part > *` gives
-       two unrelated blocks. -->
-  <HostedRows host="care" card />
+  <!-- A link to the cycle log (pre-release-human 12), only behind
+       `cycleTrackingVisible` (ADR-0043). The module itself is on the More
+       hub, in Health. -->
+  <HostedRows host="care" keys={cycleShown ? ['cycle-events'] : []} ready={!episodesQuery.loading} card />
     {/snippet}
   </ReadGate>
 

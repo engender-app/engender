@@ -140,7 +140,7 @@
        on. Vulvoplasty is deliberately not in this OR - there is no canal to
        keep. Directly under the cards since audit item 13. -->
   {#if procedures.some(dilationEligible)}
-    <HostedRows host="surgery" card />
+    <HostedRows host="surgery" keys={['dilation']} card />
   {/if}
 
   <RecordSheet

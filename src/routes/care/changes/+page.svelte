@@ -59,11 +59,10 @@
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import { writer } from '$lib/stores/attempt.svelte';
-  import { severityName, cycleEventKindName } from '$lib/data/vocabulary/labels';
+  import { severityName } from '$lib/data/vocabulary/labels';
   import type { PersonalEffectCatalogEntry, SideEffect } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
@@ -240,7 +239,6 @@
   let bodyRevealed = $state(false);
   $effect.pre(() => {
     if (bodyRevealed || episodesQuery.loading || markersQuery.loading || effectsQuery.loading) return;
-    if (cycleShown && cycleEventsQuery.loading) return;
     bodyRevealed = true;
   });
   const bodyEstimate = readReserve('care-changes');
@@ -314,21 +312,6 @@
     if (!(await prepWrite.run(() => journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name })), m.write_failed()))) return;
     toast(m.appointment_prep_added_toast());
   }
-
-  /* The cycle log as a second area of this screen (ADR-0043), moved here
-     with the rest of what /health/side-effects drew (ticket 13): bleeding
-     and spotting are physiological effects like anything else read here, so
-     the most recent ones sit beneath the two lists once cycle tracking is
-     surfaced at all under the cycle choice (cycleTracking.ts). This screen
-     is where that gate lives now.
-
-     The rows state, they do not open anything: editing happens on the cycle
-     screen the trailing row links to, which owns the chart and the range
-     pickers this list deliberately does not duplicate. */
-  let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
-  let cycleEvents = $derived(cycleEventsQuery.rows);
-  let cycleShown = $derived(cycleTrackingVisible(episodes, Date.now(), prefs.cycleTrackingChoice));
-  let recentCycleEvents = $derived([...cycleEvents].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
 
   /* What the axis at the top of the screen draws: the changes that carry a
      marker, joined to their catalogue entry (ticket 57), and every side
@@ -611,7 +594,7 @@
                 <ListRow
                   key={effect.id}
                   data-side-effect={effect.id}
-                  icon="zap"
+                  icon="sprout"
                   title={effect.name}
                   subtitle={severity ? `${day} · ${severity}` : day}
                   chevron={false}
@@ -623,7 +606,7 @@
         {/snippet}
         {#snippet empty()}
           <Notice
-            icon="zap"
+            icon="sprout"
             key="side-effects-empty"
             role={roleAt(activeFlag.roles, 1)}
             title={m.side_effect_empty_title()}
@@ -632,40 +615,11 @@
         {/snippet}
       </ReadGate>
     </div>
-
-    <!-- The cycle log, gated exactly as it was on /health/side-effects
-         (ADR-0043, ticket 13 moved the block rather than weakening the
-         gate): a second area, so a heading. -->
-    {#if cycleShown && !cycleEventsQuery.loading}
-      <SectionHeading text={m.cycle_events()} />
-      <ListCard role={roleAt(activeFlag.roles, 2)}>
-        {#each recentCycleEvents as event (event.id)}
-          <!-- Static rows (the shape regimen's pause rows use, ticket 16):
-               they name nothing to press, and routing them through ListRow
-               would add a tab stop and a wash to text that does nothing.
-               The trailing row below is the way in. -->
-          <div transition:collapse class="kit-row is-static" data-cycle-event={event.id}>
-            <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
-            <span class="kit-row-text">
-              <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>
-              <span class="kit-row-sub">{fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-            </span>
-          </div>
-        {/each}
-        <ListRow
-          key="all-cycle-events"
-          icon="calendar"
-          title={m.cycle_events_open_row_title()}
-          subtitle={m.cycle_events_open_row_sub()}
-          href="/health/cycle-events"
-        />
-      </ListCard>
-    {/if}
   </ReadReserve>
 
   <!-- Hair progress remains available outside the regimen-dependent bands.
        It uses a published scale and photos, so no regimen is required.
-       Cycle events are hosted above; HostedRows excludes their key. -->
+       Cycle events moved to /care with dilation (pre-release-human 12). -->
   <HostedRows host="effects" card />
 
   <Sheet open={editor !== null} title={editor ? editor.effect.name : ''} onClose={() => (editor = null)}>

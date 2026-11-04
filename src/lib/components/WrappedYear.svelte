@@ -257,7 +257,7 @@
   <SectionHeading text={m.wrapped_milestones()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}>
     {#each recap.milestones as ms (ms.id)}
-      <ListRow static data-wrapped-milestone icon="flag" title={ms.name}>
+      <ListRow static data-wrapped-milestone icon="summit" title={ms.name}>
         {#snippet trailing()}
           <span class="wrapped-figure-date">{fmtDay(ms.epochDay, { day: 'numeric', month: 'long' })}</span>
         {/snippet}

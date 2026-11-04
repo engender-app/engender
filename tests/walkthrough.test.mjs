@@ -6927,11 +6927,11 @@ try {
      of what that screen drew - so "the hub does not name it" is now
      structural and an absence check there would pass whatever this gate
      did. What is left to walk is the surface that does name it behind the
-     gate, and `all-cycle-events` is a handle this flow goes on to wait for -
+     gate, and `cycle-events` is a handle this flow goes on to wait for -
      so its absence here means something (ADR-0029, and a deleted handle
      cannot assert it is gone). */
-  await fresh('/care/changes');
-  if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="all-cycle-events"]').count())) {
+  await fresh('/care');
+  if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="cycle-events"]').count())) {
     throw new Error('the changes screen named the cycle log with no testosterone and no opt-in');
   }
   if (await page.locator('[data-cycle-events-link]').count()) {
@@ -6958,8 +6958,8 @@ try {
     null,
     { timeout: 8000 }
   );
-  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
+  await page.goto(BASE + '/care', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
 
   // Explicit off stays off, including during the testosterone episode below.
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
@@ -7011,11 +7011,11 @@ try {
       const name = locale === 'pl' ? /Cykl/ : /Cycle/;
       if (await page.getByRole('link', { name }).count() === 0) throw new Error(`${locale} regimen cycle offer has no announced name`);
     }
-    await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
+    await page.goto(BASE + '/care', { waitUntil: 'networkidle' });
     await booted();
-    await page.waitForSelector('[data-changes-body] [data-read-reserve-body]');
-    if (shown) await page.locator('[data-list-row="all-cycle-events"]').waitFor();
-    if (Boolean(await page.locator('[data-list-row="all-cycle-events"]').count()) !== shown) {
+    await page.waitForSelector('[data-hosted-reserve="care"]', { state: 'attached' });
+    if (shown) await page.locator('[data-list-row="cycle-events"]').waitFor();
+    if (Boolean(await page.locator('[data-list-row="cycle-events"]').count()) !== shown) {
       throw new Error(`${locale} changes cycle offer visibility disagreed`);
     }
     if (shown) {
@@ -7100,8 +7100,8 @@ try {
   await checkCycleOffers(true, 'pl');
   await checkCycleOffers(true, 'en');
 
-  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
+  await page.goto(BASE + '/care', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
 
   // End the episode the way the concurrent-episodes flow does: an end date
   // of yesterday, so it stops being active today, saved from the editor.
@@ -7112,8 +7112,8 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
 
-  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
+  await page.goto(BASE + '/care', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
   ok('cycle tracking: explicit off hides regimen offer; keyboard on restores it');
 } catch (e) { fail('cycle tracking testosterone', e); }
 });
