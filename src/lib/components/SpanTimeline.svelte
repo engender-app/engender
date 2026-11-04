@@ -982,6 +982,16 @@
   .is-active .span-tl-era-name {
     clip-path: inset(0);
   }
+  /* A name drawn while its band is already open - the part of the band the
+     span shows has just grown past NAME_MIN_PX - had no closed state to
+     travel from, so it was painted whole in one frame (carpet 15 row 51,
+     span-offer-appear, 0 to 0.9 between 51 and 68ms). It opens from closed
+     like one that opens with its band. */
+  @starting-style {
+    .is-active .span-tl-era-name {
+      clip-path: inset(100% 0 0 0);
+    }
+  }
 
   .span-tl-targets {
     position: absolute;
