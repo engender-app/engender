@@ -118,7 +118,9 @@ describe('the 1.0.0 notes describe what ships', () => {
   const removed = [
     'Measurements and sizes', 'hormone curve', 'Affirmations', 'See this',
     'journaling pause', 'Saved questions', 'counterevidence snapshots', 'Words reading',
-    'Highest days', 'Wrapped share card', 'roadmap', 'presentation step', 'Day One'
+    'Highest days', 'Wrapped share card', 'On this day notifications', 'roadmap', 'presentation step',
+    'garment', 'reference pitch bands', 'Day One', 'TransTracks', 'Track & Graph', 'Pixels',
+    'old addresses', 'automatic archiving', 'Disguise inside the unlocked app'
   ];
 
   it('has no Unreleased section left beside the 1.0.0 one', () => {

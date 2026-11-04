@@ -38,7 +38,7 @@ taking first.
 
 ### Removed since rc.1
 
-These areas are gone, and their data goes with them when a rc.1 journal
+These areas are gone, and their data goes with them when an rc.1 journal
 updates. Export an encrypted archive from rc.1 first if you want to keep a
 copy. A 1.0.0 restore skips the sections for these areas, so the archive stays
 a record of what you had but does not bring it back.
