@@ -466,6 +466,12 @@
 .palette-grid .swatch-preview {
   width: 100%; height: 56px; box-sizing: border-box;
   border-radius: var(--r-block); border: 1px solid var(--outline);
+  /* The edge is translucent, and a gradient is sized to the padding box and
+     tiled by default, so the 1px under the border drew the opposite end of
+     the flag: the last band along the top edge, the first along the bottom.
+     Sized to the border box, the bands run out to the edge and the border
+     tints them. */
+  background-origin: border-box;
   outline: 3px solid transparent; outline-offset: 6px;
   transition-property: outline-color, outline-offset;
   transition-duration: var(--dur-med);
