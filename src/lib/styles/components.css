@@ -306,6 +306,31 @@
      a11y-targets-large-text.mjs). Positioned, the control takes its whole
      48px back; nothing is drawn differently. */
   position: relative;
+  /* Hung from the title rather than floating over it (prh12 bug 17,
+     "awkward, especially in relation to the text"). The arrow sat 26px of
+     field above the title's cap line, a 16px thin glyph over 34px caps set
+     at 800, so it read as a stray mark. Lowered 8px, its ink ends about 16px
+     over the caps, near half their height, which ties it to the title as a
+     kicker; the field's own height is unchanged. */
+  top: var(--space-2);
+}
+/* A size up and a little heavier, so the arrow holds its own next to the
+   title's weight: 28px with a 2.6px stroke, against the 24px and 2px of an
+   action's glyph. At 28px its left ink lands on the title's stem (x 23 at
+   390px, the stem at 23) with the pull above unchanged. */
+.screen-back .icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 2.25;
+}
+/* The actions on the back control's line come down with it, so the row
+   stays one line. Only where they share it: under 240px they take a line
+   of their own (below), and lowered there they would reach into the title. */
+@container app (min-width: 240px) {
+  .screen-header-row.has-back-actions .header-action {
+    position: relative;
+    top: var(--space-2);
+  }
 }
 /* A hidden title with no back control and no actions leaves the field
    nothing to hold, so the header collapses to nothing visible rather than
