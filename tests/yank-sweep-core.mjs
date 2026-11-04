@@ -1114,8 +1114,52 @@ export const SETTLE_PAGE_EXPRESSION = (theme) =>
     Returned as an expression string rather than a function value so the
     same code runs through Playwright's evaluate and through the WebView's
     devtools socket on a device. */
+/** The part of `box` a `clip-path: inset(...)` leaves showing. Serialized
+    into the page sampler, so it reads nothing outside itself. A clip that
+    travels between a percentage and a length (kit-block-in's `100%` to
+    `-6px`) computes to `calc(80.99% - 1.14px)` while it runs, which the
+    first version of this split on spaces, failed to read and answered with
+    the whole box: setup-step-forward at 1280 reported every scale tick
+    "0.33 to 1 in one frame" in the frame its wipe began, while the cast
+    shows the tick clipping open over 100ms (carpet 15 row 51). */
+export function clipInsetBox(box, clipPath) {
+  const raw = /^inset\((.*)\)$/.exec(clipPath ?? '')?.[1];
+  if (!raw) return box;
+  const parts = [];
+  let depth = 0;
+  let part = '';
+  for (const ch of raw) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (/\s/.test(ch) && depth === 0) {
+      if (part) parts.push(part);
+      part = '';
+    } else part += ch;
+  }
+  if (part) parts.push(part);
+  const round = parts.indexOf('round');
+  if (round >= 0) parts.length = round;
+  const values = [parts[0], parts[1] ?? parts[0], parts[2] ?? parts[0], parts[3] ?? parts[1] ?? parts[0]];
+  const px = (value, size) => {
+    const terms = [...value.replace(/^calc\(|\)$/g, '').matchAll(/(^|[+-])\s*(-?[\d.]+(?:e-?\d+)?)(%|px)?/g)];
+    if (!terms.length) return NaN;
+    return terms.reduce((sum, [, sign, n, unit]) => {
+      const v = unit === '%' ? (parseFloat(n) * size) / 100 : parseFloat(n);
+      return sum + (sign === '-' ? -v : v);
+    }, 0);
+  };
+  const edges = [px(values[0], box.height), px(values[1], box.width), px(values[2], box.height), px(values[3], box.width)];
+  if (edges.some((value) => !Number.isFinite(value))) return box;
+  return {
+    left: box.left + edges[3],
+    top: box.top + edges[0],
+    right: box.right - edges[1],
+    bottom: box.bottom - edges[2]
+  };
+}
+
 export function samplerExpression(act, ms, names) {
-  const fn = async (scene, ms, names, dispatch, createIdentity) => {
+  const fn = async (scene, ms, names, dispatch, createIdentity, insetBox) => {
     const identity = createIdentity();
     const act = scene.act;
     let action;
@@ -1219,20 +1263,7 @@ export function samplerExpression(act, ms, names) {
       if (startViewTransition) document.startViewTransition = startViewTransition;
     };
 
-    const clipBox = (box, style) => {
-      const raw = /^inset\(([^)]+)\)/.exec(style.clipPath)?.[1];
-      if (!raw) return box;
-      const parts = raw.split(/\s+/);
-      const values = [parts[0], parts[1] ?? parts[0], parts[2] ?? parts[0], parts[3] ?? parts[1] ?? parts[0]];
-      const px = (value, size) => value.endsWith('%') ? parseFloat(value) * size / 100 : parseFloat(value);
-      if (values.some((value) => !Number.isFinite(parseFloat(value)))) return box;
-      return {
-        left: box.left + px(values[3], box.width),
-        top: box.top + px(values[0], box.height),
-        right: box.right - px(values[1], box.width),
-        bottom: box.bottom - px(values[2], box.height)
-      };
-    };
+    const clipBox = (box, style) => insetBox(box, style.clipPath);
     const intersection = (a, b) => ({
       left: Math.max(a.left, b.left), top: Math.max(a.top, b.top),
       right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom)
@@ -1392,7 +1423,7 @@ export function samplerExpression(act, ms, names) {
       requestAnimationFrame(tick);
     });
   };
-  return `(${fn})(${JSON.stringify(typeof act === 'string' ? { act } : act)}, ${JSON.stringify(ms)}, ${JSON.stringify(names)}, ${dispatchSceneAction}, ${createMarkIdentity})`;
+  return `(${fn})(${JSON.stringify(typeof act === 'string' ? { act } : act)}, ${JSON.stringify(ms)}, ${JSON.stringify(names)}, ${dispatchSceneAction}, ${createMarkIdentity}, ${clipInsetBox})`;
 }
 
 /** The arithmetic, in node: per mark, per consecutive frame pair.
