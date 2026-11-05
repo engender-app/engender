@@ -41,8 +41,8 @@ import { WAITLIST_REBUILD } from './waitlist-migration.ts';
 import { DELETION_LOG } from './deletion-migration.ts';
 import { MIGRATION_HYGIENE } from './hygiene-migration.ts';
 import { PROGRESS_PHOTOS } from './progress-photo-migration.ts';
-import { EFFECT_CATEGORY_SPLIT, EFFECT_CATEGORY_SPLIT_VERSION } from './effect-category-split-migration.ts';
-import { PROGRESS_POSE_VERSION, PROGRESS_POSES_TABLE } from './progress-pose-migration.ts';
+import { EFFECT_CATEGORY_SPLIT } from './effect-category-split-migration.ts';
+import { PROGRESS_POSES_TABLE } from './progress-pose-migration.ts';
 
 /** What were migrations 89 to 119, as development builds ran them. The
     released chain runs them as the one step at 119 (see the header). */
@@ -477,8 +477,8 @@ export const migrations: Migration[] = [
   { version: 120, sql: PROGRESS_PHOTOS },
   /* Pre-release-human 12: 'genital_sexual' splits into 'genital' and
      'sexual' (effect-category-split-migration.ts). */
-  { version: EFFECT_CATEGORY_SPLIT_VERSION, sql: EFFECT_CATEGORY_SPLIT },
+  { version: 121, sql: EFFECT_CATEGORY_SPLIT },
   /* Pre-release-human 12: progress photo poses as the person's own list
      (progress-pose-migration.ts). */
-  { version: PROGRESS_POSE_VERSION, sql: PROGRESS_POSES_TABLE }
+  { version: 122, sql: PROGRESS_POSES_TABLE }
 ];

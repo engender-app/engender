@@ -10,6 +10,7 @@ import { migrations } from './migrations.ts';
 import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 import {
+  EFFECT_CATEGORY_SPLIT,
   EFFECT_CATEGORY_SPLIT_VERSION,
   SPLIT_GENITAL_EFFECTS,
   SPLIT_SEXUAL_EFFECTS
@@ -97,4 +98,9 @@ test('a journal that never had genital_sexual gets both categories from the reco
       { key: 'sexual', enabled: 0 }
     ]
   );
+});
+
+test('the migration list carries 121 for the split, as the constant says', () => {
+  /* migrations.ts writes the number as a literal so release-schema.mjs can read it. */
+  assert.equal(migrations.find((m) => m.sql === EFFECT_CATEGORY_SPLIT)?.version, EFFECT_CATEGORY_SPLIT_VERSION);
 });

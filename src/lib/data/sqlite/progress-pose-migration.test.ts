@@ -5,7 +5,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { runMigrations } from './migration-runner.ts';
 import { migrations } from './migrations.ts';
-import { PROGRESS_POSE_VERSION } from './progress-pose-migration.ts';
+import { PROGRESS_POSE_VERSION, PROGRESS_POSES_TABLE } from './progress-pose-migration.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
@@ -36,4 +36,9 @@ test('a deleted pose is recorded for an archive Merge under its domain id', asyn
   assert.deepEqual(rows(db, "SELECT tbl, row_key FROM deletion WHERE tbl = 'progress_pose'"), [
     { tbl: 'progress_pose', row_key: 'u1' }
   ]);
+});
+
+test('the migration list carries 122 for the pose table, as the constant says', () => {
+  /* migrations.ts writes the number as a literal so release-schema.mjs can read it. */
+  assert.equal(migrations.find((m) => m.sql === PROGRESS_POSES_TABLE)?.version, PROGRESS_POSE_VERSION);
 });
