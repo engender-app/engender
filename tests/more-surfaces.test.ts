@@ -453,7 +453,7 @@ describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
     ['src/lib/components/ProcedureRecoveryCard.svelte', 'data-linked-milestone>\\s*<Icon name="ICON"', icon('milestones'), 'flag'],
     ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-milestone-linked"', icon('milestones'), 'flag'],
     ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-milestone-prompt"', icon('milestones'), 'flag'],
-    ['src/routes/transition/letters/+page.svelte', '<Icon name="ICON" size=\\{14\\} />{mi.name}', icon('milestones'), 'flag'],
+    ['src/routes/transition/letters/+page.svelte', '<Icon name="ICON" size=\\{16\\} />{mi.name}', icon('milestones'), 'flag'],
     ['src/routes/health/appointments/[id]/+page.svelte', 'data-appointment-procedure={stored.procedureId}\\s+icon="ICON"', icon('surgery'), 'flag'],
     ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-preop"', icon('surgery'), 'clock'],
     ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-today"', icon('surgery'), 'flag'],

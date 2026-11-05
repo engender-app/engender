@@ -328,7 +328,7 @@
             aria-pressed={draft.unlockDate === dateInputValueFromEpochDay(mi.epochDay)}
             onclick={() => (draft.unlockDate = dateInputValueFromEpochDay(mi.epochDay))}
           >
-            <Icon name="summit" size={14} />{mi.name}
+            <Icon name="summit" size={16} />{mi.name}
           </button>
         {/each}
       </div>
