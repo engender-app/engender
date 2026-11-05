@@ -50,16 +50,18 @@ export const SPLIT_SEXUAL_EFFECTS = [
 ] as const;
 
 const OLD = 'genital_sexual';
+const GENITAL = 'genital';
+const SEXUAL = 'sexual';
 const quoted = (keys: readonly string[]) => keys.map((key) => `'${key}'`).join(', ');
 
 export const EFFECT_CATEGORY_SPLIT = `
 INSERT OR IGNORE INTO effect_category (key, name, enabled, updated_at)
-  SELECT 'genital', '', enabled, updated_at FROM effect_category WHERE key = '${OLD}';
+  SELECT '${GENITAL}', '', enabled, updated_at FROM effect_category WHERE key = '${OLD}';
 INSERT OR IGNORE INTO effect_category (key, name, enabled, updated_at)
-  SELECT 'sexual', '', enabled, updated_at FROM effect_category WHERE key = '${OLD}';
-UPDATE personal_effect_type SET category_key = 'sexual'
+  SELECT '${SEXUAL}', '', enabled, updated_at FROM effect_category WHERE key = '${OLD}';
+UPDATE personal_effect_type SET category_key = '${SEXUAL}'
   WHERE category_key = '${OLD}' AND key IN (${quoted(SPLIT_SEXUAL_EFFECTS)});
-UPDATE personal_effect_type SET category_key = 'genital' WHERE category_key = '${OLD}';
+UPDATE personal_effect_type SET category_key = '${GENITAL}' WHERE category_key = '${OLD}';
 DELETE FROM effect_category WHERE key = '${OLD}';
 `;
 
@@ -76,14 +78,14 @@ export function splitArchivedEffectCategories<C extends ArchivedCategory, T exte
   const old = categories.find((category) => category.key === OLD);
   if (!old && !types.some((type) => type.categoryKey === OLD)) return { categories, types };
   const present = new Set(categories.map((category) => category.key));
-  const added = old ? (['genital', 'sexual'] as const).filter((key) => !present.has(key)).map((key) => ({ ...old, key })) : [];
+  const added = old ? ([GENITAL, SEXUAL] as const).filter((key) => !present.has(key)).map((key) => ({ ...old, key })) : [];
   const sexual = new Set<string>(SPLIT_SEXUAL_EFFECTS);
   return {
     categories: [...categories.filter((category) => category.key !== OLD), ...added],
     types: types.map((type) =>
       type.categoryKey !== OLD
         ? type
-        : { ...type, categoryKey: sexual.has(type.key) ? 'sexual' : 'genital' }
+        : { ...type, categoryKey: sexual.has(type.key) ? SEXUAL : GENITAL }
     )
   };
 }

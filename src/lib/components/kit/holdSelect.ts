@@ -11,7 +11,8 @@
 export const HOLD_MS = 500;
 /** Android's touch slop at a typical density, in CSS px: past this a
     press is a scroll. */
-export const HOLD_SLOP_PX = 10;
+import { TAP_SLOP } from '../../motion/tapReplay';
+export const HOLD_SLOP_PX = TAP_SLOP;
 
 export interface HoldPress {
   /** The finger moved. Returns false once the press has become a scroll. */

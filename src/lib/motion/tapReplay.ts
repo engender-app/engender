@@ -16,6 +16,8 @@
    inside the window. */
 
 /** How far a finger may travel between down and up and still be a tap. */
+/** How far a finger may travel and still count as a tap rather than a drag
+    or a scroll. The hold-to-select press uses the same distance. */
 export const TAP_SLOP = 10;
 
 /** What a replayed tap activates directly, with the focus a tap gives it. */
