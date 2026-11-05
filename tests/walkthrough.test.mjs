@@ -2333,7 +2333,7 @@ try {
   const modules = page.locator('[data-feature-module]');
   // FEATURE_MODULE_ROWS in src/lib/data/hubRows.ts: one row per optional area.
   const featureCount = await modules.count();
-  if (featureCount !== 14) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 14`);
+  if (featureCount !== 15) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 15`);
   // DEFAULT_MODULES in src/lib/onboarding/features.ts: the core set arrives
   // ticked, the specialist modules do not (pre-release-human 12).
   for (const [key, on] of [['care', 'true'], ['milestones', 'true'], ['voice-benchmark', 'true'], ['tryouts', 'false']]) {
@@ -5347,8 +5347,8 @@ try {
 
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="wear"][data-hub-section="finished"]', { timeout: 8000 });
-  await page.waitForSelector('[data-list-row="wear"][data-hub-section="transition"]', { state: 'detached', timeout: 8000 });
-  if ((await page.locator('[data-list-row="wear"][data-hub-section="transition"]').count()) !== 0) {
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="body"]', { state: 'detached', timeout: 8000 });
+  if ((await page.locator('[data-list-row="wear"][data-hub-section="body"]').count()) !== 0) {
     throw new Error('the finished row is drawn in two places at once');
   }
   if ((await page.locator('[data-list-row="wear"][data-hub-line="finished"]').count()) === 0) {
@@ -5363,7 +5363,7 @@ try {
   await page.locator('[data-area-finish-undo]').click();
   await page.waitForSelector('[data-area-finish]', { timeout: 8000 });
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="wear"][data-hub-section="transition"]', { timeout: 8000 });
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="body"]', { timeout: 8000 });
 
   ok('the More hub reads its own data: what is running, what is next, the last value, a reading where there is only a write, what is behind the row where there is neither, and a finished area moving out of its group and back over a session that is still running');
 } catch (e) {
@@ -5382,13 +5382,14 @@ try {
    wait, so rewording any of these rows leaves the flow alone (ADR-0029). */
 await flow('the reorganised hub tree', async () => {
 try {
-  // Health > Care > Changes you've noticed, which carries side effects on
-  // the same axis and the same list now (ticket 13) - there is no row left
-  // to tap for them, and no second screen to back out of.
+  // Health > Meds opens its own screen; Changes you've noticed is a Body
+  // row of its own now (pre-release-human 12) and carries side effects on
+  // the same axis and the same list (ticket 13).
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="care"]').click();
   await page.waitForURL('**/care');
-  await page.locator('[data-list-row="effects"]').click();
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-section="body"][data-list-row="effects"]').click();
   await page.waitForURL('**/care/changes');
 
   // ... and the other change hanging off the same screen.
@@ -5428,8 +5429,8 @@ try {
   const supportRows = await page.locator('[data-hub-section="support"]').evaluateAll((rows) =>
     rows.map((row) => row.getAttribute('data-list-row'))
   );
-  if (supportRows.join(',') !== 'doubt,resources') {
-    throw new Error(`the support group holds ${supportRows.join(',') || 'nothing'}, not safe space and resources`);
+  if (supportRows.join(',') !== 'letters,doubt,resources') {
+    throw new Error(`the support group holds ${supportRows.join(',') || 'nothing'}, not letters, safe space and resources`);
   }
   if (await page.locator('[data-hub-section="practice"]').count()) {
     throw new Error('the hub still draws a Practice group');
@@ -5477,13 +5478,12 @@ try {
   await page.locator('[data-hub-results] [data-list-row="wear"]').click();
   await page.waitForURL('**/body/wear');
 
-  /* A row this door does not draw. Seven areas are drawn on a screen of
-     their own (phase 9 carpet ticket 16) and this is the only index with a
-     box in it, so a name reaches all twenty-seven; the row says which screen
-     hosts it, and following it lands on the area, not on the host. */
+  /* Dilation is a hub row in Health once the journal holds a procedure that
+     can carry one (pre-release-human 12), so a name finds it under that
+     heading, and following it lands on the area. */
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-hub-search]').fill('dilation');
-  await page.waitForSelector('[data-hub-results] [data-list-row="dilation"][data-hub-section="surgery"]', {
+  await page.waitForSelector('[data-hub-results] [data-list-row="dilation"][data-hub-section="health"]', {
     timeout: 8000
   });
   await page.locator('[data-hub-results] [data-list-row="dilation"]').click();
@@ -6909,11 +6909,6 @@ try {
 
 await flow('cycle tracking opt-in', async () => {
 try {
-  const daysAgoIso = (n) => {
-    const d = new Date();
-    d.setDate(d.getDate() - n);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
   /* Cycle tracking stays out of sight until it is asked for (ADR-0043,
      phase 5 deepening ticket 05). The demo journal is transfemme by
      construction - estradiol, no testosterone - so by default not one
@@ -6976,6 +6971,11 @@ try {
 
 await flow('cycle tracking testosterone', async () => {
 try {
+  const daysAgoIso = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
   /* An explicit off choice keeps the regimen's offer hidden. Turning the
      choice on with a keyboard then restores the offer. */
   async function checkCycleOffers(shown, locale) {
@@ -7019,7 +7019,7 @@ try {
       throw new Error(`${locale} changes cycle offer visibility disagreed`);
     }
     if (shown) {
-      const name = locale === 'pl' ? /Wszystkie wydarzenia cyklu/ : /All cycle events/;
+      const name = locale === 'pl' ? /Cykl/ : /Cycle/; // the row's own title, since the all-events row left Changes
       if (await page.getByRole('link', { name }).count() === 0) throw new Error(`${locale} changes cycle offer has no announced name`);
     }
 
@@ -7071,6 +7071,9 @@ try {
   await page.fill('#regimen-interval', 'weekly');
   await fillDate(page, '#regimen-start', daysAgoIso(2));
   await page.click('[data-save-regimen]');
+  // The editor sheet saves in place: wait for the episode to be listed, or
+  // the next goto races the write and the regimen is never saved.
+  await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().waitFor({ timeout: 8000 });
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
   await checkCycleOffers(false, 'en');
   await checkCycleOffers(false, 'pl');
@@ -7110,6 +7113,7 @@ try {
   await page.waitForSelector('#regimen-end');
   await fillDate(page, '#regimen-end', daysAgoIso(1));
   await page.click('[data-save-regimen]');
+  await page.waitForSelector('#regimen-end', { state: 'detached', timeout: 8000 });
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
 
   await page.goto(BASE + '/care', { waitUntil: 'networkidle' });
@@ -8112,7 +8116,10 @@ try {
   // The library browses; comparing lives on Progress photos.
   if (await page.locator('[data-segment="compare"]').count()) throw new Error('the photo library still offers compare');
 
-  // A video note plays rather than being picked.
+  // A video note plays rather than being picked. Back on Everything first:
+  // the compare step that used to return to all is gone from this screen,
+  // so the Hair chip is still on and a video note is not in it.
+  await page.locator('[data-photo-chip="everything"]').click();
   await page.locator('[data-photo-video]').first().click();
   await page.waitForSelector('[data-sheet] video');
 
