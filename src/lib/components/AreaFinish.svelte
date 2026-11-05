@@ -341,7 +341,6 @@
           data-area-finish
           icon="flag"
           title={m.area_finish_row_title()}
-          subtitle={m.area_finish_row_sub()}
           chevron={false}
           onclick={openFinish}
         />
@@ -351,7 +350,6 @@
             data-area-suspend
             icon="pause"
             title={m.area_suspend_row_title()}
-            subtitle={m.area_suspend_row_sub()}
             chevron={false}
             onclick={openSuspend}
           />

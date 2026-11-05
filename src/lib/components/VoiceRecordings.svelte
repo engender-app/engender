@@ -102,7 +102,6 @@
         key="voice-memos-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.vm_empty_title()}
-        text={m.vm_empty_body()}
       />
     {/snippet}
   </ReadGate>

@@ -48,7 +48,7 @@
     : m.wrapped_year_title({ year: String(period.year) }));
   const subtitle = $derived(cadence === 'week'
     ? m.wrapped_week_range({ from: fmtDay(period.start, { day: 'numeric', month: 'short' }), to: fmtDay(period.end, { day: 'numeric', month: 'short' }) })
-    : cadence === 'month' ? m.wrapped_month_intro() : m.wrapped_year_intro());
+    : cadence === 'month' ? '' : m.wrapped_year_intro());
   const loading = $derived(consentQuery.loading || periodQuery.loading);
   const tabs = [
     { key: 'week', label: () => m.wrapped_cadence_week() },

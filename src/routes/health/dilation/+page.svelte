@@ -306,7 +306,7 @@
 {/snippet}
 
 <div class="screen">
-  <ScreenHeader title={m.dilation()} back="/health/surgery" subtitle={m.dilation_intro()}>
+  <ScreenHeader title={m.dilation()} back="/health/surgery">
     {#snippet actions()}
       {#if taper}
         <button

@@ -24,7 +24,7 @@
   }: {
     key: string;
     title: string;
-    subtitle: string;
+    subtitle?: string;
     /** Present when this kind has a Home-screen switch on this row. */
     surface?: { label: string; checked: boolean; onChange: (v: boolean) => void };
     /** Present when this kind has a notification switch on this row. */
@@ -35,7 +35,7 @@
 <div class="kit-row">
   <span class="kit-row-text">
     <span class="kit-row-title">{title}</span>
-    <span class="kit-row-sub">{subtitle}</span>
+    {#if subtitle}<span class="kit-row-sub">{subtitle}</span>{/if}
   </span>
   <span class="kit-row-trail">
     {#if surface}

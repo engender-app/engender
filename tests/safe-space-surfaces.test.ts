@@ -204,11 +204,9 @@ describe('the support directory panel', () => {
        of them, which is where it already sat and which ticket 63 is the
        ticket that gets to move. */
     expect(SAFE_SPACE_WAYS[0]).toMatchObject({ key: 'resources', href: '/support/resources' });
-    expect(doubt).toContain('title: m.resources_title');
-    /* The row's own key, shortened rather than duplicated: this screen was
-       always its only caller, and at its old length it ran to a third line
-       at 390px against rule 6's 60px for a two-line row. */
-    expect(doubt).toContain('sub: m.resources_row_sub');
+    /* Title alone: "Helplines and organisations" only restated "Support
+       and resources" (subtext audit, 2026-11-05). */
+    expect(doubt).toContain('resources: { title: m.resources_title }');
   });
 });
 

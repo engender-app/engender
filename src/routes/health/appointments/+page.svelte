@@ -402,7 +402,7 @@
 {/snippet}
 
 <div class="screen">
-  <ScreenHeader title={m.appointments_title()} back="/more" subtitle={m.appointments_intro()}>
+  <ScreenHeader title={m.appointments_title()} back="/more">
     {#snippet actions()}
       <button
         class="icon-btn"

@@ -124,17 +124,19 @@ export interface UnpromptedRow {
       Outcome. */
   area: HideableArea | null;
   /** Present when this kind shows something in the app of its own, carrying
-      the subtitle saying what it puts in front of you, and whether it shows until the person says otherwise
+      a subtitle saying what it puts in front of you where the title does not
+      already say it, and whether it shows until the person says otherwise
       (`defaultOn`). The switch is one entry in the `surfaceOverrides`
       preference, keyed by this row's key (functional audit ticket 44), and
       sits in Today's editor for a live tile and on
       `/settings/notifications` for everything else (ticket 04). Absent is "shows
       nothing in the app of its own": the four producers ticket 04 folded in
       all fire and none surfaces. */
-  surface?: { subtitle: () => string; defaultOn: boolean };
+  surface?: { subtitle?: () => string; defaultOn: boolean };
   /** Present when this kind may become a notification, and what firing
       means: the preference the notifications view's switch writes, the
-      subtitle saying *when* it fires, which channel it fires on, and
+      subtitle saying *when* it fires (only where the title leaves that
+      open), which channel it fires on, and
       `disguised: true`, the literal type being the enforcement: every
       notification is covered by `hideNotificationTitles`, so a row cannot
       declare otherwise. Absent is "never
@@ -142,7 +144,7 @@ export interface UnpromptedRow {
       answer the admission rule above. A `notify` with no `channel` does not
       compile - see `UNPROMPTED_ROWS` below. */
   notify?: {
-    subtitle: () => string;
+    subtitle?: () => string;
     prefKey: BooleanPrefKey;
     channel: NotificationChannel;
     disguised: true;
@@ -161,7 +163,7 @@ const ROWS = [
     key: 'wear-timer',
     area: 'wearSessions',
     title: () => m.tile_wear_title(),
-    surface: { subtitle: () => m.tile_wear_sub(), defaultOn: true }
+    surface: { defaultOn: true }
   },
   {
     key: 'dose-panel',
@@ -175,7 +177,7 @@ const ROWS = [
     // a letter is sealed and then unlocked, which is its whole lifecycle.
     area: null,
     title: () => m.tile_letter_title(),
-    surface: { subtitle: () => m.tile_letter_sub(), defaultOn: true }
+    surface: { defaultOn: true }
   },
   {
     key: 'surgery-countdown',
@@ -196,7 +198,7 @@ const ROWS = [
     // a running count of what is in the drawer, not a series to stop adding to.
     area: null,
     title: () => m.tile_stock_title(),
-    surface: { subtitle: () => m.tile_stock_sub(), defaultOn: true }
+    surface: { defaultOn: true }
   },
   {
     key: 'wrapped',
@@ -218,7 +220,6 @@ const ROWS = [
     area: null,
     title: () => m.reminders(),
     notify: {
-      subtitle: () => m.notif_reminders_sub(),
       prefKey: 'remindersEnabled',
       channel: 'reminders',
       disguised: true
@@ -253,7 +254,6 @@ const ROWS = [
     area: null,
     title: () => m.notif_export_failure_title(),
     notify: {
-      subtitle: () => m.notif_export_failure_sub(),
       prefKey: 'exportFailureNoticeEnabled',
       channel: 'exportFailure',
       disguised: true

@@ -441,7 +441,7 @@
        shorter claim instead (ticket 13): what both halves of this screen
        are, and the "no grading and no advice" line the side effects screen
        used to open on, rather than losing it in the merge. -->
-  <ScreenHeader title={m.effects_timeline()} back="/care" subtitle={m.effects_timeline_subtitle()}>
+  <ScreenHeader title={m.effects_timeline()} back="/care">
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.side_effect_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />

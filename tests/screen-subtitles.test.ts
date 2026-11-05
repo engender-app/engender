@@ -40,8 +40,11 @@ function subtitleKeys(): { file: string; key: string }[] {
 describe('what a screen puts under its title', () => {
   const keys = subtitleKeys();
 
+  /* 14 since the subtext audit (2026-11-05) cut seven header taglines that
+     only restated their titles; the floor guards the grep, not a count of
+     subtitles a screen ought to have. */
   it('finds the headers at all, so a rename cannot quietly empty this test', () => {
-    expect(keys.length).toBeGreaterThan(20);
+    expect(keys.length).toBeGreaterThan(10);
   });
 
   it('is a sentence in both catalogues: a capital at the front and a stop at the end', () => {

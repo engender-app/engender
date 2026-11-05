@@ -552,7 +552,6 @@
       <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.a11y_text_size_boost()}</span>
-          <span class="kit-row-sub">{m.a11y_text_size_boost_sub()}</span>
         </span>
         <Switch
           checked={prefs.a11yTextSizeBoost}
@@ -565,7 +564,6 @@
       <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.a11y_legibility_boost()}</span>
-          <span class="kit-row-sub">{m.a11y_legibility_boost_sub()}</span>
         </span>
         <Switch
           checked={prefs.a11yLegibilityBoost}
@@ -593,7 +591,6 @@
 
   <Sheet bind:open={tagGroupsSheet} title={m.tag_groups()}>
     <h3>{m.tag_groups()}</h3>
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.tag_groups_sub()}</p>
     <div class="stack-3">
       {#each vocabulary.tagGroups as g (g.key)}
         <div class="spread">
