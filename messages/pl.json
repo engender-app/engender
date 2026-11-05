@@ -1977,7 +1977,7 @@
   "margin_note_add_sheet": "Dodaj notatkę na marginesie",
   "margin_note_delete": "Usuń",
   "margin_note_delete_aria": "Usuń tę notatkę na marginesie",
-  "margin_note_delete_q": "Usunąć tę notatkę? ",
+  "margin_note_delete_q": "Usunąć tę notatkę?",
   "margin_note_delete_sheet": "Usuń notatkę na marginesie",
   "margin_note_edit_sheet": "Edytuj notatkę na marginesie",
   "margin_note_placeholder": "Co widać teraz, czego nie było widać wtedy?",
@@ -3619,7 +3619,7 @@
       }
     }
   ],
-  "surgery_wound_album_empty": "Nie ma jeszcze zdjęć z rekonwalescencji. ",
+  "surgery_wound_album_empty": "Nie ma jeszcze zdjęć z rekonwalescencji.",
   "surgery_wound_album_title": "Zdjęcia procesu gojenia",
   "tag_a_exercise": "ruch",
   "tag_a_family": "rodzina",
