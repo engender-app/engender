@@ -127,7 +127,6 @@
         key="surgery-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
         title={m.surgery_empty_title()}
-        text={m.surgery_empty_body()}
         action={{ label: m.surgery_add(), primary: true, onclick: () => record.openEditor(null) }}
       />
     {/snippet}

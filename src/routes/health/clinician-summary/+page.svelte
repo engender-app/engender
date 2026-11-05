@@ -305,7 +305,6 @@
   <!-- Section Inclusion / Redaction Toggles -->
   <div style="margin-bottom:var(--space-4)">
     <SectionHeading text={m.clinician_summary_include_title()} />
-    <p class="muted small" style="margin-bottom:var(--space-2)">{m.clinician_summary_include_note()}</p>
     <ListCard>
       <div class="inclusion-container" data-dossier-inclusion>
         {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
