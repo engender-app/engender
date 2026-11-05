@@ -354,7 +354,13 @@
     const value = await j.lastWrite.getLastWrites(today, pinReads.lastWrites);
     return { key, value };
   });
-  let areaStatesQuery = liveQuery(async (j) => dilationGated(await j.areaStates.getAreaStates(), await j.procedures.getProcedures()));
+  /* The dilation gate reads procedures, so it is asked only when the dilation
+     row is one of the rows being read (pinned, or the editor open): a Home
+     with nothing pinned that needs it issues no procedures read for it. */
+  let areaStatesQuery = liveQuery(async (j) => {
+    const states = await j.areaStates.getAreaStates();
+    return pinReadKey.split('|').includes('dilation') ? dilationGated(states, await j.procedures.getProcedures()) : states;
+  });
   /* The forward half (phase 11 all-four-doors ticket 02). A pinned row draws
      the same line its hub row does, so it asks the same assembled question -
      the milestones pin said "Nothing logged for 1 year 4 months" over the
