@@ -346,18 +346,22 @@ describe('every row the hub carries', () => {
 
   it('draws the last three cycle events inside the Cycle link card, held with it', () => {
     /* Alicja, 2026-11-05: the preview that left Changes comes back on Meds,
-       with the link. It is a `before` snippet of the same HostedRows card, so
+       with the link. It is an `after` snippet of the same HostedRows card, so
        it sits in the link's own ReadReserve and fades in with it, and the
        card's `ready` waits for the events' read when the gate is open. A
        preview drawn beside the card, or released before its read, would
-       arrive after the link. */
+       arrive after the link. The link row heads the card and the events
+       follow it (prh12): the card is named before what is in it. */
     const hosted = read('src/lib/components/HostedRows.svelte');
-    expect(hosted).toContain('{@render before?.()}');
+    const rowsAt = hosted.indexOf('{@render hostedRows()}', hosted.indexOf('<ListCard>'));
+    const afterAt = hosted.indexOf('{@render after?.()}');
+    expect(rowsAt).toBeGreaterThan(-1);
+    expect(afterAt).toBeGreaterThan(rowsAt);
 
     const care = read('src/routes/care/+page.svelte');
     expect(care).toContain('j.cycleEvents.getCycleEvents()');
     expect(care).toContain('.slice(0, 3)');
-    expect(care).toContain('{#snippet before()}');
+    expect(care).toContain('{#snippet after()}');
     expect(care).toContain('(!cycleShown || !cycleEventsQuery.loading)');
     expect(care).toContain('data-cycle-event={event.id}');
   });

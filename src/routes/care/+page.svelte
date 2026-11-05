@@ -846,10 +846,10 @@
   </ListCard>
 
   <!-- A link to the cycle log (pre-release-human 12), only behind
-       `cycleTrackingVisible` (ADR-0043), with the last three events above
+       `cycleTrackingVisible` (ADR-0043), with the last three events under
        it. The module itself is on the More hub, in Health. The events are
        static rows (the shape regimen's pause rows use): they name nothing to
-       press, and the link row under them is the way in. They sit in the
+       press, and the link row heading them is the way in. They sit in the
        link's own reserve, so the card waits for their read and arrives whole. -->
   <HostedRows
     host="care"
@@ -857,7 +857,7 @@
     ready={!episodesQuery.loading && (!cycleShown || !cycleEventsQuery.loading)}
     card
   >
-    {#snippet before()}
+    {#snippet after()}
       {#each recentCycleEvents as event (event.id)}
         <div class="kit-row is-static" data-cycle-event={event.id}>
           <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
