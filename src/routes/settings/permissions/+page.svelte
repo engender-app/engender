@@ -20,7 +20,6 @@
   <ScreenHeader
     title={m.perms_screen_title()}
     back="/settings"
-    subtitle={m.settings_permissions_sub()}
   />
 
   <PermissionList />

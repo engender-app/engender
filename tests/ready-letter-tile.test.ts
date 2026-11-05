@@ -165,7 +165,6 @@ describe('Settings and letter route integration', () => {
 describe('Localization keys for ready letter live tile', () => {
   const requiredKeys = [
     'tile_letter_title',
-    'tile_letter_sub',
     'tile_letter_dismiss_action',
     'tile_letter_dismiss_title',
     'tile_letter_snooze_btn',

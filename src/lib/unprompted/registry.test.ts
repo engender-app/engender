@@ -68,8 +68,10 @@ describe('the unprompted registry', () => {
   it('says something about every row, in whichever view draws it', () => {
     for (const row of UNPROMPTED_ROWS) {
       expect(row.title(), row.key).toBeTruthy();
-      if (row.surface) expect(row.surface.subtitle(), row.key).toBeTruthy();
-      if (row.notify) expect(row.notify.subtitle(), row.key).toBeTruthy();
+      // A subtitle is earned, not standard (subtext audit, 2026-11-05):
+      // a row may have none, but one it has is never empty.
+      if (row.surface?.subtitle) expect(row.surface.subtitle(), row.key).toBeTruthy();
+      if (row.notify?.subtitle) expect(row.notify.subtitle(), row.key).toBeTruthy();
     }
   });
 

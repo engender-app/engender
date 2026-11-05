@@ -186,7 +186,7 @@
       <RegistryRow
         key={row.key}
         title={row.title()}
-        subtitle={row.surface?.subtitle() ?? ''}
+        subtitle={row.surface?.subtitle?.()}
         surface={isSurfaceRow(row)
           ? {
               label: m.notif_show_toggle_aria({ name: row.title() }),
@@ -208,7 +208,7 @@
           <RegistryRow
             key={row.key}
             title={row.title()}
-            subtitle={row.notify?.subtitle() ?? ''}
+            subtitle={row.notify?.subtitle?.()}
             notify={!isWeb && row.notify
               ? {
                   label: m.notif_notify_toggle_aria({ name: row.title() }),

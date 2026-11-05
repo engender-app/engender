@@ -237,7 +237,6 @@ describe('Settings live-tiles registry integration', () => {
 describe('Localization keys for stock notice', () => {
   const requiredKeys = [
     'tile_stock_title',
-    'tile_stock_sub',
     'notice_stock_low_title',
     'notice_stock_reorder_title',
     'notice_stock_reorder_body',
