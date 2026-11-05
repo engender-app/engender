@@ -197,7 +197,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.body_map_title()} subtitle={m.body_map_sub()} screen="body-map" back="/stats" />
+  <ScreenHeader title={m.body_map_title()} screen="body-map" back="/stats" />
 
   <!-- Held at last visit's height until the vocabulary mirror names the
        regions, then faded in (ux-carpet ticket 211): the figure cut in at

@@ -1011,7 +1011,6 @@
 
   {#if entryDraft.openSection === 'body'}
     <div class="editor-section" id="editor-section-body" data-editor-section="body" transition:disclose>
-      <p class="editor-hint">{m.body_map_hint()}</p>
       <BodyRegionPicker
         regions={vocabulary.visibleBodyRegions}
         values={entryDraft.bodyRegions}

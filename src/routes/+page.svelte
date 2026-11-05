@@ -437,14 +437,14 @@
     icon: string;
     href: string;
     title: () => string;
-    sub: () => string;
+    sub?: () => string;
   };
   const GETTING_STARTED: StartOffer[] = [
     { key: 'milestones', area: 'milestones', icon: 'summit', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
     { key: 'regimen', area: 'care', icon: 'pill', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
     { key: 'letters', area: 'letters', icon: 'envelope', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
-    { key: 'photos', area: 'photos', icon: 'camera', href: TODAY_PHOTO_HREF, title: m.home_start_photos_title, sub: m.home_start_photos_sub },
-    { key: 'more', area: null, icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
+    { key: 'photos', area: 'photos', icon: 'camera', href: TODAY_PHOTO_HREF, title: m.home_start_photos_title },
+    { key: 'more', area: null, icon: 'grid', href: '/more', title: m.home_start_more_title }
   ];
 
   /* A row is crossed when what it suggests has been done, which is data
@@ -1289,7 +1289,6 @@
          walkthrough handle through would be the wrong file to change. -->
     <div transition:collapse={panel} data-getting-started>
       <SectionHeading text={m.home_start_title()} />
-      <p class="home-start-intro">{m.home_start_intro()}</p>
       <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
         {#each startOffers ?? GETTING_STARTED as offer (offer.key)}
           {@const crossed = isCrossed(offer.key)}
@@ -1302,7 +1301,7 @@
             key={offer.key}
             href={offer.href}
             title={offer.title()}
-            subtitle={offer.sub()}
+            subtitle={offer.sub?.()}
             data-done={crossed || undefined}
           >
             {#snippet leading()}
@@ -1723,15 +1722,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  /* The line under the Getting started heading, at the secondary size and
-     weight (rule 2). */
-  .home-start-intro {
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--text-2);
   }
 
   /* A row that is done (ux-carpet ticket 288): the check takes the icon's
