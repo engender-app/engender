@@ -141,6 +141,14 @@ try {
           node.scrollIntoView({ block: 'start' });
         });
       }
+      if (name === '07-settings-privacy') {
+        // Settings opens on Appearance; the shot is of Privacy & data, so
+        // its heading and rows lead.
+        await page.locator('[data-list-row="security"]').evaluate((node) => {
+          node.style.scrollMarginTop = '88px';
+          node.scrollIntoView({ block: 'start' });
+        });
+      }
       await page.evaluate(async () => {
         document.documentElement.dataset.theme = 'light';
         document.documentElement.dataset.palette = 'trans';
