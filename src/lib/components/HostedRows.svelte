@@ -46,7 +46,7 @@
     keys,
     card = false,
     ready = true,
-    before
+    after
   }: {
     /** Which screen's rows to draw, from `HUB_ROW_HOSTS`. Where `keys` is
         given it only names the screen, for its reserve and its data
@@ -66,10 +66,10 @@
     card?: boolean;
     /** The host's own reads, when `keys` waits on them. */
     ready?: boolean;
-    /** Static rows drawn at the head of the card, inside the same reserve, so
+    /** Static rows drawn under the card's links, inside the same reserve, so
         they arrive with the link rather than after it. The host owns their
         reads and holds `ready` for them. */
-    before?: Snippet;
+    after?: Snippet;
   } = $props();
 
   const today = $derived(currentDay());
@@ -136,8 +136,8 @@
   <ReadReserve ready={!statesQuery.loading && !proceduresQuery?.loading && ready} {estimate} onrest={remember} data-hosted-reserve={host}>
     {#if rows.length}
       <ListCard>
-        {@render before?.()}
         {@render hostedRows()}
+        {@render after?.()}
       </ListCard>
     {/if}
   </ReadReserve>

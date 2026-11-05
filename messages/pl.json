@@ -1439,7 +1439,7 @@
   "exposure_route_days_note": "Dni dla danego sposobu podania sumują wszystkie równoległe etapy z tym sposobem. Przy kilku lekach naraz suma wychodzi większa niż liczba dni w kalendarzu.",
   "exposure_route_days_title": "Dni na leku według sposobu podania",
   "feature_cycle_tracking_sub": "Zapisuj krwawienia i plamienia przy pisaniu wpisu",
-  "feature_filters_title": "Tematy i cykl",
+  "feature_filters_title": "Tematy opcjonalne",
   "feature_genital_effects": "Zmiany w genitaliach",
   "feature_genital_effects_sub": "Rozmiar, wrażliwość, wilgotność i skóra",
   "feature_modules_intro": "Dziennik, zdjęcia i zasoby wsparcia są zawsze dostępne.",
