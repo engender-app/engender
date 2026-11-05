@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DURATION_FALLBACK } from './tokens';
-import { bloomGeometry, bloomGradient, incomingRings, changePalette, changeTheme, isAppearancePending } from './paletteChange';
+import { bloomGeometry, bloomGradient, bloomOrigin, incomingRings, changePalette, changeTheme, isAppearancePending } from './paletteChange';
 
 describe('palette change', () => {
   it('saves immediately when view transitions are unavailable', () => {
@@ -210,3 +210,17 @@ describe('palette change', () => {
   });
 });
 
+
+describe('bloom origin', () => {
+  it('is the top right corner of the window, wherever the sun has scrolled to', () => {
+    /* Alicja, after prh12: the bloom should come out of the top right corner,
+       like the sun. A sun scrolled above the window moved the centre off
+       screen, so the circle arrived as a flat edge from the top. */
+    const sun = { getBoundingClientRect: () => ({ left: 390, top: -620 }) };
+    const doc = {
+      documentElement: { clientWidth: 390, clientHeight: 844 },
+      querySelector: () => sun
+    } as unknown as Document;
+    expect(bloomOrigin(doc)).toEqual({ x: 390, y: 0 });
+  });
+});
