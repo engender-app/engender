@@ -2,7 +2,7 @@
   import { rovingRadio } from '$lib/components/rovingRadio';
   import Icon from './Icon.svelte';
   import { nearestScrollLeft } from './segmentedTrack';
-  import { EASE_OUT, isReducedMotion, motionDuration, scrollBehavior } from '$lib/motion/tokens';
+  import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import type { TransitionConfig } from 'svelte/transition';
   import {
     boxesMatch,
@@ -105,7 +105,10 @@
   }
 
   function segmentWidth(node: Element): TransitionConfig {
-    if (!grows || isReducedMotion() || !(node instanceof HTMLElement)) return { duration: 0 };
+    if (!grows || !(node instanceof HTMLElement)) return { duration: 0 };
+    /* Reduced motion keeps the arrival as a crossfade: the width lands at
+       once, the label still fades rather than cutting in. */
+    if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     const style = getComputedStyle(node);
     const width = node.getBoundingClientRect().width;
     const padStart = parseFloat(style.paddingInlineStart) || 0;
