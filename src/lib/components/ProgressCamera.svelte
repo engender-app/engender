@@ -191,101 +191,95 @@
 </script>
 
 <Sheet {open} {title} {onClose} onClosed={closed} busy={saving}>
-  <h3>{title}</h3>
-  <div class="frame" data-progress-camera data-mode={mode}>
-    <!-- Without a camera the ghost has nothing to be lined up against, so
-         it fades away with the picture rather than staying under the
-         message that says so. -->
-    <div class="layers" class:is-off={mode === 'unavailable'}>
-      <!-- svelte-ignore a11y_media_has_caption -->
-      <video
-        bind:this={video}
-        class:is-playing={playing}
-        muted
-        autoplay
-        playsinline
-        onplaying={() => (playing = true)}
-        data-progress-video
-      ></video>
-      {#each ghostUrls as url (url)}
+  <div class="sheet-fit">
+    <h3>{title}</h3>
+    <div class="frame sheet-fit-frame" data-progress-camera data-mode={mode}>
+      <!-- Without a camera the ghost has nothing to be lined up against, so
+           it fades away with the picture rather than staying under the
+           message that says so. -->
+      <div class="layers" class:is-off={mode === 'unavailable'}>
+        <!-- svelte-ignore a11y_media_has_caption -->
+        <video
+          bind:this={video}
+          class:is-playing={playing}
+          muted
+          autoplay
+          playsinline
+          onplaying={() => (playing = true)}
+          data-progress-video
+        ></video>
+        {#each ghostUrls as url (url)}
+          <img
+            class="ghost"
+            src={url}
+            alt=""
+            data-progress-ghost
+            in:fade={{ duration: med() }}
+            out:fade={{ duration: fast() }}
+            onoutroend={() => URL.revokeObjectURL(url)}
+          />
+        {/each}
+      </div>
+      {#each shotUrls as url (url)}
         <img
-          class="ghost"
+          class="shot"
           src={url}
-          alt=""
-          data-progress-ghost
-          in:fade={{ duration: med() }}
+          alt={m.photo_alt()}
+          data-progress-shot
+          in:fade={{ duration: fast() }}
           out:fade={{ duration: fast() }}
           onoutroend={() => URL.revokeObjectURL(url)}
         />
       {/each}
+      {#if mode === 'unavailable'}
+        <p class="unavailable" role="status" transition:fade={{ duration: fast() }}>{m.pph_camera_unavailable()}</p>
+      {/if}
     </div>
-    {#each shotUrls as url (url)}
-      <img
-        class="shot"
-        src={url}
-        alt={m.photo_alt()}
-        data-progress-shot
-        in:fade={{ duration: fast() }}
-        out:fade={{ duration: fast() }}
-        onoutroend={() => URL.revokeObjectURL(url)}
-      />
-    {/each}
-    {#if mode === 'unavailable'}
-      <p class="unavailable" role="status" transition:fade={{ duration: fast() }}>{m.pph_camera_unavailable()}</p>
-    {/if}
-  </div>
 
-  <p class="muted small hint" data-progress-hint>
-    {#key hint}<span in:swapIn out:crossfade>{hint}</span>{/key}
-  </p>
+    <p class="muted small hint" data-progress-hint>
+      {#key hint}<span in:swapIn out:crossfade>{hint}</span>{/key}
+    </p>
 
-  <div class="controls">
-    {#key mode === 'shot' ? 'shot' : mode === 'unavailable' ? 'fallback' : 'live'}
-      <div class="control-row" in:swapIn out:crossfade>
-        {#if mode === 'shot' && shot}
-          <button class="btn btn-soft press" data-progress-retake onclick={retake}>{m.photo_review_retake()}</button>
-          <button class="btn btn-primary press" data-progress-save disabled={saving} onclick={() => save(shot!)}>{m.pph_save()}</button>
-        {:else if mode === 'unavailable'}
-          <button class="btn btn-soft press" data-progress-file onclick={fallbackFile}>
-            <Icon name="image" size={20} /><span>{m.add_photo()}</span>
-          </button>
-          <button class="btn btn-primary press" data-progress-native onclick={fallbackCamera}>
-            <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
-          </button>
-        {:else}
-          <button
-            class="btn btn-soft press"
-            data-progress-flip
-            aria-label={m.pph_switch_camera()}
-            onclick={flip}
-          >
-            <Icon name="repeat" size={20} />
-          </button>
-          <button class="btn btn-primary press" data-progress-take disabled={mode !== 'live' || !playing} onclick={take}>
-            <Icon name="camera" size={20} /><span>{m.pph_take()}</span>
-          </button>
-        {/if}
-      </div>
-    {/key}
+    <div class="controls">
+      {#key mode === 'shot' ? 'shot' : mode === 'unavailable' ? 'fallback' : 'live'}
+        <div class="control-row" in:swapIn out:crossfade>
+          {#if mode === 'shot' && shot}
+            <button class="btn btn-soft press" data-progress-retake onclick={retake}>{m.photo_review_retake()}</button>
+            <button class="btn btn-primary press" data-progress-save disabled={saving} onclick={() => save(shot!)}>{m.pph_save()}</button>
+          {:else if mode === 'unavailable'}
+            <button class="btn btn-soft press" data-progress-file onclick={fallbackFile}>
+              <Icon name="image" size={20} /><span>{m.add_photo()}</span>
+            </button>
+            <button class="btn btn-primary press" data-progress-native onclick={fallbackCamera}>
+              <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
+            </button>
+          {:else}
+            <button
+              class="btn btn-soft press"
+              data-progress-flip
+              aria-label={m.pph_switch_camera()}
+              onclick={flip}
+            >
+              <Icon name="repeat" size={20} />
+            </button>
+            <button class="btn btn-primary press" data-progress-take disabled={mode !== 'live' || !playing} onclick={take}>
+              <Icon name="camera" size={20} /><span>{m.pph_take()}</span>
+            </button>
+          {/if}
+        </div>
+      {/key}
+    </div>
   </div>
 </Sheet>
 
 <style>
+  /* Sized by .sheet-fit-frame (components.css), so the frame gives way
+     before Take does. */
   .frame {
     position: relative;
-    width: 100%;
-    max-height: 55vh;
-    aspect-ratio: 3 / 4;
-    margin: var(--space-3) auto 0;
     border-radius: var(--r-block);
     overflow: clip;
     background: var(--surface-2);
-  }
-  /* Keeps the 3:4 when 55vh is the tighter bound, rather than squashing
-     it, and leaves the heading, the hint and the buttons on a phone screen
-     with the frame. */
-  @supports (aspect-ratio: 3 / 4) {
-    .frame { width: min(100%, calc(55vh * 3 / 4)); }
   }
   .layers,
   .layers video,
@@ -326,7 +320,7 @@
   .hint {
     position: relative;
     min-height: calc(2 * 1.5em);
-    margin: var(--space-3) 0;
+    margin: var(--space-3) 0 var(--space-4);
     text-align: center;
   }
   .hint span { display: block; width: 100%; }

@@ -342,13 +342,15 @@
 
   <Sheet open={comparing} title={m.ph_compare()} onClose={() => (comparing = false)}>
     {#if pair}
-      <p class="compare-gap" data-compare-gap>{gapLabel}</p>
-      <PhotoWipe
-        photos={shots}
-        {pair}
-        role={roleAt(activeFlag.roles, 0)}
-        date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-      />
+      <div class="sheet-fit">
+        <p class="compare-gap" data-compare-gap>{gapLabel}</p>
+        <PhotoWipe
+          photos={shots}
+          {pair}
+          role={roleAt(activeFlag.roles, 0)}
+          date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
+        />
+      </div>
     {:else}
       <p role="status">{m.ph_selection_unavailable()}</p>
     {/if}
@@ -357,21 +359,23 @@
   <Sheet open={viewing !== null} title={m.photo_view_title()} onClose={() => (viewing = null)} onClosed={() => (viewUrls = [])}>
     {#if viewing}
       {@const shown = viewing}
-      <p>{labelOf(shown.pose)}, {cellDate(shown)}</p>
-      <div class="view-frame" data-progress-view>
-        {#each viewUrls as url (url)}
-          <img
-            src={url}
-            alt={m.photo_alt()}
-            in:fade={{ duration: fast() }}
-            out:fade={{ duration: fast() }}
-            onoutroend={() => URL.revokeObjectURL(url)}
-          />
-        {/each}
+      <div class="sheet-fit">
+        <p>{labelOf(shown.pose)}, {cellDate(shown)}</p>
+        <div class="view-frame sheet-fit-frame" data-progress-view>
+          {#each viewUrls as url (url)}
+            <img
+              src={url}
+              alt={m.photo_alt()}
+              in:fade={{ duration: fast() }}
+              out:fade={{ duration: fast() }}
+              onoutroend={() => URL.revokeObjectURL(url)}
+            />
+          {/each}
+        </div>
+        <button class="btn btn-ghost press" data-progress-delete={shown.id} onclick={() => askToDelete(shown)}>
+          <Icon name="trash" size={20} /><span>{m.pph_delete()}</span>
+        </button>
       </div>
-      <button class="btn btn-ghost press" data-progress-delete={shown.id} onclick={() => askToDelete(shown)}>
-        <Icon name="trash" size={20} /><span>{m.pph_delete()}</span>
-      </button>
     {/if}
   </Sheet>
 
@@ -422,12 +426,10 @@
   /* Holds the line's place, so the line arriving or leaving with a pose
      switch fades where it stands rather than moving what is around it. */
   .pose-empty { position: relative; min-height: 1.5em; }
+  /* Sized by .sheet-fit-frame (components.css). */
   .view-frame {
     position: relative;
-    width: 100%;
-    aspect-ratio: 3 / 4;
-    max-height: 60vh;
-    margin: var(--space-3) 0;
+    margin: var(--space-3) 0 var(--space-4);
     border-radius: var(--r-block);
     overflow: clip;
     background: var(--surface-2);
