@@ -298,7 +298,6 @@
             key="change-pin"
             icon="lock"
             title={m.pin_change_title()}
-            subtitle={m.pin_change_sub()}
             onclick={() => (changingPin = true)}
           />
         {/if}

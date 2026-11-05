@@ -83,7 +83,7 @@
           key="screen-capture"
           icon="eyeOff"
           title={m.screen_capture_title()}
-          subtitle={[m.screen_capture_sub(), m.screen_capture_sub_recents()]}
+          subtitle={m.screen_capture_sub_recents()}
         >
           {#snippet trailing()}
             <Switch
