@@ -233,7 +233,7 @@
     <p role="status" data-wipe-unavailable>{m.photo_unreadable()}</p>
   {/if}
   {#if wipeable && !earlierFailed && !laterFailed}
-    <div class="wipe-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
+    <div class="wipe-frame sheet-fit-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
       <div class="wipe-plate">
         {#each laterStack as url (url)}
           <img
@@ -366,6 +366,16 @@
   .wipe {
     container: wipe / inline-size;
   }
+  /* In a sheet that fits its picture (.sheet-fit, components.css), the
+     frame is the part that gives way, so the wipe passes the shrink on to
+     it rather than holding its full height. */
+  :global(.sheet-fit) > .wipe {
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  :global(.sheet-fit) > .wipe > :not(.wipe-frame) { flex: none; }
 
   /* A block (rule 4): 6px corners and its own --outline edge, so the frame
      is visible on both themes before any photograph has decoded. No

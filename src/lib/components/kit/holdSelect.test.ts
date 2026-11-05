@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { HOLD_MS, HOLD_SLOP_PX, startHold } from './holdSelect';
 
 describe('startHold', () => {
@@ -48,4 +49,26 @@ describe('startHold', () => {
     press.end();
     expect(press.held).toBe(true);
   });
+});
+
+/* A hold has no visible or assistive way in on its own (pre-release-human
+   12 audit), so each grid that takes one also offers a Select button that
+   enters the same picking with nothing picked yet. The runes in
+   holdSelect.svelte.ts do not run under this Node config, so what is held
+   here is the wiring. */
+describe('Select enters picking without a hold', () => {
+  const read = (path: string) => readFileSync(path, 'utf8');
+
+  it('lets picking start empty and stay until it is left', () => {
+    const source = read('src/lib/components/kit/holdSelect.svelte.ts');
+    expect(source).toMatch(/start\(grid\)\s*\{\s*picking = true;/);
+    expect(source).toMatch(/get active\(\)\s*\{\s*return picking \|\| ids\.length > 0;/);
+  });
+
+  it.each(['src/routes/transition/progress-photos/+page.svelte', 'src/routes/media/photos/+page.svelte'])(
+    '%s has a Select button that starts picking',
+    (path) => {
+      expect(read(path)).toMatch(/data-hold-select-start[^>]*onclick=\{\(\) => held\.start\(gridEl\)\}/);
+    }
+  );
 });

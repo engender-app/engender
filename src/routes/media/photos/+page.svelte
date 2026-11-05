@@ -303,9 +303,18 @@
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
         <!-- The number changes with a chip, so it crossfades rather than
              swapping in the frame of the press (carpet 15 row 49). -->
-        <p class="photo-count" data-photo-count>
-          {#key shown.length}<span in:countIn out:crossfade>{m.ph_count({ count: shown.length })}</span>{/key}
-        </p>
+        <div class="photo-count-row">
+          <p class="photo-count" data-photo-count>
+            {#key shown.length}<span in:countIn out:crossfade>{m.ph_count({ count: shown.length })}</span>{/key}
+          </p>
+          <button
+            class="select-start press"
+            data-hold-select-start
+            aria-label={m.photos_select_start_aria()}
+            inert={held.active}
+            onclick={() => held.start(gridEl)}
+          >{m.photos_select_start()}</button>
+        </div>
         <div class="photo-library">
           <div class="photo-grid" class:is-picking={held.active} bind:this={gridEl}>
             {#each rendered as p (p.id)}
@@ -573,6 +582,15 @@
   .photo-count {
     font-size: var(--text-sm);
     color: var(--text);
-    margin: 0 0 var(--space-1);
+    margin: 0;
+  }
+  /* The count and Select on one line; the gap under it clears Select's
+     touch area off the first row of tiles. */
+  .photo-count-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
   }
 </style>

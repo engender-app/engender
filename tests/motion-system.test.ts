@@ -1342,7 +1342,11 @@ describe('the cap on animating layout', () => {
      INHERITED entry has only the fact that it is already shipped. Nobody
      has benchmarked the second list; this check found it and does not
      bless it. */
-  const LAYOUT_EXEMPT: { selector: string; props: string[]; reason: string }[] = [
+  /* `script` marks an entry no stylesheet carries: the movement is written
+     into the element's style from a transition's `tick`, once a frame, so
+     the CSS scan below never sees it. Such an entry is held against that
+     file instead, which has to go on writing every property it names. */
+  const LAYOUT_EXEMPT: { selector: string; props: string[]; reason: string; script?: string }[] = [
     {
       selector: "[data-nav-pill='bar']",
       props: ['left', 'right', 'top', 'bottom'],
@@ -1371,6 +1375,13 @@ describe('the cap on animating layout', () => {
       props: ['width', 'height'],
       reason:
         'at most 53 SVG rects within one fixed 320 by 150 viewBox; changing range resizes bars without moving surrounding layout. The FA 37 Chromium motion probe sampled 56 animation frames over 900 ms with 14 bars and no missed frame'
+    },
+    {
+      selector: '.segment (Segmented `grows`)',
+      props: ['width', 'max-width', 'padding-inline', 'margin-inline-start'],
+      script: 'src/lib/components/Segmented.svelte',
+      reason:
+        "a segment arriving in or leaving a switcher whose options the person edits (Progress photos' poses, pre-release-human 12): one segment of a few closes or opens its width, padding and gap over --dur-med while the others move up beside it, and the pill is re-pinned in the same tick so it never runs a frame behind the track. Hiding and showing a pose at 4x CPU throttling sampled 55 frames each with no gap over 17ms. Under reduced motion the width lands at once and the label crossfades (fadeOnly over --dur-crossfade)"
     }
   ];
 
@@ -1463,8 +1474,10 @@ describe('the cap on animating layout', () => {
     }
     const stale: string[] = [];
     for (const entry of [...LAYOUT_EXEMPT, ...LAYOUT_INHERITED]) {
+      const script = 'script' in entry && entry.script ? readFileSync(join(root, entry.script), 'utf8') : null;
       for (const property of entry.props) {
-        if (!found.has(`${entry.selector} ${property}`)) stale.push(`${entry.selector} ${property}`);
+        const kept = script ? script.includes(`set('${property}'`) : found.has(`${entry.selector} ${property}`);
+        if (!kept) stale.push(`${entry.selector} ${property}`);
       }
     }
     expect(stale, 'an entry here no longer animates what it claims - delete it').toEqual([]);

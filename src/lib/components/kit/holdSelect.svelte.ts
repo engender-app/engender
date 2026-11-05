@@ -5,11 +5,15 @@
 
    The selection is the mode. Holding a tile picks it, and from then on a
    tap picks or drops a tile instead of opening it; dropping the last one,
-   Cancel and Back all leave. A press that travels is a scroll and picks
+   Cancel and Back all leave. A hold is invisible to anyone who does not
+   know it is there and to a screen reader, so each grid also has a Select
+   button (`start`): the same mode with nothing picked yet, which stays
+   until Cancel or Back since there was no first pick to drop. A press that travels is a scroll and picks
    nothing (holdSelect.ts), and nothing here cancels a touchmove, so the
    page scrolls under a finger exactly as it did. A right click or the
    keyboard's context-menu key on a tile is the same hold, for a mouse and
    a keyboard. */
+import { tick } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
 import { scale, type TransitionConfig } from 'svelte/transition';
 import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
@@ -20,6 +24,10 @@ export interface HoldSelection {
   readonly active: boolean;
   has(id: string): boolean;
   toggle(id: string): void;
+  /** Picking with nothing picked: the Select button's way in. Select
+      fades out and goes inert as picking starts, so focus moves on to the
+      first tile in `grid` rather than being dropped. */
+  start(grid?: HTMLElement): void;
   clear(): void;
   /** On a tile: the hold that starts picking, and while picking, the tap
       that picks. `selectable` false leaves the tile out of both. */
@@ -49,6 +57,9 @@ function swallowNextClick(): void {
 
 export function holdSelection(): HoldSelection {
   let ids = $state<string[]>([]);
+  /* Entered by Select rather than by a hold. */
+  let picking = $state(false);
+  const active = () => picking || ids.length > 0;
 
   const toggle = (id: string) => {
     ids = ids.includes(id) ? ids.filter((other) => other !== id) : [...ids, id];
@@ -59,7 +70,7 @@ export function holdSelection(): HoldSelection {
       let press: HoldPress | null = null;
 
       const down = (event: PointerEvent) => {
-        if (!selectable || ids.length > 0 || !event.isPrimary || event.button !== 0) return;
+        if (!selectable || active() || !event.isPrimary || event.button !== 0) return;
         press?.end();
         press = startHold(event.clientX, event.clientY, () => {
           swallowNextClick();
@@ -76,7 +87,7 @@ export function holdSelection(): HoldSelection {
       /* While picking, a tap is a pick and never reaches the tile's own
          handler (which opens the photograph). */
       const click = (event: MouseEvent) => {
-        if (ids.length === 0) return;
+        if (!active()) return;
         event.preventDefault();
         event.stopImmediatePropagation();
         if (selectable) toggle(id);
@@ -90,7 +101,7 @@ export function holdSelection(): HoldSelection {
         if (press?.held) return;
         press?.end();
         press = null;
-        if (ids.length > 0) return;
+        if (active()) return;
         swallowNextClick();
         ids = [id];
       };
@@ -120,12 +131,17 @@ export function holdSelection(): HoldSelection {
       return ids;
     },
     get active() {
-      return ids.length > 0;
+      return picking || ids.length > 0;
     },
     has: (id) => ids.includes(id),
     toggle,
+    start(grid) {
+      picking = true;
+      void tick().then(() => grid?.querySelector<HTMLElement>('[data-photo-cell]')?.focus({ preventScroll: true }));
+    },
     clear: () => {
       ids = [];
+      picking = false;
     },
     cell
   };

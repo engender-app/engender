@@ -335,6 +335,13 @@ describe('every row the hub carries', () => {
     expect(care).toContain(`keys={cycleShown ? ['cycle-events'] : []}`);
     expect(care).toContain('cycleTrackingVisible(');
     expect(care).not.toContain('href="/health/cycle-events"');
+    /* The three events under Meds' link are static: the cycle screen has no
+       address for one event, so they cannot be links, and an icon disc on a
+       row is what marks it as something to press (pre-release-human 12
+       audit). They carry the words only. */
+    const cycleRow = /<div class="kit-row is-static" data-cycle-event=\{event\.id\}>[\s\S]*?<\/div>/.exec(care)?.[0] ?? '';
+    expect(cycleRow).toContain('cycleEventKindName(event.kind)');
+    expect(cycleRow).not.toContain('kit-row-ico');
 
     const changes = read('src/routes/care/changes/+page.svelte');
     expect(changes).not.toContain('/health/cycle-events');
