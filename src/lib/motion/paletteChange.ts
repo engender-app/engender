@@ -14,8 +14,8 @@ export function isAppearancePending(kind: Appearance): boolean {
 }
 
 /* The new colours bloom out of the sun (prh12 bug 9; Alicja chose the
-   direction): a circle centred on the sun's own centre, the corner point of
-   the field, grows until it covers the farthest corner of the window, and
+   direction): a circle centred on the window's top right corner, where the
+   sun's centre sits on an unscrolled screen, grows until it covers the farthest corner of the window, and
    the sun's rings in the new colours ride its edge, outermost stripe
    leading, so the change visibly comes from the mark. It replaced a
    diagonal wipe from the left edge, which had nothing to do with the sun.
@@ -54,11 +54,13 @@ export function bloomGradient(stripes: string[], reach: number, outer: number, s
   return `radial-gradient(circle farthest-side, transparent 0px ${px(reach)}, ${stops.join(', ')})`;
 }
 
-/** Where the sun's centre is on screen now, or the window's top right corner
-    when no sun is drawn. `.sun` is a zero-size point at that centre. */
-function sunCentre(doc: Document): { x: number; y: number } {
-  const box = doc.querySelector('[data-flag-sun]')?.getBoundingClientRect();
-  return box ? { x: box.left, y: box.top } : { x: doc.documentElement.clientWidth, y: 0 };
+/** Where the bloom grows from: the window's top right corner, which is
+    where the sun's centre sits on an unscrolled screen. Not the sun's
+    current position - on Settings the theme row is usually scrolled to,
+    which carried the sun (and the centre) off the top of the window and
+    made the circle arrive as a flat edge (Alicja, after prh12). */
+export function bloomOrigin(doc: Document): { x: number; y: number } {
+  return { x: doc.documentElement.clientWidth, y: 0 };
 }
 
 /** The rings of the sun on screen after the change. Setup keeps the sun it
@@ -83,7 +85,7 @@ interface Bloom {
 function prepareBloom(doc: Document): Bloom | null {
   const root = doc.documentElement;
   if (!doc.querySelector || !doc.defaultView || typeof root.animate !== 'function' || reducedMotion(doc)) return null;
-  const { x, y, reach, outer } = bloomGeometry(sunCentre(doc), root.clientWidth, root.clientHeight);
+  const { x, y, reach, outer } = bloomGeometry(bloomOrigin(doc), root.clientWidth, root.clientHeight);
   root.style.setProperty('--bloom-at', `${x}px ${y}px`);
   let rings: HTMLElement | null = null;
   return {
