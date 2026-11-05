@@ -57,7 +57,8 @@ export const RECONCILE_TABLES: TableName[] = [
   'bodyRegion',
   'effectCategory',
   'personalEffectType',
-  'entryTemplate'
+  'entryTemplate',
+  'progressPhoto'
 ];
 
 /** Every table there is, in one place: what an import rewrites, and what
@@ -637,10 +638,15 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   progressPhotos: classify<Journal['progressPhotos']>()({
     writes: {
       addPhoto: ['progressPhoto'],
-      deletePhoto: ['progressPhoto']
+      deletePhoto: ['progressPhoto'],
+      addPose: ['progressPhoto'],
+      renamePose: ['progressPhoto'],
+      setPoseHidden: ['progressPhoto'],
+      deletePose: ['progressPhoto']
     },
     reads: {
       getPhotos: ['progressPhoto'],
+      getPoses: ['progressPhoto'],
       lastWriteEpochDay: ['progressPhoto']
     }
   }),

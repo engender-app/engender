@@ -194,6 +194,7 @@ export async function seedCompleteArchiveJournal(
   });
   await journal.hairProgress.addPhoto(19200, { full: bytes('hairline'), thumb: bytes('ht') });
   await journal.progressPhotos.addPhoto(19210, 'front', { full: bytes('posed'), thumb: bytes('pp') });
+  await journal.progressPhotos.addPose('Flexing');
   const hairRemovalSession = await journal.hairRemoval.upsertSession({
     epochDay: 20000,
     area: 'upper_lip',

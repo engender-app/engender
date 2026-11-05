@@ -8119,8 +8119,8 @@ try {
   await page.keyboard.press('Escape');
 
   /* Two shots of one pose on Progress photos, which the full fixture gives
-     four of per pose (pre-release-human 12): picked, wiped, and each side
-     walked through the pose's own timeline. */
+     four of per pose (pre-release-human 12): picked and wiped. The pair
+     comes from the grid, so the wipe draws no earlier/later arrows here. */
   await page.goto(BASE + '/transition/progress-photos', { waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-progress-grid="front"] [data-photo-cell]');
@@ -8138,14 +8138,9 @@ try {
   if (await page.locator('[data-wipe-fallback]').count()) {
     throw new Error('the wipe fell back to side by side with two stored photographs');
   }
-  const leftDate = page.locator('[data-wipe-date="left"]');
-  const rightDate = page.locator('[data-wipe-date="right"]');
-  const leftBefore = await leftDate.textContent();
-  await page.locator('[data-wipe-forward="left"]').click();
-  if ((await leftDate.textContent()) === leftBefore) throw new Error('the left photo did not move through time');
-  const rightBefore = await rightDate.textContent();
-  await page.locator('[data-wipe-forward="right"]').click();
-  if ((await rightDate.textContent()) === rightBefore) throw new Error('the right photo did not move through time');
+  if (await page.locator('[data-wipe-step]').count()) {
+    throw new Error('progress photos still draw the wipe step arrows');
+  }
   const handle = page.locator('[data-wipe-handle]');
   const startedAt = await handle.getAttribute('aria-valuenow');
   await handle.press('End');

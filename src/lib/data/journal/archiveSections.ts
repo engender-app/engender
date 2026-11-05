@@ -660,6 +660,17 @@ const SECTIONS = [
     read: read.readProgressPhotos,
     apply: apply.applyProgressPhotos
   }),
+  // The poses the photographs above are filed under: a custom pose is the
+  // person's own vocabulary, so it travels the way `bodyRegions` does, and
+  // a Replace discards only the customs, built-ins keeping what reconcile
+  // gave them.
+  section({
+    name: 'progressPoses',
+    discard: ['DELETE FROM progress_pose WHERE key IS NULL'],
+    travels: 'whole',
+    read: read.readProgressPoses,
+    apply: apply.applyProgressPoses
+  }),
   // Inserts its own photo children, the same reasoning `hairPhotos` gives -
   // it depends on no other section.
   section({

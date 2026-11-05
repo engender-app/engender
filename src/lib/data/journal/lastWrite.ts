@@ -272,6 +272,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   presets: 'reference data, not a written stream',
   tagGroups: 'reference data, not a written stream',
   bodyRegions: 'reference data, not a written stream',
+  progressPoses: 'reference data, not a written stream',
   presentations: 'reference data, not a written stream',
   entryTemplates: 'reference data, not a written stream',
   effectCategories: 'reference data, not a written stream',

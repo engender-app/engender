@@ -120,6 +120,13 @@ export const BUILT_IN_BODY_REGIONS = [
 
 export type BuiltInBodyRegionKey = (typeof BUILT_IN_BODY_REGIONS)[number];
 
+/* The poses a progress photo is taken in that every install starts with
+   (pre-release-human 12), in the order the screen offers them. A person
+   renames or hides one and adds their own (progressPhotos.ts); these three
+   are never deleted, so every photo an older journal or archive holds
+   keeps the pose it names. */
+export const BUILT_IN_PROGRESS_POSES = ['front', 'side', 'back'] as const;
+
 /* The effect categories personal effects are grouped under (phase 5
    ticket 41, CONTEXT: "Effect category"), taken from genderdysphoria.fyi's
    own grouping across its two second-puberty pages. Body shape and

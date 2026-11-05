@@ -1693,6 +1693,36 @@
       "updatedAt": 1793388955713
     }
   ],
+  "progressPoses": [
+    {
+      "id": "front",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "updatedAt": 0
+    },
+    {
+      "id": "side",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "updatedAt": 0
+    },
+    {
+      "id": "back",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "updatedAt": 0
+    },
+    {
+      "id": "5d2e7f10-4b8a-4c3e-9f61-2a7b8c9d0e12",
+      "name": "Flexing",
+      "builtIn": false,
+      "hidden": false,
+      "updatedAt": 1793388955713
+    }
+  ],
   "hairRemovalSessions": [
     {
       "id": "fb669714-b155-4bfa-acfb-84113fbf8f42",

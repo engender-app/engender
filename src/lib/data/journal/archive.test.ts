@@ -1009,6 +1009,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   hair_photo: ['uuid', 'epoch_day', 'file_path'],
   // Read once for the file manifest, the same reason hair_photo above is.
   progress_photo: ['uuid', 'epoch_day', 'pose', 'file_path'],
+  progress_pose: ['uuid', 'key', 'name', 'hidden'],
   // Owns a child (hair_removal_photo) below.
   // The old free-text `cost` is left behind: version 115 emptied it into the
   // cost columns or the note (FA 30), and FA 50 drops it.

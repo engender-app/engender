@@ -16,16 +16,16 @@
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, type LiveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration, photoCaptionDate } from '$lib/data/dates';
   import { calendarDuration, todayEpochDay } from '$lib/data/epochDay';
-  import { PROGRESS_POSES, type ProgressPhoto, type ProgressPose } from '$lib/data/journal/progressPhotos';
+  import type { BuiltInProgressPose, ProgressPhoto, ProgressPose, ProgressPoseRow } from '$lib/data/journal/progressPhotos';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { orderAnchorsByJourney, toComparePair, type ComparePair } from '$lib/data/photos/compare-state';
+  import { orderAnchorsByJourney, toComparePair } from '$lib/data/photos/compare-state';
   import { readPhoto } from '$lib/stores/photoFiles';
-  import { undoable } from '$lib/stores/deleteUndo';
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { attempt } from '$lib/stores/attempt.svelte';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
   import { collapse, crossfade } from '$lib/motion/reveal';
   import { pinnedOut, tileIn } from '$lib/motion/narrow';
   import { motionDuration } from '$lib/motion/tokens';
@@ -42,10 +42,14 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import PhotoWipe from '$lib/components/kit/PhotoWipe.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import HoldSelectBar from '$lib/components/HoldSelectBar.svelte';
+  import { checkIn, holdSelection } from '$lib/components/kit/holdSelect.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
+  import ProgressPoseSheet from '$lib/components/ProgressPoseSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
 
-  const POSE_LABEL: Record<ProgressPose, () => string> = {
+  const BUILT_IN_LABEL: Record<BuiltInProgressPose, () => string> = {
     front: m.pph_pose_front,
     side: m.pph_pose_side,
     back: m.pph_pose_back
@@ -54,7 +58,63 @@
   let photosQuery = liveList((j) => j.progressPhotos.getPhotos());
   let photos = $derived(photosQuery.rows);
 
-  let pose = $state<ProgressPose>('front');
+  /* The person's poses (version 122): Front, Side and Back, renamed or
+     hidden as they chose, then their own. */
+  let posesQuery = liveList((j) => j.progressPhotos.getPoses());
+  let poses = $derived(posesQuery.rows);
+  let shownPoses = $derived(poses.filter((p) => !p.hidden));
+  const poseLabel = (p: ProgressPoseRow) => p.name || (BUILT_IN_LABEL[p.id as BuiltInProgressPose]?.() ?? p.name);
+  const labelOf = (id: ProgressPose) => {
+    const row = poses.find((p) => p.id === id);
+    return row ? poseLabel(row) : (BUILT_IN_LABEL[id as BuiltInProgressPose]?.() ?? '');
+  };
+
+  /* The pose the person picked; the one shown falls back to the first pose
+     still on the list when theirs was hidden or deleted. */
+  let chosen = $state<ProgressPose>('front');
+  let pose = $derived(posesQuery.loading || shownPoses.some((p) => p.id === chosen) ? chosen : (shownPoses[0]?.id ?? 'front'));
+  let editingPoses = $state(false);
+
+  /* The screen waits on both reads, so the pose control never paints the
+     built-in names and then swaps in the person's own. */
+  const screenRead: LiveList<ProgressPhoto> = {
+    get rows() { return photosQuery.rows; },
+    get loading() { return photosQuery.loading || posesQuery.loading; },
+    get empty() { return !posesQuery.loading && photosQuery.empty; },
+    get failed() { return photosQuery.failed || posesQuery.failed; },
+    get stale() { return photosQuery.stale || posesQuery.stale; },
+    retry() { photosQuery.retry(); posesQuery.retry(); }
+  };
+
+  /* An empty pose just goes, with the usual undo; one holding photographs
+     asks first, over the pose sheet's own close. */
+  async function deletePose(row: ProgressPoseRow) {
+    const count = photos.filter((photo) => photo.pose === row.id).length;
+    if (count === 0) {
+      await removePose(row);
+      return;
+    }
+    editingPoses = false;
+    await tick();
+    poseDeleteFailed = false;
+    poseToDelete = { row, count };
+  }
+
+  const poseRemoving = writer();
+  let poseDeleteFailed = $state(false);
+  async function removePose(row: ProgressPoseRow): Promise<boolean> {
+    let deletion: Awaited<ReturnType<typeof undoable>> | undefined;
+    if (!(await poseRemoving.run(async () => { deletion = await undoable((j) => j.progressPhotos.deletePose(row.id)); }, m.write_failed()))) return false;
+    offerUndo(deletion!, m.record_deleted());
+    return true;
+  }
+  async function confirmPoseDelete() {
+    const target = poseToDelete;
+    if (!target) return;
+    if (await removePose(target.row)) poseToDelete = null;
+    else poseDeleteFailed = true;
+  }
+  let poseToDelete = $state<{ row: ProgressPoseRow; count: number } | null>(null);
   /** This pose's shots, oldest first: the timeline and the wipe's list. */
   let shots = $derived(photos.filter((photo) => photo.pose === pose));
   /** What the camera lays over its picture: the newest shot in the pose. */
@@ -65,11 +125,16 @@
   let comparing = $state(false);
   let capturing = $state(false);
   let viewing = $state<ProgressPhoto | null>(null);
+  /* Holding a shot picks shots to delete (holdSelect.svelte.ts). Its own
+     selection, apart from compare's pick-two: the two never run at once,
+     since a hold starts nothing while comparing and comparing clears it. */
+  const held = holdSelection();
+  let screenEl = $state<HTMLElement>();
 
   export const snapshot = {
     capture: () => ({ pose, selecting, selected: [...selected] }),
     restore: (value: { pose: ProgressPose; selecting: boolean; selected: string[] }) => {
-      pose = value.pose;
+      chosen = value.pose;
       selecting = value.selecting;
       selected = value.selected;
     }
@@ -77,12 +142,14 @@
 
   /* A pose is its own timeline, so a selection never crosses one. */
   function pickPose(next: string) {
-    pose = next as ProgressPose;
+    chosen = next;
     selected = [];
+    held.clear();
   }
 
   function setSelecting(next: boolean) {
     selecting = next;
+    held.clear();
     if (!next) selected = [];
   }
 
@@ -98,12 +165,6 @@
   function toggle(id: string) {
     if (selected.includes(id)) selected = selected.filter((anchor) => anchor !== id);
     else if (selected.length < 2) selected = [...selected, id];
-  }
-
-  /* The wipe hands back the pair its own earlier/later controls landed on;
-     held as ids, like the selection it came from. */
-  function setPair(next: ComparePair) {
-    selected = [shots[next.left].id, shots[next.right].id];
   }
 
   const cellDate = (photo: ProgressPhoto) => fmtDay(photo.epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -131,7 +192,7 @@
   let sourcePhoto = $derived(photos.find((photo) => photo.id === sourceId));
   function openSource() {
     if (!sourcePhoto) return;
-    pose = sourcePhoto.pose;
+    chosen = sourcePhoto.pose;
     viewing = sourcePhoto;
   }
 
@@ -165,20 +226,24 @@
   const fast = () => motionDuration('--dur-fast');
 </script>
 
-<div class="screen">
+<div class="screen" bind:this={screenEl}>
   <ScreenHeader title={m.pph_title()} back="/more" />
   <SourceRecordHandoff id={sourceId} ready={!photosQuery.loading && !photosQuery.failed} found={!!sourcePhoto} onOpen={openSource} />
 
-  <ReadGate read={photosQuery} variant="block" count={2}>
+  <ReadGate read={screenRead} variant="block" count={2}>
     {#snippet rows()}
-      <div class="screen-part">
+      <div class="screen-part pose-row">
         <Segmented
           name={m.pph_pose_label()}
-          options={PROGRESS_POSES.map((value) => ({ value, label: POSE_LABEL[value]() }))}
+          options={shownPoses.map((p) => ({ value: p.id, label: poseLabel(p) }))}
           value={pose}
           onChange={pickPose}
           key="progress-pose"
+          grows
         />
+        <button class="icon-btn press" data-progress-poses-edit aria-label={m.pph_poses_edit()} onclick={() => (editingPoses = true)}>
+          <Icon name="pencil" size={18} />
+        </button>
       </div>
       <div class="screen-part progress-actions">
         <button class="btn btn-primary press" data-progress-open-camera onclick={() => (capturing = true)}>
@@ -222,19 +287,21 @@
 
       <div class="photo-grid" bind:this={gridEl} data-progress-grid={pose}>
         {#each shots as p (p.id)}
+          {@const picked = (selecting && selected.includes(p.id)) || held.has(p.id)}
           <div class="photo-cell-wrap" data-photo-key={p.id} in:tileIn={{ when: painted }} out:pinnedOut>
             <button
               class="photo-cell"
               data-photo-cell
-              class:is-selected={selecting && selected.includes(p.id)}
-              aria-pressed={selecting ? selected.includes(p.id) : undefined}
+              class:is-selected={picked}
+              aria-pressed={selecting || held.active ? picked : undefined}
+              {@attach held.cell(p.id, !selecting)}
               disabled={selecting && selected.length === 2 && !selected.includes(p.id)}
-              aria-label={m.pph_cell_aria({ pose: POSE_LABEL[p.pose](), date: cellDate(p) })}
+              aria-label={m.pph_cell_aria({ pose: labelOf(p.pose), date: cellDate(p) })}
               onclick={() => (selecting ? toggle(p.id) : (viewing = p))}
             >
               <PhotoThumb photo={p} size={104} />
               <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
-              {#if selecting && selected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+              {#if picked}<span class="photo-check" transition:checkIn><Icon name="check" size={14} /></span>{/if}
             </button>
           </div>
         {/each}
@@ -257,9 +324,17 @@
     {/snippet}
   </ReadGate>
 
+  <HoldSelectBar
+    selection={held}
+    scope={screenEl}
+    remove={async (j, ids) => {
+      for (const id of ids) await j.progressPhotos.deletePhoto(id);
+    }}
+  />
+
   <ProgressCamera
     open={capturing}
-    title={m.pph_camera_title({ pose: POSE_LABEL[pose]() })}
+    title={m.pph_camera_title({ pose: labelOf(pose) })}
     {ghost}
     onSave={storeShot}
     onClose={() => (capturing = false)}
@@ -271,7 +346,6 @@
       <PhotoWipe
         photos={shots}
         {pair}
-        onPair={setPair}
         role={roleAt(activeFlag.roles, 0)}
         date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
       />
@@ -283,7 +357,7 @@
   <Sheet open={viewing !== null} title={m.photo_view_title()} onClose={() => (viewing = null)} onClosed={() => (viewUrls = [])}>
     {#if viewing}
       {@const shown = viewing}
-      <p>{POSE_LABEL[shown.pose]()}, {cellDate(shown)}</p>
+      <p>{labelOf(shown.pose)}, {cellDate(shown)}</p>
       <div class="view-frame" data-progress-view>
         {#each viewUrls as url (url)}
           <img
@@ -301,6 +375,22 @@
     {/if}
   </Sheet>
 
+  <ProgressPoseSheet open={editingPoses} {poses} label={poseLabel} onClose={() => (editingPoses = false)} onDelete={deletePose} />
+
+  <ConfirmDeleteSheet
+    open={poseToDelete !== null}
+    title={m.pph_pose_delete_sheet()}
+    question={poseToDelete ? m.pph_pose_delete_q({ count: poseToDelete.count, pose: poseLabel(poseToDelete.row) }) : ''}
+    hint={m.photos_select_delete_hint()}
+    confirmLabel={m.pph_delete()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-progress-pose-confirm': '' }}
+    busy={poseRemoving.busy}
+    failed={poseDeleteFailed}
+    onConfirm={confirmPoseDelete}
+    onCancel={() => (poseToDelete = null)}
+  />
+
   <RecordSheet
     record={shotRecord}
     handle="progress-photo"
@@ -315,6 +405,10 @@
 </div>
 
 <style>
+  /* The pose control and the pencil that edits its list, on one line: the
+     control scrolls inside its own track when the poses outgrow it. */
+  .pose-row { display: flex; align-items: center; gap: var(--space-2); }
+  .pose-row :global(.segmented-wrap) { min-width: 0; }
   .progress-actions {
     display: flex;
     flex-wrap: wrap;

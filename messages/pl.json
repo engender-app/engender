@@ -1659,7 +1659,7 @@
   "hub_sub_letters": "Pisz listy do siebie, które otworzą się w wybranym dniu",
   "hub_sub_milestones": "Zapisuj ważne daty, minione i nadchodzące",
   "hub_sub_photos": "Przeglądaj wszystkie zdjęcia z dziennika",
-  "hub_sub_progress_photos": "Zdjęcia z przodu, z boku i z tyłu do porównania w czasie",
+  "hub_sub_progress_photos": "Rób zdjęcia postępów i porównuj je w czasie",
   "hub_sub_resources": "Telefony zaufania i organizacje wsparcia",
   "hub_sub_roadmap": "Planuj kroki tranzycji i śledź zmianę danych",
   "hub_sub_surgery": "Śledź konsultacje, termin operacji i gojenie",
@@ -2394,6 +2394,26 @@
   "photo_wipe_no_file": "Brakuje zapisanego pliku zdjęcia. Porównać można tylko podglądy.",
   "photo_wipe_value": "{percent}% z wcześniejszego zdjęcia",
   "photos_label": "Zdjęcia",
+  "photos_select_delete": "Usuń",
+  "photos_select_delete_hint": "Usunięte zdjęcia znikną ze wszystkich miejsc, w których są. Możesz to cofnąć przez 10 sekund.",
+  "photos_select_delete_q": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Usunąć to zdjęcie?",
+        "countPlural=few": "Usunąć {count} zdjęcia?",
+        "countPlural=many": "Usunąć {count} zdjęć?",
+        "countPlural=other": "Usunąć {count} zdjęcia?"
+      }
+    }
+  ],
+  "photos_select_delete_sheet": "Usuń zdjęcia",
   "pin_access_unavailable": "Nie można odczytać sposobu otwierania dziennika. Zamknij aplikację i otwórz ją ponownie, żeby sprawdzić ustawienia dostępu.",
   "pin_again_title": "Wpisz go jeszcze raz",
   "pin_backspace": "Usuń cyfrę",
@@ -2504,11 +2524,41 @@
   "pph_empty_title": "Jeszcze bez zdjęć postępów",
   "pph_first_hint": "Przy kolejnym zdjęciu w tej pozie zobaczysz to w tle.",
   "pph_ghost_hint": "Ustaw się jak na poprzednim zdjęciu w tle.",
+  "pph_pose_add": "Dodaj pozę",
   "pph_pose_back": "Tył",
+  "pph_pose_delete_aria": "Usuń: {pose}",
+  "pph_pose_delete_q": [
+    {
+      "declarations": [
+        "input count",
+        "input pose",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Usunąć pozę {pose} i jej zdjęcie?",
+        "countPlural=few": "Usunąć pozę {pose} i jej {count} zdjęcia?",
+        "countPlural=many": "Usunąć pozę {pose} i jej {count} zdjęć?",
+        "countPlural=other": "Usunąć pozę {pose} i jej {count} zdjęcia?"
+      }
+    }
+  ],
+  "pph_pose_delete_sheet": "Usuń pozę",
   "pph_pose_empty": "W tej pozie nie ma jeszcze zdjęć.",
   "pph_pose_front": "Przód",
+  "pph_pose_hidden": "ukryta",
+  "pph_pose_hide_aria": "Ukryj: {pose}",
   "pph_pose_label": "Poza",
+  "pph_pose_new": "Nowa poza",
+  "pph_pose_rename": "Nowa nazwa: {pose}",
+  "pph_pose_rename_aria": "Zmień nazwę: {pose}",
+  "pph_pose_save": "Zapisz nazwę",
+  "pph_pose_show_aria": "Pokaż: {pose}",
   "pph_pose_side": "Bok",
+  "pph_poses_edit": "Edytuj pozy",
+  "pph_poses_sheet": "Pozy",
   "pph_save": "Zapisz zdjęcie",
   "pph_switch_camera": "Przełącz aparat",
   "pph_take": "Zrób zdjęcie",

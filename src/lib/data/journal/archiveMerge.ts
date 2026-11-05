@@ -114,6 +114,7 @@ export const MERGE_CLASSES: Readonly<Record<string, MergeClass>> = {
   procedure: uuid,
   procedure_photo: uuid,
   progress_photo: uuid,
+  progress_pose: keyOrUuid,
   provider: uuid,
   regimen_episode: uuid,
   reminder: uuid,
@@ -233,6 +234,7 @@ const BUILT_IN: Readonly<Record<string, string>> = {
   gender_dimension: 'is_built_in = 1',
   gender_preset: 'key IS NOT NULL',
   personal_effect_type: 'is_built_in = 1',
+  progress_pose: 'key IS NOT NULL',
   tag: 'key IS NOT NULL',
   tag_group: 'uuid IS NULL'
 };

@@ -334,8 +334,8 @@ export const FEATURES = {
     messages: ['ms', 'milestones']
   },
   'progress-photos': {
-    sections: ['progressPhotos'],
-    tables: ['progress_photo'],
+    sections: ['progressPhotos', 'progressPoses'],
+    tables: ['progress_photo', 'progress_pose'],
     journal: ['progressPhotos'],
     hubRows: ['progress-photos'],
     areaGroups: none,

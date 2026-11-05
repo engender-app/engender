@@ -18,6 +18,7 @@
    another. */
 
 import { localDateFromEpochDay } from '../epochDay';
+import type { Journal } from '../journal/journal';
 
 /** Which table a photograph came from. `entry` and `milestone` are the two
     owners of the `photo` table; the rest each have one of their own
@@ -149,5 +150,36 @@ export function photoOwnerHref(photo: LibraryPhoto): string {
     case 'tryout': return `/transition/tryouts/${id}`;
     case 'procedure': return `/health/surgery/${id}`;
     case 'progress': return `/transition/progress-photos?photo=${id}`;
+  }
+}
+
+/** Whether the library can delete this photograph itself, with a hold
+    (pre-release-human 12). A video note cannot: no area deletes one on its
+    own, only the entry editor does, as part of saving its entry. */
+export function libraryDeletable(photo: LibraryPhoto): boolean {
+  return photo.source !== 'video';
+}
+
+/** Deletes one photograph through the area that owns it - the same call
+    that area's own screen makes - and nothing else: the entry, milestone,
+    session, tryout or procedure it hung off stays, without it. Run inside
+    `undoable`, so a batch is one deletion with one undo. */
+export function deleteFromOwner(journal: Journal, photo: LibraryPhoto): Promise<void> {
+  switch (photo.source) {
+    case 'entry':
+    case 'milestone':
+      return journal.photos.remove(photo.id);
+    case 'hair':
+      return journal.hairProgress.deletePhoto(photo.id);
+    case 'hairRemoval':
+      return journal.hairRemoval.deletePhoto(photo.id);
+    case 'tryout':
+      return journal.tryouts.deletePhoto(photo.id);
+    case 'procedure':
+      return journal.procedures.deletePhoto(photo.id);
+    case 'progress':
+      return journal.progressPhotos.deletePhoto(photo.id);
+    case 'video':
+      return Promise.reject(new Error('a video note is deleted in its entry, not from the library'));
   }
 }

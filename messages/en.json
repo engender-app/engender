@@ -1631,7 +1631,7 @@
   "hub_sub_letters": "Write letters to yourself that open on a date you choose",
   "hub_sub_milestones": "Save important dates, past or coming up",
   "hub_sub_photos": "Browse every photo in your journal",
-  "hub_sub_progress_photos": "Front, side and back shots to compare over time",
+  "hub_sub_progress_photos": "Take progress photos and compare them over time",
   "hub_sub_resources": "Helplines and support organisations",
   "hub_sub_roadmap": "Plan your transition steps and track name and document changes",
   "hub_sub_surgery": "Track consults, the surgery date and healing",
@@ -2340,6 +2340,24 @@
   "photo_wipe_no_file": "A stored photo file is missing. Only the previews are available for comparison.",
   "photo_wipe_value": "{percent}% from the earlier photo",
   "photos_label": "Photos",
+  "photos_select_delete": "Delete",
+  "photos_select_delete_hint": "Deleted photos go from everywhere they appear. You can undo it for 10 seconds.",
+  "photos_select_delete_q": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Delete this photo?",
+        "countPlural=other": "Delete {count} photos?"
+      }
+    }
+  ],
+  "photos_select_delete_sheet": "Delete photos",
   "pin_access_unavailable": "Could not read how your journal opens. Close the app and open it again to check its access settings.",
   "pin_again_title": "Type it once more",
   "pin_backspace": "Delete digit",
@@ -2448,11 +2466,39 @@
   "pph_empty_title": "No progress photos yet",
   "pph_first_hint": "Your next photo in this pose will show this one faintly.",
   "pph_ghost_hint": "Line up with your last photo, shown faintly.",
+  "pph_pose_add": "Add pose",
   "pph_pose_back": "Back",
+  "pph_pose_delete_aria": "Delete {pose}",
+  "pph_pose_delete_q": [
+    {
+      "declarations": [
+        "input count",
+        "input pose",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Delete {pose} and its photo?",
+        "countPlural=other": "Delete {pose} and its {count} photos?"
+      }
+    }
+  ],
+  "pph_pose_delete_sheet": "Delete pose",
   "pph_pose_empty": "Nothing in this pose yet.",
   "pph_pose_front": "Front",
+  "pph_pose_hidden": "hidden",
+  "pph_pose_hide_aria": "Hide {pose}",
   "pph_pose_label": "Pose",
+  "pph_pose_new": "New pose",
+  "pph_pose_rename": "Rename {pose}",
+  "pph_pose_rename_aria": "Rename {pose}",
+  "pph_pose_save": "Save name",
+  "pph_pose_show_aria": "Show {pose}",
   "pph_pose_side": "Side",
+  "pph_poses_edit": "Edit poses",
+  "pph_poses_sheet": "Poses",
   "pph_save": "Save photo",
   "pph_switch_camera": "Switch camera",
   "pph_take": "Take a photo",
