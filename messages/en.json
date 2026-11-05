@@ -1413,7 +1413,7 @@
   "exposure_route_days_note": "Days on each route sum all concurrent episodes using that route. Concurrent medications add up to more than the calendar span.",
   "exposure_route_days_title": "Medication-days on each route",
   "feature_cycle_tracking_sub": "Log bleeding and spotting when you write an entry",
-  "feature_filters_title": "Topics and cycle",
+  "feature_filters_title": "Optional topics",
   "feature_genital_effects": "Genital changes",
   "feature_genital_effects_sub": "Size, sensitivity, moisture and skin",
   "feature_modules_intro": "Your journal, photos and support resources are always there.",
