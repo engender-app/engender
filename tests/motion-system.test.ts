@@ -1111,6 +1111,19 @@ describe('ticket 28: the field is a blind over the content', () => {
     }
   });
 
+  /* prh12 bug 10. Settings scrolled, then Today: the scrolled side names no
+     rings, so Today's shared sun was a new image with no old one, painted at
+     its resting place from the first frame while the blue it sits on was
+     still 213px above the window. The shared sun rides the travelling blind
+     on both legs instead. */
+  it('carries the shared sun with a blind that travels in or out whole', () => {
+    const enter = declarations(ruleOf(app, "html[data-blind-scroll='enter']::view-transition-new(*.sun-shared-ring)")?.body ?? '');
+    const exit = declarations(ruleOf(app, "html[data-blind-scroll='exit']::view-transition-old(*.sun-shared-ring)")?.body ?? '');
+    expect(enter.animation).toBe('blind-scroll-in var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both');
+    expect(exit.animation).toBe('blind-scroll-out var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both');
+    expect(exit.opacity).toBe('1');
+  });
+
   /* No frame carries two of the field's contents: the outgoing element
      spends --dur-fast, the incoming one waits exactly that long before it
      starts, and both travel 12-16px rather than sliding between two
@@ -1329,7 +1342,11 @@ describe('the cap on animating layout', () => {
      INHERITED entry has only the fact that it is already shipped. Nobody
      has benchmarked the second list; this check found it and does not
      bless it. */
-  const LAYOUT_EXEMPT: { selector: string; props: string[]; reason: string }[] = [
+  /* `script` marks an entry no stylesheet carries: the movement is written
+     into the element's style from a transition's `tick`, once a frame, so
+     the CSS scan below never sees it. Such an entry is held against that
+     file instead, which has to go on writing every property it names. */
+  const LAYOUT_EXEMPT: { selector: string; props: string[]; reason: string; script?: string }[] = [
     {
       selector: "[data-nav-pill='bar']",
       props: ['left', 'right', 'top', 'bottom'],
@@ -1358,6 +1375,13 @@ describe('the cap on animating layout', () => {
       props: ['width', 'height'],
       reason:
         'at most 53 SVG rects within one fixed 320 by 150 viewBox; changing range resizes bars without moving surrounding layout. The FA 37 Chromium motion probe sampled 56 animation frames over 900 ms with 14 bars and no missed frame'
+    },
+    {
+      selector: '.segment (Segmented `grows`)',
+      props: ['width', 'max-width', 'padding-inline', 'margin-inline-start'],
+      script: 'src/lib/components/Segmented.svelte',
+      reason:
+        "a segment arriving in or leaving a switcher whose options the person edits (Progress photos' poses, pre-release-human 12): one segment of a few closes or opens its width, padding and gap over --dur-med while the others move up beside it, and the pill is re-pinned in the same tick so it never runs a frame behind the track. Hiding and showing a pose at 4x CPU throttling sampled 55 frames each with no gap over 17ms. Under reduced motion the width lands at once and the label crossfades (fadeOnly over --dur-crossfade)"
     }
   ];
 
@@ -1450,8 +1474,10 @@ describe('the cap on animating layout', () => {
     }
     const stale: string[] = [];
     for (const entry of [...LAYOUT_EXEMPT, ...LAYOUT_INHERITED]) {
+      const script = 'script' in entry && entry.script ? readFileSync(join(root, entry.script), 'utf8') : null;
       for (const property of entry.props) {
-        if (!found.has(`${entry.selector} ${property}`)) stale.push(`${entry.selector} ${property}`);
+        const kept = script ? script.includes(`set('${property}'`) : found.has(`${entry.selector} ${property}`);
+        if (!kept) stale.push(`${entry.selector} ${property}`);
       }
     }
     expect(stale, 'an entry here no longer animates what it claims - delete it').toEqual([]);
@@ -1731,5 +1757,43 @@ describe('carpet 15 row 51 colour and name arrivals', () => {
     const action = source.slice(source.indexOf('const settleReadingSpace'), source.indexOf('observer.observe(node.parentElement!)'));
     const observer = action.slice(action.indexOf('new ResizeObserver'));
     expect(observer).toMatch(/playState === 'running'[\s\S]*?setKeyframes\([\s\S]*?return;[\s\S]*?stopMotion\(\)/);
+  });
+});
+
+/* prh12 bug 11, the Journal month opening and folding. Opening, the dates
+   faded in from the frame of the tap while every one of them still stood at
+   its 9px bar, so the first frames drew thirty numbers piled on one line.
+   Folding, the weekday letters went out of flow at full width's opacity and
+   shrank to their content, "MTWTFSS" squeezed to the left for the length of
+   their fade. */
+describe('the Journal month opens and folds without a smear or a squeeze', () => {
+  const heatMap = readFileSync(join(root, 'src/lib/components/HeatMap.svelte'), 'utf8');
+  const css = stripComments(heatMap.match(/<style[^>]*>([\s\S]*?)<\/style>/)![1]);
+  const rule = (prelude: string) => declarations(rules(css).find((r) => r.prelude === prelude)?.body ?? '');
+
+  it('fades the dates in only once the days have spread out', () => {
+    expect(rule('.cal-grid.is-opening .cal-date').transition).toBe(
+      'opacity var(--dur-med) var(--ease-out) var(--dur-fast)'
+    );
+  });
+
+  it('fades the weekday letters with the faces and keeps their width while out of flow', () => {
+    expect(heatMap).toMatch(/<div class="cal-dows" class:is-compact=\{compact\} aria-hidden="true" data-cal-sits-out>/);
+    const folded = rule('.cal-dows.is-compact');
+    expect(folded['inset-inline']).toBe('0');
+    expect(folded.transition).toBe('opacity 0s');
+    expect(rule('.cal-dows').transition).toBe('opacity var(--dur-med) var(--ease-out) var(--dur-fast)');
+  });
+});
+
+/* prh12: setup's flag step picked a flag by writing the preference, so the
+   whole screen cut to the new colours in one frame. It goes through the same
+   bloom out of the sun that Settings uses. */
+describe('setup picks a flag the way Settings does', () => {
+  it('routes the flag step through changePalette', () => {
+    const setup = readFileSync(join(root, 'src/routes/onboarding/+page.svelte'), 'utf8');
+    expect(setup).toContain("import { changePalette, isAppearancePending } from '$lib/motion/paletteChange'");
+    expect(setup).toMatch(/data-palette-pick=\{key\}\s+onclick=\{\(\) => pickPalette\(key\)\}/);
+    expect(setup).toContain("if (prefs.palette !== key || isAppearancePending('palette')) changePalette(() => { prefs.palette = key; });");
   });
 });

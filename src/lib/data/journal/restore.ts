@@ -84,6 +84,7 @@ import { recordImport } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS, DROPPED_ARCHIVE_SECTION_NAMES, emptyArchiveJournal } from './archiveSections';
 import { assertArchiveReferences, assertArchiveRows } from './archiveRowValidation';
 import { DROPPED_TRYOUT_KINDS } from '../rowValues';
+import { splitArchivedEffectCategories } from '../sqlite/effect-category-split-migration';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -166,6 +167,7 @@ function replacementNames(journal: ArchiveJournal, existing: Set<string>, names:
     })),
     milestones: journal.milestones.map((row) => ({ ...row, photo: row.photo ? photos([row.photo])[0] : null })),
     hairPhotos: photos(journal.hairPhotos),
+    progressPhotos: photos(journal.progressPhotos),
     hairRemovalSessions: journal.hairRemovalSessions.map((row) => ({ ...row, photos: photos(row.photos) })),
     procedures: journal.procedures.map((row) => ({ ...row, photos: photos(row.photos) })),
     tryouts: journal.tryouts.map((row) => ({ ...row, photos: photos(row.photos) })),
@@ -454,6 +456,10 @@ function restorableJournal(journal: ArchiveJournal, externalImport = false): Arc
     const section = name as keyof ArchiveJournal;
     assertArchiveRows(section, complete[section], flatTable);
   }
+  // An archive written before version 121 still names 'genital_sexual'.
+  const split = splitArchivedEffectCategories(complete.effectCategories, complete.personalEffectTypes);
+  complete.effectCategories = split.categories;
+  complete.personalEffectTypes = split.types;
   assertArchiveReferences(complete, externalImport);
   assertArchiveFileOwnership(complete);
   const dropped = new Set(complete.tryouts

@@ -256,7 +256,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="book"
+        icon="envelope"
         key="letters-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.letters_empty_title()}
@@ -328,7 +328,7 @@
             aria-pressed={draft.unlockDate === dateInputValueFromEpochDay(mi.epochDay)}
             onclick={() => (draft.unlockDate = dateInputValueFromEpochDay(mi.epochDay))}
           >
-            <Icon name="flag" size={14} />{mi.name}
+            <Icon name="summit" size={16} />{mi.name}
           </button>
         {/each}
       </div>

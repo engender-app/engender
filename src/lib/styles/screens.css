@@ -483,6 +483,12 @@
 .palette-grid .swatch-preview {
   width: 100%; height: 56px; box-sizing: border-box;
   border-radius: var(--r-block); border: 1px solid var(--outline);
+  /* The edge is translucent, and a gradient is sized to the padding box and
+     tiled by default, so the 1px under the border drew the opposite end of
+     the flag: the last band along the top edge, the first along the bottom.
+     Sized to the border box, the bands run out to the edge and the border
+     tints them. */
+  background-origin: border-box;
   outline: 3px solid transparent; outline-offset: 6px;
   transition-property: outline-color, outline-offset;
   transition-duration: var(--dur-med);
@@ -842,6 +848,23 @@
    pinned to on its way out (motion/narrow.ts): out of the flow in the
    frame the chip drops it, so the grid rewraps once rather than after
    every fade has finished. */
+/* Select over a photo grid (holdSelect.svelte.ts): a word on the line above
+   the tiles rather than a block, with its touch area drawn out past the
+   word. While picking, or where there is nothing to pick, it fades out and
+   keeps its place, so nothing around it moves. */
+.select-start {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--accent-ink);
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.select-start::after { content: ''; position: absolute; inset: -13px -12px; }
+.select-start[inert] { opacity: 0; }
 .photo-grid { display: grid; position: relative; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-3); }
 /* `width: 100%` because a button sizes to its content and a grid cell should
    not: the thumbnail inside is `width: 100% !important` just below, which
@@ -858,7 +881,10 @@
   border-radius: var(--r-block); width: 100%;
 }
 .photo-cell .photo-thumb { width: 100% !important; aspect-ratio: 1; height: auto !important; }
-.photo-cell.is-selected .photo-thumb { outline: 3px solid var(--accent); outline-offset: 2px; }
+.photo-cell .photo-thumb { outline: 3px solid transparent; outline-offset: 2px; transition: outline-color var(--dur-fast) var(--ease-out); }
+/* The ring fades in rather than landing in the frame of the tap, the hold
+   that starts picking included (pre-release-human 12). */
+.photo-cell.is-selected .photo-thumb { outline-color: var(--accent); }
 .photo-date { font-size: var(--text-xs); color: var(--text-2); }
 .photo-check {
   position: absolute; top: 6px; right: 6px;

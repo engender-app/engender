@@ -184,15 +184,16 @@ const PERSONAL_EFFECT_NAME: Record<BuiltInPersonalEffectKey, Message> = {
   vein_prominence_masculinizing: m.effect_vein_prominence_masculinizing
 };
 
-/** The five effect categories (phase 5 ticket 41, CONTEXT: "Effect
+/** The six effect categories (phase 5 ticket 41, CONTEXT: "Effect
     category") are a fixed set, not a built-in row, the same reasoning
     fixed vocabulary requires. */
 const EFFECT_CATEGORY_NAME: Record<BuiltInEffectCategoryKey, Message> = {
   body_shape: m.effect_category_body_shape,
   skin_hair: m.effect_category_skin_hair,
-  genital_sexual: m.effect_category_genital_sexual,
   cognitive_emotional: m.effect_category_cognitive_emotional,
-  sensory: m.effect_category_sensory
+  sensory: m.effect_category_sensory,
+  genital: m.effect_category_genital,
+  sexual: m.effect_category_sexual
 };
 
 /** What a hair staging says (functional audit ticket 23): the person's own

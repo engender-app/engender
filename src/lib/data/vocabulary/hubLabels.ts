@@ -40,6 +40,7 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   dilation: m.dilation,
   appointments: m.appointments_title,
   milestones: m.milestones,
+  'progress-photos': m.pph_title,
   roadmap: m.roadmap_title,
   letters: m.letters_title,
   tryouts: m.tryout_title,
@@ -53,7 +54,7 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   wear: m.wear_log,
   effects: m.effects_timeline,
   resources: m.resources_title,
-  photos: m.progress_photos,
+  photos: m.photos_label,
   documents: m.documents_title
 };
 
@@ -76,6 +77,7 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   dilation: m.hub_sub_dilation,
   appointments: m.hub_sub_appointments,
   milestones: m.hub_sub_milestones,
+  'progress-photos': m.hub_sub_progress_photos,
   roadmap: m.hub_sub_roadmap,
   letters: m.hub_sub_letters,
   tryouts: m.hub_sub_tryouts,
@@ -90,6 +92,7 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
 
 const GROUP_HEADING: Record<HubGroupKey | 'finished', () => string> = {
   health: m.hub_group_health,
+  body: m.hub_group_body,
   transition: m.hub_group_transition,
   support: m.hub_group_support,
   media: m.hub_group_media,

@@ -165,8 +165,13 @@ describe('what Settings is built from', () => {
        to one screen by deepening ticket 09), and the four prompt toggles
        followed them there in phase 11 ticket 04 - unprompted-view.test.ts
        holds all of them to the same rule. Cycle tracking is the switch row
-       this screen has left. */
-    expect(withoutScript).toMatch(/<div class="kit-row" data-cycle-tracking-toggle>/);
+       this screen has left.
+
+       The Features rows are a <label> round their switch rather than a
+       div (pre-release-human 12 audit): a label is no control of its own,
+       so the switch stays the one thing announced, and a tap anywhere on
+       the row reaches it, the way a ListRow checkbox row takes one. */
+    expect(withoutScript).toMatch(/<label class="kit-row" data-cycle-tracking-toggle>/);
   });
 
   it('opens feature visibility in one named manager without duplicating switches', () => {
@@ -175,10 +180,29 @@ describe('what Settings is built from', () => {
     expect(manager).toContain('title={m.features_to_show()}');
     expect(manager).toContain('m.features_to_show_sub()');
     expect(manager).toContain('data-features-close');
-    for (const handle of ['data-genital-effects-toggle', 'data-cycle-tracking-toggle']) {
+    for (const handle of ['data-genital-effects-toggle', 'data-sexual-effects-toggle', 'data-cycle-tracking-toggle']) {
       expect(outsideSheets).not.toContain(handle);
       expect(manager.match(new RegExp(handle, 'g'))).toHaveLength(1);
     }
+  });
+
+  it('gives genital and sexual changes a switch each, writing only its own category', () => {
+    // Pre-release-human 12: one 'genital_sexual' switch became two.
+    const manager = /<Sheet bind:open=\{featuresSheet\}[\s\S]*?<\/Sheet>/.exec(withoutScript)?.[0] ?? '';
+    const row = (handle: string) => new RegExp(`<label class="kit-row" ${handle}>[\\s\\S]*?</label>`).exec(manager)?.[0] ?? '';
+    expect(row('data-genital-effects-toggle')).toContain("setCategoryEnabled('genital', on)");
+    expect(row('data-genital-effects-toggle')).not.toContain("'sexual'");
+    expect(row('data-sexual-effects-toggle')).toContain("setCategoryEnabled('sexual', on)");
+    expect(row('data-sexual-effects-toggle')).not.toContain("'genital'");
+    expect(settings).not.toContain('genital_sexual');
+  });
+
+  it('says under each Features filter row what it covers, as the first run does', () => {
+    const manager = /<Sheet bind:open=\{featuresSheet\}[\s\S]*?<\/Sheet>/.exec(withoutScript)?.[0] ?? '';
+    const row = (handle: string) => new RegExp(`<label class="kit-row" ${handle}>[\\s\\S]*?</label>`).exec(manager)?.[0] ?? '';
+    expect(row('data-genital-effects-toggle')).toContain('m.feature_genital_effects_sub()');
+    expect(row('data-sexual-effects-toggle')).toContain('m.feature_sexual_effects_sub()');
+    expect(row('data-cycle-tracking-toggle')).toContain('m.feature_cycle_tracking_sub()');
   });
 
   it('keeps no switch for a prompt the notifications screen now carries', () => {
@@ -224,6 +248,16 @@ describe('what Settings is built from', () => {
       if (palette === 'intersex') expect(new Set(drawn)).toEqual(new Set(stripes));
       else expect(drawn, palette).toEqual(stripes);
     }
+  });
+
+  it('sizes the flag bands to the border box so no edge row shows the far end (prh12)', () => {
+    /* The swatch's 1px edge is translucent and a gradient defaults to the
+       padding box and tiles, so the border row drew the opposite end of the
+       flag: the last band along the top, the first along the bottom. */
+    const screens = read('src/lib/styles/screens.css');
+    const rule = /\.palette-grid \.swatch-preview\s*\{([^}]+)\}/.exec(screens)?.[1] ?? '';
+    expect(rule).toContain('border: 1px solid var(--outline)');
+    expect(rule).toContain('background-origin: border-box');
   });
 
   it('has no Home & calendar colour row (functional-audit ticket 14)', () => {

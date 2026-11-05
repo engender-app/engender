@@ -1605,44 +1605,9 @@ try {
   await page.waitForSelector('[data-photo-cell] img');
   const thumbnailSrc = await page.locator('[data-photo-cell] img').first().getAttribute('src');
   if (!thumbnailSrc?.startsWith('blob:')) throw new Error('the photo grid did not load stored thumbnails');
-  await page.locator('[data-segment="compare"]').click();
-  const photoCells = page.locator('[data-photo-cell]');
-  if ((await photoCells.count()) < 4) throw new Error('not enough photos to exercise both compare controls');
-  await photoCells.nth(0).click();
-  await photoCells.nth(2).click();
-  await page.locator('[data-compare-open]').click();
-  /* One frame with a draggable divider, not two thumbnails side by side
-     (redesign ticket 55). Both dates are pinned to the frame's own corners,
-     and the four earlier/later controls move each side through the
-     journey. The demo persona's photos have stored files, so this is the
-     wipe rather than its side-by-side fallback. */
-  await page.waitForSelector('[data-photo-wipe]');
-  const gap = await page.locator('[data-compare-gap]').textContent();
-  if ((await page.locator('[data-wipe-date]').count()) !== 2 || !gap?.includes('apart')) {
-    throw new Error('compare dates or gap missing');
-  }
-  if (await page.locator('[data-wipe-fallback]').count()) {
-    throw new Error('the wipe fell back to side by side with two stored photographs');
-  }
-  const leftDate = page.locator('[data-wipe-date="left"]');
-  const rightDate = page.locator('[data-wipe-date="right"]');
-  const leftBefore = await leftDate.textContent();
-  await page.locator('[data-wipe-forward="left"]').click();
-  if ((await leftDate.textContent()) === leftBefore) throw new Error('the left photo did not move through time');
-  const rightBefore = await rightDate.textContent();
-  await page.locator('[data-wipe-forward="right"]').click();
-  if ((await rightDate.textContent()) === rightBefore) throw new Error('the right photo did not move through time');
-
-  // The divider is a slider a keyboard can drive, and End takes it to the
-  // far edge without a pointer anywhere near it.
-  const handle = page.locator('[data-wipe-handle]');
-  const startedAt = await handle.getAttribute('aria-valuenow');
-  await handle.press('End');
-  if ((await handle.getAttribute('aria-valuenow')) === startedAt) {
-    throw new Error('the divider did not move on a key press');
-  }
-
-  ok('timeline and progress-photo compare');
+  // Comparing moved to Progress photos (pre-release-human 12); the wipe's
+  // controls are walked there, in the photo library flow below.
+  ok('timeline and photo library thumbnails');
 } catch (e) { fail('ticket 18 view-only screens', e); }
 });
 
@@ -2368,18 +2333,19 @@ try {
   const modules = page.locator('[data-feature-module]');
   // FEATURE_MODULE_ROWS in src/lib/data/hubRows.ts: one row per optional area.
   const featureCount = await modules.count();
-  if (featureCount !== 14) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 14`);
-  for (const key of ['care', 'milestones', 'tryouts', 'voice-benchmark']) {
-    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== 'false') {
-      throw new Error(`${key} started on instead of keeping the first run to journal basics`);
+  if (featureCount !== 15) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 15`);
+  // DEFAULT_MODULES in src/lib/onboarding/features.ts: the core set arrives
+  // ticked, the specialist modules do not (pre-release-human 12).
+  for (const [key, on] of [['care', 'true'], ['milestones', 'true'], ['voice-benchmark', 'true'], ['tryouts', 'false']]) {
+    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== on) {
+      throw new Error(`${key} did not arrive ${on === 'true' ? 'on' : 'off'} with the default set`);
     }
   }
-  await page.locator('[data-feature-module="care"]').click();
-  await page.locator('[data-feature-module="voice-benchmark"]').click();
+  await page.locator('[data-feature-module="milestones"]').click();
   await page.locator('[data-back]').click(); // features -> scales
   await page.locator('[data-next]').click(); // scales -> features
-  for (const key of ['care', 'voice-benchmark']) {
-    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== 'true') {
+  for (const [key, on] of [['care', 'true'], ['voice-benchmark', 'true'], ['milestones', 'false']]) {
+    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== on) {
       throw new Error(`${key} choice was lost after Back`);
     }
   }
@@ -5381,8 +5347,8 @@ try {
 
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="wear"][data-hub-section="finished"]', { timeout: 8000 });
-  await page.waitForSelector('[data-list-row="wear"][data-hub-section="transition"]', { state: 'detached', timeout: 8000 });
-  if ((await page.locator('[data-list-row="wear"][data-hub-section="transition"]').count()) !== 0) {
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="body"]', { state: 'detached', timeout: 8000 });
+  if ((await page.locator('[data-list-row="wear"][data-hub-section="body"]').count()) !== 0) {
     throw new Error('the finished row is drawn in two places at once');
   }
   if ((await page.locator('[data-list-row="wear"][data-hub-line="finished"]').count()) === 0) {
@@ -5397,7 +5363,7 @@ try {
   await page.locator('[data-area-finish-undo]').click();
   await page.waitForSelector('[data-area-finish]', { timeout: 8000 });
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="wear"][data-hub-section="transition"]', { timeout: 8000 });
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="body"]', { timeout: 8000 });
 
   ok('the More hub reads its own data: what is running, what is next, the last value, a reading where there is only a write, what is behind the row where there is neither, and a finished area moving out of its group and back over a session that is still running');
 } catch (e) {
@@ -5416,13 +5382,14 @@ try {
    wait, so rewording any of these rows leaves the flow alone (ADR-0029). */
 await flow('the reorganised hub tree', async () => {
 try {
-  // Health > Care > Changes you've noticed, which carries side effects on
-  // the same axis and the same list now (ticket 13) - there is no row left
-  // to tap for them, and no second screen to back out of.
+  // Health > Meds opens its own screen; Changes you've noticed is a Body
+  // row of its own now (pre-release-human 12) and carries side effects on
+  // the same axis and the same list (ticket 13).
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="care"]').click();
   await page.waitForURL('**/care');
-  await page.locator('[data-list-row="effects"]').click();
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-section="body"][data-list-row="effects"]').click();
   await page.waitForURL('**/care/changes');
 
   // ... and the other change hanging off the same screen.
@@ -5462,8 +5429,8 @@ try {
   const supportRows = await page.locator('[data-hub-section="support"]').evaluateAll((rows) =>
     rows.map((row) => row.getAttribute('data-list-row'))
   );
-  if (supportRows.join(',') !== 'doubt,resources') {
-    throw new Error(`the support group holds ${supportRows.join(',') || 'nothing'}, not safe space and resources`);
+  if (supportRows.join(',') !== 'letters,doubt,resources') {
+    throw new Error(`the support group holds ${supportRows.join(',') || 'nothing'}, not letters, safe space and resources`);
   }
   if (await page.locator('[data-hub-section="practice"]').count()) {
     throw new Error('the hub still draws a Practice group');
@@ -5511,13 +5478,12 @@ try {
   await page.locator('[data-hub-results] [data-list-row="wear"]').click();
   await page.waitForURL('**/body/wear');
 
-  /* A row this door does not draw. Seven areas are drawn on a screen of
-     their own (phase 9 carpet ticket 16) and this is the only index with a
-     box in it, so a name reaches all twenty-seven; the row says which screen
-     hosts it, and following it lands on the area, not on the host. */
+  /* Dilation is a hub row in Health once the journal holds a procedure that
+     can carry one (pre-release-human 12), so a name finds it under that
+     heading, and following it lands on the area. */
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-hub-search]').fill('dilation');
-  await page.waitForSelector('[data-hub-results] [data-list-row="dilation"][data-hub-section="surgery"]', {
+  await page.waitForSelector('[data-hub-results] [data-list-row="dilation"][data-hub-section="health"]', {
     timeout: 8000
   });
   await page.locator('[data-hub-results] [data-list-row="dilation"]').click();
@@ -6608,11 +6574,13 @@ try {
   await booted();
   await page.waitForSelector('[data-appointment-item]');
 
-  /* Editing opens on what is stored, and the kind just used is offered as a
-     chip - the only suggestion the app is entitled to make, since nothing
-     ships in either language. Tapping one fills the field rather than
-     storing anything of its own. */
+  /* Editing opens on what is stored, on the appointment's own screen
+     (prh12), and the kind just used is offered as a chip - the only
+     suggestion the app is entitled to make, since nothing ships in either
+     language. Tapping one fills the field rather than storing anything of
+     its own. */
   await row.click();
+  await page.waitForSelector('[data-appointment-screen]', { timeout: 8000 });
   await page.waitForSelector('[data-kind="ortopeda"]', { timeout: 8000 });
   if ((await page.inputValue('#appointment-place')) !== 'Poradnia') {
     throw new Error('the editor did not open on the appointment that was stored');
@@ -6624,6 +6592,8 @@ try {
 
   await page.fill('#appointment-kind', 'ortopeda dziecięcy');
   await page.click('[data-save-appointment]');
+  await page.waitForSelector('[data-appointment-screen] [data-section-heading]:has-text("ortopeda dziecięcy")', { timeout: 8000 }); // text-under-test
+  await page.click('[data-screen-back]');
   await page.waitForSelector('[data-appointment]:has-text("ortopeda dziecięcy")', { timeout: 8000 }); // text-under-test
 
   await page.locator('[data-appointment]', { hasText: 'ortopeda dziecięcy' }).click(); // text-under-test
@@ -6939,11 +6909,6 @@ try {
 
 await flow('cycle tracking opt-in', async () => {
 try {
-  const daysAgoIso = (n) => {
-    const d = new Date();
-    d.setDate(d.getDate() - n);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
   /* Cycle tracking stays out of sight until it is asked for (ADR-0043,
      phase 5 deepening ticket 05). The demo journal is transfemme by
      construction - estradiol, no testosterone - so by default not one
@@ -6957,11 +6922,11 @@ try {
      of what that screen drew - so "the hub does not name it" is now
      structural and an absence check there would pass whatever this gate
      did. What is left to walk is the surface that does name it behind the
-     gate, and `all-cycle-events` is a handle this flow goes on to wait for -
+     gate, and `cycle-events` is a handle this flow goes on to wait for -
      so its absence here means something (ADR-0029, and a deleted handle
      cannot assert it is gone). */
-  await fresh('/care/changes');
-  if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="all-cycle-events"]').count())) {
+  await fresh('/care');
+  if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="cycle-events"]').count())) {
     throw new Error('the changes screen named the cycle log with no testosterone and no opt-in');
   }
   if (await page.locator('[data-cycle-events-link]').count()) {
@@ -6988,8 +6953,8 @@ try {
     null,
     { timeout: 8000 }
   );
-  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
+  await page.goto(BASE + '/care', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
 
   // Explicit off stays off, including during the testosterone episode below.
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
@@ -7006,6 +6971,11 @@ try {
 
 await flow('cycle tracking testosterone', async () => {
 try {
+  const daysAgoIso = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
   /* An explicit off choice keeps the regimen's offer hidden. Turning the
      choice on with a keyboard then restores the offer. */
   async function checkCycleOffers(shown, locale) {
@@ -7041,15 +7011,15 @@ try {
       const name = locale === 'pl' ? /Cykl/ : /Cycle/;
       if (await page.getByRole('link', { name }).count() === 0) throw new Error(`${locale} regimen cycle offer has no announced name`);
     }
-    await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
+    await page.goto(BASE + '/care', { waitUntil: 'networkidle' });
     await booted();
-    await page.waitForSelector('[data-changes-body] [data-read-reserve-body]');
-    if (shown) await page.locator('[data-list-row="all-cycle-events"]').waitFor();
-    if (Boolean(await page.locator('[data-list-row="all-cycle-events"]').count()) !== shown) {
+    await page.waitForSelector('[data-hosted-reserve="care"]', { state: 'attached' });
+    if (shown) await page.locator('[data-list-row="cycle-events"]').waitFor();
+    if (Boolean(await page.locator('[data-list-row="cycle-events"]').count()) !== shown) {
       throw new Error(`${locale} changes cycle offer visibility disagreed`);
     }
     if (shown) {
-      const name = locale === 'pl' ? /Wszystkie wydarzenia cyklu/ : /All cycle events/;
+      const name = locale === 'pl' ? /Cykl/ : /Cycle/; // the row's own title, since the all-events row left Changes
       if (await page.getByRole('link', { name }).count() === 0) throw new Error(`${locale} changes cycle offer has no announced name`);
     }
 
@@ -7101,6 +7071,9 @@ try {
   await page.fill('#regimen-interval', 'weekly');
   await fillDate(page, '#regimen-start', daysAgoIso(2));
   await page.click('[data-save-regimen]');
+  // The editor sheet saves in place: wait for the episode to be listed, or
+  // the next goto races the write and the regimen is never saved.
+  await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().waitFor({ timeout: 8000 });
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
   await checkCycleOffers(false, 'en');
   await checkCycleOffers(false, 'pl');
@@ -7130,8 +7103,8 @@ try {
   await checkCycleOffers(true, 'pl');
   await checkCycleOffers(true, 'en');
 
-  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
+  await page.goto(BASE + '/care', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
 
   // End the episode the way the concurrent-episodes flow does: an end date
   // of yesterday, so it stops being active today, saved from the editor.
@@ -7140,10 +7113,11 @@ try {
   await page.waitForSelector('#regimen-end');
   await fillDate(page, '#regimen-end', daysAgoIso(1));
   await page.click('[data-save-regimen]');
+  await page.waitForSelector('#regimen-end', { state: 'detached', timeout: 8000 });
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
 
-  await page.goto(BASE + '/care/changes', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
+  await page.goto(BASE + '/care', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
   ok('cycle tracking: explicit off hides regimen offer; keyboard on restores it');
 } catch (e) { fail('cycle tracking testosterone', e); }
 });
@@ -8092,7 +8066,7 @@ try {
   const sourcesOn = async () =>
     page.locator('[data-photo-source]').evaluateAll((cells) => cells.map((cell) => cell.dataset.photoSource));
   const everySource = await sourcesOn();
-  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video']) {
+  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video', 'progress']) {
     if (!everySource.includes(source)) {
       throw new Error(`the library is missing its ${source} photographs: ${JSON.stringify([...new Set(everySource)])}`);
     }
@@ -8117,8 +8091,8 @@ try {
   const drawnChips = await page
     .locator('[data-photo-chip]')
     .evaluateAll((chips) => chips.map((chip) => chip.dataset.photoChip));
-  if (JSON.stringify(drawnChips) !== JSON.stringify(['everything', 'body', 'hair', 'tryouts', 'surgery', 'video', 'starred'])) {
-    throw new Error(`the chip row is not the seven this journal has: ${JSON.stringify(drawnChips)}`);
+  if (JSON.stringify(drawnChips) !== JSON.stringify(['everything', 'body', 'progress', 'hair', 'tryouts', 'surgery', 'video', 'starred'])) {
+    throw new Error(`the chip row is not the eight this journal has: ${JSON.stringify(drawnChips)}`);
   }
   await page.locator('[data-photo-chip="starred"]').click();
   await page.waitForFunction(() => document.querySelectorAll('[data-photo-key]').length === 2);
@@ -8139,27 +8113,49 @@ try {
   }
   if (!new URL(page.url()).searchParams.get('source')) throw new Error('the chip is not in the query');
 
-  // Two photographs from two different tables, which is the comparison
-  // neither the hair screen nor the surgery screen can offer.
-  await page.locator('[data-segment="compare"]').click();
-  await page.locator('[data-photo-source="hair"] [data-photo-cell]').first().click();
-  await page.locator('[data-photo-chip="everything"]').click();
-  await page.waitForSelector('[data-photo-source="procedure"]');
-  await page.locator('[data-photo-source="procedure"] [data-photo-cell]').first().click();
-  await page.locator('[data-compare-open]').click();
-  await page.waitForSelector('[data-photo-wipe]');
-  if ((await page.locator('[data-wipe-date]').count()) !== 2) {
-    throw new Error('the wipe inside the library did not open on two photographs');
-  }
-  // Closing comparison returns to the library with its selection intact.
-  await page.locator('[data-photos-back-to-all]').click();
-  await page.waitForSelector('[data-photo-key]');
+  // The library browses; comparing lives on Progress photos.
+  if (await page.locator('[data-segment="compare"]').count()) throw new Error('the photo library still offers compare');
 
-  // A video note plays rather than being picked.
+  // A video note plays rather than being picked. Back on Everything first:
+  // the compare step that used to return to all is gone from this screen,
+  // so the Hair chip is still on and a video note is not in it.
+  await page.locator('[data-photo-chip="everything"]').click();
   await page.locator('[data-photo-video]').first().click();
   await page.waitForSelector('[data-sheet] video');
 
-  ok('the photo library holds all six sources, says where each came from, narrows by chip and wipes across tables');
+  await page.keyboard.press('Escape');
+
+  /* Two shots of one pose on Progress photos, which the full fixture gives
+     four of per pose (pre-release-human 12): picked and wiped. The pair
+     comes from the grid, so the wipe draws no earlier/later arrows here. */
+  await page.goto(BASE + '/transition/progress-photos', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-progress-grid="front"] [data-photo-cell]');
+  await page.locator('[data-segment="compare"]').click();
+  const photoCells = page.locator('[data-progress-grid="front"] [data-photo-cell]');
+  if ((await photoCells.count()) < 4) throw new Error('not enough progress photos to exercise both compare controls');
+  await photoCells.nth(0).click();
+  await photoCells.nth(2).click();
+  await page.locator('[data-compare-open]').click();
+  await page.waitForSelector('[data-photo-wipe]');
+  const gap = await page.locator('[data-compare-gap]').textContent();
+  if ((await page.locator('[data-wipe-date]').count()) !== 2 || !gap?.includes('apart')) {
+    throw new Error('compare dates or gap missing');
+  }
+  if (await page.locator('[data-wipe-fallback]').count()) {
+    throw new Error('the wipe fell back to side by side with two stored photographs');
+  }
+  if (await page.locator('[data-wipe-step]').count()) {
+    throw new Error('progress photos still draw the wipe step arrows');
+  }
+  const handle = page.locator('[data-wipe-handle]');
+  const startedAt = await handle.getAttribute('aria-valuenow');
+  await handle.press('End');
+  if ((await handle.getAttribute('aria-valuenow')) === startedAt) {
+    throw new Error('the divider did not move on a key press');
+  }
+
+  ok('the photo library holds every source, says where each came from and narrows by chip; progress photos compare within a pose');
 } catch (e) { fail('the photo library', e); }
 });
 

@@ -22,7 +22,9 @@ async function verifyEmptyTimeline(page, { gallery, out }) {
   for (const key of ['labs', 'stock', 'clinician-summary']) {
     assert.equal(await page.locator(`[data-list-row="${key}"]`).isVisible(), true, `${key} remains reachable`);
   }
-  assert.equal(await page.locator('[data-hub-host="care"]').count(), 1);
+  /* Meds hosts no rows since pre-release-human 12: Changes moved to the hub's
+     Body group, and the Cycle link shows only with cycle tracking on. */
+  assert.equal(await page.locator('[data-hub-host="care"]').count(), 0);
   if (gallery) await page.screenshot({ path: `${out}/empty-en-no-regimen.png`, fullPage: true });
 
   await page.evaluate(async () => {
@@ -159,7 +161,7 @@ async function verifyEmptyTimeline(page, { gallery, out }) {
       await regimen.waitFor();
       assert.equal(await rail.count(), 0);
       assert.equal(await empty.count(), 0);
-      assert.equal(await page.locator('[data-screen-title="care"]').innerText(), locale === 'pl' ? 'Opieka' : 'Care');
+      assert.equal(await page.locator('[data-screen-title="care"]').innerText(), locale === 'pl' ? 'Leki' : 'Meds');
     }
     for (const locale of ['en', 'pl']) {
       await galleryLocale(locale);

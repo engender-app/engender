@@ -513,7 +513,7 @@
      block of its own - and compact it goes out of flow and fades where it
      stands rather than being switched off, so the cells' own travel is
      measured against a layout that has already given the row back. -->
-<div class="cal-dows" class:is-compact={compact} aria-hidden="true">
+<div class="cal-dows" class:is-compact={compact} aria-hidden="true" data-cal-sits-out>
   {#each DOWS as d, i (i)}<span class="cal-dow">{d}</span>{/each}
 </div>
 <!-- One block per month, keyed, so a month change is one block leaving and
@@ -697,11 +697,14 @@
 {/snippet}
 
 <style>
+  /* Opening, the letters wait a beat like the dates under them, so they
+     arrive as the days spread into their columns rather than ahead of them
+     (prh12 bug 11). */
   .cal-dows {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 0 var(--cal-col-gap);
-    transition: opacity var(--dur-med) var(--ease-out);
+    transition: opacity var(--dur-med) var(--ease-out) var(--dur-fast);
   }
   .cal-dow {
     text-align: center;
@@ -715,8 +718,15 @@
      offset auto keeps its static position. */
   .cal-dows.is-compact {
     position: absolute;
+    /* Its own width kept: with every offset auto an absolute box shrinks
+       to its content, and the seven letters squeezed to the left edge in
+       the frame of the fold (prh12 bug 11). */
+    inset-inline: 0;
     opacity: 0;
     pointer-events: none;
+    /* Already faded with the faces before the fold (data-cal-sits-out);
+       a transition here would bring it back for a frame. */
+    transition: opacity 0s;
   }
 
   /* Where the leaving month is pinned while the arriving one takes its
@@ -916,6 +926,13 @@
   .cal-grid.is-compact .cal-mark,
   .cal-grid.is-compact .cal-highlight {
     transition: opacity 0s;
+  }
+  /* The dates ride the travel unscaled, and at its start all of them stand
+     at 9px bars: faded in from the tap, the first frames drew thirty
+     numbers piled on one line (prh12 bug 11). They wait until the days have
+     spread. */
+  .cal-grid.is-opening .cal-date {
+    transition: opacity var(--dur-med) var(--ease-out) var(--dur-fast);
   }
 
   /* Today, marked by a ring rather than by a fill, because the fill is

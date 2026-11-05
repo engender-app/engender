@@ -181,7 +181,7 @@ describe('the handover', () => {
     expect(rootOpacity * (1 - markOpacity) * 255).toBeLessThan(0.5);
     expect(handwritten).toContain('#splash.is-leaving { opacity: 0; }');
     expect(handwritten).toMatch(
-      /html\[data-splash='leaving'\] \[data-app-root\] \{\s*opacity: 1;\s*transition: opacity 280ms var\(--ease-out-soft, [^)]+\)\);\s*\}/
+      /html\[data-splash='leaving'\] \[data-app-root\] \{\s*opacity: 1;\s*transition: opacity 280ms var\(--ease-out-soft, [^)]+\)\);\s*transition-property: opacity !important;\s*\}/
     );
   });
 

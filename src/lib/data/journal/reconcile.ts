@@ -16,6 +16,7 @@ import {
   BUILT_IN_DIMENSIONS,
   BUILT_IN_EFFECT_CATEGORIES,
   BUILT_IN_PERSONAL_EFFECT_TYPES,
+  BUILT_IN_PROGRESS_POSES,
   BUILT_IN_TAG_GROUPS,
   ENTRY_TEMPLATES,
   SEEDED_HIDDEN_BODY_REGIONS,
@@ -126,6 +127,12 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
       SEEDED_HIDDEN_BODY_REGIONS.has(key) ? 1 : 0,
       seeded
     ]);
+  }
+
+  const progressPoseKeys = await presentKeys(driver, 'progress_pose');
+  for (const key of BUILT_IN_PROGRESS_POSES) {
+    if (progressPoseKeys.has(key)) continue;
+    await driver.run(`INSERT INTO progress_pose (key, name, hidden, updated_at) VALUES (?, '', 0, ?)`, [key, seeded]);
   }
 
   const effectCategoryKeys = await presentKeys(driver, 'effect_category');

@@ -867,8 +867,6 @@ recovery proof workflow uploads both attempts for seven days, including on succe
 
 `stock-sheet-motion` (`tests/stock-sheet-motion.mjs`) checks Add stock against a demo build. Light and dark casts retain frame numbers, milliseconds, sheet and background geometry, scroll position and theme proof. It checks continuous size changes, reduced motion, keyboard focus, creation, editing (the expiry day and pharmacy note included, shown on the row and read back by the editor) and deletion confirmation. Run `node tests/stock-sheet-motion.mjs [output-directory]`; `--baseline` records the unfixed path without requiring smooth travel.
 
-`procedure-collapse-motion` (`tests/procedure-collapse-motion.mjs`) records procedure logs closing in light and dark, with descendant paint bounds beside timestamped compositor frames. It checks shared clipping and fading, reopening, rapid selection changes, saved data, unsaved notes, disclosure state and both reduced-motion settings. Run after a demo build: `node tests/procedure-collapse-motion.mjs [output-directory]`; `--baseline` records the unfixed behavior.
-
 `today-settings-sun-motion` captures both navigation directions at 195px,
 390px and 1280px in both themes. Painted stripe probes check sun continuity,
 including when outside identity is disguised. The recorder also checks

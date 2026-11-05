@@ -95,7 +95,11 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
         : table === 'felt_sense'
           ? opened.payload.journal.feltSenseEntries.filter((entry) => (entry as { milestoneId?: string | null }).milestoneId != null).length
           : 0;
-      assert.equal(row.n, expected - droppedRows, `released SQLite table ${table}`);
+      /* Pre-release-human 12 split genital_sexual into genital and sexual
+         (migration 121): one category row in, two out. */
+      const splitRows = table === 'effect_category'
+        && opened.payload.journal.effectCategories.some((category) => (category as { key?: string }).key === 'genital_sexual') ? 1 : 0;
+      assert.equal(row.n, expected - droppedRows + splitRows, `released SQLite table ${table}`);
     }
     assert.deepEqual(await driver.query('PRAGMA integrity_check'), [{ integrity_check: 'ok' }]);
     assert.deepEqual(await driver.query('PRAGMA foreign_key_check'), []);

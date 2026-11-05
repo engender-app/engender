@@ -2,7 +2,8 @@
   import { rovingRadio } from '$lib/components/rovingRadio';
   import Icon from './Icon.svelte';
   import { nearestScrollLeft } from './segmentedTrack';
-  import { scrollBehavior } from '$lib/motion/tokens';
+  import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, scrollBehavior } from '$lib/motion/tokens';
+  import type { TransitionConfig } from 'svelte/transition';
   import {
     boxesMatch,
     insets,
@@ -48,7 +49,8 @@
     onChange,
     compact = false,
     selectOnArrow = true,
-    key
+    key,
+    grows = false
   }: {
     name: string;
     /** A `href` makes the segment a link and the group a nav: each choice is
@@ -72,7 +74,79 @@
     selectOnArrow?: boolean;
     /** The group's own identity for the walkthrough's handle (ADR-0029). */
     key?: string;
+    /** For a set the person edits while the screen is up (Progress photos'
+        poses, pre-release-human 12): a segment added, removed or renamed
+        opens or closes its own width rather than landing in one frame and
+        shoving its neighbours along. A rename is a new segment in place of
+        the old one, so its width travels too. Off everywhere else, where the
+        set is fixed and nothing about this is wanted. */
+    grows?: boolean;
   } = $props();
+
+  /* The segment's width, its side padding and its share of the gap all
+     travel, with the label fading: animating width alone left the padding
+     standing, so a new segment arrived 24px wide in its first frame. */
+  /* While a segment opens or closes, the chosen one moves or the track
+     changes width under the pill every frame, and the pill is pinned by
+     two insets that otherwise travel on their own clocks: measured once,
+     it stretched with the growing track (72 to 101px) or sat at the
+     width a renamed segment had in its first frame (0px). So for the
+     length of the change it is re-pinned each frame, instantly. */
+  function followChosen() {
+    const target = track?.querySelector<HTMLElement>(`.segment[data-segment="${CSS.escape(value)}"]:not([data-leaving])`);
+    if (!track || !target || !pill.shown) return;
+    const box = { x: target.offsetLeft, y: target.offsetTop, w: target.offsetWidth, h: target.offsetHeight };
+    pill = { ...pill, box, at: insets(box, { w: track.clientWidth, h: track.clientHeight }), near: PLACE, far: PLACE };
+  }
+
+  function segmentLeaving(node: Element): TransitionConfig {
+    node.setAttribute('data-leaving', '');
+    return segmentWidth(node);
+  }
+
+  function segmentWidth(node: Element): TransitionConfig {
+    if (!grows || !(node instanceof HTMLElement)) return { duration: 0 };
+    /* Reduced motion keeps the arrival as a crossfade: the width lands at
+       once, the label still fades rather than cutting in. */
+    if (isReducedMotion()) return fadeOnly(crossfadeDuration());
+    const style = getComputedStyle(node);
+    const width = node.getBoundingClientRect().width;
+    const padStart = parseFloat(style.paddingInlineStart) || 0;
+    const padEnd = parseFloat(style.paddingInlineEnd) || 0;
+    const gap = node.previousElementSibling?.classList.contains('segment')
+      ? parseFloat(getComputedStyle(node.parentElement!).columnGap) || 0
+      : 0;
+    /* Written from `tick` rather than as `css`, so the segment's width and
+       the pill's re-pinning land in the same frame: a CSS animation is
+       resolved after this frame's script, and a pill measured against it
+       ran one frame behind the track (101px on a 72px segment). */
+    const at = (t: number) => {
+      const set = (name: string, value: string) => node.style.setProperty(name, value);
+      set('overflow', 'hidden');
+      set('white-space', 'nowrap');
+      set('box-sizing', 'border-box');
+      set('min-width', '0');
+      set('width', `${t * width}px`);
+      set('max-width', `${t * width}px`);
+      set('padding-inline', `${t * padStart}px ${t * padEnd}px`);
+      set('opacity', `${t}`);
+      if (gap) set('margin-inline-start', `${(t - 1) * gap}px`);
+    };
+    /* An arriving segment is closed before the frame it was inserted in
+       paints; the first tick comes a frame later, and the segment drew
+       itself whole for that one frame (the track read 240px, then 229). */
+    if (!node.hasAttribute('data-leaving')) at(0);
+    return {
+      duration: motionDuration('--dur-med'),
+      easing: EASE_OUT,
+      tick: (t) => {
+        if (t >= 1 && !node.hasAttribute('data-leaving')) node.removeAttribute('style');
+        else at(t);
+        followChosen();
+      }
+    };
+  }
+
 
   let links = $derived(options.some((o) => o.href !== undefined));
   let buttons = $state<(HTMLElement | undefined)[]>([]);
@@ -220,7 +294,14 @@
 
   $effect(() => {
     void trackSize;
-    const target = buttons[options.findIndex((o) => o.value === value)];
+    /* With `grows`, a renamed segment is a new node beside the old one for
+       the length of the old one's exit, and the index the binding writes
+       to is not guaranteed to hold the arriving one: the pill followed the
+       leaving "Front" down to nothing. So it finds the chosen segment by
+       its value, skipping one on its way out. */
+    const target = grows
+      ? track?.querySelector<HTMLElement>(`.segment[data-segment="${CSS.escape(value)}"]:not([data-leaving])`) ?? undefined
+      : buttons[options.findIndex((o) => o.value === value)];
     if (!target) return;
     /* The active segment answers for itself: a track wider than it is (the
        cadence tabs opened straight onto the last one, "Range") never had a
@@ -402,7 +483,7 @@
       style:--seg-far-delay={pill.far.delay}
     >
       {@render pillMark()}
-      {#each options as o, i (o.value)}
+      {#each options as o, i (grows ? `${o.value}:${o.label}` : o.value)}
         <!-- data-no-press (ticket 15): the pill crossing the set is already
              this control's press response; scaling the label too would answer
              the same touch twice. -->
@@ -415,6 +496,8 @@
           aria-label={o.aria}
           data-segment={o.value}
           data-no-press
+          in:segmentWidth
+          out:segmentLeaving
           onclick={() => onChange?.(o.value)}>{o.label}</button
         >
       {/each}

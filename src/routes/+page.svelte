@@ -67,6 +67,7 @@
   import { roleAttrs } from '$lib/components/kit/role';
   import { readAgenda, projectAgenda } from '$lib/data/agendaReads';
   import { passedSlotSentence, type AgendaItem } from '$lib/data/agenda';
+  import { dilationGated } from '$lib/data/taperSchedule';
   import { fallbackReading, pinnedRows, pinReadScope, type PinnedRow } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { readRowForward } from '$lib/data/rowForwardReads';
@@ -353,7 +354,13 @@
     const value = await j.lastWrite.getLastWrites(today, pinReads.lastWrites);
     return { key, value };
   });
-  let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
+  /* The dilation gate reads procedures, so it is asked only when the dilation
+     row is one of the rows being read (pinned, or the editor open): a Home
+     with nothing pinned that needs it issues no procedures read for it. */
+  let areaStatesQuery = liveQuery(async (j) => {
+    const states = await j.areaStates.getAreaStates();
+    return pinReadKey.split('|').includes('dilation') ? dilationGated(states, await j.procedures.getProcedures()) : states;
+  });
   /* The forward half (phase 11 all-four-doors ticket 02). A pinned row draws
      the same line its hub row does, so it asks the same assembled question -
      the milestones pin said "Nothing logged for 1 year 4 months" over the
@@ -433,9 +440,9 @@
     sub: () => string;
   };
   const GETTING_STARTED: StartOffer[] = [
-    { key: 'milestones', area: 'milestones', icon: 'flag', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
+    { key: 'milestones', area: 'milestones', icon: 'summit', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
     { key: 'regimen', area: 'care', icon: 'pill', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
-    { key: 'letters', area: 'letters', icon: 'clock', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
+    { key: 'letters', area: 'letters', icon: 'envelope', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
     { key: 'photos', area: 'photos', icon: 'camera', href: TODAY_PHOTO_HREF, title: m.home_start_photos_title, sub: m.home_start_photos_sub },
     { key: 'more', area: null, icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
   ];
@@ -1118,7 +1125,7 @@
          recorded, not one of the journal's own coloured areas. -->
     {#if showDebriefOffer}
       <Notice
-        icon="calendar"
+        icon="appointment"
         key="debrief-offer"
         title={m.debrief_offer_title()}
         action={{

@@ -49,6 +49,7 @@
   import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
+  import { trackPointerFocus } from '$lib/a11y/pointerFocus';
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { routeGate } from '$lib/navigation/routeGates';
   import { navigateWithTransition } from '$lib/navigation/navigationTransition';
@@ -87,6 +88,7 @@
   }
 
   onMount(countPageLoad);
+  onMount(() => trackPointerFocus());
 
   if (isAndroid()) {
     void import('$lib/android/plugin-registry').then(({ assertAndroidRuntimePluginRegistry }) => {
@@ -306,8 +308,8 @@
     return () => { cancelled = true; observer?.disconnect(); };
   });
 
-  /* The width the scroll region keeps for its scrollbar (`scrollbar-gutter:
-     stable`), published for the toast, which centres on the content
+  /* The width the scroll region's scrollbar takes, which is 0 now that none
+     is drawn (app.css) but is still measured rather than assumed, published for the toast, which centres on the content
      column and so has to leave that strip out too (after-release 17
      review: 5px off centre at 1280). Measured, since a classic scrollbar
      has a width only the browser knows and an overlay one has none. */

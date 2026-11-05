@@ -82,7 +82,10 @@
   }
   let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingChoice));
   let genitalEffectsOn = $derived(
-    vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
+    vocabulary.effectCategories.find((category) => category.key === 'genital')?.enabled ?? false
+  );
+  let sexualEffectsOn = $derived(
+    vocabulary.effectCategories.find((category) => category.key === 'sexual')?.enabled ?? false
   );
 
   /* The lock row's reading, the same line the Security screen's mode row
@@ -270,13 +273,13 @@
         </span>
       </div>
     {/if}
-    <ListRow key="mood-colours" icon="sparkle" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
+    <ListRow key="mood-colours" icon="mood" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
     <ListRow key="language" icon="globe" title={m.language()} subtitle={languageName} chevron={false} onclick={() => (languageSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="accessibility" icon="eye" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.settings_row_off()} chevron={false} onclick={() => (a11ySheet = true)}>
+    <ListRow key="accessibility" icon="access" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.settings_row_off()} chevron={false} onclick={() => (a11ySheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
   </ListCard>
@@ -288,7 +291,7 @@
     <ListCard>
       <ListRow
         key="scales"
-        icon="heart"
+        icon="scales"
         title={m.gender_scales()}
         subtitle={tickedNames || m.scales_none_ticked()}
         chevron={false}
@@ -325,9 +328,10 @@
     </ListRow>
     <!-- One screen over the unprompted registry (deepening ticket 09): what
          may show on Today and what may buzz the phone are two questions
-         about the same list. `zap` rather than a second bell beside the
-         reminders row. -->
-    <ListRow key="notifications" icon="zap" title={m.notif_title()} href="/settings/notifications" />
+         about the same list. `badge` rather than a second bell beside the
+         reminders row, and not `zap`, which is battery optimisation in
+         Permissions. -->
+    <ListRow key="notifications" icon="badge" title={m.notif_title()} href="/settings/notifications" />
   </ListCard>
 
   <SectionHeading text={m.settings_lists()} />
@@ -339,11 +343,11 @@
     <ListRow key="presentations" icon="palette" title={m.presentations_title()} chevron={false} onclick={() => (ui.raisedManager = 'modes')}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} chevron={false} onclick={() => (ui.raisedManager = 'templates')}>
+    <ListRow key="entry-templates" icon="template" title={m.entry_templates_title()} chevron={false} onclick={() => (ui.raisedManager = 'templates')}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} href="/settings/body-regions" />
-    <ListRow key="eras" icon="columns" title={m.eras_title()} href="/settings/eras" />
+    <ListRow key="body-regions" icon="figure" title={m.body_regions_row_title()} href="/settings/body-regions" />
+    <ListRow key="eras" icon="era" title={m.eras_title()} href="/settings/eras" />
   </ListCard>
 
   <SectionHeading text={m.settings_privacy()} />
@@ -361,7 +365,7 @@
     <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
          no-network claim made concrete, and setup's step promises this row
          is here. -->
-    <ListRow key="permissions" icon="key" title={m.settings_permissions_row()} href="/settings/permissions" />
+    <ListRow key="permissions" icon="toggle" title={m.settings_permissions_row()} href="/settings/permissions" />
     <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
     <ListRow
       key="erase"
@@ -405,24 +409,46 @@
         <FeatureVisibilityList {moduleEnabled} onModuleChange={changeModule} />
       {/if}
       <h4>{m.feature_filters_title()}</h4>
+      <!-- Labels rather than divs, so a tap anywhere on a row reaches its
+           switch, the way the first run's checkbox rows take one. A label
+           is not a control itself: the switch stays the one thing focused
+           and announced, under its own aria-label. -->
       <ListCard>
-        <div class="kit-row" data-genital-effects-toggle>
-          <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>
+        <label class="kit-row" data-genital-effects-toggle>
+          <span class="kit-row-ico"><Icon name="sprout" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.feature_genital_effects()}</span>
+            <span class="kit-row-sub">{m.feature_genital_effects_sub()}</span>
+          </span>
           <span class="kit-row-trail">
             <Switch
               checked={genitalEffectsOn}
               label={m.feature_genital_effects()}
-              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital_sexual', on)}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital', on)}
             />
           </span>
-        </div>
-        <div class="kit-row" data-cycle-tracking-toggle>
-          <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
+        </label>
+        <label class="kit-row" data-sexual-effects-toggle>
+          <span class="kit-row-ico"><Icon name="heart" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.feature_sexual_effects()}</span>
+            <span class="kit-row-sub">{m.feature_sexual_effects_sub()}</span>
+          </span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={sexualEffectsOn}
+              label={m.feature_sexual_effects()}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('sexual', on)}
+            />
+          </span>
+        </label>
+        <label class="kit-row" data-cycle-tracking-toggle>
+          <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
           <span class="kit-row-text">
             <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+            <span class="kit-row-sub">{m.feature_cycle_tracking_sub()}</span>
             {#if prefs.cycleTrackingChoice === null}
-              <span class="kit-row-sub" transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
+              <span class="kit-row-sub" data-cycle-explanation transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
             {/if}
           </span>
           <span class="kit-row-trail">
@@ -435,7 +461,7 @@
               }}
             />
           </span>
-        </div>
+        </label>
       </ListCard>
     </div>
     {#if featureError}<p role="alert">{featureError}</p>{/if}

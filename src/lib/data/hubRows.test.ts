@@ -40,6 +40,9 @@ const reading = (over: Partial<HubReading> = {}): HubReading => ({
   lastWrites: {},
   states: {},
   forward: {},
+  /* On by default so the counts below are of every row; the gate's own
+     tests turn it off. */
+  cycleVisible: true,
   ...over
 });
 
@@ -142,10 +145,6 @@ test('one registration reaches exactly the surface a row names as its home, and 
       );
     }
 
-    /* The one row search may not reach, whatever it is called (ADR-0043) -
-       see the dedicated test below, which is where that exception is
-       argued rather than just applied. */
-    if (row.key === 'cycle-events') continue;
     const matches = hubRowsMatching(reading(), row.key, (key) => key);
     assert.ok(matches.some((match) => match.spec.key === row.key), `${row.key} is registered but search cannot find it`);
   }
@@ -205,7 +204,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('twelve rows can report a reading and six never can', () => {
+test('thirteen rows can report a reading and six never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
@@ -222,8 +221,9 @@ test('twelve rows can report a reading and six never can', () => {
   // since redesign ticket 16 took `eras` - also 'written' - off the same
   // way. Six since phase 11 ticket 17 folded `voice` - also 'written' -
   // into `voice-benchmark`'s own Recordings tab rather than giving it a
-  // row of its own.
-  assert.equal(reads.length, 12);
+  // row of its own. Thirteen since pre-release-human 12 added
+  // `progress-photos`, a reading row.
+  assert.equal(reads.length, 13);
   assert.equal(HUB_ROWS.length - reads.length, 6);
 });
 
@@ -588,7 +588,7 @@ test('the hub draws its groups in order and leaves out the ones with nothing in 
 
   assert.deepEqual(
     sections.map((section) => section.key),
-    ['health', 'transition', 'support', 'media']
+    ['health', 'body', 'transition', 'support', 'media']
   );
 });
 
@@ -598,12 +598,12 @@ test('a hidden area takes a hosted row out of its host, the way it took it off t
      `hubSections` any more, so nothing on the hub can answer for it.
      `HostedRows.svelte` applies exactly this filter over the area record. */
   const hosted = rowsHostedBy('effects').map((row) => row.key);
-  assert.deepEqual(hosted, ['hair-progress', 'cycle-events']);
+  assert.deepEqual(hosted, ['hair-progress']);
 
   const left = rowsHostedBy('effects')
     .filter((row) => !rowHidden(row, { hairStages: hidden, hairPhotos: hidden }))
     .map((row) => row.key);
-  assert.deepEqual(left, ['cycle-events']);
+  assert.deepEqual(left, []);
 
   /* Both sections behind hair progress, or the row stays - the same
      every-section rule the hub applies. */
@@ -657,7 +657,7 @@ test('a hosted row is not on the hub at all, and its screen is named (ticket 16)
   }
   assert.deepEqual(
     HUB_ROWS.filter((row) => !isHubGroup(row.home)).map((row) => row.key),
-    ['effects', 'hair-progress', 'cycle-events', 'dilation']
+    ['hair-progress']
   );
 });
 
@@ -678,7 +678,7 @@ test('a finished row leaves its group for the finished set, and the set comes la
     sections.at(-1)?.rows.map((row) => row.spec.key),
     ['wear']
   );
-  const transition = sections.find((section) => section.key === 'transition');
+  const transition = sections.find((section) => section.key === 'body');
   assert.ok(!transition?.rows.some((row) => row.spec.key === 'wear'), 'the row is in two places at once');
 });
 
@@ -689,7 +689,7 @@ test('a suspended row stays under its own group, unlike a finished one - it is n
     !sections.some((section) => section.key === 'finished'),
     'nothing is finished, so there is no finished set at all'
   );
-  const transition = sections.find((section) => section.key === 'transition');
+  const transition = sections.find((section) => section.key === 'body');
   assert.ok(transition?.rows.some((row) => row.spec.key === 'hair-removal'), 'the suspended row left its own group');
 });
 
@@ -697,7 +697,7 @@ test('a finished row keeps its icon and its screen', () => {
   const sections = hubSections(reading({ states: { wearSessions: finished(TODAY - 90) } }));
   const row = sections.at(-1)?.rows[0];
 
-  assert.equal(row?.spec.icon, 'clock');
+  assert.equal(row?.spec.icon, 'watch');
   assert.equal(row?.spec.href, '/body/wear');
 });
 
@@ -719,24 +719,16 @@ test('a fresh journal draws every row the hub owns, each saying what is behind i
   }
 });
 
-test('every group is the list phase 9 carpet ticket 16 asked for', () => {
+test('every group is in the order Alicja set in pre-release-human 12', () => {
   const sections = hubSections(reading());
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
-  // `body` is gone and its one row opens Health (audit item 10).
-  assert.deepEqual(group('body'), []);
-  assert.deepEqual(group('health'), ['care', 'surgery', 'appointments']);
-  assert.deepEqual(group('transition'), [
-    'milestones',
-    'tryouts',
-    'voice-benchmark',
-    'wear',
-    'hair-removal',
-    'roadmap',
-    'letters'
-  ]);
-  assert.deepEqual(group('support'), ['doubt', 'resources']);
+  // Body came back in pre-release-human 12 to even out a seven-row Steps.
+  assert.deepEqual(group('health'), ['care', 'cycle-events', 'appointments', 'surgery', 'dilation']);
+  assert.deepEqual(group('body'), ['progress-photos', 'effects', 'hair-removal', 'wear', 'voice-benchmark']);
+  assert.deepEqual(group('transition'), ['roadmap', 'milestones', 'tryouts']);
+  assert.deepEqual(group('support'), ['letters', 'doubt', 'resources']);
   assert.deepEqual(group('media'), ['photos', 'documents']);
 });
 
@@ -800,7 +792,7 @@ test('a match that has not ended names the group it belongs to', () => {
 
   assert.deepEqual(
     rows.map((row) => row.where),
-    ['transition']
+    ['body']
   );
 });
 
@@ -811,10 +803,8 @@ test('a hidden module cannot be searched up, while dilation follows surgery visi
     hubRowsMatching(reading({ states: { hairStages: hidden, hairPhotos: hidden } }), 'hair progress', titleOf),
     []
   );
-  assert.deepEqual(
-    hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf).map((row) => row.spec.key),
-    ['dilation']
-  );
+  /* taperSessions hidden is `dilationGated`'s signal: no eligible procedure. */
+  assert.deepEqual(hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf), []);
   assert.deepEqual(hubRowsMatching(reading({ states: { procedures: hidden } }), 'dilation', titleOf), []);
 });
 
@@ -827,7 +817,7 @@ test('a row drawn on another screen is searchable, and names its host', () => {
 
   assert.deepEqual(
     rows.map((row) => [row.spec.key, row.where, row.spec.href]),
-    [['dilation', 'surgery', '/health/dilation']]
+    [['dilation', 'health', '/health/dilation']]
   );
 });
 
@@ -836,7 +826,7 @@ test('a hosted row states the day its area ended, like any other match', () => {
 
   assert.deepEqual(
     rows.map((row) => [row.where, row.line.kind]),
-    [['surgery', 'finished']]
+    [['finished', 'finished']]
   );
 });
 
@@ -852,13 +842,41 @@ test('the hub rows come first and the hosted ones after, so a match list reads a
   );
 });
 
-/* ADR-0043 through the box: the one row whose existence is a screen's call
-   rather than the registry's cannot be typed into being. */
-test('the cycle row is not searchable, whatever it is called', () => {
+/* ADR-0043 through the hub and the box: the cycle row exists only where a
+   screen has said cycle tracking is visible, and a search cannot type it
+   into being either. */
+test('the cycle row is on the hub and in search only while cycle tracking is visible', () => {
   const titles = (key: string): string => (key === 'cycle-events' ? 'Cycle events' : titleOf(key));
+  const onHub = (over: Partial<HubReading>) =>
+    hubSections(reading(over)).flatMap((section) => section.rows.map((row) => row.spec.key));
 
-  assert.deepEqual(hubRowsMatching(reading(), 'cycle', titles), []);
-  assert.deepEqual(hubRowsMatching(reading(), 'Cycle events', titles), []);
+  for (const closed of [{ cycleVisible: false }, { cycleVisible: undefined }]) {
+    assert.ok(!onHub(closed).includes('cycle-events'));
+    assert.deepEqual(hubRowsMatching(reading(closed), 'cycle', titles), []);
+    assert.deepEqual(hubRowsMatching(reading(closed), 'Cycle events', titles), []);
+  }
+
+  assert.ok(onHub({ cycleVisible: true }).includes('cycle-events'));
+  assert.deepEqual(
+    hubRowsMatching(reading({ cycleVisible: true }), 'cycle', titles).map((row) => [row.spec.key, row.where]),
+    [['cycle-events', 'health']]
+  );
+});
+
+test('the dilation row is on the hub and in search only once a procedure can carry it', () => {
+  /* The screens build the area record through `dilationGated`, which hides
+     `taperSessions` until then; this holds what the hub does with that. */
+  const gated = { taperSessions: hidden };
+  const onHub = (over: Partial<HubReading>) =>
+    hubSections(reading(over)).flatMap((section) => section.rows.map((row) => row.spec.key));
+
+  assert.ok(!onHub({ states: gated }).includes('dilation'));
+  assert.deepEqual(hubRowsMatching(reading({ states: gated }), 'dilation', titleOf), []);
+  assert.ok(onHub({ states: {} }).includes('dilation'));
+  assert.deepEqual(
+    hubRowsMatching(reading({ states: {} }), 'dilation', titleOf).map((row) => row.spec.key),
+    ['dilation']
+  );
 });
 
 test('a query nothing is called matches nothing', () => {

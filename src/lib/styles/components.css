@@ -306,6 +306,31 @@
      a11y-targets-large-text.mjs). Positioned, the control takes its whole
      48px back; nothing is drawn differently. */
   position: relative;
+  /* Hung from the title rather than floating over it (prh12 bug 17,
+     "awkward, especially in relation to the text"). The arrow sat 26px of
+     field above the title's cap line, a 16px thin glyph over 34px caps set
+     at 800, so it read as a stray mark. Lowered 8px, its ink ends about 16px
+     over the caps, near half their height, which ties it to the title as a
+     kicker; the field's own height is unchanged. */
+  top: var(--space-2);
+}
+/* A size up and a little heavier, so the arrow holds its own next to the
+   title's weight: 28px with a 2.6px stroke, against the 24px and 2px of an
+   action's glyph. At 28px its left ink lands on the title's stem (x 23 at
+   390px, the stem at 23) with the pull above unchanged. */
+.screen-back .icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 2.25;
+}
+/* The actions on the back control's line come down with it, so the row
+   stays one line. Only where they share it: under 240px they take a line
+   of their own (below), and lowered there they would reach into the title. */
+@container app (min-width: 240px) {
+  .screen-header-row.has-back-actions .header-action {
+    position: relative;
+    top: var(--space-2);
+  }
 }
 /* A hidden title with no back control and no actions leaves the field
    nothing to hold, so the header collapses to nothing visible rather than
@@ -638,6 +663,17 @@
    reader says where you are (navigation/arrivalFocus.ts). It is not a
    control and nothing can be done to it, so it wears no ring. */
 [data-arrival-focus]:focus-visible { outline: none; }
+/* A text field pressed with a finger or a mouse wears no ring and no coloured
+   edge (Alicja, 2026-11-04: "pls remove those ugly borders around textbars on
+   press"). Chromium's :focus-visible matches a text field on every focus, tap
+   included, so the ring above could not tell a press from a Tab. pointerFocus.ts
+   marks the document after a press and clears it on Tab, so a keyboard keeps
+   the ring and the edge cue exactly as drawn. The caret is the answer to a
+   press. Selects and buttons are not text fields and keep their ring. */
+:root[data-input='pointer'] :is(input, textarea):focus-visible { outline: none; }
+:root[data-input='pointer'] :is(input, textarea).input:focus { border-color: var(--input-edge); }
+:root[data-input='pointer'] .search-box:focus-within { border-color: var(--outline); outline: none; }
+:root[data-input='pointer'] .screen-field .search-box:focus-within { border-color: var(--field-ink); }
 
 /* ---------- switch ---------- */
 /* One switch, and one accessibility contract for it. This was styled twice:
@@ -1930,6 +1966,32 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
      offset draws the ring just outside the border box instead, where it
      follows the same corners and nothing inside the sheet can reach it. */
   box-shadow: var(--shadow-float), 0 0 0 1px var(--outline);
+}
+/* A sheet whose picture gives way to what is around it (pre-release-human
+   12). A 3:4 frame at the sheet's full width is taller than a small phone
+   has room for: at 360x640 the progress camera's frame pushed Take to y 839,
+   off the bottom of the screen, and the sheet scrolled to reach it. Inside
+   `.sheet-fit` the sheet becomes a column whose one shrinkable item is the
+   frame, so past the sheet's cap the frame narrows to keep its ratio and
+   the heading, notes and buttons keep their size and stay on screen. Below
+   the cap nothing changes: the frame is the full width, 3:4. */
+.sheet:has(> .sheet-fit) { display: flex; flex-direction: column; }
+.sheet > .sheet-fit {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+}
+.sheet-fit > * { flex: none; }
+.sheet-fit .sheet-fit-frame {
+  flex: 0 1 auto;
+  min-height: 0;
+  height: calc(100cqw * 4 / 3);
+  max-width: 100%;
+  aspect-ratio: 3 / 4;
+  align-self: center;
 }
 .sheet-handle { width: 40px; height: 4px; border-radius: var(--r-block); background: var(--outline); margin: 0 auto var(--space-4); }
 

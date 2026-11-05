@@ -31,7 +31,7 @@
      columns   the text columns, in the order a hit prefers them when more
               than one matched
      context   one more column the presentation needs and cannot derive: a
-              checklist's owner kind, a felt sense's tryout. Nothing else.
+              checklist's owning procedure, a felt sense's tryout. Nothing else.
      where     a restriction the area itself imposes, with its parameters.
               One area has one: a sealed letter is not searchable.
 
@@ -222,7 +222,9 @@ const AREAS = [
   }),
   /* Every question anybody wrote for an appointment, and every line of a
      procedure's recovery checklist - one table, and the owner is what says
-     which screen the hit belongs to (checklists.ts).
+     which screen the hit belongs to (checklists.ts). `context` is the
+     owner's travelling id: only a procedure owns a checklist, so a hit with
+     one opens that procedure and a hit without one is an appointment question.
 
      `date: null`, for both kinds of item. A procedure's recovery checklist
      was never dated - it has no day of its own (checklists.ts). The standing
@@ -239,7 +241,7 @@ const AREAS = [
     uuid: 'ci.uuid',
     date: null,
     columns: ['ci.content'],
-    context: 'c.owner_kind'
+    context: 'c.owner_uuid'
   }),
   area({
     key: 'sideEffects',
@@ -537,6 +539,8 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   roadmapInstitutions: 'the name of an office on the roadmap list, read there',
   roadmapInstitutionChanges: 'a status and a short line about one office, read on the roadmap',
   hairPhotos: 'no text of its own: a dated photograph',
+  progressPhotos: 'no text of its own: a dated photograph and its pose',
+  progressPoses: 'a pose name, read on the Progress photos screen that files photographs under it',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',
   taper: 'no text of its own: a surgery day, a start day and a stage sequence (ticket 12)',
   doseEvents: 'no text of its own: a drug, a dose and sites picked from closed lists',

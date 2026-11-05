@@ -285,7 +285,7 @@
                   <ListRow
                     key={session.id}
                     data-hair-removal-session={session.id}
-                    icon="shuffle"
+                    icon="razor"
                     title={hairRemovalAreaName(session.area)}
                     subtitle={[dayLabel(session.epochDay), hairRemovalMethodName(session.method), session.minutes === null ? null : m.hair_removal_minutes_short({ n: session.minutes }), severityName(session.painRating), costLine(session.cost)].filter(Boolean).join(' · ')}
                     chevron={false}
@@ -301,7 +301,7 @@
     {#snippet empty()}
       <div out:crossfade|global={{ instant: navigating.to !== null }}>
         <Notice
-          icon="shuffle"
+          icon="razor"
           key="hair-removal-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
           title={m.hair_removal_empty_title()}

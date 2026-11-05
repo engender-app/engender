@@ -53,7 +53,7 @@
   key={letter.id}
   data-list-row="letter-preview"
   data-letter={letter.id}
-  icon="book"
+  icon="envelope"
   title={label}
   subtitle={opening}
   href={`/transition/letters/${letter.id}`}

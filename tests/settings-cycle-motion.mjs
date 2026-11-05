@@ -27,7 +27,7 @@ try {
         await settlePage(page, base, '/settings', theme);
         await page.locator('[data-list-row="features"]').click();
         const button = page.locator('[data-cycle-tracking-toggle] button.switch');
-        const explanation = page.locator('[data-cycle-tracking-toggle] .kit-row-sub');
+        const explanation = page.locator('[data-cycle-tracking-toggle] [data-cycle-explanation]');
         await explanation.waitFor();
         await button.scrollIntoViewIfNeeded();
         await button.focus();
@@ -43,7 +43,7 @@ try {
             const started = performance.now();
             const read = (now) => {
               if (!window.__cycleSampling) return;
-              const sub = document.querySelector('[data-cycle-tracking-toggle] .kit-row-sub');
+              const sub = document.querySelector('[data-cycle-tracking-toggle] [data-cycle-explanation]');
               const close = document.querySelector('[data-features-close]');
               const reminders = document.querySelector('[data-list-row="reminders"]');
               window.__cycleSamples.push({ ms: Math.round(now - started), height: sub?.getBoundingClientRect().height ?? 0,

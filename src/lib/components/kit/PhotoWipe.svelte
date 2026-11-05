@@ -58,9 +58,11 @@
         `right` the later one, always. */
     pair: ComparePair;
     /** A press of one of the four earlier/later controls. The caller owns
-        the pair, because on one screen it comes from a selection grid and
-        on the other from this control alone. */
-    onPair: (next: ComparePair) => void;
+        the pair. Hair progress picks its pair with these controls alone, so
+        it passes this; Progress photos picks both from its own grid, and
+        without it the controls are not drawn (pre-release-human 12: four
+        arrows under a pair the person had just chosen read as clutter). */
+    onPair?: (next: ComparePair) => void;
     /** The date block pinned to that photograph's corner of the frame. */
     date: (photo: TPhoto) => string;
     /** That side's own line under the frame - what the photograph belongs
@@ -212,7 +214,7 @@
 
   function step(side: CompareSide, delta: -1 | 1) {
     const next = stepPair(pair, side, delta, photos.length);
-    if (next) onPair(next);
+    if (next) onPair?.(next);
   }
 
   const percent = $derived(Math.round(fraction * 100));
@@ -231,7 +233,7 @@
     <p role="status" data-wipe-unavailable>{m.photo_unreadable()}</p>
   {/if}
   {#if wipeable && !earlierFailed && !laterFailed}
-    <div class="wipe-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
+    <div class="wipe-frame sheet-fit-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
       <div class="wipe-plate">
         {#each laterStack as url (url)}
           <img
@@ -264,9 +266,16 @@
       <span class="wipe-date is-earlier" data-wipe-date="left">{date(earlier)}</span>
       <span class="wipe-date is-later" data-wipe-date="right">{date(later)}</span>
 
+      <!-- `data-sheet-no-drag`: a gesture that starts on the handle is the
+           divider's alone. Without it the sheet's drag-to-dismiss saw the
+           same pointer bubble up, took its capture away from the handle
+           once the finger had gone 4px down, and carried the whole sheet
+           off with a diagonal drag while the divider stood still
+           (pre-release-human 12). -->
       <div
         class="wipe-handle"
         data-wipe-handle
+        data-sheet-no-drag
         role="slider"
         tabindex="0"
         aria-label={m.photo_wipe_handle()}
@@ -306,6 +315,7 @@
     <p class="wipe-note" data-wipe-crop-note>{m.photo_wipe_crop()}</p>
   {/if}
 
+  {#if onPair}
   <div class="wipe-steps">
     {#each steps as group (group.side)}
       <div class="wipe-step" data-wipe-step={group.side}>
@@ -333,6 +343,7 @@
       </div>
     {/each}
   </div>
+  {/if}
 </div>
 
 <style>
@@ -355,6 +366,16 @@
   .wipe {
     container: wipe / inline-size;
   }
+  /* In a sheet that fits its picture (.sheet-fit, components.css), the
+     frame is the part that gives way, so the wipe passes the shrink on to
+     it rather than holding its full height. */
+  :global(.sheet-fit) > .wipe {
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  :global(.sheet-fit) > .wipe > :not(.wipe-frame) { flex: none; }
 
   /* A block (rule 4): 6px corners and its own --outline edge, so the frame
      is visible on both themes before any photograph has decoded. No

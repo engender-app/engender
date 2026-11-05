@@ -36,6 +36,7 @@ import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
+import { makeProgressPhotosArea, type ProgressPhotosArea } from './progressPhotos';
 import { makeErasArea, type ErasArea } from './eras';
 import { makeEraMutesArea, type EraMutesArea } from './eraMutes';
 import { makeLabsArea, type LabsArea } from './labs';
@@ -271,6 +272,10 @@ export interface Journal {
       body-region vocabulary (bodyRegions.ts). No episode reference, the
       same reason sideEffects has none. */
   hairRemoval: HairRemovalArea;
+  /** Photographs taken on purpose in one of three poses, to compare the
+      same pose over time (pre-release-human 12, bug 25). Dated in their own
+      right, the shape hairProgress's photos have. */
+  progressPhotos: ProgressPhotosArea;
   /** The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort
       list"): who to text, which walk, which playlist, entirely their own
       words. Reachable only from inside Safe space; nothing seeds it and
@@ -391,6 +396,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const wearSessions = makeWearSessionsArea(driver, reminders);
   const hairProgress = makeHairProgressArea(driver, files);
   const hairRemoval = makeHairRemovalArea(driver, files);
+  const progressPhotos = makeProgressPhotosArea(driver, files);
   const tryouts = makeTryoutsArea(driver, files);
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
   const marginNotes = makeMarginNotesArea(driver);
@@ -495,6 +501,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       feltSense,
       hairProgress,
       hairRemoval,
+      progressPhotos,
       appointments,
       procedures,
       tryouts,
@@ -516,6 +523,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     effectCategories,
     hairProgress,
     hairRemoval,
+    progressPhotos,
     procedures,
     appointments,
     comfortItems: deferredArea<ComfortItemsArea>(async () =>

@@ -19,12 +19,14 @@ const SOURCE_LABEL: Record<PhotoSource, () => string> = {
   hairRemoval: m.ph_source_hair_removal,
   tryout: m.ph_source_tryout,
   procedure: m.ph_source_procedure,
-  video: m.ph_source_video
+  video: m.ph_source_video,
+  progress: m.ph_source_progress
 };
 
 const CHIP_LABEL: Record<PhotoChip, () => string> = {
   everything: m.ph_chip_everything,
   body: m.ph_chip_body,
+  progress: m.ph_chip_progress,
   hair: m.ph_chip_hair,
   tryouts: m.ph_chip_tryouts,
   surgery: m.ph_chip_surgery,

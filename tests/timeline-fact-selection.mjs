@@ -217,7 +217,33 @@ try {
   const jump = page.locator('[data-care-lane-jump="Estradiol"]');
   const jumpBox = await jump.boundingBox();
   assert.ok(jumpBox.height >= FLOOR - SLACK, `the lane name is ${jumpBox.height.toFixed(1)}px tall`);
+  /* And it travels there (prh12 bug 14): the fragment's own jump covered
+     the whole distance in one frame. Every frame's scroll offset from the
+     tap until the region holds still, and no single frame may carry half
+     the trip. With motion allowed for this one check: under reduced motion
+     the trip is meant to be instant. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await jump.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await page.evaluate(() => {
+    const region = document.querySelector('[data-app-scroll-region]');
+    const samples = (window.__laneTrip = [region.scrollTop]);
+    const tick = () => {
+      samples.push(region.scrollTop);
+      const still = samples.length > 20 && samples.slice(-10).every((top) => top === samples.at(-1));
+      if (!still && samples.length < 300) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
   await jump.click();
+  const trip = await page.waitForFunction(() => {
+    const samples = window.__laneTrip;
+    return samples.length > 20 && samples.slice(-10).every((top) => top === samples.at(-1)) && samples;
+  }).then((handle) => handle.jsonValue());
+  const travel = trip.at(-1) - trip[0];
+  const biggestStep = Math.max(...trip.slice(1).map((top, i) => Math.abs(top - trip[i])));
+  assert.ok(travel > 100, `the lane name moved the screen ${travel}px`);
+  assert.ok(biggestStep < travel / 2, `the trip down to the block took ${biggestStep}px of ${travel}px in one frame`);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   const landed = await page.evaluate(() => {
     const block = document.activeElement?.closest('[data-care-regimen-block]');
     if (!block) return null;

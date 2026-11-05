@@ -276,7 +276,7 @@
     {/snippet}
   </ScreenHeader>
   <a class="btn btn-ghost press" data-manage-eras href="/settings/eras">
-    <Icon name="columns" size={20} />
+    <Icon name="era" size={20} />
     <span>{m.eras_manage()}</span>
   </a>
   <SourceRecordHandoff id={sourceId} ready={bootState.status === 'ready'} found={!!sourceMilestone} onOpen={() => openEditor(sourceMilestone!, null)} />
@@ -325,7 +325,7 @@
                 <ListRow
                   key={mi.id}
                   data-milestone={mi.id}
-                  icon="flag"
+                  icon="summit"
                   title={mi.name}
                   subtitle={[
                     `${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`,
@@ -338,7 +338,7 @@
                 >
                   {#snippet leading()}
                     <!-- A milestone that has a photograph of itself shows it. The
-                         disc with a flag in it is what a milestone without one
+                         disc with the summit in it is what a milestone without one
                          gets, rather than the picture being a fourth thing on the
                          row beside the glyph standing in for it.
 
@@ -349,7 +349,7 @@
                     {#if mi.photo}
                       <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
                     {:else}
-                      <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
+                      <span class="kit-row-ico"><Icon name="summit" size={22} /></span>
                     {/if}
                   {/snippet}
                 </ListRow>
@@ -362,7 +362,7 @@
     {:else}
       <div in:crossfade>
         <Notice
-          icon="flag"
+          icon="summit"
           key="milestones-empty"
           role={roleAt(activeFlag.roles, 0)}
           title={m.ms_none()}
@@ -385,7 +385,7 @@
       />
       {#each templates as tp (tp.key)}
         <div class="rows-divide">
-          <ListRow key={tp.key} data-template={tp.key} icon="flag" title={tp.name} onclick={() => openEditor(null, tp)} />
+          <ListRow key={tp.key} data-template={tp.key} icon="summit" title={tp.name} onclick={() => openEditor(null, tp)} />
         </div>
       {/each}
     </ListCard>
@@ -412,7 +412,7 @@
     {#snippet fields(editor)}
       {#if editingOrigin}
         <Notice
-          icon="sparkle"
+          icon="summit"
           key="milestone-provenance"
           text={editingOrigin.text}
           action={editingOrigin.href ? { label: m.prov_open_source(), href: milestoneOriginHref(editingOrigin.href, editor.id!) } : undefined}

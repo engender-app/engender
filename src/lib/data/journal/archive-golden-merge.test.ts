@@ -57,6 +57,8 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   personalEffects: (r) => r.id,
   hairStages: (r) => r.id,
   hairPhotos: (r) => r.id,
+  progressPhotos: (r) => r.id,
+  progressPoses: (r) => r.id,
   hairRemovalSessions: (r) => r.id,
   procedures: (r) => r.id,
   providers: (r) => r.id,

@@ -1,8 +1,4 @@
 <script lang="ts">
-  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
-  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
-  import { journalTextAutocomplete } from '$lib/platform';
-  import { untrack } from 'svelte';
   import type { TransitionConfig } from 'svelte/transition';
   /* The visit (phase 8 features ticket 57, phase 11 all-four-doors ticket 12,
      ADR-0066): one screen for the next appointment, what you want to raise at
@@ -51,12 +47,11 @@
      opens pre-filled with both (`debriefNote.ts`, EntryEditor), which is
      where that reading does work rather than sitting as reference.
 
-     The kind is a free text field with no list of its own. What sits under
-     it is the kinds this journal has already used, as chips, because a
-     suggestion the person wrote themselves is the only kind the app is
-     entitled to make: a built-in endocrinologist/psychologist/surgeon list
-     would be a picture of a medical path. On an empty journal there are no
-     chips and the field is simply blank.
+     ONE SCREEN PER APPOINTMENT (prh12). Each visit and each wait opens its
+     own screen, `[id]/+page.svelte`, where everything about it is laid out
+     and edited in place; it used to open an editor sheet over this list.
+     The header's add still opens a sheet here, and the new appointment
+     arrives in its list. The fields both ask are `AppointmentFields`.
 
      WAITING LISTS (functional-audit ticket 26). An appointment with no day is
      a wait: a referral to a clinic, an NFZ queue, a surgery list. The editor
@@ -80,23 +75,19 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery, type LiveList } from '$lib/data/live/journal.svelte';
   import type {
-    Appointment, AppointmentStatusUpdate, ChecklistItem, Provider, ProviderCompetence, WaitingAppointment
+    Appointment, AppointmentStatusUpdate, Provider, ProviderCompetence, WaitingAppointment
   } from '$lib/data/types';
-  import { fmtDay, fmtDuration, fmtTime, intlLocale } from '$lib/data/dates';
+  import { fmtDay, fmtDuration, fmtTime } from '$lib/data/dates';
   import { epochDayFromDateInputValue, dateInputValueFromEpochDay, timestampAtLocalTime } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import {
-    mostRecentPastAppointment, PROVIDER_COMPETENCES, soonestFutureAppointment, waitingSince
-  } from '$lib/data/journal/appointments';
+  import { mostRecentPastAppointment, soonestFutureAppointment, waitingSince } from '$lib/data/journal/appointments';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { gapTo } from '$lib/data/vocabulary/hubLabels';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import TimePicker from '$lib/components/TimePicker.svelte';
+  import AppointmentFields from '$lib/components/AppointmentFields.svelte';
+  import AppointmentPrep from '$lib/components/AppointmentPrep.svelte';
+  import ProviderSheet from '$lib/components/ProviderSheet.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
-  import Field from '$lib/components/kit/Field.svelte';
-  import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -104,18 +95,13 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
-  import CostField from '$lib/components/CostField.svelte';
-  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { blankCostDraft, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
   import { deviceDefaultCurrency } from '$lib/data/cost';
   import { costLine } from '$lib/data/vocabulary/costLabel';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
   import { collapse, crossfade, resize } from '$lib/motion/reveal';
-  import { fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
-  import { flip } from 'svelte/animate';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { rowWriter, writer } from '$lib/stores/attempt.svelte';
 
   const today = $derived(currentDay());
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -133,8 +119,7 @@
   let waitingQuery = liveList((j) => j.appointments.getWaiting());
   let waiting = $derived(waitingQuery.rows);
   let statusQuery = liveList((j) => j.appointments.getStatusUpdates());
-  /* Each appointment's updates, newest first: the row states the latest,
-     the editor lists them all in the order somebody reads a log. */
+  /* Each appointment's updates, newest first: the row states the latest. */
   let statusesOf = $derived.by(() => {
     const byAppointment = new Map<string, AppointmentStatusUpdate[]>();
     for (const update of statusQuery.rows) {
@@ -150,8 +135,6 @@
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedureNames = $derived(new Map(proceduresQuery.rows.map((p) => [p.id, p.name])));
 
-  let kindsQuery = liveList((j) => j.appointments.getKinds());
-
   /* The people this person sees (ticket 27), by name, and each one's name
      by id so a row can say who without a second read. */
   let providersQuery = liveList((j) => j.appointments.getProviders());
@@ -159,11 +142,6 @@
   const whoOf = (appointment: Appointment | WaitingAppointment) =>
     appointment.providerId ? providerNames.get(appointment.providerId) : undefined;
 
-  const competenceLabel: Record<ProviderCompetence, () => string> = {
-    good: m.provider_competence_good,
-    mixed: m.provider_competence_mixed,
-    poor: m.provider_competence_poor
-  };
   const competenceLine: Record<ProviderCompetence, () => string> = {
     good: m.provider_competence_good_line,
     mixed: m.provider_competence_mixed_line,
@@ -196,7 +174,6 @@
   let showDebriefOffer = $derived(!!debriefStateQuery.value && debriefOfferVisible(debriefStateQuery.value));
 
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
-  let items = $derived(checklistQuery.rows);
 
   /* The visit summary above and the prep checklist below each gate on their
      own read (ReadGate), and the two don't always land in the same tick: on
@@ -239,6 +216,8 @@
   }
   const gatedAppointmentsQuery = gateTogether(appointmentsQuery, () => waitingQuery.empty);
   const gatedChecklistQuery = gateTogether(checklistQuery);
+
+  const screenOf = (appointment: Appointment | WaitingAppointment) => `/health/appointments/${appointment.id}`;
 
   const titleOf = (appointment: Appointment | WaitingAppointment) =>
     appointment.kind ??
@@ -337,19 +316,19 @@
     kind: string;
     place: string;
     note: string;
-    procedureId: string | null;
     /** `HH:MM` or empty (ticket 27). */
     time: string;
     providerId: string | null;
     cost: CostDraft;
   };
 
-  /* A new wait opens with no day and today as the referred-on day; the
-     header's add keeps today as the day, which is what ui-copy.md asks of
-     an appointment. `waitingDraft` is read by `blank` at the moment the
-     sheet opens, and names the sheet: the title is fixed by how the sheet
-     opened rather than by the day field, so clearing or setting the day
-     mid-edit never swaps the heading's text in one frame. */
+  /* A new appointment only: editing one happens on its own screen. A new
+     wait opens with no day and today as the referred-on day; the header's
+     add keeps today as the day, which is what ui-copy.md asks of an
+     appointment. `waitingDraft` is read by `blank` at the moment the sheet
+     opens, and names the sheet: the title is fixed by how the sheet opened
+     rather than by the day field, so clearing or setting the day mid-edit
+     never swaps the heading's text in one frame. */
   let waitingDraft = false;
 
   const record = recordEditor<Appointment | WaitingAppointment, Draft>({
@@ -359,32 +338,15 @@
       kind: '',
       place: '',
       note: '',
-      procedureId: null,
       time: '',
       providerId: null,
       cost: blankCostDraft(deviceDefaultCurrency())
     }),
-    fromRecord: (appointment) => ({
-      id: appointment.id,
-      date: appointment.epochDay === null ? '' : dateInputValueFromEpochDay(appointment.epochDay),
-      referred: appointment.referredEpochDay === null ? '' : dateInputValueFromEpochDay(appointment.referredEpochDay),
-      kind: appointment.kind ?? '',
-      place: appointment.place ?? '',
-      note: appointment.note ?? '',
-      // Carried through the editor untouched: this screen never sets a
-      // procedure link and never drops one either, so editing a consult
-      // here leaves it on its journey.
-      procedureId: appointment.procedureId,
-      time: appointment.time ?? '',
-      providerId: appointment.providerId,
-      cost: costDraftFrom(appointment.cost, deviceDefaultCurrency(), intlLocale())
-    }),
     async upsert(draft) {
       await journal.appointments.upsertAppointment({
-        id: draft.id,
         epochDay: epochDayFromDateInputValue(draft.date),
         referredEpochDay: epochDayFromDateInputValue(draft.referred),
-        procedureId: draft.procedureId,
+        procedureId: null,
         kind: draft.kind,
         place: draft.place,
         note: draft.note,
@@ -395,7 +357,6 @@
         cost: costFromDraft(draft.cost)
       });
     },
-    remove: (id) => undoable((j) => j.appointments.deleteAppointment(id)),
     findById: (id) =>
       appointments.find((appointment) => appointment.id === id) ?? waiting.find((appointment) => appointment.id === id)
   });
@@ -405,139 +366,14 @@
     record.openEditor(null);
   }
 
-  /* A wait's updates are their own records, written as they are added
-     rather than held in the draft: an update is a fact on the day it is
-     typed, not part of an edit somebody might still discard. They are
-     offered once the appointment exists. */
-  let newUpdateText = $state('');
-  let newUpdateDate = $state('');
-  const updateWrite = writer();
-  async function addUpdate(appointmentId: string) {
-    const status = newUpdateText.trim();
-    if (!status) return;
-    const epochDay = epochDayFromDateInputValue(newUpdateDate) ?? today;
-    if (!(await updateWrite.run(() => journal.appointments.addStatusUpdate({ appointmentId, epochDay, status }), m.write_failed())))
-      return;
-    newUpdateText = '';
-  }
-  const updateDelete = rowWriter();
-  /* One tap, no confirmation: the toast's Undo is the way back (functional
-     audit ticket 46). */
-  async function deleteUpdate(update: AppointmentStatusUpdate) {
-    let deletion: UndoableDelete | undefined;
-    const write = async () => {
-      deletion = await undoable((j) => j.appointments.deleteStatusUpdate(update.id));
-    };
-    if (!(await updateDelete(update.id, write, m.write_failed()))) return;
-    offerUndo(deletion!, m.record_deleted());
-  }
-  // A freshly opened editor starts its update field empty, dated today.
-  let editingId = $derived(record.editor ? (record.editor.id ?? '') : null);
-  $effect.pre(() => {
-    if (editingId === null) return;
-    newUpdateText = '';
-    newUpdateDate = dateInputValueFromEpochDay(untrack(() => today));
-  });
-
-  /* The prep item's own editor, for the one thing a prep row asks
-     confirmation for. Separate from the appointment's above because they
-     delete different records and carry different confirmations. */
-  const prepRecord = recordEditor<ChecklistItem>({
-    remove: (id) => undoable((j) => j.checklists.deleteItem(id)),
-    findById: (id) => items.find((item) => item.id === id)
-  });
-
-  let addSheet = $state(false);
-  let newItemText = $state('');
-
-  // Calendar handoff snapshots the committed day and time. Unsaved edits stay in the editor.
-  let calendarVisit = $state<Appointment | null>(null);
-
-  /* The provider's own editor (ticket 27). Opened from the list at the
-     foot of the screen, or from "Someone new" in the appointment editor -
-     which is the one case that also attaches what was just made to the
-     appointment still open underneath, so making somebody and picking them
-     is one step rather than two. */
-  type ProviderDraft = {
-    id?: string;
-    name: string;
-    contact: string;
-    competence: ProviderCompetence | null;
-    impressions: string;
-  };
-  let attachNewProvider = false;
-  const providerRecord = recordEditor<Provider, ProviderDraft>({
-    blank: () => ({ name: '', contact: '', competence: null, impressions: '' }),
-    fromRecord: (provider) => ({
-      id: provider.id,
-      name: provider.name,
-      contact: provider.contact ?? '',
-      competence: provider.competence,
-      impressions: provider.impressions ?? ''
-    }),
-    async upsert(draft) {
-      const id = await journal.appointments.upsertProvider({
-        id: draft.id,
-        name: draft.name,
-        contact: draft.contact,
-        competence: draft.competence,
-        impressions: draft.impressions
-      });
-      if (attachNewProvider && !draft.id && record.editor) record.editor.providerId = id;
-    },
-    remove: (id) => undoable((j) => j.appointments.deleteProvider(id)),
-    findById: (id) => providersQuery.rows.find((provider) => provider.id === id)
-  });
-
-  function openProvider(provider: Provider | null, attach = false) {
-    attachNewProvider = attach;
-    providerRecord.openEditor(provider);
-  }
-
-  /* The Who chips with "Someone new" as the last of them, one keyed list,
-     so a provider made from the editor fades in where it lands while the
-     chips after it - "Someone new" itself at least - travel aside rather
-     than jumping a chip's width (search's filter chips, functional audit
-     10, are the same row). */
-  let whoChips = $derived([
-    ...providersQuery.rows.map((provider) => ({ key: provider.id, provider })),
-    { key: 'new', provider: null }
-  ]);
-  const chipTravel = (_distance?: number) => (isReducedMotion() ? 0 : motionDuration('--dur-fast'));
-  const chipIn = (_node: Element) => (isReducedMotion() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast')));
+  /* The provider's own sheet (ticket 27), opened from the list at the foot
+     of the screen, or from "Someone new" in the new appointment's fields,
+     which picks what is saved there. */
+  let providerSheet = $state<ProviderSheet>();
 
   const providerSubtitle = (provider: Provider) =>
     [provider.competence ? competenceLine[provider.competence]() : undefined, provider.contact ?? undefined]
       .filter((part): part is string => part !== undefined);
-
-  function openAddSheet() {
-    newItemText = '';
-    addSheet = true;
-  }
-
-  /* One item per tap, and the sheet stays up with its text and a toast
-     when the add fails (UI 17). Two adds of the same words a moment apart
-     are still two questions; only the second tap of a double one is not. */
-  const itemWrite = writer();
-  async function addItem() {
-    const content = newItemText.trim();
-    if (!content) return;
-    if (!(await itemWrite.run(() => journal.checklists.addToStandaloneChecklist(content), m.write_failed()))) return;
-    addSheet = false;
-  }
-
-  /* A row's tick and flag each take one write at a time, read off the row
-     as it stands, so a double tap flips once rather than writing the same
-     value twice; a failure says so instead of failing silently (UI 17). */
-  const checkWrite = rowWriter();
-  const flagWrite = rowWriter();
-  function toggleChecked(item: ChecklistItem) {
-    checkWrite(item.id, () => journal.checklists.setItemChecked(item.id, !item.checked), m.write_failed());
-  }
-
-  function toggleCarriedForward(item: ChecklistItem) {
-    flagWrite(item.id, () => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward), m.write_failed());
-  }
 
   /* Latched: a reserve must not put its placeholder back (ticket 211). */
   let visitsRevealed = $state(false);
@@ -558,11 +394,10 @@
   <ListRow
     key={appointment.id}
     data-appointment={appointment.id}
-    icon="calendar"
+    icon="appointment"
     title={titleOf(appointment)}
     subtitle={subtitleOf(appointment)}
-    chevron={false}
-    onclick={() => record.openEditor(appointment)}
+    href={screenOf(appointment)}
   />
 {/snippet}
 
@@ -582,8 +417,8 @@
 
   <!-- The opening (DIRECTION.md rule 16): what is true now, before any log.
        A block rather than a row, because the gap is the reading and a row
-       would put it in a subtitle beside the address. It opens the editor, so
-       the one record on the screen is still the one you change. -->
+       would put it in a subtitle beside the address. It opens the visit's
+       own screen, like every row under it. -->
   <ReadGate read={gatedAppointmentsQuery} variant="block" count={1}>
     {#snippet rows()}
       {#if nextVisit}
@@ -593,11 +428,11 @@
              it being teleported down the screen when the block replaces
              the "Nothing booked" line (which collapses on its own, inside
              `Notice`). -->
-        <button
+        <a
           class="visit-lead"
           data-visit-lead
           data-appointment={nextVisit.id}
-          onclick={() => record.openEditor(nextVisit!)}
+          href={screenOf(nextVisit)}
           transition:collapse
           {...roleAttrs(roleAt(activeFlag.roles, 0))}
         >
@@ -616,55 +451,22 @@
             <span class="visit-lead-when">{#key leadDay(nextVisit)}<span transition:leadLine>{leadDay(nextVisit)}</span>{/key}</span>
             <span class="visit-lead-where" class:none={!leadWhere(nextVisit)}>{#key leadWhere(nextVisit)}<span transition:leadLine>{leadWhere(nextVisit)}</span>{/key}</span>
           </span>
-        </button>
+        </a>
       {:else}
         <!-- Nothing booked is an ordinary state, not an empty journal: the
              prep list under this is standing and is still worth reading,
              and the add control is in the header where it always is. -->
         <Notice
-          icon="calendar"
+          icon="appointment"
           key="appointments-nothing-booked"
           role={roleAt(activeFlag.roles, 0)}
           title={m.appointments_nothing_booked()}
         />
       {/if}
-      <!-- The waits, inside the opening's gate so they land in the same
-           resize as the block above rather than a frame after it. The
-           section opens and closes its own height when the first wait is
-           added or the last one is given a day, and each row does the same
-           inside it, so nothing under it is teleported. -->
-      {#if waiting.length}
-        <div data-waiting transition:collapse>
-          <SectionHeading text={m.appointments_waiting_heading()}>
-            {#snippet action()}
-              <button class="icon-btn" data-add-waiting aria-label={m.appointments_waiting_add_aria()} onclick={() => openNew(true)}>
-                <Icon name="plus" size={22} />
-              </button>
-            {/snippet}
-          </SectionHeading>
-          <div class="screen-part">
-            <ListCard role={roleAt(activeFlag.roles, 0)}>
-              {#each waiting as appointment (appointment.id)}
-                <div transition:collapse>
-                  <ListRow
-                    key={appointment.id}
-                    data-waiting-appointment={appointment.id}
-                    icon="clock"
-                    title={titleOf(appointment)}
-                    subtitle={waitingSubtitle(appointment)}
-                    chevron={false}
-                    onclick={() => record.openEditor(appointment)}
-                  />
-                </div>
-              {/each}
-            </ListCard>
-          </div>
-        </div>
-      {/if}
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="calendar"
+        icon="appointment"
         key="appointments-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.appointments_empty_title()}
@@ -675,88 +477,40 @@
   </ReadGate>
 
   <!-- What to raise: the standing list, on the visit it is being kept for. -->
-  <SectionHeading text={m.appointments_prep_heading()}>
-    {#snippet action()}
-      <button class="icon-btn" data-add-prep aria-label={m.appointment_prep_add_aria()} onclick={openAddSheet}>
-        <Icon name="plus" size={22} />
-      </button>
-    {/snippet}
-  </SectionHeading>
+  <AppointmentPrep read={gatedChecklistQuery} />
 
-  <ReadGate read={gatedChecklistQuery} variant="line" count={3}>
-    {#snippet rows()}
-      <ListCard role={roleAt(activeFlag.roles, 1)}>
-        <!-- Hand-rolled rather than ListRow (ticket 16): two trailing
-             actions (carry-forward flag, delete) where `action` takes
-             one, and a checkbox main that's role="checkbox" with its own
-             .ap-box rather than ListRow's checked semantics.
-
-             Each row opens and closes its own height (ADR-0078), so an
-             item added from the sheet arrives by moving rather than
-             appearing where it lands. -->
-        {#each items as item (item.id)}
-          <div class="kit-row is-split" data-appointment-item={item.id} transition:collapse>
-            <button
-              class="kit-row-main"
-              role="checkbox"
-              aria-checked={item.checked}
-              aria-label={item.checked ? m.appointment_prep_uncheck_aria({ content: item.content }) : m.appointment_prep_check_aria({ content: item.content })}
-              onclick={() => toggleChecked(item)}
-            >
-              <!-- The tick is always in the markup and crosses in and out
-                   on opacity and a scale rather than being added and
-                   removed: a glyph that appears in one frame is a yank in
-                   both directions, and the row's state is on the row's own
-                   `aria-checked` rather than on whether this element
-                   exists. Under reduced motion `--dur-fast` clamps to 1ms
-                   and the tick simply cuts, which keeps the feedback. -->
-              <span class="ap-box" class:ap-ticked={item.checked}>
-                <span class="ap-tick" aria-hidden="true"><Icon name="check" size={20} /></span>
-              </span>
-              <span class="kit-row-text">
-                <span class="kit-row-title" class:ap-done={item.checked}>{item.content}</span>
-              </span>
-            </button>
-            <button
-              class="kit-row-act"
-              class:ap-flagged={item.carriedForward}
-              data-carry-forward={item.id}
-              aria-pressed={item.carriedForward}
-              aria-label={item.carriedForward ? m.appointment_prep_uncarry_aria({ content: item.content }) : m.appointment_prep_carry_aria({ content: item.content })}
-              onclick={() => toggleCarriedForward(item)}
-            >
-              <Icon name="flag" size={18} />
-            </button>
-            <button
-              class="kit-row-act"
-              data-delete-appointment-item={item.id}
-              aria-label={m.appointment_prep_delete_aria({ content: item.content })}
-              onclick={() => prepRecord.askToDelete(item)}
-            >
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
-        {/each}
-      </ListCard>
-      <!-- What the flag beside each row does. It was a bare icon with an
-           aria-label, so the only people the app told were the ones using a
-           screen reader (Alicja, 2026-08-26: "what does the flag do in
-           appointment check list?"). Under the list rather than in the
-           screen's own intro, because it is about a control that is only on
-           screen once there is something to flag. -->
-      <p class="muted small">{m.appointment_prep_flag_hint()}</p>
-    {/snippet}
-    {#snippet empty()}
-      <Notice
-        icon="check"
-        key="appointment-prep-empty"
-        role={roleAt(activeFlag.roles, 1)}
-        title={m.appointment_prep_empty_title()}
-        text={m.appointment_prep_empty_body()}
-        action={{ label: m.appointment_prep_empty_action(), primary: true, onclick: openAddSheet }}
-      />
-    {/snippet}
-  </ReadGate>
+  <!-- The waits, under the prep list: what to raise belongs directly under
+       the visit it is for. Outside the opening's gate, so the section opens
+       and closes its own height when the first wait is added or the last one
+       is given a day, and each row does the same inside it, so nothing under
+       it is teleported. -->
+  {#if waiting.length}
+    <div data-waiting transition:collapse>
+      <SectionHeading text={m.appointments_waiting_heading()}>
+        {#snippet action()}
+          <button class="icon-btn" data-add-waiting aria-label={m.appointments_waiting_add_aria()} onclick={() => openNew(true)}>
+            <Icon name="plus" size={22} />
+          </button>
+        {/snippet}
+      </SectionHeading>
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          {#each waiting as appointment (appointment.id)}
+            <div transition:collapse>
+              <ListRow
+                key={appointment.id}
+                data-waiting-appointment={appointment.id}
+                icon="clock"
+                title={titleOf(appointment)}
+                subtitle={waitingSubtitle(appointment)}
+                href={screenOf(appointment)}
+              />
+            </div>
+          {/each}
+        </ListCard>
+      </div>
+    </div>
+  {/if}
 
   <!-- The two verbs. Both are things done at the visit rather than records of
        it, which is why they are a section and not two more rows on a list. -->
@@ -868,7 +622,7 @@
        row opens its notes; a row arrives and leaves by its own height. -->
   <SectionHeading text={m.provider_heading()}>
     {#snippet action()}
-      <button class="icon-btn" data-add-provider aria-label={m.provider_add_aria()} onclick={() => openProvider(null)}>
+      <button class="icon-btn" data-add-provider aria-label={m.provider_add_aria()} onclick={() => providerSheet?.open(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -891,11 +645,11 @@
               <ListRow
                 key={provider.id}
                 data-provider={provider.id}
-                icon="note"
+                icon="person"
                 title={provider.name}
                 subtitle={providerSubtitle(provider)}
                 chevron={false}
-                onclick={() => openProvider(provider)}
+                onclick={() => providerSheet?.open(provider)}
               />
             </div>
           {/each}
@@ -905,7 +659,7 @@
       <Notice key="providers-failed" title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => providersQuery.retry() }} />
     {:else if !providersQuery.loading}
       <Notice
-        icon="note"
+        icon="person"
         key="providers-empty"
         role={roleAt(activeFlag.roles, 2)}
         title={m.provider_empty_title()}
@@ -914,329 +668,30 @@
     {/if}
   </div>
 
-  <Sheet busy={itemWrite.busy} open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
-    <h3>{m.appointment_prep_new_sheet()}</h3>
-    <Field label={m.appointment_prep_new_sheet()} id="appointment-prep-input" hidden>
-      {#snippet children(id)}
-        <input autocomplete={journalTextAutocomplete()}
-          class="input"
-          {id}
-          name="appointment-prep-input"
-          placeholder={m.appointment_prep_placeholder()}
-          bind:value={newItemText}
-        />
-      {/snippet}
-    </Field>
-    <button class="btn btn-primary" data-save-appointment-item disabled={itemWrite.busy} onclick={addItem}><span>{m.appointment_prep_add()}</span></button>
-  </Sheet>
-
-  <RecordSheet
-    record={prepRecord}
-    handle="appointment-item"
-    confirm={{
-      title: m.appointment_prep_delete_sheet(),
-      question: () => m.appointment_prep_delete_q(),
-      hint: (item) => item.content,
-      confirmLabel: m.appointment_prep_delete(),
-      cancelLabel: m.keep_it()
-    }}
-  />
-
   <RecordSheet
     {record}
     handle="appointment"
     canSave={(draft) => costDraftOk(draft.cost)}
     newTitle={() => (waitingDraft ? m.appointments_waiting_new_sheet() : m.appointments_new_sheet())}
-    editTitle={(draft) =>
-      waiting.some((a) => a.id === draft.id) ? m.appointments_waiting_edit_sheet() : m.appointments_edit_sheet()}
     saveLabel={m.appointments_save()}
-    deleteLabel={m.appointments_delete()}
-    confirm={{
-      title: m.appointments_delete_sheet(),
-      question: () => m.appointments_delete_q(),
-      hint: (appointment) => (appointment.epochDay === null ? titleOf(appointment) : dayLabel(appointment.epochDay)),
-      confirmLabel: m.appointments_delete(),
-      cancelLabel: m.keep_it()
-    }}
   >
     {#snippet fields(editor)}
-      <Field label={m.appointments_kind_label()} id="appointment-kind">
-        {#snippet children(id)}
-          <input autocomplete={journalTextAutocomplete()}
-            class="input"
-            {id}
-            name="appointment-kind"
-            placeholder={m.appointments_kind_placeholder()}
-            bind:value={editor.kind}
-          />
-        {/snippet}
-      </Field>
-      {#if kindsQuery.rows.length}
-        <!-- The person's own previous kinds, and nothing else ever
-             (ADR-0066). A chip fills the field rather than toggling a
-             value, so what is stored is still whatever is in the input.
-
-             Pulled up under the field it belongs to rather than sitting at
-             the sheet's own field rhythm, which read as a third control
-             between Kind and Place. Suggestions appear only after the
-             person has named a kind; nothing ships. -->
-        <div class="ap-kinds">
-          <div class="tag-row" role="group" aria-label={m.appointments_kind_label()}>
-            {#each kindsQuery.rows as kind (kind)}
-              <button
-                class="tag-chip"
-                class:is-selected={editor.kind === kind}
-                aria-pressed={editor.kind === kind}
-                data-kind={kind}
-                onclick={() => (editor.kind = kind)}
-              >
-                {kind}
-              </button>
-            {/each}
-          </div>
-        </div>
-      {/if}
-      <!-- Who it is with (ticket 27): the person's own providers as chips,
-           one picked at a time and a second tap on it unpicking, the way the
-           kind chips above fill rather than lock. "Someone new" opens the
-           provider's own sheet over this one and attaches what is saved
-           there. -->
-      <Field label={m.appointments_who_label()} legend id="appointment-who">
-        {#snippet children(id)}
-          <div class="tag-row ap-who" role="group" aria-labelledby={id} use:resize>
-            {#each whoChips as chip (chip.key)}
-              <button
-                class="tag-chip"
-                class:is-selected={!!chip.provider && editor.providerId === chip.provider.id}
-                aria-pressed={chip.provider ? editor.providerId === chip.provider.id : undefined}
-                data-who={chip.provider?.id}
-                data-who-new={chip.provider ? undefined : ''}
-                onclick={() => {
-                  if (!chip.provider) return openProvider(null, true);
-                  const id = chip.provider.id;
-                  editor.providerId = editor.providerId === id ? null : id;
-                }}
-                animate:flip={{ duration: chipTravel }}
-                in:chipIn
-              >
-                {#if chip.provider}
-                  {chip.provider.name}
-                {:else}
-                  <Icon name="plus" size={16} />
-                  {m.appointments_who_new()}
-                {/if}
-              </button>
-            {/each}
-          </div>
-        {/snippet}
-      </Field>
-      <Field label={m.appointments_place_label()} id="appointment-place">
-        {#snippet children(id)}
-          <input autocomplete={journalTextAutocomplete()}
-            class="input"
-            {id}
-            name="appointment-place"
-            placeholder={m.appointments_place_placeholder()}
-            bind:value={editor.place}
-          />
-        {/snippet}
-      </Field>
-      <Field label={m.appointments_note_label()} id="appointment-note">
-        {#snippet children(id)}
-          <textarea autocomplete={journalTextAutocomplete()}
-            class="input"
-            {id}
-            name="appointment-note"
-            rows="3"
-            placeholder={m.appointments_note_placeholder()}
-            bind:value={editor.note}
-          ></textarea>
-        {/snippet}
-      </Field>
-      <CostField id="appointment-cost" bind:draft={editor.cost} />
-      <!-- Day and its time in one box of their own (flow-root), so the
-           time arriving and a wait's fields leaving below it on the same
-           tick (a day set on a wait) do not read each other's margins
-           mid-travel: measured, the wait block's leave otherwise kept 16px
-           under it and the buttons stepped up 16px the frame it was
-           removed. -->
-      <div class="ap-when">
-        <Field label={m.appointments_day_label()} hint={m.appointments_day_hint()} id="appointment-date">
-          {#snippet children(id, describedBy)}
-            <DatePicker name="appointment-date" bind:value={editor.date} {id} {describedBy} />
-          {/snippet}
-        </Field>
-        <!-- The time only goes with a day (ticket 27): clearing the day makes
-             a wait, and a wait has no time to keep, so the field closes its
-             height rather than standing there unsaved. -->
-        {#if editor.date}
-          <div transition:collapse>
-            <Field label={m.appointments_time_label()} id="appointment-time">
-              {#snippet children(id)}
-                <TimePicker name="appointment-time" bind:value={editor.time} {id} />
-              {/snippet}
-            </Field>
-          </div>
-        {/if}
-      </div>
-      <!-- The wait's own fields, only on a wait: an appointment with no day,
-           or one that began as a wait (it has a referred-on day or updates).
-           An ordinary booking is the four fields above and nothing more, and
-           clearing its day opens these by moving rather than appearing. -->
-      {#if !editor.date || editor.referred || (editor.id && statusesOf.has(editor.id))}
-        <div class="ap-wait" transition:collapse>
-          <Field label={m.appointments_referred_label()} id="appointment-referred">
-            {#snippet children(id)}
-              <DatePicker name="appointment-referred" bind:value={editor.referred} {id} />
-            {/snippet}
-          </Field>
-          {#if editor.id}
-            {@const appointmentId = editor.id}
-            {@const updates = statusesOf.get(appointmentId) ?? []}
-            <FieldGroupHeading legend={m.appointments_updates_heading()} />
-            {#if updates.length}
-              <div transition:collapse>
-                <ListCard>
-                  {#each updates as update (update.id)}
-                    <div transition:collapse>
-                      <ListRow
-                        key={`update-${update.id}`}
-                        data-status-update={update.id}
-                        static
-                        title={update.status}
-                        subtitle={dayLabel(update.epochDay)}
-                        action={{
-                          icon: 'trash',
-                          label: m.appointments_update_delete_aria({ status: update.status }),
-                          onclick: () => deleteUpdate(update),
-                          attrs: { 'data-delete-status-update': update.id }
-                        }}
-                      />
-                    </div>
-                  {/each}
-                </ListCard>
-              </div>
-            {/if}
-            <Field label={m.appointments_update_label()} id="appointment-update">
-              {#snippet children(id)}
-                <input autocomplete={journalTextAutocomplete()}
-                  class="input"
-                  {id}
-                  name="appointment-update"
-                  placeholder={m.appointments_update_placeholder()}
-                  bind:value={newUpdateText}
-                />
-              {/snippet}
-            </Field>
-            <Field label={m.appointments_update_day_label()} id="appointment-update-date">
-              {#snippet children(id)}
-                <DatePicker name="appointment-update-date" bind:value={newUpdateDate} {id} />
-              {/snippet}
-            </Field>
-            <button
-              class="btn btn-soft"
-              data-add-status-update
-              disabled={updateWrite.busy || !newUpdateText.trim()}
-              onclick={() => addUpdate(appointmentId)}
-            >
-              <span>{m.appointments_update_add()}</span>
-            </button>
-          {/if}
-        </div>
-      {/if}
-    {/snippet}
-    {#snippet extraActions(editor)}
-      <!-- Only for an appointment saved with a day: a wait has nothing to
-           put in a calendar yet, and the handoff uses the committed day. -->
-      {#if appointments.some((a) => a.id === editor.id)}
-      <button class="btn btn-soft" data-add-to-calendar onclick={() => (calendarVisit = appointments.find((a) => a.id === editor.id) ?? null)}>
-        <span>{m.calendar_handoff_button()}</span>
-      </button>
-      {/if}
+      <AppointmentFields
+        bind:kind={editor.kind}
+        bind:providerId={editor.providerId}
+        bind:place={editor.place}
+        bind:note={editor.note}
+        bind:cost={editor.cost}
+        bind:date={editor.date}
+        bind:time={editor.time}
+        bind:referred={editor.referred}
+        withNote
+        onNewProvider={() => providerSheet?.open(null, (id) => { if (record.editor) record.editor.providerId = id; })}
+      />
     {/snippet}
   </RecordSheet>
 
-  <CalendarHandoffSheet
-    open={calendarVisit !== null}
-    kind="appointment"
-    epochDay={calendarVisit?.epochDay ?? today}
-    time={calendarVisit?.time ?? null}
-    onClose={() => (calendarVisit = null)}
-  />
-
-  <RecordSheet
-    record={providerRecord}
-    handle="provider"
-    newTitle={m.provider_new_sheet()}
-    editTitle={m.provider_edit_sheet()}
-    saveLabel={m.appointments_save()}
-    deleteLabel={m.appointments_delete()}
-    canSave={(draft) => draft.name.trim().length > 0}
-    confirm={{
-      title: m.provider_delete_sheet(),
-      question: () => m.provider_delete_q(),
-      hint: () => m.provider_delete_hint(),
-      confirmLabel: m.appointments_delete(),
-      cancelLabel: m.keep_it()
-    }}
-  >
-    {#snippet fields(draft)}
-      <p class="muted small">{m.provider_private()}</p>
-      <Field label={m.provider_name_label()} id="provider-name">
-        {#snippet children(id)}
-          <input autocomplete={journalTextAutocomplete()}
-            class="input"
-            {id}
-            name="provider-name"
-            placeholder={m.provider_name_placeholder()}
-            bind:value={draft.name}
-          />
-        {/snippet}
-      </Field>
-      <Field label={m.provider_contact_label()} id="provider-contact">
-        {#snippet children(id)}
-          <input autocomplete={journalTextAutocomplete()}
-            class="input"
-            {id}
-            name="provider-contact"
-            placeholder={m.provider_contact_placeholder()}
-            bind:value={draft.contact}
-          />
-        {/snippet}
-      </Field>
-      <!-- Three answers and none, as toggles: tapping the picked one again
-           takes the answer back, so "not said" needs no fourth chip. -->
-      <Field label={m.provider_competence_label()} legend id="provider-competence">
-        {#snippet children(id)}
-          <div class="tag-row" role="group" aria-labelledby={id}>
-            {#each PROVIDER_COMPETENCES as competence (competence)}
-              <button
-                class="tag-chip"
-                class:is-selected={draft.competence === competence}
-                aria-pressed={draft.competence === competence}
-                data-competence={competence}
-                onclick={() => (draft.competence = draft.competence === competence ? null : competence)}
-              >
-                {competenceLabel[competence]()}
-              </button>
-            {/each}
-          </div>
-        {/snippet}
-      </Field>
-      <Field label={m.provider_impressions_label()} id="provider-impressions">
-        {#snippet children(id)}
-          <textarea autocomplete={journalTextAutocomplete()}
-            class="input"
-            {id}
-            name="provider-impressions"
-            rows="3"
-            placeholder={m.provider_impressions_placeholder()}
-            bind:value={draft.impressions}
-          ></textarea>
-        {/snippet}
-      </Field>
-    {/snippet}
-  </RecordSheet>
+  <ProviderSheet bind:this={providerSheet} providers={providersQuery.rows} />
 </div>
 
 <style>
@@ -1264,7 +719,7 @@
        Nunito's own metrics make it. */
     font-family: inherit;
     text-align: left;
-    cursor: pointer;
+    text-decoration: none;
     /* A block arrives by clipping open from its own left edge (rule 10,
        ADR-0078). `kit-block-in` by name rather than a keyframe of this
        screen's own: it is the kit's movement for a block and this is a
@@ -1319,86 +774,4 @@
     margin-top: calc(var(--space-1) * -1);
   }
 
-  /* Same checkbox-square treatment roadmap's page uses for its ticks, and
-     the same struck-through-when-done rule - a checked item is not hidden or
-     removed, only marked handled. */
-  .ap-box {
-    border: 2px solid var(--outline);
-    border-radius: var(--r-block);
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    /* Tier 1, response: the square is not the control - the row is - so
-       what answers the tap here is the tick landing rather than a press
-       depth. The border and the colour cross on --dur-fast, and the
-       reduced-motion path keeps both because a colour change is the
-       feedback rather than the movement. */
-    transition:
-      border-color var(--dur-fast) var(--ease-out),
-      color var(--dur-fast) var(--ease-out);
-  }
-
-  .ap-ticked {
-    border-color: var(--role-mark);
-    color: var(--role-mark);
-  }
-
-  /* Transform and opacity, the two properties the performance contract
-     admits without a named material. It grows from the box's own centre
-     rather than travelling, because the tick has nowhere to come from - it
-     is the box filling in, not a thing arriving from off screen. */
-  .ap-tick {
-    display: flex;
-    opacity: 0;
-    transform: scale(0.4);
-    transition:
-      opacity var(--dur-fast) var(--ease-out),
-      transform var(--dur-fast) var(--ease-out);
-  }
-
-  .ap-ticked .ap-tick {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  .ap-done {
-    text-decoration: line-through;
-    color: var(--text-2);
-  }
-
-  .ap-flagged {
-    color: var(--role-mark);
-  }
-
-  /* The chips answer the field above them, so they sit against it rather
-     than at the gap between two fields. `--space-2` up, the sheet's own
-     field gap below - the same "tight group, generous separation" the kit
-     keeps everywhere else. */
-  .ap-kinds {
-    margin-top: calc(var(--space-2) * -1);
-  }
-
-  /* The "Someone new" chip carries its plus inline with its words. */
-  .ap-who [data-who-new] {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  /* The wait's fields keep the sheet's own field rhythm (RecordSheet's
-     fieldset spaces its direct children), one wrapper deeper. */
-  .ap-when {
-    display: flow-root;
-  }
-
-  .ap-when > :global(* + *) {
-    margin-top: var(--space-4);
-  }
-
-  .ap-wait > :global(* + *) {
-    margin-top: var(--space-4);
-  }
 </style>

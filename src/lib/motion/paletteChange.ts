@@ -1,6 +1,11 @@
 import { tick } from 'svelte';
+import { EASE_OUT_SOFT_CSS, isReducedMotion, motionDuration } from './tokens';
+import { holdTaps, type TapHold } from './tapReplay';
 
 let latestChange = 0;
+/* One hold across choices that land on each other: a tap made during the
+   first bloom is replayed when the last one ends, not into the next. */
+let taps: TapHold | null = null;
 type Appearance = 'palette' | 'theme';
 const pending: Partial<Record<Appearance, () => void>> = {};
 
@@ -8,7 +13,118 @@ export function isAppearancePending(kind: Appearance): boolean {
   return pending[kind] !== undefined;
 }
 
-/** Capture both appearances so the new colours can sweep over the old. */
+/* The new colours bloom out of the sun (prh12 bug 9; Alicja chose the
+   direction): a circle centred on the sun's own centre, the corner point of
+   the field, grows until it covers the farthest corner of the window, and
+   the sun's rings in the new colours ride its edge, outermost stripe
+   leading, so the change visibly comes from the mark. It replaced a
+   diagonal wipe from the left edge, which had nothing to do with the sun.
+
+   The rings are a real element added to the new side, a disc whose band of
+   stripes lies outside `reach`, scaled up from the centre in step with the
+   circle that clips the new snapshot: at every frame the clip's radius is
+   the disc's outer edge, so the band is the rim of the new colours. Both
+   start in the same task once the transition is ready, on the same curve,
+   and both are transform and clip-path only. At full size the band is past
+   the farthest corner, so nothing is left on screen when it is removed. */
+
+/** How wide the ring band is, as a share of the reach. */
+const BAND = 0.25;
+/** The black seam at each ring's outer edge, at full size (rule 8 draws it
+    3px on the sun; the band crosses the middle of the screen at about half
+    size, where this reads as the same 3px). */
+const SEAM = 6;
+
+export function bloomGeometry(centre: { x: number; y: number }, width: number, height: number) {
+  const reach = Math.max(
+    ...[[0, 0], [width, 0], [0, height], [width, height]].map(([x, y]) => Math.hypot(x - centre.x, y - centre.y))
+  );
+  return { x: centre.x, y: centre.y, reach, outer: reach * (1 + BAND) };
+}
+
+/** Stripes listed outermost first, as the sun draws them. */
+export function bloomGradient(stripes: string[], reach: number, outer: number, seam = SEAM): string {
+  const band = (outer - reach) / stripes.length;
+  const px = (n: number) => `${Math.round(n * 100) / 100}px`;
+  const stops = [...stripes].reverse().map((colour, i) => {
+    const from = reach + i * band;
+    const to = from + band;
+    return `${colour} ${px(from)} ${px(to - seam)}, #000 ${px(to - seam)} ${px(to)}`;
+  });
+  return `radial-gradient(circle farthest-side, transparent 0px ${px(reach)}, ${stops.join(', ')})`;
+}
+
+/** Where the sun's centre is on screen now, or the window's top right corner
+    when no sun is drawn. `.sun` is a zero-size point at that centre. */
+function sunCentre(doc: Document): { x: number; y: number } {
+  const box = doc.querySelector('[data-flag-sun]')?.getBoundingClientRect();
+  return box ? { x: box.left, y: box.top } : { x: doc.documentElement.clientWidth, y: 0 };
+}
+
+/** The rings of the sun on screen after the change. Setup keeps the sun it
+    is leaving under the new one's redraw, and Svelte makes an element inert
+    while it transitions out, so a ring under `[inert]` belongs to the flag
+    being left. */
+export function incomingRings(doc: Document): HTMLElement[] {
+  return [...doc.querySelectorAll<HTMLElement>('[data-flag-sun] > i')].filter((ring) => !ring.closest('[inert]'));
+}
+
+function reducedMotion(doc: Document): boolean {
+  return isReducedMotion(doc) || !!doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
+
+interface Bloom {
+  /** After the new colours are applied, before the new side is captured. */
+  addRings(): void;
+  play(): void;
+  remove(): void;
+}
+
+function prepareBloom(doc: Document): Bloom | null {
+  const root = doc.documentElement;
+  if (!doc.querySelector || !doc.defaultView || typeof root.animate !== 'function' || reducedMotion(doc)) return null;
+  const { x, y, reach, outer } = bloomGeometry(sunCentre(doc), root.clientWidth, root.clientHeight);
+  root.style.setProperty('--bloom-at', `${x}px ${y}px`);
+  let rings: HTMLElement | null = null;
+  return {
+    addRings() {
+      /* The new sun's own colours, outermost ring first. */
+      const stripes = incomingRings(doc)
+        .sort((a, b) => b.offsetWidth - a.offsetWidth)
+        .map((ring) => getComputedStyle(ring).backgroundColor);
+      if (!stripes.length) return;
+      rings = doc.createElement('div');
+      rings.setAttribute('aria-hidden', 'true');
+      Object.assign(rings.style, {
+        position: 'fixed',
+        left: `${x - outer}px`,
+        top: `${y - outer}px`,
+        width: `${outer * 2}px`,
+        height: `${outer * 2}px`,
+        borderRadius: '50%',
+        background: bloomGradient(stripes, reach, outer),
+        transform: 'scale(0)',
+        pointerEvents: 'none',
+        zIndex: '2147483647'
+      });
+      doc.body.append(rings);
+    },
+    play() {
+      const timing = { duration: motionDuration('--dur-bloom'), easing: EASE_OUT_SOFT_CSS, fill: 'both' as const };
+      root.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${outer}px at ${x}px ${y}px)`] },
+        { ...timing, pseudoElement: '::view-transition-new(root)' }
+      );
+      rings?.animate({ transform: ['scale(0)', 'scale(1)'] }, timing);
+    },
+    remove() {
+      rings?.remove();
+      rings = null;
+    }
+  };
+}
+
+/** Capture both appearances so the new colours can bloom over the old. */
 function changeAppearance(commit: () => void, kind: Appearance, doc: Document): void {
   pending[kind] = commit;
   const change = ++latestChange;
@@ -32,19 +148,26 @@ function changeAppearance(commit: () => void, kind: Appearance, doc: Document): 
   root.dataset.appearanceTransition = '';
   if (pending.palette) root.dataset.paletteTransition = '';
   else delete root.dataset.paletteTransition;
+  const bloom = prepareBloom(doc);
+  if (!taps && typeof doc.addEventListener === 'function') taps = holdTaps(doc);
   const transition = doc.startViewTransition(async () => {
     if (change !== latestChange) return;
     applyPending();
     await tick();
+    bloom?.addRings();
   });
   /* A skipped transition - a second choice, a viewport resize - rejects
      `ready` as well, and nothing else reads it. */
-  void transition.ready.catch(() => {});
+  void transition.ready.then(() => bloom?.play(), () => {});
   void transition.finished.catch(() => {}).finally(() => {
+    bloom?.remove();
     if (change === latestChange) {
       applyPending();
       delete root.dataset.appearanceTransition;
       delete root.dataset.paletteTransition;
+      root.style?.removeProperty('--bloom-at');
+      taps?.finish();
+      taps = null;
     }
   });
 }

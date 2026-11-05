@@ -40,6 +40,9 @@ import { migrateStockIdentity } from './stock-identity-migration.ts';
 import { WAITLIST_REBUILD } from './waitlist-migration.ts';
 import { DELETION_LOG } from './deletion-migration.ts';
 import { MIGRATION_HYGIENE } from './hygiene-migration.ts';
+import { PROGRESS_PHOTOS } from './progress-photo-migration.ts';
+import { EFFECT_CATEGORY_SPLIT } from './effect-category-split-migration.ts';
+import { PROGRESS_POSES_TABLE } from './progress-pose-migration.ts';
 
 /** What were migrations 89 to 119, as development builds ran them. The
     released chain runs them as the one step at 119 (see the header). */
@@ -468,5 +471,14 @@ function asOneStep(version: number, steps: Migration[]): Migration {
 
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
-  asOneStep(119, POST_RC1_STEPS)
+  asOneStep(119, POST_RC1_STEPS),
+  /* Pre-release-human 12, bug 25: progress photos, a pose-by-pose record
+     of shots taken on purpose (progress-photo-migration.ts). */
+  { version: 120, sql: PROGRESS_PHOTOS },
+  /* Pre-release-human 12: 'genital_sexual' splits into 'genital' and
+     'sexual' (effect-category-split-migration.ts). */
+  { version: 121, sql: EFFECT_CATEGORY_SPLIT },
+  /* Pre-release-human 12: progress photo poses as the person's own list
+     (progress-pose-migration.ts). */
+  { version: 122, sql: PROGRESS_POSES_TABLE }
 ];

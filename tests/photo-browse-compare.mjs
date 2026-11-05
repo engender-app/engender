@@ -50,7 +50,6 @@ try {
   });
 
   await visit('/media/photos');
-  const entry = fixture.ownerPhotos.find(p => p.source === 'entry');
   const hair = fixture.ownerPhotos.find(p => p.source === 'hair');
   const tile = id => page.locator(`[data-photo-key="${id}"] [data-photo-cell]`);
   /* Ticket 52 (audit U44): the change-day action on an entry's or a
@@ -109,19 +108,45 @@ try {
     assert.equal(await page.locator('[data-photo-owner]').count(), 1);
     await page.keyboard.press('Escape');
   }
-  await page.locator('[data-segment="compare"]').click();
-  assert.match(await page.locator('[data-compare-progress]').innerText(), /0\/2/);
-  assert.equal(await page.locator('[data-compare-open]').isDisabled(), true);
-  await tile(entry.id).click();
-  assert.match(await page.locator('[data-compare-progress]').innerText(), /1\/2/);
   const video = fixture.ownerPhotos.find(p => p.source === 'video');
   await page.locator(`[data-photo-video="${video.id}"]`).click();
   await page.locator('video').waitFor();
   await page.keyboard.press('Escape');
+  // The library is browse-only: comparing moved to Progress photos.
+  assert.equal(await page.locator('[data-segment="compare"]').count(), 0);
+  assert.equal(await page.locator('[data-compare-open]').count(), 0);
+
+  /* Progress photos, seeded only now so the library's own layout checks
+     above ran on the six owners alone: comparing lives on their own screen
+     since pre-release-human 12. */
+  Object.assign(fixture, await page.evaluate(async () => {
+    const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 16;
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg'));
+    const full = new Uint8Array(await blob.arrayBuffer());
+    const photo = { full, thumb: full };
+    const front = [];
+    for (const day of [15010, 15020, 15030]) front.push(await j.progressPhotos.addPhoto(day, 'front', photo));
+    const side = await j.progressPhotos.addPhoto(15015, 'side', photo);
+    return { front, side };
+  }));
+  const shot = id => page.locator(`[data-photo-key="${id}"] [data-photo-cell]`);
+  await visit('/transition/progress-photos');
+  await page.locator('[data-progress-grid="front"]').waitFor();
+  await page.locator('[data-segment="compare"]').click();
+  assert.match(await page.locator('[data-compare-progress]').innerText(), /0\/2/);
+  assert.equal(await page.locator('[data-compare-open]').isDisabled(), true);
+  await shot(fixture.front[2]).click();
   assert.match(await page.locator('[data-compare-progress]').innerText(), /1\/2/);
-  await page.locator('[data-photo-chip="hair"]').click();
-  await tile(hair.id).click();
+  // A pose is its own timeline: switching it drops the selection.
+  await page.locator('[data-segment="side"]').click();
+  await page.locator('[data-progress-grid="side"]').waitFor();
+  assert.match(await page.locator('[data-compare-progress]').innerText(), /0\/2/);
+  await page.locator('[data-segment="front"]').click();
+  await shot(fixture.front[2]).click();
+  await shot(fixture.front[0]).click();
   assert.match(await page.locator('[data-compare-progress]').innerText(), /2\/2/);
+  assert.equal(await shot(fixture.front[1]).isDisabled(), true);
   const launch = page.locator('[data-compare-open]');
   await launch.focus();
   const scroll = await page.locator('[data-app-scroll-region]').evaluate(el => el.scrollTop);
@@ -133,82 +158,50 @@ try {
   await slider.press('ArrowRight');
   assert.equal(await slider.getAttribute('aria-valuenow'), '5');
   await page.keyboard.press('Escape');
-  assert.equal(new URL(page.url()).searchParams.get('source'), 'hair');
   await page.waitForFunction(() => document.activeElement?.matches('[data-compare-open]'));
   assert.equal(await page.locator('[data-app-scroll-region]').evaluate(el => el.scrollTop), scroll);
-  await page.locator(`[data-anchor-remove="${entry.id}"]`).click();
+  await page.locator(`[data-anchor-remove="${fixture.front[0]}"]`).click();
   assert.match(await page.locator('[data-compare-progress]').innerText(), /1\/2/);
-  await page.locator('[data-photo-chip="everything"]').click();
-  await tile(entry.id).click();
+  await shot(fixture.front[1]).click();
   if (process.argv.includes('--gallery')) {
     const out = process.env.PHOTO_COMPARE_SHOTS ?? '.claude/photo-compare-shots';
     await mkdir(out, { recursive: true });
-    for (const language of ['en', 'pl']) for (const width of [320, 390, 430, 1280]) {
+    for (const width of [320, 390, 430, 1280]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.evaluate(async language => {
-        const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
-        const { setLocale } = await import('/src/lib/paraglide/runtime.js');
-        prefs.language = language;
-        setLocale(language, { reload: false });
-      }, language);
-      await page.reload({ waitUntil: 'networkidle' });
-      await page.locator('[data-app-root][data-boot="ready"]').waitFor();
-      await page.evaluate(() => {
-        document.querySelector('.demo-bar')?.remove();
-        document.body.classList.remove('has-demo-bar');
-        for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
-      });
-      await page.locator('[data-segment="browse"]').click();
-      await page.locator('[data-segment="compare"]').click();
-      await tile(entry.id).click();
-      await tile(hair.id).click();
       await page.locator('[data-compare-progress]').evaluate(el => el.scrollIntoView({ block: 'start' }));
-      assert.equal(await page.locator('html').getAttribute('lang'), language);
-      assert.equal(await page.locator('[data-compare-open]').isEnabled(), true);
-      await page.screenshot({ path: `${out}/selection-${language}-${width}.png` });
+      await page.screenshot({ path: `${out}/progress-selection-${width}.png` });
       assert.equal(await page.locator('[data-app-scroll-region]').evaluate(el => el.scrollWidth <= el.clientWidth), true);
     }
-    await page.evaluate(async () => {
-      const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
-      prefs.language = 'en';
-      const { setLocale } = await import('/src/lib/paraglide/runtime.js');
-      setLocale('en', { reload: false });
-    });
-    await page.reload({ waitUntil: 'networkidle' });
-    await page.locator('[data-segment="browse"]').click();
-    await page.locator('[data-segment="compare"]').click();
-    await tile(entry.id).click();
-    await tile(hair.id).click();
+    await page.setViewportSize({ width: 320, height: 844 });
   }
   await page.locator('[data-compare-open]').click();
   await page.locator('[data-photo-wipe]').waitFor();
   await page.evaluate(async id => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-    await journal.entries.deleteEntry(id);
-  }, entry.ownerId);
+    await journal.progressPhotos.deletePhoto(id);
+  }, fixture.front[1]);
   await page.getByRole('dialog').getByRole('status').filter({ hasText: 'no longer available' }).waitFor();
   assert.equal(await page.locator('[data-photo-wipe]').count(), 0);
   await page.keyboard.press('Escape');
   await page.locator('[data-anchor-unavailable]').waitFor();
   assert.equal(await page.locator('[data-compare-open]').isDisabled(), true);
-  await page.locator(`[data-anchor-remove="${entry.id}"]`).click();
-  await page.locator('[data-segment="browse"]').click();
+  await page.locator(`[data-anchor-remove="${fixture.front[1]}"]`).click();
   await page.evaluate(async () => {
     const { setPhotoFiles } = await import('/src/lib/stores/photoFiles.ts');
     setPhotoFiles({ read: async () => null });
   });
+  await shot(fixture.front[0]).click();
+  await page.locator('[data-compare-open]').click();
+  await page.locator('[data-wipe-unavailable]').waitFor();
+  assert.equal(await page.locator('.wipe-photo').count(), 0);
+  await page.keyboard.press('Escape');
+  await visit('/media/photos');
   await tile(hair.id).click();
   await page.getByRole('status').filter({ hasText: 'couldn’t be read' }).waitFor();
   assert.equal(await page.locator('[data-photo-viewer] img').count(), 0);
   await page.keyboard.press('Escape');
-  await page.locator('[data-segment="compare"]').click();
-  await tile(hair.id).click();
-  await tile(fixture.ownerPhotos.find(p => p.source === 'tryout').id).click();
-  await page.locator('[data-compare-open]').click();
-  await page.locator('[data-wipe-unavailable]').waitFor();
-  assert.equal(await page.locator('.wipe-photo').count(), 0);
   assert.deepEqual(errors, []);
-  console.log('PASS Browse opens photo; explicit selection; filters; remove; deleted anchor');
+  console.log('PASS Library browses only; progress photos select two per pose, compare, remove, deleted anchor');
 } finally {
   await page.close(); await browser.close(); await server.close();
 }

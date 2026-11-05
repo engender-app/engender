@@ -36,7 +36,6 @@
 import { m } from '$lib/paraglide/messages';
 import { photoCaptionDate } from '$lib/data/dates';
 import { hubRow, type HubRow } from '$lib/data/hubRows';
-import { PROCEDURE_CHECKLIST_OWNER_KIND } from '$lib/data/journal/procedures';
 import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
 import { matchWindow } from '$lib/data/searchQuery';
 import { iconOf } from './rowIcon';
@@ -76,22 +75,29 @@ const AREA_ROWS: Record<
     href: (hit) => `${hubRow('letters').href}/${hit.id}`
   },
   milestones: { ...iconOf('milestones'), label: () => m.milestones(), href: () => hubRow('milestones').href },
-  procedures: { ...iconOf('surgery'), label: () => m.surgery_journey_title(), href: () => hubRow('surgery').href },
+  procedures: {
+    ...iconOf('surgery'),
+    label: () => m.surgery_journey_title(),
+    // Its own screen (prh12), the way an appointment's hit opens that appointment.
+    href: (hit) => `${hubRow('surgery').href}/${encodeURIComponent(hit.id)}`
+  },
   appointments: {
     ...iconOf('appointments'),
     label: () => m.appointments_title(),
-    href: () => hubRow('appointments').href
+    // Its own screen (prh12), the way a tryout's hit opens that tryout.
+    href: (hit) => `${hubRow('appointments').href}/${hit.id}`
   },
   /* One area, two screens. A question written for an appointment belongs to
      the prep list, which is a section of the visit screen since phase 11
      all-four-doors ticket 12; a line of a procedure's recovery checklist
-     belongs to that journey, and the owner kind on the row is what tells
-     them apart (procedures.ts). The prep list is the more common of the two,
+     belongs to that journey, and the owner's id on the row is what tells
+     them apart and names the procedure to open (textSearch.ts). The prep list is the more common of the two,
      so its screen is what the row's own icon names. */
   checklistItems: {
     ...iconOf('appointments'),
     label: () => m.appointment_prep_title(),
-    href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? hubRow('surgery').href : hubRow('appointments').href)
+    href: (hit) =>
+      hit.context ? `${hubRow('surgery').href}/${encodeURIComponent(hit.context)}` : hubRow('appointments').href
   },
   sideEffects: { ...iconOf('effects'), label: () => m.side_effects(), href: () => hubRow('effects').href },
   /* A felt sense hangs off a tryout, and the tryout's id travels with the
@@ -112,7 +118,7 @@ const AREA_ROWS: Record<
     label: () => m.presentations_title(),
     href: () => '/settings'
   },
-  eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/settings/eras' },
+  eras: { icon: 'era', label: () => m.eras_title(), href: () => '/settings/eras' },
   roadmapGoals: { ...iconOf('roadmap'), label: () => m.roadmap_title(), href: () => hubRow('roadmap').href },
   /* Goes to the document itself rather than to the list: a hit is one
      piece of paper somebody is looking for, and its own screen is the only

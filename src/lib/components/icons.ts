@@ -81,7 +81,7 @@ export const PATHS: Record<string, string> = {
   /* A routine kept up on a schedule: dilation, which drew the lab's flask. */
   repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
   /* A random pick (Milestones' "show me others"). It drew `shuffle`, which
-     is Hair removal's mark on the More hub. */
+     was Hair removal's mark on the More hub. */
   dice: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="16" cy="16" r="1.3"/>',
   download: '<path d="M12 1.79v12M7 8.79l5 5 5-5"/><path d="M5 19.79h14"/>',
   upload: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 21h14"/>',
@@ -161,7 +161,100 @@ export const PATHS: Record<string, string> = {
   // behind is drawn only where it shows, so the two outlines never cross
   // through each other's middle.
   documents:
-    '<rect x="4" y="7" width="12" height="14" rx="1.5"/><path d="M8 7V4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 20 4.5v11A1.5 1.5 0 0 1 18.5 17H16"/>'
+    '<rect x="4" y="7" width="12" height="14" rx="1.5"/><path d="M8 7V4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 20 4.5v11A1.5 1.5 0 0 1 18.5 17H16"/>',
+  // Five marks for the Transition group's rows (pre-release-human 12), each
+  // drawn to say what its module is. Roadmap drew `globe`, tryouts `tag`,
+  // wear `clock`, hair removal `shuffle` and voice `curve`.
+  //
+  // A road from where you are to where you are going: two waypoints and the
+  // way between them. Point-symmetric about the centre, so centred by
+  // construction. Not `timeline`, which is a straight rail of two dates.
+  route: '<circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="6" r="2.5"/><path d="M9 18h7.5a3 3 0 0 0 0-6h-9a3 3 0 0 1 0-6H15"/>',
+  // Trying something on. A hanger rather than a garment, so it holds a
+  // name or pronouns as well as a style, and favours no one's wardrobe.
+  hanger: '<path d="M9.8 5.1a2.2 2.2 0 1 1 3.2 2L12 7.8v1.2"/><path d="M12 9 3.4 16.6a1.3 1.3 0 0 0 .8 2.4h15.6a1.3 1.3 0 0 0 .8-2.4z"/>',
+  // Something worn, for a length of time: a face on a strap. It names the
+  // timing without drawing a binder, which would leave out tucking.
+  watch: '<circle cx="12" cy="12" r="6"/><path d="M12 9.5V12l1.6 1.6"/><path d="M8.7 6.99 9.3 4.3A1.6 1.6 0 0 1 10.9 3h2.2a1.6 1.6 0 0 1 1.6 1.3l.6 2.69"/><path d="M8.7 17.01l.6 2.69A1.6 1.6 0 0 0 10.9 21h2.2a1.6 1.6 0 0 0 1.6-1.3l.6-2.69"/>',
+  // A razor at 45 degrees: a head with its blade, and a handle. Upright it
+  // read as a T, and without the blade line as a hammer.
+  razor: '<path d="M12.41 4.52 19.48 11.59a1.5 1.5 0 0 1 0 2.12l-2.12 2.12a1.5 1.5 0 0 1-2.12 0L8.17 8.76a1.5 1.5 0 0 1 0-2.12l2.12-2.12a1.5 1.5 0 0 1 2.12 0z"/><path d="M11.35 7.7 16.3 12.65"/><path d="M11.71 12.29 3.22 20.78"/>',
+  // A voice as sound: bars about a midline with no baseline, which keeps it
+  // apart from `stats`'s three bars standing on one.
+  waveform: '<path d="M4.5 10.5v3M8.25 7.5v9M12 4v16M15.75 6.5v11M19.5 9.5v5"/>',
+  // Five marks for the Health and Support rows (pre-release-human 12), drawn
+  // the same way. Appointments drew `check`, surgery `flag`, letters `book`,
+  // Safe Space `heart` and resources `info`. Care took `pill`, which is
+  // already the medication mark on its own screen.
+  //
+  // A visit: a calendar page with a clock over its corner, a day and a time
+  // booked. Not plain `calendar`, which is the Journal tab's and the cycle's.
+  appointment: '<path d="M20 11V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5.5"/><path d="M7.5 3v4M15.5 3v4"/><path d="M3 10.5h7.5"/><circle cx="16.5" cy="16.5" r="4.5"/><path d="M16.5 14.5v2l1.4 1.4"/>',
+  // A medical chart on a clipboard, for the prep, the consults and the
+  // recovery. Nothing sharp and nothing red. A plaster was tried and drawn
+  // at row size it was `pill` again: a capsule on the diagonal with a line
+  // across it.
+  clipboard: '<path d="M8.5 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1.5"/><rect x="8.5" y="3" width="7" height="4" rx="1"/><path d="M12 11v6M9 14h6"/>',
+  // A letter kept shut: an envelope with a seal where its flap meets. The
+  // seal is what says it waits for a day rather than being mail.
+  envelope: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.6 6.4 10.4 11.6M20.4 6.4 13.6 11.6"/><circle cx="12" cy="12.8" r="1.9"/>',
+  // A heart under a roof, somewhere to shelter. Walls and a door would make
+  // it `home`, the Today tab.
+  shelter: '<path d="M4 10.5 12 3.5l8 7"/><path d="M12 21 7.35 16.35A2.9 2.9 0 1 1 12 13a2.9 2.9 0 1 1 4.65 3.35z"/>',
+  // Help to hold on to, for the helplines and support groups. Four bands on
+  // a ring, symmetric, so centred by construction.
+  lifebuoy: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.64 5.64 3.53 3.53M14.83 9.17l3.53-3.53M14.83 14.83l3.53 3.53M9.17 14.83l-3.53 3.53"/>',
+  // A flag planted on a summit, for the milestones: a day reached. It took
+  // `sparkle`, which said "celebrate" but not "milestone" and was already the
+  // mark on Today's offers and the roadmap. Not `flag`, which the surgery
+  // journey used before it took `clipboard`.
+  summit: '<path d="M3 20 10 9l3.2 5 2.3-3L21 20z"/><path d="M10 9V3.5h5l-1.4 1.75L15 7h-5"/>',
+  // Something that grew since you looked: a seedling with two leaves, for the
+  // changes somebody has noticed. It took `eye`, which says "watching" about
+  // a screen that is a record of what came of a regimen.
+  sprout: '<path d="M12 21v-9"/><path d="M12 14c-4.2 0-6.5-2.1-6.5-6 4.2 0 6.5 2.1 6.5 6z"/><path d="M12 12c0-4 2.4-6.5 6.5-6.5 0 4-2.4 6.5-6.5 6.5z"/>',
+  // Posed shots over time: a portrait frame with a figure and the outline of
+  // a second head behind it, the earlier shot. It took `camera`, which any
+  // photo screen could draw and which Photos' own tabs already do.
+  progressShot: '<rect x="3.5" y="3" width="17" height="18" rx="3"/><circle cx="10.5" cy="9.5" r="2.3"/><path d="M6.5 18a4 4 0 0 1 8 0"/><path d="M15.6 7.3a2.3 2.3 0 0 1 0 4.4"/>',
+  // Eight marks from the icon audit after the hub redo (pre-release-human
+  // 12), each for a place that borrowed a mark already standing for
+  // something else.
+  //
+  // Somebody you see: a head and shoulders, for providers. It took `note`,
+  // which is a page of writing.
+  person: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>',
+  // Three sliders, each knob somewhere else along its track: the gender
+  // scales an entry is scored on. It took `heart`, which also stood for
+  // body regions, recovery, feelings and support.
+  scales: '<path d="M4 6h3.5M11.5 6H20M4 12h9.5M17.5 12H20M4 18h5M13 18h7"/><circle cx="9.5" cy="6" r="2"/><circle cx="15.5" cy="12" r="2"/><circle cx="11" cy="18" r="2"/>',
+  // A whole standing body, for the body regions behind the body map. Kept a
+  // full figure so it does not read as `person`'s bust.
+  figure: '<circle cx="12" cy="5" r="2.5"/><path d="M12 9.5c-2.9 0-4.6 1.7-4.6 4.2v3.1h2.1l.5 4.2h4l.5-4.2h2.1v-3.1c0-2.5-1.7-4.2-4.6-4.2z"/>',
+  // A page laid out before anything is written on it: a header and a
+  // column, for entry templates. Settings drew `grid` (the More tab) and the
+  // editor `sparkle` for the same thing.
+  template: '<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 9h17M10 9v11.5"/>',
+  // A face, the shape the mood scale is drawn in, for mood colours and the
+  // daily check-in that asks for a mood.
+  mood: '<circle cx="12" cy="12" r="9"/><path d="M9 9.5v1M15 9.5v1"/><path d="M8.5 14.5a4.2 4.2 0 0 0 7 0"/>',
+  // A screen with a dot on its corner: something waiting to be seen, for
+  // notices and notifications. Apart from the reminders' `bell` above it,
+  // and from `zap`, which is battery optimisation in Permissions.
+  badge: '<path d="M13 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><circle cx="18" cy="6" r="2.5"/>',
+  // A switch, turned on: the permissions list, which is things switched on
+  // or off. It took `key`, the recovery key a row up.
+  toggle: '<rect x="2" y="6.5" width="19" height="11" rx="5.5"/><circle cx="15.5" cy="12" r="2.5"/>',
+  // The accessibility figure, standing with its arms out. It took `eye`,
+  // which is show and hide everywhere else. No ring around it: Settings'
+  // first card puts it beside `mood` and `globe`, both rings already.
+  access: '<circle cx="12" cy="5" r="2"/><path d="M5 9.5 12 11l7-1.5M12 11v4M8.5 21.5l3.5-6.5 3.5 6.5"/>',
+  // An era of somebody's life: a sun coming up over a horizon, a new stretch
+  // starting. It took `columns`, which reads as side by side and stays the
+  // mark for comparing. Three short rays and a ground line under the
+  // horizon keep it apart from `sun` (a whole disc) and from the logo's
+  // corner sun.
+  era: '<path d="M3 14.5h18"/><path d="M7 14.5a5 5 0 0 1 10 0"/><path d="M12 4v2.5M5.6 7.1l1.7 1.7M18.4 7.1l-1.7 1.7"/><path d="M8 18h8"/>'
 };
 
 /* The two parameters are constrained rather than escaped, because both have

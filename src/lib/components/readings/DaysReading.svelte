@@ -43,6 +43,10 @@
 
 {#if !moodQuery.loading && enoughEntries && anyDays}
   <ChartCard level={2} heading={m.stats_mood_days()} kind="mood-days">
-    <OrderedStrip steps={moodSteps} />
+    <OrderedStrip
+      steps={moodSteps}
+      countShort={(n) => m.strip_days_short({ n })}
+      countFull={(n) => m.n_days({ n })}
+    />
   </ChartCard>
 {/if}

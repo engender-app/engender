@@ -29,6 +29,8 @@ test('Care keeps the actual last dose across episode changes and outside the tot
   assert.equal(care.lanes[0].episode.id, current);
   assert.equal(care.lanes[0].lastDoseEpochDay, TODAY - 150);
   assert.equal(care.lanes[0].lastDoseId, doseId);
+  // The dose change is the same course: taking since its first episode.
+  assert.equal(care.lanes[0].takingSinceEpochDay, TODAY - 300);
   assert.deepEqual(care.lanes[0].doseTotals, []);
   assert.equal(care.lanes[0].runOut, null);
   assert.equal(care.latestLab, null);

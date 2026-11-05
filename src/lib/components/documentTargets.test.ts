@@ -60,7 +60,7 @@ test('a link whose target is gone pins nothing and still leads with its kind', (
 
 test('each kind carries its exact record identity to its screen', () => {
   assert.equal(documentTargetHref({ kind: 'milestone', id: 'm1' }), '/transition/milestones?edit=m1');
-  assert.equal(documentTargetHref({ kind: 'procedure', id: 'p1' }), '/health/surgery?procedure=p1');
+  assert.equal(documentTargetHref({ kind: 'procedure', id: 'p1' }), '/health/surgery/p1');
   assert.equal(documentTargetHref({ kind: 'episode', id: 'e1' }), '/care/regimen?episode=e1#e1');
   assert.equal(
     documentTargetHref({ kind: 'goal', id: 'pl-legal-final-copy' }),

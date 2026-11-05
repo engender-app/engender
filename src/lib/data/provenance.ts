@@ -54,7 +54,7 @@ function builtinGoalTitle(key: string): string | null {
     rather than leaving a dangling reference (ADR-0045). */
 export function resolveMilestoneOrigin(milestone: Milestone): Origin | null {
   if (milestone.procedureId) {
-    return { text: m.prov_from_surgery({ name: milestone.procedureName ?? '' }), href: `/health/surgery?procedure=${encodeURIComponent(milestone.procedureId)}` };
+    return { text: m.prov_from_surgery({ name: milestone.procedureName ?? '' }), href: `/health/surgery/${encodeURIComponent(milestone.procedureId)}` };
   }
   if (milestone.roadmapGoalKey) {
     const title = milestone.customRoadmapGoalText ?? builtinGoalTitle(milestone.roadmapGoalKey);

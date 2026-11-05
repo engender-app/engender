@@ -57,7 +57,8 @@ export const RECONCILE_TABLES: TableName[] = [
   'bodyRegion',
   'effectCategory',
   'personalEffectType',
-  'entryTemplate'
+  'entryTemplate',
+  'progressPhoto'
 ];
 
 /** Every table there is, in one place: what an import rewrites, and what
@@ -117,6 +118,8 @@ export const TABLE_NAMES = [
      ticket 08): nothing reads one without the other, the same reasoning
      'hairProgress' gives. */
   'hairRemoval',
+  /* Progress photos (pre-release-human 12, bug 25): one table, one name. */
+  'progressPhoto',
   /* One name for a procedure and its recovery photos (phase 5 ticket 07):
      nothing reads one without the other, the same reasoning 'hairProgress'
      gives. A procedure's recovery checklist is not in here - that is an
@@ -447,7 +450,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
         'hairRemoval',
         'tryout',
         'procedure',
-        'videoNote'
+        'videoNote',
+        'progressPhoto'
       ],
       // The `photo` table's own arm, which is the only one with a starred
       // column (photoLibrary.ts says why).
@@ -461,7 +465,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
         'hairRemoval',
         'tryout',
         'procedure',
-        'videoNote'
+        'videoNote',
+        'progressPhoto'
       ]
     }
   }),
@@ -628,6 +633,21 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getPhotosOnDay: ['hairProgress'],
       lastStageWriteEpochDay: ['hairProgress'],
       lastPhotoWriteEpochDay: ['hairProgress']
+    }
+  }),
+  progressPhotos: classify<Journal['progressPhotos']>()({
+    writes: {
+      addPhoto: ['progressPhoto'],
+      deletePhoto: ['progressPhoto'],
+      addPose: ['progressPhoto'],
+      renamePose: ['progressPhoto'],
+      setPoseHidden: ['progressPhoto'],
+      deletePose: ['progressPhoto']
+    },
+    reads: {
+      getPhotos: ['progressPhoto'],
+      getPoses: ['progressPhoto'],
+      lastWriteEpochDay: ['progressPhoto']
     }
   }),
   hairRemoval: classify<Journal['hairRemoval']>()({

@@ -65,6 +65,7 @@ import type { EntriesArea } from './entries';
 import type { FeltSenseArea } from './feltSense';
 import type { HairProgressArea } from './hairProgress';
 import type { HairRemovalArea } from './hairRemoval';
+import type { ProgressPhotosArea } from './progressPhotos';
 import type { LabsArea } from './labs';
 import type { MilestonesArea } from './milestones';
 import type { PersonalEffectsArea } from './personalEffects';
@@ -93,6 +94,7 @@ interface LastWriteAreas {
   feltSense: FeltSenseArea;
   hairProgress: HairProgressArea;
   hairRemoval: HairRemovalArea;
+  progressPhotos: ProgressPhotosArea;
   appointments: AppointmentsArea;
   procedures: ProceduresArea;
   tryouts: TryoutsArea;
@@ -198,6 +200,11 @@ const ENTRIES = [
     read: ({ hairProgress, todayEpochDay }) => hairProgress.lastPhotoWriteEpochDay(todayEpochDay)
   }),
   entry({
+    key: 'progressPhotos',
+    tables: ['progressPhoto'],
+    read: ({ progressPhotos, todayEpochDay }) => progressPhotos.lastWriteEpochDay(todayEpochDay)
+  }),
+  entry({
     key: 'hairRemovalSessions',
     tables: ['hairRemoval'],
     read: ({ hairRemoval, todayEpochDay }) => hairRemoval.lastWriteEpochDay(todayEpochDay)
@@ -265,6 +272,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   presets: 'reference data, not a written stream',
   tagGroups: 'reference data, not a written stream',
   bodyRegions: 'reference data, not a written stream',
+  progressPoses: 'reference data, not a written stream',
   presentations: 'reference data, not a written stream',
   entryTemplates: 'reference data, not a written stream',
   effectCategories: 'reference data, not a written stream',

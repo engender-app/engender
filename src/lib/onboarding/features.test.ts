@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { FEATURE_MODULE_ROWS, featureAreas, rowHidden } from '../data/hubRows';
-import { firstRunModuleWrites } from './features';
+import { DEFAULT_MODULES, firstRunModuleWrites } from './features';
 
 const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null };
 
 describe('feature modules', () => {
   it('uses hub rows with real hideable areas and includes Care', () => {
-    expect(FEATURE_MODULE_ROWS).toHaveLength(14);
+    expect(FEATURE_MODULE_ROWS).toHaveLength(15);
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).toContain('care');
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).toContain('surgery');
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).not.toContain('dilation');
@@ -24,10 +24,12 @@ describe('feature modules', () => {
     expect(rowHidden(care, states)).toBe(true);
   });
 
-  it('starts a new journal with specialist modules off and keeps explicit opt-ins', () => {
+  it('starts a new journal with the core modules on and specialist ones off, and keeps explicit opt-ins', () => {
     const defaults = firstRunModuleWrites(false, false, null);
     expect(defaults).toHaveLength(FEATURE_MODULE_ROWS.length);
-    expect(defaults.every(({ hidden }) => hidden)).toBe(true);
+    expect(defaults.filter(({ hidden }) => !hidden).map(({ row }) => row.key).sort())
+      .toEqual(['appointments', 'care', 'effects', 'milestones', 'voice-benchmark']);
+    expect([...DEFAULT_MODULES].sort()).toEqual(['appointments', 'care', 'effects', 'milestones', 'voice-benchmark']);
     const selected = firstRunModuleWrites(false, false, ['care', 'voice-benchmark']);
     expect(selected.find(({ row }) => row.key === 'care')?.hidden).toBe(false);
     expect(selected.find(({ row }) => row.key === 'voice-benchmark')?.hidden).toBe(false);

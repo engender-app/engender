@@ -70,7 +70,6 @@ export interface DoseDrugFact {
 }
 
 const HAIR_PROGRESS = '/body/hair-progress';
-const APPOINTMENTS = '/health/appointments';
 
 /* Photographs by whatever they hang off - the owning tryout or procedure -
    so each owner collapses to one row rather than one per shot. Insertion
@@ -221,9 +220,10 @@ const SECTION_ROWS: Record<
       .map(({ kind, count }) => ({
         key: `tally-${kind}`,
         // No screen of its own to read a row from - its own tab, not a hub
-        // row (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so it keeps its
-        // own icon.
-        icon: 'stats',
+        // row (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so it draws the
+        // marks quick add logs it with: x for misgendered, check for
+        // correctly gendered.
+        icon: kind === 'misgendered' ? 'x' : 'check',
         title: kind === 'misgendered' ? m.tally_misgendered() : m.tally_correctly_gendered(),
         href: '/tally',
         count
@@ -307,7 +307,7 @@ const SECTION_ROWS: Record<
       ...iconOf('surgery'),
       title: group[0].procedureName,
       subtitle: m.day_recovery_photos(),
-      href: hubRow('surgery').href,
+      href: `${hubRow('surgery').href}/${encodeURIComponent(group[0].procedureId)}`,
       photo: group[0],
       count: group.length
     })),
@@ -316,9 +316,8 @@ const SECTION_ROWS: Record<
      (appointmentDayRow.ts). */
   appointments: (day) =>
     day.appointments.map((appointment) => ({
-      ...appointmentDayRow(appointment),
       ...iconOf('appointments'),
-      href: APPOINTMENTS
+      ...appointmentDayRow(appointment)
     })),
 
   tryoutPhotos: (day) =>

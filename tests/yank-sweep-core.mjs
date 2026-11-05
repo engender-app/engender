@@ -2139,6 +2139,11 @@ const HYDRATION_SCENES = [
   { name: 'letter-detail', at: '/transition/letters/{letter}', needs: 'letter', when: 'persona', is: 'one letter, read' },
   { name: 'tryouts', at: '/transition/tryouts', is: 'presentation tryouts' },
   { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
+  /* Pre-release-human 12 gave procedures, appointments and progress photos
+     screens of their own. */
+  { name: 'procedure-detail', at: '/health/surgery/{procedure}', needs: 'procedure', when: 'persona', is: 'one procedure laid out' },
+  { name: 'appointment-detail', at: '/health/appointments/{appointment}', needs: 'appointment', when: 'persona', is: 'one appointment laid out' },
+  { name: 'progress-photos', at: '/transition/progress-photos', is: 'progress photos by pose' },
   { name: 'eras', at: '/settings/eras', is: 'named spans of a life' },
   /* Ticket 21: the voice benchmark moved off the retired Practice prefix -
      to the root rather than under a door prefix, unlike its siblings, but
@@ -2214,7 +2219,10 @@ export const HYDRATION_NEEDS = {
      journal holds (settings/reminders: `isWeb`), so only the device can
      read an id off it. The desktop crawler skips this one by name. */
   reminder: { list: '/settings/reminders', prefix: '/settings/reminders/', androidOnly: true },
-  document: { list: '/media/documents', prefix: '/media/documents/' }
+  document: { list: '/media/documents', prefix: '/media/documents/' },
+  procedure: { list: '/health/surgery', prefix: '/health/surgery/' },
+  /* The in-the-room card shares the prefix and is not a record. */
+  appointment: { list: '/health/appointments', prefix: '/health/appointments/', skip: ['in-the-room'] }
 };
 
 /** The hydration scenes a run covers: the table above, narrowed to `only`,
@@ -2252,7 +2260,7 @@ export const scrapeIdExpression = (need, { waitMs = 3000 } = {}) => `(async () =
     }
     for (const a of document.querySelectorAll('a[href^=' + JSON.stringify(need.prefix) + ']')) {
       const id = a.getAttribute('href').slice(need.prefix.length).split(/[?#]/)[0];
-      if (id && !id.includes('/') && id !== 'new') return id;
+      if (id && !id.includes('/') && id !== 'new' && !(need.skip ?? []).includes(id)) return id;
     }
     return null;
   };

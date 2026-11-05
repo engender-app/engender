@@ -1,72 +1,39 @@
 <script lang="ts">
-  import { undoable } from '$lib/stores/deleteUndo';
-  import { journalTextAutocomplete } from '$lib/platform';
-  import { tick } from 'svelte';
   import { travelOnChange } from '$lib/motion/reorder.svelte';
-  import { scrollToHash } from '$lib/navigation/scroll-region';
-  import { page } from '$app/state';
-  import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* Procedures, dates and your own recovery log, on the surface kit (phase
      5 UX ticket 25 and phase 5 deepening ticket 12).
-     Rebuilt into a five-phase Procedure Care & Recovery Hub:
-     1. Planning Phase (no date set): consults.
-     2. Pre-Op Phase (date set, before surgery day): live day countdown, consults.
-     3. Surgery Day: On surgery day, prompts user to record surgery day as transition milestone upon explicit confirmation (ADR-0045).
-     4. Recovery Phase (any day after surgery): Post-Op Day X, wound healing photo album, consults.
-     5. Archived Phase (after surgery, archived by the person): the record, read back.
-     Every phase carries the same one Notes field and one Checklist under
-     those two names (functional-audit ticket 24); they used to be retitled
-     per phase, which made one field look like five. A question for a
-     consult goes on the appointment prep list, the one list that is taken
-     into any appointment, rather than into these notes. */
+
+     The index of procedures: the ones still running, then the ones the
+     person archived. Each card opens the procedure's own screen
+     (`[id]/+page.svelte`, prh12 bug 20), which lays out its five phases,
+     its log and its own facts. Tapping a card used to slide that whole log
+     open under the list, a thousand pixels below the card on a phone, with
+     the name, type and date editable only in a sheet behind a pencil. */
   import { m } from '$lib/paraglide/messages';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
-  import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { dilationEligible } from '$lib/data/taperSchedule';
-  import { fmtDay, intlLocale } from '$lib/data/dates';
-  import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import type { ChecklistItem, Procedure, ProcedureConsult, ProcedureKind } from '$lib/data/types';
+  import type { Procedure, ProcedureKind } from '$lib/data/types';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
-  import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { procedureKindName } from '$lib/data/vocabulary/labels';
-  import { toast } from '$lib/stores/toasts.svelte';
-  import { attempt, writer } from '$lib/stores/attempt.svelte';
-  import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
-  import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
-  import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
-  import { collapse, disclose, resize } from '$lib/motion/reveal';
+  import { disclose, resize } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
-  import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
-  import ProcedureKindPicker from '$lib/components/ProcedureKindPicker.svelte';
+  import ProcedureFields from '$lib/components/ProcedureFields.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
-  import Switch from '$lib/components/Switch.svelte';
-  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
-  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import PhotoSection from '$lib/components/kit/PhotoSection.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import ProcedureRecoveryCard from '$lib/components/ProcedureRecoveryCard.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
-  import CostField from '$lib/components/CostField.svelte';
-  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { blankCostDraft, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
   import { deviceDefaultCurrency } from '$lib/data/cost';
-  import { photoSection } from '$lib/components/kit/photoSection.svelte';
-  import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
-  import { compareStretchLink } from '$lib/components/kit/compareStretchLink.svelte';
-  import { compareStretchNoticeProps } from '$lib/data/compareStretch';
 
-  /* The procedures, and the record kept against whichever one is open. */
-  const SECTION_ROLE = { procedures: 0, recovery: 1 };
+  const SECTION_ROLE = { procedures: 0 };
 
   const today = $derived(currentDay());
 
@@ -96,317 +63,35 @@
     () => procedureRows
   );
 
-  let sourceId = $derived(page.url.searchParams.get('procedure'));
-  let sourceProcedure = $derived(procedures.find((p) => p.id === sourceId));
-
-  let selectedId = $state<string | null>(null);
-  /* Read off the live list rather than held as its own copy, so an edit or a
-     delete elsewhere on this screen cannot leave a stale procedure open. */
-  let selected = $derived(procedures.find((p) => p.id === selectedId) ?? null);
-
-  let selectedPhase = $derived<ProcedurePhase | null>(
-    selected ? procedurePhase(selected.surgeryEpochDay, today, selected.archived) : null
-  );
-
-  let selectedRecDay = $derived(
-    selected ? recoveryDay(selected.surgeryEpochDay, today) : null
-  );
-
-  /* Ticket 18: the recovery window as one side of `/compare` - only once
-     there is a surgery date to measure from (planning and pre-op have no
-     days yet). A one-day stretch on surgery day itself is still a real
-     window, not a reason to hide the link - `compareStretchLink`'s own
-     too-short/no-data states are exactly what a marginal window like that
-     is for. Its end clamps to today for the first 90 days and holds at
-     that cutoff after, archived or not, so an old procedure's stretch stops
-     growing (ADR-0010's "clamp at read time", the same rule an open-ended
-     tryout or era follows). It is open-ended only while it still ends
-     today. */
-  let recoveryWindow = $derived(
-    selected && selected.surgeryEpochDay !== null && selectedPhase !== 'planning' && selectedPhase !== 'pre_op'
-      ? { start: selected.surgeryEpochDay, end: Math.min(today, selected.surgeryEpochDay + SURGERY_RECOVERY_CUTOFF_DAYS) }
-      : null
-  );
-  let recoveryOpenEnded = $derived(recoveryWindow !== null && recoveryWindow.end === today);
-  const compareLink = compareStretchLink(() => recoveryWindow);
-  const SURGERY_COMPARE_COPY = {
-    title: m.surgery_compare_title,
-    openHint: m.surgery_compare_open_hint,
-    tooShort: m.surgery_compare_too_short,
-    noPrecedingData: m.surgery_compare_no_data,
-    action: m.surgery_compare_action
-  };
-
-  /* Every procedure's recovery photos, in one read (ticket 52). The index
-     draws each card's own strip from them, and the open procedure's album
-     is the same answer seen through `liveListIn` rather than a second
-     query - one read of `procedure_photo` per screen, and the strip and
-     the album can never disagree about what is in it. */
+  /* Every procedure's recovery photos, in one read (ticket 52): each card
+     draws its own strip from them. */
   let allPhotosQuery = liveQuery((j) => j.procedures.photosByProcedure());
   let photosByProcedure = $derived(allPhotosQuery.value ?? new Map<string, ProcedurePhoto[]>());
-  let photosQuery = liveListIn(allPhotosQuery, (byProcedure) =>
-    selectedId ? (byProcedure.get(selectedId) ?? []) : []
-  );
-  let photos = $derived(photosQuery.rows);
 
-  let checklistQuery = liveList((j) =>
-    selectedId ? j.procedures.getChecklist(selectedId).then((c) => c?.items) : Promise.resolve([])
-  );
-  let checklistItems = $derived(checklistQuery.rows);
-
-  let milestoneQuery = liveList((j) =>
-    selectedId ? j.procedures.getMilestone(selectedId).then((m) => (m ? [m] : [])) : Promise.resolve([])
-  );
-  let linkedMilestone = $derived(milestoneQuery.rows[0] ?? null);
-
-  const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
-
-  function recoveryText(procedure: Procedure): string {
-    const day = recoveryDay(procedure.surgeryEpochDay, today);
-    if (day.type === 'unscheduled') return m.surgery_day_unscheduled();
-    if (day.type === 'upcoming') return m.surgery_day_upcoming({ days: m.n_days({ n: day.days }) });
-    if (day.type === 'surgeryDay') return m.surgery_day_of();
-    return m.surgery_day_since({ days: m.n_days({ n: day.days }) });
-  }
-
+  /* A new procedure only. Editing one happens on its own screen. */
   const record = recordEditor<
     Procedure,
-    { id?: string; name: string; date: string; kind: ProcedureKind; dilationOptIn: boolean; archived: boolean; cost: CostDraft }
+    { id?: string; name: string; date: string; kind: ProcedureKind | null; dilationOptIn: boolean; archived: boolean; cost: CostDraft }
   >({
-    blank: () => ({ name: '', date: '', kind: 'custom', dilationOptIn: false, archived: false, cost: blankCostDraft(deviceDefaultCurrency()) }),
-    fromRecord: (procedure) => ({
-      id: procedure.id,
-      name: procedure.name,
-      date: procedure.surgeryEpochDay === null ? '' : dateInputValueFromEpochDay(procedure.surgeryEpochDay),
-      kind: procedure.kind,
-      dilationOptIn: procedure.dilationOptIn,
-      archived: procedure.archived,
-      cost: costDraftFrom(procedure.cost, deviceDefaultCurrency(), intlLocale())
-    }),
+    /* No kind until one is picked (prh12 bug 18): a default of Custom read
+       as an answer already given, so nobody saw a type was being asked for. */
+    blank: () => ({ name: '', date: '', kind: null, dilationOptIn: false, archived: false, cost: blankCostDraft(deviceDefaultCurrency()) }),
     async upsert(draft) {
       const name = draft.name.trim();
-      if (!name || !costDraftOk(draft.cost)) return false;
-      const id = await journal.procedures.upsertProcedure({
-        id: draft.id,
+      if (!name || !draft.kind || !costDraftOk(draft.cost)) return false;
+      await journal.procedures.upsertProcedure({
         name,
-        // An empty date field clears the date rather than defaulting to today:
-        // a procedure without one yet is an ordinary state here.
+        // An empty date field leaves the date unset rather than defaulting to
+        // today: a procedure without one yet is an ordinary state here.
         surgeryEpochDay: epochDayFromDateInputValue(draft.date) ?? null,
         kind: draft.kind,
         dilationOptIn: draft.kind === 'custom' && draft.dilationOptIn,
-        archived: draft.archived,
         cost: costFromDraft(draft.cost)
       });
-      /* Editing the open procedure keeps notes typed beside it, and saving
-         another one leaves unsaved notes open where they are rather than
-         replacing them (after-release 06). */
-      if (selectedId !== id && !notesUnsaved()) {
-        selectedId = id;
-        notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
-      }
-    },
-    async remove(id) {
-      if (selectedId === id) selectedId = null;
-      return undoable((j) => j.procedures.deleteProcedure(id));
     },
     findById: (id) => procedures.find((p) => p.id === id)
   });
-
-  // Ticket 18: only once there is a date to hand off - a procedure still
-  // in planning has none yet (Scope: three surfaces, not a fourth for an
-  // empty date).
-  let calendarSheet = $state(false);
-
-  let consultSheet = $state(false);
-  let consultDate = $state('');
-  let notesDraft = $state('');
-  let photoSheet = $state(false);
-  let pickingKind = $state(false);
-  let photoDate = $state('');
-
-  /* Every sheet below closes once its write lands and stays open with a
-     toast when it does not (after-release 06); they used to close first. */
-  const sheetWrite = writer();
-
-  /** False when the write failed, which keeps a reviewed shot under review. */
-  async function storePhoto(photo: NormalizedPhoto): Promise<boolean> {
-    const epochDay = epochDayFromDateInputValue(photoDate);
-    const id = selectedId;
-    if (!id || epochDay === null) return true;
-    if (!(await sheetWrite.run(() => journal.procedures.addPhoto(id, epochDay, photo), m.write_failed()))) return false;
-    photoSheet = false;
-    toast(m.saved(), { kind: 'record-saved' });
-    return true;
-  }
-
-  const recoveryPhotos = photoSection<ProcedurePhoto>({
-    photos: () => photos,
-    add: storePhoto,
-    remove: (id) => undoable((j) => j.procedures.deletePhoto(id)),
-    reference: () => lastPhotoReference(photos)
-  });
-
-  /* A consult date asks before it goes and says that it went
-     (after-release 07); it used to vanish on one tap. */
-  const consultRecord = recordEditor<ProcedureConsult>({
-    remove: (id) => undoable((j) => j.procedures.deleteConsult(id)),
-    deleted: () => m.surgery_consult_deleted(),
-    findById: (id) => selected?.consults.find((consult) => consult.id === id)
-  });
-
-  let itemSheet = $state(false);
-  let itemText = $state('');
-  const itemRecord = recordEditor<ChecklistItem>({
-    remove: (id) => undoable((j) => j.checklists.deleteItem(id)),
-    findById: (id) => checklistItems.find((i) => i.id === id)
-  });
-
-  /* Notes typed and not saved are asked about before another procedure
-     replaces them, or before the screen goes (after-release 06, L07-09):
-     tapping a second card used to overwrite them without a word. */
-  const notesWrite = writer();
-  const notesUnsaved = () => !!selected && notesDraft !== selected.notes;
-  const notesGuard = leaveGuard({
-    holding: notesUnsaved,
-    busy: () => notesWrite.busy
-  });
-
-  function openSourceProcedure() {
-    const procedure = sourceProcedure!;
-    notesGuard.request(async () => {
-      selectedId = procedure.id;
-      notesDraft = procedure.notes;
-      await tick();
-      scrollToHash(`#procedure-log-${procedure.id}`);
-    });
-  }
-
-  function select(procedure: Procedure) {
-    notesGuard.request(() => {
-      selectedId = selectedId === procedure.id ? null : procedure.id;
-      notesDraft = selectedId ? procedure.notes : '';
-    });
-  }
-
-  /* One entry in the offer registry (phase 8 features ticket 22,
-     ADR-0045). The ADR names this trigger by hand - "reaching surgery day
-     or the recovery phase in the procedure hub" - and the phase-8 spec's
-     count of four offers missed it; offers.ts's header says so.
-
-     Nothing here re-checks `linkedMilestone`: both places that call
-     `promptMilestoneConfirmation` are already inside a branch that only
-     draws while the procedure has no milestone, and a second copy of that
-     condition would be a guard for a state no control can reach. */
-  const MILESTONE_OFFER = OFFERS['surgery-day-milestone'];
-  let milestoneOffer = $state<{ procedureId: string } | null>(null);
-
-  function promptMilestoneConfirmation() {
-    if (!selectedId) return;
-    milestoneOffer = { procedureId: selectedId };
-  }
-
-  /* Closed once the write lands (after-release 06): the confirm button
-     holds while it runs, so a second tap writes nothing, and a failure
-     leaves the question up with a toast. */
-  const offerWrite = writer();
-  async function answerMilestoneOffer(given: OfferAnswer) {
-    const subject = milestoneOffer;
-    if (!subject) return;
-    let added = false;
-    if (!(await offerWrite.run(async () => { added = await answerOffer(MILESTONE_OFFER, subject, given, journal); }, m.write_failed()))) return;
-    milestoneOffer = null;
-    if (added) toast(m.surgery_milestone_added());
-  }
-
-  function openConsultSheet() {
-    consultDate = dateInputValueFromEpochDay(today);
-    consultSheet = true;
-  }
-
-  async function addConsult() {
-    const epochDay = epochDayFromDateInputValue(consultDate);
-    const id = selectedId;
-    if (!id || epochDay === null) return;
-    if (!(await sheetWrite.run(() => journal.procedures.addConsult(id, epochDay), m.write_failed()))) return;
-    consultSheet = false;
-    toast(m.saved(), { kind: 'record-saved' });
-  }
-
-  async function saveNotes() {
-    const id = selectedId;
-    const notes = notesDraft;
-    if (!id) return;
-    if (await notesWrite.run(() => journal.procedures.setNotes(id, notes), m.write_failed())) {
-      toast(m.surgery_notes_saved(), { kind: 'record-saved' });
-    }
-  }
-
-  /* The question is the prep list's own item, written where labs and
-     changes already write theirs, so it shows under "What to raise" on the
-     appointment screen and on the clinician summary. */
-  let questionSheet = $state(false);
-  let questionText = $state('');
-
-  function openQuestionSheet() {
-    questionText = '';
-    questionSheet = true;
-  }
-
-  async function addQuestion() {
-    const content = questionText.trim();
-    if (!content) return;
-    if (!(await sheetWrite.run(() => journal.checklists.addToStandaloneChecklist(content), m.write_failed()))) return;
-    questionSheet = false;
-    toast(m.appointment_prep_added_toast(), { kind: 'record-saved' });
-  }
-
-  function openPhotoSheet() {
-    photoDate = dateInputValueFromEpochDay(today);
-    photoSheet = true;
-  }
-
-  function openItemSheet() {
-    itemText = '';
-    itemSheet = true;
-  }
-
-  async function addItem() {
-    const content = itemText.trim();
-    const id = selectedId;
-    if (!id || !content) return;
-    if (!(await sheetWrite.run(() => journal.procedures.addChecklistItem(id, content), m.write_failed()))) return;
-    itemSheet = false;
-    toast(m.saved(), { kind: 'record-saved' });
-  }
 </script>
-
-{#snippet woundAlbum()}
-        <SectionHeading text={m.surgery_wound_album_title()} />
-        <PhotoSection
-          section={recoveryPhotos}
-          read={photosQuery}
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          handle="procedure-photo"
-          subtitle={(photo) => dayLabel(photo.epochDay)}
-          deleteLabel={(photo) => m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
-          confirm={{
-            title: m.surgery_photo_delete_sheet(),
-            question: () => m.surgery_photo_delete_q(),
-            hint: () => m.surgery_photo_delete_hint(),
-            confirmLabel: m.surgery_photo_delete(),
-            cancelLabel: m.keep_it()
-          }}
-        >
-          {#snippet empty()}
-            <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_wound_album_empty()}</p>
-          {/snippet}
-          {#snippet addControl()}
-            <button class="btn btn-soft press" data-add-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
-              <span>{m.add_photo()}</span>
-            </button>
-          {/snippet}
-        </PhotoSection>
-{/snippet}
 
 <div class="screen">
   <ScreenHeader title={m.surgery_journey_title()} back="/more" subtitle={m.surgery_intro()}>
@@ -416,7 +101,6 @@
       </button>
     {/snippet}
   </ScreenHeader>
-  <SourceRecordHandoff id={sourceId} ready={!proceduresQuery.loading && !proceduresQuery.failed} found={!!sourceProcedure} onOpen={() => { void openSourceProcedure(); }} />
 
   <ReadGate read={proceduresQuery} variant="line" count={3}>
     {#snippet rows()}
@@ -429,13 +113,8 @@
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
               <ProcedureRecoveryCard
                 {procedure}
-                selected={selectedId === procedure.id}
                 {today}
-                linkedMilestone={selectedId === procedure.id ? linkedMilestone : null}
                 photos={photosByProcedure.get(procedure.id) ?? []}
-                checklistCount={selectedId === procedure.id ? checklistItems.length : 0}
-                onclick={() => select(procedure)}
-                onedit={() => record.openEditor(procedure)}
               />
             </ListCard>
           {/if}
@@ -444,7 +123,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="flag"
+        icon="clipboard"
         key="surgery-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
         title={m.surgery_empty_title()}
@@ -456,557 +135,36 @@
 
   <!-- Dilation, hosted here (phase 9 carpet ticket 16). It was a top-level
        Health row, which put a dilation log in front of everyone who opened
-       More whatever their surgery was or was not.
-
-       Ticket 16 shipped the loosest honest gate available at the time - any
-       procedure at all - and recorded that it was wrong on purpose. Ticket
-       17 replaces it with the real one: a vaginoplasty, or a custom
-       procedure whose own dilation toggle is on. Vulvoplasty is deliberately
-       not in this OR - there is no canal to keep (ticket 17's own list).
-
-       Directly under the cards since audit item 13. It used to sit past the
-       open procedure's whole log - the checklist, the album, the consults,
-       the documents - so on a screen that ended at 520px with nothing open
-       it was the last thing on the page, and on an open one it was a
-       thousand pixels below the procedure it belongs to. -->
+       More whatever their surgery was or was not. The gate is ticket 17's:
+       a vaginoplasty, or a custom procedure whose own dilation toggle is
+       on. Vulvoplasty is deliberately not in this OR - there is no canal to
+       keep. Directly under the cards since audit item 13. -->
   {#if procedures.some(dilationEligible)}
-    <HostedRows host="surgery" card />
-  {/if}
-
-  {#if selected && selectedPhase}
-    <!-- The id is what the card's own `aria-expanded` button points at
-         with `aria-controls` (ticket 52): the log is a sibling of the
-         whole list rather than a child of the card that opens it. -->
-    <div id="procedure-log-{selected.id}" class="recovery" data-recovery-log={selected.id} data-phase={selectedPhase} transition:collapse>
-      {#snippet checklistBlock(readonly = false)}
-        <SectionHeading text={m.surgery_checklist_title()} />
-        {#if checklistItems.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each checklistItems as item (item.id)}
-                <div transition:collapse class="kit-row is-split" data-procedure-item={item.id}>
-                  <button
-                    class="kit-row-main"
-                    role="checkbox"
-                    aria-checked={item.checked}
-                    aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
-                    onclick={() => attempt(() => journal.checklists.setItemChecked(item.id, !item.checked), m.write_failed())}
-                  >
-                    <span class="sj-box" class:sj-ticked={item.checked}>
-                      {#if item.checked}<Icon name="check" size={20} />{/if}
-                    </span>
-                    <span class="kit-row-text">
-                      <span class="kit-row-title" class:sj-done={item.checked}>{item.content}</span>
-                    </span>
-                  </button>
-                  {#if !readonly}
-                    <button
-                      class="kit-row-act press"
-                      class:sj-flagged={item.carriedForward}
-                      data-carry-forward={item.id}
-                      aria-pressed={item.carriedForward}
-                      aria-label={item.carriedForward ? m.surgery_checklist_uncarry_aria({ content: item.content }) : m.surgery_checklist_carry_aria({ content: item.content })}
-                      onclick={() => attempt(() => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward), m.write_failed())}
-                    >
-                      <Icon name="flag" size={18} />
-                    </button>
-                    <button
-                      class="kit-row-act press"
-                      data-delete-procedure-item={item.id}
-                      aria-label={m.surgery_checklist_delete_aria({ content: item.content })}
-                      onclick={() => itemRecord.askToDelete(item)}
-                    >
-                      <Icon name="trash" size={18} />
-                    </button>
-                  {/if}
-                </div>
-              {/each}
-            </ListCard>
-          </div>
-        {:else if !readonly}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_checklist_empty()}</p>
-        {/if}
-        {#if !readonly}
-          <button class="btn btn-soft press" data-add-procedure-item aria-label={m.surgery_checklist_add_aria()} onclick={openItemSheet} style="margin-bottom:var(--space-4)">
-            <span>{m.surgery_checklist_add()}</span>
-          </button>
-        {/if}
-      {/snippet}
-
-      {#snippet notesBlock()}
-        <SectionHeading text={m.surgery_notes_title()} />
-        <Field label={m.surgery_notes_title()} id="surgery-notes" hidden>
-          {#snippet children(id)}
-            <textarea autocomplete={journalTextAutocomplete()}
-              class="input"
-              {id}
-              name="surgery-notes"
-              rows="4"
-              placeholder={m.surgery_notes_placeholder()}
-              bind:value={notesDraft}
-            ></textarea>
-          {/snippet}
-        </Field>
-        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" disabled={notesWrite.busy} onclick={saveNotes}>
-          <span>{m.surgery_notes_save()}</span>
-        </button>
-      {/snippet}
-
-      {#snippet consultsBlock()}
-        {#if selected!.consults.length}
-          <div style="margin-bottom:var(--space-3)" transition:collapse>
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each selected!.consults as consult (consult.id)}
-                <div class="rows-divide" transition:collapse>
-                  <ListRow
-                    static
-                    data-consult={consult.id}
-                    title={dayLabel(consult.epochDay)}
-                    action={{
-                      icon: 'trash',
-                      label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
-                      onclick: () => consultRecord.askToDelete(consult),
-                      attrs: { 'data-delete-consult': consult.id }
-                    }}
-                  />
-                </div>
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)" transition:collapse>{m.surgery_consults_empty()}</p>
-        {/if}
-      {/snippet}
-
-      <!-- A consult date, and a question to take into it. The question goes
-           on the appointment prep list (functional-audit ticket 24): that
-           is the list "What to raise" reads at any appointment, and these
-           notes used to hold the questions under a title of their own. -->
-      {#snippet consultActions()}
-        <div class="consult-actions">
-          <button class="btn btn-soft press" data-add-consult onclick={openConsultSheet}>
-            <span>{m.surgery_consult_add()}</span>
-          </button>
-          <button class="btn btn-soft press" data-add-consult-question onclick={openQuestionSheet}>
-            <span>{m.surgery_consult_question_add()}</span>
-          </button>
-        </div>
-      {/snippet}
-
-      <!-- Ticket 18: the recovery window as one side of `/compare`, offered
-           only once there is one (surgery day onward - planning and pre-op
-           have no stretch yet). -->
-      {#snippet compareBlock()}
-        {#if compareLink.state.status !== 'hidden'}
-          {@const compareNotice = compareStretchNoticeProps(compareLink.state, recoveryOpenEnded, SURGERY_COMPARE_COPY)}
-          <div style="margin-top:var(--space-4);margin-bottom:var(--space-4)">
-            <Notice
-              icon="shuffle"
-              key="surgery-compare"
-              role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-              title={compareNotice.title}
-              text={compareNotice.text}
-              action={compareNotice.action}
-            />
-          </div>
-        {/if}
-      {/snippet}
-
-      <!-- Phase 1: Planning Phase (no date set) -->
-      {#if selectedPhase === 'planning'}
-        <SectionHeading text={m.surgery_phase_planning()} />
-        <Notice
-          icon="clipboard"
-          key="surgery-planning"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          title={m.surgery_day_unscheduled()}
-          text={m.surgery_planning_title()}
-          action={{ label: m.surgery_set_date(), onclick: () => record.openEditor(selected) }}
-          data-add-as-milestone-notice
-        />
-
-        <SectionHeading text={m.surgery_consults_title()} />
-        {@render consultsBlock()}
-        {@render consultActions()}
-
-        {@render notesBlock()}
-
-        {@render checklistBlock()}
-
-      <!-- Phase 2: Pre-Op Phase (date set in future) -->
-      {:else if selectedPhase === 'pre_op'}
-        <SectionHeading text={m.surgery_phase_pre_op()} />
-        <Notice
-          icon="clock"
-          key="surgery-preop"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          title={recoveryText(selected)}
-          text={selected.surgeryEpochDay ? dayLabel(selected.surgeryEpochDay) : ''}
-          action={{ label: m.surgery_edit_sheet(), onclick: () => record.openEditor(selected) }}
-          data-add-as-milestone-notice
-        />
-
-        {@render checklistBlock()}
-
-        <SectionHeading text={m.surgery_consults_title()} />
-        {@render consultsBlock()}
-        {@render consultActions()}
-
-        {@render notesBlock()}
-
-      <!-- Phase 3: Surgery Day Phase (surgery date is today) -->
-      {:else if selectedPhase === 'surgery_day'}
-        <SectionHeading text={m.surgery_phase_surgery_day()} />
-        <Notice
-          icon="flag"
-          key="surgery-today"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          title={m.surgery_day_title()}
-          text={dayLabel(today)}
-          data-add-as-milestone-notice
-        />
-
-        {@render compareBlock()}
-
-        {#if linkedMilestone}
-          <div style="margin-bottom:var(--space-4)">
-            <Notice
-              icon="flag"
-              key="surgery-milestone-linked"
-              role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-              title={m.surgery_milestone_linked_badge()}
-              text={m.surgery_milestone_recorded_notice({ name: linkedMilestone.name })}
-            />
-          </div>
-        {:else}
-          <div style="margin-bottom:var(--space-4)">
-            <Notice
-              icon="flag"
-              key="surgery-milestone-prompt"
-              role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-              title={m.surgery_milestone_prompt_title()}
-              text={m.surgery_milestone_prompt_body()}
-              action={{ label: m.surgery_milestone_prompt_action(), primary: true, onclick: promptMilestoneConfirmation }}
-              data-record-milestone-prompt
-            />
-          </div>
-        {/if}
-
-        {@render checklistBlock()}
-
-        {@render notesBlock()}
-
-      <!-- Phase 4: Recovery Phase (any day after surgery, not archived) -->
-      {:else if selectedPhase === 'recovery'}
-        <SectionHeading text={m.surgery_phase_recovery()} />
-        <Notice
-          icon="heart"
-          key="surgery-recovery"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          title={selectedRecDay?.type === 'since' ? m.surgery_post_op_day({ days: String(selectedRecDay.days) }) : recoveryText(selected)}
-          text={selected.surgeryEpochDay ? dayLabel(selected.surgeryEpochDay) : ''}
-          action={linkedMilestone
-            ? undefined
-            : { label: m.surgery_milestone_add(), onclick: promptMilestoneConfirmation }}
-          data-add-as-milestone-notice
-        />
-
-        {@render compareBlock()}
-
-        {@render notesBlock()}
-
-        {@render woundAlbum()}
-
-        {@render checklistBlock()}
-
-        <SectionHeading text={m.surgery_consults_title()} />
-        {@render consultsBlock()}
-        {@render consultActions()}
-
-      <!-- Phase 5: Archived Phase (after surgery, archived by the person) -->
-      {:else if selectedPhase === 'archived'}
-        <SectionHeading text={m.surgery_phase_archived()} />
-        <Notice
-          icon="archive"
-          key="surgery-archived"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          title={m.surgery_archived_title()}
-          text={selectedRecDay?.type === 'since' ? m.surgery_archived_summary({ days: String(selectedRecDay.days) }) : ''}
-          data-add-as-milestone-notice
-        />
-
-        {@render compareBlock()}
-
-        {@render woundAlbum()}
-
-        {@render notesBlock()}
-
-        <SectionHeading text={m.surgery_consults_title()} />
-        {@render consultsBlock()}
-
-        {@render checklistBlock(true)}
-      {/if}
-
-      <!-- Outside the phase chain on purpose (ticket 56, ADR-0065): a
-           document filed against a procedure stays visible whichever phase
-           the procedure is in now. The procedure stores nothing about the
-           link. -->
-      <LinkedDocuments kind="procedure" id={selected.id} />
-    </div>
+    <HostedRows host="surgery" keys={['dilation']} card />
   {/if}
 
   <RecordSheet
     {record}
     handle="procedure"
-    canSave={(draft) => costDraftOk(draft.cost)}
+    canSave={(draft) => draft.kind !== null && costDraftOk(draft.cost)}
     newTitle={m.surgery_new_sheet()}
-    editTitle={m.surgery_edit_sheet()}
     saveLabel={m.surgery_save()}
-    deleteLabel={m.surgery_delete()}
-    confirm={{
-      title: m.surgery_delete_sheet(),
-      question: (procedure) => m.surgery_delete_q({ name: procedure.name }),
-      hint: () => m.surgery_delete_hint(),
-      confirmLabel: m.surgery_delete(),
-      cancelLabel: m.keep_it()
-    }}
   >
     {#snippet fields(editor)}
-      <Field label={m.surgery_name_label()} id="surgery-name">
-        {#snippet children(id)}
-          <input autocomplete={journalTextAutocomplete()}
-            class="input"
-            {id}
-            name="surgery-name"
-            placeholder={m.surgery_name_placeholder()}
-            bind:value={editor.name}
-          />
-        {/snippet}
-      </Field>
-      <Field label={m.surgery_date_label()} id="surgery-date">
-        {#snippet children(id)}
-          <DatePicker name="surgery-date" bind:value={editor.date} {id} />
-        {/snippet}
-      </Field>
-      <CostField id="surgery-cost" bind:draft={editor.cost} />
-      <Field label={m.surgery_kind_label()} legend>
-        {#snippet children()}
-          <ListCard>
-            <ListRow
-              key="procedure-kind"
-              data-procedure-kind
-              icon="tag"
-              title={procedureKindName(editor.kind)}
-              static
-              action={{
-                icon: 'pencil',
-                label: m.surgery_kind_change(),
-                onclick: () => (pickingKind = true),
-                attrs: { 'data-pick-procedure-kind': 'true' }
-              }}
-            />
-          </ListCard>
-        {/snippet}
-      </Field>
-      {#if editor.kind === 'custom'}
-        <div class="disclosed" transition:disclose>
-          <Field label={m.surgery_kind_dilation_toggle_label()} legend spread>
-            {#snippet children()}
-              <Switch
-                checked={editor.dilationOptIn}
-                label={m.surgery_kind_dilation_toggle_label()}
-                onChange={(v) => (editor.dilationOptIn = v)}
-              />
-            {/snippet}
-          </Field>
-        </div>
-      {/if}
-      {#if editor.id}
-        <Field label={m.surgery_archive_toggle_label()} legend spread>
-          {#snippet children()}
-            <Switch
-              checked={editor.archived}
-              label={m.surgery_archive_toggle_label()}
-              onChange={(value) => (editor.archived = value)}
-            />
-          {/snippet}
-        </Field>
-      {/if}
-      <ProcedureKindPicker
-        open={pickingKind}
-        current={editor.kind}
-        onPick={(kind) => (editor.kind = kind)}
-        onClose={() => (pickingKind = false)}
+      <ProcedureFields
+        bind:name={editor.name}
+        bind:kind={editor.kind}
+        bind:date={editor.date}
+        bind:cost={editor.cost}
+        bind:dilationOptIn={editor.dilationOptIn}
+        bind:archived={editor.archived}
       />
     {/snippet}
-    {#snippet extraActions(editor)}
-      {#if editor.date}
-        <button class="btn btn-soft" data-add-to-calendar onclick={() => (calendarSheet = true)}>
-          <span>{m.calendar_handoff_button()}</span>
-        </button>
-      {/if}
-    {/snippet}
   </RecordSheet>
-
-  {#if record.editor?.date}
-    <CalendarHandoffSheet
-      open={calendarSheet}
-      kind="surgery"
-      epochDay={epochDayFromDateInputValue(record.editor.date) ?? today}
-      onClose={() => (calendarSheet = false)}
-    />
-  {/if}
-
-  <DiscardSheet guard={notesGuard} />
-
-  <Sheet busy={sheetWrite.busy} open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
-    <h3>{m.surgery_consult_sheet()}</h3>
-    <Field label={m.surgery_consult_date_label()} id="surgery-consult-date">
-      {#snippet children(id)}
-        <DatePicker name="surgery-consult-date" bind:value={consultDate} {id} />
-      {/snippet}
-    </Field>
-    <button class="btn btn-primary" data-save-consult disabled={sheetWrite.busy} onclick={addConsult}><span>{m.surgery_consult_add()}</span></button>
-  </Sheet>
-
-  <Sheet busy={sheetWrite.busy} open={questionSheet} title={m.surgery_consult_question_sheet()} onClose={() => (questionSheet = false)}>
-    <h3>{m.surgery_consult_question_sheet()}</h3>
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consult_question_hint()}</p>
-    <Field label={m.surgery_consult_question_label()} id="surgery-consult-question" hidden>
-      {#snippet children(id)}
-        <input autocomplete={journalTextAutocomplete()}
-          class="input"
-          {id}
-          name="surgery-consult-question"
-          placeholder={m.surgery_consult_question_placeholder()}
-          bind:value={questionText}
-        />
-      {/snippet}
-    </Field>
-    <button class="btn btn-primary" data-save-consult-question disabled={sheetWrite.busy} onclick={addQuestion}><span>{m.appointment_prep_add_button()}</span></button>
-  </Sheet>
-
-  <Sheet busy={sheetWrite.busy} open={photoSheet} title={m.surgery_photos_title()} onClose={() => (photoSheet = false)}>
-    <h3>{m.surgery_photos_title()}</h3>
-    <Field label={m.surgery_photo_date_label()} id="surgery-photo-date">
-      {#snippet children(id)}
-        <DatePicker name="surgery-photo-date" bind:value={photoDate} {id} />
-      {/snippet}
-    </Field>
-    <div class="stack-3">
-      <button class="btn btn-soft" data-pick-procedure-photo onclick={recoveryPhotos.pick}>
-        <span>{m.surgery_photo_pick()}</span>
-      </button>
-      <button class="btn btn-soft" data-capture-procedure-photo onclick={recoveryPhotos.review.capture}>
-        <span>{m.surgery_photo_capture()}</span>
-      </button>
-    </div>
-  </Sheet>
-
-  <Sheet busy={sheetWrite.busy} open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
-    <h3>{m.surgery_checklist_sheet()}</h3>
-    <Field label={m.surgery_checklist_sheet()} id="surgery-item" hidden>
-      {#snippet children(id)}
-        <input autocomplete={journalTextAutocomplete()}
-          class="input"
-          {id}
-          name="surgery-item"
-          placeholder={m.surgery_checklist_placeholder()}
-          bind:value={itemText}
-        />
-      {/snippet}
-    </Field>
-    <button class="btn btn-primary" data-save-procedure-item disabled={sheetWrite.busy} onclick={addItem}><span>{m.surgery_checklist_add()}</span></button>
-  </Sheet>
-
-  <!-- Surgery Day Milestone Confirmation Sheet (ADR-0045 explicit confirmation) -->
-  {#if selected}
-    <Sheet
-      busy={offerWrite.busy}
-      open={milestoneOffer !== null}
-      title={MILESTONE_OFFER.copy.title()}
-      onClose={() => void answerMilestoneOffer('decline')}
-    >
-      <h3>{m.surgery_milestone_confirm_q({ name: selected.name })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.surgery_milestone_confirm_hint()}</p>
-      <div class="stack-3">
-        <button
-          class="btn btn-primary"
-          data-confirm-record-milestone
-          disabled={offerWrite.busy}
-          onclick={() => void answerMilestoneOffer('confirm')}
-        >
-          <span>{MILESTONE_OFFER.copy.confirm()}</span>
-        </button>
-        <button class="btn btn-soft" onclick={() => void answerMilestoneOffer('decline')}>
-          <span>{MILESTONE_OFFER.copy.decline()}</span>
-        </button>
-      </div>
-    </Sheet>
-  {/if}
-
-  <RecordSheet
-    record={consultRecord}
-    handle="consult"
-    confirm={{
-      title: m.surgery_consult_delete_sheet(),
-      question: (consult) => m.surgery_consult_delete_q({ date: dayLabel(consult.epochDay) }),
-      confirmLabel: m.surgery_consult_delete_sheet(),
-      cancelLabel: m.keep_it()
-    }}
-  />
-
-  <RecordSheet
-    record={itemRecord}
-    handle="procedure-item"
-    confirm={{
-      title: m.surgery_checklist_delete_sheet(),
-      question: () => m.surgery_checklist_delete_q(),
-      hint: (item) => item.content,
-      confirmLabel: m.surgery_delete(),
-      cancelLabel: m.keep_it()
-    }}
-  />
 </div>
 
 <style>
   .procedure-row {
     transition: translate var(--dur-med) var(--ease-out);
-  }
-
-  .recovery {
-    margin-top: var(--space-4);
-  }
-
-  .consult-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
-  }
-
-  .sj-box {
-    border: 2px solid var(--outline);
-    border-radius: var(--r-block);
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-  }
-
-  .sj-ticked {
-    border-color: var(--role-mark, var(--accent));
-    color: var(--role-mark, var(--accent));
-  }
-
-  .sj-done {
-    text-decoration: line-through;
-    color: var(--text-2);
-  }
-
-  .sj-flagged {
-    color: var(--role-mark, var(--accent));
   }
 </style>

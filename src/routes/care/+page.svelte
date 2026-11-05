@@ -34,6 +34,7 @@
      anything (PRODUCT.md:109, and labTiming.ts as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
+  import { scrollToHash } from '$lib/navigation/scroll-region';
   import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, EASE_OUT_SOFT_CSS } from '$lib/motion/tokens';
   import { flushSync, onDestroy } from 'svelte';
@@ -50,6 +51,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import RegimenEditorSheet from '$lib/components/RegimenEditorSheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
@@ -67,12 +69,15 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { readCare, CARE_DOSE_TOTAL_WINDOW_DAYS } from '$lib/data/careReads';
   import { fmtDay, intlLocale } from '$lib/data/dates';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import type { RegimenEpisode } from '$lib/data/types';
   import { sameDrug } from '$lib/data/regimenEpisode';
   import { ROUTE_OPTIONS, routeLabel } from '$lib/data/vocabulary/doseLabels';
   import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine, stockSupplyLine } from '$lib/data/vocabulary/stockLabel';
   import { costLine } from '$lib/data/vocabulary/costLabel';
+  import { cycleEventKindName } from '$lib/data/vocabulary/labels';
   import CostField from '$lib/components/CostField.svelte';
   import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
   import { deviceDefaultCurrency } from '$lib/data/cost';
@@ -97,6 +102,19 @@
      as a day of their week, where the rail's captions state a date under a
      mark and have no room for more. */
   const dayWithWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
+  /* When a course began, with its year: it can be years back, and a weekday
+     says nothing about a day that long ago. */
+  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* The link to cycle events is gated here (ADR-0043): an active testosterone
+     regimen or the explicit opt-in. The card waits for the episodes, so the
+     row never arrives after the rows around it. */
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingChoice));
+  /* The three most recent cycle events, drawn at the head of that link's card
+     (they went with it when the log left Changes, pre-release-human 12). */
+  let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
+  let recentCycleEvents = $derived([...cycleEventsQuery.rows].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
 
   let careQuery = liveQuery((j) => readCare(j, today));
   // A successful answer exists even when no medication has been recorded.
@@ -448,6 +466,20 @@
       name is free text and a fragment is not. */
   const blockAnchor = (episodeId: string) => `care-med-${episodeId}`;
 
+  let regimenSheet: ReturnType<typeof RegimenEditorSheet>;
+
+  /** The lane's name travels down to its block rather than taking the
+      fragment's own jump, which landed the whole way in one frame (prh12
+      bug 14, "should take you lower smoothly"). The eased scroll is
+      scroll-region.ts's, the same one a linked record lands with; the
+      focus still moves to the block, without a scroll of its own. */
+  function travelToBlock(event: MouseEvent, episodeId: string) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    document.getElementById(blockAnchor(episodeId))?.focus({ preventScroll: true });
+    scrollToHash(`#${blockAnchor(episodeId)}`);
+  }
+
   /** Where to log this lane's next dose: the same sheet the dose panel on
       Today opens (`/care/doses?add=1`), seeded with the drug whose block the
       button sits in, so a person on three regimens does not land in a picker
@@ -590,7 +622,7 @@
                    and offers Log a dose, with the whole rail in between.
                    Sized to the name rather than to the lane, so the press
                    is a control's press and not a full-width row's. -->
-              <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug}>
+              <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug} onclick={(event) => travelToBlock(event, lane.episodeId)}>
                 <span class="care-lane-drug">{lane.drug}</span>
                 <Icon name="chevronDown" size={18} cls="care-lane-go" />
               </a>
@@ -682,7 +714,10 @@
         tabindex="-1"
         data-care-regimen-block={lane.episode.drug}
       >
-        <a class="care-regimen" href="/care/regimen" data-care-regimen>
+        <!-- Opens this episode's own editor over Care (prh12 bug 16): the
+             same sheet the regimen screen opens, without the trip to that
+             screen to tap the episode a second time. -->
+        <button type="button" class="care-regimen" data-care-regimen={lane.episode.drug} onclick={() => regimenSheet.open(lane.episode)}>
           <span class="care-regimen-lines">
             <span class="care-regimen-drug">{blockName(lane.episode)}</span>
             <span class="care-regimen-detail"
@@ -694,9 +729,10 @@
                     route: route.charAt(0).toLowerCase() + route.slice(1)
                   })}</span
             >
+            <span class="care-regimen-detail" data-care-regimen-since>{m.care_regimen_since({ date: longDay(lane.takingSinceEpochDay) })}</span>
           </span>
           <Icon name="chevronRight" size={22} cls="care-regimen-go" />
-        </a>
+        </button>
         <!-- The two days the lane above draws, said in words with their
              weekday: the rail states where they fall against each other and
              this states which days they are. -->
@@ -809,17 +845,31 @@
     />
   </ListCard>
 
-  <!-- What came of all of it (phase 9 carpet ticket 16). The card above is
-       what is going in, on what schedule and how much is left; this is the
-       one row about what the person has noticed since, and the two screens
-       under it - side effects, and hair - hang off that one rather than off
-       the hub.
-
-       No SectionHeading: it is one row, and a heading over "Changes you've
-       noticed" would be that title said twice. What separates it from the
-       hormones card is the --space-5 `.screen > .screen-part > *` gives
-       two unrelated blocks. -->
-  <HostedRows host="care" card />
+  <!-- A link to the cycle log (pre-release-human 12), only behind
+       `cycleTrackingVisible` (ADR-0043), with the last three events under
+       it. The module itself is on the More hub, in Health. The events are
+       static rows (the shape regimen's pause rows use): they name nothing to
+       press, and the link row heading them is the way in. No icon disc on
+       them, since a disc is what marks a row as one to press, and the cycle
+       screen has no address for one event to link them to. They sit in the
+       link's own reserve, so the card waits for their read and arrives whole. -->
+  <HostedRows
+    host="care"
+    keys={cycleShown ? ['cycle-events'] : []}
+    ready={!episodesQuery.loading && (!cycleShown || !cycleEventsQuery.loading)}
+    card
+  >
+    {#snippet after()}
+      {#each recentCycleEvents as event (event.id)}
+        <div class="kit-row is-static" data-cycle-event={event.id}>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>
+            <span class="kit-row-sub">{longDay(event.epochDay)}</span>
+          </span>
+        </div>
+      {/each}
+    {/snippet}
+  </HostedRows>
     {/snippet}
   </ReadGate>
 
@@ -1033,6 +1083,8 @@
     busy={stockRemoving.busy}
     failed={stockRemoving.failed}
   />
+
+  <RegimenEditorSheet bind:this={regimenSheet} allEpisodesLink />
 </div>
 
 <style>
@@ -1064,10 +1116,15 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    width: 100%;
     min-height: var(--touch-target);
     padding: var(--space-2) 0;
-    text-decoration: none;
+    border: 0;
+    background: none;
     color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
   }
   /* Also the block a lane's name jumps to: enough room over it that the
      drug's name is not against the top of the scroll region, and no focus

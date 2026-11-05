@@ -116,7 +116,8 @@ const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
   personal_effect_type: 'personalEffectType',
   entry_template: 'entryTemplate',
   entry_template_tag: 'entryTemplate',
-  entry_template_dimension_value: 'entryTemplate'
+  entry_template_dimension_value: 'entryTemplate',
+  progress_pose: 'progressPhoto'
 };
 
 test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async () => {

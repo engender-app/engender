@@ -35,6 +35,24 @@ export const drugNameKey = (drug: string): string => drug.trim().toLowerCase();
     whitespace and case. Attribution, stock, Care and quick log share it. */
 export const sameDrug = (a: string, b: string): boolean => drugNameKey(a) === drugNameKey(b);
 
+/** The first day of the unbroken run of `episode`'s drug that `episode`
+    ends: its own start, walked back over every episode of the same drug
+    that reaches up to the day before it or overlaps it. A dose change
+    saved as a new episode the day after the old one ended is still the
+    same course, so "taking since" names when the course began, not when
+    the dose last changed. A day with no episode of the drug breaks it. */
+export function continuousSince(episodes: readonly RegimenEpisode[], episode: RegimenEpisode): number {
+  const same = episodes.filter((other) => sameDrug(other.drug, episode.drug));
+  let since = episode.startEpochDay;
+  for (;;) {
+    const earlier = same.filter(
+      (other) => other.startEpochDay < since && (other.endEpochDay === null || other.endEpochDay >= since - 1)
+    );
+    if (!earlier.length) return since;
+    since = Math.min(...earlier.map((other) => other.startEpochDay));
+  }
+}
+
 /** Every episode covering the timestamp's calendar day, including hidden
     episodes and concurrent regimens. */
 export function activeEpisodesAt(episodes: readonly RegimenEpisode[], timestamp: number): RegimenEpisode[] {

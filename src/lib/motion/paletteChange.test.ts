@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { changePalette, changeTheme, isAppearancePending } from './paletteChange';
+import { DURATION_FALLBACK } from './tokens';
+import { bloomGeometry, bloomGradient, incomingRings, changePalette, changeTheme, isAppearancePending } from './paletteChange';
 
 describe('palette change', () => {
   it('saves immediately when view transitions are unavailable', () => {
@@ -169,4 +170,43 @@ describe('palette change', () => {
     expect(isAppearancePending('palette')).toBe(false);
   });
 
+  /* prh12 bug 9: the new colours bloom from the sun's own centre, and the
+     circle has to cover the farthest corner of the window wherever the sun
+     is, including partly off screen above a scrolled Settings. */
+  it('reaches the farthest window corner from the sun centre', () => {
+    const corner = bloomGeometry({ x: 390, y: 0 }, 390, 844);
+    expect(corner.reach).toBeCloseTo(Math.hypot(390, 844), 5);
+    const scrolled = bloomGeometry({ x: 390, y: -300 }, 390, 844);
+    expect(scrolled.reach).toBeCloseTo(Math.hypot(390, 1144), 5);
+    const middle = bloomGeometry({ x: 100, y: 400 }, 390, 844);
+    expect(middle.reach).toBeCloseTo(Math.hypot(290, 444), 5);
+    /* The ring band rides outside the reach, so the last ring has left the
+       window when the new colours cover it. */
+    expect(corner.outer).toBeGreaterThan(corner.reach);
+  });
+
+  it('draws the rings as a band outside the reach, outermost stripe outermost', () => {
+    const gradient = bloomGradient(['red', 'white', 'blue'], 100, 160, 6);
+    expect(gradient.startsWith('radial-gradient(circle farthest-side, transparent 0px 100px, ')).toBe(true);
+    /* Inner to outer: blue from 100, white from 120, red from 140 to 160,
+       each with the black seam on its own outer edge. */
+    expect(gradient).toContain('blue 100px 114px, #000 114px 120px');
+    expect(gradient).toContain('red 140px 154px, #000 154px 160px)');
+  });
+  /* Alicja, after living with it at 600ms: "a little longer". */
+  it('blooms over 800ms', () => {
+    expect(DURATION_FALLBACK['--dur-bloom']).toBe(800);
+  });
+  /* Setup holds the flag it is leaving under the new sun's redraw, so two
+     suns are in the document when the band is built; the leaving one is
+     inert while it goes. Reading both made a band of both flags' rings. */
+  it('builds the band from the sun that is arriving, not one on its way out', () => {
+    const ring = (width: number, leaving: boolean) =>
+      ({ offsetWidth: width, closest: (sel: string) => (sel === '[inert]' && leaving ? {} : null) }) as unknown as HTMLElement;
+    const old = [ring(204, true), ring(136, true)];
+    const fresh = [ring(198, false), ring(99, false)];
+    const doc = { querySelectorAll: () => [...old, ...fresh] } as unknown as Document;
+    expect(incomingRings(doc)).toEqual(fresh);
+  });
 });
+

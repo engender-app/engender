@@ -88,7 +88,7 @@
                 <ListRow
                   key="coming-back-letter"
                   data-coming-back-item="letter"
-                  icon="book"
+                  icon="envelope"
                   title={m.coming_back_letter_title()}
                   subtitle={m.coming_back_letter_sub({ date: dayLong(item.unlockEpochDay) })}
                   href="/transition/letters"
@@ -97,7 +97,7 @@
                 <ListRow
                   key="coming-back-milestone"
                   data-coming-back-item="milestone"
-                  icon="flag"
+                  icon="summit"
                   title={item.name}
                   subtitle={m.coming_back_milestone_sub({ date: dayLong(item.epochDay) })}
                   href="/transition/milestones"
@@ -106,7 +106,7 @@
                 <ListRow
                   key="coming-back-era"
                   data-coming-back-item="era"
-                  icon="columns"
+                  icon="era"
                   title={item.name}
                   subtitle={item.startEpochDay === null
                     ? m.coming_back_era_sub_no_start()
@@ -117,7 +117,7 @@
                 <ListRow
                   key="coming-back-wear-session"
                   data-coming-back-item="wear-session"
-                  icon="clock"
+                  icon="watch"
                   title={wearReturningRowTitle(item.wearKind)}
                   subtitle={m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) })}
                   href="/body/wear"
@@ -126,7 +126,7 @@
                 <ListRow
                   key="coming-back-dose"
                   data-coming-back-item="dose"
-                  icon="clock"
+                  icon="pill"
                   title={m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) })}
                   subtitle={m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` })}
                   href="/care/doses?add=1"

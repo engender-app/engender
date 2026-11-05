@@ -18,6 +18,7 @@
    another. */
 
 import { localDateFromEpochDay } from '../epochDay';
+import type { Journal } from '../journal/journal';
 
 /** Which table a photograph came from. `entry` and `milestone` are the two
     owners of the `photo` table; the rest each have one of their own
@@ -29,7 +30,8 @@ const PHOTO_SOURCES = [
   'hairRemoval',
   'tryout',
   'procedure',
-  'video'
+  'video',
+  'progress'
 ] as const;
 
 export type PhotoSource = (typeof PHOTO_SOURCES)[number];
@@ -55,7 +57,12 @@ export interface LibraryPhoto {
 /** The chips over the grid, in the order they are drawn. `everything` is
     first because it is where the library opens; `starred` narrows by flag
     across source chips. */
-const PHOTO_CHIPS = ['everything', 'body', 'hair', 'tryouts', 'surgery', 'video', 'starred'] as const;
+/* `progress` sits next to `body`: both are the person photographing
+   themselves, and a progress shot is the one taken on purpose for it
+   (pre-release-human 12, bug 25). Its own chip rather than folded into
+   Body, because finding the posed shots among every other photograph is
+   what the chip is for. */
+const PHOTO_CHIPS = ['everything', 'body', 'progress', 'hair', 'tryouts', 'surgery', 'video', 'starred'] as const;
 
 export type PhotoChip = (typeof PHOTO_CHIPS)[number];
 
@@ -68,7 +75,8 @@ const CHIP_OF: Record<PhotoSource, Exclude<PhotoChip, 'everything' | 'starred'>>
   hairRemoval: 'hair',
   tryout: 'tryouts',
   procedure: 'surgery',
-  video: 'video'
+  video: 'video',
+  progress: 'progress'
 };
 
 export function chipOf(source: PhotoSource): PhotoChip {
@@ -140,6 +148,38 @@ export function photoOwnerHref(photo: LibraryPhoto): string {
     case 'hair': return `/body/hair-progress?photo=${id}`;
     case 'hairRemoval': return `/body/hair-removal?session=${id}`;
     case 'tryout': return `/transition/tryouts/${id}`;
-    case 'procedure': return `/health/surgery?procedure=${id}`;
+    case 'procedure': return `/health/surgery/${id}`;
+    case 'progress': return `/transition/progress-photos?photo=${id}`;
+  }
+}
+
+/** Whether the library can delete this photograph itself, with a hold
+    (pre-release-human 12). A video note cannot: no area deletes one on its
+    own, only the entry editor does, as part of saving its entry. */
+export function libraryDeletable(photo: LibraryPhoto): boolean {
+  return photo.source !== 'video';
+}
+
+/** Deletes one photograph through the area that owns it - the same call
+    that area's own screen makes - and nothing else: the entry, milestone,
+    session, tryout or procedure it hung off stays, without it. Run inside
+    `undoable`, so a batch is one deletion with one undo. */
+export function deleteFromOwner(journal: Journal, photo: LibraryPhoto): Promise<void> {
+  switch (photo.source) {
+    case 'entry':
+    case 'milestone':
+      return journal.photos.remove(photo.id);
+    case 'hair':
+      return journal.hairProgress.deletePhoto(photo.id);
+    case 'hairRemoval':
+      return journal.hairRemoval.deletePhoto(photo.id);
+    case 'tryout':
+      return journal.tryouts.deletePhoto(photo.id);
+    case 'procedure':
+      return journal.procedures.deletePhoto(photo.id);
+    case 'progress':
+      return journal.progressPhotos.deletePhoto(photo.id);
+    case 'video':
+      return Promise.reject(new Error('a video note is deleted in its entry, not from the library'));
   }
 }

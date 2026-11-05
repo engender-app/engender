@@ -275,7 +275,7 @@ export const FEATURES = {
     areaGroups: none,
     unprompted: ['surgery-countdown'],
     tiles: ['surgery-countdown'],
-    routes: ['/health/surgery'],
+    routes: ['/health/surgery', '/health/surgery/[id]'],
     messages: ['surgery', 'procedure', 'tile_surgery']
   },
   dilation: {
@@ -297,7 +297,7 @@ export const FEATURES = {
     areaGroups: none,
     unprompted: none,
     tiles: none,
-    routes: ['/health/appointments', '/health/appointments/in-the-room'],
+    routes: ['/health/appointments', '/health/appointments/in-the-room', '/health/appointments/[id]'],
     messages: ['appointments', 'appointment', 'provider', 'in_the', 'debrief']
   },
   checklists: {
@@ -332,6 +332,17 @@ export const FEATURES = {
     tiles: none,
     routes: ['/transition/milestones'],
     messages: ['ms', 'milestones']
+  },
+  'progress-photos': {
+    sections: ['progressPhotos', 'progressPoses'],
+    tables: ['progress_photo', 'progress_pose'],
+    journal: ['progressPhotos'],
+    hubRows: ['progress-photos'],
+    areaGroups: none,
+    unprompted: none,
+    tiles: none,
+    routes: ['/transition/progress-photos'],
+    messages: ['pph']
   },
   tryouts: {
     sections: ['tryouts', 'feltSenseEntries'],

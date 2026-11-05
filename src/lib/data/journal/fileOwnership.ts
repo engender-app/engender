@@ -16,6 +16,7 @@ export type PhotoRow = {
 export type RecordingRow = { uuid: string; file_path: string; entry_id: number; updated_at: number };
 export type VideoRow = { uuid: string; file_path: string; entry_id: number; updated_at: number };
 export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string; updated_at: number };
+export type ProgressPhotoRow = { uuid: string; epoch_day: number; pose: string; file_path: string; updated_at: number };
 export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string; updated_at: number };
 export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string; updated_at: number };
 export type TryoutPhotoRow = { uuid: string; tryout_id: number; epoch_day: number; file_path: string; updated_at: number };
@@ -70,6 +71,12 @@ export const FILE_OWNERS = {
     'SELECT uuid, epoch_day, file_path, updated_at FROM hair_photo ORDER BY epoch_day, id',
     photoNames,
     (journal) => journal.hairPhotos.map((photo) => claim([photo.id], photoNames({ file_path: photo.fileName })))
+  ),
+  progressPhotos: owner<ProgressPhotoRow>(
+    'progress_photo', ['file_path'],
+    'SELECT uuid, epoch_day, pose, file_path, updated_at FROM progress_photo ORDER BY epoch_day, id',
+    photoNames,
+    (journal) => journal.progressPhotos.map((photo) => claim([photo.id], photoNames({ file_path: photo.fileName })))
   ),
   hairRemovalPhotos: owner<HairRemovalPhotoRow>(
     'hair_removal_photo', ['file_path'],
@@ -140,7 +147,7 @@ export async function readFileOwnership(driver: SqliteReader) {
 }
 
 /** The view lists stored names; the store also holds derived thumbnails. */
-const PHOTO_SOURCES = new Set(['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure']);
+const PHOTO_SOURCES = new Set(['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'progress']);
 export async function readCleanupFileNames(driver: SqliteReader): Promise<string[]> {
   const rows = await driver.query<{ source: string; file_name: string }>('SELECT source, file_name FROM media_file');
   return rows.flatMap(({ source, file_name }) => {
