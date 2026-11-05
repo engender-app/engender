@@ -409,10 +409,17 @@
         <FeatureVisibilityList {moduleEnabled} onModuleChange={changeModule} />
       {/if}
       <h4>{m.feature_filters_title()}</h4>
+      <!-- Labels rather than divs, so a tap anywhere on a row reaches its
+           switch, the way the first run's checkbox rows take one. A label
+           is not a control itself: the switch stays the one thing focused
+           and announced, under its own aria-label. -->
       <ListCard>
-        <div class="kit-row" data-genital-effects-toggle>
+        <label class="kit-row" data-genital-effects-toggle>
           <span class="kit-row-ico"><Icon name="sprout" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.feature_genital_effects()}</span>
+            <span class="kit-row-sub">{m.feature_genital_effects_sub()}</span>
+          </span>
           <span class="kit-row-trail">
             <Switch
               checked={genitalEffectsOn}
@@ -420,10 +427,13 @@
               onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital', on)}
             />
           </span>
-        </div>
-        <div class="kit-row" data-sexual-effects-toggle>
+        </label>
+        <label class="kit-row" data-sexual-effects-toggle>
           <span class="kit-row-ico"><Icon name="heart" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.feature_sexual_effects()}</span></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.feature_sexual_effects()}</span>
+            <span class="kit-row-sub">{m.feature_sexual_effects_sub()}</span>
+          </span>
           <span class="kit-row-trail">
             <Switch
               checked={sexualEffectsOn}
@@ -431,13 +441,14 @@
               onChange={(on) => void journal.effectCategories.setCategoryEnabled('sexual', on)}
             />
           </span>
-        </div>
-        <div class="kit-row" data-cycle-tracking-toggle>
+        </label>
+        <label class="kit-row" data-cycle-tracking-toggle>
           <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
           <span class="kit-row-text">
             <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+            <span class="kit-row-sub">{m.feature_cycle_tracking_sub()}</span>
             {#if prefs.cycleTrackingChoice === null}
-              <span class="kit-row-sub" transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
+              <span class="kit-row-sub" data-cycle-explanation transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
             {/if}
           </span>
           <span class="kit-row-trail">
@@ -450,7 +461,7 @@
               }}
             />
           </span>
-        </div>
+        </label>
       </ListCard>
     </div>
     {#if featureError}<p role="alert">{featureError}</p>{/if}
