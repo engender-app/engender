@@ -245,9 +245,10 @@ export const PATHS: Record<string, string> = {
   // A switch, turned on: the permissions list, which is things switched on
   // or off. It took `key`, the recovery key a row up.
   toggle: '<rect x="2" y="6.5" width="19" height="11" rx="5.5"/><circle cx="15.5" cy="12" r="2.5"/>',
-  // The accessibility figure in a circle. It took `eye`, which is show and
-  // hide everywhere else.
-  access: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="7.6" r="1.1"/><path d="M7.5 10.6 12 11.6l4.5-1M12 11.6v2.9l-2.4 3.6M12 14.5l2.4 3.6"/>',
+  // The accessibility figure, standing with its arms out. It took `eye`,
+  // which is show and hide everywhere else. No ring around it: Settings'
+  // first card puts it beside `mood` and `globe`, both rings already.
+  access: '<circle cx="12" cy="5" r="2"/><path d="M5 9.5 12 11l7-1.5M12 11v4M8.5 21.5l3.5-6.5 3.5 6.5"/>',
   // An era of somebody's life: a sun coming up over a horizon, a new stretch
   // starting. It took `columns`, which reads as side by side and stays the
   // mark for comparing. Three short rays and a ground line under the
