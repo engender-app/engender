@@ -224,6 +224,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   presets: 'reference data, not a series (CONTEXT: "Reference data")',
   tagGroups: 'reference data, not a series (CONTEXT: "Reference data")',
   bodyRegions: 'reference data, not a series (CONTEXT: "Reference data")',
+  progressPoses: 'reference data, not a series (CONTEXT: "Reference data")',
   presentations: 'reference data, not a series (CONTEXT: "Reference data")',
   entryTemplates: 'reference data, not a series (CONTEXT: "Reference data")',
   effectCategories: 'reference data, not a series (CONTEXT: "Reference data")',

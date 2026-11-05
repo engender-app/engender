@@ -724,6 +724,11 @@ beforeAll(async () => {
   )) as string;
   await drive('progressPhotos', 'deletePhoto', () => journal.progressPhotos.deletePhoto(progressPhotoId));
   await journal.progressPhotos.addPhoto(19211, 'front', photo('posed again'));
+  const progressPose = (await drive('progressPhotos', 'addPose', () => journal.progressPhotos.addPose('Flexing'))) as string;
+  await drive('progressPhotos', 'renamePose', () => journal.progressPhotos.renamePose(progressPose, 'Arms up'));
+  await drive('progressPhotos', 'setPoseHidden', () => journal.progressPhotos.setPoseHidden('side', true));
+  await journal.progressPhotos.addPhoto(19212, progressPose, photo('posed in a pose of my own'));
+  await drive('progressPhotos', 'deletePose', () => journal.progressPhotos.deletePose(progressPose));
 
   // --- hairRemoval ---------------------------------------------------
   const hairRemovalId = (await drive('hairRemoval', 'upsertSession', () =>
@@ -1105,6 +1110,7 @@ beforeAll(async () => {
   await driveRead('hairProgress', 'getPhotosOnDay', () => journal.hairProgress.getPhotosOnDay(19200));
   await driveRead('hairProgress', 'lastPhotoWriteEpochDay', () => journal.hairProgress.lastPhotoWriteEpochDay(19200));
   await driveRead('progressPhotos', 'getPhotos', () => journal.progressPhotos.getPhotos());
+  await driveRead('progressPhotos', 'getPoses', () => journal.progressPhotos.getPoses());
   await driveRead('progressPhotos', 'lastWriteEpochDay', () => journal.progressPhotos.lastWriteEpochDay(19300));
   await driveRead('hairRemoval', 'getSessions', () => journal.hairRemoval.getSessions());
   await driveRead('hairRemoval', 'getSessionsOnDay', () => journal.hairRemoval.getSessionsOnDay(20000));

@@ -47,7 +47,7 @@ for (const enabled of [true, false]) {
   test(`the split carries an ${enabled ? 'enabled' : 'disabled'} genital_sexual into both new categories`, async () => {
     const db = await journalBeforeTheSplit(enabled);
 
-    await runMigrations(db, noopFileOps(), migrations);
+    await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= EFFECT_CATEGORY_SPLIT_VERSION));
 
     assert.equal(db.getUserVersion(), EFFECT_CATEGORY_SPLIT_VERSION);
     assert.deepEqual(
@@ -63,7 +63,7 @@ for (const enabled of [true, false]) {
 test('the split files each built-in effect where the catalogue now puts it, and a custom one under genital', async () => {
   const db = await journalBeforeTheSplit(false);
 
-  await runMigrations(db, noopFileOps(), migrations);
+  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= EFFECT_CATEGORY_SPLIT_VERSION));
 
   const filed = new Map(
     rows(db, 'SELECT key, category_key FROM personal_effect_type').map((row) => {

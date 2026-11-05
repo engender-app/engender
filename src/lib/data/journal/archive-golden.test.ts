@@ -69,6 +69,7 @@ const SECTIONS = [
   'hairStages',
   'hairPhotos',
   'progressPhotos',
+  'progressPoses',
   'hairRemovalSessions',
   'procedures',
   'providers',

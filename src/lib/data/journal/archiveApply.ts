@@ -1239,6 +1239,34 @@ export async function applyProgressPhotos(restoring: Restoring): Promise<void> {
   await insertRows(driver, 'INSERT INTO progress_photo (uuid, epoch_day, pose, file_path, updated_at)', inserting);
 }
 
+/* Poses are the shape of body regions, applied the same way: a built-in
+   matched by key, a custom pose by uuid. */
+export async function applyProgressPoses(restoring: Restoring): Promise<void> {
+  const { driver, journal, ts } = restoring;
+  const gate = await rowGate(restoring, 'progress_pose');
+
+  for (const p of journal.progressPoses) {
+    const fate = fateOf(gate, p.id, p, ts);
+    if (fate === 'keep') continue;
+    if (fate === 'update') {
+      await driver.run('UPDATE progress_pose SET name = ?, hidden = ?, updated_at = ? WHERE COALESCE(key, uuid) = ?', [
+        p.name,
+        flag(p.hidden),
+        stampOf(p, ts),
+        p.id
+      ]);
+      continue;
+    }
+    await driver.run('INSERT INTO progress_pose (uuid, key, name, hidden, updated_at) VALUES (?, ?, ?, ?, ?)', [
+      p.builtIn ? null : p.id,
+      p.builtIn ? p.id : null,
+      p.name,
+      flag(p.hidden),
+      stampOf(p, ts)
+    ]);
+  }
+}
+
 /** A costed row's three cost columns from its archive fields; absent (an
     archive written before functional audit ticket 30) is no cost. */
 function costValues(row: ArchiveCostFields): [number | null, string | null, number] {

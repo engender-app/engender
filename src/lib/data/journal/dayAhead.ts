@@ -266,6 +266,7 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   presets: 'reference data, not a day still to come',
   tagGroups: 'reference data, not a day still to come',
   bodyRegions: 'reference data, not a day still to come',
+  progressPoses: 'reference data, not a day still to come',
   presentations: 'reference data, not a day still to come',
   entryTemplates: 'reference data, not a day still to come',
   effectCategories: 'reference data, not a day still to come',

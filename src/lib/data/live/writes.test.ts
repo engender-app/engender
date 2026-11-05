@@ -240,7 +240,8 @@ test('reconciling built-ins announces the reference tables it may have filled', 
       'bodyRegion',
       'effectCategory',
       'personalEffectType',
-      'entryTemplate'
+      'entryTemplate',
+      'progressPhoto'
     ]
   ]);
 });

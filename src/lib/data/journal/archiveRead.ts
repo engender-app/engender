@@ -31,6 +31,7 @@ import type {
   ArchiveJournal,
   ArchiveHairPhoto,
   ArchiveProgressPhoto,
+  ArchiveProgressPose,
   ArchiveHairRemovalPhoto,
   ArchiveHairRemovalSession,
   ArchiveImportLogRecord,
@@ -486,6 +487,19 @@ export async function readPersonalEffectTypes({ driver }: SectionRead): Promise<
 export async function readProgressPhotos({ progressPhotos }: SectionRead): Promise<ArchiveProgressPhoto[]> {
   return progressPhotos.map((r) => ({
     id: r.uuid, epochDay: r.epoch_day, pose: r.pose, fileName: r.file_path, updatedAt: r.updated_at
+  }));
+}
+
+export async function readProgressPoses({ driver }: SectionRead): Promise<ArchiveProgressPose[]> {
+  const rows = await driver.query<{ uuid: string | null; key: string | null; name: string; hidden: number; updated_at: number }>(
+    'SELECT uuid, key, name, hidden, updated_at FROM progress_pose ORDER BY id'
+  );
+  return rows.map((r) => ({
+    id: domainIdOf(r, 'progress pose'),
+    name: r.name,
+    builtIn: r.key !== null,
+    hidden: bool(r.hidden),
+    updatedAt: r.updated_at
   }));
 }
 
