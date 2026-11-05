@@ -849,7 +849,9 @@
        `cycleTrackingVisible` (ADR-0043), with the last three events under
        it. The module itself is on the More hub, in Health. The events are
        static rows (the shape regimen's pause rows use): they name nothing to
-       press, and the link row heading them is the way in. They sit in the
+       press, and the link row heading them is the way in. No icon disc on
+       them, since a disc is what marks a row as one to press, and the cycle
+       screen has no address for one event to link them to. They sit in the
        link's own reserve, so the card waits for their read and arrives whole. -->
   <HostedRows
     host="care"
@@ -860,7 +862,6 @@
     {#snippet after()}
       {#each recentCycleEvents as event (event.id)}
         <div class="kit-row is-static" data-cycle-event={event.id}>
-          <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
           <span class="kit-row-text">
             <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>
             <span class="kit-row-sub">{longDay(event.epochDay)}</span>
