@@ -432,7 +432,8 @@
   };
 
   /* One line under the field: what the answer does. The welcome is the one
-     step whose slot holds two paragraphs and it renders them itself. */
+     step whose slot holds two paragraphs and it renders them itself; lock
+     and done have none, since their question already says it. */
   const LINE: Record<OnboardingStep, () => string> = {
     welcome: () => '',
     restore: m.ob_restore_body,
@@ -440,10 +441,10 @@
     flag: m.ob_flag_body,
     scales: m.ob_track_body,
     features: m.ob_features_body,
-    lock: m.ob_lock_body,
+    lock: () => '',
     permissions: m.ob_perms_body,
     disguise: m.ob_disguise_body,
-    done: m.ob_done_body
+    done: () => ''
   };
 
   /* The welcome's second action. Quiet, and it changes the flow rather than
