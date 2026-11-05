@@ -863,7 +863,7 @@
   color: var(--accent-ink);
   transition: opacity var(--dur-fast) var(--ease-out);
 }
-.select-start::after { content: ''; position: absolute; inset: -12px -12px; }
+.select-start::after { content: ''; position: absolute; inset: -13px -12px; }
 .select-start[inert] { opacity: 0; }
 .photo-grid { display: grid; position: relative; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-3); }
 /* `width: 100%` because a button sizes to its content and a grid cell should
