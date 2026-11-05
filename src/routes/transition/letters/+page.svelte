@@ -260,7 +260,6 @@
         key="letters-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.letters_empty_title()}
-        text={m.letters_empty_body()}
         action={{ label: m.letters_compose_title(), primary: true, onclick: compose }}
       />
     {/snippet}

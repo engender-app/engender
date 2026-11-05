@@ -508,7 +508,6 @@
           key="wear-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
           title={m.wear_session_empty_title()}
-          text={m.wear_session_empty_body()}
           action={{ label: m.wear_session_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       {:else}

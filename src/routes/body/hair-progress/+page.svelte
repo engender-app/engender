@@ -280,7 +280,6 @@
           key="hair-stages-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}
           title={m.hair_stage_empty_title()}
-          text={m.hair_stage_empty_body()}
           action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => stageRecord.openEditor(null) }}
         />
       {/snippet}

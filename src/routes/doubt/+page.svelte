@@ -59,7 +59,7 @@
      a fact about the product and lives in the module (ADR-0016 keeps
      paraglide out of the node tier). */
   const WAY_COPY: Record<SafeSpaceWayKey, { title: () => string; sub?: () => string }> = {
-    resources: { title: m.resources_title, sub: m.resources_row_sub },
+    resources: { title: m.resources_title },
     evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub }
   };
 </script>

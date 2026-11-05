@@ -104,7 +104,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.tryout_title()} back="/more" subtitle={m.tryout_intro()}>
+  <ScreenHeader title={m.tryout_title()} back="/more">
     {#snippet actions()}
       <a class="icon-btn press" href="/transition/tryouts/new" aria-label={m.tryout_add()}><Icon name="plus" size={22} /></a>
     {/snippet}
