@@ -2414,6 +2414,8 @@
     }
   ],
   "photos_select_delete_sheet": "Usuń zdjęcia",
+  "photos_select_start": "Zaznacz",
+  "photos_select_start_aria": "Zaznacz zdjęcia",
   "pin_access_unavailable": "Nie można odczytać sposobu otwierania dziennika. Zamknij aplikację i otwórz ją ponownie, żeby sprawdzić ustawienia dostępu.",
   "pin_again_title": "Wpisz go jeszcze raz",
   "pin_backspace": "Usuń cyfrę",

@@ -848,6 +848,23 @@
    pinned to on its way out (motion/narrow.ts): out of the flow in the
    frame the chip drops it, so the grid rewraps once rather than after
    every fade has finished. */
+/* Select over a photo grid (holdSelect.svelte.ts): a word on the line above
+   the tiles rather than a block, with its touch area drawn out past the
+   word. While picking, or where there is nothing to pick, it fades out and
+   keeps its place, so nothing around it moves. */
+.select-start {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--accent-ink);
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.select-start::after { content: ''; position: absolute; inset: -12px -12px; }
+.select-start[inert] { opacity: 0; }
 .photo-grid { display: grid; position: relative; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-3); }
 /* `width: 100%` because a button sizes to its content and a grid cell should
    not: the thumbnail inside is `width: 100% !important` just below, which

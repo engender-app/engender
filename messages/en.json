@@ -2358,6 +2358,8 @@
     }
   ],
   "photos_select_delete_sheet": "Delete photos",
+  "photos_select_start": "Select",
+  "photos_select_start_aria": "Select photos",
   "pin_access_unavailable": "Could not read how your journal opens. Close the app and open it again to check its access settings.",
   "pin_again_title": "Type it once more",
   "pin_backspace": "Delete digit",

@@ -285,6 +285,17 @@
         </div>
       {/if}
 
+      <!-- Off rather than gone while comparing or on an empty pose, so the
+           grid under it never moves when it comes and goes. -->
+      <div class="select-row">
+        <button
+          class="select-start press"
+          data-hold-select-start
+          aria-label={m.photos_select_start_aria()}
+          inert={held.active || selecting || shots.length === 0}
+          onclick={() => held.start(gridEl)}
+        >{m.photos_select_start()}</button>
+      </div>
       <div class="photo-grid" bind:this={gridEl} data-progress-grid={pose}>
         {#each shots as p (p.id)}
           {@const picked = (selecting && selected.includes(p.id)) || held.has(p.id)}
@@ -420,6 +431,7 @@
     gap: var(--space-3);
   }
   .progress-actions .btn-primary { flex: 1 1 auto; }
+  .select-row { display: flex; justify-content: flex-end; margin-bottom: var(--space-3); }
   .compare-selection { display: grid; gap: var(--space-3); margin-bottom: var(--space-4); }
   .compare-anchor { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
   .compare-anchor .btn { flex-shrink: 0; }

@@ -98,7 +98,7 @@
       <span>{m.cancel()}</span>
     </button>
     <p class="small hold-count" role="status" data-hold-select-count>{m.pj_selected_count({ count: selection.ids.length })}</p>
-    <button class="btn btn-danger press" data-hold-select-delete onclick={() => { failed = false; askedCount = selection.ids.length; asking = true; }}>
+    <button class="btn btn-danger press" data-hold-select-delete disabled={selection.ids.length === 0} onclick={() => { failed = false; askedCount = selection.ids.length; asking = true; }}>
       <span>{m.photos_select_delete()}</span>
     </button>
   </div>
