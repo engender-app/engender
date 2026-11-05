@@ -143,7 +143,7 @@
 {/snippet}
 
 <div class="screen">
-  <ScreenHeader title={m.regimen()} back="/care" subtitle={m.regimen_intro()}>
+  <ScreenHeader title={m.regimen()} back="/care">
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.regimen_add_aria()} onclick={() => (templatePicker = true)}>
         <Icon name="plus" size={22} />
