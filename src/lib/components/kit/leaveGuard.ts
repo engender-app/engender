@@ -42,6 +42,10 @@ export type LeaveGuardOptions = {
       departure that needs the draft to find its way - a delete reading the
       record off an open editor - still has it. */
   onDiscard?: () => void;
+  /** A departure the screen takes as its own move rather than as leaving:
+      the browser's Back on a stepped editor's second step goes one step
+      back. Answering true cancels the departure and asks nothing. */
+  ownsDeparture?: (departure: Departure) => boolean;
 };
 
 export type LeaveGuardState = {
@@ -84,6 +88,10 @@ export function leaveGuardCore(
     beforeNavigate(departure: Departure) {
       if (replaying) {
         replaying = false;
+        return;
+      }
+      if (options.ownsDeparture?.(departure)) {
+        departure.cancel();
         return;
       }
       const saving = busy();

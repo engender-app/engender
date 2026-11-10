@@ -542,6 +542,28 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     }
   });
 
+  test('a new entry past its first step goes one step back, with or without history behind it', async () => {
+    const { registerStepBack } = await import('../navigation/stepBack');
+    const deps = makeDeps();
+    window.location.pathname = '/entry/new/today';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const stepped = vi.fn().mockReturnValue(true);
+    const unregister = registerStepBack(stepped);
+    try {
+      back();
+      expect(stepped).toHaveBeenCalledTimes(1);
+      expect(deps.replaceRoute).not.toHaveBeenCalled();
+      expect(window.history.back).not.toHaveBeenCalled();
+      // On the first step the owner declines and Back leaves as it always has.
+      stepped.mockReturnValue(false);
+      back();
+      expect(deps.replaceRoute).toHaveBeenCalledExactlyOnceWith('/');
+    } finally {
+      unregister();
+    }
+  });
+
   test('Back replaces a deep link with home when no surface or history remains', () => {
     const deps = makeDeps();
     window.location.pathname = '/health/appointments';

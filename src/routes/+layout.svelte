@@ -50,7 +50,7 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
   import { trackPointerFocus } from '$lib/a11y/pointerFocus';
-  import { chromelessPath } from '$lib/navigation/chromeless';
+  import { barlessPath, chromelessPath } from '$lib/navigation/chromeless';
   import { routeGate } from '$lib/navigation/routeGates';
   import { navigateWithTransition } from '$lib/navigation/navigationTransition';
   import { startBackgroundSchedulers } from '$lib/data/backgroundSchedulers';
@@ -241,6 +241,9 @@
   });
 
   let chromeless = $derived(replacesApp || chromelessPath(path));
+  /* No tab bar: every chromeless screen, and a new entry, which is a step
+     but keeps Today's retained doors mounted under it (chromeless.ts). */
+  let barless = $derived(chromeless || barlessPath(path));
 
   /* How deep the app is in its own history, for the back controls that ask
      whether there is anything behind them (`smartBack`). Counted here rather
@@ -638,7 +641,7 @@
     class="app"
     data-app-root
     {@attach (node) => hoverHints(node)?.destroy}
-    class:is-chromeless={chromeless}
+    class:is-chromeless={barless}
     data-boot={bootState.status}
     inert={browserSession.recovering}
     style:opacity={browserSession.recovering ? '0' : undefined}
@@ -655,7 +658,7 @@
          phone the same markup is the floating bar, absolutely positioned,
          so its place in the document does not decide where it sits - only
          that a keyboard reaches the tabs before the screen. -->
-    {#if !chromeless}
+    {#if !barless}
       <AppNav />
     {/if}
 

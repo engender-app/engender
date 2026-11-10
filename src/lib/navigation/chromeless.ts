@@ -71,3 +71,13 @@ export function chromelessPath(path: string): boolean {
      rather than a moment. */
   return replacesAppNavigation(path) || path === '/coming-back';
 }
+
+/** Paints no tab bar, whoever is looking at it: the chromeless routes, and a
+    new entry. A new entry is a step in DIRECTION.md rule 15's sense (tester
+    report 02, ticket 03): one purpose, one way on and one way back, so the
+    bar would be four more ways off it. It stays out of `chromelessPath`
+    because that answer also decides whether Today's retained doors stay
+    mounted, and a new entry is where the app goes from Today most often. */
+export function barlessPath(path: string): boolean {
+  return chromelessPath(path) || path.startsWith('/entry/new/');
+}
