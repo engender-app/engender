@@ -84,7 +84,8 @@
     class: klass = '',
     actions,
     blindContent,
-    field
+    field,
+    heading
   }: {
     title: string;
     subtitle?: string;
@@ -103,6 +104,10 @@
     blindContent?: Snippet;
     /** What this door puts on the field under the title's line (rule 7). */
     field?: Snippet;
+    /** The title's words, drawn by a screen that moves them itself: a new
+        entry's steps swap their heading as one step leaves and the next
+        arrives. `title` stays the plain text everywhere else. */
+    heading?: Snippet;
   } = $props();
 
   /* Everything the browser does with a click that is not "follow this link
@@ -184,7 +189,7 @@
         data-screen-title={screen ?? ''}
         data-field-part={titleHidden ? undefined : ''}
       >
-        {title}
+        {#if heading}{@render heading()}{:else}{title}{/if}
       </h1>
 
       {#if actions}
