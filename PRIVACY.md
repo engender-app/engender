@@ -195,6 +195,11 @@ shows the real title instead. If notification history is on in Android's
 settings, Android keeps the titles shown there for about a day after the
 notification goes away. The app does not turn history on and cannot clear it.
 
+With titles shown, the check-in also shows the five mood faces. They give
+away what kind of app this is, so under disguise they never appear. Touching
+a face only opens a new entry with that mood picked: nothing is written or
+kept on the device until you save the entry.
+
 When you copy the recovery key on Android 13 or later, the app marks the
 clipboard entry as sensitive, which asks the keyboard to leave it out of its
 clipboard history. The app clears the key after one minute, or when you come

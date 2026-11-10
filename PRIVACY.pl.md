@@ -211,6 +211,11 @@ historia powiadomień, Android przechowuje pokazane tytuły przez mniej więcej
 dobę od zniknięcia powiadomienia. Aplikacja nie włącza tej historii i nie może
 jej wyczyścić.
 
+Gdy tytuły są widoczne, codzienne pytanie pokazuje też pięć twarzy nastroju.
+Po nich widać, do czego służy aplikacja, więc przy kamuflażu nigdy się nie
+pojawiają. Dotknięcie twarzy tylko otwiera nowy wpis z wybranym nastrojem: nic
+nie zostaje zapisane ani zachowane na urządzeniu, dopóki nie zapiszesz wpisu.
+
 Na Androidzie 13 i nowszym aplikacja oznacza skopiowany klucz odzyskiwania
 jako wrażliwy. To prośba do klawiatury, żeby nie zapisywała go w historii
 schowka. Po minucie aplikacja usuwa klucz ze schowka, a jeśli wcześniej z niej
