@@ -8,9 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## 1.0.0
 
-engender is a private journal for tracking a gender transition. Keep daily
+engender is a journal for tracking your gender over time and learning things
+about it you didn't know. Mark how your gender feels on scales you name, keep
 entries, photos and care records on your own device, then use Look back to
-review them over time. You choose which areas to use and what to record.
+see those days side by side. You choose which areas to use and what to
+record.
 
 Use engender as an installable web app or an Android app. Both work offline
 and encrypt the journal at rest. There are no accounts, analytics or backend
