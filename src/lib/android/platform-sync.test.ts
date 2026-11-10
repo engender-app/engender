@@ -22,6 +22,7 @@ const TEXTS = {
   channelCheckIn: 'Check-in',
   checkInTitle: 'Daily check-in',
   checkInBody: 'How are you today?',
+  checkInMoods: ['awful', 'bad', 'meh', 'good', 'great'],
   doseTaken: 'Taken',
   doseDone: 'Done',
   doseSkip: 'Skip',

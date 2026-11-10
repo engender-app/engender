@@ -8,6 +8,11 @@ export interface AndroidReminderTexts {
   channelCheckIn: string;
   checkInTitle: string;
   checkInBody: string;
+  /** The five moods' names, worst first: what TalkBack says for each face
+      on the check-in notification and the word under it (tester report 02,
+      ticket 05). In the app's language rather than the phone's, like every
+      other text here. */
+  checkInMoods: string[];
   /** A medication reminder's two buttons (functional audit ticket 20).
       `doseDone` stands in for `doseTaken` while the app is disguised. */
   doseTaken: string;

@@ -23,6 +23,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 @CapacitorPlugin(
@@ -59,6 +60,10 @@ public class RemindersPlugin extends Plugin {
             textObject.put("doseDone", text(texts, "doseDone", "Done"));
             textObject.put("doseSkip", text(texts, "doseSkip", "Skip"));
             textObject.put("doseNoted", text(texts, "doseNoted", "Noted"));
+            // The check-in faces' names (tester report 02, ticket 05);
+            // CheckInFaces.names falls back to the phone's own when absent.
+            JSONArray moods = texts == null ? null : texts.optJSONArray("checkInMoods");
+            if (moods != null) textObject.put("checkInMoods", moods);
             payload.put("texts", textObject);
 
             ensureChannels(textObject);
