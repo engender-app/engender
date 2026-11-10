@@ -1,10 +1,16 @@
-Jak ci z nowym imieniem? Co się zmienia po kilku miesiącach HRT? Zapisz to w engender i wracaj do tego, kiedy tylko zechcesz. Notatki, zdjęcia i dawki leków masz w jednym miejscu.
+Zapisuj swój gender dzień po dniu i dowiedz się o nim czegoś nowego. Na skalach nazwanych po swojemu zaznaczasz, jak go dziś czujesz: kobiecość, męskość, dysforia i euforia albo coś innego. Zajmuje to chwilę, a przy okazji sprawdzasz, jak się masz. Po kilku tygodniach Statystyki ułożą te dni obok siebie i może zauważysz w swoim genderze coś, czego nie widać z jednego dnia.
 
 To dziennik tranzycji od osoby trans dla innych osób trans. Wybierz te części aplikacji, które ci się przydadzą, niezależnie od tego, czy dopiero zastanawiasz się nad swoim genderem, planujesz kolejne kroki, czy masz za sobą lata tranzycji. Aplikacja jest darmowa, bez reklam i subskrypcji. Konta nie trzeba zakładać, a nawet się nie da.
 
-Miejsce na to, co czujesz
+Skale i wpisy
 
-Czasem wystarczy zaznaczyć nastrój. Jeśli chcesz zapisać więcej, dodaj notatkę, zdjęcie albo nagranie głosu. Albo wypełnij skale genderowe i zobacz, jak twój gender wygląda z perspektywy czasu. Dysforię, euforię i inne odczucia zapisujesz na osobnych skalach. Nazywasz je po swojemu, tak samo jak oba ich końce. Wpisów może być kilka dziennie, a tagi pomogą ci je później znaleźć. Możesz też notować, jak się czujesz z poszczególnymi częściami ciała.
+Skale nazywasz po swojemu, tak samo jak oba ich końce, i wybierasz te, które pasują. Czasem wystarczy zaznaczyć nastrój. Jeśli chcesz zapisać więcej, dodaj notatkę, zdjęcie albo nagranie głosu. Wpisów może być kilka dziennie, a tagi pomogą je później znaleźć. Możesz też notować, jak się czujesz z poszczególnymi częściami ciała.
+
+Statystyki
+
+Przeciągnij końce osi czasu i wybierz okres, na przykład miesiąc albo czas od początku HRT. Prześledź skalę dzień po dniu, dodaj obok drugą albo zestaw dwie skale na jednym wykresie. Zobacz, która zmieniła się najbardziej, przy jakich tagach coś drgnęło i jak minął tydzień, miesiąc czy rok. engender rysuje to, co wpisujesz, i niczego za ciebie nie interpretuje.
+
+Żeby znaleźć konkretny moment, przejrzyj kalendarz albo przeszukaj notatki i tagi. Na trudniejsze dni jest Bezpieczna przestrzeń, gdzie masz pod ręką ulubione wpisy i własną listę rzeczy, które pomagają.
 
 HRT i zdrowie
 
@@ -16,10 +22,6 @@ Próby i kamienie milowe
 
 Sprawdzasz nowe imię, inne zaimki albo styl? Zapisuj, jak się z nimi czujesz. Nagrywaj ćwiczenia głosu i porównuj kolejne nagrania. Notuj zabiegi depilacji oraz czas bindowania i tuckingu. Zaznaczaj kamienie milowe, planuj następne kroki i śledź zmianę danych w każdej instytucji, która jej wymaga. Możesz też napisać list do siebie i zamknąć go w kapsule czasu. Otworzy się w dniu, który wybierzesz.
 
-Zobacz, co się zmieniło
-
-Zestaw zdjęcia obok siebie, przejrzyj wykresy albo wróć do podsumowania tygodnia, miesiąca czy roku. W kalendarzu widać dni z wpisami, a te bez wpisów zostają puste. Żeby znaleźć konkretny moment, przeszukaj notatki i tagi. Na trudniejsze dni jest Bezpieczna przestrzeń, gdzie masz pod ręką ulubione wpisy i własną listę rzeczy, które pomagają.
-
 Dziennik zostaje u ciebie
 
 Aplikacja na Androida działa offline i nie ma nawet uprawnienia do internetu. Nie wysyła na serwer ani dziennika, ani statystyk użycia. To ty decydujesz, czy i kiedy coś wyeksportować albo komuś udostępnić.
@@ -30,7 +32,7 @@ Dziennik otworzysz hasłem, PIN-em, odciskiem palca albo inną blokadą ekranu t
 
 Kopia na później albo na nowy telefon
 
-Zrób kopię zapasową zaszyfrowaną hasłem albo ustaw automatyczne kopie do wybranego folderu. Jeśli inny telefon zapisuje kopie w tym samym folderze, engender po otwarciu dołączy nowszą z nich. Z archiwum przeniesiesz dziennik na inne urządzenie albo do wersji w przeglądarce. Wpisy z Daylio zaimportujesz z pliku CSV albo z kopii zapasowej Daylio.
+Zrób kopię zapasową zaszyfrowaną hasłem albo ustaw automatyczne kopie do wybranego folderu. Jeśli inny telefon zapisuje kopie w tym samym folderze, engender po otwarciu dołączy nowszą z nich. Z archiwum przeniesiesz dziennik na inne urządzenie albo do wersji w przeglądarce. Wpisy z Daylio też zaimportujesz.
 
 Wybierz barwy swojej flagi i jasny albo ciemny motyw. Części aplikacji, z których korzystasz, przypniesz do ekranu Dziś.
 

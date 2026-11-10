@@ -8,7 +8,9 @@ describe('store listing metadata', () => {
   it('ships seven phone screens and store artwork at the required pixel sizes', () => {
     for (const locale of ['en-US', 'pl-PL']) {
       const screenshots = readdirSync(new URL(`${locale}/images/phoneScreenshots/`, root)).sort();
-      expect(screenshots).toEqual(['01-home.png', '02-care.png', '03-new-entry.png', '04-roadmap.png', '05-voice.png', '06-look-back.png', '07-settings-privacy.png']);
+      // The listing leads with a scale being set and what Look back makes of it
+      // (tester-report-02 ticket 06); Play orders the shots by file name.
+      expect(screenshots).toEqual(['01-new-entry.png', '02-look-back.png', '03-home.png', '04-care.png', '05-voice.png', '06-roadmap.png', '07-settings-privacy.png']);
       for (const [file, width, height] of [
         ['icon.png', 512, 512], ['featureGraphic.png', 1024, 500],
         ...screenshots.map((file) => [`phoneScreenshots/${file}`, 1080, 1920] as const)
