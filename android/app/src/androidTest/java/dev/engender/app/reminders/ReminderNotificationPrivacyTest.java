@@ -133,6 +133,53 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility);
     }
 
+    /* The check-in's five faces (tester report 02, ticket 05). A
+       notification built with custom views carries them in contentView and
+       bigContentView; the generic one carries neither and lets the system
+       draw its title and text. */
+    @Test
+    public void checkInShowsTheFacesWithTitlesShown() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+
+        fireCheckInAlarm();
+
+        Notification checkIn = findCheckInNotification();
+        assertNotNull("no check-in notification was posted", checkIn);
+        assertNotNull("no folded faces", checkIn.contentView);
+        assertNotNull("no unfolded faces", checkIn.bigContentView);
+        assertEquals("How are you today?", checkIn.extras.getCharSequence(Notification.EXTRA_SUB_TEXT).toString());
+    }
+
+    @Test
+    public void hidingTitlesKeepsTheGenericCheckIn() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, payload(true).put("checkInEnabled", true));
+
+        fireCheckInAlarm();
+
+        assertGenericCheckIn(findCheckInNotification());
+    }
+
+    @Test
+    public void disguiseKeepsTheGenericCheckIn() throws Exception {
+        dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");
+        try {
+            ReminderScheduler.saveAndSchedule(context, checkInPayload());
+            fireCheckInAlarm();
+            assertGenericCheckIn(findCheckInNotification());
+        } finally {
+            dev.engender.app.disguise.DisguiseAlias.apply(context, false, "trans", "current");
+        }
+    }
+
+    private static void assertGenericCheckIn(Notification checkIn) {
+        assertNotNull("no check-in notification was posted", checkIn);
+        assertNull("faces on a check-in that must stay generic", checkIn.contentView);
+        assertNull("faces on a check-in that must stay generic", checkIn.bigContentView);
+        assertNull(checkIn.extras.getCharSequence(Notification.EXTRA_SUB_TEXT));
+        assertEquals("Daily check-in", checkIn.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
+        assertEquals("How are you today?", checkIn.extras.getCharSequence(Notification.EXTRA_TEXT).toString());
+    }
+
     @Test
     public void disguisedNotificationsUseTheNotesIcon() throws Exception {
         dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");

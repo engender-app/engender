@@ -200,6 +200,15 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13));
 
+        /* The five faces (tester report 02, ticket 05): the question
+           moves into the header beside the app's name, and the faces take
+           the body. setContentTitle and setContentText above stay, for
+           whatever reads the notification rather than draws it. */
+        if (CheckInFaces.show(payload, DisguiseAlias.isDisguised(context))) {
+            builder.setSubText(body);
+            CheckInFaces.apply(context, builder, payload, CHECK_IN_NOTIFICATION_ID);
+        }
+
         NotificationManagerCompat.from(context).notify(CHECK_IN_NOTIFICATION_ID, builder.build());
     }
 

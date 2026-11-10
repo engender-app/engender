@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The check-in notification folded (tester report 02, ticket 05): the
+     five faces alone, one equal share of the width each, so each share is
+     its own touch target at least 48dp wide and exactly 48dp tall, the
+     height Android 12 gives a decorated notification's folded content.
+     The question is in the system's own header line beside the app name
+     (setSubText) and in the unfolded view. Each face's contentDescription
+     and PendingIntent are set in ReminderAlarmReceiver. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/check_in_face_1"
+        style="@style/CheckInFaceFolded"
+        android:src="@drawable/check_in_mood_1" />
+
+    <ImageView
+        android:id="@+id/check_in_face_2"
+        style="@style/CheckInFaceFolded"
+        android:src="@drawable/check_in_mood_2" />
+
+    <ImageView
+        android:id="@+id/check_in_face_3"
+        style="@style/CheckInFaceFolded"
+        android:src="@drawable/check_in_mood_3" />
+
+    <ImageView
+        android:id="@+id/check_in_face_4"
+        style="@style/CheckInFaceFolded"
+        android:src="@drawable/check_in_mood_4" />
+
+    <ImageView
+        android:id="@+id/check_in_face_5"
+        style="@style/CheckInFaceFolded"
+        android:src="@drawable/check_in_mood_5" />
+
+</LinearLayout>

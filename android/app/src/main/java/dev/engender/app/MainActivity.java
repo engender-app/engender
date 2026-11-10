@@ -224,5 +224,6 @@ public class MainActivity extends BridgeActivity {
     private void captureReminderRoute(Intent intent) {
         if (intent == null) return;
         ReminderScheduler.storeLaunchRoute(this, AppLaunch.authenticatedRoute(this, intent));
+        AppLaunch.dismissNotification(this, intent);
     }
 }
