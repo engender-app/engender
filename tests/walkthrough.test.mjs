@@ -270,10 +270,22 @@ async function openNewestEntry() {
    at a time, so a flow that reaches into one opens its chip first. Mode
    and gender stay on the page. Idempotent: a chip already open is left open. */
 async function openSection(section) {
+  await toTheRest();
   const chip = page.locator(`[data-section-chip="${section}"]`);
   await chip.waitFor();
   if ((await chip.getAttribute('aria-expanded')) !== 'true') await chip.click();
   await page.waitForSelector(`[data-editor-section="${section}"]`);
+}
+
+/* Tester report 02, ticket 03: a new entry opens on its first step - the
+   faces and the scales - and the note, the chips and the save bar's star
+   are on the step after it. Walks on when there is a step to walk past,
+   and only waits for the note on an entry that already exists. */
+async function toTheRest() {
+  await page.waitForSelector('[data-entry-step="1"], #ed-note');
+  const go = page.locator('[data-entry-continue]');
+  if (await go.count()) await go.click();
+  await toTheRest();
 }
 
 async function expectNoHorizontalOverflow(selector) {
@@ -382,8 +394,7 @@ try {
   await page.locator('[data-nav-item="home"]').first().click();
   await page.waitForSelector('[data-home-log] [data-mood="4"]');
   await page.locator('[data-home-log] [data-mood="4"]').click();
-  await page.waitForSelector('#ed-note');
-  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
   await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-home-log]');
   await page.locator('[data-nav-item="calendar"]').first().click();
@@ -405,10 +416,11 @@ try {
      front of it. Each of these flows sets its own mood in the editor
      afterwards, so what they prove is unchanged. */
   await page.locator('[data-fan-target="mood-3"]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await page.locator('[data-mood="5"]').click();
   await openSection('tags');
   await page.locator('[data-tag="g-soc-eu"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill('Playwright wrote this entry.');
   await page.locator('[data-save]').click();
   /* The save lands on Today, which draws no entries since redesign ticket
@@ -435,8 +447,9 @@ try {
   await fresh('/');
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await page.locator('[data-mood="4"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill('ticket18 starred before save');
 
   await page.locator('[data-save-star]').click();
@@ -633,7 +646,7 @@ try {
 
   await page.goto(BASE + hrefs[0], { waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   const first = await page.locator('#ed-note').inputValue();
 
   await page.locator('[data-screen-header]').evaluate((header, href) => {
@@ -647,8 +660,9 @@ try {
   /* An entry link carries the list it came from (`?from=`, ticket 03),
      so the arrival is the path alone. */
   await page.waitForFunction((want) => location.pathname === new URL(want, location.href).pathname, hrefs[1], { timeout: 10000 });
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await page.waitForTimeout(600);
+  await toTheRest();
   const second = await page.locator('#ed-note').inputValue();
   if (first === second) {
     throw new Error(`entry to entry showed the same note twice: "${first.slice(0, 40)}"`);
@@ -675,6 +689,7 @@ try {
     await page.locator('[data-keep-editing]').click();
     await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
     if (!/^\/entry\//.test(new URL(page.url()).pathname)) throw new Error(`${exit}: Keep editing still left, at ${page.url()}`);
+    await toTheRest();
     const note = await page.locator('#ed-note').inputValue();
     if (note !== typed) throw new Error(`${exit}: Keep editing lost the text, the note reads "${note}"`);
   };
@@ -685,8 +700,10 @@ try {
   await page.locator('[data-entry-card]').first().click();
   // Save comes on once the stored entry has filled the draft.
   await page.waitForSelector('[data-save]:not([disabled])');
+  await toTheRest();
   const stored = await page.locator('#ed-note').inputValue();
   const typed = `${stored} - and a line nobody saved`;
+  await toTheRest();
   await page.locator('#ed-note').fill(typed);
 
   await page.locator('[data-screen-back]').first().click();
@@ -720,19 +737,33 @@ try {
   await page.waitForFunction(() => !location.pathname.startsWith('/entry/'), null, { timeout: 10000 });
   if (await page.locator('[data-discard-record]').count()) throw new Error('an unchanged entry asked before leaving');
 
-  // A new one: typed into, then Back asks and Keep editing keeps it.
+  /* A new one (tester report 02, ticket 03): typed into on its second
+     step. Back there is a step back, not a way out - it asks nothing and
+     keeps the face and the note - and only Back off the first step meets
+     the question. A new entry has no tab bar, so the header arrow is the
+     third exit. */
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
-  await page.waitForSelector('[data-save]:not([disabled])');
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="3"][aria-checked="true"]');
+  await toTheRest();
   await page.locator('#ed-note').fill('A new entry, not saved yet.');
   await page.evaluate(() => window.history.back());
+  await page.waitForSelector('[data-entry-step="1"]');
+  if (await page.locator('[data-discard-record]').count()) throw new Error('Back from the second step asked instead of stepping back');
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="3"][aria-checked="true"]');
+  await page.evaluate(() => window.history.back());
   await asked('back from a new entry');
-  await keep('back from a new entry', 'A new entry, not saved yet.');
-  await page.locator('[data-nav-item="home"]').first().click();
-  await asked('a nav tab from a new entry');
+  await page.locator('[data-keep-editing]').click();
+  await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
+  await toTheRest();
+  if ((await page.locator('#ed-note').inputValue()) !== 'A new entry, not saved yet.') throw new Error('the note did not survive two steps back and on again');
+  await page.locator('[data-screen-back]').first().click();
+  await page.waitForSelector('[data-entry-step="1"]');
+  await page.locator('[data-screen-back]').first().click();
+  await asked('the header arrow from a new entry');
   await page.locator('[data-discard-record]').click();
   await page.waitForFunction(() => !location.pathname.startsWith('/entry/'), null, { timeout: 10000 });
-  ok('the entry editor asks on all four exits, keeps on Keep editing, leaves on Discard');
+  ok('the entry editor asks on all four exits, keeps on Keep editing, leaves on Discard, and a new entry steps back before it asks');
 } catch (e) { fail('entry editor asks before leaving', e); }
 });
 
@@ -748,7 +779,7 @@ try {
   await page.locator('[data-hm-cell-filled]').first().click();
   await page.waitForSelector('[data-entry-card]');
   await page.locator('[data-add]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   ok('calendar → open the month → day detail → add another');
 } catch (e) { fail('calendar flow', e); }
 });
@@ -1063,6 +1094,7 @@ await flow('day detail truthfulness', async () => {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="2"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill('Day detail proof A');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -1070,6 +1102,7 @@ try {
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('[data-mood="5"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill('Day detail proof B');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -1106,6 +1139,7 @@ try {
 
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
+  await toTheRest();
   await page.locator('#ed-note').fill('Duplicate tag labels survive saving');
   await page.locator('[data-mood="3"]').click();
   await page.locator('[data-section-chip="tags"]').click();
@@ -1146,6 +1180,7 @@ await flow('margin note', async () => {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="3"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill('Margin note proof entry');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -1219,6 +1254,7 @@ try {
 
   await fresh('/entry/new/today');
   await page.locator('[data-mood="5"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill(NOTE_HIGH);
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -1573,7 +1609,7 @@ try {
   /* And it is the editor for that entry rather than a screen that merely
      answers to the URL - #ed-note is the note field every other editor
      flow in this file waits on. */
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   ok('a tag insight opens its entries, and one of them opens the editor');
 } catch (e) { fail('tag insight entries', e); }
 });
@@ -2162,6 +2198,7 @@ try {
   // Mood is required to save (ticket 04): the fixture picks one before the
   // note, same as any real entry would need to.
   await page.locator('[data-mood="3"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill(NOTE);
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -2717,7 +2754,7 @@ try {
   await booted();
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await page.locator('#ed-note').fill('The entry that came back.');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -3166,7 +3203,7 @@ try {
      just made. */
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await page.locator('[data-mood="4"]').click();
   await page.locator('[data-save]').click();
   await page.waitForFunction(() => document.querySelectorAll('[data-toast-kind="saved"]').length > 0);
@@ -3193,6 +3230,7 @@ try {
   await page.keyboard.press('Escape');
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
+  await toTheRest();
   await page.waitForSelector('[data-no-scales]');
   if (await page.locator('[data-dim-name]').count()) {
     throw new Error('the editor drew a scale with none ticked');
@@ -3699,6 +3737,7 @@ try {
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('[data-mood="3"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill(
     Array.from({ length: 40 }, (_, i) => `Paragraph ${i + 1} of something long enough to have a middle to be in.`).join('\n\n')
   );
@@ -3748,6 +3787,7 @@ try {
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   const keptNote = 'Typed just before the lock, and still here after it.';
+  await toTheRest();
   await page.locator('#ed-note').fill(keptNote);
   await page.evaluate(() => {
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
@@ -3760,6 +3800,7 @@ try {
   await page.waitForFunction((text) => document.querySelector('#ed-note')?.value === text, keptNote, { timeout: 10000 }).catch(async () => {
     throw new Error('the draft did not come back after the unlock: ' + JSON.stringify(await page.locator('#ed-note').inputValue().catch(() => null)));
   });
+  await toTheRest();
   await page.locator('#ed-note').fill('');
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
@@ -3843,6 +3884,7 @@ try {
   for (let offset = 0; offset < 5; offset++) {
     await fresh(`/entry/new/${lastJune + offset}`);
     await page.locator(`[data-mood="${2 + (offset % 3)}"]`).click();
+    await toTheRest();
     await page.locator('#ed-note').fill(`Last June, day ${offset + 1}`);
     await page.locator('[data-save]').click();
     // The editor lands on Home on every successful save.
@@ -4016,6 +4058,7 @@ try {
     throw new Error('euphoria did not select');
   }
   await page.locator('[data-mood="3"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill('Playwright: physical and euphoria together.');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -4179,6 +4222,7 @@ try {
      storage. That the mirror still carries this draft is what the reload
      below proves, which was always the point of the flow. */
   await page.evaluate(() => localStorage.removeItem('engender-entry-draft'));
+  await toTheRest();
   await page.locator('#ed-note').fill('Killed mid-edit by Playwright.');
   await page.waitForFunction(() => {
     const raw = localStorage.getItem('engender-entry-draft');
@@ -4187,7 +4231,7 @@ try {
 
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   const restoredNote = await page.locator('#ed-note').inputValue();
   if (restoredNote !== 'Killed mid-edit by Playwright.') {
     throw new Error(`note lost across reload: "${restoredNote}"`);
@@ -4205,6 +4249,7 @@ try {
   /* Saving unmounts the editor, which clears the mirror (onDestroy), so a
      later, unrelated new entry must not inherit anything from this one. */
   await fresh('/entry/new/today');
+  await toTheRest();
   const leftover = await page.locator('#ed-note').inputValue();
   if (leftover) throw new Error(`a saved draft leaked into a fresh editor: "${leftover}"`);
   ok('an unsaved entry survives a killed process and does not leak into the next one');
@@ -4222,6 +4267,7 @@ await flow('same-process background/resume', async () => {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="3"]').click();
+  await toTheRest();
   await page.locator('#ed-note').fill('Backgrounded but never killed.');
 
   await page.evaluate(() => {
@@ -4235,6 +4281,7 @@ try {
     window.dispatchEvent(new Event('pageshow', { persisted: true }));
   });
 
+  await toTheRest();
   const note = await page.locator('#ed-note').inputValue();
   if (note !== 'Backgrounded but never killed.') throw new Error(`note changed across backgrounding: "${note}"`);
   await page.waitForSelector('[data-mood="3"][aria-checked="true"]');
@@ -4249,7 +4296,7 @@ await flow('quick log saves without a follow-up sheet', async () => {
 try {
   await fresh('/');
   await page.locator('[data-mood="4"]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
   if (new URL(page.url()).search !== '') throw new Error('the save landed on ' + page.url());
@@ -6277,7 +6324,7 @@ await flow('quick add mood', async () => {
 try {
   await openQuickAdd();
   await page.locator('[data-fan-target="mood-4"]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
   ok('quick add: a mood opens the editor seeded with it');
 } catch (e) { fail('quick add mood', e); }
@@ -6287,7 +6334,7 @@ await flow('quick add today', async () => {
 try {
   await openQuickAdd();
   await page.locator('[data-fan-target="mood-3"]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await page.waitForSelector('[data-mood="3"][aria-checked="true"]');
   ok("quick add: a mood is how today's entry starts, seeded with it");
 } catch (e) { fail('quick add today', e); }
@@ -6305,7 +6352,7 @@ try {
   const wanted = await dateValue(page.locator('#backdate'));
   if (!wanted) throw new Error('the backdate field was empty');
   await page.locator('[data-choose="date"]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   if (!page.url().includes('/entry/new/')) throw new Error(`backdate went to ${page.url()}`);
   ok('quick add: a backdated entry still opens the editor on that day');
 } catch (e) { fail('quick add backdate', e); }
@@ -7025,6 +7072,7 @@ try {
 
     await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
     await booted();
+    await toTheRest();
     const cyclePanel = page.locator('[data-contextual="cycle-event"]');
     if (Boolean(await cyclePanel.count()) !== shown) throw new Error(`${locale} entry cycle prompt visibility disagreed`);
     if (shown) {
@@ -7268,7 +7316,7 @@ await flow('quick add slide to a mood', async () => {
 try {
   await fresh('/');
   await slideToTarget('[data-fan-target="mood-2"]');
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await page.waitForSelector('[data-mood="2"][aria-checked="true"]');
   ok('quick add: the slide crosses the mood row too, and picks off it');
 } catch (e) { fail('quick add slide to a mood', e); }
@@ -7935,7 +7983,7 @@ try {
   await fresh('/');
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await openSection('photos');
 
   /* Skip leaves the override unset, so the photo inherits this entry's own
@@ -7956,6 +8004,7 @@ try {
   await page.locator('[data-photo-day-save]').click();
   await page.waitForSelector('[data-photo-day-save]', { state: 'detached' });
 
+  await toTheRest();
   await page.locator('#ed-note').fill('Playwright dated this photo.');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-hello]');
@@ -7995,7 +8044,7 @@ try {
   await fresh('/');
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
-  await page.waitForSelector('#ed-note');
+  await toTheRest();
   await openSection('photos');
   const zoomPhoto = await tinyPhoto(page, '#c94f7c');
   page.once('filechooser', (chooser) => chooser.setFiles({ name: 'zoom.png', mimeType: 'image/png', buffer: zoomPhoto }));

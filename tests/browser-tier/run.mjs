@@ -2498,7 +2498,7 @@ await block('entry contextual text survives typing and clears before save', 1, a
    the merge produced survives the save into the tables - and the first is
    also the third's positive control. The third is the only one of the three
    testing a rule that lives in the component. */
-await block('phase 8 audit ticket 25 entry editor', 5, async () => {
+await block('phase 8 audit ticket 25 entry editor', 7, async () => {
   const r = await load('/entry-editor.html', 'entry-editor-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2551,6 +2551,19 @@ await block('phase 8 audit ticket 25 entry editor', 5, async () => {
     saveFailureReported: false,
     recoveryHref: '/'
   });
+
+  /* Tester report 02, ticket 03: a new entry saved from its first step.
+     The face alone writes the mood and nothing else; a face and one moved
+     scale write exactly that scale, and every scale left alone writes
+     nothing. Both fail on an editor that opens on the note, which has no
+     first step to finish on. */
+  eq('a first step finished with a face alone saves that mood and nothing else', r.firstStepMoodOnly, {
+    mood: 4, dims: {}, note: '', tags: [], shownValue: null
+  });
+  const moved = r.firstStepWithAScale;
+  eq('a first step finished with a face and one moved scale saves exactly that scale', moved && {
+    mood: moved.mood, scales: Object.keys(moved.dims).length, value: String(Object.values(moved.dims)[0]), note: moved.note
+  }, { mood: 2, scales: 1, value: moved?.shownValue, note: '' });
 });
 
 /* Phase 8 features ticket 55: the PDF renderer.

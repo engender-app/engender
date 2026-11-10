@@ -97,6 +97,13 @@ async function until<T>(get: () => Awaitable<T | null | undefined>, what: string
   throw new Error(`timed out waiting for ${what}`);
 }
 
+/** Walks a new entry from its first step to the rest (tester report 02,
+    ticket 03), where the note, the template and the save bar's star are. */
+async function toTheRest(root: ParentNode): Promise<void> {
+  (await until(() => root.querySelector<HTMLButtonElement>('[data-entry-continue]'), 'the first step\'s continue')).click();
+  await until(() => root.querySelector('[data-entry-step="2"]'), 'the second step');
+}
+
 /** Applies `templateId` through the sheet the screen offers, which is the
     only way in: the button exists for a new entry alone (a template is a
     creation aid), and the rows are inside a sheet that has to be opened. */
@@ -125,6 +132,7 @@ async function applyAndSave(journal: Journal, epochDay: number, templateIds: str
   document.querySelector('#editor')!.replaceChildren(target);
   const screen = mountInto(EntryEditor, { epochDay, seedMood: 4 }, target);
   try {
+    await toTheRest(target);
     for (const templateId of templateIds) await applyTemplateThroughTheSheet(target, templateId);
 
     const save = await until(() => {
@@ -152,6 +160,7 @@ async function saveWithNavigationFailure(journal: Journal) {
   document.querySelector('#editor')!.replaceChildren(target);
   const screen = mountInto(EntryEditor, { epochDay, seedMood: 4, debriefForAppointment: 'visit-1' }, target);
   try {
+    await toTheRest(target);
     (await until(() => target.querySelector<HTMLButtonElement>('[data-save-star]'), 'the star')).click();
     const save = await until(() => {
       const button = target.querySelector<HTMLButtonElement>('[data-save]');
@@ -177,6 +186,48 @@ async function saveWithNavigationFailure(journal: Journal) {
   } catch (error) {
     await screen.remove();
     throw error;
+  }
+}
+
+type FirstStepSave = { mood: number | null; dims: Record<string, number>; note: string; tags: string[]; shownValue: string | null };
+
+/** A new entry finished on its first step (tester report 02, ticket 03):
+    a face, optionally one scale moved by a key, and the finish control,
+    which saves and leaves in one touch. Read back out of SQLite, so what is
+    published is what was written - including that the scales nobody
+    touched wrote nothing. */
+async function finishOnTheFirstStep(
+  journal: Journal,
+  epochDay: number,
+  { face, nudgeFirstScale }: { face: number; nudgeFirstScale: boolean }
+): Promise<FirstStepSave> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay }, target);
+  try {
+    await until(() => target.querySelector('[data-entry-step="1"]'), 'the first step');
+    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="1"] [data-mood="${face}"]`), 'a face on the first step')).click();
+    let shownValue: string | null = null;
+    if (nudgeFirstScale) {
+      const slider = await until(() => target.querySelector<HTMLElement>('[data-entry-step="1"] [role="slider"]'), 'a scale on the first step');
+      slider.focus();
+      slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      shownValue = await until(() => {
+        flushSync();
+        const text = target.querySelector('[data-entry-step="1"] [data-dim-value]')?.textContent?.trim();
+        return text && /^\d+$/.test(text) ? text : null;
+      }, 'the moved scale to show a value');
+    }
+    const finish = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-entry-finish]');
+      return button && !button.disabled && !button.dataset.saveUnmet ? button : null;
+    }, 'the ready finish control');
+    finish.click();
+    await until(() => target.querySelector('[data-entry-saved]'), 'the save to finish');
+    const entry = await until(async () => (await journal.entries.entriesForDay(epochDay))[0], `the entry saved on day ${epochDay}`);
+    return { mood: entry.mood, dims: entry.dims, note: entry.note, tags: entry.tags, shownValue };
+  } finally {
+    await screen.remove();
   }
 }
 
@@ -236,6 +287,8 @@ async function run() {
     overAFilledDraft: await applyAndSave(journal, OVER_A_FILLED_DRAFT_DAY, [groundwork.id, template.id]),
     namingWhatIsHidden: await applyAndSave(journal, HIDDEN_DAY, [hiddenTemplate.id]),
     navigationFailure: await saveWithNavigationFailure(journal),
+    firstStepMoodOnly: await finishOnTheFirstStep(journal, 19_004, { face: 4, nudgeFirstScale: false }),
+    firstStepWithAScale: await finishOnTheFirstStep(journal, 19_005, { face: 2, nudgeFirstScale: true }),
     shownPresentationId: shown.id,
     hiddenPresentationId: concealed.id
   };

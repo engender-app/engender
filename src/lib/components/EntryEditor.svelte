@@ -965,188 +965,6 @@
   {#if loaded.loading}
     <div out:crossfade><Skeleton variant="block" count={3} /></div>
   {:else if entryId == null || existing}
-  {#if stepped}
-    <!-- One cell for both steps, so the one leaving and the one arriving
-         share it for the length of the change and nothing under them moves
-         ($lib/motion/entryStep). -->
-    <div class="entry-stage" class:is-turn={motion === 'turn'}>
-      {#key step}
-        <div
-          class="entry-step"
-          data-entry-step={step}
-          in:stepTravel={{ motion, back: steppingBack }}
-          out:stepTravel={{ motion, back: steppingBack }}
-        >
-          {#if step === 1}
-            <EntryFirstStep
-              mood={entryDraft.mood}
-              {dims}
-              values={entryDraft.dims}
-              {saving}
-              onMood={(v) => entryDraft.setMood(v)}
-              onDim={(key, v) => entryDraft.setDim(key, v)}
-              bind:faces={moodsEl}
-            />
-          {:else}
-            {@render theRest()}
-          {/if}
-        </div>
-      {/key}
-    </div>
-  {:else}
-    {@render theRest()}
-  {/if}
-
-  <SaveBar>
-    <!-- One foot for both steps, its contents crossfading in place: the two
-         arrangements are the same height (two 48px rows and a --space-2), so
-         the foot itself never moves when the step changes. -->
-    <div class="entry-foot">
-    {#if stepped && step === 1}
-      <!-- Two ways on, and they must not read as one another (ticket 03):
-           finishing saves what is set and closes, so it is the ink button
-           and says what it does; going on is the page's block under it,
-           naming what is on the next step. -->
-      <div class="entry-first-foot" in:fieldPart out:fieldPart>
-        <button
-          class="btn press"
-          class:btn-primary={!moodMissing}
-          class:btn-soft={moodMissing}
-          data-save
-          data-entry-finish
-          data-entry-saving={saving || undefined}
-          data-save-unmet={moodMissing ? 'mood' : undefined}
-          disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
-          onclick={saveEntry}
-        >
-          <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
-        </button>
-        <button
-          class="btn btn-soft press"
-          data-entry-continue
-          disabled={saving || entryDraft.savedId !== undefined}
-          onclick={() => goToStep(2)}
-        >
-          <span>{m.entry_continue()}</span><Icon name="chevronRight" size={18} />
-        </button>
-        <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
-      </div>
-    {:else}
-    <!-- Mood stays beside saving, with its own row of full-size targets. -->
-    <div class="editor-save-row" in:fieldPart out:fieldPart>
-      <fieldset class="editor-save-moods" data-save-moods disabled={saving} inert={saving} bind:this={moodsEl}>
-        <MoodPicker bar value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
-      </fieldset>
-      <button
-        class="icon-btn press"
-        aria-label={starred ? m.unstar_entry() : m.star_entry()}
-        aria-pressed={starred}
-        data-save-star
-        disabled={saving || entryDraft.savedId !== undefined}
-        onclick={toggleStarred}
-      >
-        <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
-      </button>
-      <button
-        class="btn press"
-        class:btn-primary={!moodMissing}
-        class:btn-soft={moodMissing}
-        data-save
-        data-entry-saving={saving || undefined}
-        data-save-unmet={moodMissing ? 'mood' : undefined}
-        disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
-        onclick={saveEntry}
-      >
-        <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
-      </button>
-      <!-- Outside the button: a live region inside it empties the button's
-           accessible name, so the label is the button's own text and the
-           saving announcement lives here. -->
-      <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
-    </div>
-    {/if}
-    </div>
-  </SaveBar>
-  {/if}
-  {/if}
-
-  <Sheet bind:open={templateSheetOpen} title={m.use_template()}>
-    <SectionHeading text={m.use_template()}>
-      {#snippet action()}
-        <!-- In place (audit item 6): closes this picker and raises the
-             manager sheet directly, rather than navigating there and back. -->
-        <button
-          type="button"
-          class="kit-heading-action"
-          data-manage-entry-templates
-          onclick={() => {
-            templateSheetOpen = false;
-            ui.raisedManager = 'templates';
-          }}
-        >
-          {m.entry_templates_manage()}
-        </button>
-      {/snippet}
-    </SectionHeading>
-    <ListCard {role}>
-      {#each vocabulary.visibleEntryTemplates as tpl (tpl.id)}
-        <ListRow key={tpl.id} title={tpl.name} chevron={false} onclick={() => applyTemplate(tpl)} />
-      {/each}
-    </ListCard>
-  </Sheet>
-
-  <Sheet bind:open={deleteOpen} title={m.delete_entry_q()}>
-    <SectionHeading text={m.delete_entry_q()} />
-    <p class="editor-hint">{m.delete_entry_hint()}</p>
-    <div class="stack-3">
-      <button class="btn btn-danger" onclick={confirmDelete}><span>{m.delete_entry()}</span></button>
-      <button class="btn btn-ghost" onclick={() => (deleteOpen = false)}><span>{m.keep_it()}</span></button>
-    </div>
-  </Sheet>
-
-  <DiscardSheet {guard} />
-
-  <EffectPickerSheet
-    bind:open={effectSheetOpen}
-    {role}
-    effects={offeredEffectTypes(vocabulary.visiblePersonalEffectTypes, new Set(recordedEffects.keys()))}
-    categoryOrder={vocabulary.effectCategories.map((category) => category.key)}
-    drugs={activeEpisodes.map((episode) => episode.drug)}
-    chosen={entryDraft.effectMarkers.map((marker) => marker.effect)}
-    recorded={recordedEffects}
-    onToggle={(key) => entryDraft.toggleEffectMarker(key, day)}
-  />
-
-  <PhotoDayPromptSheet
-    open={dayPromptQueue.length > 0}
-    bind:day={dayPromptValue}
-    fieldId="entry-photo-day-prompt"
-    hint={m.photo_day_prompt_hint_entry()}
-    onSave={() => resolveDayPrompt(dayPromptValue)}
-    onSkip={() => resolveDayPrompt(null)}
-  />
-
-  <PhotoAlignmentReview
-    photo={entryPhotoReview.photo}
-    reference={entryPhotoReview.reference}
-    onAccept={entryPhotoReview.accept}
-    busy={entryPhotoReview.busy}
-    onRetake={() => prepareDraft(entryPhotoReview.capture)}
-    onCancel={entryPhotoReview.cancel}
-  />
-
-  <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
-
-  {#snippet stepHeading()}
-    {#key step}
-      <span
-        class="step-heading"
-        in:stepTravel={{ motion, back: steppingBack, printed: true }}
-        out:stepTravel={{ motion, back: steppingBack, printed: true }}
-      >{step === 1 ? m.home_log_heading() : m.new_entry()}</span>
-    {/key}
-  {/snippet}
-
   {#snippet theRest()}
   <!-- The guided prompt, the template and a debrief's scaffold all belong
        to the note, so on a new entry they sit with it on the second step. -->
@@ -1644,6 +1462,189 @@
     </div>
   {/if}
   {/snippet}
+
+  {#if stepped}
+    <!-- One cell for both steps, so the one leaving and the one arriving
+         share it for the length of the change and nothing under them moves
+         ($lib/motion/entryStep). -->
+    <div class="entry-stage" class:is-turn={motion === 'turn'}>
+      {#key step}
+        <div
+          class="entry-step"
+          data-entry-step={step}
+          in:stepTravel={{ motion, back: steppingBack }}
+          out:stepTravel={{ motion, back: steppingBack }}
+        >
+          {#if step === 1}
+            <EntryFirstStep
+              mood={entryDraft.mood}
+              {dims}
+              values={entryDraft.dims}
+              {saving}
+              onMood={(v) => entryDraft.setMood(v)}
+              onDim={(key, v) => entryDraft.setDim(key, v)}
+              bind:faces={moodsEl}
+            />
+          {:else}
+            {@render theRest()}
+          {/if}
+        </div>
+      {/key}
+    </div>
+  {:else}
+    {@render theRest()}
+  {/if}
+
+  <SaveBar>
+    <!-- One foot for both steps, its contents crossfading in place: the two
+         arrangements are the same height (two 48px rows and a --space-2), so
+         the foot itself never moves when the step changes. -->
+    <div class="entry-foot">
+    {#if stepped && step === 1}
+      <!-- Two ways on, and they must not read as one another (ticket 03):
+           finishing saves what is set and closes, so it is the ink button
+           and says what it does; going on is the page's block under it,
+           naming what is on the next step. -->
+      <div class="entry-first-foot" in:fieldPart out:fieldPart>
+        <button
+          class="btn press"
+          class:btn-primary={!moodMissing}
+          class:btn-soft={moodMissing}
+          data-save
+          data-entry-finish
+          data-entry-saving={saving || undefined}
+          data-save-unmet={moodMissing ? 'mood' : undefined}
+          disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
+          onclick={saveEntry}
+        >
+          <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+        </button>
+        <button
+          class="btn btn-soft press"
+          data-entry-continue
+          disabled={saving || entryDraft.savedId !== undefined}
+          onclick={() => goToStep(2)}
+        >
+          <span>{m.entry_continue()}</span><Icon name="chevronRight" size={18} />
+        </button>
+        <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
+      </div>
+    {:else}
+    <!-- Mood stays beside saving, with its own row of full-size targets. -->
+    <div class="editor-save-row" in:fieldPart out:fieldPart>
+      <fieldset class="editor-save-moods" data-save-moods disabled={saving} inert={saving} bind:this={moodsEl}>
+        <MoodPicker bar value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
+      </fieldset>
+      <button
+        class="icon-btn press"
+        aria-label={starred ? m.unstar_entry() : m.star_entry()}
+        aria-pressed={starred}
+        data-save-star
+        disabled={saving || entryDraft.savedId !== undefined}
+        onclick={toggleStarred}
+      >
+        <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
+      </button>
+      <button
+        class="btn press"
+        class:btn-primary={!moodMissing}
+        class:btn-soft={moodMissing}
+        data-save
+        data-entry-saving={saving || undefined}
+        data-save-unmet={moodMissing ? 'mood' : undefined}
+        disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
+        onclick={saveEntry}
+      >
+        <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+      </button>
+      <!-- Outside the button: a live region inside it empties the button's
+           accessible name, so the label is the button's own text and the
+           saving announcement lives here. -->
+      <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
+    </div>
+    {/if}
+    </div>
+  </SaveBar>
+  {/if}
+  {/if}
+
+  <Sheet bind:open={templateSheetOpen} title={m.use_template()}>
+    <SectionHeading text={m.use_template()}>
+      {#snippet action()}
+        <!-- In place (audit item 6): closes this picker and raises the
+             manager sheet directly, rather than navigating there and back. -->
+        <button
+          type="button"
+          class="kit-heading-action"
+          data-manage-entry-templates
+          onclick={() => {
+            templateSheetOpen = false;
+            ui.raisedManager = 'templates';
+          }}
+        >
+          {m.entry_templates_manage()}
+        </button>
+      {/snippet}
+    </SectionHeading>
+    <ListCard {role}>
+      {#each vocabulary.visibleEntryTemplates as tpl (tpl.id)}
+        <ListRow key={tpl.id} title={tpl.name} chevron={false} onclick={() => applyTemplate(tpl)} />
+      {/each}
+    </ListCard>
+  </Sheet>
+
+  <Sheet bind:open={deleteOpen} title={m.delete_entry_q()}>
+    <SectionHeading text={m.delete_entry_q()} />
+    <p class="editor-hint">{m.delete_entry_hint()}</p>
+    <div class="stack-3">
+      <button class="btn btn-danger" onclick={confirmDelete}><span>{m.delete_entry()}</span></button>
+      <button class="btn btn-ghost" onclick={() => (deleteOpen = false)}><span>{m.keep_it()}</span></button>
+    </div>
+  </Sheet>
+
+  <DiscardSheet {guard} />
+
+  <EffectPickerSheet
+    bind:open={effectSheetOpen}
+    {role}
+    effects={offeredEffectTypes(vocabulary.visiblePersonalEffectTypes, new Set(recordedEffects.keys()))}
+    categoryOrder={vocabulary.effectCategories.map((category) => category.key)}
+    drugs={activeEpisodes.map((episode) => episode.drug)}
+    chosen={entryDraft.effectMarkers.map((marker) => marker.effect)}
+    recorded={recordedEffects}
+    onToggle={(key) => entryDraft.toggleEffectMarker(key, day)}
+  />
+
+  <PhotoDayPromptSheet
+    open={dayPromptQueue.length > 0}
+    bind:day={dayPromptValue}
+    fieldId="entry-photo-day-prompt"
+    hint={m.photo_day_prompt_hint_entry()}
+    onSave={() => resolveDayPrompt(dayPromptValue)}
+    onSkip={() => resolveDayPrompt(null)}
+  />
+
+  <PhotoAlignmentReview
+    photo={entryPhotoReview.photo}
+    reference={entryPhotoReview.reference}
+    onAccept={entryPhotoReview.accept}
+    busy={entryPhotoReview.busy}
+    onRetake={() => prepareDraft(entryPhotoReview.capture)}
+    onCancel={entryPhotoReview.cancel}
+  />
+
+  <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
+
+  {#snippet stepHeading()}
+    {#key step}
+      <span
+        class="step-heading"
+        in:stepTravel={{ motion, back: steppingBack, printed: true }}
+        out:stepTravel={{ motion, back: steppingBack, printed: true }}
+      >{step === 1 ? m.home_log_heading() : m.new_entry()}</span>
+    {/key}
+  {/snippet}
+
 </fieldset>
 
 <style>
