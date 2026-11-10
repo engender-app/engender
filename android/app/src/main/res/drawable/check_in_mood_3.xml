@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mood step 3 on the check-in notification (tester report 02, ticket 05):
+     MoodFace.svelte's drawing from moodFace.ts, path for path, on its block.
+     check-in-faces.test.ts holds the paths to that table and the colours
+     (values/check_in_faces.xml and values-night) to palettes.css. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M7.3,0.9 L16.7,0.9 A6.4,6.4 0 0 1 23.1,7.3 L23.1,16.7 A6.4,6.4 0 0 1 16.7,23.1 L7.3,23.1 A6.4,6.4 0 0 1 0.9,16.7 L0.9,7.3 A6.4,6.4 0 0 1 7.3,0.9 Z"
+        android:fillColor="@color/check_in_mood_3"
+        android:strokeColor="@color/check_in_mood_outline"
+        android:strokeWidth="1" />
+    <path
+        android:pathData="M6.45,9.3 A1.45,1.45 0 1 0 9.35,9.3 A1.45,1.45 0 1 0 6.45,9.3 Z"
+        android:fillColor="@color/check_in_mood_3_ink" />
+    <path
+        android:pathData="M14.65,9.3 A1.45,1.45 0 1 0 17.55,9.3 A1.45,1.45 0 1 0 14.65,9.3 Z"
+        android:fillColor="@color/check_in_mood_3_ink" />
+    <path
+        android:pathData="M7.3 15.4H16.7"
+        android:strokeColor="@color/check_in_mood_3_ink"
+        android:strokeWidth="1.9"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+</vector>

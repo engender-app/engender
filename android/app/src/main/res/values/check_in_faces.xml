@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The check-in notification's five faces (tester report 02, ticket 05),
+     in the mood ramp's default preset, teal, on the trans palette: the
+     literals of palettes.css's [data-mood-preset="teal"][data-theme="light"]
+     and the inks ADR-0091 picked for each step (steps 1 to 3 take the
+     palette's text colour). A notification is drawn by the system, which
+     knows nothing of the person's palette or preset, so these are fixed.
+     values-night holds the dark ramp; the system picks between them when it
+     draws, so a phone that turns dark at sunset redraws the faces too. The
+     outline is --outline, the text colour at 19%. -->
+<resources>
+    <color name="check_in_mood_1">#DBD3F9</color>
+    <color name="check_in_mood_2">#AABCF3</color>
+    <color name="check_in_mood_3">#60A5DF</color>
+    <color name="check_in_mood_4">#1C8EAB</color>
+    <color name="check_in_mood_5">#157475</color>
+    <color name="check_in_mood_1_ink">#1B2B36</color>
+    <color name="check_in_mood_2_ink">#1B2B36</color>
+    <color name="check_in_mood_3_ink">#1B2B36</color>
+    <color name="check_in_mood_4_ink">#000000</color>
+    <color name="check_in_mood_5_ink">#FFFFFF</color>
+    <color name="check_in_mood_outline">#301B2B36</color>
+</resources>
