@@ -8,11 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## 1.0.0
 
-engender is a journal for tracking your gender over time and learning things
-about it you didn't know. Mark how your gender feels on scales you name, keep
-entries, photos and care records on your own device, then use Look back to
-see those days side by side. You choose which areas to use and what to
-record.
+engender is a journal for tracking how your gender feels day by day and
+learning about it from your own entries. Mark each day on scales you name,
+keep photos and care records beside your entries on your own device, then
+open Look back to see those days together. You choose which areas to use and
+what to record.
 
 Use engender as an installable web app or an Android app. Both work offline
 and encrypt the journal at rest. There are no accounts, analytics or backend
