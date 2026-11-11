@@ -78,20 +78,51 @@
   import { fieldPart } from '$lib/motion/navigation';
   import { blindEdge } from '$lib/motion/stepBlind';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { gateDrawsFlag, gateFlagChoice, gateStripes, gateSun } from '$lib/theme/gateFlag';
+  import Mark from './Mark.svelte';
 
   let {
     title,
+    unlock = false,
     children,
     ...rest
   }: {
     title: string;
+    /** The title is the wordmark: this gate asks for the journal's secret.
+        Only an unlock draws the flag, and only without disguise. */
+    unlock?: boolean;
     children: Snippet;
     /** The gate's own attributes: its walkthrough handle, mostly. */
     [attribute: string]: unknown;
   } = $props();
+
+  /* Read once: a demo build's `?gateFlag=` is the sign-off page choosing an
+     option, and a production build always answers the same. */
+  const choice = gateFlagChoice();
+  let flag = $derived(gateDrawsFlag({ unlock, disguise: prefs.disguise }) ? choice : undefined);
+  /* The paint the field wears. Nothing here is computed under disguise or on
+     a gate that is not an unlock: `flag` is undefined there, so no stripe
+     reaches the style attribute at all. */
+  let paint = $derived(
+    flag === 'stripes' || flag === 'stripes-wordmark'
+      ? gateStripes(activeFlag.stripes)
+      : flag === 'sun'
+        ? gateSun(
+            activeFlag.palette === 'polish' && activeFlag.stripes.length
+              ? [activeFlag.stripes[activeFlag.dark ? 0 : 1]]
+              : activeFlag.stripes,
+            'calc(var(--blind-edge) - var(--space-2))'
+          )
+        : undefined
+  );
+  /* The wordmark is painted only where no flag replaced it, or small under
+     the stripes in that one option; everywhere else it stays the screen's
+     accessible name. */
+  let wordmarkPainted = $derived(!flag);
 </script>
 
-<div class="screen screen-gate" data-gate-frame
+<div class="screen screen-gate" data-gate-frame data-gate-flag={flag}
   style:--field={prefs.disguise ? 'var(--surface-2)' : undefined}
   style:--field-ink={prefs.disguise ? 'var(--text)' : undefined}>
   <!-- The host of the edge and everything that reads it (components.css).
@@ -108,7 +139,9 @@
            corners. `data-field-blind` is what hands it the blind's name for a
            navigation, which is how the unlock's handover closes this field
            into the app's rather than fading one out under another. -->
-      <div class="step-field-paint" data-field-blind></div>
+      <div class="step-field-paint" data-field-blind style:--gate-paint={paint}>
+        {#if flag === 'mark'}<span class="gate-mark"><Mark size={46} /></span>{/if}
+      </div>
       <!-- The title: the only display type on a gate and the only heading it
            has. Keyed on the words, because a gate asks more than one thing
            over its life and a heading that changed its text in place would be
@@ -122,13 +155,15 @@
         {#key title}
           <h1
             class="gate-title"
+            class:visually-hidden={!wordmarkPainted && flag !== 'stripes-wordmark'}
+            class:gate-title-small={flag === 'stripes-wordmark'}
             {@attach focusNamedTarget}
             onintroend={(event) => {
               if (document.activeElement === document.body || document.activeElement?.closest('[inert]'))
                 focusNamedTarget(event.currentTarget);
             }}
             data-gate-title
-            data-field-part
+            data-field-part={wordmarkPainted || flag === 'stripes-wordmark' ? '' : undefined}
             in:fieldPart={{ printed: true }}
             out:fieldPart={{ printed: true }}
           >

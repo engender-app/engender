@@ -258,7 +258,7 @@
   let title = $derived(appWordmark(prefs.disguise, m.app_name(), m.disguise_name()));
 </script>
 
-<GateScreen {title} data-applock>
+<GateScreen {title} unlock data-applock>
   <p class="gate-body">{body}</p>
 
   {#if mode === 'pin'}

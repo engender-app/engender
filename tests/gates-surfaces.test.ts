@@ -105,16 +105,18 @@ describe('what a gate may show', () => {
     }
   });
 
-  it('draws no flag and never names the app except through the wordmark', () => {
-    /* No gate carries the sun or reads the stripes: the sun is Home's and
-       setup's (ADR-0035), and a single colour is not a flag, so the field a
-       gate wears since redesign ticket 34 is the flag's second colour and
-       nothing more - `--field` and `--field-ink`, published on <html> by
-       activeFlag, which answers disguise itself.
+  it('draws the flag only through the shell, and never names the app except through the wordmark', () => {
+    /* Tester-report-02 ticket 07 moved the line. A gate used to draw no flag
+       at all: the field was the flag's second colour and nothing more. An
+       unlock now carries the person's flag on its field, so the rule is
+       where the flag may come from - GateScreen alone, through
+       $lib/theme/gateFlag, which answers nothing under disguise or on a gate
+       that is not an unlock. No gate reaches for the sun, the stripes or the
+       mark itself.
 
-       The app's name is the half that changed. Rule 15 makes it the title of
-       every gate that cannot greet by name, so "names the app nowhere" is no
-       longer the rule; the rule is that it may only be named through
+       The app's name is the other half. Rule 15 makes the wordmark the
+       title of every unlock, painted or not, so "names the app nowhere" is
+       not the rule; the rule is that it may only be named through
        `appWordmark`, which is what turns it into the decoy's name under
        disguise. A raw `m.app_name()` on a lock screen shows the real name to
        exactly the person the disguise exists for. */
@@ -124,6 +126,8 @@ describe('what a gate may show', () => {
       const source = stripComments(read(path));
       expect(source, path).not.toContain('FlagSun');
       expect(source, path).not.toContain('activeFlag');
+      expect(source, path).not.toContain('gateFlag');
+      expect(source, path).not.toContain('Mark.svelte');
       for (const at of [...source.matchAll(/m\.app_name\(\)/g)]) {
         const call = source.slice(Math.max(0, at.index - 60), at.index);
         expect(call, `${path}: m.app_name() outside appWordmark()`).toMatch(
@@ -133,35 +137,32 @@ describe('what a gate may show', () => {
     }
   });
 
-  it('draws one pad, in setup and at every gate', () => {
-    /* Redesign ticket 34's own acceptance: "the pad is one component and one
-       drawing across setup and the gates". It was already one component -
-       ticket 53 extracted it when the PIN got three jobs - and the thing that
-       could quietly stop being true is the drawing: a second `.pin-key` or
-       `.pin-dot` rule in a screen's own block, or a mount that reaches for
-       something other than PinPad. Both are greps because both are
-       negatives. */
-    const mounts = ['src/lib/components/PinEntry.svelte', 'src/lib/components/AccessModeSetup.svelte'];
-    for (const path of mounts) {
-      expect(read(path), path).toContain("import PinPad from './PinPad.svelte'");
-      expect(stripScript(read(path)), path).toContain('<PinPad');
+  it('draws the flag on an unlock only, and nothing of it under disguise', () => {
+    const shell = stripComments(read('src/lib/components/GateScreen.svelte'));
+    /* The one decision, made by the one function the unit tests hold. */
+    expect(shell).toMatch(/gateDrawsFlag\(\{\s*unlock,\s*disguise:\s*prefs\.disguise\s*\}\)/);
+    /* Every drawing reads `flag`, which is undefined when that says no. */
+    for (const drawing of ['gateStripes(', 'gateSun(', '<Mark']) {
+      const at = shell.indexOf(drawing);
+      expect(at, drawing).toBeGreaterThan(-1);
+      expect(shell.slice(Math.max(0, at - 200), at), `${drawing} not behind flag`).toMatch(/flag/);
     }
-    /* Nowhere else may draw one. The keypad markup lives in PinPad and the
-       two screens above mount it; a third copy is what this catches. */
-    const drawn = [...GATE_CONTENT, 'src/routes/onboarding/+page.svelte'].filter((path) =>
-      stripComments(stripScript(read(path))).includes('class="pin-key"')
+    /* The three unlocks say they are unlocks; the gates that are not keep
+       their own titles and pass nothing. */
+    expect(read('src/lib/components/SessionUnlock.svelte')).toMatch(/<GateScreen \{title\} unlock\b/);
+    expect(read('src/lib/components/JournalGate.svelte')).toMatch(/<GateScreen title=\{gateTitle\} unlock=\{!choosingMode\}>/);
+    expect(read('src/lib/components/AndroidKeyGate.svelte')).toMatch(
+      /<GateScreen title=\{appWordmark\(prefs\.disguise, m\.app_name\(\), m\.disguise_name\(\)\)\} unlock>/
     );
-    expect(drawn).toEqual(['src/lib/components/PinPad.svelte']);
-    /* And one set of rules for it. `components.css` is the always-loaded
-       sheet both surfaces read; a `.pin-key` or `.pin-dot` selector in a
-       route's own scoped block would be a second drawing that only one of
-       them wears. */
-    for (const [where, css] of [
-      ['screens', read('src/lib/styles/screens.css')],
-      ['onboarding', read('src/routes/onboarding/+page.svelte').slice(read('src/routes/onboarding/+page.svelte').indexOf('<style>'))]
-    ] as const) {
-      expect(stripComments(css), where).not.toMatch(/\.pin-(key|dot|pad)\s*[,{]/);
+    for (const path of [
+      'src/lib/components/DeviceBoundRecovery.svelte',
+      'src/lib/components/SchemaTooNew.svelte',
+      'src/lib/components/RecoveryKeyEntry.svelte',
+      'src/lib/components/PostRecoveryAccessMode.svelte'
+    ]) {
+      expect(read(path), path).not.toMatch(/<GateScreen[^>]*\bunlock\b/);
     }
+    expect(read('src/lib/components/JournalGate.svelte')).toMatch(/<GateScreen title=\{m\.pp_legacy_refused_title\(\)\}>/);
   });
 
   it('animates no gate onto the screen, and says why where the shell is', () => {

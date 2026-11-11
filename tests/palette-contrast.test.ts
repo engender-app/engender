@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf, washOver } from '../src/lib/theme/colour';
 import { flagField, flagRoles, heatInk } from '../src/lib/theme/roles';
+import { gateStripes } from '../src/lib/theme/gateFlag';
 import { PALETTES } from './palettes.mjs';
 
 const css = readFileSync('src/lib/theme/palettes.css', 'utf8');
@@ -744,6 +745,58 @@ describe('the field and the fills (phase 10)', () => {
           ratio,
           `${palette}/${theme}: bg (${t.bg}) on text (${t.text}) has ${ratio.toFixed(2)}:1, needs 4.5:1`
         ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+});
+
+/* An unlock's flag (tester-report-02 ticket 07). The field stops carrying
+   type: what sits on it is the flag itself, or a drawing in the flag's own
+   colours, and the control, its status line and the way out stay on the page
+   where the floors above already hold them. So what is measured here is the
+   two things that are new: that the flag on a gate is the palette's own,
+   never one nudged to pass a ratio (decision 1), and that whatever is left
+   on the field or beside it still meets its floor in every palette and both
+   themes - by where it sits, not by changing a colour. */
+describe("an unlock's flag", () => {
+  const stripesOf = (palette: string) =>
+    /--motif-stripes:\s*([^;]+);/.exec(blockBody(String.raw`\[data-palette="${palette}"\]`))![1]
+      .split(',')
+      .map((s) => s.trim());
+
+  it("paints each palette's stripes at their own values, nothing corrected", () => {
+    for (const palette of PALETTES) {
+      const paint = gateStripes(stripesOf(palette))!;
+      expect([...paint.matchAll(/#[0-9A-Fa-f]{6}/g)].map((m) => m[0]), palette).toEqual(stripesOf(palette));
+    }
+  });
+
+  /* The mark sits on the field, outlined in the app's black seam round a
+     white face, so its boundary against the field is whichever of the two
+     measures higher: WCAG 1.4.11's 3:1 for a graphic seen as a shape. The
+     corner sun is not held here, on purpose: it is Today's own drawing in the
+     flag's own colours, and on bisexual its outer pink and its seam measure
+     2.13:1 and 2.0:1 against the dark blue field there as well. Passing it
+     would mean changing a flag (decision 1), and Today has never been held
+     to it. */
+  it('outlines the mark at 3:1 against the field, in every palette and theme', () => {
+    for (const palette of PALETTES) {
+      for (const dark of [false, true]) {
+        const field = flagField(stripesOf(palette), palette, dark)!;
+        const tile = Math.max(contrast('#000000', field.hex), contrast('#FFFFFF', field.hex));
+        expect(tile, `${palette}/${dark ? 'dark' : 'light'}: mark on ${field.hex}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  /* The comparison option keeps the wordmark small, under the stripes on the
+     page's own ground in the page's ink: below the large-text size on a short
+     window, so it answers to 4.5:1. */
+  it('keeps the small wordmark under the stripes readable on the page', () => {
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        expect(contrast(t.text, t.bg), `${palette}/${theme}`).toBeGreaterThanOrEqual(4.5);
       }
     }
   });

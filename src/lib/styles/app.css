@@ -1443,6 +1443,23 @@ html[data-nav='open']::view-transition-new(screen) {
   animation-name: screen-crossfade, blind-follow;
 }
 
+/* An unlock that drew the flag on its field (tester-report-02 ticket 07).
+   Home's blind is one colour and the gate's carried the stripes, the mark or
+   the sun, and the incoming blind is painted over the outgoing one at full
+   opacity - so left alone the flag was gone on the transition's first frame.
+   The incoming paint fades in over the outgoing one instead, on the edge's
+   own clock, while both clips travel together: the field stays one object
+   that moves down, and what is on it crossfades. */
+html[data-nav='open'][data-gate-flag]::view-transition-new(blind) {
+  animation:
+    blind-slide var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both,
+    gate-flag-cover var(--blind-dur, var(--dur-slow)) var(--ease-in-out) both;
+}
+@keyframes gate-flag-cover {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* The container transform is the one pattern that also cared about this: a
    transform on a named element moves the geometry the browser measured for the
    morph. With `.screen` carrying no animation at all there is nothing left to

@@ -20,7 +20,7 @@ const el = () => {
 /** A document with one field, a root that records what is stamped on it, and
     a `startViewTransition` that hands back the callback so a test can drive
     the frames itself. */
-function fakeDocument({ present = true, readyRejects = false } = {}) {
+function fakeDocument({ present = true, readyRejects = false, gateFlag = '' } = {}) {
   const blind = el();
   const field = {
     ...el(),
@@ -46,7 +46,10 @@ function fakeDocument({ present = true, readyRejects = false } = {}) {
   const doc = {
     documentElement: root,
     querySelectorAll: () => [field],
-    querySelector: () => ({ scrollTop: 0, getBoundingClientRect: () => ({ top: 0 }) }),
+    querySelector: (selector: string) =>
+      selector.includes('data-gate-flag')
+        ? gateFlag ? { dataset: { gateFlag } } : null
+        : { scrollTop: 0, getBoundingClientRect: () => ({ top: 0 }) },
     ...(present
       ? {
           startViewTransition(update: () => Promise<void>) {
@@ -117,6 +120,26 @@ describe('the app opening', () => {
     await Promise.resolve();
     expect(doc.root.dataset.nav).toBeUndefined();
     expect(doc.blind.style.viewTransitionName).toBe('');
+  });
+
+  /* Tester-report-02 ticket 07: an unlock that drew the flag tells app.css,
+     which fades Home's blind in over the gate's rather than painting it over
+     in one frame. Only for the length of the opening. */
+  it("carries an unlock's flag to the root for the opening, and takes it off after", async () => {
+    const doc = fakeDocument({ gateFlag: 'stripes' });
+    openApp(() => {}, doc.as);
+    expect(doc.root.dataset.gateFlag).toBe('stripes');
+    await doc.update();
+    doc.finish();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(doc.root.dataset.gateFlag).toBeUndefined();
+  });
+
+  it('stamps no flag for a gate that drew none', () => {
+    const doc = fakeDocument();
+    openApp(() => {}, doc.as);
+    expect(doc.root.dataset.gateFlag).toBeUndefined();
   });
 
   it('gives the blind back when the transition is superseded, not only when it settles', async () => {

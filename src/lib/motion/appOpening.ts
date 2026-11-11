@@ -64,6 +64,13 @@ export function openApp(
   const blind = carryBlind(doc);
   const root = doc.documentElement;
   root.dataset.nav = PATTERN;
+  /* An unlock that draws the flag (tester-report-02 ticket 07) hands its
+     paint over rather than cutting it: the gate's blind carries the stripes,
+     the mark or the sun, and Home's carries one solid colour, so the
+     incoming blind fades in over the outgoing one while both edges travel
+     together (app.css). Read before the gate goes. */
+  const flag = doc.querySelector<HTMLElement>('[data-gate-frame][data-gate-flag]')?.dataset?.gateFlag;
+  if (flag) root.dataset.gateFlag = flag;
 
   const transition = doc.startViewTransition(async () => {
     try {
@@ -90,6 +97,7 @@ export function openApp(
     .catch(() => {})
     .finally(() => {
       delete root.dataset.nav;
+      delete root.dataset.gateFlag;
       blind.release();
       /* The screen has stopped moving, so anything that lands from here on
          is a change within it rather than part of it arriving. Said out loud
