@@ -793,6 +793,18 @@ describe("an unlock's flag", () => {
      page's own ground in the page's ink: below the large-text size on a short
      window, so it answers to 4.5:1. */
   it('keeps the small wordmark under the stripes readable on the page', () => {
+    /* Where it sits is what makes this pair the right one: the word is in the
+       page's ink, and the paint behind its line is cleared to the page. */
+    const screens = readFileSync('src/lib/styles/screens.css', 'utf8');
+    const rule = (selector: string) => {
+      const at = screens.indexOf(`\n${selector} {`);
+      expect(at, selector).toBeGreaterThan(-1);
+      return screens.slice(at, screens.indexOf('}', at));
+    };
+    expect(rule('.gate-title.gate-title-small')).toMatch(/color:\s*var\(--text\);/);
+    expect(rule(".screen-gate[data-gate-flag='stripes-wordmark'] .step-field-paint")).toMatch(
+      /background-color:\s*transparent;/
+    );
     for (const palette of PALETTES) {
       for (const theme of THEMES) {
         const t = tokenMap(palette, theme);

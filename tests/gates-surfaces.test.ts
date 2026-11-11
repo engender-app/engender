@@ -165,6 +165,38 @@ describe('what a gate may show', () => {
     expect(read('src/lib/components/JournalGate.svelte')).toMatch(/<GateScreen title=\{m\.pp_legacy_refused_title\(\)\}>/);
   });
 
+  it('draws one pad, in setup and at every gate', () => {
+    /* Redesign ticket 34's own acceptance: "the pad is one component and one
+       drawing across setup and the gates". It was already one component -
+       ticket 53 extracted it when the PIN got three jobs - and the thing that
+       could quietly stop being true is the drawing: a second `.pin-key` or
+       `.pin-dot` rule in a screen's own block, or a mount that reaches for
+       something other than PinPad. Both are greps because both are
+       negatives. */
+    const mounts = ['src/lib/components/PinEntry.svelte', 'src/lib/components/AccessModeSetup.svelte'];
+    for (const path of mounts) {
+      expect(read(path), path).toContain("import PinPad from './PinPad.svelte'");
+      expect(stripScript(read(path)), path).toContain('<PinPad');
+    }
+    /* Nowhere else may draw one. The keypad markup lives in PinPad and the
+       two screens above mount it; a third copy is what this catches. */
+    const drawn = [...GATE_CONTENT, 'src/routes/onboarding/+page.svelte'].filter((path) =>
+      stripComments(stripScript(read(path))).includes('class="pin-key"')
+    );
+    expect(drawn).toEqual(['src/lib/components/PinPad.svelte']);
+    /* And one set of rules for it. `components.css` is the always-loaded
+       sheet both surfaces read; a `.pin-key` or `.pin-dot` selector in a
+       route's own scoped block would be a second drawing that only one of
+       them wears. */
+    for (const [where, css] of [
+      ['screens', read('src/lib/styles/screens.css')],
+      ['onboarding', read('src/routes/onboarding/+page.svelte').slice(read('src/routes/onboarding/+page.svelte').indexOf('<style>'))]
+    ] as const) {
+      expect(stripComments(css), where).not.toMatch(/\.pin-(key|dot|pad)\s*[,{]/);
+    }
+  });
+
+
   it('animates no gate onto the screen, and says why where the shell is', () => {
     /* Rule 15 and ADR-0078's cut list: a cold start has nothing to come from
        and a mid-session lock arriving is the one state change whose whole

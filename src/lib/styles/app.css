@@ -1427,8 +1427,9 @@ html[data-nav='container']::view-transition-new(screen) {
    The only pattern in the app whose two screens do nothing but change
    opacity, and the reason is that the movement is already there. A gate's
    field is one title tall; Home's is 175px of the flag with the sun in it.
-   So the blind opens by that difference on --dur-slow, the wordmark printed
-   on it rides down onto the place Home draws its own, the sun's rings open
+   So the blind opens by that difference on --dur-slow, whatever the gate
+   printed on it (a disguised unlock's decoy name; an undisguised unlock's
+   flag is paint and fades instead, below) rides down, the sun's rings open
    outermost-first as it goes, and the page follows the edge down instead of
    waiting under it. A scale on top of all that - fade-through's 0.97 and
    1.03, which the four tabs use because they are peers with nothing else
