@@ -282,10 +282,12 @@ async function openSection(section) {
    are on the step after it. Walks on when there is a step to walk past,
    and only waits for the note on an entry that already exists. */
 async function toTheRest() {
-  await page.waitForSelector('[data-entry-step="1"], #ed-note');
-  const go = page.locator('[data-entry-continue]');
-  if (await go.count()) await go.click();
-  await toTheRest();
+  await page.waitForSelector('[data-entry-step], #ed-note');
+  if (await page.locator('[data-entry-step="1"]').count()) {
+    await page.locator('[data-entry-continue]').click();
+    await page.waitForSelector('[data-entry-step="2"]');
+  }
+  await page.waitForSelector('#ed-note');
 }
 
 async function expectNoHorizontalOverflow(selector) {
