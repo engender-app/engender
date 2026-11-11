@@ -285,7 +285,11 @@ async function toTheRest() {
   await page.waitForSelector('[data-entry-step], #ed-note');
   if (await page.locator('[data-entry-step="1"]').count()) {
     await page.locator('[data-entry-continue]').click();
+    /* The first step stays in the page for the length of the change, with
+       its own faces and foot, so a locator for either is ambiguous until it
+       has gone. */
     await page.waitForSelector('[data-entry-step="2"]');
+    await page.waitForSelector('[data-entry-step="1"]', { state: 'detached' });
   }
   await page.waitForSelector('#ed-note');
 }
