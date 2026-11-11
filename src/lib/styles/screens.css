@@ -711,8 +711,12 @@
   /* Where the edge rests before stepBlind's first measurement, and the only
      frame this value is read on: the top inset, the field's own 8 above the
      title, a one-line title at 48 set solid, and the field's 16 under it.
-     A two-line title measures taller and travels there from here. */
-  --blind-edge: calc(var(--space-2) + 46px + var(--space-4));
+     A two-line title measures taller and travels there from here. An
+     unlock's sun field adds its room here as well (tester-report-02 ticket
+     07): without it the edge started 32px short and grew into place over
+     the first 200ms of the gate, an entrance on a screen that arrives as a
+     cut. */
+  --blind-edge: calc(var(--space-2) + 46px + var(--space-4) + var(--gate-room, 0px));
 }
 
 /* 48 in the display face at 800, tracked one step tighter than the scale's
@@ -825,7 +829,7 @@
    addresses and its composition is the pad's rather than the screen's. */
 @media (max-height: 639px) {
   .gate {
-    --blind-edge: calc(var(--space-2) + 22px + var(--space-3));
+    --blind-edge: calc(var(--space-2) + 22px + var(--space-3) + var(--gate-room, 0px) / 2);
   }
   .gate-title {
     font-size: var(--text-xl);
@@ -850,7 +854,7 @@
    window edges to bleed to any more - the column has its own. */
 @container app (min-width: 1024px) {
   .gate {
-    --blind-edge: calc(var(--space-6) + 46px + var(--space-4));
+    --blind-edge: calc(var(--space-6) + 46px + var(--space-4) + var(--gate-room, 0px));
   }
   .gate-field {
     margin: 0;

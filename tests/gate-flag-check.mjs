@@ -183,6 +183,26 @@ try {
       }
     }
   }
+  /* A gate arrives as a cut, so the sun's taller edge is where it rests from
+     the first painted frame rather than growing there from the title's
+     height. Read on the first animation frame after the gate mounts. */
+  await select(page, 'Palette', 'trans');
+  for (const scene of ['unlock-pin', 'session-pin', 'unlock-passphrase']) {
+    await select(page, 'Scene', 'access-choice');
+    await page.selectOption('select[aria-label="Scene"]', scene);
+    const first = await page.evaluate(() => new Promise((done) => {
+      const look = () => {
+        const gate = document.querySelector('[data-gate-sun] .gate');
+        if (!gate) return requestAnimationFrame(look);
+        requestAnimationFrame(() => done(parseFloat(getComputedStyle(gate).getPropertyValue('--blind-edge'))));
+      };
+      look();
+    }));
+    await settle(page);
+    const rest = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('[data-gate-sun] .gate')).getPropertyValue('--blind-edge')));
+    check(`${scene}: the sun's field arrives at its height, with no growth`, Math.abs(first - rest) <= 1, `first frame ${first}px, at rest ${rest}px`);
+  }
+
   /* Focus order with the sun against the same gate without it. */
   await select(page, 'Palette', 'trans');
   for (const scene of ['unlock-pin', 'unlock-passphrase', 'session-pin']) {
