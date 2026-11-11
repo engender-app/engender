@@ -3,7 +3,7 @@
    against delayed encrypted attachment writes without replacing storage. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
 import { INIT_HIDE_DEMO_SCRIPT, STUB_PERSIST_SCRIPT } from './yank-sweep-core.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
 
@@ -100,6 +100,7 @@ try {
     await page.goto(base + '/settings/access-mode', { waitUntil: 'networkidle' });
     await page.locator('[data-lock-after-choice="immediately"]').click();
     await page.goto(base + '/entry/new/today?seedMood=4', { waitUntil: 'networkidle' });
+    await continueToTheRest(page);
     const note = page.locator('#ed-note');
     await note.fill(`Pending entry ${locale}`);
     const scale = page.getByRole('slider').first();
@@ -204,6 +205,7 @@ try {
     await page.locator('[data-section-chip="photos"]').click();
     assert.equal(await page.locator('.photo-view').count(), 1);
     await page.goto(base + '/entry/new/today?seedMood=4', { waitUntil: 'networkidle' });
+    await continueToTheRest(page);
     assert.equal(await note.inputValue(), '', 'reopening has no unsaved accepted edits');
 
     await note.fill(`Retry entry ${locale}`);
@@ -239,6 +241,8 @@ try {
       await page.evaluate(() => window.entryWrite.release());
     }
     await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
+    // The remounted editor opens on its first step with the draft read back under it.
+    await continueToTheRest(page);
     assert.equal(await note.inputValue(), `Retry after mirror delay ${locale}`);
     assert.ok(await page.evaluate(() => localStorage.getItem('engender-entry-draft')), 'failure retains recovery');
     await page.locator('[data-section-chip="photos"]').click();

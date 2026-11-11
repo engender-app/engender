@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { continueToTheRest } from './browser-harness.mjs';
 
 export const SEARCH_RETURN_CANARY = 'canyon4177 orchid4155';
 
@@ -28,6 +29,7 @@ export async function searchReturnFlow(page) {
   if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click();
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 90000 });
   await navigate('/entry/new/today');
+  await continueToTheRest(page);
   await page.locator('#ed-note').fill('orchid4155 canyon4177');
   await page.locator('[data-save-moods] [data-mood="4"]').click();
   await page.locator('[data-save]').click();

@@ -172,6 +172,23 @@ export async function untilSplashLets(page) {
  *  a first run left if it was in the way, and the page-side settle
  *  stamped - toasts gone, demo bar hidden, theme on <html> the way
  *  +layout.svelte stamps it. */
+/** A new entry opens on its first step (tester report 02, ticket 03); the
+ *  note, the template button, the chips and the save bar's star are one step
+ *  on. Continues once when the first step is showing, waits for the first
+ *  step to leave (both are in the page for the length of the change, so a
+ *  handle for either is ambiguous until it has gone) and then for the note.
+ *  An entry that exists has no steps and is waited for as it is.
+ *  @param {import('playwright-core').Page} page */
+export async function continueToTheRest(page) {
+  await page.waitForSelector('[data-entry-step], #ed-note');
+  if (await page.locator('[data-entry-step="1"]').count()) {
+    await page.locator('[data-entry-continue]').click();
+    await page.waitForSelector('[data-entry-step="2"]');
+    await page.waitForSelector('[data-entry-step="1"]', { state: 'detached' });
+  }
+  await page.waitForSelector('#ed-note');
+}
+
 /** @param {import('playwright-core').Page} page
  * @param {string} base
  * @param {string} path

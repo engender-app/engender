@@ -19,7 +19,7 @@
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
-import { launchChromium } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium } from './browser-harness.mjs';
 import { JUMP_FIRST_RUN_EXPRESSION, WALK_FIRST_RUN_FINISH_EXPRESSION } from './yank-sweep-core.mjs';
 
 const server = await createServer({
@@ -200,6 +200,7 @@ try {
     link.click();
   });
   await page.waitForURL(/entry\/new\/today/);
+  await continueToTheRest(page);
   await page.waitForSelector(CHIP).catch(async (e) => {
     await page.screenshot({ path: '/tmp/claude-1000/-home-alice--projekty-priv-gender-diary/787bf72c-d37e-4175-b485-375d59e7f4bc/scratchpad/editor.png' });
     throw e;

@@ -20,7 +20,7 @@
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
-import { launchChromium, untilSplashLets } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium, untilSplashLets } from './browser-harness.mjs';
 import { clientRoute } from './browser-tier/built-flow.mjs';
 
 const server = await createServer({
@@ -158,7 +158,8 @@ async function lockAndUnlock() {
   await page.locator('#session-passphrase').fill('demo');
   await page.locator('[data-session-submit]').click();
   await page.locator('[data-applock]').waitFor({ state: 'detached' });
-  await page.waitForSelector('[data-nav-item="home"], [data-rail-item="home"]');
+  // A new entry is a step with no tab bar or rail, so it is back on its own handle.
+  await page.waitForSelector('[data-nav-item="home"], [data-rail-item="home"], [data-entry-step]');
   /* The screen loads the notice behind a dynamic import; once the module is
      in and two frames have passed, a notice that is coming is on screen. */
   await page.evaluate(async () => {
@@ -354,9 +355,12 @@ try {
   // A gate still tears down the editor and restores its encrypted draft.
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await clientRoute(page, '/entry/new/2026-10-05?seedMood=4');
+  await continueToTheRest(page);
   const draft = 'Update notice lock regression: keep this unsaved note.';
   await page.locator('#ed-note').fill(draft);
   await lockAndUnlock();
+  // The remounted editor opens on its first step with the draft read back under it.
+  await continueToTheRest(page);
   await page.waitForFunction((text) => document.querySelector('#ed-note')?.value === text, draft);
   ok(new URL(page.url()).pathname === '/entry/new/2026-10-05', 'unlock keeps the editor route and restores its unsaved note');
 

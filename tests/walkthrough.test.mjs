@@ -408,6 +408,42 @@ try {
   const afterCards = await page.locator('[data-entry-card]').count();
   if (afterCards !== beforeCards) throw new Error(`entry count changed: ${beforeCards} -> ${afterCards}`);
   ok('home quick mood opens an unsaved seeded editor');
+
+  /* A second face touched on the check-in notification reaches an editor that
+     is already open: the address takes the new seed and step 1 shows it. */
+  await page.locator('[data-nav-item="home"]').first().click();
+  await page.waitForSelector('[data-home-log] [data-mood="4"]');
+  await page.locator('[data-home-log] [data-mood="4"]').click();
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
+  await page.evaluate(() => {
+    const link = document.createElement('a');
+    link.href = '/entry/new/today?seedMood=2';
+    document.body.append(link);
+    link.click();
+    link.remove();
+  });
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="2"][aria-checked="true"]', { timeout: 5000 });
+  // The pick makes it a draft, so leaving asks; discard it.
+  await page.locator('[data-screen-back]').click();
+  await page.waitForSelector('[data-home-log], [data-discard-record]');
+  if (await page.locator('[data-discard-record]').count()) await page.locator('[data-discard-record]').click();
+  await page.waitForSelector('[data-home-log]');
+  ok('a new seedMood on an open first step shows the new face picked');
+
+  /* One more touch saves (tester report 02, ticket 03): the same face, then
+     the first step's finish control. The entry holds that mood, lands on
+     Home, and is one more card on the Journal door. */
+  await page.locator('[data-nav-item="home"]').first().click();
+  await page.waitForSelector('[data-home-log] [data-mood="4"]');
+  await page.locator('[data-home-log] [data-mood="4"]').click();
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
+  await page.locator('[data-entry-finish]').click();
+  await page.waitForSelector('[data-home-hello]', { timeout: 10000 });
+  await page.locator('[data-nav-item="calendar"]').first().click();
+  await page.waitForSelector('[data-entry-card]');
+  const savedCards = await page.locator('[data-entry-card]').count();
+  if (savedCards !== beforeCards + 1) throw new Error(`finishing from the first step: ${beforeCards} cards became ${savedCards}`);
+  ok('a face and one more touch on the first step saves that mood and lands on Home and the Journal');
 } catch (e) { fail('quick log', e); }
 });
 

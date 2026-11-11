@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { preview } from 'vite';
-import { launchChromium } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium } from './browser-harness.mjs';
 import { checkRadioGroup } from './browser-tier/radio-controls.mjs';
 import { PALETTES } from './palettes.mjs';
 
@@ -30,7 +30,7 @@ async function open(path) {
 }
 
 async function geometry() {
-  const result = await page.locator('[data-save-moods] [role="radio"]').evaluateAll(radios => radios.map(radio => {
+  const result = await page.locator('[data-save-moods] [role="radio"], [data-first-step-moods] [role="radio"]').evaluateAll(radios => radios.map(radio => {
     const box = radio.getBoundingClientRect();
     const points = [[1, box.height / 2], [box.width - 1, box.height / 2],
       [box.width / 2, 1], [box.width / 2, box.height - 1], [box.width / 2, box.height / 2]];
@@ -62,6 +62,8 @@ try {
   assert.ok(page.url().includes('/entry/new/'), 'missing mood does not save');
   await page.keyboard.press('Space');
   await checkRadioGroup(page, page.locator('.mood-picker'));
+  // The note is on the second step; the faces just checked are on the first, and the pick carries.
+  await continueToTheRest(page);
   await page.locator('#ed-note').fill('U03 keyboard entry');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -101,6 +103,7 @@ try {
     }
   }
   await page.setViewportSize({ width: 390, height: 360 });
+  await continueToTheRest(page);
   await page.locator('#ed-note').scrollIntoViewIfNeeded();
   await page.locator('#ed-note').focus();
   await shot('short-viewport-pl-390');

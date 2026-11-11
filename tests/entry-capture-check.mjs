@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { launchChromium } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium } from './browser-harness.mjs';
 
 // Real router and lock shell. Only permission completion and device tracks
 // are synthetic; cancelled results still pass through production capture.
@@ -67,6 +67,7 @@ try {
               window.captureProbe = { kind, refusal, requests: 0, recorders: 0, streams: [] };
               await goto(`/entry/new/${epochDay}?seedMood=3`);
             }, { kind, refusal, theme, epochDay: epochDay++ });
+            await continueToTheRest(page);
             const chip = page.locator(`[data-section-chip="${kind}"]`);
             if (await chip.getAttribute('aria-expanded') !== 'true') await chip.click();
             const section = page.locator(`[data-editor-section="${kind}"]`);

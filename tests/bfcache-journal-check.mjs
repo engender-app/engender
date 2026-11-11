@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { newCapabilityContext, launchBrowser, browserEngine } from './browser-harness.mjs';
+import { continueToTheRest, newCapabilityContext, launchBrowser, browserEngine } from './browser-harness.mjs';
 import { buildRequestHandler } from './serve-build.mjs';
 import { classifyBfcacheConsoleErrors } from './browser-tier/bfcache-error-policy.mjs';
 import { firstRun, JOURNAL_SECRET, unlock as coldUnlock } from './browser-tier/built-flow.mjs';
@@ -119,7 +119,8 @@ async function clientRoute(path) {
 }
 async function ready() {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
-  await page.waitForSelector('[data-nav-item="calendar"]', { timeout: 15000 });
+  // The editor is a step with no tab bar, so a retained editor is ready on its own handles.
+  await page.waitForSelector('[data-nav-item="calendar"], [data-entry-step], #ed-note', { timeout: 15000 });
   databaseEvents.push({ type: 'ready', ...await page.evaluate(() => ({ path: window.historyProof.databasePath, token: window.historyProof.token })), index: ++eventIndex });
 }
 async function calendar() {
@@ -182,6 +183,7 @@ try {
   if (production) {
     await firstRun(page, base);
     await clientRoute('/entry/new/2026-10-04?seedMood=4');
+    await continueToTheRest(page);
     await page.locator('#ed-note').fill('BFCache production baseline');
     await page.locator('[data-save]').click();
     await page.waitForFunction(() => !location.pathname.startsWith('/entry/new/'));
@@ -206,6 +208,7 @@ try {
   // Write through the restored application's UI, then read through normal reload.
   const note = `BFCache saved note ${Date.now()}`;
   await clientRoute('/entry/new/2026-10-05?seedMood=4');
+  await continueToTheRest(page);
   await page.locator('#ed-note').fill(note);
   await page.evaluate(() => { window.holdReopen = true; window.reopenHeld = false; });
   await restore();
@@ -267,6 +270,7 @@ try {
   // A final write and normal reload must follow any transient open conflict.
   const finalNote = `BFCache final readback ${Date.now()}`;
   await clientRoute('/entry/new/2026-10-06?seedMood=4');
+  await continueToTheRest(page);
   await page.locator('#ed-note').fill(finalNote);
   await page.locator('[data-save]').click();
   await page.waitForFunction(() => !location.pathname.startsWith('/entry/new/'));
