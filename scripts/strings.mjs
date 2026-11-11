@@ -161,6 +161,54 @@ export function writeString(root, edit) {
   writeAtomic(file, serializeCatalogue(catalogue));
 }
 
+/** Remove one catalogue key from both languages. Refuses a key the source
+ * still references, a key edited since the page loaded, and copy outside the
+ * catalogues. Runs synchronously, so a concurrent edit cannot interleave.
+ * @param {string} root @param {unknown} removal */
+export function removeString(root, removal) {
+  if (!removal || typeof removal !== 'object') throw new RequestError(400, 'Invalid removal.');
+  const { key, en: shownEn, pl: shownPl } = /** @type {Record<string, unknown>} */ (removal);
+  if (typeof key !== 'string' || key.startsWith('$') || isOutside(key)) {
+    throw new RequestError(400, 'Only message catalogue keys can be removed.');
+  }
+  const files = ['en', 'pl'].map((locale) => join(root, `messages/${locale}.json`));
+  const [en, pl] = files.map((file) => JSON.parse(readFileSync(file, 'utf8')));
+  if (!Object.hasOwn(en, key) && !Object.hasOwn(pl, key)) throw new RequestError(400, 'Key does not exist.');
+  if (!isDeepStrictEqual(shownEn, en[key] ?? null) || !isDeepStrictEqual(shownPl, pl[key] ?? null)) {
+    throw new RequestError(409, `Copy changed for ${key}. Reload before removing.`);
+  }
+  const used = collectReferenceSites(copySourceFiles(root)).get(key) ?? [];
+  if (used.length) {
+    const first = `${relative(root, used[0].file)}:${used[0].line}`;
+    throw new RequestError(409, `Still used in ${used.length} place${used.length === 1 ? '' : 's'}, first ${first}. Remove those references first.`);
+  }
+  delete en[key];
+  delete pl[key];
+  writeAtomic(files[0], serializeCatalogue(en));
+  writeAtomic(files[1], serializeCatalogue(pl));
+  const approved = readReviews(root);
+  if (Object.hasOwn(approved, key)) {
+    delete approved[key];
+    writeAtomic(join(root, REVIEW_FILE), JSON.stringify(approved, null, 2) + '\n');
+  }
+}
+
+/** @param {import('node:http').IncomingMessage} request */
+async function readJson(request) {
+  if (request.headers['content-type'] !== 'application/json') {
+    throw new RequestError(415, 'Send application/json.');
+  }
+  /** @type {Buffer[]} */
+  const chunks = [];
+  let bytes = 0;
+  for await (const chunk of request) {
+    bytes += chunk.length;
+    if (bytes > 1024 * 1024) throw new RequestError(413, 'Edit is too large.');
+    chunks.push(chunk);
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new RequestError(400, 'Invalid JSON.'); }
+}
+
 /** @param {string} root */
 export function createStringsServer(root = ROOT) {
   const server = createServer(async (request, response) => {
@@ -180,21 +228,13 @@ export function createStringsServer(root = ROOT) {
         response.setHeader('Content-Type', 'application/json; charset=utf-8');
         response.end(JSON.stringify(readStrings(root)));
       } else if (request.method === 'PATCH' && ['/api/strings', '/api/reviews'].includes(request.url ?? '')) {
-        if (request.headers['content-type'] !== 'application/json') {
-          throw new RequestError(415, 'Send application/json.');
-        }
-        /** @type {Buffer[]} */
-        const chunks = [];
-        let bytes = 0;
-        for await (const chunk of request) {
-          bytes += chunk.length;
-          if (bytes > 1024 * 1024) throw new RequestError(413, 'Edit is too large.');
-          chunks.push(chunk);
-        }
-        let edit;
-        try { edit = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new RequestError(400, 'Invalid JSON.'); }
+        const edit = await readJson(request);
         if (request.url === '/api/reviews') writeReviews(root, edit);
         else writeString(root, edit);
+        response.statusCode = 204;
+        response.end();
+      } else if (request.method === 'DELETE' && request.url === '/api/strings') {
+        removeString(root, await readJson(request));
         response.statusCode = 204;
         response.end();
       } else {
