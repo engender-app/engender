@@ -133,6 +133,12 @@ public class MainActivity extends BridgeActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         captureReminderRoute(intent);
+        // A notification touched while the app is in front raises neither a
+        // focus nor a visibility event, so the page is told directly.
+        if (!rendererGone && bridge != null && bridge.getWebView() != null) {
+            bridge.getWebView().evaluateJavascript(
+                "window.__launchRouteFromNative && window.__launchRouteFromNative();", null);
+        }
     }
 
     /** Pickers, the camera and the folder and save pickers all come through

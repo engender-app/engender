@@ -716,6 +716,27 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.goto).toHaveBeenCalledWith('/entry/new/today');
   });
 
+  /* Tester report 02 ticket 05: a face on the check-in notification, touched
+     while the app is already in front, brings no focus or visibility event
+     (the activity never paused), so the route it stored waited for the next
+     one. MainActivity.onNewIntent calls this hook instead. */
+  test('opens a launch route the moment native reports a new one, with no focus event', async () => {
+    const deps = makeDeps({ isValidLaunchRoute: (route) => route === '/entry/new/today?seedMood=3' });
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    expect(deps.goto).not.toHaveBeenCalled();
+
+    (deps.androidReminders.consumeLaunchRoute as ReturnType<typeof vi.fn>).mockResolvedValue({
+      route: '/entry/new/today?seedMood=3'
+    });
+    (window as unknown as { __launchRouteFromNative: () => void }).__launchRouteFromNative();
+    await flush();
+    expect(deps.goto).toHaveBeenCalledWith('/entry/new/today?seedMood=3');
+
+    platformSync.stopAndroidPlatformSync();
+    expect((window as unknown as { __launchRouteFromNative?: () => void }).__launchRouteFromNative).toBeUndefined();
+  });
+
   /* Functional audit ticket 20: a Taken or Skip tap kept while the journal
      was locked is written, cleared and said out loud once it is open. */
   const tap = (id: string, action: 'taken' | 'skipped') => ({

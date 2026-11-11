@@ -386,6 +386,11 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   };
   window.addEventListener('focus', onVisibleOrFocused);
   document.addEventListener('visibilitychange', onVisibleOrFocused);
+  /* MainActivity.onNewIntent calls this when a notification is touched while
+     the app is already in front: nothing paused, so neither event above
+     fires and the route it stored would wait for the next one. */
+  const native = window as unknown as { __launchRouteFromNative?: () => void };
+  native.__launchRouteFromNative = () => void consumeReminderLaunchRoute();
 
   let backButtonTornDown = false;
   let removeBackButtonListener: (() => void) | null = null;
@@ -440,6 +445,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
     active = false;
     window.removeEventListener('focus', onVisibleOrFocused);
     document.removeEventListener('visibilitychange', onVisibleOrFocused);
+    delete native.__launchRouteFromNative;
     backButtonTornDown = true;
     removeBackButtonListener?.();
     removeBackButtonListener = null;
