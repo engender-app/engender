@@ -115,7 +115,7 @@
   /* Read once: a demo build's `?gateFlag=` is the sign-off page choosing an
      option, and a production build always answers the same. */
   const choice = gateFlagChoice();
-  let flag = $derived(gateDrawsFlag({ unlock, disguise: prefs.disguise }) ? choice : undefined);
+  let flag = $derived(gateDrawsFlag({ unlock, disguised: prefs.disguise }) ? choice : undefined);
   /* The paint the field wears. Nothing here is computed under disguise or on
      a gate that is not an unlock: `flag` is undefined there, so no stripe
      reaches the style attribute at all. */

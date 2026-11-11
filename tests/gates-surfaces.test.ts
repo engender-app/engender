@@ -140,7 +140,7 @@ describe('what a gate may show', () => {
   it('draws the flag on an unlock only, and nothing of it under disguise', () => {
     const shell = stripComments(read('src/lib/components/GateScreen.svelte'));
     /* The one decision, made by the one function the unit tests hold. */
-    expect(shell).toMatch(/gateDrawsFlag\(\{\s*unlock,\s*disguise:\s*prefs\.disguise\s*\}\)/);
+    expect(shell).toMatch(/gateDrawsFlag\(\{\s*unlock,\s*disguised:\s*prefs\.disguise\s*\}\)/);
     /* Every drawing reads `flag`, which is undefined when that says no. */
     for (const drawing of ['gateStripes(', 'gateSun(', '<Mark']) {
       const at = shell.indexOf(drawing);

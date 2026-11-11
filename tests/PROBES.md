@@ -261,6 +261,13 @@ JVM halves: which native failures get a code, when the export preflight may
 refuse, and that a photo write failing after its open leaves no file. The
 gates fixture's `boot-failure-storage-full` scene is checked by
 `gates-say-what-happened` for its sentence and its retry.
+`tests/gate-flag-check.mjs` (tester-report-02 ticket 07, run by hand with
+no build) drives the same fixture across all 16 palettes, both themes and
+each `?gateFlag=` drawing: a disguised unlock draws none of the flag, by DOM
+and by the field's pixels; an undisguised unlock draws the one asked for and
+the other gates keep their painted titles; the accessible name stays the
+wordmark; focus order is the same with and without the flag; and no unlock
+scrolls at 360x568.
 The same gates probe enters a PIN after a forced ENOSPC credential read,
 checks the free-space message and unchanged attempt count, then checks that
 unavailable credentials and a wrong PIN keep their separate messages and

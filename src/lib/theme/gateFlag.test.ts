@@ -15,10 +15,10 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('which gates draw the flag', () => {
   it('draws it on an unlock only, and never under disguise', () => {
-    expect(gateDrawsFlag({ unlock: true, disguise: false })).toBe(true);
-    expect(gateDrawsFlag({ unlock: true, disguise: true })).toBe(false);
-    expect(gateDrawsFlag({ unlock: false, disguise: false })).toBe(false);
-    expect(gateDrawsFlag({ unlock: false, disguise: true })).toBe(false);
+    expect(gateDrawsFlag({ unlock: true, disguised: false })).toBe(true);
+    expect(gateDrawsFlag({ unlock: true, disguised: true })).toBe(false);
+    expect(gateDrawsFlag({ unlock: false, disguised: false })).toBe(false);
+    expect(gateDrawsFlag({ unlock: false, disguised: true })).toBe(false);
   });
 });
 

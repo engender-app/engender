@@ -46,8 +46,8 @@ export function gateFlagChoice(
 /** Whether a gate draws the flag at all. Only an unlock does, and never under
     disguise: a disguised gate shows nothing that names the app or the person
     (ADR-0035), and a flag names the person from across a room. */
-export function gateDrawsFlag({ unlock, disguise }: { unlock: boolean; disguise: boolean }): boolean {
-  return unlock && !disguise;
+export function gateDrawsFlag({ unlock, disguised }: { unlock: boolean; disguised: boolean }): boolean {
+  return unlock && !disguised;
 }
 
 /** The stripes as one paint: equal horizontal bands with hard stops, top to
