@@ -8,11 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## 1.0.0
 
-engender is a journal for understanding your gender, whether you already know
-it or not. Mark euphoria, dysphoria and anything else each day on scales you
-name, keep photos and care records beside your entries on your own device,
-then open Look back to see those days together. You choose which areas to use
-and what to record.
+engender is a journal for your gender and your transition. Mark euphoria,
+dysphoria and anything else each day on scales you name, keep photos and care
+records beside your entries on your own device, then open Look back to see
+those days together. You choose which areas to use and what to record.
 
 Use engender as an installable web app or an Android app. Both work offline
 and encrypt the journal at rest. There are no accounts, analytics or backend
