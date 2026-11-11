@@ -34,7 +34,7 @@
   #themes small { color: var(--dim); white-space: nowrap; }
   .pair { display: flex; gap: 4px; }
   .pair button { flex: 1; font-size: 13px; }
-  #operation { color: var(--note); min-height: 1.5em; white-space: pre-wrap; }
+  #operation { color: var(--note); min-height: 3.1em; white-space: pre-wrap; }
   #operation.bad { color: var(--bad); }
 
   main { padding: 0 28px 120px; }
@@ -55,7 +55,8 @@
   .review { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 13px; white-space: nowrap; }
   .review input { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
 
-  .row { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; padding: 10px 0;
+  /* The side padding keeps a field's focus ring inside the box content-visibility paints. */
+  .row { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; padding: 10px 5px; margin: 0 -5px;
     border-bottom: 1px solid var(--line); content-visibility: auto; contain-intrinsic-size: auto 110px; }
   .meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
     font-size: 11px; color: var(--dim); margin-bottom: 2px; }
@@ -109,7 +110,6 @@
     <progress id="progress" aria-label="Copy review progress" value="0" max="1"></progress>
   </div>
   <p id="operation" role="status"></p>
-  <button id="save-all" type="button" hidden>Save unsaved fields</button>
   <label>Search keys, English and Polish<input id="search" type="search" autocomplete="off"></label>
   <div id="themes" role="group" aria-label="Copy theme"></div>
   <label>Review status
@@ -123,6 +123,7 @@
     <button id="prose-toggle" type="button" aria-pressed="false">Hide keys</button>
   </div>
   <button id="reload" type="button">Reload from disk</button>
+  <button id="save-all" type="button" hidden>Save unsaved fields</button>
   <p>Click any text to edit it. Leaving the field saves it to the file it came from: the catalogues, the Android resources, the web manifests, the store listing or the privacy policy. Enter saves a one-line value, Esc undoes the edit.</p>
   <p>Tinted text differs from main. Check off a key, or the shown keys in a group, after reading both languages. Changed copy needs review again.</p>
 </nav>
@@ -170,6 +171,7 @@
   let busy = false;
   let saving = Promise.resolve();
   let queued = 0;
+  let checksStale = false;
 
   function element(tag, text) {
     const node = document.createElement(tag);
@@ -358,6 +360,7 @@
     const { record, locale, field, input, wrapper, message } = editor;
     const text = input.value;
     if (text === field.text) return true;
+    editor.sending = text;
     try {
       await patch('/api/strings', { locale, key: record.key, variant: field.variant,
         form: field.form, previous: field.text, text });
@@ -365,6 +368,8 @@
       wrapper.classList.add('failed');
       message.textContent = error.message;
       return false;
+    } finally {
+      editor.sending = undefined;
     }
     field.text = text;
     if (field.form === null) record[locale] = text;
@@ -382,6 +387,9 @@
   function saveEdits(editors) {
     if (!editors.length) return;
     queued += editors.length;
+    if (editors.length > 1) say(`Saving ${editors.length} fields…`);
+    for (const editor of editors) updateRecord(editor.record);
+    updateSummary();
     saving = saving.then(async () => {
       let saved = 0;
       for (const editor of editors) {
@@ -394,11 +402,19 @@
       else say(`Saved ${what}`);
       for (const editor of editors) updateRecord(editor.record);
       updateSummary();
-      if (queued) return;
-      try { await refreshFindings(); }
-      catch (error) { say(`Saved, but could not refresh checks: ${error.message}`, true); }
-      updateControls();
+      checksStale = true;
+      await refreshWhenIdle();
     });
+  }
+
+  /** Findings and change marks come from the server; ask once the queue is empty, so the
+   *  answer cannot be older than a write still waiting. */
+  async function refreshWhenIdle() {
+    if (queued || !checksStale) return;
+    checksStale = false;
+    try { await refreshFindings(); }
+    catch (error) { say(`Saved, but could not refresh checks: ${error.message}`, true); }
+    updateControls();
   }
 
   async function saveReview(selected, reviewed) {
@@ -406,17 +422,23 @@
     const previous = selected.map((record) => record.reviewed);
     for (const record of selected) record.reviewed = reviewed;
     busy = true;
+    queued++;
     updateSummary();
+    // The review takes its turn in the queue, so a field save cannot slip in between
+    // reading the values and approving them.
+    const run = saving.then(() => patch('/api/reviews', { reviewed, keys: selected.map(({ key, en, pl }) => ({ key, en, pl })) }));
+    saving = run.catch(() => {});
     try {
-      await saving;
-      await patch('/api/reviews', { reviewed, keys: selected.map(({ key, en, pl }) => ({ key, en, pl })) });
+      await run;
       say(`${selected.length} keys marked ${reviewed ? 'reviewed' : 'not reviewed'}. Progress saved.`);
     } catch (error) {
       selected.forEach((record, index) => { record.reviewed = previous[index]; });
       say(error.message, true);
     } finally {
+      queued--;
       busy = false;
       filter();
+      saving = saving.then(refreshWhenIdle);
     }
   }
 
@@ -452,7 +474,10 @@
       message.setAttribute('role', 'status');
       const editor = { record, locale, field, input, wrapper, message };
       record.editors.push(editor);
+      // A value that came as one line stays one line, typed or pasted.
+      const oneLine = !field.text.includes('\n');
       input.addEventListener('input', () => {
+        if (oneLine && input.value.includes('\n')) input.value = input.value.replace(/\s*\n\s*/g, ' ');
         trackEdit(editor);
         invalidateReplacements();
         updateRecord(record);
@@ -460,12 +485,13 @@
       });
       input.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
-          input.value = field.text;
+          // A save already on its way cannot be recalled, so Esc goes back to the text it is writing.
+          input.value = editor.sending ?? field.text;
           trackEdit(editor);
           updateRecord(record);
           updateSummary();
           input.blur();
-        } else if (event.key === 'Enter' && !event.shiftKey && !field.text.includes('\n')) {
+        } else if (event.key === 'Enter' && oneLine) {
           event.preventDefault();
           input.blur();
         }
@@ -543,6 +569,7 @@
     await saving;
     if (dirty.size && !confirm('Discard unsaved edits and reload from disk?')) return;
     busy = true;
+    rows.inert = true;
     try {
       const response = await fetch('/api/strings');
       if (!response.ok) throw new Error(await response.text());
@@ -594,6 +621,7 @@
     } catch (error) {
       status.textContent = error.message;
     } finally {
+      rows.inert = false;
       busy = false;
       updateControls();
     }

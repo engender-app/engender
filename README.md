@@ -369,7 +369,8 @@ tinted. Review checkboxes work per key or for the shown keys in a group.
 Progress is saved in `.scratch/copy-review.json`; changing either language
 makes that key need review again. A save that conflicts with a change on disk
 is refused without overwriting it: the edit stays in the field with the reason
-under it, and **Save unsaved fields** retries it.
+under it until **Reload from disk** brings in the newer text. A save that failed
+for any other reason can be sent again with **Save unsaved fields**.
 Find and replace matches literal, case-sensitive text in Polish, English, or
 both. Limit it to shown keys or choose **All keys (global)**. Preview lists
 every affected field, including plural forms. **Apply and save** writes the
