@@ -7,10 +7,11 @@
 
 [![Checks](https://github.com/engender-app/engender/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/engender-app/engender/actions/workflows/ci.yml)
 
-engender is a private journal for tracking a gender transition, written by a
-trans person for other trans people. It keeps daily entries, care records,
-photos and milestones together on your own device. You can use it as an
-installable web app or an Android app, in English or Polish.
+engender is a journal for your gender and your transition, written by a trans
+person for other trans people. You mark how each day feels and look back over
+months, and it keeps those entries, care records, photos and milestones
+together on your own device. You can use it as an installable web app or an
+Android app, in English or Polish.
 
 The app is free software under GPLv3. There are no accounts, subscriptions,
 visitor profiles or backend for journal data. The hosted web app and website

@@ -13,14 +13,17 @@ const locales = [
   { code: 'en-US', language: 'en', claim: 'Your transition, in one place', note: 'The barista called out my new name today and it sounded right.' },
   { code: 'pl-PL', language: 'pl', claim: 'Twoja tranzycja w jednym miejscu', note: 'W kawiarni zawołali mnie nowym imieniem. Dobrze to brzmiało.' }
 ];
-// Store order: the transition areas the listing describes, HRT first after Today.
+// Play orders the shots by file name: a scale being set, then what Look back
+// makes of it, then the rest (tester-report-02 ticket 06). The capture runs in
+// the order below, Today first, because Today ends the demo's running binder
+// session and the shots after it were taken with that session ended.
 const screens = [
-  ['01-home', '/', '[data-home-hello]'],
-  ['02-care', '/care', '[data-care-regimen]'],
-  ['03-new-entry', '/entry/new/today?seedMood=4', '#ed-note'],
-  ['04-roadmap', '/transition/roadmap', '[data-goal]'],
+  ['03-home', '/', '[data-home-hello]'],
+  ['04-care', '/care', '[data-care-regimen]'],
+  ['01-new-entry', '/entry/new/today?seedMood=4', '#ed-note'],
+  ['06-roadmap', '/transition/roadmap', '[data-goal]'],
   ['05-voice', '/voice?tab=compare', '[data-voice-cell]'],
-  ['06-look-back', '/stats', '[data-lookback-readings]'],
+  ['02-look-back', '/stats', '[data-lookback-readings]'],
   ['07-settings-privacy', '/settings', '[data-list-row="security"]']
 ];
 // Settles by condition: finite animations done, every box still for 600ms,
@@ -120,7 +123,7 @@ try {
       await page.locator(ready).first().waitFor();
       await page.locator('[data-toast]').waitFor({ state: 'detached', timeout: 15000 });
       await page.waitForFunction(() => !document.querySelector('.skeleton-stack, .skeleton-block'));
-      if (name === '01-home') {
+      if (name === '03-home') {
         // The demo persona has a binder session running for nine hours, and
         // Today then leads with its over-eight-hours caution. End it here, in
         // this throwaway context, so Today opens on Coming up.
@@ -128,7 +131,7 @@ try {
         await page.locator('[data-wear-running-tile]').waitFor({ state: 'detached' });
         await page.locator('[data-toast]').waitFor({ state: 'detached', timeout: 15000 });
       }
-      if (name === '03-new-entry') {
+      if (name === '01-new-entry') {
         await page.locator('#ed-note').fill(locale.note);
         for (const slider of await page.locator('.dim-slider [role="slider"]').all()) {
           await slider.focus();

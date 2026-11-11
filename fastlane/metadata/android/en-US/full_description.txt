@@ -1,10 +1,16 @@
-Keep a record of your transition you can return to. Write down how a new name feels or what's changed since starting HRT, with photos and care records alongside your notes.
+How masculine or feminine are you feeling today? Any dysphoria? Mark those and anything you want on your own scales. It only takes a moment, and you gain a better understanding of your gender. After a while, open Look back and see how your gender has changed over time.
 
 engender is made by a trans person for other trans people. Use whichever parts fit your life, whether you're questioning, planning your next step or years into transition. It's free, with no ads, subscriptions or accounts to create.
 
-Room for how you feel
+Your gender, day by day
 
-A mood is enough for an entry. When you have more to say, add a note, photo or voice recording. Or record how your gender feels using gender scales. You can write several times a day and use tags to find things later. Give dysphoria, euphoria and other feelings their own scales, with names and endpoints you choose. You can also record how you feel about different parts of your body.
+A mood is enough for an entry. When you have more to say, set your gender scales and add a note, photo or voice recording. Every scale has a name and endpoints you choose. You can write several times a day and use tags to find things later. You can also record how you feel about different parts of your body.
+
+What your entries show
+
+In Look back, choose a stretch of time, like one month or the time since you started HRT. Follow a scale day by day, with a second one beside it if you like, or plot two against each other. You can see each scale's average and the one that moved furthest, and which tags came with a change. engender draws what you entered and leaves the reading to you.
+
+Put photos side by side or revisit a week, month or year. Browse your calendar or search your notes and tags to find a particular moment. Safe Space keeps favourite entries and your own list of things that help within reach on harder days.
 
 Keep your care records together
 
@@ -15,10 +21,6 @@ engender does not diagnose conditions, interpret lab results, recommend doses or
 The things you want to try and remember
 
 Trying a name, different pronouns or a new look? Note how it feels over time. Record voice practice and compare it with your earlier recordings. Keep track of hair removal and time spent binding or tucking. Mark your milestones, plan your next steps and follow a name change through each office that needs it. Or write yourself a letter to open on a date you choose.
-
-See what has changed
-
-Put photos side by side, follow your scales on charts or revisit a week, month or year. Browse your calendar whenever you want; days without entries stay empty. Search your notes and tags when you want to find a particular moment. Safe Space keeps favourite entries and your own list of things that help within reach on harder days.
 
 Your journal stays with you
 
@@ -37,4 +39,3 @@ CSV, JSON, printable journal books and other readable exports are not encrypted.
 Choose your flag colours, switch between light and dark, and pin the areas you use to Today.
 
 engender is available in English and Polish, with public source code under the GPLv3 licence.
-

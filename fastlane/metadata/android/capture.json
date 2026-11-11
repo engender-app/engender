@@ -10,19 +10,19 @@
   "deviceScaleFactor": 2.5,
   "screens": [
     {
-      "name": "01-home",
+      "name": "03-home",
       "route": "/"
     },
     {
-      "name": "02-care",
+      "name": "04-care",
       "route": "/care"
     },
     {
-      "name": "03-new-entry",
+      "name": "01-new-entry",
       "route": "/entry/new/today?seedMood=4"
     },
     {
-      "name": "04-roadmap",
+      "name": "06-roadmap",
       "route": "/transition/roadmap"
     },
     {
@@ -30,7 +30,7 @@
       "route": "/voice?tab=compare"
     },
     {
-      "name": "06-look-back",
+      "name": "02-look-back",
       "route": "/stats"
     },
     {
