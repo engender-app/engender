@@ -11,12 +11,24 @@
      **What the shell owns now is the field** (DIRECTION.md rule 15: a gate is
      a step with nothing to skip). It is rule 12's shape with everything a
      gate cannot have taken out - no sun, no back, no skip, no leave, no
-     progress - so what is left is a block of the flag's second colour from
-     the window's top edge with the title on it at 48, and under its bottom
-     edge, on the page, whatever the gate needs: one line, the control, the
-     status line, and under a hairline the way out that is not a way in.
-     `--field` and `--field-ink` are published on <html> by activeFlag. This gate overrides them with
-     `--surface-2` and `--text` while disguise is on, before unlock.
+     progress - so what is left is a field from under the status bar, and
+     under its bottom edge, on the page, whatever the gate needs: one line,
+     the control, the status line, and under a hairline the way out that is
+     not a way in. `--field` and `--field-ink` are published on <html> by
+     activeFlag. This gate overrides them with `--surface-2` and `--text`
+     while disguise is on, before unlock.
+
+     **What the field holds.** On an unlock (`unlock`: the PIN, passphrase,
+     biometric and device-key gates and the mid-session lock) it is the
+     person's flag with nothing written on it, at the height the title used
+     to give it (tester-report-02 ticket 07: a tester called the old field,
+     the app's name on one of the flag's colours, "unused potential" on the
+     screen a person meets every time). $lib/theme/gateFlag decides and
+     paints; under disguise it answers nothing, so a disguised gate is the
+     neutral field and the decoy's name exactly as before, and no colour of
+     the flag reaches it. A gate that is not an unlock paints its own title
+     at 48 on the flag's second colour. A demo build reads `?gateFlag=` to
+     show the four drawings on the sign-off page.
 
      **What the title says, once, for all six.** An unlock never says the
      person's name. The mid-session lock used to greet by name because the
@@ -28,9 +40,12 @@
      separate greetings this replaced were each working around - "Hi" with
      nobody to say it to, "Welcome back" on a screen that cannot know whether
      anybody has been here before. So an unlock's title is the wordmark,
-     whichever secret it asks for, and it is the same
-     object at the same size Home paints on its own field a frame later, which
-     is what the handover closes around. Always through `appWordmark`, never
+     whichever secret it asks for. It is no longer painted on an unlock
+     without disguise: it stays the screen's level-one heading, visually
+     hidden, so the screen's accessible name is what it was, and the flag on
+     the field is what the handover to Today carries instead (appOpening.ts
+     and app.css: Today's paint fades in over the flag while the edge opens).
+     Under disguise it is painted, as the decoy's name. Always through `appWordmark`, never
      `m.app_name()`: under disguise the name on a lock screen is the one that
      must not be the real one (ADR-0035). A gate that is not an unlock keeps
      its own title, because what a conversion is about to do, and what the
@@ -147,10 +162,9 @@
            over its life and a heading that changed its text in place would be
            the one thing on the field that did not move. `data-field-part` so
            it is printed on the field and rides its edge on a navigation,
-           fading where it stands rather than joining the screen's crossfade -
-           and on the way into the app it is the same wordmark Home paints, at
-           the same size, so what a person sees is one object held still while
-           the field closes around it. -->
+           fading where it stands rather than joining the screen's crossfade.
+           Where the flag replaced it, it is the screen's name for a screen
+           reader only and is not printed on the field. -->
       <div class="step-field-ask">
         {#key title}
           <h1

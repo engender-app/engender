@@ -717,9 +717,9 @@
 
 /* 48 in the display face at 800, tracked one step tighter than the scale's
    own -0.04em and set solid: the door title's treatment (rule 2). On a gate
-   this is the greeting, or the app's own name where there is nobody to greet
-   by name - which is the same wordmark, at the same size, that Home paints
-   on its own field a frame later. */
+   this is a gate's own title, or the decoy's name on a disguised unlock. An
+   unlock without disguise draws the flag instead and keeps the wordmark
+   only as its accessible name (tester-report-02 ticket 07). */
 .gate-title {
   margin: 0;
   font-family: var(--font-display);

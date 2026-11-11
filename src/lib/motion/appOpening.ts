@@ -10,10 +10,12 @@
    That moment is the one piece of motion in the product somebody sees
    hundreds of times, and a cut is what it was. So the state change that ends
    a gate runs inside a view transition here, with the same blind every
-   navigation carries: the gate's field is short - the title and nothing else
-   - and the app's is 175px of flag with a sun in it, so the edge opens
-   downward, the wordmark rides down with it onto the place Home draws its
-   own, and the page follows the edge instead of appearing under it.
+   navigation carries: the gate's field is short - one title's height - and
+   the app's is 175px of flag with a sun in it, so the edge opens downward,
+   whatever the gate printed on it rides down with it, and the page follows
+   the edge instead of appearing under it. An unlock's field is the flag
+   itself since tester-report-02 ticket 07, and that paint fades out under
+   Today's while the edge travels (below, and app.css).
 
    Nothing about the arrival is new machinery. `carryBlind` names both sides
    and publishes the two heights, app.css moves them, and `data-nav` says
