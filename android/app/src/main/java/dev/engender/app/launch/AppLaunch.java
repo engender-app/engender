@@ -33,6 +33,7 @@ public final class AppLaunch {
     private static final String PREFS = "engender-launch-auth";
     private static final String KEY_NONCE = "nonce";
     private static final String EXTRA_NONCE = "gd_route_nonce";
+    private static final String EXTRA_DISMISS = "gd_dismiss_notification";
     static final String OPEN_ROUTE = "dev.engender.app.action.OPEN_ROUTE";
 
     private static synchronized String nonce(Context context) {
@@ -67,5 +68,27 @@ public final class AppLaunch {
             routeIntent(context, route, key),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
+    }
+
+    /** For a tap inside a notification's own layout, which autoCancel does
+        not cover: autoCancel answers only the notification's content
+        intent. The activity dismisses the notification when it arrives
+        (the check-in's faces, tester report 02 ticket 05). */
+    public static PendingIntent openAppIntent(Context context, String route, String key, int requestCode,
+                                              int dismissNotificationId) {
+        return PendingIntent.getActivity(
+            context,
+            9000 + requestCode,
+            routeIntent(context, route, key).putExtra(EXTRA_DISMISS, dismissNotificationId),
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+    }
+
+    /** Dismisses the notification an authenticated launch names, and
+        nothing for one that is not: a launcher alias is exported, so any app
+        could otherwise clear this app's notifications by sending it an id. */
+    public static void dismissNotification(Context context, Intent intent) {
+        if (authenticatedRoute(context, intent) == null || !intent.hasExtra(EXTRA_DISMISS)) return;
+        androidx.core.app.NotificationManagerCompat.from(context).cancel(intent.getIntExtra(EXTRA_DISMISS, 0));
     }
 }

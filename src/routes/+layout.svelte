@@ -48,6 +48,7 @@
   import { answerSplash, splashMayLeave } from '$lib/splash';
   import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
+  import { moodName } from '$lib/data/vocabulary/labels';
   import { hoverHints } from '$lib/a11y/hoverHint';
   import { trackPointerFocus } from '$lib/a11y/pointerFocus';
   import { barlessPath, chromelessPath } from '$lib/navigation/chromeless';
@@ -594,6 +595,7 @@
                which is what a person reading the row needs and not what a
                notification should say. */
             checkInBody: m.checkin_notification_body(),
+            checkInMoods: [1, 2, 3, 4, 5].map(moodName),
             doseTaken: m.rem_dose_taken(),
             doseDone: m.rem_dose_done(),
             doseSkip: m.rem_dose_skip(),

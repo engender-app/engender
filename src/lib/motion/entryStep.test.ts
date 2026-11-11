@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { STEP_MOTION, stepMotion, stepTravel } from './entryStep';
+import { footContinue, stepTravel } from './entryStep';
 
 /* A stand-in for the element the transition runs on: 300px wide, nothing
    animating on it, nothing computed. */
@@ -27,13 +27,9 @@ afterEach(() => {
 });
 
 describe('a new entry stepping forward and back', () => {
-  it('ships the shared axis until Alicja picks', () => {
-    expect(STEP_MOTION).toBe('axis');
-  });
-
   it('on the axis, the leaving step goes the way the person is going and the arriving one comes from the far side', () => {
-    const out = stepTravel(node, { motion: 'axis' }, { direction: 'out' });
-    const into = stepTravel(node, { motion: 'axis' }, { direction: 'in' });
+    const out = stepTravel(node, {}, { direction: 'out' });
+    const into = stepTravel(node, {}, { direction: 'in' });
     // Svelte runs an outro's t from 1 to 0 and an intro's from 0 to 1.
     const [outStart, outEnd] = frames(out.css!, [1, 0]);
     const [inStart, inEnd] = frames(into.css!, [0, 1]);
@@ -46,52 +42,46 @@ describe('a new entry stepping forward and back', () => {
   });
 
   it('runs the axis the other way for a step back', () => {
-    const into = stepTravel(node, { motion: 'axis', back: true }, { direction: 'in' });
+    const into = stepTravel(node, { back: true }, { direction: 'in' });
     expect(x(into.css!(0, 1))).toBeLessThan(0);
   });
 
-  it('turns a solid page over the step it replaces, from the window edge, and back off it', () => {
-    const forwardIn = stepTravel(node, { motion: 'turn' }, { direction: 'in' }).css!;
-    expect(x(forwardIn(0, 1))).toBe(300);
-    expect(x(forwardIn(1, 0))).toBe(0);
-    // The travelling page never fades: it is an object arriving, not appearing.
-    for (const t of [0, 0.3, 0.7, 1]) expect(opacity(forwardIn(t, 1 - t))).toBe(1);
-    expect(forwardIn(0.5, 0.5)).toContain('z-index: 2');
-
-    const forwardOut = stepTravel(node, { motion: 'turn' }, { direction: 'out' }).css!;
-    expect(x(forwardOut(0, 1))).toBe(-100);
-    expect(forwardOut(0.5, 0.5)).toContain('z-index: 1');
-
-    const backOut = stepTravel(node, { motion: 'turn', back: true }, { direction: 'out' }).css!;
-    expect(x(backOut(0, 1))).toBe(300);
-    expect(opacity(backOut(0.2, 0.8))).toBe(1);
-  });
-
-  /* The heading on the field is 320px wide inside a 360px window, so a turn
-     that carried it its own width left 20px of it on screen when it was
-     removed (sampled: x 340 at full opacity, then gone) and painted a 20px
-     sliver of the arriving one in its first frame. Whatever travels, travels
-     the whole window. */
-  it('carries a turning node the whole window, not only its own width', () => {
-    vi.stubGlobal('window', { innerWidth: 360 });
-    const forwardIn = stepTravel(node, { motion: 'turn' }, { direction: 'in' }).css!;
-    expect(x(forwardIn(0, 1))).toBe(360);
-    const backOut = stepTravel(node, { motion: 'turn', back: true }, { direction: 'out' }).css!;
-    expect(x(backOut(0, 1))).toBe(360);
-  });
-
-  it('crossfades instead under reduced motion, whichever was picked', () => {
+  it('crossfades instead under reduced motion', () => {
     dataset.a11yMotion = 'reduce';
-    for (const motion of ['axis', 'field', 'turn'] as const) {
-      const css = stepTravel(node, { motion }, { direction: 'in' }).css!(0.5, 0.5);
-      expect(css).not.toContain('translate');
-    }
+    const css = stepTravel(node, {}, { direction: 'in' }).css!(0.5, 0.5);
+    expect(css).not.toContain('translate');
+  });
+});
+
+/* The way on under the finish control (ticket 04): it opens and closes along
+   the foot's own direction, so the finish control is carried continuously. */
+describe('the foot\'s way on', () => {
+  const foot = (flexDirection: string, size: { width: number; height: number }) => {
+    vi.stubGlobal('getComputedStyle', () => ({ flexDirection, columnGap: '8px', getPropertyValue: () => '' }));
+    return {
+      getBoundingClientRect: () => size,
+      parentElement: {}
+    } as unknown as Element;
+  };
+
+  it('opens its height in a column, from nothing to its full size, fading with it', () => {
+    const css = footContinue(foot('column', { width: 320, height: 56 })).css!;
+    expect(css(0, 1)).toContain('height: 0px');
+    expect(css(1, 0)).toContain('height: 56px');
+    expect(css(0.5, 0.5)).toContain('height: 28px');
+    expect(css(0.5, 0.5)).toContain('opacity: 0.5');
   });
 
-  it('reads the candidate from the address only in a demo build', () => {
-    expect(stepMotion('?stepMotion=turn')).toBe(STEP_MOTION);
-    vi.stubGlobal('__DEMO__', true);
-    expect(stepMotion('?stepMotion=turn')).toBe('turn');
-    expect(stepMotion('?stepMotion=nonsense')).toBe(STEP_MOTION);
+  it('opens its width in a row, taking its gap with it', () => {
+    const css = footContinue(foot('row', { width: 200, height: 48 })).css!;
+    expect(css(0, 1)).toContain('width: 0px');
+    expect(css(0, 1)).toContain('margin-inline-start: -8px');
+    expect(css(1, 0)).toContain('width: 200px');
+    expect(css(1, 0)).toContain('margin-inline-start: 0px');
+  });
+
+  it('crossfades instead under reduced motion', () => {
+    dataset.a11yMotion = 'reduce';
+    expect(footContinue(foot('column', { width: 1, height: 1 })).css!(0.5, 0.5)).not.toContain('height');
   });
 });
