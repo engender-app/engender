@@ -113,6 +113,9 @@ a record of what you had but does not bring it back.
   mode, tags, body and anything the day offers first, then the note, with
   photos, video and voice last. The same Save entry button stays at the
   bottom on both. Editing a saved entry keeps its single page.
+- The lock screen shows Today's sun in your flag's colours where it used to
+  show the app's name, and it stays in place as Today opens around it. With
+  disguise on it is still the plain "Notes" screen.
 - Today shows fewer tiles: the voice benchmark nudge, the hair removal recovery
   notice, the active tryout tile and the appointment-today tile are gone, and
   the patch schedule now sits in the dose panel. Quick add offers "Log dose" only while a regimen is

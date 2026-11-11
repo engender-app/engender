@@ -711,15 +711,19 @@
   /* Where the edge rests before stepBlind's first measurement, and the only
      frame this value is read on: the top inset, the field's own 8 above the
      title, a one-line title at 48 set solid, and the field's 16 under it.
-     A two-line title measures taller and travels there from here. */
+     A two-line title measures taller and travels there from here. An
+     unlock's sun field adds its room here as well (tester-report-02 ticket
+     07): without it the edge started 32px short and grew into place over
+     the first 200ms of the gate, an entrance on a screen that arrives as a
+     cut. */
   --blind-edge: calc(var(--space-2) + 46px + var(--space-4));
 }
 
 /* 48 in the display face at 800, tracked one step tighter than the scale's
    own -0.04em and set solid: the door title's treatment (rule 2). On a gate
-   this is the greeting, or the app's own name where there is nobody to greet
-   by name - which is the same wordmark, at the same size, that Home paints
-   on its own field a frame later. */
+   this is a gate's own title, or the decoy's name on a disguised unlock. An
+   unlock without disguise draws the flag instead and keeps the wordmark
+   only as its accessible name (tester-report-02 ticket 07). */
 .gate-title {
   margin: 0;
   font-family: var(--font-display);
@@ -796,6 +800,49 @@
 .gate-page:has(.pin-pad) .gate-foot { margin-top: 0; }
 .gate-note { color: var(--text-2); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
 
+/* An unlock's sun (tester-report-02 ticket 07). Where the title was, the
+   field holds Today's own sun, at Today's size and in the same corner, so
+   opening the app holds one sun still while the field opens around it.
+
+   The field is as tall as the sun wherever the window allows, so its edge
+   does not cut a ring: the outer ring's radius (175px, scaled as Today
+   scales it on a narrow window) and 16px of field under its lowest point
+   (Alicja, signing off: "make THE FIELD bigger also so that the sun isnt
+   cut off"). The corner
+   stays cut by the window's top and side, which is the mark's own drawing.
+   The value is set only on an unlock without disguise, so a disguised gate
+   keeps the base's height exactly. The title's line is held at the height
+   that makes the field that tall, and the edge starts there too, so the gate
+   arrives at its height rather than growing into it. */
+/* The whole sun does not fit over the PIN pad, the tallest gate, on every
+   window: at 360x640 the pad and everything under the field need 482px
+   (the page's own 454, the screen's 20 under it and 8 to spare, measured),
+   which leaves 158px of field, 33px short of the sun. So the field takes the
+   window less what the pad needs, up to the sun's own height and never less
+   than the title's line it replaced. Every other gate is shorter than the
+   pad's and has room to spare. */
+.screen-gate[data-gate-sun] {
+  --gate-page-floor: 482px;
+  --gate-sun-field: clamp(
+    calc(var(--space-2) + 46px + var(--space-4)),
+    calc(100dvh - var(--inset-top) - var(--inset-bottom) - var(--gate-page-floor)),
+    calc(175px * var(--sun-scale, 1) + var(--space-4))
+  );
+}
+.screen-gate[data-gate-sun] > .gate { --blind-edge: var(--gate-sun-field); }
+.screen-gate[data-gate-sun] .step-field-ask {
+  min-height: calc(var(--gate-sun-field) - var(--space-2) - var(--space-4));
+}
+/* The sun scales down on a narrow window exactly as Today's does (rule 7),
+   so the two are the same drawing on both sides of the opening; the field's
+   height follows it. */
+@container app (max-width: 359px) {
+  .screen-gate[data-gate-sun] { --sun-scale: 0.82; }
+}
+@container app (max-width: 239px) {
+  .screen-gate[data-gate-sun] { --sun-scale: 0.6; }
+}
+
 /* ---------- the gates, short ----------
 
    Under 640px tall - what a raised keyboard leaves on any phone, and what a
@@ -817,6 +864,19 @@
   }
   .gate-foot {
     padding-top: var(--space-3);
+  }
+  /* The pad's short form needs 422px under the field (394 of page, 20 of
+     screen, 8 to spare), and the floor is the short title's line. */
+  .screen-gate[data-gate-sun] {
+    --gate-page-floor: 422px;
+    --gate-sun-field: clamp(
+      calc(var(--space-2) + 22px + var(--space-3)),
+      calc(100dvh - var(--inset-top) - var(--inset-bottom) - var(--gate-page-floor)),
+      calc(175px * var(--sun-scale, 1) + var(--space-4))
+    );
+  }
+  .screen-gate[data-gate-sun] .step-field-ask {
+    min-height: calc(var(--gate-sun-field) - var(--space-2) - var(--space-3));
   }
 }
 
@@ -841,6 +901,18 @@
     margin: 0;
     padding: 0 0 var(--space-5);
   }
+  /* An unlock's sun is Today's, and Today's field is a banner across the
+     whole column, bled out by the screen's own padding: 680px at a 640px
+     column, against this gate's 420. Left at 420 the held sun's corner sat
+     240px left of Today's, so the opening would have moved it in one frame.
+     The field takes Today's width instead, and the page under it keeps the
+     gate's own 420. */
+  .screen-gate[data-gate-sun] > .gate { max-width: none; --blind-edge: var(--gate-sun-field); }
+  .screen-gate[data-gate-sun] .gate-field { margin: 0 calc(-1 * var(--space-5)); }
+  .screen-gate[data-gate-sun] .step-field-ask {
+    min-height: calc(var(--gate-sun-field) - var(--space-6) - var(--space-4));
+  }
+  .screen-gate[data-gate-sun] .gate-page { max-width: 420px; width: 100%; }
 }
 
 /* ---------- Progress photos ---------- */

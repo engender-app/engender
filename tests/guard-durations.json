@@ -26,7 +26,8 @@
     "toast-stack-check": "Local Fedora run on 2026-10-15, dev server; tests/toast-stack-check.mjs",
     "update-notice-check": "Local Fedora run on 2026-10-16, dev server; tests/update-notice-check.mjs",
     "recovery-key-replacement-check": "Local Fedora run on 2026-10-16, dev server; tests/recovery-key-replacement-check.mjs",
-    "missing-access-recovery-check": "Local Fedora run on 2026-10-16, real OPFS/SQLite with six access-loss cases; tests/missing-access-recovery-check.mjs"
+    "missing-access-recovery-check": "Local Fedora run on 2026-10-16, real OPFS/SQLite with six access-loss cases; tests/missing-access-recovery-check.mjs",
+    "gate-flag-check": "Provisional 120-second estimate pending hosted measurement; 16 palettes x 2 themes with disguise on and off, then three rooms at 360x568"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -51,6 +52,7 @@
     "accessible-names-check": 60,
     "day-addresses": 45,
     "blind-edge-padding-check": 3.49,
+    "gate-flag-check": 120,
     "dilation-schedule-action": 15.38,
     "letters-ready-jump": 15.87,
     "body-map-selected-context": 18.99,

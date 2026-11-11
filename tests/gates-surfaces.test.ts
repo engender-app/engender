@@ -105,16 +105,17 @@ describe('what a gate may show', () => {
     }
   });
 
-  it('draws no flag and never names the app except through the wordmark', () => {
-    /* No gate carries the sun or reads the stripes: the sun is Home's and
-       setup's (ADR-0035), and a single colour is not a flag, so the field a
-       gate wears since redesign ticket 34 is the flag's second colour and
-       nothing more - `--field` and `--field-ink`, published on <html> by
-       activeFlag, which answers disguise itself.
+  it('draws the sun only through the shell, and never names the app except through the wordmark', () => {
+    /* Tester-report-02 ticket 07 moved the line. A gate used to draw no flag
+       at all: the field was the flag's second colour and nothing more. An
+       unlock now carries Today's sun on its field, so the rule is where the
+       sun may come from - GateScreen alone, behind $lib/theme/gateFlag's
+       decision, which answers no under disguise or on a gate that is not an
+       unlock. No gate reaches for the sun, the stripes or the mark itself.
 
-       The app's name is the half that changed. Rule 15 makes it the title of
-       every gate that cannot greet by name, so "names the app nowhere" is no
-       longer the rule; the rule is that it may only be named through
+       The app's name is the other half. Rule 15 makes the wordmark the
+       title of every unlock, painted or not, so "names the app nowhere" is
+       not the rule; the rule is that it may only be named through
        `appWordmark`, which is what turns it into the decoy's name under
        disguise. A raw `m.app_name()` on a lock screen shows the real name to
        exactly the person the disguise exists for. */
@@ -124,6 +125,8 @@ describe('what a gate may show', () => {
       const source = stripComments(read(path));
       expect(source, path).not.toContain('FlagSun');
       expect(source, path).not.toContain('activeFlag');
+      expect(source, path).not.toContain('gateFlag');
+      expect(source, path).not.toContain('Mark.svelte');
       for (const at of [...source.matchAll(/m\.app_name\(\)/g)]) {
         const call = source.slice(Math.max(0, at.index - 60), at.index);
         expect(call, `${path}: m.app_name() outside appWordmark()`).toMatch(
@@ -131,6 +134,34 @@ describe('what a gate may show', () => {
         );
       }
     }
+  });
+
+  it('draws the sun on an unlock only, and nothing of it under disguise', () => {
+    const shell = stripComments(read('src/lib/components/GateScreen.svelte'));
+    /* The one decision, made by the one function the unit tests hold. */
+    expect(shell).toMatch(/let sun = \$derived\(gateDrawsFlag\(\{\s*unlock,\s*disguised:\s*prefs\.disguise\s*\}\)\)/);
+    /* The sun mounts only behind it, still; the field's height is the
+       stylesheet's, behind the same attribute, and no query switch is left. */
+    expect(shell).toMatch(/\{#if sun\}<FlagSun still \/>\{\/if\}/);
+    expect(shell).toMatch(/data-gate-sun=\{sun \? '' : undefined\}/);
+    expect(shell).not.toMatch(/gateRoom|gate-room|location\.search/);
+    expect(shell.match(/<FlagSun/g)).toHaveLength(1);
+    /* The three unlocks say they are unlocks; the gates that are not keep
+       their own titles and pass nothing. */
+    expect(read('src/lib/components/SessionUnlock.svelte')).toMatch(/<GateScreen \{title\} unlock\b/);
+    expect(read('src/lib/components/JournalGate.svelte')).toMatch(/<GateScreen title=\{gateTitle\} unlock=\{!choosingMode\}>/);
+    expect(read('src/lib/components/AndroidKeyGate.svelte')).toMatch(
+      /<GateScreen title=\{appWordmark\(prefs\.disguise, m\.app_name\(\), m\.disguise_name\(\)\)\} unlock>/
+    );
+    for (const path of [
+      'src/lib/components/DeviceBoundRecovery.svelte',
+      'src/lib/components/SchemaTooNew.svelte',
+      'src/lib/components/RecoveryKeyEntry.svelte',
+      'src/lib/components/PostRecoveryAccessMode.svelte'
+    ]) {
+      expect(read(path), path).not.toMatch(/<GateScreen[^>]*\bunlock\b/);
+    }
+    expect(read('src/lib/components/JournalGate.svelte')).toMatch(/<GateScreen title=\{m\.pp_legacy_refused_title\(\)\}>/);
   });
 
   it('draws one pad, in setup and at every gate', () => {
@@ -163,6 +194,7 @@ describe('what a gate may show', () => {
       expect(stripComments(css), where).not.toMatch(/\.pin-(key|dot|pad)\s*[,{]/);
     }
   });
+
 
   it('animates no gate onto the screen, and says why where the shell is', () => {
     /* Rule 15 and ADR-0078's cut list: a cold start has nothing to come from

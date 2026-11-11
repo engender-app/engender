@@ -1427,10 +1427,11 @@ html[data-nav='container']::view-transition-new(screen) {
    The only pattern in the app whose two screens do nothing but change
    opacity, and the reason is that the movement is already there. A gate's
    field is one title tall; Home's is 175px of the flag with the sun in it.
-   So the blind opens by that difference on --dur-slow, the wordmark printed
-   on it rides down onto the place Home draws its own, the sun's rings open
-   outermost-first as it goes, and the page follows the edge down instead of
-   waiting under it. A scale on top of all that - fade-through's 0.97 and
+   So the blind opens by that difference on --dur-slow, whatever the gate
+   printed on it (a disguised unlock's decoy name) rides down, the sun's rings
+   open outermost-first as it goes (or, where the gate already drew Today's
+   sun, that sun is held still), and the page follows the edge down instead
+   of waiting under it. A scale on top of all that - fade-through's 0.97 and
    1.03, which the four tabs use because they are peers with nothing else
    moving between them - is the app also being replaced while it opens.
 
@@ -1442,6 +1443,7 @@ html[data-nav='open']::view-transition-old(screen) {
 html[data-nav='open']::view-transition-new(screen) {
   animation-name: screen-crossfade, blind-follow;
 }
+
 
 /* The container transform is the one pattern that also cared about this: a
    transform on a named element moves the geometry the browser measured for the

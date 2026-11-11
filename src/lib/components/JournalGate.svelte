@@ -173,7 +173,7 @@
     <p class="gate-body" data-legacy-refusal>{m.pp_legacy_refused_body()}</p>
   </GateScreen>
 {:else if screen === 'form'}
-  <GateScreen title={gateTitle}>
+  <GateScreen title={gateTitle} unlock={!choosingMode}>
     {#if choosingMode}
       <AccessModeSetup purpose="setup" {busy} {error} onChoose={choose} bind:chosen={chosenMode} />
     {:else}
