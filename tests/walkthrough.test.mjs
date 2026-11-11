@@ -423,8 +423,15 @@ try {
     link.remove();
   });
   await page.waitForSelector('[data-entry-step="1"] [data-mood="2"][aria-checked="true"]', { timeout: 5000 });
-  // The pick makes it a draft, so leaving asks; discard it.
-  await page.locator('[data-screen-back]').click();
+  // The pick makes it a draft, so leaving asks; discard it. Left by an in-app
+  // link to Today: Back would return to the first address in the history.
+  await page.evaluate(() => {
+    const link = document.createElement('a');
+    link.href = '/';
+    document.body.append(link);
+    link.click();
+    link.remove();
+  });
   await page.waitForSelector('[data-home-log], [data-discard-record]');
   if (await page.locator('[data-discard-record]').count()) await page.locator('[data-discard-record]').click();
   await page.waitForSelector('[data-home-log]');
