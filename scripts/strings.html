@@ -72,6 +72,7 @@
   .state.failed { color: var(--bad); }
   .state.saving { color: var(--ink-2); }
   @keyframes state-in { from { opacity: 0; } to { opacity: 1; } }
+  .removed .field { display: none; }
   .finding { color: var(--bad); font-size: .9rem; }
   .comparison { font-size: .9rem; color: var(--ink-2); }
   .comparison p, #prose p { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -193,7 +194,7 @@
     progress.value = reviewed;
     saveAll.disabled = busy || !dirty.size;
     saveAll.textContent = pendingSaves ? 'Saving…' : 'Save now';
-    for (const record of records) if (record.removeButton) record.removeButton.disabled = busy || hasEdits(record);
+    for (const record of records) if (record.removeButton) record.removeButton.disabled = busy || hasEdits(record) || record.change === 'removed';
     document.querySelector('#reload').disabled = busy;
     for (const control of [findText, replaceText, replaceLocale, replaceScope]) control.disabled = busy;
     previewReplacements.disabled = busy || !findText.value;
@@ -305,10 +306,11 @@
     const response = await fetch('/api/strings');
     if (!response.ok) throw new Error(await response.text());
     const latest = new Map((await response.json()).map((record) => [record.key, record]));
+    const before = records.map((record) => record.change);
     for (const record of records) {
       const updated = latest.get(record.key);
       record.findings = updated?.findings ?? [];
-      record.change = updated?.change ?? null;
+      record.change = updated ? updated.change : 'removed';
       record.previous = updated?.previous ?? { en: null, pl: null };
       if (updated) for (const editor of record.editors) {
         const theirs = editor.field.form === null ? updated[editor.locale]
@@ -326,6 +328,7 @@
       showFindings(record);
       showChange(record);
     }
+    if (records.some((record, index) => record.change !== before[index])) filter();
   }
 
   let saveChain = Promise.resolve();
@@ -375,10 +378,8 @@
       operation.textContent = `${record.key}: ${error.message}`;
       return;
     }
-    record.row.remove();
-    records = records.filter((entry) => entry !== record);
-    const group = groups.get(record.theme);
-    group.records = group.records.filter((entry) => entry !== record);
+    record.change = 'removed';
+    showChange(record);
     operation.textContent = `Removed ${record.key}.`;
     filter();
   }
@@ -409,8 +410,7 @@
     const cell = element('td');
     record[`${locale}Comparison`] = element('div');
     record[`${locale}Comparison`].className = 'comparison';
-    cell.append(record[`${locale}Comparison`]);
-    if (record.change === 'removed') return cell;
+    if (record.change === 'removed') { cell.append(record[`${locale}Comparison`]); return cell; }
     const values = fields(record[locale]);
     if (!values.length) cell.append(element('p', 'Missing value'));
     for (const field of values) {
@@ -436,6 +436,7 @@
       wrapper.append(label, message);
       cell.append(wrapper);
     }
+    cell.append(record[`${locale}Comparison`]);
     return cell;
   }
 
@@ -448,6 +449,10 @@
   }
 
   function showChange(record) {
+    const shown = JSON.stringify([record.change, record.previous, record.en, record.pl]);
+    if (record.shown === shown) return;
+    record.shown = shown;
+    record.row.classList.toggle('removed', record.change === 'removed');
     record.mark.textContent = record.change ?? '';
     for (const locale of ['en', 'pl']) {
       const comparison = record[`${locale}Comparison`];
@@ -474,9 +479,10 @@
       const text = [record.key, ...['en', 'pl'].flatMap((locale) =>
         [...fields(record[locale]), ...fields(record.previous[locale])].map((field) => field.text))].join('\n');
       record.row.hidden = (changed.checked ? !record.change : record.change === 'removed') ||
-        (reviewFilter.value === 'pending' && isReviewed(record)) ||
-        (reviewFilter.value === 'reviewed' && !isReviewed(record)) ||
-        (reviewFilter.value === 'unsaved' && !hasEdits(record)) ||
+        (!record.row.contains(document.activeElement) && (
+          (reviewFilter.value === 'pending' && isReviewed(record)) ||
+          (reviewFilter.value === 'reviewed' && !isReviewed(record)) ||
+          (reviewFilter.value === 'unsaved' && !hasEdits(record)))) ||
         (theme.value && record.theme !== theme.value) || !text.toLocaleLowerCase().includes(query);
       if (record.row.hidden) continue;
       visible++;
