@@ -1802,7 +1802,8 @@
     align-items: center;
     gap: var(--space-2);
   }
-  .editor-save-row [data-entry-saving] { opacity: 1; }
+  .editor-save-row [data-entry-saving],
+  .entry-foot [data-entry-saving] { opacity: 1; }
   .editor-save-moods { flex: 1 0 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
   .editor-save-row .icon-btn { flex: none; }
   .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }

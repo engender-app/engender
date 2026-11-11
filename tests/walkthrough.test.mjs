@@ -266,11 +266,17 @@ async function openNewestEntry() {
 }
 
 /* Phase 11 ticket 19: the editor's folded sections - tags, body map,
-   photos, voice, video - sit behind a chip row under the note and open one
-   at a time, so a flow that reaches into one opens its chip first. Mode
-   and gender stay on the page. Idempotent: a chip already open is left open. */
+   photos, voice, video - sit behind a chip row and open one at a time, so a
+   flow that reaches into one opens its chip first. Mode and gender stay on
+   the page. Idempotent: a chip already open is left open. On a new entry's
+   second step (tester report 02, ticket 04) the tags are open on the page
+   and have no chip. */
 async function openSection(section) {
   await toTheRest();
+  if (section === 'tags' && await page.locator('[data-entry-step="2"]').count()) {
+    await page.waitForSelector('[data-editor-section="tags"]');
+    return;
+  }
   const chip = page.locator(`[data-section-chip="${section}"]`);
   await chip.waitFor();
   if ((await chip.getAttribute('aria-expanded')) !== 'true') await chip.click();
@@ -465,7 +471,6 @@ try {
      front of it. Each of these flows sets its own mood in the editor
      afterwards, so what they prove is unchanged. */
   await page.locator('[data-fan-target="mood-3"]').click();
-  await toTheRest();
   await page.locator('[data-mood="5"]').click();
   await openSection('tags');
   await page.locator('[data-tag="g-soc-eu"]').click();
@@ -496,7 +501,6 @@ try {
   await fresh('/');
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
-  await toTheRest();
   await page.locator('[data-mood="4"]').click();
   await toTheRest();
   await page.locator('#ed-note').fill('ticket18 starred before save');
@@ -513,6 +517,54 @@ try {
 
   ok('a new entry can be starred before its first save, and the star lands once it has an id');
 } catch (e) { fail('star before save', e); }
+});
+
+/* 2a3. a new entry's second step (tester report 02, ticket 04). What is
+   marked comes before what is written: the tags open on the page, the body
+   under its chip, then the note, and the photos, voice and video chips last.
+   Every one of them can still be recorded from here, a step back keeps what
+   was set, and the same finish control that saved from the first step saves
+   from this one. */
+await flow('second step of a new entry', async () => {
+try {
+  await fresh('/entry/new/today');
+  await page.locator('[data-first-step-moods] [data-mood="4"]').click();
+  await toTheRest();
+  const order = await page.evaluate(() => {
+    const parts = [
+      ['tags', '[data-editor-section="tags"]'], ['body', '[data-section-chip="body"]'], ['note', '#ed-note'],
+      ['photos', '[data-section-chip="photos"]'], ['voice', '[data-section-chip="voice"]'], ['video', '[data-section-chip="video"]']
+    ];
+    return parts.map(([name, sel]) => [name, document.querySelector(`[data-entry-step="2"] ${sel}`)])
+      .filter(([, el]) => el)
+      .sort((a, b) => (a[1].compareDocumentPosition(b[1]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .map(([name]) => name);
+  });
+  if (order.join() !== 'tags,body,note,photos,voice,video') throw new Error(`the second step's parts read ${order.join()}`);
+  if (await page.locator('[data-entry-step="2"] [data-mood]').count()) throw new Error('the faces are on the second step as well as the first');
+  for (const section of ['body', 'photos', 'voice', 'video']) {
+    await page.locator(`[data-section-chip="${section}"]`).click();
+    await page.waitForSelector(`[data-editor-section="${section}"]`);
+  }
+  await page.locator('[data-tag]').first().click();
+  await page.locator('#ed-note').fill('Second step proof');
+  await page.locator('[data-save-star]').click();
+  await page.waitForSelector('[data-save-star][aria-pressed="true"]');
+  await page.locator('[data-screen-back]').first().click();
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
+  await page.waitForSelector('[data-entry-step="2"]', { state: 'detached' });
+  await toTheRest();
+  if ((await page.locator('#ed-note').inputValue()) !== 'Second step proof') throw new Error('a step back lost the note');
+  if (await page.locator('[data-save-star]').getAttribute('aria-pressed') !== 'true') throw new Error('a step back lost the star');
+  await page.locator('[data-entry-finish]').click();
+  await page.waitForSelector('[data-home-log]');
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-entry-note]').filter({ hasText: 'Second step proof' }).click(); // text-under-test: this test's own fixture note, not app copy
+  await page.waitForSelector('[data-save-star][aria-pressed="true"]');
+  await page.waitForSelector('[data-section-chip="tags"]');
+  ok('a new entry\'s second step marks first, writes after, attaches last, and saves what both steps set');
+} catch (e) { fail('second step of a new entry', e); }
 });
 
 /* 3. slider keyboard interaction */
@@ -1188,10 +1240,10 @@ try {
 
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
+  await page.locator('[data-mood="3"]').click();
   await toTheRest();
   await page.locator('#ed-note').fill('Duplicate tag labels survive saving');
-  await page.locator('[data-mood="3"]').click();
-  await page.locator('[data-section-chip="tags"]').click();
+  await page.waitForSelector('[data-editor-section="tags"]');
   const tags = page.locator('[data-tag]').filter({ hasText: /^social euphoria$/ }); // text-under-test: the intentionally equal built-in and custom labels
   if (await tags.count() !== 2) throw new Error('the editor did not offer both equal tag labels');
   await tags.nth(0).click();
@@ -3252,8 +3304,8 @@ try {
      just made. */
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
-  await toTheRest();
   await page.locator('[data-mood="4"]').click();
+  await toTheRest();
   await page.locator('[data-save]').click();
   await page.waitForFunction(() => document.querySelectorAll('[data-toast-kind="saved"]').length > 0);
   await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
@@ -3279,8 +3331,8 @@ try {
   await page.keyboard.press('Escape');
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
-  await toTheRest();
-  await page.waitForSelector('[data-no-scales]');
+  // The scales are on the first step, which is where a new entry opens.
+  await page.waitForSelector('[data-entry-step="1"]');
   if (await page.locator('[data-dim-name]').count()) {
     throw new Error('the editor drew a scale with none ticked');
   }

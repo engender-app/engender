@@ -30,7 +30,7 @@ async function open(path) {
 }
 
 async function geometry() {
-  const result = await page.locator('[data-save-moods] [role="radio"], [data-first-step-moods] [role="radio"]').evaluateAll(radios => radios.map(radio => {
+  const result = await page.locator('[data-first-step-moods] [role="radio"], [data-save-moods] [role="radio"]').evaluateAll(radios => radios.map(radio => {
     const box = radio.getBoundingClientRect();
     const points = [[1, box.height / 2], [box.width - 1, box.height / 2],
       [box.width / 2, 1], [box.width / 2, box.height - 1], [box.width / 2, box.height / 2]];
@@ -107,7 +107,6 @@ try {
   await page.locator('#ed-note').scrollIntoViewIfNeeded();
   await page.locator('#ed-note').focus();
   await shot('short-viewport-pl-390');
-  await geometry();
   await page.setViewportSize({ width: 390, height: 844 });
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
@@ -126,7 +125,11 @@ try {
       y: (top + bottom) / 2 - view.offsetTop };
   });
   await page.mouse.click(savePoint.x, savePoint.y);
-  assert.equal(await page.locator('[data-save-moods] [role="radio"]:focus').count(), 1, 'Save responds at 200% pinch zoom');
+  // With no mood, finishing from the second step takes the person back to the faces and focuses them.
+  await page.waitForSelector('[data-entry-step="1"]');
+  await page.waitForSelector('[data-entry-step="2"]', { state: 'detached' });
+  await page.waitForFunction(() => document.querySelectorAll('[data-first-step-moods] [role="radio"]:focus').length === 1);
+  assert.equal(await page.locator('[data-first-step-moods] [role="radio"]:focus').count(), 1, 'Save responds at 200% pinch zoom');
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
 
   for (const palette of PALETTES) for (const theme of ['light', 'dark']) {
