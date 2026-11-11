@@ -363,15 +363,17 @@ notification strings, both web manifests, the Play Store listing and the
 privacy policy, one paragraph per row. Those rows are keyed `android:`,
 `manifest:`, `notes-manifest:`, `store:` and `privacy:`, and a save rewrites
 only that value in its own file.
-Save individual fields or use **Save all changes**, which includes edits
-hidden by filters. Review checkboxes work per key or for the shown keys in a
-group. Progress is saved in `.scratch/copy-review.json`; changing either
-language makes that key need review again. Unsaved edits stay in the browser
-until saved, and conflicting disk changes are reported without overwriting them.
+Click a text to edit it. Leaving the field saves it, Enter saves a one-line
+value and Esc puts the saved text back. Text that differs from `main` is
+tinted. Review checkboxes work per key or for the shown keys in a group.
+Progress is saved in `.scratch/copy-review.json`; changing either language
+makes that key need review again. A save that conflicts with a change on disk
+is refused without overwriting it: the edit stays in the field with the reason
+under it, and **Save unsaved fields** retries it.
 Find and replace matches literal, case-sensitive text in Polish, English, or
 both. Limit it to shown keys or choose **All keys (global)**. Preview lists
-every affected field, including plural forms. Applying replacements creates
-drafts; **Save all changes** writes them to the catalogues.
+every affected field, including plural forms. **Apply and save** writes the
+replacements to their files.
 
 ## Releases and hosting
 
