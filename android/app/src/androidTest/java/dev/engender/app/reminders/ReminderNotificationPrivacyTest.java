@@ -180,7 +180,7 @@ public class ReminderNotificationPrivacyTest {
         fireCheckInAlarm();
         assertNotNull("no faces to withdraw", findCheckInNotification().contentView);
 
-        CheckInFaces.withdrawIfHidden(context, payload(true).put("checkInEnabled", true));
+        CheckInFaces.reconcile(context, payload(true).put("checkInEnabled", true));
 
         // The day's prompt is not lost: the generic one takes the faces' place.
         assertGenericCheckIn(findCheckInNotification());
@@ -203,13 +203,94 @@ public class ReminderNotificationPrivacyTest {
         }
     }
 
+    /* The replacement and the cancel obey the same rule the alarm does
+       (ReminderAlarmReceiver.checkInDue): a day that already has an entry,
+       a check-in switched off and a pause each mean no prompt, so faces in
+       the shade are cancelled and no generic one takes their place. */
+    private static int today() {
+        return (int) java.time.LocalDate.now().toEpochDay();
+    }
+
+    @Test
+    public void anEntrySavedAfterTheFacesAppearedLeavesNoReplacement() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+
+        CheckInFaces.reconcile(context, payload(true).put("checkInEnabled", true).put("latestEntryEpochDay", today()));
+
+        assertNoActiveNotifications();
+    }
+
+    @Test
+    public void checkInsSwitchedOffLeaveNoReplacementUnderDisguise() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+        dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");
+        try {
+            CheckInFaces.reconcile(context, payload(false).put("checkInEnabled", false));
+            assertNoActiveNotifications();
+        } finally {
+            dev.engender.app.disguise.DisguiseAlias.apply(context, false, "trans", "current");
+        }
+    }
+
+    @Test
+    public void aPauseLeavesNoReplacement() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+
+        CheckInFaces.reconcile(context, payload(true).put("checkInEnabled", true).put("checkInPausedThrough", today() + 1));
+
+        assertNoActiveNotifications();
+    }
+
+    @Test
+    public void facesForADayThatNowHasAnEntryAreCancelledEvenWithTitlesShown() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+
+        CheckInFaces.reconcile(context, payload(false).put("checkInEnabled", true).put("latestEntryEpochDay", today()));
+
+        assertNoActiveNotifications();
+    }
+
+    @Test
+    public void overlappingWithdrawalsReplaceTheFacesOnce() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+        JSONObject hidden = payload(true).put("checkInEnabled", true);
+        int threads = 4;
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicInteger replaced = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.List<Thread> workers = new java.util.ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            Thread worker = new Thread(() -> {
+                try {
+                    go.await();
+                    if (CheckInFaces.reconcile(context, hidden)) replaced.incrementAndGet();
+                } catch (InterruptedException ignored) { }
+            });
+            worker.start();
+            workers.add(worker);
+        }
+        go.countDown();
+        for (Thread worker : workers) worker.join(10000);
+
+        assertEquals("the faces were replaced more than once", 1, replaced.get());
+    }
+
     @Test
     public void aGenericCheckInIsLeftInTheShadeWhenTitlesAreHidden() throws Exception {
         ReminderScheduler.saveAndSchedule(context, payload(true).put("checkInEnabled", true));
         fireCheckInAlarm();
         assertNotNull(findCheckInNotification());
 
-        CheckInFaces.withdrawIfHidden(context, payload(true).put("checkInEnabled", true));
+        CheckInFaces.reconcile(context, payload(true).put("checkInEnabled", true));
 
         assertNotNull("a generic check-in was withdrawn", findCheckInNotification());
     }

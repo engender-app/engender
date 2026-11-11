@@ -95,7 +95,7 @@ public final class ReminderScheduler {
         before anyone has unlocked and synced. */
     public static void withdrawHiddenFaces(Context context) {
         JSONObject payload = loadPayload(context);
-        if (payload != null) CheckInFaces.withdrawIfHidden(context, payload);
+        if (payload != null) CheckInFaces.reconcile(context, payload);
     }
 
     private static void rescheduleFromStore(Context context, ZonedDateTime now, boolean boot) {

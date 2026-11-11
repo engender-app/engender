@@ -67,22 +67,33 @@ final class CheckInFaces {
         return texts == null ? "How are you today?" : texts.optString("checkInBody", "How are you today?");
     }
 
-    /** A posted check-in outlives the settings it was posted under: turning
-        on "Hide sensitive titles" or disguise while faces sit in the shade
-        would leave them there. Only a notification still drawing faces is
-        withdrawn, and the generic check-in takes its place so the day's
-        prompt is not lost; a generic check-in is left alone. */
-    static void withdrawIfHidden(Context context, JSONObject payload) {
-        if (show(payload, DisguiseAlias.isDisguised(context))) return;
+    /** A posted check-in outlives what it was posted under. Faces still in
+        the shade are cancelled when titles are hidden or disguise is on, and
+        also when today no longer wants a check-in (an entry saved, check-ins
+        off, a pause): a prompt for a day that is answered is wrong. Only
+        when a check-in is still due, and titles are hidden, does the generic
+        one take the faces' place, so the day's prompt is not lost. A generic
+        check-in is left alone. Synchronized because the sync and the app
+        coming forward both call it: scan, cancel and repost are one step.
+        True when a replacement was posted. */
+    static synchronized boolean reconcile(Context context, JSONObject payload) {
+        boolean hidden = !show(payload, DisguiseAlias.isDisguised(context));
+        int today = (int) java.time.LocalDate.now().toEpochDay();
+        boolean due = ReminderAlarmReceiver.checkInDue(payload, today);
+        if (due && !hidden) return false;
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        boolean replaced = false;
         for (StatusBarNotification posted : manager.getActiveNotifications()) {
             if (posted.getId() == ReminderAlarmReceiver.CHECK_IN_NOTIFICATION_ID
                 && posted.getNotification().contentView != null) {
                 manager.cancel(posted.getId());
-                ReminderAlarmReceiver.postCheckInNotification(context, payload,
-                    (int) java.time.LocalDate.now().toEpochDay());
+                if (due) {
+                    ReminderAlarmReceiver.postCheckInNotification(context, payload, today);
+                    replaced = true;
+                }
             }
         }
+        return replaced;
     }
 
     /** "today" rather than the day the alarm fired: the [day] route resolves

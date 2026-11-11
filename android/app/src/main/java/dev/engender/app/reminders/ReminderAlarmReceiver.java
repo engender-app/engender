@@ -68,13 +68,20 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             fireAt -> ReminderScheduler.scheduleCheckInAt(context, fireAt));
     }
 
+    /** The one rule for whether today still wants a check-in: today has no
+        entry yet, check-ins are on and not paused through today. The alarm
+        asks it, and so does CheckInFaces when it replaces or cancels faces
+        that are already in the shade. */
+    static boolean checkInDue(JSONObject payload, int today) {
+        return payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) != today
+            && ReminderPlanner.checkInAllowedOn(payload, today);
+    }
+
     static void handleCheckIn(JSONObject payload, ZonedDateTime now,
                               IntConsumer postNotification, Consumer<ZonedDateTime> scheduleAlarm) {
         int today = (int) now.toLocalDate().toEpochDay();
-        boolean skip = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) == today
-            || !ReminderPlanner.checkInAllowedOn(payload, today);
 
-        if (!skip) postNotification.accept(today);
+        if (checkInDue(payload, today)) postNotification.accept(today);
         ReminderScheduler.scheduleCheckIn(payload, now, scheduleAlarm);
     }
 
