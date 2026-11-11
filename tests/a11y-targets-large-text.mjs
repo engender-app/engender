@@ -107,15 +107,13 @@ const SCENES = [
     targets: '[data-first-step-moods] [data-mood], [data-entry-finish], [data-entry-continue]'
   },
   {
-    /* The chips live on the second step of a new entry, one touch on. */
+    /* The chips and the tags (open on the page) live on the second step of a new entry, one touch on. */
     key: 'entry',
     path: '/entry/new/today',
     targets: 'button.contextual-chip, .tag-chip',
     open: async (page) => {
       await page.locator('[data-entry-continue]').click();
       await page.locator('[data-entry-step="2"]').waitFor();
-      const tags = page.locator('[data-section-chip="tags"]');
-      if ((await tags.count()) && (await tags.first().getAttribute('aria-expanded')) !== 'true') await tags.first().click();
     }
   },
   { key: 'stats', path: '/stats/tags', targets: '.kit-donut-item-btn' },

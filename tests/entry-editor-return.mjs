@@ -195,10 +195,10 @@ try {
         if (spoken.length && spoken.every((t) => t === 'Not set')) ok('an unset scale is announced as not set, not as its midpoint');
         else fail('an unset scale is announced as not set, not as its midpoint', JSON.stringify(spoken));
         const note = `untouched scales ${Date.now()}`;
-        // The note is on the second step; the scales just checked are on the first.
+        // The face is on the first step with the scales just checked; the note is on the second.
+        await page.locator('[data-first-step-moods] [data-mood]').nth(3).click();
         await continueToTheRest(page);
         await page.fill('#ed-note', note);
-        await page.locator('[data-save-moods] [data-mood]').nth(3).click();
         await page.locator('[data-save]').click();
         await page.waitForURL((url) => !url.pathname.startsWith('/entry/'));
         await go(page, '/day/today');
@@ -238,9 +238,11 @@ try {
         /* The open chip is draft state and the unsaved draft survives
            the navigation, so a section left open by the last pass is
            closed first. */
-        if (await page.locator('[data-editor-section]').count()) {
+        // The tags are open on the second step and have no chip to close.
+        const openMedia = '[data-editor-section]:not([data-editor-section="tags"])';
+        if (await page.locator(openMedia).count()) {
           await page.locator('[data-section-chip][aria-pressed="true"], [data-section-chip][aria-expanded="true"]').first().click();
-          await page.waitForSelector('[data-editor-section]', { state: 'detached' });
+          await page.waitForSelector(openMedia, { state: 'detached' });
           await settled(page);
         }
         /* Scrolled to the end, the way a thumb reaches the chips after
@@ -256,7 +258,7 @@ try {
         await settled(page);
         const geo = await page.evaluate((s) => {
           const sec = document.querySelector(`[data-editor-section="${s}"]`).getBoundingClientRect();
-          const chips = document.querySelector('[data-editor-chips]').getBoundingClientRect();
+          const chips = document.querySelector(`[data-section-chip="${s}"]`).parentElement.getBoundingClientRect();
           const foot = document.querySelector('[data-app-savebar]').getBoundingClientRect();
           const region = document.querySelector('[data-app-scroll-region]').getBoundingClientRect();
           return { sectionBottom: sec.bottom, footTop: foot.top, chipsTop: chips.top, regionTop: region.top };

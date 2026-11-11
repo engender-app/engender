@@ -100,15 +100,15 @@ try {
     await page.goto(base + '/settings/access-mode', { waitUntil: 'networkidle' });
     await page.locator('[data-lock-after-choice="immediately"]').click();
     await page.goto(base + '/entry/new/today?seedMood=4', { waitUntil: 'networkidle' });
-    await continueToTheRest(page);
-    const note = page.locator('#ed-note');
-    await note.fill(`Pending entry ${locale}`);
+    // The scales are on the first step, the note and the tags on the second.
     const scale = page.getByRole('slider').first();
     await scale.focus();
     await page.keyboard.press('Home');
     await page.keyboard.press('ArrowRight');
     assert.equal(await scale.getAttribute('aria-valuenow'), '5');
-    await page.locator('[data-section-chip="tags"]').click();
+    await continueToTheRest(page);
+    const note = page.locator('#ed-note');
+    await note.fill(`Pending entry ${locale}`);
     await page.locator('[data-tag="g-body-eu"]').click();
     await page.locator('[data-section-chip="body"]').click();
     const body = page.locator('[data-editor-section="body"]');
@@ -144,11 +144,6 @@ try {
     await note.focus();
     await page.keyboard.type(' Later text');
     assert.equal(await note.inputValue(), `Pending entry ${locale}`, 'pending editor refuses keyboard edits');
-    await page.locator('[data-mood="2"]').click({ force: true });
-    assert.equal(await page.locator('[data-mood="4"]').getAttribute('aria-checked'), 'true');
-    await scale.focus();
-    await page.keyboard.press('ArrowRight');
-    assert.equal(await scale.getAttribute('aria-valuenow'), '5');
     if (locale === 'en') {
       await page.locator('.photo-remove').click({ force: true });
       assert.equal(await page.locator('.photo-view').count(), 1);
@@ -159,8 +154,9 @@ try {
       await body.locator('button').first().click({ force: true });
       assert.equal(await body.locator('button').first().getAttribute('aria-pressed'), 'true');
     }
-    await page.locator('[data-section-chip="tags"]').click({ force: true });
-    assert.equal(await page.locator('[data-section-chip="tags"]').getAttribute('aria-expanded'), 'false');
+    // Tags are open on the second step, so a tag is what a pending save must keep still.
+    await page.locator('[data-tag="g-body-eu"]').click({ force: true });
+    assert.equal(await page.locator('[data-tag="g-body-eu"]').getAttribute('aria-pressed'), 'true');
     // A new entry has no tab bar to leave by, so the departure is an in-app link, which is how any screen is left.
     await page.evaluate(() => {
       const link = document.createElement('a');
@@ -183,12 +179,9 @@ try {
     // and custom scale callbacks must also refuse edits without it.
     await page.evaluate(() => {
       document.querySelector('.editor')?.removeAttribute('inert');
-      document.querySelector('[data-save-moods]')?.removeAttribute('inert');
     });
     assert.equal(await note.isEditable(), false);
-    await scale.focus();
-    await page.keyboard.press('ArrowRight');
-    assert.equal(await scale.getAttribute('aria-valuenow'), '5');
+    // The scales are one step back and cannot be reached while the save is pending; the body's still can be tried.
     if (locale === 'pl') {
       await body.getByRole('slider').focus();
       await page.keyboard.press('ArrowLeft');
@@ -219,7 +212,6 @@ try {
     await note.fill(`Retry entry ${locale}`);
     await page.waitForFunction((note) => window.entryMirror.lastNote === note, `Retry entry ${locale}`);
     await attachPhoto(page);
-    await page.locator('[data-section-chip="tags"]').click();
     await page.locator('[data-tag="g-body-eu"]').click();
     await page.evaluate(() => { window.entryMirror.armed = true; });
     await note.fill(`Retry after mirror delay ${locale}`);
