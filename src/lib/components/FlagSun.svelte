@@ -42,9 +42,16 @@
      cold start has no data-nav and keeps the authored entrance, which is
      the one place it was ever meant to play. */
   const carried = typeof document !== 'undefined' && 'nav' in document.documentElement.dataset;
+
+  /* A gate draws this sun too (tester-report-02 ticket 07), and a gate
+     arrives as a cut and keeps still while someone types a secret: no
+     entrance and no breathing. Resting at scale 1 is also what Today's sun
+     is on the frames the opening draws, since its breathing waits for its
+     delay, so the held sun is one drawing on both sides. */
+  let { still = false }: { still?: boolean } = $props();
 </script>
 
-<div class="sun" class:is-carried={carried} aria-hidden="true" data-flag-sun>
+<div class="sun" class:is-carried={carried} class:is-still={still} aria-hidden="true" data-flag-sun>
   {#each rings as ring, i (i)}
     <i
       class="sun-ring"

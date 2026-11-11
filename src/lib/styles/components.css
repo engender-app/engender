@@ -2499,6 +2499,9 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
    flicker instead of stillness. Stopped outright instead, same as the
    app's other four decorative loops - the rings rest at their own base
    rule (no scale term, i.e. scale(1)), fully drawn. */
+/* A gate's sun (tester-report-02 ticket 07): drawn whole from its first
+   frame and still, at the scale Today's rests at. */
+.sun.is-still i { animation: none; }
 html[data-a11y-motion='reduce'] .sun i { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .sun i { animation: none; }

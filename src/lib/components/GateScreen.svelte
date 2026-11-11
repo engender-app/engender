@@ -11,12 +11,27 @@
      **What the shell owns now is the field** (DIRECTION.md rule 15: a gate is
      a step with nothing to skip). It is rule 12's shape with everything a
      gate cannot have taken out - no sun, no back, no skip, no leave, no
-     progress - so what is left is a block of the flag's second colour from
-     the window's top edge with the title on it at 48, and under its bottom
-     edge, on the page, whatever the gate needs: one line, the control, the
-     status line, and under a hairline the way out that is not a way in.
-     `--field` and `--field-ink` are published on <html> by activeFlag. This gate overrides them with
-     `--surface-2` and `--text` while disguise is on, before unlock.
+     progress - so what is left is a field from under the status bar, and
+     under its bottom edge, on the page, whatever the gate needs: one line,
+     the control, the status line, and under a hairline the way out that is
+     not a way in. `--field` and `--field-ink` are published on <html> by
+     activeFlag. This gate overrides them with `--surface-2` and `--text`
+     while disguise is on, before unlock.
+
+     **What the field holds.** On an unlock (`unlock`: the PIN, passphrase,
+     biometric and device-key gates and the mid-session lock) it is Today's
+     own sun - FlagSun, at Today's size, in Today's corner - with nothing
+     written, and the field is as tall as the sun so its edge cuts no ring
+     (tester-report-02 ticket 07: a tester called the old field, the app's
+     name on one of the flag's colours, "unused potential" on the screen a
+     person meets every time; Alicja picked the sun from four drawings and
+     asked for the field to hold all of it). The sun is still here: a gate
+     arrives as a cut and nothing on it breathes while someone types.
+     $lib/theme/gateFlag decides; under disguise it answers no, so a
+     disguised gate is the neutral field, the decoy's name and the base's
+     height exactly as before, and no colour of the flag reaches it. A gate
+     that is not an unlock paints its own title at 48 on the flag's second
+     colour.
 
      **What the title says, once, for all six.** An unlock never says the
      person's name. The mid-session lock used to greet by name because the
@@ -28,9 +43,12 @@
      separate greetings this replaced were each working around - "Hi" with
      nobody to say it to, "Welcome back" on a screen that cannot know whether
      anybody has been here before. So an unlock's title is the wordmark,
-     whichever secret it asks for, and it is the same
-     object at the same size Home paints on its own field a frame later, which
-     is what the handover closes around. Always through `appWordmark`, never
+     whichever secret it asks for. It is no longer painted on an unlock
+     without disguise: it stays the screen's level-one heading, visually
+     hidden, so the screen's accessible name is what it was, and the sun on
+     the field is what the handover to Today carries instead (appOpening.ts
+     holds it still while the field opens to Today's height around it).
+     Under disguise it is painted, as the decoy's name. Always through `appWordmark`, never
      `m.app_name()`: under disguise the name on a lock screen is the one that
      must not be the real one (ADR-0035). A gate that is not an unlock keeps
      its own title, because what a conversion is about to do, and what the
@@ -78,20 +96,32 @@
   import { fieldPart } from '$lib/motion/navigation';
   import { blindEdge } from '$lib/motion/stepBlind';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { gateDrawsFlag } from '$lib/theme/gateFlag';
+  import FlagSun from './FlagSun.svelte';
 
   let {
     title,
+    unlock = false,
     children,
     ...rest
   }: {
     title: string;
+    /** The title is the wordmark: this gate asks for the journal's secret.
+        Only an unlock draws the sun, and only without disguise. */
+    unlock?: boolean;
     children: Snippet;
     /** The gate's own attributes: its walkthrough handle, mostly. */
     [attribute: string]: unknown;
   } = $props();
+
+  /* Nothing of the sun is drawn under disguise or on a gate that is not an
+     unlock: `sun` is false there, FlagSun never mounts, and the field keeps
+     its title's height (screens.css sizes it to the sun only behind
+     `data-gate-sun`). */
+  let sun = $derived(gateDrawsFlag({ unlock, disguised: prefs.disguise }));
 </script>
 
-<div class="screen screen-gate" data-gate-frame
+<div class="screen screen-gate" data-gate-frame data-gate-sun={sun ? '' : undefined}
   style:--field={prefs.disguise ? 'var(--surface-2)' : undefined}
   style:--field-ink={prefs.disguise ? 'var(--text)' : undefined}>
   <!-- The host of the edge and everything that reads it (components.css).
@@ -108,27 +138,33 @@
            corners. `data-field-blind` is what hands it the blind's name for a
            navigation, which is how the unlock's handover closes this field
            into the app's rather than fading one out under another. -->
-      <div class="step-field-paint" data-field-blind></div>
+      <div class="step-field-paint" data-field-blind>
+        <!-- Today's sun, inside the blind as Today nests its own (ticket 148):
+             unnamed in the opening, it rides the blind's capture rather than
+             a hidden one, and is the same drawing in the same place as
+             Today's, so the field opens around one sun. -->
+        {#if sun}<FlagSun still />{/if}
+      </div>
       <!-- The title: the only display type on a gate and the only heading it
            has. Keyed on the words, because a gate asks more than one thing
            over its life and a heading that changed its text in place would be
            the one thing on the field that did not move. `data-field-part` so
            it is printed on the field and rides its edge on a navigation,
-           fading where it stands rather than joining the screen's crossfade -
-           and on the way into the app it is the same wordmark Home paints, at
-           the same size, so what a person sees is one object held still while
-           the field closes around it. -->
+           fading where it stands rather than joining the screen's crossfade.
+           Where the sun replaced it, it is the screen's name for a screen
+           reader only and is not printed on the field. -->
       <div class="step-field-ask">
         {#key title}
           <h1
             class="gate-title"
+            class:visually-hidden={sun}
             {@attach focusNamedTarget}
             onintroend={(event) => {
               if (document.activeElement === document.body || document.activeElement?.closest('[inert]'))
                 focusNamedTarget(event.currentTarget);
             }}
             data-gate-title
-            data-field-part
+            data-field-part={sun ? undefined : ''}
             in:fieldPart={{ printed: true }}
             out:fieldPart={{ printed: true }}
           >

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf, washOver } from '../src/lib/theme/colour';
 import { flagField, flagRoles, heatInk } from '../src/lib/theme/roles';
+import { sunRings } from '../src/lib/motion/flagSun';
 import { PALETTES } from './palettes.mjs';
 
 const css = readFileSync('src/lib/theme/palettes.css', 'utf8');
@@ -746,5 +747,50 @@ describe('the field and the fills (phase 10)', () => {
         ).toBeGreaterThanOrEqual(4.5);
       }
     }
+  });
+});
+
+/* An unlock's sun (tester-report-02 ticket 07). The field stops carrying
+   type: what sits on it is Today's own sun, drawn by FlagSun in the flag's
+   own colours, and the control, its status line and the way out stay on the
+   page where the floors above already hold them. Two things are new and
+   measured here: the sun on a gate is the palette's own, never nudged to pass
+   a ratio (decision 1), and where it falls short of 3:1 against the field
+   that is written down rather than fixed by changing a flag. */
+describe("an unlock's sun", () => {
+  const stripesOf = (palette: string) =>
+    /--motif-stripes:\s*([^;]+);/.exec(blockBody(String.raw`\[data-palette="${palette}"\]`))![1]
+      .split(',')
+      .map((s) => s.trim());
+
+  it("draws each palette's rings at the stripes' own values, nothing corrected", () => {
+    for (const palette of PALETTES) {
+      for (const dark of [false, true]) {
+        const rings = sunRings(stripesOf(palette), dark, palette).map((r) => r.color.toUpperCase());
+        const stripes = stripesOf(palette).map((c) => c.toUpperCase());
+        for (const colour of rings) expect(stripes, `${palette}/${dark ? 'dark' : 'light'}`).toContain(colour);
+      }
+    }
+  });
+
+  /* The sun's outline against the field is the stronger of its black seam
+     and its outermost ring, WCAG 1.4.11's 3:1 for a graphic seen as a shape.
+     Every palette clears it but two, in both themes: bisexual, whose outer
+     pink and black seam measure 2.13:1 at best against its dark blue field,
+     and asexual, whose outer black ring and seam measure 2.23:1 against its
+     purple one - as Today's sun always has. Passing them would mean changing
+     a flag, so the shortfall is pinned here instead, and this fails if it
+     grows or spreads to another palette. */
+  it('outlines the sun at 3:1 against the field, bisexual and asexual excepted and pinned', () => {
+    const short: string[] = [];
+    for (const palette of PALETTES) {
+      for (const dark of [false, true]) {
+        const field = flagField(stripesOf(palette), palette, dark)!;
+        const outer = sunRings(stripesOf(palette), dark, palette)[0].color;
+        const ratio = Math.max(contrast('#000000', field.hex), contrast(outer, field.hex));
+        if (ratio < 3) short.push(`${palette}/${dark ? 'dark' : 'light'} ${ratio.toFixed(2)}`);
+      }
+    }
+    expect(short.sort()).toEqual(['asexual/dark 2.23', 'asexual/light 2.23', 'bisexual/dark 2.13', 'bisexual/light 2.13']);
   });
 });
