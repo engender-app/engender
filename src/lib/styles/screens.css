@@ -863,6 +863,15 @@
     margin: 0;
     padding: 0 0 var(--space-5);
   }
+  /* An unlock's sun is Today's, and Today's field is a banner across the
+     whole column, bled out by the screen's own padding: 680px at a 640px
+     column, against this gate's 420. Left at 420 the held sun's corner sat
+     240px left of Today's, so the opening would have moved it in one frame.
+     The field takes Today's width instead, and the page under it keeps the
+     gate's own 420. */
+  .screen-gate[data-gate-sun] > .gate { max-width: none; }
+  .screen-gate[data-gate-sun] .gate-field { margin: 0 calc(-1 * var(--space-5)); }
+  .screen-gate[data-gate-sun] .gate-page { max-width: 420px; width: 100%; }
 }
 
 /* ---------- Progress photos ---------- */
