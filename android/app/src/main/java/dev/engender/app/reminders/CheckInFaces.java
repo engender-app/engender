@@ -70,7 +70,8 @@ final class CheckInFaces {
     /** A posted check-in outlives the settings it was posted under: turning
         on "Hide sensitive titles" or disguise while faces sit in the shade
         would leave them there. Only a notification still drawing faces is
-        withdrawn; a generic check-in is left alone. */
+        withdrawn, and the generic check-in takes its place so the day's
+        prompt is not lost; a generic check-in is left alone. */
     static void withdrawIfHidden(Context context, JSONObject payload) {
         if (show(payload, DisguiseAlias.isDisguised(context))) return;
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -78,6 +79,8 @@ final class CheckInFaces {
             if (posted.getId() == ReminderAlarmReceiver.CHECK_IN_NOTIFICATION_ID
                 && posted.getNotification().contentView != null) {
                 manager.cancel(posted.getId());
+                ReminderAlarmReceiver.postCheckInNotification(context, payload,
+                    (int) java.time.LocalDate.now().toEpochDay());
             }
         }
     }

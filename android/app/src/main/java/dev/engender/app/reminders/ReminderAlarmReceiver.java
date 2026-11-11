@@ -182,7 +182,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         NotificationManagerCompat.from(context).notify("reminder:" + id, 7000, builder.build());
     }
 
-    private void postCheckInNotification(Context context, JSONObject payload, int epochDay) {
+    static void postCheckInNotification(Context context, JSONObject payload, int epochDay) {
         if (!notificationsAllowed(context)) return;
 
         JSONObject texts = payload.optJSONObject("texts");

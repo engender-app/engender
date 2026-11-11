@@ -182,7 +182,8 @@ public class ReminderNotificationPrivacyTest {
 
         CheckInFaces.withdrawIfHidden(context, payload(true).put("checkInEnabled", true));
 
-        assertNoActiveNotifications();
+        // The day's prompt is not lost: the generic one takes the faces' place.
+        assertGenericCheckIn(findCheckInNotification());
     }
 
     /* Behind a lock nothing syncs until the unlock, so turning disguise on
@@ -196,7 +197,7 @@ public class ReminderNotificationPrivacyTest {
         dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");
         try {
             ReminderScheduler.withdrawHiddenFaces(context);
-            assertNoActiveNotifications();
+            assertGenericCheckIn(findCheckInNotification());
         } finally {
             dev.engender.app.disguise.DisguiseAlias.apply(context, false, "trans", "current");
         }
