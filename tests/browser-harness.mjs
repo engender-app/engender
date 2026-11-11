@@ -166,12 +166,6 @@ export async function untilSplashLets(page) {
   }, null, { timeout: 30000 });
 }
 
-/** A screen at rest, the yank sweep's own settle (ticket 100 wrote it;
- *  the hydration sweep, ticket 108, needed the same one for its sheet
- *  scenes and profile prologues): the page navigated, boot waited ready,
- *  a first run left if it was in the way, and the page-side settle
- *  stamped - toasts gone, demo bar hidden, theme on <html> the way
- *  +layout.svelte stamps it. */
 /** A new entry opens on its first step (tester report 02, ticket 03); the
  *  note, the template button, the chips and the save bar's star are one step
  *  on. Continues once when the first step is showing, waits for the first
@@ -189,7 +183,14 @@ export async function continueToTheRest(page) {
   await page.waitForSelector('#ed-note');
 }
 
-/** @param {import('playwright-core').Page} page
+/** A screen at rest, the yank sweep's own settle (ticket 100 wrote it;
+ *  the hydration sweep, ticket 108, needed the same one for its sheet
+ *  scenes and profile prologues): the page navigated, boot waited ready,
+ *  a first run left if it was in the way, and the page-side settle
+ *  stamped - toasts gone, demo bar hidden, theme on <html> the way
+ *  +layout.svelte stamps it.
+ *
+ * @param {import('playwright-core').Page} page
  * @param {string} base
  * @param {string} path
  * @param {string} theme */
