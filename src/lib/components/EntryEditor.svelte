@@ -71,6 +71,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import EntryFirstStep from '$lib/components/EntryFirstStep.svelte';
+  import { moodToApply } from '$lib/components/seedMoodArrival';
   import { stepMotion, stepTravel } from '$lib/motion/entryStep';
   import { fieldPart } from '$lib/motion/navigation';
   import { registerStepBack } from '$lib/navigation/stepBack';
@@ -165,6 +166,15 @@
     }
   });
   let entryDraft = $derived(session.draft);
+  /* A new seedMood arriving on a new entry that is already open (a second
+     face touched on the check-in notification) puts that face on the draft. */
+  // svelte-ignore state_referenced_locally
+  let lastSeed = seedMood;
+  $effect(() => {
+    const arrived = moodToApply(lastSeed, seedMood);
+    lastSeed = seedMood;
+    if (arrived != null && entryId == null) untrack(() => entryDraft.setMood(arrived));
+  });
   let saving = $derived(session.saving);
   const guard = session.guard;
   const prepareDraft = session.prepare;
