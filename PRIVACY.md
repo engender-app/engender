@@ -1,15 +1,12 @@
 # Privacy policy
 
-Last updated: 2026-11-04
+Last updated: 2026-11-11
 
-engender is a journal for tracking a gender transition. It is made and
-published by Alicja Barankiewicz in Warsaw, Poland. This policy covers the
-hosted web app, the Android app, the website and guide, support messages,
-and the files you export or share.
+engender is a journal for tracking a gender transition, made and published
+by Alicja Barankiewicz in Warsaw, Poland. This policy covers the Android
+app, the web app, the website and guide, and support messages.
 
 ## Contact
-
-Questions about this policy or about your data:
 
 - Email: engender-app@pm.me
 - Bugs and general questions: https://github.com/engender-app/engender/issues
@@ -17,332 +14,127 @@ Questions about this policy or about your data:
 
 You never need to send journal content, a backup file or a key to get help.
 
-## The short version
+## Your journal
 
-There is no engender account or server holding your journal. Your journal
-stays on your device unless you export or share it. Its database and media
-are encrypted at rest. The developer cannot recover it for you.
+There is no engender account and no server holding your journal. Your
+journal stays on your device, and none of it is sent to the developer or to
+anyone else. Its database and media are encrypted at rest.
 
-The website and hosted web app count online page openings without visitor
-profiles. These counts contain no journal data. Android sends no counts: it is 100% local.
-
-## What the app stores, and where
-
-Everything you enter stays in the app's storage on your device: entries,
-notes and moods, scales, doses and regimens, lab results, appointments,
-referrals and waiting lists, notes on the people you see, costs, name and
-document changes, milestones, letters, photos, voice and video recordings,
-documents you import, reminders and your settings. The journal database and
-your photos are encrypted at rest. NONE of it is sent to the developer or to
-anyone else.
-
-Some preferences needed before unlocking, including theme, palette,
-language, disguise and lock timing, are kept outside the encrypted journal.
-On Android, the camera app temporarily writes a photo to an unencrypted
-cache file before engender imports and encrypts it. Encryption at rest does
-not mean that every temporary file or preference is encrypted.
-
-The web app and the Android app keep separate journals. To move a journal
-from one to the other, you export an encrypted backup and import it.
-The app cannot sync a journal between two devices over your local network.
-On Android even a local connection needs the INTERNET permission, which the
-app does not request. Two Android phones can instead share a backup folder,
-as described under Encrypted backups.
-
-## Hosted web app
-
-The web app is served from `app.engender.barankiewicz.dev`. When your browser
-loads the app or checks for an update, the server sees the ordinary details
-of each request:
-
-- your IP address,
-- the time of the request,
-- the requested URL, including any query string, and the response size,
-- the User-Agent and Referer headers your browser sends.
-
-The app server runs on an OVH VPS. Routine access logs are disabled. Error
-logs can contain an IP address and requested URL; the live server keeps
-them for at most seven days. Page-count requests are not logged.
-
-The app does not upload your journal or create an account or visitor profile.
-Page-opening counts are described below. Fonts and text recognition files come
-from the same server. Installing the web app downloads the complete English and
-Polish OCR engine before it is ready offline. Scanning happens on your device,
-including the first scan after installation.
-
-Android includes the English and Polish text recognition files in the APK.
-Its first lab scan needs no download or network connection.
-
-Journal text fields ask the browser to turn off autofill and session restoration
-for their contents. This does not remove text saved by earlier app versions or
-control what a browser extension or your keyboard stores.
-
-On the web, the local journal opens in one of four ways:
-
-- A passphrase you type, turned into a key with Argon2id.
-- A four-digit PIN, combined with a key tied to this browser profile.
-- Biometric verification on browsers that support the WebAuthn PRF extension
-  (Touch ID, Windows Hello or your device lock).
-- A key kept in this browser profile, which opens the journal without asking.
-
-PIN, biometric and device-bound access depend on keys held in that browser
-profile. Clearing the site's data, resetting the browser profile or losing
-the device makes that copy of the journal unreadable.
-
-You can also make an optional 25-character recovery key. It opens the
-journal on the same device and browser profile if your passphrase, PIN or
-biometric authenticator stops working. It cannot move data to a new device
-or open an export. The app shows the key once, when you make it, and keeps
-only a sealed copy of the journal key. The one exception is a lock: if the
-app locks while a new key is on screen, it shows the same key again after
-you unlock. Until then the key is held encrypted in memory and is never
-saved. A new key replaces the old one only when you confirm you have
-written it down, and until then both open the journal. If the app closes
-before that, the old key keeps working and the app tells you the
-replacement did not finish. Keep the recovery key on paper or in a password manager on another
-device: anyone with it and the journal data can read the journal.
-It cannot bring back deleted data.
-
-Creating or replacing a recovery key and changing access mode require the
-current PIN, passphrase or biometrics again. Web device-bound mode has no current
-secret, so its confirmation explains that the unlocked browser can make these
-changes. Android unlocked mode requires biometrics or the existing recovery key;
-without either, the change is unavailable. A recovery unlock approves one
-immediate protection setup, not other changes in Settings. These checks happen
-on your device and send no credentials to the maintainer.
-
-When you copy the recovery key in a browser, the app tries to clear it from
-the clipboard after one minute, if the clipboard still holds it. Browsers
-can refuse that, and clipboard managers or sync may already have kept a
-copy.
-
-## Website and guide
-
-The website, guide and these policy pages at `engender.barankiewicz.dev`
-run on lh.pl hosting. The website remembers language and theme in that
-origin's local browser storage, separately from your journal.
-
-lh.pl keeps website access and error logs on its backup server. These logs
-can include IP addresses, requested URLs and browser headers.
-
-## Page-opening counts
-
-The website and hosted web app send one empty request when a document opens
-online. An online opening of a cached web app also counts. Moving between
-screens within the app does not send another count. Offline openings and
-Android do not count. Failed counts are not retried or saved for later.
-
-The request uses a fixed endpoint and sends no journal data, current page
-name, query string, referrer or cookies. The receiving web server necessarily
-sees the connection's IP address and ordinary browser headers. It removes
-those details before passing a fixed label, either app or website, to the
-self-hosted GoatCounter service. Known bots are filtered where possible.
-
-GoatCounter keeps hourly totals for those two labels, which can be viewed
-by day. The totals are private to the maintainer and kept indefinitely.
-Sessions and individual pageview storage are disabled. There are no visitor
-identifiers, unique-visitor counts, location or device breakdowns. Reloads
-count again, so these totals measure openings, not people. The dashboard's
-administrator login is separate from the app and uses an authentication
-cookie; visitors do not receive that cookie from the counter.
-
-## Android app
-
-Android distribution starts with APKs on GitHub. Google Play and F-Droid
-follow their own publication processes. A store or download service sees
-requests made to it and handles those under its own terms.
-
-The Android app does not request the `INTERNET` permission. It opens no
-network connections and sends nothing to any server. It also opts out of
-Android's cloud backup and of device-to-device transfer, so the system does
-not copy the app's storage to Google or to a new phone.
-
-The app opts out of WebView diagnostic uploads to Google.
-Google Safe Browsing stays at WebView's enabled default. Its checks can use
-Google Play services' own network access.
-
-Android always asks the keyboard not to learn words typed in the app, using
-`IME_FLAG_NO_PERSONALIZED_LEARNING`. The keyboard can ignore this request.
-It does not remove words the keyboard learned earlier.
-Your keyboard and browser can make their own network requests
-independently of engender.
-
-The app requests these permissions:
-
-- `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED`,
-  so a reminder or the daily check-in can notify you, at the time you chose
-  rather than in a batched system window, and still fire after the phone
-  restarts.
-- `WAKE_LOCK`, so Android can keep the CPU running while a scheduled encrypted
-  backup is delivered to the chosen local folder. The screen can stay off.
-- `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`, for voice notes, voice
-  practice and the sound of video notes.
-- `CAMERA`, for video notes and for taking a photo. A photo is taken with
-  your phone's camera app, and the app asks for this permission before it
-  opens it, because Android requires that of an app that declares it.
-- `USE_BIOMETRIC` and `USE_FINGERPRINT`, which the AndroidX biometric
-  library adds so the app can show the system's fingerprint, face or screen
-  lock prompt before it opens the journal. The app never sees your
-  fingerprint or face; Android only tells it whether you were verified.
-
-Android also lists `dev.engender.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`.
-It is not something the app asks of you: AndroidX declares it so that only
-the app itself can send its own internal messages.
-
-Reminder and check-in notifications show only a generic label by default,
-even on a locked screen. A setting under Notifications turns that off and
-shows the real title instead. If notification history is on in Android's
-settings, Android keeps the titles shown there for about a day after the
-notification goes away. The app does not turn history on and cannot clear it.
-
-With titles shown, the check-in also shows the five mood faces. They give
-away what kind of app this is, so under disguise they never appear. Touching
-a face only opens a new entry with that mood picked: nothing is written or
-kept on the device until you save the entry.
-
-When you copy the recovery key on Android 13 or later, the app marks the
-clipboard entry as sensitive, which asks the keyboard to leave it out of its
-clipboard history. The app clears the key after one minute, or when you come
-back if you left before then. It never clears something you copied after it.
-
-The Android journal opens in one of four ways:
-
-- A key protected by Android Keystore and released after the screen lock or
-  biometric prompt.
-- A key protected by Android Keystore and released without a prompt. The
-  journal is still encrypted at rest with SQLCipher.
-- A four-digit PIN, combined with a key held in Android Keystore.
-- A passphrase you type, turned into a key with Argon2id.
-
-Keys held in Android Keystore cannot be copied off the phone. Losing the
-phone or clearing the app's data makes that copy of the journal unreadable.
-An optional recovery key opens the journal on the same phone if unlocking
-fails, but cannot bring anything back once the phone or its storage is gone.
-
-## Disguise
-
-Disguise changes what other people can see of the app from the outside. The
-launcher icon and name become a neutral "Notes", and the lock screen,
-widgets, notifications, the names of backup and export files, printed
-letterheads and, on the web, the browser tab and the installed app's name
-stop naming engender. While disguise is on, Android also blocks screenshots
-and the app's preview in Recents. Once you unlock the journal, the app looks
-the same as without disguise.
-
-Android still shows the real name in App info, in permission prompts, in
-notification headers and in the widget picker. On the web, the app's address
-still appears in the address bar, browser history, bookmarks and site
-settings. Disguise is not encryption and does not change who can read the
-journal.
-
-## Backups, exports and shared files
-
-When you export or share a file, you choose where it goes. Other apps handle
-shared files and links and may use the network. If you save a file to a
-cloud drive or another document provider, that provider can see the file's
-name, time, size and the access logs of your account there.
-
-On Android, an unfinished manual export can leave a partial file at the chosen
-destination. The app keeps that file's location in private app storage until it
-can remove the partial file or finish the export. If the app stops during a
-write, it retries removal when it next starts. A provider can refuse access;
-the app then keeps the location for another attempt and asks you to check the
-destination. Clearing app storage or uninstalling also removes this record.
-The app cannot clean up a destination before the picker returns its location.
-
-### Encrypted backups
-
-An encrypted backup (`.ngndr`), whether you export it yourself or Android
-writes it on a schedule to a folder you picked, is encrypted with AES-GCM
-under a backup password you choose. Nobody can read it without that
-password.
-
-Android automatic backups require the system's local storage provider. A backup
-is reported complete only after the file and folder are synced and the delivered
-bytes are checked. The app reports incomplete delivery for
-other providers. It does not verify cloud uploads.
-
-If you turn on merging backups from other devices, the Android app reads
-that same folder when you open it. When another device has saved a newer
-backup there, the app opens it with the backup password and merges it into
-your journal on the phone. Nothing is sent anywhere; both devices only read
-and write the folder you picked.
-
-### Exports meant to be read
-
-Some exports are deliberately unencrypted because they are meant to be read,
-shared or printed:
-
-- CSV and JSON data files exported from Settings.
-- Keepsake journal books prepared for printing or PDF.
-- Clinician summaries of regimens, labs, procedures, side effects and the
-  changes you noticed, to share with a healthcare provider.
-- Progress photo collages and timelapse videos.
-- PDF documents exported back to your device storage.
-- Single-event calendar files (`.ics`) for appointments, surgeries or
-  the day a letter opens.
-
-Anyone who gets one of these files or a printout can read what it contains.
-The app asks you to confirm, or to take a deliberate step, before it writes
-an unencrypted file.
-
-## Links that leave the app
-
-The Website, Guide, Privacy policy and Source code links in About open in
-your browser. They lead to `engender.barankiewicz.dev` and `github.com`,
-which see that request like any other website would. GitHub's own privacy
-statement applies to pages on GitHub.
-
-## Deleting your data
-
-The app does not send your journal to the developer or anyone else. You can delete the
-local journal yourself. Support messages and hosting logs have the separate
-retention periods described in this policy:
-
-- **In the app.** Settings -> Privacy & data -> Delete everything. This
-  deletes, well, everything. If you used biometric unlock on the web, the passkey it created stays in your browser's or device's passkey list until you remove it there. It opens nothing once the journal is gone. On Android, an interrupted photo capture can leave an unencrypted file in the app’s cache. Clearing the app’s storage removes it.
-- **On Android.** Uninstalling the app, or clearing its storage in the
-  system settings, removes everything the app stored on the phone.
-- **On the web.** Clearing the site data for `app.engender.barankiewicz.dev`
-  in your browser removes the journal and the keys kept for it.
-
-None of these remove completed files you exported or shared, including backups written
-on a schedule to a folder you picked. Delete those where you saved them.
+Two things sit outside that encryption. What the app needs before you
+unlock it is stored unencrypted: theme, palette, language, disguise, lock
+timing and the details of how the journal unlocks. On Android, a photo you take passes through an
+unencrypted temporary file in the app's cache before engender imports and
+encrypts it.
 
 ## Lost keys and passwords
 
 The developer cannot recover a forgotten passphrase, PIN or backup password,
 or a lost device key or recovery key.
 
-## Who the app is for
+## Android app
 
-engender is for any trans person. There is no minimum nor maximum
-age for using the journal and no age-verification process.
+The Android app does not request the `INTERNET` permission. It opens no
+network connections and sends nothing to any server. It also opts out of
+Android's cloud backup and device-to-device transfer. Wherever you download
+the app from (GitHub, Google Play or F-Droid) handles that download under
+its own terms.
+
+Android itself does a few things the app can only partly control. The app
+opts out of WebView diagnostic uploads to Google, but Google Safe Browsing
+stays at WebView's enabled default, and its checks can use Google Play
+services' network access. The app asks your keyboard not to learn what you
+type, and the keyboard can ignore that. Your
+keyboard and browser can make their own network requests
+independently of engender.
+
+The app has these permissions:
+
+- `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED`
+  for reminders at the time you set, including after a restart.
+- `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS` for recording your voice and
+  the sound of video notes.
+- `CAMERA` for photos and video notes.
+- `USE_BIOMETRIC` and `USE_FINGERPRINT` for the system's unlock prompt. The
+  app never sees your fingerprint or face.
+- `WAKE_LOCK` to finish a scheduled backup while the screen is off.
+- `dev.engender.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, which an
+  Android library adds so that only the app can send its own internal
+  messages.
+
+## Web app
+
+The web app is served from `app.engender.barankiewicz.dev`, on an OVH
+server. Your journal stays in your browser and is never uploaded. Loading
+the app or an update is an ordinary web request, so the server sees your IP
+address, the time, the address requested and the User-Agent and Referer
+headers your browser sends. Access logs are turned off. Error logs can hold
+an IP address and the address requested, and are kept for at most seven
+days.
+
+Fonts and the files for text recognition come from the same server. Scanning
+a lab result happens on your device.
+
+## Website and guide
+
+The website, the guide and this policy at `engender.barankiewicz.dev` are
+hosted by lh.pl, which keeps access and error logs. Those can include IP
+addresses, requested addresses and browser headers. The site remembers your
+language and theme in your browser's local storage.
+
+## Page-opening counts
+
+The website and the web app send one empty request each time they are opened
+online. The Android app sends none. The request carries no journal data,
+page name, referrer or cookie. The server that receives it sees your IP
+address and browser headers, as with any request, and drops them before
+adding one to a total for either "app" or "website" in a self-hosted
+GoatCounter.
+
+Only those hourly totals are kept. They are kept indefinitely and only the
+developer can see them. There are no visitor identifiers, sessions, or
+breakdowns by location or device. A reload counts again, so the totals
+measure openings, not people.
+
+## Files you export
+
+A backup or an export goes where you send it, and whatever app or service
+receives it handles it under its own terms. An encrypted backup (`.ttbackup`)
+can only be opened with the backup password you chose. Other exports are
+meant to be read, shared or printed, so they are not encrypted: CSV and JSON
+data, journal books, clinician summaries, photo collages and timelapses,
+PDFs and calendar files. Anyone who gets one of those can read it.
+
+## Deleting your data
+
+- In the app: Settings -> Privacy & data -> Delete everything.
+- On Android: uninstall the app, or clear its storage in the system
+  settings.
+- On the web: clear the site data for `app.engender.barankiewicz.dev` in
+  your browser.
+
+None of these removes files you have already exported or backed up. Delete
+those where you saved them.
 
 ## Support messages
 
-If you contact engender-app@pm.me, the maintainer receives your email address,
-message and any attachments. These are used to answer
-your request. Never send a real journal, backup, password, recovery key or
-screenshot containing personal journal content. Support uses app and device
-versions, reproduction steps and invented examples instead.
+If you write to engender-app@pm.me, the developer receives your email
+address, your message and any attachments, and uses them to answer you.
+Please don't send a real journal, backup, password or recovery key. If you
+send one by mistake, it is deleted when noticed. Support email is deleted
+within 30 days of the request being resolved, and you can ask for it to be
+deleted sooner.
 
-Private support email and downloaded copies controlled by the maintainer
-are deleted within 30 days after the request is resolved. Sensitive journal
-material sent by mistake is deleted when noticed and is not used to
-investigate the problem. Technical findings may remain in issue records
-without personal journal content. You can ask about or request deletion of
-correspondence through the contact address above.
+GitHub issues are public, and GitHub's own policies apply to them.
 
-GitHub issues are public. Security reports use GitHub's private vulnerability
-reporting process. Their visibility and retention follow that service's
-features and policies. The maintainer cannot promise deletion from GitHub's
-systems, provider backups or copies held by someone else.
+## Age
+
+engender is for any trans person. There is no minimum or maximum age and no
+age verification.
 
 ## Changes to this policy
 
-When this policy changes, the date at the top changes with it. Every
-earlier version is kept in the history of
+When this policy changes, the date at the top changes with it. Earlier
+versions are in the history of
 https://github.com/engender-app/engender/blob/main/PRIVACY.md.
 
 This policy is also available in
