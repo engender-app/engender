@@ -19,16 +19,20 @@
      while disguise is on, before unlock.
 
      **What the field holds.** On an unlock (`unlock`: the PIN, passphrase,
-     biometric and device-key gates and the mid-session lock) it is the
-     person's flag with nothing written on it, at the height the title used
-     to give it (tester-report-02 ticket 07: a tester called the old field,
-     the app's name on one of the flag's colours, "unused potential" on the
-     screen a person meets every time). $lib/theme/gateFlag decides and
-     paints; under disguise it answers nothing, so a disguised gate is the
-     neutral field and the decoy's name exactly as before, and no colour of
-     the flag reaches it. A gate that is not an unlock paints its own title
-     at 48 on the flag's second colour. A demo build reads `?gateFlag=` to
-     show the four drawings on the sign-off page.
+     biometric and device-key gates and the mid-session lock) it is Today's
+     own sun - FlagSun, at Today's size, in Today's corner - with nothing
+     written, and the field is a little taller than the title's line so more
+     of the sun shows (tester-report-02 ticket 07: a tester called the old
+     field, the app's name on one of the flag's colours, "unused potential"
+     on the screen a person meets every time; Alicja picked the sun from four
+     drawings and asked for the extra height). The sun is still here: a gate
+     arrives as a cut and nothing on it breathes while someone types.
+     $lib/theme/gateFlag decides; under disguise it answers no, so a
+     disguised gate is the neutral field, the decoy's name and the base's
+     height exactly as before, and no colour of the flag reaches it. A gate
+     that is not an unlock paints its own title at 48 on the flag's second
+     colour. A demo build reads `?gateRoom=` to offer the height's two
+     neighbours on the sign-off page.
 
      **What the title says, once, for all six.** An unlock never says the
      person's name. The mid-session lock used to greet by name because the
@@ -42,9 +46,9 @@
      anybody has been here before. So an unlock's title is the wordmark,
      whichever secret it asks for. It is no longer painted on an unlock
      without disguise: it stays the screen's level-one heading, visually
-     hidden, so the screen's accessible name is what it was, and the flag on
+     hidden, so the screen's accessible name is what it was, and the sun on
      the field is what the handover to Today carries instead (appOpening.ts
-     and app.css: Today's paint fades in over the flag while the edge opens).
+     holds it still while the field opens to Today's height around it).
      Under disguise it is painted, as the decoy's name. Always through `appWordmark`, never
      `m.app_name()`: under disguise the name on a lock screen is the one that
      must not be the real one (ADR-0035). A gate that is not an unlock keeps
@@ -93,9 +97,8 @@
   import { fieldPart } from '$lib/motion/navigation';
   import { blindEdge } from '$lib/motion/stepBlind';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { gateDrawsFlag, gateFlagChoice, gateStripes, gateSun } from '$lib/theme/gateFlag';
-  import Mark from './Mark.svelte';
+  import { gateDrawsFlag, gateRoomChoice } from '$lib/theme/gateFlag';
+  import FlagSun from './FlagSun.svelte';
 
   let {
     title,
@@ -105,39 +108,24 @@
   }: {
     title: string;
     /** The title is the wordmark: this gate asks for the journal's secret.
-        Only an unlock draws the flag, and only without disguise. */
+        Only an unlock draws the sun, and only without disguise. */
     unlock?: boolean;
     children: Snippet;
     /** The gate's own attributes: its walkthrough handle, mostly. */
     [attribute: string]: unknown;
   } = $props();
 
-  /* Read once: a demo build's `?gateFlag=` is the sign-off page choosing an
-     option, and a production build always answers the same. */
-  const choice = gateFlagChoice();
-  let flag = $derived(gateDrawsFlag({ unlock, disguised: prefs.disguise }) ? choice : undefined);
-  /* The paint the field wears. Nothing here is computed under disguise or on
-     a gate that is not an unlock: `flag` is undefined there, so no stripe
-     reaches the style attribute at all. */
-  let paint = $derived(
-    flag === 'stripes' || flag === 'stripes-wordmark'
-      ? gateStripes(activeFlag.stripes)
-      : flag === 'sun'
-        ? gateSun(
-            activeFlag.palette === 'polish' && activeFlag.stripes.length
-              ? [activeFlag.stripes[activeFlag.dark ? 0 : 1]]
-              : activeFlag.stripes,
-            'calc(var(--blind-edge) - var(--space-2))'
-          )
-        : undefined
-  );
-  /* The wordmark is painted only where no flag replaced it, or small under
-     the stripes in that one option; everywhere else it stays the screen's
-     accessible name. */
-  let wordmarkPainted = $derived(!flag);
+  /* Read once: a demo build's `?gateRoom=` is the sign-off page offering
+     the field's height, and a production build always answers the same. */
+  const room = gateRoomChoice();
+  /* Nothing of the sun is drawn under disguise or on a gate that is not an
+     unlock: `sun` is false there, FlagSun never mounts, and the field keeps
+     its title's height. */
+  let sun = $derived(gateDrawsFlag({ unlock, disguised: prefs.disguise }));
 </script>
 
-<div class="screen screen-gate" data-gate-frame data-gate-flag={flag}
+<div class="screen screen-gate" data-gate-frame data-gate-sun={sun ? '' : undefined}
+  style:--gate-room={sun ? `${room}px` : undefined}
   style:--field={prefs.disguise ? 'var(--surface-2)' : undefined}
   style:--field-ink={prefs.disguise ? 'var(--text)' : undefined}>
   <!-- The host of the edge and everything that reads it (components.css).
@@ -154,8 +142,12 @@
            corners. `data-field-blind` is what hands it the blind's name for a
            navigation, which is how the unlock's handover closes this field
            into the app's rather than fading one out under another. -->
-      <div class="step-field-paint" data-field-blind style:--gate-paint={paint}>
-        {#if flag === 'mark'}<span class="gate-mark"><Mark size={46} /></span>{/if}
+      <div class="step-field-paint" data-field-blind>
+        <!-- Today's sun, inside the blind as Today nests its own (ticket 148):
+             unnamed in the opening, it rides the blind's capture rather than
+             a hidden one, and is the same drawing in the same place as
+             Today's, so the field opens around one sun. -->
+        {#if sun}<FlagSun still />{/if}
       </div>
       <!-- The title: the only display type on a gate and the only heading it
            has. Keyed on the words, because a gate asks more than one thing
@@ -163,21 +155,20 @@
            the one thing on the field that did not move. `data-field-part` so
            it is printed on the field and rides its edge on a navigation,
            fading where it stands rather than joining the screen's crossfade.
-           Where the flag replaced it, it is the screen's name for a screen
+           Where the sun replaced it, it is the screen's name for a screen
            reader only and is not printed on the field. -->
       <div class="step-field-ask">
         {#key title}
           <h1
             class="gate-title"
-            class:visually-hidden={!wordmarkPainted && flag !== 'stripes-wordmark'}
-            class:gate-title-small={flag === 'stripes-wordmark'}
+            class:visually-hidden={sun}
             {@attach focusNamedTarget}
             onintroend={(event) => {
               if (document.activeElement === document.body || document.activeElement?.closest('[inert]'))
                 focusNamedTarget(event.currentTarget);
             }}
             data-gate-title
-            data-field-part={wordmarkPainted || flag === 'stripes-wordmark' ? '' : undefined}
+            data-field-part={sun ? undefined : ''}
             in:fieldPart={{ printed: true }}
             out:fieldPart={{ printed: true }}
           >

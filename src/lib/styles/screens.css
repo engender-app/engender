@@ -796,44 +796,24 @@
 .gate-page:has(.pin-pad) .gate-foot { margin-top: 0; }
 .gate-note { color: var(--text-2); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
 
-/* An unlock's flag (tester-report-02 ticket 07). The field keeps the height
-   the title gave it, so nothing under the edge moves; what changes is what
-   the paint carries. `--gate-paint` is set by GateScreen only on an unlock
-   without disguise, so a disguised gate has no value here and paints the
-   neutral field exactly as before. The paint is a window tall and its edge
-   is a clip, so the drawing is sized to the edge, not to the box. */
-.screen-gate[data-gate-flag] .step-field-paint {
-  background-image: var(--gate-paint, none);
-  background-repeat: no-repeat;
-  background-size: 100% var(--blind-edge);
+/* An unlock's sun (tester-report-02 ticket 07). Where the title was, the
+   field holds Today's own sun, at Today's size and in the same corner, so
+   opening the app holds one sun still while the field opens around it. The
+   field is the title's line plus `--gate-room` (32px, set by GateScreen only
+   on an unlock without disguise; Alicja asked for it "a little taller"), so
+   a disguised gate has nothing here and keeps the base's height exactly.
+   The title's line is held empty so the field measures what it did with the
+   wordmark on it, plus the room. The pad, the status line and the way out
+   ride under the edge; at 360x568 the short form below halves the room so
+   the PIN pad, the tallest gate, still fits without scrolling. */
+.screen-gate[data-gate-sun] .step-field-ask { min-height: calc(46px + var(--gate-room, 0px)); }
+/* The sun scales down on a narrow window exactly as Today's does (rule 7),
+   so the two are the same drawing on both sides of the opening. */
+@container app (max-width: 359px) {
+  .screen-gate[data-gate-sun] .step-field-paint { --sun-scale: 0.82; }
 }
-/* The title's line, held empty where the title is no longer painted, so the
-   field measures what it measured with the wordmark on it. */
-.screen-gate[data-gate-flag] .step-field-ask { min-height: 46px; }
-/* The stripes with the wordmark kept small: the bands stop above the line
-   the word sits on, and the word is on the page's own ground in the page's
-   ink, so no flag has to carry type. */
-.screen-gate[data-gate-flag='stripes-wordmark'] .step-field-paint {
-  background-color: transparent;
-  background-size: 100% calc(var(--blind-edge) - var(--space-4) - 1.25em);
-  font-size: var(--text-xl);
-}
-.gate-title.gate-title-small {
-  align-self: end;
-  font-size: var(--text-xl);
-  letter-spacing: var(--display-track);
-  line-height: 1;
-  color: var(--text);
-}
-/* The mark where the title stood: the launcher's tile, at the title's 46px
-   cap height, on the field's bottom left. It is in the paint, so it rides
-   the blind's own capture on the way into the app and never moves on its
-   own (rule 8). */
-.gate-mark {
-  position: absolute;
-  left: var(--space-5);
-  top: calc(var(--blind-edge) - var(--space-4) - 46px);
-  display: flex;
+@container app (max-width: 239px) {
+  .screen-gate[data-gate-sun] .step-field-paint { --sun-scale: 0.6; }
 }
 
 /* ---------- the gates, short ----------
@@ -858,15 +838,8 @@
   .gate-foot {
     padding-top: var(--space-3);
   }
-  /* The flag takes the short title's line, and the mark that line's size. */
-  .screen-gate[data-gate-flag] .step-field-ask { min-height: 22px; }
-  .gate-mark {
-    top: calc(var(--blind-edge) - var(--space-3) - 22px);
-    transform-origin: 0 0;
-    scale: calc(22 / 46);
-  }
-  .gate-title.gate-title-small { font-size: var(--text-sm); }
-  .screen-gate[data-gate-flag='stripes-wordmark'] .step-field-paint { font-size: var(--text-sm); }
+  /* The short title's line, and half the room. */
+  .screen-gate[data-gate-sun] .step-field-ask { min-height: calc(22px + var(--gate-room, 0px) / 2); }
 }
 
 /* ---------- the gates, wide ----------

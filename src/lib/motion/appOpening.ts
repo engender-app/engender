@@ -13,9 +13,9 @@
    navigation carries: the gate's field is short - one title's height - and
    the app's is 175px of flag with a sun in it, so the edge opens downward,
    whatever the gate printed on it rides down with it, and the page follows
-   the edge instead of appearing under it. An unlock's field is the flag
-   itself since tester-report-02 ticket 07, and that paint fades out under
-   Today's while the edge travels (below, and app.css).
+   the edge instead of appearing under it. An unlock's field carries Today's
+   own sun since tester-report-02 ticket 07, and that sun is held still while
+   the edge travels (below).
 
    Nothing about the arrival is new machinery. `carryBlind` names both sides
    and publishes the two heights, app.css moves them, and `data-nav` says
@@ -63,16 +63,16 @@ export function openApp(
   /* Before the old side is captured, and released when the transition is
      over: see $lib/motion/fieldBlind for why the name is handed over rather
      than written as a rule. */
-  const blind = carryBlind(doc);
+  /* An unlock without disguise draws Today's own sun, at Today's size in
+     Today's corner (tester-report-02 ticket 07). Held, its rings stay
+     unnamed on both sides and ride each side's blind capture, so the two
+     photographs of the sun are the same picture in the same place and the
+     field opens around one sun - rather than the gate's closing ring by ring
+     while Today's opens. Read before the gate goes. */
+  const holdSun = !!doc.querySelector('[data-gate-frame][data-gate-sun]');
+  const blind = carryBlind(doc, { holdSun });
   const root = doc.documentElement;
   root.dataset.nav = PATTERN;
-  /* An unlock that draws the flag (tester-report-02 ticket 07) hands its
-     paint over rather than cutting it: the gate's blind carries the stripes,
-     the mark or the sun, and Home's carries one solid colour, so the
-     incoming blind fades in over the outgoing one while both edges travel
-     together (app.css). Read before the gate goes. */
-  const flag = doc.querySelector<HTMLElement>('[data-gate-frame][data-gate-flag]')?.dataset?.gateFlag;
-  if (flag) root.dataset.gateFlag = flag;
 
   const transition = doc.startViewTransition(async () => {
     try {
@@ -99,7 +99,6 @@ export function openApp(
     .catch(() => {})
     .finally(() => {
       delete root.dataset.nav;
-      delete root.dataset.gateFlag;
       blind.release();
       /* The screen has stopped moving, so anything that lands from here on
          is a change within it rather than part of it arriving. Said out loud

@@ -105,14 +105,13 @@ describe('what a gate may show', () => {
     }
   });
 
-  it('draws the flag only through the shell, and never names the app except through the wordmark', () => {
+  it('draws the sun only through the shell, and never names the app except through the wordmark', () => {
     /* Tester-report-02 ticket 07 moved the line. A gate used to draw no flag
        at all: the field was the flag's second colour and nothing more. An
-       unlock now carries the person's flag on its field, so the rule is
-       where the flag may come from - GateScreen alone, through
-       $lib/theme/gateFlag, which answers nothing under disguise or on a gate
-       that is not an unlock. No gate reaches for the sun, the stripes or the
-       mark itself.
+       unlock now carries Today's sun on its field, so the rule is where the
+       sun may come from - GateScreen alone, behind $lib/theme/gateFlag's
+       decision, which answers no under disguise or on a gate that is not an
+       unlock. No gate reaches for the sun, the stripes or the mark itself.
 
        The app's name is the other half. Rule 15 makes the wordmark the
        title of every unlock, painted or not, so "names the app nowhere" is
@@ -137,16 +136,14 @@ describe('what a gate may show', () => {
     }
   });
 
-  it('draws the flag on an unlock only, and nothing of it under disguise', () => {
+  it('draws the sun on an unlock only, and nothing of it under disguise', () => {
     const shell = stripComments(read('src/lib/components/GateScreen.svelte'));
     /* The one decision, made by the one function the unit tests hold. */
-    expect(shell).toMatch(/gateDrawsFlag\(\{\s*unlock,\s*disguised:\s*prefs\.disguise\s*\}\)/);
-    /* Every drawing reads `flag`, which is undefined when that says no. */
-    for (const drawing of ['gateStripes(', 'gateSun(', '<Mark']) {
-      const at = shell.indexOf(drawing);
-      expect(at, drawing).toBeGreaterThan(-1);
-      expect(shell.slice(Math.max(0, at - 200), at), `${drawing} not behind flag`).toMatch(/flag/);
-    }
+    expect(shell).toMatch(/let sun = \$derived\(gateDrawsFlag\(\{\s*unlock,\s*disguised:\s*prefs\.disguise\s*\}\)\)/);
+    /* The sun mounts only behind it, still, and the room only comes with it. */
+    expect(shell).toMatch(/\{#if sun\}<FlagSun still \/>\{\/if\}/);
+    expect(shell).toMatch(/style:--gate-room=\{sun \?/);
+    expect(shell.match(/<FlagSun/g)).toHaveLength(1);
     /* The three unlocks say they are unlocks; the gates that are not keep
        their own titles and pass nothing. */
     expect(read('src/lib/components/SessionUnlock.svelte')).toMatch(/<GateScreen \{title\} unlock\b/);

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf, washOver } from '../src/lib/theme/colour';
 import { flagField, flagRoles, heatInk } from '../src/lib/theme/roles';
-import { gateStripes } from '../src/lib/theme/gateFlag';
+import { sunRings } from '../src/lib/motion/flagSun';
 import { PALETTES } from './palettes.mjs';
 
 const css = readFileSync('src/lib/theme/palettes.css', 'utf8');
@@ -750,66 +750,47 @@ describe('the field and the fills (phase 10)', () => {
   });
 });
 
-/* An unlock's flag (tester-report-02 ticket 07). The field stops carrying
-   type: what sits on it is the flag itself, or a drawing in the flag's own
-   colours, and the control, its status line and the way out stay on the page
-   where the floors above already hold them. So what is measured here is the
-   two things that are new: that the flag on a gate is the palette's own,
-   never one nudged to pass a ratio (decision 1), and that whatever is left
-   on the field or beside it still meets its floor in every palette and both
-   themes - by where it sits, not by changing a colour. */
-describe("an unlock's flag", () => {
+/* An unlock's sun (tester-report-02 ticket 07). The field stops carrying
+   type: what sits on it is Today's own sun, drawn by FlagSun in the flag's
+   own colours, and the control, its status line and the way out stay on the
+   page where the floors above already hold them. Two things are new and
+   measured here: the sun on a gate is the palette's own, never nudged to pass
+   a ratio (decision 1), and where it falls short of 3:1 against the field
+   that is written down rather than fixed by changing a flag. */
+describe("an unlock's sun", () => {
   const stripesOf = (palette: string) =>
     /--motif-stripes:\s*([^;]+);/.exec(blockBody(String.raw`\[data-palette="${palette}"\]`))![1]
       .split(',')
       .map((s) => s.trim());
 
-  it("paints each palette's stripes at their own values, nothing corrected", () => {
+  it("draws each palette's rings at the stripes' own values, nothing corrected", () => {
     for (const palette of PALETTES) {
-      const paint = gateStripes(stripesOf(palette))!;
-      expect([...paint.matchAll(/#[0-9A-Fa-f]{6}/g)].map((m) => m[0]), palette).toEqual(stripesOf(palette));
+      for (const dark of [false, true]) {
+        const rings = sunRings(stripesOf(palette), dark, palette).map((r) => r.color.toUpperCase());
+        const stripes = stripesOf(palette).map((c) => c.toUpperCase());
+        for (const colour of rings) expect(stripes, `${palette}/${dark ? 'dark' : 'light'}`).toContain(colour);
+      }
     }
   });
 
-  /* The mark sits on the field, outlined in the app's black seam round a
-     white face, so its boundary against the field is whichever of the two
-     measures higher: WCAG 1.4.11's 3:1 for a graphic seen as a shape. The
-     corner sun is not held here, on purpose: it is Today's own drawing in the
-     flag's own colours, and on bisexual its outer pink and its seam measure
-     2.13:1 and 2.0:1 against the dark blue field there as well. Passing it
-     would mean changing a flag (decision 1), and Today has never been held
-     to it. */
-  it('outlines the mark at 3:1 against the field, in every palette and theme', () => {
+  /* The sun's outline against the field is the stronger of its black seam
+     and its outermost ring, WCAG 1.4.11's 3:1 for a graphic seen as a shape.
+     Every palette clears it but two, in both themes: bisexual, whose outer
+     pink and black seam measure 2.13:1 at best against its dark blue field,
+     and asexual, whose outer black ring and seam measure 2.23:1 against its
+     purple one - as Today's sun always has. Passing them would mean changing
+     a flag, so the shortfall is pinned here instead, and this fails if it
+     grows or spreads to another palette. */
+  it('outlines the sun at 3:1 against the field, bisexual and asexual excepted and pinned', () => {
+    const short: string[] = [];
     for (const palette of PALETTES) {
       for (const dark of [false, true]) {
         const field = flagField(stripesOf(palette), palette, dark)!;
-        const tile = Math.max(contrast('#000000', field.hex), contrast('#FFFFFF', field.hex));
-        expect(tile, `${palette}/${dark ? 'dark' : 'light'}: mark on ${field.hex}`).toBeGreaterThanOrEqual(3);
+        const outer = sunRings(stripesOf(palette), dark, palette)[0].color;
+        const ratio = Math.max(contrast('#000000', field.hex), contrast(outer, field.hex));
+        if (ratio < 3) short.push(`${palette}/${dark ? 'dark' : 'light'} ${ratio.toFixed(2)}`);
       }
     }
-  });
-
-  /* The comparison option keeps the wordmark small, under the stripes on the
-     page's own ground in the page's ink: below the large-text size on a short
-     window, so it answers to 4.5:1. */
-  it('keeps the small wordmark under the stripes readable on the page', () => {
-    /* Where it sits is what makes this pair the right one: the word is in the
-       page's ink, and the paint behind its line is cleared to the page. */
-    const screens = readFileSync('src/lib/styles/screens.css', 'utf8');
-    const rule = (selector: string) => {
-      const at = screens.indexOf(`\n${selector} {`);
-      expect(at, selector).toBeGreaterThan(-1);
-      return screens.slice(at, screens.indexOf('}', at));
-    };
-    expect(rule('.gate-title.gate-title-small')).toMatch(/color:\s*var\(--text\);/);
-    expect(rule(".screen-gate[data-gate-flag='stripes-wordmark'] .step-field-paint")).toMatch(
-      /background-color:\s*transparent;/
-    );
-    for (const palette of PALETTES) {
-      for (const theme of THEMES) {
-        const t = tokenMap(palette, theme);
-        expect(contrast(t.text, t.bg), `${palette}/${theme}`).toBeGreaterThanOrEqual(4.5);
-      }
-    }
+    expect(short.sort()).toEqual(['asexual/dark 2.23', 'asexual/light 2.23', 'bisexual/dark 2.13', 'bisexual/light 2.13']);
   });
 });

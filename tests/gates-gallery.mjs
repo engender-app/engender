@@ -54,7 +54,7 @@ const FLOOR_SIZES = [
 
 /* Every state the eleven scenes cover. Shot on the default flag in both
    themes: what changes between palettes on a gate is one accent, one soft
-   tint and, on an unlock, the flag's stripes on the field (tester-report-02
+   tint and, on an unlock, Today's sun on the field (tester-report-02
    ticket 07) - so the palette sweep below is one scene across all of them
    rather than eleven scenes across all of them, which would be 176 pictures
    nobody looks at. tests/gate-flag-check.mjs holds the flag on every
