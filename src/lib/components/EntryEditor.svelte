@@ -1116,11 +1116,7 @@
        chip open draws it without a movement the person did not make. -->
   {#if sections.includes('tags') && entryDraft.openSection === 'tags'}
     <div class="editor-section" id="editor-section-tags" data-editor-section="tags" transition:disclose>
-      <TagPicker
-        groups={vocabulary.visibleTagGroups}
-        selected={entryDraft.tags}
-        onToggle={(id) => entryDraft.toggleTag(id)}
-      />
+      {@render tagPicker()}
     </div>
   {/if}
 
@@ -1265,6 +1261,14 @@
     </div>
   {/if}
 
+  {/snippet}
+
+  {#snippet tagPicker()}
+    <TagPicker
+      groups={vocabulary.visibleTagGroups}
+      selected={entryDraft.tags}
+      onToggle={(id) => entryDraft.toggleTag(id)}
+    />
   {/snippet}
 
   {#snippet cards()}
@@ -1515,11 +1519,7 @@
   {@render modeBlock()}
   <SectionHeading text={m.tags_label()} />
   <div class="editor-section" id="editor-section-tags" data-editor-section="tags">
-    <TagPicker
-      groups={vocabulary.visibleTagGroups}
-      selected={entryDraft.tags}
-      onToggle={(id) => entryDraft.toggleTag(id)}
-    />
+    {@render tagPicker()}
   </div>
   {@render chipRow(MARKING_SECTIONS)}
   {@render panels(MARKING_SECTIONS)}
