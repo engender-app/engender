@@ -6,7 +6,7 @@
 import { preview } from 'vite';
 import { resolve } from 'node:path';
 import { spawn } from 'node:child_process';
-import { createReporter, fillDate, launchChromium } from './browser-harness.mjs';
+import { continueToTheRest, createReporter, fillDate, launchChromium } from './browser-harness.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 
@@ -99,6 +99,8 @@ try {
 
   await writeLink.click();
   await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  // The debrief opens on the first step like any new entry; its scaffold is with the note.
+  await continueToTheRest(page);
   const noteValue = await page.locator('#ed-note').inputValue();
   check('the debrief template pre-filled the note', noteValue.length > 0);
 

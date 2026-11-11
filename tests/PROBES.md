@@ -50,6 +50,12 @@ It checks spaces and recovery-note line breaks before saving, trimmed saved
 values, and deletion of a typed recovery note before saving.
 `entryDraft.test.ts` checks that save normalization leaves draft text intact.
 
+The browser tier's entry editor probe (`entry-editor-probe.ts`) also finishes a
+new entry from its first step: a face alone saves that mood and nothing else,
+and a face plus one moved scale saves exactly that scale, read back out of
+SQLite (tester report 02 ticket 03). Its older cases continue to the second
+step first, where the note, the template button and the star now are.
+
 `src/lib/permissions/watchStatus.test.ts` checks the permission-status watcher
 that Reminders, Notifications and the permissions list share: a re-read when
 the page becomes visible, a refused read shown as the caller's unreadable
@@ -713,7 +719,7 @@ To run one on its own, use
 | `roadmap-goal-visibility` | Demo-build hide, reload, goal source link and restore guard. `--polish --zoom` checks Polish at 195px width; `--gallery` captures hidden goals across all palettes and both themes. |
 | `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
 | `return-floor-check` (`npm run test:return-floor`) | Red on main. At 195px, the width 200% zoom leaves of a 390px phone, the English milestone subtitle "Its day was 4 September 2026." is wider than its row, and `.kit-row-sub` cannot break the word. Promote it once that is fixed. |
-| `a11y-targets-large-text` | Every control the 30 September and 5 October accessibility audits listed, plus opened letters' rows (12 October U38/U39), reaches 48px at 320 and 390px with text at 100% and 200% (letters also at 195px), Journal, Lab results, a saved question and In the room do the same and at 195px in English and Polish too, where Journal's month and In the room's question show whole (not cut by the viewport or an ancestor that clips sideways) and no two of their listed controls overlap (12 October U51, U52, U54; red on the base with 36 failures), and every bottom-navigation name is whole in English and Polish at 100%, 130% and 200%; the calendar's date links at 320 are printed only. A target's size is its layout box joined with any `::before`/`::after` extension, and a walk with `elementFromPoint` from its centre cuts a side short only where something covers it; the walk alone is up to a pixel off and had passed a 47px control. The run stops unless planted 47px and 48px buttons read under and at the floor. It ran in about two and a half minutes over 14 screens on 15 October; after-release 18 measured six minutes and kept it out of CI shards for that reason (after-release 18, last-audit UI 25, 48). |
+| `a11y-targets-large-text` | Every control the 30 September and 5 October accessibility audits listed, plus a new entry's first step (its five faces, the finish control and the continue control; tester report 02 ticket 03, which also moved the entry scene's chips one step on), plus opened letters' rows (12 October U38/U39), reaches 48px at 320 and 390px with text at 100% and 200% (letters also at 195px), Journal, Lab results, a saved question and In the room do the same and at 195px in English and Polish too, where Journal's month and In the room's question show whole (not cut by the viewport or an ancestor that clips sideways) and no two of their listed controls overlap (12 October U51, U52, U54; red on the base with 36 failures), and every bottom-navigation name is whole in English and Polish at 100%, 130% and 200%; the calendar's date links at 320 are printed only. A target's size is its layout box joined with any `::before`/`::after` extension, and a walk with `elementFromPoint` from its centre cuts a side short only where something covers it; the walk alone is up to a pixel off and had passed a 47px control. The run stops unless planted 47px and 48px buttons read under and at the floor. It ran in about two and a half minutes over 14 screens on 15 October; after-release 18 measured six minutes and kept it out of CI shards for that reason (after-release 18, last-audit UI 25, 48). |
 
 `browser-tier/run.mjs` also imports seven probes (`care-read`,
 `care-spine-links`, `read-failures`, `source-record-links`,

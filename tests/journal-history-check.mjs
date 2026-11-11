@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
-import { launchChromium, untilSplashLets } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium, untilSplashLets } from './browser-harness.mjs';
 import { reachAccessSetup, ready, clientRoute, JOURNAL_SECRET } from './browser-tier/built-flow.mjs';
 
 const serial = process.env.JOURNAL_HISTORY_ANDROID;
@@ -62,6 +62,7 @@ try {
     }));
     for (const day of days) {
       await clientRoute(page, `/entry/new/${day}?seedMood=3`);
+      await continueToTheRest(page);
       await page.locator('#ed-note').fill(`Journal history fixture ${day}`);
       await page.waitForFunction(() => document.querySelectorAll('[data-save]').length === 1);
       await page.locator('[data-save]').press('Enter');

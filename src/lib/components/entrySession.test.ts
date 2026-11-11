@@ -244,3 +244,15 @@ test('loading a starred entry preserves metadata when reactive state wraps its d
   await session.save();
   assert.equal((await journal.entries.getEntry(id))?.starred, true);
 });
+
+test('a stepped editor hands its own step back to the leave guard, which asks nothing for it', async () => {
+  const { open } = await fixture();
+  const owns = vi.fn(() => true);
+  const session = open({ ownsDeparture: owns });
+  await session.resume();
+  session.establishBaseline();
+  session.state.draft.setNote('picked something');
+  assert.equal(session.guardOptions.holding(), true);
+  assert.equal(session.guardOptions.ownsDeparture?.({ cancel() {}, willUnload: false, type: 'popstate', delta: -1, to: null }), true);
+  assert.equal(owns.mock.calls.length, 1);
+});

@@ -17,7 +17,7 @@ function departure(over: Partial<Departure> = {}): Departure & { cancelled: bool
   return nav;
 }
 
-function setup(start: { holding?: boolean; busy?: boolean } = {}) {
+function setup(start: { holding?: boolean; busy?: boolean; owns?: (departure: Departure) => boolean } = {}) {
   const flags = { holding: start.holding ?? true, busy: start.busy ?? false };
   const state: LeaveGuardState = { pendingDeparture: null };
   const onDiscard = vi.fn();
@@ -26,7 +26,7 @@ function setup(start: { holding?: boolean; busy?: boolean } = {}) {
     goto: vi.fn<(url: URL) => Promise<unknown>>(() => Promise.resolve())
   };
   const guard = leaveGuardCore(
-    { holding: () => flags.holding, busy: () => flags.busy, onDiscard },
+    { holding: () => flags.holding, busy: () => flags.busy, onDiscard, ownsDeparture: start.owns },
     navigator,
     state
   );
@@ -48,6 +48,31 @@ describe('leaveGuardCore', () => {
     guard.beforeNavigate(nav);
     expect(nav.cancelled).toBe(true);
     expect(state.pendingDeparture).not.toBeNull();
+  });
+
+  it('hands a departure the screen takes as its own back without asking', () => {
+    /* A stepped editor's second step: the browser's Back is a step back,
+       not a way out, so it is cancelled and nothing is asked. */
+    const owns = vi.fn((nav: Departure) => nav.type === 'popstate');
+    const { guard, state, navigator } = setup({ owns });
+    const nav = departure({ type: 'popstate', delta: -1 });
+    guard.beforeNavigate(nav);
+    expect(owns).toHaveBeenCalledWith(nav);
+    expect(nav.cancelled).toBe(true);
+    expect(state.pendingDeparture).toBeNull();
+    expect(navigator.go).not.toHaveBeenCalled();
+    // A departure the screen does not take still meets the question.
+    const link = departure();
+    guard.beforeNavigate(link);
+    expect(link.cancelled).toBe(true);
+    expect(state.pendingDeparture).not.toBeNull();
+  });
+
+  it('lets a discarded departure replay past a screen that would take it', () => {
+    const { guard, navigator } = setup({ owns: () => false });
+    guard.beforeNavigate(departure({ type: 'popstate', delta: -1 }));
+    guard.discard();
+    expect(navigator.go).toHaveBeenCalledWith(-1);
   });
 
   it('keep() closes the question and goes nowhere', () => {

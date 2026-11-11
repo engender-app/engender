@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'vite';
-import { launchPersistentBrowser } from './browser-harness.mjs';
+import { continueToTheRest, launchPersistentBrowser } from './browser-harness.mjs';
 import { makePdf } from './pdf-fixture.mjs';
 
 const expectLeak = process.argv.includes('--expect-leak');
@@ -42,6 +42,7 @@ try {
       if (field === 'entry') {
         const today = await page.evaluate(async () => (await import('/src/lib/data/epochDay.ts')).todayEpochDay());
         await visit(`/entry/new/${today}`);
+        await continueToTheRest(page);
         selector = '#ed-note';
       } else if (field === 'tag') {
         await visit('/settings/tags');

@@ -25,6 +25,7 @@ export function spawn() {
   return child;
 }
 export async function fillDate() {}
+export async function continueToTheRest() {}
 export async function launchChromium() {
   return {
     close: async () => console.log('fixture browser closed'),

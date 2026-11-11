@@ -28,6 +28,8 @@ export type EntrySessionOptions = {
   preparing?: () => boolean;
   creation?: () => Pick<EntryInput, 'debriefForAppointment'>;
   destination?: (moodOnly: boolean) => (id: number) => string;
+  /** A departure the editor takes as a step back rather than as leaving. */
+  ownsDeparture?: LeaveGuardOptions['ownsDeparture'];
 };
 
 type EntrySaveRecovery = {
@@ -60,7 +62,8 @@ export function entrySessionCore(options: EntrySessionOptions, state = initialEn
   const guardOptions: LeaveGuardOptions = {
     holding: () => state.baseline !== null && state.draft.savedId === undefined &&
       entryDraftFingerprint(state.draft) !== state.baseline,
-    busy: () => state.saving
+    busy: () => state.saving,
+    ownsDeparture: options.ownsDeparture
   };
 
   async function prepare(operation: () => Promise<void>) {

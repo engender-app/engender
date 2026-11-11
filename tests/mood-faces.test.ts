@@ -260,6 +260,29 @@ describe('the face draws in its own step\'s ink', () => {
     expect(Number(alpha) * 0.55).toBeCloseTo(19, 0);
   });
 
+  /* Picking a face (tester report 02, ticket 03, where the faces first sit
+     on a step of their own). The comment above says the face's opacity is
+     transitioned, but only the ring's colour was: sampled on every frame,
+     the dimming of the four unpicked faces, the picked one's 0.55 to 1 and
+     the previous pick's scale 1.18 to 1 each landed in a single frame (one
+     frame carried 78% of the change). The edge between a chosen and an
+     unchosen disc needs the same. */
+  it('eases a face between picked and unpicked rather than swapping it', () => {
+    const own = rulesFor(/^\s*\.mood-btn \.mood-face\s*$/);
+    expect(own.length).toBe(1);
+    expect(own[0].body).toMatch(/transition:[^;]*\bopacity var\(--dur-fast\) var\(--ease-out\)[^;]*\btransform var\(--dur-fast\) var\(--ease-out\)/);
+    const disc = rulesFor(/^\s*\.mood-btn \.mood-face-disc\s*$/);
+    expect(disc.length).toBe(1);
+    expect(disc[0].body).toMatch(/transition:[^;]*\bstroke var\(--dur-fast\) var\(--ease-out\)/);
+  });
+
+  /* The pick's swell began at 0.9 on its first frame: a face resting at 1
+     went to 0.9 at once, 4px of a 44px face in one frame. It now starts at
+     the scale it rests at and dips from there. */
+  it('starts the pick swell at the scale the face rests at', () => {
+    expect(componentsCss).toMatch(/@keyframes mood-pop\s*\{\s*0%\s*\{\s*transform:\s*scale\(1\);\s*\}/);
+  });
+
   /* A step's ink changes with the theme and the preset, and on a Journal
      cell whose day gains an entry. A face that swapped its colour in one
      frame would be a yank, so the ink crossfades on the same curve the

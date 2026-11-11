@@ -27,6 +27,8 @@
    rule is a table, the layout is where a table gets buried, and a rule
    nobody can run in a test is one nobody can check. */
 
+import { parseDayParam } from '../data/dayParam';
+
 /**
  * Whether one navigation is a cut rather than a movement.
  *
@@ -70,4 +72,26 @@ export function chromelessPath(path: string): boolean {
      over it would be both a second way and a claim that this is a place
      rather than a moment. */
   return replacesAppNavigation(path) || path === '/coming-back';
+}
+
+/** Paints no tab bar, whoever is looking at it: the chromeless routes, and a
+    new entry. A new entry is a step in DIRECTION.md rule 15's sense (tester
+    report 02, ticket 03): one purpose, one way on and one way back, so the
+    bar would be four more ways off it. It stays out of `chromelessPath`
+    because that answer also decides whether Today's retained doors stay
+    mounted, and a new entry is where the app goes from Today most often. */
+export function barlessPath(path: string, today: number = Number.MAX_SAFE_INTEGER): boolean {
+  if (chromelessPath(path)) return true;
+  const day = /^\/entry\/new\/([^/]+)\/?$/.exec(path)?.[1];
+  /* Only a day the editor opens. Anything else is the route's unavailable
+     notice, which keeps the app's chrome and Back. */
+  if (day === undefined) return false;
+  let value: string;
+  try {
+    value = decodeURIComponent(day);
+  } catch {
+    return false;
+  }
+  const epochDay = parseDayParam(value, today);
+  return epochDay !== null && epochDay <= today;
 }

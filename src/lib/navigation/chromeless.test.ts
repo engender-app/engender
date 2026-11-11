@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chromelessPath, cutsInsteadOfMoving, replacesAppNavigation } from './chromeless.ts';
+import { barlessPath, chromelessPath, cutsInsteadOfMoving, replacesAppNavigation } from './chromeless.ts';
 
 describe('the routes that render without chrome', () => {
   it('is onboarding, all of it', () => {
@@ -120,5 +120,42 @@ describe('which navigations cut instead of moving', () => {
 
   it('moves between two ordinary screens', () => {
     expect(cutsInsteadOfMoving('/', '/calendar')).toBe(false);
+  });
+});
+
+describe('the routes with no tab bar over them', () => {
+  /* A new entry is a step in DIRECTION.md rule 15's sense (tester report
+     02, ticket 03): one purpose and no bottom bar. It is not chromeless in
+     the wider sense, because Today's retained doors have to stay mounted
+     under it - it is where the app goes most often from Today. */
+  it('is a new entry, on any day', () => {
+    expect(barlessPath('/entry/new/today')).toBe(true);
+    expect(barlessPath('/entry/new/19000')).toBe(true);
+    expect(chromelessPath('/entry/new/today')).toBe(false);
+  });
+
+  /* An address that is not a day the editor can open shows the unavailable
+     notice, with the app's chrome and Back (the route's own rule), so it is
+     not a step. Sampled by the day-addresses guard: /entry/new/abc lost its
+     tab bar. */
+  it('is not an address that shows the unavailable notice', () => {
+    const today = 20000;
+    expect(barlessPath('/entry/new/abc', today)).toBe(false);
+    expect(barlessPath('/entry/new/NaN', today)).toBe(false);
+    expect(barlessPath('/entry/new/2026-02-30', today)).toBe(false);
+    expect(barlessPath('/entry/new/20001', today)).toBe(false);
+    expect(barlessPath('/entry/new/today', today)).toBe(true);
+    expect(barlessPath('/entry/new/19999', today)).toBe(true);
+    expect(barlessPath('/entry/new/20000', today)).toBe(true);
+  });
+
+  it('is not the editor of an entry that exists, which keeps its single page', () => {
+    expect(barlessPath('/entry/12')).toBe(false);
+  });
+
+  it('is every chromeless route as well', () => {
+    expect(barlessPath('/onboarding')).toBe(true);
+    expect(barlessPath('/coming-back')).toBe(true);
+    expect(barlessPath('/')).toBe(false);
   });
 });

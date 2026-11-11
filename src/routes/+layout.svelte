@@ -50,7 +50,8 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
   import { trackPointerFocus } from '$lib/a11y/pointerFocus';
-  import { chromelessPath } from '$lib/navigation/chromeless';
+  import { barlessPath, chromelessPath } from '$lib/navigation/chromeless';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { routeGate } from '$lib/navigation/routeGates';
   import { navigateWithTransition } from '$lib/navigation/navigationTransition';
   import { startBackgroundSchedulers } from '$lib/data/backgroundSchedulers';
@@ -241,6 +242,10 @@
   });
 
   let chromeless = $derived(replacesApp || chromelessPath(path));
+  /* No bottom bar: every chromeless screen, and a new entry, which is a step
+     but keeps Today's retained doors mounted under it (chromeless.ts). The
+     desktop rail stays for a new entry (app.css, .is-barless). */
+  let barless = $derived(chromeless || barlessPath(path, currentDay()));
 
   /* How deep the app is in its own history, for the back controls that ask
      whether there is anything behind them (`smartBack`). Counted here rather
@@ -639,6 +644,7 @@
     data-app-root
     {@attach (node) => hoverHints(node)?.destroy}
     class:is-chromeless={chromeless}
+    class:is-barless={barless && !chromeless}
     data-boot={bootState.status}
     inert={browserSession.recovering}
     style:opacity={browserSession.recovering ? '0' : undefined}

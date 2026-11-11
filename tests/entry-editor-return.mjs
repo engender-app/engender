@@ -26,7 +26,7 @@
    or against a build some other server already serves (a base build, to
    watch the checks fail): node tests/entry-editor-return.mjs --base <url>
    Exits 1 on any failure. */
-import { launchChromium, previewBuild, settlePage, createReporter } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium, previewBuild, settlePage, createReporter } from './browser-harness.mjs';
 import {
   DEMO_THEME_EXPRESSION,
   FILL_EVERY_FEATURE_EXPRESSION,
@@ -195,6 +195,8 @@ try {
         if (spoken.length && spoken.every((t) => t === 'Not set')) ok('an unset scale is announced as not set, not as its midpoint');
         else fail('an unset scale is announced as not set, not as its midpoint', JSON.stringify(spoken));
         const note = `untouched scales ${Date.now()}`;
+        // The note is on the second step; the scales just checked are on the first.
+        await continueToTheRest(page);
         await page.fill('#ed-note', note);
         await page.locator('[data-save-moods] [data-mood]').nth(3).click();
         await page.locator('[data-save]').click();
@@ -230,6 +232,7 @@ try {
     await block('an opened media section lands above the foot', 6, async () => {
       for (const section of ['photos', 'voice', 'video']) {
         await settlePage(page, base, '/entry/new/today', 'light');
+        await continueToTheRest(page);
         await page.waitForSelector(`[data-section-chip="${section}"]`);
         await settled(page);
         /* The open chip is draft state and the unsaved draft survives

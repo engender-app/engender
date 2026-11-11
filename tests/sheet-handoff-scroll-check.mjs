@@ -14,7 +14,7 @@
    out-of-order release used to un-inert the shell behind the still-open
    manager, so that is checked too. */
 import { preview } from 'vite';
-import { createReporter, launchChromium, untilSplashLets } from './browser-harness.mjs';
+import { continueToTheRest, createReporter, launchChromium, untilSplashLets } from './browser-harness.mjs';
 
 const { ok, fail, finish } = createReporter();
 const app = await preview({ preview: { port: 0 } });
@@ -31,7 +31,7 @@ if (await page.locator('[data-leave-setup]').count()) {
 }
 await page.goto(`${base}/entry/new/today`, { waitUntil: 'networkidle' });
 await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
-await page.waitForSelector('#ed-note');
+await continueToTheRest(page);
 await untilSplashLets(page);
 
 async function sheetsGone() {

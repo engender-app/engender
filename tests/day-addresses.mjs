@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { fillDate, launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
+import { continueToTheRest, fillDate, launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
 
 const app = await previewBuild(process.cwd());
 const base = `http://localhost:${app.httpServer.address().port}`;
@@ -70,13 +70,13 @@ try {
   });
   await check('ISO new entry opens its day and preserves seedMood', async () => {
     await load('/entry/new/2026-10-05?seedMood=4');
-    await page.locator('#ed-note').waitFor({ timeout: 3000 });
+    await page.locator('[data-entry-step="1"]').waitFor({ timeout: 3000 });
     assert.equal(await page.locator('[data-mood="4"]').getAttribute('aria-checked'), 'true');
     assert.match(await page.locator('[data-app-scroll-region]').innerText(), /5 October/);
   });
   await check('today new entry remains writable', async () => {
     await load('/entry/new/today');
-    await page.locator('#ed-note').waitFor();
+    await continueToTheRest(page);
     assert.equal(await page.locator('#ed-note').isEditable(), true);
   });
   await check('same-route navigation reads the second letter', async () => {

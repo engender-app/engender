@@ -30,7 +30,7 @@ import { preview } from 'vite';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createReporter, launchChromium } from './browser-harness.mjs';
+import { continueToTheRest, createReporter, launchChromium } from './browser-harness.mjs';
 import { mediaFixtures } from './media-fixtures.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -176,6 +176,7 @@ async function drive(label, row, toggle, scrub) {
 /* Phase 11 ticket 19 put the editor's sections behind a chip row, one open
    at a time - the walkthrough's own openSection, restated. */
 async function openSection(section) {
+  await continueToTheRest(page);
   const chip = page.locator(`[data-section-chip="${section}"]`);
   await chip.waitFor();
   if ((await chip.getAttribute('aria-expanded')) !== 'true') await chip.click();

@@ -45,6 +45,7 @@ import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/remi
 import type { DoseActionOutcome, PendingDoseAction } from '$lib/reminders/doseActions';
 import { dismissActiveOverlay } from '../components/overlayLock';
 import { setupBack } from '../onboarding/back';
+import { stepBack } from '../navigation/stepBack';
 import { resolveAndroidBackAction } from './back-navigation';
 
 /* PlatformSyncDeps stays exported only for its own test (AU-09 test-only
@@ -398,6 +399,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
       }
       if (dismissActiveOverlay()) return;
       if (window.location.pathname === '/onboarding' && setupBack()) return;
+      if (stepBack()) return;
       switch (resolveAndroidBackAction(window.location.pathname, deps.navigationDepth())) {
         case 'minimize':
           void deps.androidBackButton.minimizeApp();

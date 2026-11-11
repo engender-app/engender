@@ -5,7 +5,7 @@
   import { listReturnTo, sourceReturnTo } from '$lib/navigation/sourceRecord';
   import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  import { onDestroy, tick, untrack } from 'svelte';
+  import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
   import {
@@ -70,8 +70,14 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
+  import EntryFirstStep from '$lib/components/EntryFirstStep.svelte';
+  import { moodToApply } from '$lib/components/seedMoodArrival';
+  import { stepMotion, stepTravel } from '$lib/motion/entryStep';
+  import { fieldPart } from '$lib/motion/navigation';
+  import { registerStepBack } from '$lib/navigation/stepBack';
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
-  import { scrollBehavior } from '$lib/motion/tokens';
+  import { motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let {
@@ -118,6 +124,26 @@
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
+  /* A new entry walks two steps (tester report 02, ticket 03): the quick
+     answer - mood and the scales - and then the rest. Step 1 alone is a
+     complete entry. An entry that exists keeps its single page. Opened for
+     a section of the rest (`?open=`, a first photo from Getting started),
+     it starts on the rest, and Back still walks to the first step.
+
+     The step is the screen's own state rather than a history entry: the one
+     draft runs through both, a save from either leaves the editor the way
+     it always has, and nothing has to be unwound from history first. Back
+     reaches it three ways - the header's control, Android's gesture
+     ($lib/navigation/stepBack) and the browser's, which the leave guard
+     hands over here instead of asking (ownsDeparture). */
+  // svelte-ignore state_referenced_locally
+  const stepped = entryId == null;
+  // svelte-ignore state_referenced_locally
+  let step = $state<1 | 2>(stepped && !openSection ? 1 : 2);
+  /** Which way the last change went, so a step back runs the film backwards. */
+  let steppingBack = $state(false);
+  const motion = stepMotion();
+
   // Route keys mount a new session for each entry or day.
   // epochDay is todayEpochDay() at mount on purpose, so a draft keeps its date across midnight; other day reads follow currentDay.
   // svelte-ignore state_referenced_locally
@@ -132,9 +158,23 @@
       const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
       if (target) await smartBackSettled(target);
       else await replaceRoute(destination);
+    },
+    ownsDeparture: (departure) => {
+      if (departure.type !== 'popstate' || (departure.delta ?? 0) >= 0 || !canStepBack()) return false;
+      void goToStep(1);
+      return true;
     }
   });
   let entryDraft = $derived(session.draft);
+  /* A new seedMood arriving on a new entry that is already open (a second
+     face touched on the check-in notification) puts that face on the draft. */
+  // svelte-ignore state_referenced_locally
+  let lastSeed = seedMood;
+  $effect(() => {
+    const arrived = moodToApply(lastSeed, seedMood);
+    lastSeed = seedMood;
+    if (arrived != null && entryId == null) untrack(() => entryDraft.setMood(arrived));
+  });
   let saving = $derived(session.saving);
   const guard = session.guard;
   const prepareDraft = session.prepare;
@@ -775,6 +815,57 @@
     toast(m.saved(), { kind: 'saved' });
   }
 
+  /** Past the first step, with nothing saving and nothing saved: the only
+      time Back is a step rather than a way out. */
+  function canStepBack(): boolean {
+    return stepped && step === 2 && !session.saving && session.draft.savedId === undefined;
+  }
+
+  let stepScreen = $state<HTMLElement | undefined>();
+
+  /* Brings the step change in at the top of the page. A long step scrolled
+     down would otherwise swap under the window and leave the new step's
+     heading somewhere above it, so the page travels up first - a scroll the
+     person watches rather than a jump - and the step changes once it is
+     there. Bounded, so a scroll that never reports its end cannot hold the
+     step back. */
+  async function toTop() {
+    const region = stepScreen?.closest<HTMLElement>('[data-app-scroll-region]');
+    if (!region || region.scrollTop <= 0) return;
+    region.scrollTo({ top: 0, behavior: scrollBehavior() });
+    const started = performance.now();
+    await new Promise<void>((done) => {
+      const watch = () => {
+        if (region.scrollTop <= 0 || performance.now() - started > motionDuration('--dur-slow') * 2) done();
+        else requestAnimationFrame(watch);
+      };
+      requestAnimationFrame(watch);
+    });
+  }
+
+  let stepping = false;
+  async function goToStep(next: 1 | 2) {
+    if (!stepped || step === next || stepping || saving) return;
+    stepping = true;
+    try {
+      await toTop();
+      steppingBack = next < step;
+      step = next;
+      await tick();
+      /* The step's heading takes the focus, as a screen's does on arrival,
+         so a screen reader says where the person now is. */
+      focusNamedTarget(stepScreen?.querySelector<HTMLElement>('[data-screen-title]'));
+    } finally {
+      stepping = false;
+    }
+  }
+
+  onMount(() => registerStepBack(() => {
+    if (!canStepBack()) return false;
+    void goToStep(1);
+    return true;
+  }));
+
   async function confirmDelete() {
     deleteOpen = false;
     if (!existing) {
@@ -837,7 +928,7 @@
      hid every block from `.screen > *` and the header from the field's bleed
      rule: the field drew 20px inset with no 20px between the blocks under
      it (audit UI-01). As the screen, its children are the screen's again. -->
-<fieldset class="screen editor" inert={saving} disabled={saving}>
+<fieldset class="screen editor" inert={saving} disabled={saving} bind:this={stepScreen}>
   <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
   <!-- Back goes wherever you opened it from, not to the entry's own day. An
        entry is drawn on Home, on a day, in search, on the timeline, inside a
@@ -847,10 +938,11 @@
        as the href the header falls back to on a deep link or a reload
        (NAV-005, CARPET-05). -->
   <ScreenHeader
-    title={entryId != null ? m.entry() : m.new_entry()}
+    title={entryId != null ? m.entry() : stepped && step === 1 ? m.home_log_heading() : m.new_entry()}
     subtitle={dateLine}
     screen="entry"
-    back={existing ? `/day/${day}` : '/'}
+    back={stepped && step === 2 ? () => void goToStep(1) : existing ? `/day/${day}` : '/'}
+    heading={stepped ? stepHeading : undefined}
   >
     {#snippet actions()}
       {#if existing && entryDraft.savedId === undefined}
@@ -876,6 +968,16 @@
       aria-live="polite"
     />
   {:else}
+  <!-- Wait for the existing entry before showing its draft. -->
+  {#if loaded.failed}
+    <Notice key="entry-read" title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => loaded.retry() }} />
+  {/if}
+  {#if loaded.loading}
+    <div out:crossfade><Skeleton variant="block" count={3} /></div>
+  {:else if entryId == null || existing}
+  {#snippet theRest()}
+  <!-- The guided prompt, the template and a debrief's scaffold all belong
+       to the note, so on a new entry they sit with it on the second step. -->
   {#if prompt && !promptDismissed}
     <Notice
       icon="sparkle"
@@ -893,13 +995,6 @@
     </button>
   {/if}
 
-  <!-- Wait for the existing entry before showing its draft. -->
-  {#if loaded.failed}
-    <Notice key="entry-read" title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => loaded.retry() }} />
-  {/if}
-  {#if loaded.loading}
-    <div out:crossfade><Skeleton variant="block" count={3} /></div>
-  {:else if entryId == null || existing}
   <!-- The page first (phase 11 ticket 19). The note used to sit under mood,
        mode, two sliders and thirty tag chips - about 1900px down on the
        audit's render - and the save was gated on the mood picker three
@@ -1376,10 +1471,77 @@
       </div>
     </div>
   {/if}
+  {/snippet}
+
+  {#if stepped}
+    <!-- One cell for both steps, so the one leaving and the one arriving
+         share it for the length of the change and nothing under them moves
+         ($lib/motion/entryStep). -->
+    <div class="entry-stage" class:is-turn={motion === 'turn'}>
+      {#key step}
+        <div
+          class="entry-step"
+          data-entry-step={step}
+          in:stepTravel={{ motion, back: steppingBack }}
+          out:stepTravel={{ motion, back: steppingBack }}
+        >
+          {#if step === 1}
+            <EntryFirstStep
+              mood={entryDraft.mood}
+              {dims}
+              values={entryDraft.dims}
+              {saving}
+              onMood={(v) => entryDraft.setMood(v)}
+              onDim={(key, v) => entryDraft.setDim(key, v)}
+              bind:faces={moodsEl}
+            />
+          {:else}
+            {@render theRest()}
+          {/if}
+        </div>
+      {/key}
+    </div>
+  {:else}
+    {@render theRest()}
+  {/if}
 
   <SaveBar>
+    <!-- One foot for both steps, its contents crossfading in place: the two
+         arrangements are the same height (two 48px rows and a --space-2), so
+         the foot itself never moves when the step changes. -->
+    <div class="entry-foot">
+    {#if stepped && step === 1}
+      <!-- Two ways on, and they must not read as one another (ticket 03):
+           finishing saves what is set and closes, so it is the ink button
+           and says what it does; going on is the page's block under it,
+           naming what is on the next step. -->
+      <div class="entry-first-foot" in:fieldPart out:fieldPart>
+        <button
+          class="btn press"
+          class:btn-primary={!moodMissing}
+          class:btn-soft={moodMissing}
+          data-save
+          data-entry-finish
+          data-entry-saving={saving || undefined}
+          data-save-unmet={moodMissing ? 'mood' : undefined}
+          disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
+          onclick={saveEntry}
+        >
+          <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+        </button>
+        <button
+          class="btn btn-soft press"
+          data-entry-continue
+          disabled={saving || entryDraft.savedId !== undefined}
+          onclick={() => goToStep(2)}
+        >
+          <span>{m.entry_continue()}</span><Icon name="chevronRight" size={18} />
+        </button>
+        <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
+      </div>
+    {:else}
     <!-- Mood stays beside saving, with its own row of full-size targets. -->
-    <div class="editor-save-row">
+    <div class="editor-save-row" in:fieldPart out:fieldPart>
       <fieldset class="editor-save-moods" data-save-moods disabled={saving} inert={saving} bind:this={moodsEl}>
         <MoodPicker bar value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
       </fieldset>
@@ -1409,6 +1571,8 @@
            accessible name, so the label is the button's own text and the
            saving announcement lives here. -->
       <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
+    </div>
+    {/if}
     </div>
   </SaveBar>
   {/if}
@@ -1480,6 +1644,17 @@
   />
 
   <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
+
+  {#snippet stepHeading()}
+    {#key step}
+      <span
+        class="step-heading"
+        in:stepTravel={{ motion, back: steppingBack, printed: true }}
+        out:stepTravel={{ motion, back: steppingBack, printed: true }}
+      >{step === 1 ? m.home_log_heading() : m.new_entry()}</span>
+    {/key}
+  {/snippet}
+
 </fieldset>
 
 <style>
@@ -1506,6 +1681,62 @@
     inset: 0;
     z-index: -1;
     background: var(--bg);
+  }
+
+
+  /* A new entry's steps (tester report 02, ticket 03). Both sides of a
+     change share one grid cell while it runs, so the step under the date
+     line is never two steps tall and nothing below it jumps. The stage
+     takes no trailing margin of its own: the last block in a step already
+     carries the screen's 20, and a grid item keeps it rather than letting
+     it collapse into the stage's. */
+  .entry-stage {
+    display: grid;
+    margin-bottom: 0;
+  }
+  .entry-step {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+  /* The screen's floor between blocks (app.css, `.screen > *`), one level
+     further down because a step wraps its blocks. Written unscoped at the
+     same specificity as the rule it copies, so the editor's own block
+     rules still win where they set a margin. */
+  :global(.entry-step > *) { margin-bottom: var(--space-5); }
+  :global(.entry-step > .kit-heading) { margin-bottom: var(--space-3); }
+  /* A page turn travels the whole window, so the stage bleeds to its edges
+     and clips there: the arriving page comes from the window's edge, not
+     from 20px inside it. */
+  .entry-stage.is-turn {
+    margin-inline: calc(-1 * var(--space-5));
+    overflow-x: clip;
+  }
+  .entry-stage.is-turn > .entry-step {
+    padding-inline: var(--space-5);
+    background: var(--bg);
+  }
+  /* The heading on the field, stacked the same way for the length of a
+     swap, so the field holds one line's height throughout. */
+  :global(h1:has(> .step-heading)) { display: grid; }
+  .step-heading { grid-area: 1 / 1; }
+
+  /* The foot: both steps' contents in one cell, crossfading in place. */
+  .entry-foot {
+    width: 100%;
+    display: grid;
+  }
+  .entry-foot > * { grid-area: 1 / 1; }
+  .entry-first-foot {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .entry-first-foot .btn { width: 100%; }
+  /* Side by side where there is room, at the one-row height the editor's
+     own foot takes at this width. */
+  @container app (min-width: 640px) {
+    .entry-first-foot { flex-direction: row; }
+    .entry-first-foot .btn { flex: 1; }
   }
 
   .editor-save-row {

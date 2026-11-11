@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
-import { launchChromium, previewBuild } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium, previewBuild } from './browser-harness.mjs';
 import { firstRun, reachAccessSetup, ready, clientRoute, JOURNAL_SECRET } from './browser-tier/built-flow.mjs';
 
 const [serial, pkg] = process.argv.slice(2);
@@ -76,6 +76,7 @@ try {
     for (const back of [false, true]) {
       await route('/calendar');
       await route(entry);
+      await continueToTheRest(page);
       await openManager(kind);
       await page.evaluate(() => {
         const sheet = document.querySelector('[role="dialog"]');
@@ -107,6 +108,7 @@ try {
 
   // Ordinary dismissal still returns focus to the actual launcher.
   await route(entry);
+  await continueToTheRest(page);
   await openManager('modes');
   if (serial) adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
   else await page.keyboard.press('Escape');

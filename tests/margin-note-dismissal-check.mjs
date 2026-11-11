@@ -5,7 +5,7 @@ import { realpathSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
-import { launchChromium, untilSplashLets } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium, untilSplashLets } from './browser-harness.mjs';
 import { reachAccessSetup, ready, JOURNAL_SECRET, clientRoute } from './browser-tier/built-flow.mjs';
 
 const serial = process.env.MARGIN_NOTE_ANDROID;
@@ -109,6 +109,7 @@ async function run() {
     await page.locator('[data-home-hello]').waitFor();
   }
   await clientRoute(page, '/entry/new/today?seedMood=3');
+  await continueToTheRest(page);
   await page.locator('#ed-note').fill('Margin note dismissal fixture');
   if (serial) await page.locator('[data-save]').press('Enter');
   else await page.locator('[data-save]').click();

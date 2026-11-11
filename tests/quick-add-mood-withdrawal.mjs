@@ -55,7 +55,7 @@ try {
           await page.mouse.up();
         } else await target.click();
         await page.waitForURL('**/entry/new/today?seedMood=4');
-        await page.locator('[data-save-moods] [data-mood="4"][aria-checked="true"]').waitFor();
+        await page.locator('[data-first-step-moods] [data-mood="4"][aria-checked="true"]').waitFor();
         await page.waitForFunction(() => document.activeElement?.matches('#app-main h1'));
         const departures = await page.evaluate(() => window.__moodDeparture);
         if (!reduced) assert(departures.every(opacity => opacity <= 0.01), `${theme}/${input}: navigation captures a live scrim: ${departures}`);

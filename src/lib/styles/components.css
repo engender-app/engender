@@ -1451,8 +1451,13 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   border-radius: 26.7%;
   outline: 2px solid transparent;
   outline-offset: 3px;
-  transition: outline-color var(--dur-fast) var(--ease-out);
+  /* The ring, the unpicked faces' dimming and the previous pick's scale back
+     to 1 all take the same beat. Without the last two they landed in one
+     frame each (tester report 02, ticket 03: 78% of the change in a frame). */
+  transition: outline-color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
+.mood-btn .mood-face-disc { transition: stroke var(--dur-fast) var(--ease-out); }
 .mood-btn.is-selected .mood-face { outline-color: var(--accent); }
 /* The unselected faces sit back at 55% - but the dimming lands on the
    disc's fill and the features only, never on the whole svg. */
@@ -1482,7 +1487,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    and it only has to say "this one". */
 .mood-btn.is-selected .mood-face { transform: scale(1.18); animation: mood-pop var(--dur-slow) var(--ease-out); }
 @keyframes mood-pop {
-  0% { transform: scale(0.9); }
+  0% { transform: scale(1); }
+  15% { transform: scale(0.9); }
   55% { transform: scale(1.32); }
   100% { transform: scale(1.18); }
 }
