@@ -133,6 +133,8 @@ try {
                 document.dispatchEvent(new Event('visibilitychange'));
               });
               for (const digit of '1234') await page.locator(`[data-key="${digit}"]`).click();
+              // The unlocked editor is back on its first step; the chips are one step on.
+              await continueToTheRest(page);
               await page.waitForSelector('[data-editor-chips]');
               assert.equal(await page.locator('.recording-row,.video-row,.video-preview').count(), 0);
             }
