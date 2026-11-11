@@ -4126,6 +4126,7 @@ try {
 await flow('typed dysphoria and euphoria logging', async () => {
 try {
   await fresh('/entry/new/today');
+  await page.locator('[data-mood="3"]').click();
   await openSection('tags');
   const dysphoriaGroup = page.locator('[data-tag-group="dysphoria_type"]');
   await dysphoriaGroup.waitFor();
@@ -4161,8 +4162,6 @@ try {
   if ((await page.locator('[data-tag="g-euphoria"]').getAttribute('aria-pressed')) !== 'true') {
     throw new Error('euphoria did not select');
   }
-  await page.locator('[data-mood="3"]').click();
-  await toTheRest();
   await page.locator('#ed-note').fill('Playwright: physical and euphoria together.');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -4340,8 +4339,9 @@ try {
   if (restoredNote !== 'Killed mid-edit by Playwright.') {
     throw new Error(`note lost across reload: "${restoredNote}"`);
   }
-  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
-
+  // The face is on the first step, one step back, and the note is kept on the way.
+  await page.locator('[data-screen-back]').first().click();
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
@@ -4388,7 +4388,8 @@ try {
   await toTheRest();
   const note = await page.locator('#ed-note').inputValue();
   if (note !== 'Backgrounded but never killed.') throw new Error(`note changed across backgrounding: "${note}"`);
-  await page.waitForSelector('[data-mood="3"][aria-checked="true"]');
+  await page.locator('[data-screen-back]').first().click();
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="3"][aria-checked="true"]');
   ok('backgrounding and returning in the same process leaves an unsaved edit untouched');
 } catch (e) { fail('same-process background/resume', e); }
 });
@@ -6428,8 +6429,8 @@ await flow('quick add mood', async () => {
 try {
   await openQuickAdd();
   await page.locator('[data-fan-target="mood-4"]').click();
-  await toTheRest();
-  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
+  // The seeded face is on the first step, where a new entry opens.
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
   ok('quick add: a mood opens the editor seeded with it');
 } catch (e) { fail('quick add mood', e); }
 });
@@ -6438,8 +6439,8 @@ await flow('quick add today', async () => {
 try {
   await openQuickAdd();
   await page.locator('[data-fan-target="mood-3"]').click();
-  await toTheRest();
-  await page.waitForSelector('[data-mood="3"][aria-checked="true"]');
+  // The seeded face is on the first step, where a new entry opens.
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="3"][aria-checked="true"]');
   ok("quick add: a mood is how today's entry starts, seeded with it");
 } catch (e) { fail('quick add today', e); }
 });
@@ -7422,8 +7423,8 @@ await flow('quick add slide to a mood', async () => {
 try {
   await fresh('/');
   await slideToTarget('[data-fan-target="mood-2"]');
-  await toTheRest();
-  await page.waitForSelector('[data-mood="2"][aria-checked="true"]');
+  // The seeded face is on the first step, where a new entry opens.
+  await page.waitForSelector('[data-entry-step="1"] [data-mood="2"][aria-checked="true"]');
   ok('quick add: the slide crosses the mood row too, and picks off it');
 } catch (e) { fail('quick add slide to a mood', e); }
 });
