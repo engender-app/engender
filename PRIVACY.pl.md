@@ -102,7 +102,7 @@ to liczby otwarć, nie osób.
 
 Kopia zapasowa albo eksport trafia tam, dokąd je wyślesz, a aplikacja lub
 usługa, która je odbiera, obsługuje je na własnych zasadach. Zaszyfrowaną
-kopię zapasową (`.ngndr`) otwiera tylko hasło do kopii, które ustalasz.
+kopię zapasową (`.ttbackup`) otwiera tylko hasło do kopii, które ustalasz.
 Pozostałe eksporty służą do czytania, udostępniania albo druku, więc nie są
 szyfrowane: dane CSV i JSON, książka dziennika, zestawienie dla lekarza,
 kolaże zdjęć i filmy poklatkowe, pliki PDF i pliki kalendarza. Każdy, kto

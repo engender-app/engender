@@ -96,7 +96,7 @@ measure openings, not people.
 ## Files you export
 
 A backup or an export goes where you send it, and whatever app or service
-receives it handles it under its own terms. An encrypted backup (`.ngndr`)
+receives it handles it under its own terms. An encrypted backup (`.ttbackup`)
 can only be opened with the backup password you chose. Other exports are
 meant to be read, shared or printed, so they are not encrypted: CSV and JSON
 data, journal books, clinician summaries, photo collages and timelapses,
