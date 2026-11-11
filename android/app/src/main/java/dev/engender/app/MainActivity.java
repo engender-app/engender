@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
@@ -22,6 +23,8 @@ import com.getcapacitor.WebViewListener;
 import dev.engender.app.disguise.DisguiseState;
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
+import dev.engender.app.lock.LeaveCover;
+import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.lock.OwnSystemUi;
 import dev.engender.app.launch.AppLaunch;
 import dev.engender.app.reminders.ReminderScheduler;
@@ -34,7 +37,7 @@ import dev.engender.app.screencapture.ScreenCapturePlugin;
  * lists (SQLite, Keystore, the Storage Access Framework bridge for backup
  * destinations, photos, reminders, disguise and the rest).
  */
-public class MainActivity extends BridgeActivity {
+public class MainActivity extends BridgeActivity implements LockTimingPlugin.LeaveCoverHost {
     // Matches capacitor.config.ts's server.androidScheme/hostname, which is
     // fixed for the reason that file's header comment gives.
     private static final String APP_ORIGIN = "https://localhost";
@@ -210,7 +213,34 @@ public class MainActivity extends BridgeActivity {
         returnFromLeave();
     }
 
+    /** A plain block of the page's ground over the WebView, put up when a
+     * leave locks at once and taken off by the page once it has drawn the
+     * gate (LeaveCover says why). */
+    private View leaveCover;
+
+    private void showLeaveCover() {
+        if (leaveCover == null) {
+            leaveCover = new View(this);
+            leaveCover.setClickable(true);
+            leaveCover.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+            addContentView(leaveCover, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        leaveCover.setBackgroundColor(LeaveCover.ground());
+        leaveCover.bringToFront();
+        leaveCover.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void revealLeaveCover() {
+        LeaveCover.reveal();
+        if (leaveCover != null) leaveCover.setVisibility(View.GONE);
+    }
+
     private void lockOnLeave() {
+        // First and synchronously: Android photographs the window for its
+        // task snapshot before the page below can draw its gate.
+        if (LeaveCover.coverOnLeave(ownSystemUi.isOpen())) showLeaveCover();
         if (rendererGone || bridge == null || bridge.getWebView() == null) return;
         // Covered by a screen the app opened itself is not leaving it yet,
         // and the page decides how long it may stay up (leave-lock.ts). The
