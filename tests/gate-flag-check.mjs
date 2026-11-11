@@ -247,7 +247,17 @@ try {
     }
     await select(short, 'Scene', 'unlock-pin');
     const r = await read(short);
-    check(`unlock-pin ${width}x${height}: the field is taller than the title's line it replaced`, r.box.height > (height < 640 ? 42 : 70), `field ${Math.round(r.box.height)}px, sun air ${r.sunAir}px`);
+    /* Given up only as far as the pad needs: the window less the page floor
+       the stylesheet names, held between the title's line it replaced and
+       the whole sun (its outer ring and 16px). */
+    const expected = await short.evaluate((h) => {
+      const frame = document.querySelector('[data-gate-sun]');
+      const floor = parseFloat(getComputedStyle(frame).getPropertyValue('--gate-page-floor'));
+      const ring = document.querySelector('[data-gate-sun] [data-flag-sun] > i').getBoundingClientRect().height / 2;
+      const title = h < 640 ? 42 : 70;
+      return Math.round(Math.min(ring + 16, Math.max(title, h - floor)));
+    }, height);
+    check(`unlock-pin ${width}x${height}: the field gives the pad only what it needs`, Math.abs(r.box.height - expected) <= 1 && r.box.height > (height < 640 ? 42 : 70), `field ${Math.round(r.box.height)}px, expected ${expected}px, sun air ${r.sunAir}px`);
     await short.close();
   }
 } finally {
