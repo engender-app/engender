@@ -57,7 +57,7 @@ SQLite (tester report 02 ticket 03). Its older cases continue to the second
 step first, where the note, the template button and the star now are.
 Tester report 02 ticket 04 adds the second step: a save from it writes what
 both steps set (a mode, a tag chosen with no chip opened, the note, the star),
-its parts stand in the order mode, tags, body, note, photos, voice, video, a
+its parts stand in the order mode, tags, body, note, photos, video, voice, a
 step back keeps the face and the note, and the finish control is one element
 across both steps. The walkthrough's `second step of a new entry` flow holds
 the same through the built app.

@@ -2576,8 +2576,8 @@ await block('phase 8 audit ticket 25 entry editor', 11, async () => {
     mood: second.mood, scales: Object.keys(second.dims).length, note: second.note, tags: second.tags,
     mode: second.presentationId === r.shownPresentationId, starred: second.starred
   }, { mood: 3, scales: 1, note: 'written on the second step', tags: ['g-body-eu'], mode: true, starred: true });
-  eq('the second step lists mode, tags, body, note, attachments in that order', r.secondStepShape?.order, [
-    'mode', 'tags', 'body', 'note', 'photos', 'voice', 'video'
+  eq('the second step lists mode, tags, body, note, then photos, video, voice in that order', r.secondStepShape?.order, [
+    'mode', 'tags', 'body', 'note', 'photos', 'video', 'voice'
   ]);
   eq('a step back keeps the face and the note', r.secondStepShape?.backKeptDraft, true);
   eq('one finish control, the same node on both steps', r.secondStepShape && {

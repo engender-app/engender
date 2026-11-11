@@ -540,7 +540,7 @@ try {
       .sort((a, b) => (a[1].compareDocumentPosition(b[1]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
       .map(([name]) => name);
   });
-  if (order.join() !== 'tags,body,note,photos,voice,video') throw new Error(`the second step's parts read ${order.join()}`);
+  if (order.join() !== 'tags,body,note,photos,video,voice') throw new Error(`the second step's parts read ${order.join()}`);
   if (await page.locator('[data-entry-step="2"] [data-mood]').count()) throw new Error('the faces are on the second step as well as the first');
   for (const section of ['body', 'photos', 'voice', 'video']) {
     await page.locator(`[data-section-chip="${section}"]`).click();

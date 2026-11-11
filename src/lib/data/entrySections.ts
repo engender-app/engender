@@ -20,7 +20,7 @@ export type EntrySection = (typeof ENTRY_SECTIONS)[number];
    two: tags are open on the page, the body folds under its own chip with the
    cards the day offers, and what is attached comes last, after the note. */
 export const MARKING_SECTIONS: readonly EntrySection[] = ['body'];
-export const ATTACHMENT_SECTIONS: readonly EntrySection[] = ['photos', 'voice', 'video'];
+export const ATTACHMENT_SECTIONS: readonly EntrySection[] = ['photos', 'video', 'voice'];
 
 /** Today's new entry with Photos already open: where a first photo goes,
     since the photo library browses photos and owns none (ADR-0085). */
