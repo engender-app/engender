@@ -45,7 +45,7 @@ import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import { attachJournal, journalIsOpen } from '../../src/lib/data/live/journal.svelte.ts';
 import { hydrateReference } from '../../src/lib/data/live/reference.svelte.ts';
 import { openPreferences } from '../../src/lib/data/prefs/preferences.ts';
-import { attachPreferences } from '../../src/lib/data/prefs/store.svelte.ts';
+import { attachPreferences, setPreferenceDurably } from '../../src/lib/data/prefs/store.svelte.ts';
 import { localStorageCache } from '../../src/lib/data/prefs/boot-cache.ts';
 import { refreshActiveFlag } from '../../src/lib/theme/activeFlag.svelte.ts';
 import EntryEditor from '../../src/lib/components/EntryEditor.svelte';
@@ -333,6 +333,53 @@ async function secondStepShape(): Promise<StepTwoShape> {
   }
 }
 
+type FirstStepNoScales = {
+  faces: number;
+  sliders: number;
+  dimValues: number;
+  hints: number;
+  headings: string[];
+  stepChildren: string[];
+  finish: { inView: boolean; height: number } | null;
+  cont: { inView: boolean; height: number } | null;
+  viewport: [number, number];
+};
+
+/** A new entry's first step for a person who has hidden every scale (tester
+    report 02, ticket 03, "with every scale hidden, step 1 shows the faces
+    alone"). Reads what the step drew: the five faces, and no scale row, no
+    value, no "not ticked" hint, no heading for a block that is not there;
+    and that both ways on are on screen in the window the page was given. */
+async function firstStepWithEveryScaleHidden(journal: Journal): Promise<FirstStepNoScales> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay: 19_100 }, target);
+  try {
+    const step = await until(() => target.querySelector<HTMLElement>('[data-entry-step="1"]'), 'the first step');
+    await until(() => step.querySelector('[data-mood]'), 'the faces');
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    flushSync();
+    const view = (el: Element | null) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth && r.height > 0, height: Math.round(r.height) };
+    };
+    return {
+      faces: step.querySelectorAll('[data-mood]').length,
+      sliders: step.querySelectorAll('[role="slider"]').length,
+      dimValues: step.querySelectorAll('[data-dim-value]').length,
+      hints: step.querySelectorAll('.first-step-hint').length,
+      headings: [...step.querySelectorAll('h1, h2, h3, h4, [role="heading"]')].map((h) => h.textContent?.trim() ?? ''),
+      stepChildren: [...step.children].map((c) => c.tagName.toLowerCase() + (c.className ? '.' + String(c.className).split(' ')[0] : '')),
+      finish: view(target.querySelector('[data-entry-finish]')),
+      cont: view(target.querySelector('[data-entry-continue]')),
+      viewport: [innerWidth, innerHeight]
+    };
+  } finally {
+    await screen.remove();
+  }
+}
+
 async function run() {
   await freshOrigin();
   refreshActiveFlag();
@@ -383,6 +430,15 @@ async function run() {
     presentationId: concealed.id
   });
   await hydrateReference(journal);
+
+  /* The scales-hidden case runs on its own page load (?hideScales=1), in a
+     360x640 window, so hiding every scale here cannot reach the cases below. */
+  if (new URLSearchParams(location.search).has('hideScales')) {
+    /* "Hidden" is a scale left unticked: the entry screen offers
+       `activeScales` and nothing else. */
+    await setPreferenceDurably('activeScales', []);
+    return { firstStepEveryScaleHidden: await firstStepWithEveryScaleHidden(journal) };
+  }
 
   return {
     onBlank: await applyAndSave(journal, BLANK_DAY, [template.id]),
