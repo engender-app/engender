@@ -206,6 +206,7 @@ public class MainActivity extends BridgeActivity {
         // Permission revocation cancels exact alarms without a broadcast.
         // Stored rules can recover inexact alarms even at the journal gate.
         ReminderScheduler.rescheduleFromStore(this);
+        ReminderScheduler.withdrawHiddenFaces(this);
         returnFromLeave();
     }
 

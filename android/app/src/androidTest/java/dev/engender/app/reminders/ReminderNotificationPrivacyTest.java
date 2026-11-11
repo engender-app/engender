@@ -185,6 +185,23 @@ public class ReminderNotificationPrivacyTest {
         assertNoActiveNotifications();
     }
 
+    /* Behind a lock nothing syncs until the unlock, so turning disguise on
+       cannot wait for a sync: the app clears the faces from the stored
+       payload when it comes forward. */
+    @Test
+    public void disguiseWithdrawsFacesFromTheStoredPayloadWithoutASync() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull("no faces to withdraw", findCheckInNotification().contentView);
+        dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");
+        try {
+            ReminderScheduler.withdrawHiddenFaces(context);
+            assertNoActiveNotifications();
+        } finally {
+            dev.engender.app.disguise.DisguiseAlias.apply(context, false, "trans", "current");
+        }
+    }
+
     @Test
     public void aGenericCheckInIsLeftInTheShadeWhenTitlesAreHidden() throws Exception {
         ReminderScheduler.saveAndSchedule(context, payload(true).put("checkInEnabled", true));

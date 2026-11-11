@@ -90,6 +90,14 @@ public final class ReminderScheduler {
         rescheduleFromStore(context, ZonedDateTime.now(), true);
     }
 
+    /** Called whenever the app comes forward, including at the gate: a
+        disguise switched on while faces sit in the shade must clear them
+        before anyone has unlocked and synced. */
+    public static void withdrawHiddenFaces(Context context) {
+        JSONObject payload = loadPayload(context);
+        if (payload != null) CheckInFaces.withdrawIfHidden(context, payload);
+    }
+
     private static void rescheduleFromStore(Context context, ZonedDateTime now, boolean boot) {
         rescheduleFromStore(() -> loadPayload(context), now,
             saved -> ReminderPayloadStore.write(context, saved),
