@@ -55,6 +55,12 @@ new entry from its first step: a face alone saves that mood and nothing else,
 and a face plus one moved scale saves exactly that scale, read back out of
 SQLite (tester report 02 ticket 03). Its older cases continue to the second
 step first, where the note, the template button and the star now are.
+Tester report 02 ticket 04 adds the second step: a save from it writes what
+both steps set (a mode, a tag chosen with no chip opened, the note, the star),
+its parts stand in the order mode, tags, body, note, photos, voice, video, a
+step back keeps the face and the note, and the finish control is one element
+across both steps. The walkthrough's `second step of a new entry` flow holds
+the same through the built app.
 
 `src/lib/permissions/watchStatus.test.ts` checks the permission-status watcher
 that Reminders, Notifications and the permissions list share: a re-read when

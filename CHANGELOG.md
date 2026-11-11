@@ -105,8 +105,10 @@ a record of what you had but does not bring it back.
 ### Changed since rc.1
 
 - A new entry opens on "How is today?": the mood faces and your scales on one
-  screen. Save there and the entry is done, or go on to the note, tags and
-  photos. Editing a saved entry keeps its single page.
+  screen. Save there and the entry is done, or go on to the second step: the
+  mode, tags, body and anything the day offers first, then the note, with
+  photos, voice and video last. The same Save entry button stays at the
+  bottom on both. Editing a saved entry keeps its single page.
 - Today shows fewer tiles: the voice benchmark nudge, the hair removal recovery
   notice, the active tryout tile and the appointment-today tile are gone, and
   the patch schedule now sits in the dose panel. Quick add offers "Log dose" only while a regimen is
