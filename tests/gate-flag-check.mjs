@@ -9,12 +9,12 @@
      field is the title's height, and no pixel of the field is a stripe
      colour the neutral field does not itself contain.
    - Without disguise every unlock draws Today's sun, still, on a field the
-     title's line plus the built room tall, and only an unlock does: the
+     tall enough that its edge cuts no ring, and only an unlock does: the
      gates that are not unlocks keep their painted titles.
    - The screen's accessible name is unchanged: a level-one heading named
      with the wordmark, or the decoy's name under disguise.
    - Focus order is the same with the sun as without it, and no unlock
-     scrolls at 360x568 at any room the demo build offers (`?gateRoom=`).
+     scrolls at 360x568, where the field gives the PIN pad what it needs.
 
    Run: node tests/gate-flag-check.mjs   (no build needed) */
 import { createServer } from 'vite';
@@ -24,15 +24,12 @@ import { launchChromium, createReporter } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const ROOMS = [0, 32, 64];
-const BUILT = 32;
 const UNLOCKS = ['unlock-pin', 'unlock-passphrase', 'unlock-biometric', 'session-pin', 'session-passphrase', 'session-biometric', 'android-key'];
 const NOT_UNLOCKS = ['access-choice', 'legacy-refused', 'android-key-no-lock', 'android-key-invalidated', 'device-recovery', 'schema-too-new', 'recovery-entry'];
 const { ok, fail, finish } = createReporter();
 const check = (name, pass, detail) => (pass ? ok(name) : fail(name, detail));
 
-/* The demo switch is the only way to reach the two rooms that are not the
-   built one, so the fixture is served with the demo flag on. */
+/* The fixture's own build flag, so it renders as the app's demo would. */
 const server = await createServer({
   configFile: `${here}/browser-tier/browser-tier.vite.config.ts`,
   server: { port: 0 },
@@ -44,11 +41,11 @@ const origin = `http://localhost:${server.config.server.port}`;
 const browser = await launchChromium();
 const prefsModule = `/@fs${resolve(here, '../src/lib/data/prefs/store.svelte.ts')}`;
 
-async function open(room, size = { width: 360, height: 640 }) {
+async function open(size = { width: 390, height: 844 }) {
   const page = await browser.newPage({ viewport: size });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto(`${origin}/gates.html?gateRoom=${room}`, { waitUntil: 'networkidle' });
+  await page.goto(`${origin}/gates.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-gates-ready]', { state: 'attached' });
   page.errors = errors;
   return page;
@@ -95,6 +92,12 @@ function read(page) {
       ringsInPaint: rings.every((r) => !!r.closest('[data-field-blind]')),
       ringsMoving: rings.filter((r) => r.getAnimations().length > 0).length,
       askHeight: Math.round(ask.getBoundingClientRect().height),
+      /* How far under the outer ring's lowest point the field's edge is: the
+         ring's box is the whole circle, centred on the corner, and the edge
+         is where the paint is clipped. Negative means the edge cuts it. */
+      sunAir: rings.length
+        ? Math.round(box.top + parseFloat(getComputedStyle(field.closest('.gate')).getPropertyValue('--blind-edge')) - rings[0].getBoundingClientRect().bottom)
+        : null,
       paintColour: rgb(style.backgroundColor),
       mark: !!frame.querySelector('.mark'),
       stripes: stripes.map(hex),
@@ -132,7 +135,7 @@ async function tabOrder(page) {
 }
 
 try {
-  const page = await open(BUILT);
+  const page = await open();
   for (const palette of PALETTES) {
     await select(page, 'Palette', palette);
     for (const theme of ['light', 'dark']) {
@@ -169,9 +172,10 @@ try {
         await disguise(page, false);
         const shown = await read(page);
         const expected = palette === 'polish' ? 1 : shown.stripes.length;
-        check(`${at}: an unlock draws Today's sun, still, in its blind, on a field ${BUILT}px taller`,
-          shown.sun && shown.rings === expected && shown.ringsInPaint && shown.ringsMoving === 0 && shown.askHeight === 46 + BUILT,
-          JSON.stringify({ sun: shown.sun, rings: shown.rings, expected, inPaint: shown.ringsInPaint, moving: shown.ringsMoving, ask: shown.askHeight }));
+        check(`${at}: an unlock draws Today's sun, still, in its blind`,
+          shown.sun && shown.rings === expected && shown.ringsInPaint && shown.ringsMoving === 0,
+          JSON.stringify({ sun: shown.sun, rings: shown.rings, expected, inPaint: shown.ringsInPaint, moving: shown.ringsMoving }));
+        check(`${at}: the field's edge cuts no ring (8px of field or more under the sun)`, shown.sunAir >= 8, `air ${shown.sunAir}px`);
         const heading = await page.getByRole('heading', { level: 1, name: 'engender', exact: true }).count();
         check(`${at}: the accessible name is still the wordmark`, heading === 1 && shown.title === 'engender', `headings=${heading} title=${shown.title}`);
       }
@@ -179,7 +183,7 @@ try {
       for (const scene of NOT_UNLOCKS) {
         await select(page, 'Scene', scene);
         const r = await read(page);
-        check(`trans/${theme} ${scene}: not an unlock, keeps its title and height`, !r.sun && !r.rings && r.askHeight !== 46 + BUILT && !r.titleHidden && !!r.title && r.title !== 'engender', JSON.stringify({ sun: r.sun, title: r.title, hidden: r.titleHidden, ask: r.askHeight }));
+        check(`trans/${theme} ${scene}: not an unlock, keeps its title and draws no sun`, !r.sun && !r.rings && !r.titleHidden && !!r.title && r.title !== 'engender', JSON.stringify({ sun: r.sun, title: r.title, hidden: r.titleHidden, ask: r.askHeight }));
       }
     }
   }
@@ -216,10 +220,22 @@ try {
   check('no page errors', page.errors.length === 0, page.errors.join('; '));
   await page.close();
 
-  /* Every room the sign-off page offers, at the shortest window rule 14
-     names: the PIN pad is the tallest gate. */
-  for (const room of ROOMS) {
-    const short = await open(room, { width: 360, height: 568 });
+  /* Desktop: Today's banner, the whole sun inside it. */
+  {
+    const wide = await open({ width: 1280, height: 800 });
+    for (const scene of ['unlock-pin', 'session-pin']) {
+      await select(wide, 'Scene', scene);
+      const r = await read(wide);
+      check(`${scene} 1280x800: the field's edge cuts no ring`, r.sunAir >= 8, `air ${r.sunAir}px`);
+    }
+    await wide.close();
+  }
+
+  /* The windows rule 14 names where the whole sun does not fit over the PIN
+     pad, the tallest gate: the field gives the pad what it needs rather than
+     scrolling, and stays taller than the title's line it replaced. */
+  for (const [width, height] of [[360, 640], [360, 568], [320, 568]]) {
+    const short = await open({ width, height });
     for (const scene of UNLOCKS) {
       await select(short, 'Scene', scene);
       const overflow = await short.evaluate(() => {
@@ -227,8 +243,11 @@ try {
         const pageEl = document.querySelector('.gate-page');
         return { frame: frame.scrollHeight - frame.clientHeight, page: pageEl.scrollHeight - pageEl.clientHeight };
       });
-      check(`room ${room} ${scene} 360x568: nothing scrolls`, overflow.frame <= 1 && overflow.page <= 1, JSON.stringify(overflow));
+      check(`${scene} ${width}x${height}: nothing scrolls`, overflow.frame <= 1 && overflow.page <= 1, JSON.stringify(overflow));
     }
+    await select(short, 'Scene', 'unlock-pin');
+    const r = await read(short);
+    check(`unlock-pin ${width}x${height}: the field is taller than the title's line it replaced`, r.box.height > (height < 640 ? 42 : 70), `field ${Math.round(r.box.height)}px, sun air ${r.sunAir}px`);
     await short.close();
   }
 } finally {

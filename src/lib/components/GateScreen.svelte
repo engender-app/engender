@@ -21,18 +21,17 @@
      **What the field holds.** On an unlock (`unlock`: the PIN, passphrase,
      biometric and device-key gates and the mid-session lock) it is Today's
      own sun - FlagSun, at Today's size, in Today's corner - with nothing
-     written, and the field is a little taller than the title's line so more
-     of the sun shows (tester-report-02 ticket 07: a tester called the old
-     field, the app's name on one of the flag's colours, "unused potential"
-     on the screen a person meets every time; Alicja picked the sun from four
-     drawings and asked for the extra height). The sun is still here: a gate
+     written, and the field is as tall as the sun so its edge cuts no ring
+     (tester-report-02 ticket 07: a tester called the old field, the app's
+     name on one of the flag's colours, "unused potential" on the screen a
+     person meets every time; Alicja picked the sun from four drawings and
+     asked for the field to hold all of it). The sun is still here: a gate
      arrives as a cut and nothing on it breathes while someone types.
      $lib/theme/gateFlag decides; under disguise it answers no, so a
      disguised gate is the neutral field, the decoy's name and the base's
      height exactly as before, and no colour of the flag reaches it. A gate
      that is not an unlock paints its own title at 48 on the flag's second
-     colour. A demo build reads `?gateRoom=` to offer the height's two
-     neighbours on the sign-off page.
+     colour.
 
      **What the title says, once, for all six.** An unlock never says the
      person's name. The mid-session lock used to greet by name because the
@@ -97,7 +96,7 @@
   import { fieldPart } from '$lib/motion/navigation';
   import { blindEdge } from '$lib/motion/stepBlind';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { gateDrawsFlag, gateRoomChoice } from '$lib/theme/gateFlag';
+  import { gateDrawsFlag } from '$lib/theme/gateFlag';
   import FlagSun from './FlagSun.svelte';
 
   let {
@@ -115,17 +114,14 @@
     [attribute: string]: unknown;
   } = $props();
 
-  /* Read once: a demo build's `?gateRoom=` is the sign-off page offering
-     the field's height, and a production build always answers the same. */
-  const room = gateRoomChoice();
   /* Nothing of the sun is drawn under disguise or on a gate that is not an
      unlock: `sun` is false there, FlagSun never mounts, and the field keeps
-     its title's height. */
+     its title's height (screens.css sizes it to the sun only behind
+     `data-gate-sun`). */
   let sun = $derived(gateDrawsFlag({ unlock, disguised: prefs.disguise }));
 </script>
 
 <div class="screen screen-gate" data-gate-frame data-gate-sun={sun ? '' : undefined}
-  style:--gate-room={sun ? `${room}px` : undefined}
   style:--field={prefs.disguise ? 'var(--surface-2)' : undefined}
   style:--field-ink={prefs.disguise ? 'var(--text)' : undefined}>
   <!-- The host of the edge and everything that reads it (components.css).

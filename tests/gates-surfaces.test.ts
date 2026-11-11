@@ -140,9 +140,11 @@ describe('what a gate may show', () => {
     const shell = stripComments(read('src/lib/components/GateScreen.svelte'));
     /* The one decision, made by the one function the unit tests hold. */
     expect(shell).toMatch(/let sun = \$derived\(gateDrawsFlag\(\{\s*unlock,\s*disguised:\s*prefs\.disguise\s*\}\)\)/);
-    /* The sun mounts only behind it, still, and the room only comes with it. */
+    /* The sun mounts only behind it, still; the field's height is the
+       stylesheet's, behind the same attribute, and no query switch is left. */
     expect(shell).toMatch(/\{#if sun\}<FlagSun still \/>\{\/if\}/);
-    expect(shell).toMatch(/style:--gate-room=\{sun \?/);
+    expect(shell).toMatch(/data-gate-sun=\{sun \? '' : undefined\}/);
+    expect(shell).not.toMatch(/gateRoom|gate-room|location\.search/);
     expect(shell.match(/<FlagSun/g)).toHaveLength(1);
     /* The three unlocks say they are unlocks; the gates that are not keep
        their own titles and pass nothing. */
