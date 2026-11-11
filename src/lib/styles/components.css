@@ -1487,7 +1487,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    and it only has to say "this one". */
 .mood-btn.is-selected .mood-face { transform: scale(1.18); animation: mood-pop var(--dur-slow) var(--ease-out); }
 @keyframes mood-pop {
-  0% { transform: scale(0.9); }
+  0% { transform: scale(1); }
+  15% { transform: scale(0.9); }
   55% { transform: scale(1.32); }
   100% { transform: scale(1.18); }
 }

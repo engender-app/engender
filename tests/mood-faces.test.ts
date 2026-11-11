@@ -276,6 +276,13 @@ describe('the face draws in its own step\'s ink', () => {
     expect(disc[0].body).toMatch(/transition:[^;]*\bstroke var\(--dur-fast\) var\(--ease-out\)/);
   });
 
+  /* The pick's swell began at 0.9 on its first frame: a face resting at 1
+     went to 0.9 at once, 4px of a 44px face in one frame. It now starts at
+     the scale it rests at and dips from there. */
+  it('starts the pick swell at the scale the face rests at', () => {
+    expect(componentsCss).toMatch(/@keyframes mood-pop\s*\{\s*0%\s*\{\s*transform:\s*scale\(1\);\s*\}/);
+  });
+
   /* A step's ink changes with the theme and the preset, and on a Journal
      cell whose day gains an entry. A face that swapped its colour in one
      frame would be a yank, so the ink crossfades on the same curve the
