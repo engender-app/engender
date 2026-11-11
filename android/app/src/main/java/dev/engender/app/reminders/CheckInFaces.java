@@ -53,6 +53,20 @@ final class CheckInFaces {
         return !disguised && !payload.optBoolean("hideNotificationTitles", false);
     }
 
+    /** From Android 12 (API 31) the system draws no header line on a folded
+        notification, so the question is set in the folded view; before it
+        the header (setSubText) shows the question and a second line would
+        repeat it. Seen on API 26 and API 36; 31 is where the header
+        changed. */
+    static boolean foldedShowsQuestion(int sdk) {
+        return sdk >= 31;
+    }
+
+    /** The app's own words for "How are you today?", from the payload. */
+    static String question(JSONObject texts) {
+        return texts == null ? "How are you today?" : texts.optString("checkInBody", "How are you today?");
+    }
+
     /** A posted check-in outlives the settings it was posted under: turning
         on "Hide sensitive titles" or disguise while faces sit in the shade
         would leave them there. Only a notification still drawing faces is
@@ -106,6 +120,9 @@ final class CheckInFaces {
             context.getResources().getStringArray(R.array.widget_mood_names));
         RemoteViews folded = new RemoteViews(context.getPackageName(), R.layout.check_in_collapsed);
         RemoteViews unfolded = new RemoteViews(context.getPackageName(), R.layout.check_in_expanded);
+        folded.setTextViewText(R.id.check_in_question, question(payload.optJSONObject("texts")));
+        folded.setViewVisibility(R.id.check_in_question,
+            foldedShowsQuestion(android.os.Build.VERSION.SDK_INT) ? android.view.View.VISIBLE : android.view.View.GONE);
         for (int i = 0; i < 5; i++) {
             int mood = i + 1;
             android.app.PendingIntent open = AppLaunch.openAppIntent(

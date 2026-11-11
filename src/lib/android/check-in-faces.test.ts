@@ -95,3 +95,28 @@ describe('check-in notification faces', () => {
     });
   }
 });
+
+/* Alicja's answer to the folded view (2026-11-11, "lets go with unfolded"):
+   what the unfolded notification shows, the question with the faces, is what
+   a person sees without opening it. Android will not force a notification
+   open, so the folded layout carries the question itself. */
+describe('the folded check-in layout', () => {
+  const folded = res('layout/check_in_collapsed.xml');
+
+  it('carries the question under the five faces, so a clip takes it and never a face', () => {
+    const question = folded.indexOf('@+id/check_in_question');
+    expect(question, 'no question line in the folded layout').toBeGreaterThanOrEqual(0);
+    for (let mood = 1; mood <= 5; mood++) {
+      const face = folded.indexOf(`@+id/check_in_face_${mood}`);
+      expect(face, `face ${mood} must come before the question`).toBeGreaterThanOrEqual(0);
+      expect(face).toBeLessThan(question);
+    }
+  });
+
+  it('keeps each face a 48dp-tall share of the row, and the question to one line', () => {
+    const styles = res('values/styles.xml');
+    expect(styles).toMatch(/name="CheckInFaceFolded">[\s\S]*?layout_height">48dp</);
+    expect(styles).toMatch(/name="CheckInQuestionFolded"[\s\S]*?maxLines">1</);
+    expect(folded).toMatch(/android:layout_height="48dp"\s+android:orientation="horizontal"/);
+  });
+});

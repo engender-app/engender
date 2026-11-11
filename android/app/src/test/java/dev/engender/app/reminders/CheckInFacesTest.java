@@ -72,6 +72,21 @@ public class CheckInFacesTest {
             new JSONArray().put("a").put("b").put(" ").put("d").put("e")), FALLBACK));
     }
 
+    @Test
+    public void theFoldedViewCarriesTheQuestionFromAndroid12() {
+        assertFalse("before Android 12 the header line already shows it", CheckInFaces.foldedShowsQuestion(30));
+        assertTrue(CheckInFaces.foldedShowsQuestion(31));
+        assertTrue(CheckInFaces.foldedShowsQuestion(36));
+    }
+
+    @Test
+    public void theQuestionIsTheAppsCheckInBodyOrItsDefault() throws Exception {
+        assertEquals("Jak się dziś czujesz?",
+            CheckInFaces.question(new JSONObject().put("checkInBody", "Jak się dziś czujesz?")));
+        assertEquals("How are you today?", CheckInFaces.question(null));
+        assertEquals("How are you today?", CheckInFaces.question(new JSONObject()));
+    }
+
     private static JSONObject payload(boolean hideTitles) {
         try {
             return new JSONObject().put("hideNotificationTitles", hideTitles);
