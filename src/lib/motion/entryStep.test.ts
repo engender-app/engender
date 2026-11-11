@@ -67,6 +67,19 @@ describe('a new entry stepping forward and back', () => {
     expect(opacity(backOut(0.2, 0.8))).toBe(1);
   });
 
+  /* The heading on the field is 320px wide inside a 360px window, so a turn
+     that carried it its own width left 20px of it on screen when it was
+     removed (sampled: x 340 at full opacity, then gone) and painted a 20px
+     sliver of the arriving one in its first frame. Whatever travels, travels
+     the whole window. */
+  it('carries a turning node the whole window, not only its own width', () => {
+    vi.stubGlobal('window', { innerWidth: 360 });
+    const forwardIn = stepTravel(node, { motion: 'turn' }, { direction: 'in' }).css!;
+    expect(x(forwardIn(0, 1))).toBe(360);
+    const backOut = stepTravel(node, { motion: 'turn', back: true }, { direction: 'out' }).css!;
+    expect(x(backOut(0, 1))).toBe(360);
+  });
+
   it('crossfades instead under reduced motion, whichever was picked', () => {
     dataset.a11yMotion = 'reduce';
     for (const motion of ['axis', 'field', 'turn'] as const) {

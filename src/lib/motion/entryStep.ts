@@ -59,7 +59,11 @@ function turn(node: Element, back: boolean, direction: Direction | undefined): T
      it is the one arriving, going back it is the one leaving. It is painted
      over the other for the whole of the change. */
   const travels = leaving === back;
-  const width = (node as HTMLElement).getBoundingClientRect?.().width || 360;
+  /* A node narrower than the window (the heading on the field is the
+     window less its two 20px gutters) still travels the window's width, or
+     a sliver of it is left on screen when it is removed. */
+  const own = (node as HTMLElement).getBoundingClientRect?.().width || 360;
+  const width = Math.max(own, typeof window === 'undefined' ? 0 : window.innerWidth);
   const distance = travels ? width : width * TURN_DRIFT;
   /* Forward, both pages move left: the new one from the right edge, the
      old one a third of the way out. Back runs the film the other way. */
