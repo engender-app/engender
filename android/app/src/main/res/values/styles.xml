@@ -40,4 +40,54 @@
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
     </style>
+    <!-- The check-in notification's faces (tester report 02, ticket 05).
+         Folded, a face is 32dp inside a 48dp-tall share of the row; unfolded
+         it is 40dp over its name. Either way the share is the touch target,
+         so the gaps between faces are part of a face rather than dead space
+         between them. -->
+    <style name="CheckInFaceFolded">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <!-- The folded question: one line under the faces, shortened rather than
+         wrapped so the row never grows past the height the system gives a
+         folded notification, at any font scale. -->
+    <style name="CheckInQuestionFolded" parent="TextAppearance.Compat.Notification">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:paddingBottom">4dp</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <style name="CheckInFaceCell">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center_horizontal</item>
+        <item name="android:paddingTop">4dp</item>
+        <item name="android:paddingBottom">4dp</item>
+    </style>
+
+    <style name="CheckInFaceUnfolded">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <style name="CheckInFaceLabel" parent="TextAppearance.Compat.Notification.Info">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
 </resources>

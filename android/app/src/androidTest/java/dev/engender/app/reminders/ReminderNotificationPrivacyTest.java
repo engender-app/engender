@@ -133,6 +133,201 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility);
     }
 
+    /* The check-in's five faces (tester report 02, ticket 05). A
+       notification built with custom views carries them in contentView and
+       bigContentView; the generic one carries neither and lets the system
+       draw its title and text. */
+    @Test
+    public void checkInShowsTheFacesWithTitlesShown() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+
+        fireCheckInAlarm();
+
+        Notification checkIn = findCheckInNotification();
+        assertNotNull("no check-in notification was posted", checkIn);
+        assertNotNull("no folded faces", checkIn.contentView);
+        assertNotNull("no unfolded faces", checkIn.bigContentView);
+        assertEquals("How are you today?", checkIn.extras.getCharSequence(Notification.EXTRA_SUB_TEXT).toString());
+    }
+
+    @Test
+    public void hidingTitlesKeepsTheGenericCheckIn() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, payload(true).put("checkInEnabled", true));
+
+        fireCheckInAlarm();
+
+        assertGenericCheckIn(findCheckInNotification());
+    }
+
+    @Test
+    public void disguiseKeepsTheGenericCheckIn() throws Exception {
+        dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");
+        try {
+            ReminderScheduler.saveAndSchedule(context, checkInPayload());
+            fireCheckInAlarm();
+            assertGenericCheckIn(findCheckInNotification());
+        } finally {
+            dev.engender.app.disguise.DisguiseAlias.apply(context, false, "trans", "current");
+        }
+    }
+
+    /* Faces already in the shade must not outlive the setting that forbids
+       them: turning "Hide sensitive titles" on re-syncs the payload, and
+       that withdraws a check-in still drawing faces. */
+    @Test
+    public void hidingTitlesWithdrawsFacesAlreadyInTheShade() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull("no faces to withdraw", findCheckInNotification().contentView);
+
+        CheckInFaces.reconcile(context, payload(true).put("checkInEnabled", true));
+
+        // The day's prompt is not lost: the generic one takes the faces' place.
+        assertGenericCheckIn(findCheckInNotification());
+    }
+
+    /* Behind a lock nothing syncs until the unlock, so turning disguise on
+       cannot wait for a sync: the app clears the faces from the stored
+       payload when it comes forward. */
+    @Test
+    public void disguiseWithdrawsFacesFromTheStoredPayloadWithoutASync() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull("no faces to withdraw", findCheckInNotification().contentView);
+        dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");
+        try {
+            ReminderScheduler.withdrawHiddenFaces(context);
+            assertGenericCheckIn(findCheckInNotification());
+        } finally {
+            dev.engender.app.disguise.DisguiseAlias.apply(context, false, "trans", "current");
+        }
+    }
+
+    /* The replacement and the cancel obey the same rule the alarm does
+       (ReminderAlarmReceiver.checkInDue): a day that already has an entry,
+       a check-in switched off and a pause each mean no prompt, so faces in
+       the shade are cancelled and no generic one takes their place. */
+    private static int today() {
+        return (int) java.time.LocalDate.now().toEpochDay();
+    }
+
+    @Test
+    public void anEntrySavedAfterTheFacesAppearedLeavesNoReplacement() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+
+        CheckInFaces.reconcile(context, payload(true).put("checkInEnabled", true).put("latestEntryEpochDay", today()));
+
+        assertNoActiveNotifications();
+    }
+
+    @Test
+    public void checkInsSwitchedOffLeaveNoReplacementUnderDisguise() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+        dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");
+        try {
+            CheckInFaces.reconcile(context, payload(false).put("checkInEnabled", false));
+            assertNoActiveNotifications();
+        } finally {
+            dev.engender.app.disguise.DisguiseAlias.apply(context, false, "trans", "current");
+        }
+    }
+
+    @Test
+    public void aPauseLeavesNoReplacement() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+
+        CheckInFaces.reconcile(context, payload(true).put("checkInEnabled", true).put("checkInPausedThrough", today() + 1));
+
+        assertNoActiveNotifications();
+    }
+
+    @Test
+    public void facesForADayThatNowHasAnEntryAreCancelledEvenWithTitlesShown() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+
+        CheckInFaces.reconcile(context, payload(false).put("checkInEnabled", true).put("latestEntryEpochDay", today()));
+
+        assertNoActiveNotifications();
+    }
+
+    @Test
+    public void overlappingWithdrawalsReplaceTheFacesOnce() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification().contentView);
+        JSONObject hidden = payload(true).put("checkInEnabled", true);
+        int threads = 4;
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicInteger replaced = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.List<Thread> workers = new java.util.ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            Thread worker = new Thread(() -> {
+                try {
+                    go.await();
+                    if (CheckInFaces.reconcile(context, hidden)) replaced.incrementAndGet();
+                } catch (InterruptedException ignored) { }
+            });
+            worker.start();
+            workers.add(worker);
+        }
+        go.countDown();
+        for (Thread worker : workers) worker.join(10000);
+
+        assertEquals("the faces were replaced more than once", 1, replaced.get());
+    }
+
+    @Test
+    public void aGenericCheckInIsLeftInTheShadeWhenTitlesAreHidden() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, payload(true).put("checkInEnabled", true));
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification());
+
+        CheckInFaces.reconcile(context, payload(true).put("checkInEnabled", true));
+
+        assertNotNull("a generic check-in was withdrawn", findCheckInNotification());
+    }
+
+    /* A face's route is the one launch route that names a mood, and the
+       decision of 2026-11-10 is that no mood waits on the device for an
+       unlock: behind a gate the app cannot read the route yet, so it is
+       held in memory, never in preferences. */
+    @Test
+    public void aSeededRouteIsHeldInMemoryAndNeverInPreferences() {
+        android.content.SharedPreferences prefs = context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE);
+        ReminderScheduler.storeLaunchRoute(context, "/entry/new/today?seedMood=3");
+
+        assertNull("a mood was written to preferences", prefs.getString("launch-route", null));
+        assertEquals("/entry/new/today?seedMood=3", ReminderScheduler.consumeLaunchRoute(context));
+        assertNull("consumed once", ReminderScheduler.consumeLaunchRoute(context));
+    }
+
+    @Test
+    public void otherRoutesStillWaitInPreferences() {
+        android.content.SharedPreferences prefs = context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE);
+        ReminderScheduler.storeLaunchRoute(context, "/settings/reminders");
+
+        assertEquals("/settings/reminders", prefs.getString("launch-route", null));
+        assertEquals("/settings/reminders", ReminderScheduler.consumeLaunchRoute(context));
+        assertNull(ReminderScheduler.consumeLaunchRoute(context));
+    }
+
+    private static void assertGenericCheckIn(Notification checkIn) {
+        assertNotNull("no check-in notification was posted", checkIn);
+        assertNull("faces on a check-in that must stay generic", checkIn.contentView);
+        assertNull("faces on a check-in that must stay generic", checkIn.bigContentView);
+        assertNull(checkIn.extras.getCharSequence(Notification.EXTRA_SUB_TEXT));
+        assertEquals("Daily check-in", checkIn.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
+        assertEquals("How are you today?", checkIn.extras.getCharSequence(Notification.EXTRA_TEXT).toString());
+    }
+
     @Test
     public void disguisedNotificationsUseTheNotesIcon() throws Exception {
         dev.engender.app.disguise.DisguiseAlias.apply(context, true, "trans", "current");

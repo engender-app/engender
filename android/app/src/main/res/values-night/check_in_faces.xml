@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The dark half of values/check_in_faces.xml: palettes.css's
+     [data-mood-preset="teal"][data-theme="dark"] and its inks. -->
+<resources>
+    <color name="check_in_mood_1">#665B87</color>
+    <color name="check_in_mood_2">#6A7DB9</color>
+    <color name="check_in_mood_3">#55A2E1</color>
+    <color name="check_in_mood_4">#2CC7EE</color>
+    <color name="check_in_mood_5">#33E5E5</color>
+    <color name="check_in_mood_1_ink">#E8F1F7</color>
+    <color name="check_in_mood_2_ink">#000000</color>
+    <color name="check_in_mood_3_ink">#000000</color>
+    <color name="check_in_mood_4_ink">#000000</color>
+    <color name="check_in_mood_5_ink">#000000</color>
+    <color name="check_in_mood_outline">#30E8F1F7</color>
+</resources>

@@ -68,13 +68,20 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             fireAt -> ReminderScheduler.scheduleCheckInAt(context, fireAt));
     }
 
+    /** The one rule for whether today still wants a check-in: today has no
+        entry yet, check-ins are on and not paused through today. The alarm
+        asks it, and so does CheckInFaces when it replaces or cancels faces
+        that are already in the shade. */
+    static boolean checkInDue(JSONObject payload, int today) {
+        return payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) != today
+            && ReminderPlanner.checkInAllowedOn(payload, today);
+    }
+
     static void handleCheckIn(JSONObject payload, ZonedDateTime now,
                               IntConsumer postNotification, Consumer<ZonedDateTime> scheduleAlarm) {
         int today = (int) now.toLocalDate().toEpochDay();
-        boolean skip = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) == today
-            || !ReminderPlanner.checkInAllowedOn(payload, today);
 
-        if (!skip) postNotification.accept(today);
+        if (checkInDue(payload, today)) postNotification.accept(today);
         ReminderScheduler.scheduleCheckIn(payload, now, scheduleAlarm);
     }
 
@@ -182,7 +189,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         NotificationManagerCompat.from(context).notify("reminder:" + id, 7000, builder.build());
     }
 
-    private void postCheckInNotification(Context context, JSONObject payload, int epochDay) {
+    static void postCheckInNotification(Context context, JSONObject payload, int epochDay) {
         if (!notificationsAllowed(context)) return;
 
         JSONObject texts = payload.optJSONObject("texts");
@@ -199,6 +206,15 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             // Same reason as the reminder above (F-05).
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13));
+
+        /* The five faces (tester report 02, ticket 05): the question
+           moves into the header beside the app's name, and the faces take
+           the body. setContentTitle and setContentText above stay, for
+           whatever reads the notification rather than draws it. */
+        if (CheckInFaces.show(payload, DisguiseAlias.isDisguised(context))) {
+            builder.setSubText(body);
+            CheckInFaces.apply(context, builder, payload, CHECK_IN_NOTIFICATION_ID);
+        }
 
         NotificationManagerCompat.from(context).notify(CHECK_IN_NOTIFICATION_ID, builder.build());
     }

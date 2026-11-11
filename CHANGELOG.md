@@ -102,6 +102,9 @@ a record of what you had but does not bring it back.
   archive from your backup folder after unlock. The web build has no folder sync.
 - Resources lists Polish 24-hour lines.
 - "Back up now" no longer changes the saved backup password without asking.
+- On Android, the daily check-in shows the five mood faces once notification
+  titles are shown. Touching one opens a new entry for today with that mood
+  picked, behind the lock if one is set. Nothing is saved until you save.
 
 ### Changed since rc.1
 
