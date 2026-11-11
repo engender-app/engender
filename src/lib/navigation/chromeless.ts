@@ -27,6 +27,8 @@
    rule is a table, the layout is where a table gets buried, and a rule
    nobody can run in a test is one nobody can check. */
 
+import { parseDayParam } from '../data/dayParam';
+
 /**
  * Whether one navigation is a cut rather than a movement.
  *
@@ -78,6 +80,18 @@ export function chromelessPath(path: string): boolean {
     bar would be four more ways off it. It stays out of `chromelessPath`
     because that answer also decides whether Today's retained doors stay
     mounted, and a new entry is where the app goes from Today most often. */
-export function barlessPath(path: string): boolean {
-  return chromelessPath(path) || path.startsWith('/entry/new/');
+export function barlessPath(path: string, today: number = Number.MAX_SAFE_INTEGER): boolean {
+  if (chromelessPath(path)) return true;
+  const day = /^\/entry\/new\/([^/]+)\/?$/.exec(path)?.[1];
+  /* Only a day the editor opens. Anything else is the route's unavailable
+     notice, which keeps the app's chrome and Back. */
+  if (day === undefined) return false;
+  let value: string;
+  try {
+    value = decodeURIComponent(day);
+  } catch {
+    return false;
+  }
+  const epochDay = parseDayParam(value, today);
+  return epochDay !== null && epochDay <= today;
 }

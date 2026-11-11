@@ -134,6 +134,21 @@ describe('the routes with no tab bar over them', () => {
     expect(chromelessPath('/entry/new/today')).toBe(false);
   });
 
+  /* An address that is not a day the editor can open shows the unavailable
+     notice, with the app's chrome and Back (the route's own rule), so it is
+     not a step. Sampled by the day-addresses guard: /entry/new/abc lost its
+     tab bar. */
+  it('is not an address that shows the unavailable notice', () => {
+    const today = 20000;
+    expect(barlessPath('/entry/new/abc', today)).toBe(false);
+    expect(barlessPath('/entry/new/NaN', today)).toBe(false);
+    expect(barlessPath('/entry/new/2026-02-30', today)).toBe(false);
+    expect(barlessPath('/entry/new/20001', today)).toBe(false);
+    expect(barlessPath('/entry/new/today', today)).toBe(true);
+    expect(barlessPath('/entry/new/19999', today)).toBe(true);
+    expect(barlessPath('/entry/new/20000', today)).toBe(true);
+  });
+
   it('is not the editor of an entry that exists, which keeps its single page', () => {
     expect(barlessPath('/entry/12')).toBe(false);
   });
