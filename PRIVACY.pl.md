@@ -1,15 +1,13 @@
 # Polityka prywatności
 
-Ostatnia aktualizacja: 4 listopada 2026
+Ostatnia aktualizacja: 11 listopada 2026
 
 engender to dziennik tranzycji. Tworzy go i publikuje Alicja Barankiewicz
-w Warszawie. Ta polityka dotyczy aplikacji w przeglądarce i na Androida,
-strony internetowej, przewodnika, korespondencji w sprawie pomocy oraz
-plików, które eksportujesz lub udostępniasz.
+w Warszawie. Ta polityka dotyczy aplikacji na Androida, aplikacji
+w przeglądarce, strony internetowej z przewodnikiem i wiadomości z prośbą
+o pomoc.
 
 ## Kontakt
-
-Pytania o tę politykę albo o twoje dane:
 
 - e-mail: engender-app@pm.me
 - błędy i ogólne pytania: https://github.com/engender-app/engender/issues
@@ -18,361 +16,130 @@ Pytania o tę politykę albo o twoje dane:
 Żeby otrzymać pomoc, nigdy nie trzeba wysyłać treści dziennika, kopii
 zapasowej ani kluczy.
 
-## W skrócie
+## Twój dziennik
 
-engender nie ma kont ani serwera z kopiami dzienników. Dziennik zostaje na
-twoim urządzeniu tak długo, dopóki go nie wyeksportujesz lub nie udostępnisz. Jego
-baza i media są zaszyfrowane na urządzeniu. Autorka nie może odzyskać ich
-za ciebie.
+engender nie ma kont ani serwera z twoim dziennikiem. Dziennik zostaje na
+twoim urządzeniu i nic z niego nie trafia do autorki ani do nikogo innego.
+Jego baza i media są zaszyfrowane na urządzeniu.
 
-Strona w przeglądarce zlicza otwarcia przy połączeniu z siecią bez profilowania odwiedzających. Liczniki nie zawierają danych z dziennika.
-Android nie wysyła takich zgłoszeń: jest w 100% lokalna.
+Dwie rzeczy są poza tym szyfrowaniem. To, czego aplikacja potrzebuje przed
+odblokowaniem, jest zapisane bez szyfrowania: motyw, paleta, język,
+kamuflaż, czas blokady i informacje o sposobie odblokowania. Na Androidzie zrobione zdjęcie trafia najpierw
+do niezaszyfrowanego pliku tymczasowego w pamięci podręcznej aplikacji,
+a dopiero potem engender je importuje i szyfruje.
 
-## Co aplikacja przechowuje i gdzie
+## Utracone klucze i hasła
 
-Wszystko, co wpiszesz w aplikacji, zostaje w pamięci lokalnej na twoim urządzeniu:
-wpisy, notatki i nastroje, skale, dawki i schematy dawkowania, wyniki badań,
-wizyty, skierowania i kolejki, notatki o osobach, do których chodzisz,
-koszty, zmiany danych w instytucjach, kamienie milowe, listy, zdjęcia, nagrania głosowe i wideo,
-zaimportowane dokumenty, przypomnienia i ustawienia. Baza dziennika i zdjęcia
-są zaszyfrowane na urządzeniu. Ani strona, ani aplikacja nie wysyłają tych danych NIGDZIE.
+Autorka nie odzyska zapomnianego hasła do dziennika, kodu PIN ani hasła do
+kopii zapasowej. Nie odzyska też utraconego klucza urządzenia ani klucza
+odzyskiwania.
 
-Część ustawień potrzebnych przed odblokowaniem, w tym motyw, paleta, język,
-kamuflaż i czas blokady, pozostaje poza zaszyfrowanym dziennikiem. Na
-Androidzie aplikacja aparatu zapisuje zdjęcie tymczasowo w niezaszyfrowanym
-pliku pamięci podręcznej, zanim engender je zaimportuje i zaszyfruje.
-Szyfrowanie dziennika nie oznacza szyfrowania każdego ustawienia i pliku
-tymczasowego.
+## Aplikacja na Androida
 
-Aplikacja w przeglądarce i aplikacja na Androida mają osobne dzienniki. Żeby
-przenieść dziennik z jednej do drugiej, eksportujesz zaszyfrowaną kopię
-zapasową i ją importujesz na drugim urządzeniu.
-Aplikacja nie synchronizuje dziennika między dwoma urządzeniami w sieci
-lokalnej. Na Androidzie nawet połączenie lokalne wymaga uprawnienia
-INTERNET, a aplikacja o nie nie prosi. Dwa telefony z Androidem mogą za to
-korzystać z jednego folderu na kopie zapasowe, jak opisano w części
-Zaszyfrowane kopie zapasowe.
+Aplikacja na Androida nie prosi o uprawnienie `INTERNET`. Nie otwiera
+połączeń sieciowych i niczego nie wysyła na żaden serwer. Wyłącza też kopię
+zapasową Androida w chmurze i przenoszenie danych między telefonami.
+Miejsce, z którego pobierasz aplikację (GitHub, Google Play albo F-Droid),
+obsługuje pobieranie na własnych zasadach.
+
+Na kilka rzeczy w samym Androidzie aplikacja ma tylko częściowy wpływ.
+Aplikacja rezygnuje z wysyłania danych diagnostycznych WebView do Google,
+ale Google Safe Browsing pozostaje w WebView domyślnie włączone i może
+korzystać z dostępu do sieci usług Google Play. Aplikacja prosi klawiaturę,
+żeby nie uczyła się wpisywanych słów, a klawiatura może tę prośbę
+zignorować. Klawiatura i przeglądarka mogą wysyłać własne żądania sieciowe
+niezależnie od engender.
+
+Aplikacja ma następujące uprawnienia:
+
+- `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` i `RECEIVE_BOOT_COMPLETED`,
+  żeby przypomnienia przychodziły o ustawionej godzinie, także po restarcie
+  telefonu.
+- `RECORD_AUDIO` i `MODIFY_AUDIO_SETTINGS`, do nagrywania głosu i dźwięku
+  w notatkach wideo.
+- `CAMERA`, do zdjęć i notatek wideo.
+- `USE_BIOMETRIC` i `USE_FINGERPRINT`, do systemowego okna odblokowania.
+  Aplikacja nie widzi odcisku palca ani twarzy.
+- `WAKE_LOCK`, żeby dokończyć zaplanowaną kopię zapasową przy wyłączonym
+  ekranie.
+- `dev.engender.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, które dodaje
+  biblioteka Androida, żeby wewnętrzne komunikaty aplikacji mogła wysyłać
+  tylko ona sama.
 
 ## Aplikacja w przeglądarce
 
-Aplikacja działa pod adresem `app.engender.barankiewicz.dev`. Kiedy
-przeglądarka ją wczytuje albo sprawdza aktualizacje, serwer widzi standardowe dane
-każdego żądania:
+Aplikacja w przeglądarce działa pod adresem `app.engender.barankiewicz.dev`,
+na serwerze w OVH. Dziennik zostaje w przeglądarce i nigdy nie jest
+wysyłany. Wczytanie aplikacji albo aktualizacji to zwykłe żądanie
+internetowe, więc serwer widzi adres IP, czas, żądany adres oraz nagłówki
+User-Agent i Referer wysłane przez przeglądarkę. Dzienniki dostępu są
+wyłączone. Dzienniki błędów mogą zawierać adres IP i żądany adres, a serwer
+trzyma je najwyżej siedem dni.
 
-- adres IP,
-- timestamp żądania,
-- żądany adres URL wraz z parametrami oraz rozmiar odpowiedzi,
-- nagłówki User-Agent i Referer wysłane przez przeglądarkę.
-
-Aplikację udostępnia serwer VPS w OVH. Standardowe dzienniki dostępu są wyłączone.
-Dzienniki błędów mogą zawierać adres IP i żądany URL; serwer przechowuje je
-najwyżej przez siedem dni. Żądania licznika otwarć nie trafiają do logów.
-
-Aplikacja nie wysyła dziennika i nie zakłada konta ani profilu odwiedzającej
-osoby. Licznik otwarć opisujemy poniżej. Czcionki i pliki do rozpoznawania tekstu
-pochodzą z tego samego serwera. Instalacja aplikacji internetowej pobiera cały
-silnik OCR z danymi do języka angielskiego i polskiego, zanim aplikacja będzie
-gotowa do pracy bez sieci. Rozpoznawanie tekstu odbywa się na twoim urządzeniu.
-Pierwsze skanowanie po instalacji również działa bez połączenia z siecią.
-
-Na Androidzie pliki do rozpoznawania tekstu po angielsku i po polsku są w APK.
-Pierwsze skanowanie wyników nie wymaga pobierania plików ani połączenia z siecią.
-
-Pola tekstowe dziennika proszą przeglądarkę o wyłączenie autouzupełniania
-i przywracania ich treści po ponownym otwarciu sesji. To nie usuwa tekstu
-zapisanego przez wcześniejsze wersje aplikacji ani nie kontroluje danych
-zapisywanych przez rozszerzenia przeglądarki lub klawiaturę.
-
-W przeglądarce lokalny dziennik otwiera się na jeden z czterech sposobów:
-
-- hasłem do dziennika, które zmieniane jest w klucz Argon2id,
-- czterocyfrowym kodem PIN, połączonym z kluczem przypisanym do profilu
-  przeglądarki,
-- biometrią w przeglądarkach, które obsługują rozszerzenie WebAuthn PRF
-  (Touch ID, Windows Hello albo blokada urządzenia),
-- kluczem zapisanym w tym profilu przeglądarki, który otwiera dziennik bez
-  pytania.
-
-PIN, biometria i klucz w przeglądarce zależą od kluczy zapisanych w tym
-profilu przeglądarki. Po wyczyszczeniu danych strony, zresetowaniu profilu
-albo utracie urządzenia tej kopii dziennika nie da się już odczytać.
-
-Możesz też utworzyć opcjonalny, 25-znakowy klucz odzyskiwania. Otwiera
-dziennik na tym samym urządzeniu i w tym samym profilu przeglądarki, gdy
-hasło, PIN albo biometria przestaną działać. Nie przeniesie danych na nowe
-urządzenie i nie otworzy eksportu. Aplikacja pokazuje go raz, przy
-tworzeniu, i przechowuje tylko zaszyfrowaną kopię klucza dziennika. Jedyny
-wyjątek to blokada: jeśli aplikacja zablokuje się, gdy nowy klucz jest na
-ekranie, po odblokowaniu pokaże ten sam klucz jeszcze raz. Do tego czasu
-klucz jest zaszyfrowany w pamięci i nigdzie się nie zapisuje. Nowy klucz
-zastępuje stary dopiero wtedy, gdy potwierdzisz, że jest zapisany, a do
-tego czasu oba otwierają dziennik. Jeśli aplikacja zamknie się wcześniej,
-stary klucz nadal działa, a aplikacja powie, że wymiana się nie skończyła.
-Trzymaj klucz
-odzyskiwania na papierze albo w menedżerze haseł na innym urządzeniu: każdy,
-kto ma ten klucz i dane dziennika, może odczytać dziennik. Klucz nie
-przywróci usuniętych danych.
-
-Utworzenie lub zastąpienie klucza odzyskiwania oraz zmiana sposobu dostępu
-wymagają ponownego podania obecnego PIN-u, hasła albo potwierdzenia biometrią.
-Tryb bez hasła w przeglądarce nie ma obecnego sekretu. Potwierdzenie wyjaśnia,
-że każda osoba z dostępem do odblokowanej przeglądarki może wprowadzić te zmiany.
-Na Androidzie tryb bez blokady wymaga biometrii lub obecnego klucza odzyskiwania.
-Bez nich zmiana jest niedostępna. Odblokowanie kluczem odzyskiwania zatwierdza
-jedną bezpośrednią konfigurację ochrony, nie inne zmiany w Ustawieniach.
-Weryfikacja odbywa się na urządzeniu. Dane do odblokowania nie trafiają do autora.
-
-Gdy kopiujesz klucz odzyskiwania w przeglądarce, aplikacja po minucie
-próbuje usunąć go ze schowka, jeśli nadal tam jest. Przeglądarka może na to
-nie pozwolić, a menedżer schowka albo synchronizacja mogą już mieć kopię.
+Czcionki i pliki do rozpoznawania tekstu pochodzą z tego samego serwera.
+Wynik badań skanuje się na twoim urządzeniu.
 
 ## Strona internetowa i przewodnik
 
 Strona, przewodnik i ta polityka pod adresem `engender.barankiewicz.dev`
-korzystają z hostingu lh.pl. Strona zapamiętuje język i motyw w lokalnej
-pamięci przeglądarki dla tej domeny, oddzielnie od dziennika.
-
-lh.pl przechowuje dzienniki dostępu i błędów na swoim serwerze kopii
-zapasowych. Mogą zawierać adresy IP, żądane adresy URL i nagłówki przeglądarki.
+korzystają z hostingu lh.pl, który prowadzi dzienniki dostępu i błędów. Mogą
+one zawierać adresy IP, żądane adresy i nagłówki przeglądarki. Strona
+zapamiętuje język i motyw w lokalnej pamięci przeglądarki.
 
 ## Licznik otwarć
 
-Strona i aplikacja w przeglądarce wysyłają jedno puste żądanie przy otwarciu
-dokumentu z połączeniem z siecią. Liczy się też otwarcie zapisanej w pamięci
-podręcznej aplikacji, jeśli urządzenie jest online. Przechodzenie między
-ekranami nie wysyła kolejnych zgłoszeń. Otwarcia bez sieci i aplikacja na
-Androida nie są zliczane. Nieudane zgłoszenia nie są ponawiane ani zapisywane
-na później.
+Strona i aplikacja w przeglądarce wysyłają jedno puste żądanie przy każdym
+otwarciu z połączeniem z siecią. Aplikacja na Androida nie wysyła żadnego.
+Żądanie nie zawiera danych dziennika, nazwy strony, strony odsyłającej ani
+ciasteczek. Serwer, który je odbiera, widzi adres IP i nagłówki
+przeglądarki, jak przy każdym żądaniu, i usuwa je, zanim doda jedno otwarcie
+do sumy „aplikacja” albo „strona” we własnej instancji GoatCounter.
 
-Żądanie trafia pod stały adres. Nie zawiera danych dziennika, nazwy otwartej
-strony, parametrów adresu, strony odsyłającej ani ciasteczek. Serwer, który
-je odbiera, widzi adres IP połączenia i zwykłe nagłówki przeglądarki. Usuwa
-te dane przed przekazaniem informacji o zdarzeniu do własnej
-instancji GoatCounter. Znane boty są odfiltrowywane.
+Zostają tylko te sumy godzinowe. Są przechowywane bezterminowo i widzi je
+tylko autorka. Nie ma identyfikatorów odwiedzających, sesji ani podziału
+według lokalizacji czy urządzenia. Odświeżenie liczy się ponownie, więc są
+to liczby otwarć, nie osób.
 
-GoatCounter zachowuje sumy godzinowe dla tych dwóch etykiet. Można je oglądać
-w podziale na dni. Są dostępne tylko dla autorki i pozostają bezterminowo.
-Śledzenie sesji i zapis pojedynczych odsłon są wyłączone. Nie ma
-identyfikatorów odwiedzających, liczby unikalnych osób ani podziału według
-lokalizacji czy urządzenia. Odświeżenie liczy się ponownie: są to liczby
-otwarć, nie osób. Logowanie administratorki do statystyk jest oddzielne od
-aplikacji i korzysta z ciasteczka uwierzytelniającego. Licznik nie ustawia
-tego ciasteczka osobom odwiedzającym.
+## Pliki, które eksportujesz
 
-## Aplikacja na Androida
-
-Dystrybucja aplikacji na Androida zaczyna się od plików APK na GitHubie.
-Google Play i F-Droid mają osobne procesy publikacji. Sklep lub serwis
-pobierania widzi kierowane do niego żądania i obsługuje je na własnych
-zasadach.
-
-Aplikacja na Androida nie prosi o uprawnienie `INTERNET`. Nie otwiera
-połączeń sieciowych i niczego nie wysyła na żaden serwer. Wyłącza też kopię
-zapasową Androida w chmurze i przenoszenie danych między telefonami, więc
-system nie kopiuje jej danych do Google ani na nowy telefon.
-
-Aplikacja rezygnuje z wysyłania danych diagnostycznych WebView do Google.
-Google Safe Browsing pozostaje domyślnie włączone w WebView. Do sprawdzania
-stron może korzystać z własnego dostępu do sieci usług Google Play.
-
-Na Androidzie aplikacja zawsze prosi klawiaturę, żeby nie zapamiętywała
-wpisywanych słów. Służy do tego flaga `IME_FLAG_NO_PERSONALIZED_LEARNING`.
-Klawiatura może zignorować tę prośbę. Nie usuwa to słów zapamiętanych wcześniej.
-Klawiatura i przeglądarka mogą wysyłać własne żądania sieciowe
-niezależnie od engender.
-
-Aplikacja prosi o następujące uprawnienia:
-
-- `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` i `RECEIVE_BOOT_COMPLETED`,
-  żeby przypomnienie albo codzienne pytanie pojawiło się o wybranej
-  godzinie, a nie w zbiorczym oknie systemu, także po restarcie telefonu.
-- `WAKE_LOCK`, żeby Android mógł utrzymać pracę procesora podczas zapisu
-  zaplanowanej, zaszyfrowanej kopii zapasowej w wybranym folderze lokalnym.
-  Ekran może pozostać wyłączony.
-- `RECORD_AUDIO` i `MODIFY_AUDIO_SETTINGS`, do notatek głosowych, ćwiczeń
-  głosu i dźwięku w notatkach wideo.
-- `CAMERA`, do notatek wideo i do robienia zdjęć. Zdjęcie robi aplikacja
-  aparatu, a engender prosi o to uprawnienie przed jej otwarciem, bo
-  Android wymaga tego od aplikacji, która je deklaruje.
-- `USE_BIOMETRIC` i `USE_FINGERPRINT`, które dodaje biblioteka biometryczna
-  AndroidX, żeby aplikacja mogła pokazać systemowe pytanie o odcisk palca,
-  twarz albo blokadę ekranu przed otwarciem dziennika. Aplikacja nie widzi
-  odcisku palca ani twarzy. Android przekazuje jej tylko, czy weryfikacja się
-  udała.
-
-Android pokazuje też `dev.engender.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`.
-To nie jest prośba do ciebie: AndroidX deklaruje to uprawnienie, żeby
-wewnętrzne komunikaty aplikacji mogła wysyłać tylko ona sama.
-
-Przypomnienia i codzienne pytanie domyślnie pokazują tylko ogólny tytuł,
-nawet na zablokowanym ekranie. Ustawienie w sekcji Powiadomienia to wyłącza
-i pokazuje prawdziwy tytuł. Jeśli w ustawieniach Androida włączona jest
-historia powiadomień, Android przechowuje pokazane tytuły przez mniej więcej
-dobę od zniknięcia powiadomienia. Aplikacja nie włącza tej historii i nie może
-jej wyczyścić.
-
-Gdy tytuły są widoczne, codzienne pytanie pokazuje też pięć twarzy nastroju.
-Po nich widać, do czego służy aplikacja, więc przy kamuflażu nigdy się nie
-pojawiają. Dotknięcie twarzy tylko otwiera nowy wpis z wybranym nastrojem: nic
-nie zostaje zapisane ani zachowane na urządzeniu, dopóki nie zapiszesz wpisu.
-
-Na Androidzie 13 i nowszym aplikacja oznacza skopiowany klucz odzyskiwania
-jako wrażliwy. To prośba do klawiatury, żeby nie zapisywała go w historii
-schowka. Po minucie aplikacja usuwa klucz ze schowka, a jeśli wcześniej z niej
-wyjdziesz, robi to po powrocie. Nigdy nie usuwa niczego, co skopiujesz
-później.
-
-Na Androidzie dziennik otwiera się na jeden z czterech sposobów:
-
-- kluczem chronionym przez Android Keystore, który system wydaje po
-  blokadzie ekranu albo weryfikacji biometrycznej,
-- kluczem chronionym przez Android Keystore, który system wydaje bez
-  pytania; dziennik i tak jest zaszyfrowany przez SQLCipher,
-- czterocyfrowym kodem PIN, połączonym z kluczem w Android Keystore,
-- hasłem do dziennika, z którego Argon2id wyprowadza klucz.
-
-Kluczy z Android Keystore nie da się skopiować z telefonu. Po utracie
-telefonu albo wyczyszczeniu danych aplikacji tej kopii dziennika nie da się
-odczytać. Opcjonalny klucz odzyskiwania otworzy dziennik na tym samym
-telefonie, gdy odblokowanie zawiedzie, ale niczego nie przywróci, jeśli
-telefon albo jego pamięć przepadną.
-
-## Kamuflaż
-
-Kamuflaż zmienia to, co inni widzą z zewnątrz. Ikona i nazwa w launcherze
-zmieniają się w neutralne „Notatki”, a ekran blokady, widżety, powiadomienia,
-nazwy plików kopii i eksportów, nagłówek wydruku oraz w przeglądarce karta
-i nazwa zainstalowanej aplikacji przestają nazywać engender. Gdy kamuflaż
-jest włączony, Android blokuje też zrzuty ekranu i podgląd aplikacji na
-liście ostatnio używanych. Po odblokowaniu dziennika aplikacja wygląda tak
-samo jak bez kamuflażu.
-
-Prawdziwa nazwa nadal widnieje w informacjach o aplikacji, przy prośbach
-o uprawnienia, w nagłówkach powiadomień i w wyborze widżetów. W przeglądarce
-adres aplikacji nadal widać na pasku adresu, w historii, zakładkach
-i ustawieniach witryny. Kamuflaż to nie szyfrowanie i nie zmienia tego, kto
-może odczytać dziennik.
-
-## Kopie zapasowe, eksporty i udostępniane pliki
-
-Kiedy eksportujesz albo udostępniasz plik, wybierasz, dokąd trafi.
-Udostępnione pliki i linki obsługują inne aplikacje, które mogą korzystać
-z sieci. Jeśli zapiszesz plik na dysku w chmurze albo u innego dostawcy
-dokumentów, ten dostawca może widzieć nazwę pliku, czas zapisu, rozmiar
-i dzienniki dostępu do twojego konta.
-
-Na Androidzie przerwany eksport ręczny może zostawić niepełny plik w wybranym
-miejscu. Aplikacja zapisuje jego położenie w swojej prywatnej pamięci, dopóki
-nie usunie niepełnego pliku albo nie zakończy eksportu. Po przerwaniu zapisu
-ponawia usuwanie przy następnym uruchomieniu. Dostawca plików może odmówić
-dostępu. Wtedy aplikacja zachowuje położenie do kolejnej próby i prosi o
-sprawdzenie miejsca zapisu. Wyczyszczenie danych aplikacji lub jej odinstalowanie
-usuwa też ten zapis. Aplikacja nie może usunąć pliku, zanim okno wyboru miejsca
-zapisu zwróci jego położenie.
-
-### Zaszyfrowane kopie zapasowe
-
-Zaszyfrowana kopia zapasowa (`.ngndr`), eksportowana ręcznie albo
-zapisywana przez Androida według harmonogramu w wybranym folderze, jest
-szyfrowana algorytmem AES-GCM hasłem, które ustalasz. Bez tego hasła nikt jej
-nie odczyta.
-
-Automatyczne kopie na Androidzie wymagają systemowego dostawcy pamięci lokalnej.
-Zapis jest uznawany za zakończony po synchronizacji pliku i folderu oraz
-sprawdzeniu zapisanych bajtów. Inni dostawcy nie mogą otrzymać takiego
-potwierdzenia. Nie oznacza ono sprawdzenia przesłania pliku do chmury.
-
-Jeśli włączysz dołączanie kopii z innych urządzeń, aplikacja na Androida
-przy otwarciu zagląda do tego samego folderu. Gdy inne urządzenie zapisało
-tam nowszą kopię, aplikacja otwiera ją hasłem do kopii i dołącza do
-dziennika na telefonie. Nic nie jest nigdzie wysyłane: oba urządzenia tylko
-czytają i zapisują wybrany folder.
-
-### Eksporty do czytania
-
-Niektóre eksporty celowo nie są szyfrowane, bo służą do czytania,
-udostępniania albo druku:
-
-- pliki CSV i JSON eksportowane w Ustawieniach,
-- pamiątkowa książka dziennika przygotowana do druku albo do PDF,
-- zestawienie dla lekarza ze schematami dawkowania, wynikami badań,
-  zabiegami, skutkami ubocznymi i zauważonymi zmianami,
-- kolaże zdjęć i filmy poklatkowe,
-- dokumenty PDF zapisane z powrotem w pamięci urządzenia,
-- pojedyncze pliki kalendarza (`.ics`) z terminami wizyt, operacji albo
-  dniem otwarcia listu.
-
-Każdy, kto dostanie taki plik albo wydruk, może odczytać jego treść. Zanim
-aplikacja zapisze niezaszyfrowany plik, prosi o potwierdzenie albo wymaga
-wyraźnego kroku.
-
-## Linki prowadzące poza aplikację
-
-Linki Strona, Przewodnik, Polityka prywatności i Kod źródłowy w sekcji
-O aplikacji otwierają się w przeglądarce. Prowadzą do
-`engender.barankiewicz.dev` i `github.com`, które widzą to żądanie jak każda
-inna strona. Strony na GitHubie podlegają jego własnej polityce prywatności.
+Kopia zapasowa albo eksport trafia tam, dokąd je wyślesz, a aplikacja lub
+usługa, która je odbiera, obsługuje je na własnych zasadach. Zaszyfrowaną
+kopię zapasową (`.ttbackup`) otwiera tylko hasło do kopii, które ustalasz.
+Pozostałe eksporty służą do czytania, udostępniania albo druku, więc nie są
+szyfrowane: dane CSV i JSON, książka dziennika, zestawienie dla lekarza,
+kolaże zdjęć i filmy poklatkowe, pliki PDF i pliki kalendarza. Każdy, kto
+dostanie taki plik, może go odczytać.
 
 ## Usuwanie danych
 
-Aplikacja nie wysyła dziennika do autorki ani nikogo innego. Możesz samodzielnie usunąć jego
-lokalną kopię. Wiadomości z prośbą o pomoc i logi hostingu mają osobne
-okresy przechowywania, opisane w tej polityce:
+- W aplikacji: Ustawienia -> Prywatność i dane -> Usuń wszystko.
+- Na Androidzie: odinstaluj aplikację albo wyczyść jej dane w ustawieniach
+  systemu.
+- W przeglądarce: wyczyść dane strony `app.engender.barankiewicz.dev`.
 
-- **W aplikacji.** Ustawienia -> Prywatność i dane -> Usuń wszystko.
-  To usuwa dziennik, zdjęcia i nagrania, ustawienia, zaplanowane
-  przypomnienia i klucze, które otwierają dziennik. Tego nie da się cofnąć.
-  Jeśli w przeglądarce używasz odblokowania biometrycznego, utworzony dla
-  niego klucz dostępu zostaje na liście kluczy w przeglądarce albo na
-  urządzeniu, dopóki go stamtąd nie usuniesz. Po usunięciu dziennika niczego
-  już nie otwiera. Na Androidzie przerwane robienie zdjęcia może zostawić niezaszyfrowany plik w pamięci podręcznej aplikacji. Wyczyszczenie danych aplikacji usuwa ten plik.
-- **Na Androidzie.** Odinstalowanie aplikacji albo wyczyszczenie jej danych
-  w ustawieniach systemu usuwa wszystko, co aplikacja zapisała w telefonie.
-- **W przeglądarce.** Wyczyszczenie danych strony
-  `app.engender.barankiewicz.dev` usuwa dziennik i jego klucze.
-
-Żaden z tych sposobów nie usuwa ukończonych eksportów ani udostępnionych
-plików, w tym kopii zapasowych zapisywanych według harmonogramu we
-wskazanym folderze. Je usuń tam, gdzie zostały zapisane.
-
-## Utracone klucze i hasła
-
-Autorka aplikacji nie odzyska zapomnianego hasła do dziennika, kodu PIN ani
-hasła do kopii zapasowej. Nie odzyska też utraconego klucza urządzenia ani
-klucza odzyskiwania.
-
-## Dla kogo jest aplikacja
-
-engender jest dla każdej osoby trans. Korzystanie z
-dziennika nie ma dolnej ani górnej granicy wieku ani procesu jego weryfikacji.  
-
+Żaden z tych sposobów nie usuwa plików, które już zostały wyeksportowane
+albo zapisane jako kopia zapasowa. Usuń je tam, gdzie leżą.
 
 ## Wiadomości z prośbą o pomoc
 
-Gdy piszesz na engender-app@pm.me, autorka otrzymuje twój adres e-mail,
-wiadomość i załączniki. Używa ich do odpowiedzi na
-zgłoszenie. Nie wysyłaj swojego dziennika, kopii zapasowej, hasła,
-klucza odzyskiwania ani zrzutu ekranu z osobistymi danymi. Do pomocy
-wystarczają wersje aplikacji i urządzenia, kroki odtworzenia problemu oraz
-wymyślone przykłady.
+Gdy piszesz na engender-app@pm.me, autorka dostaje twój adres e-mail,
+wiadomość i załączniki i używa ich, żeby ci odpowiedzieć. Nie wysyłaj
+prawdziwego dziennika, kopii zapasowej, hasła ani klucza odzyskiwania. Jeśli
+coś takiego trafi do niej przez pomyłkę, usuwa to, gdy tylko zauważy.
+Korespondencja jest usuwana w ciągu 30 dni od rozwiązania zgłoszenia,
+a o wcześniejsze usunięcie możesz poprosić.
 
-Prywatna korespondencja i pobrane kopie pod kontrolą autorki są usuwane w
-ciągu 30 dni od rozwiązania zgłoszenia. Osobiste dane dziennika wysłane
-przez pomyłkę są usuwane po zauważeniu; nie służą do badania problemu.
-Techniczne ustalenia mogą pozostać w zgłoszeniach bez osobistych treści
-z dziennika. Pod podanym adresem możesz też zapytać o korespondencję lub
-poprosić o jej usunięcie.
+Zgłoszenia na GitHubie są publiczne i podlegają zasadom GitHuba.
 
-Zgłoszenia błędów na GitHubie są publiczne. Problemy z bezpieczeństwem
-zgłasza się przez prywatny formularz tej usługi. Ich widoczność i okres
-przechowywania zależą od zasad i możliwości GitHuba. Autorka nie może
-obiecać usunięcia danych z jego systemów, kopii dostawców ani egzemplarzy
-posiadanych przez inne osoby.
+## Wiek
+
+engender jest dla każdej osoby trans. Nie ma dolnej ani górnej granicy
+wieku ani weryfikacji wieku.
 
 ## Zmiany tej polityki
 
-Gdy polityka się zmienia, zmienia się też data na górze. Wszystkie
-wcześniejsze wersje są w historii pliku
+Gdy polityka się zmienia, zmienia się też data na górze. Wcześniejsze
+wersje są w historii pliku
 https://github.com/engender-app/engender/blob/main/PRIVACY.pl.md.
 
 Ta polityka jest dostępna również
