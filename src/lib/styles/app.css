@@ -298,9 +298,15 @@ body {
    no bar it is room held for nothing, and it pushed a vertically-centred
    gate up by most of a bar's height. What is left is the system inset and
    the same breath. */
-.app.is-chromeless {
+.app.is-chromeless,
+.app.is-barless {
   --nav-clearance: calc(var(--inset-bottom) + var(--space-5));
 }
+
+/* A new entry is a step with no bottom bar (tester report 02, ticket 03).
+   Only the bar: at desktop width the rail is the app's way around and stays,
+   so the editor's column keeps the box Care and Day have. */
+.app.is-barless .app-nav { display: none; }
 
 /* No entrance of its own. It had one - fade in, slide 6px - and suppressing
    it during a navigation did not work the way suppression looks like it

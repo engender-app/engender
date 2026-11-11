@@ -161,7 +161,15 @@ try {
     }
     await page.locator('[data-section-chip="tags"]').click({ force: true });
     assert.equal(await page.locator('[data-section-chip="tags"]').getAttribute('aria-expanded'), 'false');
-    await page.locator('[data-nav-item="calendar"]').click();
+    // A new entry has no tab bar to leave by, so the departure is an in-app link, which is how any screen is left.
+    await page.evaluate(() => {
+      const link = document.createElement('a');
+      link.href = '/calendar';
+      document.body.append(link);
+      link.click();
+      link.remove();
+    });
+    await page.waitForTimeout(600);
     assert.equal(new URL(page.url()).pathname, '/entry/new/today', 'pending save prevents departure');
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => !!document.activeElement?.closest('.editor, .editor-save-moods')), false);

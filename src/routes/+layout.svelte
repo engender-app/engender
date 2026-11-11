@@ -242,8 +242,9 @@
   });
 
   let chromeless = $derived(replacesApp || chromelessPath(path));
-  /* No tab bar: every chromeless screen, and a new entry, which is a step
-     but keeps Today's retained doors mounted under it (chromeless.ts). */
+  /* No bottom bar: every chromeless screen, and a new entry, which is a step
+     but keeps Today's retained doors mounted under it (chromeless.ts). The
+     desktop rail stays for a new entry (app.css, .is-barless). */
   let barless = $derived(chromeless || barlessPath(path, currentDay()));
 
   /* How deep the app is in its own history, for the back controls that ask
@@ -642,7 +643,8 @@
     class="app"
     data-app-root
     {@attach (node) => hoverHints(node)?.destroy}
-    class:is-chromeless={barless}
+    class:is-chromeless={chromeless}
+    class:is-barless={barless && !chromeless}
     data-boot={bootState.status}
     inert={browserSession.recovering}
     style:opacity={browserSession.recovering ? '0' : undefined}
@@ -659,7 +661,7 @@
          phone the same markup is the floating bar, absolutely positioned,
          so its place in the document does not decide where it sits - only
          that a keyboard reaches the tabs before the screen. -->
-    {#if !barless}
+    {#if !chromeless}
       <AppNav />
     {/if}
 
