@@ -100,10 +100,20 @@ const SCENES = [
   },
   { key: 'clinician', path: '/health/clinician-summary', targets: '.dossier-row-link' },
   {
+    /* A new entry's first step (tester report 02, ticket 03): the faces and
+       the two ways on, finish now and continue. */
+    key: 'entry-first-step',
+    path: '/entry/new/today',
+    targets: '[data-first-step-moods] [data-mood], [data-entry-finish], [data-entry-continue]'
+  },
+  {
+    /* The chips live on the second step of a new entry, one touch on. */
     key: 'entry',
     path: '/entry/new/today',
     targets: 'button.contextual-chip, .tag-chip',
     open: async (page) => {
+      await page.locator('[data-entry-continue]').click();
+      await page.locator('[data-entry-step="2"]').waitFor();
       const tags = page.locator('[data-section-chip="tags"]');
       if ((await tags.count()) && (await tags.first().getAttribute('aria-expanded')) !== 'true') await tags.first().click();
     }
