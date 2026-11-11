@@ -261,13 +261,6 @@ JVM halves: which native failures get a code, when the export preflight may
 refuse, and that a photo write failing after its open leaves no file. The
 gates fixture's `boot-failure-storage-full` scene is checked by
 `gates-say-what-happened` for its sentence and its retry.
-`tests/gate-flag-check.mjs` (tester-report-02 ticket 07, run by hand with
-no build) drives the same fixture across all 16 palettes, both themes and
-each `?gateFlag=` drawing: a disguised unlock draws none of the flag, by DOM
-and by the field's pixels; an undisguised unlock draws the one asked for and
-the other gates keep their painted titles; the accessible name stays the
-wordmark; focus order is the same with and without the flag; and no unlock
-scrolls at 360x568.
 The same gates probe enters a PIN after a forced ENOSPC credential read,
 checks the free-space message and unchanged attempt count, then checks that
 unavailable credentials and a wrong PIN keep their separate messages and
@@ -614,6 +607,7 @@ To run one on its own, use
 | `pending-unlock-lock-check` | a newer lock cancels pending authentication and its opening transition |
 | `feedback-concealment-check` | lock clears private live regions, pending announcements and toast actions; disguise leaves unlocked feedback alone; fresh feedback and keyboard actions still work |
 | `blind-edge-padding-check` | a padding-only change to a field still moves `--blind-edge` |
+| `gate-flag-check` | an undisguised unlock draws Today's sun, still, on a field 32px taller; a disguised one draws none of the flag at the base's height, by DOM and pixels on every palette and theme; gates that are not unlocks keep their titles; the accessible name, focus order and no scroll at 360x568 hold |
 | `dilation-schedule-action` | the dilation schedule's edit action, keyboard editor and its empty and deleted states |
 | `letters-ready-jump` | the ready-letters count and the jump above the waiting list |
 | `deep-link-consumption-check` | ready-letter and lab links apply once; folding, another analyte, URL replacement and return context survive |

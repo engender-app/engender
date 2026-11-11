@@ -108,7 +108,8 @@ a record of what you had but does not bring it back.
 - A new entry opens on "How is today?": the mood faces and your scales on one
   screen. Save there and the entry is done, or go on to the note, tags and
   photos. Editing a saved entry keeps its single page.
-- The lock screen shows your flag where it used to show the app's name. With
+- The lock screen shows Today's sun in your flag's colours where it used to
+  show the app's name, and it stays in place as Today opens around it. With
   disguise on it is still the plain "Notes" screen.
 - Today shows fewer tiles: the voice benchmark nudge, the hair removal recovery
   notice, the active tryout tile and the appointment-today tile are gone, and

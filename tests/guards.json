@@ -20,6 +20,11 @@
     "holds": "a padding-only change to a field still moves `--blind-edge`"
   },
   {
+    "name": "gate-flag-check",
+    "tier": "dev",
+    "holds": "an undisguised unlock draws Today's sun, still, on a field 32px taller; a disguised one draws none of the flag at the base's height, by DOM and pixels on every palette and theme; gates that are not unlocks keep their titles; the accessible name, focus order and no scroll at 360x568 hold"
+  },
+  {
     "name": "dilation-schedule-action",
     "tier": "dev",
     "holds": "the dilation schedule's edit action, keyboard editor and its empty and deleted states"
