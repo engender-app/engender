@@ -3803,6 +3803,9 @@ try {
   await page.waitForSelector('[data-applock]');
   if (await page.locator('#ed-note').count()) throw new Error('the editor is still mounted under the lock screen');
   await sessionPassphrase();
+  /* The remounted editor opens on its first step with the draft read back
+     under it, so the note is one step on. */
+  await toTheRest();
   await page.waitForFunction((text) => document.querySelector('#ed-note')?.value === text, keptNote, { timeout: 10000 }).catch(async () => {
     throw new Error('the draft did not come back after the unlock: ' + JSON.stringify(await page.locator('#ed-note').inputValue().catch(() => null)));
   });
