@@ -28,6 +28,8 @@ kamuflaż, czas blokady i informacje o sposobie odblokowania. Na Androidzie zrob
 do niezaszyfrowanego pliku tymczasowego w pamięci podręcznej aplikacji,
 a dopiero potem engender je importuje i szyfruje.
 
+## Utracone klucze i hasła
+
 Autorka nie odzyska zapomnianego hasła do dziennika, kodu PIN ani hasła do
 kopii zapasowej. Nie odzyska też utraconego klucza urządzenia ani klucza
 odzyskiwania.

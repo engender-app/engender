@@ -26,6 +26,8 @@ timing and the details of how the journal unlocks. On Android, a photo you take 
 unencrypted temporary file in the app's cache before engender imports and
 encrypts it.
 
+## Lost keys and passwords
+
 The developer cannot recover a forgotten passphrase, PIN or backup password,
 or a lost device key or recovery key.
 
