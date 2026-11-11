@@ -18,7 +18,7 @@
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { entrySession } from '$lib/components/entrySession.svelte';
-  import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
+  import { ATTACHMENT_SECTIONS, ENTRY_SECTIONS, MARKING_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
@@ -72,8 +72,7 @@
   import SaveBar from '$lib/components/SaveBar.svelte';
   import EntryFirstStep from '$lib/components/EntryFirstStep.svelte';
   import { moodToApply } from '$lib/components/seedMoodArrival';
-  import { stepMotion, stepTravel } from '$lib/motion/entryStep';
-  import { fieldPart } from '$lib/motion/navigation';
+  import { footContinue, stepTravel } from '$lib/motion/entryStep';
   import { registerStepBack } from '$lib/navigation/stepBack';
   import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
@@ -142,7 +141,6 @@
   let step = $state<1 | 2>(stepped && !openSection ? 1 : 2);
   /** Which way the last change went, so a step back runs the film backwards. */
   let steppingBack = $state(false);
-  const motion = stepMotion();
 
   // Route keys mount a new session for each entry or day.
   // epochDay is todayEpochDay() at mount on purpose, so a draft keeps its date across midnight; other day reads follow currentDay.
@@ -193,11 +191,11 @@
   // svelte-ignore state_referenced_locally
   let revealFromAddress = entryId == null && openSection ? openSection : null;
   $effect(() => {
-    if (!revealFromAddress || !chipRowEl || entryDraft.openSection !== revealFromAddress) return;
-    const section = chipRowEl.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${revealFromAddress}"]`);
+    if (!revealFromAddress || !stepScreen || entryDraft.openSection !== revealFromAddress) return;
+    const section = stepScreen.querySelector<HTMLElement>(`[data-editor-section="${revealFromAddress}"]`);
     if (!section) return;
     revealFromAddress = null;
-    const region = chipRowEl.closest<HTMLElement>('[data-app-scroll-region]');
+    const region = stepScreen.closest<HTMLElement>('[data-app-scroll-region]');
     if (!region) return;
     /* The section's foot to the region's, the edge followReveal brings it
        to, so the chip row directly above it stays in view. Measured once the
@@ -405,7 +403,6 @@
      takes the focus on arrival, a new entry included: a focused note put
      the keyboard over half the editor before anyone asked to type
      (tests/no-auto-keyboard.mjs). */
-  let chipRowEl = $state<HTMLElement | undefined>();
   let moodsEl = $state<HTMLElement | undefined>();
 
   function sectionName(section: EntrySection): string {
@@ -441,10 +438,11 @@
      tapped, and a section that scrolled its own chip away would be a
      section with no visible way to close it. */
   function revealSection(section: EntrySection) {
-    const sectionEl = chipRowEl?.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${section}"]`);
-    const region = chipRowEl?.closest<HTMLElement>('[data-app-scroll-region]');
-    if (!sectionEl || !region || !chipRowEl) return;
-    followReveal(sectionEl, region, chipRowEl);
+    const sectionEl = stepScreen?.querySelector<HTMLElement>(`[data-editor-section="${section}"]`);
+    const chipRow = stepScreen?.querySelector<HTMLElement>(`[data-section-chip="${section}"]`)?.parentElement;
+    const region = stepScreen?.closest<HTMLElement>('[data-app-scroll-region]');
+    if (!sectionEl || !region || !chipRow) return;
+    followReveal(sectionEl, region, chipRow);
   }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */
@@ -796,6 +794,9 @@
   async function saveEntry() {
     if (saving || draftPreparing) return;
     if (entryDraft.savedId === undefined && moodMissing) {
+      /* The faces live on the first step: from the second, finishing without
+         one takes the person back to them rather than saving a moodless entry. */
+      if (stepped && step === 2) await goToStep(1);
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
@@ -975,7 +976,11 @@
   {#if loaded.loading}
     <div out:crossfade><Skeleton variant="block" count={3} /></div>
   {:else if entryId == null || existing}
-  {#snippet theRest()}
+  <!-- The sections of the entry, written once. The single page (an entry
+       that exists) and a new entry's second step draw the same pieces and
+       differ only in which they take and in what order, so the two cannot
+       drift apart. -->
+  {#snippet promptAndTemplate()}
   <!-- The guided prompt, the template and a debrief's scaffold all belong
        to the note, so on a new entry they sit with it on the second step. -->
   {#if prompt && !promptDismissed}
@@ -995,6 +1000,9 @@
     </button>
   {/if}
 
+  {/snippet}
+
+  {#snippet noteField()}
   <!-- The page first (phase 11 ticket 19). The note used to sit under mood,
        mode, two sliders and thirty tag chips - about 1900px down on the
        audit's render - and the save was gated on the mood picker three
@@ -1011,6 +1019,9 @@
     bind:value={entryDraft.note}
   ></textarea>
 
+  {/snippet}
+
+  {#snippet modeBlock()}
   <!-- Mode and Gender stay open on the page (Alicja, on the spike,
        17 September 2026: "some of the sections should be always-on, for
        example gender and mode"). They keep the headings and the "manage"
@@ -1048,6 +1059,9 @@
     </div>
   {/if}
 
+  {/snippet}
+
+  {#snippet scalesBlock()}
   <SectionHeading text={m.gender_label()}>
     {#snippet action()}
       <a class="kit-heading-action" href="/settings">{m.scales_change()}</a>
@@ -1063,13 +1077,16 @@
     {/if}
   {/each}
 
+  {/snippet}
+
+  {#snippet chipRow(sections: readonly EntrySection[])}
   <!-- One chip per folded section, each a key (DIRECTION.md rule 13): its
        name, and under it what the section holds once it holds something -
        so a saved entry reads as a summary line under its note. A chip opens
        its section directly under the row and closes it on a second tap; one
        section at a time. -->
-  <div class="editor-chips" data-editor-chips role="group" bind:this={chipRowEl}>
-    {#each ENTRY_SECTIONS as section (section)}
+  <div class="editor-chips" data-editor-chips role="group">
+    {#each sections as section (section)}
       {@const state = sectionState(section, entryDraft)}
       {@const open = entryDraft.openSection === section}
       <button
@@ -1089,12 +1106,15 @@
     {/each}
   </div>
 
+  {/snippet}
+
+  {#snippet panels(sections: readonly EntrySection[])}
   <!-- ADR-0078 holds: a section discloses by moving under the note, and a
        switch from one chip to another is the old section closing while the
        new one opens - two heights travelling, never a cut. A transition is
        local and does not play on first render, so a draft restored with a
        chip open draws it without a movement the person did not make. -->
-  {#if entryDraft.openSection === 'tags'}
+  {#if sections.includes('tags') && entryDraft.openSection === 'tags'}
     <div class="editor-section" id="editor-section-tags" data-editor-section="tags" transition:disclose>
       <TagPicker
         groups={vocabulary.visibleTagGroups}
@@ -1104,7 +1124,7 @@
     </div>
   {/if}
 
-  {#if entryDraft.openSection === 'body'}
+  {#if sections.includes('body') && entryDraft.openSection === 'body'}
     <div class="editor-section" id="editor-section-body" data-editor-section="body" transition:disclose>
       <BodyRegionPicker
         regions={vocabulary.visibleBodyRegions}
@@ -1119,7 +1139,7 @@
        not want the recorder. Each kind keeps its own two controls, pick and
        make, since "Record" on two buttons side by side did not say which one
        was which (phase 5 ticket 22) and the chip now says it instead. -->
-  {#if entryDraft.openSection === 'photos'}
+  {#if sections.includes('photos') && entryDraft.openSection === 'photos'}
     <div class="editor-section" id="editor-section-photos" data-editor-section="photos" data-editor-media transition:disclose>
       <div class="photo-row">
         {#each entryDraft.photos as p, i (p)}
@@ -1157,7 +1177,7 @@
     </div>
   {/if}
 
-  {#if entryDraft.openSection === 'voice'}
+  {#if sections.includes('voice') && entryDraft.openSection === 'voice'}
     <div class="editor-section" id="editor-section-voice" data-editor-section="voice" transition:disclose>
       {#if entryDraft.recordings.length > 0}
         <div class="recording-list">
@@ -1190,7 +1210,7 @@
     </div>
   {/if}
 
-  {#if entryDraft.openSection === 'video'}
+  {#if sections.includes('video') && entryDraft.openSection === 'video'}
     <div class="editor-section" id="editor-section-video" data-editor-section="video" transition:disclose>
       {#if entryDraft.videos.length > 0}
         <div class="recording-list">
@@ -1245,6 +1265,9 @@
     </div>
   {/if}
 
+  {/snippet}
+
+  {#snippet cards()}
   <!-- Contextual Inline Cards (ticket 04, ADR-0044). Offers rather than
        questions, so they stay where they were - after what the person
        chose to open, before the foot - and take no chip. -->
@@ -1473,17 +1496,61 @@
   {/if}
   {/snippet}
 
+  {#snippet theRest()}
+  {@render promptAndTemplate()}
+  {@render noteField()}
+  {@render modeBlock()}
+  {@render scalesBlock()}
+  {@render chipRow(ENTRY_SECTIONS)}
+  {@render panels(ENTRY_SECTIONS)}
+  {@render cards()}
+  {/snippet}
+
+  <!-- A new entry's second step (tester report 02, ticket 04), in the
+       order Alicja chose: what is marked comes before what is written. Mode,
+       then the tags open on the page, then the body and the cards the day
+       offers, then the note, and the photos, voice and video last. The first
+       step's mood and scales are one step back and are not repeated. -->
+  {#snippet secondStep()}
+  {@render modeBlock()}
+  <SectionHeading text={m.tags_label()} />
+  <div class="editor-section" id="editor-section-tags" data-editor-section="tags">
+    <TagPicker
+      groups={vocabulary.visibleTagGroups}
+      selected={entryDraft.tags}
+      onToggle={(id) => entryDraft.toggleTag(id)}
+    />
+  </div>
+  {@render chipRow(MARKING_SECTIONS)}
+  {@render panels(MARKING_SECTIONS)}
+  {@render cards()}
+  <button
+    type="button"
+    class="btn btn-ghost"
+    data-save-star
+    aria-pressed={starred}
+    disabled={saving || entryDraft.savedId !== undefined}
+    onclick={toggleStarred}
+  >
+    <Icon name="star" size={18} cls={starred ? 'is-starred' : ''} /><span>{starred ? m.unstar_entry() : m.star_entry()}</span>
+  </button>
+  {@render promptAndTemplate()}
+  {@render noteField()}
+  {@render chipRow(ATTACHMENT_SECTIONS)}
+  {@render panels(ATTACHMENT_SECTIONS)}
+  {/snippet}
+
   {#if stepped}
     <!-- One cell for both steps, so the one leaving and the one arriving
          share it for the length of the change and nothing under them moves
          ($lib/motion/entryStep). -->
-    <div class="entry-stage" class:is-turn={motion === 'turn'}>
+    <div class="entry-stage">
       {#key step}
         <div
           class="entry-step"
           data-entry-step={step}
-          in:stepTravel={{ motion, back: steppingBack }}
-          out:stepTravel={{ motion, back: steppingBack }}
+          in:stepTravel={{ back: steppingBack }}
+          out:stepTravel={{ back: steppingBack }}
         >
           {#if step === 1}
             <EntryFirstStep
@@ -1496,7 +1563,7 @@
               bind:faces={moodsEl}
             />
           {:else}
-            {@render theRest()}
+            {@render secondStep()}
           {/if}
         </div>
       {/key}
@@ -1506,16 +1573,15 @@
   {/if}
 
   <SaveBar>
-    <!-- One foot for both steps, its contents crossfading in place: the two
-         arrangements are the same height (two 48px rows and a --space-2), so
-         the foot itself never moves when the step changes. -->
-    <div class="entry-foot">
-    {#if stepped && step === 1}
-      <!-- Two ways on, and they must not read as one another (ticket 03):
-           finishing saves what is set and closes, so it is the ink button
-           and says what it does; going on is the page's block under it,
+    {#if stepped}
+      <!-- Finishing is the same control on both steps, in the same place: it
+           is one element, so it neither moves nor fades when the step
+           changes, and only the way on under it opens and closes
+           (ticket 03 chose the wording; ticket 04 keeps the control still).
+           Finishing saves what is set and closes, so it is the ink button
+           and says what it does; going on is the soft block under it,
            naming what is on the next step. -->
-      <div class="entry-first-foot" in:fieldPart out:fieldPart>
+      <div class="entry-foot">
         <button
           class="btn press"
           class:btn-primary={!moodMissing}
@@ -1529,19 +1595,23 @@
         >
           <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
         </button>
-        <button
-          class="btn btn-soft press"
-          data-entry-continue
-          disabled={saving || entryDraft.savedId !== undefined}
-          onclick={() => goToStep(2)}
-        >
-          <span>{m.entry_continue()}</span><Icon name="chevronRight" size={18} />
-        </button>
+        {#if step === 1}
+          <div class="entry-continue" transition:footContinue>
+            <button
+              class="btn btn-soft press"
+              data-entry-continue
+              disabled={saving || entryDraft.savedId !== undefined}
+              onclick={() => goToStep(2)}
+            >
+              <span>{m.entry_continue()}</span><Icon name="chevronRight" size={18} />
+            </button>
+          </div>
+        {/if}
         <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
       </div>
     {:else}
     <!-- Mood stays beside saving, with its own row of full-size targets. -->
-    <div class="editor-save-row" in:fieldPart out:fieldPart>
+    <div class="editor-save-row">
       <fieldset class="editor-save-moods" data-save-moods disabled={saving} inert={saving} bind:this={moodsEl}>
         <MoodPicker bar value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
       </fieldset>
@@ -1573,7 +1643,6 @@
       <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
     </div>
     {/if}
-    </div>
   </SaveBar>
   {/if}
   {/if}
@@ -1649,8 +1718,8 @@
     {#key step}
       <span
         class="step-heading"
-        in:stepTravel={{ motion, back: steppingBack, printed: true }}
-        out:stepTravel={{ motion, back: steppingBack, printed: true }}
+        in:stepTravel={{ back: steppingBack }}
+        out:stepTravel={{ back: steppingBack }}
       >{step === 1 ? m.home_log_heading() : m.new_entry()}</span>
     {/key}
   {/snippet}
@@ -1704,39 +1773,26 @@
      rules still win where they set a margin. */
   :global(.entry-step > *) { margin-bottom: var(--space-5); }
   :global(.entry-step > .kit-heading) { margin-bottom: var(--space-3); }
-  /* A page turn travels the whole window, so the stage bleeds to its edges
-     and clips there: the arriving page comes from the window's edge, not
-     from 20px inside it. */
-  .entry-stage.is-turn {
-    margin-inline: calc(-1 * var(--space-5));
-    overflow-x: clip;
-  }
-  .entry-stage.is-turn > .entry-step {
-    padding-inline: var(--space-5);
-    background: var(--bg);
-  }
   /* The heading on the field, stacked the same way for the length of a
      swap, so the field holds one line's height throughout. */
   :global(h1:has(> .step-heading)) { display: grid; }
   .step-heading { grid-area: 1 / 1; }
 
-  /* The foot: both steps' contents in one cell, crossfading in place. */
+  /* The foot: the finish control, and under it the way on while there is
+     one. The way on carries its own gap (a leading edge of --space-2) so the
+     gap opens and closes with it. Side by side where there is room, at the
+     one-row height the editor's own foot takes at this width. */
   .entry-foot {
     width: 100%;
-    display: grid;
-  }
-  .entry-foot > * { grid-area: 1 / 1; }
-  .entry-first-foot {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
   }
-  .entry-first-foot .btn { width: 100%; }
-  /* Side by side where there is room, at the one-row height the editor's
-     own foot takes at this width. */
+  .entry-foot .btn { width: 100%; }
+  .entry-continue { padding-top: var(--space-2); }
   @container app (min-width: 640px) {
-    .entry-first-foot { flex-direction: row; }
-    .entry-first-foot .btn { flex: 1; }
+    .entry-foot { flex-direction: row; gap: var(--space-2); }
+    .entry-foot > .btn { flex: 1; }
+    .entry-continue { flex: 1; padding-top: 0; }
   }
 
   .editor-save-row {

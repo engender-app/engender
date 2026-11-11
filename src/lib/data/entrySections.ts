@@ -16,6 +16,12 @@ import type { EntryDraft } from './entryDraft';
 export const ENTRY_SECTIONS = ['tags', 'body', 'photos', 'voice', 'video'] as const;
 export type EntrySection = (typeof ENTRY_SECTIONS)[number];
 
+/* A new entry's second step (tester report 02, ticket 04) splits the row in
+   two: tags are open on the page, the body folds under its own chip with the
+   cards the day offers, and what is attached comes last, after the note. */
+export const MARKING_SECTIONS: readonly EntrySection[] = ['body'];
+export const ATTACHMENT_SECTIONS: readonly EntrySection[] = ['photos', 'voice', 'video'];
+
 /** Today's new entry with Photos already open: where a first photo goes,
     since the photo library browses photos and owns none (ADR-0085). */
 export const TODAY_PHOTO_HREF = '/entry/new/today?open=photos';

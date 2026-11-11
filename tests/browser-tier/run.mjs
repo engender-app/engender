@@ -2498,7 +2498,7 @@ await block('entry contextual text survives typing and clears before save', 1, a
    the merge produced survives the save into the tables - and the first is
    also the third's positive control. The third is the only one of the three
    testing a rule that lives in the component. */
-await block('phase 8 audit ticket 25 entry editor', 7, async () => {
+await block('phase 8 audit ticket 25 entry editor', 11, async () => {
   const r = await load('/entry-editor.html', 'entry-editor-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2564,6 +2564,25 @@ await block('phase 8 audit ticket 25 entry editor', 7, async () => {
   eq('a first step finished with a face and one moved scale saves exactly that scale', moved && {
     mood: moved.mood, scales: Object.keys(moved.dims).length, value: String(Object.values(moved.dims)[0]), note: moved.note
   }, { mood: 2, scales: 1, value: moved?.shownValue, note: '' });
+
+  /* Tester report 02, ticket 04: the second step. A save from it writes what
+     the first step set and what the second added (a mode, a tag chosen on the
+     page with no chip opened first, the note, the star), through the same
+     finish control the first step has. Its parts stand in the order Alicja
+     chose, the note and the attachments last, and a step back keeps the draft.
+     All fail on the old single page, which has no tags open and the note first. */
+  const second = r.secondStepSave;
+  eq('a second step finished saves what both steps set', second && {
+    mood: second.mood, scales: Object.keys(second.dims).length, note: second.note, tags: second.tags,
+    mode: second.presentationId === r.shownPresentationId, starred: second.starred
+  }, { mood: 3, scales: 1, note: 'written on the second step', tags: ['g-body-eu'], mode: true, starred: true });
+  eq('the second step lists mode, tags, body, note, attachments in that order', r.secondStepShape?.order, [
+    'mode', 'tags', 'body', 'note', 'photos', 'voice', 'video'
+  ]);
+  eq('a step back keeps the face and the note', r.secondStepShape?.backKeptDraft, true);
+  eq('one finish control, the same node on both steps', r.secondStepShape && {
+    count: r.secondStepShape.footOnStep2, same: r.secondStepShape.finishSameNode
+  }, { count: 1, same: true });
 });
 
 /* Phase 8 features ticket 55: the PDF renderer.
