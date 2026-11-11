@@ -482,3 +482,49 @@ describe('copy outside the catalogues', () => {
     expect(outside(root).filter((row) => row.reviewed).map((row) => row.key)).toEqual(['store:changelogs/7']);
   });
 });
+
+describe('removing a string and editing together', () => {
+  const serve = async (root: string) => {
+    const server = createStringsServer(root);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Missing server address');
+    const url = `http://127.0.0.1:${address.port}/api/strings`;
+    const send = (method: string, body: unknown) => fetch(url, {
+      method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    const close = () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    return { send, close };
+  };
+  const catalogue = (root: string, locale: string) => JSON.parse(readFileSync(join(root, `messages/${locale}.json`), 'utf8'));
+
+  it('removes an unused key from both languages and its review, and refuses a used or stale one', async () => {
+    const root = fixture();
+    const { send, close } = await serve(root);
+    try {
+      expect((await send('DELETE', { key: 'greeting', en: 'Hello', pl: 'Dzień dobry' })).status).toBe(409);
+      expect((await send('DELETE', { key: 'orphan', en: 'Stale', pl: 'Zapisałaś' })).status).toBe(409);
+      expect((await send('DELETE', { key: 'nothing', en: null, pl: null })).status).toBe(400);
+      expect((await send('DELETE', { key: 'orphan', en: 'Unused', pl: 'Zapisałaś' })).status).toBe(204);
+      expect(Object.keys(catalogue(root, 'en'))).not.toContain('orphan');
+      expect(Object.keys(catalogue(root, 'pl'))).not.toContain('orphan');
+      expect(catalogue(root, 'en').greeting).toBe('Hello');
+      expect(readStrings(root).find((row) => row.key === 'orphan')?.change).toBe('removed');
+    } finally { await close(); }
+  });
+
+  it('keeps both edits when two people save different keys at the same moment', async () => {
+    const root = fixture();
+    const { send, close } = await serve(root);
+    try {
+      const statuses = await Promise.all([
+        send('PATCH', plainEdit('Welcome')).then((r) => r.status),
+        send('PATCH', { locale: 'pl', key: 'orphan', variant: null, form: null, previous: 'Zapisałaś', text: 'Zapisano' }).then((r) => r.status),
+        send('PATCH', { locale: 'en', key: 'missing', variant: null, form: null, previous: 'Only English', text: 'Edited' }).then((r) => r.status)
+      ]);
+      expect(statuses).toEqual([204, 204, 204]);
+      expect(catalogue(root, 'en')).toMatchObject({ greeting: 'Welcome', missing: 'Edited' });
+      expect(catalogue(root, 'pl').orphan).toBe('Zapisano');
+    } finally { await close(); }
+  });
+});
