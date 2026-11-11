@@ -171,6 +171,55 @@ public class ReminderNotificationPrivacyTest {
         }
     }
 
+    /* Faces already in the shade must not outlive the setting that forbids
+       them: turning "Hide sensitive titles" on re-syncs the payload, and
+       that withdraws a check-in still drawing faces. */
+    @Test
+    public void hidingTitlesWithdrawsFacesAlreadyInTheShade() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireCheckInAlarm();
+        assertNotNull("no faces to withdraw", findCheckInNotification().contentView);
+
+        CheckInFaces.withdrawIfHidden(context, payload(true).put("checkInEnabled", true));
+
+        assertNoActiveNotifications();
+    }
+
+    @Test
+    public void aGenericCheckInIsLeftInTheShadeWhenTitlesAreHidden() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, payload(true).put("checkInEnabled", true));
+        fireCheckInAlarm();
+        assertNotNull(findCheckInNotification());
+
+        CheckInFaces.withdrawIfHidden(context, payload(true).put("checkInEnabled", true));
+
+        assertNotNull("a generic check-in was withdrawn", findCheckInNotification());
+    }
+
+    /* A face's route is the one launch route that names a mood, and the
+       decision of 2026-11-10 is that no mood waits on the device for an
+       unlock: behind a gate the app cannot read the route yet, so it is
+       held in memory, never in preferences. */
+    @Test
+    public void aSeededRouteIsHeldInMemoryAndNeverInPreferences() {
+        android.content.SharedPreferences prefs = context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE);
+        ReminderScheduler.storeLaunchRoute(context, "/entry/new/today?seedMood=3");
+
+        assertNull("a mood was written to preferences", prefs.getString("launch-route", null));
+        assertEquals("/entry/new/today?seedMood=3", ReminderScheduler.consumeLaunchRoute(context));
+        assertNull("consumed once", ReminderScheduler.consumeLaunchRoute(context));
+    }
+
+    @Test
+    public void otherRoutesStillWaitInPreferences() {
+        android.content.SharedPreferences prefs = context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE);
+        ReminderScheduler.storeLaunchRoute(context, "/settings/reminders");
+
+        assertEquals("/settings/reminders", prefs.getString("launch-route", null));
+        assertEquals("/settings/reminders", ReminderScheduler.consumeLaunchRoute(context));
+        assertNull(ReminderScheduler.consumeLaunchRoute(context));
+    }
+
     private static void assertGenericCheckIn(Notification checkIn) {
         assertNotNull("no check-in notification was posted", checkIn);
         assertNull("faces on a check-in that must stay generic", checkIn.contentView);

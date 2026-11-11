@@ -1,6 +1,8 @@
 package dev.engender.app.reminders;
 
+import android.app.NotificationManager;
 import android.content.Context;
+import android.service.notification.StatusBarNotification;
 import android.widget.RemoteViews;
 
 import androidx.core.app.NotificationCompat;
@@ -9,6 +11,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import dev.engender.app.R;
+import dev.engender.app.disguise.DisguiseAlias;
 import dev.engender.app.launch.AppLaunch;
 
 /**
@@ -48,6 +51,21 @@ final class CheckInFaces {
         disguise. Either way the notification stays the generic one. */
     static boolean show(JSONObject payload, boolean disguised) {
         return !disguised && !payload.optBoolean("hideNotificationTitles", false);
+    }
+
+    /** A posted check-in outlives the settings it was posted under: turning
+        on "Hide sensitive titles" or disguise while faces sit in the shade
+        would leave them there. Only a notification still drawing faces is
+        withdrawn; a generic check-in is left alone. */
+    static void withdrawIfHidden(Context context, JSONObject payload) {
+        if (show(payload, DisguiseAlias.isDisguised(context))) return;
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        for (StatusBarNotification posted : manager.getActiveNotifications()) {
+            if (posted.getId() == ReminderAlarmReceiver.CHECK_IN_NOTIFICATION_ID
+                && posted.getNotification().contentView != null) {
+                manager.cancel(posted.getId());
+            }
+        }
     }
 
     /** "today" rather than the day the alarm fired: the [day] route resolves

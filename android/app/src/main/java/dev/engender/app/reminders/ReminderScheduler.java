@@ -478,17 +478,32 @@ public final class ReminderScheduler {
         context.startActivity(intent);
     }
 
+    /** A launch route waits here until the page can read it, which behind
+        a gate is until the unlock. A mood face's route names a mood, and no
+        mood waits on the device for an unlock (decision of 2026-11-10), so
+        that one is held in memory only: it is lost with the process, and
+        the person touches the face again. */
+    private static volatile String routeHeldInMemory;
+
     public static void storeLaunchRoute(Context context, String route) {
         String sanitized = sanitizeLaunchRoute(route);
         if (sanitized == null) return;
-        context
+        android.content.SharedPreferences.Editor prefs = context
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_LAUNCH_ROUTE, sanitized)
-            .apply();
+            .edit();
+        if (sanitized.contains("seedMood=")) {
+            routeHeldInMemory = sanitized;
+            prefs.remove(KEY_LAUNCH_ROUTE).apply();
+            return;
+        }
+        routeHeldInMemory = null;
+        prefs.putString(KEY_LAUNCH_ROUTE, sanitized).apply();
     }
 
     static String consumeLaunchRoute(Context context) {
+        String held = routeHeldInMemory;
+        routeHeldInMemory = null;
+        if (held != null) return sanitizeLaunchRoute(held);
         String route = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LAUNCH_ROUTE, null);
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_LAUNCH_ROUTE).apply();
         return sanitizeLaunchRoute(route);
