@@ -6917,6 +6917,8 @@ try {
 
   // The one way out, which carries what was jotted into the debrief.
   await page.click('[data-room-done]');
+  // The debrief opens on the first step like any new entry; its scaffold is with the note.
+  await toTheRest();
   await page.waitForSelector('#ed-note', { timeout: 8000 });
   await page.waitForFunction(
     (answer) => document.querySelector('#ed-note')?.value.includes(answer),
