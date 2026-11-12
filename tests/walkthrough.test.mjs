@@ -2237,7 +2237,7 @@ try {
   /* Merge only adds, so it runs without the confirm Replace asks for. */
   if (await page.locator('[data-sheet]').count()) throw new Error('Merge opened a confirm sheet');
   await page.waitForFunction(
-    () => [...document.querySelectorAll('[data-toast]')].some((t) => /Archive merged|Archive imported|Dołączono archiwum|Archiwum zaimportowane/.test(t.textContent)),
+    () => [...document.querySelectorAll('[data-toast]')].some((t) => /Backup merged|Dołączono kopię/.test(t.textContent)),
     null,
     { timeout: 120000 }
   );
@@ -2258,7 +2258,7 @@ try {
      the one thing only a run that happened says. */
   const replacedToast = () =>
     page.evaluate(() =>
-      [...document.querySelectorAll('[data-toast]')].some((t) => /Journal replaced|Archiwum zastąpiło/.test(t.textContent))
+      [...document.querySelectorAll('[data-toast]')].some((t) => /Journal replaced|Kopia zapasowa zastąpiła/.test(t.textContent))
     );
   await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
   await booted();
@@ -2276,7 +2276,7 @@ try {
   await page.locator('[data-import]').click();
   await page.locator('[data-sheet] [data-confirm-replace]').click();
   await page.waitForFunction(
-    () => [...document.querySelectorAll('[data-toast]')].some((t) => /Journal replaced|Archiwum zastąpiło/.test(t.textContent)),
+    () => [...document.querySelectorAll('[data-toast]')].some((t) => /Journal replaced|Kopia zapasowa zastąpiła/.test(t.textContent)),
     null,
     { timeout: 120000 }
   );
@@ -2409,9 +2409,12 @@ try {
   await page.locator('[data-next]').click(); // flag -> scales
 
   /* Scales a person ticks, not eight presets a person picks (phase 5
-     ticket 35). The names are the scales' own, and each row carries a line
-     saying what it measures - which is the whole reason the checklist
-     replaced the cards, so the subtitle is asserted rather than assumed.
+     ticket 35). The names are the scales' own, and a row whose name does
+     not say what it measures carries a line that does - which is the whole
+     reason the checklist replaced the cards, so the subtitle is asserted
+     rather than assumed. A name that is its own two ends ("dysphoria -
+     euphoria") has no line since tester report 02, ticket 08, and that is
+     asserted too.
 
      The built-ins are asserted by key and in order rather than against a
      row count: an earlier flow adds a custom scale to this journal, so a
@@ -2424,12 +2427,12 @@ try {
     await scaleRows.evaluateAll((els) => els.map((el) => el.dataset.listRow.replace(/^scale-/, '')))
   );
   const expectedScales = [
-    ['dysphoria - euphoria', 'dysphoria and euphoria'],
+    ['dysphoria - euphoria', null],
     ['Femininity', 'not at all to very'],
     ['Masculinity', 'not at all to very'],
-    ['binary - nonbinary', 'binary and nonbinary'],
-    ['agender - genderful', 'agender and genderful'],
-    ['steady - shifting', 'steady sense of gender']
+    ['binary - nonbinary', null],
+    ['agender - genderful', null],
+    ['steady - shifting', 'steady your sense of gender']
   ];
   const builtInKeys = [
     'euphoria_dysphoria',
@@ -2450,7 +2453,9 @@ try {
     if (!scaleTexts[i].trim().startsWith(name)) {
       throw new Error(`onboarding scale ${i}: ${JSON.stringify(scaleTexts[i])}`);
     }
-    if (!scaleTexts[i].includes(note)) {
+    if (note === null) {
+      if (/Where the day sat/.test(scaleTexts[i])) throw new Error(`onboarding scale ${i} repeats its name in a second line: ${JSON.stringify(scaleTexts[i])}`);
+    } else if (!scaleTexts[i].includes(note)) {
       throw new Error(`onboarding scale ${i} has no line saying what it is: ${JSON.stringify(scaleTexts[i])}`);
     }
   });
@@ -4601,7 +4606,7 @@ try {
   for (const text of ['Tell my sister', 'Tell my manager']) {
     await section.locator(`[data-add-goal="${categoryId}"]`).click();
     await page.getByPlaceholder('Your step').fill(text);
-    await page.getByRole('button', { name: 'Add goal' }).click();
+    await page.getByRole('button', { name: 'Add step' }).click();
     await section.locator('[data-goal]').filter({ hasText: text }).waitFor(); // text-under-test: the goal I just typed
     await page.waitForFunction(() => document.querySelectorAll('[data-sheet]').length === 0);
   }
@@ -7972,7 +7977,7 @@ try {
   await polishSteps(true);
   await page.locator('[data-add-goal="legal"]').click();
   await page.getByPlaceholder('Your step').fill('Get the referal reissued');
-  await page.getByRole('button', { name: 'Add goal' }).click();
+  await page.getByRole('button', { name: 'Add step' }).click();
 
   const misspelt = page.locator('[data-goal]').filter({ hasText: 'Get the referal reissued' }); // text-under-test: fixture text, typed by this flow two lines up
   await misspelt.waitFor();
