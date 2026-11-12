@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
 
@@ -240,7 +241,14 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
     private void lockOnLeave() {
         // First and synchronously: Android photographs the window for its
         // task snapshot before the page below can draw its gate.
-        if (LeaveCover.coverOnLeave()) showLeaveCover();
+        if (LeaveCover.coverOnLeave()) {
+            showLeaveCover();
+            // Below Android 13 only FLAG_SECURE keeps the task snapshot off
+            // the journal; returnFromLeave restores the capture choice.
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+            }
+        }
         if (rendererGone || bridge == null || bridge.getWebView() == null) return;
         // Covered by a screen the app opened itself is not leaving it yet,
         // and the page decides how long it may stay up (leave-lock.ts). The

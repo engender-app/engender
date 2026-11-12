@@ -23,7 +23,7 @@ package dev.engender.app.lock;
  * View.
  */
 public final class LeaveCover {
-    private static volatile boolean coverOnLeave;
+    private static volatile boolean coverConfigured;
     private static volatile int ground = 0xFF000000;
     private static boolean shown;
 
@@ -32,7 +32,7 @@ public final class LeaveCover {
     /** The page's mirror: whether a lock is set, and its ground as
         #RRGGBB. A ground that does not parse keeps the last good one. */
     public static synchronized void set(boolean cover, String groundHex) {
-        coverOnLeave = cover;
+        coverConfigured = cover;
         Integer parsed = parseGround(groundHex);
         if (parsed != null) ground = parsed;
     }
@@ -44,7 +44,7 @@ public final class LeaveCover {
         cover reports a cover from an earlier leave that is still up, so a
         later callback does not read as taking it down. */
     public static synchronized boolean coverOnLeave() {
-        if (!coverOnLeave) return shown;
+        if (!coverConfigured) return shown;
         shown = true;
         return true;
     }
@@ -54,7 +54,7 @@ public final class LeaveCover {
         preview is kept at all (the capture choice still decides screenshots
         taken inside the app, and a capture choice of "no" still hides it). */
     public static boolean recentsPreviewAllowed(boolean captureAllowed) {
-        return captureAllowed && !coverOnLeave;
+        return captureAllowed && !coverConfigured;
     }
 
     /** The page has drawn the gate, or did not lock: the cover comes off. */
@@ -81,7 +81,7 @@ public final class LeaveCover {
 
     /** Tests only. */
     static synchronized void resetForTest() {
-        coverOnLeave = false;
+        coverConfigured = false;
         ground = 0xFF000000;
         shown = false;
     }
