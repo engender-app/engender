@@ -7228,7 +7228,7 @@ try {
   await page.click('[data-save-regimen]');
   // The editor sheet saves in place: wait for the episode to be listed, or
   // the next goto races the write and the regimen is never saved.
-  await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().waitFor({ timeout: 8000 });
+  await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().waitFor({ timeout: 8000 }); // text-under-test: the drug I just typed
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
   await checkCycleOffers(false, 'en');
   await checkCycleOffers(false, 'pl');
