@@ -27,10 +27,11 @@
 
 import { isAndroid } from '../platform';
 import { androidLockTiming as bridge } from './lock-timing-bridge';
+import type { LockAfter } from '../data/prefs/catalogue.ts';
 
 /** Whether leaving the app locks it at once, which is the one case the
     activity can cover before Android photographs the window. */
-export function leaveLocksAtOnce(lockAfter: string, hasSecret: boolean): boolean {
+export function leaveLocksAtOnce(lockAfter: LockAfter, hasSecret: boolean): boolean {
   return hasSecret && lockAfter === 'immediately';
 }
 

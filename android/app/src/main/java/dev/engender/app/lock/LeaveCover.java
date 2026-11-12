@@ -38,7 +38,9 @@ public final class LeaveCover {
 
     /** Called on every leave. True when the window should be covered now:
         the leave locks, and it is not one of the app's own screens (a picker,
-        the camera), which the page gives a minute's grace instead. */
+        the camera), which the page gives a minute's grace instead. For such a
+        leave the answer is whether a cover from an earlier leave is still up,
+        so a later callback does not read as taking it down. */
     public static synchronized boolean coverOnLeave(boolean ownScreenOpen) {
         if (!coverOnLeave || ownScreenOpen) return shown;
         shown = true;
