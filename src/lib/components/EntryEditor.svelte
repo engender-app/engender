@@ -879,6 +879,7 @@
      so a cancel leaves it exactly as it was. */
   let scrub: StepScrub | undefined;
   let previewStep = $state<HTMLElement | undefined>();
+  let leavingStepEl: HTMLElement | undefined;
 
   function beginPreview(): boolean {
     if (!canStepBack() || stepping || previewing || saving) return false;
@@ -887,6 +888,7 @@
     // The drawing goes in and is placed at its start before anything paints.
     flushSync();
     const leavingStep = stepScreen?.querySelector<HTMLElement>('[data-entry-step="2"]');
+    leavingStepEl = leavingStep ?? undefined;
     const leavingHeading = document.querySelector<HTMLElement>('[data-step-heading]:not([data-step-heading-preview])');
     const arrivingHeading = document.querySelector<HTMLElement>('[data-step-heading-preview]');
     // The way on lives in the save bar, which is moved out of the step screen.
@@ -927,10 +929,12 @@
     // The swap and the styles coming off land in one frame: every part is
     // at rest where the real element now stands.
     flushSync();
+    // The leaving step stays in the page until its outro ends, and by now
+    // its own `{#if step === 1}` draws the first step in it. The scrub kept
+    // it invisible; taking the scrub's styles off must not show it again.
+    if (to === 1 && leavingStepEl?.isConnected) leavingStepEl.style.display = 'none';
+    leavingStepEl = undefined;
     drawn.clear();
-    // Keep the transitions instant until the removed step's outro has been
-    // set up and finished, so it cannot replay the change a second time.
-    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
     instantStep = false;
     stepping = false;
     if (to === 1) focusNamedTarget(stepScreen?.querySelector<HTMLElement>('[data-screen-title]'));
