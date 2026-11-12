@@ -14,7 +14,8 @@
    node tests/screenshot-block-row-check.mjs [--root <tree with build/>]
      [--shots <dir>]   also writes a crop of the row per theme, language and state
      [--frames <dir>]  also writes the compositor frames of each flip, with a manifest
-     [--before]        capture only, for a build from before the change
+     [--before]        capture only, for a build from before the change: the
+                       same crops and flips, nothing asserted
 
    Requires `VITE_DEMO=1 npm run build`. */
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -112,7 +113,8 @@ async function flip(label) {
         await writeFile(`${framesDir}/${file}`, Buffer.from(cast[i].data, 'base64'));
         manifest.push({ file, ms: Math.round(cast[i].at - first) });
       }
-      await writeFile(`${framesDir}/${label}.json`, JSON.stringify({ frames: manifest, samples }, null, 1));
+      const box = await page.locator(ROW).boundingBox();
+      await writeFile(`${framesDir}/${label}.json`, JSON.stringify({ row: box, frames: manifest, samples }, null, 1));
     }
     return samples;
   });
@@ -141,6 +143,12 @@ try {
       await openSecurity(theme);
       if (before) {
         await crop(`row-${tag}`);
+        if (framesDir) {
+          await flip(`${tag}-first`);
+          await settle();
+          await flip(`${tag}-second`);
+          await settle();
+        }
         continue;
       }
       await block(`${tag} row`, 5, async () => {
