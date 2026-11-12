@@ -145,7 +145,7 @@
   let institutionsPanel = $state<ReturnType<typeof Institutions> | null>(null);
 
   /* The switch (functional audit ticket 34). Null until somebody touches
-     it, and null follows the language: on for Polish, off otherwise. The
+     it, and null is off in every language (tester report 02, ticket 08). The
      ticks stay stored either way, so switching back brings back exactly
      what was ticked. */
   let polishShown = $derived(polishLegalStepsShown(prefs.roadmapPolishStepsChoice));
