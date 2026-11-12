@@ -21,6 +21,7 @@
   import { lockAfterSub } from '$lib/lock/lock-after-words';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import { isAndroid } from '$lib/platform';
+  import { screenshotsBlocked, setScreenshotsBlocked } from '$lib/lock/screenshot-block';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -77,7 +78,10 @@
         <!-- Android only: FLAG_SECURE has no web equivalent, and a toggle
              that did nothing on this platform would be worse than none
              (screen-capture-guard/01). Replaces the isDebuggable() carve-out
-             that used to hand this to any debug build. -->
+             that used to hand this to any debug build. The row is a blocker,
+             off until a person switches it on; the stored preference is the
+             allowance, turned round in screenshot-block.ts (tester report 02,
+             ticket 02). -->
         <ListRow
           static
           key="screen-capture"
@@ -87,11 +91,9 @@
         >
           {#snippet trailing()}
             <Switch
-              checked={prefs.allowScreenCapture}
+              checked={screenshotsBlocked(prefs)}
               label={m.screen_capture_title()}
-              onChange={(v) => {
-                prefs.allowScreenCapture = v;
-              }}
+              onChange={(v) => setScreenshotsBlocked(prefs, v)}
             />
           {/snippet}
         </ListRow>

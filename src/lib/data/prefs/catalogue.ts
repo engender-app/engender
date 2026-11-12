@@ -68,7 +68,9 @@ export interface PreferenceValues {
   /** Android only (ticket screen-capture-guard/01): whether this device may
       screenshot or record the app, mirrored into SharedPreferences so
       MainActivity can decide FLAG_SECURE before the window has a frame.
-      Default true; a saved false still blocks capture on that device. */
+      Default true. False is the person's choice: the Security row is a
+      "Block screenshots" switch that is on when this is false
+      (lock/screenshot-block.ts). */
   allowScreenCapture: boolean;
   /** Reminder notifications show their real title and body when false; a
       generic one otherwise, regardless of whether the device is locked at
