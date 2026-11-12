@@ -2429,7 +2429,7 @@ try {
     ['Masculinity', 'not at all to very'],
     ['binary - nonbinary', 'binary and nonbinary'],
     ['agender - genderful', 'agender and genderful'],
-    ['Steady - shifting', 'steady sense of gender']
+    ['steady - shifting', 'steady sense of gender']
   ];
   const builtInKeys = [
     'euphoria_dysphoria',
@@ -3251,7 +3251,7 @@ try {
     ['masculinity', 'Masculinity'],
     ['binary_nonbinary', 'binary - nonbinary'],
     ['agender_gendered', 'agender - genderful'],
-    ['gender_stability', 'Steady - shifting']
+    ['gender_stability', 'steady - shifting']
   ];
   expected.forEach(([, label], i) => {
     if (!rowTexts[i]?.trim().startsWith(label)) {

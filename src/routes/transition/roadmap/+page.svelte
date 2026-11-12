@@ -153,7 +153,7 @@
   let hiddenQuery = liveQuery((j) => j.roadmap.getHiddenGoals(pack.key));
   let socialHiddenQuery = liveQuery((j) => j.roadmap.getHiddenGoals(SOCIAL_PACK.key));
   let hiddenGoals = $derived([...(hiddenQuery.value ?? []), ...(socialHiddenQuery.value ?? [])]);
-  /* Only what the screen is showing a group for: the "Hidden goals" list
+  /* Only what the screen is showing a group for: the "Hidden steps" list
      is a way back to rows of a group that is on. */
   let hiddenBuiltIns = $derived(
     [...(polishShown ? pack.goals : []), ...(prefs.roadmapSocialStepsShown ? SOCIAL_PACK.goals : [])].filter((goal) =>

@@ -683,7 +683,7 @@
           icon="search"
           key="search-none"
           title={m.no_results()}
-          text={debouncedQuery ? m.no_results_body({ query: debouncedQuery }) : m.search_no_results_filtered()}
+          text={debouncedQuery ? m.no_results_body() : m.search_no_results_filtered()}
         />
       </div>
     {:else}

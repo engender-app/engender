@@ -445,7 +445,7 @@
           icon="search"
           key="hub-search-none"
           title={m.no_results()}
-          text={m.no_results_body({ query: typed })}
+          text={m.no_results_body()}
         />
       {/if}
     </div>
