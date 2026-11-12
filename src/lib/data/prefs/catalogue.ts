@@ -240,9 +240,8 @@ export interface PreferenceValues {
       on the timeline (phase 5 deepening ticket 10, ADR-0045). */
   roadmapMilestoneSyncEnabled: boolean;
   /** The answer to the roadmap's "Polish legal steps" switch (functional
-      audit ticket 34), null until somebody touches it. Null follows the
-      app's language: on for Polish, off otherwise (roadmap.ts,
-      `polishLegalStepsShown`). Portable, on `areaFinishOfferDeclined`'s
+      audit ticket 34), null until somebody touches it. Null is off in
+      every language (roadmap.ts, `polishLegalStepsShown`). Portable, on `areaFinishOfferDeclined`'s
       argument: whether a Polish court procedure is somebody's path is
       something they said about their own journal. */
   roadmapPolishStepsChoice: boolean | null;

@@ -221,6 +221,10 @@
      `sameIds` above) so the gate below can tell a landed answer from a stale
      one apart. */
   let entryIds = $derived((day?.entries ?? []).map((e) => e.id));
+  /* What the add-entry button says (tester report 02, ticket 08): "another"
+     is wrong on a day that holds no entry. Decided by the landed read, so a
+     day still loading keeps the wording a day with entries has. */
+  let noEntryYet = $derived(day != null && day.entries.length === 0);
   let marginNotesRead = liveQuery(async (j) => {
     const ids = entryIds;
     return { ids, byEntry: await j.marginNotes.forEntries(ids) };
@@ -409,7 +413,7 @@
          ever wanted, not a rule (ADR-0049). -->
     <div class="day-add">
       <button class="btn btn-soft" data-add onclick={() => goto(withListReturn(`/entry/new/${epochDay}`, page.url))}>
-        <Icon name="plus" size={20} /><span>{m.add_another_entry()}</span>
+        <Icon name="plus" size={20} /><span>{noEntryYet ? m.add_entry_for_day() : m.add_another_entry()}</span>
       </button>
       <a class="btn btn-ghost" data-start-era href={`/settings/eras?start=${epochDay}`}>
         <Icon name="era" size={20} /><span>{m.era_start_here()}</span>

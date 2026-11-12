@@ -17,7 +17,6 @@
 import { m } from '$lib/paraglide/messages';
 import { liveList } from '$lib/data/live/journal.svelte';
 import { fmtDay } from '$lib/data/dates';
-import { getLocale } from '$lib/paraglide/runtime';
 import { prefs } from '$lib/data/prefs/store.svelte';
 import { POLISH_INSTITUTIONS, POLISH_PACK, isBuiltInGoal, isBuiltInInstitution, polishLegalStepsShown, socialGoalsInView } from '$lib/data/roadmap';
 import { roadmapGoalTitle, roadmapInstitutionName } from '$lib/data/vocabulary/roadmapLabels';
@@ -78,7 +77,7 @@ export function documentTargets() {
         /* The social steps, while their switch is on. Like the legal ones
            below, hiding a single step does not take it off this list. */
         ...socialGoalsInView(prefs.roadmapSocialStepsShown, []).map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
-        ...(polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale())
+        ...(polishLegalStepsShown(prefs.roadmapPolishStepsChoice)
           ? [
               ...POLISH_PACK.goals.map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
               /* The institutions (functional audit ticket 35) sit under the

@@ -32,8 +32,9 @@
      tick ever could.
 
      Functional audit ticket 34 left one built-in group, the Polish court
-     procedure, behind a "Polish legal steps" switch that follows the app's
-     language until somebody answers it. The social, presentational and
+     procedure, behind a "Polish legal steps" switch that is off until
+     somebody turns it on (it followed the app's language until tester
+     report 02, ticket 08). The social, presentational and
      medical tracks went, and with them the track switcher and the per-track
      "not my path", which the switch now says for the only group left. Under
      it, whatever the switch says, sit the person's own categories: each one
@@ -61,7 +62,6 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
-  import { getLocale } from '$lib/paraglide/runtime';
   import {
     LEGAL_GROUP,
     POLISH_INSTITUTIONS,
@@ -148,7 +148,7 @@
      it, and null follows the language: on for Polish, off otherwise. The
      ticks stay stored either way, so switching back brings back exactly
      what was ticked. */
-  let polishShown = $derived(polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale()));
+  let polishShown = $derived(polishLegalStepsShown(prefs.roadmapPolishStepsChoice));
 
   let hiddenQuery = liveQuery((j) => j.roadmap.getHiddenGoals(pack.key));
   let socialHiddenQuery = liveQuery((j) => j.roadmap.getHiddenGoals(SOCIAL_PACK.key));

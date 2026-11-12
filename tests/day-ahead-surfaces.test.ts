@@ -18,6 +18,23 @@ const DAY_ROUTE = 'src/routes/day/[day]/+page.svelte';
 const day = read(DAY_ROUTE);
 const dayAheadRows = read('src/lib/components/dayAheadRows.ts');
 
+describe('the add-entry button on a past day or today', () => {
+  /* Tester report 02, ticket 08: an empty day said "Add another entry for
+     this day" under "Nothing logged this day". The day's own read decides
+     the wording; a day that holds an entry keeps "another". */
+  it('says "an entry" on a day with no entry and "another entry" on a day with one', () => {
+    expect(day).toMatch(/noEntryYet = \$derived\(day != null && day\.entries\.length === 0\)/);
+    expect(markupOf(day)).toContain('{noEntryYet ? m.add_entry_for_day() : m.add_another_entry()}');
+  });
+
+  it('has the empty-day wording in both catalogues', () => {
+    const en = JSON.parse(read('messages/en.json')) as Record<string, string>;
+    const pl = JSON.parse(read('messages/pl.json')) as Record<string, string>;
+    expect(en.add_entry_for_day).toBe('Add an entry for this day');
+    expect(pl.add_entry_for_day).toBe('Dodaj wpis z tego dnia');
+  });
+});
+
 describe('the day after today', () => {
   it('is not the day carried in page.params.day alone - it is compared against today', () => {
     expect(day).toMatch(/isFuture = \$derived\(epochDay > currentDay\(\)\)/);
