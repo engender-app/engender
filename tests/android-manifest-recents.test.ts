@@ -19,15 +19,17 @@ describe('android main activity recents policy', () => {
 });
 
 /* Alicja, 2026-10-06: screenshots and the Recents preview are visible and
-   only optionally hidden. The capture switch is the one input; a journal lock
-   does not hide either. Android 13+ has no getter for the Recents choice, so
-   the instrumentation tests cannot read it back and this line holds it. */
-describe('android recents preview follows the capture choice alone', () => {
+   only optionally hidden. The Block screenshots switch and disguise are the
+   two inputs (FA 43, tester report 02 ticket 01); a journal lock does not
+   hide either. Android 13+ has no getter for the Recents choice, so the
+   instrumentation tests cannot read it back and this line holds it. */
+describe('android recents preview follows the capture choice and disguise, never the lock', () => {
   const plugin = read('android/app/src/main/java/dev/engender/app/screencapture/ScreenCapturePlugin.java');
   const activity = read('android/app/src/main/java/dev/engender/app/MainActivity.java');
 
-  it('passes the capture choice straight to setRecentsScreenshotEnabled', () => {
-    expect(plugin).toMatch(/setRecentsScreenshotEnabled\(allowed\);/);
+  it('passes the decision on the capture choice and disguise to setRecentsScreenshotEnabled', () => {
+    expect(plugin).toMatch(/setRecentsScreenshotEnabled\(recentsPreviewShown\(allowed, disguised\)\);/);
+    expect(plugin).toMatch(/recentsPreviewShown\(boolean allowed, boolean disguised\) \{\s*return allowed && !disguised;/);
   });
 
   it('never decides the window flags from the lock', () => {
