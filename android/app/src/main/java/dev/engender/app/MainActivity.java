@@ -20,6 +20,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginHandle;
 import com.getcapacitor.WebViewListener;
 
+import dev.engender.app.chrome.KeyboardFollow;
 import dev.engender.app.disguise.DisguiseState;
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
@@ -124,6 +125,7 @@ public class MainActivity extends BridgeActivity {
             PluginHandle stepBack = bridge.getPlugin("StepBack");
             if (stepBack != null) ((StepBackPlugin) stepBack.getInstance()).install(this);
         }
+        KeyboardFollow.install(getWindow().getDecorView());
         captureReminderRoute(getIntent());
         ContextCompat.registerReceiver(this, screenOff, new IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED);
     }
