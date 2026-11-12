@@ -17,8 +17,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-/** The capture choice is the only thing that decides FLAG_SECURE, on leave as
- * well as in the foreground. Needs no WebView, so it also runs on the API 26
+/** With no lock set (the leave cover's mirror is cleared with the rest), the
+ * capture choice is the only thing that decides FLAG_SECURE, on leave as well
+ * as in the foreground. Needs no WebView, so it also runs on the API 26
  * emulator, where FLAG_SECURE is what hides the Recents preview as well. Both
  * preference files are cleared first: a fresh install allows capture, and
  * older builds treated the cleared lock mirror as a journal with a lock.
