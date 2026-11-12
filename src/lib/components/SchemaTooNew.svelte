@@ -49,7 +49,7 @@
   }
 </script>
 
-<GateScreen title={m.boot_schema_too_new_title()}>
+<GateScreen title={m.boot_schema_too_new_title()} data-schema-too-new>
   <div class="gate-actions">
     <button class="btn btn-primary" data-look-for-newer disabled={looking} onclick={lookForNewer}>
       <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>
