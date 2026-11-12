@@ -1433,7 +1433,6 @@
               {#if skip.count !== undefined}<strong>{skip.count}</strong>{/if}
             </div>
           {/each}
-          <p class="muted small" style="margin:var(--space-3) 0 0">{m.dlb_left_behind_note()}</p>
         {/if}
       </div>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.daylio_always_merge()}</p>

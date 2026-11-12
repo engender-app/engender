@@ -644,7 +644,6 @@
               key="surgery-milestone-prompt"
               role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
               title={m.surgery_milestone_prompt_title()}
-              text={m.surgery_milestone_prompt_body()}
               action={{ label: m.surgery_milestone_prompt_action(), primary: true, onclick: promptMilestoneConfirmation }}
               data-record-milestone-prompt
             />
@@ -766,7 +765,6 @@
       onClose={() => void answerMilestoneOffer('decline')}
     >
       <h3>{m.surgery_milestone_confirm_q({ name: stored.name })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.surgery_milestone_confirm_hint()}</p>
       <div class="stack-3">
         <button
           class="btn btn-primary"

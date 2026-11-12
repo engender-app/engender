@@ -757,7 +757,7 @@
    between a centred line and a left-aligned paragraph by counting
    characters, because a gate's frame centred everything by default and six
    centred lines of a passphrase consequence go ragged at both edges. Nothing
-   is centred now, so there is nothing left to decide: `pp_unlock_body` at 54
+   is centred now, so there is nothing left to decide: `su_pin_body` at 36
    characters and `pp_convert_setup_body` at 266 are the same voice at the
    same size, which is the size the module's own consequence prose next to
    them has always been. */

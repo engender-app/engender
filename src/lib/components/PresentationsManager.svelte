@@ -80,7 +80,6 @@
     <Icon name="plus" size={22} />
   </button>
 </div>
-<p class="ob-text">{m.presentations_intro()}</p>
 
 <div use:resize>
   {#if presentations.length > 0}

@@ -915,7 +915,6 @@
                 {/snippet}
               </Field>
             </div>
-            <p class="muted small">{m.dose_time_hint()}</p>
           </div>
         {/if}
 

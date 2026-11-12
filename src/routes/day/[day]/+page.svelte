@@ -365,7 +365,6 @@
       key="day-ahead-empty"
       role={entriesRole}
       title={m.day_ahead_empty_title()}
-      text={m.day_ahead_empty_body()}
     />
   {/if}
 
@@ -393,7 +392,6 @@
           key="day-empty"
           role={entriesRole}
           title={m.nothing_logged()}
-          text={m.nothing_logged_body()}
         />
       {/snippet}
     </ReadGate>

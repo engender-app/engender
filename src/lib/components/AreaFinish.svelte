@@ -295,7 +295,6 @@
           data-area-finished
           icon="flag"
           title={m.area_finish_done_title({ date: dayLong(finishedOn) })}
-          subtitle={m.area_finish_done_sub()}
           static
           chevron={false}
         />
@@ -313,7 +312,6 @@
           data-area-suspended
           icon="pause"
           title={m.area_suspend_done_title({ date: dayLong(suspendedOn) })}
-          subtitle={m.area_suspend_done_sub()}
           static
           chevron={false}
         />

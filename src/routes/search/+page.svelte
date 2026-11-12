@@ -864,7 +864,6 @@
       <label for="search-filter-end">{m.search_filter_end_label()}</label>
       <DatePicker id="search-filter-end" min={dayRangeEndMin(startDate)} max={todayInput} bind:value={endDate} ariaLabel={m.search_filter_end_label()} data-filter-end />
     </div>
-    <p class="search-hint">{m.search_filters_date_scope()}</p>
 
     <div class="tag-row" role="group" aria-label={m.search_filters()}>
       <button

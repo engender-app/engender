@@ -63,7 +63,7 @@
   /* Hoisted out of the template so its length can decide whether it is a
      line to centre or a paragraph to left-align (GateScreen). */
   let formBody = $derived(
-    unlockingPin ? m.su_pin_body() : unlockingBiometric ? m.bm_unlock_body() : m.pp_unlock_body()
+    unlockingPin ? m.su_pin_body() : unlockingBiometric ? m.bm_unlock_body() : ''
   );
 
   /* The way-out sheet says which secret is missing, and biometric mode has
@@ -177,7 +177,7 @@
     {#if choosingMode}
       <AccessModeSetup purpose="setup" {busy} {error} onChoose={choose} bind:chosen={chosenMode} />
     {:else}
-      <p class="gate-body">{formBody}</p>
+      {#if formBody}<p class="gate-body">{formBody}</p>{/if}
 
       {#if unlockingPin}
         <PinEntry onVerify={submitPin} />

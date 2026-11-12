@@ -470,7 +470,6 @@
         key="appointments-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.appointments_empty_title()}
-        text={m.appointments_empty_body()}
         action={{ label: m.appointments_empty_action(), primary: true, onclick: () => openNew(false) }}
       />
     {/snippet}

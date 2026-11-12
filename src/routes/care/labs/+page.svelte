@@ -605,7 +605,6 @@
         key="labs-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
         title={m.labs_empty_title()}
-        text={m.labs_empty_body()}
         action={{ label: m.labs_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
       />
     {/snippet}

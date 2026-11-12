@@ -305,7 +305,6 @@
           key="hair-removal-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
           title={m.hair_removal_empty_title()}
-          text={m.hair_removal_empty_body()}
           action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       </div>

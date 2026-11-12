@@ -418,7 +418,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.wear_log()} back="/more" subtitle={m.wear_log_intro()}>
+  <ScreenHeader title={m.wear_log()} back="/more">
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={wearAddAria(latestKind)} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />

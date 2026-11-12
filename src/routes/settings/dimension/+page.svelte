@@ -111,7 +111,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.custom_dimension()} back="/settings" subtitle={m.cd_intro()} />
+  <ScreenHeader title={m.custom_dimension()} back="/settings" />
 
   <!-- The scales already made, above the form that makes another
        (functional audit ticket 41): there was no way to correct a scale's

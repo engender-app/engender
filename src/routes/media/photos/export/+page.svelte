@@ -285,14 +285,11 @@
             key="journey-output"
           />
         {/if}
-        <p class="muted small">
-          {#if output === 'collage'}
-            {m.pj_collage_hint()}
-            {#if !canRecord}{' '}{m.pj_timelapse_unavailable()}{/if}
-          {:else}
-            {m.pj_timelapse_hint()} {m.pj_timelapse_length({ n: seconds })}
-          {/if}
-        </p>
+        {#if output !== 'collage'}
+          <p class="muted small">{m.pj_timelapse_hint()} {m.pj_timelapse_length({ n: seconds })}</p>
+        {:else if !canRecord}
+          <p class="muted small">{m.pj_timelapse_unavailable()}</p>
+        {/if}
 
         <SectionHeading text={m.pj_range_title()} />
         <!-- The date rows compare and the wrapped custom range draw (release

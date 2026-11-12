@@ -575,19 +575,6 @@
         </p>
       {/if}
 
-      <!-- Mouth-to-microphone distance is the largest thing a person
-           controls in the whole of this measurement, and no API can read
-           it back, so it ships as an instruction rather than as a stored
-           number a benchmark could not verify (ticket 28, ADR-0061). Both
-           steps get it, because the vowel is a take too, and it goes after
-           each step's own words rather than in front of them: what this
-           screen is comes first, how to hold the phone second. It leaves
-           while a take is running, like the hints it follows, because the
-           gauge needs the room. -->
-      {#snippet distance()}
-        <p class="muted small vb-hint">{m.vb_distance_hint()}</p>
-      {/snippet}
-
       <!-- Reading shows live pitch on a fixed hertz axis. The vowel step
            shows steadiness around its own note. -->
       {#if step === 'passage' && (phase === 'recording' || phase === 'retry')}
@@ -639,8 +626,6 @@
              way of a take in progress. It goes when the flow starts. -->
         {#if phase === 'idle'}
           <p class="muted small vb-hint">{m.vb_lead()}</p>
-          <p class="muted small vb-hint">{m.vb_passage_ceiling_hint()}</p>
-          {@render distance()}
         {/if}
         <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
         <!-- Swapping the passage mid-take is not a thing to do, and the row
@@ -657,7 +642,6 @@
              saying it, and the instruction is taking up the room the gauge
              needs. Which sound follows the step this is (VOWEL_HINTS). -->
         <p class="muted small vb-hint">{VOWEL_HINTS[vowelKey]()}</p>
-        {@render distance()}
       {/if}
 
       {#if step === 'vowel' && (phase === 'recording' || phase === 'retry')}

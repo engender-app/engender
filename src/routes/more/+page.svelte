@@ -431,7 +431,6 @@
               data-hub-search-handoff
               icon="search"
               title={m.hub_search_handoff({ query: debouncedQuery })}
-              subtitle={m.hub_search_handoff_sub()}
               href="/search"
               onclick={handOffSearch}
             />

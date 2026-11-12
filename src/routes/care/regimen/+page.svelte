@@ -215,7 +215,6 @@
           data-cycle-events-link
           icon="calendar"
           title={m.cycle_events()}
-          subtitle={m.cycle_tracking_regimen_row_sub()}
           href="/health/cycle-events"
         />
       </ListCard>

@@ -231,8 +231,6 @@
     </SaveBar>
   {:else}
     <div class="screen-part vp-body">
-      <p class="muted small vp-lead">{m.vb_practise_lead()}</p>
-
       {#if running}
         <VoiceGauge
           data-vp-gauge
@@ -271,10 +269,6 @@
      than leaving it to a scroll somebody mid-take cannot make. */
   .vp-body {
     padding-bottom: calc(var(--touch-target) * 2);
-  }
-
-  .vp-lead {
-    margin: 0 0 var(--space-4);
   }
 
   .vp-sealed-note {

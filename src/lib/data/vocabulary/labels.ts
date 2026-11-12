@@ -82,12 +82,9 @@ const DIMENSION_HIGH: Record<BuiltInDimensionKey, Message> = {
    three above do. A name has to render as something and a key is better
    than a blank row; a note is a subtitle, and a row with no subtitle is a
    shape this list already draws. */
-const DIMENSION_NOTE: Record<BuiltInDimensionKey, Message> = {
-  euphoria_dysphoria: m.dim_euphoria_dysphoria_note,
+const DIMENSION_NOTE: Partial<Record<BuiltInDimensionKey, Message>> = {
   femininity: m.dim_femininity_note,
   masculinity: m.dim_masculinity_note,
-  binary_nonbinary: m.dim_binary_nonbinary_note,
-  agender_gendered: m.dim_agender_gendered_note,
   gender_stability: m.dim_gender_stability_note
 };
 

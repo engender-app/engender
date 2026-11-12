@@ -94,7 +94,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.surgery_journey_title()} back="/more" subtitle={m.surgery_intro()}>
+  <ScreenHeader title={m.surgery_journey_title()} back="/more">
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.surgery_add()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />

@@ -440,7 +440,7 @@
     sub?: () => string;
   };
   const GETTING_STARTED: StartOffer[] = [
-    { key: 'milestones', area: 'milestones', icon: 'summit', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
+    { key: 'milestones', area: 'milestones', icon: 'summit', href: '/transition/milestones', title: m.home_start_milestones_title },
     { key: 'regimen', area: 'care', icon: 'pill', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
     { key: 'letters', area: 'letters', icon: 'envelope', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
     { key: 'photos', area: 'photos', icon: 'camera', href: TODAY_PHOTO_HREF, title: m.home_start_photos_title },

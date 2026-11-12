@@ -156,7 +156,6 @@ describe('what the More hub is built from', () => {
       'm.hub_screen_title(',
       'm.hub_search_clear(',
       'm.hub_search_handoff(',
-      'm.hub_search_handoff_sub(',
       'm.hub_search_placeholder(',
       'm.no_results(',
       'm.no_results_body(',

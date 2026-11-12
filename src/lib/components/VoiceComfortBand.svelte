@@ -57,7 +57,6 @@
   title={band ? m.vb_comfort_edit() : m.vb_comfort_set()}
   onClose={() => (editing = false)}
 >
-  <p class="muted small">{m.vb_comfort_hint()}</p>
   <div class="cb-fields">
     <label class="field">
       <span class="field-label">{m.vb_comfort_low()}</span>

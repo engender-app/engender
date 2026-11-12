@@ -74,7 +74,6 @@
     try {
       await openAndroidJournal({
         title: m.ak_prompt_title(),
-        subtitle: m.ak_prompt_subtitle(),
         cancel: m.ak_prompt_cancel(),
         deviceCredential
       });
