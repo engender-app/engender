@@ -35,6 +35,7 @@ import { ui } from './ui.svelte';
 import { forgetLastResults } from '../data/live/lastResults';
 import { unlockAttempts } from '../lock/unlock-attempt';
 import { watchLeave, type NativeLeaveHooks } from '../lock/leave-lock';
+import { revealLeaveCoverAfterPaint } from '../lock/leave-cover';
 
 export const lockState = $state({
   /** Set once the access mode's secret has been given, cleared on every lock. */
@@ -99,6 +100,9 @@ export function watchLock(closeJournal: () => Promise<void>): () => void {
     lifecycle: window,
     native: isAndroid() ? (window as unknown as NativeLeaveHooks) : undefined,
     lockAfter: () => prefs.lockAfter,
-    lock: () => lockNow(closeJournal)
+    lock: () => lockNow(closeJournal),
+    /* After the lock: the cover the activity put up on the way out comes
+       off once the gate has been drawn (lock/leave-cover.ts). */
+    returned: isAndroid() ? () => revealLeaveCoverAfterPaint() : undefined
   });
 }

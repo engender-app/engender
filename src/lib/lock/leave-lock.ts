@@ -55,6 +55,7 @@ export function watchLeave({
   lifecycle,
   lockAfter,
   lock,
+  returned,
   now = Date.now
 }: {
   /** The document, or anything with its visibility and its event. */
@@ -66,6 +67,9 @@ export function watchLeave({
       was away applies to that absence. */
   lockAfter: () => LockAfter;
   lock: () => void;
+  /** Called after every return the activity reports, once the lock has been
+      decided: Android's leave cover comes off from here (leave-cover.ts). */
+  returned?: () => void;
   now?: () => number;
 }): () => void {
   let hiddenAt: number | null = null;
@@ -97,7 +101,10 @@ export function watchLeave({
 
   if (native) {
     native.__lockOnLeaveFromNative = onLeave;
-    native.__lockOnReturnFromNative = onReturn;
+    native.__lockOnReturnFromNative = () => {
+      onReturn();
+      returned?.();
+    };
     return () => {
       delete native.__lockOnLeaveFromNative;
       delete native.__lockOnReturnFromNative;

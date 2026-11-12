@@ -12,6 +12,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import dev.engender.app.disguise.DisguiseAlias;
+import dev.engender.app.lock.LeaveCover;
 
 /**
  * Mirrors prefs.allowScreenCapture into SharedPreferences, so
@@ -70,7 +71,10 @@ public class ScreenCapturePlugin extends Plugin {
         it holds from the first frame of a cold start with no WebView and needs
         no second copy of the preference. Neither the stored choice nor the
         window flag is changed by disguise going on or off. A journal lock hides
-        neither screenshots nor the preview (Alicja, 2026-10-06). */
+        no screenshot, but while a lock is set the Recents preview is never
+        kept (Android 13+), because it would show the journal after the lock
+        engaged (tester report 02 ticket 07, Alicja 2026-11-12, over her
+        2026-10-06 "a lock hides neither"). */
     public static void applyWindowFlags(Activity activity) {
         applyWindowFlags(activity, isAllowed(activity));
     }
@@ -78,7 +82,7 @@ public class ScreenCapturePlugin extends Plugin {
     public static void applyWindowFlags(Activity activity, boolean allowed) {
         boolean disguised = DisguiseAlias.isDisguised(activity);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            activity.setRecentsScreenshotEnabled(recentsPreviewShown(allowed, disguised));
+            activity.setRecentsScreenshotEnabled(LeaveCover.recentsPreviewAllowed(recentsPreviewShown(allowed, disguised)));
         }
         if (windowSecure(Build.VERSION.SDK_INT, allowed, disguised)) {
             activity.getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);

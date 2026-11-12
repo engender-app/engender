@@ -32,6 +32,8 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { documentChrome } from '$lib/data/prefs/documentChrome';
   import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
+  import { leaveCovers, syncLeaveCover } from '$lib/lock/leave-cover';
+  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { outsideDisguise, tabIdentity } from '$lib/disguise/identity';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
   import { speech } from '$lib/stores/announcer.svelte';
@@ -392,6 +394,18 @@
        the theme this block has just stamped, and anything that read them for
        itself would be racing that stamp (activeFlag.svelte.ts). */
     refreshActiveFlag(document);
+  });
+
+  /* What the activity covers the window with whenever a lock is set
+     (lock/leave-cover.ts): Android photographs the window before the page
+     can draw its gate, so the activity has to know ahead of the leave, and
+     cover with the page's own ground. After the effect above, which stamps
+     the theme and palette that ground is read from. */
+  $effect(() => {
+    if (!isAndroid()) return;
+    documentChrome(prefs, { prefersDark: systemDark.current, prefersReducedMotion: systemReducedMotion.current });
+    const cover = leaveCovers(accessModeHasSecret(bootState.accessMode, true));
+    syncLeaveCover(cover, getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
   });
 
   /* Document language (pre-production audit U1). app.html ships `lang="en"`
