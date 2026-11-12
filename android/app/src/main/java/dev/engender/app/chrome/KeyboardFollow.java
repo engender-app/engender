@@ -5,6 +5,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsAnimationCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -24,13 +25,16 @@ import java.util.List;
  * with up to six frames before that in which the rising keyboard covered it.
  *
  * The platform does report the keyboard's movement on every frame, to an
- * insets animation callback. This one lets the end-state padding land, puts
- * the padding back where it was before the first frame is drawn, and then
- * moves it from there to the end on each frame by the animation's own
- * interpolated fraction, so the page's bottom edge rides on the keyboard's
- * top. The WebView resizes with it, so every pinned control and the focused
+ * insets animation callback, with the keyboard's own inset for that frame.
+ * This one sets the padding to that inset on each frame (never below where
+ * the window rests), so the page's bottom edge rides on the keyboard's top.
+ * Capacitor's listener keeps running mid-movement and would set the padding
+ * back, so a listener on the content view, which the same pass reaches
+ * after Capacitor's and before layout, puts the frame's value back. The
+ * WebView resizes with the padding, so every pinned control and the focused
  * field follow the window as they do on any resize, with no code in the
- * page. What the padding ends at is still whatever Capacitor decided.
+ * page. When the movement ends Capacitor's listener is asked once more, so
+ * what the padding rests at is still whatever it decided.
  *
  * Android 11 (API 30) is where the platform reports the keyboard's real
  * movement. Below that the compat library only simulates it, so nothing is
@@ -41,37 +45,30 @@ import java.util.List;
 public final class KeyboardFollow {
     private KeyboardFollow() {}
 
-    /** The bottom padding for a keyboard `fraction` of the way through its
-        movement, from `start` to `end`. */
-    static int paddingAt(int start, int end, float fraction) {
-        float f = Math.max(0f, Math.min(1f, fraction));
-        return Math.round(start + (end - start) * f);
-    }
-
-    /** One keyboard movement: where the padding started, where Capacitor's
-        listener wants it to end, and where the current frame puts it. */
+    /** One keyboard movement: the padding follows the keyboard's own inset
+        on every frame, never dropping below the padding the window rests at. */
     static final class Track {
         private boolean running;
+        private int rest;
         private int start;
-        private int end;
         private int current;
 
         void prepare(int startPadding) {
             running = true;
             start = startPadding;
-            end = startPadding;
+            rest = startPadding;
             current = startPadding;
         }
 
-        /** The end-state padding has landed; returns what the first frame draws. */
-        int started(int endPadding) {
-            end = endPadding;
-            current = start;
-            return current;
+        /** `keyboardHeight` is the keyboard's full inset. A window that is
+            already padded by all of it is closing, and rests at nothing. */
+        void started(int keyboardHeight) {
+            rest = keyboardHeight > 0 && start >= keyboardHeight ? 0 : start;
         }
 
-        int progress(float fraction) {
-            current = paddingAt(start, end, fraction);
+        /** The keyboard's inset on this frame; returns the padding to draw. */
+        int progress(int keyboardInset) {
+            current = Math.max(rest, keyboardInset);
             return current;
         }
 
@@ -80,13 +77,8 @@ public final class KeyboardFollow {
             return running ? current : applied;
         }
 
-        int finished() {
+        void finished() {
             running = false;
-            return end;
-        }
-
-        boolean running() {
-            return running;
         }
     }
 
@@ -102,7 +94,13 @@ public final class KeyboardFollow {
         if (content != null) {
             ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
                 setBottom(decor, track.reapply(decor.getPaddingBottom()));
-                return ViewCompat.onApplyWindowInsets(v, insets);
+                // The padding already makes room for the keyboard. Left in the
+                // insets, the WebView also shrinks its visual viewport to the
+                // keyboard's end state in the first frame.
+                return new WindowInsetsCompat.Builder(ViewCompat.onApplyWindowInsets(v, insets))
+                    .setInsets(WindowInsetsCompat.Type.ime(), Insets.NONE)
+                    .setVisible(WindowInsetsCompat.Type.ime(), false)
+                    .build();
             });
         }
         ViewCompat.setWindowInsetsAnimationCallback(decor, new WindowInsetsAnimationCompat.Callback(
@@ -123,9 +121,7 @@ public final class KeyboardFollow {
                 @NonNull WindowInsetsAnimationCompat.BoundsCompat bounds
             ) {
                 if (animation != keyboard) return bounds;
-                // The end state is applied by now; draw the first frame at
-                // the start instead.
-                setBottom(decor, track.started(decor.getPaddingBottom()));
+                track.started(bounds.getUpperBound().bottom);
                 return bounds;
             }
 
@@ -136,7 +132,7 @@ public final class KeyboardFollow {
                 @NonNull List<WindowInsetsAnimationCompat> running
             ) {
                 if (keyboard != null && running.contains(keyboard)) {
-                    setBottom(decor, track.progress(keyboard.getInterpolatedFraction()));
+                    setBottom(decor, track.progress(insets.getInsets(WindowInsetsCompat.Type.ime()).bottom));
                 }
                 return insets;
             }
@@ -145,7 +141,10 @@ public final class KeyboardFollow {
             public void onEnd(@NonNull WindowInsetsAnimationCompat animation) {
                 if (animation != keyboard) return;
                 keyboard = null;
-                setBottom(decor, track.finished());
+                track.finished();
+                // Capacitor decides where the padding rests; let its listener
+                // set it once more now that nothing overrides it.
+                decor.requestApplyInsets();
             }
         });
     }
