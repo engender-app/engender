@@ -26,7 +26,7 @@
 
      Nothing on this screen reads anything into a voice (PRODUCT.md:109).
      The figures are stated in their own units and the advice is always about
-     the recording - the room, the distance, the length - never about how
+     the recording - the room, the length - never about how
      somebody sounds.
 
      The analysis is pure and lives in $lib/audio; the microphone and the
