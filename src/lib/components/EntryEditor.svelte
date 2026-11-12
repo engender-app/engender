@@ -889,7 +889,8 @@
     const leavingStep = stepScreen?.querySelector<HTMLElement>('[data-entry-step="2"]');
     const leavingHeading = document.querySelector<HTMLElement>('[data-step-heading]:not([data-step-heading-preview])');
     const arrivingHeading = document.querySelector<HTMLElement>('[data-step-heading-preview]');
-    const wayOn = stepScreen?.querySelector<HTMLElement>('.entry-continue');
+    // The way on lives in the save bar, which is moved out of the step screen.
+    const wayOn = document.querySelector<HTMLElement>('.entry-continue');
     const region = stepScreen?.closest<HTMLElement>('[data-app-scroll-region]');
     const back = { back: true };
     const parts: ScrubPart[] = [];

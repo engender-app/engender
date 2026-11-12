@@ -99,7 +99,6 @@ public final class KeyboardFollow {
                 // keyboard's end state in the first frame.
                 return new WindowInsetsCompat.Builder(ViewCompat.onApplyWindowInsets(v, insets))
                     .setInsets(WindowInsetsCompat.Type.ime(), Insets.NONE)
-                    .setVisible(WindowInsetsCompat.Type.ime(), false)
                     .build();
             });
         }
