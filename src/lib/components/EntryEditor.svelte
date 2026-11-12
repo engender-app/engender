@@ -1529,7 +1529,7 @@
   {#if isHrtActive && !effectsQuiet}
     <div class="contextual-row" data-contextual="hrt-effects">
       {#each entryDraft.effectMarkers as marker (marker.effect)}
-        <div class="contextual-chip effect-chip is-active" transition:discloseWidth|global>
+        <div class="contextual-chip effect-chip is-active" transition:discloseWidth|global={{ instant: instantStep }}>
           <span>{vocabulary.personalEffectTypeName(marker.effect)}</span>
           <button
             type="button"

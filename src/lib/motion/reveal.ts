@@ -329,8 +329,8 @@ export function disclose(
  *
  * Reduced motion is an instant cut, which is tier 3's substitute.
  */
-export function discloseWidth(node: Element): TransitionConfig {
-  if (isReducedMotion() || typeof getComputedStyle === 'undefined') return { duration: 0 };
+export function discloseWidth(node: Element, params: { instant?: boolean } = {}): TransitionConfig {
+  if (params.instant || isReducedMotion() || typeof getComputedStyle === 'undefined') return { duration: 0 };
 
   const style = getComputedStyle(node);
   const rect = typeof node.getBoundingClientRect === 'function' ? node.getBoundingClientRect() : null;
