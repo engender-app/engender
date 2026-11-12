@@ -10,8 +10,8 @@ import { launchChromium } from '../tests/browser-harness.mjs';
 const output = resolve(process.argv[2] ?? 'fastlane/metadata/android');
 const fixedTime = new Date('2026-10-05T10:00:00Z');
 const locales = [
-  { code: 'en-US', language: 'en', claim: 'Your transition, in one place', note: 'The barista called out my new name today and it sounded right.' },
-  { code: 'pl-PL', language: 'pl', claim: 'Twoja tranzycja w jednym miejscu', note: 'W kawiarni zawołali mnie nowym imieniem. Dobrze to brzmiało.' }
+  { code: 'en-US', language: 'en', claim: 'Your transition, in one place' },
+  { code: 'pl-PL', language: 'pl', claim: 'Twoja tranzycja w jednym miejscu' }
 ];
 // Play orders the shots by file name: a scale being set, then what Look back
 // makes of it, then the rest (tester-report-02 ticket 06). The capture runs in
@@ -20,7 +20,7 @@ const locales = [
 const screens = [
   ['03-home', '/', '[data-home-hello]'],
   ['04-care', '/care', '[data-care-regimen]'],
-  ['01-new-entry', '/entry/new/today?seedMood=4', '#ed-note'],
+  ['01-new-entry', '/entry/new/today?seedMood=4', '[data-entry-step="1"]'],
   ['06-roadmap', '/transition/roadmap', '[data-goal]'],
   ['05-voice', '/voice?tab=compare', '[data-voice-cell]'],
   ['02-look-back', '/stats', '[data-lookback-readings]'],
@@ -132,17 +132,13 @@ try {
         await page.locator('[data-toast]').waitFor({ state: 'detached', timeout: 15000 });
       }
       if (name === '01-new-entry') {
-        await page.locator('#ed-note').fill(locale.note);
+        // A new entry opens on its first step: the mood faces and the
+        // scales. The note is on the second step and is not in this shot.
         for (const slider of await page.locator('.dim-slider [role="slider"]').all()) {
           await slider.focus();
           await slider.press('ArrowRight');
         }
         await page.evaluate(() => document.activeElement?.blur());
-        // The note leads, with the first scale and the mood bar under it.
-        await page.locator('#ed-note').evaluate((node) => {
-          node.style.scrollMarginTop = '24px';
-          node.scrollIntoView({ block: 'start' });
-        });
       }
       if (name === '07-settings-privacy') {
         // Settings opens on Appearance; the shot is of Privacy & data, so
