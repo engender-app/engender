@@ -2585,6 +2585,36 @@ await block('phase 8 audit ticket 25 entry editor', 11, async () => {
   }, { count: 1, same: true });
 });
 
+/* Tester report 02, ticket 03, box 5: a person who has unticked every scale
+   gets the faces alone on a new entry's first step, with both ways on in view
+   at 360x640. It is its own page load (?hideScales=1) in a phone-sized window,
+   so unticking the scales cannot reach the cases above. It fails when the step
+   draws the scales block regardless (a heading, a slider, a hint), and when
+   the window pushes either control off the screen. */
+await block('tester report 02 ticket 03 first step with every scale hidden', 7, async () => {
+  const previous = page.viewportSize();
+  try {
+    await page.setViewportSize({ width: 360, height: 640 });
+    const r = await load('/entry-editor.html?hideScales=1', 'entry-editor-probe');
+    if (r.error) throw new Error(r.error);
+    const v = r.firstStepEveryScaleHidden;
+    const eq = (label, actual, expected) => {
+      if (JSON.stringify(actual) === JSON.stringify(expected)) ok(label);
+      else fail(label, `got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
+    };
+    eq('the window is the phone the box names', v.viewport, [360, 640]);
+    eq('the five faces are drawn', v.faces, 5);
+    eq('every face is rendered and inside the window', v.facesInView, true);
+    eq('no scale row, no scale value and no "not ticked" hint', [v.sliders, v.dimValues, v.hints], [0, 0, 0]);
+    eq('no heading for a block that is not there', v.headings, []);
+    eq('the step holds the faces and nothing else (no empty container)', v.stepChildren.length, 1);
+    eq('the finish control is on screen and at least 48 px tall', v.finish && { inView: v.finish.inView, tall: v.finish.height >= 48 }, { inView: true, tall: true });
+    eq('the continue control is on screen and at least 48 px tall', v.cont && { inView: v.cont.inView, tall: v.cont.height >= 48 }, { inView: true, tall: true });
+  } finally {
+    await page.setViewportSize(previous ?? { width: 1280, height: 720 });
+  }
+});
+
 /* Phase 8 features ticket 55: the PDF renderer.
 
    Node cannot run any of this - the worker, the canvases and the font

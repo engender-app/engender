@@ -122,10 +122,26 @@ const SCENES = [
   { key: 'in-the-room', path: '/health/appointments/in-the-room', targets: '[data-screen-back]', whole: '[data-room-question]', narrow: true },
   { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },
   {
-    key: 'templates',
-    path: '/settings/entry-templates',
-    targets: '[data-sheet] button.contextual-chip',
+    /* Everything a new entry's second step draws that a finger can press, not
+       only the chips: the info buttons beside the tag chips were 43px wide for
+       a while and the chips-only scene above never saw them. */
+    key: 'entry-step-2',
+    path: '/entry/new/today',
+    targets: '[data-entry-step="2"] :is(button, a[href], input:not([type="hidden"]), textarea, select, [role="slider"], [role="switch"], [role="button"], summary), [data-entry-finish], [data-screen-back]',
     open: async (page) => {
+      await page.locator('[data-entry-continue]').click();
+      await page.locator('[data-entry-step="2"]').waitFor();
+    }
+  },
+  {
+    /* Templates live in a sheet raised from the Settings list (the old
+       /settings/entry-templates route is gone, which is why this scene used to
+       wait for a sheet that never opened). Its editor draws the same tag picker. */
+    key: 'templates',
+    path: '/settings',
+    targets: '[data-sheet] button.contextual-chip, [data-sheet] .tag-chip, [data-sheet] .tag-info-btn',
+    open: async (page) => {
+      await page.locator('[data-list-row="entry-templates"]').click();
       await page.locator('[data-sheet] [data-add]').first().click();
       await page.locator('[data-sheet] button.contextual-chip').first().waitFor();
     }
