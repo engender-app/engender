@@ -1,6 +1,7 @@
 package dev.engender.app.chrome;
 
 import android.os.Build;
+import android.util.Log;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -60,6 +61,7 @@ public final class KeyboardFollow {
                 if ((animation.getTypeMask() & WindowInsetsCompat.Type.ime()) == 0) return;
                 keyboard = animation;
                 start = decor.getPaddingBottom();
+                Log.d("KBF", "prepare start=" + start);
             }
 
             @NonNull
@@ -72,6 +74,7 @@ public final class KeyboardFollow {
                 // The end state is applied by now; draw the first frame at
                 // the start instead.
                 end = decor.getPaddingBottom();
+                Log.d("KBF", "start end=" + end + " start=" + start);
                 setBottom(start);
                 return bounds;
             }
@@ -82,6 +85,7 @@ public final class KeyboardFollow {
                 @NonNull WindowInsetsCompat insets,
                 @NonNull List<WindowInsetsAnimationCompat> running
             ) {
+                Log.d("KBF", "progress kb=" + (keyboard != null) + " in=" + (keyboard != null && running.contains(keyboard)) + " pad=" + decor.getPaddingBottom());
                 if (keyboard != null && running.contains(keyboard)) {
                     setBottom(paddingAt(start, end, keyboard.getInterpolatedFraction()));
                 }
@@ -92,10 +96,12 @@ public final class KeyboardFollow {
             public void onEnd(@NonNull WindowInsetsAnimationCompat animation) {
                 if (animation != keyboard) return;
                 keyboard = null;
+                Log.d("KBF", "end end=" + end);
                 setBottom(end);
             }
 
             private void setBottom(int bottom) {
+                Log.d("KBF", "setBottom " + bottom + " was " + decor.getPaddingBottom());
                 if (decor.getPaddingBottom() == bottom) return;
                 decor.setPadding(decor.getPaddingLeft(), decor.getPaddingTop(), decor.getPaddingRight(), bottom);
             }
