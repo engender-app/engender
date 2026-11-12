@@ -130,7 +130,7 @@ describe('the web app manifest', () => {
   it('keeps install text and shortcut destination paired across languages', () => {
     expect(manifest.lang).toBe('en');
     expect(polish.lang).toBe('pl');
-    expect(polish.description).toBe('Dziennik jest zapisany na tym urządzeniu. Bez konta i serwera.');
+    expect(polish.description).toBe('Dziennik zostaje na tym urządzeniu. Bez konta.');
     expect(polish.shortcuts[0].name).toBe('Nowy wpis');
     expect(polish.shortcuts[0].url).toBe(manifest.shortcuts[0].url);
     for (const key of ['id', 'name', 'start_url', 'scope', 'display', 'theme_color', 'background_color']) {

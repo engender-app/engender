@@ -2,7 +2,7 @@
   "id": "/",
   "name": "engender",
   "short_name": "engender",
-  "description": "Dziennik jest zapisany na tym urządzeniu. Bez konta i serwera.",
+  "description": "Dziennik zostaje na tym urządzeniu. Bez konta.",
   "lang": "pl",
   "dir": "ltr",
   "start_url": "/",

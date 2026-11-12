@@ -18,8 +18,8 @@ and encrypt the journal at rest. There are no accounts, analytics or backend
 for journal data. The app includes English and Polish interfaces.
 
 You can record medication doses, lab results, appointments, procedures and
-milestones, and prepare a summary for a clinician. Encrypted archives let you
-back up the journal or move it between web and Android. Text and PDF exports
+milestones, and prepare a summary for a clinician. Encrypted backups keep a
+copy of the journal or move it between web and Android. Text and PDF exports
 let you share selected records.
 
 App lock and disguise mode help keep journal content out of view, and the lock
@@ -33,15 +33,15 @@ path.
 
 Pre-squash development journals are not supported; export text or PDF from the old build before starting a new journal.
 This release does not open one: it says so at start and offers to restore a
-saved archive or start over. An archive from a released version restores; one
+saved backup or start over. A backup from a released version restores; one
 made by a development build may not, which is why the text or PDF is worth
 taking first.
 
 ### Removed since rc.1
 
 These areas are gone, and their data goes with them when an rc.1 journal
-updates. Export an encrypted archive from rc.1 first if you want to keep a
-copy. A 1.0.0 restore skips the sections for these areas, so the archive stays
+updates. Export an encrypted backup from rc.1 first if you want to keep a
+copy. A 1.0.0 restore skips the sections for these areas, so the backup stays
 a record of what you had but does not bring it back.
 
 - Measurements and sizes: the screen, its Today tile and nudge, and every
@@ -98,8 +98,8 @@ a record of what you had but does not bring it back.
   length in minutes, and an optional pain rating. Dilation stages can be set as
   times a day.
 - Trash can delete an entry forever. Other deletions show a timed Undo.
-- Archive Merge applies edits and deletions, and Android can merge a newer
-  archive from your backup folder after unlock. The web build has no folder sync.
+- Merging a backup applies edits and deletions, and Android can merge a newer
+  backup from your backup folder after unlock. The web build has no folder sync.
 - Resources lists Polish 24-hour lines.
 - "Back up now" no longer changes the saved backup password without asking.
 - On Android, the daily check-in shows the five mood faces once notification
@@ -131,6 +131,11 @@ a record of what you had but does not bring it back.
 - Tile snoozes, opened-letter marks and the has-entries flag move from browser
   storage into the encrypted preferences, and letter marks now travel with
   backups.
+- Screens say less. Subtitles and hints that repeated a title or a button are
+  gone, and the file you export is called a backup everywhere; some screens
+  called it an archive.
+- The roadmap's Polish legal steps start switched off in Polish too. Turn on
+  "Polish legal steps" to see them; steps you ticked are kept.
 - While disguise is on, Android blocks screenshots and the Recents preview. The
   launcher icon names changed, so after updating check that the icon you expect
   is on your home screen.
@@ -140,7 +145,7 @@ a record of what you had but does not bring it back.
 If the journal remains on a device but its access information is missing or
 unreadable, the app now offers recovery instead of first-run setup. A retained
 recovery key opens the same journal and asks for a new access mode. Without a
-usable key, Archive recovery and reset still require confirmation. Setup also
+usable key, restoring a backup and reset still require confirmation. Setup also
 refuses to create a new key over retained data.
 
 The "A new version is ready" notice now sits under the coloured header of the

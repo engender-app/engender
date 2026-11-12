@@ -8,23 +8,23 @@ Czasem wystarczy zaznaczyć nastrój. Jeśli chcesz zapisać więcej, wypełnij 
 
 Z perspektywy czasu
 
-W Statystykach wybierasz czas, na przykład miesiąc albo wszystko od początku HRT. Skalę obejrzysz dzień po dniu, samą albo z drugą obok. Jest też wykres dwóch skal naraz. Widać średnią każdej skali i to, która zmieniła się najbardziej. Dla każdego tagu porównasz średnią skali z nim i bez niego. engender rysuje to, co wpisujesz, a wnioski zostawia tobie.
+W Statystykach wybierasz czas, na przykład miesiąc albo wszystko od początku HRT. Skalę obejrzysz dzień po dniu, samą, z drugą obok albo na wspólnym wykresie. Widać średnią każdej skali i to, która zmieniła się najbardziej. Dla każdego tagu porównasz średnią skali z nim i bez niego. engender rysuje to, co wpisujesz, a wnioski zostawia tobie.
 
-Zestaw zdjęcia obok siebie albo wróć do podsumowania tygodnia, miesiąca czy roku. Konkretny dzień znajdziesz w kalendarzu albo wyszukasz po notatkach i tagach. Na trudniejsze dni jest Bezpieczna przestrzeń, gdzie masz pod ręką ulubione wpisy i własną listę rzeczy, które pomagają.
+Zestaw zdjęcia obok siebie albo otwórz Wrapped tygodnia, miesiąca czy roku. Konkretny dzień znajdziesz w kalendarzu albo wyszukasz po notatkach i tagach. Na trudniejsze dni jest Bezpieczna przestrzeń, gdzie masz pod ręką ulubione wpisy i własną listę rzeczy, które pomagają.
 
 HRT i zdrowie
 
-Zapisuj dawki HRT i innych leków, ustaw harmonogram i przypomnienia. Notuj wyniki badań i zmiany, które zauważasz na HRT. Jeśli cię to dotyczy, śledź zmiany owłosienia i cykl. Jest też miejsce na przygotowania do operacji i późniejsze notatki z rekonwalescencji. Zapiszesz skierowania i to, od kiedy czekasz w kolejce, do kogo chodzisz i ile kosztowała wizyta albo recepta. Przed wizytą spiszesz pytania i przygotujesz podsumowanie, które zabierzesz do gabinetu.
+Zapisuj dawki HRT i innych leków, ustaw harmonogram i przypomnienia. Notuj wyniki badań i zmiany, które zauważasz na HRT. Jeśli cię to dotyczy, śledź zmiany owłosienia i cykl. Jest też miejsce na plany operacji i notatki z rekonwalescencji. Zapiszesz skierowania i to, od kiedy czekasz w kolejce, do kogo chodzisz i ile kosztowała wizyta albo recepta. Przed wizytą spiszesz pytania i przygotujesz podsumowanie, które zabierzesz do gabinetu.
 
 engender nie stawia diagnoz, nie interpretuje wyników badań, nie dobiera dawek ani nie zastępuje porady medycznej. Decyzje o leczeniu konsultuj z lekarzem.
 
 Próby i kamienie milowe
 
-Sprawdzasz nowe imię, inne zaimki albo styl? Zapisuj, jak się z nimi czujesz. Nagrywaj ćwiczenia głosu i porównuj kolejne nagrania. Notuj zabiegi depilacji oraz czas bindowania i tuckingu. Zaznaczaj kamienie milowe, planuj następne kroki i śledź zmianę danych w każdej instytucji, która jej wymaga. Możesz też napisać list do siebie i zamknąć go w kapsule czasu. Otworzy się w dniu, który wybierzesz.
+Sprawdzasz nowe imię, inne zaimki albo styl? Zapisuj, jak się z nimi czujesz. Nagrywaj ćwiczenia głosu i porównuj kolejne nagrania. Notuj zabiegi depilacji oraz czas bindowania i tuckingu. Zaznaczaj kamienie milowe, planuj następne kroki i śledź zmianę danych w każdej instytucji, która jej wymaga. Możesz też napisać list w kapsule czasu, który otworzy się w wybranym dniu.
 
 Dziennik zostaje u ciebie
 
-Aplikacja na Androida działa offline i nie ma nawet uprawnienia do internetu. Nie wysyła na serwer ani dziennika, ani statystyk użycia. To ty decydujesz, czy i kiedy coś wyeksportować albo komuś udostępnić.
+Aplikacja na Androida działa offline i nie ma nawet uprawnienia do internetu. Nie wysyła na serwer ani dziennika, ani statystyk użycia. O eksporcie i udostępnianiu decydujesz ty.
 
 Zapisany dziennik i media są zaszyfrowane. Bez szyfrowania zostają tylko niektóre ustawienia potrzebne przy uruchamianiu i metadane kluczy. Gdy robisz zdjęcie, aparat może przed importem zapisać tymczasowy, niezaszyfrowany plik. Szczegóły są w polityce prywatności.
 
@@ -34,6 +34,8 @@ Kopia na później albo na nowy telefon
 
 Zrób kopię zapasową zaszyfrowaną hasłem albo ustaw automatyczne kopie do wybranego folderu. Jeśli inny telefon zapisuje kopie w tym samym folderze, engender po otwarciu dołączy nowszą z nich. Z archiwum przeniesiesz dziennik na inne urządzenie albo do wersji w przeglądarce. Wpisy z Daylio też da się przenieść.
 
-Wybierz barwy swojej flagi i jasny albo ciemny motyw. Części aplikacji, z których korzystasz, przypniesz do ekranu Dziś.
+CSV, JSON i dziennik do druku nie są szyfrowane: każdy, kto dostanie taki plik, może go przeczytać.
+
+Wybierz barwy swojej flagi i jasny albo ciemny motyw. Części aplikacji, z których korzystasz, przypniesz do ekranu Dzień dzisiejszy.
 
 Aplikacja ma wersję polską i angielską. Kod źródłowy jest publiczny, na licencji GPLv3.
