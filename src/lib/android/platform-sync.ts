@@ -43,9 +43,10 @@ import { quietHoursOf, type QuietHours } from '../unprompted/quietHours';
 import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
 import type { DoseActionOutcome, PendingDoseAction } from '$lib/reminders/doseActions';
-import { dismissActiveOverlay } from '../components/overlayLock';
+import { dismissActiveOverlay, hasActiveOverlay } from '../components/overlayLock';
 import { setupBack } from '../onboarding/back';
-import { stepBack } from '../navigation/stepBack';
+import { cancelStepPreview, stepBack } from '../navigation/stepBack';
+import { connectStepPreview, type StepBackBridge } from './step-preview';
 import { resolveAndroidBackAction } from './back-navigation';
 
 /* PlatformSyncDeps stays exported only for its own test (AU-09 test-only
@@ -122,6 +123,9 @@ export interface PlatformSyncDeps {
     addListener(eventName: 'backButton', listener: () => void): Promise<{ remove(): Promise<void> }>;
     minimizeApp(): Promise<void>;
   };
+  /** The predictive step back (./step-preview.ts). Absent, Back works as it
+      always has and nothing is drawn under the gesture. */
+  androidStepBack?: StepBackBridge;
   reminderTexts: () => AndroidReminderTexts;
   /** A reminder notification's title and text (doseReminderLabel.ts),
       injected because it speaks paraglide. */
@@ -398,13 +402,20 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   void deps.androidBackButton
     .addListener('backButton', () => {
       if (backButtonTornDown) return;
+      /* A step back drawn under the gesture is committed by stepBack()
+         below; anything that takes this Back before it returns the drawing
+         to rest first, so it is never left half drawn. */
       if (deps.isGateActive()) {
+        cancelStepPreview();
         void deps.androidBackButton.minimizeApp();
         return;
       }
-      if (dismissActiveOverlay()) return;
-      if (window.location.pathname === '/onboarding' && setupBack()) return;
+      if (dismissActiveOverlay() || (window.location.pathname === '/onboarding' && setupBack())) {
+        cancelStepPreview();
+        return;
+      }
       if (stepBack()) return;
+      cancelStepPreview();
       switch (resolveAndroidBackAction(window.location.pathname, deps.navigationDepth())) {
         case 'minimize':
           void deps.androidBackButton.minimizeApp();
@@ -442,9 +453,14 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
     void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture }).catch(console.error);
   }
 
+  const stopStepPreview = deps.androidStepBack
+    ? connectStepPreview(deps.androidStepBack, { isGateActive: deps.isGateActive, hasActiveOverlay })
+    : undefined;
+
   stopCurrent = () => {
     if (!active) return;
     active = false;
+    stopStepPreview?.();
     window.removeEventListener('focus', onVisibleOrFocused);
     document.removeEventListener('visibilitychange', onVisibleOrFocused);
     delete native.__launchRouteFromNative;

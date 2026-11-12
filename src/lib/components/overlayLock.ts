@@ -58,6 +58,11 @@ function topOwner(): OverlayOwner | undefined {
   return overlayOwners[overlayOwners.length - 1];
 }
 
+/** Whether a transient surface owns Back right now. */
+export function hasActiveOverlay(): boolean {
+  return overlayOwners.length > 0;
+}
+
 /** Escape and native Back consume the same top surface, including one that
     cannot currently close. The caller navigates only when no owner remains. */
 export function dismissActiveOverlay(): boolean {

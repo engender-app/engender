@@ -17,12 +17,14 @@ import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginHandle;
 import com.getcapacitor.WebViewListener;
 
 import dev.engender.app.disguise.DisguiseState;
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
 import dev.engender.app.lock.OwnSystemUi;
+import dev.engender.app.navigation.StepBackPlugin;
 import dev.engender.app.launch.AppLaunch;
 import dev.engender.app.reminders.ReminderScheduler;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
@@ -117,6 +119,10 @@ public class MainActivity extends BridgeActivity {
             bridge.getWebView().addJavascriptInterface(new DisguiseState(this), DisguiseState.INTERFACE_NAME);
             PhotoWriteChannel.registerIfSupported(this, bridge.getWebView(), APP_ORIGIN);
             PhotoPickChannel.registerIfSupported(bridge.getWebView(), APP_ORIGIN);
+            // After the bridge, so its back callback comes after the App
+            // plugin's and hears a back swipe first (StepBackPlugin).
+            PluginHandle stepBack = bridge.getPlugin("StepBack");
+            if (stepBack != null) ((StepBackPlugin) stepBack.getInstance()).install(this);
         }
         captureReminderRoute(getIntent());
         ContextCompat.registerReceiver(this, screenOff, new IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED);
