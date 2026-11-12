@@ -2604,6 +2604,7 @@ await block('tester report 02 ticket 03 first step with every scale hidden', 7, 
     };
     eq('the window is the phone the box names', v.viewport, [360, 640]);
     eq('the five faces are drawn', v.faces, 5);
+    eq('every face is rendered and inside the window', v.facesInView, true);
     eq('no scale row, no scale value and no "not ticked" hint', [v.sliders, v.dimValues, v.hints], [0, 0, 0]);
     eq('no heading for a block that is not there', v.headings, []);
     eq('the step holds the faces and nothing else (no empty container)', v.stepChildren.length, 1);

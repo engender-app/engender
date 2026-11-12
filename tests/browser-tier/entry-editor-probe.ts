@@ -335,6 +335,7 @@ async function secondStepShape(): Promise<StepTwoShape> {
 
 type FirstStepNoScales = {
   faces: number;
+  facesInView: boolean;
   sliders: number;
   dimValues: number;
   hints: number;
@@ -366,6 +367,7 @@ async function firstStepWithEveryScaleHidden(journal: Journal): Promise<FirstSte
     };
     return {
       faces: step.querySelectorAll('[data-mood]').length,
+      facesInView: [...step.querySelectorAll('[data-mood]')].every((f) => view(f)?.inView === true),
       sliders: step.querySelectorAll('[role="slider"]').length,
       dimValues: step.querySelectorAll('[data-dim-value]').length,
       hints: step.querySelectorAll('.first-step-hint').length,
