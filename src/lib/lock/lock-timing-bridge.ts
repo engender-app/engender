@@ -21,6 +21,9 @@ interface LockTimingBridge {
   beginPinAttempt(options: { owner: string }): Promise<{ token: string }>;
   finishPinAttempt(options: { owner: string; token: string; successful: boolean }): Promise<void>;
   setTiming(options: { timing: LockAfter }): Promise<void>;
+  /** The leave cover's mirror and its release (leave-cover.ts). */
+  setLeaveCover(options: { cover: boolean; ground: string }): Promise<void>;
+  revealLeaveCover(): Promise<void>;
 }
 
 export const androidLockTiming = registerAndroidPlugin<LockTimingBridge>(androidPluginOwners.lockTiming);

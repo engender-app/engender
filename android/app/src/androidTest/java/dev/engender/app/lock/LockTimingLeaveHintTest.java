@@ -21,8 +21,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Checks that Home/Recents reaches the real timing hooks, and that leaving
- * never changes what the capture choice decided: allowed leaves FLAG_SECURE
- * off with or without a lock, not allowed keeps it on. Android 13+ keeps the
+ * never changes what the capture choice decided when no lock cover is set
+ * (the test starts from a cleared mirror): allowed leaves FLAG_SECURE off,
+ * not allowed keeps it on. With a lock set, API 26-32 turns it on for the leave. Android 13+ keeps the
  * Recents half on the system's activity record, which has no getter;
  * tests/android-manifest-recents.test.ts holds that line instead.
  * The preference is mirrored through the same public bridge as Settings.

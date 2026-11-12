@@ -1,5 +1,9 @@
 package dev.engender.app.lock;
 
+import android.app.Activity;
+
+import dev.engender.app.screencapture.ScreenCapturePlugin;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
@@ -34,6 +38,35 @@ public class LockTimingPlugin extends Plugin {
         prefs(getContext()).edit().putString(KEY_TIMING, timing).apply();
         getContext().deleteSharedPreferences(LEGACY_PREFS);
         call.resolve();
+    }
+
+    /** The page's mirror for the leave cover (LeaveCover, leave-cover.ts). */
+    @PluginMethod
+    public void setLeaveCover(PluginCall call) {
+        LeaveCover.set(Boolean.TRUE.equals(call.getBoolean("cover", false)), call.getString("ground"));
+        Activity activity = getActivity();
+        if (activity != null) {
+            // The Recents preview follows whether a lock is set.
+            activity.runOnUiThread(() -> ScreenCapturePlugin.applyWindowFlags(activity));
+        }
+        call.resolve();
+    }
+
+    /** The page has drawn what is under the cover: take it off. */
+    @PluginMethod
+    public void revealLeaveCover(PluginCall call) {
+        Activity activity = getActivity();
+        if (activity instanceof LeaveCoverHost) {
+            activity.runOnUiThread(((LeaveCoverHost) activity)::revealLeaveCover);
+        } else {
+            LeaveCover.reveal();
+        }
+        call.resolve();
+    }
+
+    /** What MainActivity offers, named so the plugin need not import it. */
+    public interface LeaveCoverHost {
+        void revealLeaveCover();
     }
 
     @PluginMethod
