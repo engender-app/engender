@@ -928,6 +928,9 @@
     // at rest where the real element now stands.
     flushSync();
     drawn.clear();
+    // Keep the transitions instant until the removed step's outro has been
+    // set up and finished, so it cannot replay the change a second time.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
     instantStep = false;
     stepping = false;
     if (to === 1) focusNamedTarget(stepScreen?.querySelector<HTMLElement>('[data-screen-title]'));
