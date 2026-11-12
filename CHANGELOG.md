@@ -131,8 +131,12 @@ a record of what you had but does not bring it back.
 - Tile snoozes, opened-letter marks and the has-entries flag move from browser
   storage into the encrypted preferences, and letter marks now travel with
   backups.
+- On Android, "Screen capture" in Settings > Security is now "Block
+  screenshots", a switch that is off until you turn it on. If you had screen
+  capture off, the blocker is on after the update. On, it also blocks screen
+  recording and blanks the Recents preview.
 - While disguise is on, Android hides the Recents preview. Screenshots follow
-  the Screen capture switch (before Android 13 disguise blocks them too). The
+  the Block screenshots switch (before Android 13 disguise blocks them too). The
   launcher icon names changed, so after updating check that the icon you expect
   is on your home screen.
 

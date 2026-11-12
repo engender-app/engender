@@ -55,7 +55,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Apply the saved capture choice before the first frame. A device
-        // with no saved choice allows capture by default; disguise also
+        // where nobody switched "Block screenshots" on can be captured; disguise also
         // hides the Recents preview. SharedPreferences
         // needs no bridge or WebView, so this runs before super.onCreate.
         ScreenCapturePlugin.applyWindowFlags(this);

@@ -688,7 +688,7 @@ The things the app protects are journal content (the database, photos, voice, vi
 
 | Adversary | Design answer |
 |---|---|
-| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents shows the app unless screen capture is off or disguise is on. Disguise renames the app. |
+| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents shows the app unless Block screenshots or disguise is on. Disguise renames the app. |
 | Someone holding the unlocked phone | Lock timing, PIN throttle, sensitive-clipboard clearing. |
 | Someone holding the locked phone | Data is encrypted at rest. The data key is behind Keystore or an Argon2id wrap. Launch routes are nonce-gated. |
 | Copy of stored app data | Database and files are ciphertext. Android Keystore keys are outside app-private files. A whole browser-profile copy can include the IndexedDB keys beside the web wraps; non-extractability alone does not protect that copy. |
@@ -901,7 +901,7 @@ their consumers; the rendered wordmark probe checks both languages and modes.
 - No `INTERNET` permission. The complete installed permission set covers notifications, exact alarms, boot-completed, audio record and settings, camera, biometric unlock, a wake lock for scheduled encrypted delivery, and AndroidX's private receiver permission. The release artifact guard checks that exact set through `aapt2`; dependency additions fail. `BackupWork` uses delayed jobs without network constraints or foreground execution, so the unused network-state permission/proxy and foreground-service permission/service are removed at manifest merge. WorkManager's job and rescheduling components remain.
 - `android.webkit.WebView.MetricsOptOut=true` opts out of per-app diagnostic uploads. Safe Browsing retains WebView's enabled default. Its checks can use Google Play services' own network access; keyboards and browsers also have their own network behavior, described in both privacy policies.
 - `MainActivity` is not exported. The `FileProvider` is limited to `cache/camera-capture/`. Capture output is deleted after consumption or cancellation, at the next app start, and when device stores are wiped.
-- Screen capture and Recents follow one per-device switch, `allowScreenCapture` (on by default). On, screenshots and the Recents preview both show, with or without a lock. Off, `FLAG_SECURE` hides both, and Android 13+ also gets `setRecentsScreenshotEnabled(false)`.
+- Screenshots, screen recording and the Recents preview follow one per-device switch, Block screenshots in Settings > Security, off by default. It is stored the other way round as `allowScreenCapture` (default `true`), and `lock/screenshot-block.ts` is the one place that turns it. With the blocker off, screenshots and the Recents preview both show, with or without a lock. With it on, `FLAG_SECURE` hides both, and Android 13+ also gets `setRecentsScreenshotEnabled(false)`.
 - Notifications use `VISIBILITY_PRIVATE`, PendingIntents are immutable, and Capacitor logging is off (`loggingBehavior: 'none'`).
 - Launch routes need a nonce (section 9).
 

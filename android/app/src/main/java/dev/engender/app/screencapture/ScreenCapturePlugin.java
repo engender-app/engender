@@ -17,8 +17,9 @@ import dev.engender.app.disguise.DisguiseAlias;
  * Mirrors prefs.allowScreenCapture into SharedPreferences, so
  * MainActivity.onCreate can decide FLAG_SECURE before the window has a
  * frame. Unlike LockTimingPlugin's read-only mirror, setAllowed also flips the flag on the window that
- * is already running: a person who just turned this on in Settings wants to
- * record right now, not after restarting the app.
+ * is already running: a person who just switched "Block screenshots" on in
+ * Settings wants the app hidden right now, not after restarting it. That
+ * switch is the blocker, so it sends allowed=false when it goes on.
  */
 @CapacitorPlugin(name = "ScreenCapture")
 public class ScreenCapturePlugin extends Plugin {
@@ -39,7 +40,8 @@ public class ScreenCapturePlugin extends Plugin {
         call.resolve();
     }
 
-    /** The person's own capture choice, as stored. */
+    /** The person's own capture choice, as stored: false once they have
+        switched "Block screenshots" on, true until then. */
     public static boolean isAllowed(Context context) {
         return prefs(context).getBoolean(KEY_ALLOWED, true);
     }
@@ -86,7 +88,7 @@ public class ScreenCapturePlugin extends Plugin {
     }
 
     /** The reset path removes this device's capture choice. A fresh install
-        allows capture by default. */
+        blocks nothing until the person switches the blocker on. */
     public static void wipe(Context context) {
         prefs(context).edit().clear().commit();
     }
