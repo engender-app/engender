@@ -1690,7 +1690,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    ::after the same way .tag-chip already extends past its own pill. */
 .tag-chip-wrap .tag-info-btn {
   width: 24px; height: 24px;
-  margin-left: -6px;
+  margin-left: -4px;
   color: var(--text-2);
   position: relative;
 }
@@ -1701,10 +1701,11 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 }
 /* The next chip, later in the row, covered 4 to 5px of that 48px extension
    (a chip's own pill sits 8px off), so the button walked at 43 x 48. Raised
-   above its neighbours the extension is whole. The extension and the button's
-   own background are transparent, so nothing is drawn differently, apart from
-   six antialiased pixels on one chip's border curve in the dark theme that the
-   changed stacking shifts by 2 to 7 of 255. */
+   above its neighbours the extension is whole, and then it is the chips that
+   lose ground: the extension covers 4px of the chip it follows, 4px of the
+   chip after it and 18px of its own chip at the old -6px pull. That left the
+   shortest chip ("social", 69px) 46px of hit width, so the pull is -4px,
+   which leaves it 49px. The button sits 2px further right. */
 .tag-chip-wrap .tag-info-btn { z-index: 1; }
 /* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while
    checking the controls it does own. What is fixed here is the floor, not the
