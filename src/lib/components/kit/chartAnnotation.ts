@@ -210,5 +210,5 @@ export function annotationCaption(annotations: readonly ChartAnnotation[]): stri
   const names = annotations.slice(0, CAPTION_NAMES).map(annotationName);
   const rest = annotations.length - names.length;
   const listed = names.join(', ');
-  return rest > 0 ? m.chart_annotations_more({ names: listed, count: String(rest) }) : listed;
+  return rest > 0 ? m.names_and_count_more({ names: listed, count: String(rest) }) : listed;
 }

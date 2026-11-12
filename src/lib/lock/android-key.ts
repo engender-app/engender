@@ -25,7 +25,8 @@ import { interpretAuthentication, type AuthenticationResult } from './biometric-
     Android draws is in the language the app is in. */
 export interface UnlockRequest {
   title: string;
-  subtitle: string;
+  /** A second line under the title. The unlock prompt has none. */
+  subtitle?: string;
   /** The prompt's negative button, which Android requires unless the device
       credential is allowed - and forbids when it is. */
   cancel: string;

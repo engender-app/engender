@@ -252,7 +252,7 @@ for (const theme of ['light', 'dark']) {
   await dress();
 
   /* The picker offers the Polish legal steps only while the roadmap shows
-     them, and this run is English (functional audit ticket 34). */
+     them, and they are off until switched on (functional audit ticket 34). */
   await settle('/transition/roadmap');
   const polishSwitch = page.locator('[data-roadmap-polish-steps] [role="switch"]');
   if ((await polishSwitch.getAttribute('aria-checked')) !== 'true') await polishSwitch.click();

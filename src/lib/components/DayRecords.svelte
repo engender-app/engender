@@ -193,7 +193,7 @@
       <ListRow
         key="also-more"
         icon="dots"
-        title={m.day_also_more({ count: hidden })}
+        title={m.and_count_more({ count: hidden })}
         onclick={() => (allOpen = true)}
         data-day-more
       />

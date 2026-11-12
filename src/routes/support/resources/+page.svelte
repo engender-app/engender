@@ -49,7 +49,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.resources_title()} back="/more" subtitle={m.resources_intro()} />
+  <ScreenHeader title={m.resources_title()} back="/more" />
 
   <!-- The kit's in-page jump (after-release 28): these were outline blocks
        drawn like the contact buttons under each service, a third look for

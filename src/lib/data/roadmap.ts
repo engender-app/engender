@@ -151,11 +151,11 @@ export const isCutTrackGoal = (goalKey: string): boolean => /^pl-(social|present
 
 /** Whether the Polish legal steps show (functional audit ticket 34).
     `choice` is the person's answer to the switch, null until they give
-    one; until then the steps follow the app's language, on for Polish and
-    off for everyone else, since the procedure is a Polish court's and an
-    English reader is unlikely to be in front of one. */
-export function polishLegalStepsShown(choice: boolean | null, locale: string): boolean {
-  return choice ?? locale === 'pl';
+    one, and until then the steps stay closed in every language. They used
+    to open for Polish, which put 721 words of court procedure on a screen
+    of 754 before anybody asked for them (tester report 02, ticket 08). */
+export function polishLegalStepsShown(choice: boolean | null): boolean {
+  return choice ?? false;
 }
 
 /** The tracks cut by functional audit ticket 34 that a custom goal could

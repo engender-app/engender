@@ -221,6 +221,10 @@
      `sameIds` above) so the gate below can tell a landed answer from a stale
      one apart. */
   let entryIds = $derived((day?.entries ?? []).map((e) => e.id));
+  /* What the add-entry button says (tester report 02, ticket 08): "another"
+     is wrong on a day that holds no entry. Decided by the landed read, so a
+     day still loading keeps the wording a day with entries has. */
+  let noEntryYet = $derived(day != null && day.entries.length === 0);
   let marginNotesRead = liveQuery(async (j) => {
     const ids = entryIds;
     return { ids, byEntry: await j.marginNotes.forEntries(ids) };
@@ -350,7 +354,7 @@
        beside the entries card, which already claims role 0, so it takes
        role 1 the same way the day's own "also this day" list does. -->
   {#if comingRows.length > 0}
-    <SectionHeading text={m.appointments_upcoming_heading()} />
+    <SectionHeading text={m.coming_up_title()} />
     <ListCard role={isFuture ? entriesRole : alsoRole}>
       {#each comingRows as row (row.key)}
         <ListRow key={row.key} icon={row.icon} title={row.title} subtitle={row.subtitle} href={row.href} />
@@ -365,7 +369,6 @@
       key="day-ahead-empty"
       role={entriesRole}
       title={m.day_ahead_empty_title()}
-      text={m.day_ahead_empty_body()}
     />
   {/if}
 
@@ -393,7 +396,6 @@
           key="day-empty"
           role={entriesRole}
           title={m.nothing_logged()}
-          text={m.nothing_logged_body()}
         />
       {/snippet}
     </ReadGate>
@@ -411,7 +413,7 @@
          ever wanted, not a rule (ADR-0049). -->
     <div class="day-add">
       <button class="btn btn-soft" data-add onclick={() => goto(withListReturn(`/entry/new/${epochDay}`, page.url))}>
-        <Icon name="plus" size={20} /><span>{m.add_another_entry()}</span>
+        <Icon name="plus" size={20} /><span>{noEntryYet ? m.add_entry_for_day() : m.add_another_entry()}</span>
       </button>
       <a class="btn btn-ghost" data-start-era href={`/settings/eras?start=${epochDay}`}>
         <Icon name="era" size={20} /><span>{m.era_start_here()}</span>

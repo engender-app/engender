@@ -164,7 +164,7 @@ const SECTION_ROWS: Record<
       key: `voice-benchmark-${benchmark.id}`,
       ...iconOf('voice-benchmark'),
       title: m.vb_hz({ value: Math.round(benchmark.f0MedianHz) }),
-      subtitle: m.day_voice_benchmark(),
+      subtitle: m.vb_title(),
       href: `${hubRow('voice-benchmark').href}?tab=compare`
     })),
 
@@ -325,7 +325,7 @@ const SECTION_ROWS: Record<
       key: `tryout-photos-${group[0].tryoutId}`,
       ...iconOf('tryouts'),
       title: group[0].tryoutLabel,
-      subtitle: m.day_tryout_photos(),
+      subtitle: m.photos_row(),
       href: `${hubRow('tryouts').href}/${group[0].tryoutId}`,
       photo: group[0],
       count: group.length

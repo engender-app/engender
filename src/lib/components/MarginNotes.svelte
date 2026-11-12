@@ -146,7 +146,7 @@
       data-margin-note-save
       onclick={save}
     >
-      <span>{m.margin_note_save()}</span>
+      <span>{m.save()}</span>
     </button>
   </div>
 </Sheet>
@@ -157,7 +157,7 @@
   open={deleting !== null}
   title={m.margin_note_delete_sheet()}
   question={m.margin_note_delete_q()}
-  confirmLabel={m.margin_note_delete()}
+  confirmLabel={m.delete()}
   cancelLabel={m.keep_it()}
   confirmAttrs={{ 'data-confirm-delete-margin-note': '' }}
   onConfirm={confirmDelete}

@@ -66,7 +66,7 @@
   }
 </script>
 
-<GateScreen title={m.rke_title()} data-recovery-gate>
+<GateScreen title={m.rk_title()} data-recovery-gate>
   <p class="gate-body" data-recovery-gate-body>{m.rke_body()}</p>
   <form class="gate-form" onsubmit={submit}>
     <RecoveryKeyField id="journal-recovery-key" label={m.rke_label()} bind:value={typed} disabled={busy} />

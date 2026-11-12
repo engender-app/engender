@@ -240,13 +240,13 @@
     handle="comfort-item"
     newTitle={m.comfort_list_new_sheet()}
     editTitle={m.comfort_list_edit_sheet()}
-    saveLabel={m.comfort_list_save()}
-    deleteLabel={m.comfort_list_delete()}
+    saveLabel={m.save()}
+    deleteLabel={m.remove()}
     confirm={{
       title: m.comfort_list_delete_sheet(),
       question: (item) => m.comfort_list_delete_q({ text: item.text }),
-      hint: () => m.comfort_list_delete_hint(),
-      confirmLabel: m.comfort_list_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.remove(),
       cancelLabel: m.keep_it()
     }}
   >

@@ -16,7 +16,7 @@ const SOURCE_LABEL: Record<PhotoSource, () => string> = {
   entry: m.ph_source_entry,
   milestone: m.ph_source_milestone,
   hair: m.ph_source_hair,
-  hairRemoval: m.ph_source_hair_removal,
+  hairRemoval: m.hair_removal,
   tryout: m.ph_source_tryout,
   procedure: m.ph_source_procedure,
   video: m.ph_source_video,

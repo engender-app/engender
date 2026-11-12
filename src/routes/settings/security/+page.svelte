@@ -57,14 +57,14 @@
       <ListRow
         key="access-mode"
         icon="lock"
-        title={m.settings_access_mode_row()}
+        title={m.am_change_title()}
         subtitle={modeLine}
         href="/settings/access-mode"
       />
       <ListRow
         key="recovery-key"
         icon="key"
-        title={m.rk_row_title()}
+        title={m.rk_title()}
         subtitle={!recoveryKeyPresence.known
           ? undefined
           : recoveryKeyPresence.pending

@@ -145,7 +145,7 @@
 <div class="screen">
   <ScreenHeader title={m.regimen()} back="/care">
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.regimen_add_aria()} onclick={() => (templatePicker = true)}>
+      <button class="icon-btn press" data-add aria-label={m.add_a_regimen_episode()} onclick={() => (templatePicker = true)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -199,7 +199,7 @@
         role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
         title={m.regimen_empty_title()}
         text={m.regimen_empty_body()}
-        action={{ label: m.regimen_empty_action(), primary: true, onclick: () => (templatePicker = true) }}
+        action={{ label: m.add_a_regimen_episode(), primary: true, onclick: () => (templatePicker = true) }}
       />
       {@render hrtStartCard()}
     {/snippet}
@@ -215,7 +215,6 @@
           data-cycle-events-link
           icon="calendar"
           title={m.cycle_events()}
-          subtitle={m.cycle_tracking_regimen_row_sub()}
           href="/health/cycle-events"
         />
       </ListCard>
@@ -231,7 +230,7 @@
        one useful figure is that block's own dose-total line. -->
   <div class="regimen-elsewhere">
     <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.elsewhere)}>
-      <ListRow key="doses" icon="pill" title={m.regimen_doses_link()} subtitle={m.doses_row_sub()} href="/care/doses" />
+      <ListRow key="doses" icon="pill" title={m.doses()} subtitle={m.doses_row_sub()} href="/care/doses" />
     </ListCard>
   </div>
 
@@ -288,15 +287,15 @@
     {#if hrtStartEditor !== null}
       <h3>{m.regimen_hrt_start_title()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.regimen_hrt_start_hint()}</p>
-      <Field label={m.regimen_hrt_start_date_label()} id="hrt-start-date">
+      <Field label={m.date_label()} id="hrt-start-date">
         {#snippet children(id)}
           <DatePicker name="hrt-start-date" bind:value={hrtStartEditor!} {id} />
         {/snippet}
       </Field>
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-hrt-start disabled={hrtStartEditor === hrtStartOpenedOn} onclick={saveHrtStart}><span>{m.regimen_hrt_start_save()}</span></button>
+        <button class="btn btn-primary" data-save-hrt-start disabled={hrtStartEditor === hrtStartOpenedOn} onclick={saveHrtStart}><span>{m.save()}</span></button>
         {#if prefs.hrtStartEpochDay !== null}
-          <button class="btn btn-ghost" data-clear-hrt-start onclick={clearHrtStart}><span>{m.regimen_hrt_start_clear()}</span></button>
+          <button class="btn btn-ghost" data-clear-hrt-start onclick={clearHrtStart}><span>{m.clear()}</span></button>
         {/if}
       </div>
     {/if}

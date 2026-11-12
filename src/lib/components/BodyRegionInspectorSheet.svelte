@@ -76,7 +76,7 @@
     </div>
   {:else if !breakdown || breakdown.isEmpty}
     <EmptyState
-      title={m.body_region_empty_title()}
+      title={m.empty_list_title()}
       text={m.body_region_empty_body()}
     />
   {:else}
@@ -123,7 +123,7 @@
 
       <!-- Track 2: Progress Photos -->
       <section class="inspector-section" data-track="photos">
-        <SectionHeading text={m.body_region_track_photos()} />
+        <SectionHeading text={m.pph_title()} />
         {#if breakdown.photos.length > 0}
           <div class="inspector-photos-grid">
             {#each breakdown.photos as p (p.id)}

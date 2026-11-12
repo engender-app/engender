@@ -257,7 +257,7 @@
     }}
   >
     {#snippet fields(editor)}
-      <Field label={m.era_name_label()} id="era-name">
+      <Field label={m.name_label()} id="era-name">
         {#snippet children(id)}
           <input autocomplete={journalTextAutocomplete()}
             class="input"

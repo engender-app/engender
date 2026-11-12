@@ -221,8 +221,8 @@ const FAILURE_WORDS =
 for (const file of ['messages/en.json', 'messages/pl.json']) {
   test(`${file} carries the passed-slot copy and it names no failure`, () => {
     const catalogue = JSON.parse(readFileSync(file, 'utf8')) as Record<string, string>;
-    const sentence = catalogue.agenda_passed_dose;
-    assert.ok(sentence, `${file} has no agenda_passed_dose`);
+    const sentence = catalogue.scheduled_dose_on;
+    assert.ok(sentence, `${file} has no scheduled_dose_on`);
     assert.ok(sentence.includes('{date}'), `${file} states no date`);
     assert.doesNotMatch(sentence, FAILURE_WORDS);
   });

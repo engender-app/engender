@@ -112,7 +112,7 @@
     switch (phase) {
       case 'planning': return m.surgery_phase_planning();
       case 'pre_op': return m.surgery_phase_pre_op();
-      case 'surgery_day': return m.surgery_phase_surgery_day();
+      case 'surgery_day': return m.surgery_day();
       case 'recovery': return m.surgery_phase_recovery();
       case 'archived': return m.surgery_phase_archived();
       default: return '';
@@ -136,7 +136,7 @@
     openHint: m.surgery_compare_open_hint,
     tooShort: m.surgery_compare_too_short,
     noPrecedingData: m.surgery_compare_no_data,
-    action: m.surgery_compare_action
+    action: m.open_compare
   };
 
   let photosQuery = liveList((j) => (stored ? j.procedures.getPhotos(detail.id) : Promise.resolve([])));
@@ -156,9 +156,9 @@
 
   function recoveryText(procedure: Procedure): string {
     const day = recoveryDay(procedure.surgeryEpochDay, today);
-    if (day.type === 'unscheduled') return m.surgery_day_unscheduled();
+    if (day.type === 'unscheduled') return m.no_date_yet();
     if (day.type === 'upcoming') return m.surgery_day_upcoming({ days: m.n_days({ n: day.days }) });
-    if (day.type === 'surgeryDay') return m.surgery_day_of();
+    if (day.type === 'surgeryDay') return m.surgery_day();
     return m.surgery_day_since({ days: m.n_days({ n: day.days }) });
   }
 
@@ -343,7 +343,7 @@
     let added = false;
     if (!(await offerWrite.run(async () => { added = await answerOffer(MILESTONE_OFFER, subject, given, journal); }, m.write_failed()))) return;
     milestoneOffer = null;
-    if (added) toast(m.surgery_milestone_added());
+    if (added) toast(m.milestone_added());
   }
 
   function openConsultSheet() {
@@ -408,10 +408,10 @@
     subtitle={(photo) => dayLabel(photo.epochDay)}
     deleteLabel={(photo) => m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
     confirm={{
-      title: m.surgery_photo_delete_sheet(),
-      question: () => m.surgery_photo_delete_q(),
-      hint: () => m.surgery_photo_delete_hint(),
-      confirmLabel: m.surgery_photo_delete(),
+      title: m.photo_delete_sheet(),
+      question: () => m.photo_delete_q(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
@@ -420,7 +420,7 @@
     {/snippet}
     {#snippet addControl()}
       <button class="btn btn-soft press" data-add-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
-        <span>{m.add_photo()}</span>
+        <span>{m.add()}</span>
       </button>
     {/snippet}
   </PhotoSection>
@@ -595,7 +595,7 @@
           icon="clipboard"
           key="surgery-planning"
           role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          title={m.surgery_day_unscheduled()}
+          title={m.no_date_yet()}
           text={m.surgery_planning_title()}
           action={{ label: m.surgery_set_date(), onclick: () => void goToDate() }}
           data-add-as-milestone-notice
@@ -644,7 +644,6 @@
               key="surgery-milestone-prompt"
               role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
               title={m.surgery_milestone_prompt_title()}
-              text={m.surgery_milestone_prompt_body()}
               action={{ label: m.surgery_milestone_prompt_action(), primary: true, onclick: promptMilestoneConfirmation }}
               data-record-milestone-prompt
             />
@@ -699,7 +698,7 @@
            they change least: a name, a type and a date are set once, and the
            log above is what gets written to week by week. -->
       <div bind:this={detailsEl}>
-        <SectionHeading text={m.surgery_details_title()} />
+        <SectionHeading text={m.details_title()} />
       </div>
       <fieldset class="procedure-details" disabled={detailsWrite.busy} aria-busy={detailsWrite.busy}>
         <ProcedureFields
@@ -716,7 +715,7 @@
              a date was saved dropped Save in one frame. -->
         <div class="details-actions">
           <button class="btn btn-primary press" data-save-procedure disabled={!canSaveDetails} onclick={saveDetails}>
-            <span>{m.surgery_save_changes()}</span>
+            <span>{m.save_changes()}</span>
           </button>
           <!-- It opens its own height when a save gives the procedure its
                date, so Delete travels down rather than jumping. -->
@@ -750,7 +749,7 @@
       title={m.surgery_delete_sheet()}
       question={m.surgery_delete_q({ name: stored.name })}
       hint={m.surgery_delete_hint()}
-      confirmLabel={m.surgery_delete()}
+      confirmLabel={m.delete()}
       cancelLabel={m.keep_it()}
       confirmAttrs={{ 'data-confirm-delete-procedure': '' }}
       onConfirm={deleteProcedure}
@@ -766,7 +765,6 @@
       onClose={() => void answerMilestoneOffer('decline')}
     >
       <h3>{m.surgery_milestone_confirm_q({ name: stored.name })}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.surgery_milestone_confirm_hint()}</p>
       <div class="stack-3">
         <button
           class="btn btn-primary"
@@ -822,7 +820,7 @@
         <span>{m.surgery_photo_pick()}</span>
       </button>
       <button class="btn btn-soft" data-capture-procedure-photo onclick={recoveryPhotos.review.capture}>
-        <span>{m.surgery_photo_capture()}</span>
+        <span>{m.take_a_photo()}</span>
       </button>
     </div>
   </Sheet>
@@ -861,7 +859,7 @@
       title: m.surgery_checklist_delete_sheet(),
       question: () => m.surgery_checklist_delete_q(),
       hint: (item) => item.content,
-      confirmLabel: m.surgery_delete(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   />

@@ -12,7 +12,7 @@
     await journal.regimen.setEpisodeHidden(episode.id, hidden);
     if (hidden) {
       toast(m.regimen_hidden_toast({ drug: episode.drug }), {
-        actionLabel: m.regimen_hide_undo(),
+        actionLabel: m.delete_undo(),
         onAction: () => void setEpisodeHidden(episode, false),
         kind: 'episode-hidden'
       });
@@ -214,7 +214,7 @@
   let episodeRequirements = $derived([
     ...(episodeRangeInverted ? [m.era_conflict_inverted()] : []),
     ...(!editor?.drug.trim() ? [m.regimen_drug_required()] : []),
-    ...(!Number.isFinite(parseFloat(String(editor?.dose ?? ''))) ? [m.regimen_dose_required()] : [])
+    ...(!Number.isFinite(parseFloat(String(editor?.dose ?? ''))) ? [m.dose_amount_required()] : [])
   ]);
 
   /* The editor sheet's own close and a navigation away from the screen
@@ -486,7 +486,7 @@
              changes, and the button names what it saves (audit UX-13). -->
         <FieldGroupHeading legend={m.regimen_episode_legend()} />
         <p class="muted small" data-episode-dirty>{episodeChanged ? m.regimen_episode_unsaved() : m.regimen_episode_unchanged()}</p>
-        <Field label={m.regimen_drug_label()} id="regimen-drug">
+        <Field label={m.drug_label()} id="regimen-drug">
           {#snippet children(id, _hint, touched)}
             <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={touched && !editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} oninput={() => { if (!classChosen) editor!.drugClass = inferDrugClass(editor!.drug); }} />
           {/snippet}
@@ -515,18 +515,18 @@
           {/snippet}
         </Field>
         <div class="cd-endpoints">
-          <Field label={m.regimen_dose_label()} id="regimen-dose">
+          <Field label={m.dose_label()} id="regimen-dose">
             {#snippet children(id, _hint, touched)}
-              <input class="input" type="number" {id} name="regimen-dose" placeholder={m.regimen_dose_placeholder()} inputmode="decimal" aria-invalid={touched && !Number.isFinite(parseFloat(String(editor!.dose)))} aria-describedby="regimen-episode-requirements" bind:value={editor!.dose} />
+              <input class="input" type="number" {id} name="regimen-dose" placeholder={m.dose_amount_placeholder()} inputmode="decimal" aria-invalid={touched && !Number.isFinite(parseFloat(String(editor!.dose)))} aria-describedby="regimen-episode-requirements" bind:value={editor!.dose} />
             {/snippet}
           </Field>
-          <Field label={m.regimen_dose_unit_label()} id="regimen-dose-unit">
+          <Field label={m.unit_label()} id="regimen-dose-unit">
             {#snippet children(id)}
-              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-dose-unit" placeholder={m.regimen_dose_unit_placeholder()} bind:value={editor!.doseUnit} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-dose-unit" placeholder={m.dose_unit_placeholder()} bind:value={editor!.doseUnit} />
             {/snippet}
           </Field>
         </div>
-        <Field label={m.regimen_route_label()} id="regimen-route">
+        <Field label={m.route_label()} id="regimen-route">
           {#snippet children(id)}
             <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-route" placeholder={m.regimen_route_placeholder()} bind:value={editor!.route} />
           {/snippet}
@@ -560,7 +560,7 @@
       {#if !editor.id}<p class="muted small">{m.regimen_schedule_after_episode()}</p>{/if}
       {#if editor.id}
         <section class="regimen-group">
-          <FieldGroupHeading legend={m.regimen_schedule_legend()} hint={m.regimen_schedule_hint()} />
+          <FieldGroupHeading legend={m.schedule_title()} hint={m.regimen_schedule_hint()} />
           <p class="muted small" data-schedule-dirty>{scheduleChanged ? m.regimen_schedule_unsaved() : m.regimen_schedule_unchanged()}</p>
           {#if schedule}
             <div class="disclosed" transition:disclose>
@@ -671,7 +671,7 @@
                          below jumped 16 px in the frame the row arrived. -->
                     <div class="disclosed" transition:disclose>
                       <Field
-                        label={shownReminderTimes.length > 1 ? m.regimen_schedule_reminder_dose_label({ number: index + 1 }) : m.rem_time_label()}
+                        label={shownReminderTimes.length > 1 ? m.regimen_schedule_reminder_dose_label({ number: index + 1 }) : m.time_label()}
                         spread
                       >
                         {#snippet children(id)}
@@ -713,7 +713,7 @@
                             type="number"
                             inputmode="decimal"
                             data-amount-dose={index}
-                            aria-label={m.dose_amount_label()}
+                            aria-label={m.dose_label()}
                             onblur={() => leftDose.add(amount)}
                             aria-invalid={leftDose.has(amount) && !Number.isFinite(parseFloat(String(amount.dose)))}
                             aria-describedby="regimen-schedule-requirements"
@@ -724,7 +724,7 @@
                           <input autocomplete={journalTextAutocomplete()}
                             class="input"
                             data-amount-unit={index}
-                            aria-label={m.dose_unit_label()}
+                            aria-label={m.unit_label()}
                             onblur={() => leftUnit.add(amount)}
                             aria-invalid={leftUnit.has(amount) && !amount.doseUnit.trim()}
                             aria-describedby="regimen-schedule-requirements"
@@ -758,7 +758,7 @@
                 disabled={!scheduleCanSave}
                 onclick={saveSchedule}
               >
-                <span>{m.regimen_schedule_save()}</span>
+                <span>{m.save_schedule()}</span>
               </button>
 
               <!-- The standing instruction (ticket 11, ADR-0086). Under the
@@ -829,12 +829,12 @@
           {/if}
           {#if newPause}
             <div class="cd-endpoints">
-              <Field label={m.regimen_pause_start_label()} id="pause-start">
+              <Field label={m.range_from_label()} id="pause-start">
                 {#snippet children(id)}
                   <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
                 {/snippet}
               </Field>
-              <Field label={m.regimen_pause_end_label()} id="pause-end">
+              <Field label={m.range_to_label()} id="pause-end">
                 {#snippet children(id)}
                   <DatePicker name="pause-end" min={dayRangeEndMin(newPause!.start)} bind:value={newPause!.end} {id} aria-invalid={pauseRangeInverted || undefined} describedBy={pauseRangeInverted ? "regimen-pause-requirements" : undefined} />
                 {/snippet}

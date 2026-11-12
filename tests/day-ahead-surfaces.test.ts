@@ -18,6 +18,23 @@ const DAY_ROUTE = 'src/routes/day/[day]/+page.svelte';
 const day = read(DAY_ROUTE);
 const dayAheadRows = read('src/lib/components/dayAheadRows.ts');
 
+describe('the add-entry button on a past day or today', () => {
+  /* Tester report 02, ticket 08: an empty day said "Add another entry for
+     this day" under "Nothing logged this day". The day's own read decides
+     the wording; a day that holds an entry keeps "another". */
+  it('says "an entry" on a day with no entry and "another entry" on a day with one', () => {
+    expect(day).toMatch(/noEntryYet = \$derived\(day != null && day\.entries\.length === 0\)/);
+    expect(markupOf(day)).toContain('{noEntryYet ? m.add_entry_for_day() : m.add_another_entry()}');
+  });
+
+  it('has the empty-day wording in both catalogues', () => {
+    const en = JSON.parse(read('messages/en.json')) as Record<string, string>;
+    const pl = JSON.parse(read('messages/pl.json')) as Record<string, string>;
+    expect(en.add_entry_for_day).toBe('Add an entry for this day');
+    expect(pl.add_entry_for_day).toBe('Dodaj wpis z tego dnia');
+  });
+});
+
 describe('the day after today', () => {
   it('is not the day carried in page.params.day alone - it is compared against today', () => {
     expect(day).toMatch(/isFuture = \$derived\(epochDay > currentDay\(\)\)/);
@@ -83,9 +100,9 @@ describe('the day after today', () => {
   });
 
   it('draws what is coming under the heading the appointments screen already has, not a second string for it', () => {
-    // CONTEXT.md's "Coming up" is one concept; appointments_upcoming_heading
-    // is where the app already put its words for it.
-    expect(day).toContain('m.appointments_upcoming_heading()');
+    // CONTEXT.md's "Coming up" is one concept, so the appointments screen and
+    // the day share coming_up_title.
+    expect(day).toContain('m.coming_up_title()');
   });
 
   it('gives the coming card the one role guaranteed a colour when it is the only card on screen', () => {

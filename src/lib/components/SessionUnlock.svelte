@@ -191,7 +191,6 @@
     try {
       const result = await confirmWithBiometrics(androidKeystore, {
         title: m.ak_prompt_title(),
-        subtitle: m.ak_prompt_subtitle(),
         cancel: m.ak_prompt_cancel(),
         deviceCredential
       });
@@ -234,9 +233,9 @@
     mode === 'pin'
       ? m.su_pin_body()
       : mode === 'passphrase'
-        ? m.su_passphrase_body()
+        ? ''
         : mode === 'biometric'
-          ? m.bm_unlock_body()
+          ? m.unlock_confirm_body()
           : m.su_device_body()
   );
 
@@ -259,7 +258,7 @@
 </script>
 
 <GateScreen {title} unlock data-applock>
-  <p class="gate-body">{body}</p>
+  {#if body}<p class="gate-body">{body}</p>{/if}
 
   {#if mode === 'pin'}
     <PinEntry onVerify={submitPin} />

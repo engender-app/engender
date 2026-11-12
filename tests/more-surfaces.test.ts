@@ -156,12 +156,11 @@ describe('what the More hub is built from', () => {
       'm.hub_screen_title(',
       'm.hub_search_clear(',
       'm.hub_search_handoff(',
-      'm.hub_search_handoff_sub(',
-      'm.hub_search_placeholder(',
       'm.no_results(',
       'm.no_results_body(',
       'm.results_count(',
-      'm.search_elsewhere_heading('
+      'm.search_elsewhere_heading(',
+      'm.search_placeholder('
     ]);
     expect(more).toContain("from '$lib/data/vocabulary/hubLabels'");
   });
@@ -487,7 +486,7 @@ describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
     ['src/lib/components/ProcedureFields.svelte', 'aria-haspopup="dialog"\\s+icon="ICON"', icon('surgery'), 'tag'],
     ['src/lib/permissions/catalogue.ts', "print: 'ICON'", 'print', 'documents'],
     ['src/lib/components/EntryEditor.svelte', 'data-add-recording-file[^\\n]*\\n\\s*<Icon name="ICON"', 'upload', 'image'],
-    ['src/lib/components/EntryEditor.svelte', '<Icon name="ICON" size=\\{22\\} /><span>{m.add_video_file\\(\\)}', 'upload', 'image'],
+    ['src/lib/components/EntryEditor.svelte', 'data-add-video-file[^<]*<Icon name="ICON"', 'upload', 'image'],
     ['src/routes/health/appointments/+page.svelte', 'data-provider={provider.id}\\s+icon="ICON"', 'person', 'note'],
     ['src/routes/health/appointments/+page.svelte', 'icon="ICON"\\s+key="providers-empty"', 'person', 'note'],
     ['src/routes/settings/+page.svelte', 'key="scales"\\s+icon="ICON"', 'scales', 'heart'],

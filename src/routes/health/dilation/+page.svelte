@@ -354,7 +354,7 @@
       </div>
     {:else if editingSchedule}
       <div class="screen-part">
-        <SectionHeading text={m.dilation_schedule_heading()} />
+        <SectionHeading text={m.schedule_title()} />
         {#if eligibleProcedures.length > 1}
           <!-- A picker only where there is a real choice to make (audit item
                7): with exactly one eligible procedure, `openScheduleEditor`
@@ -440,7 +440,7 @@
 
         <div class="stack-3 dilation-schedule-actions">
           <button class="btn btn-primary" data-save-schedule disabled={!scheduleCanSave || scheduleWrite.busy} onclick={saveSchedule}>
-            <span>{m.dilation_schedule_save()}</span>
+            <span>{m.save_schedule()}</span>
           </button>
           <button class="btn btn-ghost" onclick={() => (editingSchedule = false)}>
             <span>{m.cancel()}</span>
@@ -550,7 +550,7 @@
            to find out (rule 16, and the same lesson ticket 54 took on the
            roadmap - open on where you are, not on the pack's provenance). -->
       <div class="screen-part">
-        <SectionHeading text={m.dilation_schedule_heading()} />
+        <SectionHeading text={m.schedule_title()} />
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
           <ListRow
             key="dilation-schedule"
@@ -561,7 +561,7 @@
               followedProcedure?.name,
               followedProcedure?.surgeryEpochDay != null
                 ? dayLong(followedProcedure.surgeryEpochDay)
-                : m.dilation_procedure_date_unset(),
+                : m.no_date_yet(),
               stageWords(stageOn(taper, today))
             ]}
             fadeSwap
@@ -582,30 +582,30 @@
     handle="dilation-session"
     newTitle={m.dilation_session_new_sheet()}
     editTitle={m.dilation_session_edit_sheet()}
-    saveLabel={m.dilation_session_save()}
-    deleteLabel={m.dilation_session_delete()}
+    saveLabel={m.save()}
+    deleteLabel={m.delete()}
     canSave={() => true}
     confirm={{
       title: m.dilation_session_delete_sheet(),
       question: (r) => m.dilation_session_delete_q({ date: dayLong(r.epochDay) }),
-      hint: () => m.dilation_session_delete_hint(),
-      confirmLabel: m.dilation_session_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
     {#snippet fields(editor)}
-      <Field label={m.dilation_session_date_label()} id="dilation-session-date">
+      <Field label={m.date_label()} id="dilation-session-date">
         {#snippet children(id)}
           <DatePicker name="dilation-session-date" max={dateInputValueFromEpochDay(today)} bind:value={editor.date} {id} />
         {/snippet}
       </Field>
-      <Field label={m.dilation_session_note_label()} id="dilation-session-note">
+      <Field label={m.note_label()} id="dilation-session-note">
         {#snippet children(id)}
           <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="dilation-session-note"
-            placeholder={m.dilation_session_note_placeholder()}
+            placeholder={m.optional_placeholder()}
             bind:value={editor.note}
           />
         {/snippet}

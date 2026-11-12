@@ -285,8 +285,8 @@
     confirm={{
       title: m.letters_delete_sheet(),
       question: () => m.letters_delete_q(),
-      hint: () => m.letters_delete_hint(),
-      confirmLabel: m.letters_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   />

@@ -27,7 +27,7 @@
 <ListRow
   key="disguise"
   icon="eyeOff"
-  title={m.disguise_row()}
+  title={m.disguise_app_title()}
   subtitle={prefs.disguise ? m.settings_disguise_on() : m.settings_row_off()}
   chevron={false}
   onclick={() => (disguiseSheet = true)}
@@ -35,8 +35,8 @@
   {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
 </ListRow>
 
-<Sheet busy={disguiseWrite.busy} bind:open={disguiseSheet} title={m.disguise_row()}>
-  <h3>{m.disguise_row()}</h3>
+<Sheet busy={disguiseWrite.busy} bind:open={disguiseSheet} title={m.disguise_app_title()}>
+  <h3>{m.disguise_app_title()}</h3>
   <div class="stack-3">
     <div class="spread">
       <span class="kit-row-text">

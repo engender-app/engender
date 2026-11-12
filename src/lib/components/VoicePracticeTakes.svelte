@@ -120,7 +120,7 @@
   confirm={{
     title: m.vb_practice_delete_sheet(),
     question: () => m.vb_practice_delete_q(),
-    hint: () => m.vb_practice_delete_hint(),
+    hint: () => m.delete_undo_hint(),
     confirmLabel: m.vb_practice_delete_sheet(),
     cancelLabel: m.keep_it()
   }}

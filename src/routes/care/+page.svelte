@@ -786,7 +786,7 @@
              which one by pressing this button rather than the one two
              blocks down. -->
         <a class="btn btn-soft btn-block press care-regimen-log" data-care-log={lane.episode.drug} href={logHref(lane.episode.id)} onclick={() => rememberSourceLane(lane.episode.id)}>
-          <Icon name="plus" size={18} /> <span>{m.care_log_dose()}</span>
+          <Icon name="plus" size={18} /> <span>{m.log_a_dose()}</span>
         </a>
       </div>
     {/each}
@@ -819,7 +819,7 @@
       <ListRow
         key="stock"
         icon="package"
-        title={m.regimen_stock_link()}
+        title={m.stock_title()}
         subtitle={m.care_row_stock({
           drug: unlanedStock[0].entry.drug,
           left: stockRemainingLabel(unlanedStock[0].projection.remaining, unlanedStock[0].entry.unit)
@@ -827,7 +827,7 @@
         onclick={openStockList}
       />
     {:else if stock.length === 0}
-      <ListRow key="stock" icon="package" title={m.regimen_stock_link()} subtitle={m.care_row_stock_none()} onclick={openStockList} />
+      <ListRow key="stock" icon="package" title={m.stock_title()} subtitle={m.care_row_stock_none()} onclick={openStockList} />
     {/if}
     <!-- Ticket 59: the summary is an export over these readings, not one of
          its own, so it joins the card that already reads them. Written by
@@ -839,7 +839,7 @@
     <ListRow
       key="clinician-summary"
       icon="share"
-      title={m.clinician_summary_row()}
+      title={m.clinician_summary_title()}
       subtitle={summaryReading}
       href="/health/clinician-summary"
     />
@@ -889,7 +889,7 @@
     <div class="stock-body" bind:this={stockBody}>
     {#if stockEditor}
       <div class="stock-content" transition:stockSwap onoutrostart={(event) => retireStockContent(event.currentTarget)}>
-      <Field label={m.stock_drug_label()} id="care-stock-drug">
+      <Field label={m.drug_label()} id="care-stock-drug">
         {#snippet children(id)}
           <input autocomplete={journalTextAutocomplete()} class="input" {id} name="stock-drug" placeholder={m.stock_drug_placeholder()} bind:value={stockEditor!.drug} />
         {/snippet}
@@ -908,7 +908,7 @@
             />
           {/snippet}
         </Field>
-        <Field label={m.stock_unit_label()} id="care-stock-unit">
+        <Field label={m.unit_label()} id="care-stock-unit">
           {#snippet children(id)}
             <input autocomplete={journalTextAutocomplete()} class="input" {id} name="stock-unit" placeholder={m.stock_unit_placeholder()} bind:value={stockEditor!.unit} />
           {/snippet}
@@ -980,7 +980,7 @@
             {/snippet}
           </Field>
         {:else}
-          <Field label={m.stock_window_end_label()} id="care-stock-window-end">
+          <Field label={m.end_date_label()} id="care-stock-window-end">
             {#snippet children(id)}
               <DatePicker name="stock-window-end" bind:value={stockEditor!.windowEndDate} {id} />
             {/snippet}

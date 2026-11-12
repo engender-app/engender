@@ -150,7 +150,7 @@
   {/snippet}
 </Field>
 {#if withNote}
-  <Field label={m.appointments_note_label()} id="appointment-note">
+  <Field label={m.note_label()} id="appointment-note">
     {#snippet children(id)}
       <textarea autocomplete={journalTextAutocomplete()}
         class="input"
@@ -170,7 +170,7 @@
      measured, the wait block's leave otherwise kept 16px under it and the
      buttons stepped up 16px the frame it was removed. -->
 <div class="ap-when">
-  <Field label={m.appointments_day_label()} hint={m.appointments_day_hint()} id="appointment-date">
+  <Field label={m.day_label()} hint={m.appointments_day_hint()} id="appointment-date">
     {#snippet children(id, describedBy)}
       <DatePicker name="appointment-date" bind:value={date} {id} {describedBy} />
     {/snippet}
@@ -180,7 +180,7 @@
        rather than standing there unsaved. -->
   {#if date}
     <div transition:collapse>
-      <Field label={m.appointments_time_label()} id="appointment-time">
+      <Field label={m.time_label()} id="appointment-time">
         {#snippet children(id)}
           <TimePicker name="appointment-time" bind:value={time} {id} />
         {/snippet}

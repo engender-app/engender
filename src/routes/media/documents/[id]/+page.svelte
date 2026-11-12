@@ -570,7 +570,7 @@
         {/if}
 
         <button class="btn btn-soft press" data-export-document disabled={!pdfBytes} onclick={exportPdf}>
-          <Icon name="share" size={20} /><span>{m.document_export()}</span>
+          <Icon name="share" size={20} /><span>{m.share_or_save()}</span>
         </button>
         <p class="muted small">{m.document_export_hint()}</p>
       </div>
@@ -655,11 +655,11 @@
         disabled={draft.title.trim() === ''}
         onclick={saveChanges}
       >
-        <span>{m.document_save_changes()}</span>
+        <span>{m.save_changes()}</span>
       </button>
       <button class="btn btn-ghost press" data-delete-document onclick={() => (confirming = true)}>
         <Icon name="trash" size={18} />
-        <span>{m.document_delete()}</span>
+        <span>{m.delete()}</span>
       </button>
     </div>
   {:else}
@@ -679,7 +679,7 @@
     title={m.document_delete_sheet()}
     question={stored ? m.document_delete_q({ title: stored.title }) : ''}
     hint={m.document_delete_hint()}
-    confirmLabel={m.document_delete()}
+    confirmLabel={m.delete()}
     cancelLabel={m.keep_it()}
     confirmAttrs={{ 'data-confirm-delete-document': '' }}
     onConfirm={deleteDocument}

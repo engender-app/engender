@@ -130,7 +130,7 @@ describe('the 1.0.0 notes describe what ships', () => {
   it('names every removed area and says to export an archive first', () => {
     const text = notes().replace(/\s+/g, ' ');
     for (const area of removed) expect(text, area).toContain(area);
-    expect(text).toMatch(/Export an encrypted archive from rc\.1 first/);
+    expect(text).toMatch(/Export an encrypted backup from rc\.1 first/);
   });
 
   it('does not offer a removed area as a feature', () => {
@@ -143,8 +143,8 @@ describe('the 1.0.0 notes describe what ships', () => {
     const en = readFileSync(`fastlane/metadata/android/en-US/changelogs/${code}.txt`, 'utf8');
     const pl = readFileSync(`fastlane/metadata/android/pl-PL/changelogs/${code}.txt`, 'utf8');
     expect(en).toMatch(/removes measurements, affirmations/);
-    expect(en).toMatch(/export an encrypted archive first/);
+    expect(en).toMatch(/export an encrypted backup first/);
     expect(pl).toMatch(/usuwa pomiary, afirmacje/);
-    expect(pl).toMatch(/najpierw wyeksportuj zaszyfrowane archiwum/);
+    expect(pl).toMatch(/najpierw wyeksportuj zaszyfrowaną kopię zapasową/);
   });
 });

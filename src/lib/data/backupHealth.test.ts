@@ -19,7 +19,7 @@ test('staleness turns over after thirty days, not on the thirtieth', () => {
 
 /* Last-audit UI 54 (U53): not stale is not the same as backed up. Export &
    import drew its success tick for every journal that was not stale, and
-   one never exported is not stale, so "No export recorded on this device"
+   one never exported is not stale, so "none from this device"
    sat beside a tick. */
 test('a journal never exported stands apart from a recent backup and a stale one', () => {
   const today = 20676;

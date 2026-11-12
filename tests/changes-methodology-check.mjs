@@ -104,7 +104,7 @@ try {
     check(true, 'bands drawn once the disclosure opened with Enter');
     const body = await page.locator('[data-bands-context] [data-literature-body]').textContent();
     check(
-      body.includes('Shaded bands describe the literature') && body.includes('published tables') && body.includes('No evidence'),
+      body.includes('Shaded bands describe the literature') && body.includes('published tables') && body.includes('Nothing shows'),
       'limitation, timing and variability context visible'
     );
     check(body.includes('WPATH') && /Checked \d+ October 2026/.test(body), `source and reviewed-on date shown: ${body}`);

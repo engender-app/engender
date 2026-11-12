@@ -195,7 +195,7 @@
       <button
         class="icon-btn press"
         data-add
-        aria-label={m.document_add_aria()}
+        aria-label={m.add_a_document()}
         disabled={picking || record.editor !== null || record.saving}
         aria-busy={picking}
         onclick={startImport}
@@ -261,7 +261,7 @@
         role={roleAt(activeFlag.roles, 0)}
         title={m.documents_empty_title()}
         text={m.documents_empty_body()}
-        action={{ label: picking ? m.imp_running() : m.documents_empty_action(), primary: true, onclick: startImport }}
+        action={{ label: picking ? m.imp_running() : m.add_a_document(), primary: true, onclick: startImport }}
       />
     {/snippet}
   </ReadGate>
@@ -270,14 +270,14 @@
     {record}
     handle="document"
     newTitle={m.document_new_sheet()}
-    saveLabel={record.saving ? m.entry_saving() : m.document_save()}
+    saveLabel={record.saving ? m.entry_saving() : m.save()}
     canSave={(draft) => !!draft.content && !!draft.title.trim()}
     {fields}
     confirm={{
       title: m.document_delete_sheet(),
       question: (document) => m.document_delete_q({ title: document.title }),
       hint: () => m.document_delete_hint(),
-      confirmLabel: m.document_delete(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   />

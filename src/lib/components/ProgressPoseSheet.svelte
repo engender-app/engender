@@ -179,7 +179,7 @@
              in its first frame. -->
         <span class="pose-name-swap">
           <span class:is-shown={!renaming} aria-hidden={renaming !== null}>{m.pph_pose_add()}</span>
-          <span class:is-shown={renaming !== null} aria-hidden={renaming === null}>{m.pph_pose_save()}</span>
+          <span class:is-shown={renaming !== null} aria-hidden={renaming === null}>{m.save_name()}</span>
         </span>
       </button>
       <!-- Always in the row and faded rather than added: arriving through

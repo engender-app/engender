@@ -99,8 +99,8 @@
   {@render addControl()}
 {:else}
   <div class="photo-row" style="margin-bottom:var(--space-3)">
-    <button class="photo-add" data-add-photo aria-label={m.add_photo()} onclick={section.pick}>
-      <Icon name="image" size={20} /><span>{m.add_photo()}</span>
+    <button class="photo-add" data-add-photo aria-label={m.add()} onclick={section.pick}>
+      <Icon name="image" size={20} /><span>{m.add()}</span>
     </button>
     <button class="photo-add" data-capture-photo aria-label={m.add_photo_camera()} onclick={section.review.capture}>
       <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>

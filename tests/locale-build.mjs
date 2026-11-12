@@ -10,7 +10,7 @@ for (const locale of ['en', 'pl']) {
   const catalogue = JSON.parse(readFileSync(`messages/${locale}.json`, 'utf8'));
   const inactive = JSON.parse(readFileSync(`messages/${locale === 'en' ? 'pl' : 'en'}.json`, 'utf8'));
   const startup = graph[locale].filter((path) => path.endsWith('.js')).map((path) => readFileSync(`build${path}`, 'utf8')).join('\n');
-  for (const key of ['pp_unlock_body', 'pp_wrong']) {
+  for (const key of ['pp_label_unlock', 'pp_wrong']) {
     assert.ok(startup.includes(catalogue[key]), `${locale} startup must contain active ${key}`);
     assert.ok(!startup.includes(inactive[key]), `${locale} startup must prune inactive ${key}`);
   }
@@ -114,7 +114,7 @@ try {
       assert.equal(await page.getAttribute('html', 'lang'), locale);
       const messages = JSON.parse(readFileSync(`messages/${locale}.json`, 'utf8'));
       const text = await page.locator('body').innerText();
-      assert.ok(text.includes(messages.pp_unlock_body), 'lock gate must show selected locale copy');
+      assert.ok(text.includes(messages.pp_label_unlock), 'lock gate must show selected locale copy');
       await unlock(page);
       await page.waitForSelector('[data-list-row="language"]');
       passed(`${offline ? 'offline' : 'online'} reload switches to ${locale}; lock and unlock work`);

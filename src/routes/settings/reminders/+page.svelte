@@ -154,7 +154,7 @@
       key="reminders-web"
       title={m.rem_web_list_note()}
       text={m.rem_web_note()}
-      action={{ label: m.export_import(), href: '/settings/export' }}
+      action={{ label: m.exp_title(), href: '/settings/export' }}
     />
 
     <!-- Held until the reminders have answered, then faded in (ux-carpet
@@ -194,8 +194,8 @@
       confirm={{
         title: m.rem_delete_sheet(),
         question: (reminder) => m.rem_delete_q({ title: words(reminder).title }),
-        hint: () => m.rem_delete_hint(),
-        confirmLabel: m.rem_delete(),
+        hint: () => m.delete_undo_hint(),
+        confirmLabel: m.delete(),
         cancelLabel: m.keep_it()
       }}
     />
@@ -237,7 +237,7 @@
                row read as a label losing an argument with a pill. The cap is
                the 160px `/settings/reminders/[id]` gives the same field. -->
           <div class="stack-3">
-            <Field label={m.checkin_time()} id="checkin-time" spread>
+            <Field label={m.time_label()} id="checkin-time" spread>
               {#snippet children(id)}
                 <TimePicker {id} name="checkin-time" style="max-width:160px" required bind:value={prefs.checkInTime} />
               {/snippet}

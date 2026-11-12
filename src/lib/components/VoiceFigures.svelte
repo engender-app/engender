@@ -100,7 +100,7 @@
       did not measure it. The same six keys the registry has, so a seventh
       figure with no value here does not compile. */
   let values = $derived<Record<OwnSeriesMetricKey, string | null>>({
-    span: m.vb_hz_range({ low: figure(figures.f0P10Hz), high: figure(figures.f0P90Hz) }),
+    span: m.hz_range({ low: figure(figures.f0P10Hz), high: figure(figures.f0P90Hz) }),
     spread: m.vb_semitones({ value: figure(figures.semitoneSd, 1) }),
     rate: m.vb_wpm({ value: figure(figures.wordsPerMinute) }),
     resonance: formants

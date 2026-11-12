@@ -44,17 +44,17 @@
   {#if open}
     <h3>{m.photo_day_prompt_title()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
-    <Field label={m.photo_day_label()} id={fieldId}>
+    <Field label={m.day_label()} id={fieldId}>
       {#snippet children(id)}
         <DatePicker name={fieldId} bind:value={day} {id} />
       {/snippet}
     </Field>
     <div class="stack-3">
       <button class="btn btn-primary press" data-photo-day-save onclick={onSave}>
-        <span>{m.photo_day_prompt_save()}</span>
+        <span>{m.save()}</span>
       </button>
       <button class="btn btn-ghost press" data-photo-day-skip onclick={onSkip}>
-        <span>{m.photo_day_prompt_skip()}</span>
+        <span>{m.skip()}</span>
       </button>
     </div>
   {/if}

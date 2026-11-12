@@ -316,7 +316,7 @@
     const when = agendaWhen(item.epochDay);
     if (!item.appointment) return when;
     const { place, more } = item.appointment;
-    return [when, place, more > 0 ? m.agenda_appointments_more({ count: String(more) }) : null]
+    return [when, place, more > 0 ? m.count_more({ count: String(more) }) : null]
       .filter((part) => part)
       .join(' · ');
   }
@@ -440,7 +440,7 @@
     sub?: () => string;
   };
   const GETTING_STARTED: StartOffer[] = [
-    { key: 'milestones', area: 'milestones', icon: 'summit', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
+    { key: 'milestones', area: 'milestones', icon: 'summit', href: '/transition/milestones', title: m.home_start_milestones_title },
     { key: 'regimen', area: 'care', icon: 'pill', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
     { key: 'letters', area: 'letters', icon: 'envelope', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
     { key: 'photos', area: 'photos', icon: 'camera', href: TODAY_PHOTO_HREF, title: m.home_start_photos_title },
@@ -943,7 +943,7 @@
          the next item on a list. -->
     {#if agenda}
       <div class="home-agenda" transition:collapse={panel} data-home-agenda>
-        <SectionHeading text={m.home_agenda_heading()} />
+        <SectionHeading text={m.coming_up_title()} />
         <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
           {#each agendaRows as item, i (item.key)}
             {@const label = dayAheadMarkLabel(item.kind)}
@@ -1334,10 +1334,10 @@
           onclick={() => {
             liveTiles.snooze('ready-letter');
             letterDismissSheetOpen = false;
-            toast(m.tile_letter_snoozed_toast());
+            toast(m.reminder_snoozed_toast());
           }}
         >
-          <span>{m.tile_letter_snooze_btn()}</span>
+          <span>{m.remind_in_24_hours()}</span>
         </button>
         <button
           class="btn btn-ghost btn-block"
@@ -1369,10 +1369,10 @@
             snoozeStockNotice();
             isStockNoticeSnoozedState = true;
             stockDismissSheetOpen = false;
-            toast(m.notice_stock_snoozed_toast());
+            toast(m.reminder_snoozed_toast());
           }}
         >
-          <span>{m.notice_stock_snooze_btn()}</span>
+          <span>{m.remind_in_24_hours()}</span>
         </button>
         <button
           class="btn btn-ghost btn-block"

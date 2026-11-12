@@ -245,7 +245,7 @@
 {/snippet}
 
 <div class="screen">
-  <ScreenHeader title={m.tally_trend_title()} subtitle={m.tally_trend_sub()} screen="tally" back="/stats" />
+  <ScreenHeader title={m.tally_trend_title()} screen="tally" back="/stats" />
 
   {#if !hasSpan}
     <Segmented

@@ -413,7 +413,7 @@
 
   <div class="today-editor-exits">
     <button type="button" class="btn btn-primary" data-edit-done onclick={onDone}>
-      <span>{m.home_edit_done()}</span>
+      <span>{m.done()}</span>
     </button>
     <button type="button" class="btn btn-ghost" data-edit-reset onclick={() => (resetAsked = true)}>
       <span>{m.home_edit_reset()}</span>

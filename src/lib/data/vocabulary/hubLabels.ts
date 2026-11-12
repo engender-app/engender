@@ -62,13 +62,15 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
     reads, and the standing line of one that does until it has a reading.
 
     Total over the row keys, so a row added here without one does not compile.
+    A row whose title already says what is behind it holds null and draws no
+    line.
     Each is earned by a title that does not say what the screen is
     (DIRECTION.md 3b) - "Eras", "Care", "Safe space" name
     something the app invented - and, on the reading rows, by a fresh journal
     otherwise leaving thirteen rows mute. Each is a short form of that
     screen's own intro rather than new copy, so the row and the screen behind
     it say the same thing (ADR-0024). */
-const ROW_LINE: Record<HubRowKey, () => string> = {
+const ROW_LINE: Record<HubRowKey, (() => string) | null> = {
   'hair-progress': m.hub_sub_hair_progress,
   'hair-removal': m.hub_sub_hair_removal,
   care: m.hub_sub_care,
@@ -76,7 +78,7 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   surgery: m.hub_sub_surgery,
   dilation: m.hub_sub_dilation,
   appointments: m.hub_sub_appointments,
-  milestones: m.hub_sub_milestones,
+  milestones: null,
   'progress-photos': m.hub_sub_progress_photos,
   roadmap: m.hub_sub_roadmap,
   letters: m.hub_sub_letters,
@@ -85,7 +87,7 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   'voice-benchmark': m.hub_sub_voice_benchmark,
   wear: m.hub_sub_wear,
   effects: m.hub_sub_effects,
-  resources: m.hub_sub_resources,
+  resources: null,
   photos: m.hub_sub_photos,
   documents: m.hub_sub_documents
 };
@@ -105,7 +107,7 @@ export function hubRowTitle(key: HubRowKey): string {
 }
 
 export function hubRowDescription(key: HubRowKey): string {
-  return ROW_LINE[key]();
+  return ROW_LINE[key]?.() ?? '';
 }
 
 /** What a group's heading says. */

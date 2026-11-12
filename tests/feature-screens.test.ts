@@ -450,7 +450,7 @@ describe('the two print surfaces', () => {
        off-screen for all of them. The foot the frame hosts is the one print
        action now, and the scope it prints is stated beside it (the clinician
        summary's own ticket 34 shape), so the header carries no second one. */
-    expect(book).not.toMatch(/aria-label=\{m\.journal_book_print\(\)\}/);
+    expect(book).not.toMatch(/aria-label=\{m\.print\(\)\}/);
     const footStart = book.indexOf('<SaveBar');
     const print = book.indexOf('data-book-print');
     const footEnd = book.indexOf('</SaveBar>');

@@ -72,7 +72,7 @@
 
 <SectionHeading text={m.appointments_prep_heading()}>
   {#snippet action()}
-    <button class="icon-btn" data-add-prep aria-label={m.appointment_prep_add_aria()} onclick={openAddSheet}>
+    <button class="icon-btn" data-add-prep aria-label={m.appointment_prep_add_item()} onclick={openAddSheet}>
       <Icon name="plus" size={22} />
     </button>
   {/snippet}
@@ -142,7 +142,7 @@
       role={roleAt(activeFlag.roles, 1)}
       title={m.appointment_prep_empty_title()}
       text={m.appointment_prep_empty_body()}
-      action={{ label: m.appointment_prep_empty_action(), primary: true, onclick: openAddSheet }}
+      action={{ label: m.appointment_prep_add_item(), primary: true, onclick: openAddSheet }}
     />
   {/snippet}
 </ReadGate>
@@ -160,7 +160,7 @@
       />
     {/snippet}
   </Field>
-  <button class="btn btn-primary" data-save-appointment-item disabled={itemWrite.busy} onclick={addItem}><span>{m.appointment_prep_add()}</span></button>
+  <button class="btn btn-primary" data-save-appointment-item disabled={itemWrite.busy} onclick={addItem}><span>{m.add()}</span></button>
 </Sheet>
 
 <RecordSheet
@@ -170,7 +170,7 @@
     title: m.appointment_prep_delete_sheet(),
     question: () => m.appointment_prep_delete_q(),
     hint: (item) => item.content,
-    confirmLabel: m.appointment_prep_delete(),
+    confirmLabel: m.delete(),
     cancelLabel: m.keep_it()
   }}
 />

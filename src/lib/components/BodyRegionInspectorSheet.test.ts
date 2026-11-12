@@ -22,7 +22,7 @@ describe('BodyRegionInspectorSheet component contract', () => {
 
   it('renders empty state when breakdown is empty', () => {
     expect(sheetFile).toContain('EmptyState');
-    expect(sheetFile).toContain('body_region_empty_title');
+    expect(sheetFile).toContain('empty_list_title');
     expect(sheetFile).toContain('body_region_empty_body');
   });
 

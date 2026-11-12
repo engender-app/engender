@@ -346,7 +346,7 @@
     <ListRow key="entry-templates" icon="template" title={m.entry_templates_title()} chevron={false} onclick={() => (ui.raisedManager = 'templates')}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="body-regions" icon="figure" title={m.body_regions_row_title()} href="/settings/body-regions" />
+    <ListRow key="body-regions" icon="figure" title={m.body_regions_group()} href="/settings/body-regions" />
     <ListRow key="eras" icon="era" title={m.eras_title()} href="/settings/eras" />
   </ListCard>
 
@@ -357,15 +357,15 @@
     <ListRow
       key="export"
       icon="download"
-      title={m.export_import()}
+      title={m.exp_title()}
       subtitle={backupLine}
       href="/settings/export"
     />
-    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} href="/settings/journal-book" />
+    <ListRow key="journal-book" icon="book" title={m.journal_book_title()} href="/settings/journal-book" />
     <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
          no-network claim made concrete, and setup's step promises this row
          is here. -->
-    <ListRow key="permissions" icon="toggle" title={m.settings_permissions_row()} href="/settings/permissions" />
+    <ListRow key="permissions" icon="toggle" title={m.perms_screen_title()} href="/settings/permissions" />
     <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
     <ListRow
       key="erase"
@@ -650,7 +650,7 @@
           <ListRow key="about-site" icon="globe" title={m.about_site_link()} href={SITE_URL} target="_blank" rel="noreferrer" chevron={false} trailing={external} />
           <ListRow key="about-privacy" icon="shield" title={m.about_privacy_link()} href={privacyUrl} target="_blank" rel="noreferrer" chevron={false} trailing={external} data-about-link="privacy" />
           <ListRow key="about-source" icon="code" title={m.about_source_link()} href={SOURCE_URL} target="_blank" rel="noreferrer" chevron={false} trailing={external} data-about-link="source" />
-          <ListRow key="about-licences" icon="note" title={m.about_licences_link()} href="/settings/licences" data-about-link="licences" />
+          <ListRow key="about-licences" icon="note" title={m.licences_title()} href="/settings/licences" data-about-link="licences" />
         </ListCard>
       </nav>
     </div>

@@ -209,17 +209,16 @@ function passedSlot(doses: DoseScheduleComparison, todayEpochDay: number): Agend
     no word for what did not happen - ADR-0062's rule for `/coming-back`,
     which states what is waiting and never what is missing.
 
-    It is deliberately the same sentence `/coming-back` says
-    (`coming_back_dose_row`) under its own key rather than that one: the two
-    surfaces state the same fact under the same rule, and a separate key is
-    what lets either be reworded without silently rewording the other.
+    It is the sentence `/coming-back` says, from the one key both read
+    (`scheduled_dose_on`): the two surfaces state the same fact under the
+    same rule, so a rewording has to hold on both.
 
     Lives here, beside the rule that decides the item, rather than in
     `dayAheadRows.ts`: a slot that passed is not a `dayAhead` mark and never
     reaches that module. Drawn by this phase's ticket 13; until then its own
     test is the only caller. */
 export function passedSlotSentence(epochDay: number, fullDay: (epochDay: number) => string): string {
-  return m.agenda_passed_dose({ date: fullDay(epochDay) });
+  return m.scheduled_dose_on({ date: fullDay(epochDay) });
 }
 
 /** What is coming, or null where nothing is.

@@ -50,7 +50,7 @@ async function counts(entries, other, photos = 0) {
 async function scopeSaidOnce(where) {
   const sentences = await page.evaluate(async () => {
     const { m } = await import('/src/lib/paraglide/messages.js');
-    return [m.search_filters_entries_only(), m.search_filters_date_scope()];
+    return [m.search_filters_entries_only()];
   });
   const text = await page.locator('body').innerText();
   for (const sentence of sentences) {

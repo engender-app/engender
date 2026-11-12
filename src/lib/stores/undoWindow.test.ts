@@ -102,6 +102,8 @@ test('the confirmations that promise an undo name the window it really has', asy
     [...readFileSync(new URL(`../../../messages/${file}`, import.meta.url), 'utf8').matchAll(pattern)].map((match) => match[1]);
   const english = said('en.json', /undo it for (\d+) seconds/g);
   const polish = said('pl.json', /Przez (\d+) sekund możesz to cofnąć/g);
-  assert.ok(english.length >= 20 && polish.length >= english.length, `${english.length} English, ${polish.length} Polish`);
+  // 13 since tester report 02, ticket 08, merged seventeen identical hints
+  // into delete_undo_hint; the floor guards the two patterns, not a count.
+  assert.ok(english.length >= 13 && polish.length >= english.length, `${english.length} English, ${polish.length} Polish`);
   assert.deepEqual([...new Set([...english, ...polish])], [seconds]);
 });

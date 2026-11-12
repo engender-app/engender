@@ -139,7 +139,7 @@
   let showShortcut = $derived(originSpan !== null && preceding !== null);
 
   function formatSpanLabel(start: number, end: number): string {
-    return m.compare_period_range({
+    return m.range_from_to({
       from: fmtDay(start, { day: 'numeric', month: 'short' }),
       to: fmtDay(end, { day: 'numeric', month: 'short', year: 'numeric' })
     });
@@ -165,7 +165,7 @@
     if (!range || range.end > today) return null;
     return {
       ...range,
-      label: m.compare_period_range({ from: fmtDay(range.start, { day: 'numeric', month: 'short' }), to: fmtDay(range.end, {
+      label: m.range_from_to({ from: fmtDay(range.start, { day: 'numeric', month: 'short' }), to: fmtDay(range.end, {
         day: 'numeric',
         month: 'short',
         year: 'numeric'
@@ -280,7 +280,7 @@
         preceding: formatSpanLabel(preceding.start, preceding.end)
       })}
       action={{
-        label: m.compare_shortcut_action(),
+        label: m.compare(),
         onclick: applyShortcut
       }}
       dismiss={{
@@ -305,7 +305,7 @@
     <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
       {@render dateRow(
         'compare-a-start',
-        m.recap_custom_start_label(),
+        m.start_date_label(),
         m.compare_start_label({ period: m.compare_period_a_label() }),
         aStart,
         (v) => (aStart = v),
@@ -313,7 +313,7 @@
       )}
       {@render dateRow(
         'compare-a-end',
-        m.recap_custom_end_label(),
+        m.end_date_label(),
         m.compare_end_label({ period: m.compare_period_a_label() }),
         aEnd,
         (v) => (aEnd = v),
@@ -337,7 +337,7 @@
     <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 1))}>
       {@render dateRow(
         'compare-b-start',
-        m.recap_custom_start_label(),
+        m.start_date_label(),
         m.compare_start_label({ period: m.compare_period_b_label() }),
         bStart,
         (v) => (bStart = v),
@@ -345,7 +345,7 @@
       )}
       {@render dateRow(
         'compare-b-end',
-        m.recap_custom_end_label(),
+        m.end_date_label(),
         m.compare_end_label({ period: m.compare_period_b_label() }),
         bEnd,
         (v) => (bEnd = v),

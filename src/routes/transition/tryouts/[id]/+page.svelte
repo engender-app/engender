@@ -250,7 +250,7 @@
     openHint: m.tryout_compare_open_hint,
     tooShort: m.tryout_compare_too_short,
     noPrecedingData: m.tryout_compare_no_data,
-    action: m.tryout_compare_action
+    action: m.open_compare
   };
 
   let feelingMood = $state<number | null>(null);
@@ -372,7 +372,7 @@
         />
       {/snippet}
     </Field>
-    <Field label={m.tryout_label_label()} hint={m.tryout_label_required()} id="tr-label">
+    <Field label={m.what_is_it_label()} hint={m.tryout_label_required()} id="tr-label">
       {#snippet children(id, describedBy)}
         <input autocomplete={journalTextAutocomplete()}
           class="input"
@@ -401,7 +401,7 @@
         </Field>
       </div>
     {/if}
-    <Field label={m.tryout_start_label()} id="tr-start">
+    <Field label={m.started_label()} id="tr-start">
       {#snippet children(id)}
         <DatePicker name="tr-start" bind:value={draft.start} {id} />
       {/snippet}
@@ -438,7 +438,7 @@
       aria-describedby={rangeInverted ? "tr-range-error" : undefined}
       onclick={saveTryout}
     >
-      <span>{detail.isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
+      <span>{detail.isNew ? m.save() : m.save_changes()}</span>
     </button>
   </fieldset>
   {#if saveFailed || navigationFailed && detail.isNew || saved}
@@ -543,18 +543,18 @@
       {/snippet}
     </ReadGate>
 
-    <SectionHeading text={m.tryout_photo_section_title()} />
+    <SectionHeading text={m.photos_title()} />
     <PhotoSection
       section={tryoutPhotos}
       read={photosQuery}
       role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
       handle="tryout-photo"
-      deleteLabel={() => m.tryout_photo_delete_sheet()}
+      deleteLabel={() => m.photo_delete_sheet()}
       confirm={{
-        title: m.tryout_photo_delete_sheet(),
-        question: () => m.tryout_photo_delete_q(),
-        hint: () => m.tryout_photo_delete_hint(),
-        confirmLabel: m.tryout_photo_delete(),
+        title: m.photo_delete_sheet(),
+        question: () => m.photo_delete_q(),
+        hint: () => m.delete_undo_hint(),
+        confirmLabel: m.delete(),
         cancelLabel: m.keep_it()
       }}
     >
@@ -564,7 +564,7 @@
             icon="camera"
             key="tryout-photos-empty"
             role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
-            title={m.tryout_photo_empty_title()}
+            title={m.no_photos_title()}
           />
         </div>
       {/snippet}
@@ -606,8 +606,8 @@
     confirm={{
       title: m.tryout_feeling_delete_sheet(),
       question: () => m.tryout_feeling_delete_q(),
-      hint: () => m.tryout_feeling_delete_hint(),
-      confirmLabel: m.tryout_feeling_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   />

@@ -47,7 +47,7 @@
     ? m.wrapped_month_title({ month: fmtMonthName(period.year, period.month ?? 0) })
     : m.wrapped_year_title({ year: String(period.year) }));
   const subtitle = $derived(cadence === 'week'
-    ? m.wrapped_week_range({ from: fmtDay(period.start, { day: 'numeric', month: 'short' }), to: fmtDay(period.end, { day: 'numeric', month: 'short' }) })
+    ? m.range_from_to({ from: fmtDay(period.start, { day: 'numeric', month: 'short' }), to: fmtDay(period.end, { day: 'numeric', month: 'short' }) })
     : cadence === 'month' ? '' : m.wrapped_year_intro());
   const loading = $derived(consentQuery.loading || periodQuery.loading);
   const tabs = [

@@ -18,7 +18,7 @@ const SECTION_NAME: Record<ClinicianSummarySectionKey, () => string> = {
   sideEffects: m.clinician_summary_section_side_effects,
   personalEffects: m.clinician_summary_section_personal_effects,
   cycleEvents: m.clinician_summary_section_cycle_events,
-  appointmentPrep: m.clinician_summary_section_appointment_prep,
+  appointmentPrep: m.appointment_prep_title,
   procedures: m.clinician_summary_section_procedures,
   finishedAreas: m.clinician_summary_section_finished_areas
 };

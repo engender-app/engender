@@ -358,7 +358,7 @@ try {
     await settlePage(page, server.resolvedUrls.local[0], 'health/appointments', 'light');
     await page.locator('[data-add]').click();
     await page.locator('#appointment-kind').waitFor();
-    for (const key of ['appointments_kind_label', 'appointments_place_label', 'appointments_note_label', 'appointments_day_label']) {
+    for (const key of ['appointments_kind_label', 'appointments_place_label', 'note_label', 'day_label']) {
       assert.equal(await page.getByRole('textbox', { name: copy[key], exact: true }).count(), 1, `${locale} ${key}`);
     }
     for (const zoom of [1, 2]) {
