@@ -3,6 +3,7 @@ package dev.engender.app.chrome;
 import android.os.Build;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.core.view.ViewCompat;
@@ -48,20 +49,73 @@ public final class KeyboardFollow {
         return Math.round(start + (end - start) * f);
     }
 
+    /** One keyboard movement: where the padding started, where Capacitor's
+        listener wants it to end, and where the current frame puts it. */
+    static final class Track {
+        private boolean running;
+        private int start;
+        private int end;
+        private int current;
+
+        void prepare(int startPadding) {
+            running = true;
+            start = startPadding;
+            end = startPadding;
+            current = startPadding;
+        }
+
+        /** The end-state padding has landed; returns what the first frame draws. */
+        int started(int endPadding) {
+            end = endPadding;
+            current = start;
+            return current;
+        }
+
+        int progress(float fraction) {
+            current = paddingAt(start, end, fraction);
+            return current;
+        }
+
+        /** An insets pass set the padding to `applied`; returns what it should be. */
+        int reapply(int applied) {
+            return running ? current : applied;
+        }
+
+        int finished() {
+            running = false;
+            return end;
+        }
+
+        boolean running() {
+            return running;
+        }
+    }
+
     public static void install(View decor) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return;
+        final Track track = new Track();
+        // Capacitor's SystemBars listener sits on the decor view and sets the
+        // end padding again on every insets pass, also in the middle of the
+        // movement. The pass then goes on to the content view below it, so a
+        // listener there runs after Capacitor's, in the same pass and before
+        // the layout, and puts the frame's padding back.
+        View content = decor instanceof ViewGroup ? ((ViewGroup) decor).getChildAt(0) : null;
+        if (content != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
+                Log.d("KBF", "content-pass running=" + track.running() + " pad=" + decor.getPaddingBottom());
+                setBottom(decor, track.reapply(decor.getPaddingBottom()));
+                return ViewCompat.onApplyWindowInsets(v, insets);
+            });
+        }
         ViewCompat.setWindowInsetsAnimationCallback(decor, new WindowInsetsAnimationCompat.Callback(
             WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
             private WindowInsetsAnimationCompat keyboard;
-            private int start;
-            private int end;
 
             @Override
             public void onPrepare(@NonNull WindowInsetsAnimationCompat animation) {
                 if ((animation.getTypeMask() & WindowInsetsCompat.Type.ime()) == 0) return;
                 keyboard = animation;
-                start = decor.getPaddingBottom();
-                Log.d("KBF", "prepare start=" + start);
+                track.prepare(decor.getPaddingBottom());
             }
 
             @NonNull
@@ -73,9 +127,7 @@ public final class KeyboardFollow {
                 if (animation != keyboard) return bounds;
                 // The end state is applied by now; draw the first frame at
                 // the start instead.
-                end = decor.getPaddingBottom();
-                Log.d("KBF", "start end=" + end + " start=" + start);
-                setBottom(start);
+                setBottom(decor, track.started(decor.getPaddingBottom()));
                 return bounds;
             }
 
@@ -85,9 +137,9 @@ public final class KeyboardFollow {
                 @NonNull WindowInsetsCompat insets,
                 @NonNull List<WindowInsetsAnimationCompat> running
             ) {
-                Log.d("KBF", "progress kb=" + (keyboard != null) + " in=" + (keyboard != null && running.contains(keyboard)) + " pad=" + decor.getPaddingBottom());
+                Log.d("KBF", "progress run=" + (keyboard != null && running.contains(keyboard)) + " pad=" + decor.getPaddingBottom());
                 if (keyboard != null && running.contains(keyboard)) {
-                    setBottom(paddingAt(start, end, keyboard.getInterpolatedFraction()));
+                    setBottom(decor, track.progress(keyboard.getInterpolatedFraction()));
                 }
                 return insets;
             }
@@ -96,15 +148,13 @@ public final class KeyboardFollow {
             public void onEnd(@NonNull WindowInsetsAnimationCompat animation) {
                 if (animation != keyboard) return;
                 keyboard = null;
-                Log.d("KBF", "end end=" + end);
-                setBottom(end);
-            }
-
-            private void setBottom(int bottom) {
-                Log.d("KBF", "setBottom " + bottom + " was " + decor.getPaddingBottom());
-                if (decor.getPaddingBottom() == bottom) return;
-                decor.setPadding(decor.getPaddingLeft(), decor.getPaddingTop(), decor.getPaddingRight(), bottom);
+                setBottom(decor, track.finished());
             }
         });
+    }
+
+    private static void setBottom(View decor, int bottom) {
+        if (decor.getPaddingBottom() == bottom) return;
+        decor.setPadding(decor.getPaddingLeft(), decor.getPaddingTop(), decor.getPaddingRight(), bottom);
     }
 }
