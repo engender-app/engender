@@ -494,7 +494,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         tileKey: 'surgery-countdown',
         attrs: { 'data-surgery-tile': true },
         title: m.tile_surgery_title(),
-        value: m.tile_surgery_post_op_day({ days: String(day.days) }),
+        value: m.surgery_post_op_day({ days: String(day.days) }),
         note: procedure.name,
         href: '/health/surgery'
       };
@@ -541,7 +541,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         attrs: { 'data-letter-tile': true },
         title: m.tile_letter_title(),
         value: format.fullDay(letter.epochDay),
-        note: others > 0 ? m.tile_letter_more({ count: String(others) }) : m.tile_letter_single_note(),
+        note: others > 0 ? m.count_more({ count: String(others) }) : m.tile_letter_single_note(),
         href: `/transition/letters?read=${letter.id}`,
         dismiss: {
           label: m.tile_letter_dismiss_action(),

@@ -58,7 +58,7 @@ describe('ClinicianSummaryDossier component contract', () => {
     expect(dossierComponent).toContain('data-dossier-section="regimen"');
     expect(dossierComponent).toContain('m.clinician_summary_current_regimen()');
     expect(dossierComponent).toContain('m.clinician_summary_past_regimen()');
-    expect(dossierComponent).toContain('m.clinician_summary_dose_history()');
+    expect(dossierComponent).toContain('m.doses()');
   });
 
   it('prints an ended episode\'s end reason as a clause on its own date range, when one is set (ticket 43)', () => {

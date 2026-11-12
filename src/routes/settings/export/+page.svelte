@@ -474,7 +474,7 @@
   };
 
   const IMPORT_LOG_KIND_LABEL: Record<string, (n: number) => string> = {
-    entries: (n) => m.imp_log_n_entries({ n }),
+    entries: (n) => m.n_entries({ n }),
     tags: (n) => m.imp_log_n_tags({ n }),
     milestones: (n) => m.imp_log_n_milestones({ n }),
     attachments: (n) => m.imp_log_n_attachments({ n })
@@ -589,7 +589,7 @@
       impError = '';
       impErrorKind = '';
     } catch {
-      toast(m.imp_picker_failed());
+      toast(m.picker_failed());
     }
   }
 
@@ -722,7 +722,7 @@
     } catch (error) {
       daylioProgress.abandon();
       console.error('the Daylio import failed', error);
-      daylioError = m.daylio_failed();
+      daylioError = m.dlb_failed();
     } finally {
       daylioImporting = false;
     }
@@ -746,18 +746,18 @@
   const arrivingRows = (preview: DaylioBackupPreview): { label: string; value: string }[] =>
     [
       { label: m.dlb_entries(), count: preview.entryCount, value: String(preview.entryCount) },
-      { label: m.dlb_milestones(), count: preview.milestoneCount, value: String(preview.milestoneCount) },
+      { label: m.milestones(), count: preview.milestoneCount, value: String(preview.milestoneCount) },
       {
         /* Counted on the new tags alone, though it reports both: a matched
            tag is one this journal already has, so a file whose every
            activity is already a tag here is adding nothing and this row
            would otherwise be the only thing standing under "Arriving". */
-        label: m.dlb_tags(),
+        label: m.tags_label(),
         count: preview.newTagCount,
         value: m.dlb_tag_counts({ matched: String(preview.matchedTagCount), new: String(preview.newTagCount) })
       },
       { label: m.dlb_scales(), count: preview.dimensionCount, value: String(preview.dimensionCount) },
-      { label: m.dlb_templates(), count: preview.templateCount, value: String(preview.templateCount) },
+      { label: m.entry_templates_title(), count: preview.templateCount, value: String(preview.templateCount) },
       {
         label: m.dlb_attachments(),
         count: preview.photoCount + preview.audioCount,
@@ -897,8 +897,8 @@
             {backupAge == null
               ? m.exp_last_backup_never()
               : backupAge === 0
-                ? m.exp_last_backup_today()
-                : m.exp_last_backup_days({ days: m.n_days({ n: backupAge }) })}
+                ? m.today_status()
+                : m.days_ago({ days: m.n_days({ n: backupAge }) })}
           {/if}
         </span>
       </span>
@@ -932,8 +932,8 @@
             {verifiedAge == null
               ? m.exp_last_verified_never()
               : verifiedAge === 0
-                ? m.exp_last_verified_today()
-                : m.exp_last_verified_days({ days: m.n_days({ n: verifiedAge }) })}
+                ? m.today_status()
+                : m.days_ago({ days: m.n_days({ n: verifiedAge }) })}
           {/if}
         </span>
       </span>
@@ -970,7 +970,7 @@
   <!-- autocomplete off here and on import: an archive's password is not
        this site's login, and a password manager should not offer to save
        it as one (after-release 21, audit A11Y-16). -->
-  <Field label={m.exp_password_label()} id="exp-pass">
+  <Field label={m.backup_password_label()} id="exp-pass">
     {#snippet children(id)}
       <input class="input" type="password" {id} name="exp-pass" placeholder={m.exp_password_placeholder()}
         autocomplete="off" bind:value={expPass} />
@@ -978,7 +978,7 @@
   </Field>
   <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={running !== null}>
     <Icon name={android ? 'share' : 'download'} size={20} />
-    <span>{running === 'encrypted' ? m.exp_running() : android ? m.exp_run_share() : m.exp_run_download()}</span>
+    <span>{running === 'encrypted' ? m.encrypting() : android ? m.exp_run_share() : m.exp_run_download()}</span>
   </button>
   <!-- The encrypted path only. journalCsv and journalJson build their
        whole string synchronously before the body is ever pulled, so
@@ -1022,7 +1022,7 @@
          always laid out in one grid cell and only their opacity moves, so
          the row keeps its size when a password is first saved. -->
     <div class="spread" data-backup-password-row>
-      <span class="small muted">{m.exp_backup_password_label()}</span>
+      <span class="small muted">{m.backup_password_label()}</span>
       <button class="btn btn-soft" type="button" onclick={() => openPasswordSheet()} disabled={autoBusy}
         data-change-backup-password>
         <span class="swap">
@@ -1109,7 +1109,7 @@
       </button>
     {/snippet}
   </Field>
-  <Field label={m.exp_password_label()} id="imp-pass">
+  <Field label={m.backup_password_label()} id="imp-pass">
     {#snippet children(id)}
       <input class="input" type="password" {id} name="imp-pass" autocomplete="off"
         placeholder={m.imp_password_placeholder()} bind:value={impPass} />
@@ -1199,7 +1199,7 @@
     <button class="btn btn-soft" data-plain="json" disabled={running !== null} onclick={() => (plainSheet = 'json')}><span>{m.plain_json()}</span></button>
   </div>
 
-  <Sheet open={exportWarningOpen} title={m.exp_warning_sheet()} onClose={() => (exportWarningOpen = false)}>
+  <Sheet open={exportWarningOpen} title={m.exp_warning_title()} onClose={() => (exportWarningOpen = false)}>
     <h3>{m.exp_warning_title()}</h3>
     <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
       <Icon name="alert" size={20} />
@@ -1333,7 +1333,7 @@
           <strong>{m.daylio_tag_counts({ matched: String(daylioPreview.matchedTagCount), new: String(daylioPreview.newTagCount) })}</strong>
         </div>
         <div class="rows-divide value-row"><span>{m.daylio_notes_row()}</span><strong>{m.daylio_notes_kept()}</strong></div>
-        <div class="rows-divide value-row"><span>{m.daylio_photos_row()}</span><strong>{m.daylio_photos_absent()}</strong></div>
+        <div class="rows-divide value-row"><span>{m.photos_row()}</span><strong>{m.daylio_photos_absent()}</strong></div>
         <div class="hr"></div>
         <p class="small" style="margin-bottom:var(--space-2)"><strong>{m.daylio_mood_mapping()}</strong></p>
         {#if daylioPreview.moodMappings.length > 0}

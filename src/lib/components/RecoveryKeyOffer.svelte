@@ -55,5 +55,5 @@
 </ListCard>
 
 <button class="btn btn-ghost" type="button" data-skip-recovery-offer onclick={onDismiss}>
-  <span>{m.rko_skip()}</span>
+  <span>{m.not_now()}</span>
 </button>

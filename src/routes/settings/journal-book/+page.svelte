@@ -183,7 +183,7 @@
           range: m.journal_book_range({ from: dayLong(range.start), to: dayLong(range.end) }),
           parts: partsScope
         })
-      : m.journal_book_range_required()
+      : m.range_required()
   );
 
   /* Ticket 16's card, given the two counts the recap seam already
@@ -286,19 +286,19 @@
 
   <div class="kit-panel no-print" data-kit-surface style="margin-bottom:var(--space-4)">
     <div class="book-endpoints">
-      <Field label={m.journal_book_range_start_label()} id="journal-book-start">
+      <Field label={m.start_date_label()} id="journal-book-start">
         {#snippet children(id)}
           <DatePicker max={dayRangeStartMax(endInput) ?? todayInput} bind:value={startInput} {id} />
         {/snippet}
       </Field>
-      <Field label={m.journal_book_range_end_label()} id="journal-book-end">
+      <Field label={m.end_date_label()} id="journal-book-end">
         {#snippet children(id)}
           <DatePicker min={dayRangeEndMin(startInput)} max={todayInput} bind:value={endInput} {id} />
         {/snippet}
       </Field>
     </div>
     {#if range === null}
-      <p class="muted small">{m.journal_book_range_required()}</p>
+      <p class="muted small">{m.range_required()}</p>
     {/if}
   </div>
 
@@ -358,7 +358,7 @@
       <p class="small muted book-scope no-print" role="status">{scopeText}</p>
       <button class="btn btn-primary no-print" data-book-print onclick={printBook}>
         <Icon name="share" size={18} />
-        <span>{m.journal_book_print()}</span>
+        <span>{m.print()}</span>
       </button>
     </SaveBar>
   {/if}

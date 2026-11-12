@@ -597,8 +597,8 @@
             checkInBody: m.checkin_notification_body(),
             checkInMoods: [1, 2, 3, 4, 5].map(moodName),
             doseTaken: m.rem_dose_taken(),
-            doseDone: m.rem_dose_done(),
-            doseSkip: m.rem_dose_skip(),
+            doseDone: m.done(),
+            doseSkip: m.skip(),
             doseNoted: m.rem_dose_noted()
           }),
           reminderNotification,

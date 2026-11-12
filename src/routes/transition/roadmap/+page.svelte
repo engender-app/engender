@@ -355,7 +355,7 @@
     if (promptGoal === null) return;
     const added = await answerOffer(MILESTONE_OFFER, data, given, journal);
     promptGoal = null;
-    if (added) toast(m.roadmap_milestone_added());
+    if (added) toast(m.milestone_added());
   }
 
   function stateLabel(status: RoadmapGoalStatus): string {
@@ -935,7 +935,7 @@
           class="input"
           {id}
           name="newgoal-input"
-          placeholder={m.roadmap_goal_placeholder()}
+          placeholder={m.roadmap_goal_text_label()}
           bind:value={newGoalText}
         />
       {/snippet}
@@ -978,7 +978,7 @@
         {/snippet}
       </Field>
       <button class="btn btn-primary press" data-save-category disabled={!canSaveCategory || categoryWrite.busy} onclick={saveCategoryName}>
-        <span>{m.roadmap_category_save()}</span>
+        <span>{m.save_name()}</span>
       </button>
       <button class="btn btn-ghost press" data-delete-category onclick={() => (confirmingCategoryDelete = true)}>
         <Icon name="trash" size={18} />
@@ -1141,7 +1141,7 @@
   question={m.roadmap_goal_delete_q({ goal: selectedTitle })}
   hint={unfiledByDelete > 0
     ? m.roadmap_goal_delete_documents({ count: unfiledByDelete })
-    : m.roadmap_goal_delete_hint()}
+    : m.delete_undo_hint()}
   confirmLabel={m.roadmap_goal_delete()}
   cancelLabel={m.keep_it()}
   confirmAttrs={{ 'data-confirm-delete-goal': '', 'data-unfiles': String(unfiledByDelete) }}

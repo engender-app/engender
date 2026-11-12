@@ -256,7 +256,7 @@
                 name="room-answer"
                 rows="3"
                 data-room-answer
-                placeholder={m.in_the_room_answer_placeholder()}
+                placeholder={m.optional_placeholder()}
                 value={appointmentDrafts[current.id] ?? ''}
                 oninput={(event) => setAnswer(current.id, event.currentTarget.value)}
               ></textarea>

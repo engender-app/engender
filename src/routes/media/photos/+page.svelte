@@ -407,7 +407,7 @@
           icon="image"
           key="photos-empty"
           role={roleAt(activeFlag.roles, 0)}
-          title={m.ph_empty_title()}
+          title={m.no_photos_title()}
           text={m.ph_empty_body()}
           action={{ label: m.ph_empty_action(), href: TODAY_PHOTO_HREF, primary: true }}
         />
@@ -431,13 +431,13 @@
     {#if dayEditorId !== null}
       <h3>{m.photo_day_edit_title()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_edit_hint()}</p>
-      <Field label={m.photo_day_label()} id="photo-day-edit">
+      <Field label={m.day_label()} id="photo-day-edit">
         {#snippet children(id)}
           <DatePicker name="photo-day-edit" bind:value={dayEditorValue} {id} />
         {/snippet}
       </Field>
       <button class="btn btn-primary press" data-photo-day-edit-save disabled={dayWrite.busy} onclick={saveDayEditor}>
-        <span>{m.photo_day_edit_save()}</span>
+        <span>{m.save()}</span>
       </button>
     {/if}
   </Sheet>

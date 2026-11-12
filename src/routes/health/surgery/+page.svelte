@@ -126,7 +126,7 @@
         icon="clipboard"
         key="surgery-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}
-        title={m.surgery_empty_title()}
+        title={m.empty_list_title()}
         action={{ label: m.surgery_add(), primary: true, onclick: () => record.openEditor(null) }}
       />
     {/snippet}
@@ -147,7 +147,7 @@
     handle="procedure"
     canSave={(draft) => draft.kind !== null && costDraftOk(draft.cost)}
     newTitle={m.surgery_new_sheet()}
-    saveLabel={m.surgery_save()}
+    saveLabel={m.save()}
   >
     {#snippet fields(editor)}
       <ProcedureFields

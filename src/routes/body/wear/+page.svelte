@@ -507,7 +507,7 @@
           icon="watch"
           key="wear-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-          title={m.wear_session_empty_title()}
+          title={m.empty_log_title()}
           action={{ label: m.wear_session_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       {:else}
@@ -594,13 +594,13 @@
     handle="wear-session"
     newTitle={(draft) => wearNewSheetTitle(draft.kind)}
     editTitle={(draft) => (draft.isRunning ? wearRunningSheetTitle(draft.kind) : wearEditSheetTitle(draft.kind))}
-    deleteLabel={m.wear_session_delete()}
+    deleteLabel={m.delete()}
     confirm={{
       title: (session) => wearDeleteSheetTitle(session.kind),
       question: (session) =>
         m.wear_session_delete_q({ date: fmtDayLong(epochDayFromTimestamp(session.startTimestamp)) }),
-      hint: () => m.wear_session_delete_hint(),
-      confirmLabel: m.wear_session_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
@@ -630,7 +630,7 @@
 
         {#if editor.mode === 'backfill'}
           <div class="disclosed" transition:disclose>
-            <Field label={m.wear_session_day_label()} id="wear-day">
+            <Field label={m.day_label()} id="wear-day">
               {#snippet children(id)}
                 <DatePicker name="wear-day" bind:value={editor.day} {id} />
               {/snippet}
@@ -721,7 +721,7 @@
         </button>
       {:else}
         <button class="btn btn-primary" data-save-wear-session disabled={!canSave(editor)} onclick={record.save}>
-          <span>{m.wear_session_save()}</span>
+          <span>{m.save()}</span>
         </button>
       {/if}
     {/snippet}

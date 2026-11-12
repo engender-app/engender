@@ -67,14 +67,14 @@
   handle="provider"
   newTitle={m.provider_new_sheet()}
   editTitle={m.provider_edit_sheet()}
-  saveLabel={m.appointments_save()}
-  deleteLabel={m.appointments_delete()}
+  saveLabel={m.save()}
+  deleteLabel={m.delete()}
   canSave={(draft) => draft.name.trim().length > 0}
   confirm={{
     title: m.provider_delete_sheet(),
     question: () => m.provider_delete_q(),
     hint: () => m.provider_delete_hint(),
-    confirmLabel: m.appointments_delete(),
+    confirmLabel: m.delete(),
     cancelLabel: m.keep_it()
   }}
 >

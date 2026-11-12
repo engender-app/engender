@@ -361,7 +361,7 @@
 
 <div class="screen">
   {#if comparing && pair}
-    <ScreenHeader title={m.vc_compare()} back={() => (comparing = false)} />
+    <ScreenHeader title={m.compare()} back={() => (comparing = false)} />
     <p class="compare-gap">{gapLabel}</p>
 
     <!-- Where each read sat, on one axis. The
@@ -450,7 +450,7 @@
         options={[
           { value: 'record', label: m.vb_tab_record() },
           { value: 'practise', label: m.vb_tab_practise() },
-          { value: 'compare', label: m.vb_tab_compare() },
+          { value: 'compare', label: m.compare() },
           { value: 'recordings', label: m.vb_tab_recordings() }
         ]}
         value={tab}
@@ -622,7 +622,7 @@
           {#if pair}
             <SaveBar>
               <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
-                <Icon name="columns" size={20} /><span>{m.vc_compare()}</span>
+                <Icon name="columns" size={20} /><span>{m.compare()}</span>
               </button>
             </SaveBar>
           {/if}
@@ -634,7 +634,7 @@
             role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
             title={m.vc_benchmarks_empty_title()}
             text={m.vc_benchmarks_empty_body()}
-            action={{ label: m.vb_record(), onclick: () => showTab('record') }}
+            action={{ label: m.record(), onclick: () => showTab('record') }}
           />
         {/snippet}
       </ReadGate>

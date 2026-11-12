@@ -52,11 +52,11 @@
     money(amount, currency).replace(/^(\D+?)\s/, '$1 ').replace(/\s(\D+)$/, ' $1');
 
   const AREA_NAME: Record<CostSource, () => string> = {
-    hairRemoval: () => m.cost_area_hair_removal(),
-    appointment: () => m.cost_area_appointment(),
+    hairRemoval: () => m.hair_removal(),
+    appointment: () => m.appointments_title(),
     procedure: () => m.cost_area_procedure(),
-    lab: () => m.cost_area_lab(),
-    stock: () => m.cost_area_stock()
+    lab: () => m.lab_results(),
+    stock: () => m.stock_title()
   };
 
   const currencyName = (code: string) => {

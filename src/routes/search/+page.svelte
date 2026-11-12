@@ -653,8 +653,8 @@
         <p class="search-hint">{m.search_hint()}</p>
 
         {#if popularTags.length}
-          <p class="search-filter-label">{m.search_filter_tags_label()}</p>
-          <div class="tag-row" role="group" aria-label={m.search_filter_tags_label()}>
+          <p class="search-filter-label">{m.tags_label()}</p>
+          <div class="tag-row" role="group" aria-label={m.tags_label()}>
             {#each popularTags as tag (tag.id)}
               <button class="tag-chip press" data-idle-tag-chip={tag.id} onclick={() => toggleTag(tag.id)}>
                 {tag.label}
@@ -695,7 +695,7 @@
                the same unstar affordance, shown now under this screen's own
                Starred toggle instead of behind a second door. -->
           <div transition:disclose={whileStaying}>
-            {#if hits.length || hitRows.length}<SectionHeading text={m.starred_shelf_photos_label()} />{/if}
+            {#if hits.length || hitRows.length}<SectionHeading text={m.photos_label()} />{/if}
             <StarredPhotoGrid photos={starredPhotos} />
           </div>
         {/if}
@@ -776,7 +776,7 @@
          and the dates are the one filter that reaches further. -->
     <p class="search-hint" data-search-scope>{m.search_filters_entries_only()}</p>
 
-    <p class="search-filter-label">{m.search_filter_tags_label()}</p>
+    <p class="search-filter-label">{m.tags_label()}</p>
     <TagPicker groups={vocabulary.tagGroups} selected={selectedTagIds} onToggle={toggleTag} />
 
     <p class="search-filter-label">{m.mood()}</p>
@@ -850,8 +850,8 @@
         <div class="search-filter-range" data-filter-range transition:disclose={whileStaying}>
           {#key scale.key}
             <div class="search-filter-range-pair" in:fadeUp out:crossfade>
-              <DimensionSlider dim={{ ...scaleDim, name: m.search_filter_scale_from() }} value={scale.min} onInput={setScaleMin} />
-              <DimensionSlider dim={{ ...scaleDim, name: m.search_filter_scale_to() }} value={scale.max} onInput={setScaleMax} />
+              <DimensionSlider dim={{ ...scaleDim, name: m.range_from_label() }} value={scale.min} onInput={setScaleMin} />
+              <DimensionSlider dim={{ ...scaleDim, name: m.range_to_label() }} value={scale.max} onInput={setScaleMax} />
             </div>
           {/key}
         </div>

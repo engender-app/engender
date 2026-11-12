@@ -161,7 +161,7 @@
 <div class="screen">
   <ScreenHeader title={m.cycle_events()} back="/more" subtitle={m.cycle_events_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.cycle_event_add_aria()} onclick={() => record.openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.cycle_event_add()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -245,7 +245,7 @@
         <SectionHeading text={m.cycle_event_history_title()}>
           {#snippet action()}
             {#if historyEnds}
-              <span class="muted small" data-cycle-event-history-range>{m.cycle_event_history_range(historyEnds)}</span>
+              <span class="muted small" data-cycle-event-history-range>{m.range_from_to(historyEnds)}</span>
             {/if}
           {/snippet}
         </SectionHeading>
@@ -259,19 +259,19 @@
              first, and a chart against a chosen range is a record of before,
              not now) - the same move ticket 44 made for wear's own trend. -->
         <div class="kit-filter cd-endpoints">
-          <Field label={m.cycle_event_range_start_label()} id="cycle-event-range-start">
+          <Field label={m.range_from_label()} id="cycle-event-range-start">
             {#snippet children(id)}
               <DatePicker max={dayRangeStartMax(endInput)} bind:value={startInput} {id} />
             {/snippet}
           </Field>
-          <Field label={m.cycle_event_range_end_label()} id="cycle-event-range-end">
+          <Field label={m.range_to_label()} id="cycle-event-range-end">
             {#snippet children(id)}
               <DatePicker min={dayRangeEndMin(startInput)} bind:value={endInput} {id} />
             {/snippet}
           </Field>
         </div>
         {#if range === null}
-          <p class="muted small">{m.cycle_event_range_required()}</p>
+          <p class="muted small">{m.range_required()}</p>
         {:else}
           <CycleEventChart fromEpochDay={range.start} toEpochDay={range.end} {bands} events={chartEvents} />
         {/if}
@@ -282,9 +282,9 @@
           icon="calendar"
           key="cycle-events-empty"
           role={roleAt(activeFlag.roles, 0)}
-          title={m.cycle_event_empty_title()}
+          title={m.empty_log_title()}
           text={m.cycle_event_empty_body()}
-          action={{ label: m.cycle_event_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+          action={{ label: m.cycle_event_add(), primary: true, onclick: () => record.openEditor(null) }}
         />
       </div>
     {/if}
@@ -295,8 +295,8 @@
     handle="cycle-event"
     newTitle={m.cycle_event_new_sheet()}
     editTitle={m.cycle_event_edit_sheet()}
-    saveLabel={m.cycle_event_save()}
-    deleteLabel={m.cycle_event_delete()}
+    saveLabel={m.save()}
+    deleteLabel={m.delete()}
     confirm={{
       title: m.cycle_event_delete_sheet(),
       question: (e) =>
@@ -304,8 +304,8 @@
           kind: cycleEventKindName(e.kind),
           date: fmtDay(e.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
         }),
-      hint: () => m.cycle_event_delete_hint(),
-      confirmLabel: m.cycle_event_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
@@ -320,7 +320,7 @@
           />
         {/snippet}
       </Field>
-      <Field label={m.cycle_event_date_label()} id="cycle-event-date">
+      <Field label={m.date_label()} id="cycle-event-date">
         {#snippet children(id)}
           <DatePicker name="cycle-event-date" bind:value={editor.date} {id} />
         {/snippet}

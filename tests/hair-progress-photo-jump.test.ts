@@ -13,7 +13,7 @@ describe('hair progress photo jump contract (pre-production UI/UX 27)', () => {
   it('supplies translation keys in both English and Polish catalogues', () => {
     const keys = [
       'hair_jump_label',
-      'hair_jump_photos',
+      'photos_row',
       'hair_jump_staging_aria'
     ];
     for (const key of keys) {

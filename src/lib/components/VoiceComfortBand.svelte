@@ -46,7 +46,7 @@
     data-comfort-band
     title={m.vb_comfort_heading()}
     onclick={open}
-    subtitle={band ? m.vb_comfort_value({ low: band.lowHz, high: band.highHz }) : m.vb_comfort_none()}
+    subtitle={band ? m.hz_range({ low: band.lowHz, high: band.highHz }) : m.vb_comfort_none()}
   >
     {#snippet leading()}<span class="kit-row-ico"><Icon name="ruler" size={20} /></span>{/snippet}
   </ListRow>

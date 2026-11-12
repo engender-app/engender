@@ -96,8 +96,8 @@
           action={{
             icon: p.hidden ? 'eye' : 'eyeOff',
             label: p.hidden
-              ? m.presentation_show_aria({ name: p.name })
-              : m.presentation_hide_aria({ name: p.name }),
+              ? m.show_named_aria({ name: p.name })
+              : m.hide_named_aria({ name: p.name }),
             onclick: () => toggleHidden(p)
           }}
         >
@@ -128,7 +128,7 @@
   canSave={(draft) => draft.name.trim().length > 0}
 >
   {#snippet fields(editor)}
-    <Field label={m.presentation_name_label()} id="presentation-name">
+    <Field label={m.name_label()} id="presentation-name">
       {#snippet children(id)}
         <input autocomplete={journalTextAutocomplete()}
           class="input"

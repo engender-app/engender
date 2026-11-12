@@ -307,12 +307,12 @@
         value={draftStatus}
         onChange={(next) => (draftStatus = next)}
       />
-      <Field label={m.roadmap_institution_record_day()} id="institution-day">
+      <Field label={m.day_label()} id="institution-day">
         {#snippet children(fieldId)}
           <DatePicker name="institution-day" bind:value={draftDay} id={fieldId} />
         {/snippet}
       </Field>
-      <Field label={m.roadmap_institution_record_note()} id="institution-note">
+      <Field label={m.note_label()} id="institution-note">
         {#snippet children(fieldId)}
           <input autocomplete={journalTextAutocomplete()}
             class="input"
@@ -339,13 +339,13 @@
       </div>
     {:else if selectedOwn}
       <div class="inst-edit">
-        <Field label={m.roadmap_institution_name_label()} id="institution-name">
+        <Field label={m.name_label()} id="institution-name">
           {#snippet children(fieldId)}
             <input autocomplete={journalTextAutocomplete()} class="input" id={fieldId} name="institution-name" bind:value={nameDraft} />
           {/snippet}
         </Field>
         <button class="btn btn-primary press" data-save-institution disabled={!canSaveName || nameWrite.busy} onclick={saveName}>
-          <span>{m.roadmap_institution_save_name()}</span>
+          <span>{m.save_name()}</span>
         </button>
         <button class="btn btn-ghost press" data-delete-institution onclick={() => (confirmingDelete = true)}>
           <Icon name="trash" size={18} />
@@ -375,7 +375,7 @@
 <Sheet busy={addWrite.busy} open={adding} title={m.roadmap_institution_new()} onClose={() => (adding = false)}>
   {#if adding}
     <h3>{m.roadmap_institution_new()}</h3>
-    <Field label={m.roadmap_institution_name_label()} id="new-institution" hidden>
+    <Field label={m.name_label()} id="new-institution" hidden>
       {#snippet children(fieldId)}
         <input autocomplete={journalTextAutocomplete()}
           class="input"
@@ -387,7 +387,7 @@
       {/snippet}
     </Field>
     <button class="btn btn-primary" data-save-new-institution disabled={!newName.trim() || addWrite.busy} onclick={add}>
-      <span>{m.roadmap_institution_add()}</span>
+      <span>{m.add()}</span>
     </button>
   {/if}
 </Sheet>

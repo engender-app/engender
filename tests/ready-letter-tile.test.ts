@@ -167,11 +167,11 @@ describe('Localization keys for ready letter live tile', () => {
     'tile_letter_title',
     'tile_letter_dismiss_action',
     'tile_letter_dismiss_title',
-    'tile_letter_snooze_btn',
+    'remind_in_24_hours',
     'tile_letter_dont_show_btn',
-    'tile_letter_snoozed_toast',
+    'reminder_snoozed_toast',
     'tile_letter_single_note',
-    'tile_letter_more'
+    'count_more'
   ];
 
   for (const key of requiredKeys) {

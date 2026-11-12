@@ -171,7 +171,7 @@
   function statusText(mi: Milestone): string {
     const s = milestoneStatus(mi, currentDay());
     if (s.type === 'countdown') return m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) });
-    if (s.type === 'today') return m.ms_status_today();
+    if (s.type === 'today') return m.today_status();
     return m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
   }
 
@@ -366,7 +366,7 @@
           key="milestones-empty"
           role={roleAt(activeFlag.roles, 0)}
           title={m.ms_none()}
-          action={{ label: m.ms_add(), primary: true, onclick: openPicker }}
+          action={{ label: m.add_milestone(), primary: true, onclick: openPicker }}
         />
       </div>
     {/if}
@@ -400,7 +400,7 @@
     handle="milestone"
     newTitle={m.ms_new_title()}
     editTitle={m.ms_edit_title()}
-    saveLabel={(draft) => (draft.id ? m.ms_save_changes() : m.ms_add())}
+    saveLabel={(draft) => (draft.id ? m.save_changes() : m.add_milestone())}
     confirm={{
       title: m.ms_delete_sheet(),
       question: (milestone) => m.ms_delete_q({ name: milestone.name }),
@@ -418,7 +418,7 @@
           action={editingOrigin.href ? { label: m.prov_open_source(), href: milestoneOriginHref(editingOrigin.href, editor.id!) } : undefined}
         />
       {/if}
-      <Field label={m.ms_name_label()} id="ms-name">
+      <Field label={m.name_label()} id="ms-name">
         {#snippet children(id)}
           <input autocomplete={journalTextAutocomplete()} class="input" {id} name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />
         {/snippet}
@@ -435,7 +435,7 @@
           ></textarea>
         {/snippet}
       </Field>
-      <Field label={m.ms_date_label()} hint={m.ms_date_hint()} id="ms-date">
+      <Field label={m.date_label()} hint={m.ms_date_hint()} id="ms-date">
         {#snippet children(id, describedBy)}
           <DatePicker name="ms-date" bind:value={editor.date} {id} {describedBy} />
         {/snippet}
@@ -459,8 +459,8 @@
                 </button>
               </div>
             {:else}
-              <button class="photo-add" data-add-photo aria-label={m.add_photo()} onclick={milestonePhoto.pick}>
-                <Icon name="image" size={20} /><span>{m.add_photo()}</span>
+              <button class="photo-add" data-add-photo aria-label={m.add()} onclick={milestonePhoto.pick}>
+                <Icon name="image" size={20} /><span>{m.add()}</span>
               </button>
               <button
                 class="photo-add"
@@ -523,7 +523,7 @@
       title: m.ms_photo_delete_sheet(),
       question: () => m.ms_photo_delete_q(),
       hint: () => m.ms_photo_delete_hint(),
-      confirmLabel: m.ms_photo_delete(),
+      confirmLabel: m.remove(),
       cancelLabel: m.keep_it()
     }}
   />

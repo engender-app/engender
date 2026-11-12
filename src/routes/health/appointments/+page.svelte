@@ -407,7 +407,7 @@
       <button
         class="icon-btn"
         data-add
-        aria-label={m.appointments_add_aria()}
+        aria-label={m.add_an_appointment()}
         onclick={() => openNew(false)}
       >
         <Icon name="plus" size={22} />
@@ -469,8 +469,8 @@
         icon="appointment"
         key="appointments-empty"
         role={roleAt(activeFlag.roles, 0)}
-        title={m.appointments_empty_title()}
-        action={{ label: m.appointments_empty_action(), primary: true, onclick: () => openNew(false) }}
+        title={m.empty_list_title()}
+        action={{ label: m.add_an_appointment(), primary: true, onclick: () => openNew(false) }}
       />
     {/snippet}
   </ReadGate>
@@ -533,7 +533,7 @@
       <ListRow
         key="clinician-summary"
         icon="share"
-        title={m.clinician_summary_row()}
+        title={m.clinician_summary_title()}
         subtitle={m.clinician_summary_row_sub()}
         href="/health/clinician-summary"
       />
@@ -672,7 +672,7 @@
     handle="appointment"
     canSave={(draft) => costDraftOk(draft.cost)}
     newTitle={() => (waitingDraft ? m.appointments_waiting_new_sheet() : m.appointments_new_sheet())}
-    saveLabel={m.appointments_save()}
+    saveLabel={m.save()}
   >
     {#snippet fields(editor)}
       <AppointmentFields

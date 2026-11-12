@@ -235,7 +235,7 @@
       : mode === 'passphrase'
         ? ''
         : mode === 'biometric'
-          ? m.bm_unlock_body()
+          ? m.unlock_confirm_body()
           : m.su_device_body()
   );
 

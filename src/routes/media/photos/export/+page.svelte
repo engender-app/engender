@@ -297,8 +297,8 @@
              row, where two read-only text boxes used to show "2024-09-18". -->
         <div>
           {#each [
-            { id: 'pj-start', label: m.recap_custom_start_label(), value: startInput, min: undefined, max: dayRangeStartMax(endInput), set: (next: string) => (startInput = next) },
-            { id: 'pj-end', label: m.recap_custom_end_label(), value: endInput, min: dayRangeEndMin(startInput), max: undefined, set: (next: string) => (endInput = next) }
+            { id: 'pj-start', label: m.start_date_label(), value: startInput, min: undefined, max: dayRangeStartMax(endInput), set: (next: string) => (startInput = next) },
+            { id: 'pj-end', label: m.end_date_label(), value: endInput, min: dayRangeEndMin(startInput), max: undefined, set: (next: string) => (endInput = next) }
           ] as field (field.id)}
             {@const day = epochDayFromDateInputValue(field.value)}
             <div class="rows-divide date-row">
@@ -330,7 +330,7 @@
           {#if photos.length === 0}
             {m.pj_none_in_range()}
           {:else if !range}
-            {m.recap_custom_range_required()}
+            {m.range_required()}
           {:else if shown.length === 0}
             {m.pj_none_in_range()}
           {:else if selected.length === 0}
@@ -378,7 +378,7 @@
             <p class="muted small">{m.pj_stays_here()}</p>
             <div class="journey-actions">
               <button class="btn btn-primary press" data-share onclick={share}>
-                <Icon name="share" size={20} /><span>{m.pj_share()}</span>
+                <Icon name="share" size={20} /><span>{m.share_or_save()}</span>
               </button>
               <button class="btn btn-soft press" data-again onclick={() => (made = null)}>
                 <span>{m.pj_again()}</span>

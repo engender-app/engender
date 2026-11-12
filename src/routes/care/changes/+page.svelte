@@ -300,7 +300,7 @@
     const from = crossesCalendarYear(effect.epochDay, effect.resolvedEpochDay)
       ? longDay(effect.epochDay)
       : fmtDay(effect.epochDay, { day: 'numeric', month: 'long' });
-    return m.side_effect_span({ from, to: longDay(effect.resolvedEpochDay) });
+    return m.range_from_to({ from, to: longDay(effect.resolvedEpochDay) });
   }
 
   /* Ticket 11's second entry point into the appointment prep list: a
@@ -443,10 +443,10 @@
        used to open on, rather than losing it in the merge. -->
   <ScreenHeader title={m.effects_timeline()} back="/care">
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.side_effect_add_aria()} onclick={() => record.openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.side_effect_add()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
-      <button class="icon-btn press" data-manage-effects aria-label={m.effect_manage_types_aria()} onclick={() => (manageOpen = true)}>
+      <button class="icon-btn press" data-manage-effects aria-label={m.effect_manage_types()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
       </button>
     {/snippet}
@@ -609,8 +609,8 @@
             icon="sprout"
             key="side-effects-empty"
             role={roleAt(activeFlag.roles, 1)}
-            title={m.side_effect_empty_title()}
-            action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+            title={m.empty_log_title()}
+            action={{ label: m.side_effect_add(), primary: true, onclick: () => record.openEditor(null) }}
           />
         {/snippet}
       </ReadGate>
@@ -663,7 +663,7 @@
         </div>
       {/if}
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-effect onclick={saveMarker}><span>{m.effect_save()}</span></button>
+        <button class="btn btn-primary" data-save-effect onclick={saveMarker}><span>{m.save()}</span></button>
         {#if markerFor(editor.effect.key)}
           <button class="btn btn-ghost" data-clear-effect onclick={clearMarker}><span>{m.effect_clear()}</span></button>
           <p class="muted small">{m.effect_clear_hint()}</p>
@@ -677,19 +677,19 @@
     handle="side-effect"
     newTitle={m.side_effect_new_sheet()}
     editTitle={m.side_effect_edit_sheet()}
-    saveLabel={m.side_effect_save()}
-    deleteLabel={m.side_effect_delete()}
+    saveLabel={m.save()}
+    deleteLabel={m.delete()}
     canSave={resolvedAfterStart}
     confirm={{
       title: m.side_effect_delete_sheet(),
       question: (effect) => m.side_effect_delete_q({ name: effect.name }),
-      hint: () => m.side_effect_delete_hint(),
-      confirmLabel: m.side_effect_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
     {#snippet fields(editor)}
-      <Field label={m.side_effect_name_label()} id="side-effect-name">
+      <Field label={m.what_is_it_label()} id="side-effect-name">
         {#snippet children(id)}
           <input autocomplete={journalTextAutocomplete()} class="input" {id} name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
         {/snippet}
@@ -704,11 +704,11 @@
           />
         {/snippet}
       </Field>
-      <Field label={m.side_effect_status_label()} legend>
+      <Field label={m.status_label()} legend>
         {#snippet children()}
           <div data-side-effect-status>
             <Segmented
-              name={m.side_effect_status_label()}
+              name={m.status_label()}
               options={[
                 { value: 'ongoing', label: m.side_effect_ongoing() },
                 { value: 'resolved', label: m.side_effect_resolved() }
@@ -719,7 +719,7 @@
           </div>
         {/snippet}
       </Field>
-      <Field label={m.side_effect_date_label()} id="side-effect-date">
+      <Field label={m.started_label()} id="side-effect-date">
         {#snippet children(id)}
           <DatePicker name="side-effect-date" bind:value={editor.date} {id} />
         {/snippet}
@@ -758,7 +758,7 @@
       <button
         class="icon-btn"
         data-effect-type-hide={e.key}
-        aria-label={e.hidden ? m.effect_type_show_aria({ name: e.name }) : m.effect_type_hide_aria({ name: e.name })}
+        aria-label={e.hidden ? m.show_named_aria({ name: e.name }) : m.hide_named_aria({ name: e.name })}
         onclick={() => journal.personalEffects.setEffectTypeHidden(e.key, !e.hidden)}
       >
         <Icon name={e.hidden ? 'eye' : 'eyeOff'} size={16} />
@@ -819,7 +819,7 @@
       </div>
     {/if}
 
-    <Field label={m.effect_type_new_label()} id="new-effect-type">
+    <Field label={m.name_label()} id="new-effect-type">
       {#snippet children(id)}
         <input autocomplete={journalTextAutocomplete()}
           class="input"

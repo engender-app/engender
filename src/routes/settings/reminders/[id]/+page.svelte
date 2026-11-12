@@ -164,12 +164,12 @@
     <Notice icon="bell" key="reminder-web" title={m.rem_web_list_note()} text={m.rem_web_save_note()} />
   {/if}
 
-  <Field label={m.rem_name_label()} id="r-name">
+  <Field label={m.name_label()} id="r-name">
     {#snippet children(id)}
       <input autocomplete={journalTextAutocomplete()} class="input" {id} name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
     {/snippet}
   </Field>
-  <Field label={m.rem_time_label()} id="r-time">
+  <Field label={m.time_label()} id="r-time">
     {#snippet children(id)}
       <TimePicker {id} name="r-time" style="max-width:160px" required bind:value={draft.time} />
     {/snippet}

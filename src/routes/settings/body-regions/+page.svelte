@@ -57,7 +57,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.body_regions_row_title()} back="/settings" subtitle={m.body_regions_intro()} />
+  <ScreenHeader title={m.body_regions_group()} back="/settings" subtitle={m.body_regions_intro()} />
 
   <!-- Custom before built-in, and the add button with it (phase 11 ticket
        38): the same order other reference-area screens take, for the same
@@ -110,7 +110,7 @@
       {/each}
     </div>
 
-    <Disclosure class="managed-group" label={m.body_regions_builtin_heading()} id="body-regions-builtin" strong>
+    <Disclosure class="managed-group" label={m.default_title()} id="body-regions-builtin" strong>
       <div class="managed-tags">
         {#each builtIns as r (r.id)}
           <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
@@ -139,7 +139,7 @@
         <input autocomplete={journalTextAutocomplete()} class="input" {id} name="new-region-input" placeholder={m.body_regions_placeholder()} bind:value={newName} />
       {/snippet}
     </Field>
-    <button class="btn btn-primary" disabled={adding.busy} onclick={add}><span>{m.body_regions_save()}</span></button>
+    <button class="btn btn-primary" disabled={adding.busy} onclick={add}><span>{m.save()}</span></button>
   </Sheet>
 
   <Sheet busy={renaming.busy} open={renameTarget !== null} title={m.body_regions_rename_sheet()} onClose={() => (renameTarget = null)}>
@@ -151,7 +151,7 @@
         {/snippet}
       </Field>
       <button class="btn btn-primary" data-save-region-name disabled={!renameTarget.name.trim() || renaming.busy} onclick={rename}>
-        <span>{m.body_regions_save()}</span>
+        <span>{m.save()}</span>
       </button>
     {/if}
   </Sheet>

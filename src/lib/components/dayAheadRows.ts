@@ -30,7 +30,7 @@ const MARK_ROWS: Record<DayAheadMarkKind, () => Pick<DayRow, 'icon' | 'title'>> 
   // day, and a duplicate icon reads as one row drawn twice.
   milestone: () => ({ icon: 'summit', title: m.ms_default_name() }),
   letterUnlock: () => ({ icon: 'envelope', title: m.day_ahead_letter_unlock() }),
-  doseSlot: () => ({ icon: 'pill', title: m.dose_amount_label() })
+  doseSlot: () => ({ icon: 'pill', title: m.dose_label() })
 };
 
 /** The icon and the words one kind of mark is drawn with, wherever it is

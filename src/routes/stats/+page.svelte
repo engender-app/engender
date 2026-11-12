@@ -683,7 +683,7 @@
             {m.lookback_era_offer_confirm()}
           </a>
           <button type="button" class="era-offer-no" data-era-offer-dismiss onclick={() => settleEraOffer(offerSpan)}>
-            {m.lookback_era_offer_dismiss()}
+            {m.not_now()}
           </button>
         </div>
       </div>

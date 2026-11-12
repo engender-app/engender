@@ -104,7 +104,7 @@
 
   let explanation = $derived(
     refusal === null
-      ? m.ak_unlock_body()
+      ? m.unlock_confirm_body()
       : refusal.outcome === 'cancelled'
         ? m.ak_cancelled()
         : refusal.outcome === 'lockedOut'

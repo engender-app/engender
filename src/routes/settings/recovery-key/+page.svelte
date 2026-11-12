@@ -365,7 +365,7 @@
             class="btn press"
             type="button"
             data-print-recovery-key
-            onclick={() => printCurrentPage(m.rk_title())}>{m.rk_print()}</button
+            onclick={() => printCurrentPage(m.rk_title())}>{m.print()}</button
           >
         </div>
         {#if android}

@@ -83,9 +83,9 @@ describe('the day after today', () => {
   });
 
   it('draws what is coming under the heading the appointments screen already has, not a second string for it', () => {
-    // CONTEXT.md's "Coming up" is one concept; appointments_upcoming_heading
-    // is where the app already put its words for it.
-    expect(day).toContain('m.appointments_upcoming_heading()');
+    // CONTEXT.md's "Coming up" is one concept, so the appointments screen and
+    // the day share coming_up_title.
+    expect(day).toContain('m.coming_up_title()');
   });
 
   it('gives the coming card the one role guaranteed a colour when it is the only card on screen', () => {

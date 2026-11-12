@@ -350,7 +350,7 @@
        beside the entries card, which already claims role 0, so it takes
        role 1 the same way the day's own "also this day" list does. -->
   {#if comingRows.length > 0}
-    <SectionHeading text={m.appointments_upcoming_heading()} />
+    <SectionHeading text={m.coming_up_title()} />
     <ListCard role={isFuture ? entriesRole : alsoRole}>
       {#each comingRows as row (row.key)}
         <ListRow key={row.key} icon={row.icon} title={row.title} subtitle={row.subtitle} href={row.href} />

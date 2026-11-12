@@ -271,8 +271,8 @@
           id="hub-q"
           name="hub-q"
           type="search"
-          placeholder={m.hub_search_placeholder()}
-          aria-label={m.hub_search_placeholder()}
+          placeholder={m.search_placeholder()}
+          aria-label={m.search_placeholder()}
           autocomplete="off"
           autocapitalize="none"
           spellcheck="false"

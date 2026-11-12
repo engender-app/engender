@@ -226,7 +226,7 @@
         <span>{m.vb_practice_discard()}</span>
       </button>
       <button class="btn btn-primary" data-vp-save disabled={saving.busy} onclick={saveTake}>
-        <Icon name="check" size={20} /><span>{m.vb_practice_save()}</span>
+        <Icon name="check" size={20} /><span>{m.save()}</span>
       </button>
     </SaveBar>
   {:else}
@@ -251,11 +251,11 @@
     <SaveBar>
       {#if running}
         <button class="btn btn-primary" data-vp-stop onclick={stop}>
-          <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
+          <Icon name="pause" size={20} /><span>{m.stop_recording()}</span>
         </button>
       {:else}
         <button class="btn btn-primary" data-vp-start disabled={opening !== null} onclick={start}>
-          <Icon name="mic" size={20} /><span>{m.vb_record()}</span>
+          <Icon name="mic" size={20} /><span>{m.record()}</span>
         </button>
       {/if}
     </SaveBar>

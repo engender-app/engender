@@ -99,7 +99,7 @@
     </button>
     <p class="small hold-count" role="status" data-hold-select-count>{m.pj_selected_count({ count: selection.ids.length })}</p>
     <button class="btn btn-danger press" data-hold-select-delete disabled={selection.ids.length === 0} onclick={() => { failed = false; askedCount = selection.ids.length; asking = true; }}>
-      <span>{m.photos_select_delete()}</span>
+      <span>{m.delete()}</span>
     </button>
   </div>
 {/if}
@@ -109,7 +109,7 @@
   title={m.photos_select_delete_sheet()}
   question={m.photos_select_delete_q({ count: askedCount })}
   hint={m.photos_select_delete_hint()}
-  confirmLabel={m.photos_select_delete()}
+  confirmLabel={m.delete()}
   cancelLabel={m.keep_it()}
   confirmAttrs={{ 'data-hold-select-confirm': '' }}
   busy={deleting}

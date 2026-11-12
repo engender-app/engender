@@ -312,7 +312,7 @@ export async function calendarContracts(): Promise<Result[]> {
           section === 'voice' ? '[data-add-recording-file]' : '[data-add-video-file]'
         ) &&
         root().querySelector(
-          `[aria-label="${section === 'voice' ? m.add_recording() : m.add_video()}"]`
+          `[aria-label="${section === 'voice' ? m.record() : m.record()}"]`
         )
     );
   }

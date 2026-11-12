@@ -460,7 +460,7 @@
         resonanceScale
       });
       takeSaved = true;
-      toast(m.vb_saved());
+      toast(m.saved());
       onSaved();
     } catch (error) {
       // The takes stay where they are, so Save can be tapped again.
@@ -553,7 +553,7 @@
       </div>
 
       <label class="field vb-note">
-        <span class="field-label">{m.vb_note_label()}</span>
+        <span class="field-label">{m.note_label()}</span>
         <textarea autocomplete={journalTextAutocomplete()} class="input" rows="2" bind:value={note} placeholder={m.vb_note_placeholder()}></textarea>
       </label>
     </div>
@@ -666,7 +666,7 @@
     <SaveBar arrange="stack">
       {#if phase === 'recording'}
         <button class="btn btn-primary" data-vb-stop onclick={stop}>
-          <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
+          <Icon name="pause" size={20} /><span>{m.stop_recording()}</span>
         </button>
       {:else if phase === 'analysing'}
         <button class="btn btn-soft" disabled>
@@ -680,7 +680,7 @@
         >
           <Icon name="mic" size={20} />
           <span>
-            {phase === 'retry' ? m.vb_again() : step === 'vowel' ? m.vb_vowel_start() : m.vb_record()}
+            {phase === 'retry' ? m.vb_again() : step === 'vowel' ? m.vb_vowel_start() : m.record()}
           </span>
         </button>
       {/if}

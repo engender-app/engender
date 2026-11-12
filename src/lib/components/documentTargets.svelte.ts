@@ -55,7 +55,7 @@ export function documentTargets() {
         .map((procedure) => ({
           id: procedure.id,
           title: procedure.name,
-          subtitle: procedure.surgeryEpochDay !== null ? dayLabel(procedure.surgeryEpochDay) : m.surgery_day_unscheduled()
+          subtitle: procedure.surgeryEpochDay !== null ? dayLabel(procedure.surgeryEpochDay) : m.no_date_yet()
         }))
     },
     {

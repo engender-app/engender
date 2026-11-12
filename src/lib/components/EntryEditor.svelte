@@ -410,7 +410,7 @@
       case 'tags':
         return m.tags_label();
       case 'body':
-        return m.body_map_label();
+        return m.body_map_title();
       case 'photos':
         return m.photos_label();
       case 'voice':
@@ -1037,7 +1037,7 @@
           data-manage-presentations
           onclick={() => (ui.raisedManager = 'modes')}
         >
-          {m.presentations_manage()}
+          {m.manage()}
         </button>
       {/snippet}
     </SectionHeading>
@@ -1163,8 +1163,8 @@
             </button>
           </div>
         {/each}
-        <button class="photo-add press" data-add-photo aria-label={m.add_photo()} onclick={() => prepareDraft(addPhoto)}>
-          <Icon name="image" size={22} /><span>{m.add_photo()}</span>
+        <button class="photo-add press" data-add-photo aria-label={m.add()} onclick={() => prepareDraft(addPhoto)}>
+          <Icon name="image" size={22} /><span>{m.add()}</span>
         </button>
         <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={() => prepareDraft(entryPhotoReview.capture)}>
           <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
@@ -1195,12 +1195,12 @@
         </div>
       {/if}
       <div class="photo-row">
-        <button class="photo-add press" aria-disabled={recordingPending} aria-busy={recordingPending} aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={() => prepareDraft(toggleRecording)}>
+        <button class="photo-add press" aria-disabled={recordingPending} aria-busy={recordingPending} aria-label={activeRecording ? m.stop_recording() : m.record()} onclick={() => prepareDraft(toggleRecording)}>
           <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
-          <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
+          <span>{activeRecording ? m.stop_recording() : m.record()}</span>
         </button>
-        <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={() => prepareDraft(addRecordingFile)}>
-          <Icon name="upload" size={22} /><span>{m.add_recording_file()}</span>
+        <button class="photo-add press" data-add-recording-file aria-label={m.add()} onclick={() => prepareDraft(addRecordingFile)}>
+          <Icon name="upload" size={22} /><span>{m.add()}</span>
         </button>
       </div>
     </div>
@@ -1242,20 +1242,20 @@
           disabled={compressingVideo}
           aria-disabled={videoPending || compressingVideo}
           aria-busy={videoPending}
-          aria-label={activeVideo ? m.stop_video() : m.add_video()}
+          aria-label={activeVideo ? m.stop_recording() : m.record()}
           onclick={() => prepareDraft(toggleVideo)}
         >
           <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
-          <span>{activeVideo ? m.stop_video() : m.add_video()}</span>
+          <span>{activeVideo ? m.stop_recording() : m.record()}</span>
         </button>
         <button
           class="photo-add press"
           data-add-video-file
           disabled={compressingVideo || videoOwner !== null}
-          aria-label={m.add_video_file()}
+          aria-label={m.add()}
           onclick={() => prepareDraft(addVideoFile)}
         >
-          <Icon name="upload" size={22} /><span>{m.add_video_file()}</span>
+          <Icon name="upload" size={22} /><span>{m.add()}</span>
         </button>
       </div>
     </div>
@@ -1471,7 +1471,7 @@
   {#if cycleTrackingActive}
     <div class="contextual-panel" data-contextual="cycle-event" transition:disclose>
       <div class="contextual-header">
-        <span class="contextual-title">{m.entry_cycle_event_title()}</span>
+        <span class="contextual-title">{m.cycle_tracking_toggle_title()}</span>
       </div>
       <div class="contextual-chips">
         {#each [
@@ -1661,7 +1661,7 @@
             ui.raisedManager = 'templates';
           }}
         >
-          {m.entry_templates_manage()}
+          {m.manage()}
         </button>
       {/snippet}
     </SectionHeading>

@@ -249,11 +249,11 @@
     bandRoles.length ? bandRoles[index % bandRoles.length] : undefined;
 
   const LEGEND_WORD: Record<RailLegendKind, () => string> = {
-    era: () => m.lookback_legend_eras(),
-    regimen: () => m.lookback_legend_regimen(),
+    era: () => m.eras_title(),
+    regimen: () => m.regimen(),
     tryout: () => m.lookback_legend_tryouts(),
     surgery: () => m.lookback_legend_surgery(),
-    milestone: () => m.lookback_legend_milestones(),
+    milestone: () => m.milestones(),
     'milestone-and-surgery': () => m.lookback_legend_milestones_and_surgery()
   };
   /* The query types a band's name nullable because some kinds have none,
@@ -522,7 +522,7 @@
         : { day: 'numeric', month: 'short', year: 'numeric' }
     );
   let spanDates = $derived(
-    m.wrapped_week_range({
+    m.range_from_to({
       from: dayWithYear(live.start, localDateFromEpochDay(today).getFullYear()),
       to: dayWithYear(live.end, localDateFromEpochDay(today).getFullYear())
     })

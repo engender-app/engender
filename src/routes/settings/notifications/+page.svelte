@@ -289,7 +289,7 @@
              jump once the inline styles come off (components.css). -->
         <div class="disclosed quiet-body" transition:disclose>
           <div class="quiet-window">
-            <Field label={m.notif_quiet_from()} id="quiet-start">
+            <Field label={m.range_from_label()} id="quiet-start">
               {#snippet children(id)}
                 <TimePicker name="quiet-start" {id} required bind:value={prefs.quietHoursStart} />
               {/snippet}

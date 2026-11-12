@@ -482,7 +482,7 @@
       <button class="icon-btn press" data-import-lab aria-label={m.labs_ocr_import_aria()} onclick={openOcrImport}>
         <Icon name="camera" size={20} />
       </button>
-      <button class="icon-btn press" data-add aria-label={m.labs_add_aria()} onclick={() => record.openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.add_a_result()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -605,7 +605,7 @@
         key="labs-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
         title={m.labs_empty_title()}
-        action={{ label: m.labs_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        action={{ label: m.add_a_result(), primary: true, onclick: () => record.openEditor(null) }}
       />
     {/snippet}
   </ReadGate>
@@ -643,7 +643,7 @@
     confirm={{
       title: m.labs_delete_sheet(),
       question: (result) => m.labs_delete_q({ analyte: result.analyte }),
-      hint: () => m.labs_delete_hint(),
+      hint: () => m.delete_undo_hint(),
       confirmLabel: m.labs_delete(),
       cancelLabel: m.keep_it()
     }}
@@ -677,7 +677,7 @@
             <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
           {/snippet}
         </Field>
-        <Field label={m.labs_unit_label()} id="lab-unit">
+        <Field label={m.unit_label()} id="lab-unit">
           {#snippet children(id)}
             <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-unit" placeholder={m.labs_unit_placeholder()} bind:value={editor.unit} />
           {/snippet}
@@ -689,7 +689,7 @@
         {/snippet}
       </Field>
       <div class="cd-endpoints lab-pair">
-        <Field label={m.labs_date_label()} id="lab-date">
+        <Field label={m.date_label()} id="lab-date">
           {#snippet children(id)}
             <DatePicker name="lab-date" bind:value={editor.date} {id} />
           {/snippet}
@@ -755,7 +755,7 @@
           <span>{m.labs_ocr_pick_gallery()}</span>
         </button>
         <button class="btn btn-soft" data-ocr-pick="camera" onclick={() => scan('camera')}>
-          <span>{m.labs_ocr_pick_camera()}</span>
+          <span>{m.take_a_photo()}</span>
         </button>
       </div>
     {:else if showRecognizing}
@@ -767,27 +767,27 @@
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_permission_denied()}</div>
       </div>
-      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.read_retry()}</span></button>
     {:else if ocrState.tag === 'recognition-failed'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_failed()}</div>
       </div>
-      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.read_retry()}</span></button>
     {:else if ocrState.tag === 'lookup-failed'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_lookup_failed()}</div>
       </div>
-      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.read_retry()}</span></button>
     {:else if ocrState.tag === 'no-rows'}
       <h3>{m.labs_ocr_empty_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_no_rows_body()}</p>
       <div class="stack-3">
         <button class="btn btn-primary" data-ocr-manual onclick={() => { ocr.close(); record.openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
-        <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+        <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.read_retry()}</span></button>
       </div>
     {:else if ocrState.tag === 'review' || ocrState.tag === 'save-validation-failed' || ocrState.tag === 'saving' || ocrState.tag === 'save-failed'}
       <h3>{m.labs_ocr_review_sheet()}</h3>
@@ -822,13 +822,13 @@
                   <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
                 {/snippet}
               </Field>
-              <Field label={m.labs_unit_label()} id={`ocr-unit-${i}`}>
+              <Field label={m.unit_label()} id={`ocr-unit-${i}`}>
                 {#snippet children(id)}
                   <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
                 {/snippet}
               </Field>
             </div>
-            <Field label={m.labs_date_label()} id={`ocr-date-${i}`}>
+            <Field label={m.date_label()} id={`ocr-date-${i}`}>
               {#snippet children(id)}
                 <DatePicker {id} data-ocr-field="date" value={row.date} onchange={(v) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: v } : r); handleOcrRowsChange(updated); }} />
               {/snippet}

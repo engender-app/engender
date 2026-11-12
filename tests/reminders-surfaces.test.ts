@@ -31,7 +31,7 @@ describe('the reminders list on web', () => {
     expect(web).toContain('m.rem_web_list_note()');
     expect(web).toContain('m.rem_web_note()');
     expect(web).toContain("href: '/settings/export'");
-    expect(web).toContain('m.export_import()');
+    expect(web).toContain('m.exp_title()');
   });
 });
 

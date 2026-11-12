@@ -229,7 +229,7 @@
           title={hairRemovalAreaName(area)}
           subtitle={days === null
             ? m.hair_removal_area_never_used()
-            : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
+            : m.days_ago({ days: m.n_days({ n: days }) })}
           onclick={() => openSessionForArea(area)}
         />
       {/each}
@@ -304,7 +304,7 @@
           icon="razor"
           key="hair-removal-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-          title={m.hair_removal_empty_title()}
+          title={m.empty_log_title()}
           action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       </div>
@@ -324,14 +324,14 @@
     handle="hair-removal-session"
     newTitle={m.hair_removal_new_sheet()}
     editTitle={m.hair_removal_edit_sheet()}
-    saveLabel={m.hair_removal_save()}
+    saveLabel={m.save()}
     canSave={canSave}
-    deleteLabel={m.hair_removal_delete()}
+    deleteLabel={m.delete()}
     confirm={{
       title: m.hair_removal_delete_sheet(),
       question: (session) => m.hair_removal_delete_q({ area: hairRemovalAreaName(session.area) }),
-      hint: () => m.hair_removal_delete_hint(),
-      confirmLabel: m.hair_removal_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
@@ -393,7 +393,7 @@
           />
         {/snippet}
       </Field>
-      <Field label={m.hair_removal_note_label()} id="hair-removal-note">
+      <Field label={m.note_label()} id="hair-removal-note">
         {#snippet children(id)}
           <textarea autocomplete={journalTextAutocomplete()}
             class="input"
@@ -406,13 +406,13 @@
         {/snippet}
       </Field>
 
-      <Field label={m.hair_removal_date_label()} id="hair-removal-date">
+      <Field label={m.date_label()} id="hair-removal-date">
         {#snippet children(id)}
           <DatePicker name="hair-removal-date" bind:value={draft.date} {id} />
         {/snippet}
       </Field>
 
-      <SectionHeading text={m.hair_removal_photo_section_title()} />
+      <SectionHeading text={m.photos_title()} />
       {#if !draft.id}
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.hair_removal_photo_hint()}</p>
       {:else}
@@ -421,12 +421,12 @@
           read={photosQuery}
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
           handle="hair-removal-photo"
-          deleteLabel={() => m.hair_removal_photo_delete_sheet()}
+          deleteLabel={() => m.photo_delete_sheet()}
           confirm={{
-            title: m.hair_removal_photo_delete_sheet(),
-            question: () => m.hair_removal_photo_delete_q(),
-            hint: () => m.hair_removal_photo_delete_hint(),
-            confirmLabel: m.hair_removal_photo_delete(),
+            title: m.photo_delete_sheet(),
+            question: () => m.photo_delete_q(),
+            hint: () => m.delete_undo_hint(),
+            confirmLabel: m.delete(),
             cancelLabel: m.keep_it()
           }}
         >
@@ -434,7 +434,7 @@
             <Notice
               icon="camera"
               key="hair-removal-photos-empty"
-              title={m.hair_removal_photo_empty_title()}
+              title={m.no_photos_title()}
             />
           {/snippet}
         </PhotoSection>

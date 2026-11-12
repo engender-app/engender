@@ -196,7 +196,7 @@ export const OFFERS = {
     offers: 'milestones',
     copy: {
       title: () => m.roadmap_milestone_prompt_sheet_title(),
-      confirm: () => m.roadmap_milestone_prompt_add(),
+      confirm: () => m.add_milestone(),
       decline: () => m.skip()
     },
     write: async ({ milestones }: OfferJournal, subject: RoadmapGoalMilestone) => {
@@ -291,9 +291,9 @@ export const OFFERS = {
     trigger: "opened by hand from the area's own screen; no automatic trigger offers this",
     offers: 'areaStates',
     copy: {
-      title: () => m.area_suspend_sheet_title(),
+      title: () => m.area_suspend_title(),
       confirm: () => m.area_suspend_confirm(),
-      decline: () => m.area_suspend_cancel()
+      decline: () => m.not_yet()
     },
     write: async ({ areaStates }: OfferJournal, subject: SuspendedArea) => {
       await areaStates.setAreasSuspended(subject.areas, subject.epochDay);

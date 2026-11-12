@@ -130,7 +130,7 @@
   function whenLine(appointment: Record): string {
     if (appointment.epochDay === null) {
       const since = waitingSince(appointment.referredEpochDay, today);
-      if (since === null || appointment.referredEpochDay === null) return m.appointment_no_day();
+      if (since === null || appointment.referredEpochDay === null) return m.no_date_yet();
       return appointment.referredEpochDay === today
         ? m.appointments_waiting_since_today()
         : m.appointments_waiting_since({
@@ -310,8 +310,8 @@
 </script>
 
 {#snippet noteBlock()}
-  <SectionHeading text={m.appointments_note_label()} />
-  <Field label={m.appointments_note_label()} id="appointment-note" hidden>
+  <SectionHeading text={m.note_label()} />
+  <Field label={m.note_label()} id="appointment-note" hidden>
     {#snippet children(id)}
       <textarea autocomplete={journalTextAutocomplete()}
         class="input"
@@ -479,7 +479,7 @@
            because they change least once the visit is booked; the log above
            is what gets written to around it. -->
       <div bind:this={detailsEl}>
-        <SectionHeading text={m.appointment_details_title()} />
+        <SectionHeading text={m.details_title()} />
       </div>
       <fieldset class="appointment-details" disabled={detailsWrite.busy} aria-busy={detailsWrite.busy}>
         <AppointmentFields
@@ -498,7 +498,7 @@
              a wait was given a day dropped Save 12px in one frame. -->
         <div class="details-actions">
           <button class="btn btn-primary press" data-save-appointment disabled={!canSaveDetails} onclick={saveDetails}>
-            <span>{m.appointment_save_changes()}</span>
+            <span>{m.save_changes()}</span>
           </button>
           <!-- The committed day, even while the fields hold another one
                (docs/ui-copy.md); a wait has nothing to hand to a calendar.
@@ -535,7 +535,7 @@
       title={m.appointments_delete_sheet()}
       question={m.appointments_delete_q()}
       hint={stored.epochDay === null ? titleOf(stored) : dayLabel(stored.epochDay)}
-      confirmLabel={m.appointments_delete()}
+      confirmLabel={m.delete()}
       cancelLabel={m.keep_it()}
       confirmAttrs={{ 'data-confirm-delete-appointment': '' }}
       onConfirm={deleteAppointment}
