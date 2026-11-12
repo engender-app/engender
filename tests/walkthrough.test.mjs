@@ -2541,7 +2541,7 @@ try {
     throw new Error('the disguise step arrived already switched on');
   }
   const disguiseReason = await page.locator('[data-list-row="disguise"]').textContent();
-  if (!/browser tab|launcher/.test(disguiseReason)) {
+  if (!/tab shows|icon and name/.test(disguiseReason)) {
     throw new Error('the disguise row says nothing about what changes: ' + JSON.stringify(disguiseReason));
   }
   const previewName = await page.locator('[data-disguise-name]').textContent();
