@@ -18,8 +18,9 @@ import dev.engender.app.lock.LeaveCover;
  * Mirrors prefs.allowScreenCapture into SharedPreferences, so
  * MainActivity.onCreate can decide FLAG_SECURE before the window has a
  * frame. Unlike LockTimingPlugin's read-only mirror, setAllowed also flips the flag on the window that
- * is already running: a person who just turned this on in Settings wants to
- * record right now, not after restarting the app.
+ * is already running: a person who just switched "Block screenshots" on in
+ * Settings wants the app hidden right now, not after restarting it. That
+ * switch is the blocker, so it sends allowed=false when it goes on.
  */
 @CapacitorPlugin(name = "ScreenCapture")
 public class ScreenCapturePlugin extends Plugin {
@@ -40,7 +41,8 @@ public class ScreenCapturePlugin extends Plugin {
         call.resolve();
     }
 
-    /** The person's own capture choice, as stored. */
+    /** The person's own capture choice, as stored: false once they have
+        switched "Block screenshots" on, true until then. */
     public static boolean isAllowed(Context context) {
         return prefs(context).getBoolean(KEY_ALLOWED, true);
     }
@@ -50,15 +52,15 @@ public class ScreenCapturePlugin extends Plugin {
         exception is Android 12 and older, where the flag is also the only way
         to blank the Recents card, so disguise keeps it there (ADR 0101). From
         Android 13 disguise hides the card with its own call and a person who
-        allows capture can still take a screenshot of a disguised app
+        has left "Block screenshots" off can still take a screenshot of a disguised app
         (tester report 02, ticket 01). */
     public static boolean windowSecure(int sdk, boolean allowed, boolean disguised) {
         return !allowed || (disguised && sdk < Build.VERSION_CODES.TIRAMISU);
     }
 
     /** Whether Recents may keep a preview of the app (Android 13 and later).
-        Hidden when capture is off, and when the launcher is disguised: capture
-        is allowed by default, so a disguised app's card would otherwise show
+        Hidden when the person blocks capture, and when the launcher is disguised:
+        nothing is blocked by default, so a disguised app's card would otherwise show
         "Notes" over a thumbnail of the journal (FA 43). */
     public static boolean recentsPreviewShown(boolean allowed, boolean disguised) {
         return allowed && !disguised;
@@ -90,7 +92,7 @@ public class ScreenCapturePlugin extends Plugin {
     }
 
     /** The reset path removes this device's capture choice. A fresh install
-        allows capture by default. */
+        blocks nothing until the person switches the blocker on. */
     public static void wipe(Context context) {
         prefs(context).edit().clear().commit();
     }

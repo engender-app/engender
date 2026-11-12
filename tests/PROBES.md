@@ -862,6 +862,7 @@ available for the surface or device it measures.
 | `journal-book-summary-signoff-page` | assemble the journal book crops into a review page |
 | `settings-features-check` | checks the Features to Show manager's keyboard access, focus and scroll return, saved choices, reduced motion, palette/theme layouts, Polish disguise at 230px and actual 200% browser zoom; run after a demo build |
 | `lock-timing-gallery` | capture access mode, security, setup and unlock changes against a demo build |
+| `screenshot-block-row-check` | the Android-only Block screenshots row in Settings > Security, mounted over a demo build with the platform answer swapped for that one navigation: named and off on a fresh journal in English and Polish, on survives a reload, and the thumb and track travel on every sampled frame in both themes. `--shots <dir>` writes row crops, `--frames <dir>` the painted frames of each flip with their milliseconds, `--before` captures a build from before the change without asserting |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
 | `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
 | `locale-build` | built production locale selection, isolated startup requests, both offline graphs, and online/offline language switches through Settings with localized passphrase gates |
