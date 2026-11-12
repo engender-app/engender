@@ -5,13 +5,12 @@ vi.mock('./lock-timing-bridge', () => ({
 }));
 
 import { androidLockTiming } from './lock-timing-bridge';
-import { leaveLocksAtOnce, revealLeaveCoverAfterPaint, syncLeaveCover } from './leave-cover';
+import { leaveCovers, revealLeaveCoverAfterPaint, syncLeaveCover } from './leave-cover';
 
 describe("Android's leave cover", () => {
-  it('covers only a leave that locks at once, on a mode with a secret', () => {
-    expect(leaveLocksAtOnce('immediately', true)).toBe(true);
-    expect(leaveLocksAtOnce('immediately', false)).toBe(false);
-    for (const timing of ['one-minute', 'five-minutes', 'restart'] as const) expect(leaveLocksAtOnce(timing, true)).toBe(false);
+  it('covers a leave on a mode with a secret, and only then', () => {
+    expect(leaveCovers(true)).toBe(true);
+    expect(leaveCovers(false)).toBe(false);
   });
 
   it('mirrors the decision and the ground to the activity, on Android only', () => {

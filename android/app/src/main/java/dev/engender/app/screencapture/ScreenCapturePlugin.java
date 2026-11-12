@@ -12,6 +12,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import dev.engender.app.disguise.DisguiseAlias;
+import dev.engender.app.lock.LeaveCover;
 
 /**
  * Mirrors prefs.allowScreenCapture into SharedPreferences, so
@@ -55,13 +56,16 @@ public class ScreenCapturePlugin extends Plugin {
         return isAllowed(context) && !DisguiseAlias.isDisguised(context);
     }
 
-    /** The capture choice alone decides both screenshots and the Recents
-        preview; a journal lock hides neither (Alicja, 2026-10-06). Android 13
-        separates the two, so the Recents half needs its own call there;
-        below 13 FLAG_SECURE covers both. */
+    /** The capture choice decides screenshots taken inside the app. The Recents
+        preview follows it too, except that while a lock is set it is never
+        kept: the preview shows the journal after the lock has engaged
+        (tester-report-02 ticket 07, Alicja 2026-11-12, over her 2026-10-06
+        "a lock hides neither"). Android 13 separates the two, so the Recents
+        half needs its own call there; below 13 FLAG_SECURE covers both, and
+        only a cover over the window (LeaveCover) stands in for the preview. */
     public static void applyWindowFlags(Activity activity, boolean allowed) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            activity.setRecentsScreenshotEnabled(allowed);
+            activity.setRecentsScreenshotEnabled(LeaveCover.recentsPreviewAllowed(allowed));
         }
         if (allowed) {
             activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);

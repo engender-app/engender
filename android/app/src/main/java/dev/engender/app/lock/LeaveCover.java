@@ -3,7 +3,8 @@ package dev.engender.app.lock;
 /**
  * Whether the activity covers its window on the way out, and with what.
  *
- * "Lock immediately" locks in JavaScript, which the activity asks for with
+ * A lock set at any timing leaves the screen in the task snapshot. "Lock
+ * immediately" locks in JavaScript, which the activity asks for with
  * evaluateJavascript as it is left. Android photographs the window for its
  * task snapshot before the WebView has drawn the gate, and draws that
  * snapshot first when the person comes back, so the screen they left was
@@ -14,7 +15,7 @@ package dev.engender.app.lock;
  * page takes it off once it has drawn the gate (leave-cover.ts).
  *
  * The page mirrors what the activity needs ahead of time, because there is
- * no asking it while leaving: whether a leave locks at once, and the ground.
+ * no asking it while leaving: whether a lock is set, and the ground.
  * Process memory is enough. A new process starts locked and has drawn
  * nothing of the journal for a snapshot to keep.
  *
@@ -28,7 +29,7 @@ public final class LeaveCover {
 
     private LeaveCover() {}
 
-    /** The page's mirror: whether a leave locks at once, and its ground as
+    /** The page's mirror: whether a lock is set, and its ground as
         #RRGGBB. A ground that does not parse keeps the last good one. */
     public static synchronized void set(boolean cover, String groundHex) {
         coverOnLeave = cover;
@@ -37,14 +38,23 @@ public final class LeaveCover {
     }
 
     /** Called on every leave. True when the window should be covered now:
-        the leave locks, and it is not one of the app's own screens (a picker,
-        the camera), which the page gives a minute's grace instead. For such a
-        leave the answer is whether a cover from an earlier leave is still up,
-        so a later callback does not read as taking it down. */
-    public static synchronized boolean coverOnLeave(boolean ownScreenOpen) {
-        if (!coverOnLeave || ownScreenOpen) return shown;
+        a lock is set, whatever its timing and whichever screen the leave is
+        to (the snapshot Recents keeps is taken at the leave, before the
+        page can say whether the lock will be due). A leave with nothing to
+        cover reports a cover from an earlier leave that is still up, so a
+        later callback does not read as taking it down. */
+    public static synchronized boolean coverOnLeave() {
+        if (!coverOnLeave) return shown;
         shown = true;
         return true;
+    }
+
+    /** Whether Recents may keep a preview of the window. The task snapshot is
+        taken before a cover can be drawn into it, so while a lock is set no
+        preview is kept at all (the capture choice still decides screenshots
+        taken inside the app, and a capture choice of "no" still hides it). */
+    public static boolean recentsPreviewAllowed(boolean captureAllowed) {
+        return captureAllowed && !coverOnLeave;
     }
 
     /** The page has drawn the gate, or did not lock: the cover comes off. */

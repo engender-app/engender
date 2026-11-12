@@ -2,6 +2,8 @@ package dev.engender.app.lock;
 
 import android.app.Activity;
 
+import dev.engender.app.screencapture.ScreenCapturePlugin;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
@@ -42,6 +44,11 @@ public class LockTimingPlugin extends Plugin {
     @PluginMethod
     public void setLeaveCover(PluginCall call) {
         LeaveCover.set(Boolean.TRUE.equals(call.getBoolean("cover", false)), call.getString("ground"));
+        Activity activity = getActivity();
+        if (activity != null) {
+            // The Recents preview follows whether a lock is set.
+            activity.runOnUiThread(() -> ScreenCapturePlugin.applyWindowFlags(activity, ScreenCapturePlugin.allowedNow(activity)));
+        }
         call.resolve();
     }
 

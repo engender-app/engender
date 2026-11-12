@@ -20,19 +20,23 @@
 
    The activity cannot ask the page what to do while it is leaving, so this
    module mirrors the two things it needs ahead of time: whether a leave
-   locks (the timing is `immediately` and the access mode has a secret) and
-   the ground to cover with. A timing that waits for the return is not
-   covered: whether the lock is due is only known when the person comes
-   back, after Android has drawn its snapshot. */
+   covers (the access mode has a secret, whatever the lock timing) and the
+   ground to cover with. A timing that waits for the return is covered too:
+   whether the lock is due is only known when the person comes back, and
+   Recents would show the journal in the meantime, and after the lock had
+   engaged. The page takes the cover off after every return, so a return
+   that does not lock costs two frames of the plain ground. */
 
 import { isAndroid } from '../platform';
 import { androidLockTiming as bridge } from './lock-timing-bridge';
-import type { LockAfter } from '../data/prefs/catalogue.ts';
 
-/** Whether leaving the app locks it at once, which is the one case the
-    activity can cover before Android photographs the window. */
-export function leaveLocksAtOnce(lockAfter: LockAfter, hasSecret: boolean): boolean {
-  return hasSecret && lockAfter === 'immediately';
+/** Whether a leave covers the window: whenever the access mode has a secret,
+    whatever the timing. A timing that waits for the return still leaves the
+    window's snapshot in Recents, showing the journal, long after the lock
+    has engaged; the snapshot is taken at the leave, before anyone can know
+    whether the lock will be due. */
+export function leaveCovers(hasSecret: boolean): boolean {
+  return hasSecret;
 }
 
 /** Hands the activity what it needs before the next leave. `ground` is the

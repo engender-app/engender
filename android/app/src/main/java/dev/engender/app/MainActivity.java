@@ -213,9 +213,9 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
         returnFromLeave();
     }
 
-    /** A plain block of the page's ground over the WebView, put up when a
-     * leave locks at once and taken off by the page once it has drawn the
-     * gate (LeaveCover says why). */
+    /** A plain block of the page's ground over the WebView, put up on a
+     * leave whenever a lock is set, and taken off by the page once it has drawn
+     * the gate (LeaveCover says why). */
     private View leaveCover;
 
     private void showLeaveCover() {
@@ -240,7 +240,7 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
     private void lockOnLeave() {
         // First and synchronously: Android photographs the window for its
         // task snapshot before the page below can draw its gate.
-        if (LeaveCover.coverOnLeave(ownSystemUi.isOpen())) showLeaveCover();
+        if (LeaveCover.coverOnLeave()) showLeaveCover();
         if (rendererGone || bridge == null || bridge.getWebView() == null) return;
         // Covered by a screen the app opened itself is not leaving it yet,
         // and the page decides how long it may stay up (leave-lock.ts). The
