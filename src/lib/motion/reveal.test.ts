@@ -300,6 +300,11 @@ describe('tier 3, a group opening its own height', () => {
 });
 
 describe('tier 3, an inline element opening its own width', () => {
+  it('has nothing left to move when the change was already drawn by a back gesture', () => {
+    stubDocument(false, true, { width: '48px' });
+    expect(discloseWidth(node, { instant: true }).duration).toBe(0);
+  });
+
   it('grows from zero width to the element width, fading opacity', () => {
     stubDocument(false, true, { width: '48px' });
     const { css, duration } = discloseWidth(node);

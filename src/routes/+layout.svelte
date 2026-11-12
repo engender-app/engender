@@ -541,6 +541,7 @@
       import('$lib/disguise/android-bridge'),
       import('$lib/lock/lock-timing-bridge'),
       import('$lib/lock/screen-capture-bridge'),
+      import('$lib/android/step-back-bridge'),
       import('$lib/reminders/doseActions'),
       import('$lib/reminders/doseActionToast'),
       import('$lib/data/vocabulary/doseLabels'),
@@ -553,6 +554,7 @@
         { androidDisguise },
         { androidLockTiming },
         { androidScreenCapture },
+        { androidStepBack },
         { applyPendingDoseAction, resolveDoseReminderRoute },
         { confirmDoseAction },
         { ROUTE_OPTIONS },
@@ -598,6 +600,7 @@
             resolveLaunchRoute: (route) => resolveDoseReminderRoute(route, journal, Date.now())
           },
           androidBackButton,
+          androidStepBack,
           isGateActive: () => locked || needsPassphrase || needsAuthentication ||
             needsDeviceRecovery || needsAccessModeAfterRecovery,
           reminderTexts: () => ({

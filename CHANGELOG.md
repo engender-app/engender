@@ -113,6 +113,11 @@ a record of what you had but does not bring it back.
   mode, tags, body and anything the day offers first, then the note, with
   photos, video and voice last. The same Save entry button stays at the
   bottom on both. Editing a saved entry keeps its single page.
+- On Android 14 and later, a back swipe on a new entry's second step shows the
+  first step under your finger, and letting go of the swipe halfway puts the
+  second step back.
+- On Android 11 and later, the bottom of the screen moves up and down with the
+  keyboard instead of jumping once it has finished opening or closing.
 - The lock screen shows Today's sun in your flag's colours where it used to
   show the app's name, and it stays in place as Today opens around it. With
   disguise on it is still the plain "Notes" screen.

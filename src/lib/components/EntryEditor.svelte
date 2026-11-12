@@ -5,7 +5,7 @@
   import { listReturnTo, sourceReturnTo } from '$lib/navigation/sourceRecord';
   import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  import { onDestroy, onMount, tick, untrack } from 'svelte';
+  import { flushSync, onDestroy, onMount, tick, untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
   import {
@@ -72,11 +72,12 @@
   import SaveBar from '$lib/components/SaveBar.svelte';
   import EntryFirstStep from '$lib/components/EntryFirstStep.svelte';
   import { moodToApply } from '$lib/components/seedMoodArrival';
-  import { footContinue, stepTravel } from '$lib/motion/entryStep';
-  import { registerStepBack } from '$lib/navigation/stepBack';
+  import { cssPart, footContinue, stepScrub, stepTravel } from '$lib/motion/entryStep';
+  import type { ScrubPart, StepScrub } from '$lib/motion/entryStep';
+  import { armStepPreview, registerStepBack } from '$lib/navigation/stepBack';
   import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
-  import { motionDuration, scrollBehavior } from '$lib/motion/tokens';
+  import { EASE_OUT, motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let {
@@ -141,6 +142,11 @@
   let step = $state<1 | 2>(stepped && !openSection ? 1 : 2);
   /** Which way the last change went, so a step back runs the film backwards. */
   let steppingBack = $state(false);
+  /** A back gesture is drawing the step back (ticket 04, box 5): the first
+      step is drawn under the second, and the way on under the finish control. */
+  let previewing = $state(false);
+  /** The swap after a drawn step back, which has nothing left to move. */
+  let instantStep = $state(false);
 
   // Route keys mount a new session for each entry or day.
   // epochDay is todayEpochDay() at mount on purpose, so a draft keeps its date across midnight; other day reads follow currentDay.
@@ -861,11 +867,96 @@
     }
   }
 
-  onMount(() => registerStepBack(() => {
+  /* The step back drawn under Android's back gesture (ticket 04, box 5).
+     While the gesture runs, the first step is drawn beneath the second
+     (`previewing`), inert, from the same draft, and each part of the step
+     change - the step, the heading on the field, the way on under the
+     finish control and the scroll to the top - follows the gesture's
+     progress through the motion a tap on Back plays ($lib/motion/entryStep).
+     Releasing settles it forward from there and then swaps the real steps
+     with nothing left to move; cancelling settles it back and takes the
+     drawing away. The real second step stays the real one until the swap,
+     so a cancel leaves it exactly as it was. */
+  let scrub: StepScrub | undefined;
+  let previewStep = $state<HTMLElement | undefined>();
+  let leavingStepEl: HTMLElement | undefined;
+
+  function beginPreview(): boolean {
+    if (!canStepBack() || stepping || previewing || saving) return false;
+    stepping = true;
+    previewing = true;
+    // The drawing goes in and is placed at its start before anything paints.
+    flushSync();
+    const leavingStep = stepScreen?.querySelector<HTMLElement>('[data-entry-step="2"]');
+    leavingStepEl = leavingStep ?? undefined;
+    const leavingHeading = document.querySelector<HTMLElement>('[data-step-heading]:not([data-step-heading-preview])');
+    const arrivingHeading = document.querySelector<HTMLElement>('[data-step-heading-preview]');
+    // The way on lives in the save bar, which is moved out of the step screen.
+    const wayOn = document.querySelector<HTMLElement>('.entry-continue');
+    const region = stepScreen?.closest<HTMLElement>('[data-app-scroll-region]');
+    const back = { back: true };
+    const parts: ScrubPart[] = [];
+    if (leavingStep) parts.push(cssPart(leavingStep, stepTravel(leavingStep, back, { direction: 'out' }), false));
+    if (previewStep) parts.push(cssPart(previewStep, stepTravel(previewStep, back, { direction: 'in' }), true));
+    if (leavingHeading) parts.push(cssPart(leavingHeading, stepTravel(leavingHeading, back, { direction: 'out' }), false));
+    if (arrivingHeading) parts.push(cssPart(arrivingHeading, stepTravel(arrivingHeading, back, { direction: 'in' }), true));
+    if (wayOn) parts.push(cssPart(wayOn, footContinue(wayOn), true));
+    const from = region?.scrollTop ?? 0;
+    if (region && from > 0) {
+      parts.push({
+        arriving: true,
+        duration: motionDuration('--dur-med'),
+        easing: EASE_OUT,
+        draw: (t) => region.scrollTo({ top: from * (1 - t), behavior: 'instant' })
+      });
+    }
+    scrub = stepScrub(parts);
+    return true;
+  }
+
+  async function settlePreview(to: 0 | 1) {
+    const drawn = scrub;
+    if (!previewing || !drawn) return;
+    await drawn.settle(to);
+    if (scrub !== drawn) return;
+    scrub = undefined;
+    instantStep = true;
+    if (to === 1) {
+      steppingBack = true;
+      step = 1;
+    }
+    previewing = false;
+    // The swap and the styles coming off land in one frame: every part is
+    // at rest where the real element now stands.
+    flushSync();
+    // The leaving step stays in the page until its outro ends, and by now
+    // its own `{#if step === 1}` draws the first step in it. The scrub kept
+    // it invisible; taking the scrub's styles off must not show it again.
+    if (to === 1 && leavingStepEl?.isConnected) leavingStepEl.style.display = 'none';
+    leavingStepEl = undefined;
+    drawn.clear();
+    instantStep = false;
+    stepping = false;
+    if (to === 1) focusNamedTarget(stepScreen?.querySelector<HTMLElement>('[data-screen-title]'));
+  }
+
+  const stepBackOwner = () => {
+    if (previewing) {
+      void settlePreview(1);
+      return true;
+    }
     if (!canStepBack()) return false;
     void goToStep(1);
     return true;
+  };
+
+  onMount(() => registerStepBack(stepBackOwner, {
+    begin: beginPreview,
+    progress: (p) => scrub?.progress(p),
+    cancel: () => void settlePreview(0)
   }));
+
+  $effect(() => armStepPreview(stepBackOwner, canStepBack()));
 
   async function confirmDelete() {
     deleteOpen = false;
@@ -1445,7 +1536,7 @@
   {#if isHrtActive && !effectsQuiet}
     <div class="contextual-row" data-contextual="hrt-effects">
       {#each entryDraft.effectMarkers as marker (marker.effect)}
-        <div class="contextual-chip effect-chip is-active" transition:discloseWidth|global>
+        <div class="contextual-chip effect-chip is-active" transition:discloseWidth|global={{ instant: instantStep }}>
           <span>{vocabulary.personalEffectTypeName(marker.effect)}</span>
           <button
             type="button"
@@ -1545,12 +1636,24 @@
          share it for the length of the change and nothing under them moves
          ($lib/motion/entryStep). -->
     <div class="entry-stage">
+      {#if previewing}
+        <div class="entry-step" data-entry-step-preview inert aria-hidden="true" bind:this={previewStep}>
+          <EntryFirstStep
+            mood={entryDraft.mood}
+            {dims}
+            values={entryDraft.dims}
+            saving={false}
+            onMood={() => {}}
+            onDim={() => {}}
+          />
+        </div>
+      {/if}
       {#key step}
         <div
           class="entry-step"
           data-entry-step={step}
-          in:stepTravel={{ back: steppingBack }}
-          out:stepTravel={{ back: steppingBack }}
+          in:stepTravel={{ back: steppingBack, instant: instantStep }}
+          out:stepTravel={{ back: steppingBack, instant: instantStep }}
         >
           {#if step === 1}
             <EntryFirstStep
@@ -1595,8 +1698,8 @@
         >
           <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
         </button>
-        {#if step === 1}
-          <div class="entry-continue" transition:footContinue>
+        {#if step === 1 || previewing}
+          <div class="entry-continue" transition:footContinue={{ instant: instantStep || previewing }}>
             <button
               class="btn btn-soft press"
               data-entry-continue
@@ -1715,11 +1818,15 @@
   <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
 
   {#snippet stepHeading()}
+    {#if previewing}
+      <span class="step-heading" data-step-heading data-step-heading-preview aria-hidden="true">{m.home_log_heading()}</span>
+    {/if}
     {#key step}
       <span
         class="step-heading"
-        in:stepTravel={{ back: steppingBack }}
-        out:stepTravel={{ back: steppingBack }}
+        data-step-heading
+        in:stepTravel={{ back: steppingBack, instant: instantStep }}
+        out:stepTravel={{ back: steppingBack, instant: instantStep }}
       >{step === 1 ? m.home_log_heading() : m.new_entry()}</span>
     {/key}
   {/snippet}

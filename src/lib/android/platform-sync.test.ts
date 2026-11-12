@@ -453,6 +453,60 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     release();
   });
 
+  /* Ticket 04, box 5: the release of a back gesture comes in as this same
+     Back. A step back drawn under it is committed by its owner; anything that
+     takes the Back first returns the drawing to rest. */
+  test('the release of a drawn step back commits it through the owner', async () => {
+    const deps = makeDeps({ navigationDepth: () => 1 });
+    window.location.pathname = '/entry/new';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const { registerStepBack } = await import('../navigation/stepBack');
+    const preview = { begin: vi.fn(() => true), progress: vi.fn(), cancel: vi.fn() };
+    const owner = vi.fn(() => true);
+    const unregister = registerStepBack(owner, preview);
+    back();
+    expect(owner).toHaveBeenCalledTimes(1);
+    expect(preview.cancel).not.toHaveBeenCalled();
+    expect(window.history.back).not.toHaveBeenCalled();
+    unregister();
+  });
+
+  test('a Back taken by an overlay, the gate or the route returns a drawn step back to rest', async () => {
+    let gated = false;
+    const deps = makeDeps({ navigationDepth: () => 1, isGateActive: () => gated });
+    window.location.pathname = '/entry/new';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const { registerStepBack } = await import('../navigation/stepBack');
+    const { registerOverlay } = await import('../components/overlayLock');
+    const preview = { begin: vi.fn(() => true), progress: vi.fn(), cancel: vi.fn() };
+    const unregister = registerStepBack(() => false, preview);
+    const release = registerOverlay({} as HTMLElement, { dismiss: vi.fn() });
+    back();
+    expect(preview.cancel).toHaveBeenCalledTimes(1);
+    release();
+    gated = true;
+    back();
+    expect(preview.cancel).toHaveBeenCalledTimes(2);
+    gated = false;
+    back();
+    expect(preview.cancel).toHaveBeenCalledTimes(3);
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+    unregister();
+  });
+
+  test('the step back bridge is armed off at start and disarmed on stop', async () => {
+    const setArmed = vi.fn().mockResolvedValue(undefined);
+    const addListener = vi.fn().mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) });
+    const deps = makeDeps({ androidStepBack: { setArmed, addListener } as unknown as PlatformSyncDeps['androidStepBack'] });
+    platformSync.startAndroidPlatformSync(deps);
+    expect(setArmed).toHaveBeenLastCalledWith({ armed: false });
+    expect(addListener.mock.calls.map((c) => c[0]).sort()).toEqual(['backCancelled', 'backProgress', 'backStarted']);
+    platformSync.stopAndroidPlatformSync();
+    expect(setArmed).toHaveBeenCalledTimes(2);
+  });
+
   test('does not mirror unhydrated preferences or read the journal before it opens', async () => {
     const deps = makeDeps({ isReady: () => false, isGateActive: () => true });
     platformSync.startAndroidPlatformSync(deps);
