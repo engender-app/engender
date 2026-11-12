@@ -111,7 +111,7 @@ interface FigureShape {
 
    `span`'s high end leads and its low end follows, so the solid line is
    the top of the range and the dashed one the bottom, in the order a take
-   writes them (`vb_hz_range`). */
+   writes them (`hz_range`). */
 const FIGURES: Record<OwnSeriesMetricKey, FigureShape> = {
   span: {
     read: (b) => b.f0P90Hz,

@@ -247,13 +247,13 @@
       </div>
       <div class="screen-part progress-actions">
         <button class="btn btn-primary press" data-progress-open-camera onclick={() => (capturing = true)}>
-          <Icon name="camera" size={20} /><span>{m.pph_take()}</span>
+          <Icon name="camera" size={20} /><span>{m.take_a_photo()}</span>
         </button>
         <Segmented
-          name={m.ph_compare()}
+          name={m.compare()}
           options={[
             { value: 'browse', label: m.ph_tab_browse() },
-            { value: 'compare', label: m.ph_tab_compare() }
+            { value: 'compare', label: m.compare() }
           ]}
           value={selecting ? 'compare' : 'browse'}
           onChange={(v) => setSelecting(v === 'compare')}
@@ -278,10 +278,10 @@
                 data-anchor-remove={id}
                 onclick={() => toggle(id)}
                 aria-label={m.ph_selection_remove({ photo: anchor ? cellDate(anchor) : m.ph_selection_unavailable() })}
-              >{m.ph_selection_remove_short()}</button>
+              >{m.remove()}</button>
             </div>
           {/each}
-          <button class="btn btn-primary press" data-compare-open disabled={!pair} onclick={() => (comparing = true)}>{m.ph_compare()}</button>
+          <button class="btn btn-primary press" data-compare-open disabled={!pair} onclick={() => (comparing = true)}>{m.compare()}</button>
         </div>
       {/if}
 
@@ -330,7 +330,7 @@
         role={roleAt(activeFlag.roles, 0)}
         title={m.pph_empty_title()}
         text={m.pph_empty_body()}
-        action={{ label: m.pph_take(), primary: true, onclick: () => (capturing = true) }}
+        action={{ label: m.take_a_photo(), primary: true, onclick: () => (capturing = true) }}
       />
     {/snippet}
   </ReadGate>
@@ -351,7 +351,7 @@
     onClose={() => (capturing = false)}
   />
 
-  <Sheet open={comparing} title={m.ph_compare()} onClose={() => (comparing = false)}>
+  <Sheet open={comparing} title={m.compare()} onClose={() => (comparing = false)}>
     {#if pair}
       <div class="sheet-fit">
         <p class="compare-gap" data-compare-gap>{gapLabel}</p>
@@ -384,7 +384,7 @@
           {/each}
         </div>
         <button class="btn btn-ghost press" data-progress-delete={shown.id} onclick={() => askToDelete(shown)}>
-          <Icon name="trash" size={20} /><span>{m.pph_delete()}</span>
+          <Icon name="trash" size={20} /><span>{m.delete()}</span>
         </button>
       </div>
     {/if}
@@ -397,7 +397,7 @@
     title={m.pph_pose_delete_sheet()}
     question={poseToDelete ? m.pph_pose_delete_q({ count: poseToDelete.count, pose: poseLabel(poseToDelete.row) }) : ''}
     hint={m.photos_select_delete_hint()}
-    confirmLabel={m.pph_delete()}
+    confirmLabel={m.delete()}
     cancelLabel={m.keep_it()}
     confirmAttrs={{ 'data-progress-pose-confirm': '' }}
     busy={poseRemoving.busy}
@@ -411,9 +411,9 @@
     handle="progress-photo"
     confirm={{
       title: m.pph_delete_sheet(),
-      question: () => m.pph_delete_q(),
+      question: () => m.photo_delete_q(),
       hint: () => m.pph_delete_hint(),
-      confirmLabel: m.pph_delete(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   />

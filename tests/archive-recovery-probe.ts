@@ -98,7 +98,7 @@ export function installRecoveryProbe(kind: 'web' | 'android') {
     await opened.preferences.set('autoExportEnabled', true);
     await opened.preferences.set('autoExportSchedule', 'monthly');
     Object.assign(prefs, opened.preferences.all());
-    // Real destination credentials are deliberately independent of the Archive password.
+    // Real destination credentials are deliberately independent of the backup password.
     localStorage.setItem('recovery-destination-access-marker', identity);
     const local = () => ({ lockAfter: prefs.lockAfter, disguise: prefs.disguise, enabled: prefs.autoExportEnabled, schedule: prefs.autoExportSchedule, access: localStorage.getItem('recovery-destination-access-marker') });
     const beforeLocal = JSON.stringify(local());

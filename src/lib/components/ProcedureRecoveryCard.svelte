@@ -86,7 +86,7 @@
       case 'pre_op':
         return m.surgery_phase_pre_op();
       case 'surgery_day':
-        return m.surgery_phase_surgery_day();
+        return m.surgery_day();
       case 'recovery':
         return m.surgery_phase_recovery();
       case 'archived':
@@ -106,7 +106,7 @@
        and a card that writes one fact twice in two type sizes is the
        duplication this ticket is named for. */
     if (recDay.type === 'surgeryDay') return { n: null, unit: m.today() };
-    return { n: null, unit: m.surgery_reading_no_date() };
+    return { n: null, unit: m.no_date_yet() };
   });
 
   const dayLabel = (epochDay: number) =>
@@ -281,7 +281,7 @@
         <span class="proc-badge-tag">
           <Icon name="image" size={13} />
           <span aria-hidden="true">{photos.length}</span>
-          <span class="visually-hidden">{m.surgery_badge_photos({ n: photos.length })}</span>
+          <span class="visually-hidden">{m.n_photos({ n: photos.length })}</span>
         </span>
       {/if}
       {#if checklistCount > 0}

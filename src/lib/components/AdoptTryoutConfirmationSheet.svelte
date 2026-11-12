@@ -107,7 +107,7 @@
       {/if}
     </div>
 
-    <Field label={m.ms_name_label()} id="adopt-milestone-name">
+    <Field label={m.name_label()} id="adopt-milestone-name">
       {#snippet children(id)}
         <input autocomplete={journalTextAutocomplete()}
           class="input"
@@ -119,7 +119,7 @@
       {/snippet}
     </Field>
 
-    <Field label={m.ms_date_label()} id="adopt-milestone-date">
+    <Field label={m.date_label()} id="adopt-milestone-date">
       {#snippet children(id)}
         <DatePicker bind:value={date} {id} name="milestone-date" />
       {/snippet}

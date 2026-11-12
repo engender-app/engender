@@ -178,7 +178,7 @@
         <PairedDots rows={correlationRows} onPick={pickCorrelationRow} />
       {/snippet}
       {#snippet empty()}
-        <ChartEmpty>{m.correlation_cards_empty()}</ChartEmpty>
+        <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
       {/snippet}
     </ReadGate>
     <!-- Inside the card, under the rows it qualifies: the app saying which

@@ -149,7 +149,7 @@
         : m.clinician_summary_scope_drugs({ drugs: includedDrugNames.join(', ') })
   );
   let scopeText = $derived.by(() => {
-    if (!range) return m.clinician_summary_range_required();
+    if (!range) return m.range_required();
     const rangeText = m.clinician_summary_settings_range({
       start: dayLong(range.start),
       end: dayLong(range.end)
@@ -209,7 +209,7 @@
       <div class="summary-heading" class:has-demographics={Boolean(summary?.sections.demographics)}>
         <div class="print-heading"><PrintLetterhead /></div>
         <h1>{m.clinician_summary_title()}</h1>
-        <p>{m.clinician_summary_period_range({ from: dayLong(range.start), to: dayLong(range.end) })}</p>
+        <p>{m.range_from_to({ from: dayLong(range.start), to: dayLong(range.end) })}</p>
         <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
       </div>
       {#if summaryQuery.loading || !summary}
@@ -233,7 +233,7 @@
         <p class="small muted summary-scope no-print" role="status">{scopeText}</p>
         <button class="btn btn-primary no-print" data-summary-print onclick={printSummary}>
           <Icon name="print" size={18} />
-          <span>{m.clinician_summary_print()}</span>
+          <span>{m.print()}</span>
         </button>
       </SaveBar>
     {/if}
@@ -255,12 +255,12 @@
   <p class="muted small" style="margin-bottom:var(--space-4)">{m.clinician_summary_intro()}</p>
 
   <div class="kit-filter cd-endpoints">
-    <Field label={m.clinician_summary_range_start_label()} id="clinician-summary-start">
+    <Field label={m.start_date_label()} id="clinician-summary-start">
       {#snippet children(id)}
         <DatePicker max={dayRangeStartMax(endInput) ?? todayInput} bind:value={startInput} {id} />
       {/snippet}
     </Field>
-    <Field label={m.clinician_summary_range_end_label()} id="clinician-summary-end">
+    <Field label={m.end_date_label()} id="clinician-summary-end">
       {#snippet children(id)}
         <DatePicker min={dayRangeEndMin(startInput)} max={todayInput} bind:value={endInput} {id} />
       {/snippet}
@@ -274,7 +274,7 @@
     </div>
   {/if}
   {#if range === null}
-    <p class="muted small">{m.clinician_summary_range_required()}</p>
+    <p class="muted small">{m.range_required()}</p>
   {/if}
 
   <div class="cd-person">

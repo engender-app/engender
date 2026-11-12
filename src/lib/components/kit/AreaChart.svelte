@@ -389,7 +389,7 @@
      handlers above are: kit-surfaces.test.ts reads a component's copy with a
      regex, and a message call carrying an object argument is a nested brace
      it cannot see past - so the key itself reads as inline copy. */
-  let restLabel = $derived(m.chart_annotations_and_more({ count: String(atAnnotations.rest) }));
+  let restLabel = $derived(m.and_count_more({ count: String(atAnnotations.rest) }));
 
   /* Always dated, whatever the grain: this label stands at the mark and
      names no position at all, and the pill that does is quiet while a mark
@@ -397,7 +397,7 @@
   let hoveredLabels = $derived(
     annotationReadout(hovered?.annotations ?? [], { dated: true })
   );
-  let hoveredRest = $derived(m.chart_annotations_and_more({ count: String(hoveredLabels.rest) }));
+  let hoveredRest = $derived(m.and_count_more({ count: String(hoveredLabels.rest) }));
   /* Centred on the mark, then held inside the plot: a mark near either end
      would otherwise carry its label off the card. Half the label's own
      maximum, which is the width the stylesheet caps it at. */

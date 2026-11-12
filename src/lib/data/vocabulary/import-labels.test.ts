@@ -15,7 +15,12 @@ it('matches every built-in tag in both supported languages', () => {
       expect(typeof text).toBe('string');
       expect(text).not.toMatch(/[{}]/);
     }
-    expect(tagLabels(tag)).toEqual([english, polish]);
+    expect(tagLabels(tag).slice(0, 2)).toEqual([english, polish]);
   }
   expect(tagLabels('custom-tag')).toEqual(['custom-tag']);
+});
+
+it('still matches the names the two pronoun tags had before they followed the tally', () => {
+  expect(tagLabels('g-gendered-ok')).toEqual(expect.arrayContaining(['gendered correctly', 'właściwe formy']));
+  expect(tagLabels('g-misgendered')).toContain('niewłaściwe formy');
 });

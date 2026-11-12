@@ -181,7 +181,7 @@
         <span class="site-recency-swatch" aria-hidden="true"></span>
         <span>{injectionSiteLabel(site.key)}</span>
         <span class="muted">
-          {days === null ? m.dose_site_never_used() : m.dose_site_days_ago({ days: m.n_days({ n: days }) })}
+          {days === null ? m.dose_site_never_used() : m.days_ago({ days: m.n_days({ n: days }) })}
         </span>
       </li>
     {/each}

@@ -205,7 +205,7 @@
   let jumper = $state<SectionJump>();
   const jumpSections = $derived([
     { value: 'staging', label: m.hair_stage_section_title(), target: 'hair-staging' },
-    { value: 'photos', label: m.hair_jump_photos(), target: 'hair-photos' }
+    { value: 'photos', label: m.photos_row(), target: 'hair-photos' }
   ]);
 
   $effect(() => {
@@ -279,7 +279,7 @@
           icon="comb"
           key="hair-stages-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}
-          title={m.hair_stage_empty_title()}
+          title={m.empty_log_title()}
           action={{ label: m.hair_stage_empty_action(), primary: true, onclick: () => stageRecord.openEditor(null) }}
         />
       {/snippet}
@@ -300,7 +300,7 @@
 
     {#if !photosQuery.loading && !photosQuery.failed}
       <div class="hair-photo-actions" role="group" aria-label={m.hair_photo_section_title()}>
-        <button class="btn btn-soft press" data-hair-compare disabled={!wipePair} onclick={openComparison}>{m.ph_compare()}</button>
+        <button class="btn btn-soft press" data-hair-compare disabled={!wipePair} onclick={openComparison}>{m.compare()}</button>
         <button class="btn btn-soft press" data-hair-collage disabled={!photos.length} onclick={() => goto(resolve('/media/photos/export?source=hair&output=collage&from=hair-progress'))}>{m.pj_output_collage()}</button>
         <button class="btn btn-soft press" data-hair-timelapse disabled={!photos.length || !canRecord} onclick={() => goto(resolve('/media/photos/export?source=hair&output=timelapse&from=hair-progress'))}>{m.pj_output_timelapse()}</button>
       </div>
@@ -333,7 +333,7 @@
            `disclose` because the pair only exists once the query answers,
            and a frame this size arriving in one frame is a yank. -->
       <div class="disclosed" transition:disclose>
-        <h3 bind:this={comparisonHeading} tabindex="-1" data-hair-comparison>{m.ph_compare()}</h3>
+        <h3 bind:this={comparisonHeading} tabindex="-1" data-hair-comparison>{m.compare()}</h3>
         <PhotoWipe
           {photos}
           pair={wipePair}
@@ -354,12 +354,12 @@
         reverse
         title={(p) => dayLabel(p.epochDay)}
         subtitle={(p) => sinceStart(p.epochDay)}
-        deleteLabel={() => m.hair_photo_delete_sheet()}
+        deleteLabel={() => m.photo_delete_sheet()}
         confirm={{
-          title: m.hair_photo_delete_sheet(),
-          question: () => m.hair_photo_delete_q(),
-          hint: () => m.hair_photo_delete_hint(),
-          confirmLabel: m.hair_photo_delete(),
+          title: m.photo_delete_sheet(),
+          question: () => m.photo_delete_q(),
+          hint: () => m.delete_undo_hint(),
+          confirmLabel: m.delete(),
           cancelLabel: m.keep_it()
         }}
       >
@@ -369,7 +369,7 @@
               icon="camera"
               key="hair-photos-empty"
               role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
-              title={m.hair_photo_empty_title()}
+              title={m.no_photos_title()}
               text={m.hair_photo_empty_body()}
             />
           </div>
@@ -382,15 +382,15 @@
     {#if anchorEditor !== null}
       <h3>{m.hair_anchor_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.hair_anchor_sheet_hint()}</p>
-      <Field label={m.hair_anchor_date_label()} id="hair-anchor-date">
+      <Field label={m.date_label()} id="hair-anchor-date">
         {#snippet children(id)}
           <DatePicker name="hair-anchor-date" bind:value={anchorEditor!} {id} />
         {/snippet}
       </Field>
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-hair-anchor onclick={saveAnchor}><span>{m.hair_anchor_save()}</span></button>
+        <button class="btn btn-primary" data-save-hair-anchor onclick={saveAnchor}><span>{m.save()}</span></button>
         {#if anchorIsUserSet}
-          <button class="btn btn-ghost" data-clear-hair-anchor onclick={clearAnchor}><span>{m.hair_anchor_clear()}</span></button>
+          <button class="btn btn-ghost" data-clear-hair-anchor onclick={clearAnchor}><span>{m.clear()}</span></button>
         {/if}
       </div>
     {/if}
@@ -404,14 +404,14 @@
     handle="hair-stage"
     newTitle={m.hair_stage_new_sheet()}
     editTitle={m.hair_stage_edit_sheet()}
-    saveLabel={m.hair_stage_save()}
-    deleteLabel={m.hair_stage_delete()}
+    saveLabel={m.save()}
+    deleteLabel={m.delete()}
     canSave={(draft) => draft.description.trim() !== ''}
     confirm={{
       title: m.hair_stage_delete_sheet(),
       question: () => m.hair_stage_delete_q(),
-      hint: () => m.hair_stage_delete_hint(),
-      confirmLabel: m.hair_stage_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
@@ -427,7 +427,7 @@
           ></textarea>
         {/snippet}
       </Field>
-      <Field label={m.hair_stage_date_label()} id="hair-stage-date">
+      <Field label={m.date_label()} id="hair-stage-date">
         {#snippet children(id)}
           <DatePicker name="hair-stage-date" bind:value={stageEditor.date} {id} />
         {/snippet}

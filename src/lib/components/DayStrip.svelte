@@ -81,7 +81,7 @@
   );
 
   const short = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
-  let weekLabel = $derived(m.strip_week_range({ from: short(shown.first), to: short(shown.last) }));
+  let weekLabel = $derived(m.range_from_to({ from: short(shown.first), to: short(shown.last) }));
 
   /* Paging onto the last week the screen has anything for disables the
      control that was just pressed, and a browser answers a focused element

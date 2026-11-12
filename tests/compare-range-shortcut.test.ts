@@ -131,7 +131,7 @@ describe('preceding-span comparison shortcut (ticket 32)', () => {
       expect(comparePage).toContain('key="compare-shortcut"');
       expect(comparePage).toContain("m.compare_shortcut_title()");
       expect(comparePage).toContain("m.compare_shortcut_body");
-      expect(comparePage).toContain("m.compare_shortcut_action()");
+      expect(comparePage).toContain("m.compare()");
     });
 
     it('Direct entry retains empty strings and preserves manual/era selection', () => {

@@ -93,9 +93,8 @@ try {
   }
 
   await page.goto(`${server.resolvedUrls.local[0]}transition/roadmap`, { waitUntil: 'networkidle' });
-  /* The Polish legal steps follow the language until the switch is
-     answered (functional audit ticket 34), so turn them on for an English
-     run. */
+  /* The Polish legal steps are off until the switch is answered, in
+     either language, so turn them on. */
   const polishSwitch = page.locator('[data-roadmap-polish-steps] [role="switch"]');
   if ((await polishSwitch.getAttribute('aria-checked')) !== 'true') await polishSwitch.click();
   await page.waitForSelector('[data-goal]');

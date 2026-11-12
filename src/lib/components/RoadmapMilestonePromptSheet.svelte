@@ -71,7 +71,7 @@
 
 <Sheet busy={confirming.busy} {open} title={copy.title()} onClose={onDismiss}>
   <h3>{m.roadmap_milestone_prompt_title({ goal: goalTitle })}</h3>
-  <Field label={m.ms_name_label()} id="roadmap-milestone-name">
+  <Field label={m.name_label()} id="roadmap-milestone-name">
     {#snippet children(id)}
       <input autocomplete={journalTextAutocomplete()}
         class="input"
@@ -82,7 +82,7 @@
       />
     {/snippet}
   </Field>
-  <Field label={m.ms_date_label()} id="roadmap-milestone-date">
+  <Field label={m.date_label()} id="roadmap-milestone-date">
     {#snippet children(id)}
       <DatePicker bind:value={date} {id} name="milestone-date" />
     {/snippet}
@@ -103,8 +103,8 @@
             </button>
           </div>
         {:else}
-          <button type="button" class="photo-add" data-add-photo aria-label={m.add_photo()} onclick={pick}>
-            <Icon name="image" size={20} /><span>{m.add_photo()}</span>
+          <button type="button" class="photo-add" data-add-photo aria-label={m.add()} onclick={pick}>
+            <Icon name="image" size={20} /><span>{m.add()}</span>
           </button>
           <button
             type="button"

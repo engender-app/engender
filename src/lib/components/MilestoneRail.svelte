@@ -88,7 +88,7 @@
   const statusOf = (milestone: Milestone) => {
     const s = milestoneStatus(milestone, today);
     if (s.type === 'countdown') return m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) });
-    if (s.type === 'today') return m.ms_status_today();
+    if (s.type === 'today') return m.today_status();
     return m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
   };
 

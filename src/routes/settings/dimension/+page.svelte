@@ -111,7 +111,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.custom_dimension()} back="/settings" subtitle={m.cd_intro()} />
+  <ScreenHeader title={m.custom_dimension()} back="/settings" />
 
   <!-- The scales already made, above the form that makes another
        (functional audit ticket 41): there was no way to correct a scale's
@@ -155,7 +155,7 @@
     {/if}
   </ReadReserve>
 
-  <Field label={m.cd_name_label()} id="cd-name">
+  <Field label={m.name_label()} id="cd-name">
     {#snippet children(id)}
       <input autocomplete={journalTextAutocomplete()} class="input" {id} name="cd-name" placeholder={m.cd_name_placeholder()} bind:value={name} />
     {/snippet}
@@ -194,7 +194,7 @@
   <Sheet busy={renaming.busy} open={renameTarget !== null} title={m.cd_rename_sheet()} onClose={() => (renameTarget = null)}>
     {#if renameTarget}
       <h3>{m.cd_rename_sheet()}</h3>
-      <Field label={m.cd_name_label()} id="rename-scale-name">
+      <Field label={m.name_label()} id="rename-scale-name">
         {#snippet children(id)}
           <input autocomplete={journalTextAutocomplete()} class="input" {id} name="rename-scale-name" bind:value={renameTarget!.name} />
         {/snippet}
@@ -217,7 +217,7 @@
         disabled={!renameTarget.name.trim() || !renameTarget.low.trim() || !renameTarget.high.trim() || renaming.busy}
         onclick={rename}
       >
-        <span>{m.cd_rename_save()}</span>
+        <span>{m.save()}</span>
       </button>
     {/if}
   </Sheet>

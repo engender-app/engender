@@ -352,7 +352,7 @@
     ? Number.isFinite(parseFloat(editor.dose))
     : isPositiveDoseAmount(parseFloat(editor.dose))));
   let editorAmountText = $derived(
-    editor && editorHasAmount ? `${editor.dose} ${editor.doseUnit}`.trim() : m.dose_amount_label()
+    editor && editorHasAmount ? `${editor.dose} ${editor.doseUnit}`.trim() : m.dose_label()
   );
   let editorDrugText = $derived(editor?.drug.trim() || editorEpisode?.drug || '');
   let editorRouteText = $derived.by(() => {
@@ -558,7 +558,7 @@
             role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
             title={m.doses_empty_title()}
             text={m.doses_empty_body()}
-            action={{ label: m.doses_empty_action(), primary: true, onclick: () => openEditor(null) }}
+            action={{ label: m.log_a_dose(), primary: true, onclick: () => openEditor(null) }}
           />
           {#if hasOlderDoses}
             {@render earlierControl()}
@@ -588,7 +588,7 @@
              outright - which is the gap the ticket names. -->
         <div class="screen-part">
           <Segmented
-            name={m.adherence_drug_label()}
+            name={m.drug_label()}
             value={selectedRegimenDrug ?? ''}
             options={activeDrugChoices.map((drug) => ({ value: drug, label: drug }))}
             onChange={(v) => {
@@ -665,7 +665,7 @@
                   data-pause={pause.id}
                   title={pause.endEpochDay === null
                     ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
-                    : m.adherence_paused_range({
+                    : m.range_from_to({
                         from: fmtDayLong(pause.startEpochDay),
                         to: fmtDayLong(pause.endEpochDay)
                       })}
@@ -825,7 +825,7 @@
                   id="dose-amount"
                   name="dose-amount"
                   inputmode="decimal"
-                  aria-label={m.dose_amount_label()}
+                  aria-label={m.dose_label()}
                   placeholder={m.dose_amount_placeholder()}
                   aria-invalid={validationTouched && !editorHasAmount}
                   aria-describedby={validationTouched && !editorCanSave ? 'dose-requirements' : undefined}
@@ -837,14 +837,14 @@
                   class="dose-amount-unit"
                   id="dose-unit"
                   name="dose-unit"
-                  aria-label={m.dose_unit_label()}
+                  aria-label={m.unit_label()}
                   placeholder={m.dose_unit_placeholder()}
                   bind:value={editor.doseUnit}
                 />
               </div>
             </div>
 
-            <Field label={m.dose_route_label()} legend>
+            <Field label={m.route_label()} legend>
               {#snippet children(id)}
                 <div class="tag-row" role="group" aria-labelledby={id}>
                   {#each ROUTE_OPTIONS as option (option.value)}
@@ -904,18 +904,17 @@
         {#if openGroup === 'when'}
           <div class="disclosed" transition:disclose|local>
             <div class="cd-endpoints">
-              <Field label={m.dose_day_label()} id="dose-day">
+              <Field label={m.date_label()} id="dose-day">
                 {#snippet children(id)}
                   <DatePicker name="dose-day" bind:value={editor!.day} {id} />
                 {/snippet}
               </Field>
-              <Field label={m.dose_time_label()} id="dose-time">
+              <Field label={m.time_label()} id="dose-time">
                 {#snippet children(id)}
                   <TimePicker {id} name="dose-time" required bind:value={editor!.time} />
                 {/snippet}
               </Field>
             </div>
-            <p class="muted small">{m.dose_time_hint()}</p>
           </div>
         {/if}
 
@@ -940,10 +939,10 @@
 
         {#if openGroup === 'status'}
           <div class="disclosed" transition:disclose|local>
-            <Field label={m.dose_status_label()} legend>
+            <Field label={m.status_label()} legend>
               {#snippet children()}
                 <Segmented
-                  name={m.dose_status_label()}
+                  name={m.status_label()}
                   value={editor!.status}
                   options={STATUS_OPTIONS}
                   onChange={(v) => editor && (editor.status = v as DoseStatus)}

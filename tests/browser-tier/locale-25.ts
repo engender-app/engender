@@ -59,7 +59,7 @@ publishFixture('locale-25', async () => {
     return rows[0].value === '12345,6' && parseLabNumeric(rows[0].value) === 12345.6;
   });
   await check('Polish period and reading joins have translated grammar', () => {
-    const range = m.compare_period_range({ from: '1 wrz', to: '30 wrz 2026' });
+    const range = m.range_from_to({ from: '1 wrz', to: '30 wrz 2026' });
     return range === '1 wrz do 30 wrz 2026' && !range.includes(' to ');
   });
   console.log('locale probe: calendar');

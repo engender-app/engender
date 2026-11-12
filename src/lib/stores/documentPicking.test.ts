@@ -26,7 +26,7 @@ const { pick, acceptDocumentFile, toast, FakeUnsupportedImageError, FakeDocument
 
 vi.mock('$lib/paraglide/messages', () => ({
   m: {
-    document_picker_failed: () => 'picker-failed',
+    picker_failed: () => 'picker-failed',
     photo_heic: () => 'heic',
     document_too_large: () => 'too-large',
     document_unsupported_file: () => 'unsupported'

@@ -143,7 +143,7 @@
     const { shown, rest } = templateSummaryKeys(t);
     if (shown.length === 0) return undefined;
     const names = shown.map((s) => (s.kind === 'dim' ? dimensionName(s.key) : tagLabel(s.key))).join(', ');
-    return rest > 0 ? m.entry_template_summary_more({ names, count: String(rest) }) : names;
+    return rest > 0 ? m.names_and_count_more({ names, count: String(rest) }) : names;
   }
 </script>
 
@@ -171,8 +171,8 @@
           action={{
             icon: t.hidden ? 'eye' : 'eyeOff',
             label: t.hidden
-              ? m.entry_template_show_aria({ name: t.name })
-              : m.entry_template_hide_aria({ name: t.name }),
+              ? m.show_named_aria({ name: t.name })
+              : m.hide_named_aria({ name: t.name }),
             onclick: () => toggleHidden(t)
           }}
         />
@@ -199,7 +199,7 @@
   }}
 >
   {#snippet fields(editor)}
-    <Field label={m.entry_template_name_label()} id="entry-template-name">
+    <Field label={m.name_label()} id="entry-template-name">
       {#snippet children(id)}
         <input autocomplete={journalTextAutocomplete()}
           class="input"

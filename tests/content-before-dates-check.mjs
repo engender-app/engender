@@ -26,22 +26,22 @@ const flows = [
     add: '[data-add]', row: '[data-milestone]', text: 'Fixture milestone',
     values: { 'ms-name': 'Fixture milestone', 'ms-description': 'A day to remember', 'ms-date': '2024-03-12' },
     change: 'ms-description', controls: () => [page.locator('#ms-name'), page.locator('#ms-description'), page.locator('#ms-date'), sheet().locator('.photo-remove'), sheet().locator('[data-milestone-celebrate] [role="switch"]'), sheet().locator('[data-milestone-anchor] [role="switch"]')],
-    labels: { 'ms-name': 'ms_name_label', 'ms-description': 'ms_description_label', 'ms-date': 'ms_date_label' } },
+    labels: { 'ms-name': 'name_label', 'ms-description': 'ms_description_label', 'ms-date': 'date_label' } },
   { handle: 'side-effect', path: 'care/changes', date: 'side-effect-date', area: 'sideEffects', operation: 'upsertSideEffect',
     add: '[data-add]', row: '[data-side-effect]', text: 'Fixture headache',
     values: { 'side-effect-name': 'Fixture headache', 'side-effect-date': '2024-03-12' },
     change: 'side-effect-name', controls: () => [page.locator('#side-effect-name'), radio().first(), radio().nth(1), page.locator('#side-effect-date')],
-    labels: { 'side-effect-name': 'side_effect_name_label', 'side-effect-date': 'side_effect_date_label' }, group: 'side_effect_severity_label' },
+    labels: { 'side-effect-name': 'what_is_it_label', 'side-effect-date': 'started_label' }, group: 'side_effect_severity_label' },
   { handle: 'cycle-event', path: 'health/cycle-events', date: 'cycle-event-date', area: 'cycleEvents', operation: 'upsertCycleEvent',
     add: '[data-add]', row: '[data-cycle-event]',
     values: { 'cycle-event-date': '2024-03-12' },
     change: 'cycle-event-date', controls: () => [radio(), page.locator('#cycle-event-date')],
-    labels: { 'cycle-event-date': 'cycle_event_date_label' }, group: 'cycle_event_kind_label' },
+    labels: { 'cycle-event-date': 'date_label' }, group: 'cycle_event_kind_label' },
   { handle: 'hair-stage', path: 'body/hair-progress', date: 'hair-stage-date', area: 'hairProgress', operation: 'upsertStage',
     add: '[data-add-stage]', row: '[data-hair-stage]', text: 'Fixture description',
     values: { 'hair-stage-text': 'Fixture description', 'hair-stage-date': '2024-03-12' },
     change: 'hair-stage-text', controls: () => [page.locator('#hair-stage-text'), page.locator('#hair-stage-date')],
-    labels: { 'hair-stage-text': 'hair_other_label', 'hair-stage-date': 'hair_stage_date_label' } }
+    labels: { 'hair-stage-text': 'hair_other_label', 'hair-stage-date': 'date_label' } }
 ];
 
 async function close() {
@@ -275,7 +275,7 @@ try {
         assert.equal(await page.getByRole('textbox', { name: copy[key], exact: true }).getAttribute('id'), id);
       }
       if (flow.group) assert.equal(await sheet().getByRole('radiogroup', { name: copy[flow.group], exact: true }).count(), 1);
-      const saveKey = flow.handle === 'milestone' ? 'ms_save_changes' : flow.handle.replaceAll('-', '_') + '_save';
+      const saveKey = flow.handle === 'milestone' ? 'save_changes' : 'save';
       assert.equal(await page.locator(`[data-save-${flow.handle}]`).innerText(), copy[saveKey]);
       for (const zoom of [1, 2]) {
         await page.evaluate(async (zoom) => {

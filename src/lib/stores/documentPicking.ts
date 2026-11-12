@@ -42,7 +42,7 @@ export async function pickDocument(): Promise<DocumentFile | null> {
       toastDocumentRefusal(error.kind);
     } else {
       console.error('the document picker failed', error);
-      toast(m.document_picker_failed());
+      toast(m.picker_failed());
     }
     return null;
   }

@@ -271,8 +271,8 @@
           id="hub-q"
           name="hub-q"
           type="search"
-          placeholder={m.hub_search_placeholder()}
-          aria-label={m.hub_search_placeholder()}
+          placeholder={m.search_placeholder()}
+          aria-label={m.search_placeholder()}
           autocomplete="off"
           autocapitalize="none"
           spellcheck="false"
@@ -431,7 +431,6 @@
               data-hub-search-handoff
               icon="search"
               title={m.hub_search_handoff({ query: debouncedQuery })}
-              subtitle={m.hub_search_handoff_sub()}
               href="/search"
               onclick={handOffSearch}
             />
@@ -445,7 +444,7 @@
           icon="search"
           key="hub-search-none"
           title={m.no_results()}
-          text={m.no_results_body({ query: typed })}
+          text={m.no_results_body()}
         />
       {/if}
     </div>

@@ -142,7 +142,7 @@ describe('roadmap to milestone sync (ticket 10, ADR-0045)', () => {
     for (const key of [
       'roadmap_milestone_prompt_sheet_title',
       'roadmap_milestone_prompt_title',
-      'roadmap_milestone_prompt_add',
+      'add_milestone',
       'roadmap_milestone_sync_title',
       'roadmap_milestone_sync_sub'
     ]) {

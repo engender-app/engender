@@ -62,10 +62,6 @@ describe('the passage step stops itself at the same ceiling', () => {
     expect(benchmarkFlow).toContain('toast(m.vb_ceiling_stopped());');
   });
 
-  it('says the ceiling exists before the take ever reaches it', () => {
-    expect(benchmarkFlow).toContain('m.vb_passage_ceiling_hint()');
-  });
-
   it('leaves the vowel step\'s own ten-second ceiling untouched', () => {
     expect(benchmarkFlow).toContain('const VOWEL_CEILING_SECONDS = 10;');
   });

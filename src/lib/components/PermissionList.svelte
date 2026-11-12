@@ -139,7 +139,7 @@
 </script>
 
 <div class="perms" data-permission-list>
-  {#if !asksOnly}<p class="perm-caption">{m.perms_group_ask()}</p>{/if}
+  {#if !asksOnly}<p class="perm-caption">{m.perms_screen_title()}</p>{/if}
   <ListCard role={roleAt(activeFlag.roles, 0)}>
     {#each grants as row (row.key)}
       <PermissionRow

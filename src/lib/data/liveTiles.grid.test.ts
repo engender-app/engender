@@ -490,7 +490,7 @@ describe('what each tile says', () => {
     const tile = tileNamed('surgery-countdown')!;
     expect(tile.tileKey).toBe('surgery-countdown');
     expect(tile.attrs).toEqual({ 'data-surgery-tile': true });
-    expect(tile.value).toBe(m.tile_surgery_post_op_day({ days: '10' }));
+    expect(tile.value).toBe(m.surgery_post_op_day({ days: '10' }));
     expect(tile.note).toBe('Vaginoplasty');
     expect(tile.href).toBe('/health/surgery');
     expect(tile.action).toBeUndefined();
@@ -509,7 +509,7 @@ describe('what each tile says', () => {
 
   it('the surgery tile counts from the day after, and an upcoming one nearer today does not hide it', () => {
     const dayOne = tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay: TODAY - 1 }] } })!;
-    expect(dayOne.value).toBe(m.tile_surgery_post_op_day({ days: '1' }));
+    expect(dayOne.value).toBe(m.surgery_post_op_day({ days: '1' }));
     const behind = tileNamed('surgery-countdown', {
       reads: {
         procedures: [
@@ -518,7 +518,7 @@ describe('what each tile says', () => {
         ]
       }
     })!;
-    expect(behind.value).toBe(m.tile_surgery_post_op_day({ days: '20' }));
+    expect(behind.value).toBe(m.surgery_post_op_day({ days: '20' }));
     expect(behind.note).toBe('Vaginoplasty');
   });
 
@@ -544,7 +544,7 @@ describe('what each tile says', () => {
     expect(tile.href).toBe('/transition/letters?read=letter-1');
     expect(tile.value).toBe(`full:${TODAY - 40}`);
     // Two unread, so the note counts the other one.
-    expect(tile.note).toBe(m.tile_letter_more({ count: '1' }));
+    expect(tile.note).toBe(m.count_more({ count: '1' }));
     // Its dismiss opens a sheet on Home rather than snoozing in place.
     tile.dismiss!.onclick(CLICK);
     expect(actions.openLetterDismiss).toHaveBeenCalled();

@@ -179,7 +179,7 @@
       return;
     }
     land(from);
-    announcement = m.quick_saved();
+    announcement = m.saved();
   }
 
   let caughtTimer: ReturnType<typeof setTimeout> | null = null;
@@ -726,7 +726,7 @@
             onclick={ACTIONS.dose}
           >
             <span class="fan-icon"><Icon name="pill" size={22} /></span>
-            <span class="fan-label">{m.doses_empty_action()}</span>
+            <span class="fan-label">{m.log_a_dose()}</span>
           </button>
         {/if}
         <!-- The icon changes with the label because they are saying the same

@@ -68,8 +68,10 @@ const labels: Record<string, readonly string[]> = {
   tag_g_body_eu: [en_tag_g_body_eu, pl_tag_g_body_eu],
   tag_g_euphoria: [en_tag_g_euphoria, pl_tag_g_euphoria],
   tag_g_transphobia: [en_tag_g_transphobia, pl_tag_g_transphobia],
-  tag_g_gendered_ok: [en_tag_g_gendered_ok, pl_tag_g_gendered_ok],
-  tag_g_misgendered: [en_tag_g_misgendered, pl_tag_g_misgendered],
+  // The two pronoun tags were renamed to follow the tally. A file exported
+  // under the names they had before still has to land on the built-in tag.
+  tag_g_gendered_ok: [en_tag_g_gendered_ok, pl_tag_g_gendered_ok, 'gendered correctly', 'właściwe formy'],
+  tag_g_misgendered: [en_tag_g_misgendered, pl_tag_g_misgendered, 'niewłaściwe formy'],
   tag_e_happy: [en_tag_e_happy, pl_tag_e_happy],
   tag_e_calm: [en_tag_e_calm, pl_tag_e_calm],
   tag_e_anxious: [en_tag_e_anxious, pl_tag_e_anxious],

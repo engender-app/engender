@@ -140,7 +140,7 @@
   <div style:margin-top={tagsRevealed ? null : 'var(--space-4)'}>
     <ReadReserve ready={tagsRevealed} estimate={tagsEstimate} onrest={tagsRemember}>
       {#each customGroups as g (g.key)}{@render groupSection(g)}{/each}
-      <SectionHeading text={m.tags_builtin_heading()} />
+      <SectionHeading text={m.default_title()} />
       {#each builtInGroups as g (g.key)}{@render groupSection(g)}{/each}
     </ReadReserve>
   </div>
@@ -159,7 +159,7 @@
         onclick={() => {
           const { id, label } = renameTarget!;
           saveFromSheet(label.trim() ? () => journal.tags.renameTag(id, label.trim()) : null, () => (renameTarget = null));
-        }}><span>{m.tags_save()}</span></button
+        }}><span>{m.save()}</span></button
       >
     {/if}
   </Sheet>

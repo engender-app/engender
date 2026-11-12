@@ -74,7 +74,6 @@
     try {
       await openAndroidJournal({
         title: m.ak_prompt_title(),
-        subtitle: m.ak_prompt_subtitle(),
         cancel: m.ak_prompt_cancel(),
         deviceCredential
       });
@@ -105,7 +104,7 @@
 
   let explanation = $derived(
     refusal === null
-      ? m.ak_unlock_body()
+      ? m.unlock_confirm_body()
       : refusal.outcome === 'cancelled'
         ? m.ak_cancelled()
         : refusal.outcome === 'lockedOut'

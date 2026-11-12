@@ -248,7 +248,7 @@
             <button class="btn btn-primary press" data-progress-save disabled={saving} onclick={() => save(shot!)}>{m.pph_save()}</button>
           {:else if mode === 'unavailable'}
             <button class="btn btn-soft press" data-progress-file onclick={fallbackFile}>
-              <Icon name="image" size={20} /><span>{m.add_photo()}</span>
+              <Icon name="image" size={20} /><span>{m.add()}</span>
             </button>
             <button class="btn btn-primary press" data-progress-native onclick={fallbackCamera}>
               <Icon name="camera" size={20} /><span>{m.add_photo_camera()}</span>
@@ -263,7 +263,7 @@
               <Icon name="repeat" size={20} />
             </button>
             <button class="btn btn-primary press" data-progress-take disabled={mode !== 'live' || !playing} onclick={take}>
-              <Icon name="camera" size={20} /><span>{m.pph_take()}</span>
+              <Icon name="camera" size={20} /><span>{m.take_a_photo()}</span>
             </button>
           {/if}
         </div>

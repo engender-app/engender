@@ -503,7 +503,7 @@
       picked = chosen.picked;
     } catch {
       archiveErrorKind = 'failed';
-      archiveError = m.imp_picker_failed();
+      archiveError = m.picker_failed();
     }
   }
 
@@ -873,7 +873,7 @@
                      rule draws itself in from the left on focus, which is
                      what a 3px rule does everywhere else in the app. -->
                 <div class="typed">
-                  <label class="field-label" for="ob-restore-pass">{m.exp_password_label()}</label>
+                  <label class="field-label" for="ob-restore-pass">{m.backup_password_label()}</label>
                   <input
                     class="rule-input"
                     type="password"

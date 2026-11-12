@@ -411,21 +411,21 @@
            screen could show. -->
       <div class="gate-actions">
         <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => submit('biometric', '')}>
-          <span>{busy ? m.pp_encrypting() : m.am_confirm_biometric()}</span>
+          <span>{busy ? m.encrypting() : m.am_confirm_biometric()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
     {:else if screen.mode === 'unlocked'}
       <div class="gate-actions">
         <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => submit('unlocked', '')}>
-          <span>{busy ? m.pp_encrypting() : m.am_confirm_unlocked()}</span>
+          <span>{busy ? m.encrypting() : m.am_confirm_unlocked()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
     {:else}
       <div class="gate-actions">
         <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => submit('device-bound', '')}>
-          <span>{busy ? m.pp_encrypting() : android ? m.am_confirm_device() : m.am_confirm_unlocked()}</span>
+          <span>{busy ? m.encrypting() : android ? m.am_confirm_device() : m.am_confirm_unlocked()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
@@ -471,7 +471,7 @@
         </div>
         <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
         <button class="btn btn-primary" type="submit" data-access-submit disabled={busy}>
-          <span>{busy ? m.pp_encrypting() : m.am_confirm_passphrase()}</span>
+          <span>{busy ? m.encrypting() : m.am_confirm_passphrase()}</span>
         </button>
       </form>
     {:else if screen.mode === 'pin'}

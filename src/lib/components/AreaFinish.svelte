@@ -295,7 +295,6 @@
           data-area-finished
           icon="flag"
           title={m.area_finish_done_title({ date: dayLong(finishedOn) })}
-          subtitle={m.area_finish_done_sub()}
           static
           chevron={false}
         />
@@ -313,7 +312,6 @@
           data-area-suspended
           icon="pause"
           title={m.area_suspend_done_title({ date: dayLong(suspendedOn) })}
-          subtitle={m.area_suspend_done_sub()}
           static
           chevron={false}
         />
@@ -340,7 +338,7 @@
           key="area-finish"
           data-area-finish
           icon="flag"
-          title={m.area_finish_row_title()}
+          title={m.area_finish_title()}
           chevron={false}
           onclick={openFinish}
         />
@@ -349,7 +347,7 @@
             key="area-suspend"
             data-area-suspend
             icon="pause"
-            title={m.area_suspend_row_title()}
+            title={m.area_suspend_title()}
             chevron={false}
             onclick={openSuspend}
           />
@@ -359,8 +357,8 @@
   </div>
 </div>
 
-<Sheet busy={sheetWrite.busy} bind:open={sheetOpen} title={m.area_finish_sheet_title({ area: areaGroupName(group) })}>
-  <h3>{m.area_finish_sheet_title({ area: areaGroupName(group) })}</h3>
+<Sheet busy={sheetWrite.busy} bind:open={sheetOpen} title={m.area_finish_title({ area: areaGroupName(group) })}>
+  <h3>{m.area_finish_title({ area: areaGroupName(group) })}</h3>
   <p class="muted small area-finish-body">{m.area_finish_sheet_body()}</p>
   <Field label={m.area_finish_date_label()} id="area-finish-date">
     {#snippet children(id)}
@@ -372,14 +370,14 @@
       <span>{OFFER.copy.confirm()}</span>
     </button>
     <button class="btn btn-ghost" disabled={sheetWrite.busy} onclick={() => (sheetOpen = false)}>
-      <span>{m.area_finish_cancel()}</span>
+      <span>{m.not_yet()}</span>
     </button>
   </div>
 </Sheet>
 
 {#if suspendableAreas}
-  <Sheet busy={sheetWrite.busy} bind:open={suspendSheetOpen} title={m.area_suspend_sheet_title()}>
-    <h3>{m.area_suspend_sheet_title()}</h3>
+  <Sheet busy={sheetWrite.busy} bind:open={suspendSheetOpen} title={m.area_suspend_title()}>
+    <h3>{m.area_suspend_title()}</h3>
     <p class="muted small area-finish-body">{m.area_suspend_sheet_body()}</p>
     <Field label={m.area_suspend_date_label()} id="area-suspend-date">
       {#snippet children(id)}
@@ -396,7 +394,7 @@
         <span>{SUSPEND_OFFER.copy.confirm()}</span>
       </button>
       <button class="btn btn-ghost" disabled={sheetWrite.busy} onclick={() => (suspendSheetOpen = false)}>
-        <span>{m.area_suspend_cancel()}</span>
+        <span>{m.not_yet()}</span>
       </button>
     </div>
   </Sheet>

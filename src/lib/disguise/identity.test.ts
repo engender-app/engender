@@ -73,7 +73,7 @@ describe('the Recents preview', () => {
     expect(source('src/lib/components/DisguisePreview.svelte')).toContain('m.disguise_android_gap_note()');
     for (const locale of ['en', 'pl']) {
       const note = (JSON.parse(source(`messages/${locale}.json`)) as Record<string, string>).disguise_android_gap_note;
-      expect(note, locale).toMatch(locale === 'en' ? /Recents/ : /ostatnio używanych/);
+      expect(note, locale).toMatch(locale === 'en' ? /Recents/ : /w Ostatnich/);
     }
   });
 

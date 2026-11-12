@@ -96,13 +96,16 @@ test('a stored tick is cut only when it names one of the three dropped tracks', 
   expect(isCutTrackGoal('pl-legal-court-file')).toBe(false);
 });
 
-/* The "Polish legal steps" switch: on by default for the Polish locale and
-   off otherwise, and an explicit answer wins over the locale either way. */
-test('the Polish legal steps follow the locale until somebody answers the switch', () => {
-  expect(polishLegalStepsShown(null, 'pl')).toBe(true);
-  expect(polishLegalStepsShown(null, 'en')).toBe(false);
-  expect(polishLegalStepsShown(true, 'en')).toBe(true);
-  expect(polishLegalStepsShown(false, 'pl')).toBe(false);
+/* The "Polish legal steps" switch: off in every language until somebody
+   turns it on (tester report 02, ticket 08). The group is 721 of the 754
+   words the Polish roadmap opened with, so it starts closed there too. */
+test('the Polish legal steps stay closed until somebody answers the switch', () => {
+  expect(polishLegalStepsShown(null)).toBe(false);
+  // It used to take the locale and open for Polish; a locale passed by an
+  // old caller must not open it again.
+  expect((polishLegalStepsShown as (choice: boolean | null, locale?: string) => boolean)(null, 'pl')).toBe(false);
+  expect(polishLegalStepsShown(true)).toBe(true);
+  expect(polishLegalStepsShown(false)).toBe(false);
 });
 
 const CATEGORIES = [
@@ -180,7 +183,7 @@ test('the roadmap screen draws the legal group and the person\'s categories, gat
      show a Polish step with the switch off and no test above would notice. */
   const screen = readFileSync(new URL('../../routes/transition/roadmap/+page.svelte', import.meta.url), 'utf8');
 
-  expect(screen).toContain('polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale())');
+  expect(screen).toContain('polishLegalStepsShown(prefs.roadmapPolishStepsChoice)');
   expect(screen).toContain('roadmapList(pack, polishShown, customGoals, hiddenGoals, categories)');
   expect(screen).toContain('journal.roadmap.addCategory(');
   expect(screen).toContain('journal.roadmap.renameCategory(');

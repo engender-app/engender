@@ -127,7 +127,7 @@
                   key="coming-back-dose"
                   data-coming-back-item="dose"
                   icon="pill"
-                  title={m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) })}
+                  title={m.scheduled_dose_on({ date: dayLong(item.slotEpochDay) })}
                   subtitle={m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` })}
                   href="/care/doses?add=1"
                 />

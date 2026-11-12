@@ -168,7 +168,7 @@
       title: m.tryout_delete_sheet(),
       question: () => m.tryout_delete_q(),
       hint: () => m.tryout_delete_hint(),
-      confirmLabel: m.tryout_delete(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   />
