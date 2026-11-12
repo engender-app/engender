@@ -827,7 +827,7 @@
   "dim_social_recognition_high": "rozpoznanie",
   "dim_social_recognition_low": "niewidoczny",
   "dim_social_recognition_note": "Na ile ludzie wokół odbierali twój gender tak, jak go czujesz.",
-  "disguise_android_gap_note": "Gdy jest włączony, zrzuty ekranu i podgląd na liście ostatnio używanych są wyłączone. Prawdziwa nazwa nadal widnieje w informacjach o aplikacji, przy prośbach o uprawnienia, w nagłówkach powiadomień i w wyborze widżetów.",
+  "disguise_android_gap_note": "Gdy jest włączony, podgląd na liście ostatnio używanych jest ukryty (w Androidzie 12 i starszych także zrzuty ekranu). Prawdziwa nazwa nadal widnieje w informacjach o aplikacji, przy prośbach o uprawnienia, w nagłówkach powiadomień i w wyborze widżetów.",
   "disguise_app_sub_android": "Ikona i nazwa w launcherze zmieniają się w neutralne „Notatki”, a aplikacja na chwilę się zamyka, żeby się przeładować",
   "disguise_app_sub_web": "Karta przeglądarki pokazuje neutralny tytuł i ikonę „Notatki”, a zainstalowana aplikacja nazywa się tak samo",
   "disguise_app_title": "Kamuflaż aplikacji",

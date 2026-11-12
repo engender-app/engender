@@ -131,7 +131,8 @@ a record of what you had but does not bring it back.
 - Tile snoozes, opened-letter marks and the has-entries flag move from browser
   storage into the encrypted preferences, and letter marks now travel with
   backups.
-- While disguise is on, Android blocks screenshots and the Recents preview. The
+- While disguise is on, Android hides the Recents preview. Screenshots follow
+  the Screen capture switch (before Android 13 disguise blocks them too). The
   launcher icon names changed, so after updating check that the icon you expect
   is on your home screen.
 

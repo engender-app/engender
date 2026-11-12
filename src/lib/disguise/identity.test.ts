@@ -51,16 +51,20 @@ describe('what the tab says', () => {
 });
 
 describe('the Recents preview', () => {
-  /* FA 43: capture is allowed by default, so under disguise the Recents
-     card would show "Notes" over a thumbnail of the journal. The window
-     flag is decided natively before the first frame, so the read has to
-     be the native one: the live launcher alias, the same read the widgets
-     and notifications make. DisguiseCaptureTest proves it on a device. */
+  /* FA 43 hid the Recents card under disguise by making the whole window
+     secure, which also refused screenshots with the capture switch on
+     (tester report 02, ticket 01). Disguise now hides only the card; the
+     window flag follows the capture choice. Both are decided natively before
+     the first frame, so the read has to be the native one: the live launcher
+     alias, the same read the widgets and notifications make.
+     CaptureDecisionTest holds the decision, DisguiseCaptureTest the window. */
   const java = (path: string) =>
     readFileSync(fileURLToPath(new URL(`../../../android/app/src/main/java/dev/engender/app/${path}`, import.meta.url)), 'utf8');
 
-  it('is hidden while the launcher is disguised, whatever the capture choice', () => {
-    expect(java('screencapture/ScreenCapturePlugin.java')).toMatch(/isAllowed\(context\)\s*&&\s*!DisguiseAlias\.isDisguised\(context\)/);
+  it('is hidden while the launcher is disguised, and the window stays capturable', () => {
+    const plugin = java('screencapture/ScreenCapturePlugin.java');
+    expect(plugin).toMatch(/recentsPreviewShown\(boolean allowed, boolean disguised\)\s*\{\s*return allowed && !disguised;/);
+    expect(plugin).toMatch(/windowSecure\(int sdk, boolean allowed, boolean disguised\)\s*\{\s*return !allowed \|\| \(disguised && sdk < Build\.VERSION_CODES\.TIRAMISU\);/);
   });
 
   it('is named in the disguise sheet, beside the preview that follows the setting', () => {
@@ -73,11 +77,11 @@ describe('the Recents preview', () => {
     }
   });
 
-  it('is decided by that read on create, on return and on a change', () => {
+  it('is decided by those reads on create, on return and on a change', () => {
     const main = java('MainActivity.java');
-    expect(main.match(/applyWindowFlags\(this, ScreenCapturePlugin\.allowedNow\(this\)\)/g)).toHaveLength(2);
+    expect(main.match(/ScreenCapturePlugin\.applyWindowFlags\(this\)/g)).toHaveLength(2);
     expect(main).not.toMatch(/ScreenCapturePlugin\.isAllowed\(/);
-    expect(java('screencapture/ScreenCapturePlugin.java')).toMatch(/applyWindowFlags\(activity, allowedNow\(/);
+    expect(java('screencapture/ScreenCapturePlugin.java')).toMatch(/applyWindowFlags\(activity\)/);
   });
 });
 
