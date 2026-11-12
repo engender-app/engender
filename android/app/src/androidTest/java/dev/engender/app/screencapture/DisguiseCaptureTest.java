@@ -3,6 +3,7 @@ package dev.engender.app.screencapture;
 import static org.junit.Assert.assertEquals;
 
 import android.content.Context;
+import android.os.Build;
 import android.view.WindowManager;
 
 import androidx.lifecycle.Lifecycle;
@@ -19,11 +20,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-/** FA 43: while the launcher is disguised the window is secure even though
- * the stored capture choice allows capture, so the Recents card shows no
- * journal under "Notes". The stored choice survives and applies again once
- * disguise is off. Launches MainActivity directly, so flipping the aliases
- * with DONT_KILL_APP tears down no task this test runs in.
+/** While the launcher is disguised the window follows the stored capture
+ * choice: capture allowed leaves it capturable (screenshots work), capture off
+ * keeps FLAG_SECURE. The Recents card is hidden by disguise from Android 13
+ * through setRecentsScreenshotEnabled, which CaptureDecisionTest covers;
+ * before 13 the secure flag stays on under disguise. Launches MainActivity
+ * directly, so flipping the aliases with DONT_KILL_APP tears down no task
+ * this test runs in.
  */
 @RunWith(AndroidJUnit4.class)
 public class DisguiseCaptureTest {
@@ -44,17 +47,27 @@ public class DisguiseCaptureTest {
     }
 
     @Test
-    public void disguiseHidesTheWindowThoughCaptureIsAllowed() {
+    public void disguiseLeavesTheWindowCapturableWhenCaptureIsAllowed() {
         DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE, "current");
+        boolean secureExpected = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU;
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> assertEquals(true, isSecure(activity)));
+            scenario.onActivity(activity -> assertEquals(secureExpected, isSecure(activity)));
             scenario.onActivity(MainActivity::onUserLeaveHint);
             scenario.moveToState(Lifecycle.State.CREATED);
-            scenario.onActivity(activity -> assertEquals(true, isSecure(activity)));
+            scenario.onActivity(activity -> assertEquals(secureExpected, isSecure(activity)));
             scenario.moveToState(Lifecycle.State.RESUMED);
-            scenario.onActivity(activity -> assertEquals(true, isSecure(activity)));
+            scenario.onActivity(activity -> assertEquals(secureExpected, isSecure(activity)));
         }
         assertEquals(true, ScreenCapturePlugin.isAllowed(context));
+    }
+
+    @Test
+    public void disguiseKeepsTheWindowSecureWhenCaptureIsOff() {
+        DisguiseAlias.apply(context, true, DisguiseAlias.DEFAULT_PALETTE, "current");
+        context.getSharedPreferences(ScreenCapturePlugin.PREFS, Context.MODE_PRIVATE).edit().putBoolean("allowed", false).commit();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> assertEquals(true, isSecure(activity)));
+        }
     }
 
     @Test

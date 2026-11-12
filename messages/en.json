@@ -731,7 +731,7 @@
   "dim_social_recognition_high": "recognised",
   "dim_social_recognition_low": "unseen",
   "dim_social_recognition_note": "How far the people around you read your gender the way you feel it.",
-  "disguise_android_gap_note": "While it’s on, screenshots and the Recents preview are off. The real name still shows in App info, in permission prompts, in notification headers and in the widget picker.",
+  "disguise_android_gap_note": "While it’s on, the Recents preview is hidden (on Android 12 and older, screenshots too). The real name still shows in App info, in permission prompts, in notification headers and in the widget picker.",
   "disguise_app_sub_android": "The icon and name become “Notes”, and the app closes briefly to switch",
   "disguise_app_sub_web": "The tab shows a “Notes” title and icon, and the app installs under that name",
   "disguise_app_title": "Disguise app",

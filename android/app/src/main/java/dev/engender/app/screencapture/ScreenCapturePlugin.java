@@ -34,7 +34,7 @@ public class ScreenCapturePlugin extends Plugin {
         prefs(getContext()).edit().putBoolean(KEY_ALLOWED, allowed).apply();
         Activity activity = getActivity();
         if (activity != null) {
-            activity.runOnUiThread(() -> applyWindowFlags(activity, allowedNow(activity)));
+            activity.runOnUiThread(() -> applyWindowFlags(activity));
         }
         call.resolve();
     }
@@ -44,29 +44,44 @@ public class ScreenCapturePlugin extends Plugin {
         return prefs(context).getBoolean(KEY_ALLOWED, true);
     }
 
-    /** Whether the window may be captured right now. Disguise forces it off
-        (FA 43): capture is allowed by default, so a disguised app's Recents
-        card would otherwise show "Notes" over a thumbnail of the journal.
-        Read off the live launcher alias, as the widgets and notifications
-        do, so it holds from the first frame of a cold start with no WebView
-        and needs no second copy of the preference. The stored choice is
-        kept, and comes back when disguise goes off. */
-    public static boolean allowedNow(Context context) {
-        return isAllowed(context) && !DisguiseAlias.isDisguised(context);
+    /** Whether the window carries FLAG_SECURE, which refuses screenshots and
+        screen recording. The capture choice decides it alone. The one
+        exception is Android 12 and older, where the flag is also the only way
+        to blank the Recents card, so disguise keeps it there (ADR 0101). From
+        Android 13 disguise hides the card with its own call and a person who
+        allows capture can still take a screenshot of a disguised app
+        (tester report 02, ticket 01). */
+    public static boolean windowSecure(int sdk, boolean allowed, boolean disguised) {
+        return !allowed || (disguised && sdk < Build.VERSION_CODES.TIRAMISU);
     }
 
-    /** The capture choice alone decides both screenshots and the Recents
-        preview; a journal lock hides neither (Alicja, 2026-10-06). Android 13
-        separates the two, so the Recents half needs its own call there;
-        below 13 FLAG_SECURE covers both. */
+    /** Whether Recents may keep a preview of the app (Android 13 and later).
+        Hidden when capture is off, and when the launcher is disguised: capture
+        is allowed by default, so a disguised app's card would otherwise show
+        "Notes" over a thumbnail of the journal (FA 43). */
+    public static boolean recentsPreviewShown(boolean allowed, boolean disguised) {
+        return allowed && !disguised;
+    }
+
+    /** Applies the stored capture choice and the live disguise state. Disguise
+        is read off the launcher alias, as the widgets and notifications do, so
+        it holds from the first frame of a cold start with no WebView and needs
+        no second copy of the preference. Neither the stored choice nor the
+        window flag is changed by disguise going on or off. A journal lock hides
+        neither screenshots nor the preview (Alicja, 2026-10-06). */
+    public static void applyWindowFlags(Activity activity) {
+        applyWindowFlags(activity, isAllowed(activity));
+    }
+
     public static void applyWindowFlags(Activity activity, boolean allowed) {
+        boolean disguised = DisguiseAlias.isDisguised(activity);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            activity.setRecentsScreenshotEnabled(allowed);
+            activity.setRecentsScreenshotEnabled(recentsPreviewShown(allowed, disguised));
         }
-        if (allowed) {
-            activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
-        } else {
+        if (windowSecure(Build.VERSION.SDK_INT, allowed, disguised)) {
             activity.getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+        } else {
+            activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
         }
     }
 

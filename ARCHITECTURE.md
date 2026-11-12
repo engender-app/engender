@@ -688,7 +688,7 @@ The things the app protects are journal content (the database, photos, voice, vi
 
 | Adversary | Design answer |
 |---|---|
-| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents shows the app unless screen capture is off. Disguise renames the app. |
+| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents shows the app unless screen capture is off or disguise is on. Disguise renames the app. |
 | Someone holding the unlocked phone | Lock timing, PIN throttle, sensitive-clipboard clearing. |
 | Someone holding the locked phone | Data is encrypted at rest. The data key is behind Keystore or an Argon2id wrap. Launch routes are nonce-gated. |
 | Copy of stored app data | Database and files are ciphertext. Android Keystore keys are outside app-private files. A whole browser-profile copy can include the IndexedDB keys beside the web wraps; non-extractability alone does not protect that copy. |
