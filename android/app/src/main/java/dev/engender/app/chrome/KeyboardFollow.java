@@ -96,12 +96,15 @@ public final class KeyboardFollow {
                 int padding = track.reapply(decor.getPaddingBottom());
                 setBottom(decor, padding);
                 // The padding already makes room for the keyboard. The WebView
-                // is told the keyboard is only as tall as that padding is on
-                // this frame: with the end state it shrinks its visual
-                // viewport in the first frame, and with none it forgets that
-                // a keyboard is open and keeps the navigation bar's inset.
+                // is told the keyboard is only as tall as the navigation bar:
+                // with the end state it shrinks its visual viewport in the
+                // first frame, and with none it forgets that a keyboard is
+                // open and keeps the navigation bar's inset above it.
+                WindowInsetsCompat root = ViewCompat.getRootWindowInsets(decor);
+                int navigation = root == null ? 0
+                    : root.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars()).bottom;
                 return new WindowInsetsCompat.Builder(ViewCompat.onApplyWindowInsets(v, insets))
-                    .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, padding))
+                    .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, Math.min(padding, navigation)))
                     .build();
             });
         }
