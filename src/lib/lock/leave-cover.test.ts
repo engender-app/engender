@@ -11,7 +11,7 @@ describe("Android's leave cover", () => {
   it('covers only a leave that locks at once, on a mode with a secret', () => {
     expect(leaveLocksAtOnce('immediately', true)).toBe(true);
     expect(leaveLocksAtOnce('immediately', false)).toBe(false);
-    for (const timing of ['one-minute', 'five-minutes', 'restart']) expect(leaveLocksAtOnce(timing, true)).toBe(false);
+    for (const timing of ['one-minute', 'five-minutes', 'restart'] as const) expect(leaveLocksAtOnce(timing, true)).toBe(false);
   });
 
   it('mirrors the decision and the ground to the activity, on Android only', () => {
