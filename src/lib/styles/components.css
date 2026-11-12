@@ -1699,6 +1699,13 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   position: absolute;
   inset: -12px;
 }
+/* The next chip, later in the row, covered 4 to 5px of that 48px extension
+   (a chip's own pill sits 8px off), so the button walked at 43 x 48. Raised
+   above its neighbours the extension is whole. The extension and the button's
+   own background are transparent, so nothing is drawn differently, apart from
+   six antialiased pixels on one chip's border curve in the dark theme that the
+   changed stacking shifts by 2 to 7 of 255. */
+.tag-chip-wrap .tag-info-btn { z-index: 1; }
 /* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while
    checking the controls it does own. What is fixed here is the floor, not the
    chip: the pill stays 36px because a chip is a 36px pill in every reference
