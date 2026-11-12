@@ -1,7 +1,6 @@
 package dev.engender.app.chrome;
 
 import android.os.Build;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -102,7 +101,6 @@ public final class KeyboardFollow {
         View content = decor instanceof ViewGroup ? ((ViewGroup) decor).getChildAt(0) : null;
         if (content != null) {
             ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
-                Log.d("KBF", "content-pass running=" + track.running() + " pad=" + decor.getPaddingBottom());
                 setBottom(decor, track.reapply(decor.getPaddingBottom()));
                 return ViewCompat.onApplyWindowInsets(v, insets);
             });
@@ -137,7 +135,6 @@ public final class KeyboardFollow {
                 @NonNull WindowInsetsCompat insets,
                 @NonNull List<WindowInsetsAnimationCompat> running
             ) {
-                Log.d("KBF", "progress run=" + (keyboard != null && running.contains(keyboard)) + " pad=" + decor.getPaddingBottom());
                 if (keyboard != null && running.contains(keyboard)) {
                     setBottom(decor, track.progress(keyboard.getInterpolatedFraction()));
                 }
