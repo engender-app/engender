@@ -131,7 +131,9 @@ a record of what you had but does not bring it back.
 - Tile snoozes, opened-letter marks and the has-entries flag move from browser
   storage into the encrypted preferences, and letter marks now travel with
   backups.
-- While disguise is on, Android hides the Recents preview. Screenshots follow
+- On Android, the Recents preview is hidden while disguise is on or a PIN or
+  passphrase is set. Recents then shows a plain grey card. Coming back from
+  Home no longer flashes the journal before the lock screen. Screenshots follow
   the Screen capture switch (before Android 13 disguise blocks them too). The
   launcher icon names changed, so after updating check that the icon you expect
   is on your home screen.
