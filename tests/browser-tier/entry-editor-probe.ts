@@ -362,7 +362,7 @@ async function firstStepWithEveryScaleHidden(journal: Journal): Promise<FirstSte
     const view = (el: Element | null) => {
       if (!el) return null;
       const r = el.getBoundingClientRect();
-      return { inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth && r.height > 0, height: Math.round(r.height) };
+      return { inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth && r.height > 0, height: Math.round(r.height * 100) / 100 };
     };
     return {
       faces: step.querySelectorAll('[data-mood]').length,
