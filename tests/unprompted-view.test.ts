@@ -196,9 +196,9 @@ describe('what only Android carries', () => {
     const en = (JSON.parse(read('messages/en.json')) as Record<string, string>).rem_hide_titles_sub;
     const pl = (JSON.parse(read('messages/pl.json')) as Record<string, string>).rem_hide_titles_sub;
     // Titles reach history only while hiding is off, so the sentence says both.
-    expect(en).toMatch(/With this off and Android's notification history on/);
+    expect(en).toMatch(/With this off, Android's notification history, if on,/);
     expect(en).toContain('about a day');
-    expect(pl).toMatch(/Gdy ta opcja jest wyłączona, a historia powiadomień Androida włączona/);
+    expect(pl).toMatch(/Gdy opcja jest wyłączona, historia powiadomień Androida, jeśli działa,/);
     expect(pl).toContain('mniej więcej dobę');
     for (const text of [en, pl]) {
       expect(text).not.toMatch(/Hide sensitive titles|Ukryj wrażliwe tytuły/);
