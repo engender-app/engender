@@ -10,8 +10,14 @@
     --head: #efede8; --current: #e6ecf9; --accent: #1f4fb4; --accent-ink: #fff; --ok: #1d6b3a; --bad: #b3261e; --warn: #8a5a00;
     --toolbar-h: 8rem;
   }
+  :root[data-theme=light] { color-scheme: light; }
+  :root[data-theme=dark] {
+    color-scheme: dark;
+    --bg: #151515; --card: #1e1e1e; --ink: #ecebe7; --ink-2: #a8a59d; --line: #34332f;
+    --head: #262522; --current: #1f2738; --accent: #8db0ff; --accent-ink: #10213f; --ok: #7fd6a0; --bad: #ff9d94; --warn: #f0c36a;
+  }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme=light]) {
       --bg: #151515; --card: #1e1e1e; --ink: #ecebe7; --ink-2: #a8a59d; --line: #34332f;
       --head: #262522; --current: #1f2738; --accent: #8db0ff; --accent-ink: #10213f; --ok: #7fd6a0; --bad: #ff9d94; --warn: #f0c36a;
     }
@@ -60,9 +66,11 @@
   th, td { padding: .3rem .5rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
   tr:last-child > td { border-bottom: 0; }
   thead th { background: var(--head); font-size: .8rem; color: var(--ink-2); font-weight: 600; }
-  #rows td:first-child { overflow-wrap: anywhere; width: 27%; }
-  #rows td:nth-child(2), #rows td:nth-child(3) { width: 29%; }
-  #rows td:nth-child(4) { width: 15%; }
+  #editor table { table-layout: fixed; }
+  #editor th:nth-child(1) { width: 25%; }
+  #editor th:nth-child(2), #editor th:nth-child(3) { width: 30%; }
+  #editor th:nth-child(4) { width: 15%; }
+  #rows td { overflow-wrap: anywhere; }
   #rows tr { scroll-margin-top: calc(var(--toolbar-h) + 1.5rem); scroll-margin-bottom: 40vh; }
   #rows tr.current > td { background: var(--current); }
   #rows tr.current { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -93,9 +101,8 @@
   .comparison { font-size: .85rem; color: var(--ink-2); }
   .comparison:empty { display: none; }
   .comparison p, #prose p { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .remove { min-height: 26px; padding: 0 .5rem; margin: .2rem 0 0 auto; color: var(--bad); font-size: .75rem; white-space: nowrap; visibility: hidden; }
+  .remove { min-height: 26px; padding: 0 .5rem; margin: .2rem 0 0 auto; color: var(--bad); font-size: .75rem; white-space: nowrap; }
   .remove:hover:not(:disabled) { border-color: var(--bad); }
-  #rows tr:hover .remove, #rows tr.current .remove, #rows tr:focus-within .remove { visibility: visible; }
   #prose table { min-width: 0; table-layout: fixed; }
   #prose td { width: 50%; }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .state { animation: none; } }
@@ -111,6 +118,7 @@
     <label class="toggle"><input id="changed" type="checkbox"> Changed vs main</label>
     <label class="toggle"><input id="prose-toggle" type="checkbox"> Read as prose</label>
     <button id="reload" type="button">Reload from disk</button>
+    <select id="color-theme" aria-label="Colour theme"><option value="">Auto theme</option><option value="light">Light</option><option value="dark">Dark</option></select>
   </div>
   <div class="line">
     <progress id="progress" aria-label="Copy review progress" value="0" max="1"></progress>
@@ -727,6 +735,17 @@
   applyReplacements.addEventListener('click', applyReplacementEdits);
   document.querySelector('#reload').addEventListener('click', load);
   document.addEventListener('keydown', onKey);
+  const colorTheme = document.querySelector('#color-theme');
+  const applyTheme = (value) => {
+    if (value) document.documentElement.dataset.theme = value;
+    else delete document.documentElement.dataset.theme;
+  };
+  try { colorTheme.value = localStorage.getItem('strings-theme') ?? ''; } catch { /* storage blocked */ }
+  applyTheme(colorTheme.value);
+  colorTheme.addEventListener('change', () => {
+    applyTheme(colorTheme.value);
+    try { localStorage.setItem('strings-theme', colorTheme.value); } catch { /* storage blocked */ }
+  });
   rows.addEventListener('focusin', (event) => {
     const record = rowRecord.get(event.target.closest('tr'));
     if (record && record !== cursor) setCursor(record, false);
