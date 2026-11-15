@@ -95,6 +95,7 @@
   import { m } from '$lib/paraglide/messages';
   import { afterNavigate, beforeNavigate } from '$app/navigation';
   import { EMPTY_SEARCH, holdSearch, takeHandedQuery, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
+  import { takeLegacyQuery } from '$lib/navigation/journalTextParams';
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY } from '$lib/data/epochDay';
@@ -158,8 +159,9 @@
   /* More's search hands its query over in memory rather than in the
      address, so what was typed stays out of the browser's history
      (after-release ticket 10). `?q=` still works for an address typed or
-     bookmarked by hand. */
-  const handedQuery = takeHandedQuery();
+     bookmarked by hand: it is taken out of the address as it arrives and
+     handed over the same way (journalTextParams.ts). */
+  const handedQuery = takeHandedQuery() ?? takeLegacyQuery();
   const asked = (): SearchSnapshot => ({
     ...EMPTY_SEARCH,
     query: handedQuery ?? page.url.searchParams.get('q') ?? '',

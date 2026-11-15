@@ -4,6 +4,8 @@
   import { journalTextAutocomplete } from '$lib/platform';
   import { rememberSourceLane, takeSourceLane } from '$lib/navigation/sourceLane';
   import { careEpisodeId } from '$lib/navigation/sourceRecord';
+  import { takeLegacyCareDrug } from '$lib/navigation/journalTextParams';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { navigating, page } from '$app/state';
   /* The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
      surface, so it lives in the More hub rather than under /settings).
@@ -352,6 +354,21 @@
        reason; the scroll position itself is scroll-region.ts's, which is
        what puts that lane in view. */
   let sourceLane = $state(takeSourceLane() ?? careEpisodeId(page.url));
+  /* An address from before Care carried episode ids named the lane by its
+     drug; it reached here in memory (journalTextParams.ts) and becomes the
+     episode it names, in the highlight and in the address. The address is
+     read first: an in-app arrival is cleaned after this screen has mounted,
+     and that replacement is what brings the name here. */
+  $effect(() => {
+    const url = new URL(page.url);
+    if (sourceLane !== null || careQuery.value === undefined) return;
+    const legacyDrug = takeLegacyCareDrug();
+    const lane = legacyDrug === null ? undefined : lanes.find((lane) => sameDrug(lane.episode.drug, legacyDrug));
+    if (!lane) return;
+    sourceLane = lane.episode.id;
+    url.searchParams.set('episode', lane.episode.id);
+    void replaceRoute(url, { noScroll: true, keepFocus: true });
+  });
 
   /* The rail's own drawn width, for the caption collision rule
      (careSpine.ts's `MIN_LABEL_PX`): the rule is a number of pixels and

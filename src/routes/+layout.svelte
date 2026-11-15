@@ -68,6 +68,7 @@
   import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
+  import { arriveWithoutJournalText, withoutJournalText } from '$lib/navigation/journalTextParams';
   import { ACTIVE_DOOR_CONTENT } from '$lib/navigation/doorActivity';
   import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
@@ -204,6 +205,13 @@
     if (locked) dropJournalScreens();
     else if (browserSession.recovering) dropRetainedDoors();
   });
+  /* The lock screen keeps the address it locked on, so whatever journal
+     text that address still carried goes before the gate shows (GD-025). */
+  $effect(() => {
+    if (!locked) return;
+    const clean = withoutJournalText(new URL(location.href));
+    if (clean) void replaceRoute(clean, { noScroll: true, keepFocus: true });
+  });
 
   /* Those, plus the routes that render without chrome whoever is looking at
      them - which now includes a step the app does navigate to. */
@@ -257,6 +265,11 @@
      so a cancelled one is never counted. */
   afterNavigate((navigation) => {
     recordNavigation(navigation.type, navigation.delta, sameUrl(navigation));
+    /* An address naming a medication or a search (journalTextParams.ts)
+       that got past hooks.client.ts - history-back onto an entry written
+       before Care carried episode ids - is replaced as it lands. */
+    const clean = navigation.to && arriveWithoutJournalText(navigation.to.url);
+    if (clean) void replaceRoute(clean, { noScroll: true, keepFocus: true });
     /* What the gear will borrow next time it opens settings chrome
        (ADR-0076, audit item 4) - noted from every settled navigation, not
        only ones into a tab, since a screen already inside settings can
