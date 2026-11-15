@@ -14,9 +14,31 @@
        cut off by the close;
      - after the lock, nothing in here still holds the old value.
 
+   And one thing the queue must not do (security-scan ticket 08, GD-040): a
+   command - a call that changes the journal - made after a session closed
+   was made by whoever stood at the locked screen, not by the person who
+   unlocks the next one. Quick add stayed on screen for its fade after a
+   lock, and a tap in that window waited here and wrote a tally into the
+   next session. So a command made while closed, once a session has been
+   open, is rejected; a read still waits. Before the first open nothing has
+   closed, and boot's early writes wait as they always did.
+
    Rune-free so the Node tier reaches it. live/journal.svelte.ts puts its
    facade behind one of these and boot.svelte.ts keeps the data key in
    another. */
+
+/** A command made after the session it belonged to had closed. */
+export class SessionClosedError extends Error {
+  constructor() {
+    super('the journal was locked before this change was made, so it was not made');
+    this.name = 'SessionClosedError';
+  }
+}
+
+export interface RunOptions {
+  /** The call changes the journal: refused, not queued, after a lock. */
+  command?: boolean;
+}
 
 export interface SessionGate<T> {
   /** What is open now, or null while locked or still booting. */
@@ -26,7 +48,7 @@ export interface SessionGate<T> {
       wait on this same gate: once a close has begun, that inner call waits
       for the reopen and the close waits for `use`. The journal facade's
       callbacks only call the raw journal, which never comes back here. */
-  run<R>(use: (value: T) => R | Promise<R>): Promise<R>;
+  run<R>(use: (value: T) => R | Promise<R>, options?: RunOptions): Promise<R>;
   /** What is open now, or the next thing to open. Not counted: a caller
       that waits on this holds nothing open. */
   next(): Promise<T>;
@@ -41,6 +63,8 @@ export interface SessionGate<T> {
 
 export function sessionGate<T>(): SessionGate<T> {
   let current: T | null = null;
+  /** Whether a session has been open: until then nothing has closed. */
+  let everOpened = false;
   /* Started synchronously inside open() rather than off a promise: a promise
      would start them a microtask later, and a lock that began in between
      would close the gate under calls that had not been counted yet. */
@@ -67,8 +91,9 @@ export function sessionGate<T>(): SessionGate<T> {
     get current() {
       return current;
     },
-    run(use) {
+    run(use, { command = false } = {}) {
       if (current !== null) return start(use, current);
+      if (command && everOpened) return Promise.reject(new SessionClosedError());
       return new Promise((resolve, reject) => {
         waiting.push((value) => start(use, value).then(resolve, reject));
       });
@@ -79,6 +104,7 @@ export function sessionGate<T>(): SessionGate<T> {
     },
     open(value) {
       current = value;
+      everOpened = true;
       const ready = waiting;
       waiting = [];
       for (const go of ready) go(value);

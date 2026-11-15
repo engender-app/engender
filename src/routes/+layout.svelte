@@ -752,7 +752,13 @@
     <div class="app-strip" aria-hidden="true"></div>
 
     <div inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : 'contents'}>
-    <QuickAdd />
+    <!-- Not while locked (security-scan ticket 08, GD-040). The lock used to
+         close the fan and leave quick add mounted, so its cards stayed in
+         the document for their fade and a tap there in the lock's first
+         frame opened the backdate sheet over the gate or queued a tally for
+         the next session. Unmounted, what is still fading is inert and goes
+         with it, and its sheets go at once. -->
+    {#if !locked}<QuickAdd />{/if}
     {#if managersRequested && !replacesApp}
       {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
         <VocabularyManagerSheets />

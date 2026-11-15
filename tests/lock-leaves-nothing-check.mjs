@@ -86,6 +86,8 @@ function readable(entries) {
     const lower = entry.toLowerCase();
     /* The entry draft is ciphertext under the journal key. */
     if (lower.startsWith('local:engender-entry-draft=')) return false;
+    /* Home's three heights, which name no screen (homeReserve.ts). */
+    if (/^local:engender-home-reserve-(above|below|pinned)=\d+$/.test(entry)) return false;
     return TELLS.some((tell) => lower.includes(tell)) || UUID.test(entry);
   });
 }
@@ -221,7 +223,11 @@ try {
     document.dispatchEvent(new Event('visibilitychange'));
     delete document.visibilityState;
     requestAnimationFrame(() => {
-      for (const node of document.querySelectorAll('[data-fan] [data-fan-target]')) node.click();
+      window.lockClicked = 0;
+      for (const node of document.querySelectorAll('[data-fan] [data-fan-target]')) {
+        window.lockClicked++;
+        node.click();
+      }
     });
   });
   for (const target of targets) await page.mouse.click(target.x, target.y);
@@ -238,6 +244,7 @@ try {
   check(unlocked, 'GD-040: the gate stays usable after the fan clicks');
   if (unlocked) {
     await page.waitForTimeout(1500);
+    console.log(`  fan targets still in the document in the lock's first frame: ${await page.evaluate(() => window.lockClicked)}`);
     const written = await page.evaluate(() => [...new Set(window.lockWrites)]
       .filter((table) => ['tally', 'entry', 'dose', 'wearSession'].includes(table)));
     check(written.length === 0, `GD-040: no fan click made across the lock reached the next session (${written.join(', ')})`);

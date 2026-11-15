@@ -38,7 +38,7 @@ import { untrack } from 'svelte';
 import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
 import { admitHiddenReads } from './hiddenReadAdmission';
 import { firstResult } from './firstResult';
-import { JOURNAL_WIDE, observeWrites, tablesReadBy, type TableName } from './writes';
+import { JOURNAL_WIDE, isJournalCommand, observeWrites, tablesReadBy, type TableName } from './writes';
 import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './readState';
 import type { Journal } from '../journal/journal';
 import { bump, settledVersionOf, versionOf } from './tableVersions.svelte';
@@ -118,7 +118,9 @@ function facadeFor(areaName: string): unknown {
       get(_target, operation: string) {
         return (...args: unknown[]) => {
           const area = (journal: Journal) => journal[areaName as keyof Journal] as unknown as Operations;
-          return journals.run((ready) => area(ready)[operation](...args));
+          return journals.run((ready) => area(ready)[operation](...args), {
+            command: isJournalCommand(areaName, operation)
+          });
         };
       }
     }
@@ -139,7 +141,7 @@ export const journal: Journal = new Proxy({} as Journal, {
     if ((JOURNAL_WIDE as readonly string[]).includes(name)) {
       const operation = name as (typeof JOURNAL_WIDE)[number];
       return (...args: unknown[]) =>
-        journals.run((ready) => (ready[operation] as (...args: unknown[]) => unknown)(...args));
+        journals.run((ready) => (ready[operation] as (...args: unknown[]) => unknown)(...args), { command: true });
     }
     return facadeFor(name);
   }
