@@ -15,7 +15,7 @@ await server.listen();
 const base = server.resolvedUrls.local[0];
 const browser = await launchChromium();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
-page.setDefaultTimeout(30000);
+page.setDefaultTimeout(15000);
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const canary = `Canarydiol ${randomUUID().slice(0, 8)}`;
@@ -43,6 +43,17 @@ async function cold(path) {
   await page.goto(new URL(path, base).href, { waitUntil: 'networkidle' });
   assertClean(`${path} before unlock`);
   await unlockIfAsked();
+}
+let failures = 0;
+async function step(name, run) {
+  try {
+    await run();
+    console.log(`PASS ${name}`);
+  } catch (error) {
+    failures++;
+    console.log(`FAIL ${name}: ${error.message.split('\n')[0]} (at ${page.url()})`);
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 async function follow(href) {
   await page.evaluate((href) => {
@@ -74,63 +85,63 @@ try {
   }, canary);
   const enc = encodeURIComponent(canary);
 
-  // Opened cold: Log's old address opens the editor seeded with that drug.
-  await cold(`/care/doses?add=1&drug=${enc}`);
-  await page.locator('[data-close-record]').waitFor();
-  await page.waitForURL((url) => url.searchParams.get('episode') === fixture.episodeId && !url.searchParams.has('add'));
-  assertClean('Log, cold');
-  assert.ok((await page.locator('[data-sheet]').last().textContent()).includes(canary), 'the old Log link keeps its drug');
-  await page.locator('[data-close-record]').click();
-  console.log('PASS an old Log link opened cold lands with the episode UUID and the drug seeded');
+  await step('an old Log link opened cold lands with the episode UUID and the drug seeded', async () => {
+    await cold(`/care/doses?add=1&drug=${enc}`);
+    await page.locator('[data-close-record]').waitFor();
+    await page.waitForURL((url) => url.searchParams.get('episode') === fixture.episodeId && !url.searchParams.has('add'));
+    assertClean('Log, cold');
+    assert.ok((await page.locator('[data-sheet]').last().textContent()).includes(canary), 'the old Log link keeps its drug');
+    await page.locator('[data-close-record]').click();
+  });
 
-  // Followed in-app: Care's old lane return highlights the lane by episode.
-  await follow(`/care?lane=${enc}&date=${fixture.today}`);
-  await page.locator(`[data-care-lane="${canary}"].is-source-lane`).waitFor();
-  await page.waitForURL((url) => url.searchParams.get('episode') === fixture.episodeId);
-  assertClean('Care lane, in-app');
-  console.log('PASS an old Care lane link followed in-app highlights the lane and carries the episode UUID');
+  await step('an old Care lane link followed in-app highlights the lane and carries the episode UUID', async () => {
+    await follow(`/care?lane=${enc}&date=${fixture.today}`);
+    await page.locator(`[data-care-lane="${canary}"].is-source-lane`).waitFor();
+    await page.waitForURL((url) => url.searchParams.get('episode') === fixture.episodeId);
+    assertClean('Care lane, in-app');
+  });
 
-  // A nested return path loses its text too.
-  await follow(`/care/labs?from=${encodeURIComponent(`/care/doses?drug=${enc}&date=${fixture.today}`)}`);
-  await page.waitForURL((url) => url.pathname === '/care/labs' && !holdsCanary(url.href));
-  assertClean('nested return');
-  assert.equal(new URL(page.url()).searchParams.get('from'), `/care/doses?date=${fixture.today}`);
-  console.log('PASS a nested return path keeps its date and loses the medication');
+  await step('a nested return path keeps its date and loses the medication', async () => {
+    await follow(`/care/labs?from=${encodeURIComponent(`/care/doses?drug=${enc}&date=${fixture.today}`)}`);
+    await page.waitForURL((url) => url.pathname === '/care/labs' && !holdsCanary(url.href));
+    assertClean('nested return');
+    assert.equal(new URL(page.url()).searchParams.get('from'), `/care/doses?date=${fixture.today}`);
+  });
 
-  // A typed search address hands its query over in memory.
-  await cold(`/search?q=${enc}`);
-  await page.waitForURL((url) => url.pathname === '/search');
-  assertClean('search, cold');
-  assert.equal(await page.locator('input[type="search"]').first().inputValue(), canary, 'the query reached the search box');
-  console.log('PASS a typed search address lands in the box and leaves the address');
+  await step('a typed search address lands in the box and leaves the address', async () => {
+    await cold(`/search?q=${enc}`);
+    await page.waitForURL((url) => url.pathname === '/search');
+    assertClean('search, cold');
+    assert.equal(await page.locator('input[type="search"]').first().inputValue(), canary, 'the query reached the search box');
+  });
 
-  // Locked on an address that still names it: the gate shows a clean one.
-  await follow('/care');
-  await page.waitForSelector('[data-care-rail]');
-  await page.evaluate((drug) => {
-    // Any way text could still be there (an entry written by an older build).
-    const url = new URL(location.href);
-    url.searchParams.set('drug', drug);
-    history.replaceState(history.state, '', url);
-  }, canary);
-  assert.ok(holdsCanary(page.url()), 'the probe put the medication in the address');
-  await page.evaluate(async () => {
-    const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
-    prefs.lockAfter = 'immediately';
-    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
-    document.dispatchEvent(new Event('visibilitychange'));
-    delete document.visibilityState;
+  await step('the lock screen keeps no medication in the address', async () => {
+    await follow('/care');
+    await page.waitForSelector('[data-care-rail]');
+    await page.evaluate((drug) => {
+      // Any way text could still be there (an entry written by an older build).
+      const url = new URL(location.href);
+      url.searchParams.set('drug', drug);
+      history.replaceState(history.state, '', url);
+    }, canary);
+    assert.ok(holdsCanary(page.url()), 'the probe put the medication in the address');
+    await page.evaluate(async () => {
+      const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+      prefs.lockAfter = 'immediately';
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.visibilityState;
   });
   await page.locator('[data-applock]').waitFor();
   await page.waitForURL((url) => !holdsCanary(url.href), { timeout: 5000 });
   assertClean('locked');
-  const historyHolds = await page.evaluate(() => history.length);
   await unlockIfAsked();
   await page.waitForSelector('[data-care-rail]');
   assertClean('after unlock');
-  console.log(`PASS the lock screen keeps no medication in the address (${historyHolds} history entries)`);
+  });
 
   assert.deepEqual(errors, []);
+  if (failures) throw new Error(`${failures} case(s) failed`);
 } finally {
   await browser.close();
   await server.close();

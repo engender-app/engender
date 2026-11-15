@@ -342,6 +342,14 @@ are synthetic and removed after each engine. Run `node tests/care-history.mjs`
 after build/runtime generation, or name one engine. This proves local profile
 behavior, not browser sync on another device.
 
+`journal-text-links` (`tests/journal-text-links.mjs`) covers the addresses
+written before that: an old Log link opened cold, an old lane link followed
+in-app, a return path nesting a drug name, a typed `/search?q=`, and a lock
+taken on an address that still names a drug. Each must leave no `drug`,
+`lane` or `q` in the address while still doing what the link asked (the drug
+resolved to its episode UUID, the query in the search box). Chromium against
+the dev server; run `node tests/journal-text-links.mjs`.
+
 `browser-tier/dose-slot-screens-probe.ts` runs through `test:browser` with a
 synthetic encrypted journal and the real Today, Care and Transition screens.
 It checks yesterday and today against a weekly patch slot: the Today panel and
