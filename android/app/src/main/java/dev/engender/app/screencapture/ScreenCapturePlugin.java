@@ -100,9 +100,13 @@ public class ScreenCapturePlugin extends Plugin {
         }
     }
 
-    /** Called by the disguise switch just before the launcher identity
-        flips. Not yet doing anything. */
+    /** Called on the main thread by the disguise switch just before the
+        launcher identity flips. The window is given the state it is about to
+        have, so a snapshot taken from here on - including the one the system
+        takes as the process goes and comes back - is already the blank one,
+        rather than the journal under the new name. */
     public static void coverForIdentityChange(Activity activity, boolean toDisguised) {
+        applyWindowFlags(activity, isAllowed(activity), toDisguised);
     }
 
     /** The reset path removes this device's capture choice. A fresh install

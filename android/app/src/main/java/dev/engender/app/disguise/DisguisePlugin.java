@@ -1,5 +1,6 @@
 package dev.engender.app.disguise;
 
+import android.app.Activity;
 import android.os.Process;
 
 import com.getcapacitor.Plugin;
@@ -8,7 +9,10 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
+import dev.engender.app.screencapture.ScreenCapturePlugin;
 import dev.engender.app.widgets.DisguisableWidgetProvider;
 import dev.engender.app.widgets.DoubtWidgetProvider;
 import dev.engender.app.widgets.QuickLogWidgetProvider;
@@ -93,6 +97,7 @@ public class DisguisePlugin extends Plugin {
             // same category of exposure as the launcher icon, so they get
             // the same immediate refresh rather than waiting on their own
             // system-scheduled update.
+            coverWindowForIdentityChange(disguised);
             boolean changed = DisguiseAlias.apply(getContext(), disguised, palette, shape);
             clearPendingPalette();
             if (changed) {
@@ -122,6 +127,29 @@ public class DisguisePlugin extends Plugin {
         // the flag either (see above), so there is nothing of theirs to
         // refresh here.
         queuePendingPalette(disguised, palette, shape);
+    }
+
+    /** The window takes on the Recents state of the new identity before the
+        alias flips (GD-045). Capacitor calls this on its plugin thread and
+        window flags belong to the main one, so it waits, briefly: a window
+        that was never updated is only a missed cover, not a reason to hold
+        the switch up. */
+    private void coverWindowForIdentityChange(boolean disguised) {
+        Activity activity = getActivity();
+        if (activity == null) return;
+        CountDownLatch done = new CountDownLatch(1);
+        activity.runOnUiThread(() -> {
+            try {
+                ScreenCapturePlugin.coverForIdentityChange(activity, disguised);
+            } finally {
+                done.countDown();
+            }
+        });
+        try {
+            done.await(1, TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
