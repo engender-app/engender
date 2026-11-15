@@ -32,7 +32,8 @@ final class PersistentBackup {
         if (raw != null) {
             try {
                 JSONObject metadata = new JSONObject(raw);
-                if (metadata.has("target") && !isVerified(preferences, metadata.getString("target"))) {
+                if (metadata.has("target") && !isVerified(preferences, metadata.getString("target"))
+                    && DestinationGuard.mayDelete(preferences, metadata.getString("target"))) {
                     DocumentFile partial = DocumentFile.fromSingleUri(context, Uri.parse(metadata.getString("target")));
                     if (partial != null) partial.delete();
                 }
@@ -73,7 +74,8 @@ final class PersistentBackup {
         if (previous != null) {
             JSONObject old = new JSONObject(previous);
             new File(directory(context), old.getString("file")).delete();
-            if (old.has("target") && !isVerified(preferences, old.getString("target"))) {
+            if (old.has("target") && !isVerified(preferences, old.getString("target"))
+                && DestinationGuard.mayDelete(preferences, old.getString("target"))) {
                 try {
                     DocumentFile partial = DocumentFile.fromSingleUri(context, Uri.parse(old.getString("target")));
                     if (partial != null) partial.delete();
@@ -110,11 +112,13 @@ final class PersistentBackup {
         long size = stage.getLong("length");
         String digest = stage.getString("sha256");
         try (InputStream input = new FileInputStream(file)) { StagedBackup.verify(input, size, digest); }
-        String destination = preferences.getString("destinationUri", null);
-        if (destination == null) throw new IllegalStateException("destination-unavailable");
-        DocumentFile folder = DocumentFile.fromTreeUri(context, Uri.parse(destination));
+        if (preferences.getString("destinationUri", null) == null) throw new IllegalStateException("destination-unavailable");
+        Uri destination = DestinationGuard.storedTree(context, preferences);
+        if (destination == null) throw new IllegalStateException(DestinationGuard.INVALID);
+        DocumentFile folder = DocumentFile.fromTreeUri(context, destination);
         if (folder == null || !folder.canWrite()) throw new IllegalStateException("destination-unavailable");
-        DocumentFile target = stage.has("target") ? DocumentFile.fromSingleUri(context, Uri.parse(stage.getString("target"))) : null;
+        String owned = DestinationGuard.ownedTarget(preferences, stage, destination);
+        DocumentFile target = owned != null ? DocumentFile.fromSingleUri(context, Uri.parse(owned)) : null;
         if (target == null || !target.exists()) {
             target = folder.createFile("application/octet-stream", "auto-backup-" + stage.getLong("snapshotAt") + ".ttbackup");
             if (target == null) throw new IllegalStateException("destination-unavailable");
