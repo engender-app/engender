@@ -96,7 +96,7 @@
   } from '$lib/data/stockProjection';
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { attempt } from '$lib/stores/attempt.svelte';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
   import { collapse, disclose, markScreenArrival, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
 
@@ -701,18 +701,35 @@
   /* The tally widget's two buttons (phase 4 ticket 33) deep-link here with
      the kind as a query param, since neither button opens a route of its
      own, and `/` is the route the launcher is allowed to open
-     (android/launch-routes.ts). Home no longer draws the two directions -
-     quick add does - but it is still where the widget lands, so the write
-     stays. No follow-up sheet and no confirmation: a widget tap gets no
-     further screen. The param is cleared after logging, so reloading or going back never re-logs it. */
+     (android/launch-routes.ts). The address only proposes: `/?tally=` is
+     also a link anyone can send, and a launcher can fire the widget's
+     button on its own (security scan GD-037, GD-011), so nothing is written
+     until the person accepts the sheet naming the event. That keeps the
+     widget at one tap more than it was, not a form. The param is cleared
+     as it is read, so reloading or going back never proposes it again. */
+  let tallyProposal = $state<TallyKind | null>(null);
+  let tallyConfirmOpen = $state(false);
+  const tallyWrite = writer();
   $effect(() => {
     if (!doorActive() || page.url.pathname !== '/') return;
     const raw = page.url.searchParams.get('tally');
     if (!raw) return;
     const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
-    if (kind) void attempt(() => journal.tally.log({ epochDay: todayEpochDay(), kind }), m.write_failed());
+    if (kind) {
+      tallyProposal = kind;
+      tallyConfirmOpen = true;
+    }
     void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
+
+  async function logProposedTally() {
+    const kind = tallyProposal;
+    if (!kind) return;
+    const landed = await tallyWrite.run(() => journal.tally.log({ epochDay: todayEpochDay(), kind }), m.write_failed());
+    if (!landed) return;
+    tallyConfirmOpen = false;
+    toast(m.saved());
+  }
 
   $effect.pre(() => {
     if (doorActive()) {
@@ -724,6 +741,7 @@
     agendaExpanded = false;
     letterDismissSheetOpen = false;
     stockDismissSheetOpen = false;
+    tallyConfirmOpen = false;
     editing = false;
     arrived = false;
     decided.clear();
@@ -1349,6 +1367,41 @@
           }}
         >
           <span>{m.tile_letter_dont_show_btn()}</span>
+        </button>
+      </div>
+    </div>
+  </Sheet>
+
+  <!-- The tally a link or the widget proposed (GD-037, GD-011): named
+       with its day, and written only from the Log button. Kept mounted
+       with its last kind after it closes, so the words do not change
+       under the sheet while it slides away. -->
+  <Sheet
+    open={tallyConfirmOpen}
+    title={tallyProposal === 'correctly_gendered' ? m.tally_correctly_gendered() : m.tally_misgendered()}
+    onClose={() => (tallyConfirmOpen = false)}
+    busy={tallyWrite.busy}
+  >
+    <div data-tally-confirm>
+      <SectionHeading text={tallyProposal === 'correctly_gendered' ? m.tally_correctly_gendered() : m.tally_misgendered()} />
+      <p class="muted" style="margin-bottom:var(--space-4)">{m.tally_confirm_day({ date: fmtDay(today, { day: 'numeric', month: 'long' }) })}</p>
+      <div class="stack-3">
+        <button
+          class="btn btn-primary btn-block"
+          data-tally-confirm-log
+          disabled={tallyWrite.busy}
+          aria-busy={tallyWrite.busy}
+          onclick={logProposedTally}
+        >
+          <span>{tallyProposal === 'correctly_gendered' ? m.tally_log_correctly_gendered() : m.tally_log_misgendered()}</span>
+        </button>
+        <button
+          class="btn btn-ghost btn-block"
+          data-tally-confirm-cancel
+          disabled={tallyWrite.busy}
+          onclick={() => (tallyConfirmOpen = false)}
+        >
+          <span>{m.cancel()}</span>
         </button>
       </div>
     </div>

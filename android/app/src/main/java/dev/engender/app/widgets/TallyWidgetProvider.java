@@ -13,8 +13,9 @@ import dev.engender.app.R;
  * card (ticket 10). Neither button opens a route of its own - both
  * deep-link (AppLaunch.openAppIntent, pulled out for exactly this reuse in
  * ticket 26) to Home with a `tally` query parameter, which Home reads once
- * on mount and logs through the same journal.tally.log call the in-app
- * buttons use, then clears (src/routes/+page.svelte).
+ * on mount, clears, and turns into a confirmation naming the event: the
+ * journal.tally.log call the in-app buttons use runs only when the person
+ * accepts it (src/routes/+page.svelte, security scan GD-011).
  *
  * <p>Disguise mode is handled once by {@link DisguisableWidgetProvider}.
  */
@@ -44,8 +45,8 @@ public class TallyWidgetProvider extends DisguisableWidgetProvider {
     }
 
     /** The route a tally button's PendingIntent deep-links to - Home itself,
-        carrying the kind as a query parameter it reads once and clears,
-        rather than a route belonging to this widget. Pinned against
+        carrying the kind as a query parameter it reads once, clears and
+        asks about, rather than a route belonging to this widget. Pinned against
         src/lib/android/launch-routes.ts by the shared fixture at
         src/lib/android/fixtures/launch-routes.json (ADR-0028). */
     static String tallyRoute(String kind) {

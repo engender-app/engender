@@ -565,8 +565,9 @@ public final class ReminderScheduler {
             return mood.length() == 1 && mood.charAt(0) >= '1' && mood.charAt(0) <= '5' ? route : null;
         }
         // The tally widget's two buttons: Home reads and clears
-        // this query parameter itself (src/routes/+page.svelte) rather than
-        // a route of the widget's own existing to hold.
+        // this query parameter itself and asks before logging
+        // (src/routes/+page.svelte) rather than a route of the widget's own
+        // existing to hold.
         if (route.startsWith("/?tally=")) {
             String kind = route.substring("/?tally=".length());
             return "misgendered".equals(kind) || "correctly_gendered".equals(kind) ? route : null;

@@ -3363,6 +3363,7 @@
   "tags_show_aria": "Pokaż tag „{label}”",
   "tags_tag_placeholder": "Nazwa tagu",
   "take_a_photo": "Zrób zdjęcie",
+  "tally_confirm_day": "Dziś, {date}.",
   "tally_correctly_gendered": "Dobre zaimki",
   "tally_count_spoken": "{kind}: {count}",
   "tally_log_correctly_gendered": "Zapisz dobre zaimki",

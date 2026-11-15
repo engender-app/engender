@@ -3283,6 +3283,7 @@
   "tags_show_aria": "Show {label}",
   "tags_tag_placeholder": "Tag name",
   "take_a_photo": "Take a photo",
+  "tally_confirm_day": "Today, {date}.",
   "tally_correctly_gendered": "Correctly gendered",
   "tally_count_spoken": "{kind}: {count}",
   "tally_log_correctly_gendered": "Log correct gendering",
