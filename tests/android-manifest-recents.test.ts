@@ -23,16 +23,18 @@ describe('android main activity recents policy', () => {
    lock does not hide screenshots, but on 2026-11-12 she reversed the Recents
    half: while a lock is set no preview is kept (tester report 02, ticket 07),
    because the task snapshot is taken before a cover can be drawn. Android 13+
-   has no getter for the Recents choice, so the instrumentation tests cannot
-   read it back and this line holds it. */
+   has no getter for the Recents choice, ScreenCapturePlugin records the last
+   value it passed (RecentsFollowsBothSwitchesTest reads it) and this pins
+   that the recorded value is the one handed to the system. */
 describe('android recents preview follows the capture choice, disguise and a set lock', () => {
   const plugin = read('android/app/src/main/java/dev/engender/app/screencapture/ScreenCapturePlugin.java');
   const activity = read('android/app/src/main/java/dev/engender/app/MainActivity.java');
 
   it('passes the capture choice, disguise and a set lock to setRecentsScreenshotEnabled', () => {
     expect(plugin).toMatch(
-      /setRecentsScreenshotEnabled\(LeaveCover\.recentsPreviewAllowed\(recentsPreviewShown\(allowed, disguised\)\)\);/,
+      /boolean shown = LeaveCover\.recentsPreviewAllowed\(recentsPreviewShown\(allowed, disguised\)\);/,
     );
+    expect(plugin).toMatch(/activity\.setRecentsScreenshotEnabled\(shown\);/);
   });
 
   it('never decides the window flags from the lock', () => {
