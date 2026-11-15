@@ -121,28 +121,64 @@ test('a new entry never arrives with a presentation pre-filled', async () => {
   assert.equal((await journal.entries.getEntry(id))?.presentationId, null);
 });
 
+const appointmentOn = (journal: Awaited<ReturnType<typeof journalWithBuiltIns>>['journal'], epochDay: number) =>
+  journal.appointments.upsertAppointment({ epochDay, procedureId: null, kind: null, place: null, note: null });
+
 test('creation saves the star and appointment debrief with the entry', async () => {
   const { journal } = await journalWithBuiltIns();
+  const appointment1 = await appointmentOn(journal, 99);
   const id = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 4,
     starred: true,
-    debriefForAppointment: 'appointment-1'
+    debriefForAppointment: appointment1
   });
 
   assert.equal((await journal.entries.getEntry(id))?.starred, true);
-  assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), id);
+  assert.equal(await journal.checklists.getDebriefEntryId(appointment1), id);
 
+  const appointment2 = await appointmentOn(journal, 100);
   await journal.entries.setEntryStarred(id, false);
-  await journal.entries.upsertEntry({ id, note: 'edited', starred: true, debriefForAppointment: 'appointment-2' });
+  await journal.entries.upsertEntry({ id, note: 'edited', starred: true, debriefForAppointment: appointment2 });
   assert.equal((await journal.entries.getEntry(id))?.starred, false);
-  assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), id);
-  assert.equal(await journal.checklists.getDebriefEntryId('appointment-2'), null);
+  assert.equal(await journal.checklists.getDebriefEntryId(appointment1), id);
+  assert.equal(await journal.checklists.getDebriefEntryId(appointment2), null);
+});
+
+/* `?debriefFor=` is an address anyone can send (security scan GD-048): the
+   save links the entry only to the appointment the offer could be naming
+   on that day - the most recent past one, or one on the entry's own day
+   (In the room) - and never takes over a debrief already on file. */
+test('a debrief link to a missing, stale or already-debriefed appointment changes no association', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const older = await appointmentOn(journal, 90);
+  const latest = await appointmentOn(journal, 95);
+  const future = await appointmentOn(journal, 120);
+  const olderDebrief = await journal.entries.upsertEntry({ epochDay: 91, mood: 3, debriefForAppointment: older });
+  assert.equal(await journal.checklists.getDebriefEntryId(older), olderDebrief, 'the offer of its own day links');
+
+  const bogus = await journal.entries.upsertEntry({ epochDay: 100, mood: 2, debriefForAppointment: 'bogus' });
+  const stale = await journal.entries.upsertEntry({ epochDay: 100, mood: 2, debriefForAppointment: older });
+  const ahead = await journal.entries.upsertEntry({ epochDay: 100, mood: 2, debriefForAppointment: future });
+  assert.ok(bogus && stale && ahead);
+  assert.equal(await journal.checklists.getDebriefEntryId('bogus'), null);
+  assert.equal(await journal.checklists.getDebriefEntryId(older), olderDebrief);
+  assert.equal(await journal.checklists.getDebriefEntryId(future), null);
+
+  const real = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, debriefForAppointment: latest });
+  assert.equal(await journal.checklists.getDebriefEntryId(latest), real, 'the legitimate offer still links');
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 1, debriefForAppointment: latest });
+  assert.equal(await journal.checklists.getDebriefEntryId(latest), real, 'a second link does not take it over');
+
+  const room = await appointmentOn(journal, 100);
+  const roomEntry = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, debriefForAppointment: room });
+  assert.equal(await journal.checklists.getDebriefEntryId(room), roomEntry, 'an appointment on the entry day links');
 });
 
 for (const failure of ['star', 'debrief'] as const) {
   test(`a ${failure} failure rolls back attachments and a contextual dose before retry`, async () => {
     const { journal, db } = await journalWithBuiltIns();
+    const appointment = await appointmentOn(journal, 99);
     await journal.stock.upsertEntry({ drug: 'Estradiol', quantity: 30, unit: 'mg', recordedEpochDay: 90 });
     await db.exec(failure === 'star'
       ? `CREATE TRIGGER fail_creation BEFORE INSERT ON entry WHEN NEW.starred = 1
@@ -153,7 +189,7 @@ for (const failure of ['star', 'debrief'] as const) {
       epochDay: 100,
       mood: 4,
       starred: true,
-      debriefForAppointment: 'appointment-1',
+      debriefForAppointment: appointment,
       attachPhotos: [{ full: new Uint8Array([1]), thumb: new Uint8Array([2]) }],
       attachRecordings: [new Uint8Array([3])],
       attachVideos: [new Uint8Array([4])],
@@ -164,7 +200,7 @@ for (const failure of ['star', 'debrief'] as const) {
     assert.deepEqual(await journal.entries.entriesForDay(100), []);
     assert.deepEqual(await journal.doses.getDoses(100, 100), []);
     assert.equal((await journal.stock.getEntries())[0].quantity, 30);
-    assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), null);
+    assert.equal(await journal.checklists.getDebriefEntryId(appointment), null);
     assert.equal(await journal.checklists.getStandaloneChecklist(), undefined);
 
     await db.exec('DROP TRIGGER fail_creation');
@@ -176,7 +212,7 @@ for (const failure of ['star', 'debrief'] as const) {
     assert.equal(entry.recordings.length, 1);
     assert.equal(entry.videos.length, 1);
     assert.equal(entry.starred, true);
-    assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), id);
+    assert.equal(await journal.checklists.getDebriefEntryId(appointment), id);
     assert.equal((await journal.doses.getDoses(100, 100)).length, 1);
     assert.equal((await journal.stock.getEntries())[0].quantity, 30);
   });

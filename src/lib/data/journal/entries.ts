@@ -324,6 +324,27 @@ type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: strin
 type RemovedRecordingRow = { uuid: string; entry_id: number; file_path: string };
 type RemovedVideoRow = { uuid: string; entry_id: number; file_path: string };
 
+/* Whether `?debriefFor=` still names the appointment a debrief offer could
+   be making on `epochDay` (security scan GD-048). The id arrives in an
+   address, and an address is something anyone can send: the save links
+   the entry only to the most recent appointment before that day (the
+   offer on Home and the appointment screens, appointments.ts's
+   `mostRecentPastAppointment`) or to one on that day itself (In the
+   room's way out), and only while it has no debrief on file. A missing,
+   stale or already-answered id saves the entry and links nothing. */
+async function debriefStillOffered(driver: SqliteDriver, appointmentId: string, epochDay: number): Promise<boolean> {
+  const rows = await driver.query<{ offered: number }>(
+    `SELECT 1 AS offered FROM appointment a
+      WHERE a.uuid = ?
+        AND (a.epoch_day = ? OR a.uuid = (SELECT uuid FROM appointment WHERE epoch_day < ?
+                                          ORDER BY epoch_day DESC, id DESC LIMIT 1))
+        AND NOT EXISTS (SELECT 1 FROM appointment_debrief d
+                         WHERE d.appointment_uuid = a.uuid AND d.entry_id IS NOT NULL)`,
+    [appointmentId, epochDay, epochDay]
+  );
+  return rows.length > 0;
+}
+
 export function makeEntriesArea(
   driver: SqliteDriver,
   files: PhotoFileStore,
@@ -1219,7 +1240,8 @@ export function makeEntriesArea(
           await insertStagedVideo(driver, entryId, video);
         }
         await commitContextual(driver, input, contextual, input.epochDay!);
-        if (input.debriefForAppointment != null && checklistsFor) {
+        if (input.debriefForAppointment != null && checklistsFor
+          && await debriefStillOffered(driver, input.debriefForAppointment, input.epochDay!)) {
           await checklistsFor(driver).recordDebriefEntry(entryId, input.debriefForAppointment);
         }
         return entryId;
