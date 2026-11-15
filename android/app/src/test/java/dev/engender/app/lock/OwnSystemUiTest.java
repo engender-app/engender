@@ -19,4 +19,12 @@ public class OwnSystemUiTest {
         window.opened(-1);
         assertFalse(window.isOpen());
     }
+
+    @Test public void anUnverifiedHandlerOpensNoWindow() {
+        OwnSystemUi window = new OwnSystemUi();
+        window.opened(7, false);
+        assertFalse(window.isOpen());
+        window.opened(7, true);
+        assertTrue(window.isOpen());
+    }
 }

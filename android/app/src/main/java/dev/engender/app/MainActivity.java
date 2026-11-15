@@ -5,6 +5,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -26,6 +29,7 @@ import dev.engender.app.chrome.KeyboardFollow;
 import dev.engender.app.disguise.DisguiseState;
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
+import dev.engender.app.lock.HandlerTrust;
 import dev.engender.app.lock.LeaveCover;
 import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.lock.OwnSystemUi;
@@ -157,14 +161,39 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
      * here, from the plugins and from the WebView's file chooser alike. */
     @Override
     public void startActivityForResult(Intent intent, int requestCode, Bundle options) {
-        ownSystemUi.opened(requestCode);
+        boolean opening = requestCode >= 0;
+        // The handler is another app and may draw translucent over the
+        // WebView, so the cover goes up before it exists, not when this
+        // activity is later paused. It stays until the page takes it off
+        // after an authenticated return (revealLeaveCover).
+        boolean covered = opening && LeaveCover.coverOnLeave();
+        if (covered) showLeaveCover();
+        ownSystemUi.opened(requestCode, !opening || handlerVerified(intent));
         try {
             super.startActivityForResult(intent, requestCode, options);
         } catch (RuntimeException e) {
             // Nothing opened, so no result will ever close the window.
             ownSystemUi.closed();
+            if (covered) revealLeaveCover();
             throw e;
         }
+    }
+
+    private boolean handlerVerified(Intent intent) {
+        java.util.List<HandlerTrust.Handler> handlers = new java.util.ArrayList<>();
+        if (intent.getComponent() == null) {
+            for (ResolveInfo found : getPackageManager().queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)) {
+                int flags = found.activityInfo.applicationInfo.flags;
+                handlers.add(new HandlerTrust.Handler(
+                    (flags & (ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0));
+            }
+        }
+        return HandlerTrust.verified(intent.getComponent() != null, handlers);
+    }
+
+    /** Whether the cover over the WebView is up. */
+    boolean leaveCoverVisible() {
+        return leaveCover != null && leaveCover.getVisibility() == View.VISIBLE;
     }
 
     // Closed before the result is handed on, because handling it can open the
