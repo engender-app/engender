@@ -85,6 +85,7 @@ public class LeaveCoverBeforeHandlerTest {
                     activity.finishActivity(77);
                 });
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+                Thread.sleep(1500); // the page's own reveal for this return lands before the next launch
                 scenario.onActivity(activity -> LeaveCover.reveal());
             }
         }

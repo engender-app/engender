@@ -168,12 +168,14 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
         // after an authenticated return (revealLeaveCover).
         boolean covered = opening && LeaveCover.coverOnLeave();
         if (covered) showLeaveCover();
+        if (opening) handlerInFront = true;
         ownSystemUi.opened(requestCode, !opening || handlerVerified(intent));
         try {
             super.startActivityForResult(intent, requestCode, options);
         } catch (RuntimeException e) {
             // Nothing opened, so no result will ever close the window.
             ownSystemUi.closed();
+            handlerInFront = false;
             if (covered) revealLeaveCover();
             throw e;
         }
@@ -201,6 +203,7 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         ownSystemUi.closed();
+        handlerInFront = false;
         super.onActivityResult(requestCode, resultCode, data);
     }
 
@@ -255,6 +258,8 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
      * leave whenever a lock is set, and taken off by the page once it has drawn
      * the gate (LeaveCover says why). */
     private View leaveCover;
+    /** A screen opened for a result is in front and has not answered yet. */
+    private boolean handlerInFront;
 
     private void showLeaveCover() {
         if (leaveCover == null) {
@@ -271,6 +276,8 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
 
     @Override
     public void revealLeaveCover() {
+        // A reveal the page queued for an earlier return must not drop the cover under a handler opened since.
+        if (handlerInFront) return;
         LeaveCover.reveal();
         if (leaveCover != null) leaveCover.setVisibility(View.GONE);
     }
