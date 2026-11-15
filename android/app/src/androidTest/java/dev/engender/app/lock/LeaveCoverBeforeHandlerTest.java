@@ -65,6 +65,8 @@ public class LeaveCoverBeforeHandlerTest {
                 androidx.core.content.ContextCompat.registerReceiver(app, drew,
                     new android.content.IntentFilter(TranslucentHandlerActivity.DREW), androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
                 scenario.onActivity(activity -> {
+                    // The page mirrors "no secret" into the cover when it boots; pin the mirror for this call.
+                    LeaveCover.set(true, "#101820");
                     activity.startActivityForResult(handler(action).putExtra("notify", app.getPackageName()), 77);
                     // Synchronously, before the activity manager has even been asked to pause this one.
                     coveredOnReturn.set(LeaveCover.isShown());
