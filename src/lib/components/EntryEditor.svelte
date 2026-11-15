@@ -32,7 +32,7 @@
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { areaQuiet } from '$lib/data/areaState';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
+  import { claimPendingPhotos, pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
   import { pickRecording, startRecording, type ActiveRecording } from '$lib/stores/voiceRecording';
   import { pickVideo, startVideoRecording, type ActiveVideoRecording } from '$lib/stores/videoRecording';
@@ -603,8 +603,15 @@
   // An entry holds several photos, so one trip through the picker can bring
   // back several (photoPicking.ts).
   async function addPhoto() {
-    queueForDayPrompt(await pickPhotos());
+    queueForDayPrompt(await pickPhotos(undefined, 'entry'));
   }
+
+  /* A photo that came back while the app was locked (non-system handler under
+     Lock immediately) was kept by token and is asked for a day like any other
+     (photoPicking.ts claimPendingPhotos). */
+  onMount(() => {
+    void claimPendingPhotos('entry').then(queueForDayPrompt);
+  });
 
   // The context is this entry: the last photo already in its own draft,
   // stored or just picked, not the journal's last photo overall.
@@ -622,7 +629,7 @@
   const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => {
     if (entryDraft.epochDay === todayEpochDay()) entryDraft.addPhoto({ ...photo, epochDayOverride: null });
     else queueForDayPrompt([photo]);
-  });
+  }, 'entry');
 
   // The photo tapped to open the viewer (ticket CARPET-06); null keeps it
   // closed.

@@ -2191,6 +2191,8 @@
   "photos_select_start": "Zaznacz",
   "photos_select_start_aria": "Zaznacz zdjęcia",
   "photos_title": "Zdjęcia",
+  "picked_while_locked_added": "To wróciło, gdy aplikacja była zablokowana. Jest już tutaj.",
+  "picked_while_locked_lost": "To wróciło, gdy aplikacja była zablokowana, więc nie zostało zachowane. Wybierz jeszcze raz.",
   "picker_failed": "Nie udało się otworzyć okna wyboru pliku.",
   "pin_access_unavailable": "Nie można odczytać sposobu otwierania dziennika. Zamknij aplikację i otwórz ją ponownie, żeby sprawdzić ustawienia dostępu.",
   "pin_again_title": "Wpisz go jeszcze raz",

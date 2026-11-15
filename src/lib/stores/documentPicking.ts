@@ -16,11 +16,13 @@ import {
   type DocumentFile,
   type DocumentRefusalKind
 } from '../data/documents/accept';
-import { documentPicker } from '../data/photos/picker';
+import { androidPickedBytes, documentPicker, PickDeferredError } from '../data/photos/picker';
+import { claimPending, holdPending, type ClaimBy } from './pendingPick';
+import { isSessionLocked } from './lock.svelte';
 import { UnsupportedImageError } from '../data/photos/normalize';
 import { toast } from './toasts.svelte';
 
-const picker = documentPicker();
+const picker = documentPicker({ deferIf: isSessionLocked });
 
 /** DocumentRefusedError's own two messages, by kind - shared by both catch
     blocks below, which reach a DocumentRefusedError by two different
@@ -33,12 +35,16 @@ function toastDocumentRefusal(kind: DocumentRefusalKind): void {
     backed out or the file was refused, both reported the same way
     pickPhotos() reports them: a toast naming what happened, nothing
     thrown past this point. */
-export async function pickDocument(): Promise<DocumentFile | null> {
+export async function pickDocument(claimBy?: ClaimBy): Promise<DocumentFile | null> {
   let files: Uint8Array[];
   try {
     files = await picker.pick();
   } catch (error) {
-    if (error instanceof DocumentRefusedError) {
+    if (error instanceof PickDeferredError) {
+      // The screen that asked is gone: keep the token for the unlock, or say it cannot be kept.
+      if (claimBy) holdPending(claimBy, location.pathname, error.tokens);
+      else toast(m.picked_while_locked_lost());
+    } else if (error instanceof DocumentRefusedError) {
       toastDocumentRefusal(error.kind);
     } else {
       console.error('the document picker failed', error);
@@ -49,7 +55,27 @@ export async function pickDocument(): Promise<DocumentFile | null> {
 
   const [bytes] = files;
   if (!bytes) return null;
+  return acceptPickedDocument(bytes);
+}
 
+/** The file a pick left for the documents screen while the app was locked. */
+export async function claimPendingDocument(): Promise<DocumentFile | null> {
+  const [token] = claimPending('document', location.pathname) ?? [];
+  if (!token) return null;
+  let bytes: Uint8Array;
+  try {
+    bytes = await androidPickedBytes(token);
+  } catch (error) {
+    console.error('a document kept through a lock could not be read', error);
+    toast(m.picker_failed());
+    return null;
+  }
+  const document = await acceptPickedDocument(bytes);
+  if (document) toast(m.picked_while_locked_added());
+  return document;
+}
+
+async function acceptPickedDocument(bytes: Uint8Array): Promise<DocumentFile | null> {
   try {
     return await acceptDocumentFile(bytes);
   } catch (error) {

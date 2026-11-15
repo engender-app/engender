@@ -11,7 +11,9 @@
    that one does: it reports failures by raising a toast, which is an app-level
    concern the data layer has no business knowing about. */
 
-import { cameraPhotoPicker, filePhotoPicker } from '../data/photos/picker';
+import { androidPickedBytes, cameraPhotoPicker, filePhotoPicker, PickDeferredError } from '../data/photos/picker';
+import { claimPending, holdPending, type ClaimBy } from './pendingPick';
+import { isSessionLocked } from './lock.svelte';
 import { m } from '$lib/paraglide/messages';
 import { normalizePhoto, UnsupportedImageError } from '../data/photos/normalize';
 import { PhotoTooLargeError } from '../data/photos/limits';
@@ -32,8 +34,8 @@ export type EditorPhoto =
     same stored/picked split EditorPhoto draws, for the same reason. */
 export type ReferencePhoto = { fileName: string } | { bytes: Uint8Array };
 
-const picker = filePhotoPicker();
-const camera = cameraPhotoPicker();
+const picker = filePhotoPicker({ deferIf: isSessionLocked });
+const camera = cameraPhotoPicker({ deferIf: isSessionLocked });
 
 /** Reports a picker.pick() failure by toast: the ceiling's own refusal if
     that's what it was, the generic picker-failed message (with its own log
@@ -48,6 +50,32 @@ function toastPickFailure(error: unknown, logMessage: string): void {
     console.error(logMessage, error);
     toast(m.photo_picker_failed());
   }
+}
+
+/** The pick answered while the app was locked, so the screen that asked is
+    gone. A screen that can take it back keeps the token for after the unlock
+    (pendingPick.ts); any other says so, since the result cannot be kept. */
+function deferUntilUnlock(error: PickDeferredError, claimBy: ClaimBy | undefined): void {
+  if (claimBy) holdPending(claimBy, location.pathname, error.tokens);
+  else toast(m.picked_while_locked_lost());
+}
+
+/** What a pick that came back during a lock left for this screen, read and
+    normalized now that the journal is open again. Empty when there is none. */
+export async function claimPendingPhotos(claimBy: ClaimBy): Promise<NormalizedPhoto[]> {
+  const tokens = claimPending(claimBy, location.pathname);
+  if (!tokens) return [];
+  let picked: Uint8Array[];
+  try {
+    picked = [];
+    for (const token of tokens) picked.push(await androidPickedBytes(token));
+  } catch (error) {
+    toastPickFailure(error, 'a photo kept through a lock could not be read');
+    return [];
+  }
+  const photos = await normalizeAll(picked);
+  if (photos.length) toast(m.picked_while_locked_added());
+  return photos;
 }
 
 /** Normalizes whatever bytes a picker returned, dropping and reporting
@@ -80,12 +108,13 @@ async function normalizeAll(picked: Uint8Array[]): Promise<NormalizedPhoto[]> {
 
     `limit` caps how many are kept, for the one owner that holds a single
     photo: a milestone. */
-export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
+export async function pickPhotos(limit?: number, claimBy?: ClaimBy): Promise<NormalizedPhoto[]> {
   let picked: Uint8Array[];
   try {
     picked = await picker.pick();
   } catch (error) {
-    toastPickFailure(error, 'the photo picker failed');
+    if (error instanceof PickDeferredError) deferUntilUnlock(error, claimBy);
+    else toastPickFailure(error, 'the photo picker failed');
     return [];
   }
 
@@ -95,12 +124,13 @@ export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
 /** One shot from the device camera, normalized and ready to store. Null if
     the user backed out of the camera app, which is an ordinary outcome and
     not an error - same as an empty pickPhotos() result. */
-export async function capturePhoto(): Promise<NormalizedPhoto | null> {
+export async function capturePhoto(claimBy?: ClaimBy): Promise<NormalizedPhoto | null> {
   let picked: Uint8Array[];
   try {
     picked = await camera.pick();
   } catch (error) {
-    toastPickFailure(error, 'the camera failed');
+    if (error instanceof PickDeferredError) deferUntilUnlock(error, claimBy);
+    else toastPickFailure(error, 'the camera failed');
     return null;
   }
 

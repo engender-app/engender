@@ -27,6 +27,7 @@ import { androidPhotos } from './android-bridge.ts';
 import { PhotoChannelTimeoutError } from './channel-timeout';
 import { readPickedOverChannel } from './android-pick-channel.ts';
 import {
+  PickDeferredError,
   androidPickedBytes,
   cameraPhotoPicker,
   documentPicker,
@@ -414,4 +415,42 @@ test('a native pick failure propagates without trying the fallback', async () =>
   vi.mocked(readPickedOverChannel).mockReturnValue(Promise.reject(new Error('read failed')));
   await expect(androidPickedBytes('broken')).rejects.toThrow('read failed');
   expect(androidPhotos.readPickedChunk).not.toHaveBeenCalled();
+});
+
+/* A pick that comes back while the app is locked must not be read into the
+   page: the locked route is gone, and the bytes would be journal content the
+   lock is meant to leave nowhere in the page. The tokens are all that is kept. */
+describe('a pick that returns while the app is locked', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(isAndroid).mockReturnValue(true);
+    channelAnswers([1, 2, 3]);
+  });
+
+  test.each([
+    ['photos', () => filePhotoPicker({ deferIf: () => true }), () => vi.mocked(androidPhotos.pickImages).mockResolvedValue({ tokens: ['a', 'b'] }), ['a', 'b']],
+    ['the camera', () => cameraPhotoPicker({ deferIf: () => true }), () => vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: 'c' }), ['c']],
+    ['a document', () => documentPicker({ deferIf: () => true }), () => vi.mocked(androidPhotos.pickDocument).mockResolvedValue({ token: 'd' }), ['d']]
+  ] as const)('keeps only the tokens of %s', async (_name, make, answer, tokens) => {
+    answer();
+
+    const error = await make().pick().catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(PickDeferredError);
+    expect((error as PickDeferredError).tokens).toEqual(tokens);
+    expect(vi.mocked(readPickedOverChannel)).not.toHaveBeenCalled();
+    expect(vi.mocked(androidPhotos.readPickedChunk)).not.toHaveBeenCalled();
+  });
+
+  test('reads as before while unlocked', async () => {
+    vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: 'c' });
+
+    expect(await cameraPhotoPicker({ deferIf: () => false }).pick()).toEqual([new Uint8Array([1, 2, 3])]);
+  });
+
+  test('a backed-out pick has nothing to keep', async () => {
+    vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: null });
+
+    expect(await cameraPhotoPicker({ deferIf: () => true }).pick()).toEqual([]);
+  });
 });

@@ -126,12 +126,30 @@ async function pickOneFile(...args: Parameters<typeof chooseFiles>): Promise<Uin
   return [new Uint8Array(await file.arrayBuffer())];
 }
 
-export function filePhotoPicker(): PhotoPicker {
+/** A pick that came back while the app was locked: the page holds only the
+    tokens, never the bytes (stores/pendingPick.ts). */
+export class PickDeferredError extends Error {
+  constructor(readonly tokens: string[]) {
+    super('pick-deferred');
+  }
+}
+
+export type PickerOptions = {
+  /** True while the app is locked; asked once the native pick has answered. */
+  deferIf?: () => boolean;
+};
+
+function deferWhileLocked(options: PickerOptions | undefined, tokens: string[]): void {
+  if (tokens.length && options?.deferIf?.()) throw new PickDeferredError(tokens);
+}
+
+export function filePhotoPicker(options?: PickerOptions): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
         return pickOnAndroid(async () => {
           const { tokens } = await androidPhotos.pickImages({ multiple: true });
+          deferWhileLocked(options, tokens);
           // One at a time rather than all at once: a multi-pick can be
           // several files at the ceiling, and fetching them concurrently
           // would hold every one of them in the heap together. The fallback
@@ -162,12 +180,13 @@ export function filePhotoPicker(): PhotoPicker {
     Android, so a document never takes the WebView file input's crash path
     (ticket 66); the same web file input elsewhere. Bytes only, same as
     every other picker here - accept.ts is what tells a PDF from an image. */
-export function documentPicker(): PhotoPicker {
+export function documentPicker(options?: PickerOptions): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
         return pickOnAndroid(async () => {
           const { token } = await androidPhotos.pickDocument();
+          deferWhileLocked(options, token ? [token] : []);
           return token ? [await androidPickedBytes(token)] : [];
         });
       }
@@ -187,12 +206,13 @@ export function documentPicker(): PhotoPicker {
     may keep its own copy, so gallery behaviour depends on that camera. On
     the web, the file input's `capture` hint opens the device camera instead of
     the usual chooser (ticket 12). */
-export function cameraPhotoPicker(): PhotoPicker {
+export function cameraPhotoPicker(options?: PickerOptions): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
         return pickOnAndroid(async () => {
           const { token } = await androidPhotos.captureImage();
+          deferWhileLocked(options, token ? [token] : []);
           return token ? [await androidPickedBytes(token)] : [];
         }, true);
       }
