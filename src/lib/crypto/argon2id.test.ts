@@ -143,6 +143,28 @@ describe('worker handover and fallback', () => {
     expect(worker.terminate).toHaveBeenCalledOnce();
   });
 
+  test('a caller that refuses the main thread gets an error, and hash-wasm never runs, when the worker fails to load', async () => {
+    const hashWasm = vi.fn();
+    vi.doMock('hash-wasm', () => ({ argon2id: hashWasm }));
+    const { deriveKey } = await import('./argon2id.ts');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = deriveKey('correct horse', salt, CHEAP, { mainThread: false });
+    const refused = expect(result).rejects.toThrow('argon2id worker did not start');
+    const worker = FakeWorker.made[0];
+    worker.fail();
+    await refused;
+    expect(hashWasm).not.toHaveBeenCalled();
+    expect(worker.terminate).toHaveBeenCalledOnce();
+    warn.mockRestore();
+    vi.doUnmock('hash-wasm');
+  });
+
+  test('a caller that refuses the main thread also gets an error when no worker can be constructed', async () => {
+    vi.stubGlobal('Worker', class { constructor() { throw new Error('worker blocked'); } });
+    const { deriveKey } = await import('./argon2id.ts');
+    await expect(deriveKey('correct horse', salt, CHEAP, { mainThread: false })).rejects.toThrow('argon2id worker did not start');
+  });
+
   test.each(['absent', 'throws'])('an unavailable worker falls back without prewarming: %s', async (failure) => {
     vi.stubGlobal('Worker', failure === 'absent' ? undefined : class {
       constructor() { throw new Error('worker blocked'); }

@@ -65,7 +65,11 @@ An Archive header is checked before its password starts key derivation. It
 can request at most 64 MiB of Argon2id memory, six iterations, one lane and a
 32-byte output. Higher costs are refused as a corrupt Archive. Export keeps
 the released 64 MiB, three-iteration profile; the import ceiling allows twice
-its combined cost without increasing the memory request.
+its combined cost without increasing the memory request. The same header
+check also refuses chunks under 64 KiB and a declared body over 8 GiB, and the
+payload's declared JSON length is capped at 128 MiB before it is read. The
+key derivation for an imported header only ever runs in a worker; if the
+worker cannot start, the import fails instead of running it on the main thread.
 
 ## Authentication for recovery and access changes
 

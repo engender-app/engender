@@ -39,6 +39,16 @@ const MAX_HEADER_JSON = 64 * 1024;
 
 export { ARCHIVE_FORMAT_VERSION } from './codec';
 
+/** Import work budget for the numbers a header carries, which are read
+    before anything is authenticated. The app has only ever written
+    CHUNK_SIZE chunks; the floor leaves room for tests and future tuning
+    while keeping a hostile file from asking for one decryption per byte. */
+export const MIN_CHUNK_SIZE = 64 * 1024;
+
+/** Largest body a header may declare. Chunk count times chunk size must stay
+    within it, which at the floor is 131072 chunks and at 1 MiB is 8192. */
+export const MAX_ARCHIVE_BODY_BYTES = 8 * 1024 * 1024 * 1024;
+
 /** Roughly 1 MB (ADR-0007). Small enough that peak memory stays bounded on
     a phone, large enough that the 28 bytes of nonce and tag per chunk are
     noise. */
@@ -242,6 +252,9 @@ function parseHeaderJson(json: Uint8Array): Omit<ArchiveHeader, 'formatVersion'>
   // Checked here rather than left to the KDF and the chunk loop: these
   // numbers come off a file from anywhere, and they are allocated against.
   if (typeof salt !== 'string' || !counts.every((n) => Number.isInteger(n) && (n as number) > 0)) {
+    throw new CorruptArchiveError('the archive header is not readable');
+  }
+  if (chunkSize! < MIN_CHUNK_SIZE || totalChunks! * chunkSize! > MAX_ARCHIVE_BODY_BYTES) {
     throw new CorruptArchiveError('the archive header is not readable');
   }
   if (chunkSize! > CHUNK_SIZE * 16) throw new CorruptArchiveError('the archive header is not readable');

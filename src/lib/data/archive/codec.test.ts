@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm';
 import { DOCUMENT_SIZE_CEILING } from '../documents/limits.ts';
 import { test, vi } from 'vitest';
 import { ARCHIVE_FORMAT_VERSION, CorruptArchiveError, byteReader, type ByteReader } from './container.ts';
-import { decodeArchive, encodeArchive, type ArchiveCodec } from './codec.ts';
+import { MAX_PAYLOAD_JSON_BYTES, decodeArchive, encodeArchive, type ArchiveCodec } from './codec.ts';
 import type { ArchivePayload } from './payload.ts';
 import type { ArchiveContents } from './pack.ts';
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
@@ -306,3 +306,17 @@ for (const name of ['a/b.jpg', '../b.jpg', 'a\\b.jpg', '..', '   ', '']) {
     );
   });
 }
+
+test('a payload length one byte over the limit is refused before the payload is read', async () => {
+  const requested: number[] = [];
+  const reader = (jsonLength: number): ByteReader => ({
+    async readExactly(n) { requested.push(n); return n === 4 ? u32(jsonLength) : new Uint8Array(n); },
+    async readAtMost() { return new Uint8Array(0); },
+    async atEnd() { return true; }
+  });
+  await assert.rejects(decodeArchive(reader(MAX_PAYLOAD_JSON_BYTES + 1), ARCHIVE_FORMAT_VERSION), CorruptArchiveError);
+  assert.deepEqual(requested, [4]);
+  requested.length = 0;
+  await assert.rejects(decodeArchive(reader(MAX_PAYLOAD_JSON_BYTES), ARCHIVE_FORMAT_VERSION), CorruptArchiveError);
+  assert.deepEqual(requested, [4, MAX_PAYLOAD_JSON_BYTES]);
+});
