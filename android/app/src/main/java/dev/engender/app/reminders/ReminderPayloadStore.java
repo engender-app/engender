@@ -112,12 +112,15 @@ public final class ReminderPayloadStore {
      * A payload an older build left in the clear: read once, rewrapped, and
      * the plaintext removed. Nobody loses their reminders to this ticket.
      *
-     * <p>If the rewrap throws, the plaintext stays and the payload is still
-     * returned. A device whose keystore will not mint a key is a device where
-     * removing the only copy would silently drop somebody's reminders, and
-     * this leaves it no worse off than the build that wrote it. A payload that
-     * will not parse is removed either way: it schedules nothing, so all it
-     * can still do is read as a title.
+     * <p>If the rewrap throws, the read returns nothing and the plaintext
+     * stays on disk for a retry. Handing it back would keep medication names
+     * and schedules readable and in use on a phone whose keystore is failing,
+     * which is exactly the phone where that matters. The app's own reminders
+     * are the source of truth and are rebuilt by the next sync, so nothing is
+     * lost by waiting; {@link #legacyCopyPending} is what the reminders
+     * screen reads to offer a retry or an erase. A payload that will not
+     * parse is removed either way: it schedules nothing, so all it can still
+     * do is read as a title.
      */
     private static JSONObject readLegacy(Context context, SharedPreferences prefs) {
         String raw = prefs.getString(KEY_LEGACY_PLAINTEXT, null);
@@ -131,10 +134,31 @@ public final class ReminderPayloadStore {
 
         try {
             write(context, payload);
-        } catch (Exception ignored) {
-            // Left in the clear rather than dropped; see above.
+        } catch (Exception failedRewrap) {
+            return null;
         }
         return payload;
+    }
+
+    /** Whether an older build's plaintext payload is still on disk, which is
+        to say a rewrap failed and nothing has retried it or erased it. */
+    static boolean legacyCopyPending(Context context) {
+        String raw = prefs(context).getString(KEY_LEGACY_PLAINTEXT, null);
+        return raw != null && !raw.isBlank();
+    }
+
+    /** Tries the rewrap again. True when no plaintext is left. */
+    static boolean retryLegacy(Context context) {
+        read(context);
+        return !legacyCopyPending(context);
+    }
+
+    /** Deletes the plaintext without wrapping it. Committed, not applied: the
+        caller tells the person it is gone. */
+    static void eraseLegacy(Context context) {
+        if (!prefs(context).edit().remove(KEY_LEGACY_PLAINTEXT).commit()) {
+            throw new IllegalStateException("Could not erase the old reminder copy");
+        }
     }
 
     /** Static, and no context: the wrapping key outlives the ciphertext, so

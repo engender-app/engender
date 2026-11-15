@@ -1,12 +1,15 @@
 package dev.engender.app.reminders;
 
 import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.service.notification.StatusBarNotification;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -55,6 +58,10 @@ public final class ReminderScheduler {
         this store is where a tap waits. */
     static final String PENDING_DOSE_ACTIONS = "pendingDoseActions";
 
+    /** Where a posted reminder lives: tag "reminder:<id>", this id. */
+    static final String REMINDER_TAG_PREFIX = "reminder:";
+    static final int REMINDER_NOTIFICATION_ID = 7000;
+
     static final String CHANNEL_REMINDERS = "gd-reminders";
     static final String CHANNEL_CHECK_IN = "gd-check-in";
 
@@ -79,6 +86,47 @@ public final class ReminderScheduler {
         saveAndSchedule(payload, now, () -> loadPayload(context),
             saved -> ReminderPayloadStore.write(context, saved),
             previous -> cancelAll(context, previous), saved -> scheduleAll(context, saved, now));
+        /* Still under the class monitor, so an alarm that was delivering
+           with the old payload has finished posting before this looks, and
+           the next one reads the new payload. Nothing can post the old
+           titles after this returns. */
+        withdrawRevealedReminders(context, payload);
+    }
+
+    /**
+     * Reminders already in the shade were posted under whatever the payload
+     * said then. When titles are now hidden, each is replaced in place by
+     * its hidden form, silently, so the lock screen stops showing a title or
+     * a line of text the person has just said to keep off it. The "Noted"
+     * line a dose button leaves behind times itself out in seconds and
+     * names the reminder, so it is cancelled rather than reposted. A
+     * reminder the payload no longer has is cancelled too. Anything else in
+     * the shade - another tag, another id, the check-in - is not touched here;
+     * {@link CheckInFaces#reconcile} owns the check-in.
+     */
+    private static void withdrawRevealedReminders(Context context, JSONObject payload) {
+        if (!payload.optBoolean("hideNotificationTitles", false)) return;
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return;
+        for (StatusBarNotification posted : manager.getActiveNotifications()) {
+            String tag = posted.getTag();
+            if (posted.getId() != REMINDER_NOTIFICATION_ID || tag == null || !tag.startsWith(REMINDER_TAG_PREFIX)) continue;
+            JSONObject reminder = findReminder(payload, tag.substring(REMINDER_TAG_PREFIX.length()));
+            if (reminder == null || posted.getNotification().getTimeoutAfter() > 0) {
+                manager.cancel(tag, REMINDER_NOTIFICATION_ID);
+                continue;
+            }
+            if (alreadyHidden(posted.getNotification(), payload, reminder)) continue;
+            ReminderAlarmReceiver.postReminderNotification(context, payload, reminder, true);
+        }
+    }
+
+    private static boolean alreadyHidden(Notification notification, JSONObject payload, JSONObject reminder) {
+        CharSequence title = notification.extras.getCharSequence(Notification.EXTRA_TITLE);
+        CharSequence text = notification.extras.getCharSequence(Notification.EXTRA_TEXT);
+        return title != null && text != null
+            && title.toString().equals(ReminderAlarmReceiver.resolveNotificationTitle(payload, reminder))
+            && text.toString().equals(ReminderAlarmReceiver.resolveNotificationText(payload, reminder));
     }
 
     /** What {@code RemindersPlugin.sync} does with a payload from the app,
@@ -87,6 +135,19 @@ public final class ReminderScheduler {
     static void applySync(Context context, JSONObject payload) throws Exception {
         saveAndSchedule(context, payload);
         CheckInFaces.reconcile(context, payload);
+    }
+
+    /** The reminders screen's retry. Under the same monitor as the alarms, so
+        a delivery never reads the store halfway through the rewrap. When it
+        works the alarms are set from the recovered payload at once. */
+    static synchronized boolean retryStoredCopy(Context context) {
+        boolean locked = ReminderPayloadStore.retryLegacy(context);
+        if (locked) rescheduleFromStore(context);
+        return locked;
+    }
+
+    static synchronized void eraseStoredCopy(Context context) {
+        ReminderPayloadStore.eraseLegacy(context);
     }
 
     public static synchronized void rescheduleFromStore(Context context) {

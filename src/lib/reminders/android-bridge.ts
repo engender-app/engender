@@ -47,6 +47,11 @@ export interface AndroidReminderSyncPayload {
 export interface AndroidReminderStatus {
   notifications: 'granted' | 'denied' | 'not-required';
   exactAlarms: 'granted' | 'denied' | 'not-required';
+  /** 'unprotected' while a copy of the reminders written by an older version
+      is still on the phone in the clear because locking it failed. Reminders
+      are paused until a retry succeeds or the copy is erased. Absent on a
+      build that predates the check. */
+  storedCopy?: 'ok' | 'unprotected';
 }
 
 interface AndroidRemindersBridge {
@@ -59,6 +64,12 @@ interface AndroidRemindersBridge {
       (phase 10 redesign ticket 31). */
   openNotificationSettings(): Promise<void>;
   openBatterySettings(): Promise<void>;
+  /** Tries again to lock the old plaintext copy. Resolves either way; the
+      status says whether it worked. */
+  retryStoredCopy(): Promise<void>;
+  /** Deletes the old plaintext copy. The reminders are rebuilt from the
+      journal by the next sync. */
+  eraseStoredCopy(): Promise<void>;
   consumeLaunchRoute(): Promise<{ route: string | null }>;
   /** Taken and Skip taps kept since the journal was last open. */
   pendingDoseActions(): Promise<{ actions: PendingDoseAction[] }>;

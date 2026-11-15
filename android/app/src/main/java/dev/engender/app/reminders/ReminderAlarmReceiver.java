@@ -141,6 +141,12 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
     }
 
     static void postReminderNotification(Context context, JSONObject payload, JSONObject reminder) {
+        postReminderNotification(context, payload, reminder, false);
+    }
+
+    /** {@code replacing} is a repost over one already in the shade: it must
+        not buzz, light the screen or heads-up a second time. */
+    static void postReminderNotification(Context context, JSONObject payload, JSONObject reminder, boolean replacing) {
         if (!notificationsAllowed(context)) return;
 
         String title = resolveNotificationTitle(payload, reminder);
@@ -154,6 +160,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOnlyAlertOnce(replacing)
             .setAutoCancel(true)
             /* Audit finding F-05, corrected by a later audit pass:
                VISIBILITY_PRIVATE does not hide this title on a lock
