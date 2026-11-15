@@ -173,10 +173,17 @@ tags publish downloadable artifacts without changing production. The optional
 Play upload remains non-blocking. The existing `release` environment approval
 still applies.
 
-The job downloads the published web archive and verifies its checksum, uploads
-it over SSH, then calls `journal-release.mjs` on the VPS. It compares the public
-`release.json` with the uploaded metadata before reporting success. No build
-runs on the VPS, and nginx configuration is not part of deployment.
+The package job records the SHA-256 of the web bundle it built as a job
+output. The deploy job takes the bundle from the run's own artifacts and that
+digest from `needs.package.outputs`, never from the GitHub Release, whose
+assets anyone with release access can replace together with `SHA256SUMS`. It
+refuses a bundle that does not hash to the digest, uploads the bundle over SSH
+with the digest in the command (`ssh ... sha256:<digest>`), and the receiver
+refuses an archive that does not hash to it before extracting anything. The
+job then calls `journal-release.mjs` on the VPS and compares the public
+`release.json`, `index.html`, `service-worker.js` and `_app/version.json` with
+the bundle before reporting success. No build runs on the VPS, and nginx
+configuration is not part of deployment.
 
 Configure these secrets in GitHub's `release` environment: `VPS_HOST`,
 `VPS_PORT`, `VPS_USER`, `VPS_DEPLOY_KEY`, and `VPS_KNOWN_HOSTS`. Use the
@@ -190,8 +197,12 @@ The VPS needs Node.js 18 or later, Python 3.12 or later, Bash, diff and flock. I
 `scripts/journal-release.mjs` and `scripts/app-version.mjs` as root-owned,
 mode 644 under `/usr/local/lib/engender/`, also root-owned and mode 755.
 Update these scripts as an administrator when deployment logic changes;
-uploads contain only static build files. The receiver rejects links, special
-files and paths outside `build/` before extracting anything.
+uploads contain only static build files. The receiver rejects an archive whose
+digest is not the one passed with the upload, then links, special files, paths
+that leave the release directory and top-level directories a web build does not
+have (scripts/, for one), before anything is switched. Reinstall
+the receiver after this change: the old one expects a `build/` prefix and no
+digest.
 Give `journal` a Bash login
 shell and keep its password locked. Its CI public key in
 `/home/journal/.ssh/authorized_keys` must use:

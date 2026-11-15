@@ -52,14 +52,21 @@ describe('release publication contract', () => {
 
   it('deploys stable web releases only after publication, with isolated credentials and serialized switches', () => {
     const deploy = workflow.slice(workflow.indexOf('\n  deploy-web:'));
-    expect(deploy).toContain('needs: [resolve, publish]');
+    expect(deploy).toContain('needs: [resolve, package, publish]');
     expect(deploy).toContain("if: ${{ !contains(inputs.tag, '-') }}");
     expect(deploy).toContain('environment: release');
     expect(deploy).toContain('group: journal-production');
     expect(deploy).toContain('cancel-in-progress: false');
     expect(deploy).toContain('contents: read');
     expect(deploy).toContain('bash scripts/deploy-web.sh');
+    // The bytes and their digest come from this run, never from a release asset.
+    expect(deploy).toContain('WEB_SHA256: ${{ needs.package.outputs.web_sha256 }}');
+    expect(deploy).toContain('name: release');
+    expect(deploy).not.toMatch(/gh release|SHA256SUMS|GH_TOKEN/);
+    expect(deploy).not.toMatch(/WEB_SHA256: \$\{\{ (?!needs\.package\.outputs\.)/);
     expect(deploy).not.toContain('continue-on-error:');
+    const pkg = workflow.slice(workflow.indexOf('\n  package:'), workflow.indexOf('\n  publish:'));
+    expect(pkg).toContain('web_sha256: ${{ steps.web.outputs.web_sha256 }}');
     expect(workflow.slice(0, workflow.indexOf('\n  deploy-web:'))).not.toContain('secrets.VPS_');
   });
 

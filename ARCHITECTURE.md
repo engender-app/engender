@@ -1243,6 +1243,7 @@ flowchart LR
   Sign --> Pack["package: check-release-artifacts,<br/>web bundle built twice,<br/>same digest"]
   Pack --> GH[publish: GitHub Release<br/>+ SHA256SUMS]
   GH -. optional .-> Play[Play internal track,<br/>draft]
+  Pack --> Web["deploy-web: run's bundle, digest from<br/>package output, receiver checks it too"]
 ```
 
 - **Versioning.** The public version comes only from a signed `v<semver>` tag (ADR-0022), signed by a key in [.github/release-signers](.github/release-signers) and released only through a manual dispatch on main. [scripts/app-version.mjs](scripts/app-version.mjs) reads it once, and an ordinary checkout builds as `0.0.0-dev`. [scripts/cut-release-tag.mjs](scripts/cut-release-tag.mjs) refuses to tag unless `main` is clean and [CHANGELOG.md](CHANGELOG.md) has a section for the version. [scripts/release-notes.mjs](scripts/release-notes.mjs) requires the four call-outs: schema, archive format, security migrations and minimum version.
