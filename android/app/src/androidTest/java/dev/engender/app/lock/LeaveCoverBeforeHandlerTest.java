@@ -123,12 +123,13 @@ public class LeaveCoverBeforeHandlerTest {
         }
     }
 
-    @Test public void severalHandlersWithAThirdPartyAmongThemGetNoGraceUnlessADefaultSaysOtherwise() throws Exception {
+    @Test public void aThirdPartyAppAlsoAnsweringDoesNotCostTheSystemPickerItsGrace() throws Exception {
         LeaveCover.set(true, "#101820");
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             WebViewProbe probe = new WebViewProbe(scenario, 60);
-            // No package: the system picker and the test package both answer, so the system shows its chooser.
-            assertEquals("false", leaveReport(scenario, probe, new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)));
+            // No package: the system picker and the test package both answer, and the system resolves to its
+            // own picker without a chooser, which is what a phone with a second camera app installed does.
+            assertEquals("true", leaveReport(scenario, probe, new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)));
         }
     }
 
