@@ -82,4 +82,41 @@ public class PickedThroughLockTest {
             assertTrue(result.getBoolean("done"));
         } finally { instrumentation.removeMonitor(monitor); }
     }
+
+    @Test public void aFileReadJustBeforeTheLockCanBeTakenBackAndReadAgain() throws Exception {
+        CountDownLatch ready = new CountDownLatch(1);
+        app.sendOrderedBroadcast(new Intent().setComponent(new ComponentName(instrumentation.getContext().getPackageName(),
+            BackupDocumentsProvider.Bootstrap.class.getName())).putExtra("targetPackage", app.getPackageName()), null,
+            new android.content.BroadcastReceiver() {
+                @Override public void onReceive(Context context, Intent intent) { ready.countDown(); }
+            }, null, 0, null, null);
+        assertTrue(ready.await(10, TimeUnit.SECONDS));
+        Uri tree = DocumentsContract.buildTreeDocumentUri(BackupDocumentsProvider.AUTHORITY, "root");
+        Uri document = DocumentsContract.createDocument(app.getContentResolver(),
+            DocumentsContract.buildDocumentUriUsingTree(tree, "root"), "application/pdf", "raced.pdf");
+        byte[] body = "%PDF-read-then-locked".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        try (OutputStream output = app.getContentResolver().openOutputStream(document, "wt")) { output.write(body); }
+        IntentFilter filter = new IntentFilter(Intent.ACTION_OPEN_DOCUMENT);
+        filter.addCategory(Intent.CATEGORY_OPENABLE);
+        filter.addDataType("*/*");
+        Instrumentation.ActivityMonitor monitor = instrumentation.addMonitor(filter,
+            new Instrumentation.ActivityResult(Activity.RESULT_OK, new Intent().setData(document)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)), true);
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            WebViewProbe probe = new WebViewProbe(scenario, 60);
+            String token = probe.awaitCall(probe.startCall("Photos", "pickDocument", new JSONObject()))
+                .getJSONObject("result").getString("token");
+            // The page reads the whole file, then the lock lands before the screen gets it.
+            JSONObject first = probe.awaitCall(probe.startCall("Photos", "readPickedChunk", new JSONObject().put("token", token)));
+            assertTrue(first.getJSONObject("result").getBoolean("done"));
+            JSONObject spent = probe.awaitCall(probe.startCall("Photos", "readPickedChunk", new JSONObject().put("token", token)));
+            assertEquals("the token is spent", "rejected", spent.getString("state"));
+
+            JSONObject reopened = probe.awaitCall(probe.startCall("Photos", "reopenPicked", new JSONObject().put("token", token)));
+            assertTrue(reopened.toString(), reopened.getJSONObject("result").getBoolean("reopened"));
+            JSONObject again = probe.awaitCall(probe.startCall("Photos", "readPickedChunk", new JSONObject().put("token", token)));
+            assertEquals(new String(body, java.nio.charset.StandardCharsets.UTF_8),
+                new String(Base64.decode(again.getJSONObject("result").getString("base64"), Base64.DEFAULT), java.nio.charset.StandardCharsets.UTF_8));
+        } finally { instrumentation.removeMonitor(monitor); }
+    }
 }

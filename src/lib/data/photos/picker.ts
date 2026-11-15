@@ -139,6 +139,20 @@ export type PickerOptions = {
   deferIf?: () => boolean;
 };
 
+/** The bytes of a pick's tokens, one at a time. The app can lock while they
+    are read (the grace ran out and the page locks as the person returns), and
+    the screen that asked is then about to unmount: native gives each file
+    back under its token and the pick is deferred, so nothing goes to it. */
+async function readTokens(options: PickerOptions | undefined, tokens: string[]): Promise<Uint8Array[]> {
+  const bytes: Uint8Array[] = [];
+  for (const token of tokens) bytes.push(await androidPickedBytes(token));
+  if (tokens.length && options?.deferIf?.()) {
+    await Promise.all(tokens.map((token) => androidPhotos.reopenPicked({ token })));
+    throw new PickDeferredError(tokens);
+  }
+  return bytes;
+}
+
 function deferWhileLocked(options: PickerOptions | undefined, tokens: string[]): void {
   if (tokens.length && options?.deferIf?.()) throw new PickDeferredError(tokens);
 }
@@ -156,9 +170,7 @@ export function filePhotoPicker(options?: PickerOptions): PhotoPicker {
           // transport needs it too now - PickedFiles keeps one chunked read
           // open at a time, so a second token's first chunk ends the first
           // file's read wherever it had got to (phase 9 audit ticket 14).
-          const picked: Uint8Array[] = [];
-          for (const token of tokens) picked.push(await androidPickedBytes(token));
-          return picked;
+          return readTokens(options, tokens);
         }, true);
       }
 
@@ -187,7 +199,7 @@ export function documentPicker(options?: PickerOptions): PhotoPicker {
         return pickOnAndroid(async () => {
           const { token } = await androidPhotos.pickDocument();
           deferWhileLocked(options, token ? [token] : []);
-          return token ? [await androidPickedBytes(token)] : [];
+          return readTokens(options, token ? [token] : []);
         });
       }
 
@@ -213,7 +225,7 @@ export function cameraPhotoPicker(options?: PickerOptions): PhotoPicker {
         return pickOnAndroid(async () => {
           const { token } = await androidPhotos.captureImage();
           deferWhileLocked(options, token ? [token] : []);
-          return token ? [await androidPickedBytes(token)] : [];
+          return readTokens(options, token ? [token] : []);
         }, true);
       }
 

@@ -14,6 +14,10 @@ interface AndroidPhotosBridge {
      scan through here would be a 34 MB allocation the heap can refuse
      (phase 9 audit ticket 14). picker.ts owns the loop. */
   readPickedChunk(options: { token: string }): Promise<{ base64: string; done: boolean }>;
+  /* Native keeps a file it has just handed over under its token until the next
+     pick, so a read that lost the race with a lock can be undone: the token
+     is redeemable again (stores/pendingPick.ts). */
+  reopenPicked(options: { token: string }): Promise<{ reopened: boolean }>;
   writeFile(options: { name: string; base64: string; directory?: string }): Promise<void>;
   sizeFile(options: { name: string; directory?: string }): Promise<{ size: number | null }>;
   sizeFiles(options: { names: string[]; directory?: string }): Promise<{ sizes: (number | null)[] }>;

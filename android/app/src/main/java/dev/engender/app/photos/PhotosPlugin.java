@@ -256,6 +256,11 @@ public class PhotosPlugin extends Plugin {
      * costs against the channel.
      */
     @PluginMethod
+    public void reopenPicked(PluginCall call) {
+        call.resolve(new JSObject().put("reopened", PickedFiles.reopen(call.getString("token"))));
+    }
+
+    @PluginMethod
     public void readPickedChunk(PluginCall call) {
         try {
             byte[] buffer = new byte[CHUNK_BYTES];
