@@ -1,6 +1,6 @@
 import type { NormalizedPhoto } from '../journal/photos';
 import { isHeic } from './bytes';
-import { UnsupportedImageError } from './normalize-pixels';
+import { refuseUndecodableImage, UnsupportedImageError } from './normalize-pixels';
 import type { NormalizeReply } from './normalize.worker';
 
 export { MAX_EDGE, THUMB_EDGE, THUMB_QUALITY, UnsupportedImageError } from './normalize-pixels';
@@ -12,6 +12,8 @@ const HEIC_MESSAGE =
     an idle page can wait four seconds per image for an idle-task deadline. */
 export async function normalizePhoto(bytes: Uint8Array): Promise<NormalizedPhoto> {
   if (isHeic(bytes)) throw new UnsupportedImageError('heic', HEIC_MESSAGE);
+  // Before the worker exists: a refused image costs no thread either.
+  refuseUndecodableImage(bytes);
 
   const worker = new Worker(new URL('./normalize.worker.ts', import.meta.url), { type: 'module' });
   try {

@@ -44,7 +44,7 @@ interface StoredPdf {
     has a row or a file name of its own. */
 export type DocumentFile = NormalizedPhoto | StoredPdf;
 
-export type DocumentRefusalKind = 'unsupported' | 'too-large';
+export type DocumentRefusalKind = 'unsupported' | 'too-large' | 'too-many-pixels';
 
 export class DocumentRefusedError extends Error {
   readonly kind: DocumentRefusalKind;
@@ -57,6 +57,8 @@ export class DocumentRefusedError extends Error {
 }
 
 const TOO_LARGE_MESSAGE = `That file is too large to store. Up to ${DOCUMENT_SIZE_CEILING / (1024 * 1024)} MB.`;
+
+const TOO_MANY_PIXELS_MESSAGE = 'That image has more pixels than this app will open.';
 
 const UNSUPPORTED_MESSAGE = "This file isn't a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.";
 
@@ -92,6 +94,12 @@ export async function acceptDocumentFile(bytes: Uint8Array): Promise<DocumentFil
     // HEIC keeps its own refusal and its own wording (ADR-0065's own
     // instruction) - only "not an image either" is new here.
     if (error instanceof UnsupportedImageError && error.kind === 'heic') throw error;
+    // An image declaring more pixels than the budget (media/budget.ts) is
+    // a different refusal from "not an image either": it is one, and the
+    // person can fix it by choosing a smaller one.
+    if (error instanceof UnsupportedImageError && error.kind === 'too-many-pixels') {
+      throw new DocumentRefusedError('too-many-pixels', TOO_MANY_PIXELS_MESSAGE, { cause: error });
+    }
     throw new DocumentRefusedError('unsupported', UNSUPPORTED_MESSAGE, { cause: error });
   }
   refuseAboveCeiling(photo.full.byteLength);

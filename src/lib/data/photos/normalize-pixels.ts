@@ -25,6 +25,7 @@
    tests this against a real Chromium. */
 
 import type { NormalizedPhoto } from '../journal/photos';
+import { judgeImage } from '../media/budget';
 
 /** The long edge of a stored photo, and of its thumbnail. 2048 is
     ADR-0008's; the thumbnail is sized for the Progress grid at 2x, so
@@ -44,7 +45,7 @@ export const THUMB_QUALITY = 0.7;
     person who picked it. */
 /** As with UnsupportedArchiveKind: the screen words its message from this,
     while the message itself is the English diagnostic for the console. */
-type UnsupportedImageKind = 'heic' | 'unreadable';
+type UnsupportedImageKind = 'heic' | 'unreadable' | 'too-many-pixels';
 
 export class UnsupportedImageError extends Error {
   readonly kind: UnsupportedImageKind;
@@ -57,8 +58,20 @@ export class UnsupportedImageError extends Error {
 }
 
 const UNREADABLE_MESSAGE = "This file isn't an image this app can read. Try a JPEG or PNG.";
+const TOO_MANY_PIXELS_MESSAGE = 'This image declares more pixels than this app will decode.';
+
+/** Judges the header before anything decodes: the declared size is what a
+    decoder will allocate, whatever the file's own byte length is
+    (media/budget.ts). Exported because the caller that owns the worker
+    asks the same question before spawning one. */
+export function refuseUndecodableImage(bytes: Uint8Array): void {
+  const verdict = judgeImage(bytes);
+  if (verdict === 'too-many-pixels') throw new UnsupportedImageError('too-many-pixels', TOO_MANY_PIXELS_MESSAGE);
+  if (verdict === 'unreadable') throw new UnsupportedImageError('unreadable', UNREADABLE_MESSAGE);
+}
 
 export async function normalizePhotoPixels(bytes: Uint8Array): Promise<NormalizedPhoto> {
+  refuseUndecodableImage(bytes);
   let source: ImageBitmap;
   try {
     source = await createImageBitmap(new Blob([bytes as BlobPart]), { imageOrientation: 'from-image' });

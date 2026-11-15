@@ -11,11 +11,12 @@
    that one does: it reports failures by raising a toast, which is an app-level
    concern the data layer has no business knowing about. */
 
-import { cameraPhotoPicker, filePhotoPicker } from '../data/photos/picker';
+import { cameraPhotoPicker, filePhotoPicker, type PickedBytes } from '../data/photos/picker';
 import { m } from '$lib/paraglide/messages';
 import { normalizePhoto, UnsupportedImageError } from '../data/photos/normalize';
 import { PhotoTooLargeError } from '../data/photos/limits';
 import { DocumentRefusedError } from '../data/documents/accept';
+import { MediaBudgetError } from '../data/media/budget';
 import type { NormalizedPhoto } from '../data/journal/photos';
 import { toast } from './toasts.svelte';
 
@@ -44,6 +45,8 @@ function toastPickFailure(error: unknown, logMessage: string): void {
     toast(m.photo_too_large());
   } else if (error instanceof DocumentRefusedError) {
     toast(m.document_too_large());
+  } else if (error instanceof MediaBudgetError) {
+    toast(m.photo_selection_too_large());
   } else {
     console.error(logMessage, error);
     toast(m.photo_picker_failed());
@@ -54,18 +57,25 @@ function toastPickFailure(error: unknown, logMessage: string): void {
     anything unreadable so picking four photos of which one is a HEIC still
     returns the other three. Shared by pickPhotos and capturePhoto - both
     hand off to the same seam once bytes exist, regardless of source. */
-async function normalizeAll(picked: Uint8Array[]): Promise<NormalizedPhoto[]> {
+async function normalizeAll(picked: PickedBytes[]): Promise<NormalizedPhoto[]> {
   const normalized: NormalizedPhoto[] = [];
-  for (const bytes of picked) {
+  // Read, normalize, drop: one picked file's raw bytes live at a time.
+  for (const read of picked) {
     try {
-      normalized.push(await normalizePhoto(bytes));
+      normalized.push(await normalizePhoto(await read()));
     } catch (error) {
-      /* UnsupportedImageError says which of the two refusals this is, and
+      /* UnsupportedImageError says which of the refusals this is, and
          the wording comes from the catalogue rather than from the error, so
          a Polish reader gets a Polish sentence. Anything else is a bug and
          gets the plain one. */
       if (error instanceof UnsupportedImageError) {
-        toast(error.kind === 'heic' ? m.photo_heic() : m.photo_not_an_image());
+        toast(
+          error.kind === 'heic'
+            ? m.photo_heic()
+            : error.kind === 'too-many-pixels'
+              ? m.image_too_many_pixels()
+              : m.photo_not_an_image()
+        );
       } else {
         console.error('a picked photo could not be normalized', error);
         toast(m.photo_unreadable());
@@ -81,9 +91,9 @@ async function normalizeAll(picked: Uint8Array[]): Promise<NormalizedPhoto[]> {
     `limit` caps how many are kept, for the one owner that holds a single
     photo: a milestone. */
 export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
-  let picked: Uint8Array[];
+  let picked: PickedBytes[];
   try {
-    picked = await picker.pick();
+    picked = await picker.pick({ multiple: limit !== 1 });
   } catch (error) {
     toastPickFailure(error, 'the photo picker failed');
     return [];
@@ -104,6 +114,6 @@ export async function capturePhoto(): Promise<NormalizedPhoto | null> {
     return null;
   }
 
-  const [photo] = await normalizeAll(picked);
+  const [photo] = await normalizeAll(picked.map((bytes): PickedBytes => async () => bytes));
   return photo ?? null;
 }
