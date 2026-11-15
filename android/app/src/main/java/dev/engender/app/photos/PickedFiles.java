@@ -128,6 +128,13 @@ public final class PickedFiles {
         if (channelReading && token.equals(readingToken)) endRead();
     }
 
+    /** Drops every held pick: the device reset, so a file kept through a lock
+        (pendingPick.ts) cannot outlive the journal it was picked for. */
+    public static synchronized void clear() {
+        endRead();
+        HELD.clear();
+    }
+
     static synchronized void release(String token) {
         HELD.remove(token);
         cancelChannelRead(token);
