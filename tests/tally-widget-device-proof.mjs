@@ -67,7 +67,8 @@ try {
   console.log('PASS AppLaunchAuthenticationTest on the device: 9 tests');
 
   adb('shell', 'pm', 'clear', pkg);
-  adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.MainActivity`);
+  // MainActivity is not exported; the launcher alias is.
+  adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.Launch01`);
   let { browser, page } = await attach();
   await firstRun(page, new URL(page.url()).origin);
   assert.match(await tallyWords(page), NONE);
