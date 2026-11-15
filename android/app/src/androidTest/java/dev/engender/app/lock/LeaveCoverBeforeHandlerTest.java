@@ -17,6 +17,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -31,6 +32,12 @@ public class LeaveCoverBeforeHandlerTest {
     private static final String[] ACTIONS = {
         MediaStore.ACTION_IMAGE_CAPTURE, Intent.ACTION_OPEN_DOCUMENT,
         Intent.ACTION_CREATE_DOCUMENT, Intent.ACTION_OPEN_DOCUMENT_TREE};
+
+    @Before public void allowCamera() {
+        // The camera intent is refused outright while the app's own CAMERA permission is revoked.
+        InstrumentationRegistry.getInstrumentation().getUiAutomation()
+            .grantRuntimePermission(app.getPackageName(), android.Manifest.permission.CAMERA);
+    }
 
     @After public void tearDown() {
         TranslucentHandlerActivity.onFirstFrame = null;
@@ -103,7 +110,9 @@ public class LeaveCoverBeforeHandlerTest {
 
     /** What the activity tells the page about a leave to {@code intent}: the argument of __lockOnLeaveFromNative. */
     private String leaveReport(ActivityScenario<MainActivity> scenario, WebViewProbe probe, Intent intent) throws Exception {
-        probe.evaluate("window.__reports = []; window.__lockOnLeaveFromNative = function (own) { window.__reports.push(String(own)); }; 1");
+        // The page installs its own hook when it boots, so a plain assignment can lose that race: pin ours.
+        probe.evaluate("window.__reports = []; Object.defineProperty(window, '__lockOnLeaveFromNative', {configurable: true,"
+            + " get: function () { return function (own) { window.__reports.push(String(own)); }; }, set: function () {}}); 1");
         scenario.onActivity(activity -> activity.startActivityForResult(intent, 78));
         String reports = "\"\"";
         for (int wait = 0; wait < 40 && reports.equals("\"\""); wait++) {

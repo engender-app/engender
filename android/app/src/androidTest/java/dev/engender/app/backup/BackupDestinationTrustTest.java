@@ -39,7 +39,6 @@ public class BackupDestinationTrustTest {
     private final Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
     private final Uri provider = Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY);
     private final Uri tree = DocumentsContract.buildTreeDocumentUri(BackupDocumentsProvider.AUTHORITY, "root");
-    private final Uri second = DocumentsContract.buildTreeDocumentUri(BackupDocumentsProvider.AUTHORITY, "root-second");
 
     private void bootstrap() throws Exception {
         CountDownLatch ready = new CountDownLatch(1);
@@ -113,9 +112,15 @@ public class BackupDestinationTrustTest {
         bootstrap();
         SharedPreferences prefs = app.getSharedPreferences(AutoExportPlugin.PREFS, 0);
         prefs.edit().clear().putBoolean("enabled", true).putString("destinationUri", tree.toString()).commit();
-        Uri foreign = DocumentsContract.createDocument(app.getContentResolver(),
-            DocumentsContract.buildDocumentUriUsingTree(second, "root-second"), "application/octet-stream", "foreign.bin");
-        assertNotNull(foreign);
+        Uri created = DocumentsContract.createDocument(app.getContentResolver(),
+            DocumentsContract.buildDocumentUriUsingTree(tree, "root"), "application/octet-stream", "foreign.bin");
+        assertNotNull(created);
+        // The same file addressed outside the picked folder, with its own grant: reachable, but not a child of the tree.
+        String id = DocumentsContract.getDocumentId(created);
+        android.os.Bundle grant = new android.os.Bundle();
+        grant.putString("targetPackage", app.getPackageName());
+        app.getContentResolver().call(provider, "grantDocument", id, grant);
+        Uri foreign = DocumentsContract.buildDocumentUri(BackupDocumentsProvider.AUTHORITY, id);
         byte[] kept = "another folder's file".getBytes(java.nio.charset.StandardCharsets.UTF_8);
         try (OutputStream output = app.getContentResolver().openOutputStream(foreign, "wt")) { output.write(kept); }
         File decoy = new File(app.getFilesDir(), "stage-decoy");

@@ -69,6 +69,13 @@ public class BackupDocumentsProvider extends DocumentsProvider {
                 android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             return Bundle.EMPTY;
         }
+        if ("grantDocument".equals(method)) {
+            // A single document by its own URI, outside any picked tree.
+            getContext().grantUriPermission(extras.getString("targetPackage"),
+                android.provider.DocumentsContract.buildDocumentUri(AUTHORITY, arg),
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            return Bundle.EMPTY;
+        }
         if ("reset".equals(method) || "grant".equals(method)) {
             if (extras != null && extras.getString("targetPackage") != null) grantTarget = extras.getString("targetPackage");
             if ("reset".equals(method)) {
