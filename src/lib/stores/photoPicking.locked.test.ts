@@ -129,3 +129,23 @@ describe('a too-large file in a pick kept through a lock', () => {
     expect(toast).not.toHaveBeenCalledWith('unreadable');
   });
 });
+
+describe('a file native cannot give back after a lock', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dropPending();
+    vi.stubGlobal('location', { pathname: '/entry/new' });
+  });
+
+  test('is reported once, not once per remaining file', async () => {
+    const lost = vi.fn().mockRejectedValue(new Error('picked-file-lost'));
+    const next = vi.fn();
+    filePick.mockResolvedValue([lost, next]);
+
+    expect(await pickPhotos(undefined, 'entry')).toEqual([]);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledTimes(1);
+    expect(toast).toHaveBeenCalledWith('picker-failed');
+  });
+});

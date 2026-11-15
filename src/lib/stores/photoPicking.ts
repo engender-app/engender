@@ -108,6 +108,11 @@ async function normalizeAll(picked: PickedBytes[], claimBy?: ClaimBy): Promise<N
         deferUntilUnlock(error, claimBy);
         return [];
       }
+      // native could not give a read file back, so the pick is lost and the rest would only repeat it
+      if (error instanceof Error && error.message === 'picked-file-lost') {
+        toast(m.photo_picker_failed());
+        return [];
+      }
       /* UnsupportedImageError says which of the refusals this is, and
          the wording comes from the catalogue rather than from the error, so
          a Polish reader gets a Polish sentence. Anything else is a bug and
