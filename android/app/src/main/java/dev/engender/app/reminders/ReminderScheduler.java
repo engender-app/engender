@@ -98,7 +98,7 @@ public final class ReminderScheduler {
      * said then. When titles are now hidden, each is replaced in place by
      * its hidden form, silently, so the lock screen stops showing a title or
      * a line of text the person has just said to keep off it. The "Noted"
-     * line a dose button leaves behind times itself out in seconds and
+     * line a dose button leaves behind (marked by an extra) times itself out in seconds and
      * names the reminder, so it is cancelled rather than reposted. A
      * reminder the payload no longer has is cancelled too. Anything else in
      * the shade - another tag, another id, the check-in - is not touched here;
@@ -112,15 +112,15 @@ public final class ReminderScheduler {
             String tag = posted.getTag();
             if (posted.getId() != REMINDER_NOTIFICATION_ID || tag == null || !tag.startsWith(REMINDER_TAG_PREFIX)) continue;
             JSONObject reminder = findReminder(payload, tag.substring(REMINDER_TAG_PREFIX.length()));
-            if (reminder == null || posted.getNotification().getTimeoutAfter() > 0) {
+            if (reminder == null || posted.getNotification().extras.getBoolean(ReminderAlarmReceiver.EXTRA_NOTED, false)) {
                 manager.cancel(tag, REMINDER_NOTIFICATION_ID);
                 continue;
             }
             if (alreadyHidden(posted.getNotification(), payload, reminder)) continue;
-            /* Cancelled first: Android sheds notifications posted too fast,
-               and a shed repost must leave nothing in the shade rather than
-               the title that was just hidden. */
-            manager.cancel(tag, REMINDER_NOTIFICATION_ID);
+            /* Replaced in place under the same tag and id. A cancel first
+               races the repost inside the notification service (the two
+               take different paths) and on a Pixel running Android 17 the
+               cancel won, leaving nothing in the shade. */
             ReminderAlarmReceiver.postReminderNotification(context, payload, reminder, true);
         }
     }
