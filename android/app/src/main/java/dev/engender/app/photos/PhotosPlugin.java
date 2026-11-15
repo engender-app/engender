@@ -47,7 +47,7 @@ public class PhotosPlugin extends Plugin {
         the number hold() checks a content provider's declared size against
         before a token for that file is ever handed out. */
     private static final long DOCUMENT_SIZE_CEILING = 25L * 1024 * 1024;
-    private static final long PHOTO_SIZE_CEILING = 32L * 1024 * 1024;
+    static final long PHOTO_SIZE_CEILING = 32L * 1024 * 1024;
 
     @Override
     public void load() {
@@ -450,7 +450,8 @@ public class PhotosPlugin extends Plugin {
         return -1;
     }
 
-    /** Every URI's declared size is checked before any of them is held, so
+    /** Every URI's declared size is checked before any of them is held, as
+        are the selection's count and total ({@link PickBudget}), so
         one oversized file in a multi-pick refuses the batch before a token
         for any of them exists - the same "none of them read" the web half
         gets from checking every File.size before the first arrayBuffer()
@@ -461,9 +462,13 @@ public class PhotosPlugin extends Plugin {
         ask for the bytes, and a static map holding an Activity would be a
         leak. */
     private List<String> hold(List<Uri> uris, long ceiling) throws IOException {
+        long total = 0;
         for (Uri uri : uris) {
-            if (querySize(uri) > ceiling) throw new IOException("too-large");
+            long size = querySize(uri);
+            if (size > ceiling) throw new IOException("too-large");
+            if (size > 0) total += size;
         }
+        PickBudget.check(uris.size(), total);
 
         Context context = getContext().getApplicationContext();
         List<PickedFiles.Source> sources = new ArrayList<>(uris.size());

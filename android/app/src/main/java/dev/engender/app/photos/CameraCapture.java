@@ -9,8 +9,9 @@ import android.provider.MediaStore;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStream;
 
 /** The camera can write only to the disposable capture directory. */
 public final class CameraCapture {
@@ -40,8 +41,31 @@ public final class CameraCapture {
     }
 
     public static byte[] consume(Context context) throws IOException {
+        return consume(context, PhotosPlugin.PHOTO_SIZE_CEILING);
+    }
+
+    /**
+     * The captured photo, refused with {@code too-large} when it is over
+     * {@code ceiling} - the same 32 MiB the picker applies to a gallery photo,
+     * which this path used to skip by reading the whole file. The length on
+     * disk is checked before the file is opened, and the read itself is
+     * bounded too, because the camera app keeps its write grant until the
+     * {@code finally} below revokes it and a file can grow in between. Either
+     * way the file is deleted and the grant revoked: nothing over the ceiling
+     * stays in the cache.
+     */
+    static byte[] consume(Context context, long ceiling) throws IOException {
         try {
-            byte[] bytes = Files.readAllBytes(output(context).toPath());
+            File file = output(context);
+            if (file.length() > ceiling) throw new IOException("too-large");
+            byte[] bytes;
+            try (InputStream stream = PhotoPickChannel.limit(new FileInputStream(file), ceiling)) {
+                bytes = PhotoPickChannel.readFully(stream);
+            } catch (IOException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IOException(e);
+            }
             if (bytes.length == 0) throw new IOException("camera returned no photo");
             return bytes;
         } finally {

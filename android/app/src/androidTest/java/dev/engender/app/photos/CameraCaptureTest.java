@@ -68,6 +68,62 @@ public class CameraCaptureTest {
         assertFalse(new File(context.getCacheDir(), "camera-capture/capture.jpg").exists());
     }
 
+    /* GD-003: the camera path read capture.jpg whole and never applied the
+       32 MiB ceiling every other photo path has. A sparse file one byte over
+       it costs nothing to make and must be refused before it is read. */
+    @Test
+    public void captureOneByteOverTheCeilingIsRefusedAndRemoved() throws Exception {
+        CameraCapture.prepare(context);
+        File output = new File(context.getCacheDir(), "camera-capture/capture.jpg");
+        try (java.io.RandomAccessFile file = new java.io.RandomAccessFile(output, "rw")) {
+            file.setLength(PhotosPlugin.PHOTO_SIZE_CEILING + 1);
+        }
+
+        java.io.IOException refused = assertThrows(java.io.IOException.class, () -> CameraCapture.consume(context));
+
+        assertEquals("too-large", refused.getMessage());
+        assertFalse("oversize capture was left in the cache", output.exists());
+    }
+
+    /* The ceiling is inclusive: a photo of exactly the ceiling is a photo.
+       Run at 1 MiB rather than 32 so the test does not itself hold 100 MB. */
+    @Test
+    public void captureAtTheCeilingIsStillRead() throws Exception {
+        long ceiling = 1024 * 1024;
+        CameraCapture.prepare(context);
+        File output = new File(context.getCacheDir(), "camera-capture/capture.jpg");
+        try (java.io.RandomAccessFile file = new java.io.RandomAccessFile(output, "rw")) {
+            file.setLength(ceiling);
+        }
+
+        assertEquals(ceiling, CameraCapture.consume(context, ceiling).length);
+        assertFalse(output.exists());
+
+        CameraCapture.prepare(context);
+        try (java.io.RandomAccessFile file = new java.io.RandomAccessFile(output, "rw")) {
+            file.setLength(ceiling + 1);
+        }
+        assertThrows(java.io.IOException.class, () -> CameraCapture.consume(context, ceiling));
+        assertFalse(output.exists());
+    }
+
+    /* The grant goes with the file: after a refusal the camera app can no
+       longer write to the output it was given. */
+    @Test
+    public void refusalRevokesTheCameraGrant() throws Exception {
+        Intent intent = CameraCapture.prepare(context);
+        Uri output = intent.getParcelableExtra(MediaStore.EXTRA_OUTPUT);
+        File file = new File(context.getCacheDir(), "camera-capture/capture.jpg");
+        try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(file, "rw")) {
+            raf.setLength(PhotosPlugin.PHOTO_SIZE_CEILING + 1);
+        }
+
+        assertThrows(java.io.IOException.class, () -> CameraCapture.consume(context));
+
+        // With the file gone the provider has nothing to open for the URI.
+        assertThrows(java.io.FileNotFoundException.class, () -> context.getContentResolver().openInputStream(output));
+    }
+
     @Test
     public void cancelledCaptureDeletesPartialOutput() throws Exception {
         CameraCapture.prepare(context);
