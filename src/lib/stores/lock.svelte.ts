@@ -34,6 +34,7 @@ import { isAndroid } from '../platform';
 import { ui } from './ui.svelte';
 import { forgetLastResults } from '../data/live/lastResults';
 import { unlockAttempts } from '../lock/unlock-attempt';
+import { dropPending } from './pendingPick';
 import { watchLeave, type NativeLeaveHooks } from '../lock/leave-lock';
 import { revealLeaveCoverAfterPaint } from '../lock/leave-cover';
 
@@ -77,6 +78,8 @@ export const isSessionLocked = () => lockEngaged && !unlockedNow;
 
 function lockNow(closeJournal: () => Promise<void>) {
   attempts.lock();
+  /* A result kept through the last lock was for the screen then open. */
+  dropPending();
   unlockedNow = false;
   lockEngaged = true;
   lockState.unlocked = false;

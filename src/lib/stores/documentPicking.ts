@@ -59,7 +59,8 @@ export async function pickDocument(claimBy?: ClaimBy): Promise<DocumentFile | nu
 }
 
 /** The file a pick left for the documents screen while the app was locked. */
-export async function claimPendingDocument(): Promise<DocumentFile | null> {
+export async function claimPendingDocument(canUse: () => boolean = () => true): Promise<DocumentFile | null> {
+  if (!canUse()) return null;
   const [token] = claimPending('document', location.pathname) ?? [];
   if (!token) return null;
   let bytes: Uint8Array;

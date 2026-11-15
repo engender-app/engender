@@ -95,8 +95,8 @@
   /* A file that came back while the app was locked (non-system handler under
      Lock immediately) opens the import sheet the same way a pick does. */
   onMount(() => {
-    void claimPendingDocument().then((content) => {
-      if (!content || !active || record.editor || record.saving) return;
+    void claimPendingDocument(() => active && !record.editor && !record.saving).then((content) => {
+      if (!content || !active) return;
       record.openEditor(null);
       record.editor!.content = content;
     });

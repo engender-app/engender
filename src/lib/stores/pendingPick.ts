@@ -18,6 +18,11 @@ let held: { claimBy: ClaimBy; path: string; tokens: string[]; at: number } | nul
 
 export function holdPending(claimBy: ClaimBy, path: string, tokens: string[], now = Date.now()): void {
   held = { claimBy, path, tokens, at: now };
+  // Nobody claimed it: forget the token (the native side drops the file at the next pick or a reset).
+  const mine = held;
+  setTimeout(() => {
+    if (held === mine) held = null;
+  }, HOLD_MS + 1000);
 }
 
 /** The tokens for this kind of screen at this address, once; null otherwise. */

@@ -62,7 +62,9 @@ function deferUntilUnlock(error: PickDeferredError, claimBy: ClaimBy | undefined
 
 /** What a pick that came back during a lock left for this screen, read and
     normalized now that the journal is open again. Empty when there is none. */
-export async function claimPendingPhotos(claimBy: ClaimBy): Promise<NormalizedPhoto[]> {
+export async function claimPendingPhotos(claimBy: ClaimBy, canUse: () => boolean = () => true): Promise<NormalizedPhoto[]> {
+  // Asked before the token is taken: a file read for a screen that has gone again is lost for good.
+  if (!canUse()) return [];
   const tokens = claimPending(claimBy, location.pathname);
   if (!tokens) return [];
   let picked: Uint8Array[];

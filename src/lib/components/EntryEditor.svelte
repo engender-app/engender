@@ -609,8 +609,12 @@
   /* A photo that came back while the app was locked (non-system handler under
      Lock immediately) was kept by token and is asked for a day like any other
      (photoPicking.ts claimPendingPhotos). */
+  let editorMounted = true;
+  onDestroy(() => { editorMounted = false; });
   onMount(() => {
-    void claimPendingPhotos('entry').then(queueForDayPrompt);
+    void claimPendingPhotos('entry', () => editorMounted).then((photos) => {
+      if (editorMounted) queueForDayPrompt(photos);
+    });
   });
 
   // The context is this entry: the last photo already in its own draft,
