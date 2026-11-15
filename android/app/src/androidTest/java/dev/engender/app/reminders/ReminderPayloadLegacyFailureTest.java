@@ -107,6 +107,38 @@ public class ReminderPayloadLegacyFailureTest {
         assertTrue("the sync reported success without storing anything", threw);
     }
 
+    @Test
+    public void theFailureSurfaceLetsThePersonRetry() {
+        ReminderPayloadStore.Faults faults = new ReminderPayloadStore.Faults();
+        faults.cipher = true;
+        ReminderPayloadStore.faults = faults;
+        assertNull(ReminderPayloadStore.read(context));
+        assertTrue("the status would say all is well", ReminderPayloadStore.legacyCopyPending(context));
+        assertFalse("a retry that fails again reported success", ReminderScheduler.retryStoredCopy(context));
+        assertTrue(ReminderPayloadStore.legacyCopyPending(context));
+
+        ReminderPayloadStore.faults = null;
+
+        assertTrue("the retry did not lock the copy", ReminderScheduler.retryStoredCopy(context));
+        assertFalse(ReminderPayloadStore.legacyCopyPending(context));
+        assertNull(prefs().getString(ReminderPayloadStore.KEY_LEGACY_PLAINTEXT, null));
+        assertNotNull(ReminderPayloadStore.read(context));
+    }
+
+    @Test
+    public void theFailureSurfaceLetsThePersonErase() {
+        ReminderPayloadStore.Faults faults = new ReminderPayloadStore.Faults();
+        faults.keyGeneration = true;
+        ReminderPayloadStore.faults = faults;
+        assertNull(ReminderPayloadStore.read(context));
+
+        ReminderScheduler.eraseStoredCopy(context);
+
+        assertFalse(ReminderPayloadStore.legacyCopyPending(context));
+        assertNull(prefs().getString(ReminderPayloadStore.KEY_LEGACY_PLAINTEXT, null));
+        assertNull("nothing is left to schedule from", ReminderPayloadStore.read(context));
+    }
+
     private SharedPreferences prefs() {
         return context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE);
     }
