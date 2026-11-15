@@ -123,6 +123,49 @@ public class LeaveCoverBeforeHandlerTest {
         }
     }
 
+    @Test public void severalHandlersWithAThirdPartyAmongThemGetNoGraceUnlessADefaultSaysOtherwise() throws Exception {
+        LeaveCover.set(true, "#101820");
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            WebViewProbe probe = new WebViewProbe(scenario, 60);
+            // No package: the system picker and the test package both answer, so the system shows its chooser.
+            assertEquals("false", leaveReport(scenario, probe, new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)));
+        }
+    }
+
+    @Test public void theCoverFadesOutRatherThanCuttingWhenTheReturnLiftsIt() throws Exception {
+        LeaveCover.set(true, "#101820");
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            java.util.List<Float> alphas = new java.util.concurrent.CopyOnWriteArrayList<>();
+            CountDownLatch gone = new CountDownLatch(1);
+            android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+            scenario.onActivity(activity -> {
+                LeaveCover.set(true, "#101820");
+                activity.startActivityForResult(handler(Intent.ACTION_OPEN_DOCUMENT_TREE), 79);
+                // Sample the cover on every frame from the launch on; the page's own reveal after the return
+                // and the explicit one below land in the same series.
+                android.view.Choreographer.FrameCallback sample = new android.view.Choreographer.FrameCallback() {
+                    @Override public void doFrame(long frameTimeNanos) {
+                        float alpha = activity.leaveCoverAlpha();
+                        if (alpha == 1f || !alphas.isEmpty()) alphas.add(alpha);
+                        if (alpha == 0f && alphas.size() > 1) gone.countDown();
+                        else android.view.Choreographer.getInstance().postFrameCallback(this);
+                    }
+                };
+                android.view.Choreographer.getInstance().postFrameCallback(sample);
+            });
+            Thread.sleep(1500);
+            scenario.onActivity(activity -> activity.finishActivity(79));
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            Thread.sleep(300);
+            scenario.onActivity(activity -> activity.revealLeaveCover());
+            assertTrue("the cover never came off: " + alphas, gone.await(8, TimeUnit.SECONDS));
+            float largestStep = 0;
+            for (int index = 1; index < alphas.size(); index++) largestStep = Math.max(largestStep, Math.abs(alphas.get(index - 1) - alphas.get(index)));
+            assertTrue("a cut, not a fade: " + alphas, largestStep <= 0.5f);
+            assertTrue("no intermediate frame: " + alphas, alphas.stream().anyMatch(a -> a > 0f && a < 1f));
+        }
+    }
+
     /** What the activity tells the page about a leave to {@code intent}: the argument of __lockOnLeaveFromNative. */
     private String leaveReport(ActivityScenario<MainActivity> scenario, WebViewProbe probe, Intent intent) throws Exception {
         // The page installs its own hook when it boots, so a plain assignment can lose that race: pin ours.
