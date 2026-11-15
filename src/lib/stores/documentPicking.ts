@@ -24,11 +24,17 @@ import { toast } from './toasts.svelte';
 
 const picker = documentPicker({ deferIf: isSessionLocked });
 
-/** DocumentRefusedError's own two messages, by kind - shared by both catch
+/** DocumentRefusedError's own messages, by kind - shared by both catch
     blocks below, which reach a DocumentRefusedError by two different
     routes (the picker's own ceiling, and acceptDocumentFile()'s). */
 function toastDocumentRefusal(kind: DocumentRefusalKind): void {
-  toast(kind === 'too-large' ? m.document_too_large() : m.document_unsupported_file());
+  toast(
+    kind === 'too-large'
+      ? m.document_too_large()
+      : kind === 'too-many-pixels'
+        ? m.image_too_many_pixels()
+        : m.document_unsupported_file()
+  );
 }
 
 /** Whatever the user chose, accepted and ready to store - or null if they

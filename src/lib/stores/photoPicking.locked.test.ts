@@ -23,6 +23,7 @@ vi.mock('$lib/paraglide/messages', () => ({
     photo_heic: () => 'heic',
     photo_not_an_image: () => 'not-an-image',
     photo_unreadable: () => 'unreadable',
+    photo_too_large: () => 'photo-too-large',
     document_too_large: () => 'too-large',
     picked_while_locked_added: () => 'added',
     picked_while_locked_lost: () => 'lost'
@@ -41,6 +42,7 @@ vi.mock('../data/photos/picker', () => ({
 
 import { capturePhoto, claimPendingPhotos, pickPhotos } from './photoPicking';
 import { dropPending } from './pendingPick';
+import { PhotoTooLargeError } from '../data/photos/limits';
 
 const NORMALIZED = { full: new Uint8Array([1]), thumb: new Uint8Array([2]) };
 
@@ -106,5 +108,24 @@ describe('a lock that lands while a picked photo is being normalized', () => {
 
     cameraRecheck.mockResolvedValue(undefined);
     expect(await claimPendingPhotos('entry')).toEqual([NORMALIZED]);
+  });
+});
+
+describe('a too-large file in a pick kept through a lock', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dropPending();
+    vi.stubGlobal('location', { pathname: '/entry/new' });
+  });
+
+  test('says too large, not unreadable', async () => {
+    cameraPick.mockRejectedValue(new PickDeferredError(['tok']));
+    await capturePhoto('entry');
+    androidPickedBytes.mockRejectedValue(new PhotoTooLargeError());
+
+    expect(await claimPendingPhotos('entry')).toEqual([]);
+
+    expect(toast).toHaveBeenCalledWith('photo-too-large');
+    expect(toast).not.toHaveBeenCalledWith('unreadable');
   });
 });

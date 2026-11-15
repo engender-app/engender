@@ -11,13 +11,14 @@
    that one does: it reports failures by raising a toast, which is an app-level
    concern the data layer has no business knowing about. */
 
-import { androidPickedBytes, cameraPhotoPicker, filePhotoPicker, PickDeferredError } from '../data/photos/picker';
+import { androidPickedBytes, cameraPhotoPicker, filePhotoPicker, PickDeferredError, type PickedBytes } from '../data/photos/picker';
 import { claimPending, holdPending, type ClaimBy } from './pendingPick';
 import { isSessionLocked } from './lock.svelte';
 import { m } from '$lib/paraglide/messages';
 import { normalizePhoto, UnsupportedImageError } from '../data/photos/normalize';
 import { PhotoTooLargeError } from '../data/photos/limits';
 import { DocumentRefusedError } from '../data/documents/accept';
+import { MediaBudgetError } from '../data/media/budget';
 import type { NormalizedPhoto } from '../data/journal/photos';
 import { toast } from './toasts.svelte';
 
@@ -46,6 +47,8 @@ function toastPickFailure(error: unknown, logMessage: string): void {
     toast(m.photo_too_large());
   } else if (error instanceof DocumentRefusedError) {
     toast(m.document_too_large());
+  } else if (error instanceof MediaBudgetError && error.kind === 'pick-selection') {
+    toast(m.photo_selection_too_large());
   } else {
     console.error(logMessage, error);
     toast(m.photo_picker_failed());
@@ -81,15 +84,9 @@ export async function claimPendingPhotos(claimBy: ClaimBy, canUse: () => boolean
   if (!canUse()) return [];
   const tokens = claimPending(claimBy, location.pathname);
   if (!tokens) return [];
-  let picked: Uint8Array[];
-  try {
-    picked = [];
-    for (const token of tokens) picked.push(await androidPickedBytes(token));
-  } catch (error) {
-    toastPickFailure(error, 'a photo kept through a lock could not be read');
-    return [];
-  }
-  const photos = await normalizeAll(picked);
+  // Read one at a time inside normalizeAll, so a held multi-pick keeps the
+  // one-raw-file-at-a-time budget (ticket 07).
+  const photos = await normalizeAll(tokens.map((token): PickedBytes => () => androidPickedBytes(token)));
   if (photos.length) toast(m.picked_while_locked_added());
   return photos;
 }
@@ -98,18 +95,34 @@ export async function claimPendingPhotos(claimBy: ClaimBy, canUse: () => boolean
     anything unreadable so picking four photos of which one is a HEIC still
     returns the other three. Shared by pickPhotos and capturePhoto - both
     hand off to the same seam once bytes exist, regardless of source. */
-async function normalizeAll(picked: Uint8Array[]): Promise<NormalizedPhoto[]> {
+async function normalizeAll(picked: PickedBytes[], claimBy?: ClaimBy): Promise<NormalizedPhoto[]> {
   const normalized: NormalizedPhoto[] = [];
-  for (const bytes of picked) {
+  // Read, normalize, drop: one picked file's raw bytes live at a time.
+  for (const read of picked) {
     try {
-      normalized.push(await normalizePhoto(bytes));
+      normalized.push(await normalizePhoto(await read()));
     } catch (error) {
-      /* UnsupportedImageError says which of the two refusals this is, and
+      // The app locked while a file was read: the whole pick is held by its
+      // tokens for after the unlock, and nothing normalized so far is kept.
+      if (error instanceof PickDeferredError) {
+        deferUntilUnlock(error, claimBy);
+        return [];
+      }
+      /* UnsupportedImageError says which of the refusals this is, and
          the wording comes from the catalogue rather than from the error, so
          a Polish reader gets a Polish sentence. Anything else is a bug and
          gets the plain one. */
       if (error instanceof UnsupportedImageError) {
-        toast(error.kind === 'heic' ? m.photo_heic() : m.photo_not_an_image());
+        toast(
+          error.kind === 'heic'
+            ? m.photo_heic()
+            : error.kind === 'too-many-pixels'
+              ? m.image_too_many_pixels()
+              : m.photo_not_an_image()
+        );
+      } else if (error instanceof PhotoTooLargeError) {
+        // A file read lazily (a kept pick, or a lazy reader) is refused by size where it is read.
+        toast(m.photo_too_large());
       } else {
         console.error('a picked photo could not be normalized', error);
         toast(m.photo_unreadable());
@@ -125,16 +138,16 @@ async function normalizeAll(picked: Uint8Array[]): Promise<NormalizedPhoto[]> {
     `limit` caps how many are kept, for the one owner that holds a single
     photo: a milestone. */
 export async function pickPhotos(limit?: number, claimBy?: ClaimBy): Promise<NormalizedPhoto[]> {
-  let picked: Uint8Array[];
+  let picked: PickedBytes[];
   try {
-    picked = await picker.pick();
+    picked = await picker.pick({ multiple: limit !== 1 });
   } catch (error) {
     if (error instanceof PickDeferredError) deferUntilUnlock(error, claimBy);
     else toastPickFailure(error, 'the photo picker failed');
     return [];
   }
 
-  const photos = await normalizeAll(limit == null ? picked : picked.slice(0, limit));
+  const photos = await normalizeAll(limit == null ? picked : picked.slice(0, limit), claimBy);
   return (await lockedMeanwhile(picker, claimBy)) ? [] : photos;
 }
 
@@ -151,6 +164,6 @@ export async function capturePhoto(claimBy?: ClaimBy): Promise<NormalizedPhoto |
     return null;
   }
 
-  const [photo] = await normalizeAll(picked);
+  const [photo] = await normalizeAll(picked.map((bytes): PickedBytes => async () => bytes));
   return (await lockedMeanwhile(camera, claimBy)) ? null : (photo ?? null);
 }

@@ -753,6 +753,7 @@ the per-frame tracks.
 `clinician-summary-access` reruns the clinician table audit against the ticket-owned axe assets and writes paired screenshots. Run it from the prepared ticket 31 evidence tree.
 
 `clinician-summary-print-layout` checks English and Polish summary previews and PDFs, long lab tables, printed values and caveats, and range, section and drug selections. Run after a demo build with Poppler installed: `node tests/clinician-summary-print-layout.mjs`; `--out` chooses the evidence directory.
+| `claim-address-check` | Dev-server check that the address a pick kept through a lock is claimed under (`location.pathname`) is unchanged across lock and unlock on the new-entry editor, with and without a query, and on `/media/documents`. Run by hand for now. |
 
 ## Galleries and tools
 

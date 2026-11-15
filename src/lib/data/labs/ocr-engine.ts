@@ -2,6 +2,7 @@ import type { RecognizeResult } from 'tesseract.js';
 import { OCR_ASSET_PREFIX } from '../../pwa/ocr-assets.generated';
 import { loadOcrRuntime } from './ocr-runtime';
 import type { OcrWatch } from './ocr-machine';
+import { judgeImage, MediaBudgetError } from '../media/budget';
 
 interface LabOcrEngine {
   recognize(image: Uint8Array, watch?: OcrWatch): Promise<RecognizeResult>;
@@ -22,6 +23,13 @@ export function tesseractLabOcrEngine(): LabOcrEngine {
   return {
     async recognize(image, watch) {
       watch?.signal?.throwIfAborted();
+      /* Tesseract decodes the whole image, so the declared size is judged
+         before a worker is even started. A format whose header the budget
+         cannot read still goes through: a scan this engine's own decoder
+         understands (a TIFF) is not refused for being unfamiliar. */
+      if (judgeImage(image) === 'too-many-pixels') {
+        throw new MediaBudgetError('image-pixels', 'This image declares more pixels than this app will read.');
+      }
       const { createWorker } = await loadOcrRuntime();
 
       // Local-only paths: OCR workers and language data are loaded from app assets.
