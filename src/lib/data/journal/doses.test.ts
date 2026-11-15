@@ -1221,3 +1221,14 @@ test('invalid saved schedule amounts do not roll back valid due doses or rewrite
     assert.deepEqual(await journal.doses.getSchedules(), schedules);
   }
 });
+
+test('a schedule cannot be saved with more doses a day than a restore accepts', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await episode(journal, 100, 'estradiol');
+  const input = (dosesPerDay: number) => ({
+    episodeId, recurrence: { kind: 'everyNDays' as const, everyNDays: 1 }, dosesPerDay, doseAmounts: null, autoLogFromEpochDay: null
+  });
+  for (const bad of [25, 0, 1.5]) await assert.rejects(journal.doses.upsertSchedule(input(bad)), /doses a day/);
+  await journal.doses.upsertSchedule(input(24));
+  assert.equal((await journal.doses.getSchedules())[0].dosesPerDay, 24);
+});

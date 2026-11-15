@@ -2465,7 +2465,7 @@
   "regimen_pause_start_required": "Choose a start date for the pause.",
   "regimen_pauses_hint": "No doses are expected during a pause.",
   "regimen_pauses_legend": "Pauses",
-  "regimen_per_day_required": "Enter a number of doses per day, at least 1.",
+  "regimen_per_day_required": "Enter a number of doses per day, from 1 to {max}.",
   "regimen_period_ongoing": "from {from}",
   "regimen_period_range": "{from} to {to}",
   "regimen_route_placeholder": "e.g. IM",

@@ -270,8 +270,10 @@ function weekdayOccurrencesBefore(anchorEpochDay: number, uptoEpochDay: number, 
     never wrote cannot make the auto-log pass allocate a dose per count. */
 export const MAX_DOSES_PER_DAY = 24;
 
-function isExpectedDosesPerDay(count: number): boolean {
-  return count >= 1 && count <= MAX_DOSES_PER_DAY;
+/** A doses-a-day count the schedule editor may save and restore accepts: a
+    whole number from 1 to MAX_DOSES_PER_DAY. */
+export function isExpectedDosesPerDay(count: number): boolean {
+  return Number.isInteger(count) && count >= 1 && count <= MAX_DOSES_PER_DAY;
 }
 
 /** The slots `schedule` expects between `fromEpochDay` and `toEpochDay`
