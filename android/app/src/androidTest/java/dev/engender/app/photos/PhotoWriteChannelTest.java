@@ -97,6 +97,46 @@ public class PhotoWriteChannelTest {
         }
     }
 
+    /* GD-010: a name with a trailing space used to be trimmed by PhotoFiles and
+       land on the real file. Both transports must now refuse it, and the
+       original bytes must be exactly as they were. */
+    @Test
+    public void aTrailingSpaceNameNeverReachesTheFileItTrimsTo() throws Exception {
+        File original = PhotoFiles.fileFor(InstrumentationRegistry.getInstrumentation().getTargetContext(),
+            "write-channel-test", "alias-target.bin");
+        original.delete();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            assertTrue(awaitBoolean(scenario, "typeof window.androidPhotoWriteChannel !== 'undefined'"));
+            String seed = "(function(){"
+                + "var channel = new MessageChannel();"
+                + "channel.port1.onmessage = function(e){ window.__aliasSeed = e.data; };"
+                + "window.androidPhotoWriteChannel.postMessage("
+                + "JSON.stringify({name:'alias-target.bin',directory:'write-channel-test'}), [channel.port2]);"
+                + "var bytes = new Uint8Array([1,2,3]); channel.port1.postMessage(bytes.buffer, [bytes.buffer]);"
+                + "})();";
+            assertTrue(new JSONObject(awaitResult(scenario, seed, "window.__aliasSeed")).getBoolean("ok"));
+
+            String channelScript = "(function(){"
+                + "var channel = new MessageChannel();"
+                + "channel.port1.onmessage = function(e){ window.__aliasChannel = e.data; };"
+                + "window.androidPhotoWriteChannel.postMessage("
+                + "JSON.stringify({name:'alias-target.bin ',directory:'write-channel-test'}), [channel.port2]);"
+                + "var bytes = new Uint8Array([9,9,9,9,9]); channel.port1.postMessage(bytes.buffer, [bytes.buffer]);"
+                + "})();";
+            assertFalse(new JSONObject(awaitResult(scenario, channelScript, "window.__aliasChannel")).getBoolean("ok"));
+
+            String bridgeScript = "window.Capacitor.Plugins.Photos.writeFile("
+                + "{name:' alias-target.bin',directory:'write-channel-test',base64:'CQkJCQk='})"
+                + ".then(function(){window.__aliasBridge=JSON.stringify({ok:true});})"
+                + ".catch(function(error){window.__aliasBridge=JSON.stringify({ok:false,error:String(error)});});";
+            assertFalse(new JSONObject(awaitResult(scenario, bridgeScript, "window.__aliasBridge")).getBoolean("ok"));
+
+            assertEquals(3, original.length());
+        } finally {
+            original.delete();
+        }
+    }
+
     @Test public void syncFailureRejectsWriteChannel() throws Exception {
         syncFailureIsRejected(true);
     }
