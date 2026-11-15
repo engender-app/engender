@@ -222,15 +222,19 @@ public final class SensitiveClipboard {
         another thread waits for it. */
     public static void wipe(Context context) {
         Context appContext = context.getApplicationContext() != null ? context.getApplicationContext() : context;
-        onMainThread(() -> {
-            String digest = prefs(appContext).getString(KEY_DIGEST, null);
-            if (digest != null) {
+        try {
+            onMainThread(() -> {
+                String digest = prefs(appContext).getString(KEY_DIGEST, null);
+                if (digest == null) return;
                 ClipData clip = clipboardOf(appContext).getPrimaryClip();
                 if (clip != null) clearIfOurs(appContext, digest, clip);
-            }
+            });
+        } finally {
+            /* Whatever the read did, the record and the timer go: a reset
+               that throws here must not leave the digest behind. */
             prefs(appContext).edit().clear().commit();
             cancelArmedClear();
-        });
+        }
     }
 
     private static void onMainThread(Runnable work) {
