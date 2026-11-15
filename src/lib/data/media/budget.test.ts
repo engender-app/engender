@@ -45,6 +45,13 @@ describe('declaredImageSize', () => {
     expect(declaredImageSize(avif)).toEqual({ width: 4096, height: 3072 });
   });
 
+  test('reads a TIFF in either byte order', () => {
+    const le = new Uint8Array([0x49, 0x49, 42, 0, 8, 0, 0, 0, 2, 0, 0, 1, 3, 0, 1, 0, 0, 0, 0x20, 0x03, 0, 0, 1, 1, 4, 0, 1, 0, 0, 0, 0x58, 0x02, 0, 0]);
+    expect(declaredImageSize(le)).toEqual({ width: 800, height: 600 });
+    const be = new Uint8Array([0x4d, 0x4d, 0, 42, 0, 0, 0, 8, 0, 2, 1, 0, 0, 3, 0, 0, 0, 1, 3, 0x20, 0, 0, 1, 1, 0, 4, 0, 0, 0, 1, 0, 0, 2, 0x58]);
+    expect(declaredImageSize(be)).toEqual({ width: 800, height: 600 });
+  });
+
   test('is null for what it cannot read', () => {
     expect(declaredImageSize(new Uint8Array([1, 2, 3]))).toBeNull();
     expect(declaredImageSize(new Uint8Array(0))).toBeNull();

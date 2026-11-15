@@ -117,6 +117,31 @@ function isobmffSize(b: Uint8Array): ImageSize | null {
   return best;
 }
 
+/** The first IFD of a TIFF: width and length are tags 256 and 257, as a
+    SHORT or a LONG. Chromium does not decode TIFF, but the OCR engine does,
+    and a lab scan is exactly the kind of file that arrives as one. */
+function tiffSize(b: Uint8Array): ImageSize | null {
+  const little = b[0] === 0x49;
+  const u16 = (at: number) => (little ? u16le(b, at) : u16be(b, at));
+  const u32 = (at: number) => (little ? i32le(b, at) >>> 0 : u32be(b, at));
+  if (b.length < 8 || u16(2) !== 42) return null;
+  const ifd = u32(4);
+  if (ifd + 2 > b.length) return null;
+  const entries = u16(ifd);
+  let width = 0;
+  let height = 0;
+  for (let i = 0; i < entries; i++) {
+    const at = ifd + 2 + i * 12;
+    if (at + 12 > b.length) return null;
+    const tag = u16(at);
+    if (tag !== 256 && tag !== 257) continue;
+    const value = u16(at + 2) === 3 ? u16(at + 8) : u32(at + 8);
+    if (tag === 256) width = value;
+    else height = value;
+  }
+  return { width, height };
+}
+
 /** The size a file's own header declares, or null when the format is not one
     this knows how to read. Never decodes anything. */
 export function declaredImageSize(b: Uint8Array): ImageSize | null {
@@ -131,6 +156,7 @@ export function declaredImageSize(b: Uint8Array): ImageSize | null {
         ? { width: u16le(b, 18), height: u16le(b, 20) }
         : { width: Math.abs(i32le(b, 18)), height: Math.abs(i32le(b, 22)) };
   } else if (b.length >= 12 && tagAt(b, 4, 'ftyp')) size = isobmffSize(b);
+  else if (b.length >= 8 && ((b[0] === 0x49 && b[1] === 0x49) || (b[0] === 0x4d && b[1] === 0x4d))) size = tiffSize(b);
   else if (b.length >= 6 && b[0] === 0 && b[1] === 0 && b[2] === 1 && b[3] === 0) size = { width: 256, height: 256 }; // ICO caps each image at 256
   return size && size.width > 0 && size.height > 0 ? size : null;
 }
