@@ -52,6 +52,7 @@ import { emptyArchiveJournal } from '../journal/archiveSections';
 import { contentUuid } from '../journal/support';
 import { photoFileName } from '../photos/names';
 import { audioMimeOf } from '../voiceRecordings/mime';
+import { checkDaylioField, DAYLIO_BUDGET } from './daylioInputBudget';
 import { htmlToText } from './html';
 import { tagMatches, type DaylioNaming } from './daylio';
 import type {
@@ -223,10 +224,16 @@ function zipNames(reader: ZipReader): Map<string, string> {
     to the shared reader's ceiling, which is what keeps a preview off the
     500 full attachments it is not retaining, and off a member declaring more than
     this app will hold in memory at once. */
-function zipRead(reader: ZipReader, names: Map<string, string>, name: string, prefix = false): Uint8Array | null {
+function zipRead(
+  reader: ZipReader,
+  names: Map<string, string>,
+  name: string,
+  prefix = false,
+  maxBytes?: number
+): Uint8Array | null {
   const raw = names.get(name);
   try {
-    return raw ? prefix ? reader.readPrefix(raw, 12) : reader.read(raw) : null;
+    return raw ? prefix ? reader.readPrefix(raw, 12) : reader.read(raw, maxBytes) : null;
   } catch (cause) {
     if (cause instanceof ZipFormatError) throw new DaylioBackupError('unreadable', 'has a damaged ZIP member', { cause });
     throw cause;
@@ -261,7 +268,7 @@ function openBackup(file: Uint8Array): { payload: Record_; names: Map<string, st
   try {
     reader = openZip(file);
     names = zipNames(reader);
-    member = zipRead(reader, names, BACKUP_MEMBER);
+    member = zipRead(reader, names, BACKUP_MEMBER, false, DAYLIO_BUDGET.backupJsonBytes);
   } catch (cause) {
     if (cause instanceof ZipFormatError) throw new DaylioBackupError('unreadable', 'is not a zip file', { cause });
     throw cause;
@@ -647,8 +654,8 @@ export async function daylioBackupPreview(
       mood = resolved.mood;
     }
 
-    const title = htmlToText(str(record.note_title));
-    const body = htmlToText(str(record.note));
+    const title = htmlToText(checkDaylioField(str(record.note_title)));
+    const body = htmlToText(checkDaylioField(str(record.note)));
     const note = [title, body].filter((part) => part.trim().length > 0).join('\n');
 
     const tags: string[] = [];
@@ -782,7 +789,7 @@ export async function daylioBackupPreview(
   const existingTemplates = new Set(existing.entryTemplates.map((template) => template.id));
   for (const record of list(payload.writingTemplates)) {
     const name = str(record.title);
-    const noteScaffold = htmlToText(str(record.body));
+    const noteScaffold = htmlToText(checkDaylioField(str(record.body)));
     if (!name && !noteScaffold) continue;
 
     const id = await contentUuid(['daylio-template', name, noteScaffold]);
