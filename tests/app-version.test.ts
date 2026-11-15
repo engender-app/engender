@@ -6,8 +6,12 @@
 
    The resolver is split from the `git` calls so these run without inventing
    repositories: readGitFacts() gathers, resolveAppVersion() decides. */
-import { describe, expect, it } from 'vitest';
-import { isReleaseVersion, readGitFacts, resolveAppVersion } from '../scripts/app-version.mjs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { isReleaseVersion, readGitFacts, resolveAppVersion, verifyTagSigner } from '../scripts/app-version.mjs';
 
 /** A checkout with no tag on HEAD, which the cases below vary from. */
 const untagged = (sha = '1a2b3c4d') => ({ tag: null, signed: false, dirty: false, sha });
@@ -91,9 +95,10 @@ describe('readGitFacts', () => {
       'for-each-ref': '-----BEGIN SSH SIGNATURE-----\n...',
       status: ''
     };
-    expect(readGitFacts((args: string[]) => answers[args[0]] ?? null)).toEqual({
+    expect(readGitFacts((args: string[]) => answers[args[0]] ?? null, () => 'good')).toEqual({
       tag: 'v1.2.3',
       signed: true,
+      signature: 'good',
       dirty: false,
       sha: '1a2b3c4d'
     });
@@ -109,7 +114,7 @@ describe('readGitFacts', () => {
       'for-each-ref': 'signature',
       status: '?? static/stray.png'
     };
-    expect(readGitFacts((args: string[]) => answers[args[0]] ?? null).dirty).toBe(true);
+    expect(readGitFacts((args: string[]) => answers[args[0]] ?? null, () => 'good').dirty).toBe(true);
   });
 
   it('treats a tag with no signature as unsigned rather than missing', () => {
@@ -119,6 +124,87 @@ describe('readGitFacts', () => {
       'for-each-ref': '',
       status: ''
     };
-    expect(readGitFacts((args: string[]) => answers[args[0]] ?? null).signed).toBe(false);
+    expect(readGitFacts((args: string[]) => answers[args[0]] ?? null, () => 'unsigned').signed).toBe(false);
+  });
+});
+
+/* GD-021, GD-026: a signature block is not a signature from anyone allowed to
+   release. These run against real tags in a temporary repository, because the
+   only honest test of "git verifies it" is git. */
+describe('who may release', () => {
+  let root = '';
+  let signers = '';
+  const sh = (cwd: string, ...args: string[]) =>
+    execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+
+  function key(name: string) {
+    execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', 'test', '-f', join(root, name)]);
+    return join(root, name);
+  }
+
+  /** The facts the pipeline would read with the repository at `tag`. */
+  function factsAt(tag: string) {
+    const run = (args: string[]) => {
+      try {
+        return execFileSync('git', ['-C', join(root, 'repo'), ...args], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore']
+        }).trim();
+      } catch {
+        return null;
+      }
+    };
+    sh(join(root, 'repo'), 'checkout', '-q', '--detach', tag);
+    return readGitFacts(run, (t: string) => verifyTagSigner(t, { cwd: join(root, 'repo'), signers }));
+  }
+
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), 'engender-signer-test-'));
+    const allowed = key('allowed');
+    const stranger = key('stranger');
+    signers = join(root, 'signers');
+    writeFileSync(signers, `releaser ${readFileSync(`${allowed}.pub`, 'utf8')}`);
+    const repo = join(root, 'repo');
+    execFileSync('git', ['init', '-q', repo]);
+    sh(repo, 'config', 'user.name', 'T');
+    sh(repo, 'config', 'user.email', 't@example.com');
+    sh(repo, 'config', 'gpg.format', 'ssh');
+    sh(repo, 'config', 'commit.gpgsign', 'false');
+    for (const name of ['good', 'stranger', 'unsigned', 'malformed']) {
+      sh(repo, 'commit', '-q', '--allow-empty', '-m', name);
+      sh(repo, 'config', 'user.signingkey', name === 'stranger' ? stranger : allowed);
+      if (name === 'unsigned') sh(repo, 'tag', '-a', '-m', 'r', 'v3.0.0');
+      else sh(repo, 'tag', '-s', '-m', 'r', name === 'good' ? 'v1.0.0' : name === 'stranger' ? 'v2.0.0' : 'v4.0.0');
+    }
+    // Damage the armoured signature body of v4.0.0 so it parses as nothing.
+    const body = sh(repo, 'cat-file', 'tag', 'v4.0.0').replace(/^([A-Za-z0-9+/=]{10})./m, '$1X');
+    const broken = execFileSync('git', ['-C', repo, 'mktag'], { input: body, encoding: 'utf8' }).trim();
+    sh(repo, 'update-ref', 'refs/tags/v4.0.0', broken);
+  });
+
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+  it('accepts a tag signed by a key in the allowed-signers file', () => {
+    expect(factsAt('v1.0.0')).toMatchObject({ tag: 'v1.0.0', signed: true, signature: 'good' });
+    expect(resolveAppVersion({}, { ...factsAt('v1.0.0'), dirty: false })).toBe('1.0.0');
+  });
+
+  it('refuses a tag signed by a key nobody listed', () => {
+    const facts = factsAt('v2.0.0');
+    expect(facts).toMatchObject({ tag: 'v2.0.0', signed: false, signature: 'unknown-signer' });
+    expect(isReleaseVersion(resolveAppVersion({}, { ...facts, dirty: false }))).toBe(false);
+  });
+
+  it('says an annotated tag with no signature is unsigned', () => {
+    expect(factsAt('v3.0.0')).toMatchObject({ tag: 'v3.0.0', signed: false, signature: 'unsigned' });
+  });
+
+  it('says a signature git cannot read is malformed, not unknown', () => {
+    expect(factsAt('v4.0.0')).toMatchObject({ tag: 'v4.0.0', signed: false, signature: 'malformed' });
+  });
+
+  it('fails closed when the allowed-signers file is missing', () => {
+    const repo = join(root, 'repo');
+    expect(verifyTagSigner('v1.0.0', { cwd: repo, signers: join(root, 'nope') })).toBe('unknown-signer');
   });
 });

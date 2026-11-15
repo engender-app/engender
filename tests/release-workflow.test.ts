@@ -31,7 +31,7 @@ function replayPublish(version: string): string[] {
 describe('release publication contract', () => {
   it('requires explicit candidate evidence before building or publishing either release kind', () => {
     const gate = workflow.indexOf('- name: Require evidence for this candidate before publication');
-    expect(gate).toBeGreaterThan(workflow.indexOf('ENGENDER_VERSION=$version'));
+    expect(gate).toBeGreaterThan(workflow.indexOf('- run: npm ci'));
     expect(gate).toBeLessThan(workflow.indexOf('- name: Build unsigned Android release artifacts'));
     const step = workflow.slice(gate).split('\n      # Before anything')[0];
     expect(step).toContain('target=stable');
@@ -52,8 +52,8 @@ describe('release publication contract', () => {
 
   it('deploys stable web releases only after publication, with isolated credentials and serialized switches', () => {
     const deploy = workflow.slice(workflow.indexOf('\n  deploy-web:'));
-    expect(deploy).toContain('needs: publish');
-    expect(deploy).toContain("if: ${{ !contains(github.ref_name, '-') }}");
+    expect(deploy).toContain('needs: [resolve, publish]');
+    expect(deploy).toContain("if: ${{ !contains(inputs.tag, '-') }}");
     expect(deploy).toContain('environment: release');
     expect(deploy).toContain('group: journal-production');
     expect(deploy).toContain('cancel-in-progress: false');
@@ -73,7 +73,7 @@ describe('release publication contract', () => {
 
   it('keeps stable publication ordinary with default Latest behavior', () => {
     expect(replayPublish('1.0.0')).toEqual([
-      'release', 'create', 'v1.0.0', '--title', 'engender 1.0.0',
+      'release', 'create', 'v1.0.0', '--verify-tag', '--title', 'engender 1.0.0',
       '--notes-file', 'dist/release-body.md', 'dist/release/SHA256SUMS'
     ]);
   });
@@ -100,7 +100,7 @@ describe('release publication contract', () => {
     const steps = workflow.split(/\n      - /).slice(1);
     const signing = steps.filter((step) => step.includes('secrets.ANDROID_KEYSTORE_PASSWORD'));
     expect(signing).toHaveLength(1);
-    expect(signing[0]).toContain('apksigner sign');
+    expect(signing[0]).toContain('"$build_tools/apksigner" sign');
     expect(signing[0]).toContain('jarsigner');
     expect(signing[0]).not.toMatch(/npm|npx|gradlew/);
     expect(workflow).not.toContain('ANDROID_REQUIRE_SIGNING=true');
@@ -109,13 +109,11 @@ describe('release publication contract', () => {
     expect(build).toBeDefined();
     expect(build).not.toContain('secrets.');
     expect(build).toContain('app-release-unsigned.apk');
-    expect(workflow).toMatch(/build-tools[\s\S]*GITHUB_PATH/);
   });
 
   it('validates the trigger tag and main ancestry without interpolating the tag into shell code', () => {
-    expect(workflow).toContain('RELEASE_TAG: ${{ github.ref_name }}');
-    expect(workflow).toContain('[[ "$RELEASE_TAG" == "v$version" ]]');
-    expect(workflow).toContain('git merge-base --is-ancestor HEAD origin/main');
+    expect(workflow).toContain('RELEASE_TAG: ${{ inputs.tag }}');
+    expect(workflow).not.toContain('github.ref_name');
     expect(workflow).toContain('gh release create "$RELEASE_TAG"');
     for (const step of workflow.split(/\n      - /).slice(1)) {
       const script = step.slice(step.indexOf('run:'));
@@ -142,5 +140,133 @@ describe('walkthrough CI coverage', () => {
     expect(checks).toMatch(/needs: \[node, android, browser, guards, benchmark\]/);
     expect(checks).toContain("if (job.result !== 'success') failed = true");
     expect(workflow).toContain('uses: ./.github/workflows/ci.yml');
+  });
+});
+
+/* The structure that keeps a release honest (security-scan ticket 01). The
+   workflow files are read as text, so these helpers slice them by job. */
+function jobsOf(text: string): Record<string, string> {
+  const body = text.split('\njobs:\n')[1] ?? '';
+  const heads = [...body.matchAll(/^  ([a-z][a-z0-9-]*):\n/gm)];
+  return Object.fromEntries(
+    heads.map((head, i) => [head[1], body.slice(head.index, heads[i + 1]?.index ?? body.length)])
+  );
+}
+
+const jobs = jobsOf(workflow);
+
+/** Job names this job waits for, directly. */
+function needsOf(job: string): string[] {
+  const line = /^    needs: (.+)$/m.exec(job)?.[1] ?? '';
+  return line.replace(/[[\]]/g, '').split(',').map((name) => name.trim()).filter(Boolean);
+}
+
+describe('release trigger', () => {
+  it('runs only from workflow_dispatch, so the workflow file is the default branch\'s', () => {
+    const on = workflow.slice(workflow.indexOf('\non:\n'), workflow.indexOf('\npermissions:'));
+    expect(on).toContain('workflow_dispatch:');
+    expect(on).toContain('tag:');
+    expect(on).not.toMatch(/\bpush:|\btags:|pull_request|schedule:|workflow_call:/);
+  });
+
+  it('refuses to start anywhere but the default branch, before anything else', () => {
+    expect(jobs.resolve).toContain("if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)");
+    expect(jobs.resolve).not.toMatch(/^    needs:/m);
+    expect(jobs.resolve).not.toContain('environment:');
+  });
+
+  it('puts every other job behind the tag verification', () => {
+    const reaches = (name: string, seen = new Set<string>()): boolean => {
+      if (name === 'resolve') return true;
+      if (seen.has(name)) return false;
+      seen.add(name);
+      return needsOf(jobs[name] ?? '').some((n) => reaches(n, seen));
+    };
+    for (const name of Object.keys(jobs)) expect(reaches(name), name).toBe(true);
+  });
+
+  it('verifies the tag with the default branch\'s own script, never one from the tagged commit', () => {
+    expect(jobs.resolve).toContain('node scripts/resolve-release-tag.mjs "$RELEASE_TAG"');
+    expect(jobs.resolve).toContain('RELEASE_TAG: ${{ inputs.tag }}');
+    // The checkout is the dispatch ref (the default branch): no `ref:` pointing at the tag.
+    expect(jobs.resolve).not.toMatch(/^\s+ref:/m);
+    expect(jobs.resolve).not.toContain('npm');
+  });
+
+  it('builds the commit the tag names, tested by the same checks as a pull request', () => {
+    expect(jobs.checks).toContain('uses: ./.github/workflows/ci.yml');
+    expect(jobs.checks).toContain('ref: ${{ needs.resolve.outputs.sha }}');
+    expect(jobs.build).toContain('ref: ${{ needs.resolve.outputs.sha }}');
+    expect(jobs.package).toContain('ref: ${{ needs.resolve.outputs.sha }}');
+    expect(needsOf(jobs.build)).toContain('checks');
+  });
+});
+
+describe('the job that holds the signing key', () => {
+  const holders = Object.entries(jobs).filter(([, job]) => /secrets\.ANDROID_KEY/.test(job));
+
+  it('is the only job that reads the keystore, and it needs the release environment', () => {
+    expect(holders.map(([name]) => name)).toEqual(['sign']);
+    expect(jobs.sign).toContain('environment: release');
+  });
+
+  it('runs no repository code and installs nothing', () => {
+    const job = jobs.sign;
+    expect(job).not.toMatch(/\bnpm\b|\bnpx\b|gradlew|\bnode\b|actions\/checkout|actions\/setup-node/);
+    expect(job).not.toMatch(/run:.*\bbash scripts\/|\.\/scripts\//);
+    expect(job).not.toContain('GITHUB_PATH');
+  });
+
+  it('takes the unsigned artifacts by digest from the job that built them', () => {
+    expect(jobs.sign).toContain('actions/download-artifact@');
+    expect(jobs.sign).toContain('UNSIGNED_APK_SHA256: ${{ needs.build.outputs.apk_sha256 }}');
+    expect(jobs.sign).toContain('UNSIGNED_AAB_SHA256: ${{ needs.build.outputs.aab_sha256 }}');
+    expect(jobs.sign).toContain('sha256sum -c');
+    expect(jobs.sign.indexOf('sha256sum -c')).toBeLessThan(jobs.sign.indexOf('ANDROID_KEYSTORE_BASE64'));
+    expect(jobs.build).toMatch(/apk_sha256: \$\{\{ steps\.\w+\.outputs\.apk_sha256 \}\}/);
+  });
+
+  it('calls the signing tools by absolute path with a clean PATH', () => {
+    const step = jobs.sign.slice(jobs.sign.indexOf('- name: Sign'));
+    expect(step).toMatch(/export PATH="\$JAVA_HOME\/bin:\/usr\/bin:\/bin"/);
+    for (const tool of ['zipalign', 'apksigner']) expect(step).toContain(`"$build_tools/${tool}"`);
+    expect(step).toContain('"$JAVA_HOME/bin/jarsigner"');
+    expect(step).not.toMatch(/^\s+(zipalign|apksigner|jarsigner)\b/m);
+  });
+
+  it('is the only place a signature is made, and the build job holds no secret at all', () => {
+    expect(jobs.build).not.toMatch(/secrets\.|environment:/);
+    expect(jobs.package).not.toMatch(/secrets\.|environment:/);
+    for (const [name, job] of Object.entries(jobs)) {
+      if (name !== 'sign') expect(job, name).not.toMatch(/apksigner sign|jarsigner|zipalign/);
+    }
+  });
+
+  it('hands signed artifacts on by digest as well', () => {
+    expect(jobs.sign).toMatch(/apk_sha256: \$\{\{ steps\.\w+\.outputs\.apk_sha256 \}\}/);
+    expect(jobs.package).toContain('SIGNED_APK_SHA256: ${{ needs.sign.outputs.apk_sha256 }}');
+    expect(jobs.package).toContain('sha256sum -c');
+    expect(jobs.publish).toContain('SIGNED_APK_SHA256: ${{ needs.sign.outputs.apk_sha256 }}');
+    expect(jobs.publish).toContain('sha256sum -c');
+  });
+});
+
+describe('pinned actions (GD-055)', () => {
+  const files = ['release.yml', 'ci.yml'];
+  it.each(files)('pins every non-local action in %s to a full commit SHA', (file) => {
+    const text = readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8');
+    const uses = [...text.matchAll(/^\s*(?:- )?uses: (\S+)(.*)$/gm)].map((m) => ({ ref: m[1], rest: m[2] }));
+    expect(uses.length).toBeGreaterThan(0);
+    for (const { ref, rest } of uses) {
+      if (ref.startsWith('./')) continue;
+      expect(ref, ref).toMatch(/^[\w.-]+\/[\w.-]+(\/[\w./-]+)?@[0-9a-f]{40}$/);
+      expect(rest, ref).toMatch(/# v?\d/);
+    }
+  });
+
+  it('covers every local workflow release.yml calls', () => {
+    const called = [...workflow.matchAll(/uses: \.\/\.github\/workflows\/(\S+)/g)].map((m) => m[1]);
+    expect(called.length).toBeGreaterThan(0);
+    for (const name of called) expect(files).toContain(name);
   });
 });
