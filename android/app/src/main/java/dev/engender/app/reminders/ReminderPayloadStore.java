@@ -61,18 +61,29 @@ public final class ReminderPayloadStore {
     private static final String CIPHER = "AES/GCM/NoPadding";
     private static final int GCM_TAG_BITS = 128;
 
+    /** Failures a device test switches on to reach the keystore, cipher and
+        commit paths, which a healthy phone never takes. Null in production. */
+    static final class Faults {
+        volatile boolean keyGeneration;
+        volatile boolean cipher;
+        volatile boolean commit;
+    }
+
+    static volatile Faults faults;
+
     private ReminderPayloadStore() {}
 
     static void write(Context context, JSONObject payload) throws Exception {
         Cipher cipher = Cipher.getInstance(CIPHER);
         cipher.init(Cipher.ENCRYPT_MODE, key());
+        if (faults != null && faults.cipher) throw new IllegalStateException("injected cipher failure");
         byte[] ciphertext = cipher.doFinal(payload.toString().getBytes(StandardCharsets.UTF_8));
 
         /* commit rather than apply: this write is also the one that takes
            an older build's plaintext off disk, and apply returns before the
            file does. Occurrence consumption also reaches disk before a
            notification is posted, so another boot cannot replay it. */
-        boolean committed = prefs(context).edit()
+        boolean committed = !(faults != null && faults.commit) && prefs(context).edit()
             .putString(KEY_NONCE, Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
             .putString(KEY_CIPHERTEXT, Base64.encodeToString(ciphertext, Base64.NO_WRAP))
             .remove(KEY_LEGACY_PLAINTEXT)
@@ -167,6 +178,7 @@ public final class ReminderPayloadStore {
     }
 
     private static SecretKey key() throws Exception {
+        if (faults != null && faults.keyGeneration) throw new IllegalStateException("injected key failure");
         SecretKey existing = (SecretKey) keystore().getKey(ALIAS, null);
         if (existing != null) return existing;
 

@@ -81,6 +81,14 @@ public final class ReminderScheduler {
             previous -> cancelAll(context, previous), saved -> scheduleAll(context, saved, now));
     }
 
+    /** What {@code RemindersPlugin.sync} does with a payload from the app,
+        named so a device test can drive the production path without a
+        bridge call. */
+    static void applySync(Context context, JSONObject payload) throws Exception {
+        saveAndSchedule(context, payload);
+        CheckInFaces.reconcile(context, payload);
+    }
+
     public static synchronized void rescheduleFromStore(Context context) {
         ZonedDateTime now = ZonedDateTime.now();
         rescheduleFromStore(context, now, false);

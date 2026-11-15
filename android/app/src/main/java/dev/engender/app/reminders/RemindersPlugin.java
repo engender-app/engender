@@ -67,8 +67,7 @@ public class RemindersPlugin extends Plugin {
             payload.put("texts", textObject);
 
             ensureChannels(textObject);
-            ReminderScheduler.saveAndSchedule(getContext(), payload);
-            CheckInFaces.reconcile(getContext(), payload);
+            ReminderScheduler.applySync(getContext(), payload);
             call.resolve();
         } catch (Exception e) {
             call.reject(message(e), e);
