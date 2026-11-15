@@ -15,6 +15,11 @@
     "holds": "lock clears private live regions, pending announcements and toast actions; disguise leaves unlocked feedback alone; fresh feedback and keyboard actions still work"
   },
   {
+    "name": "lock-leaves-nothing-check",
+    "tier": "dev",
+    "holds": "after a lock, Web Storage names no tile, category, letter, screen height or search; legacy plaintext keys move into the journal and go; a disguised gate and boot mirror wear only the neutral palette; a quick-add tap in the lock's first frame reaches no session; a failed unlock or a reset shows no journal text"
+  },
+  {
     "name": "blind-edge-padding-check",
     "tier": "dev",
     "holds": "a padding-only change to a field still moves `--blind-edge`"

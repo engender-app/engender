@@ -612,6 +612,7 @@ To run one on its own, use
 | `entry-source-return-check` | entry Save and Delete return to Voice recordings, Search and margin-note hits, Today tiles, chart annotations and day lists with private query context |
 | `pending-unlock-lock-check` | a newer lock cancels pending authentication and its opening transition |
 | `feedback-concealment-check` | lock clears private live regions, pending announcements and toast actions; disguise leaves unlocked feedback alone; fresh feedback and keyboard actions still work |
+| `lock-leaves-nothing-check` | after a lock, Web Storage names no tile, category, letter, screen height or search; legacy plaintext keys move into the journal and go; a disguised gate and boot mirror wear only the neutral palette; a quick-add tap in the lock's first frame reaches no session; a failed unlock or a reset shows no journal text |
 | `blind-edge-padding-check` | a padding-only change to a field still moves `--blind-edge` |
 | `gate-flag-check` | an undisguised unlock draws Today's sun, still, on a field whose edge cuts no ring where the window allows it (390x844, desktop) and that arrives at its height; a disguised one draws none of the flag at the base's height, by DOM and pixels on every palette and theme; gates that are not unlocks keep their titles; the accessible name, focus order and no scroll at 360x640, 360x568 and 320x568 hold |
 | `dilation-schedule-action` | the dilation schedule's edit action, keyboard editor and its empty and deleted states |

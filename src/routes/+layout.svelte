@@ -245,6 +245,7 @@
   });
 
   let chromeless = $derived(replacesApp || chromelessPath(path));
+  let journalShown = $derived(bootState.status === 'ready' && !replacesApp);
   /* No bottom bar: every chromeless screen, and a new entry, which is a step
      but keeps Today's retained doors mounted under it (chromeless.ts). The
      desktop rail stays for a new entry (app.css, .is-barless). */
@@ -353,10 +354,16 @@
        (prefs/documentChrome.ts, fixtures/document-chrome.json). This side
        has the live preferences and the media queries; that side has a
        mirror in localStorage and the same two queries. */
-    const chrome = documentChrome(prefs, {
-      prefersDark: systemDark.current,
-      prefersReducedMotion: systemReducedMotion.current
-    });
+    const chrome = documentChrome(
+      prefs,
+      { prefersDark: systemDark.current, prefersReducedMotion: systemReducedMotion.current },
+      /* Disguised, the person's flag waits for the journal (security-scan
+         ticket 08). The unlock flips this inside openApp's view transition,
+         so the gate is photographed in the neutral palette and the app in
+         its own, and the change happens under the opening rather than as a
+         frame of its own. */
+      journalShown
+    );
     root.dataset.palette = chrome.palette;
     root.dataset.moodPreset = chrome.moodPreset;
     root.dataset.theme = chrome.theme;
@@ -403,7 +410,7 @@
      the theme and palette that ground is read from. */
   $effect(() => {
     if (!isAndroid()) return;
-    documentChrome(prefs, { prefersDark: systemDark.current, prefersReducedMotion: systemReducedMotion.current });
+    documentChrome(prefs, { prefersDark: systemDark.current, prefersReducedMotion: systemReducedMotion.current }, journalShown);
     const cover = leaveCovers(accessModeHasSecret(bootState.accessMode, true));
     syncLeaveCover(cover, getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
   });

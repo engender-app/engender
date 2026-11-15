@@ -434,6 +434,11 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   layoutReserves: {}
 };
 
+/** What a disguised journal wears before it unlocks, in the boot mirror and
+    on every gate: palettes.css's neutral `notes`, not a flag (security-scan
+    ticket 08, GD-043). Never a value of `palette` itself. */
+export const DISGUISED_PALETTE = 'notes';
+
 /** Describes the journal, so it travels in an archive (ADR-0003). */
 export const PORTABLE_KEYS = [
   'name',

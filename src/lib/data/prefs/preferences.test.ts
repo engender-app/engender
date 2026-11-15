@@ -4,7 +4,7 @@
 
 import { test, expect } from 'vitest';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import { BOOT_KEYS, PREFERENCE_DEFAULTS } from './catalogue.ts';
+import { BOOT_KEYS, DISGUISED_PALETTE, PREFERENCE_DEFAULTS } from './catalogue.ts';
 import { portablePreferences } from '../archive/payload.ts';
 import { surfaceOn, withSurface } from '../../unprompted/registry.ts';
 import {
@@ -279,7 +279,7 @@ const ACKNOWLEDGED = {
   hasEntries: true
 };
 
-test('the boot mirror names the default palette while disguised, and the real one otherwise (FA 45)', async () => {
+test('the boot mirror names the neutral palette while disguised, and the real one otherwise (FA 45, security-scan 08)', async () => {
   const driver = await migratedDb();
   const { cache, current } = recordingCache();
   try {
@@ -288,12 +288,12 @@ test('the boot mirror names the default palette while disguised, and the real on
     expect(current().palette).toBe('lesbian');
 
     await preferences.set('disguise', true);
-    expect(current().palette).toBe(PREFERENCE_DEFAULTS.palette);
+    expect(current().palette).toBe(DISGUISED_PALETTE);
     expect(current().disguise).toBe(true);
     expect(preferences.get('palette')).toBe('lesbian');
 
     await preferences.set('palette', 'rainbow');
-    expect(current().palette).toBe(PREFERENCE_DEFAULTS.palette);
+    expect(current().palette).toBe(DISGUISED_PALETTE);
 
     await preferences.set('disguise', false);
     expect(current().palette).toBe('rainbow');
@@ -308,7 +308,7 @@ test('a reopen while disguised writes the neutral palette too (FA 45)', async ()
     await first.set('disguise', true);
     const { cache, writes } = recordingCache();
     await openPreferences(driver, cache);
-    expect(writes.map((boot) => boot.palette)).toEqual([PREFERENCE_DEFAULTS.palette]);
+    expect(writes.map((boot) => boot.palette)).toEqual([DISGUISED_PALETTE]);
   } finally { await driver.close(); }
 });
 
