@@ -12,6 +12,10 @@ import {
 } from '../vocabulary/builtins';
 import { columnsOf, identityFieldOf, type FlatTable } from './archiveTable';
 import { isCurrencyCode, isValidAmount } from '../cost';
+import { FIRST_EPOCH_DAY, todayEpochDay } from '../epochDay';
+import { MAX_DOSES_PER_DAY } from '../doseSchedule';
+import { MAX_TAPER_DAYS, MAX_TAPER_STAGES, MAX_TIMES_PER_DAY } from '../taperSchedule';
+import { isStoredPitchTrack } from '../../audio/track';
 
 type Check = (value: unknown) => boolean;
 const text: Check = (value) => typeof value === 'string';
@@ -29,6 +33,17 @@ const optional = (check: Check): Check => (value) => value === undefined || chec
 const oneOf = (values: readonly string[]): Check => (value) => typeof value === 'string' && values.includes(value);
 const integerBetween = (min: number, max: number): Check => (value) =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
+/* How far past today a stored day may sit: a century covers a letter to a
+   future self, an expiry date and a planned procedure, and nothing else
+   does. Screens trust a day to be human-scale (a rail of years, an axis of
+   months, a schedule walked day by day), so a day outside
+   [FIRST_EPOCH_DAY, today + this] is not an archive this app wrote. */
+export const ARCHIVE_MAX_FUTURE_DAYS = 36525;
+/** An epoch day of a dated row (`numeric` stays for every other number). Read
+    at check time, so the future bound moves with the clock. */
+const calendarDay: Check = (value) =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= FIRST_EPOCH_DAY &&
+  value <= todayEpochDay() + ARCHIVE_MAX_FUTURE_DAYS;
 // A wall-clock time in milliseconds, as `updated_at` and Trash hold one.
 const instant = integerBetween(0, Number.MAX_SAFE_INTEGER);
 // When the row was last written (functional audit ticket 48), on every row
@@ -53,6 +68,23 @@ const numericRecord: Check = (value) => record(value) && Object.values(value).ev
 const bodyRegionValue = integerBetween(BODY_REGION_INTENSITY_MIN, BODY_REGION_INTENSITY_MAX);
 const bodyRegionValues: Check = (value) => record(value) && Object.values(value).every((v) =>
   bodyRegionValue(v) && v !== BODY_REGION_MIDPOINT);
+/** A taper's stages (taperSchedule.ts): a list of at most MAX_TAPER_STAGES
+    whole-number stages whose days add up to at most MAX_TAPER_DAYS. The
+    column is JSON text, so it is read here rather than trusted. */
+const taperStages: Check = (value) => {
+  if (typeof value !== 'string') return false;
+  let stages: unknown;
+  try { stages = JSON.parse(value); } catch { return false; }
+  if (!Array.isArray(stages) || stages.length < 1 || stages.length > MAX_TAPER_STAGES) return false;
+  let total = 0;
+  for (const stage of stages) {
+    if (!record(stage) || !integerBetween(1, MAX_TAPER_DAYS)(stage.days) ||
+        !integerBetween(0, MAX_TAPER_DAYS)(stage.everyNDays) ||
+        !(stage.timesPerDay === undefined || integerBetween(1, MAX_TIMES_PER_DAY)(stage.timesPerDay))) return false;
+    total += stage.days as number;
+  }
+  return total <= MAX_TAPER_DAYS;
+};
 const object = (fields: Record<string, Check>): Check => (value) =>
   record(value) && Object.entries(fields).every(([field, check]) => check(value[field]));
 
@@ -71,7 +103,7 @@ const photo = object({
   id: identity,
   fileName: text,
   starred: optional(bool),
-  epochDayOverride: optional(nullable(numeric))
+  epochDayOverride: optional(nullable(calendarDay))
 });
 
 const voiceRecording = object({
@@ -95,21 +127,21 @@ const hairRemovalPhoto = object({
 const procedurePhoto = object({
   ...STAMP,
   id: identity,
-  epochDay: numeric,
+  epochDay: calendarDay,
   fileName: text
 });
 
 const appointmentStatus = object({
   ...STAMP,
   id: identity,
-  epochDay: numeric,
+  epochDay: calendarDay,
   status: text
 });
 
 const tryoutPhoto = object({
   ...STAMP,
   id: identity,
-  epochDay: numeric,
+  epochDay: calendarDay,
   fileName: text
 });
 
@@ -158,7 +190,7 @@ const ROWS = {
   entries: {
     ...STAMP,
     uuid: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     timestamp: numeric,
     mood: nullable(numeric),
     note: text,
@@ -176,7 +208,7 @@ const ROWS = {
     ...STAMP,
     id: identity,
     name: text,
-    epochDay: numeric,
+    epochDay: calendarDay,
     description: optional(text),
     templateKey: nullable(text),
     roadmapGoalKey: optional(nullable(text)),
@@ -188,7 +220,7 @@ const ROWS = {
   labResults: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     analyte: text,
     value: numeric,
     unit: text,
@@ -204,13 +236,13 @@ const ROWS = {
     ...STAMP,
     id: identity,
     procedureId: text,
-    startEpochDay: numeric,
-    stagesJson: text
+    startEpochDay: calendarDay,
+    stagesJson: taperStages
   },
   taperSessions: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     note: text
   },
   sideEffects: {
@@ -218,21 +250,21 @@ const ROWS = {
     id: identity,
     name: text,
     severity: nullable(integerBetween(1, 5)),
-    epochDay: numeric,
-    resolvedEpochDay: optional(nullable(numeric))
+    epochDay: calendarDay,
+    resolvedEpochDay: optional(nullable(calendarDay))
   },
   cycleEvents: {
     ...STAMP,
     id: identity,
     kind: oneOf(CYCLE_EVENT_KINDS),
-    epochDay: numeric
+    epochDay: calendarDay
   },
   eras: {
     ...STAMP,
     id: identity,
     name: text,
-    startEpochDay: nullable(numeric),
-    endEpochDay: nullable(numeric)
+    startEpochDay: nullable(calendarDay),
+    endEpochDay: nullable(calendarDay)
   },
   eraMutes: {
     ...STAMP,
@@ -242,7 +274,7 @@ const ROWS = {
     ...STAMP,
     id: identity,
     effect: text,
-    firstNoticedEpochDay: numeric
+    firstNoticedEpochDay: calendarDay
   },
   effectCategories: {
     ...STAMP,
@@ -262,7 +294,7 @@ const ROWS = {
   hairStages: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     scale: optional(text),
     stage: optional(text),
     description: optional(text)
@@ -270,7 +302,7 @@ const ROWS = {
   hairPhotos: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     fileName: text
   },
   progressPoses: {
@@ -283,14 +315,14 @@ const ROWS = {
   progressPhotos: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     pose: text,
     fileName: text
   },
   hairRemovalSessions: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     area: oneOf(HAIR_REMOVAL_AREAS),
     method: oneOf(HAIR_REMOVAL_METHODS),
     painRating: nullable(integerBetween(1, 5)),
@@ -306,7 +338,7 @@ const ROWS = {
     ...STAMP,
     id: identity,
     name: text,
-    surgeryEpochDay: nullable(numeric),
+    surgeryEpochDay: nullable(calendarDay),
     notes: text,
     photos: list(procedurePhoto),
     kind: optional(text),
@@ -317,12 +349,12 @@ const ROWS = {
   appointments: {
     ...STAMP,
     id: identity,
-    epochDay: nullable(numeric),
+    epochDay: nullable(calendarDay),
     procedureId: nullable(text),
     kind: nullable(text),
     place: nullable(text),
     note: nullable(text),
-    referredEpochDay: optional(nullable(numeric)),
+    referredEpochDay: optional(nullable(calendarDay)),
     statuses: optional(list(appointmentStatus)),
     time: optional(nullable(clockTime)),
     providerId: optional(nullable(text)),
@@ -345,8 +377,8 @@ const ROWS = {
     time: text,
     recurrence: nullable(oneOf(REMINDER_RECURRENCES)),
     interval: nullable(numeric),
-    anchorEpochDay: nullable(numeric),
-    epochDay: nullable(numeric),
+    anchorEpochDay: nullable(calendarDay),
+    epochDay: nullable(calendarDay),
     enabled: optional(bool),
     autoSource: nullable(text),
     drug: optional(nullable(text))
@@ -354,20 +386,20 @@ const ROWS = {
   tallyEvents: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     kind: oneOf(TALLY_KINDS)
   },
   letters: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     text: text,
-    unlockEpochDay: numeric
+    unlockEpochDay: calendarDay
   },
   voicePracticeTakes: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     minHz: numeric,
     maxHz: numeric,
     medianHz: numeric,
@@ -396,7 +428,7 @@ const ROWS = {
     id: identity,
     institution: identity,
     status: oneOf(INSTITUTION_STATUSES),
-    epochDay: numeric,
+    epochDay: calendarDay,
     note: nullable(text)
   },
   roadmapGoals: {
@@ -416,8 +448,8 @@ const ROWS = {
     doseUnit: text,
     route: text,
     interval: text,
-    startEpochDay: numeric,
-    endEpochDay: nullable(numeric),
+    startEpochDay: calendarDay,
+    endEpochDay: nullable(calendarDay),
     endReason: nullable(text),
     hidden: optional(bool)
   },
@@ -438,7 +470,7 @@ const ROWS = {
     drug: nullable(text),
     source: text,
     autoLogEpisodeId: optional(nullable(text)),
-    autoLogEpochDay: optional(nullable(numeric)),
+    autoLogEpochDay: optional(nullable(calendarDay)),
     autoLogIndex: optional(nullable(numeric))
   },
   doseSchedules: {
@@ -448,16 +480,16 @@ const ROWS = {
     recurrenceKind: oneOf(DOSE_RECURRENCE_KINDS),
     everyNDays: nullable(numeric),
     weekdays: nullable(list(integerBetween(0, 6))),
-    dosesPerDay: numeric,
+    dosesPerDay: integerBetween(1, MAX_DOSES_PER_DAY),
     doseAmounts: nullable(list(object({ dose: numeric, doseUnit: text }))),
-    autoLogFromEpochDay: optional(nullable(numeric))
+    autoLogFromEpochDay: optional(nullable(calendarDay))
   },
   dosePauses: {
     ...STAMP,
     id: identity,
     episodeId: text,
-    startEpochDay: numeric,
-    endEpochDay: nullable(numeric),
+    startEpochDay: calendarDay,
+    endEpochDay: nullable(calendarDay),
     reason: text
   },
   medicationStock: {
@@ -466,15 +498,15 @@ const ROWS = {
     drug: text,
     quantity: numeric,
     unit: text,
-    recordedEpochDay: numeric,
+    recordedEpochDay: calendarDay,
     reminderEverCreated: optional(bool),
     reminderDismissed: optional(bool),
-    openedEpochDay: nullable(numeric),
+    openedEpochDay: nullable(calendarDay),
     inUseWindowDays: nullable(numeric),
-    inUseEndEpochDay: nullable(numeric),
+    inUseEndEpochDay: nullable(calendarDay),
     leadTimeDays: nullable(numeric),
     dosesPerUnit: nullable(numeric),
-    expiryEpochDay: optional(nullable(numeric)),
+    expiryEpochDay: optional(nullable(calendarDay)),
     pharmacyNote: optional(nullable(text)),
     ...COST_FIELDS
   },
@@ -484,15 +516,15 @@ const ROWS = {
     kind: oneOf([...TRYOUT_KINDS, ...DROPPED_TRYOUT_KINDS]),
     label: text,
     description: nullable(text),
-    startEpochDay: numeric,
-    endEpochDay: nullable(numeric),
+    startEpochDay: calendarDay,
+    endEpochDay: nullable(calendarDay),
     photos: list(tryoutPhoto)
   },
   feltSenseEntries: {
     ...STAMP,
     id: identity,
     tryoutId: text,
-    epochDay: numeric,
+    epochDay: calendarDay,
     mood: integerBetween(1, 5),
     note: nullable(text)
   },
@@ -501,7 +533,7 @@ const ROWS = {
     id: identity,
     ownerKind: nullable(text),
     ownerId: nullable(text),
-    appointmentEpochDay: optional(nullable(numeric)),
+    appointmentEpochDay: optional(nullable(calendarDay)),
     items: list(checklistItem)
   },
   wearSessions: {
@@ -515,7 +547,7 @@ const ROWS = {
   voiceBenchmarks: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     timestamp: numeric,
     passageKey: text,
     passageFileName: text,
@@ -529,7 +561,7 @@ const ROWS = {
     f2Hz: nullable(numeric),
     snrDb: nullable(numeric),
     note: nullable(text),
-    pitchTrack: nullable(text),
+    pitchTrack: nullable((value) => typeof value === 'string' && isStoredPitchTrack(value)),
     captureChain: nullable(text),
     resonanceScale: nullable(numeric)
   },
@@ -568,20 +600,20 @@ const ROWS = {
     ...STAMP,
     area: text,
     hidden: optional(bool),
-    finishedEpochDay: nullable(numeric),
-    suspendedEpochDay: nullable(numeric)
+    finishedEpochDay: nullable(calendarDay),
+    suspendedEpochDay: nullable(calendarDay)
   },
   marginNotes: {
     ...STAMP,
     id: identity,
     entryId: text,
-    epochDay: numeric,
+    epochDay: calendarDay,
     text: text
   },
   documents: {
     ...STAMP,
     id: identity,
-    epochDay: numeric,
+    epochDay: calendarDay,
     title: text,
     fileName: text,
     targetKind: nullable(oneOf(DOCUMENT_TARGET_KINDS)),

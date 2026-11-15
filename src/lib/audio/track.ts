@@ -32,6 +32,31 @@ export const PITCH_TRACK_HZ = 4;
 
 const SECONDS_PER_POINT = 1 / PITCH_TRACK_HZ;
 
+/** The longest track a stored benchmark can hold: twenty minutes at
+    `PITCH_TRACK_HZ`, well past any passage a person reads. A longer string
+    is not something this app wrote, and `decodePitchTrack` refuses it
+    before it splits it. */
+export const MAX_PITCH_TRACK_POINTS = 20 * 60 * PITCH_TRACK_HZ;
+/** The range a stored point can sit in: the tracker searches 60 to 500 Hz
+    (pitch.ts), widened a little for the sub-sample interpolation. */
+export const MIN_PITCH_TRACK_HZ = 50;
+export const MAX_PITCH_TRACK_HZ = 600;
+/** Longest point as stored ("600.0") plus its comma. */
+const MAX_PITCH_TRACK_CHARS = MAX_PITCH_TRACK_POINTS * 6;
+
+/** Whether `stored` is a track this app could have written: under the point
+    and character limits, every point empty or a plain decimal in range. */
+export function isStoredPitchTrack(stored: string): boolean {
+  if (stored.length > MAX_PITCH_TRACK_CHARS) return false;
+  const fields = stored.split(',');
+  return fields.length <= MAX_PITCH_TRACK_POINTS && fields.every((field) => {
+    if (field === '') return true;
+    if (!/^\d{1,3}(\.\d+)?$/.test(field)) return false;
+    const hz = Number(field);
+    return hz >= MIN_PITCH_TRACK_HZ && hz <= MAX_PITCH_TRACK_HZ;
+  });
+}
+
 /** Hz to one decimal place in the stored text. Sub-decihertz precision is
     below what YIN resolves and below what a chart can draw, and it would
     double the column for nothing. */
@@ -79,6 +104,10 @@ export function encodePitchTrack(points: readonly (number | null)[]): string | n
     chart. */
 export function decodePitchTrack(stored: string | null): PitchFrame[] | null {
   if (!stored) return null;
+  /* Refused before the split: a string past the longest track allocates a
+     point per comma, and one from an archive the app never wrote can be a
+     hundred megabytes of them. */
+  if (stored.length > MAX_PITCH_TRACK_CHARS) return null;
   return stored.split(',').map((field, at) => ({
     atSeconds: at * SECONDS_PER_POINT,
     hz: field === '' ? null : Number(field)

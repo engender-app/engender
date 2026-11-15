@@ -39,6 +39,13 @@ export function dilationGated(
   return { ...states, taperSessions: { ...said, hidden: true } };
 }
 
+/** The most stages a taper holds and the most days its stages add up to
+    (ten years). Schedules are a handful of stages over weeks or months; the
+    ceilings are there so a plan read off an archive the editor never wrote
+    cannot ask a screen to walk a lifetime of days. */
+export const MAX_TAPER_STAGES = 52;
+export const MAX_TAPER_DAYS = 3650;
+
 /** The days `stages` expects a session on, starting at `startEpochDay` and
     stopping at `todayEpochDay` - never past it, since a taper has no
     schedule for a day that has not arrived yet.
@@ -62,7 +69,11 @@ export function expectedSessionDays(
 
     if (stage.everyNDays >= 1) {
       for (let day = cursor; day < cursor + stage.days; day += stage.everyNDays) {
-        if (day > todayEpochDay) return days;
+        /* Stored data the editor never wrote can make a step vanish beside
+           a huge day, and a schedule has at most MAX_TAPER_DAYS days to
+           expect a session on: stop on either rather than loop. */
+        if (day > todayEpochDay || days.length >= MAX_TAPER_DAYS) return days;
+        if (day + stage.everyNDays === day) return days;
         if (day >= taper.startEpochDay) days.push(day);
       }
     }
@@ -145,7 +156,8 @@ function typedNumber(value: unknown): number | null {
 /** The schedule editor's stages as a taper stores them, or null when any
     row is unfinished (dilation/+page.svelte). A frequency of 0 is a real
     rest stage, so only a missing or negative one is refused, and a stage
-    needs at least one day. A cleared frequency used to read as 0 and save
+    needs at least one whole day. Whole numbers only, inside MAX_TAPER_STAGES
+    and MAX_TAPER_DAYS: what a restore of the saved schedule accepts. A cleared frequency used to read as 0 and save
     a rest stage nobody asked for (after-release ticket 01).
 
     A row that carries `timesPerDay` is a times-a-day stage (functional
@@ -155,11 +167,14 @@ function typedNumber(value: unknown): number | null {
 export function stagesFromInput(
   inputs: readonly { everyNDays: unknown; days: unknown; timesPerDay?: unknown }[]
 ): TaperStage[] | null {
-  if (inputs.length === 0) return null;
+  if (inputs.length === 0 || inputs.length > MAX_TAPER_STAGES) return null;
   const stages: TaperStage[] = [];
+  let totalDays = 0;
   for (const input of inputs) {
     const days = typedNumber(input.days);
-    if (days === null || days <= 0) return null;
+    if (days === null || !Number.isInteger(days) || days <= 0) return null;
+    totalDays += days;
+    if (totalDays > MAX_TAPER_DAYS) return null;
     if (input.timesPerDay !== undefined) {
       const timesPerDay = typedNumber(input.timesPerDay);
       if (timesPerDay === null || !Number.isInteger(timesPerDay) || timesPerDay < 1 || timesPerDay > MAX_TIMES_PER_DAY) return null;
@@ -167,7 +182,7 @@ export function stagesFromInput(
       continue;
     }
     const everyNDays = typedNumber(input.everyNDays);
-    if (everyNDays === null || everyNDays < 0) return null;
+    if (everyNDays === null || !Number.isInteger(everyNDays) || everyNDays < 0 || everyNDays > MAX_TAPER_DAYS) return null;
     stages.push({ everyNDays, days });
   }
   return stages;
