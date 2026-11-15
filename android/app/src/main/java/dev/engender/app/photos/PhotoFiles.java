@@ -109,12 +109,27 @@ final class PhotoFiles {
         throw new IllegalArgumentException("invalid photo directory name");
     }
 
-    static File fileFor(Context context, String directoryName, String name) {
-        String trimmed = name.trim();
-        if (trimmed.isEmpty() || trimmed.contains("/") || trimmed.contains("\\") || trimmed.contains("..")) {
-            throw new IllegalArgumentException("invalid photo file name");
+    /**
+     * The same rule as isStorableFileName in photos/names.ts, so a name
+     * means one file on every store. A name is refused rather than trimmed:
+     * a trimmed " target.jpg" used to land on the real target.jpg, which
+     * then never decrypted because its sealed name is the other one
+     * (security scan GD-010). Everything the app writes is
+     * "uuid.extension", which passes.
+     */
+    static boolean isCanonicalName(String name) {
+        if (name == null || name.isEmpty() || !name.equals(name.trim()) || name.startsWith(".")) return false;
+        if (name.contains("/") || name.contains("\\") || name.contains("..")) return false;
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (c < 0x20 || c == 0x7f) return false;
         }
-        return new File(directory(context, directoryName), trimmed);
+        return true;
+    }
+
+    static File fileFor(Context context, String directoryName, String name) {
+        if (!isCanonicalName(name)) throw new IllegalArgumentException("invalid photo file name");
+        return new File(directory(context, directoryName), name);
     }
 
     /** Shared by both transports so a failure looks the same to either

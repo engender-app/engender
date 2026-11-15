@@ -72,9 +72,9 @@ import { restorePortablePreferencesWithin } from '../prefs/preferences';
 import type { PreferenceValues } from '../prefs/catalogue';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
-import { filesOf } from '../photos/names';
+import { filesOf, isStorableFileName } from '../photos/names';
 import { documentFilesOf } from './documents';
-import { assertArchiveFileOwnership, readCleanupFileNames } from './fileOwnership';
+import { archiveFileNames, assertArchiveFileOwnership, readCleanupFileNames } from './fileOwnership';
 import { journalIsBusy, waitForJournalIdle } from '../journal-busy';
 import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
 import { sweepOrphanPhotos } from './photos';
@@ -286,15 +286,20 @@ async function restoreWithin(
   const existing = new Set([...await readCleanupFileNames(driver), ...await files.list()]);
   const replacements = new Map<string, string>();
   const journal = replacementNames(original, existing, replacements);
+  const claimed = archiveFileNames(original);
+  // Every path this restore creates, so a failure can remove all of them and nothing else.
   const staged = new Set<string>();
   const stagedFiles = async function* () {
     for await (const file of contents.files) {
-      // Even an unreferenced archive file must never overwrite an existing file.
+      if (!isStorableFileName(file.name)) throw new CorruptArchiveError('the archive names a file the app cannot store');
+      // No row owns it, so nothing would ever read or delete it. The stream is still drained, tag checks included.
+      if (!claimed.has(file.name)) continue;
+      // Even a file the archive owns must never overwrite an existing file.
       if (!replacements.has(file.name) && existing.has(file.name)) {
         replacements.set(file.name, replacementFileName(file.name));
       }
       const name = replacements.get(file.name) ?? file.name;
-      if (name !== file.name) staged.add(name);
+      staged.add(name);
       yield { name, bytes: file.bytes };
     }
   };
@@ -358,6 +363,8 @@ async function restoreWithin(
        itself refused (the transactor wraps the rows' error in an
        AggregateError), which may have left the transaction open. */
     uncertain = transacting && !(rowsFailure !== undefined && error === rowsFailure);
+    // A rollback the rows' own error proves leaves nothing to own the files.
+    if (transacting && !uncertain) unpublished = staged;
     throw error;
   } finally {
     // Cleanup cannot turn a committed restore into a reported failure.

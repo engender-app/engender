@@ -26,6 +26,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';
+import { unownedNames } from './fileOwnership';
 import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
 import type { VideoNote } from '../types';
 import { videoFileName } from '../videoNotes/names';
@@ -75,12 +76,13 @@ export async function videosByEntry(driver: SqliteDriver, entryIds: number[]): P
 /** Deletes every file the given video note rows owned. Called after the rows
     are gone, mirroring photos.ts's removeFilesOf: a failure here must not
     resurrect them, and what it leaves behind is the sweep's to reclaim. */
-async function removeVideoFiles(files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
-  for (const row of rows) await files.remove(row.file_path);
+async function removeVideoFiles(files: PhotoFileStore, names: string[]): Promise<void> {
+  for (const name of names) await files.remove(name);
 }
 
 export async function removeVideoFilesOf(driver: SqliteDriver, files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
-  await afterCommit(driver, () => removeVideoFiles(files, rows), markOrphanSweepDue);
+  const names = await unownedNames(driver, rows.map((row) => row.file_path));
+  await afterCommit(driver, () => removeVideoFiles(files, names), markOrphanSweepDue);
 }
 
 /** Best-effort cleanup after an owner save has committed, the same reasoning
@@ -92,9 +94,10 @@ export async function removeVideoFilesAfterCommit(
   files: PhotoFileStore,
   rows: { file_path: string }[]
 ): Promise<void> {
+  const names = await unownedNames(driver, rows.map((row) => row.file_path));
   await afterCommit(driver, async () => {
     try {
-      await removeVideoFiles(files, rows);
+      await removeVideoFiles(files, names);
     } catch {
       markOrphanSweepDue();
     }

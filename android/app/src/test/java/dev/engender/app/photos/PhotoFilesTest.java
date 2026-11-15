@@ -2,6 +2,7 @@ package dev.engender.app.photos;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertThrows;
 
 import org.junit.Rule;
@@ -31,5 +32,15 @@ public class PhotoFilesTest {
         File target = new File(folder.getRoot(), "b.jpg");
         assertThrows(NullPointerException.class, () -> PhotoFiles.writeWhole(target, null));
         assertFalse(target.exists());
+    }
+
+    @Test
+    public void aNameIsItsOwnTrimOrItIsRefused() {
+        assertTrue(PhotoFiles.isCanonicalName("6f1c2a9e-0b1d-4c3e-8f7a-123456789abc.jpg"));
+        assertTrue(PhotoFiles.isCanonicalName("6f1c2a9e-0b1d-4c3e-8f7a-123456789abc-thumb.jpg"));
+        assertTrue(PhotoFiles.isCanonicalName("6f1c2a9e-0b1d-4c3e-8f7a-123456789abc.webm"));
+        for (String name : new String[] { "", " ", "x.jpg ", " x.jpg", "x.jpg\n", "x.jpg\u0001", ".", ".nomedia", "a/b.jpg", "a\\b.jpg", "a..jpg" }) {
+            assertFalse(name, PhotoFiles.isCanonicalName(name));
+        }
     }
 }

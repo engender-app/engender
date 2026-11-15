@@ -1,7 +1,7 @@
 import type { ArchiveJournal } from '../archive/payload';
 import { CorruptArchiveError } from '../archive/wire';
 import type { SqliteReader } from '../sqlite/driver';
-import { filesOf } from '../photos/names';
+import { filesOf, isStorableFileName } from '../photos/names';
 import { documentFilesOf } from './documents';
 
 export type PhotoRow = {
@@ -159,8 +159,28 @@ export async function readCleanupFileNames(driver: SqliteReader): Promise<string
   });
 }
 
-/** The row validator runs first. Missing files remain valid placeholders;
- * names claimed by different deletion owners do not. Derived names count too. */
+/** Of these stored names, the ones no row in the database names any more.
+ * A delete removes only these, so a file two rows share (written by an
+ * earlier build, or by a restore that predates the ownership check) stays
+ * while any owner is left. Call it after the rows are deleted and before the
+ * transaction commits: the answer is then the committed state. */
+export async function unownedNames(driver: SqliteReader, names: string[]): Promise<string[]> {
+  if (names.length === 0) return [];
+  const owned = new Set(await readCleanupFileNames(driver));
+  return names.filter((name) => !owned.has(name));
+}
+
+/** Every stored name the archive's rows own, derived thumbnails included. */
+export function archiveFileNames(journal: ArchiveJournal): Set<string> {
+  return new Set(Object.values(FILE_OWNERS).flatMap((owner) =>
+    owner.archiveClaims(journal).flatMap(({ names }) => names)));
+}
+
+/** The row validator runs first. Every name must be one both file stores read
+ * the same way (isStorableFileName), or two names could reach one file on
+ * Android, where a trailing space is trimmed. Missing files remain valid
+ * placeholders; names claimed by different deletion owners do not. Derived
+ * names count too. */
 export function assertArchiveFileOwnership(journal: ArchiveJournal): void {
   const claimed = new Map<string, string>();
   for (const [kind, owner] of Object.entries(FILE_OWNERS)) {
@@ -168,6 +188,7 @@ export function assertArchiveFileOwnership(journal: ArchiveJournal): void {
       // Include parent identity for nested rows and encode components without delimiter ambiguity.
       const identity = JSON.stringify([kind, ...path]);
       for (const name of names) {
+        if (!isStorableFileName(name)) throw new CorruptArchiveError('the archive names a file the app cannot store');
         const previous = claimed.get(name);
         if (previous !== undefined && previous !== identity) {
           throw new CorruptArchiveError('the archive assigns one attachment to different owners');
