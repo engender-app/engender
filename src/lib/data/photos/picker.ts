@@ -145,10 +145,16 @@ export type PickerOptions = {
     back under its token and the pick is deferred, so nothing goes to it. */
 async function readTokens(options: PickerOptions | undefined, tokens: string[]): Promise<Uint8Array[]> {
   const bytes: Uint8Array[] = [];
-  for (const token of tokens) bytes.push(await androidPickedBytes(token));
-  if (tokens.length && options?.deferIf?.()) {
-    await Promise.all(tokens.map((token) => androidPhotos.reopenPicked({ token })));
-    throw new PickDeferredError(tokens);
+  for (const [index, token] of tokens.entries()) {
+    bytes.push(await androidPickedBytes(token));
+    // After every file, not once at the end: a lock that lands early stops the
+    // reading, and the files not read yet are still held under their tokens.
+    if (options?.deferIf?.()) {
+      const back = await Promise.all(tokens.slice(0, index + 1).map((read) => androidPhotos.reopenPicked({ token: read })));
+      // A newer pick can have replaced what native retained; a token that cannot be redeemed is lost.
+      if (back.some((answer) => !answer.reopened)) throw new Error('picked-file-lost');
+      throw new PickDeferredError(tokens);
+    }
   }
   return bytes;
 }

@@ -97,7 +97,8 @@ public final class PickedFiles {
 
         Removed before the read rather than after it, so a read that fails
         (an unmounted card, a file deleted from under the picker) leaves no
-        token to try again with. That is deliberate: the recovery is to pick
+        token to try again with (only reopen, for a lock that landed
+        mid-read, can bring one back, and only until the next pick). That is deliberate: the recovery is to pick
         again, which is also what the web half does when a File's
         arrayBuffer() rejects, and holding a token open for a retry nobody
         makes is the leak this store exists to avoid. */

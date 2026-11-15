@@ -220,6 +220,13 @@ public class PhotosPlugin extends Plugin {
         that is 34 calls. */
     private static final int CHUNK_BYTES = 3 * 256 * 1024;
 
+    /** Makes a token the page just read redeemable once more: the app locked
+        while the file was being read and the page keeps only the token. */
+    @PluginMethod
+    public void reopenPicked(PluginCall call) {
+        call.resolve(new JSObject().put("reopened", PickedFiles.reopen(call.getString("token"))));
+    }
+
     /**
      * The floor's transport for a picked file's bytes: base64 over the
      * bridge, for the WebView versions {@link PhotoPickChannel} cannot
@@ -255,11 +262,6 @@ public class PhotosPlugin extends Plugin {
      * every way a read ends. {@code PhotoPickChannelTest} records what this
      * costs against the channel.
      */
-    @PluginMethod
-    public void reopenPicked(PluginCall call) {
-        call.resolve(new JSObject().put("reopened", PickedFiles.reopen(call.getString("token"))));
-    }
-
     @PluginMethod
     public void readPickedChunk(PluginCall call) {
         try {
