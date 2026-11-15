@@ -2451,7 +2451,7 @@
   "recording_not_audio": "To nie jest plik audio.",
   "recording_remove": "Usuń nagranie",
   "recording_too_large": "To nagranie jest za duże, żeby je zapisać. Max. 10 MB.",
-  "recording_too_long": "To nagranie jest zbyt długie, żeby je otworzyć. Maksymalnie 3 godziny.",
+  "recording_too_long": "To nagranie jest zbyt długie, żeby je otworzyć. Maksymalnie 2 godziny.",
   "recording_unsupported": "Ta przeglądarka nie obsługuje nagrywania głosu.",
   "recurrence_daily": "Codziennie",
   "recurrence_every_n_days": "Co {n} dni",

@@ -63,6 +63,41 @@ export function peaksFromSamples(samples: Float32Array, buckets: number): Float3
   return bars;
 }
 
+/**
+ * The same bars as `peaksFromSamples` of the channels' mean, without ever
+ * making that mean: each sample is mixed where it is read, so a decoded
+ * recording is walked once and no array the length of the recording is
+ * allocated for it (security-scan ticket 07, GD-017).
+ */
+export function peaksFromChannels(channels: readonly Float32Array[], buckets: number): Float32Array {
+  const bars = new Float32Array(Math.max(0, buckets));
+  const length = channels[0]?.length ?? 0;
+  if (bars.length === 0 || length === 0) return bars;
+
+  const per = length / bars.length;
+  const count = channels.length;
+  let loudest = 0;
+  for (let bar = 0; bar < bars.length; bar++) {
+    const from = Math.floor(bar * per);
+    const to = Math.max(from + 1, Math.floor((bar + 1) * per));
+    let sum = 0;
+    let n = 0;
+    for (let i = from; i < to && i < length; i++) {
+      let mixed = 0;
+      for (let c = 0; c < count; c++) mixed += channels[c][i] / count;
+      sum += mixed * mixed;
+      n++;
+    }
+    const rms = n === 0 ? 0 : Math.sqrt(sum / n);
+    bars[bar] = rms;
+    if (rms > loudest) loudest = rms;
+  }
+
+  if (loudest <= 1e-6) return new Float32Array(bars.length);
+  for (let bar = 0; bar < bars.length; bar++) bars[bar] = Math.min(1, bars[bar] / loudest);
+  return bars;
+}
+
 /** A bar and the gap after it, in CSS pixels. Two and two: thinner than the
     2px the chart ink rule gives a series (DIRECTION rule 9) would not survive
     a phone, and wider spends a 110px track on eight bars. */

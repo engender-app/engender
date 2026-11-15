@@ -1,10 +1,15 @@
 import { afterEach, expect, test, vi } from 'vitest';
 vi.mock('$lib/audio/captureChain', () => ({ captureChainOf: () => 'chain', deviceFromUserAgent: () => 'device' }));
-vi.mock('$lib/paraglide/messages', () => ({ m: { recording_mic_failed: () => 'microphone failed' } }));
+vi.mock('$lib/paraglide/messages', () => ({
+  m: { recording_mic_failed: () => 'microphone failed', recording_too_long: () => 'too long' }
+}));
 vi.mock('./toasts.svelte', () => ({ toast: vi.fn() }));
 vi.mock('$lib/data/fileDialog', () => ({ chooseFiles: vi.fn() }));
 vi.mock('$lib/data/videoNotes/limits', () => ({ VIDEO_SIZE_CEILING: 100 }));
-import { openMicrophone, recordStream, startRecording } from './voiceRecording';
+import { openMicrophone, pickRecording, recordStream, startRecording } from './voiceRecording';
+import { chooseFiles } from '$lib/data/fileDialog';
+import { toast } from './toasts.svelte';
+import { webm } from '../data/media/audio-fixtures';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -84,4 +89,23 @@ test('stopping closes microphone tracks before recorder completion arrives', asy
   expect(stop).toHaveBeenCalled();
   finish();
   expect(await result).toBeNull();
+});
+
+/* GD-017: the importer had only a byte ceiling, so a small low-bitrate file
+   that is hours long went straight to storage and to the waveform decoder. */
+test('an imported recording longer than the duration limit is refused with its own message', async () => {
+  const bytes = webm({ seconds: 4 * 3600 });
+  vi.mocked(chooseFiles).mockResolvedValue([
+    { type: 'audio/webm', size: bytes.length, arrayBuffer: async () => bytes.buffer } as unknown as File
+  ]);
+  expect(await pickRecording()).toBeNull();
+  expect(toast).toHaveBeenCalledWith('too long');
+});
+
+test('an imported recording inside the limit is returned as it came', async () => {
+  const bytes = webm({ seconds: 40 * 60 });
+  vi.mocked(chooseFiles).mockResolvedValue([
+    { type: 'audio/webm', size: bytes.length, arrayBuffer: async () => bytes.buffer } as unknown as File
+  ]);
+  expect(await pickRecording()).toEqual(bytes);
 });

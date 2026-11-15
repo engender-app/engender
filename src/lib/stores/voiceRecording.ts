@@ -15,6 +15,8 @@
 import { captureChainOf, deviceFromUserAgent } from '$lib/audio/captureChain';
 import { chooseFiles } from '$lib/data/fileDialog';
 import { VIDEO_SIZE_CEILING } from '$lib/data/videoNotes/limits';
+import { refuseAudioOverBudget } from '../data/media/audio-budget';
+import { MediaBudgetError } from '../data/media/budget';
 import { m } from '$lib/paraglide/messages';
 import { toast } from './toasts.svelte';
 
@@ -229,5 +231,17 @@ export async function pickRecording(): Promise<Uint8Array | null> {
     toast(m.recording_too_large());
     return null;
   }
-  return new Uint8Array(await file.arrayBuffer());
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  /* Bytes and length are different budgets: a few hundred kilobytes of low
+     bitrate speech can be hours long, and the decoder behind the waveform
+     pays for the hours (data/media/audio-budget.ts). Checked here, on the
+     header, so a recording the app will not open is not stored either. */
+  try {
+    refuseAudioOverBudget(bytes);
+  } catch (error) {
+    if (!(error instanceof MediaBudgetError)) throw error;
+    toast(m.recording_too_long());
+    return null;
+  }
+  return bytes;
 }
