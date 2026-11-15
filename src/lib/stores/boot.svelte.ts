@@ -81,6 +81,7 @@ import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences, type Preferences } from '../data/prefs/preferences';
 import { migrateLegacyAcknowledgements } from '../data/acknowledgements';
+import { foldLegacyReserves } from '../data/homeReserve';
 import { activateLanguagePreference, applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
 import { beginSessionUnlock, isLocked, markUnlocked } from './lock.svelte';
 import { UnlockCancelledError } from '../lock/unlock-attempt';
@@ -450,7 +451,7 @@ let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
 
 /** Functional audit ticket 45: the tile snoozes, letter ids and entries hint
-    older builds kept in plaintext localStorage move into the encrypted
+    (and since security-scan ticket 08 the stock notice snooze) older builds kept in plaintext localStorage move into the encrypted
     `acknowledgements` preference on the first unlock. Awaits the handle's own
     write, which rejects on failure, rather than the reactive setter, which
     logs and carries on - the plaintext keys are deleted only after it lands.
@@ -465,6 +466,17 @@ async function moveLegacyAcknowledgements(preferences: Preferences): Promise<voi
   await migrateLegacyAcknowledgements(storage, preferences.get('acknowledgements'), (next) =>
     preferences.set('acknowledgements', next)
   );
+  /* And the screens' held heights, which named the screens (security-scan
+     ticket 08). Same order: the keys go only once the write has landed. */
+  if (!storage) return;
+  try {
+    const { next, keys } = foldLegacyReserves(storage, preferences.get('layoutReserves'));
+    if (keys.length === 0) return;
+    await preferences.set('layoutReserves', next);
+    for (const key of keys) storage.removeItem(key);
+  } catch (error) {
+    console.error('Could not move the screen heights into the journal', error);
+  }
 }
 
 /* Where each kind of reset lands, read by resetApp below. */

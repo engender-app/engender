@@ -27,10 +27,7 @@ const PLAINTEXT_LOCAL_STORAGE: Record<string, string> = {
   PARAGLIDE_LOCALE: 'the locale strategy, read before any module loads',
   'engender-pin-attempts': 'PIN throttling, which has to count before the journal can be opened',
   'engender-entry-draft': 'an encrypted blob, not plaintext',
-  'engender-stock-notice-snooze-until': 'the stock notice snooze, device-local and read outside the journal',
-  'stock_notice_snooze_until': 'the stock notice snooze under its older name, migrated on read',
-  'engender-home-reserve': 'Home layout heights, per device',
-  'engender-reserve': 'screen layout heights, per device',
+  'engender-home-reserve': "Home's three layout heights, per device, read before the journal answers; they name no screen",
   'engender-orphan-sweep': 'FA 51 install-local housekeeping stamp; its -retry and -handled keys derive from it',
   'yank-sweep-profile': 'the demo and the yank sweep only'
 };
@@ -52,7 +49,12 @@ const REPLACED: Record<string, string[]> = {
   'engender-read-letter-ids': ['src/lib/data/acknowledgements.ts'],
   'engender-greeted-letter-ids': ['src/lib/data/acknowledgements.ts'],
   'engender-tile-snooze': ['src/lib/data/acknowledgements.ts'],
-  letter_tile_snooze_until: ['src/lib/data/acknowledgements.ts', 'src/lib/data/reset.ts']
+  letter_tile_snooze_until: ['src/lib/data/acknowledgements.ts', 'src/lib/data/reset.ts'],
+  /* Security-scan ticket 08: the stock notice snooze is the stock-notice
+     tile's, and every screen's height but Home's is `layoutReserves`. */
+  'engender-stock-notice-snooze-until': ['src/lib/data/acknowledgements.ts'],
+  stock_notice_snooze_until: ['src/lib/data/acknowledgements.ts'],
+  'engender-reserve': ['src/lib/data/homeReserve.ts']
 };
 
 function sourceFiles(dir: string): string[] {
@@ -96,7 +98,7 @@ describe('plaintext storage keys', () => {
     expect(undecided).toEqual([]);
   });
 
-  it('no longer writes the tile snoozes, the letter ids or the entries hint to plaintext', () => {
+  it('no longer writes the snoozes, the letter ids, the entries hint or a screen height to plaintext', () => {
     const stray: string[] = [];
     for (const [key, allowedIn] of Object.entries(REPLACED)) {
       for (const [name, files] of named) {

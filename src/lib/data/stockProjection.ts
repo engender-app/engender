@@ -38,6 +38,8 @@ import { epochDayFromTimestamp } from './epochDay';
 import { attributeDrug, drugSpans, drugNameKey, sameDrug } from './regimenEpisode';
 import { rangesFromCuts } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
+import { clearSnooze, isTileSnoozed, snoozeTile } from './liveTilesSnooze';
+import type { AcknowledgementStore } from './acknowledgements';
 
 /** How many trailing days of the dose log the consumption rate is
     estimated from, capped at how long the current stock entry has been in
@@ -315,66 +317,27 @@ export function reorderByEpochDay(runOutEpochDay: number | null, leadTimeDays: n
 /* STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS stays exported only for its own test
    (AU-09 test-only review). */
 export const STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS = 7;
-const STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'engender-stock-notice-snooze-until';
-/* Pre-rename name (audit finding S3): unprefixed, so the reset's
-   engender- prefix sweep left it behind. Migrated on first read rather
-   than dropped, so a snooze already in effect survives the rename.
-   Lazily on read rather than once at module load like
-   recentSearches.ts's purgeLegacyRecentSearches: the storage here is
-   whatever a caller passes in (a fake in tests), which a load-time call
-   has no access to, and there is a value worth carrying over rather than
-   just dropping. */
-const LEGACY_STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'stock_notice_snooze_until';
+/* The notice's 24-hour snooze is the `stock-notice` tile's snooze in the
+   encrypted acknowledgements preference (security-scan ticket 08, GD-035).
+   It sat in plaintext localStorage before, where a key that exists only
+   after somebody dismissed a running-out medication notice said so to
+   anyone with the device's files; the first unlock moves an old one over
+   (acknowledgements.ts). */
+const STOCK_NOTICE_TILE = 'stock-notice';
 const STOCK_NOTICE_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
-function resolveStorage(storage?: Storage): Storage | null {
-  if (storage) return storage;
-  if (typeof localStorage !== 'undefined') return localStorage;
-  return null;
+export function isStockNoticeSnoozed(store: AcknowledgementStore, nowMs: number = Date.now()): boolean {
+  return isTileSnoozed(STOCK_NOTICE_TILE, store, nowMs);
 }
 
-function migrateLegacyStockNoticeSnooze(s: Storage): void {
-  if (s.getItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY) !== null) return;
-  const legacy = s.getItem(LEGACY_STOCK_NOTICE_SNOOZE_STORAGE_KEY);
-  if (legacy === null) return;
-  s.setItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY, legacy);
-  s.removeItem(LEGACY_STOCK_NOTICE_SNOOZE_STORAGE_KEY);
-}
-
-export function isStockNoticeSnoozed(nowMs: number = Date.now(), storage?: Storage): boolean {
-  const s = resolveStorage(storage);
-  if (!s) return false;
-  try {
-    migrateLegacyStockNoticeSnooze(s);
-    const raw = s.getItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY);
-    if (!raw) return false;
-    const until = Number(raw);
-    return !Number.isNaN(until) && nowMs < until;
-  } catch {
-    return false;
-  }
-}
-
-export function snoozeStockNotice(nowMs: number = Date.now(), storage?: Storage): void {
-  const s = resolveStorage(storage);
-  if (!s) return;
-  try {
-    s.setItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY, String(nowMs + STOCK_NOTICE_SNOOZE_DURATION_MS));
-  } catch {
-    // Storage write failure ignored gracefully.
-  }
+export function snoozeStockNotice(store: AcknowledgementStore, nowMs: number = Date.now()): void {
+  snoozeTile(STOCK_NOTICE_TILE, store, STOCK_NOTICE_SNOOZE_DURATION_MS, nowMs);
 }
 
 /* clearStockNoticeSnooze stays exported for its own test, and cross-checked in
    stock-notice.test.ts (AU-09 test-only review). */
-export function clearStockNoticeSnooze(storage?: Storage): void {
-  const s = resolveStorage(storage);
-  if (!s) return;
-  try {
-    s.removeItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY);
-  } catch {
-    // Storage remove failure ignored gracefully.
-  }
+export function clearStockNoticeSnooze(store: AcknowledgementStore): void {
+  clearSnooze(STOCK_NOTICE_TILE, store);
 }
 
 /* isStockDepletingSoon stays exported for its own test, and cross-checked in

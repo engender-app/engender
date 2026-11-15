@@ -61,6 +61,7 @@
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { withHasEntries } from '$lib/data/acknowledgements';
+  import { acknowledgementStore } from '$lib/data/prefs/acknowledgementStore.svelte';
   import { surfaceOn, withSurface } from '$lib/unprompted/registry';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
@@ -597,7 +598,7 @@
   let showDebriefOffer = $derived(!!debriefStateQuery.value && debriefOfferVisible(debriefStateQuery.value));
 
   let stockProjectionsQuery = liveList((j) => j.stock.getProjections(today));
-  let isStockNoticeSnoozedState = $state(isStockNoticeSnoozed());
+  let isStockNoticeSnoozedState = $state(isStockNoticeSnoozed(acknowledgementStore));
   let urgentDepletingStock = $derived(depletingStocks(stockProjectionsQuery.rows, today)[0] ?? null);
   let showStockNotice = $derived(surfaceOn(prefs.surfaceOverrides, 'stock-notice') && !!urgentDepletingStock && !isStockNoticeSnoozedState);
   let stockNoticeCopy = $derived(
@@ -716,7 +717,7 @@
 
   $effect.pre(() => {
     if (doorActive()) {
-      isStockNoticeSnoozedState = isStockNoticeSnoozed();
+      isStockNoticeSnoozedState = isStockNoticeSnoozed(acknowledgementStore);
       return;
     }
     visit++;
@@ -1366,7 +1367,7 @@
           class="btn btn-primary btn-block"
           data-stock-snooze
           onclick={() => {
-            snoozeStockNotice();
+            snoozeStockNotice(acknowledgementStore);
             isStockNoticeSnoozedState = true;
             stockDismissSheetOpen = false;
             toast(m.reminder_snoozed_toast());

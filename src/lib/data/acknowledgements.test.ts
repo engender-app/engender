@@ -138,4 +138,38 @@ describe('moving the plaintext keys on first unlock', () => {
     const storage = new MemoryStorage({ 'engender-greeted-letter-ids': '{not json' });
     expect(foldLegacyAcknowledgements(NO_ACKNOWLEDGEMENTS, storage, storage.keys())).toEqual(NO_ACKNOWLEDGEMENTS);
   });
+
+  /* Security-scan ticket 08 (GD-035, GD-041). */
+  it('moves the stock notice snooze, under either of its names, to the stock-notice tile', async () => {
+    const storage = new MemoryStorage({
+      'engender-stock-notice-snooze-until': String(NOW + 3000),
+      'engender-boot-prefs': '{}'
+    });
+    const persist = vi.fn(async () => {});
+    expect(await migrateLegacyAcknowledgements(storage, NO_ACKNOWLEDGEMENTS, persist, NOW)).toBe(true);
+    expect(persist).toHaveBeenCalledWith({ ...NO_ACKNOWLEDGEMENTS, snoozes: { 'stock-notice': NOW + 3000 } });
+    expect(storage.keys()).toEqual(['engender-boot-prefs']);
+
+    const older = new MemoryStorage({ stock_notice_snooze_until: String(NOW + 4000) });
+    const folded = foldLegacyAcknowledgements(NO_ACKNOWLEDGEMENTS, older, older.keys(), NOW);
+    expect(folded.snoozes).toEqual({ 'stock-notice': NOW + 4000 });
+  });
+
+  it('drops a legacy snooze that has already ended, and still deletes its key', async () => {
+    const storage = new MemoryStorage({
+      'engender-tile-snooze-measurements-nudge': String(NOW - 1),
+      'engender-tile-snooze-patch-schedule-tile': String(NOW + 1)
+    });
+    const persist = vi.fn(async () => {});
+    await migrateLegacyAcknowledgements(storage, NO_ACKNOWLEDGEMENTS, persist, NOW);
+    expect(persist).toHaveBeenCalledWith({ ...NO_ACKNOWLEDGEMENTS, snoozes: { 'patch-schedule-tile': NOW + 1 } });
+    expect(storage.keys()).toEqual([]);
+  });
+
+  it('drops saved snoozes that have ended on the next unlock, with nothing in plaintext to move', async () => {
+    const current = { ...NO_ACKNOWLEDGEMENTS, snoozes: { gone: NOW - 1, kept: NOW + 1 } };
+    const persist = vi.fn(async () => {});
+    expect(await migrateLegacyAcknowledgements(new MemoryStorage(), current, persist, NOW)).toBe(true);
+    expect(persist).toHaveBeenCalledWith({ ...NO_ACKNOWLEDGEMENTS, snoozes: { kept: NOW + 1 } });
+  });
 });

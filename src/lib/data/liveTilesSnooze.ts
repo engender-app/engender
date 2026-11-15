@@ -31,7 +31,7 @@ export function isTileSnoozed(key: string, store: AcknowledgementStore, now: num
 }
 
 /** Clears any active snooze for the tile. */
-/* clearSnooze stays exported only for its own test (AU-09 test-only review). */
+/* Also the stock notice's clear (stockProjection.ts). */
 export function clearSnooze(key: string, store: AcknowledgementStore): void {
   store.write(withoutSnooze(store.read(), key));
 }
