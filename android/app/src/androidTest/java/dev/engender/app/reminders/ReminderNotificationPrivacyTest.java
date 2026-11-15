@@ -590,6 +590,80 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(CHANNEL_NAME, posted.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
     }
 
+    /* Many reminders at once: the repost burst can pass Android's roughly
+       five a second, which sheds posts. Whatever is shed, the end state is
+       hidden or gone, never the old title. */
+    private JSONObject manyReminders(boolean hide, int count) throws Exception {
+        JSONObject payload = payload(hide);
+        JSONArray rows = new JSONArray();
+        for (int i = 1; i <= count; i++) {
+            rows.put(new JSONObject()
+                .put("id", "m-" + i)
+                .put("title", "Medication " + i)
+                .put("text", "Take medication " + i)
+                .put("type", "med")
+                .put("time", "20:00")
+                .put("recurrence", "DAILY")
+                .put("enabled", true));
+        }
+        return payload.put("reminders", rows);
+    }
+
+    private void fireReminder(String id) {
+        new ReminderAlarmReceiver().onReceive(context, new Intent(context, ReminderAlarmReceiver.class)
+            .putExtra(ReminderScheduler.EXTRA_KIND, ReminderScheduler.KIND_REMINDER)
+            .putExtra(ReminderScheduler.EXTRA_REMINDER_ID, id));
+    }
+
+    private void postManyRevealed(int count) throws Exception {
+        ReminderScheduler.applySync(context, manyReminders(false, count));
+        for (int i = 1; i <= count; i++) {
+            fireReminder("m-" + i);
+            Thread.sleep(300); // under the rate limit, so every revealed one is really posted
+        }
+        for (int i = 0; i < 50 && revealedReminders() < count; i++) Thread.sleep(100);
+        assertEquals("the revealed reminders were not all posted", count, revealedReminders());
+    }
+
+    private int revealedReminders() {
+        int n = 0;
+        for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
+            if (sbn.getTag() != null && sbn.getTag().startsWith("reminder:")
+                && String.valueOf(sbn.getNotification().extras.getCharSequence(Notification.EXTRA_TITLE)).startsWith("Medication")) n++;
+        }
+        return n;
+    }
+
+    private void assertNoTitleShows() throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(8);
+        while (revealedReminders() > 0 && System.nanoTime() < deadline) Thread.sleep(100);
+        assertEquals("a reminder still shows its title", 0, revealedReminders());
+    }
+
+    @Test
+    public void aBurstOfEightRepostsLeavesNoTitleOnTheShade() throws Exception {
+        postManyRevealed(8);
+        Thread.sleep(1500);
+
+        ReminderScheduler.applySync(context, manyReminders(true, 8));
+
+        assertNoTitleShows();
+    }
+
+    @Test
+    public void repostsAndroidShedsLeaveNothingRevealed() throws Exception {
+        postManyRevealed(3);
+        Thread.sleep(1500);
+        ReminderScheduler.dropReposts = 3;
+        try {
+            ReminderScheduler.applySync(context, manyReminders(true, 3));
+        } finally {
+            ReminderScheduler.dropReposts = 0;
+        }
+
+        assertNoTitleShows();
+    }
+
     private void assertNoActiveNotifications() throws InterruptedException {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (notificationManager().getActiveNotifications().length > 0 && System.nanoTime() < deadline) {

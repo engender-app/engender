@@ -104,6 +104,10 @@ public final class ReminderScheduler {
      * the shade - another tag, another id, the check-in - is not touched here;
      * {@link CheckInFaces#reconcile} owns the check-in.
      */
+    /** Reposts a device test makes Android appear to shed: the next N are
+        skipped. Zero in production. */
+    static volatile int dropReposts;
+
     private static void withdrawRevealedReminders(Context context, JSONObject payload) {
         if (!payload.optBoolean("hideNotificationTitles", false)) return;
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -121,6 +125,10 @@ public final class ReminderScheduler {
                races the repost inside the notification service (the two
                take different paths) and on a Pixel running Android 17 the
                cancel won, leaving nothing in the shade. */
+            if (dropReposts > 0) {
+                dropReposts--;
+                continue;
+            }
             ReminderAlarmReceiver.postReminderNotification(context, payload, reminder, true);
         }
     }
