@@ -164,3 +164,20 @@ test('deleting one of two rows that name the same file leaves the bytes (GD-024)
   assert.deepEqual(await made.files.read(made.target), bytes('original photo'));
   await made.db.run('DELETE FROM hair_photo WHERE uuid = ?', ['hair-alias']);
 });
+
+for (const mode of ['merge', 'replace'] as const) {
+  test(`${mode} reports every delivered file as done, skipped ones included`, async () => {
+    const made = await device();
+    const journal = clone(made);
+    journal.entries[0].uuid = 'imported-entry';
+    journal.entries[0].epochDay = 20_005;
+    journal.entries[0].photos[0] = { ...journal.entries[0].photos[0], id: 'imported-photo', fileName: 'fresh.jpg' };
+    const reports: { stage: string; done: number; total: number }[] = [];
+    const contents = withFiles(journal, { 'fresh.jpg': 'full', 'stray-1.jpg': 'x', 'stray-2.jpg': 'y' });
+    contents.fileCount = 3;
+    await made.journal.archive[mode](contents, (progress) => reports.push(progress));
+    const files = reports.filter((report) => report.stage === 'files');
+    assert.equal(files.at(-1)?.done, 3);
+    assert.equal(files.at(-1)?.total, 3);
+  });
+}

@@ -181,7 +181,7 @@ function replacementNames(journal: ArchiveJournal, existing: Set<string>, names:
 
 async function writeArchiveFiles(
   files: PhotoFileStore,
-  source: RestoreContents['files'],
+  source: AsyncIterable<{ name: string; bytes: Uint8Array; skipped?: boolean }>,
   fileCount: number,
   onProgress?: OnRestoreProgress
 ): Promise<void> {
@@ -215,6 +215,12 @@ async function writeArchiveFiles(
   try {
     for await (const file of source) {
       throwIfFailed();
+      if (file.skipped) {
+        // Counted as done so the bar still reaches the manifest's total.
+        written += 1;
+        onProgress?.({ stage: 'files', done: written, total: fileCount });
+        continue;
+      }
       schedule(file.name, file.bytes);
       if (inFlight.size >= FILE_WRITE_CONCURRENCY) await Promise.race(inFlight);
       throwIfFailed();
@@ -294,7 +300,10 @@ async function restoreWithin(
     for await (const file of contents.files) {
       if (!isStorableFileName(file.name)) throw new CorruptArchiveError('the archive names a file the app cannot store');
       // No row owns it, so nothing would ever read or delete it. The stream is still drained, tag checks included.
-      if (!claimed.has(file.name)) continue;
+      if (!claimed.has(file.name)) {
+        yield { name: file.name, bytes: file.bytes, skipped: true };
+        continue;
+      }
       // Even a file the archive owns must never overwrite an existing file.
       if (!replacements.has(file.name) && existing.has(file.name)) {
         replacements.set(file.name, replacementFileName(file.name));
