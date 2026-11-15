@@ -108,29 +108,82 @@ public final class ReminderScheduler {
         skipped. Zero in production. */
     static volatile int dropReposts;
 
+    /** Under Android's roughly five notifications a second, with room to
+        spare. A person with many reminders flips hide titles and every one
+        is reposted at once; spaced like this none is shed in the first
+        place. */
+    private static final long REPOST_SPACING_MS = 250;
+    private static final long SETTLE_POLL_MS = 150;
+    private static final int SETTLE_POLLS = 10;
+
     private static void withdrawRevealedReminders(Context context, JSONObject payload) {
         if (!payload.optBoolean("hideNotificationTitles", false)) return;
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
+        List<JSONObject> repost = new ArrayList<>();
         for (StatusBarNotification posted : manager.getActiveNotifications()) {
-            String tag = posted.getTag();
-            if (posted.getId() != REMINDER_NOTIFICATION_ID || tag == null || !tag.startsWith(REMINDER_TAG_PREFIX)) continue;
-            JSONObject reminder = findReminder(payload, tag.substring(REMINDER_TAG_PREFIX.length()));
-            if (reminder == null || posted.getNotification().extras.getBoolean(ReminderAlarmReceiver.EXTRA_NOTED, false)) {
-                manager.cancel(tag, REMINDER_NOTIFICATION_ID);
-                continue;
+            JSONObject reminder = ownReminderOf(posted, payload);
+            if (reminder == null && isOwnReminderTag(posted)) {
+                // The Noted line, or a reminder the payload no longer has.
+                manager.cancel(posted.getTag(), REMINDER_NOTIFICATION_ID);
+            } else if (reminder != null && !alreadyHidden(posted.getNotification(), payload, reminder)) {
+                repost.add(reminder);
             }
-            if (alreadyHidden(posted.getNotification(), payload, reminder)) continue;
-            /* Replaced in place under the same tag and id. A cancel first
-               races the repost inside the notification service (the two
-               take different paths) and on a Pixel running Android 17 the
-               cancel won, leaving nothing in the shade. */
+        }
+        boolean interrupted = false;
+        for (int i = 0; i < repost.size() && !interrupted; i++) {
             if (dropReposts > 0) {
                 dropReposts--;
                 continue;
             }
-            ReminderAlarmReceiver.postReminderNotification(context, payload, reminder, true);
+            /* Replaced in place under the same tag and id. A cancel first
+               races the repost inside the notification service (the two
+               take different paths) and on a Pixel running Android 17 the
+               cancel won, leaving nothing in the shade. */
+            ReminderAlarmReceiver.postReminderNotification(context, payload, repost.get(i), true);
+            interrupted = !pause(i + 1 < repost.size() ? REPOST_SPACING_MS : 0);
         }
+        /* Android sheds what it is sent too fast, silently. Whatever is
+           still showing a title once the reposts have had time to land is
+           cancelled: the end state is hidden or gone, never the old title. */
+        for (int poll = 0; poll < SETTLE_POLLS && !interrupted; poll++) {
+            if (stillRevealed(manager, payload).isEmpty()) return;
+            interrupted = !pause(SETTLE_POLL_MS);
+        }
+        for (String tag : stillRevealed(manager, payload)) manager.cancel(tag, REMINDER_NOTIFICATION_ID);
+    }
+
+    private static boolean pause(long millis) {
+        if (millis <= 0) return true;
+        try {
+            Thread.sleep(millis);
+            return true;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    private static List<String> stillRevealed(NotificationManager manager, JSONObject payload) {
+        List<String> tags = new ArrayList<>();
+        for (StatusBarNotification posted : manager.getActiveNotifications()) {
+            JSONObject reminder = ownReminderOf(posted, payload);
+            if (reminder != null && !alreadyHidden(posted.getNotification(), payload, reminder)) tags.add(posted.getTag());
+        }
+        return tags;
+    }
+
+    private static boolean isOwnReminderTag(StatusBarNotification posted) {
+        return posted.getId() == REMINDER_NOTIFICATION_ID && posted.getTag() != null
+            && posted.getTag().startsWith(REMINDER_TAG_PREFIX);
+    }
+
+    /** The reminder a posted notification stands for, or null when it is not
+        a reminder of ours, is the Noted line, or names one the payload lacks. */
+    private static JSONObject ownReminderOf(StatusBarNotification posted, JSONObject payload) {
+        if (!isOwnReminderTag(posted)) return null;
+        if (posted.getNotification().extras.getBoolean(ReminderAlarmReceiver.EXTRA_NOTED, false)) return null;
+        return findReminder(payload, posted.getTag().substring(REMINDER_TAG_PREFIX.length()));
     }
 
     private static boolean alreadyHidden(Notification notification, JSONObject payload, JSONObject reminder) {
