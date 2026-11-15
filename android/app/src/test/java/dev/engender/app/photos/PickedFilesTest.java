@@ -33,11 +33,34 @@ import java.util.List;
  */
 public class PickedFilesTest {
 
+    /** The photo ceiling is 50 MiB: exactly that reads, one byte more is refused. */
+    @Test
+    public void photoChannelAcceptsExactlyTheCeilingAndRefusesOneByteMore() throws Exception {
+        long ceiling = 50L * 1024 * 1024;
+        assertEquals(ceiling, PhotoPickChannel.readFully(PhotoPickChannel.limit(zeros(ceiling), ceiling)).length);
+        IOException refused = assertThrows(IOException.class,
+            () -> PhotoPickChannel.readFully(PhotoPickChannel.limit(zeros(ceiling + 1), ceiling)));
+        assertEquals("too-large", refused.getMessage());
+    }
+
+    private static InputStream zeros(long length) {
+        return new InputStream() {
+            long remaining = length;
+            @Override public int read() { return remaining-- > 0 ? 0 : -1; }
+            @Override public int read(byte[] buffer, int offset, int count) {
+                if (remaining <= 0) return -1;
+                int read = (int) Math.min(remaining, count);
+                remaining -= read;
+                return read;
+            }
+        };
+    }
+
     @Test
     public void photoChannelAcceptsThirtyMiB() throws Exception {
         byte[] photo = new byte[30 * 1024 * 1024];
         assertEquals(photo.length, PhotoPickChannel.readFully(
-            PhotoPickChannel.limit(new ByteArrayInputStream(photo), 32L * 1024 * 1024)).length);
+            PhotoPickChannel.limit(new ByteArrayInputStream(photo), 50L * 1024 * 1024)).length);
     }
 
     @Test

@@ -47,7 +47,7 @@ public class PhotosPlugin extends Plugin {
         the number hold() checks a content provider's declared size against
         before a token for that file is ever handed out. */
     private static final long DOCUMENT_SIZE_CEILING = 25L * 1024 * 1024;
-    static final long PHOTO_SIZE_CEILING = 32L * 1024 * 1024;
+    static final long PHOTO_SIZE_CEILING = 50L * 1024 * 1024;
 
     @Override
     public void load() {

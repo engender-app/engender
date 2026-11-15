@@ -307,10 +307,10 @@ describe('filePhotoPicker selection budget', () => {
   });
 });
 
-test('a 30 MiB photo passes the raw photo ceiling before normalization', async () => {
+test('a 45 MiB photo passes the raw photo ceiling before normalization', async () => {
   vi.resetAllMocks();
   vi.mocked(isAndroid).mockReturnValue(false);
-  const file = fakeFile(30 * 1024 * 1024, [137, 80, 78, 71]);
+  const file = fakeFile(45 * 1024 * 1024, [137, 80, 78, 71]);
   vi.mocked(chooseFiles).mockResolvedValue([file]);
   expect(await readAll(await filePhotoPicker().pick())).toEqual([new Uint8Array([137, 80, 78, 71])]);
   expect(file.arrayBuffer).toHaveBeenCalledOnce();

@@ -46,7 +46,7 @@ public final class CameraCapture {
 
     /**
      * The captured photo, refused with {@code too-large} when it is over
-     * {@code ceiling} - the same 32 MiB the picker applies to a gallery photo,
+     * {@code ceiling} - the same 50 MiB the picker applies to a gallery photo,
      * which this path used to skip by reading the whole file. The length on
      * disk is checked before the file is opened, and the read itself is
      * bounded too, because the camera app keeps its write grant until the

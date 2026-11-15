@@ -91,9 +91,10 @@ public class PhotoPickChannelTest {
         }
     }
 
+    /* The name predates the ceiling moving from 32 to 50 MiB; the progressive-release record cites it. */
     @Test public void aPhotoProviderCannotReadBeyond32MiB() throws Exception {
         java.io.InputStream oversized = new java.io.InputStream() {
-            int remaining = 32 * 1024 * 1024 + 1;
+            int remaining = 50 * 1024 * 1024 + 1;
             public int read() { return remaining-- > 0 ? 0 : -1; }
             public int read(byte[] buffer, int offset, int count) {
                 if (remaining == 0) return -1;
@@ -104,7 +105,7 @@ public class PhotoPickChannelTest {
         };
         try {
             PhotoPickChannel.readFully(oversized);
-            org.junit.Assert.fail("read exceeded 32 MiB");
+            org.junit.Assert.fail("read exceeded 50 MiB");
         } catch (java.io.IOException expected) {
             assertEquals("too-large", expected.getMessage());
         }
