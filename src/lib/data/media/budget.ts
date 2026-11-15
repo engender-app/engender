@@ -183,3 +183,15 @@ export function refuseSelectionOverBudget(sizes: readonly number[]): void {
     throw new MediaBudgetError('pick-selection', `Selected files total ${total} bytes; the limit is ${MAX_PICK_BYTES}`);
   }
 }
+
+/** pdf.js's own limits, set where `getDocument` is called (documents/pdf.ts).
+    `maxImageSize` is in pixels and is the same budget as any other image:
+    the page-one image of a long scan is at most about 140 MP (A4 at 1200
+    dpi), well inside it. `canvasMaxAreaInBytes` caps the canvases pdf.js
+    makes for itself: a page is drawn at most 2048 px on the long edge
+    (documents/[id]/+page.svelte's RENDER_CAP), 16 MiB of RGBA, so 64 MiB
+    is four times what any real page needs. */
+export const PDF_DOCUMENT_BUDGET = {
+  maxImageSize: MAX_IMAGE_PIXELS,
+  canvasMaxAreaInBytes: 64 * 1024 * 1024
+} as const;
