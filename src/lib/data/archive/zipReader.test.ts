@@ -300,3 +300,50 @@ test('prefix sniffing refuses truncated member ranges and corrupt deflate stream
   assert.throws(() => openZip(corrupt).readPrefix('a', 12));
   assert.throws(() => openZip(bytes.subarray(0, bytes.length - 10)));
 });
+
+/* ---- input budget (security scan ticket 06) ---- */
+
+const MIB = 1024 * 1024;
+
+test('a member declaring more than the per-member limit is refused before fflate allocates it', () => {
+  // 300 MiB in a few real bytes: under the old 1536 MiB ceiling it reached
+  // unzipSync, which allocated the buffer from the forged number.
+  const reader = openZip(declaring('backup.daylio', 'tiny', 300 * MIB));
+  assert.throws(() => reader.read('backup.daylio'), ZipTooLargeError);
+  assert.throws(() => reader.readPrefix('backup.daylio', 12), ZipTooLargeError);
+});
+
+test('a read can name a tighter limit than the reader default', () => {
+  const reader = openZip(declaring('backup.daylio', 'tiny', 65 * MIB));
+  assert.throws(() => reader.read('backup.daylio', 64 * MIB), ZipTooLargeError);
+});
+
+test('members that each fit a member limit are refused once together they pass the total', () => {
+  const bytes = zipSync({
+    'a.bin': [strToU8('a'.repeat(300)), { level: 0 }],
+    'b.bin': [strToU8('b'.repeat(300)), { level: 0 }]
+  });
+  const reader = openZip(bytes, 500, { memberBytes: 400 });
+  assert.equal(reader.read('a.bin')!.length, 300);
+  assert.throws(() => reader.read('b.bin'), ZipTooLargeError);
+});
+
+test('a zip over the entry limit is refused while its directory is scanned', () => {
+  const members: Record<string, [Uint8Array, { level: 0 }]> = {};
+  for (let i = 0; i <= 20_000; i++) members[`m${i}`] = [new Uint8Array(0), { level: 0 }];
+  assert.throws(() => openZip(zipSync(members)), ZipTooLargeError);
+  assert.throws(() => openZip(zipSync({ a: [strToU8('a'), { level: 0 }], b: [strToU8('b'), { level: 0 }] }), 1000, { entries: 1 }), ZipTooLargeError);
+});
+
+test('an overlong entry name, or too many name bytes in total, is refused', () => {
+  assert.throws(() => openZip(zipSync({ ['n'.repeat(1025)]: [strToU8('a'), { level: 0 }] })), ZipTooLargeError);
+  const members: Record<string, [Uint8Array, { level: 0 }]> = {};
+  for (let i = 0; i < 5000; i++) members[`${'n'.repeat(900)}${i}`] = [new Uint8Array(0), { level: 0 }];
+  assert.throws(() => openZip(zipSync(members)), ZipTooLargeError);
+});
+
+test('a zip at the entry limit with ordinary names still opens', () => {
+  const members: Record<string, [Uint8Array, { level: 0 }]> = {};
+  for (let i = 0; i < 20_000; i++) members[`/assets/photos/2026/1/${String(i).padStart(32, '0')}`] = [new Uint8Array(0), { level: 0 }];
+  assert.equal(openZip(zipSync(members)).names().length, 20_000);
+});
