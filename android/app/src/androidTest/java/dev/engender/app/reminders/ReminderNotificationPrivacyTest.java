@@ -469,6 +469,115 @@ public class ReminderNotificationPrivacyTest {
         assertNoActiveNotifications();
     }
 
+    /* GD-033: hiding titles used to protect only what came next. A reminder
+       already in the shade kept its title and its line of text on the lock
+       screen until the person swiped it away. The switch reaches the
+       notifications through the same sync that carries it. */
+    private JSONObject withBodyText(JSONObject payload) throws Exception {
+        payload.getJSONArray("reminders").getJSONObject(0).put("text", "Patch: " + SENSITIVE_TITLE);
+        return payload;
+    }
+
+    private void postUnrelatedNotification() {
+        androidx.core.app.NotificationManagerCompat.from(context).notify("unrelated", 4242,
+            new androidx.core.app.NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
+                .setSmallIcon(dev.engender.app.R.drawable.ic_stat_mark)
+                .setContentTitle("Backup finished")
+                .build());
+    }
+
+    private boolean unrelatedStillPosted() {
+        for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
+            if ("unrelated".equals(sbn.getTag()) && sbn.getId() == 4242) return true;
+        }
+        return false;
+    }
+
+    @Test
+    public void hidingTitlesSanitizesTheReminderAndCheckInAlreadyPosted() throws Exception {
+        ReminderScheduler.applySync(context, withBodyText(checkInPayload()));
+        fireReminderAlarm();
+        fireCheckInAlarm();
+        postUnrelatedNotification();
+        Notification before = findNotification();
+        assertNotNull("no reminder was posted", before);
+        assertEquals(SENSITIVE_TITLE, before.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
+        assertNotNull("no faces were posted", findCheckInNotification().contentView);
+
+        ReminderScheduler.applySync(context, withBodyText(payload(true).put("checkInEnabled", true)));
+
+        Notification after = findNotification();
+        assertNotNull("the reminder was withdrawn instead of reposted", after);
+        assertEquals(CHANNEL_NAME, after.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
+        assertEquals("20:00", after.extras.getCharSequence(Notification.EXTRA_TEXT).toString());
+        assertGenericCheckIn(findCheckInNotification());
+        assertTrue("an unrelated notification was cancelled", unrelatedStillPosted());
+    }
+
+    @Test
+    public void turningTitlesBackOnLeavesUnrelatedNotificationsAlone() throws Exception {
+        ReminderScheduler.applySync(context, withBodyText(payload(true)));
+        fireReminderAlarm();
+        postUnrelatedNotification();
+
+        ReminderScheduler.applySync(context, withBodyText(payload(false)));
+
+        assertTrue("an unrelated notification was cancelled", unrelatedStillPosted());
+        assertNotNull(findNotification());
+    }
+
+    /* The alarm that was already delivering when the switch was turned has
+       the old payload in hand. It must finish first, and what it posted must
+       then be sanitized, not left standing after the sync reported success. */
+    @Test
+    public void aDeliveryInFlightWhenTitlesAreHiddenIsSanitizedAfterwards() throws Exception {
+        ReminderScheduler.applySync(context, withBodyText(payload(false)));
+        CountDownLatch beforePost = new CountDownLatch(1);
+        CountDownLatch releasePost = new CountDownLatch(1);
+        AtomicBoolean held = new AtomicBoolean();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Context delayed = new ContextWrapper(context) {
+            @Override
+            public Object getSystemService(String name) {
+                if (Context.NOTIFICATION_SERVICE.equals(name) && held.compareAndSet(false, true)) {
+                    beforePost.countDown();
+                    try {
+                        if (!releasePost.await(5, TimeUnit.SECONDS)) throw new AssertionError("delivery was not released");
+                    } catch (InterruptedException e) {
+                        throw new AssertionError(e);
+                    }
+                }
+                return super.getSystemService(name);
+            }
+        };
+        Thread delivery = new Thread(() -> {
+            try {
+                new ReminderAlarmReceiver().onReceive(delayed, new Intent()
+                    .putExtra(ReminderScheduler.EXTRA_KIND, ReminderScheduler.KIND_REMINDER)
+                    .putExtra(ReminderScheduler.EXTRA_REMINDER_ID, REMINDER_ID));
+            } catch (Throwable error) { failure.set(error); }
+        });
+        Thread sync = new Thread(() -> {
+            try {
+                ReminderScheduler.applySync(context, withBodyText(payload(true)));
+            } catch (Throwable error) { failure.set(error); }
+        });
+        delivery.start();
+        try {
+            assertTrue("delivery never reached NotificationManager", beforePost.await(5, TimeUnit.SECONDS));
+            sync.start();
+            Thread.sleep(300);
+        } finally {
+            releasePost.countDown();
+            delivery.join(5000);
+            sync.join(5000);
+        }
+        assertNull(failure.get());
+        Notification posted = findNotification();
+        assertNotNull(posted);
+        assertEquals(CHANNEL_NAME, posted.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
+    }
+
     private void assertNoActiveNotifications() throws InterruptedException {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (notificationManager().getActiveNotifications().length > 0 && System.nanoTime() < deadline) {

@@ -136,6 +136,50 @@ public class SensitiveClipboardTest {
         }
     }
 
+    /* GD-013: the reset used to delete the record of the pending clear and
+       leave the key on the clipboard, where nothing would ever take it off. */
+    @Test
+    public void aResetTakesTheKeyOffTheClipboardAndDropsTheClear() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            onMainThread(() -> SensitiveClipboard.copy(context, KEY, 60_000));
+            assertEquals(KEY, textOnClipboard());
+
+            dev.engender.app.reset.DeviceStores.wipe(context);
+
+            assertFalse("the reset left the key on the clipboard", KEY.equals(textOnClipboard()));
+            SharedPreferences prefs = context.getSharedPreferences(SensitiveClipboard.PREFS, Context.MODE_PRIVATE);
+            assertTrue("the pending clear survived the reset", prefs.getAll().isEmpty());
+        }
+    }
+
+    @Test
+    public void aResetLeavesNewerClipboardContentWhereItIs() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            onMainThread(() -> SensitiveClipboard.copy(context, KEY, 60_000));
+            onMainThread(() -> clipboard().setPrimaryClip(ClipData.newPlainText("", "an address, hers")));
+
+            dev.engender.app.reset.DeviceStores.wipe(context);
+
+            assertEquals("an address, hers", textOnClipboard());
+        }
+    }
+
+    /* The timer armed by the copy is the second way the clipboard gets
+       cleared. After a reset it must neither fire into something copied
+       later nor be left pending. */
+    @Test
+    public void theTimerArmedBeforeAResetDoesNotTouchWhatIsCopiedAfterIt() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            copyTheKey();
+            dev.engender.app.reset.DeviceStores.wipe(context);
+            onMainThread(() -> clipboard().setPrimaryClip(ClipData.newPlainText("", KEY)));
+
+            Thread.sleep(CLEAR_AFTER_MS * 4);
+
+            assertEquals("the old timer cleared a later copy", KEY, textOnClipboard());
+        }
+    }
+
     private void copyTheKey() {
         onMainThread(() -> SensitiveClipboard.copy(context, KEY, CLEAR_AFTER_MS));
     }
