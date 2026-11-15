@@ -410,13 +410,19 @@ export function factSpan(fact: RailFact, railStart: number): Span {
   return fact.isDay ? defaultSpan(railStart, fact.end) : { start: fact.start, end: fact.end };
 }
 
+/** The most year marks one rail draws. A journal spans decades; a rail that
+    reaches back further (a day stored near the minimum JS date) keeps every
+    Nth year instead of building a mark per year. */
+const MAX_YEAR_TICKS = 200;
+
 /** Each 1 January strictly after the rail's start and no later than today:
-    the marks a rail of years is read by. */
+    the marks a rail of years is read by, thinned to MAX_YEAR_TICKS. */
 export function yearTicks(railStart: number, todayEpochDay: number): { epochDay: number; year: number }[] {
   const out: { epochDay: number; year: number }[] = [];
   const first = localDateFromEpochDay(railStart).getFullYear() + 1;
   const last = localDateFromEpochDay(todayEpochDay).getFullYear();
-  for (let year = first; year <= last; year++) {
+  const step = Math.max(1, Math.ceil((last - first + 1) / MAX_YEAR_TICKS));
+  for (let year = first; year <= last; year += step) {
     const epochDay = epochDayFromLocalDate(new Date(year, 0, 1));
     if (epochDay > railStart && epochDay <= todayEpochDay) out.push({ epochDay, year });
   }

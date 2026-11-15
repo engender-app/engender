@@ -1,3 +1,4 @@
+const MAX_TAPER_DAYS = 3650;
 /* Expected taper sessions: pure arithmetic over a start day and a stage
    sequence (phase 8 features ticket 12). No clock, no database - every case
    here is a table of days. */
@@ -184,4 +185,22 @@ test('a gated dilation row cannot be searched up on the More hub', () => {
   const reading = { todayEpochDay: 100, lastWrites: {}, forward: {}, states: dilationGated({}, []) };
   assert.deepEqual(hubRowsMatching(reading, 'dilation', (key) => key), []);
   assert.equal(hubRowsMatching({ ...reading, states: dilationGated({}, [{ kind: 'vaginoplasty', dilationOptIn: false }]) }, 'dilation', (key) => key).length, 1);
+});
+
+test('expectedSessionDays returns when a stage step vanishes beside its start day', () => {
+  const days = expectedSessionDays(taper(-(2 ** 60), [{ everyNDays: 1, days: 2 ** 62 }]), 20000);
+  assert.ok(days.length <= 1);
+});
+
+test('expectedSessionDays stops at the most days a taper can expect', () => {
+  const days = expectedSessionDays(taper(0, [{ everyNDays: 1, days: 1e9 }]), 5_000_000);
+  assert.equal(days.length, MAX_TAPER_DAYS);
+});
+
+test('stagesFromInput refuses fractions and what a restore would refuse', () => {
+  assert.equal(stagesFromInput([{ everyNDays: 1, days: 2.5 }]), null);
+  assert.equal(stagesFromInput([{ everyNDays: 1.5, days: 3 }]), null);
+  assert.equal(stagesFromInput([{ everyNDays: 1, days: MAX_TAPER_DAYS + 1 }]), null);
+  assert.equal(stagesFromInput(Array.from({ length: 53 }, () => ({ everyNDays: 1, days: 1 }))), null);
+  assert.deepEqual(stagesFromInput([{ everyNDays: 0, days: MAX_TAPER_DAYS }]), [{ everyNDays: 0, days: MAX_TAPER_DAYS }]);
 });

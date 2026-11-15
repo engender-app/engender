@@ -899,3 +899,11 @@ test('a repeated dose object cannot fill two positions on the same day', () => {
   assert.deepEqual(result.rows.map(row => row.dose), [logged, null]);
   assert.deepEqual(result.unmatched, []);
 });
+
+test('a schedule over the daily maximum expects nothing and cannot auto-log', () => {
+  const huge = schedule(1, 2_000_000, [{ dose: 1, doseUnit: 'mg' }], 0);
+  assert.deepEqual(expectedSlots(huge, 0, 0, 3), []);
+  assert.deepEqual(autoLogSlots(huge, 0, [], [], 4), []);
+  assert.equal(canAutoLog(huge, 'IM, ventrogluteal', []), false);
+  assert.equal(expectedSlots(schedule(1, 24), 0, 0, 0).length, 24);
+});
