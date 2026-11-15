@@ -347,3 +347,9 @@ test('a zip at the entry limit with ordinary names still opens', () => {
   for (let i = 0; i < 20_000; i++) members[`/assets/photos/2026/1/${String(i).padStart(32, '0')}`] = [new Uint8Array(0), { level: 0 }];
   assert.equal(openZip(zipSync(members)).names().length, 20_000);
 });
+
+test('a member first accepted by a prefix read still meets a tighter limit on a later full read', () => {
+  const reader = openZip(declaring('backup.daylio', 'tiny', 65 * MIB));
+  reader.readPrefix('backup.daylio', 12);
+  assert.throws(() => reader.read('backup.daylio', 64 * MIB), ZipTooLargeError);
+});

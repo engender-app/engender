@@ -17,8 +17,8 @@
 
    Photos do not compress, so the ZIP on disk is about as large as what it
    holds; the file ceiling and the inflated total are the same 1 GiB.
-   Keep `dlb_too_large`, `dlb_file_too_large` and `daylio_too_large` in sync
-   with these in both message catalogues. */
+   Keep `dlb_file_too_large` (it quotes 1 GB) in sync with `backupFileBytes`
+   in both message catalogues. */
 
 const MIB = 1024 * 1024;
 

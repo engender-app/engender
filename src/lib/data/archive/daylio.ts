@@ -71,7 +71,7 @@ export const REQUIRED_COLUMNS = ['full_date', 'time', 'mood', 'activities', 'not
 
 type DaylioRow = Record<(typeof REQUIRED_COLUMNS)[number], string>;
 
-const tooLarge = (what: 'text' | 'file' | 'row' | 'field') =>
+const tooLarge = (what: 'text' | 'rows' | 'columns' | 'field') =>
   new ImportTooLargeError(`Daylio CSV ${what} is over the import limit`);
 
 /** RFC 4180 fields, including doubled quotes and line breaks inside a quoted
@@ -87,7 +87,7 @@ function csvRows(csv: string): string[][] {
   let afterQuote = false;
 
   const finishField = () => {
-    if (row.length >= DAYLIO_BUDGET.csvColumns) throw tooLarge('row');
+    if (row.length >= DAYLIO_BUDGET.csvColumns) throw tooLarge('columns');
     row.push(field);
     field = '';
     afterQuote = false;
@@ -95,7 +95,7 @@ function csvRows(csv: string): string[][] {
   const finishRow = () => {
     finishField();
     if (row.some((value) => value !== '')) {
-      if (rows.length >= DAYLIO_BUDGET.csvRows) throw tooLarge('file');
+      if (rows.length >= DAYLIO_BUDGET.csvRows) throw tooLarge('rows');
       rows.push(row);
     }
     row = [];

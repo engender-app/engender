@@ -213,9 +213,13 @@ export function openZip(
   const accepted = new Set<string>();
   function accept(name: string, maxBytes: number = limits.memberBytes): void {
     const member = members.get(name);
-    if (accepted.has(name) || !member) return;
+    if (!member) return;
+    // On every call, not only the first: a member first accepted by a prefix
+    // read must still meet the tighter limit a later full read names.
+    const memberLimit = Math.min(maxBytes, limits.memberBytes);
+    if (member.originalSize > memberLimit) throw new ZipTooLargeError(memberLimit);
+    if (accepted.has(name)) return;
     const size = member.originalSize;
-    if (size > Math.min(maxBytes, limits.memberBytes)) throw new ZipTooLargeError(Math.min(maxBytes, limits.memberBytes));
     if (total + size > ceilingBytes) throw new ZipTooLargeError(ceilingBytes);
     total += size;
     accepted.add(name);
@@ -227,9 +231,8 @@ export function openZip(
     },
 
     read(name: string, maxBytes?: number): Uint8Array | null {
-      if (cache.has(name)) return cache.get(name)!;
-
       accept(name, maxBytes);
+      if (cache.has(name)) return cache.get(name)!;
       const found = readZip(bytes, { filter: entry => entry.name === name });
       const value = Object.values(found)[0] ?? null;
       cache.set(name, value);
