@@ -157,8 +157,9 @@ function typedNumber(value: unknown): number | null {
     row is unfinished (dilation/+page.svelte). A frequency of 0 is a real
     rest stage, so only a missing or negative one is refused, and a stage
     needs at least one whole day. Whole numbers only, inside MAX_TAPER_STAGES
-    and MAX_TAPER_DAYS: what a restore of the saved schedule accepts. A cleared frequency used to read as 0 and save
-    a rest stage nobody asked for (after-release ticket 01).
+    and MAX_TAPER_DAYS: what a restore of the saved schedule accepts. A
+    cleared frequency used to read as 0 and save a rest stage nobody asked
+    for (after-release ticket 01).
 
     A row that carries `timesPerDay` is a times-a-day stage (functional
     audit ticket 25): its frequency field is not read, the count has to be

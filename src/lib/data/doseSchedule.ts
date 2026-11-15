@@ -270,6 +270,10 @@ function weekdayOccurrencesBefore(anchorEpochDay: number, uptoEpochDay: number, 
     never wrote cannot make the auto-log pass allocate a dose per count. */
 export const MAX_DOSES_PER_DAY = 24;
 
+function isExpectedDosesPerDay(count: number): boolean {
+  return count >= 1 && count <= MAX_DOSES_PER_DAY;
+}
+
 /** The slots `schedule` expects between `fromEpochDay` and `toEpochDay`
     inclusive. An every-N-days recurrence steps from `anchorEpochDay` - the
     episode's start day, so the progression belongs to the episode and does
@@ -292,7 +296,7 @@ export function expectedSlots(
   fromEpochDay: number,
   toEpochDay: number
 ): DoseSlot[] {
-  if (!(schedule.dosesPerDay >= 1 && schedule.dosesPerDay <= MAX_DOSES_PER_DAY)) return [];
+  if (!isExpectedDosesPerDay(schedule.dosesPerDay)) return [];
 
   const amounts = schedule.doseAmounts;
   const amountAt = (occurrence: number, indexInDay: number): DoseScheduleAmount | null =>
@@ -550,7 +554,7 @@ const AUTO_LOG_WINDOW_END_HOUR = 20;
     so a screen can ask the question without generating a range of slots to
     find out. */
 function expectsAnyDose(schedule: Pick<DoseSchedule, 'recurrence' | 'dosesPerDay'>): boolean {
-  if (!(schedule.dosesPerDay >= 1 && schedule.dosesPerDay <= MAX_DOSES_PER_DAY)) return false;
+  if (!isExpectedDosesPerDay(schedule.dosesPerDay)) return false;
   return schedule.recurrence.kind === 'everyNDays'
     ? schedule.recurrence.everyNDays >= 1
     : schedule.recurrence.weekdays.length > 0;

@@ -38,7 +38,7 @@ const integerBetween = (min: number, max: number): Check => (value) =>
    does. Screens trust a day to be human-scale (a rail of years, an axis of
    months, a schedule walked day by day), so a day outside
    [FIRST_EPOCH_DAY, today + this] is not an archive this app wrote. */
-export const ARCHIVE_MAX_FUTURE_DAYS = 36525;
+const ARCHIVE_MAX_FUTURE_DAYS = 36525;
 /** An epoch day of a dated row (`numeric` stays for every other number). Read
     at check time, so the future bound moves with the clock. */
 const calendarDay: Check = (value) =>

@@ -39,8 +39,8 @@ const SECONDS_PER_POINT = 1 / PITCH_TRACK_HZ;
 export const MAX_PITCH_TRACK_POINTS = 20 * 60 * PITCH_TRACK_HZ;
 /** The range a stored point can sit in: the tracker searches 60 to 500 Hz
     (pitch.ts), widened a little for the sub-sample interpolation. */
-export const MIN_PITCH_TRACK_HZ = 50;
-export const MAX_PITCH_TRACK_HZ = 600;
+const MIN_PITCH_TRACK_HZ = 50;
+const MAX_PITCH_TRACK_HZ = 600;
 /** Longest point as stored ("600.0") plus its comma. */
 const MAX_PITCH_TRACK_CHARS = MAX_PITCH_TRACK_POINTS * 6;
 
