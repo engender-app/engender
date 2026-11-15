@@ -68,9 +68,11 @@ const numericRecord: Check = (value) => record(value) && Object.values(value).ev
 const bodyRegionValue = integerBetween(BODY_REGION_INTENSITY_MIN, BODY_REGION_INTENSITY_MAX);
 const bodyRegionValues: Check = (value) => record(value) && Object.values(value).every((v) =>
   bodyRegionValue(v) && v !== BODY_REGION_MIDPOINT);
+const finiteBetween = (min: number, max: number): Check => (value) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 /** A taper's stages (taperSchedule.ts): a list of at most MAX_TAPER_STAGES
-    whole-number stages whose days add up to at most MAX_TAPER_DAYS. The
-    column is JSON text, so it is read here rather than trusted. */
+    stages whose days add up to at most MAX_TAPER_DAYS. Fractions pass: the
+    editor has always let a person type them. The column is JSON text, so it is read here rather than trusted. */
 const taperStages: Check = (value) => {
   if (typeof value !== 'string') return false;
   let stages: unknown;
@@ -78,8 +80,8 @@ const taperStages: Check = (value) => {
   if (!Array.isArray(stages) || stages.length < 1 || stages.length > MAX_TAPER_STAGES) return false;
   let total = 0;
   for (const stage of stages) {
-    if (!record(stage) || !integerBetween(1, MAX_TAPER_DAYS)(stage.days) ||
-        !integerBetween(0, MAX_TAPER_DAYS)(stage.everyNDays) ||
+    if (!record(stage) || !finiteBetween(Number.MIN_VALUE, MAX_TAPER_DAYS)(stage.days) ||
+        !finiteBetween(0, MAX_TAPER_DAYS)(stage.everyNDays) ||
         !(stage.timesPerDay === undefined || integerBetween(1, MAX_TIMES_PER_DAY)(stage.timesPerDay))) return false;
     total += stage.days as number;
   }

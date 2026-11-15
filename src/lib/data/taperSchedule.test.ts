@@ -1,11 +1,10 @@
-const MAX_TAPER_DAYS = 3650;
 /* Expected taper sessions: pure arithmetic over a start day and a stage
    sequence (phase 8 features ticket 12). No clock, no database - every case
    here is a table of days. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { MAX_TIMES_PER_DAY, dilationGated, expectedSessionDays, sessionsExpectedOn, stageOn, stagesFromInput } from './taperSchedule.ts';
+import { MAX_TAPER_DAYS, MAX_TIMES_PER_DAY, dilationGated, expectedSessionDays, sessionsExpectedOn, stageOn, stagesFromInput } from './taperSchedule.ts';
 import type { TaperStage } from './types.ts';
 import { hubRowsMatching } from './hubRows.ts';
 
@@ -197,10 +196,9 @@ test('expectedSessionDays stops at the most days a taper can expect', () => {
   assert.equal(days.length, MAX_TAPER_DAYS);
 });
 
-test('stagesFromInput refuses fractions and what a restore would refuse', () => {
-  assert.equal(stagesFromInput([{ everyNDays: 1, days: 2.5 }]), null);
-  assert.equal(stagesFromInput([{ everyNDays: 1.5, days: 3 }]), null);
+test('stagesFromInput keeps fractions and refuses what a restore would refuse', () => {
+  assert.deepEqual(stagesFromInput([{ everyNDays: 1.5, days: 2.5 }]), [{ everyNDays: 1.5, days: 2.5 }]);
   assert.equal(stagesFromInput([{ everyNDays: 1, days: MAX_TAPER_DAYS + 1 }]), null);
-  assert.equal(stagesFromInput(Array.from({ length: 53 }, () => ({ everyNDays: 1, days: 1 }))), null);
+  assert.equal(stagesFromInput(Array.from({ length: 201 }, () => ({ everyNDays: 1, days: 1 }))), null);
   assert.deepEqual(stagesFromInput([{ everyNDays: 0, days: MAX_TAPER_DAYS }]), [{ everyNDays: 0, days: MAX_TAPER_DAYS }]);
 });

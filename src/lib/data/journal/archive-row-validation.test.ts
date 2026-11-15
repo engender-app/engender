@@ -404,13 +404,13 @@ const scalarDomainRefusals: [string, (journal: ArchiveJournal) => void][] = [
   ['taper start extreme', (j) => { j.taper[0].startEpochDay = 2 ** 52; }],
   ['taper stages not JSON', (j) => { j.taper[0].stagesJson = '{'; }],
   ['taper stages not a list', (j) => { j.taper[0].stagesJson = '{"days":3}'; }],
-  ['taper stage fractional', (j) => { j.taper[0].stagesJson = '[{"everyNDays":1.5,"days":14}]'; }],
-  ['taper stage subnormal', (j) => { j.taper[0].stagesJson = '[{"everyNDays":5e-324,"days":5e-324}]'; }],
+  ['taper stage with a non-number', (j) => { j.taper[0].stagesJson = '[{"everyNDays":"1","days":14}]'; }],
+  ['taper stage with a negative step', (j) => { j.taper[0].stagesJson = '[{"everyNDays":-1,"days":14}]'; }],
   ['taper stage with no days', (j) => { j.taper[0].stagesJson = '[{"everyNDays":1,"days":0}]'; }],
   ['taper with too many stages', (j) => {
-    j.taper[0].stagesJson = JSON.stringify(Array.from({ length: 53 }, () => ({ everyNDays: 1, days: 1 })));
+    j.taper[0].stagesJson = JSON.stringify(Array.from({ length: 201 }, () => ({ everyNDays: 1, days: 1 })));
   }],
-  ['taper stage too long', (j) => { j.taper[0].stagesJson = '[{"everyNDays":1,"days":100000}]'; }],
+  ['taper stage too long', (j) => { j.taper[0].stagesJson = '[{"everyNDays":1,"days":40000}]'; }],
   ['taper times a day over the ceiling', (j) => { j.taper[0].stagesJson = '[{"everyNDays":1,"timesPerDay":11,"days":3}]'; }],
   ['doses a day over the maximum', (j) => { j.doseSchedules[0].dosesPerDay = 25; }],
   ['doses a day fractional', (j) => { j.doseSchedules[0].dosesPerDay = 1.5; }],
@@ -436,8 +436,10 @@ for (const mode of ['merge', 'replace'] as const) {
     incoming.entries[0].epochDay = 0;
     incoming.entries[1].epochDay = todayEpochDay() + FUTURE_BOUND;
     incoming.doseSchedules[0].dosesPerDay = 24;
-    incoming.taper[0].stagesJson = JSON.stringify(Array.from({ length: 52 }, (_, i) =>
-      i === 0 ? { everyNDays: 0, days: 3650 - 51 } : { everyNDays: 1, timesPerDay: 10, days: 1 }));
+    incoming.taper[0].stagesJson = JSON.stringify(Array.from({ length: 200 }, (_, i) =>
+      i === 0 ? { everyNDays: 0, days: 36525 - 199 } : { everyNDays: 1, timesPerDay: 10, days: 1 }));
+    // What the editor has always let through: fractions.
+    incoming.taper[1] = { ...incoming.taper[0], id: 'fractional-taper', stagesJson: '[{"everyNDays":1.5,"days":2.5}]' };
     incoming.voiceBenchmarks[0].pitchTrack = ['60.0', '500.0', '', '178.5'].join(',');
     const driver = await migratedDb();
     try {

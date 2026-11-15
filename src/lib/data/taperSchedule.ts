@@ -40,11 +40,12 @@ export function dilationGated(
 }
 
 /** The most stages a taper holds and the most days its stages add up to
-    (ten years). Schedules are a handful of stages over weeks or months; the
+    (a hundred years: the editor never limited either, so the ceilings sit
+    well past anything a person types and only stop a runaway value). Schedules are a handful of stages over weeks or months; the
     ceilings are there so a plan read off an archive the editor never wrote
     cannot ask a screen to walk a lifetime of days. */
-export const MAX_TAPER_STAGES = 52;
-export const MAX_TAPER_DAYS = 3650;
+export const MAX_TAPER_STAGES = 200;
+export const MAX_TAPER_DAYS = 36525;
 
 /** The days `stages` expects a session on, starting at `startEpochDay` and
     stopping at `todayEpochDay` - never past it, since a taper has no
@@ -156,8 +157,8 @@ function typedNumber(value: unknown): number | null {
 /** The schedule editor's stages as a taper stores them, or null when any
     row is unfinished (dilation/+page.svelte). A frequency of 0 is a real
     rest stage, so only a missing or negative one is refused, and a stage
-    needs at least one whole day. Whole numbers only, inside MAX_TAPER_STAGES
-    and MAX_TAPER_DAYS: what a restore of the saved schedule accepts. A
+    needs some days. Inside MAX_TAPER_STAGES and MAX_TAPER_DAYS: what a
+    restore of the saved schedule accepts. A
     cleared frequency used to read as 0 and save a rest stage nobody asked
     for (after-release ticket 01).
 
@@ -173,7 +174,7 @@ export function stagesFromInput(
   let totalDays = 0;
   for (const input of inputs) {
     const days = typedNumber(input.days);
-    if (days === null || !Number.isInteger(days) || days <= 0) return null;
+    if (days === null || days <= 0) return null;
     totalDays += days;
     if (totalDays > MAX_TAPER_DAYS) return null;
     if (input.timesPerDay !== undefined) {
@@ -183,7 +184,7 @@ export function stagesFromInput(
       continue;
     }
     const everyNDays = typedNumber(input.everyNDays);
-    if (everyNDays === null || !Number.isInteger(everyNDays) || everyNDays < 0 || everyNDays > MAX_TAPER_DAYS) return null;
+    if (everyNDays === null || everyNDays < 0 || everyNDays > MAX_TAPER_DAYS) return null;
     stages.push({ everyNDays, days });
   }
   return stages;
