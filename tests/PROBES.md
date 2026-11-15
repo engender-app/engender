@@ -357,6 +357,16 @@ button, that Cancel writes nothing, and that Log writes one event, shows
 Saved and is not proposed again by history-back. Chromium against the dev
 server; run `node tests/tally-link-confirm.mjs`.
 
+`tally-widget-device-proof` (`tests/tally-widget-device-proof.mjs`) is the
+device half: it installs an isolated `dev.engender.app.test.<suffix>` build and
+its test APK, runs `AppLaunchAuthenticationTest`, then has
+`TallyWidgetDeviceProofTest` send the widget's Misgendered button as the widget
+builds it, send it again and replay a kept copy, while the script drives the
+page over CDP: one confirmation, nothing written on Cancel, and Log on the
+rebuilt button writes exactly one event. It removes both packages and checks
+the real app's install time is unchanged. Needs a device or emulator serial:
+`node tests/tally-widget-device-proof.mjs <serial> dev.engender.app.test.<suffix> <app.apk> <test.apk>`.
+
 `browser-tier/dose-slot-screens-probe.ts` runs through `test:browser` with a
 synthetic encrypted journal and the real Today, Care and Transition screens.
 It checks yesterday and today against a weekly patch slot: the Today panel and
