@@ -12,7 +12,7 @@ import {
 } from '../vocabulary/builtins';
 import { columnsOf, identityFieldOf, type FlatTable } from './archiveTable';
 import { isCurrencyCode, isValidAmount } from '../cost';
-import { FIRST_EPOCH_DAY, todayEpochDay } from '../epochDay';
+import { FIRST_EPOCH_DAY, MAX_FUTURE_EPOCH_DAYS, todayEpochDay } from '../epochDay';
 import { MAX_DOSES_PER_DAY } from '../doseSchedule';
 import { MAX_TAPER_DAYS, MAX_TAPER_STAGES, MAX_TIMES_PER_DAY } from '../taperSchedule';
 import { isStoredPitchTrack } from '../../audio/track';
@@ -33,17 +33,15 @@ const optional = (check: Check): Check => (value) => value === undefined || chec
 const oneOf = (values: readonly string[]): Check => (value) => typeof value === 'string' && values.includes(value);
 const integerBetween = (min: number, max: number): Check => (value) =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
-/* How far past today a stored day may sit: a century covers a letter to a
-   future self, an expiry date and a planned procedure, and nothing else
-   does. Screens trust a day to be human-scale (a rail of years, an axis of
+/* Screens trust a stored day to be human-scale (a rail of years, an axis of
    months, a schedule walked day by day), so a day outside
-   [FIRST_EPOCH_DAY, today + this] is not an archive this app wrote. */
-const ARCHIVE_MAX_FUTURE_DAYS = 36525;
+   [FIRST_EPOCH_DAY, today + MAX_FUTURE_EPOCH_DAYS] is not an archive this app
+   wrote: the date picker stops at the same two ends. */
 /** An epoch day of a dated row (`numeric` stays for every other number). Read
     at check time, so the future bound moves with the clock. */
 const calendarDay: Check = (value) =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= FIRST_EPOCH_DAY &&
-  value <= todayEpochDay() + ARCHIVE_MAX_FUTURE_DAYS;
+  value <= todayEpochDay() + MAX_FUTURE_EPOCH_DAYS;
 // A wall-clock time in milliseconds, as `updated_at` and Trash hold one.
 const instant = integerBetween(0, Number.MAX_SAFE_INTEGER);
 // When the row was last written (functional audit ticket 48), on every row

@@ -39,7 +39,7 @@
   import Icon from './Icon.svelte';
   import MonthJump from './MonthJump.svelte';
   import { registerOverlayRegion } from './overlayLock';
-  import { dayInMonth, dayStep, keyMonth, keyYear, monthCells, monthKey, monthOfDay, parseIsoDate, rubberBand, settleStep } from './datePicker';
+  import { dayInMonth, dayStep, keyMonth, keyYear, monthCells, monthKey, monthOfDay, parseIsoDate, pickerRange, rubberBand, settleStep } from './datePicker';
 
   let {
     value,
@@ -67,8 +67,8 @@
   const WHEEL_QUIET = 120;
   const WHEEL_DEAF = 160;
 
-  let minDay = $derived(min ? parseIsoDate(min) : null);
-  let maxDay = $derived(max ? parseIsoDate(max) : null);
+  let minDay = $derived(pickerRange(min, max, today).first);
+  let maxDay = $derived(pickerRange(min, max, today).last);
   let firstKey = $derived(minDay === null ? -Infinity : monthOfDay(minDay));
   let lastKey = $derived(maxDay === null ? Infinity : monthOfDay(maxDay));
   let selected = $derived(value ? parseIsoDate(value) : null);
