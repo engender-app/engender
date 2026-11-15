@@ -33,13 +33,21 @@ public abstract class DisguisableWidgetProvider extends AppWidgetProvider {
         final String route;
         final String key;
         final int requestCode;
+        /** A button whose launch proposes a write: its PendingIntent is
+            single-use (AppLaunch.openAppIntentOnce). */
+        final boolean once;
 
         ButtonSpec(int viewId, String label, String route, String key, int requestCode) {
+            this(viewId, label, route, key, requestCode, false);
+        }
+
+        ButtonSpec(int viewId, String label, String route, String key, int requestCode, boolean once) {
             this.viewId = viewId;
             this.label = label;
             this.route = route;
             this.key = key;
             this.requestCode = requestCode;
+            this.once = once;
         }
     }
 
@@ -83,7 +91,9 @@ public abstract class DisguisableWidgetProvider extends AppWidgetProvider {
             views.setContentDescription(button.viewId, label);
             views.setOnClickPendingIntent(
                 button.viewId,
-                AppLaunch.openAppIntent(context, button.route, button.key, button.requestCode)
+                button.once
+                    ? AppLaunch.openAppIntentOnce(context, button.route, button.key, button.requestCode)
+                    : AppLaunch.openAppIntent(context, button.route, button.key, button.requestCode)
             );
         }
         return views;

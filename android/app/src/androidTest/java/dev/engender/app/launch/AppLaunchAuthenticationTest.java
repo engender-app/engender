@@ -45,11 +45,50 @@ public class AppLaunchAuthenticationTest {
 
     @Test
     public void appRoutesAuthenticateAcrossContextInstances() {
-        Intent own = AppLaunch.routeIntent(context, "/?tally=misgendered", "tally");
-        assertEquals("/?tally=misgendered", AppLaunch.authenticatedRoute(context, own));
-        assertEquals("/?tally=misgendered", AppLaunch.authenticatedRoute(context.getApplicationContext(), own));
+        Intent own = AppLaunch.routeIntent(context, "/doubt", "doubt");
+        assertEquals("/doubt", AppLaunch.authenticatedRoute(context, own));
+        assertEquals("/doubt", AppLaunch.authenticatedRoute(context.getApplicationContext(), own));
         own.putExtra("gd_route_nonce", "wrong-nonce");
         assertNull(AppLaunch.authenticatedRoute(context, own));
+    }
+
+    /* The tally widget's buttons (security scan GD-011): a host that keeps a
+       button it was handed, or the intent it carries, gets one launch out of
+       it, and the next ticket is a different PendingIntent. */
+    @Test
+    public void aSingleUseLaunchAuthenticatesOnce() {
+        Intent own = AppLaunch.onceIntent(context, "/?tally=misgendered", "widget-tally-test");
+        Intent kept = new Intent(own);
+        assertEquals("/?tally=misgendered", AppLaunch.authenticatedRoute(context, own));
+        assertNull("the same launch authenticated twice", AppLaunch.authenticatedRoute(context, own));
+        assertNull("a kept copy authenticated after the spend", AppLaunch.authenticatedRoute(context, kept));
+        Intent next = AppLaunch.onceIntent(context, "/?tally=misgendered", "widget-tally-test");
+        assertNotEquals(own.getData(), next.getData());
+        assertEquals("/?tally=misgendered", AppLaunch.authenticatedRoute(context, next));
+    }
+
+    @Test
+    public void aTallyRouteWithoutASingleUseTicketIsRefused() {
+        Intent reusable = AppLaunch.routeIntent(context, "/?tally=misgendered", "widget-tally-misgendered");
+        assertNull(AppLaunch.authenticatedRoute(context, reusable));
+    }
+
+    @Test
+    public void aWidgetButtonIsSpentByItsFirstSend() throws Exception {
+        String key = "widget-tally-send-test";
+        PendingIntent button = AppLaunch.openAppIntentOnce(context, "/?tally=misgendered", key, 299);
+        android.content.SharedPreferences tickets = context.getSharedPreferences("engender-launch-once", Context.MODE_PRIVATE);
+        assertTrue(tickets.contains(key));
+        button.send();
+        long deadline = System.nanoTime() + 20_000_000_000L;
+        while (tickets.contains(key) && System.nanoTime() < deadline) Thread.sleep(100);
+        assertTrue("the launch never spent its ticket", !tickets.contains(key));
+        try {
+            button.send();
+            throw new AssertionError("a spent widget button launched again");
+        } catch (PendingIntent.CanceledException expected) {
+            // FLAG_ONE_SHOT: the host's copy is dead after one use.
+        }
     }
 
     @Test

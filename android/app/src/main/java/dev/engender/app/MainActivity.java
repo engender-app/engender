@@ -31,6 +31,7 @@ import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.lock.OwnSystemUi;
 import dev.engender.app.navigation.StepBackPlugin;
 import dev.engender.app.launch.AppLaunch;
+import dev.engender.app.widgets.TallyWidgetProvider;
 import dev.engender.app.reminders.ReminderScheduler;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
 
@@ -277,6 +278,7 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
     private void captureReminderRoute(Intent intent) {
         if (intent == null) return;
         ReminderScheduler.storeLaunchRoute(this, AppLaunch.authenticatedRoute(this, intent));
+        TallyWidgetProvider.refreshAfterLaunch(this, intent);
         AppLaunch.dismissNotification(this, intent);
     }
 }

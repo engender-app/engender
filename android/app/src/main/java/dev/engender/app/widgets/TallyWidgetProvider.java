@@ -1,11 +1,14 @@
 package dev.engender.app.widgets;
 
 import android.content.Context;
+import android.content.Intent;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import dev.engender.app.R;
+import dev.engender.app.launch.AppLaunch;
+import dev.engender.app.reminders.ReminderScheduler;
 
 /**
  * A home-screen widget offering one-tap tally logging (ticket 33): two
@@ -39,7 +42,7 @@ public class TallyWidgetProvider extends DisguisableWidgetProvider {
         String[] labels = context.getResources().getStringArray(R.array.widget_tally_labels);
         List<ButtonSpec> specs = new ArrayList<>(KINDS.length);
         for (int i = 0; i < KINDS.length; i++) {
-            specs.add(new ButtonSpec(BUTTON_IDS[i], labels[i], tallyRoute(KINDS[i]), "widget-tally-" + KINDS[i], 200 + i));
+            specs.add(new ButtonSpec(BUTTON_IDS[i], labels[i], tallyRoute(KINDS[i]), "widget-tally-" + KINDS[i], 200 + i, true));
         }
         return specs;
     }
@@ -51,5 +54,15 @@ public class TallyWidgetProvider extends DisguisableWidgetProvider {
         src/lib/android/fixtures/launch-routes.json (ADR-0028). */
     static String tallyRoute(String kind) {
         return "/?tally=" + kind;
+    }
+
+    /** After one of this install's tally launches, spent or refused: every
+        placed copy gets the current single-use ticket, so the next tap
+        opens the app again. */
+    public static void refreshAfterLaunch(Context context, Intent intent) {
+        if (!AppLaunch.isOwnLaunch(context, intent)) return;
+        if (AppLaunch.proposesWrite(intent.getStringExtra(ReminderScheduler.EXTRA_ROUTE))) {
+            new TallyWidgetProvider().updateAll(context);
+        }
     }
 }

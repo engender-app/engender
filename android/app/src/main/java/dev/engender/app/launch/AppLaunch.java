@@ -34,6 +34,8 @@ public final class AppLaunch {
     private static final String KEY_NONCE = "nonce";
     private static final String EXTRA_NONCE = "gd_route_nonce";
     private static final String EXTRA_DISMISS = "gd_dismiss_notification";
+    private static final String ONCE_PREFS = "engender-launch-once";
+    private static final String EXTRA_ONCE = "gd_route_once";
     static final String OPEN_ROUTE = "dev.engender.app.action.OPEN_ROUTE";
 
     private static synchronized String nonce(Context context) {
@@ -46,10 +48,68 @@ public final class AppLaunch {
         return saved;
     }
 
-    /** Launcher aliases are exported; a route extra alone proves no origin. */
+    private static boolean ownNonce(Context context, Intent intent) {
+        return intent != null && nonce(context).equals(intent.getStringExtra(EXTRA_NONCE));
+    }
+
+    /** Launcher aliases are exported; a route extra alone proves no origin.
+        A single-use launch (openAppIntentOnce) also has to carry the
+        current ticket for its key, and spends it: the same intent, or a
+        copy a widget host kept, authenticates nothing a second time. */
     public static String authenticatedRoute(Context context, Intent intent) {
-        if (intent == null || !nonce(context).equals(intent.getStringExtra(EXTRA_NONCE))) return null;
-        return intent.getStringExtra(ReminderScheduler.EXTRA_ROUTE);
+        if (!ownNonce(context, intent)) return null;
+        String route = intent.getStringExtra(ReminderScheduler.EXTRA_ROUTE);
+        String once = intent.getStringExtra(EXTRA_ONCE);
+        if (once == null) {
+            // A tally button built before tickets were single-use: refused, and
+            // the widget is rebuilt with one (MainActivity.captureReminderRoute).
+            return proposesWrite(route) ? null : route;
+        }
+        return spendOnceTicket(context, once) ? route : null;
+    }
+
+    /** Routes that may only arrive through a single-use launch. */
+    public static boolean proposesWrite(String route) {
+        return route != null && route.startsWith("/?tally=");
+    }
+
+    /** Whether this install built the launch, spent or not. */
+    public static boolean isOwnLaunch(Context context, Intent intent) {
+        return ownNonce(context, intent);
+    }
+
+    /** `key:ticket`, spent when it is the ticket currently issued for key. */
+    private static synchronized boolean spendOnceTicket(Context context, String once) {
+        int split = once.lastIndexOf(':');
+        if (split <= 0) return false;
+        String key = once.substring(0, split);
+        android.content.SharedPreferences prefs = context.getSharedPreferences(ONCE_PREFS, Context.MODE_PRIVATE);
+        String issued = prefs.getString(key, null);
+        if (issued == null || !issued.equals(once.substring(split + 1))) return false;
+        prefs.edit().remove(key).commit();
+        return true;
+    }
+
+    /** The ticket currently issued for key, issuing one if none is. It
+        changes only when a launch spends it, so every placed copy of a
+        widget, rebuilt for any reason in between, carries the same one. */
+    private static synchronized String onceTicket(Context context, String key) {
+        android.content.SharedPreferences prefs = context.getSharedPreferences(ONCE_PREFS, Context.MODE_PRIVATE);
+        String issued = prefs.getString(key, null);
+        if (issued == null) {
+            issued = UUID.randomUUID().toString();
+            prefs.edit().putString(key, issued).commit();
+        }
+        return issued;
+    }
+
+    static Intent onceIntent(Context context, String route, String key) {
+        String ticket = onceTicket(context, key);
+        // The ticket is in the data too, so each one is its own PendingIntent
+        // rather than an update of the spent one a host may still hold.
+        return routeIntent(context, route, key)
+            .setData(Uri.parse("engender://open/" + Uri.encode(key) + "/" + ticket))
+            .putExtra(EXTRA_ONCE, key + ":" + ticket);
     }
 
     static Intent routeIntent(Context context, String route, String key) {
@@ -67,6 +127,22 @@ public final class AppLaunch {
             9000 + requestCode,
             routeIntent(context, route, key),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+    }
+
+    /** A launch that writes when the person accepts it, such as a tally
+        widget button (security scan GD-011). The page still asks before it
+        writes; this is the second limit: the PendingIntent is spent by its
+        first use (FLAG_ONE_SHOT), and its ticket by the first launch that
+        carries it, so a widget host replaying a button it was handed opens
+        nothing a second time. The caller rebuilds its views after a spend
+        so the next tap has a fresh ticket. */
+    public static PendingIntent openAppIntentOnce(Context context, String route, String key, int requestCode) {
+        return PendingIntent.getActivity(
+            context,
+            9000 + requestCode,
+            onceIntent(context, route, key),
+            PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
         );
     }
 
@@ -88,7 +164,7 @@ public final class AppLaunch {
         nothing for one that is not: a launcher alias is exported, so any app
         could otherwise clear this app's notifications by sending it an id. */
     public static void dismissNotification(Context context, Intent intent) {
-        if (authenticatedRoute(context, intent) == null || !intent.hasExtra(EXTRA_DISMISS)) return;
+        if (!ownNonce(context, intent) || !intent.hasExtra(EXTRA_DISMISS)) return;
         androidx.core.app.NotificationManagerCompat.from(context).cancel(intent.getIntExtra(EXTRA_DISMISS, 0));
     }
 }
