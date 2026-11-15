@@ -10,6 +10,7 @@
    (ADR-0002). */
 
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue, localDateFromEpochDay } from '../epochDay';
+import { DAYLIO_BUDGET, ImportTooLargeError } from './daylioInputBudget';
 import { entryIsEmpty } from '../entryContent';
 import { foldText } from '../fold';
 import { emptyArchiveJournal } from '../journal/archiveSections';
@@ -70,10 +71,15 @@ export const REQUIRED_COLUMNS = ['full_date', 'time', 'mood', 'activities', 'not
 
 type DaylioRow = Record<(typeof REQUIRED_COLUMNS)[number], string>;
 
+const tooLarge = (what: 'text' | 'file' | 'row' | 'field') =>
+  new ImportTooLargeError(`Daylio CSV ${what} is over the import limit`);
+
 /** RFC 4180 fields, including doubled quotes and line breaks inside a quoted
     note. Strict after a closing quote so damaged input fails here rather
     than being reinterpreted as a different journal entry. */
 function csvRows(csv: string): string[][] {
+  // Total size first, so an oversized text is refused before a field is read.
+  if (csv.length > DAYLIO_BUDGET.csvFileBytes) throw tooLarge('text');
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -81,18 +87,23 @@ function csvRows(csv: string): string[][] {
   let afterQuote = false;
 
   const finishField = () => {
+    if (row.length >= DAYLIO_BUDGET.csvColumns) throw tooLarge('row');
     row.push(field);
     field = '';
     afterQuote = false;
   };
   const finishRow = () => {
     finishField();
-    if (row.some((value) => value !== '')) rows.push(row);
+    if (row.some((value) => value !== '')) {
+      if (rows.length >= DAYLIO_BUDGET.csvRows) throw tooLarge('file');
+      rows.push(row);
+    }
     row = [];
   };
 
   for (let i = 0; i < csv.length; i++) {
     const char = csv[i];
+    if (field.length > DAYLIO_BUDGET.fieldChars) throw tooLarge('field');
     if (quoted) {
       if (char !== '"') {
         field += char;
@@ -124,6 +135,7 @@ function csvRows(csv: string): string[][] {
     }
   }
 
+  if (field.length > DAYLIO_BUDGET.fieldChars) throw tooLarge('field');
   if (quoted) throw new DaylioCsvError('has an unclosed quoted field');
   if (field !== '' || row.length > 0) finishRow();
   return rows;

@@ -661,17 +661,24 @@ unexpected parser, allocation and platform failures propagate to the caller.
 Source detection keeps its existing non-throwing sniff contract.
 Daylio JSON refusals omit parser diagnostics that can echo a cleartext PIN.
 
-The Daylio backup picker refuses files larger than 1024 MiB before buffering them.
-The shared [ZIP reader](src/lib/data/archive/zipReader.ts) allows at most
-1536 MiB of declared decompressed content across the members it reads. Both
-limits use a ten-year estimate: twice the
-393.6 MiB attachment baseline in [the benchmark](tests/long-journal/budgets.json),
-plus 64 MiB for longer recordings, metadata and ZIP overhead, totals 851.2 MiB.
-The factor of two allows larger source media than Engender's normalized photos;
-it is an assumption, not a measurement of another app's export. The file limit
-leaves room even if media barely compresses. These allocation limits do not
-guarantee enough memory on every device. Engender's encrypted Archives use a
-separate streaming reader.
+Both Daylio routes read one input budget,
+[daylioInputBudget.ts](src/lib/data/archive/daylioInputBudget.ts), sized from a
+generated ten-year export (10,950 entries, notes up to 2.7 KB) rather than from
+what a phone could survive: the CSV is 3.2 MiB and `backup.daylio` 6.2 MiB; the
+attachments are about 1500 photos, 858 MiB, the same order as the 851.2 MiB
+estimate the earlier limits used. The backup picker refuses files over
+1024 MiB before buffering them, and the CSV picker files over 32 MiB before
+`File.text()`. The shared [ZIP reader](src/lib/data/archive/zipReader.ts)
+allows 1024 MiB of declared decompressed content in total, 256 MiB per member
+and 64 MiB for `backup.daylio`, and its central-directory walk refuses more
+than 20,000 entries, names over 1024 bytes or more than 4 MiB of names before
+the name collections grow. The CSV parser refuses over 200,000 rows, 64
+columns or a 1 MiB field while parsing, and a note over 1 MiB never reaches
+`htmlToText`, which is a single-pass scanner. Every refusal is an
+`ImportTooLargeError`, which the screen shows as its too-large message. The
+file limit leaves room even if media barely compresses. These allocation
+limits do not guarantee enough memory on every device. Engender's encrypted
+Archives use a separate streaming reader.
 
 Daylio preview indexes raw member names and attachment suffixes once. The ZIP
 reader retains central-directory member ranges, copies only a stored file's

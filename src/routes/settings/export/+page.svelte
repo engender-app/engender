@@ -24,7 +24,8 @@
   import { DaylioBackupError, type DaylioBackupPreview, type DaylioSkipKind } from '$lib/data/archive/daylioBackup';
   import { normalizePhoto } from '$lib/data/photos/normalize';
   import { recognizeSource } from '$lib/data/archive/sources';
-  import { IMPORT_FILE_SIZE_CEILING_BYTES, ZipTooLargeError } from '$lib/data/archive/zipReader';
+  import { IMPORT_FILE_SIZE_CEILING_BYTES } from '$lib/data/archive/zipReader';
+  import { checkDaylioCsvFileSize, ImportTooLargeError } from '$lib/data/archive/daylioInputBudget';
   import type { ArchiveImportLogRecord } from '$lib/data/archive/payload';
   import { chooseFiles } from '$lib/data/fileDialog';
   import { dimensionName, moodName, tagLabel } from '$lib/data/vocabulary/labels';
@@ -688,6 +689,8 @@
       daylioName = file.name;
       daylioPreview = null;
       daylioError = '';
+      // Before `File.text()` reads the whole file into a string.
+      checkDaylioCsvFileSize(file.size);
       const { tagLabels } = await import('$lib/data/vocabulary/import-labels');
       daylioPreview = await journal.archive.previewDaylioImport(await file.text(), { tagLabels });
       if (daylioPreview.unmappedMoodLabels.length > 0) {
@@ -697,7 +700,7 @@
       console.error('the Daylio preview failed', error);
       daylioPreview = null;
       // Same rule as importFailure: the parse detail is a console diagnostic.
-      daylioError = m.daylio_unreadable();
+      daylioError = error instanceof ImportTooLargeError ? m.daylio_too_large() : m.daylio_unreadable();
     }
   }
 
@@ -827,7 +830,7 @@
          when the real answer is "not this platform" sends them looking for
          a fix that does not exist. A ceiling refusal is its own case too,
          ahead of the rest: it isn't a corrupt container. */
-      if (error instanceof ZipTooLargeError) {
+      if (error instanceof ImportTooLargeError) {
         backupError = m.dlb_too_large();
       } else if (error instanceof DaylioBackupError && error.kind === 'platform') {
         backupError = m.dlb_not_android();
