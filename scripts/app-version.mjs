@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 export const ALLOWED_SIGNERS = fileURLToPath(new URL('../.github/release-signers', import.meta.url));
 
 /** `v` and a semantic version, which is what a release tag looks like. */
-const RELEASE_TAG = /^v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
+export const RELEASE_TAG = /^v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
 
 /** What every version that is not a release starts with. */
 const DEVELOPMENT = '0.0.0-dev+';
