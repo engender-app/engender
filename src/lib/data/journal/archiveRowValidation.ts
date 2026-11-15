@@ -70,7 +70,9 @@ const finiteBetween = (min: number, max: number): Check => (value) =>
   typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 /** A taper's stages (taperSchedule.ts): a list of at most MAX_TAPER_STAGES
     stages whose days add up to at most MAX_TAPER_DAYS. Fractions pass: the
-    editor has always let a person type them. The column is JSON text, so it is read here rather than trusted. */
+    editor has always let a person type them. The column is JSON text, so
+    it is read here rather than trusted. Days only need to be above zero
+    (`Number.MIN_VALUE` is the smallest positive number). */
 const taperStages: Check = (value) => {
   if (typeof value !== 'string') return false;
   let stages: unknown;

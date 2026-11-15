@@ -67,14 +67,15 @@
   const WHEEL_QUIET = 120;
   const WHEEL_DEAF = 160;
 
-  let minDay = $derived(pickerRange(min, max, today).first);
-  let maxDay = $derived(pickerRange(min, max, today).last);
-  let firstKey = $derived(minDay === null ? -Infinity : monthOfDay(minDay));
-  let lastKey = $derived(maxDay === null ? Infinity : monthOfDay(maxDay));
+  let range = $derived(pickerRange(min, max, today));
+  let minDay = $derived(range.first);
+  let maxDay = $derived(range.last);
+  let firstKey = $derived(monthOfDay(minDay));
+  let lastKey = $derived(monthOfDay(maxDay));
   let selected = $derived(value ? parseIsoDate(value) : null);
 
-  const inRange = (day: number) => (minDay === null || day >= minDay) && (maxDay === null || day <= maxDay);
-  const clampDay = (day: number) => Math.min(Math.max(day, minDay ?? day), maxDay ?? day);
+  const inRange = (day: number) => day >= minDay && day <= maxDay;
+  const clampDay = (day: number) => Math.min(Math.max(day, minDay), maxDay);
 
   /* The day the keyboard is on. The picker is mounted per opening, so this
      starts on the chosen day, or today, each time. */

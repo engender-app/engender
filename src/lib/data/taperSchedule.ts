@@ -40,10 +40,10 @@ export function dilationGated(
 }
 
 /** The most stages a taper holds and the most days its stages add up to
-    (a hundred years: the editor never limited either, so the ceilings sit
-    well past anything a person types and only stop a runaway value). Schedules are a handful of stages over weeks or months; the
-    ceilings are there so a plan read off an archive the editor never wrote
-    cannot ask a screen to walk a lifetime of days. */
+    (a hundred years). The editor never limited either, so the ceilings
+    sit well past anything a person types: they only stop a runaway value
+    read off an archive the editor never wrote. The work a screen does on a
+    plan is capped separately (`expectedSessionDays`). */
 export const MAX_TAPER_STAGES = 200;
 export const MAX_TAPER_DAYS = 36525;
 
