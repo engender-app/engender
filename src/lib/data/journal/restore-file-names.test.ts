@@ -56,9 +56,9 @@ async function whileBusy<T>(work: () => Promise<T>): Promise<T> {
 const clone = (made: Made) => structuredClone(made.snapshot.journal);
 
 async function refused(made: Made, mode: 'merge' | 'replace', contents: RestoreContents) {
-  const before = new Map(made.disk.names().map((name) => [name, name] as const));
+  const before = made.disk.names();
   await assert.rejects(made.journal.archive[mode](contents), (error: unknown) => error instanceof CorruptArchiveError);
-  assert.deepEqual(made.disk.names(), [...before.keys()].sort());
+  assert.deepEqual(made.disk.names(), [...before].sort());
   for (const [name, data] of made.ciphertext) assert.deepEqual(await made.disk.read(name), data);
   assert.deepEqual(await made.files.read(made.target), bytes('original photo'));
 }

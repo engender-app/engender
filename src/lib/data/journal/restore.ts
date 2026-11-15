@@ -286,6 +286,7 @@ async function restoreWithin(
   const existing = new Set([...await readCleanupFileNames(driver), ...await files.list()]);
   const replacements = new Map<string, string>();
   const journal = replacementNames(original, existing, replacements);
+  // Read from the journal as delivered: delivered file names are the archive's own, before any renaming below.
   const claimed = archiveFileNames(original);
   // Every path this restore creates, so a failure can remove all of them and nothing else.
   const staged = new Set<string>();
