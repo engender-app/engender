@@ -43,7 +43,13 @@ vi.mock('../data/photos/normalize', () => ({
   UnsupportedImageError: FakeUnsupportedImageError
 }));
 vi.mock('../data/media/budget', () => ({
-  MediaBudgetError: class MediaBudgetError extends Error {}
+  MediaBudgetError: class MediaBudgetError extends Error {
+    kind: string;
+    constructor(kind: string, message?: string) {
+      super(message);
+      this.kind = kind;
+    }
+  }
 }));
 vi.mock('../data/documents/accept', () => ({
   DocumentRefusedError: FakeDocumentRefusedError

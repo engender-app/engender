@@ -45,7 +45,7 @@ function toastPickFailure(error: unknown, logMessage: string): void {
     toast(m.photo_too_large());
   } else if (error instanceof DocumentRefusedError) {
     toast(m.document_too_large());
-  } else if (error instanceof MediaBudgetError) {
+  } else if (error instanceof MediaBudgetError && error.kind === 'pick-selection') {
     toast(m.photo_selection_too_large());
   } else {
     console.error(logMessage, error);

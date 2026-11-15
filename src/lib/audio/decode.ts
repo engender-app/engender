@@ -10,10 +10,6 @@ import { refuseAudioOverBudget } from '../data/media/audio-budget';
 import { peaksFromChannels } from '../media/peaks';
 
 /**
- * Recorded bytes as mono samples at `sampleRate`. Throws what
- * `decodeAudioData` throws: bytes that are not audio this browser decodes.
- */
-/**
  * The envelope of recorded bytes: `buckets` bars of loudness at `sampleRate`.
  * Same decode as `decodeToMono`, but the result is the bars and nothing the
  * length of the recording survives it: the channels are folded into the
@@ -29,6 +25,10 @@ export async function decodeToPeaks(bytes: Uint8Array, sampleRate: number, bucke
   return peaksFromChannels(channels, buckets);
 }
 
+/**
+ * Recorded bytes as mono samples at `sampleRate`. Throws what
+ * `decodeAudioData` throws: bytes that are not audio this browser decodes.
+ */
 export async function decodeToMono(bytes: Uint8Array, sampleRate: number): Promise<Float32Array> {
   // Before a decoder exists: the cost is the duration, which the header says
   // (data/media/audio-budget.ts).
