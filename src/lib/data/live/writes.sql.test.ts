@@ -581,7 +581,7 @@ beforeAll(async () => {
     route: 'oral',
     interval: 'daily',
     startEpochDay: 19000,
-    endEpochDay: 100000,
+    endEpochDay: 50000,
     endReason: null
   });
   await drive('doses', 'upsertSchedule', () =>
@@ -594,7 +594,7 @@ beforeAll(async () => {
       reminderTimes: ['22:00']
     })
   );
-  await drive('doses', 'reconcileDoseReminders', () => journal.doses.reconcileDoseReminders(100000));
+  await drive('doses', 'reconcileDoseReminders', () => journal.doses.reconcileDoseReminders(50000));
 
   // --- stock --------------------------------------------------------------
   const stockId = (await drive('stock', 'upsertEntry', () =>
