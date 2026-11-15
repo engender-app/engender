@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-const { filePick, cameraPick, normalizePhoto, toast, androidPickedBytes, PickDeferredError } = vi.hoisted(() => {
+const { filePick, cameraPick, cameraRecheck, normalizePhoto, toast, androidPickedBytes, PickDeferredError } = vi.hoisted(() => {
   class PickDeferredError extends Error {
     constructor(readonly tokens: string[]) {
       super('pick-deferred');
@@ -9,6 +9,7 @@ const { filePick, cameraPick, normalizePhoto, toast, androidPickedBytes, PickDef
   return {
     filePick: vi.fn(),
     cameraPick: vi.fn(),
+    cameraRecheck: vi.fn(),
     normalizePhoto: vi.fn(),
     toast: vi.fn(),
     androidPickedBytes: vi.fn(),
@@ -33,7 +34,7 @@ vi.mock('../data/photos/normalize', () => ({ normalizePhoto, UnsupportedImageErr
 vi.mock('../data/documents/accept', () => ({ DocumentRefusedError: class extends Error {} }));
 vi.mock('../data/photos/picker', () => ({
   filePhotoPicker: () => ({ pick: filePick }),
-  cameraPhotoPicker: () => ({ pick: cameraPick }),
+  cameraPhotoPicker: () => ({ pick: cameraPick, recheck: cameraRecheck }),
   androidPickedBytes,
   PickDeferredError
 }));
@@ -84,5 +85,26 @@ describe('a photo that comes back while the app is locked', () => {
 
     expect(toast).toHaveBeenCalledWith('lost');
     expect(await claimPendingPhotos('entry')).toEqual([]);
+  });
+});
+
+describe('a lock that lands while a picked photo is being normalized', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dropPending();
+    vi.stubGlobal('location', { pathname: '/entry/new' });
+  });
+
+  test('the normalized photo is dropped and kept by token for the unlock', async () => {
+    cameraPick.mockResolvedValue([new Uint8Array([9])]);
+    normalizePhoto.mockResolvedValue(NORMALIZED);
+    cameraRecheck.mockRejectedValue(new PickDeferredError(['tok']));
+    androidPickedBytes.mockResolvedValue(new Uint8Array([9]));
+
+    expect(await capturePhoto('entry')).toBeNull();
+    expect(toast).not.toHaveBeenCalled();
+
+    cameraRecheck.mockResolvedValue(undefined);
+    expect(await claimPendingPhotos('entry')).toEqual([NORMALIZED]);
   });
 });

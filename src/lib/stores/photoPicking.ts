@@ -60,6 +60,20 @@ function deferUntilUnlock(error: PickDeferredError, claimBy: ClaimBy | undefined
   else toast(m.picked_while_locked_lost());
 }
 
+/** The last place the lock can land: while the picked bytes were being
+    normalized. True when it did; the files are back with native and the pick
+    is kept for the unlock like one that returned during it. */
+async function lockedMeanwhile(source: { recheck?(): Promise<void> }, claimBy: ClaimBy | undefined): Promise<boolean> {
+  try {
+    await source.recheck?.();
+    return false;
+  } catch (error) {
+    if (error instanceof PickDeferredError) deferUntilUnlock(error, claimBy);
+    else toastPickFailure(error, 'a photo picked just before a lock could not be kept');
+    return true;
+  }
+}
+
 /** What a pick that came back during a lock left for this screen, read and
     normalized now that the journal is open again. Empty when there is none. */
 export async function claimPendingPhotos(claimBy: ClaimBy, canUse: () => boolean = () => true): Promise<NormalizedPhoto[]> {
@@ -120,7 +134,8 @@ export async function pickPhotos(limit?: number, claimBy?: ClaimBy): Promise<Nor
     return [];
   }
 
-  return normalizeAll(limit == null ? picked : picked.slice(0, limit));
+  const photos = await normalizeAll(limit == null ? picked : picked.slice(0, limit));
+  return (await lockedMeanwhile(picker, claimBy)) ? [] : photos;
 }
 
 /** One shot from the device camera, normalized and ready to store. Null if
@@ -137,5 +152,5 @@ export async function capturePhoto(claimBy?: ClaimBy): Promise<NormalizedPhoto |
   }
 
   const [photo] = await normalizeAll(picked);
-  return photo ?? null;
+  return (await lockedMeanwhile(camera, claimBy)) ? null : (photo ?? null);
 }

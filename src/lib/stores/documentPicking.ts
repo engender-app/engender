@@ -55,7 +55,17 @@ export async function pickDocument(claimBy?: ClaimBy): Promise<DocumentFile | nu
 
   const [bytes] = files;
   if (!bytes) return null;
-  return acceptPickedDocument(bytes);
+  const document = await acceptPickedDocument(bytes);
+  try {
+    // The lock can land while the file was being accepted: it goes back to native for the unlock.
+    await picker.recheck?.();
+  } catch (error) {
+    if (!(error instanceof PickDeferredError)) throw error;
+    if (claimBy) holdPending(claimBy, location.pathname, error.tokens);
+    else toast(m.picked_while_locked_lost());
+    return null;
+  }
+  return document;
 }
 
 /** The file a pick left for the documents screen while the app was locked. */
