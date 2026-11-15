@@ -166,7 +166,9 @@ whether newer statistics would be lost before replacing the database.
 ### GitHub Actions
 
 The last job in `.github/workflows/release.yml` deploys stable signed tags
-(`v<major>.<minor>.<patch>`) after CI and GitHub publication succeed. Prerelease
+(`v<major>.<minor>.<patch>`) after CI and GitHub publication succeed. The run
+starts by hand from main with the tag as input, and the job uses main's copy
+of the deploy script. Prerelease
 tags publish downloadable artifacts without changing production. The optional
 Play upload remains non-blocking. The existing `release` environment approval
 still applies.

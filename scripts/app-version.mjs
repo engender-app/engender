@@ -73,7 +73,8 @@ export function verifyTagSigner(tag, { signers = ALLOWED_SIGNERS, cwd = '.' } = 
   return 'malformed';
 }
 
-/** What `--release` tells someone whose tag was refused, per answer. */
+/** What `--release` tells someone whose tag was refused, per answer.
+    @type {Record<Exclude<TagSignature, 'good'>, string>} */
 export const SIGNATURE_PROBLEMS = {
   unsigned: 'The tag carries no signature. Cut it with `git tag --sign` (npm run release:tag does).',
   malformed: 'The tag carries a signature that git cannot read or verify as an SSH signature.',
@@ -148,8 +149,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       `${version} is not a release. That needs a signed v<semver> tag on a tree ` +
         'with no edits and no untracked files, or ENGENDER_VERSION set deliberately (ADR-0022).'
     );
-    const why = SIGNATURE_PROBLEMS[/** @type {TagSignature} */ (readGitFacts().signature ?? 'good')];
-    if (why) console.error(why);
+    const signature = readGitFacts().signature;
+    if (signature && signature !== 'good') console.error(SIGNATURE_PROBLEMS[signature]);
     process.exit(1);
   }
   console.log(version);

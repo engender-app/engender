@@ -55,7 +55,10 @@ the rollout. Leave unmet verification criteria open.
 Publish the contributor instructions before the final passing main run so
 activation does not require another source change. Release publication keeps
 its existing dependency: `.github/workflows/release.yml` calls the complete
-CI workflow and its `publish` job has `needs: checks`.
+CI workflow, against the commit the tag names, and its `build` job has
+`needs: checks`. The workflow starts only from a manual dispatch on main
+(`gh workflow run release.yml --ref main -f tag=v1.2.3`); the tag must be
+signed by a key listed in `.github/release-signers`.
 
 ## Test conventions
 

@@ -1236,16 +1236,16 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  Tag["signed tag v1.2.3<br/>npm run release:tag"] --> Checks[ci.yml via workflow_call]
-  Checks --> Pub["publish: version from tag,<br/>notes from CHANGELOG"]
-  Pub --> Sign[signed APK + AAB]
-  Sign --> Verify[check-release-artifacts]
-  Verify --> Pack["package-release:<br/>web bundle built twice,<br/>same digest"]
-  Pack --> GH[GitHub Release<br/>+ SHA256SUMS]
+  Tag["signed tag v1.2.3<br/>npm run release:tag"] --> Res["resolve: dispatched on main,<br/>signer in release-signers,<br/>commit on main"]
+  Res --> Checks[ci.yml via workflow_call]
+  Checks --> Build["build: unsigned APK + AAB,<br/>no secrets, digests out"]
+  Build --> Sign["sign: release environment,<br/>no repository code"]
+  Sign --> Pack["package: check-release-artifacts,<br/>web bundle built twice,<br/>same digest"]
+  Pack --> GH[publish: GitHub Release<br/>+ SHA256SUMS]
   GH -. optional .-> Play[Play internal track,<br/>draft]
 ```
 
-- **Versioning.** The public version comes only from a signed `v<semver>` tag (ADR-0022). [scripts/app-version.mjs](scripts/app-version.mjs) reads it once, and an ordinary checkout builds as `0.0.0-dev`. [scripts/cut-release-tag.mjs](scripts/cut-release-tag.mjs) refuses to tag unless `main` is clean and [CHANGELOG.md](CHANGELOG.md) has a section for the version. [scripts/release-notes.mjs](scripts/release-notes.mjs) requires the four call-outs: schema, archive format, security migrations and minimum version.
+- **Versioning.** The public version comes only from a signed `v<semver>` tag (ADR-0022), signed by a key in [.github/release-signers](.github/release-signers) and released only through a manual dispatch on main. [scripts/app-version.mjs](scripts/app-version.mjs) reads it once, and an ordinary checkout builds as `0.0.0-dev`. [scripts/cut-release-tag.mjs](scripts/cut-release-tag.mjs) refuses to tag unless `main` is clean and [CHANGELOG.md](CHANGELOG.md) has a section for the version. [scripts/release-notes.mjs](scripts/release-notes.mjs) requires the four call-outs: schema, archive format, security migrations and minimum version.
 - **Hosting.** `npm run deploy:release`, `deploy:rollback` and `deploy:list` drive immutable web releases ([deploy/README.md](deploy/README.md)). A sidecar receipt beside the current link records the outgoing target at each switch. `rollback --previous` uses that matching history, never directory age; missing or stale history requires a named target. Failed switches restore the prior receipt and PDF namespace. Rollback still refuses code that can't open the current schema.
 - **Progressive release.** Candidate checks in `stage1` and `stage2`, plus the `stable` matrix for stable versions, precede publication. Web and GitHub/Obtainium publish first; Play (`stage3`) and F-Droid (`stage4`) follow. Channel-live states record completed publication, so pending channels do not prevent a tag. Each required stage records update, migration, archive round trip, scheduled backup and rollback checks in [scripts/progressive-release-record.json](scripts/progressive-release-record.json). The tag command and release workflow validate the tested source revision and exact version before publication. See [candidate evidence](deploy/README.md#candidate-evidence-before-publication).
 - **Android channel signing.** Play retains its separate app-signing key. The planned F-Droid route verifies a reproducible source build and preserves the GitHub APK's developer signature. GitHub/F-Droid switching remains unverified until the actual rebuild and installed updates in both directions preserve synthetic journals. A matching certificate alone is insufficient. [Android channel verification](deploy/README.md#android-channel-verification) records the required proof and the Archive migration rule for incompatible channels.
