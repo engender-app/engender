@@ -30,6 +30,10 @@ import sys
 import tarfile
 
 directory = Path(sys.argv[1])
+# What a web build holds at its top level besides plain files. Anything else,
+# scripts/ for one, is not part of the bundle and is refused. A new build
+# directory has to be added here when the receiver is reinstalled.
+BUNDLE_DIRECTORIES = {'_app', 'fonts', 'icons', 'pdf-fonts', 'tesseract'}
 with tarfile.open(directory / 'archive.tar.gz') as archive:
     for member in archive.getmembers():
         path = PurePosixPath(member.name)
@@ -37,6 +41,9 @@ with tarfile.open(directory / 'archive.tar.gz') as archive:
             raise ValueError('Deployment archive must contain only regular files and directories')
         if path.is_absolute() or '..' in path.parts:
             raise ValueError('Deployment archive must stay inside the release directory')
+        parts = [part for part in path.parts if part != '.']
+        if len(parts) > 1 and parts[0] not in BUNDLE_DIRECTORIES:
+            raise ValueError('Deployment archive must contain only the web bundle')
     archive.extractall(directory / 'build', filter='data')
 PY
 

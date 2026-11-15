@@ -28,6 +28,8 @@ files = {
     '_app/version.json': '{"version":"fixture"}',
     'release.json': json.dumps({'version':'1.2.3','buildId':'fixture','schemaMax':3})
 }
+if kind == 'code':
+    files['scripts/journal-release.mjs'] = 'process.exit(0)'
 if kind == 'traversal':
     files['../../escaped'] = 'escaped'
 if kind == 'incomplete':
@@ -64,12 +66,13 @@ describe('trusted deployment receiver', () => {
     expect(readlinkSync(join(root, 'current'))).toBe(target);
   });
 
-  it.each(['traversal', 'symlink', 'hardlink', 'incomplete'])('rejects %s without switching the active release', (kind) => {
+  it.each(['code', 'traversal', 'symlink', 'hardlink', 'incomplete'])('rejects %s without switching the active release', (kind) => {
     const { root, run } = receiver();
     expect(run().status).toBe(0);
     const target = readlinkSync(join(root, 'current'));
     const rejected = run(kind);
     expect(rejected.status).not.toBe(0);
+    if (kind === 'code') expect(rejected.stderr).toContain('only the web bundle');
     expect(readlinkSync(join(root, 'current'))).toBe(target);
     expect(existsSync(join(root, 'escaped'))).toBe(false);
   });

@@ -198,8 +198,9 @@ The VPS needs Node.js 18 or later, Python 3.12 or later, Bash, diff and flock. I
 mode 644 under `/usr/local/lib/engender/`, also root-owned and mode 755.
 Update these scripts as an administrator when deployment logic changes;
 uploads contain only static build files. The receiver rejects an archive whose
-digest is not the one passed with the upload, then links, special files and
-paths that leave the release directory, before anything is switched. Reinstall
+digest is not the one passed with the upload, then links, special files, paths
+that leave the release directory and top-level directories a web build does not
+have (scripts/, for one), before anything is switched. Reinstall
 the receiver after this change: the old one expects a `build/` prefix and no
 digest.
 Give `journal` a Bash login
