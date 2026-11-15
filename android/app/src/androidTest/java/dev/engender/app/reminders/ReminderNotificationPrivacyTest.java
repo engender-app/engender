@@ -506,8 +506,18 @@ public class ReminderNotificationPrivacyTest {
 
         ReminderScheduler.applySync(context, withBodyText(payload(true).put("checkInEnabled", true)));
 
-        Notification after = findNotification();
-        assertNotNull("the reminder was withdrawn instead of reposted", after);
+        /* The repost is a call across to the notification service, so the old
+           notification can still be listed for a moment. */
+        Notification after = await(() -> {
+            for (StatusBarNotification sbn : notificationManager().getActiveNotifications()) {
+                if (("reminder:" + REMINDER_ID).equals(sbn.getTag())
+                    && CHANNEL_NAME.contentEquals(sbn.getNotification().extras.getCharSequence(Notification.EXTRA_TITLE))) {
+                    return sbn.getNotification();
+                }
+            }
+            return null;
+        });
+        assertNotNull("the reminder was withdrawn instead of reposted, or still shows its title", after);
         assertEquals(CHANNEL_NAME, after.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
         assertEquals("20:00", after.extras.getCharSequence(Notification.EXTRA_TEXT).toString());
         assertGenericCheckIn(findCheckInNotification());
