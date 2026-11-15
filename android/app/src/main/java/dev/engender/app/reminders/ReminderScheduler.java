@@ -117,6 +117,10 @@ public final class ReminderScheduler {
                 continue;
             }
             if (alreadyHidden(posted.getNotification(), payload, reminder)) continue;
+            /* Cancelled first: Android sheds notifications posted too fast,
+               and a shed repost must leave nothing in the shade rather than
+               the title that was just hidden. */
+            manager.cancel(tag, REMINDER_NOTIFICATION_ID);
             ReminderAlarmReceiver.postReminderNotification(context, payload, reminder, true);
         }
     }

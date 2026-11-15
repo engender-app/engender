@@ -504,6 +504,8 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(SENSITIVE_TITLE, before.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
         assertNotNull("no faces were posted", findCheckInNotification().contentView);
 
+        /* Android sheds notifications posted faster than about five a second. */
+        Thread.sleep(1500);
         ReminderScheduler.applySync(context, withBodyText(payload(true).put("checkInEnabled", true)));
 
         /* The repost is a call across to the notification service, so the old
