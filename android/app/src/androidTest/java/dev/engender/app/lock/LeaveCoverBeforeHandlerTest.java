@@ -40,7 +40,6 @@ public class LeaveCoverBeforeHandlerTest {
     }
 
     @After public void tearDown() {
-        TranslucentHandlerActivity.onFirstFrame = null;
         LeaveCover.set(false, "#000000");
         LeaveCover.reveal();
     }
@@ -57,16 +56,22 @@ public class LeaveCoverBeforeHandlerTest {
                 AtomicBoolean coveredWhenDrawn = new AtomicBoolean();
                 AtomicBoolean coveredOnReturn = new AtomicBoolean();
                 CountDownLatch drawn = new CountDownLatch(1);
-                scenario.onActivity(activity -> {
-                    TranslucentHandlerActivity.onFirstFrame = () -> {
+                android.content.BroadcastReceiver drew = new android.content.BroadcastReceiver() {
+                    @Override public void onReceive(Context context, Intent intent) {
                         coveredWhenDrawn.set(LeaveCover.isShown());
                         drawn.countDown();
-                    };
-                    activity.startActivityForResult(handler(action), 77);
+                    }
+                };
+                androidx.core.content.ContextCompat.registerReceiver(app, drew,
+                    new android.content.IntentFilter(TranslucentHandlerActivity.DREW), androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
+                scenario.onActivity(activity -> {
+                    activity.startActivityForResult(handler(action).putExtra("notify", app.getPackageName()), 77);
                     // Synchronously, before the activity manager has even been asked to pause this one.
                     coveredOnReturn.set(LeaveCover.isShown());
                 });
-                assertTrue("handler never drew for " + action, drawn.await(15, TimeUnit.SECONDS));
+                boolean arrived = drawn.await(15, TimeUnit.SECONDS);
+                app.unregisterReceiver(drew);
+                assertTrue("handler never drew for " + action, arrived);
                 assertTrue("cover was not up when the call returned for " + action, coveredOnReturn.get());
                 assertTrue("cover was not up when the handler drew for " + action, coveredWhenDrawn.get());
                 if (action.equals(Intent.ACTION_OPEN_DOCUMENT_TREE)) {
@@ -103,7 +108,14 @@ public class LeaveCoverBeforeHandlerTest {
         LeaveCover.set(true, "#101820");
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             WebViewProbe probe = new WebViewProbe(scenario, 60);
+            // The test package also answers this action (as a third-party handler would), so address the system's own.
             Intent system = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            String systemPackage = null;
+            for (android.content.pm.ResolveInfo found : app.getPackageManager().queryIntentActivities(system, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)) {
+                if ((found.activityInfo.applicationInfo.flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0) systemPackage = found.activityInfo.packageName;
+            }
+            assertTrue("no system app answers OPEN_DOCUMENT_TREE", systemPackage != null);
+            system.setPackage(systemPackage);
             assertEquals("true", leaveReport(scenario, probe, system));
         }
     }
