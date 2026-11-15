@@ -8,6 +8,22 @@ flock -w 120 9
 upload=$(mktemp -d .incoming-XXXXXXXX)
 trap 'rm -rf "$upload"' EXIT
 cat > "$upload/archive.tar.gz"
+
+# The digest the build job recorded arrives with the upload (the CI side runs
+# `ssh ... sha256:<digest>`; a forced command sees it as SSH_ORIGINAL_COMMAND).
+# The archive is the web bundle itself, so this is the same hash.
+if [[ ! "${SSH_ORIGINAL_COMMAND:-}" =~ ^sha256:([0-9a-f]{64})$ ]]; then
+  echo 'Upload must name the expected sha256 digest' >&2
+  exit 1
+fi
+expected=${BASH_REMATCH[1]}
+actual=$(sha256sum "$upload/archive.tar.gz" | cut -d' ' -f1)
+if [[ "$actual" != "$expected" ]]; then
+  echo "Archive digest $actual is not the expected digest $expected" >&2
+  exit 1
+fi
+
+mkdir "$upload/build"
 python3 - "$upload" <<'PY'
 from pathlib import Path, PurePosixPath
 import sys
@@ -19,9 +35,9 @@ with tarfile.open(directory / 'archive.tar.gz') as archive:
         path = PurePosixPath(member.name)
         if not (member.isfile() or member.isdir()):
             raise ValueError('Deployment archive must contain only regular files and directories')
-        if path.is_absolute() or '..' in path.parts or (path.parts and path.parts[0] != 'build'):
-            raise ValueError('Deployment archive must contain only build/')
-    archive.extractall(directory, filter='data')
+        if path.is_absolute() or '..' in path.parts:
+            raise ValueError('Deployment archive must stay inside the release directory')
+    archive.extractall(directory / 'build', filter='data')
 PY
 
 # A rerun after a failed HTTP check must not replace an immutable release.

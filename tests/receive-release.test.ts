@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -17,22 +18,20 @@ function receiver() {
   for (const name of ['journal-release.mjs', 'app-version.mjs']) {
     writeFileSync(join(trusted, name), readFileSync(`scripts/${name}`, 'utf8').replaceAll('/home/journal', root));
   }
-  const run = (kind = 'valid') => {
+  const run = (kind = 'valid', digestOf: 'archive' | 'other' | 'none' = 'archive') => {
     const archive = execFileSync('python3', ['-c', `
 import io, json, sys, tarfile
 kind = sys.argv[1]
 files = {
-    'build/index.html': 'release document',
-    'build/service-worker.js': '// worker',
-    'build/_app/version.json': '{"version":"fixture"}',
-    'build/release.json': json.dumps({'version':'1.2.3','buildId':'fixture','schemaMax':3})
+    'index.html': 'release document',
+    'service-worker.js': '// worker',
+    '_app/version.json': '{"version":"fixture"}',
+    'release.json': json.dumps({'version':'1.2.3','buildId':'fixture','schemaMax':3})
 }
-if kind == 'code':
-    files['scripts/journal-release.mjs'] = 'process.exit(0)'
 if kind == 'traversal':
-    files['build/../../escaped'] = 'escaped'
+    files['../../escaped'] = 'escaped'
 if kind == 'incomplete':
-    del files['build/index.html']
+    del files['index.html']
 with tarfile.open(fileobj=sys.stdout.buffer, mode='w|gz') as archive:
     for name, text in files.items():
         data = text.encode()
@@ -41,12 +40,14 @@ with tarfile.open(fileobj=sys.stdout.buffer, mode='w|gz') as archive:
         member.mode = 0o644
         archive.addfile(member, io.BytesIO(data))
     if kind in ['symlink', 'hardlink']:
-        member = tarfile.TarInfo('build/escape')
+        member = tarfile.TarInfo('escape')
         member.type = tarfile.SYMTYPE if kind == 'symlink' else tarfile.LNKTYPE
         member.linkname = '/tmp/escape'
         archive.addfile(member)
 `, kind]);
-    return spawnSync('bash', ['-c', script], { input: archive, encoding: 'utf8' });
+    const digest = createHash('sha256').update(digestOf === 'other' ? 'something else' : archive).digest('hex');
+    const env = digestOf === 'none' ? { ...process.env } : { ...process.env, SSH_ORIGINAL_COMMAND: `sha256:${digest}` };
+    return spawnSync('bash', ['-c', script], { input: archive, encoding: 'utf8', env });
   };
   return { root, run };
 }
@@ -63,7 +64,7 @@ describe('trusted deployment receiver', () => {
     expect(readlinkSync(join(root, 'current'))).toBe(target);
   });
 
-  it.each(['code', 'traversal', 'symlink', 'hardlink', 'incomplete'])('rejects %s without switching the active release', (kind) => {
+  it.each(['traversal', 'symlink', 'hardlink', 'incomplete'])('rejects %s without switching the active release', (kind) => {
     const { root, run } = receiver();
     expect(run().status).toBe(0);
     const target = readlinkSync(join(root, 'current'));
@@ -71,5 +72,15 @@ describe('trusted deployment receiver', () => {
     expect(rejected.status).not.toBe(0);
     expect(readlinkSync(join(root, 'current'))).toBe(target);
     expect(existsSync(join(root, 'escaped'))).toBe(false);
+  });
+
+  it.each(['other', 'none'] as const)('refuses an archive whose digest is %s than the one passed with the upload, without switching', (digestOf) => {
+    const { root, run } = receiver();
+    expect(run().status).toBe(0);
+    const target = readlinkSync(join(root, 'current'));
+    const rejected = run('valid', digestOf);
+    expect(rejected.status).not.toBe(0);
+    expect(rejected.stderr).toContain('digest');
+    expect(readlinkSync(join(root, 'current'))).toBe(target);
   });
 });
