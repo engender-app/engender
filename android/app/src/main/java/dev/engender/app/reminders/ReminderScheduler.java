@@ -93,6 +93,10 @@ public final class ReminderScheduler {
         withdrawRevealedReminders(context, payload);
     }
 
+    /** Reposts a device test makes Android appear to shed: the next N are
+        skipped. Zero in production. */
+    static volatile int dropReposts;
+
     /**
      * Reminders already in the shade were posted under whatever the payload
      * said then. When titles are now hidden, each is replaced in place by
@@ -104,15 +108,15 @@ public final class ReminderScheduler {
      * the shade - another tag, another id, the check-in - is not touched here;
      * {@link CheckInFaces#reconcile} owns the check-in.
      */
-    /** Reposts a device test makes Android appear to shed: the next N are
-        skipped. Zero in production. */
-    static volatile int dropReposts;
-
     /** Under Android's roughly five notifications a second, with room to
         spare. A person with many reminders flips hide titles and every one
         is reposted at once; spaced like this none is shed in the first
         place. */
     private static final long REPOST_SPACING_MS = 250;
+    /** The class monitor is held for the whole pass, so it is bounded: past
+        this many the rest are cancelled instead of reposted, which is also
+        a valid end state, and the longest hold is about 3.5 s. */
+    private static final int MAX_PACED_REPOSTS = 8;
     private static final long SETTLE_POLL_MS = 150;
     private static final int SETTLE_POLLS = 10;
 
@@ -130,6 +134,10 @@ public final class ReminderScheduler {
                 repost.add(reminder);
             }
         }
+        for (int i = MAX_PACED_REPOSTS; i < repost.size(); i++) {
+            manager.cancel(REMINDER_TAG_PREFIX + repost.get(i).optString("id", ""), REMINDER_NOTIFICATION_ID);
+        }
+        if (repost.size() > MAX_PACED_REPOSTS) repost = repost.subList(0, MAX_PACED_REPOSTS);
         boolean interrupted = false;
         for (int i = 0; i < repost.size() && !interrupted; i++) {
             if (dropReposts > 0) {

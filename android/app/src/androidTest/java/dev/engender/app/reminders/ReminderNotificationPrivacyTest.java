@@ -651,6 +651,19 @@ public class ReminderNotificationPrivacyTest {
     }
 
     @Test
+    public void moreRemindersThanTheCapEndHiddenOrGone() throws Exception {
+        postManyRevealed(12);
+        Thread.sleep(1500);
+        long start = System.nanoTime();
+
+        ReminderScheduler.applySync(context, manyReminders(true, 12));
+
+        assertNoTitleShows();
+        long heldMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+        assertTrue("the sync held the scheduler for " + heldMs + " ms", heldMs < 6000);
+    }
+
+    @Test
     public void repostsAndroidShedsLeaveNothingRevealed() throws Exception {
         postManyRevealed(3);
         Thread.sleep(1500);
