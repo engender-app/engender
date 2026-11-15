@@ -101,6 +101,14 @@ export async function journalIsClosing(): Promise<void> {
   await journals.close();
 }
 
+/** The lock's first, synchronous step on the web (security-scan ticket 08):
+    the session is over for commands from this instant, before the close
+    that drains it has even started. */
+export function journalSessionEnded(): void {
+  open.journal = null;
+  journals.end();
+}
+
 type Operations = Record<string, (...args: unknown[]) => unknown>;
 
 /* One waiting facade per area, built once. Every operation returns a promise

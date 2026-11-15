@@ -1121,8 +1121,9 @@ export function tablesWrittenBy(area: string, operation: string): TableName[] {
   return tables;
 }
 
-/** Whether an operation changes the journal: a classified write, or one of
-    the journal-wide operations, which all do. The facade hands this to the
+/** Whether an area's operation changes the journal: a classified write.
+    The journal-wide operations all do, and the facade marks those itself.
+    The facade hands this to the
     session gate, which refuses a change made after a lock rather than
     queueing it for whoever unlocks next (security-scan ticket 08). */
 export function isJournalCommand(area: string, operation: string): boolean {

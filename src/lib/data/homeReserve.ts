@@ -101,10 +101,11 @@ export function readReserve(slot: ReserveSlot, storage?: Storage, store: Reserve
 export function rememberReserve(slot: ReserveSlot, px: number, storage?: Storage, store: ReserveStore | null = held): void {
   try {
     if (!HOME_SLOTS.includes(slot)) {
-      if (!store) return;
+      const height = usable(px);
+      if (!store || height === 0) return;
       const current = store.read();
-      if (current[slot] === Math.round(px)) return;
-      store.write({ ...current, [slot]: Math.round(px) });
+      if (current[slot] === height) return;
+      store.write({ ...current, [slot]: height });
       return;
     }
     resolveStorage(storage)?.setItem(reserveKey(slot), String(Math.round(px)));

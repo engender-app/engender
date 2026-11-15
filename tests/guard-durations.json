@@ -16,7 +16,7 @@
     "hair-removal-interaction-check": "Local Fedora run on 2026-10-12, excluding build; tests/hair-removal-interaction-check.mjs",
     "hair-progress-photo-actions": "Local Fedora run on 2026-10-12, excluding build; tests/hair-progress-photo-actions.mjs",
     "feedback-concealment-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-14",
-    "lock-leaves-nothing-check": "Local Fedora run on 2026-11-15, dev server; tests/lock-leaves-nothing-check.mjs",
+    "lock-leaves-nothing-check": "Provisional 90-second estimate pending hosted measurement; local Chromium dev-server proof on 2026-11-15",
     "wear-entry-check": "Local Fedora run on 2026-10-14, excluding build; tests/wear-entry-check.mjs",
     "in-place-scroll-check": "Local Fedora run on 2026-10-15, dev server; tests/in-place-scroll-check.mjs",
     "deep-link-consumption-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-15",

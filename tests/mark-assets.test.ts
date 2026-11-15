@@ -12,6 +12,7 @@
    Greps by design (ticket 08): what is asserted is that a file exists and
    that a manifest names a component, which is data, with nothing to run.
    Whether the drawing inside is right is mark.test.ts's question. */
+import { DISGUISED_PALETTE } from '../src/lib/data/prefs/catalogue.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -24,7 +25,10 @@ const exists = (path: string) => existsSync(fileURLToPath(new URL(path, root)));
     render-mark.mjs and documentChrome do, so this cannot be testing a
     different set from the one that ships. */
 const palettes = [...read('src/lib/theme/palettes.css').matchAll(/\[data-palette="([a-z]+)"\]\s*\{\s*--motif-stripes:/g)]
-  .map((match) => match[1]);
+  .map((match) => match[1])
+  /* The disguised gate's neutral palette is not a flag and has no mark
+     (security-scan ticket 08), the same skip render-mark.mjs makes. */
+  .filter((name) => name !== DISGUISED_PALETTE);
 
 const manifest = read('android/app/src/main/AndroidManifest.xml');
 

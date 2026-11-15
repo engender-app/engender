@@ -38,7 +38,7 @@ import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { shouldSweepOrphans } from '../data/sqlite/orphan-sweep-schedule';
-import { attachJournal, journalIsClosing, journalIsOpen } from '../data/live/journal.svelte';
+import { attachJournal, journalIsClosing, journalIsOpen, journalSessionEnded } from '../data/live/journal.svelte';
 import { sessionDriver } from '../data/live/sessionDriver';
 import { bump } from '../data/live/tableVersions.svelte';
 import { observeWrites, tablesWrittenBy } from '../data/live/writes';
@@ -292,6 +292,9 @@ export function closeJournalForLock(): Promise<void> {
      locked screen's to keep. */
   forgetJournalContent();
   if (android) return Promise.resolve();
+  /* Before anything waits: a change made from here on was made at the
+     locked screen and is refused, not queued for the next unlock. */
+  journalSessionEnded();
   forgetReference();
   /* Published now as well as when the lock's turn comes: a lock can wait
      behind a reopen still under way, and the boot machine has to treat the
@@ -451,11 +454,12 @@ let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
 
 /** Functional audit ticket 45: the tile snoozes, letter ids and entries hint
-    (and since security-scan ticket 08 the stock notice snooze) older builds kept in plaintext localStorage move into the encrypted
-    `acknowledgements` preference on the first unlock. Awaits the handle's own
-    write, which rejects on failure, rather than the reactive setter, which
-    logs and carries on - the plaintext keys are deleted only after it lands.
-    Runs before attach so the projection starts from the merged value. */
+    (and since security-scan ticket 08 the stock notice snooze) older builds
+    kept in plaintext localStorage move into the encrypted `acknowledgements`
+    preference on the first unlock. Awaits the handle's own write, which
+    rejects on failure, rather than the reactive setter, which logs and
+    carries on - the plaintext keys are deleted only after it lands. Runs
+    before attach so the projection starts from the merged value. */
 async function moveLegacyAcknowledgements(preferences: Preferences): Promise<void> {
   let storage: Storage | null = null;
   try {
