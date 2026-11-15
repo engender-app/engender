@@ -3,6 +3,7 @@ package dev.engender.app.launch;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 
 import java.util.UUID;
@@ -39,7 +40,7 @@ public final class AppLaunch {
     static final String OPEN_ROUTE = "dev.engender.app.action.OPEN_ROUTE";
 
     private static synchronized String nonce(Context context) {
-        android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String saved = prefs.getString(KEY_NONCE, null);
         if (saved == null) {
             saved = UUID.randomUUID().toString();
@@ -83,7 +84,7 @@ public final class AppLaunch {
         int split = once.lastIndexOf(':');
         if (split <= 0) return false;
         String key = once.substring(0, split);
-        android.content.SharedPreferences prefs = context.getSharedPreferences(ONCE_PREFS, Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences(ONCE_PREFS, Context.MODE_PRIVATE);
         String issued = prefs.getString(key, null);
         if (issued == null || !issued.equals(once.substring(split + 1))) return false;
         prefs.edit().remove(key).commit();
@@ -94,7 +95,7 @@ public final class AppLaunch {
         changes only when a launch spends it, so every placed copy of a
         widget, rebuilt for any reason in between, carries the same one. */
     private static synchronized String onceTicket(Context context, String key) {
-        android.content.SharedPreferences prefs = context.getSharedPreferences(ONCE_PREFS, Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences(ONCE_PREFS, Context.MODE_PRIVATE);
         String issued = prefs.getString(key, null);
         if (issued == null) {
             issued = UUID.randomUUID().toString();

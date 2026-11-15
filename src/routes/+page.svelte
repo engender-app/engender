@@ -709,6 +709,9 @@
      as it is read, so reloading or going back never proposes it again. */
   let tallyProposal = $state<TallyKind | null>(null);
   let tallyConfirmOpen = $state(false);
+  let tallyWords = $derived(tallyProposal === 'correctly_gendered'
+    ? { name: m.tally_correctly_gendered(), log: m.tally_log_correctly_gendered() }
+    : { name: m.tally_misgendered(), log: m.tally_log_misgendered() });
   const tallyWrite = writer();
   $effect(() => {
     if (!doorActive() || page.url.pathname !== '/') return;
@@ -1378,12 +1381,12 @@
        under the sheet while it slides away. -->
   <Sheet
     open={tallyConfirmOpen}
-    title={tallyProposal === 'correctly_gendered' ? m.tally_correctly_gendered() : m.tally_misgendered()}
+    title={tallyWords.name}
     onClose={() => (tallyConfirmOpen = false)}
     busy={tallyWrite.busy}
   >
     <div data-tally-confirm>
-      <SectionHeading text={tallyProposal === 'correctly_gendered' ? m.tally_correctly_gendered() : m.tally_misgendered()} />
+      <SectionHeading text={tallyWords.name} />
       <p class="muted" style="margin-bottom:var(--space-4)">{m.tally_confirm_day({ date: fmtDay(today, { day: 'numeric', month: 'long' }) })}</p>
       <div class="stack-3">
         <button
@@ -1393,7 +1396,7 @@
           aria-busy={tallyWrite.busy}
           onclick={logProposedTally}
         >
-          <span>{tallyProposal === 'correctly_gendered' ? m.tally_log_correctly_gendered() : m.tally_log_misgendered()}</span>
+          <span>{tallyWords.log}</span>
         </button>
         <button
           class="btn btn-ghost btn-block"

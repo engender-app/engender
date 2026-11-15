@@ -33,7 +33,13 @@ test('a Care address that already names its episode holds nothing', () => {
 });
 
 test('a typed search address hands its query to the search screen in memory', () => {
-  expect(href(arriveWithoutJournalText(at('/search?q=Canary')))).toBe('/search');
+  expect(href(arriveWithoutJournalText(at('/search?q=Canary'), { cold: true }))).toBe('/search');
   expect(takeLegacyQuery()).toBe('Canary');
+  expect(takeLegacyQuery()).toBeNull();
+});
+
+test('an in-app search arrival holds nothing for a later visit', () => {
+  // Search has already read ?q= itself by the time an in-app arrival is cleaned.
+  arriveWithoutJournalText(at('/search?q=Canary'));
   expect(takeLegacyQuery()).toBeNull();
 });

@@ -16,12 +16,14 @@ const photo = (n: number): NormalizedPhoto => ({ full: new Uint8Array([n]), thum
 
 test('a committed draft cannot repeat attachments or a contextual dose after navigation fails', async () => {
   const { journal } = await journalWithBuiltIns();
+  // A real appointment the day before: the save links only an offered one (GD-048).
+  const appointment = await journal.appointments.upsertAppointment({ epochDay: 99, procedureId: null, kind: null, place: null, note: null });
   const draft = createEntryDraft(100, undefined, 4);
   draft.addPhoto(photo(1));
   draft.addRecording(new Uint8Array([2]));
   draft.addVideo(new Uint8Array([3]));
   draft.setDoseLog({ dose: 2, doseUnit: 'mg' });
-  const creation = { starred: true, debriefForAppointment: 'appointment-1' };
+  const creation = { starred: true, debriefForAppointment: appointment };
   const saveAndNavigate = async () => {
     const id = await draft.save(journal.entries, creation);
     assert.equal(draft.savedId, id);
@@ -40,7 +42,7 @@ test('a committed draft cannot repeat attachments or a contextual dose after nav
   assert.equal(entry.recordings.length, 1);
   assert.equal(entry.videos.length, 1);
   assert.equal((await journal.doses.getDoses(100, 100)).length, 1);
-  assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), entry.id);
+  assert.equal(await journal.checklists.getDebriefEntryId(appointment), entry.id);
   assert.throws(() => draft.toUpsert(), /already saved/);
 });
 

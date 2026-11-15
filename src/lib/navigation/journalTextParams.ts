@@ -60,9 +60,9 @@ forgetOnLock(() => {
 });
 
 /** An arriving address, cleaned: what it asked for is held in memory for
-    the screen that will ask, and the address to replace it with comes
+    the screen that will ask (`cold` when the router has not read it yet), and the address to replace it with comes
     back, or null when it was already clean. */
-export function arriveWithoutJournalText(url: URL): URL | null {
+export function arriveWithoutJournalText(url: URL, { cold = false } = {}): URL | null {
   const clean = withoutJournalText(url);
   if (!clean) return null;
   const params = url.searchParams;
@@ -70,7 +70,10 @@ export function arriveWithoutJournalText(url: URL): URL | null {
     legacyCareDrug = params.get('drug') ?? params.get('lane');
   }
   const query = params.get('q');
-  if (url.pathname === '/search' && query) legacyQuery = query;
+  /* Only on a cold arrival: an in-app one is cleaned after Search has
+     mounted and read `?q=` itself, so a query held then would wait for
+     the next visit and prefill it. */
+  if (cold && url.pathname === '/search' && query) legacyQuery = query;
   return clean;
 }
 

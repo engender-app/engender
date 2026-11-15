@@ -350,6 +350,13 @@ taken on an address that still names a drug. Each must leave no `drug`,
 resolved to its episode UUID, the query in the search box). Chromium against
 the dev server; run `node tests/journal-text-links.mjs`.
 
+`tally-link-confirm` (`tests/tally-link-confirm.mjs`) opens `/?tally=` the way
+a sent link or the Android widget does, unlocked and carried through a lock
+and unlock, and checks that nothing is written until the confirmation's Log
+button, that Cancel writes nothing, and that Log writes one event, shows
+Saved and is not proposed again by history-back. Chromium against the dev
+server; run `node tests/tally-link-confirm.mjs`.
+
 `browser-tier/dose-slot-screens-probe.ts` runs through `test:browser` with a
 synthetic encrypted journal and the real Today, Care and Transition screens.
 It checks yesterday and today against a weekly patch slot: the Today panel and
