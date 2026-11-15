@@ -140,6 +140,20 @@ try {
   assertClean('after unlock');
   });
 
+  /* GD-039: a malformed fragment used to throw a URIError inside these
+     three screens' setup. Opened the way a sent link is, each must still
+     draw its header and raise no page error. */
+  await step('a malformed fragment leaves the dose, lab and regimen screens usable', async () => {
+    for (const path of ['/care/doses#%', '/care/labs#%ZZ', '/care/regimen#%E2%82']) {
+      const before = errors.length;
+      await page.goto(new URL(path, base).href, { waitUntil: 'networkidle' });
+      await unlockIfAsked();
+      await page.locator('[data-screen-back]').waitFor();
+      await page.waitForTimeout(500);
+      assert.deepEqual(errors.slice(before), [], `${path} raised ${errors.slice(before).join(' | ')}`);
+    }
+  });
+
   assert.deepEqual(errors, []);
   if (failures) throw new Error(`${failures} case(s) failed`);
 } finally {
