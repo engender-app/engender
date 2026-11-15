@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
-function replay({ checksum = true, upload = true, live = '1.2.3', configured = true, swap = false, liveIndex = 'release document', digestArg = '' } = {}) {
+function replay({ upload = true, live = '1.2.3', configured = true, swap = false, liveIndex = 'release document', digestArg = '' } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'engender-web-deploy-'));
   roots.push(root);
   for (const dir of ['bin', 'fixture', 'build', 'received', 'live']) mkdirSync(join(root, dir));
@@ -28,7 +28,7 @@ function replay({ checksum = true, upload = true, live = '1.2.3', configured = t
     execFileSync('tar', ['-czf', bundle, '-C', join(root, 'build'), '.']);
   }
   const published = createHash('sha256').update(readFileSync(bundle)).digest('hex');
-  writeFileSync(join(root, 'fixture/SHA256SUMS'), `${checksum ? published : '0'.repeat(64)}  engender-web-1.2.3.tar.gz\n`);
+  writeFileSync(join(root, 'fixture/SHA256SUMS'), `${published}  engender-web-1.2.3.tar.gz\n`);
   writeFileSync(join(root, 'live/index.html'), liveIndex);
   const commands = {
     gh: 'touch "$TEST_ROOT/gh-called"\nwhile [[ "$1" != --dir ]]; do shift; done\ncp "$TEST_ROOT"/fixture/* "$2/"',

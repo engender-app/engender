@@ -35,7 +35,7 @@ if kind == 'incomplete':
 with tarfile.open(fileobj=sys.stdout.buffer, mode='w|gz') as archive:
     for name, text in files.items():
         data = text.encode()
-        member = tarfile.TarInfo(name)
+        member = tarfile.TarInfo(name if kind == 'traversal' else './' + name)
         member.size = len(data)
         member.mode = 0o644
         archive.addfile(member, io.BytesIO(data))
