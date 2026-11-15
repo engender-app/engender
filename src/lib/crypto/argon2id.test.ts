@@ -165,6 +165,14 @@ describe('worker handover and fallback', () => {
     await expect(deriveKey('correct horse', salt, CHEAP, { mainThread: false })).rejects.toThrow('argon2id worker did not start');
   });
 
+  test('a caller that refuses the main thread gets an error after a failed prewarm, without a second worker', async () => {
+    const { deriveKey, prewarmArgon2 } = await import('./argon2id.ts');
+    prewarmArgon2();
+    FakeWorker.made[0].fail();
+    await expect(deriveKey('correct horse', salt, CHEAP, { mainThread: false })).rejects.toThrow('argon2id worker did not start');
+    expect(FakeWorker.made).toHaveLength(1);
+  });
+
   test.each(['absent', 'throws'])('an unavailable worker falls back without prewarming: %s', async (failure) => {
     vi.stubGlobal('Worker', failure === 'absent' ? undefined : class {
       constructor() { throw new Error('worker blocked'); }
