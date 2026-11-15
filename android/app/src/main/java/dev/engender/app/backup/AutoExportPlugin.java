@@ -444,6 +444,7 @@ public class AutoExportPlugin extends Plugin {
                 // Always create a new document. Never truncate a recoverable backup.
                 DocumentFile target = folder.createFile("application/octet-stream", pendingFileName);
                 if (target == null) throw new IllegalStateException("destination-unavailable");
+                DestinationGuard.requireChild(destination, target);
                 DeliveredBackup.writeAndVerify(getContext(), folder, target, backup.file, expectedLength, sha256, passwordStore().read());
 
                 // Cleanup failure must never remove the newly verified backup.

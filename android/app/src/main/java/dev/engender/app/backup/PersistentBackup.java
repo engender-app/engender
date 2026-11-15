@@ -122,6 +122,7 @@ final class PersistentBackup {
         if (target == null || !target.exists()) {
             target = folder.createFile("application/octet-stream", "auto-backup-" + stage.getLong("snapshotAt") + ".ttbackup");
             if (target == null) throw new IllegalStateException("destination-unavailable");
+            DestinationGuard.requireChild(destination, target);
             stage.put("target", target.getUri().toString());
             if (!preferences.edit().putString(STAGE, stage.toString()).commit()) {
                 preferences.edit().putString(STAGE, raw).commit();

@@ -51,4 +51,13 @@ final class DestinationGuard {
         String tree = preferences.getString("destinationUri", null);
         return tree != null && DocumentUris.isInTree(tree, target);
     }
+
+    /** A file the provider just created must be a document inside the folder
+        it was created in; a provider that answers with anything else is not
+        written to, and is not deleted either, since it is not ours. */
+    static void requireChild(Uri tree, androidx.documentfile.provider.DocumentFile created) {
+        if (created == null || !DocumentUris.isInTree(tree.toString(), created.getUri().toString())) {
+            throw new IllegalStateException(INVALID);
+        }
+    }
 }
