@@ -8,7 +8,7 @@ export function countPageLoad(): void {
   attempted = true;
   if (
     !import.meta.env.PROD || import.meta.env.VITE_DEMO === '1' ||
-    location.origin !== 'https://app.engender.barankiewicz.dev' ||
+    location.origin !== 'https://journal.engender.app' ||
     isAndroid() || !navigator.onLine
   ) return;
 

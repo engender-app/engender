@@ -47,7 +47,7 @@ A functionality that would allow for synchronizing a journal between 2 devices o
 
 ## Hosted web app
 
-The web app is served from `app.engender.barankiewicz.dev`. When your browser
+The web app is served from `journal.engender.app`. When your browser
 loads the app or checks for an update, the server sees the ordinary details
 of each request:
 
@@ -92,7 +92,7 @@ copy.
 
 ## Website and guide
 
-The website, guide and these policy pages at `engender.barankiewicz.dev`
+The website, guide and these policy pages at `engender.app`
 run on lh.pl hosting. The website remembers language and theme in that
 origin's local browser storage, separately from your journal.
 
@@ -210,7 +210,7 @@ an unencrypted file.
 ## Links that leave the app
 
 The Website, Guide, Privacy policy and Source code links in About open in
-your browser. They lead to `engender.barankiewicz.dev` and `github.com`,
+your browser. They lead to `engender.app` and `github.com`,
 which see that request like any other website would. GitHub's own privacy
 statement applies to pages on GitHub.
 
@@ -224,7 +224,7 @@ retention periods described in this policy:
   deletes, well, everything. If you used biometric unlock on the web, the passkey it created stays in your browser's or device's passkey list until you remove it there. It opens nothing once the journal is gone. On Android, an interrupted photo capture can leave an unencrypted file in the app’s cache. Clearing the app’s storage removes it.
 - **On Android.** Uninstalling the app, or clearing its storage in the
   system settings, removes everything the app stored on the phone.
-- **On the web.** Clearing the site data for `app.engender.barankiewicz.dev`
+- **On the web.** Clearing the site data for `journal.engender.app`
   in your browser removes the journal and the keys kept for it.
 
 None of these reach files you exported or shared, including backups written
