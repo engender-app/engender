@@ -109,6 +109,11 @@ Set only the Engender site's settings to `collect=1` (`CollectNothing`),
 `public="private"` and `data_retention=0`. Zero for `collect` restores
 defaults and is not equivalent to collecting nothing.
 
+GoatCounter picks a site by the request's Host, so the Engender site's
+`cname` must equal the dashboard hostname. Moving the dashboard to another
+hostname means updating it too, with the service stopped:
+`goatcounter db update site -find <id> -vhost <new host>`.
+
 After DNS reaches this VPS on both authoritative nameservers, issue a
 certificate using the HTTP bootstrap procedure above, with the stats
 hostname. Install:
@@ -131,8 +136,7 @@ not protected against deliberate inflation.
 Install `nginx/engender-logrotate` as `/etc/logrotate.d/engender`, create
 `/var/log/nginx/engender` owned by `www-data:adm`, and ensure logrotate and
 its daily timer are installed and enabled. The production app server blocks
-disable access logs and use this separate error directory. Apply the same
-logging directives to the retained legacy app hostname. Five daily archives
+disable access logs and use this separate error directory. Five daily archives
 plus the active file leave room for the timer’s randomized delay within the
 seven-day limit when the daily timer runs. Rotation includes empty files so older errors still expire on quiet
 days. The counter locations write neither access nor error logs.
