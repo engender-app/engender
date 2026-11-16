@@ -19,13 +19,13 @@ describe('release links', () => {
     const paths = surface === 'built output' ? filesIn('build') : execFileSync('git', ['ls-files', '-z', '--', 'src', 'deploy', ':(top,glob)*.md', 'capacitor.config.ts'], {
       cwd: root, encoding: 'utf8'
     }).split('\0').filter(Boolean);
-    const retired = /engender\.dev|github\.com\/barankiewicz\/gender-diary/;
+    const retired = /engender\.dev|barankiewicz\.dev|github\.com\/barankiewicz\/gender-diary/;
     const violations = paths.filter((path) => retired.test(readFileSync(new URL(path, root), 'utf8')));
     expect(violations).toEqual([]);
   });
 
   it('changes only hosted metadata while Android keeps its existing local origin', () => {
-    expect(JOURNAL_ORIGIN).toBe('app.engender.barankiewicz.dev');
+    expect(JOURNAL_ORIGIN).toBe('journal.engender.app');
     expect(capacitorConfig.server?.hostname).toBe('localhost');
     expect(capacitorConfig.server?.androidScheme).toBe('https');
     expect(capacitorConfig.server?.url).toBeUndefined();

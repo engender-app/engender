@@ -39,10 +39,10 @@ try {
     try { await fetch(origin + '/gc/count'); break; }
     catch (error) { if (attempt === 40) throw error; await delay(100); }
   }
-  for (const [label, site] of [['app', 'app.engender.barankiewicz.dev'], ['website', 'engender.barankiewicz.dev']]) {
+  for (const [label, site] of [['app', 'journal.engender.app'], ['website', 'engender.app']]) {
     const headers = {
       Origin: `https://${site}`, 'User-Agent': 'Browser/1.0 private-visitor',
-      Referer: 'https://app.engender.barankiewicz.dev/search?q=private',
+      Referer: 'https://journal.engender.app/search?q=private',
       Cookie: 'visitor=private', Authorization: 'Bearer private',
       'X-Forwarded-For': '203.0.113.9', 'X-Real-IP': '203.0.113.9',
       Forwarded: 'for=203.0.113.9', 'Accept-Language': 'pl', 'X-Purpose': 'private'
@@ -53,7 +53,7 @@ try {
     assert.equal(result.headers.get('access-control-allow-origin'), `https://${site}`);
     assert.deepEqual(received.at(-1), {
       method: 'GET', url: `/gc/count?p=/${label}`, body: '', headers: {
-        host: 'stats.engender.barankiewicz.dev', connection: 'close', 'content-length': '0',
+        host: 'stats.engender.app', connection: 'close', 'content-length': '0',
         'user-agent': 'Engender-count/1.0 anonymous'
       }
     });

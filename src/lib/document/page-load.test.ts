@@ -4,7 +4,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.stubEnv('PROD', true);
   vi.stubEnv('VITE_DEMO', '');
-  vi.stubGlobal('location', { origin: 'https://app.engender.barankiewicz.dev' });
+  vi.stubGlobal('location', { origin: 'https://journal.engender.app' });
   vi.stubGlobal('navigator', { onLine: true });
   vi.stubGlobal('window', {});
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
@@ -17,7 +17,7 @@ afterEach(() => {
 
 test('counts once with no route, query, credentials, referrer or body', async () => {
   vi.stubGlobal('location', {
-    origin: 'https://app.engender.barankiewicz.dev',
+    origin: 'https://journal.engender.app',
     pathname: '/search', search: '?q=private-journal-text', hash: '#private'
   });
   const { countPageLoad } = await import('./page-load');

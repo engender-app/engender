@@ -1,7 +1,7 @@
 # Production hosting and release switch
 
 Ticket 05 serves the Journal from one decided origin:
-`app.engender.barankiewicz.dev`.
+`journal.engender.app`.
 
 The VPS keeps immutable release directories and one symlink:
 
@@ -14,21 +14,20 @@ traffic with no reload and no half-copied release state.
 Hosting your own copy on another origin is covered in
 [SELF-HOSTING.md](SELF-HOSTING.md). It installs the same two snippets.
 
-## Adding the chosen hostname to an existing installation
+## Moving the journal to another hostname
 
-Keep `app.gender-diary.barankiewicz.dev` serving its existing release. Add
-`app.engender.barankiewicz.dev` as a separate nginx site; do not redirect the
-old hostname or replace its certificate. Browser journals belong to their
-origin. A journal on the old hostname stays there until its owner exports an
-archive and imports it on the new hostname. Android still uses
-`https://localhost`, so these DNS and nginx changes do not move Android data.
+Browser journals belong to their origin. A journal kept on the old hostname
+stays there until its owner exports an archive and imports it on the new one,
+so a hostname change is only free while no one keeps a journal on the old
+one. The move to `journal.engender.app` happened before 1.0.0, when the
+previous origin served only a development build.
+Android uses `https://localhost`, so DNS and nginx changes never move Android
+data.
 
-In the DNS provider's panel, set an A record for
-`app.engender.barankiewicz.dev` to the existing journal VPS address. Read that
-address from the `journal-host` SSH alias. Keep the landing site's record and the
-old app record unchanged. Check both authoritative nameservers before issuing
-a certificate. If the new app hostname has an AAAA record, it must reach the
-same server too.
+In the DNS provider's panel, point an A record for the new hostname at the
+journal VPS (the `journal-host` SSH alias has the address). Check both
+authoritative nameservers before issuing a certificate. If the hostname has
+an AAAA record, it must reach the same server.
 
 First enable an HTTP-only server for the new hostname. Give its
 `/.well-known/acme-challenge/` location the root `/var/lib/letsencrypt` and
@@ -40,20 +39,15 @@ certificate exists:
 sudo install -d -m 0755 /var/lib/letsencrypt
 sudo nginx -t
 sudo systemctl reload nginx
-sudo certbot certonly --webroot -w /var/lib/letsencrypt -d app.engender.barankiewicz.dev
+sudo certbot certonly --webroot -w /var/lib/letsencrypt -d journal.engender.app
 ```
 
-After issuance, install the snippets and replace only the new hostname's
-bootstrap site with `deploy/nginx/journal.conf` as described below. Its HTTP
-challenge location keeps renewals out of the immutable release directories.
-The new site initially serves the existing `/home/journal/current` release;
-adding a hostname does not publish a new app build.
-
-Verify valid TLS, response headers and `/release.json` on both app hostnames.
-Their release metadata must match. To roll back the hostname addition,
-disable only the new site's symlink, test nginx and reload, then restore the
-new hostname's previous DNS record. Leave the old site, its certificate and
-`/home/journal/current` untouched.
+After issuance, install the snippets and replace the bootstrap site with
+`deploy/nginx/journal.conf` as described below. Its HTTP challenge location
+keeps renewals out of the immutable release directories. The site serves the
+existing `/home/journal/current` release; changing a hostname does not
+publish a new app build. Verify TLS, response headers and `/release.json`
+before removing the old hostname's site and certificate.
 
 ## Nginx setup
 
@@ -102,7 +96,7 @@ The two counters are `/app` and `/website`. They count online document
 openings, including reloads, not people or internal navigation. Android,
 offline openings, demo builds and other origins do not send counts.
 
-Keep the GoatCounter dashboard on `stats.engender.barankiewicz.dev`. Never
+Keep the GoatCounter dashboard on `stats.engender.app`. Never
 proxy its scripts onto the journal origin: they would have access to the
 browser's journal storage. GoatCounter listens only on `127.0.0.1:8081`
 with `-base-path /gc`.
