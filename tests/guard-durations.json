@@ -27,7 +27,13 @@
     "update-notice-check": "Local Fedora run on 2026-10-16, dev server; tests/update-notice-check.mjs",
     "recovery-key-replacement-check": "Local Fedora run on 2026-10-16, dev server; tests/recovery-key-replacement-check.mjs",
     "missing-access-recovery-check": "Local Fedora run on 2026-10-16, real OPFS/SQLite with six access-loss cases; tests/missing-access-recovery-check.mjs",
-    "gate-flag-check": "Provisional 120-second estimate pending hosted measurement; 16 palettes x 2 themes with disguise on and off, then three rooms at 360x568"
+    "gate-flag-check": "Provisional 120-second estimate pending hosted measurement; 16 palettes x 2 themes with disguise on and off, then three rooms at 360x568",
+    "device-bound-writes": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "device-bound-cleanup-check": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "pin-credential-contention": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "restore-preferences-check": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "search-return-privacy": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "reset-restart-check": "Local measurement 2026-11-17, one passing run, pending hosted measurement"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -149,7 +155,13 @@
     "plane-date-labels-clear": 34.5,
     "toast-stack-check": 12.2,
     "update-notice-check": 9.9,
-    "missing-access-recovery-check": 37.2
+    "missing-access-recovery-check": 37.2,
+    "device-bound-writes": 1,
+    "device-bound-cleanup-check": 17,
+    "pin-credential-contention": 438,
+    "restore-preferences-check": 70,
+    "search-return-privacy": 6,
+    "reset-restart-check": 403
   },
   "attempts": {
     "blind-edge-padding-check": [

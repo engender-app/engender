@@ -4,6 +4,13 @@ import { createServer } from 'vite';
 import { createReporter, launchChromium } from './browser-harness.mjs';
 
 // Mount real gates with synthetic journals and real storage/authentication.
+
+/* The status line keeps the longest messages in aria-hidden reserve spans so
+   its height never jumps; what it shows is everything else. */
+const shownStatus = (page) => page.evaluate(() => [...document.querySelector('[data-pin-status]').children]
+  .filter((child) => !child.classList.contains('pin-status-reserve'))
+  .map((child) => child.textContent).join('').trim());
+
 const server = await createServer({
   server: { port: 0, watch: null, fs: { allow: [process.cwd(), realpathSync('node_modules')] } },
   plugins: [{
@@ -241,7 +248,7 @@ try {
         ok('held credentials exclude a competing mutation');
         const busyText = await page.evaluate(async () => (await import('/src/lib/paraglide/messages.js')).m.pp_decrypting());
         await page.waitForFunction((text) => document.querySelector('[data-announce]')?.textContent.trim() === text, busyText);
-        assert.equal((await page.locator('[data-pin-status]').textContent()).trim(), busyText, 'visible busy status');
+        assert.equal((await shownStatus(page)), busyText, 'visible busy status');
         assert.equal((await page.locator('[data-announce]').textContent()).trim(), busyText);
         assert.ok(!(await page.locator('[data-pin-pad]').ariaSnapshot()).includes('1234'));
         ok('busy feedback is visible and announced without exposing digits');
@@ -256,7 +263,7 @@ try {
         await typePin(page, '4321');
         await page.waitForSelector('[data-pin-status="throttled"]');
         assert.equal((await attemptState(page)).wrongAttempts, 2);
-        assert.ok((await page.locator('[data-pin-status]').textContent()).trim());
+        assert.ok((await shownStatus(page)));
         await page.waitForFunction(() => document.querySelector('[data-key="1"]')?.disabled === false);
         ok('one genuine wrong PIN records one failure and the existing delay');
 
@@ -277,7 +284,7 @@ try {
         assert.deepEqual(await attemptState(page), beforeStale);
         const unavailableText = await page.evaluate(async () => (await import('/src/lib/paraglide/messages.js')).m.pin_access_unavailable());
         await page.waitForFunction((text) => document.querySelector('[data-announce-urgent]')?.textContent.trim() === text, unavailableText);
-        assert.equal((await page.locator('[data-pin-status]').textContent()).trim(), unavailableText);
+        assert.equal((await shownStatus(page)), unavailableText);
         assert.equal((await page.locator('[data-announce-urgent]').textContent()).trim(), unavailableText);
         ok('another tab changing the wrap gives reload guidance without a wrong attempt');
         await peer.evaluate(async () => {
@@ -292,7 +299,7 @@ try {
         const geometry = await page.evaluate(() => {
           document.documentElement.style.zoom = '2';
           const status = document.querySelector('[data-pin-status]');
-          return { width: status.clientWidth, overflow: status.scrollWidth > status.clientWidth + 1, text: status.textContent.trim() };
+          return { width: status.clientWidth, overflow: status.scrollWidth > status.clientWidth + 1, text: [...status.children].filter((child) => !child.classList.contains('pin-status-reserve')).map((child) => child.textContent).join('').trim() };
         });
         assert.ok(geometry.width > 0);
         assert.equal(geometry.overflow, false);
@@ -361,7 +368,7 @@ try {
         assert.deepEqual(await attemptState(page), beforeMissing);
         const lostText = await page.evaluate(async () => (await import('/src/lib/paraglide/messages.js')).m.su_device_key_gone());
         await page.waitForFunction((text) => document.querySelector('[data-announce-urgent]')?.textContent.trim() === text, lostText);
-        assert.equal((await page.locator('[data-pin-status]').textContent()).trim(), lostText);
+        assert.equal((await shownStatus(page)), lostText);
         assert.equal(await page.evaluate(async () => {
           const { browserKeySlot } = await import('/src/lib/data/device-bound-journal.ts');
           const { PIN_BINDING_SLOT } = await import('/src/lib/data/device-secret.ts');

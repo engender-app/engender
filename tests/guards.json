@@ -325,6 +325,26 @@
     "holds": "the waiting-update notice sits 12px under the screen's field at the width of its content, at 390px, 1024px and 1280px, with the rail and column keeping their places and widths; it opens and closes over several frames with the line under it travelling instead of jumping; a navigation carries it as one object from under one field to under the next, and on one side of a transition it fades; it is announced once, not by every screen that draws it; a dismissal survives lock and unlock without a second announcement, a fresh page offers the release again, unlock remounts Home and preserves an unsaved editor note on its route, Update now still hands over, and reduced motion cuts it in at the same place"
   },
   {
+    "name": "device-bound-writes",
+    "tier": "dev",
+    "holds": "device-bound mode reuses its wrapping key and keeps its private key out of reach, and a failed metadata write or close leaves the journal openable, on real OPFS and IndexedDB"
+  },
+  {
+    "name": "device-bound-cleanup-check",
+    "tier": "dev",
+    "holds": "a failed PIN removal says it is incomplete and keeps retry available, a retry removes the old key material, and a cold PIN boot removes a surveyed leftover after a successful unlock"
+  },
+  {
+    "name": "pin-credential-contention",
+    "tier": "dev",
+    "holds": "on the cold, session and Settings PIN gates in English and Polish, a correct PIN waits for held credentials without touching the throttle, a competing credential change is refused, and only a genuine wrong guess counts"
+  },
+  {
+    "name": "restore-preferences-check",
+    "tier": "dev",
+    "holds": "an Archive Replace killed before, between or after its preference writes, or after COMMIT, boots into a complete row and preference pair"
+  },
+  {
     "name": "bfcache-journal-check",
     "tier": "built",
     "holds": "real BFCache Back and Forward restore journal reads and writes, including a held admitted save through navigation and reload, another navigation during a held private reopen and its late reply, without bypassing lock policy or retaining obsolete workers"
@@ -595,6 +615,11 @@
     "holds": "malformed day addresses keep the unavailable notice, navigation and Back; ISO dates select the right day, future entries are refused, and same-route navigation reads the second letter"
   },
   {
+    "name": "search-return-privacy",
+    "tier": "built",
+    "holds": "a search restored after opening an entry never writes its query to Web Storage, and a closed profile holds no trace of it"
+  },
+  {
     "name": "device-recovery-check",
     "tier": "built",
     "holds": "recovery after real key loss, against a production build, where the first run is real",
@@ -608,5 +633,11 @@
     "diagnostics": [
       "/tmp/settings-erase-*-failure.png"
     ]
+  },
+  {
+    "name": "reset-restart-check",
+    "tier": "built",
+    "holds": "Delete everything killed within 160 ms of the reset, at seeds 6501 to 6530, against a production build: an erased cut returns to first run with no app-owned mirrors or preferences left, and a partial cut keeps an openable journal",
+    "build": "production"
   }
 ]

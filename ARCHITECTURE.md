@@ -21,8 +21,6 @@ This is a map of the codebase for anyone about to change it: what runs where, ho
 
 ## Reading this guide
 
-The implementation snapshot is `e035ba72`, the phase 15 after-release delivery
-merged into `main`. Architecture and inventory counts describe that snapshot.
 Performance figures are recorded measurements, not a fresh benchmark of this
 commit; their source files carry the measurement context.
 
@@ -143,12 +141,12 @@ Two policies apply to dependencies. [scripts/check-licences.mjs](scripts/check-l
 │   ├── app.html         document template + pre-paint boot script
 │   ├── hooks.server.ts  build-time only: holds module preloads
 │   └── service-worker.ts
-├── messages/            en.json, pl.json (3616 keys each), untranslated-literals.txt
+├── messages/            en.json, pl.json, untranslated-literals.txt
 ├── ARCHITECTURE.md      public codebase guide
 ├── PRIVACY*.md          English and Polish privacy policies
 ├── project.inlang/      paraglide project settings
-├── static/              fonts, icons, 16 palette favicons, manifests
-├── android/             Capacitor project, 50 Java sources under app/src/main
+├── static/              fonts, icons, a favicon per palette, manifests
+├── android/             Capacitor project, Java sources under app/src/main
 ├── tests/               non-unit tiers, guards, galleries, harness
 ├── scripts/             build, release, CI and check scripts (.mjs)
 ├── deploy/              nginx config, self-host Dockerfile, hosting docs
@@ -200,9 +198,9 @@ Naming conventions you'll meet everywhere:
 | [crypto/](src/lib/crypto) | AES-GCM, Argon2id and its worker, KDF profiles, keystore wrap format, recovery key |
 | [lock/](src/lib/lock) | Lock timing, PIN throttle, Keystore, lock-timing and screen-capture bridges |
 | [stores/](src/lib/stores) | App-level state in runes: the boot adapter and machine, lock, UI, toasts, media capture |
-| [components/](src/lib/components) | 128 top-level components, the control and reading kit (`kit/`), readings tiles (`readings/`), hub icon masks |
+| [components/](src/lib/components) | Top-level components, the control and reading kit (`kit/`), readings tiles (`readings/`), hub icon masks |
 | [motion/](src/lib/motion) | Motion primitives, tokens, press and material CSS |
-| [theme/](src/lib/theme) | Fonts, base tokens, 16 palettes, flag roles, active flag |
+| [theme/](src/lib/theme) | Fonts, base tokens, palettes, flag roles, active flag |
 | [styles/](src/lib/styles) | [app.css](src/lib/styles/app.css), [components.css](src/lib/styles/components.css), [kit.css](src/lib/styles/kit.css), [screens.css](src/lib/styles/screens.css), print CSS, class baselines |
 | [navigation/](src/lib/navigation) | Route policy ([routeGates.ts](src/lib/navigation/routeGates.ts)), screen transitions, smart back, tab mapping, return context |
 | [android/](src/lib/android) | Plugin registry, launch routes, [platform-sync.ts](src/lib/android/platform-sync.ts), back button, status bar |
@@ -408,24 +406,23 @@ period if it overlaps a muted era. The interface requires a registered surface k
 missing and unknown keys. Direct Journal reads remain possible; code review
 must check that resurfacing surfaces use this interface.
 
-The current schema has 68 ordinary tables at version 119. The step from the
-72-table baseline drops the tables of the areas the functional audit cut and
-adds the ones its additions needed. The FTS5 virtual table is separate.
+The v119 step drops the tables of the areas the functional audit cut and adds
+the ones its additions needed.
 
 ### 6.3 The journal facade
 
 ```mermaid
 flowchart LR
   subgraph journal.ts
-    O[openJournal driver, files] --> E[60 facade members]
+    O[openJournal driver, files] --> E[facade members]
     E --> Eager[entries, tags, doses,<br/>regimen, labs, photos...]
-    E --> Def[13 deferred members<br/>archive, clinicianSummary,<br/>roadmap...]
+    E --> Def[deferred members<br/>archive, clinicianSummary,<br/>roadmap...]
     E --> Views[views over other areas<br/>day, lastWrite, dayAhead,<br/>textSearch, photoLibrary]
   end
   Def -. "import() on first call" .-> Mod[area module chunk]
 ```
 
-The journal is one handle bound to a driver (ADR-0017). `openJournal(driver, files)` in [src/lib/data/journal/journal.ts](src/lib/data/journal/journal.ts) composes 55 facade members covering stored areas and computed views. A domain Area owns a kind of journal content and has an archive section that makes it portable. Code also uses the `*Area` type suffix for computed views: `day`, `lastWrite`, `dayAhead` and `textSearch` own no table. Facade operations are async and rune-free. Nine heavy members are deferred with `deferredArea()` ([journal/deferredArea.ts](src/lib/data/journal/deferredArea.ts)), so their code loads on the first call while their type stays static. [deferredArea.test.ts](src/lib/data/journal/deferredArea.test.ts) checks the archive facade's method list against the eager interface.
+The journal is one handle bound to a driver (ADR-0017). `openJournal(driver, files)` in [src/lib/data/journal/journal.ts](src/lib/data/journal/journal.ts) composes facade members covering stored areas and computed views. A domain Area owns a kind of journal content and has an archive section that makes it portable. Code also uses the `*Area` type suffix for computed views: `day`, `lastWrite`, `dayAhead` and `textSearch` own no table. Facade operations are async and rune-free. Heavy members are deferred with `deferredArea()` ([journal/deferredArea.ts](src/lib/data/journal/deferredArea.ts)), so their code loads on the first call while their type stays static. [deferredArea.test.ts](src/lib/data/journal/deferredArea.test.ts) checks the archive facade's method list against the eager interface.
 
 Facade-wide rules:
 
@@ -542,7 +539,7 @@ flowchart TB
   end
   H --> C1 --> C2 --> Cn
   subgraph Body[decrypted body, codec v2]
-    PJ[payload JSON<br/>56 sections]
+    PJ[payload JSON<br/>one key per section]
     F1[file bytes, one by one]
   end
   Cn -.-> PJ
@@ -551,7 +548,7 @@ flowchart TB
 - **[container.ts](src/lib/data/archive/container.ts) (ADR-0007)** owns the frame. Each chunk is about 1 MB and its AAD is the whole header plus the chunk index, so truncating, reordering or relabelling the file fails authentication. Header size and KDF parameters are bounded before key derivation. The key comes from the archive password through the archive Argon2id profile and has nothing to do with the journal's data key.
 - **[codec.ts](src/lib/data/archive/codec.ts)** owns the versioned body encoding. `ARCHIVE_CODECS` holds versions 1 and 2. New payloads carry `writer.app` from the build version and `writer.schema` from `LATEST_SCHEMA_VERSION`. The stamp is informational; rc.1 payloads without it still read.
 - **`payload.ts`** is the wire shape. It is deliberately separate from the domain types, so renaming something in the app can't change the format. `PAYLOAD_MIGRATIONS` brings old payloads forward one step at a time. [tests/released-formats.test.ts](tests/released-formats.test.ts) opens Archives and migrates populated SQLite journals from released versions in [fixtures/released/](fixtures/released). It requires a fixture directory for every non-alpha `v*` tag and rejects an empty fixture set. CI fetches the release tags before running it.
-- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 49 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that. Restore and verification read an absent known section as `[]`, skip names in `DROPPED_ARCHIVE_SECTION_NAMES`, and refuse every other unknown name as a newer-version archive. The dropped list holds `doubtEntries` and the ten sections of areas the functional audit cut, `counterevidenceSnapshots` and `affirmations` among them.
+- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each section declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that. Restore and verification read an absent known section as `[]`, skip names in `DROPPED_ARCHIVE_SECTION_NAMES`, and refuse every other unknown name as a newer-version archive. The dropped list holds `doubtEntries` and the sections of areas the functional audit cut, `counterevidenceSnapshots` and `affirmations` among them.
 
 Archive import admits at most 65,536 KiB of Argon2id memory, six iterations,
 one lane and a 32-byte output (ADR-0013). The released export profile remains
@@ -612,14 +609,14 @@ their parent's identity too. A missing file remains a supported placeholder.
 
 [journal/restore.ts](src/lib/data/journal/restore.ts) stages every file before opening the database transaction. Existing file names receive fresh replacements, so staging cannot overwrite files the live journal still owns. Built-in reconciliation, Replace's row deletion, section application and portable preference writes run inside the transaction. A failure rolls back those database changes together. Cleanup removes unpublished replacements; remaining orphaned files wait for the boot sweep.
 
-Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. Full Archive Replace writes only the validated portable allowlist in the row transaction. [journal/restoreFlow.ts](src/lib/data/journal/restoreFlow.ts) publishes the preference snapshot prepared inside that transaction to the projection and boot mirror after success, then activates the restored locale through the existing reload strategy. Publication performs no SQL after COMMIT. Successful preference writes after preparation retain priority, even when they reassert the previous value. Boot also reconciles the locale after authoritative preference attachment, covering interruption between commit and activation. A lock or newer attachment prevents stale publication. Row-only imports leave preferences untouched. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
+Replace keeps the built-in vocabulary and device-local preferences. Merge matches rows by uuid or key and keeps whichever copy, or deletion, was written last; a tie keeps this device's row ([archiveMerge.ts](src/lib/data/journal/archiveMerge.ts)). Device clocks decide, so a fast clock, or edits to different fields of one row on two devices, can lose an edit silently. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. Full Archive Replace writes only the validated portable allowlist in the row transaction. [journal/restoreFlow.ts](src/lib/data/journal/restoreFlow.ts) publishes the preference snapshot prepared inside that transaction to the projection and boot mirror after success, then activates the restored locale through the existing reload strategy. Publication performs no SQL after COMMIT. Successful preference writes after preparation retain priority, even when they reassert the previous value. Boot also reconciles the locale after authoritative preference attachment, covering interruption between commit and activation. A lock or newer attachment prevents stale publication. Row-only imports leave preferences untouched. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
 
 Medication stock matches the trimmed, case-insensitive `drugNameKey` used by
 dose attribution. Schema 91 stores that derived identity under a unique index;
 the reported drug spelling and count remain on the stock row. Live writes and
 Archive application derive the key locally, so it is not a new wire field.
-Merge keeps the destination count when either its uuid or drug key matches,
-including a row renamed since the Archive was made. The stock owner filters
+Merge matches a stock row by uuid or drug key, including a row renamed since
+the Archive was made, and the newer copy wins. The stock owner filters
 destination uuids before grouping incoming rows by drug key. Both checks run
 inside the restore transaction. Replace clears stock first.
 
@@ -631,15 +628,6 @@ reminder in Archive order wins if there is more than one. Reminder application
 runs before stock insertion and shares the same selection. Destination stock
 and automatic reminder owners take precedence in Merge. Manual reminders and
 markers unrelated to incoming stock retain ordinary uuid matching.
-
-The forward migration keeps each duplicate group's whole latest updated row,
-with the later local rowid breaking timestamp ties. It retains that row's
-automatic reminder and removes the discarded rows' automatic reminders.
-Reminders taken over by a person have no owner marker and remain untouched.
-Unicode folding uses the same JavaScript helper as live writes; SQLite's
-`lower()` cannot supply it. The data repair runs after the column change in
-the same migration transaction, before the version advances. The released
-schema-88 baseline and intervening migrations remain unchanged.
 
 Bundled roadmap goals keep status and visibility separately during Merge. A
 local unchecked row records only visibility, so an incoming status fills it

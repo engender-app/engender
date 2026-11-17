@@ -158,6 +158,61 @@ jobs:
           path: ci-logs/
           retention-days: 30
 
+  # The instrumentation tests (SQLCipher, Keystore wrapping, scheduled
+  # backups) on the two emulators the Android tier names. Too slow for every
+  # pull request, so it runs on main and in a release's call, where a
+  # failure stops the tag. The tier boots its own copies of the AVDs; this
+  # job only creates them from the same images.
+  android-emulator:
+    name: Android instrumentation on emulators
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Let the emulator use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Create gd26 and tracker35
+        run: |
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
+          yes | "$sdk/sdkmanager" --licenses > /dev/null
+          "$sdk/sdkmanager" emulator platform-tools \
+            'system-images;android-26;google_apis;x86_64' \
+            'system-images;android-35;google_apis;x86_64' > /dev/null
+          echo no | "$sdk/avdmanager" create avd -n gd26 -d pixel_2 -k 'system-images;android-26;google_apis;x86_64'
+          echo no | "$sdk/avdmanager" create avd -n tracker35 -d pixel_6 -k 'system-images;android-35;google_apis;x86_64'
+          for avd in gd26 tracker35; do
+            printf 'hw.ramSize=2048\ndisk.dataPartition.size=6G\n' >> "$HOME/.android/avd/$avd.avd/config.ini"
+          done
+      - name: Android tier
+        env:
+          ANDROID_TIER_HEADLESS: '1'
+          ANDROID_TIER_LOG_DIR: ${{ github.workspace }}/ci-logs/android-tier
+        run: |
+          mkdir -p ci-logs
+          npm run test:android 2>&1 | tee ci-logs/android-tier.log
+      - name: Keep Android tier evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: android-tier-${{ github.run_id }}
+          path: ci-logs/
+          retention-days: 30
+
   browser:
     name: Browser verification (${{ matrix.name }})
     runs-on: ubuntu-24.04

@@ -1521,7 +1521,7 @@
   "imp_log_section": "Import history",
   "imp_log_source_daylio": "Daylio",
   "imp_log_source_daylio_backup": "Daylio backup",
-  "imp_merge_note": "Adds what is missing and keeps the newer copy of anything changed on both sides. Settings stay as they are.",
+  "imp_merge_note": "Adds what is missing. Anything changed on both devices keeps only the later version. Settings stay as they are.",
   "imp_merged_toast": "Backup merged.",
   "imp_mode_merge": "Merge into current",
   "imp_mode_replace": "Replace this journal",
