@@ -21,7 +21,7 @@ const SELF_HOST_SERVERS = ['deploy/self-host/engender.conf', 'deploy/self-host/c
 // Analytics has its own responses and never serves journal assets.
 const ANALYTICS = [
   'deploy/nginx/goatcounter-dashboard.conf', 'deploy/nginx/journal-count-proxy.conf',
-  'deploy/nginx/journal-page-count.conf'
+  'deploy/nginx/journal-page-count.conf', 'deploy/nginx/journal-count-zone.conf'
 ];
 const DOCKERFILE = 'deploy/self-host/Dockerfile';
 
