@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 import { serveBuild } from './serve-build.mjs';
+import { continueToTheRest } from './browser-harness.mjs';
 
 const count = Number(process.env.RESET_KILL_COUNT ?? 30);
 const firstSeed = Number(process.env.RESET_KILL_SEED ?? 6501);
@@ -83,6 +84,7 @@ async function setup(page) {
   await page.locator('[data-home-hello]').waitFor();
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
+  await continueToTheRest(page);
   await page.locator('#ed-note').fill('reset-restart synthetic entry');
   await page.locator('[data-save]').click();
   await page.locator('[data-home-log]').waitFor();
