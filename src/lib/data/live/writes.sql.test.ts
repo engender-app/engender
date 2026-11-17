@@ -933,6 +933,29 @@ beforeAll(async () => {
   )) as string;
   await drive('tryouts', 'deleteTryout', () => journal.tryouts.deleteTryout(secondTryoutId));
 
+  // --- entries with contextual cards ------------------------------------
+  // The editor's contextual cards commit beside the entry in one
+  // transaction (entries.ts, commitContextual), on both the insert and the
+  // update path, so an entry save reaches felt_sense, dose_event,
+  // procedure, procedure_photo, personal_effect and cycle_event too.
+  const contextual = {
+    tryoutFeltSense: { tryoutId, mood: 4, note: 'felt like me' },
+    doseLog: { dose: 2, doseUnit: 'mg', route: 'sublingual' as const },
+    procedureRecovery: { procedureId, notes: 'less swelling', photo: photo('recovery from the editor') },
+    cycleEvent: { kind: 'spotting' as const }
+  };
+  const contextualEntryId = (await drive('entries', 'upsertEntry', () =>
+    journal.entries.upsertEntry({
+      epochDay: 20070,
+      mood: 4,
+      ...contextual,
+      effectMarkers: [{ effect: customEffect.key }]
+    })
+  )) as number;
+  await drive('entries', 'upsertEntry', () =>
+    journal.entries.upsertEntry({ id: contextualEntryId, epochDay: 20070, mood: 3, ...contextual })
+  );
+
   // --- letters --------------------------------------------------------
   const letterId = (await drive('letters', 'addLetter', () =>
     journal.letters.addLetter({ epochDay: 20000, text: 'read this in a year', unlockEpochDay: 20365 })
