@@ -756,8 +756,6 @@ its first frame. It also checks that a refused pool read says so. Run
 `node tests/late-reads-check.mjs` for its six checks in light and dark and
 the per-frame tracks.
 
-`clinician-summary-access` reruns the clinician table audit against the ticket-owned axe assets and writes paired screenshots. Run it from the prepared ticket 31 evidence tree.
-
 `clinician-summary-print-layout` checks English and Polish summary previews and PDFs, long lab tables, printed values and caveats, and range, section and drug selections. Run after a demo build with Poppler installed: `node tests/clinician-summary-print-layout.mjs`; `--out` chooses the evidence directory.
 
 ## Galleries and tools
@@ -864,9 +862,7 @@ available for the surface or device it measures.
 | `journal-book-print-diff` | compare printed journal output between demo builds (`measure:journal-book-print`) |
 | `journal-book-summary-gallery` | capture journal book summary crops (`gallery:journal-book-summary`) |
 | `journal-book-entry-gallery` | check range and photo selection, capture entries across palettes and themes, and verify long English/Polish notes and photos in A4 PDFs; run `node tests/journal-book-entry-gallery.mjs` after a demo build; requires Poppler |
-| `journal-book-summary-signoff-page` | assemble the journal book crops into a review page |
 | `settings-features-check` | checks the Features to Show manager's keyboard access, focus and scroll return, saved choices, reduced motion, palette/theme layouts, Polish disguise at 230px and actual 200% browser zoom; run after a demo build |
-| `lock-timing-gallery` | capture access mode, security, setup and unlock changes against a demo build |
 | `screenshot-block-row-check` | the Android-only Block screenshots row in Settings > Security, mounted over a demo build with the platform answer swapped for that one navigation: named and off on a fresh journal in English and Polish, on survives a reload, and the thumb and track travel on every sampled frame in both themes. `--shots <dir>` writes row crops, `--frames <dir>` the painted frames of each flip with their milliseconds, `--before` captures a build from before the change without asserting |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
 | `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
