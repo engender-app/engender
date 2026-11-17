@@ -50,7 +50,7 @@ W planach jest funkcjonalność polegająca na synchronizacji dziennika pomiędz
 
 ## Aplikacja w przeglądarce
 
-Aplikacja działa pod adresem `app.engender.barankiewicz.dev`. Kiedy
+Aplikacja działa pod adresem `journal.engender.app`. Kiedy
 przeglądarka ją wczytuje albo sprawdza aktualizacje, serwer widzi standardowe dane
 każdego żądania:
 
@@ -97,7 +97,7 @@ nie pozwolić, a menedżer schowka albo synchronizacja mogą już mieć kopię.
 
 ## Strona internetowa i przewodnik
 
-Strona, przewodnik i ta polityka pod adresem `engender.barankiewicz.dev`
+Strona, przewodnik i ta polityka pod adresem `engender.app`
 korzystają z hostingu lh.pl. Strona zapamiętuje język i motyw w lokalnej
 pamięci przeglądarki dla tej domeny, oddzielnie od dziennika.
 
@@ -223,7 +223,7 @@ wyraźnego kroku.
 
 Linki Strona, Przewodnik, Polityka prywatności i Kod źródłowy w sekcji
 O aplikacji otwierają się w przeglądarce. Prowadzą do
-`engender.barankiewicz.dev` i `github.com`, które widzą to żądanie jak każda
+`engender.app` i `github.com`, które widzą to żądanie jak każda
 inna strona. Strony na GitHubie podlegają jego własnej polityce prywatności.
 
 ## Usuwanie danych
@@ -242,7 +242,7 @@ okresy przechowywania, opisane w tej polityce:
 - **Na Androidzie.** Odinstalowanie aplikacji albo wyczyszczenie jej danych
   w ustawieniach systemu usuwa wszystko, co aplikacja zapisała w telefonie.
 - **W przeglądarce.** Wyczyszczenie danych strony
-  `app.engender.barankiewicz.dev` usuwa dziennik i jego klucze.
+  `journal.engender.app` usuwa dziennik i jego klucze.
 
 Żaden z tych sposobów nie usuwa plików, które wyeksportujesz albo
 udostępnisz, w tym kopii zapasowych zapisywanych według harmonogramu we

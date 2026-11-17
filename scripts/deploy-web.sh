@@ -37,7 +37,7 @@ tar -czf - -C "$work/payload" . | ssh -T -F /dev/null \
 
 curl --fail --silent --show-error --retry 3 --max-time 30 \
   -H 'Cache-Control: no-cache' \
-  https://app.engender.barankiewicz.dev/release.json -o "$work/live.json"
+  https://journal.engender.app/release.json -o "$work/live.json"
 node --input-type=module - "$work/payload/build/release.json" "$work/live.json" <<'NODE'
 import { readFileSync } from 'node:fs';
 import { strict as assert } from 'node:assert';
@@ -47,4 +47,4 @@ assert.deepEqual(
   'Production release.json does not match the published release'
 );
 NODE
-echo "Deployed $RELEASE_TAG to https://app.engender.barankiewicz.dev"
+echo "Deployed $RELEASE_TAG to https://journal.engender.app"

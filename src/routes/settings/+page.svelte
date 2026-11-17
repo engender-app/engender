@@ -167,7 +167,7 @@
   }
 
 
-  const SITE_URL = 'https://engender.barankiewicz.dev/';
+  const SITE_URL = 'https://engender.app/';
   let guideUrl = $derived(`${SITE_URL}${getLocale()}/guide/`);
   // The landing site publishes the repository's canonical policy in both languages.
   const SOURCE_URL = 'https://github.com/engender-app/engender';
