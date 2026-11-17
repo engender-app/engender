@@ -151,7 +151,9 @@ incomplete backup. Android keeps
 the five newest verified automatic backups and prunes older automatic backups
 only after a new one verifies. Manual backups remain untouched. When two
 Android devices back up to the same folder, each can merge in the other's
-newer backup when the app opens; both need the same backup password.
+newer backup when the app opens; both need the same backup password. If
+something changed on both devices, the version saved later by its device's
+clock replaces the other one whole, and the other edit is lost.
 
 Daylio is the only app you can import from, through its CSV export or its
 `.daylio` backup. Plain CSV and JSON exports are available when you want to

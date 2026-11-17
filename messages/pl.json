@@ -1555,7 +1555,7 @@
   "imp_log_section": "Historia importów",
   "imp_log_source_daylio": "Daylio",
   "imp_log_source_daylio_backup": "Kopia z Daylio",
-  "imp_merge_note": "Dodaje to, czego brakuje, a z tego, co zmieniono po obu stronach, zostawia nowszą wersję. Ustawienia pozostają bez zmian.",
+  "imp_merge_note": "Dodaje to, czego brakuje. Z tego, co zmieniono na obu urządzeniach, zostaje tylko późniejsza wersja. Ustawienia pozostają bez zmian.",
   "imp_merged_toast": "Dołączono kopię.",
   "imp_mode_merge": "Dołącz do dziennika",
   "imp_mode_replace": "Zastąp ten dziennik",
