@@ -26,6 +26,21 @@ Changing the passphrase or replacing the recovery key rewraps the same
 data key. A copy of the journal's files taken before the change still
 opens with the old passphrase or recovery key.
 
+## Check that you have the real app
+
+The Android app's package is `dev.engender.app`. A copy can reuse the name
+and the icon, but it cannot carry this project's signature. The SHA-256 of
+the signing certificate is:
+
+- GitHub, Obtainium and F-Droid:
+  `093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86`
+- Google Play and Aurora, which Google re-signs with its own key:
+  `8fa369eb5555ade56c58622738f4f3f6f79b74926ac042340374dc73c86f0f05`
+
+`apksigner verify --print-certs` prints it for a downloaded APK, and
+AppVerifier checks an installed app on the phone. Any other value means the
+app did not come from this project. Please report where you found it.
+
 ## Report a vulnerability
 
 Use GitHub private vulnerability reporting for this repository:
