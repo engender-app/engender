@@ -1,5 +1,6 @@
 /* Ticket 18 release-artifact checks: expected names, checksum integrity,
-   signed Android artifacts, and one version value across artifacts. */
+   Android artifacts signed with the pinned developer certificate, and one
+   version value across artifacts. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -16,6 +17,38 @@ export function expectedArtifactNames(version) {
     `engender-android-release-${version}.apk`,
     `engender-android-release-${version}.aab`
   ];
+}
+
+/* The developer certificate that every GitHub, Obtainium and F-Droid install
+   carries, as published in SECURITY.md and on the landing site. A release
+   signed with any other key cannot update those installs (Android refuses
+   it), and uninstalling to get past that deletes the journal. So a replaced
+   keystore secret has to stop the release here rather than reach users.
+   Changing it is a key rotation: see the release skill. */
+export const RELEASE_SIGNING_SHA256 = '093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86';
+
+/**
+ * SHA-256 certificate digests in `apksigner verify --print-certs` or
+ * `keytool -printcert -jarfile` output, as lowercase hex without colons.
+ * @param {string} text
+ */
+export function certificateDigests(text) {
+  const digests = [];
+  for (const match of text.matchAll(/(?:certificate SHA-256 digest:|SHA256:)\s*([0-9A-Fa-f:]+)/g)) {
+    digests.push(match[1].replaceAll(':', '').toLowerCase());
+  }
+  return digests;
+}
+
+/**
+ * @param {string} label
+ * @param {string} text
+ */
+export function signingCertificateProblem(label, text) {
+  const digests = [...new Set(certificateDigests(text))];
+  if (digests.length === 1 && digests[0] === RELEASE_SIGNING_SHA256) return null;
+  const found = digests.length ? digests.join(', ') : 'unreadable';
+  return `${label} signing certificate is ${found}, expected ${RELEASE_SIGNING_SHA256}`;
 }
 
 /**
@@ -132,10 +165,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (!commandExists('apksigner')) {
     problems.push('apksigner is not available on PATH');
   } else {
+    let certificates = null;
     try {
-      run('apksigner', ['verify', '--print-certs', apk]);
+      certificates = run('apksigner', ['verify', '--print-certs', apk]);
     } catch {
       problems.push(`APK signature verification failed: ${apk}`);
+    }
+    if (certificates !== null) {
+      const problem = signingCertificateProblem('APK', certificates);
+      if (problem) problems.push(problem);
     }
   }
 
@@ -150,6 +188,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       if (!result.includes('jar verified.') || result.includes('unsigned entries')) {
         throw new Error('AAB contains unsigned payload');
       }
+      const problem = signingCertificateProblem(
+        'AAB',
+        run('keytool', ['-J-Duser.language=en', '-J-Duser.country=US', '-printcert', '-jarfile', aab])
+      );
+      if (problem) problems.push(problem);
     } catch {
       problems.push(`AAB signature verification failed: ${aab}`);
     }
@@ -160,5 +203,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`\n${problems.length} release-artifact failure(s).`);
     process.exit(1);
   }
-  console.log('PASS release artifacts have expected names, checksums, signatures and Android version metadata.');
+  console.log('PASS release artifacts have expected names, checksums, pinned signatures and Android version metadata.');
 }
