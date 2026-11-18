@@ -4,7 +4,13 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { expectedArtifactNames, releaseArtifactProblems } from '../scripts/check-release-artifacts.mjs';
+import {
+  RELEASE_SIGNING_SHA256,
+  certificateDigests,
+  expectedArtifactNames,
+  releaseArtifactProblems,
+  signingCertificateProblem
+} from '../scripts/check-release-artifacts.mjs';
 
 function sha256(path: string) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
@@ -75,6 +81,39 @@ describe('releaseArtifactProblems', () => {
 });
 
 
+const PINNED = '093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86';
+const OTHER = 'aa'.repeat(32);
+const colons = (hex: string) => hex.toUpperCase().match(/../g)!.join(':');
+const apksignerOutput = (digest: string) =>
+  `Signer #1 certificate DN: CN=engender, O=engender, C=PL\nSigner #1 certificate SHA-256 digest: ${digest}\n` +
+  `Signer #1 certificate SHA-1 digest: ${'b'.repeat(40)}\n`;
+const keytoolOutput = (digest: string) =>
+  `Signer #1:\n\nCertificate #1:\nOwner: CN=engender\nCertificate fingerprints:\n\t SHA1: ${colons('c'.repeat(40))}\n\t SHA256: ${colons(digest)}\n`;
+
+describe('signing certificate pin', () => {
+  it('pins the developer certificate that SECURITY.md publishes', () => {
+    expect(RELEASE_SIGNING_SHA256).toBe(PINNED);
+  });
+
+  it('reads the SHA-256 digest from apksigner and keytool output', () => {
+    expect(certificateDigests(apksignerOutput(PINNED))).toEqual([PINNED]);
+    expect(certificateDigests(keytoolOutput(PINNED))).toEqual([PINNED]);
+  });
+
+  it('accepts only the pinned certificate', () => {
+    expect(signingCertificateProblem('APK', apksignerOutput(PINNED))).toBeNull();
+    expect(signingCertificateProblem('AAB', keytoolOutput(PINNED))).toBeNull();
+    expect(signingCertificateProblem('APK', apksignerOutput(OTHER))).toContain(`APK signing certificate is ${OTHER}`);
+    expect(signingCertificateProblem('AAB', keytoolOutput(OTHER))).toContain(`expected ${PINNED}`);
+  });
+
+  it('rejects output with no digest or a second signer', () => {
+    expect(signingCertificateProblem('APK', '')).toContain('unreadable');
+    const twoSigners = apksignerOutput(PINNED) + apksignerOutput(OTHER).replaceAll('#1', '#2');
+    expect(signingCertificateProblem('APK', twoSigners)).toContain(OTHER);
+  });
+});
+
 describe('AAB signature verification with platform tools', () => {
   const roots: string[] = [];
   afterEach(() => {
@@ -137,6 +176,8 @@ describe('AAB signature verification with platform tools', () => {
   it('accepts a bundle signed with a self-signed Android test key and rejects tampering', () => {
     const { root, aab } = signedFixture();
     expect(verification(root)).not.toContain('AAB signature verification failed:');
+    expect(verification(root)).toContain(`AAB signing certificate is `);
+    expect(verification(root)).toContain(`expected ${PINNED}`);
     writeFileSync(join(root, 'payload.txt'), 'tampered bundle payload\n');
     execFileSync('jar', ['--update', '--file', aab, '-C', root, 'payload.txt']);
     expect(verification(root)).toContain(`AAB signature verification failed: ${aab}`);
