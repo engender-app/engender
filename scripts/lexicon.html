@@ -69,7 +69,7 @@
 <p id="status" role="status">Loading…</p>
 <div id="terms"></div>
 <script type="module">
-  import { NOUN_SLOTS, PHRASE_SLOTS, slotsOf, fields, renameMap, renameOccurrences, applyRename, termUsage, suggestForms, lexiconProblem } from '/lexicon-core.mjs';
+  import { NOUN_SLOTS, PHRASE_SLOTS, slotsOf, fields, renameMap, renameOccurrences, applyRename, termUsage, suggestForms, lexiconProblem, keysToReview } from '/lexicon-core.mjs';
 
   const CASE_NAMES = { nom: 'mianownik', gen: 'dopełniacz', dat: 'celownik', acc: 'biernik', ins: 'narzędnik', loc: 'miejscownik', voc: 'wołacz' };
   const $ = (selector) => document.querySelector(selector);
@@ -393,7 +393,11 @@
     pending.edits = rows;
     $('#preview').replaceChildren(rows.length ? table : element('p', 'No strings change. Only the lexicon is saved.'));
     const keys = new Set(rows.map((row) => row.record.key)).size;
-    $('#preview-summary').textContent = `${rows.length} fields in ${keys} keys. Rows with “Choose the form…” use a form that fills slots with different new forms.`;
+    const reviews = keysToReview(saved, draft, records).length;
+    $('#preview-summary').textContent = [
+      rows.length ? `${count(rows.length, 'field')} in ${count(keys, 'key')}. Rows with “Choose the form…” use a form that fills slots with different new forms.` : '',
+      reviews ? `Confirmed terms mark ${count(reviews, 'key')} reviewed on the strings page.` : ''
+    ].filter(Boolean).join(' ');
     $('#agreement').hidden = !nounChanged || !rows.length;
     $('#preview-section').hidden = false;
     $('#preview-section').scrollIntoView();
@@ -430,6 +434,17 @@
       });
       if (!response.ok) throw new Error(`${edits.length} strings saved, but the lexicon was not: ${await response.text()}`);
       $('#operation').textContent = `Saved the lexicon and ${edits.length} strings.`;
+      // Review against the strings as they are now, after the rename.
+      const fresh = await fetch('/api/strings');
+      if (!fresh.ok) throw new Error(`Saved, but could not mark keys reviewed: ${await fresh.text()}`);
+      const reviewKeys = keysToReview(saved, draft, await fresh.json());
+      if (reviewKeys.length) {
+        const review = await fetch('/api/reviews', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewed: true, keys: reviewKeys })
+        });
+        if (!review.ok) throw new Error(`Saved, but could not mark keys reviewed: ${await review.text()}`);
+        $('#operation').textContent += ` Marked ${count(reviewKeys.length, 'key')} reviewed on the strings page.`;
+      }
       busy = false;
       saved = clone(draft);
       await load();

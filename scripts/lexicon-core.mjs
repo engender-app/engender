@@ -135,6 +135,22 @@ export function termUsage(term, records) {
   return usage;
 }
 
+/** Keys a save marks reviewed on the strings page: every key using a term
+ * that is confirmed now and was just confirmed or edited, since a rename
+ * changes those strings and so clears their earlier review.
+ * @param {{ terms: any[] }} saved @param {{ terms: any[] }} draft
+ * @param {{ key: string, en: unknown, pl: unknown, change?: string | null }[]} records */
+export function keysToReview(saved, draft, records) {
+  const keys = new Set();
+  for (const term of draft.terms) {
+    const before = saved.terms.find((old) => old.id === term.id);
+    if (!term.confirmed || (before?.confirmed && JSON.stringify(before) === JSON.stringify(term))) continue;
+    for (const key of termUsage(term, records).keys) keys.add(key);
+  }
+  return records.filter((record) => keys.has(record.key) && record.change !== 'removed')
+    .map(({ key, en, pl }) => ({ key, en, pl }));
+}
+
 /** Catalogue words sharing a stem with any filled form, for filling the grid.
  * @param {string[]} forms @param {string[]} texts */
 export function suggestForms(forms, texts) {

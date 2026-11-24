@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  applyRename, findForms, lexiconProblem, matchCase, NOUN_SLOTS, renameMap, renameOccurrences, suggestForms, termUsage
+  applyRename, findForms, keysToReview, lexiconProblem, matchCase, NOUN_SLOTS, renameMap, renameOccurrences, suggestForms, termUsage
 } from '../scripts/lexicon-core.mjs';
 import { readLexicon, writeLexicon } from '../scripts/strings.mjs';
 
@@ -92,6 +92,18 @@ describe('lexicon usage', () => {
   it('suggests catalogue words sharing the stem', () => {
     expect(suggestForms(['schemat'], ['Schemat, schematu i schemacie', 'schematu']))
       .toEqual([{ word: 'schematu', count: 2 }, { word: 'schemacie', count: 1 }, { word: 'schemat', count: 1 }]);
+  });
+
+  it('marks reviewed the keys of a term just confirmed or edited while confirmed', () => {
+    const confirmed = { ...term(), confirmed: true };
+    const keys = (saved: unknown[], draft: unknown[]) =>
+      keysToReview({ terms: saved }, { terms: draft }, records).map((entry) => entry.key);
+    expect(keysToReview({ terms: [term()] }, { terms: [confirmed] }, records)[0])
+      .toEqual({ key: 'a', en: 'Add a regimen', pl: 'Dodaj schemat' });
+    expect(keys([term()], [confirmed])).toEqual(['a', 'b', 'c']);
+    expect(keys([confirmed], [confirmed])).toEqual([]);
+    expect(keys([confirmed], [{ ...confirmed, note: 'edited' }])).toEqual(['a', 'b', 'c']);
+    expect(keys([confirmed], [term()])).toEqual([]);
   });
 
   it('rejects a noun missing a case slot', () => {
