@@ -8,10 +8,14 @@ import { isDeepStrictEqual } from 'node:util';
 import { serializeCatalogue } from './catalogue.mjs';
 import { catalogueFindings, collectReferenceSites, copySourceFiles } from './check-copy.mjs';
 import { isOutside, readOutside, replaceOutside } from './strings-outside.mjs';
+import { lexiconProblem } from './lexicon-core.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PAGE = fileURLToPath(new URL('./strings.html', import.meta.url));
 const REVIEW_FILE = '.scratch/copy-review.json';
+const LEXICON_PAGE = fileURLToPath(new URL('./lexicon.html', import.meta.url));
+const LEXICON_CORE = fileURLToPath(new URL('./lexicon-core.mjs', import.meta.url));
+const LEXICON_FILE = 'messages/lexicon.json';
 /** @type {Record<number, string>} */
 const THEMES = {
   38: 'Journal, day, search and readback',
@@ -161,6 +165,26 @@ export function writeString(root, edit) {
   writeAtomic(file, serializeCatalogue(catalogue));
 }
 
+/** The lexicon and the revision a save must name, so two tabs cannot
+ * overwrite each other.
+ * @param {string} root */
+export function readLexicon(root = ROOT) {
+  let text;
+  try { text = readFileSync(join(root, LEXICON_FILE), 'utf8'); }
+  catch (error) { if (error instanceof Error && 'code' in error && error.code === 'ENOENT') text = '{"terms":[]}'; else throw error; }
+  return { revision: createHash('sha256').update(text).digest('hex'), lexicon: JSON.parse(text) };
+}
+
+/** @param {string} root @param {unknown} save */
+export function writeLexicon(root, save) {
+  if (!save || typeof save !== 'object') throw new RequestError(400, 'Invalid lexicon.');
+  const { revision: expected, lexicon } = /** @type {{ revision?: unknown, lexicon?: unknown }} */ (save);
+  const problem = lexiconProblem(lexicon);
+  if (typeof expected !== 'string' || problem) throw new RequestError(400, problem ?? 'Invalid lexicon.');
+  if (readLexicon(root).revision !== expected) throw new RequestError(409, 'Lexicon changed on disk. Reload before saving.');
+  writeAtomic(join(root, LEXICON_FILE), JSON.stringify(lexicon, null, 2) + '\n');
+}
+
 /** Remove one catalogue key from both languages. Refuses a key the source
  * still references, a key edited since the page loaded, and copy outside the
  * catalogues. Runs synchronously, so a concurrent edit cannot interleave.
@@ -224,12 +248,23 @@ export function createStringsServer(root = ROOT) {
       if (request.method === 'GET' && request.url === '/') {
         response.setHeader('Content-Type', 'text/html; charset=utf-8');
         response.end(readFileSync(PAGE));
+      } else if (request.method === 'GET' && request.url === '/lexicon') {
+        response.setHeader('Content-Type', 'text/html; charset=utf-8');
+        response.end(readFileSync(LEXICON_PAGE));
+      } else if (request.method === 'GET' && request.url === '/lexicon-core.mjs') {
+        response.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+        response.end(readFileSync(LEXICON_CORE));
+      } else if (request.method === 'GET' && request.url === '/api/lexicon') {
+        response.setHeader('Content-Type', 'application/json; charset=utf-8');
+        response.end(JSON.stringify(readLexicon(root)));
       } else if (request.method === 'GET' && request.url === '/api/strings') {
         response.setHeader('Content-Type', 'application/json; charset=utf-8');
         response.end(JSON.stringify(readStrings(root)));
-      } else if (request.method === 'PATCH' && ['/api/strings', '/api/reviews'].includes(request.url ?? '')) {
+      } else if ((request.method === 'PATCH' && ['/api/strings', '/api/reviews'].includes(request.url ?? '')) ||
+          (request.method === 'PUT' && request.url === '/api/lexicon')) {
         const edit = await readJson(request);
         if (request.url === '/api/reviews') writeReviews(root, edit);
+        else if (request.url === '/api/lexicon') writeLexicon(root, edit);
         else writeString(root, edit);
         response.statusCode = 204;
         response.end();
@@ -253,7 +288,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const server = createStringsServer();
   server.listen(0, '127.0.0.1', () => {
     const address = server.address();
-    if (address && typeof address === 'object') console.log(`Strings: http://127.0.0.1:${address.port}`);
+    if (address && typeof address === 'object') {
+      const base = `http://127.0.0.1:${address.port}`;
+      console.log(process.argv[2] === 'lexicon' ? `Lexicon: ${base}/lexicon` : `Strings: ${base}\nLexicon: ${base}/lexicon`);
+    }
   });
   server.on('error', (error) => { console.error(error.message); process.exitCode = 1; });
 }
