@@ -43,7 +43,9 @@
           "pl": "backups"
         },
         "avoid": [
-          "archive"
+          "archive",
+          "dump",
+          "snapshot"
         ]
       },
       "pl": {
@@ -532,7 +534,7 @@
       "id": "entry",
       "kind": "noun",
       "confirmed": false,
-      "note": "On screen \"entry\", never log or record (docs/ui-copy.md).",
+      "note": "On screen \"entry\", never log or record (docs/ui-copy.md). Neither is listed as avoided: both are common verbs here (\"Logged today\", \"Record\").",
       "en": {
         "forms": {
           "sg": "entry",
@@ -760,13 +762,15 @@
       "id": "milestone",
       "kind": "noun",
       "confirmed": false,
-      "note": "Binding in docs/ui-copy.md: stays even though humanizer-pl lists it; the landing site uses it too.",
+      "note": "Binding in docs/ui-copy.md: stays even though humanizer-pl lists it; the landing site uses it too. docs/ui-copy.md: never event or occasion on screen (\"event\" is not listed as avoided because cycle events use it).",
       "en": {
         "forms": {
           "sg": "milestone",
           "pl": "milestones"
         },
-        "avoid": []
+        "avoid": [
+          "occasion"
+        ]
       },
       "pl": {
         "forms": {
@@ -1271,7 +1275,8 @@
           "pl": "photos"
         },
         "avoid": [
-          "image"
+          "image",
+          "asset"
         ]
       },
       "pl": {
@@ -1408,7 +1413,8 @@
         "avoid": [
           "dimension",
           "axis",
-          "axes"
+          "axes",
+          "metric"
         ]
       },
       "pl": {
@@ -1533,13 +1539,15 @@
       "id": "surgery",
       "kind": "noun",
       "confirmed": false,
-      "note": "Polish also uses \"operacja\" for English \"procedure\" (5 keys); decide whether procedure gets its own word.",
+      "note": "Polish also uses \"operacja\" for English \"procedure\" (5 keys); decide whether procedure gets its own word. docs/ui-copy.md: on screen \"surgery journey\" and \"procedure\", never case or patient (\"case\" is not listed: too common a word).",
       "en": {
         "forms": {
           "sg": "surgery",
           "pl": "surgeries"
         },
-        "avoid": []
+        "avoid": [
+          "patient"
+        ]
       },
       "pl": {
         "forms": {

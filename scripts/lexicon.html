@@ -88,6 +88,7 @@
     return node;
   }
 
+  const count = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
   const clone = (value) => JSON.parse(JSON.stringify(value));
   const savedTerm = (id) => saved.terms.find((term) => term.id === id);
   const isDirty = (term) => JSON.stringify(term) !== JSON.stringify(savedTerm(term.id));
@@ -114,7 +115,7 @@
     view.usage = usage;
     const box = view.usageBox;
     box.replaceChildren();
-    box.append(element('h3', `Used in ${usage.keys.length} keys`));
+    box.append(element('h3', `Used in ${count(usage.keys.length, 'key')}`));
     const list = (title, items, className) => {
       if (!items.length) return;
       box.append(element('p', title, className));
@@ -137,9 +138,9 @@
     if (usage.keys.length) box.append(details);
     const findings = usage.untranslated.length + usage.avoided.length;
     view.badges.replaceChildren(
-      element('span', `${usage.keys.length} keys`, 'tag muted'),
+      element('span', count(usage.keys.length, 'key'), 'tag muted'),
       ...(term.confirmed ? [] : [element('span', 'not confirmed', 'tag')]),
-      ...(findings ? [element('span', `${findings} findings`, 'tag warn')] : []),
+      ...(findings ? [element('span', count(findings, 'finding'), 'tag warn')] : []),
       ...(isDirty(term) ? [element('span', 'unsaved', 'tag')] : []));
     view.title.textContent = label(term);
   }
