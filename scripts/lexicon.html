@@ -335,16 +335,18 @@
     for (const locale of ['en', 'pl']) {
       const before = {};
       const after = {};
+      const exact = new Set();
       for (const term of draft.terms) {
         const old = savedTerm(term.id);
         if (!old || old.kind !== term.kind) continue;
         for (const slot of slotsOf(term, locale)) {
           before[`${term.id}:${slot}`] = old[locale].forms[slot];
           after[`${term.id}:${slot}`] = term[locale].forms[slot];
+          if (term.kind === 'phrase') exact.add(`${term.id}:${slot}`);
           if (locale === 'pl' && term.kind === 'noun' && old[locale].forms[slot] !== term[locale].forms[slot]) nounChanged = true;
         }
       }
-      const map = renameMap(before, after);
+      const map = renameMap(before, after, exact);
       if (!map.size) continue;
       for (const record of records) {
         if (record.change === 'removed') continue;

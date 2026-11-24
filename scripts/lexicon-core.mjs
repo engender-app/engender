@@ -23,13 +23,13 @@ export function fields(value) {
 const escape = (/** @type {string} */ text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const LETTER = '[\\p{L}\\p{N}_]';
 
-/** Whole-word, case-insensitive occurrences of `forms` in `text`, skipping
- * `{placeholder}` spans. Longer forms win where two overlap.
- * @param {string} text @param {string[]} forms */
-export function findForms(text, forms) {
+/** Whole-word occurrences of `forms` in `text`, skipping `{placeholder}`
+ * spans. Longer forms win where two overlap. Case-insensitive unless `exact`.
+ * @param {string} text @param {string[]} forms @param {boolean} [exact] */
+export function findForms(text, forms, exact = false) {
   const unique = [...new Set(forms.filter(Boolean))].sort((a, b) => b.length - a.length);
   if (!unique.length) return [];
-  const pattern = new RegExp(`\\{[^}]*\\}|(?<!${LETTER})(?:${unique.map(escape).join('|')})(?!${LETTER})`, 'giu');
+  const pattern = new RegExp(`\\{[^}]*\\}|(?<!${LETTER})(?:${unique.map(escape).join('|')})(?!${LETTER})`, exact ? 'gu' : 'giu');
   /** @type {{ index: number, text: string }[]} */
   const found = [];
   for (const match of text.matchAll(pattern)) {
@@ -61,23 +61,28 @@ export function matchCase(original, replacement) {
   return replacement;
 }
 
+/** Nouns match any capitalisation and keep it; fixed phrases (labels, module
+ * names) match only as written, so "Back" never catches "back up". */
+const formKey = (/** @type {string} */ form, /** @type {boolean} */ exact) => exact ? `=${form}` : form.toLocaleLowerCase();
+
 /** Old surface form -> the new forms of every slot it filled. A form shared by
  * slots whose new forms differ (Polish syncretism) maps to several choices.
- * @param {Record<string, string>} before @param {Record<string, string>} after */
-export function renameMap(before, after) {
+ * @param {Record<string, string>} before @param {Record<string, string>} after
+ * @param {Set<string>} [exact] slots of fixed phrases */
+export function renameMap(before, after, exact = new Set()) {
   /** @type {Map<string, Map<string, string[]>>} */
   const map = new Map();
   for (const [slot, old] of Object.entries(before)) {
     const next = after[slot];
     if (!old || !next || old === next) continue;
-    const key = old.toLocaleLowerCase();
+    const key = formKey(old, exact.has(slot));
     const choices = map.get(key) ?? new Map();
     map.set(key, choices);
     choices.set(next, [...(choices.get(next) ?? []), slot]);
   }
   // A form also filling a slot that keeps it unchanged is ambiguous too.
   for (const [slot, old] of Object.entries(before)) {
-    const choices = old && after[slot] === old ? map.get(old.toLocaleLowerCase()) : undefined;
+    const choices = old && after[slot] === old ? map.get(formKey(old, exact.has(slot))) : undefined;
     if (choices) {
       choices.set(old, [...(choices.get(old) ?? []), slot]);
     }
@@ -89,10 +94,12 @@ export function renameMap(before, after) {
 /** Every occurrence a rename touches in one text, with its choices.
  * @param {string} text @param {ReturnType<typeof renameMap>} map */
 export function renameOccurrences(text, map) {
-  return findForms(text, [...map.keys()]).map(({ index, text: found }) => ({
-    index, text: found,
-    choices: (map.get(found.toLocaleLowerCase()) ?? []).map(({ text: next, slots }) => ({ text: matchCase(found, next), slots }))
-  }));
+  return findForms(text, [...map.keys()].map((key) => key.replace(/^=/, ''))).flatMap(({ index, text: found }) => {
+    const phrase = map.get(`=${found}`);
+    const choices = phrase ?? map.get(found.toLocaleLowerCase());
+    return choices ? [{ index, text: found,
+      choices: choices.map(({ text: next, slots }) => ({ text: phrase ? next : matchCase(found, next), slots })) }] : [];
+  });
 }
 
 /** Apply chosen replacements (one text per occurrence, in order).
@@ -118,8 +125,8 @@ export function termUsage(term, records) {
     if (record.change === 'removed') continue;
     const en = fields(record.en).map((field) => field.text).join('\n');
     const pl = fields(record.pl).map((field) => field.text).join('\n');
-    const inEn = findForms(en, enForms).length > 0;
-    const inPl = findForms(pl, plForms).length > 0;
+    const inEn = findForms(en, enForms, term.kind === 'phrase').length > 0;
+    const inPl = findForms(pl, plForms, term.kind === 'phrase').length > 0;
     if (inEn || inPl) usage.keys.push(record.key);
     if (inEn && !inPl && pl) usage.untranslated.push(record.key);
     const avoided = [...findStems(en, term.en.avoid), ...findStems(pl, term.pl.avoid)];

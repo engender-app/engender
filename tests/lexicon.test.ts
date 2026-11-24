@@ -63,6 +63,13 @@ describe('lexicon rename', () => {
     expect(map.get('dawki')?.map((choice) => choice.text)).toEqual(['porcji', 'dawki']);
   });
 
+  it('renames a fixed phrase only where it is written exactly', () => {
+    const map = renameMap({ 'save:base': 'Save' }, { 'save:base': 'Keep' }, new Set(['save:base']));
+    const text = 'Save. Tap Save to save it.';
+    const occurrences = renameOccurrences(text, map);
+    expect(applyRename(text, occurrences, occurrences.map((o) => o.choices[0].text))).toBe('Keep. Tap Keep to save it.');
+  });
+
   it('touches nothing when no form changed', () => {
     expect(renameMap(schemat, schemat).size).toBe(0);
   });
