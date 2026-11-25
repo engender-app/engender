@@ -122,7 +122,7 @@
     $('#add').disabled = busy || Boolean(pending);
     $('#confirm').disabled = busy || !pending || pending.rows.some((row) => row.select && !row.select.value);
     $('#cancel').disabled = busy;
-    for (const node of document.querySelectorAll('#terms input, #terms textarea, #terms select, #terms button')) node.disabled = busy || Boolean(pending) || node.dataset.clean === 'true';
+    for (const node of document.querySelectorAll('#terms input, #terms textarea, #terms select, #terms button')) node.disabled = busy || Boolean(pending) || node.dataset.hold === 'true';
   }
 
   function renderUsage(view) {
@@ -145,7 +145,7 @@
     const byKey = new Map(records.map((record) => [record.key, record]));
     const reviewedCount = usage.keys.filter((key) => byKey.get(key)?.reviewed).length;
     box.append(element('h3', `Strings with this term (${usage.keys.length}) · ${reviewedCount} reviewed`));
-    box.append(element('p', 'The number beside each form above is how many strings use it. Mark reviewed here counts on the strings page too.', 'muted'));
+    box.append(element('p', 'The number beside each form above is how many strings use it. Edit any string here. Mark reviewed counts on the strings page too.', 'muted'));
     const findingsTitle = (text, n, why) => {
       if (!n) return;
       box.append(element('h4', `${text} (${n})`, 'warn'), element('p', why, 'muted'));
@@ -223,8 +223,8 @@
     return button;
   }
 
-  /** One string using the term: the forms it uses, both texts, review, and,
-   * for a finding, what is wrong in words and a box to fix it. */
+  /** One string using the term: the forms it uses, both texts, an editor,
+   * review, and for a finding what is wrong in words. */
   function stringCard(view, record, kind) {
     const { term } = view;
     const card = element('div', undefined, kind ? 'card' : `card ${record.reviewed ? 'reviewed' : 'plain'}`);
@@ -238,107 +238,120 @@
     const used = ['en', 'pl'].map((locale) => [locale, formsUsed(locale === 'en' ? enText : plText, term, locale)])
       .filter(([, forms]) => forms.length).map(([locale, forms]) => `${locale.toUpperCase()}: ${forms.join(', ')}`);
     if (used.length) card.append(element('p', `Uses ${used.join(' · ')}`, 'used'));
-    let fix = null;
-    if (!kind) {
-      for (const locale of ['en', 'pl']) {
-        for (const field of fields(record[locale])) {
-          const line = element('p', undefined, 'text');
-          line.lang = locale;
-          line.append(element('strong', `${locale.toUpperCase()}${field.form ? ` ${field.form}` : ''}`), ...highlighted(field.text, term, locale));
-          card.append(line);
-        }
+    if (kind) {
+      const enAvoid = [...new Set(findStems(enText, term.en.avoid).map((m) => m.text))];
+      const plAvoid = [...new Set(findStems(plText, term.pl.avoid).map((m) => m.text))];
+      if (kind === 'untranslated') {
+        const said = [...new Set(findForms(enText, Object.values(term.en.forms), term.kind === 'phrase').map((m) => m.text))];
+        card.append(element('p', `English says “${said.join('”, “')}”. Polish has no form of “${plLemma}”.`));
       }
-      const buttons = element('div', undefined, 'buttons');
-      buttons.append(reviewButton(view, record));
-      card.append(buttons);
-      return card;
+      if (plAvoid.length) card.append(element('p', `Polish says “${plAvoid.join('”, “')}”. The lexicon says “${plLemma}”.`));
+      if (enAvoid.length) card.append(element('p', `English says “${enAvoid.join('”, “')}”. The lexicon says “${term.en.forms.sg ?? term.en.forms.base}”.`));
     }
-    const enAvoid = [...new Set(findStems(enText, term.en.avoid).map((m) => m.text))];
-    const plAvoid = [...new Set(findStems(plText, term.pl.avoid).map((m) => m.text))];
-    if (kind === 'untranslated') {
-      const said = [...new Set(findForms(enText, Object.values(term.en.forms), term.kind === 'phrase').map((m) => m.text))];
-      card.append(element('p', `English says “${said.join('”, “')}”. Polish has no form of “${plLemma}”.`));
-    }
-    if (plAvoid.length) card.append(element('p', `Polish says “${plAvoid.join('”, “')}”. The lexicon says “${plLemma}”.`));
-    if (enAvoid.length) card.append(element('p', `English says “${enAvoid.join('”, “')}”. The lexicon says “${term.en.forms.sg ?? term.en.forms.base}”.`));
-    fix = kind === 'untranslated' || plAvoid.length ? 'pl' : 'en';
+    // Drafts live on the view, so redrawing the list keeps unsaved text.
+    const drafts = view.drafts ??= new Map();
+    const draft = drafts.get(record.key);
+    const read = element('div');
     for (const locale of ['en', 'pl']) {
-      if (locale === fix) continue;
       for (const field of fields(record[locale])) {
         const line = element('p', undefined, 'text');
         line.lang = locale;
         line.append(element('strong', `${locale.toUpperCase()}${field.form ? ` ${field.form}` : ''}`), ...highlighted(field.text, term, locale));
-        card.append(line);
+        read.append(line);
       }
     }
-    const editors = fields(record[fix]).map((field) => {
-      const label = element('label', `Fix the ${fix === 'pl' ? 'Polish' : 'English'}${field.form ? ` (${field.form})` : ''}`, 'block');
+    const edit = element('div');
+    const editors = ['en', 'pl'].flatMap((locale) => fields(record[locale]).map((field) => {
+      const id = `${locale}|${field.variant}|${field.form}`;
+      const label = element('label', `${locale === 'en' ? 'English' : 'Polish'}${field.form ? ` (${field.form})` : ''}`, 'block');
       const input = element('textarea');
-      input.lang = fix;
-      input.value = field.text;
+      input.lang = locale;
+      input.value = draft?.values[id] ?? field.text;
       input.rows = Math.min(8, Math.max(2, Math.ceil(field.text.length / 70)));
       input.addEventListener('focus', () => { view.lastTextarea = input; });
       input.addEventListener('input', () => {
-        save.dataset.clean = String(editors.every((e) => e.input.value === e.field.text));
-        save.disabled = busy || save.dataset.clean === 'true';
+        drafts.set(record.key, { open: true, values: Object.fromEntries(editors.map((e) => [e.id, e.input.value])) });
+        sync();
       });
       label.append(input);
-      card.append(label);
-      return { field, input };
-    });
+      edit.append(label);
+      return { id, locale, field, input };
+    }));
     const chips = element('div', undefined, 'chips');
-    chips.append(element('span', 'Select a word in the box, then pick the form: ', 'muted'));
-    const bySurface = new Map();
-    for (const slot of slotsOf(term, fix)) {
-      const form = term[fix].forms[slot];
-      if (form) bySurface.set(form, [...(bySurface.get(form) ?? []), SLOT_NAMES[slot] ?? slot]);
+    chips.append(element('span', 'Select a word in a box, then pick the form: ', 'muted'));
+    for (const locale of ['pl', 'en']) {
+      const bySurface = new Map();
+      for (const slot of slotsOf(term, locale)) {
+        const form = term[locale].forms[slot];
+        if (form) bySurface.set(form, [...(bySurface.get(form) ?? []), SLOT_NAMES[slot] ?? slot]);
+      }
+      for (const [form, slots] of bySurface) {
+        const chip = element('button', term.kind === 'noun' && locale === 'pl' ? `${form} (${slots.join(', ')})` : form);
+        chip.type = 'button';
+        chip.lang = locale;
+        chip.addEventListener('mousedown', (event) => event.preventDefault());
+        chip.addEventListener('click', () => {
+          const target = editors.find((e) => e.input === view.lastTextarea && e.locale === locale)?.input ??
+            editors.find((e) => e.locale === locale).input;
+          target.setRangeText(form, target.selectionStart, target.selectionEnd, 'end');
+          target.dispatchEvent(new Event('input'));
+          target.focus();
+        });
+        chips.append(chip);
+      }
     }
-    for (const [form, slots] of bySurface) {
-      const chip = element('button', term.kind === 'noun' && fix === 'pl' ? `${form} (${slots.join(', ')})` : form);
-      chip.type = 'button';
-      chip.addEventListener('mousedown', (event) => event.preventDefault());
-      chip.addEventListener('click', () => {
-        const input = editors.some((e) => e.input === view.lastTextarea) ? view.lastTextarea : editors[0].input;
-        input.setRangeText(form, input.selectionStart, input.selectionEnd, 'end');
-        input.dispatchEvent(new Event('input'));
-        input.focus();
-      });
-      chips.append(chip);
-    }
-    card.append(chips);
+    edit.append(chips);
+    card.append(read, edit);
     const buttons = element('div', undefined, 'buttons');
-    const save = element('button', 'Save fix');
+    const open = element('button', 'Edit');
+    open.type = 'button';
+    open.addEventListener('click', () => {
+      drafts.set(record.key, { open: true, values: drafts.get(record.key)?.values ?? {} });
+      sync();
+      editors.find((e) => e.locale === 'pl')?.input.focus();
+    });
+    const save = element('button', 'Save');
     save.type = 'button';
-    save.dataset.clean = 'true';
-    save.disabled = true;
-    save.addEventListener('click', () => saveFix(record, fix, editors, message));
+    save.addEventListener('click', () => saveString(view, record, editors, message));
+    const cancel = element('button', 'Cancel');
+    cancel.type = 'button';
+    cancel.addEventListener('click', () => {
+      drafts.delete(record.key);
+      for (const e of editors) e.input.value = e.field.text;
+      sync();
+    });
     const ignore = element('button', 'Not a problem');
     ignore.type = 'button';
     ignore.addEventListener('click', () => setIgnored(view, record, true));
+    const review = reviewButton(view, record);
     const message = element('span');
     message.setAttribute('role', 'status');
-    const review = reviewButton(view, record);
-    for (const { input } of editors) input.addEventListener('input', () => {
-      review.disabled = busy || save.dataset.clean !== 'true';
-      review.title = review.disabled ? 'Save the fix first.' : '';
-    });
-    buttons.append(save, ignore, review, message);
+    buttons.append(open, save, cancel, ...(kind ? [ignore] : []), review, message);
     card.append(buttons);
+    function sync() {
+      const editing = kind ? true : Boolean(drafts.get(record.key)?.open);
+      const clean = editors.every((e) => e.input.value === e.field.text);
+      read.hidden = editing;
+      edit.hidden = !editing;
+      open.hidden = editing;
+      cancel.hidden = !editing || (kind && clean);
+      save.hidden = !editing;
+      save.dataset.hold = String(clean);
+      save.disabled = busy || clean;
+      review.dataset.hold = String(!clean);
+      review.disabled = busy || !clean;
+      review.title = clean ? '' : 'Save or cancel the edit first.';
+    }
+    sync();
     return card;
   }
 
-  function refreshAllUsage() {
-    for (const view of views.values()) renderUsage(view);
-    applyFilter();
-    updateControls();
-  }
-
-  async function saveFix(record, locale, editors, message) {
+  async function saveString(view, record, editors, message) {
     if (busy) return;
     busy = true;
     updateControls();
     try {
-      for (const { field, input } of editors) {
+      for (const { locale, field, input } of editors) {
         if (input.value === field.text) continue;
         const response = await fetch('/api/strings', {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -350,6 +363,7 @@
         field.text = input.value;
         record.reviewed = false;
       }
+      view.drafts?.delete(record.key);
       $('#operation').textContent = `Saved ${record.key}.`;
       busy = false;
       refreshAllUsage();
@@ -359,6 +373,12 @@
       busy = false;
       updateControls();
     }
+  }
+
+  function refreshAllUsage() {
+    for (const view of views.values()) renderUsage(view);
+    applyFilter();
+    updateControls();
   }
 
   /** Review one string for both pages: the strings page reads the same file. */
@@ -764,7 +784,9 @@
   $('#search').addEventListener('input', applyFilter);
   $('#show').addEventListener('change', applyFilter);
   window.addEventListener('beforeunload', (event) => {
-    if (dirtyCount() || busy) { event.preventDefault(); event.returnValue = ''; }
+    const unsavedStrings = [...views.values()].some((view) => [...(view.drafts?.values() ?? [])]
+      .some((draft) => Object.keys(draft.values).length));
+    if (dirtyCount() || unsavedStrings || busy) { event.preventDefault(); event.returnValue = ''; }
   });
   load();
 </script>
