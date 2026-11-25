@@ -4,90 +4,200 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lexicon</title>
 <style>
-  body { font: 16px system-ui, sans-serif; margin: 1rem; }
-  input, textarea, button, select { font: inherit; }
-  button, select, summary, .check { min-height: 44px; }
-  :focus-visible { outline: 2px solid #174d91; outline-offset: 3px; }
-  .toolbar { position: sticky; top: 0; z-index: 1; background: white; border-bottom: 1px solid #aaa; padding: .75rem 0; display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
-  .toolbar p { margin: 0; }
-  .filters { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1rem 0; align-items: end; }
-  .filters label { display: block; }
-  .filters input[type=search] { display: block; width: min(100%, 24rem); box-sizing: border-box; }
-  .check { display: inline-flex; align-items: center; gap: .5rem; }
-  details.term { border: 1px solid #aaa; margin-bottom: .5rem; padding: 0 .75rem; }
-  details.term[open] { padding-bottom: .75rem; }
-  summary { cursor: pointer; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
-  .tag { font-size: .85rem; padding: 0 .4rem; border: 1px solid currentColor; }
-  .warn { color: #a00000; }
-  .muted { color: #555; }
-  .sides { display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f5f2; --card: #fff; --ink: #1d1c1a; --ink-2: #5b5852; --line: #dcd9d2;
+    --head: #efede8; --current: #e6ecf9; --accent: #1f4fb4; --accent-ink: #fff; --ok: #1d6b3a; --bad: #b3261e; --warn: #8a5a00;
+    --term: #fbe7a1; --term-ink: #4a3600; --avoid: #f7c9c4; --avoid-ink: #6b120c;
+    --toolbar-h: 7rem;
+  }
+  :root[data-theme=light] { color-scheme: light; }
+  :root[data-theme=dark] {
+    color-scheme: dark;
+    --bg: #151515; --card: #1e1e1e; --ink: #ecebe7; --ink-2: #a8a59d; --line: #34332f;
+    --head: #262522; --current: #1f2738; --accent: #8db0ff; --accent-ink: #10213f; --ok: #7fd6a0; --bad: #ff9d94; --warn: #f0c36a;
+    --term: #4a3d12; --term-ink: #ffe9a8; --avoid: #5a2420; --avoid-ink: #ffd3ce;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme=light]) {
+      --bg: #151515; --card: #1e1e1e; --ink: #ecebe7; --ink-2: #a8a59d; --line: #34332f;
+      --head: #262522; --current: #1f2738; --accent: #8db0ff; --accent-ink: #10213f; --ok: #7fd6a0; --bad: #ff9d94; --warn: #f0c36a;
+      --term: #4a3d12; --term-ink: #ffe9a8; --avoid: #5a2420; --avoid-ink: #ffd3ce;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 0; padding: 1rem clamp(.75rem, 3vw, 2rem) 4rem; background: var(--bg); color: var(--ink); }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+  body > p { max-width: 75ch; color: var(--ink-2); margin: .25rem 0; }
+  a { color: var(--accent); }
+  code { font: .85em ui-monospace, monospace; }
+  kbd { font: .8em ui-monospace, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 .3rem; background: var(--card); }
+  input, textarea, button, select { font: inherit; color: inherit; }
+  input[type=search], input[type=text], select {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .4rem .6rem; min-width: 0;
+  }
+  button { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .4rem .9rem; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  button, select, input[type=search] { min-height: 40px; }
+  .primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .small { min-height: 28px; padding: 0 .6rem; font-size: .8rem; }
+  .danger { color: var(--bad); }
+  .danger:hover:not(:disabled) { border-color: var(--bad); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .muted { color: var(--ink-2); }
+
+  .toolbar { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line);
+    padding: .6rem 0; margin: .75rem 0 .5rem; display: grid; gap: .5rem; }
+  .toolbar .line { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+  .toolbar p { margin: 0; color: var(--ink-2); }
+  #search { flex: 1 1 16rem; max-width: 32rem; }
+  progress { width: 10rem; max-width: 100%; height: .6rem; accent-color: var(--accent); }
+  #operation { white-space: pre-wrap; flex: 1 1 12rem; }
+
+  details.term { margin: .5rem 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  details.term > summary { cursor: pointer; padding: .55rem 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .75rem; list-style: none; }
+  details.term > summary::-webkit-details-marker { display: none; }
+  details.term > summary::before { content: ''; width: .45rem; height: .45rem; border: solid var(--ink-2); border-width: 0 2px 2px 0;
+    transform: rotate(-45deg); transition: transform .15s ease-out; margin-right: .1rem; }
+  details.term[open] > summary::before { transform: rotate(45deg); }
+  details.term[open] > summary { border-bottom: 1px solid var(--line); }
+  .title { font-weight: 600; }
+  .chip { font-size: .78rem; padding: .05rem .5rem; border-radius: 99px; border: 1px solid var(--line); color: var(--ink-2); white-space: nowrap; }
+  .chip.bad { border-color: var(--bad); color: var(--bad); }
+  .chip.warn { border-color: var(--warn); color: var(--warn); }
+  .confirm { display: inline-flex; align-items: center; gap: .4rem; margin-left: auto; cursor: pointer; min-height: 32px; font-size: .9rem; }
+  .confirm input, .review input { width: 1.15rem; height: 1.15rem; margin: 0; accent-color: var(--accent); cursor: pointer; }
+
+  .body { padding: .75rem 1rem 1rem; }
+  .note { display: block; width: 100%; max-width: 75ch; field-sizing: content; resize: none; min-height: 2.4rem;
+    background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: .4rem .6rem; }
+  .note:focus { border-color: var(--accent); background: var(--card); outline: none; }
+  .chip-list { display: contents; }
+  .sides { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin: .5rem 0 1rem; }
   .side { flex: 1 1 20rem; min-width: 0; }
-  .side h3 { margin: .75rem 0 .25rem; font-size: 1rem; }
-  .grid { border-collapse: collapse; width: 100%; }
-  .grid th, .grid td { border: 1px solid #ccc; padding: .25rem; text-align: left; }
-  .grid input { width: 100%; box-sizing: border-box; min-width: 0; }
-  .grid th { font-weight: normal; color: #444; white-space: nowrap; }
-  label.block { display: block; margin-top: .5rem; }
-  label.block input, label.block textarea { display: block; width: 100%; box-sizing: border-box; }
-  .chips { display: flex; flex-wrap: wrap; gap: .25rem; margin: .25rem 0; }
-  .chips button { min-height: 32px; }
-  .keys { max-height: 12rem; overflow: auto; margin: .25rem 0; padding-left: 1.25rem; }
-  .keys code { overflow-wrap: anywhere; }
-  #preview table { border-collapse: collapse; width: 100%; }
-  #preview th, #preview td { border: 1px solid #aaa; padding: .4rem; vertical-align: top; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
-  #preview { overflow-x: auto; max-height: 60vh; overflow-y: auto; }
-  mark { background: #ffe58a; }
-  #operation { white-space: pre-wrap; }
-  .card { border-left: 3px solid #a00000; padding: .25rem 0 .5rem .75rem; margin: .75rem 0; }
-  .card h4 { margin: 0; font-size: 1rem; display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
-  .card p { margin: .35rem 0; }
-  .card code { overflow-wrap: anywhere; min-width: 0; }
-  .card .text { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .card .text strong { font-weight: normal; color: #555; margin-right: .5rem; }
-  .card textarea { display: block; width: 100%; box-sizing: border-box; min-height: 3rem; }
-  .card .buttons { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; }
-  mark.avoid { background: #ffc9c9; }
+  .side h3 { margin: 0 0 .35rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; }
+  .grid { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .grid th, .grid td { padding: .15rem .35rem; text-align: left; border-bottom: 1px solid var(--line); }
+  .grid tr:last-child > * { border-bottom: 0; }
+  .grid th { font-weight: 400; font-size: .85rem; color: var(--ink-2); white-space: nowrap; background: var(--head); }
+  .grid thead th { font-size: .78rem; }
   .slot { display: flex; align-items: center; gap: .25rem; }
-  .slot input { flex: 1; }
-  .count { min-width: 3ch; text-align: right; font-size: .85rem; color: #555; }
-  .card.plain { border-left-color: #aaa; }
-  .card.reviewed { border-left-color: #2a7a3a; }
-  .card .used { font-size: .9rem; color: #444; }
+  .slot input { flex: 1; min-width: 0; border: 1px solid transparent; background: transparent; border-radius: 6px; padding: .25rem .4rem; }
+  .slot input:hover { border-color: var(--line); }
+  .slot input:focus { border-color: var(--accent); background: var(--card); outline: none; }
+  .slot input.changed { color: var(--warn); font-weight: 600; }
+  .count { min-width: 3ch; text-align: right; font-size: .78rem; color: var(--ink-2); }
+  .avoid-field { display: block; margin-top: .6rem; font-size: .85rem; color: var(--ink-2); }
+  .avoid-field input { display: block; width: 100%; margin-top: .2rem; color: var(--ink); }
+  .chips { display: flex; flex-wrap: wrap; gap: .3rem; margin: .4rem 0 0; align-items: center; font-size: .85rem; }
+  .chips button { min-height: 28px; padding: 0 .55rem; font-size: .82rem; }
+  .meta-state { font-size: .78rem; color: var(--ink-2); }
+  .meta-state.saved { color: var(--ok); }
+  .meta-state.failed { color: var(--bad); }
+
+  .usage-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1rem; margin: 1rem 0 .25rem; }
+  .usage-head h3 { font-size: 1rem; margin: 0; }
+  .strings { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; table-layout: fixed; }
+  .strings col.k { width: 24%; } .strings col.t { width: 38%; }
+  .strings td { padding: .3rem .5rem; vertical-align: top; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  .strings tr:last-child > td { border-bottom: 0; }
+  tr.group th { background: var(--head); padding: .7rem .5rem .35rem; text-align: left; font-weight: 400; border-bottom: 1px solid var(--line); }
+  tr.group h4 { display: inline; font-size: .95rem; margin: 0 .75rem 0 0; }
+  tr.group.bad h4 { color: var(--bad); }
+  tr.group span { font-size: .85rem; color: var(--ink-2); }
+  tr.row { scroll-margin-top: calc(var(--toolbar-h) + 1.5rem); scroll-margin-bottom: 40vh; }
+  tr.row.current > td { background: var(--current); }
+  tr.row.current { outline: 2px solid var(--accent); outline-offset: -2px; }
+  tr.row.done .text, tr.row.done code { color: var(--ink-2); }
+  .key { display: flex; align-items: flex-start; gap: .4rem; }
+  .key code { padding-top: .3rem; }
+  .review { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; cursor: pointer; }
+  .why { font-size: .82rem; color: var(--bad); margin: .15rem 0 .25rem 2.4rem; }
+  .why button { margin-left: .4rem; }
+  .uses { font-size: .78rem; color: var(--ink-2); margin: .1rem 0 0 2.4rem; }
+  .field { position: relative; }
+  .form { font-size: .75rem; color: var(--ink-2); padding: .15rem .4rem 0; }
+  .text, .field textarea { display: block; width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45;
+    border: 1px solid transparent; border-radius: 6px; padding: .3rem .4rem; margin: 0; min-height: 2.1rem; }
+  .text { cursor: text; }
+  .text:hover { border-color: var(--line); }
+  .field textarea { resize: none; overflow: hidden; field-sizing: content; background: var(--card); border-color: var(--accent); outline: none; }
+  mark { background: var(--term); color: var(--term-ink); border-radius: 3px; padding: 0 1px; }
+  mark.avoid { background: var(--avoid); color: var(--avoid-ink); }
+  .state { position: absolute; right: .3rem; bottom: .15rem; font-size: .75rem; padding: 0 .3rem; border-radius: 4px;
+    background: var(--card); color: var(--ink-2); pointer-events: none; animation: state-in .2s ease-out; }
+  .state:empty { display: none; }
+  .state.saved { color: var(--ok); }
+  .state.failed { color: var(--bad); position: static; display: block; }
+  @keyframes state-in { from { opacity: 0; } to { opacity: 1; } }
+  .dismissed { margin-top: .75rem; font-size: .9rem; }
+  .dismissed summary { cursor: pointer; color: var(--ink-2); padding: .3rem 0; }
+  .dismissed p { margin: .2rem 0; display: flex; gap: .5rem; align-items: center; }
+  .term-foot { display: flex; justify-content: flex-end; margin-top: .75rem; }
+
+  #preview-section { background: var(--card); border: 1px solid var(--accent); border-radius: 10px; padding: .25rem 1rem 1rem; margin: .5rem 0 1rem; }
+  #preview-section h2 { font-size: 1.1rem; }
+  #preview { max-height: 60vh; overflow: auto; }
+  #preview table { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  #preview th, #preview td { padding: .35rem .5rem; vertical-align: top; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; border-bottom: 1px solid var(--line); }
+  #preview th { background: var(--head); font-size: .8rem; color: var(--ink-2); }
+  #preview select { min-height: 32px; margin: .2rem .2rem 0 0; }
+  .warn { color: var(--warn); }
+  .preview-buttons { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+
+  @media (max-width: 700px) {
+    .strings colgroup { display: none; }
+    .strings, .strings tbody, .strings tr, .strings td, .strings th { display: block; width: 100%; }
+    .strings td { border-bottom: 0; padding: .2rem .5rem; }
+    .strings tr.row { border-bottom: 1px solid var(--line); padding: .25rem 0; }
+    .confirm { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .state { animation: none; } details.term > summary::before { transition: none; } }
 </style>
 <h1>Lexicon</h1>
-<p>One name per thing, in both languages. A term lists the English forms, the Polish forms in every case and number, and the stems of variants to avoid. Changing a form rewrites every string that uses it, form by form: <code>schemat</code> to <code>plan</code> also turns <code>schematu</code> into <code>planu</code>. You see every change before it is saved.</p>
-<p>Two kinds of finding. <strong>Polish does not use the term</strong>: the English has the term but the Polish has none of its forms, so the Polish names the thing some other way, or the English word is used in another sense. <strong>Avoided word</strong>: the string uses a word listed under Avoid. Fix the string in the finding, or mark it as not a problem. A dismissed finding comes back if the string changes.</p>
-<p><a href="/">Message catalogues</a></p>
-<div class="toolbar">
-  <button id="save" type="button" disabled>Review and save</button>
-  <button id="reload" type="button">Reload from disk</button>
-  <button id="add" type="button">Add term</button>
-  <p id="summary"></p>
+<p>One name per thing, in both languages. Term settings save by themselves. Changing a form rewrites every string that uses it, form by form (<code>schemat</code> to <code>plan</code> also turns <code>schematu</code> into <code>planu</code>), so form changes wait for a preview. <a href="/">Message catalogues</a></p>
+<p><kbd>j</kbd> <kbd>k</kbd> move · <kbd>Space</kbd> reviewed, then next · <kbd>Enter</kbd> edit · <kbd>Esc</kbd> back to the list</p>
+<div class="toolbar" id="toolbar">
+  <div class="line">
+    <input id="search" type="search" autocomplete="off" placeholder="Search terms, English and Polish" aria-label="Search terms">
+    <select id="show" aria-label="Show">
+      <option value="">All terms</option>
+      <option value="unconfirmed">Not confirmed</option>
+      <option value="findings">With findings</option>
+      <option value="unsaved">Unsaved form changes</option>
+    </select>
+    <button id="add" type="button">Add term</button>
+    <button id="reload" type="button">Reload from disk</button>
+    <select id="color-theme" aria-label="Colour theme"><option value="">Auto theme</option><option value="light">Light</option><option value="dark">Dark</option></select>
+  </div>
+  <div class="line">
+    <progress id="progress" aria-label="Terms confirmed" value="0" max="1"></progress>
+    <p id="summary"></p>
+    <p id="status" role="status">Loading…</p>
+    <button id="save" class="primary" type="button" disabled>Preview form changes</button>
+    <p id="operation" role="status"></p>
+  </div>
 </div>
-<p id="operation" role="status"></p>
 <section id="preview-section" hidden>
-  <h2>Changes to save</h2>
+  <h2>Form changes to save</h2>
   <p id="preview-summary"></p>
   <p class="warn" id="agreement" hidden>A Polish noun changed. Check the words that agree with it (adjectives, past-tense verbs, pronouns) in the rows below: they are not rewritten.</p>
   <div id="preview"></div>
-  <button id="confirm" type="button">Save lexicon and strings</button>
-  <button id="cancel" type="button">Back to editing</button>
+  <div class="preview-buttons">
+    <button id="confirm" class="primary" type="button">Save lexicon and strings</button>
+    <button id="cancel" type="button">Back to editing</button>
+  </div>
 </section>
-<div class="filters">
-  <label>Search terms<input id="search" type="search" autocomplete="off"></label>
-  <label>Show<select id="show">
-    <option value="">All terms</option>
-    <option value="unconfirmed">Not confirmed</option>
-    <option value="findings">With findings</option>
-    <option value="unsaved">Unsaved edits</option>
-  </select></label>
-</div>
-<p id="status" role="status">Loading…</p>
 <div id="terms"></div>
 <script type="module">
   import { NOUN_SLOTS, PHRASE_SLOTS, slotsOf, fields, renameMap, renameOccurrences, applyRename, termUsage, suggestForms, lexiconProblem, keysToReview, findForms, findStems, fingerprint } from '/lexicon-core.mjs';
 
   const CASE_NAMES = { nom: 'mianownik', gen: 'dopełniacz', dat: 'celownik', acc: 'biernik', ins: 'narzędnik', loc: 'miejscownik', voc: 'wołacz' };
+  const SLOT_NAMES = Object.fromEntries(Object.entries(CASE_NAMES).flatMap(([c, name]) =>
+    [[`${c}.sg`, `${name} lp`], [`${c}.pl`, `${name} lm`]]));
   const $ = (selector) => document.querySelector(selector);
   let records = [];
   let saved = { terms: [] };
@@ -95,7 +205,10 @@
   let revision = '';
   let pending = null;
   let busy = false;
+  let cursor = null;
   const views = new Map();
+  const rowRecord = new WeakMap();
+  const dirty = new Map();
 
   function element(tag, text, className) {
     const node = document.createElement(tag);
@@ -103,92 +216,119 @@
     if (className) node.className = className;
     return node;
   }
+  const button = (text, className, onClick) => {
+    const node = element('button', text, className);
+    node.type = 'button';
+    node.addEventListener('click', onClick);
+    return node;
+  };
 
   const count = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
   const clone = (value) => JSON.parse(JSON.stringify(value));
   const savedTerm = (id) => saved.terms.find((term) => term.id === id);
-  const isDirty = (term) => JSON.stringify(term) !== JSON.stringify(savedTerm(term.id));
-  const dirtyCount = () => draft.terms.filter(isDirty).length + saved.terms.filter((term) => !draft.terms.some((t) => t.id === term.id)).length;
+  const formsOf = (term) => JSON.stringify([term.kind, term.en.forms, term.pl.forms]);
+  /** Form changes and new terms wait for the preview; everything else saves by itself. */
+  const formsDirty = (term) => { const old = savedTerm(term.id); return !old || formsOf(old) !== formsOf(term); };
+  const deletedCount = () => saved.terms.filter((term) => !draft.terms.some((t) => t.id === term.id)).length;
+  const formChanges = () => draft.terms.filter(formsDirty).length + deletedCount();
   const label = (term) => `${term.en.forms.sg ?? term.en.forms.base} / ${term.pl.forms['nom.sg'] ?? term.pl.forms.base}`;
-  const plTexts = () => records.filter((r) => r.change !== 'removed').flatMap((r) => fields(r.pl).map((f) => f.text));
-  const enTexts = () => records.filter((r) => r.change !== 'removed').flatMap((r) => fields(r.en).map((f) => f.text));
+  const lemma = (term, locale) => locale === 'pl' ? term.pl.forms['nom.sg'] ?? term.pl.forms.base : term.en.forms.sg ?? term.en.forms.base;
+  const live = () => records.filter((r) => r.change !== 'removed');
+  const textOf = (record, locale) => fields(record[locale]).map((f) => f.text).join('\n');
+
+  async function call(url, method, body) {
+    const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!response.ok) throw new Error(await response.text());
+  }
+  async function refreshRevision() {
+    const latest = await fetch('/api/lexicon');
+    if (!latest.ok) throw new Error(await latest.text());
+    ({ revision } = await latest.json());
+  }
+
+  // Every write goes through one queue, so autosaves, reviews and dismissals
+  // never race each other or the lexicon revision.
+  let chain = Promise.resolve();
+  let queued = 0;
+  function enqueue(task) {
+    queued++;
+    updateControls();
+    chain = chain.then(task).catch((error) => { $('#operation').textContent = error.message; })
+      .finally(() => { queued--; updateControls(); });
+    return chain;
+  }
 
   function updateControls() {
-    const count = dirtyCount();
+    const changes = formChanges();
     const confirmed = draft.terms.filter((term) => term.confirmed).length;
-    $('#summary').textContent = `${draft.terms.length} terms · ${confirmed} confirmed · ${count} with unsaved edits`;
-    $('#save').disabled = busy || !count || Boolean(pending);
+    $('#progress').max = Math.max(1, draft.terms.length);
+    $('#progress').value = confirmed;
+    $('#summary').textContent = `${confirmed} of ${draft.terms.length} terms confirmed` +
+      (changes ? ` · ${count(changes, 'term')} with form changes` : '') + (queued ? ' · saving…' : '');
+    $('#save').disabled = busy || !changes || Boolean(pending);
+    $('#save').textContent = changes ? `Preview form changes (${changes})` : 'Preview form changes';
     $('#reload').disabled = busy;
     $('#add').disabled = busy || Boolean(pending);
     $('#confirm').disabled = busy || !pending || pending.rows.some((row) => row.select && !row.select.value);
     $('#cancel').disabled = busy;
-    for (const node of document.querySelectorAll('#terms input, #terms textarea, #terms select, #terms button')) node.disabled = busy || Boolean(pending) || node.dataset.hold === 'true';
+    document.querySelector('#terms').inert = busy || Boolean(pending);
   }
 
-  function renderUsage(view) {
-    const { term } = view;
-    const usage = termUsage(term, records);
-    view.usage = usage;
-    const box = view.usageBox;
-    box.replaceChildren();
-    if (view.body) {
-    const live = records.filter((record) => record.change !== 'removed');
-    for (const locale of ['en', 'pl']) {
-      const texts = live.map((record) => fields(record[locale]).map((f) => f.text).join('\n'));
-      for (const [slot, node] of Object.entries(view.counts[locale] ?? {})) {
-        const form = term[locale].forms[slot];
-        const n = form ? texts.filter((text) => findForms(text, [form], term.kind === 'phrase').length).length : 0;
-        node.textContent = form ? String(n) : '';
-        node.title = `${count(n, 'string')} use “${form}”. A rename of this form rewrites them.`;
-      }
-    }
-    const byKey = new Map(records.map((record) => [record.key, record]));
-    const reviewedCount = usage.keys.filter((key) => byKey.get(key)?.reviewed).length;
-    box.append(element('h3', `Strings with this term (${usage.keys.length}) · ${reviewedCount} reviewed`));
-    box.append(element('p', 'The number beside each form above is how many strings use it. Edit any string here. Mark reviewed counts on the strings page too.', 'muted'));
-    const findingsTitle = (text, n, why) => {
-      if (!n) return;
-      box.append(element('h4', `${text} (${n})`, 'warn'), element('p', why, 'muted'));
-    };
-    const lemma = term.pl.forms['nom.sg'] ?? term.pl.forms.base;
-    findingsTitle('Polish does not use the term', usage.untranslated.length,
-      `Either the Polish names it another way (put a form of “${lemma}” in), or the English word means something else there (mark it as not a problem).`);
-    for (const key of usage.untranslated) box.append(stringCard(view, byKey.get(key), 'untranslated'));
-    findingsTitle('Avoided word', usage.avoided.filter(({ key }) => !usage.untranslated.includes(key)).length, 'Replace the marked word with a form of the term, or mark it as not a problem.');
-    const untranslated = new Set(usage.untranslated);
-    for (const { key } of usage.avoided) if (!untranslated.has(key)) box.append(stringCard(view, byKey.get(key), 'avoided'));
-    const flagged = new Set([...usage.untranslated, ...usage.avoided.map(({ key }) => key)]);
-    const rest = usage.keys.filter((key) => !flagged.has(key));
-    if (rest.length && flagged.size) box.append(element('h4', `No findings (${rest.length})`));
-    for (const key of rest) box.append(stringCard(view, byKey.get(key), null));
-    const dismissed = Object.keys(term.ignore ?? {}).filter((key) => byKey.has(key));
-    if (dismissed.length) {
-      const list = element('details');
-      list.append(element('summary', `Marked as not a problem (${dismissed.length})`));
-      for (const key of dismissed) {
-        const row = element('p');
-        const restore = element('button', 'Show again');
-        restore.type = 'button';
-        restore.addEventListener('click', () => setIgnored(view, byKey.get(key), false));
-        row.append(element('code', key), ' ', restore);
-        list.append(row);
-      }
-      box.append(list);
-    }
-    }
-    const findings = usage.untranslated.length + usage.avoided.length;
-    view.badges.replaceChildren(
-      element('span', count(usage.keys.length, 'key'), 'tag muted'),
-      ...(term.confirmed ? [] : [element('span', 'not confirmed', 'tag')]),
-      ...(findings ? [element('span', count(findings, 'finding'), 'tag warn')] : []),
-      ...(isDirty(term) ? [element('span', 'unsaved', 'tag')] : []));
-    view.title.textContent = label(term);
+  /* ---------- Term settings: confirmed, note, avoid ---------- */
+
+  function scheduleMeta(view, delay = 700) {
+    clearTimeout(view.metaTimer);
+    setMetaState(view, 'Unsaved', '');
+    view.metaTimer = setTimeout(() => enqueue(() => saveMeta(view)), delay);
   }
+  function setMetaState(view, text, kind) {
+    for (const node of view.metaStates) { node.textContent = text; node.className = `meta-state ${kind}`; }
+  }
+  /** Write this term's settings onto the saved lexicon, leaving its forms as saved. */
+  async function saveMeta(view) {
+    const { term } = view;
+    const before = savedTerm(term.id);
+    if (!before) { setMetaState(view, 'Saves with its forms', ''); return; }
+    const next = clone(saved);
+    const target = next.terms.find((t) => t.id === term.id);
+    target.confirmed = term.confirmed;
+    target.note = term.note;
+    target.en.avoid = [...term.en.avoid];
+    target.pl.avoid = [...term.pl.avoid];
+    if (JSON.stringify(target) === JSON.stringify(before)) { setMetaState(view, '', ''); return; }
+    const problem = lexiconProblem(next);
+    if (problem) { setMetaState(view, problem, 'failed'); return; }
+    setMetaState(view, 'Saving', '');
+    try {
+      await call('/api/lexicon', 'PUT', { revision, lexicon: next });
+      await refreshRevision();
+      saved = next;
+      let note = '';
+      if (target.confirmed && !before.confirmed) {
+        // Confirming a term marks its strings reviewed on the strings page too.
+        const keys = keysToReview({ terms: [before] }, { terms: [target] }, records);
+        if (keys.length) {
+          await call('/api/reviews', 'PATCH', { reviewed: true, keys });
+          for (const { key } of keys) { const record = records.find((r) => r.key === key); if (record) record.reviewed = true; }
+          note = ` and marked ${count(keys.length, 'string')} reviewed`;
+          for (const other of views.values()) if (other.body) refreshRows(other);
+        }
+      }
+      setMetaState(view, 'Saved', 'saved');
+      $('#operation').textContent = `${term.id}: saved${note}.`;
+    } catch (error) {
+      setMetaState(view, error.message, 'failed');
+    }
+    renderHeader(view);
+    applyFilter();
+  }
+
+  /* ---------- Strings that use a term ---------- */
 
   /** The text with the term's forms and avoided words marked. */
   function highlighted(text, term, locale) {
     const marks = [
-      ...findForms(text, Object.values(term[locale].forms), term.kind === 'phrase').map((m) => ({ ...m, avoid: false })),
+      ...findForms(text, Object.values(term[locale].forms).filter(Boolean), term.kind === 'phrase').map((m) => ({ ...m, avoid: false })),
       ...findStems(text, term[locale].avoid).map((m) => ({ ...m, avoid: true }))
     ].sort((a, b) => a.index - b.index);
     const nodes = [];
@@ -202,12 +342,9 @@
     return nodes;
   }
 
-  const SLOT_NAMES = Object.fromEntries(Object.entries(CASE_NAMES).flatMap(([c, name]) =>
-    [[`${c}.sg`, `${name} lp`], [`${c}.pl`, `${name} lm`]]));
-
   /** Which forms of the term a text uses, each with the cases it fills. */
   function formsUsed(text, term, locale) {
-    const found = [...new Set(findForms(text, Object.values(term[locale].forms), term.kind === 'phrase').map((m) => m.text.toLocaleLowerCase()))];
+    const found = [...new Set(findForms(text, Object.values(term[locale].forms).filter(Boolean), term.kind === 'phrase').map((m) => m.text.toLocaleLowerCase()))];
     return found.map((surface) => {
       const slots = slotsOf(term, locale).filter((slot) => term[locale].forms[slot].toLocaleLowerCase() === surface)
         .map((slot) => SLOT_NAMES[slot] ?? { sg: 'singular', pl: 'plural' }[slot]).filter(Boolean);
@@ -215,252 +352,338 @@
     });
   }
 
-  function reviewButton(view, record) {
-    const button = element('button', record.reviewed ? 'Reviewed. Undo' : 'Mark reviewed');
-    button.type = 'button';
-    button.setAttribute('aria-pressed', String(record.reviewed));
-    button.addEventListener('click', () => setReviewed(view, record, !record.reviewed));
-    return button;
+  /** What is wrong with a string, in words, for a finding row. */
+  function findingText(term, record, kind) {
+    const en = textOf(record, 'en');
+    const pl = textOf(record, 'pl');
+    const lines = [];
+    if (kind === 'untranslated') {
+      const said = [...new Set(findForms(en, Object.values(term.en.forms).filter(Boolean), term.kind === 'phrase').map((m) => m.text))];
+      lines.push(`English says “${said.join('”, “')}”, Polish has no form of “${lemma(term, 'pl')}”.`);
+    }
+    const plAvoid = [...new Set(findStems(pl, term.pl.avoid).map((m) => m.text))];
+    const enAvoid = [...new Set(findStems(en, term.en.avoid).map((m) => m.text))];
+    if (plAvoid.length) lines.push(`Polish says “${plAvoid.join('”, “')}”, the lexicon says “${lemma(term, 'pl')}”.`);
+    if (enAvoid.length) lines.push(`English says “${enAvoid.join('”, “')}”, the lexicon says “${lemma(term, 'en')}”.`);
+    return lines.join(' ');
   }
 
-  /** One string using the term: the forms it uses, both texts, an editor,
-   * review, and for a finding what is wrong in words. */
-  function stringCard(view, record, kind) {
+  /** Form chips for one locale: clicking one types that form into the field being edited. */
+  function formChips(view, locale) {
     const { term } = view;
-    const card = element('div', undefined, kind ? 'card' : `card ${record.reviewed ? 'reviewed' : 'plain'}`);
-    card.dataset.key = record.key;
-    const plLemma = term.pl.forms['nom.sg'] ?? term.pl.forms.base;
-    const enText = fields(record.en).map((f) => f.text).join('\n');
-    const plText = fields(record.pl).map((f) => f.text).join('\n');
-    const heading = element('h4');
-    heading.append(element('code', record.key));
-    card.append(heading);
-    const used = ['en', 'pl'].map((locale) => [locale, formsUsed(locale === 'en' ? enText : plText, term, locale)])
-      .filter(([, forms]) => forms.length).map(([locale, forms]) => `${locale.toUpperCase()}: ${forms.join(', ')}`);
-    if (used.length) card.append(element('p', `Uses ${used.join(' · ')}`, 'used'));
-    if (kind) {
-      const enAvoid = [...new Set(findStems(enText, term.en.avoid).map((m) => m.text))];
-      const plAvoid = [...new Set(findStems(plText, term.pl.avoid).map((m) => m.text))];
-      if (kind === 'untranslated') {
-        const said = [...new Set(findForms(enText, Object.values(term.en.forms), term.kind === 'phrase').map((m) => m.text))];
-        card.append(element('p', `English says “${said.join('”, “')}”. Polish has no form of “${plLemma}”.`));
-      }
-      if (plAvoid.length) card.append(element('p', `Polish says “${plAvoid.join('”, “')}”. The lexicon says “${plLemma}”.`));
-      if (enAvoid.length) card.append(element('p', `English says “${enAvoid.join('”, “')}”. The lexicon says “${term.en.forms.sg ?? term.en.forms.base}”.`));
+    const bar = element('div', undefined, 'chips');
+    const bySurface = new Map();
+    for (const slot of slotsOf(term, locale)) {
+      const form = term[locale].forms[slot];
+      if (form) bySurface.set(form, [...(bySurface.get(form) ?? []), SLOT_NAMES[slot] ?? slot]);
     }
-    // Drafts live on the view, so redrawing the list keeps unsaved text.
-    const drafts = view.drafts ??= new Map();
-    const draft = drafts.get(record.key);
-    const read = element('div');
-    for (const locale of ['en', 'pl']) {
-      for (const field of fields(record[locale])) {
-        const line = element('p', undefined, 'text');
-        line.lang = locale;
-        line.append(element('strong', `${locale.toUpperCase()}${field.form ? ` ${field.form}` : ''}`), ...highlighted(field.text, term, locale));
-        read.append(line);
-      }
+    for (const [form, slots] of bySurface) {
+      const chip = button(form, undefined, () => {
+        const target = view.editing;
+        if (!target) return;
+        target.setRangeText(form, target.selectionStart, target.selectionEnd, 'end');
+        target.dispatchEvent(new Event('input'));
+        target.focus();
+      });
+      chip.lang = locale;
+      chip.title = slots.join(', ');
+      chip.addEventListener('mousedown', (event) => event.preventDefault());
+      bar.append(chip);
     }
-    const edit = element('div');
-    const editors = ['en', 'pl'].flatMap((locale) => fields(record[locale]).map((field) => {
-      const id = `${locale}|${field.variant}|${field.form}`;
-      const label = element('label', `${locale === 'en' ? 'English' : 'Polish'}${field.form ? ` (${field.form})` : ''}`, 'block');
+    return bar;
+  }
+
+  /** One editable value: reads with the term marked, edits in place, saves after a pause. */
+  function fieldEditor(view, record, locale, field) {
+    const box = element('div', undefined, 'field');
+    if (field.form) box.append(element('div', field.form, 'form'));
+    const text = element('div', undefined, 'text');
+    text.tabIndex = 0;
+    text.lang = locale;
+    text.setAttribute('role', 'button');
+    text.setAttribute('aria-label', `Edit ${record.key} ${locale === 'en' ? 'English' : 'Polish'}${field.form ? ` ${field.form}` : ''}`);
+    const message = element('span', '', 'state');
+    box.append(text, message);
+    const editor = { view, record, locale, field, box, text, message, input: null, timer: 0 };
+    const paint = () => text.replaceChildren(...highlighted(editor.input?.value ?? field.text, view.term, locale));
+    editor.paint = paint;
+    paint();
+    const open = () => {
+      if (editor.input) { editor.input.focus(); return; }
       const input = element('textarea');
       input.lang = locale;
-      input.value = draft?.values[id] ?? field.text;
-      input.rows = Math.min(8, Math.max(2, Math.ceil(field.text.length / 70)));
-      input.addEventListener('focus', () => { view.lastTextarea = input; });
+      input.rows = 1;
+      input.value = field.text;
+      input.setAttribute('aria-label', text.getAttribute('aria-label'));
+      editor.input = input;
+      text.hidden = true;
+      box.insertBefore(input, message);
+      const chips = formChips(view, locale);
+      box.append(chips);
+      input.addEventListener('focus', () => { view.editing = input; });
       input.addEventListener('input', () => {
-        drafts.set(record.key, { open: true, values: Object.fromEntries(editors.map((e) => [e.id, e.input.value])) });
-        sync();
+        if (input.value === field.text) dirty.delete(input); else dirty.set(input, editor);
+        scheduleSave(editor);
+        refreshRow(view, record);
       });
-      label.append(input);
-      edit.append(label);
-      return { id, locale, field, input };
-    }));
-    const chips = element('div', undefined, 'chips');
-    chips.append(element('span', 'Select a word in a box, then pick the form: ', 'muted'));
-    for (const locale of ['pl', 'en']) {
-      const bySurface = new Map();
-      for (const slot of slotsOf(term, locale)) {
-        const form = term[locale].forms[slot];
-        if (form) bySurface.set(form, [...(bySurface.get(form) ?? []), SLOT_NAMES[slot] ?? slot]);
-      }
-      for (const [form, slots] of bySurface) {
-        const chip = element('button', term.kind === 'noun' && locale === 'pl' ? `${form} (${slots.join(', ')})` : form);
-        chip.type = 'button';
-        chip.lang = locale;
-        chip.addEventListener('mousedown', (event) => event.preventDefault());
-        chip.addEventListener('click', () => {
-          const target = editors.find((e) => e.input === view.lastTextarea && e.locale === locale)?.input ??
-            editors.find((e) => e.locale === locale).input;
-          target.setRangeText(form, target.selectionStart, target.selectionEnd, 'end');
-          target.dispatchEvent(new Event('input'));
-          target.focus();
-        });
-        chips.append(chip);
-      }
-    }
-    edit.append(chips);
-    card.append(read, edit);
-    const buttons = element('div', undefined, 'buttons');
-    const open = element('button', 'Edit');
-    open.type = 'button';
-    open.addEventListener('click', () => {
-      drafts.set(record.key, { open: true, values: drafts.get(record.key)?.values ?? {} });
-      sync();
-      editors.find((e) => e.locale === 'pl')?.input.focus();
-    });
-    const save = element('button', 'Save');
-    save.type = 'button';
-    save.addEventListener('click', () => saveString(view, record, editors, message));
-    const cancel = element('button', 'Cancel');
-    cancel.type = 'button';
-    cancel.addEventListener('click', () => {
-      drafts.delete(record.key);
-      for (const e of editors) e.input.value = e.field.text;
-      sync();
-    });
-    const ignore = element('button', 'Not a problem');
-    ignore.type = 'button';
-    ignore.addEventListener('click', () => setIgnored(view, record, true));
-    const review = reviewButton(view, record);
-    const message = element('span');
-    message.setAttribute('role', 'status');
-    buttons.append(open, save, cancel, ...(kind ? [ignore] : []), review, message);
-    card.append(buttons);
-    function sync() {
-      const editing = kind ? true : Boolean(drafts.get(record.key)?.open);
-      const clean = editors.every((e) => e.input.value === e.field.text);
-      read.hidden = editing;
-      edit.hidden = !editing;
-      open.hidden = editing;
-      cancel.hidden = !editing || (kind && clean);
-      save.hidden = !editing;
-      save.dataset.hold = String(clean);
-      save.disabled = busy || clean;
-      review.dataset.hold = String(!clean);
-      review.disabled = busy || !clean;
-      review.title = clean ? '' : 'Save or cancel the edit first.';
-    }
-    sync();
-    return card;
-  }
-
-  async function saveString(view, record, editors, message) {
-    if (busy) return;
-    busy = true;
-    updateControls();
-    try {
-      for (const { locale, field, input } of editors) {
-        if (input.value === field.text) continue;
-        const response = await fetch('/api/strings', {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ locale, key: record.key, variant: field.variant, form: field.form, previous: field.text, text: input.value })
-        });
-        if (!response.ok) throw new Error(await response.text());
-        if (field.form === null) record[locale] = input.value;
-        else record[locale][field.variant].match[field.form] = input.value;
-        field.text = input.value;
-        record.reviewed = false;
-      }
-      view.drafts?.delete(record.key);
-      $('#operation').textContent = `Saved ${record.key}.`;
-      busy = false;
-      refreshAllUsage();
-    } catch (error) {
-      message.textContent = ` ${error.message}`;
-    } finally {
-      busy = false;
-      updateControls();
-    }
-  }
-
-  function refreshAllUsage() {
-    for (const view of views.values()) renderUsage(view);
-    applyFilter();
-    updateControls();
-  }
-
-  /** Review one string for both pages: the strings page reads the same file. */
-  async function setReviewed(view, record, reviewed) {
-    if (busy) return;
-    busy = true;
-    updateControls();
-    try {
-      const response = await fetch('/api/reviews', {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewed, keys: [{ key: record.key, en: record.en, pl: record.pl }] })
+      input.addEventListener('blur', () => {
+        if (dirty.has(input)) scheduleSave(editor, 0);
+        // Wait for a chip press or a save to land before folding back.
+        setTimeout(() => {
+          if (document.activeElement === input) return;
+          if (view.editing === input) view.editing = null;
+          if (!dirty.has(input)) close();
+        }, 150);
       });
-      if (!response.ok) throw new Error(await response.text());
-      record.reviewed = reviewed;
-      $('#operation').textContent = `${record.key}: ${reviewed ? 'reviewed' : 'review undone'}.`;
-    } catch (error) {
-      $('#operation').textContent = error.message;
-    } finally {
-      busy = false;
-      for (const open of views.values()) if (open.body) renderUsage(open);
-      updateControls();
-      view.usageBox.querySelector(`[data-key="${CSS.escape(record.key)}"] button[aria-pressed]`)?.focus({ preventScroll: true });
-    }
-  }
-
-  /** Dismiss or restore one finding at once, without saving other edits in
-   * progress: the change goes onto the saved lexicon, then into the draft. */
-  async function setIgnored(view, record, ignored) {
-    if (busy) return;
-    const id = view.term.id;
-    const next = clone(saved);
-    const target = next.terms.find((term) => term.id === id);
-    if (!target) { $('#operation').textContent = 'Save this new term first.'; return; }
-    const apply = (term) => {
-      const ignore = { ...(term.ignore ?? {}) };
-      if (ignored) ignore[record.key] = fingerprint(record.en, record.pl);
-      else delete ignore[record.key];
-      if (Object.keys(ignore).length) term.ignore = ignore; else delete term.ignore;
+      editor.close = () => { input.remove(); chips.remove(); editor.input = null; text.hidden = false; paint(); };
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
     };
-    apply(target);
-    busy = true;
-    updateControls();
+    const close = () => editor.close?.();
+    editor.open = open;
+    text.addEventListener('click', open);
+    text.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); open(); }
+    });
+    return editor;
+  }
+
+  function scheduleSave(editor, delay = 900) {
+    clearTimeout(editor.timer);
+    editor.message.className = 'state';
+    if (!editor.input || !dirty.has(editor.input)) { editor.message.textContent = ''; return; }
+    editor.message.textContent = 'Unsaved';
+    editor.timer = setTimeout(() => enqueue(() => saveEditor(editor)), delay);
+  }
+  async function saveEditor(editor) {
+    const { view, record, locale, field, input, message } = editor;
+    if (!input || !dirty.has(input)) return;
+    const value = input.value;
+    message.textContent = 'Saving';
+    message.className = 'state';
     try {
-      const response = await fetch('/api/lexicon', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision, lexicon: next })
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const latest = await fetch('/api/lexicon');
-      if (!latest.ok) throw new Error(await latest.text());
-      ({ revision } = await latest.json());
+      await call('/api/strings', 'PATCH', { locale, key: record.key, variant: field.variant, form: field.form, previous: field.text, text: value });
+      field.text = value;
+      if (field.form === null) record[locale] = value;
+      else record[locale][field.variant].match[field.form] = value;
+      record.reviewed = false;
+      if (input.value === value) dirty.delete(input);
+      message.textContent = dirty.has(input) ? 'Unsaved' : 'Saved';
+      message.className = dirty.has(input) ? 'state' : 'state saved';
+      if (!dirty.has(input) && document.activeElement !== input) editor.close();
+    } catch (error) {
+      message.textContent = error.message;
+      message.className = 'state failed';
+    }
+    refreshRow(view, record);
+    view.usage = termUsage(view.term, records);
+    renderHeader(view);
+    applyFilter();
+  }
+  const rowDirty = (view, record) => (view.rows.get(record.key)?.editors ?? []).some((e) => e.input && dirty.has(e.input));
+
+  function setReviewed(view, record, reviewed) {
+    if (rowDirty(view, record)) { $('#operation').textContent = `${record.key} has an edit still saving. Try again once it saves.`; return; }
+    const previous = record.reviewed;
+    record.reviewed = reviewed;
+    refreshRow(view, record);
+    enqueue(async () => {
+      try {
+        await call('/api/reviews', 'PATCH', { reviewed, keys: [{ key: record.key, en: record.en, pl: record.pl }] });
+        $('#operation').textContent = `${record.key} ${reviewed ? 'reviewed' : 'not reviewed'}.`;
+      } catch (error) {
+        record.reviewed = previous;
+        $('#operation').textContent = error.message;
+      }
+      for (const other of views.values()) if (other.body) refreshRow(other, record);
+      renderHeader(view);
+    });
+  }
+
+  /** Dismiss or restore one finding at once: the change goes onto the saved
+   * lexicon, then into the draft, so unsaved form edits stay unsaved. */
+  function setIgnored(view, record, ignored) {
+    const id = view.term.id;
+    enqueue(async () => {
+      const next = clone(saved);
+      const target = next.terms.find((term) => term.id === id);
+      if (!target) { $('#operation').textContent = 'Save this new term first.'; return; }
+      const apply = (term) => {
+        const ignore = { ...(term.ignore ?? {}) };
+        if (ignored) ignore[record.key] = fingerprint(record.en, record.pl);
+        else delete ignore[record.key];
+        if (Object.keys(ignore).length) term.ignore = ignore; else delete term.ignore;
+      };
+      apply(target);
+      await call('/api/lexicon', 'PUT', { revision, lexicon: next });
+      await refreshRevision();
       saved = next;
       apply(view.term);
-      $('#operation').textContent = ignored ? `${record.key}: marked as not a problem for ${id}.` : `${record.key}: shown again for ${id}.`;
-    } catch (error) {
-      $('#operation').textContent = error.message;
-    } finally {
-      busy = false;
+      $('#operation').textContent = ignored ? `${record.key}: not a problem for ${id}.` : `${record.key}: shown again for ${id}.`;
       renderUsage(view);
       applyFilter();
-      updateControls();
-    }
+    });
   }
+
+  function buildRow(view, record, kind) {
+    const { term } = view;
+    const tr = element('tr', undefined, 'row');
+    tr.dataset.key = record.key;
+    rowRecord.set(tr, { view, record });
+    const keyCell = element('td');
+    const key = element('div', undefined, 'key');
+    const review = element('label', undefined, 'review');
+    const box = element('input');
+    box.type = 'checkbox';
+    box.setAttribute('aria-label', `${record.key} reviewed`);
+    box.addEventListener('change', () => setReviewed(view, record, box.checked));
+    review.append(box);
+    key.append(review, element('code', record.key));
+    keyCell.append(key);
+    const why = element('p', undefined, 'why');
+    const uses = element('p', undefined, 'uses');
+    keyCell.append(why, uses);
+    const editors = [];
+    const cells = ['en', 'pl'].map((locale) => {
+      const cell = element('td');
+      cell.lang = locale;
+      const values = fields(record[locale]);
+      if (!values.length) cell.append(element('p', 'Missing value', 'muted'));
+      for (const field of values) {
+        const editor = fieldEditor(view, record, locale, field);
+        editors.push(editor);
+        cell.append(editor.box);
+      }
+      return cell;
+    });
+    tr.append(keyCell, ...cells);
+    const row = { tr, box, why, uses, editors, kind };
+    view.rows.set(record.key, row);
+    refreshRow(view, record);
+    return tr;
+  }
+
+  /** Repaint one row in place, so a field being edited keeps its focus. */
+  function refreshRow(view, record) {
+    const row = view.rows?.get(record.key);
+    if (!row) return;
+    const { term } = view;
+    row.box.checked = Boolean(record.reviewed);
+    row.box.disabled = rowDirty(view, record);
+    row.tr.classList.toggle('done', Boolean(record.reviewed));
+    row.why.replaceChildren();
+    if (row.kind) {
+      row.why.append(findingText(term, record, row.kind) || 'Fixed.',
+        button('Not a problem', 'small', () => setIgnored(view, record, true)));
+    }
+    row.why.hidden = !row.kind;
+    const used = ['en', 'pl'].map((locale) => [locale, formsUsed(textOf(record, locale), term, locale)])
+      .filter(([, forms]) => forms.length).map(([locale, forms]) => `${locale.toUpperCase()} ${forms.join(', ')}`);
+    row.uses.textContent = used.join(' · ');
+    for (const editor of row.editors) if (!editor.input) editor.paint();
+  }
+  function refreshRows(view) { for (const key of view.rows.keys()) { const record = records.find((r) => r.key === key); if (record) refreshRow(view, record); } }
+
+  function renderHeader(view) {
+    const { term } = view;
+    const usage = view.usage ?? termUsage(term, records);
+    const byKey = new Map(records.map((record) => [record.key, record]));
+    const findings = usage.untranslated.length + usage.avoided.filter(({ key }) => !usage.untranslated.includes(key)).length;
+    const reviewed = usage.keys.filter((key) => byKey.get(key)?.reviewed).length;
+    view.title.textContent = label(term);
+    view.chips.replaceChildren(
+      element('span', `${count(usage.keys.length, 'string')} · ${reviewed} reviewed`, 'chip'),
+      ...(findings ? [element('span', count(findings, 'finding'), 'chip bad')] : []),
+      ...(formsDirty(term) ? [element('span', savedTerm(term.id) ? 'form changes' : 'new, not saved', 'chip warn')] : []));
+    view.confirmBox.checked = term.confirmed;
+    if (view.usageTitle) view.usageTitle.textContent = `Strings with this term (${usage.keys.length}) · ${reviewed} reviewed`;
+  }
+
+  /** Rebuild the strings list: on opening, and after forms or avoided words change. */
+  function renderUsage(view) {
+    const { term } = view;
+    const usage = termUsage(term, records);
+    view.usage = usage;
+    renderHeader(view);
+    if (!view.body) return;
+    for (const locale of ['en', 'pl']) {
+      const texts = live().map((record) => textOf(record, locale));
+      for (const [slot, node] of Object.entries(view.counts[locale] ?? {})) {
+        const form = term[locale].forms[slot];
+        const n = form ? texts.filter((text) => findForms(text, [form], term.kind === 'phrase').length).length : 0;
+        node.textContent = form ? String(n) : '';
+        node.title = `${count(n, 'string')} use “${form}”. Renaming this form rewrites them.`;
+      }
+    }
+    const byKey = new Map(records.map((record) => [record.key, record]));
+    view.rows = new Map();
+    const table = element('table', undefined, 'strings');
+    const colgroup = element('colgroup');
+    colgroup.append(element('col', undefined, 'k'), element('col', undefined, 't'), element('col', undefined, 't'));
+    table.append(colgroup);
+    const body = element('tbody');
+    const group = (title, why, bad) => {
+      const tr = element('tr', undefined, `group${bad ? ' bad' : ''}`);
+      const th = element('th');
+      th.colSpan = 3;
+      th.append(element('h4', title), ...(why ? [element('span', why)] : []));
+      tr.append(th);
+      body.append(tr);
+    };
+    const untranslated = new Set(usage.untranslated);
+    const avoided = usage.avoided.filter(({ key }) => !untranslated.has(key));
+    if (usage.untranslated.length) {
+      group(`Polish does not use the term (${usage.untranslated.length})`,
+        `Put a form of “${lemma(term, 'pl')}” in, or mark it not a problem where the English means something else.`, true);
+      for (const key of usage.untranslated) body.append(buildRow(view, byKey.get(key), 'untranslated'));
+    }
+    if (avoided.length) {
+      group(`Avoided word (${avoided.length})`, 'Replace the red word with a form of the term, or mark it not a problem.', true);
+      for (const { key } of avoided) body.append(buildRow(view, byKey.get(key), 'avoided'));
+    }
+    const flagged = new Set([...untranslated, ...avoided.map(({ key }) => key)]);
+    const rest = usage.keys.filter((key) => !flagged.has(key));
+    if (rest.length && flagged.size) group(`No findings (${rest.length})`);
+    for (const key of rest) body.append(buildRow(view, byKey.get(key), null));
+    table.append(body);
+    view.usageBox.replaceChildren();
+    if (usage.keys.length) view.usageBox.append(table);
+    else view.usageBox.append(element('p', 'No string uses this term yet.', 'muted'));
+    const dismissed = Object.keys(term.ignore ?? {}).filter((key) => byKey.has(key));
+    if (dismissed.length) {
+      const list = element('details', undefined, 'dismissed');
+      list.append(element('summary', `Marked as not a problem (${dismissed.length})`));
+      for (const key of dismissed) {
+        const row = element('p');
+        row.append(element('code', key), button('Show again', 'small', () => setIgnored(view, byKey.get(key), false)));
+        list.append(row);
+      }
+      view.usageBox.append(list);
+    }
+    if (cursor && !cursor.tr.isConnected) cursor = null;
+  }
+
+  /* ---------- Forms ---------- */
 
   function renderSuggestions(view, locale) {
     const box = view.suggestions[locale];
     const forms = Object.values(view.term[locale].forms);
     const used = new Set(forms.map((form) => form.toLocaleLowerCase()));
-    const found = suggestForms(forms, locale === 'pl' ? plTexts() : enTexts()).filter(({ word }) => !used.has(word)).slice(0, 24);
+    const texts = live().flatMap((r) => fields(r[locale]).map((f) => f.text));
+    const found = suggestForms(forms, texts).filter(({ word }) => !used.has(word)).slice(0, 24);
     box.replaceChildren();
     if (!found.length) return;
-    box.append(element('span', 'In the catalogues, not in the grid: ', 'muted'));
-    for (const { word, count } of found) {
-      const chip = element('button', `${word} (${count})`);
-      chip.type = 'button';
-      chip.title = 'Fill the last focused empty or selected slot';
-      chip.addEventListener('click', () => {
+    box.append(element('span', 'In the catalogues:', 'muted'));
+    for (const { word, count: n } of found) {
+      const chip = button(`${word} ${n}`, undefined, () => {
         const input = view.lastInput[locale];
         if (!input) return;
         input.value = word;
         input.dispatchEvent(new Event('input'));
         input.focus();
       });
+      chip.title = 'Put into the last form field you were in';
+      chip.addEventListener('mousedown', (event) => event.preventDefault());
       box.append(chip);
     }
   }
@@ -473,14 +696,21 @@
     const table = element('table', undefined, 'grid');
     const input = (slot, name) => {
       const field = element('input');
+      field.type = 'text';
+      field.size = 1;
       field.value = term[locale].forms[slot];
       field.setAttribute('aria-label', `${term.id} ${locale.toUpperCase()} ${name}`);
+      const mark = () => field.classList.toggle('changed', savedTerm(term.id) !== undefined && savedTerm(term.id)[locale].forms[slot] !== term[locale].forms[slot]);
       field.addEventListener('focus', () => { view.lastInput[locale] = field; });
       field.addEventListener('input', () => {
         term[locale].forms[slot] = field.value.trim();
-        changed(view);
-        renderSuggestions(view, locale);
+        mark();
+        clearTimeout(view.formsTimer);
+        view.formsTimer = setTimeout(() => { renderUsage(view); renderSuggestions(view, locale); applyFilter(); }, 300);
+        renderHeader(view);
+        updateControls();
       });
+      mark();
       const wrapper = element('span', undefined, 'slot');
       const uses = element('span', '', 'count');
       (view.counts[locale] ??= {})[slot] = uses;
@@ -488,8 +718,10 @@
       return wrapper;
     };
     if (term.kind === 'noun' && locale === 'pl') {
-      const head = element('tr');
-      head.append(element('th', ''), element('th', 'liczba pojedyncza'), element('th', 'liczba mnoga'));
+      const head = element('thead');
+      const tr = element('tr');
+      tr.append(element('th', ''), element('th', 'pojedyncza'), element('th', 'mnoga'));
+      head.append(tr);
       table.append(head);
       for (const [grammaticalCase, name] of Object.entries(CASE_NAMES)) {
         const row = element('tr');
@@ -514,102 +746,114 @@
     side.append(table);
     view.suggestions[locale] = element('div', undefined, 'chips');
     side.append(view.suggestions[locale]);
-    const avoid = element('label', 'Avoid (stems, comma separated)', 'block');
+    const avoid = element('label', 'Avoid (stems, comma separated)', 'avoid-field');
     const avoidInput = element('input');
+    avoidInput.type = 'text';
     avoidInput.value = term[locale].avoid.join(', ');
     avoidInput.addEventListener('input', () => {
       term[locale].avoid = avoidInput.value.split(',').map((stem) => stem.trim()).filter(Boolean);
-      changed(view);
+      scheduleMeta(view);
+      clearTimeout(view.formsTimer);
+      view.formsTimer = setTimeout(() => { renderUsage(view); applyFilter(); }, 300);
     });
     avoid.append(avoidInput);
     side.append(avoid);
     return side;
   }
 
-  function changed(view) {
-    renderUsage(view);
-    applyFilter();
-    updateControls();
-  }
-
   function renderTerm(term) {
-    const view = { term, lastInput: {}, suggestions: {}, counts: {} };
+    const view = { term, lastInput: {}, suggestions: {}, counts: {}, rows: new Map(), metaStates: [] };
     const node = element('details', undefined, 'term');
     const summary = element('summary');
-    view.title = element('strong');
-    view.badges = element('span');
-    summary.append(view.title, element('code', term.id, 'muted'), view.badges);
+    view.title = element('span', undefined, 'title');
+    view.chips = element('span', undefined, 'chip-list');
+    const confirm = element('label', undefined, 'confirm');
+    view.confirmBox = element('input');
+    view.confirmBox.type = 'checkbox';
+    view.confirmBox.checked = term.confirmed;
+    view.confirmBox.addEventListener('change', () => { term.confirmed = view.confirmBox.checked; renderHeader(view); updateControls(); applyFilter(); scheduleMeta(view, 0); });
+    const confirmState = element('span', '', 'meta-state');
+    view.metaStates.push(confirmState);
+    confirm.append(view.confirmBox, 'Confirmed', confirmState);
+    summary.append(view.title, element('code', term.id, 'muted'), view.chips, confirm);
     node.append(summary);
     node.addEventListener('toggle', () => {
       if (!node.open || view.body) return;
-      view.body = element('div');
-      const confirmed = element('label', 'Confirmed', 'check');
-      const box = element('input');
-      box.type = 'checkbox';
-      box.checked = term.confirmed;
-      box.addEventListener('change', () => { term.confirmed = box.checked; changed(view); });
-      confirmed.prepend(box);
-      const note = element('label', 'Note', 'block');
-      const noteInput = element('textarea');
-      noteInput.rows = 2;
-      noteInput.value = term.note;
-      noteInput.addEventListener('input', () => { term.note = noteInput.value; changed(view); });
-      note.append(noteInput);
+      view.body = element('div', undefined, 'body');
+      const note = element('textarea', undefined, 'note');
+      note.rows = 1;
+      note.placeholder = 'Note: why this name, what it is not';
+      note.setAttribute('aria-label', `${term.id} note`);
+      note.value = term.note;
+      note.addEventListener('input', () => { term.note = note.value; scheduleMeta(view); });
       const sides = element('div', undefined, 'sides');
       sides.append(formsEditor(view, 'en'), formsEditor(view, 'pl'));
+      const head = element('div', undefined, 'usage-head');
+      view.usageTitle = element('h3');
+      head.append(view.usageTitle, element('span', 'Click a text to edit it. Edits save by themselves.', 'muted'));
       view.usageBox = element('div');
-      const remove = element('button', 'Delete term');
-      remove.type = 'button';
-      remove.addEventListener('click', () => {
-        if (!confirm(`Delete ${term.id} from the lexicon? Strings are not changed.`)) return;
-        draft.terms = draft.terms.filter((t) => t !== term);
-        views.delete(term.id);
-        node.remove();
-        applyFilter();
-        updateControls();
-      });
-      view.body.append(confirmed, note, sides, view.usageBox, remove);
+      const foot = element('div', undefined, 'term-foot');
+      foot.append(button('Delete term', 'small danger', () => deleteTerm(view)));
+      view.body.append(note, sides, head, view.usageBox, foot);
       node.append(view.body);
       renderUsage(view);
       renderSuggestions(view, 'en');
       renderSuggestions(view, 'pl');
-      updateControls();
     });
     view.node = node;
-    view.usageBox = element('div');
-    renderUsage(view);
+    renderHeader(view);
     views.set(term.id, view);
     return node;
   }
 
+  function deleteTerm(view) {
+    const { term } = view;
+    if (!confirm(`Delete ${term.id} from the lexicon? Strings are not changed.`)) return;
+    const drop = () => { draft.terms = draft.terms.filter((t) => t.id !== term.id); views.delete(term.id); view.node.remove(); applyFilter(); updateControls(); };
+    if (!savedTerm(term.id)) { drop(); return; }
+    enqueue(async () => {
+      const next = clone(saved);
+      next.terms = next.terms.filter((t) => t.id !== term.id);
+      await call('/api/lexicon', 'PUT', { revision, lexicon: next });
+      await refreshRevision();
+      saved = next;
+      drop();
+      $('#operation').textContent = `Deleted ${term.id}.`;
+    });
+  }
+
   function applyFilter() {
     const query = $('#search').value.toLocaleLowerCase();
+    const show = $('#show').value;
     let shown = 0;
     for (const view of views.values()) {
-      const { term, usage } = view;
+      const { term } = view;
+      const usage = view.usage ?? termUsage(term, records);
       const text = [term.id, term.note, ...Object.values(term.en.forms), ...Object.values(term.pl.forms)].join('\n').toLocaleLowerCase();
-      const show = $('#show').value;
       view.node.hidden = !text.includes(query) ||
         (show === 'unconfirmed' && term.confirmed) ||
         (show === 'findings' && !(usage.untranslated.length + usage.avoided.length)) ||
-        (show === 'unsaved' && !isDirty(term));
+        (show === 'unsaved' && !formsDirty(term));
       if (!view.node.hidden) shown++;
     }
-    $('#status').textContent = `${shown} of ${views.size} terms`;
+    $('#status').textContent = `${shown} of ${views.size} terms shown`;
+    updateControls();
   }
 
   function renderAll() {
     views.clear();
+    cursor = null;
     $('#terms').replaceChildren(...draft.terms.map(renderTerm));
     applyFilter();
-    updateControls();
   }
 
   async function load() {
     if (busy) return;
-    if (dirtyCount() && !confirm('Discard unsaved lexicon edits and reload from disk?')) return;
+    if ((formChanges() || dirty.size) && !confirm('Discard unsaved edits and reload from disk?')) return;
+    await chain;
     busy = true;
     pending = null;
+    dirty.clear();
     $('#preview-section').hidden = true;
     updateControls();
     try {
@@ -626,6 +870,8 @@
       renderAll();
     }
   }
+
+  /* ---------- Renames: preview, then save strings and lexicon ---------- */
 
   /** Build every string edit the changed forms imply, per locale, from one
    * combined map so two terms renaming the same word offer both choices. */
@@ -650,8 +896,7 @@
       }
       const map = renameMap(before, after, exact);
       if (!map.size) continue;
-      for (const record of records) {
-        if (record.change === 'removed') continue;
+      for (const record of live()) {
         for (const field of fields(record[locale])) {
           const occurrences = renameOccurrences(field.text, map);
           if (occurrences.length) rows.push({ record, locale, field, occurrences, selects: [] });
@@ -661,7 +906,7 @@
     pending = { rows: [] };
     const table = element('table');
     const head = element('tr');
-    for (const text of ['Key / language / form', 'Before', 'After']) head.append(element('th', text));
+    for (const text of ['Key', 'Before', 'After']) head.append(element('th', text));
     table.append(head);
     for (const row of rows) {
       const tr = element('tr');
@@ -683,10 +928,8 @@
       });
       before.append(row.field.text.slice(at));
       row.afterCell = after;
-      const controls = element('div');
-      controls.append(...row.selects);
-      const keyCell = element('td', `${row.record.key} ${row.locale.toUpperCase()} ${row.field.form ?? ''}`);
-      keyCell.append(element('br'), controls);
+      const keyCell = element('td');
+      keyCell.append(element('code', row.record.key), ` ${row.locale.toUpperCase()} ${row.field.form ?? ''}`, element('br'), ...row.selects);
       tr.append(keyCell, before, after);
       table.append(tr);
       refreshAfter(row);
@@ -701,7 +944,7 @@
     ].filter(Boolean).join(' ');
     $('#agreement').hidden = !nounChanged || !rows.length;
     $('#preview-section').hidden = false;
-    $('#preview-section').scrollIntoView();
+    $('#preview-section').scrollIntoView({ block: 'start' });
     updateControls();
   }
 
@@ -712,6 +955,7 @@
 
   async function confirmSave() {
     if (busy || !pending) return;
+    await chain;
     busy = true;
     updateControls();
     const edits = pending.edits.filter((row) => row.after !== row.field.text);
@@ -719,35 +963,29 @@
     try {
       for (const [index, row] of edits.entries()) {
         $('#operation').textContent = `Saving string ${index + 1} of ${edits.length}…`;
-        const response = await fetch('/api/strings', {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ locale: row.locale, key: row.record.key, variant: row.field.variant,
-            form: row.field.form, previous: row.field.text, text: row.after })
-        });
-        if (!response.ok) { failed++; row.afterCell.append(element('p', await response.text(), 'warn')); }
+        try {
+          await call('/api/strings', 'PATCH', { locale: row.locale, key: row.record.key, variant: row.field.variant,
+            form: row.field.form, previous: row.field.text, text: row.after });
+        } catch (error) { failed++; row.afterCell.append(element('p', error.message, 'warn')); }
       }
       if (failed) {
-        $('#operation').textContent = `${failed} of ${edits.length} strings were not saved (see the rows marked in red). The lexicon was not saved; reload and try again.`;
+        $('#operation').textContent = `${failed} of ${edits.length} strings were not saved (marked in the rows). The lexicon was not saved; reload and try again.`;
         return;
       }
-      const response = await fetch('/api/lexicon', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision, lexicon: draft })
+      await call('/api/lexicon', 'PUT', { revision, lexicon: draft }).catch((error) => {
+        throw new Error(`${edits.length} strings saved, but the lexicon was not: ${error.message}`);
       });
-      if (!response.ok) throw new Error(`${edits.length} strings saved, but the lexicon was not: ${await response.text()}`);
-      $('#operation').textContent = `Saved the lexicon and ${edits.length} strings.`;
+      $('#operation').textContent = `Saved the lexicon and ${count(edits.length, 'string')}.`;
       // Review against the strings as they are now, after the rename.
       const fresh = await fetch('/api/strings');
       if (!fresh.ok) throw new Error(`Saved, but could not mark keys reviewed: ${await fresh.text()}`);
       const reviewKeys = keysToReview(saved, draft, await fresh.json());
       if (reviewKeys.length) {
-        const review = await fetch('/api/reviews', {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewed: true, keys: reviewKeys })
-        });
-        if (!review.ok) throw new Error(`Saved, but could not mark keys reviewed: ${await review.text()}`);
+        await call('/api/reviews', 'PATCH', { reviewed: true, keys: reviewKeys });
         $('#operation').textContent += ` Marked ${count(reviewKeys.length, 'key')} reviewed on the strings page.`;
       }
-      busy = false;
       saved = clone(draft);
+      busy = false;
       await load();
     } catch (error) {
       $('#operation').textContent = error.message;
@@ -776,6 +1014,57 @@
     view.node.scrollIntoView();
   }
 
+  /* ---------- Keyboard: the same keys as the strings page ---------- */
+
+  function visibleRows() {
+    return [...document.querySelectorAll('details.term[open] tr.row')].filter((tr) => !tr.closest('details.term').hidden)
+      .map((tr) => ({ tr, ...rowRecord.get(tr) }));
+  }
+  function setCursor(next, scroll = true) {
+    cursor?.tr.classList.remove('current');
+    cursor = next;
+    if (!next) return;
+    next.tr.classList.add('current');
+    if (scroll) next.tr.scrollIntoView({ block: 'nearest' });
+  }
+  function moveCursor(step) {
+    const shown = visibleRows();
+    if (!shown.length) { $('#operation').textContent = 'Open a term to move through its strings.'; return; }
+    const index = shown.findIndex((row) => row.tr === cursor?.tr);
+    setCursor(shown[index < 0 ? 0 : Math.min(shown.length - 1, Math.max(0, index + step))]);
+  }
+  document.addEventListener('keydown', (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey || pending) return;
+    const target = event.target;
+    if (target instanceof HTMLTextAreaElement) {
+      if (event.key === 'Escape') { event.preventDefault(); target.blur(); }
+      return;
+    }
+    const typing = target instanceof HTMLSelectElement || (target instanceof HTMLInputElement && target.type !== 'checkbox');
+    if (typing) return;
+    const activates = target instanceof HTMLButtonElement || target instanceof HTMLAnchorElement ||
+      target.tagName === 'SUMMARY' || target.classList?.contains('text') || (target instanceof HTMLInputElement && !target.closest('tr.row'));
+    if (event.key === 'j') { event.preventDefault(); moveCursor(1); }
+    else if (event.key === 'k') { event.preventDefault(); moveCursor(-1); }
+    else if (activates) return;
+    else if (event.key === ' ' && cursor) {
+      event.preventDefault();
+      setReviewed(cursor.view, cursor.record, !cursor.record.reviewed);
+      moveCursor(1);
+    } else if ((event.key === 'Enter' || event.key === 'e') && cursor) {
+      event.preventDefault();
+      const editors = cursor.view.rows.get(cursor.record.key)?.editors ?? [];
+      (editors.find((e) => e.locale === 'pl') ?? editors[0])?.open();
+    }
+  });
+  const terms = $('#terms');
+  const pick = (event) => {
+    const tr = event.target.closest?.('tr.row');
+    if (tr && tr !== cursor?.tr) setCursor({ tr, ...rowRecord.get(tr) }, false);
+  };
+  terms.addEventListener('focusin', pick);
+  terms.addEventListener('pointerdown', pick);
+
   $('#save').addEventListener('click', preview);
   $('#cancel').addEventListener('click', () => { pending = null; $('#preview-section').hidden = true; updateControls(); });
   $('#confirm').addEventListener('click', confirmSave);
@@ -783,10 +1072,18 @@
   $('#add').addEventListener('click', addTerm);
   $('#search').addEventListener('input', applyFilter);
   $('#show').addEventListener('change', applyFilter);
+  const colorTheme = $('#color-theme');
+  const applyTheme = (value) => { if (value) document.documentElement.dataset.theme = value; else delete document.documentElement.dataset.theme; };
+  try { colorTheme.value = localStorage.getItem('strings-theme') ?? ''; } catch { /* storage blocked */ }
+  applyTheme(colorTheme.value);
+  colorTheme.addEventListener('change', () => {
+    applyTheme(colorTheme.value);
+    try { localStorage.setItem('strings-theme', colorTheme.value); } catch { /* storage blocked */ }
+  });
+  const toolbar = $('#toolbar');
+  new ResizeObserver(() => document.documentElement.style.setProperty('--toolbar-h', `${toolbar.offsetHeight}px`)).observe(toolbar);
   window.addEventListener('beforeunload', (event) => {
-    const unsavedStrings = [...views.values()].some((view) => [...(view.drafts?.values() ?? [])]
-      .some((draft) => Object.keys(draft.values).length));
-    if (dirtyCount() || unsavedStrings || busy) { event.preventDefault(); event.returnValue = ''; }
+    if (formChanges() || dirty.size || queued || busy) { event.preventDefault(); event.returnValue = ''; }
   });
   load();
 </script>
