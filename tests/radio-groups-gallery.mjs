@@ -57,7 +57,7 @@ async function shot(name, crop = false) {
 
 try {
   await open('/entry/new/today');
-  assert.equal(await page.locator('[data-save-unmet="mood"]').count(), 1);
+  assert.equal(await page.locator('[data-save][data-save-unmet="mood"]').count(), 1);
   await page.locator('[data-save]').click();
   assert.ok(page.url().includes('/entry/new/'), 'missing mood does not save');
   await page.keyboard.press('Space');
