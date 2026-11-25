@@ -47,6 +47,17 @@ public class FolderArchivesTest {
         assertEquals("b", FolderArchives.newest(folder, Collections.emptyList(), 19, Collections.emptyList()).uri);
     }
 
+    /* Backups were .ttbackup before ticket 10 renamed them .gnd: a phone on an
+       older build shares the folder, so its archives still count. */
+    @Test public void takesAnotherDevicesArchiveUnderEitherExtension() {
+        List<Document> folder = Arrays.asList(
+            new Document("old", "auto-backup-20.ttbackup", 20, 100),
+            new Document("new", "auto-backup-10.gnd", 10, 100));
+        assertEquals("old", FolderArchives.newest(folder, Collections.emptyList(), 0, Collections.emptyList()).uri);
+        assertEquals("new", FolderArchives.newest(folder, Collections.singletonList("old"), 0, Collections.emptyList()).uri);
+        assertEquals("new", FolderArchives.newest(folder.subList(1, 2), Collections.emptyList(), 0, Collections.emptyList()).uri);
+    }
+
     @Test public void skipsWhatIsNotAnArchiveOrIsEmpty() {
         List<Document> folder = Arrays.asList(
             new Document("tmp", ".syncthing.auto-backup.ttbackup.tmp", 90, 100),

@@ -17,7 +17,7 @@ describe('pickArchive', () => {
 
     await pickArchive();
 
-    expect(vi.mocked(chooseFiles)).toHaveBeenCalledWith('.ttbackup,application/octet-stream');
+    expect(vi.mocked(chooseFiles)).toHaveBeenCalledWith('.gnd,.ttbackup,application/octet-stream');
   });
 
   test('returns null when nothing was picked', async () => {

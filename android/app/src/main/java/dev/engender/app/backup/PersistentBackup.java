@@ -116,7 +116,7 @@ final class PersistentBackup {
         if (folder == null || !folder.canWrite()) throw new IllegalStateException("destination-unavailable");
         DocumentFile target = stage.has("target") ? DocumentFile.fromSingleUri(context, Uri.parse(stage.getString("target"))) : null;
         if (target == null || !target.exists()) {
-            target = folder.createFile("application/octet-stream", "auto-backup-" + stage.getLong("snapshotAt") + ".ttbackup");
+            target = folder.createFile("application/octet-stream", "auto-backup-" + stage.getLong("snapshotAt") + FolderArchives.EXTENSION);
             if (target == null) throw new IllegalStateException("destination-unavailable");
             stage.put("target", target.getUri().toString());
             if (!preferences.edit().putString(STAGE, stage.toString()).commit()) {
