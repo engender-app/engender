@@ -88,7 +88,7 @@
 
 /* ---------- Lesbian ---------- */
 [data-palette="lesbian"] {
-  --motif-stripes: #D52D00, #FF9A56, #FFFFFF, #D362A4, #A30262;
+  --motif-stripes: #D52D00, #EF7627, #FF9A56, #FFFFFF, #D162A4, #B55690, #A30262;
 }
 [data-palette="lesbian"][data-theme="light"] {
   --bg: #FBF7F4; --surface: #FFFFFF; --surface-2: #F4EBE4;
