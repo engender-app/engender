@@ -242,7 +242,7 @@
     progress.value = reviewed;
     saveAll.disabled = busy || !dirty.size;
     saveAll.textContent = pendingSaves ? 'Saving…' : 'Save now';
-    for (const record of records) if (record.removeButton) record.removeButton.disabled = busy || hasEdits(record) || record.change === 'removed';
+    for (const record of records) if (record.removeButton) record.removeButton.disabled = busy || hasEdits(record) || record.change === 'removed' || record.queued;
     document.querySelector('#reload').disabled = busy;
     for (const control of [findText, replaceText, replaceLocale, replaceScope]) control.disabled = busy;
     previewReplacements.disabled = busy || !findText.value;
@@ -355,6 +355,7 @@
       method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     });
     if (!response.ok) throw new Error(await response.text());
+    return response;
   }
 
   // A snapshot fetched before a later write landed would put old text back
@@ -370,6 +371,7 @@
       const updated = latest.get(record.key);
       record.findings = updated?.findings ?? [];
       record.change = updated ? updated.change : 'removed';
+      record.queued = Boolean(updated?.queued);
       record.previous = updated?.previous ?? { en: null, pl: null };
       if (updated) for (const editor of record.editors) {
         const theirs = editor.field.form === null ? updated[editor.locale]
@@ -439,12 +441,21 @@
   const flush = () => { for (const editor of dirty.values()) scheduleSave(editor, 0); };
   async function removeRecord(record) {
     if (busy || hasEdits(record)) return;
-    if (!confirm(`Remove ${record.key} from English and Polish?\nThis deletes the string from both catalogues.`)) return;
+    if (!confirm(`Remove ${record.key} from English and Polish?\nThis deletes the string from both catalogues, and from the code if it still uses it.`)) return;
+    let response;
     try {
-      await patch('/api/strings', { key: record.key, en: record.en, pl: record.pl }, 'DELETE');
+      response = await patch('/api/strings', { key: record.key, en: record.en, pl: record.pl }, 'DELETE');
       writes++;
     } catch (error) {
       operation.textContent = `${record.key}: ${error.message}`;
+      return;
+    }
+    if (response.status === 202) {
+      const { uses } = await response.json();
+      record.queued = true;
+      showChange(record);
+      operation.textContent = `${record.key} is queued for removal. The code still uses it in ${uses} place${uses === 1 ? '' : 's'}.`;
+      updateControls();
       return;
     }
     record.change = 'removed';
@@ -572,11 +583,11 @@
   }
 
   function showChange(record) {
-    const shown = JSON.stringify([record.change, record.previous, record.en, record.pl]);
+    const shown = JSON.stringify([record.change, record.queued, record.previous, record.en, record.pl]);
     if (record.shown === shown) return;
     record.shown = shown;
     record.row.classList.toggle('removed', record.change === 'removed');
-    record.mark.textContent = record.change ?? '';
+    record.mark.textContent = [record.change, record.queued ? 'queued for removal' : null].filter(Boolean).join(' · ');
     for (const locale of ['en', 'pl']) {
       const comparison = record[`${locale}Comparison`];
       comparison.replaceChildren();

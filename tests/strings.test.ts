@@ -540,11 +540,19 @@ describe('removing a string and editing together', () => {
   };
   const catalogue = (root: string, locale: string) => JSON.parse(readFileSync(join(root, `messages/${locale}.json`), 'utf8'));
 
-  it('removes an unused key from both languages and its review, and refuses a used or stale one', async () => {
+  it('removes an unused key from both languages and its review, queues a used one and refuses a stale one', async () => {
     const root = fixture();
     const { send, close } = await serve(root);
     try {
-      expect((await send('DELETE', { key: 'greeting', en: 'Hello', pl: 'Dzień dobry' })).status).toBe(409);
+      // The code still shows greeting: the request is queued for the code to change first.
+      const queued = await send('DELETE', { key: 'greeting', en: 'Hello', pl: 'Dzień dobry' });
+      expect(queued.status).toBe(202);
+      expect(await queued.json()).toMatchObject({ queued: true });
+      const queue = JSON.parse(readFileSync(join(root, '.scratch/strings-removals.json'), 'utf8'));
+      expect(queue.greeting).toMatchObject({ en: 'Hello', pl: 'Dzień dobry' });
+      expect(queue.greeting.uses.length).toBeGreaterThan(0);
+      expect(readStrings(root).find((row) => row.key === 'greeting')?.queued).toBe(true);
+      expect(readStrings(root).find((row) => row.key === 'orphan')?.queued).toBe(false);
       expect((await send('DELETE', { key: 'orphan', en: 'Stale', pl: 'Zapisałaś' })).status).toBe(409);
       expect((await send('DELETE', { key: 'nothing', en: null, pl: null })).status).toBe(400);
       expect((await send('DELETE', { key: 'orphan', en: 'Unused', pl: 'Zapisałaś' })).status).toBe(204);

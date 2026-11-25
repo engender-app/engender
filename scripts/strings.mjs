@@ -14,6 +14,16 @@ import { lexiconProblem } from './lexicon-core.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PAGE = fileURLToPath(new URL('./strings.html', import.meta.url));
 const REVIEW_FILE = '.scratch/copy-review.json';
+/** Removals the page asked for while the code still used the key. Taking a
+ * key out of the source needs a person (or an agent) to rewrite the markup
+ * around it, so the request waits here with the places that use it. */
+const REMOVAL_FILE = '.scratch/strings-removals.json';
+
+/** @param {string} root @returns {Record<string, { en: unknown, pl: unknown, uses: string[], at: string }>} */
+export function readRemovals(root = ROOT) {
+  try { return JSON.parse(readFileSync(join(root, REMOVAL_FILE), 'utf8')); }
+  catch (error) { if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return {}; throw error; }
+}
 const LEXICON_PAGE = fileURLToPath(new URL('./lexicon.html', import.meta.url));
 const LEXICON_CORE = fileURLToPath(new URL('./lexicon-core.mjs', import.meta.url));
 const LEXICON_FILE = 'messages/lexicon.json';
@@ -87,6 +97,7 @@ export function readStrings(root = ROOT) {
   const en = JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8'));
   const pl = JSON.parse(readFileSync(join(root, 'messages/pl.json'), 'utf8'));
   const approved = readReviews(root);
+  const removals = readRemovals(root);
   const coverage = JSON.parse(readFileSync(join(root, 'messages/copy-coverage-50.json'), 'utf8'));
   const base = execFileSync('git', ['merge-base', 'HEAD', 'main'], { cwd: root, encoding: 'utf8' }).trim();
   const previousEn = JSON.parse(execFileSync('git', ['show', `${base}:messages/en.json`], { cwd: root, encoding: 'utf8' }));
@@ -105,7 +116,7 @@ export function readStrings(root = ROOT) {
     const previous = { en: before?.en ?? null, pl: before?.pl ?? null };
     return {
       key, theme: (now ?? before)?.theme ?? 'Unassigned copy', ...values,
-      reviewed: approved[key] === revision(values.en, values.pl), previous,
+      reviewed: approved[key] === revision(values.en, values.pl), previous, queued: Object.hasOwn(removals, key),
       change: !before ? 'added' : !now ? 'removed' : isDeepStrictEqual(values, previous) ? null : 'changed',
       findings: now?.findings ?? [], sites: (now?.sites ?? []).map(site)
     };
@@ -116,6 +127,7 @@ export function readStrings(root = ROOT) {
     en: en[key] ?? null,
     pl: pl[key] ?? null,
     reviewed: approved[key] === revision(en[key] ?? null, pl[key] ?? null),
+    queued: Object.hasOwn(removals, key),
     previous: { en: previousEn[key] ?? null, pl: previousPl[key] ?? null },
     change: !Object.hasOwn(previousEn, key) && !Object.hasOwn(previousPl, key) ? 'added' :
       !Object.hasOwn(en, key) && !Object.hasOwn(pl, key) ? 'removed' :
@@ -204,8 +216,13 @@ export function removeString(root, removal) {
   }
   const used = collectReferenceSites(copySourceFiles(root)).get(key) ?? [];
   if (used.length) {
-    const first = `${relative(root, used[0].file)}:${used[0].line}`;
-    throw new RequestError(409, `Still used in ${used.length} place${used.length === 1 ? '' : 's'}, first ${first}. Remove those references first.`);
+    const queue = readRemovals(root);
+    queue[key] = { en: en[key] ?? null, pl: pl[key] ?? null,
+      uses: used.map((site) => `${relative(root, site.file)}:${site.line}`), at: new Date().toISOString() };
+    const file = join(root, REMOVAL_FILE);
+    mkdirSync(dirname(file), { recursive: true });
+    writeAtomic(file, JSON.stringify(queue, null, 2) + '\n');
+    return { queued: true, uses: used.length };
   }
   delete en[key];
   delete pl[key];
@@ -289,9 +306,15 @@ export function createStringsServer(root = ROOT, { key = null } = {}) {
         response.statusCode = 204;
         response.end();
       } else if (request.method === 'DELETE' && request.url === '/api/strings') {
-        removeString(root, await readJson(request));
-        response.statusCode = 204;
-        response.end();
+        const removal = removeString(root, await readJson(request));
+        if (removal) {
+          response.statusCode = 202;
+          response.setHeader('Content-Type', 'application/json; charset=utf-8');
+          response.end(JSON.stringify(removal));
+        } else {
+          response.statusCode = 204;
+          response.end();
+        }
       } else {
         throw new RequestError(404, 'Not found.');
       }
