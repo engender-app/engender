@@ -429,16 +429,16 @@ describe('palette contrast coverage', () => {
   /* Final-audit ticket 22: a destructive button used to set --danger on
      its own --danger-soft ground. It sits on the page now, drawn with just
      an edge, so --danger's contrast is against whichever surface is under it. */
-  it('keeps --danger readable as a button label on all three surfaces in every palette and theme', () => {
+  it.each(['danger', 'danger-deep'])('keeps --%s readable as a button label on all three surfaces in every palette and theme', (token) => {
     for (const theme of THEMES) {
-      const danger = rawDeclaration(blockBody(String.raw`(?<!\])\[data-theme="${theme}"\]`), 'danger')!.split(/\s/)[0];
+      const danger = rawDeclaration(blockBody(String.raw`(?<!\])\[data-theme="${theme}"\]`), token)!.split(/\s/)[0];
       for (const palette of PALETTES) {
         const t = tokenMap(palette, theme);
         for (const surface of ['bg', 'surface', 'surface-2']) {
           const ratio = contrast(danger, t[surface]);
           expect(
             ratio,
-            `${palette}/${theme}: danger (${danger}) on ${surface} (${t[surface]}) has ${ratio.toFixed(2)}:1, needs 4.5:1`
+            `${palette}/${theme}: ${token} (${danger}) on ${surface} (${t[surface]}) has ${ratio.toFixed(2)}:1, needs 4.5:1`
           ).toBeGreaterThanOrEqual(4.5);
         }
       }

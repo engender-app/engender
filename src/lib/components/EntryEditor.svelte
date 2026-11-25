@@ -958,7 +958,7 @@
 
   $effect(() => armStepPreview(stepBackOwner, canStepBack()));
 
-  async function confirmDelete() {
+  async function confirmDelete(forever = false) {
     deleteOpen = false;
     if (!existing) {
       // Deleting answered the question leaving would have asked.
@@ -969,6 +969,8 @@
     const id = existing.id;
     try {
       await journal.entries.deleteEntry(id);
+      // Trash first, so a purge that fails leaves the entry in Trash.
+      if (forever) await journal.entries.purgeEntry(id);
     } catch (error) {
       console.error('could not delete the entry', error);
       toast(m.entry_delete_failed());
@@ -979,6 +981,10 @@
       await leave();
     } catch (error) {
       console.error('could not leave the editor after deleting the entry', error);
+    }
+    if (forever) {
+      toast(m.record_deleted(), { kind: 'record-deleted' });
+      return;
     }
     toast(m.entry_trashed_toast(), {
       kind: 'trashed',
@@ -1779,7 +1785,10 @@
     <SectionHeading text={m.delete_entry_q()} />
     <p class="editor-hint">{m.delete_entry_hint()}</p>
     <div class="stack-3">
-      <button class="btn btn-danger" onclick={confirmDelete}><span>{m.delete_entry()}</span></button>
+      <button class="btn btn-danger" onclick={() => confirmDelete()}><span>{m.delete_entry()}</span></button>
+      <button class="btn btn-danger btn-danger-deep" data-delete-forever onclick={() => confirmDelete(true)}>
+        <span>{m.trash_delete_forever()}</span>
+      </button>
       <button class="btn btn-ghost" onclick={() => (deleteOpen = false)}><span>{m.keep_it()}</span></button>
     </div>
   </Sheet>

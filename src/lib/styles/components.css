@@ -646,6 +646,8 @@
    already existed and this rule was not using it. */
 .btn-ghost { background: none; color: var(--accent-ink); }
 .btn-danger { background: none; border: 1px solid var(--outline); color: var(--danger); }
+/* Beside a reversible delete, the irreversible one reads a deeper red. */
+.btn-danger-deep { color: var(--danger-deep); }
 .btn-block { width: 100%; }
 
 /* The ring, and nothing else. This used to also set
