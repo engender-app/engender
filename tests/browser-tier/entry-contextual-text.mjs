@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { toEntryStepWith } from '../browser-harness.mjs';
 
 export async function entryContextualText(page, base) {
   await page.goto(`${base}/entry-contextual-text.html`);
@@ -8,6 +9,8 @@ export async function entryContextualText(page, base) {
   const save = page.locator('[data-save]');
   for (const existing of [false, true]) {
     if (existing) await page.evaluate(() => window.contextualText.open(true));
+    // A new entry's cards are on its body step (tester report 02, ticket 09).
+    await toEntryStepWith(page, '[data-contextual="tryout-felt-sense"]');
     await page.locator('[data-contextual="tryout-felt-sense"] [role="radio"]').first().click();
     for (const field of [reflection, recovery]) {
       await field.pressSequentially('felt like me');
@@ -26,6 +29,7 @@ export async function entryContextualText(page, base) {
     });
     await page.evaluate(() => window.contextualText.clearSaved());
     await page.evaluate((existing) => window.contextualText.open(existing), existing);
+    await toEntryStepWith(page, '[data-contextual="procedure-recovery"]');
     await recovery.pressSequentially('remove me');
     await recovery.press('ControlOrMeta+A');
     await recovery.press('Backspace');

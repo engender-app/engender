@@ -184,7 +184,8 @@ export async function toEntryStepWith(page, selector) {
       if (await page.locator(selector).count()) return;
       const control = page.locator(way).first();
       const at = await page.locator('[data-entry-step]').getAttribute('data-entry-step');
-      if (!(await control.count()) || (way === '[data-screen-back]' && at === 'today')) break;
+      // The last step's way on is still fading out as it arrives.
+      if (!(await control.count()) || at === (way === '[data-screen-back]' ? 'today' : 'writing')) break;
       await control.click();
       await page.waitForFunction((was) => {
         const steps = document.querySelectorAll('[data-entry-step]');

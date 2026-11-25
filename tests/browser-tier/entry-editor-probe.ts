@@ -110,6 +110,7 @@ async function toStepWith(root: ParentNode, selector: string): Promise<void> {
   for (let hop = 0; hop < 6; hop++) {
     const at = await until(() => settledStep(root), 'a settled step');
     if (root.querySelector(`[data-entry-step] ${selector}`)) return;
+    if (at === 'writing') break;
     (await until(() => root.querySelector<HTMLButtonElement>('[data-entry-continue]'), `the way on from the ${at} step`)).click();
     await until(() => (settledStep(root) && settledStep(root) !== at ? true : null), `the step after ${at}`);
   }
@@ -335,7 +336,8 @@ async function secondStepShape(): Promise<StepTwoShape> {
         .filter((pair): pair is readonly [string, Element] => pair[1] != null);
       found.sort((a, b) => (a[1].compareDocumentPosition(b[1]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
       order.push(...found.map(([name]) => name));
-      const ahead = target.querySelector<HTMLButtonElement>('[data-entry-continue]');
+      // The last step's way on is still fading out as it arrives.
+      const ahead = at === 'writing' ? null : target.querySelector<HTMLButtonElement>('[data-entry-continue]');
       if (!ahead) break;
       ahead.click();
       await until(() => (settledStep(target) && settledStep(target) !== at ? true : null), `the step after ${at}`);
