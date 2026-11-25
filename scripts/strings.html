@@ -101,9 +101,13 @@
   .finding { color: var(--bad); font-size: .85rem; margin-left: 2.25rem; }
   .comparison { font-size: .85rem; color: var(--ink-2); }
   .comparison:empty { display: none; }
+  /* Before/now only while comparing with main: off, a row stays key, EN, PL. */
+  body:not(.comparing) .comparison { display: none; }
   .comparison p, #prose p { white-space: pre-wrap; overflow-wrap: anywhere; }
   .remove { min-height: 26px; padding: 0 .5rem; margin: .2rem 0 0 auto; color: var(--bad); font-size: .75rem; white-space: nowrap; }
   .remove:hover:not(:disabled) { border-color: var(--bad); }
+  .more-sites { min-height: 24px; padding: 0 .4rem; font-size: .75rem; color: var(--ink-2); margin-top: .15rem; }
+  td a[hidden] { display: none; }
   #prose table { min-width: 0; table-layout: fixed; }
   #prose td { width: 50%; }
   /* Phone: one row stacks as key, English, Polish, used in; the toolbar
@@ -718,11 +722,23 @@
         key.append(line, record.mark, record.checks);
         showFindings(record);
         const used = element('td');
-        for (const site of record.sites) {
+        // Two places at most until asked, so a widely used string keeps a short row.
+        record.sites.forEach((site, index) => {
           const link = element('a', `${site.file.split('/').slice(-2).join('/')}:${site.line}`);
           link.href = site.href;
           link.title = `${site.file}:${site.line}`;
+          if (index >= 2) link.hidden = true;
           used.append(link);
+        });
+        if (record.sites.length > 2) {
+          const more = element('button', `+${record.sites.length - 2} more`);
+          more.type = 'button';
+          more.className = 'more-sites';
+          more.addEventListener('click', () => {
+            for (const link of used.querySelectorAll('a[hidden]')) link.hidden = false;
+            more.remove();
+          });
+          used.append(more);
         }
         record.row.append(key, localeCell(record, 'en'), localeCell(record, 'pl'), used);
         showChange(record);
@@ -748,7 +764,7 @@
   }
 
   search.addEventListener('input', refilter);
-  changed.addEventListener('change', refilter);
+  changed.addEventListener('change', () => { document.body.classList.toggle('comparing', changed.checked); refilter(); });
   proseToggle.addEventListener('change', refilter);
   theme.addEventListener('change', refilter);
   reviewFilter.addEventListener('change', refilter);
