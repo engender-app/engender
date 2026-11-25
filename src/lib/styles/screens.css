@@ -198,16 +198,6 @@
   scrollbar-width: none;
   margin: 0 calc(-1 * var(--space-5)); padding-left: var(--space-5); padding-right: var(--space-5);
 }
-/* The year's last line. It sat a hairline under whatever section ended the
-   screen; it is the screen signing off, so it gets the space a section break
-   gets (Alicja, 2026-08-25). */
-.wrapped-year-close {
-  text-align: center;
-  color: var(--text-2);
-  font-size: var(--text-sm);
-  margin-top: var(--space-8);
-  padding-bottom: var(--space-8);
-}
 
 /* ---------- The day detail ----------
    The calendar's own classes moved into the calendar screen's <style> block
@@ -579,7 +569,7 @@
 [data-swatch="nonbinary"] { background: linear-gradient(to bottom, #FCF434 0 25%, #FFF 25% 50%, #9C59D1 50% 75%, #2C2C2C 75%); }
 [data-swatch="genderfluid"] { background: linear-gradient(to bottom, #FF76A4 0 20%, #FFF 20% 40%, #C011D7 40% 60%, #2F2F2F 60% 80%, #2F3CBE 80%); }
 [data-swatch="bisexual"] { background: linear-gradient(to bottom, #D60270 0 40%, #9B4F96 40% 60%, #0038A8 60%); }
-[data-swatch="lesbian"] { background: linear-gradient(to bottom, #D52D00 0 20%, #FF9A56 20% 40%, #FFF 40% 60%, #D362A4 60% 80%, #A30262 80%); }
+[data-swatch="lesbian"] { background: linear-gradient(to bottom, #D52D00 0 14.29%, #EF7627 14.29% 28.57%, #FF9A56 28.57% 42.86%, #FFF 42.86% 57.14%, #D162A4 57.14% 71.43%, #B55690 71.43% 85.71%, #A30262 85.71%); }
 [data-swatch="pansexual"] { background: linear-gradient(to bottom, #FF218C 0 33.34%, #FFD800 33.34% 66.67%, #21B1FF 66.67%); }
 [data-swatch="rainbow"] { background: linear-gradient(to bottom, #E40303 0 16.67%, #FF8C00 16.67% 33.34%, #FFED00 33.34% 50%, #008026 50% 66.67%, #004CFF 66.67% 83.34%, #732982 83.34%); }
 [data-swatch="agender"] { background: linear-gradient(to bottom, #1A1A1A 0 14.29%, #B9B9B9 14.29% 28.58%, #FFF 28.58% 42.86%, #B9F484 42.86% 57.15%, #FFF 57.15% 71.44%, #B9B9B9 71.44% 85.72%, #1A1A1A 85.72%); }

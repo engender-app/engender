@@ -450,6 +450,28 @@
   font-weight: var(--weight-medium);
   margin: var(--space-3) 0 0;
 }
+/* A step's header (tester report 02, ticket 09). A step has to fit the
+   window, and the screen's field - 40 above a 48px title - took 155 of a
+   640px window before the step said anything. The step's field keeps the
+   back control over the title (Alicja, 2026-08-25) and drops the room
+   above it to 16, with the title at the number size, still large type on
+   the field (rule 7). The date line under it shares its line with the
+   step's progress. */
+.screen-header.is-compact .screen-field,
+.screen > .screen-header.is-compact > .screen-field {
+  padding-top: var(--space-4);
+  min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
+}
+.screen-header.is-compact .screen-title { font-size: var(--text-3xl); }
+.screen-subtitle-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.screen-subtitle-line > .screen-subtitle { margin: 0; min-width: 0; }
+.screen-subtitle-aside { flex: none; display: flex; }
 .header-action { display: flex; gap: var(--space-2); }
 /* What a door puts on the field under its title's line (rule 7, redesign
    ticket 15): the Transition door's search box, Journal's month label and
@@ -1677,10 +1699,68 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 
 /* ---------- tags ---------- */
 .tag-group { margin-bottom: var(--space-4); }
+/* A part of a new entry's step, named under the step's question (ticket 09).
+   A step carries one heading, its question (DIRECTION.md rule 12), so the
+   parts under it - the scales, the mode - are named in the tag groups'
+   small label, with a part's link at the end of the same line. */
+.step-part {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--space-5);
+}
+.entry-step > .step-part { margin-bottom: var(--space-1); }
+.step-part-name {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: normal;
+  color: var(--text-2);
+}
+.step-part .kit-heading-action { margin-right: calc(-1 * var(--space-3)); }
 /* A group's name over its chips, in the field label's own type (after-release
    28: one small-label style, sentence case, no letterspaced capitals). */
 .tag-group-name { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--text-2); display: block; margin-bottom: var(--space-2); }
 .tag-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* A new entry's tags, one sideways row per group (ticket 09). The row runs
+   to the window's edges, so a chip leaves at the edge of the glass rather
+   than at the column's, and it is 48 tall so each chip's 48px target sits
+   inside the scroller, which clips both ways. A fade of the page's colour
+   at an end with more behind it says there is more; it fades in and out. */
+.tag-picker.is-rows .tag-group { margin-bottom: var(--space-1); }
+.tag-picker.is-rows .tag-group:last-child { margin-bottom: 0; }
+.tag-picker.is-rows .tag-group-name { margin-bottom: 0; }
+.tag-row-frame {
+  position: relative;
+  margin-inline: calc(-1 * var(--space-5));
+}
+.tag-picker.is-rows .tag-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: calc((var(--touch-target) - 36px) / 2) var(--space-5);
+  scroll-padding-inline: var(--space-5);
+}
+.tag-picker.is-rows .tag-row::-webkit-scrollbar { display: none; }
+.tag-picker.is-rows .tag-chip,
+.tag-picker.is-rows .tag-chip-wrap { flex: none; white-space: nowrap; }
+.tag-row-frame::before,
+.tag-row-frame::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--space-8);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.tag-row-frame::before { inset-inline-start: 0; background: linear-gradient(to right, var(--bg), transparent); }
+.tag-row-frame::after { inset-inline-end: 0; background: linear-gradient(to left, var(--bg), transparent); }
+.tag-row-frame[data-more-start]::before,
+.tag-row-frame[data-more-end]::after { opacity: 1; }
 /* A region's slider slides in under the chip row it answers to (ticket 99);
    the margin rides the sliding element, so the gap is part of the motion
    instead of appearing with it. */

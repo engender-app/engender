@@ -410,7 +410,6 @@
           key="journey-read-failed"
           role={roleAt(activeFlag.roles, 0)}
           title={m.pj_read_failed_title()}
-          text={m.pj_read_failed_body()}
         />
       </div>
     {/snippet}

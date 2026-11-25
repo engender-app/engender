@@ -3,7 +3,7 @@
    Pure and rune-free on purpose: store.svelte.ts is a `.svelte.ts` file,
    which cannot be node-tested directly (its `$state` is a compiler macro
    with no runtime outside Svelte), so the logic that decides what a value
-   from a .ttbackup is allowed to be lives here, tested against fake input
+   from a backup file is allowed to be lives here, tested against fake input
    rather than through the reactive store. */
 
 import type { PortablePreferences } from '../archive/payload';
@@ -62,7 +62,7 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
 
 /** The value to write for a portable key, or undefined when the archive's
     value is outside what the key can hold - the same reasoning boot-cache.ts
-    gives for a damaged mirror: a .ttbackup is a file on disk, editable by
+    gives for a damaged mirror: a backup is a file on disk, editable by
     hand or corrupted in transit, and undefined here is the caller's signal
     to keep this device's own value rather than adopting a string that was
     never a valid theme, palette or check-in time.

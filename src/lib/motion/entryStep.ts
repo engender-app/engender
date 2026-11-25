@@ -17,8 +17,9 @@
    points to. `back` reverses the direction for a step back. Under reduced
    motion it is the tier-2 crossfade.
 
-   The foot is the one thing both steps share: the finish control stays where
-   it is, and only the way on (`footContinue`) opens and closes under it. */
+   The foot is the one thing every step shares: the finish control stays
+   where it is, and only the way on (`footContinue`) opens and closes beside
+   it, on the first step that has one and the last that has none. */
 
 import type { TransitionConfig } from 'svelte/transition';
 
@@ -64,12 +65,16 @@ export function footContinue(node: Element, params: { instant?: boolean } = {}):
   const row = !!parent && getComputedStyle(parent).flexDirection === 'row';
   const size = row ? box.width : box.height;
   const gap = row && parent ? parseFloat(getComputedStyle(parent).columnGap) || 0 : 0;
+  /* The gap is on the side the finish control is on: after the way on where
+     it leads the row (a new entry's steps since ticket 09), before it where
+     it follows. */
+  const side = node.nextElementSibling ? 'end' : 'start';
   return {
     duration: motionDuration('--dur-med'),
     easing: EASE_OUT,
     css: (t, u) =>
       row
-        ? `overflow: hidden; flex: none; opacity: ${t}; width: ${t * size}px; margin-inline-start: ${-u * gap}px;`
+        ? `overflow: hidden; flex: none; opacity: ${t}; width: ${t * size}px; margin-inline-${side}: ${-u * gap}px;`
         : `overflow: hidden; opacity: ${t}; height: ${t * size}px;`
   };
 }

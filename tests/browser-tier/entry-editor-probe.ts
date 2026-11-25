@@ -97,11 +97,33 @@ async function until<T>(get: () => Awaitable<T | null | undefined>, what: string
   throw new Error(`timed out waiting for ${what}`);
 }
 
-/** Walks a new entry from its first step to the rest (tester report 02,
-    ticket 03), where the note, the template and the save bar's star are. */
+/** The one step on screen once a change between steps has finished: both
+    are in the page for the length of it. */
+function settledStep(root: ParentNode): string | null {
+  const steps = root.querySelectorAll('[data-entry-step]');
+  return steps.length === 1 ? steps[0].getAttribute('data-entry-step') : null;
+}
+
+/** Walks a new entry's steps forward (tester report 02, tickets 03 and 09)
+    until `selector` is on the step shown. */
+async function toStepWith(root: ParentNode, selector: string): Promise<void> {
+  for (let hop = 0; hop < 6; hop++) {
+    const at = await until(() => settledStep(root), 'a settled step');
+    if (root.querySelector(`[data-entry-step] ${selector}`)) return;
+    if (at === 'writing') break;
+    // The way on from the first step waits for a face (ticket 09's sign-off).
+    if (at === 'today' && !root.querySelector('[data-entry-step="today"] [data-mood][aria-checked="true"]')) {
+      root.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]')?.click();
+    }
+    (await until(() => root.querySelector<HTMLButtonElement>('[data-entry-continue]'), `the way on from the ${at} step`)).click();
+    await until(() => (settledStep(root) && settledStep(root) !== at ? true : null), `the step after ${at}`);
+  }
+  throw new Error(`no step shows ${selector}`);
+}
+
+/** To the last step, where the note and the attachments are. */
 async function toTheRest(root: ParentNode): Promise<void> {
-  (await until(() => root.querySelector<HTMLButtonElement>('[data-entry-continue]'), 'the first step\'s continue')).click();
-  await until(() => root.querySelector('[data-entry-step="2"]'), 'the second step');
+  await toStepWith(root, '#ed-note');
 }
 
 /** Applies `templateId` through the sheet the screen offers, which is the
@@ -205,16 +227,16 @@ async function finishOnTheFirstStep(
   document.querySelector('#editor')!.replaceChildren(target);
   const screen = mountInto(EntryEditor, { epochDay }, target);
   try {
-    await until(() => target.querySelector('[data-entry-step="1"]'), 'the first step');
-    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="1"] [data-mood="${face}"]`), 'a face on the first step')).click();
+    await until(() => target.querySelector('[data-entry-step="today"]'), 'the first step');
+    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="today"] [data-mood="${face}"]`), 'a face on the first step')).click();
     let shownValue: string | null = null;
     if (nudgeFirstScale) {
-      const slider = await until(() => target.querySelector<HTMLElement>('[data-entry-step="1"] [role="slider"]'), 'a scale on the first step');
+      const slider = await until(() => target.querySelector<HTMLElement>('[data-entry-step="today"] [role="slider"]'), 'a scale on the first step');
       slider.focus();
       slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
       shownValue = await until(() => {
         flushSync();
-        const text = target.querySelector('[data-entry-step="1"] [data-dim-value]')?.textContent?.trim();
+        const text = target.querySelector('[data-entry-step="today"] [data-dim-value]')?.textContent?.trim();
         return text && /^\d+$/.test(text) ? text : null;
       }, 'the moved scale to show a value');
     }
@@ -256,15 +278,15 @@ async function finishOnTheSecondStep(journal: Journal, epochDay: number): Promis
   document.querySelector('#editor')!.replaceChildren(target);
   const screen = mountInto(EntryEditor, { epochDay }, target);
   try {
-    await until(() => target.querySelector('[data-entry-step="1"]'), 'the first step');
-    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="1"] [data-mood="3"]'), 'a face')).click();
-    const slider = await until(() => target.querySelector<HTMLElement>('[data-entry-step="1"] [role="slider"]'), 'a scale');
+    await until(() => target.querySelector('[data-entry-step="today"]'), 'the first step');
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]'), 'a face')).click();
+    const slider = await until(() => target.querySelector<HTMLElement>('[data-entry-step="today"] [role="slider"]'), 'a scale');
     slider.focus();
     slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await toStepWith(target, '.presentation-chip');
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="marks"] .presentation-chip'), 'a mode chip')).click();
+    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="marks"] [data-editor-section="tags"] [data-tag="${ADDED_TAG}"]`), 'a tag on the page, with no chip opened')).click();
     await toTheRest(target);
-    await until(() => (target.querySelector('[data-entry-step="1"]') ? null : true), 'the first step to leave');
-    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="2"] .presentation-chip'), 'a mode chip')).click();
-    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="2"] [data-editor-section="tags"] [data-tag="${ADDED_TAG}"]`), 'a tag on the page, with no chip opened')).click();
     typeInto(await until(() => target.querySelector<HTMLTextAreaElement>('#ed-note'), 'the note'), 'written on the second step');
     (await until(() => target.querySelector<HTMLButtonElement>('[data-save-star]'), 'the star')).click();
     const finish = await until(() => {
@@ -283,49 +305,139 @@ async function finishOnTheSecondStep(journal: Journal, epochDay: number): Promis
   }
 }
 
-type StepTwoShape = { order: string[]; backKeptDraft: boolean; footOnStep2: number; finishSameNode: boolean };
+/** A save from a middle step (ticket 09): a face on the first step, a tag on
+    the marks step, and the finish control pressed there. Writes those two
+    and nothing the later steps hold. */
+async function finishOnTheMarksStep(journal: Journal, epochDay: number): Promise<StepTwoSave> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay }, target);
+  try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]'), 'a face')).click();
+    await toStepWith(target, '[data-editor-section="tags"]');
+    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="marks"] [data-tag="${ADDED_TAG}"]`), 'a tag')).click();
+    const finish = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-entry-finish]');
+      return button && !button.disabled && !button.dataset.saveUnmet ? button : null;
+    }, 'the finish control on the marks step');
+    finish.click();
+    await until(() => target.querySelector('[data-entry-saved]'), 'the save to finish');
+    const entry = await until(async () => (await journal.entries.entriesForDay(epochDay))[0], `the entry saved on day ${epochDay}`);
+    return {
+      mood: entry.mood, dims: entry.dims, note: entry.note, tags: entry.tags,
+      presentationId: entry.presentationId ?? null, starred: !!entry.starred
+    };
+  } finally {
+    await screen.remove();
+  }
+}
 
-/** The second step's parts in page order, and what going back does to the
-    draft: the order is the one Alicja chose on 2026-11-10 (mode, tags, the
-    body and the cards, the note, the attachments last); back lands on the
-    first step with the face and the note kept. */
+/** Every body region hidden and no card offered (ticket 09): the body step
+    is not drawn, and the progress counts the steps that are. */
+async function walkWithTheBodyStepEmpty(journal: Journal): Promise<{ steps: string[]; segments: string[] }> {
+  for (const region of await journal.bodyRegions.getBodyRegions()) {
+    if (!region.hidden) await journal.bodyRegions.setRegionHidden(region.id, true);
+  }
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay: 19_009 }, target);
+  try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]'), 'a face')).click();
+    const steps: string[] = [];
+    let segments: string[] = [];
+    for (let hop = 0; hop < 6; hop++) {
+      const at = await until(() => settledStep(target), 'a settled step');
+      steps.push(at);
+      segments = [...document.querySelectorAll<HTMLElement>('[data-step-segment]')].map((s) => s.dataset.stepSegment ?? '');
+      const ahead = at === 'writing' ? null : target.querySelector<HTMLButtonElement>('[data-entry-continue]');
+      if (!ahead) break;
+      ahead.click();
+      await until(() => (settledStep(target) && settledStep(target) !== at ? true : null), `the step after ${at}`);
+    }
+    return { steps, segments };
+  } finally {
+    await screen.remove();
+  }
+}
+
+/** The mood comes first (Alicja, ticket 09's sign-off): the way on from the
+    first step, pressed with no face picked, stays on the step, takes the
+    focus to the faces and says why. */
+async function wayOnWithoutAMood(): Promise<{ step: string | null; focusOnAFace: boolean; said: string }> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay: 19_010 }, target);
+  try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-continue]'), 'the way on')).click();
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    return {
+      step: settledStep(target),
+      focusOnAFace: !!document.activeElement?.closest('[data-first-step-moods]'),
+      said: target.querySelector('[data-save-status]')?.textContent?.trim() ?? ''
+    };
+  } finally {
+    await screen.remove();
+  }
+}
+
+type StepTwoShape = { steps: string[]; order: string[]; backKeptDraft: boolean; footOnStep2: number; finishSameNode: boolean };
+
+/** The later steps' parts in page order, step by step, and what going back
+    does to the draft: the order is the one Alicja chose on 2026-11-10 (mode,
+    tags, the body and the cards, the note, the attachments last), on steps of
+    one purpose each since ticket 09; back walks every step to the first with
+    the face and the note kept. */
 async function secondStepShape(): Promise<StepTwoShape> {
   const target = document.createElement('div');
   document.querySelector('#editor')!.replaceChildren(target);
   const screen = mountInto(EntryEditor, { epochDay: 19_007 }, target);
   try {
-    await until(() => target.querySelector('[data-entry-step="1"]'), 'the first step');
-    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="1"] [data-mood="5"]'), 'a face')).click();
+    await until(() => target.querySelector('[data-entry-step="today"]'), 'the first step');
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="5"]'), 'a face')).click();
     const finishBefore = target.querySelector('[data-entry-finish]');
-    await toTheRest(target);
-    await until(() => (target.querySelector('[data-entry-step="1"]') ? null : true), 'the first step to leave');
-    const step = (await until(() => target.querySelector<HTMLElement>('[data-entry-step="2"]'), 'the second step'));
     const landmarks: [string, string][] = [
       ['mode', '.presentation-chip'],
       ['tags', '[data-editor-section="tags"]'],
-      ['body', '[data-section-chip="body"]'],
+      ['body', '[data-editor-section="body"]'],
       ['note', '#ed-note'],
       ['photos', '[data-section-chip="photos"]'],
       ['voice', '[data-section-chip="voice"]'],
       ['video', '[data-section-chip="video"]']
     ];
-    const found = landmarks
-      .map(([name, selector]) => [name, step.querySelector(selector)] as const)
-      .filter((pair): pair is readonly [string, Element] => pair[1] != null);
-    found.sort((a, b) => (a[1].compareDocumentPosition(b[1]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+    const steps: string[] = [];
+    const order: string[] = [];
+    for (let hop = 0; hop < 6; hop++) {
+      const at = await until(() => settledStep(target), 'a settled step');
+      steps.push(at);
+      const step = target.querySelector<HTMLElement>(`[data-entry-step="${at}"]`)!;
+      const found = landmarks
+        .map(([name, selector]) => [name, step.querySelector(selector)] as const)
+        .filter((pair): pair is readonly [string, Element] => pair[1] != null);
+      found.sort((a, b) => (a[1].compareDocumentPosition(b[1]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+      order.push(...found.map(([name]) => name));
+      // The last step's way on is still fading out as it arrives.
+      const ahead = at === 'writing' ? null : target.querySelector<HTMLButtonElement>('[data-entry-continue]');
+      if (!ahead) break;
+      ahead.click();
+      await until(() => (settledStep(target) && settledStep(target) !== at ? true : null), `the step after ${at}`);
+    }
     const finishAfter = target.querySelector('[data-entry-finish]');
+    const footOnLast = target.querySelectorAll('[data-entry-finish]').length;
     typeInto(target.querySelector<HTMLTextAreaElement>('#ed-note')!, 'kept across a step back');
-    target.querySelector<HTMLButtonElement>('[data-screen-back]')!.click();
-    await until(() => target.querySelector('[data-entry-step="1"]'), 'the first step again');
-    await until(() => (target.querySelector('[data-entry-step="2"]') ? null : true), 'the second step to leave');
-    const face = target.querySelector<HTMLElement>('[data-entry-step="1"] [data-mood="5"]');
+    for (let hop = 0; hop < 6 && settledStep(target) !== 'today'; hop++) {
+      const at = settledStep(target);
+      target.querySelector<HTMLButtonElement>('[data-screen-back]')!.click();
+      await until(() => (settledStep(target) && settledStep(target) !== at ? true : null), `the step before ${at}`);
+    }
+    const face = target.querySelector<HTMLElement>('[data-entry-step="today"] [data-mood="5"]');
     const faceKept = face?.getAttribute("aria-checked") === "true";
     await toTheRest(target);
     const note = (await until(() => target.querySelector<HTMLTextAreaElement>('#ed-note'), 'the note')).value;
     return {
-      order: found.map(([name]) => name),
+      steps,
+      order,
       backKeptDraft: faceKept && note === 'kept across a step back',
-      footOnStep2: target.querySelectorAll('[data-entry-finish]').length,
+      footOnStep2: footOnLast,
       finishSameNode: finishBefore != null && finishBefore === finishAfter
     };
   } finally {
@@ -356,7 +468,7 @@ async function firstStepWithEveryScaleHidden(journal: Journal): Promise<FirstSte
   document.querySelector('#editor')!.replaceChildren(target);
   const screen = mountInto(EntryEditor, { epochDay: 19_100 }, target);
   try {
-    const step = await until(() => target.querySelector<HTMLElement>('[data-entry-step="1"]'), 'the first step');
+    const step = await until(() => target.querySelector<HTMLElement>('[data-entry-step="today"]'), 'the first step');
     await until(() => step.querySelector('[data-mood]'), 'the faces');
     await new Promise((resolve) => setTimeout(resolve, 600));
     flushSync();
@@ -435,6 +547,9 @@ async function run() {
 
   /* The scales-hidden case runs on its own page load (?hideScales=1), in a
      360x640 window, so hiding every scale here cannot reach the cases below. */
+  if (new URLSearchParams(location.search).has('skipBody')) {
+    return { bodyStepEmpty: await walkWithTheBodyStepEmpty(journal) };
+  }
   if (new URLSearchParams(location.search).has('hideScales')) {
     /* "Hidden" is a scale left unticked: the entry screen offers
        `activeScales` and nothing else. */
@@ -450,6 +565,8 @@ async function run() {
     firstStepMoodOnly: await finishOnTheFirstStep(journal, 19_004, { face: 4, nudgeFirstScale: false }),
     firstStepWithAScale: await finishOnTheFirstStep(journal, 19_005, { face: 2, nudgeFirstScale: true }),
     secondStepSave: await finishOnTheSecondStep(journal, 19_006),
+    marksStepSave: await finishOnTheMarksStep(journal, 19_008),
+    wayOnWithoutAMood: await wayOnWithoutAMood(),
     secondStepShape: await secondStepShape(),
     shownPresentationId: shown.id,
     hiddenPresentationId: concealed.id

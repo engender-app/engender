@@ -485,7 +485,6 @@
             key="dose-unavailable"
             role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
             title={m.dose_unavailable_title()}
-            text={m.dose_unavailable_body()}
           />
         </div>
       {/if}

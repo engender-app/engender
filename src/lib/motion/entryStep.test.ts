@@ -81,6 +81,14 @@ describe('the foot\'s way on', () => {
     expect(css(1, 0)).toContain('margin-inline-start: 0px');
   });
 
+  it('takes the gap from its trailing side when it leads the row (ticket 09)', () => {
+    const node = foot('row', { width: 160, height: 48 }) as unknown as { nextElementSibling: object };
+    node.nextElementSibling = {};
+    const css = footContinue(node as unknown as Element).css!;
+    expect(css(0, 1)).toContain('margin-inline-end: -8px');
+    expect(css(0, 1)).not.toContain('margin-inline-start');
+  });
+
   it('crossfades instead under reduced motion', () => {
     dataset.a11yMotion = 'reduce';
     expect(footContinue(foot('column', { width: 1, height: 1 })).css!(0.5, 0.5)).not.toContain('height');

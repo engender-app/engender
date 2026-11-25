@@ -506,7 +506,7 @@ stateDiagram-v2
   Saved --> Trashed: deleteEntry sets trashed_at
   Trashed --> Saved: restoreEntry
   Trashed --> Purged: boot, after 30 days
-  Saved --> Archived: export .ttbackup
+  Saved --> Archived: export .gnd
   Archived --> Saved: restore Merge or Replace
   Saved --> Erased: reset / start over
   Purged --> [*]
@@ -531,7 +531,7 @@ Photos, thumbnails, voice recordings, video notes and documents live outside SQL
 
 ```mermaid
 flowchart TB
-  subgraph File[".ttbackup file"]
+  subgraph File[".gnd file"]
     H["plaintext header<br/>magic GDIARY, u16 version,<br/>u32 length, JSON: salt,<br/>Argon2id params, chunk count"]
     C1[chunk 0<br/>AES-256-GCM]
     C2[chunk 1 ...]

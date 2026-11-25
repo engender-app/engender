@@ -85,7 +85,6 @@
       icon="info"
       key="stats-reading-unknown"
       title={m.stats_reading_unknown_title()}
-      text={m.stats_reading_unknown_body()}
       action={{ label: m.nav_lookback(), href: '/stats' }}
     />
   {:else if recapQuery.loading}

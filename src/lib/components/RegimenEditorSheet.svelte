@@ -942,7 +942,7 @@
     {/if}
   {/if}
 </Sheet>
-<DiscardSheet {guard} body={m.regimen_discard_body()} />
+<DiscardSheet {guard} />
 <ConfirmDeleteSheet
   open={pauseDeleteTarget !== null}
   title={m.regimen_pause_delete_sheet()}

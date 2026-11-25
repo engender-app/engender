@@ -318,7 +318,6 @@
         {id}
         name="appointment-note"
         rows="4"
-        placeholder={m.appointments_note_placeholder()}
         bind:value={draft.note}
       ></textarea>
     {/snippet}

@@ -159,7 +159,7 @@ describe('runAndroidAutoExport', () => {
     expect(androidAutoExport.beginBackup).toHaveBeenCalledWith({
       snapshotAt: 17,
       scheduled: false,
-      fileName: expect.stringMatching(/^auto-backup-\d{4}-\d{2}-\d{2}-19700101T000000Z\.ttbackup$/)
+      fileName: expect.stringMatching(/^auto-backup-\d{4}-\d{2}-\d{2}-19700101T000000Z\.gnd$/)
     });
   });
 

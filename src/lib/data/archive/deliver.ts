@@ -30,7 +30,7 @@ type Sharing = {
   share?: (data: { files: File[]; title?: string }) => Promise<void>;
 };
 
-/** `alicja-journal-2026-08-11.ttbackup`, or `journal-...` when the journal
+/** `alicja-journal-2026-08-11.gnd`, or `journal-...` when the journal
     has no display name. Folded and stripped rather than percent-escaped: it
     passes through a share sheet, a file picker, and whatever filesystem is
     on the other side. The extension is the caller's, because the plain

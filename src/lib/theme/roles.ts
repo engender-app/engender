@@ -476,11 +476,12 @@ function readStripes(doc: Document): string[] {
     rule 3): the first later chromatic band of `--motif-stripes` that
     differs from the outermost band, preferring an inner band -
     so bisexual's doubled outer stop is skipped by colour rather than by
-    index, and the whole flag stays drawn in the sun with no band stolen. Two
+    index, and the whole flag stays drawn in the sun with no band stolen. Three
     flags name their own band: the six-stripe rainbow takes its blue rather
-    than its orange (Alicja, 2026-09-07, round two), and bisexual takes its
+    than its orange (Alicja, 2026-09-07, round two), bisexual takes its
     dark blue rather than its purple (Alicja, 2026-09-07, on ticket 23's
-    renders). Where no inner band is chromatic, the first later colour
+    renders), and lesbian keeps the light orange it had as a five-stripe flag
+    after moving to seven stripes (2026-11-25). Where no inner band is chromatic, the first later colour
     becomes the field. A flag with no such band falls back to its first
     colour, then to its first stripe. Polish uses white in light mode and
     red in dark mode, opposite its single sun disc.
@@ -491,7 +492,7 @@ function readStripes(doc: Document): string[] {
     tests/palette-contrast.test.ts holds every flag's pair to that floor and
     to the table DIRECTION.md prints. Ticket 23 publishes the pair beside the
     roles; this is the arithmetic it publishes. */
-const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF', bisexual: '#0038A8' };
+const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF', bisexual: '#0038A8', lesbian: '#FF9A56' };
 
 export interface FlagField {
   hex: string;

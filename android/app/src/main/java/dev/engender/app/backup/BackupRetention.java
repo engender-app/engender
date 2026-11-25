@@ -26,7 +26,7 @@ final class BackupRetention {
                 continue;
             }
             String name = document.name();
-            if (name == null || !name.startsWith("auto-") || !name.endsWith(".ttbackup")) continue;
+            if (!FolderArchives.isArchiveName(name) || !name.startsWith("auto-")) continue;
             if (++retained > KEEP && document.delete()) verified.remove(i);
         }
     }

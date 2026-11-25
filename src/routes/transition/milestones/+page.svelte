@@ -380,7 +380,6 @@
         data-own
         icon="pencil"
         title={m.ms_own_title()}
-        subtitle={m.ms_own_sub()}
         onclick={() => openEditor(null, null)}
       />
       {#each templates as tp (tp.key)}

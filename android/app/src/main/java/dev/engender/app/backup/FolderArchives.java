@@ -19,7 +19,15 @@ import java.util.List;
  * than all of that millisecond being skipped.
  */
 final class FolderArchives {
-    static final String EXTENSION = ".ttbackup";
+    static final String EXTENSION = ".gnd";
+    /** The name before backups became .gnd (after the app's first name), still carried
+     *  by older files and by a phone on an older build. Mirrors container.ts. */
+    static final String LEGACY_EXTENSION = ".ttbackup";
+
+    /** A backup by its name: either extension. Restore checks the contents. */
+    static boolean isArchiveName(String name) {
+        return name != null && (name.endsWith(EXTENSION) || name.endsWith(LEGACY_EXTENSION));
+    }
 
     interface Document {
         String uri();
@@ -35,7 +43,7 @@ final class FolderArchives {
         D newest = null;
         for (D document : documents) {
             String name = document.name();
-            if (name == null || !name.endsWith(EXTENSION)) continue;
+            if (!isArchiveName(name)) continue;
             if (document.length() <= 0) continue;
             if (own.contains(document.uri())) continue;
             if (document.lastModified() < mergedThrough) continue;

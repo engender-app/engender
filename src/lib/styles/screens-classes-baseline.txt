@@ -46,4 +46,3 @@ wrapped-stat
 wrapped-stats
 wrapped-sub
 wrapped-thin
-wrapped-year-close

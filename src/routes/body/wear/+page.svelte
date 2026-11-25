@@ -655,7 +655,7 @@
 
       <Field label={m.wear_session_note_label()} id="wear-note">
         {#snippet children(id)}
-          <textarea autocomplete={journalTextAutocomplete()} class="input" {id} name="wear-note" placeholder={m.wear_session_note_placeholder()} bind:value={editor.note}
+          <textarea autocomplete={journalTextAutocomplete()} class="input" {id} name="wear-note" bind:value={editor.note}
           ></textarea>
         {/snippet}
       </Field>
