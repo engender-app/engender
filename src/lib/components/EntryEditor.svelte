@@ -2070,6 +2070,16 @@
   .entry-foot .btn { padding-inline: var(--space-4); white-space: nowrap; }
   .entry-foot > .btn { flex: 1 1 auto; min-width: 0; }
   .entry-continue { flex: none; }
+  /* Where the two words do not fit one row - text at 130% and up, or a
+     window under 352px - the way on stands over the finish control. 22em
+     follows the text size, so 360 and 390px windows at 100% keep the row.
+     The way on carries the gap as its own padding, so the gap closes with
+     it (footContinue opens and closes its height in a column). */
+  @container app (max-width: 22em) {
+    .entry-foot { flex-direction: column; gap: 0; }
+    .entry-continue { padding-bottom: var(--space-2); }
+    .entry-foot > .btn { flex: none; }
+  }
   /* The words stacked in one cell, so the leaving name fades over the
      arriving one without the button changing size. */
   .way-on-words { display: inline-grid; min-width: 0; }
