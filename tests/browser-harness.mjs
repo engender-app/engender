@@ -166,20 +166,44 @@ export async function untilSplashLets(page) {
   }, null, { timeout: 30000 });
 }
 
-/** A new entry opens on its first step (tester report 02, ticket 03); the
- *  note, the template button, the chips and the save bar's star are one step
- *  on. Continues once when the first step is showing, waits for the first
- *  step to leave (both are in the page for the length of the change, so a
- *  handle for either is ambiguous until it has gone) and then for the note.
- *  An entry that exists has no steps and is waited for as it is.
+/** A new entry walks steps (tester report 02, tickets 03, 04 and 09): how is
+ *  today, what marked it, the body, then the note and the attachments, and a
+ *  step with nothing to show is skipped. Walks forward through the steps
+ *  until `selector` is in the page, then back from the last if it was not
+ *  ahead. Each hop waits until the step it left has gone: both are in the
+ *  page for the length of the change, so a handle for either is ambiguous
+ *  until then. An entry that exists has no steps and is left as it is.
+ *  @param {import('playwright-core').Page} page
+ *  @param {string} selector */
+export async function toEntryStepWith(page, selector) {
+  await page.waitForSelector(`[data-entry-step], #ed-note, ${selector}`);
+  if (!(await page.locator('[data-entry-step]').count())) return;
+  for (const way of ['[data-entry-continue]', '[data-screen-back]']) {
+    for (let hop = 0; hop < 6; hop++) {
+      await page.waitForFunction(() => document.querySelectorAll('[data-entry-step]').length === 1);
+      if (await page.locator(selector).count()) return;
+      const control = page.locator(way).first();
+      const at = await page.locator('[data-entry-step]').getAttribute('data-entry-step');
+      // The last step's way on is still fading out as it arrives.
+      if (!(await control.count()) || at === (way === '[data-screen-back]' ? 'today' : 'writing')) break;
+      // The way on from the first step waits for a face (ticket 09's sign-off).
+      if (at === 'today' && way === '[data-entry-continue]' && !(await page.locator('[data-entry-step="today"] [data-mood][aria-checked="true"]').count())) {
+        await page.locator('[data-entry-step="today"] [data-mood="3"]').click();
+      }
+      await control.click();
+      await page.waitForFunction((was) => {
+        const steps = document.querySelectorAll('[data-entry-step]');
+        return steps.length === 1 && steps[0].getAttribute('data-entry-step') !== was;
+      }, at);
+    }
+  }
+  throw new Error(`no step of this new entry shows ${selector}`);
+}
+
+/** The note, on a new entry's last step or an existing entry's page.
  *  @param {import('playwright-core').Page} page */
 export async function continueToTheRest(page) {
-  await page.waitForSelector('[data-entry-step], #ed-note');
-  if (await page.locator('[data-entry-step="1"]').count()) {
-    await page.locator('[data-entry-continue]').click();
-    await page.waitForSelector('[data-entry-step="2"]');
-    await page.waitForSelector('[data-entry-step="1"]', { state: 'detached' });
-  }
+  await toEntryStepWith(page, '#ed-note');
   await page.waitForSelector('#ed-note');
 }
 

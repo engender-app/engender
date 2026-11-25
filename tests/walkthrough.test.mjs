@@ -16,7 +16,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
-import { createReporter, launchChromium, fillDate, fillTime, dateValue, untilSplashLets } from './browser-harness.mjs';
+import { createReporter, launchChromium, fillDate, fillTime, dateValue, untilSplashLets, toEntryStepWith } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
 import { WALKTHROUGH_GROUPS, groupFlows } from './walkthrough-groups.mjs';
@@ -272,31 +272,22 @@ async function openNewestEntry() {
    second step (tester report 02, ticket 04) the tags are open on the page
    and have no chip. */
 async function openSection(section) {
-  await toTheRest();
-  if (section === 'tags' && await page.locator('[data-entry-step="2"]').count()) {
-    await page.waitForSelector('[data-editor-section="tags"]');
-    return;
-  }
+  /* On a new entry each section is on its own step (ticket 09): the tags
+     and the body are open there, the attachments behind their chips. */
+  await toEntryStepWith(page, `[data-editor-section="${section}"], [data-section-chip="${section}"]`);
+  if (await page.locator(`[data-editor-section="${section}"]`).count()) return;
   const chip = page.locator(`[data-section-chip="${section}"]`);
   await chip.waitFor();
   if ((await chip.getAttribute('aria-expanded')) !== 'true') await chip.click();
   await page.waitForSelector(`[data-editor-section="${section}"]`);
 }
 
-/* Tester report 02, ticket 03: a new entry opens on its first step - the
-   faces and the scales - and the note, the chips and the save bar's star
-   are on the step after it. Walks on when there is a step to walk past,
-   and only waits for the note on an entry that already exists. */
+/* Tester report 02, tickets 03 and 09: a new entry opens on its first step -
+   the faces and the scales - and the note and the attachments' chips are on
+   its last. Walks on to the note, and only waits for it on an entry that
+   already exists. */
 async function toTheRest() {
-  await page.waitForSelector('[data-entry-step], #ed-note');
-  if (await page.locator('[data-entry-step="1"]').count()) {
-    await page.locator('[data-entry-continue]').click();
-    /* The first step stays in the page for the length of the change, with
-       its own faces and foot, so a locator for either is ambiguous until it
-       has gone. */
-    await page.waitForSelector('[data-entry-step="2"]');
-    await page.waitForSelector('[data-entry-step="1"]', { state: 'detached' });
-  }
+  await toEntryStepWith(page, '#ed-note');
   await page.waitForSelector('#ed-note');
 }
 
@@ -406,7 +397,7 @@ try {
   await page.locator('[data-nav-item="home"]').first().click();
   await page.waitForSelector('[data-home-log] [data-mood="4"]');
   await page.locator('[data-home-log] [data-mood="4"]').click();
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="4"][aria-checked="true"]');
   await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-home-log]');
   await page.locator('[data-nav-item="calendar"]').first().click();
@@ -420,7 +411,7 @@ try {
   await page.locator('[data-nav-item="home"]').first().click();
   await page.waitForSelector('[data-home-log] [data-mood="4"]');
   await page.locator('[data-home-log] [data-mood="4"]').click();
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="4"][aria-checked="true"]');
   await page.evaluate(() => {
     const link = document.createElement('a');
     link.href = '/entry/new/today?seedMood=2';
@@ -428,7 +419,7 @@ try {
     link.click();
     link.remove();
   });
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="2"][aria-checked="true"]', { timeout: 5000 });
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="2"][aria-checked="true"]', { timeout: 5000 });
   // The pick makes it a draft, so leaving asks; discard it. Left by an in-app
   // link to Today: Back would return to the first address in the history.
   await page.evaluate(() => {
@@ -449,7 +440,7 @@ try {
   await page.locator('[data-nav-item="home"]').first().click();
   await page.waitForSelector('[data-home-log] [data-mood="4"]');
   await page.locator('[data-home-log] [data-mood="4"]').click();
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="4"][aria-checked="true"]');
   await page.locator('[data-entry-finish]').click();
   await page.waitForSelector('[data-home-hello]', { timeout: 10000 });
   await page.locator('[data-nav-item="calendar"]').first().click();
@@ -519,40 +510,57 @@ try {
 } catch (e) { fail('star before save', e); }
 });
 
-/* 2a3. a new entry's second step (tester report 02, ticket 04). What is
-   marked comes before what is written: the tags open on the page, the body
-   under its chip, then the note, and the photos, voice and video chips last.
-   Every one of them can still be recorded from here, a step back keeps what
-   was set, and the same finish control that saved from the first step saves
-   from this one. */
+/* 2a3. a new entry's steps (tester report 02, tickets 04 and 09). What is
+   marked comes before what is written: how is today, then mode and the tags
+   open on the page, then the body map and the cards, then the note, and the
+   photos, video and voice chips last. Every one of them can still be
+   recorded, a step back keeps what was set, and the same finish control
+   that saves from the first step saves from the last. */
 await flow('second step of a new entry', async () => {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-first-step-moods] [data-mood="4"]').click();
-  await toTheRest();
-  const order = await page.evaluate(() => {
-    const parts = [
-      ['tags', '[data-editor-section="tags"]'], ['body', '[data-section-chip="body"]'], ['note', '#ed-note'],
-      ['photos', '[data-section-chip="photos"]'], ['voice', '[data-section-chip="voice"]'], ['video', '[data-section-chip="video"]']
-    ];
-    return parts.map(([name, sel]) => [name, document.querySelector(`[data-entry-step="2"] ${sel}`)])
-      .filter(([, el]) => el)
-      .sort((a, b) => (a[1].compareDocumentPosition(b[1]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
-      .map(([name]) => name);
-  });
-  if (order.join() !== 'tags,body,note,photos,video,voice') throw new Error(`the second step's parts read ${order.join()}`);
-  if (await page.locator('[data-entry-step="2"] [data-mood]').count()) throw new Error('the faces are on the second step as well as the first');
-  for (const section of ['body', 'photos', 'voice', 'video']) {
+  const walk = [];
+  const parts = {};
+  for (let hop = 0; hop < 6; hop++) {
+    await page.waitForFunction(() => document.querySelectorAll('[data-entry-step]').length === 1);
+    const at = await page.locator('[data-entry-step]').getAttribute('data-entry-step');
+    walk.push(at);
+    parts[at] = await page.evaluate(() => {
+      const named = [['faces', '[data-mood]'], ['mode', '.presentation-chip'], ['tags', '[data-editor-section="tags"]'], ['body', '[data-editor-section="body"]'],
+        ['note', '#ed-note'], ['photos', '[data-section-chip="photos"]'], ['video', '[data-section-chip="video"]'], ['voice', '[data-section-chip="voice"]']];
+      return named.map(([name, sel]) => [name, document.querySelector(`[data-entry-step] ${sel}`)])
+        .filter(([, el]) => el)
+        .sort((a, b) => (a[1].compareDocumentPosition(b[1]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+        .map(([name]) => name).join();
+    });
+    if (at === 'marks') await page.locator('[data-entry-step] [data-tag]').first().click();
+    if (at === 'writing') break;
+    await page.locator('[data-entry-continue]').click();
+    await page.waitForFunction((was) => document.querySelector('[data-entry-step]')?.getAttribute('data-entry-step') !== was, at);
+  }
+  if (walk.join() !== 'today,marks,body,writing') throw new Error(`the steps read ${walk.join()}`);
+  const want = { today: 'faces', marks: 'mode,tags', body: 'body', writing: 'note,photos,video,voice' };
+  for (const [at, read] of Object.entries(want)) if (parts[at] !== read) throw new Error(`the ${at} step holds ${parts[at]}, not ${read}`);
+  // The last step's way on closes on its own transition; it is gone once that ends.
+  await page.locator('[data-entry-continue]').waitFor({ state: 'detached' });
+  for (const section of ['photos', 'voice', 'video']) {
     await page.locator(`[data-section-chip="${section}"]`).click();
     await page.waitForSelector(`[data-editor-section="${section}"]`);
   }
-  await page.locator('[data-tag]').first().click();
   await page.locator('#ed-note').fill('Second step proof');
   await page.locator('[data-save-star]').click();
   await page.waitForSelector('[data-save-star][aria-pressed="true"]');
-  await page.locator('[data-screen-back]').first().click();
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
-  await page.waitForSelector('[data-entry-step="2"]', { state: 'detached' });
+  for (const back of ['body', 'marks', 'today']) {
+    await page.locator('[data-screen-back]').first().click();
+    await page.waitForFunction((want) => {
+      const steps = document.querySelectorAll('[data-entry-step]');
+      return steps.length === 1 && steps[0].getAttribute('data-entry-step') === want;
+    }, back);
+  }
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="4"][aria-checked="true"]');
+  await openSection('tags');
+  if ((await page.locator('[data-entry-step] [data-tag]').first().getAttribute('aria-pressed')) !== 'true') throw new Error('a step back lost the tag');
   await toTheRest();
   if ((await page.locator('#ed-note').inputValue()) !== 'Second step proof') throw new Error('a step back lost the note');
   if (await page.locator('[data-save-star]').getAttribute('aria-pressed') !== 'true') throw new Error('a step back lost the star');
@@ -563,7 +571,7 @@ try {
   await page.locator('[data-entry-note]').filter({ hasText: 'Second step proof' }).click(); // text-under-test: this test's own fixture note, not app copy
   await page.waitForSelector('[data-save-star][aria-pressed="true"]');
   await page.waitForSelector('[data-section-chip="tags"]');
-  ok('a new entry\'s second step marks first, writes after, attaches last, and saves what both steps set');
+  ok('a new entry walks today, marks, body and writing, keeps what each set on the way back, and saves from the last');
 } catch (e) { fail('second step of a new entry', e); }
 });
 
@@ -838,28 +846,36 @@ try {
   await page.waitForFunction(() => !location.pathname.startsWith('/entry/'), null, { timeout: 10000 });
   if (await page.locator('[data-discard-record]').count()) throw new Error('an unchanged entry asked before leaving');
 
-  /* A new one (tester report 02, ticket 03): typed into on its second
-     step. Back there is a step back, not a way out - it asks nothing and
-     keeps the face and the note - and only Back off the first step meets
-     the question. A new entry has no tab bar, so the header arrow is the
-     third exit. */
+  /* A new one (tester report 02, tickets 03 and 09): typed into on its
+     last step. Back there is a step back, not a way out - each asks nothing
+     and keeps the face and the note - and only Back off the first step
+     meets the question. A new entry has no tab bar, so the header arrow is
+     the third exit. */
+  const stepBackToFirst = async (press) => {
+    for (let hop = 0; hop < 4 && !(await page.locator('[data-entry-step="today"]').count()); hop++) {
+      const at = await page.locator('[data-entry-step]').getAttribute('data-entry-step');
+      await press();
+      await page.waitForFunction((was) => {
+        const steps = document.querySelectorAll('[data-entry-step]');
+        return steps.length === 1 && steps[0].getAttribute('data-entry-step') !== was;
+      }, at);
+      if (await page.locator('[data-discard-record]').count()) throw new Error(`Back from the ${at} step asked instead of stepping back`);
+    }
+  };
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="3"][aria-checked="true"]');
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="3"][aria-checked="true"]');
   await toTheRest();
   await page.locator('#ed-note').fill('A new entry, not saved yet.');
-  await page.evaluate(() => window.history.back());
-  await page.waitForSelector('[data-entry-step="1"]');
-  if (await page.locator('[data-discard-record]').count()) throw new Error('Back from the second step asked instead of stepping back');
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="3"][aria-checked="true"]');
+  await stepBackToFirst(() => page.evaluate(() => window.history.back()));
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="3"][aria-checked="true"]');
   await page.evaluate(() => window.history.back());
   await asked('back from a new entry');
   await page.locator('[data-keep-editing]').click();
   await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
   await toTheRest();
-  if ((await page.locator('#ed-note').inputValue()) !== 'A new entry, not saved yet.') throw new Error('the note did not survive two steps back and on again');
-  await page.locator('[data-screen-back]').first().click();
-  await page.waitForSelector('[data-entry-step="1"]');
+  if ((await page.locator('#ed-note').inputValue()) !== 'A new entry, not saved yet.') throw new Error('the note did not survive the steps back and on again');
+  await stepBackToFirst(() => page.locator('[data-screen-back]').first().click());
   await page.locator('[data-screen-back]').first().click();
   await asked('the header arrow from a new entry');
   await page.locator('[data-discard-record]').click();
@@ -1243,7 +1259,7 @@ try {
   await page.locator('[data-mood="3"]').click();
   await toTheRest();
   await page.locator('#ed-note').fill('Duplicate tag labels survive saving');
-  await page.waitForSelector('[data-editor-section="tags"]');
+  await openSection('tags');
   const tags = page.locator('[data-tag]').filter({ hasText: /^social euphoria$/ }); // text-under-test: the intentionally equal built-in and custom labels
   if (await tags.count() !== 2) throw new Error('the editor did not offer both equal tag labels');
   await tags.nth(0).click();
@@ -3337,7 +3353,7 @@ try {
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   // The scales are on the first step, which is where a new entry opens.
-  await page.waitForSelector('[data-entry-step="1"]');
+  await page.waitForSelector('[data-entry-step="today"]');
   if (await page.locator('[data-dim-name]').count()) {
     throw new Error('the editor drew a scale with none ticked');
   }
@@ -4167,6 +4183,7 @@ try {
   if ((await page.locator('[data-tag="g-euphoria"]').getAttribute('aria-pressed')) !== 'true') {
     throw new Error('euphoria did not select');
   }
+  await toTheRest();
   await page.locator('#ed-note').fill('Playwright: physical and euphoria together.');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -4344,9 +4361,8 @@ try {
   if (restoredNote !== 'Killed mid-edit by Playwright.') {
     throw new Error(`note lost across reload: "${restoredNote}"`);
   }
-  // The face is on the first step, one step back, and the note is kept on the way.
-  await page.locator('[data-screen-back]').first().click();
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
+  // The face is on the first step, a few steps back, and the note is kept on the way.
+  await toEntryStepWith(page, '[data-entry-step="today"] [data-mood="4"][aria-checked="true"]');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
@@ -4393,8 +4409,7 @@ try {
   await toTheRest();
   const note = await page.locator('#ed-note').inputValue();
   if (note !== 'Backgrounded but never killed.') throw new Error(`note changed across backgrounding: "${note}"`);
-  await page.locator('[data-screen-back]').first().click();
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="3"][aria-checked="true"]');
+  await toEntryStepWith(page, '[data-entry-step="today"] [data-mood="3"][aria-checked="true"]');
   ok('backgrounding and returning in the same process leaves an unsaved edit untouched');
 } catch (e) { fail('same-process background/resume', e); }
 });
@@ -6435,7 +6450,7 @@ try {
   await openQuickAdd();
   await page.locator('[data-fan-target="mood-4"]').click();
   // The seeded face is on the first step, where a new entry opens.
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="4"][aria-checked="true"]');
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="4"][aria-checked="true"]');
   ok('quick add: a mood opens the editor seeded with it');
 } catch (e) { fail('quick add mood', e); }
 });
@@ -6445,7 +6460,7 @@ try {
   await openQuickAdd();
   await page.locator('[data-fan-target="mood-3"]').click();
   // The seeded face is on the first step, where a new entry opens.
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="3"][aria-checked="true"]');
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="3"][aria-checked="true"]');
   ok("quick add: a mood is how today's entry starts, seeded with it");
 } catch (e) { fail('quick add today', e); }
 });
@@ -7184,7 +7199,8 @@ try {
 
     await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
     await booted();
-    await toTheRest();
+    // The cards are on a new entry's body step (ticket 09); the body map is there either way.
+    await toEntryStepWith(page, '[data-editor-section="body"], [data-contextual="cycle-event"]');
     const cyclePanel = page.locator('[data-contextual="cycle-event"]');
     if (Boolean(await cyclePanel.count()) !== shown) throw new Error(`${locale} entry cycle prompt visibility disagreed`);
     if (shown) {
@@ -7429,7 +7445,7 @@ try {
   await fresh('/');
   await slideToTarget('[data-fan-target="mood-2"]');
   // The seeded face is on the first step, where a new entry opens.
-  await page.waitForSelector('[data-entry-step="1"] [data-mood="2"][aria-checked="true"]');
+  await page.waitForSelector('[data-entry-step="today"] [data-mood="2"][aria-checked="true"]');
   ok('quick add: the slide crosses the mood row too, and picks off it');
 } catch (e) { fail('quick add slide to a mood', e); }
 });

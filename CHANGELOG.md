@@ -108,14 +108,15 @@ a record of what you had but does not bring it back.
 
 ### Changed since rc.1
 
-- A new entry opens on "How is today?": the mood faces and your scales on one
-  screen. Save there and the entry is done, or go on to the second step: the
-  mode, tags, body and anything the day offers first, then the note, with
-  photos, video and voice last. The same Save entry button stays at the
-  bottom on both. Editing a saved entry keeps its single page.
-- On Android 14 and later, a back swipe on a new entry's second step shows the
-  first step under your finger, and letting go of the swipe halfway puts the
-  second step back.
+- A new entry opens on "How is today?": the mood faces and your scales. Save
+  there and the entry is done, or go on through short steps that each fit
+  the screen: mode and tags, then your body and anything the day offers,
+  then the note, with photos, video and voice last. A step with nothing to
+  show is skipped. Save entry stays at the bottom of every step. Editing a
+  saved entry keeps its single page.
+- On Android 14 and later, a back swipe on a new entry shows the step before
+  under your finger, and letting go of the swipe halfway puts the current
+  step back.
 - On Android 11 and later, the bottom of the screen moves up and down with the
   keyboard instead of jumping once it has finished opening or closing.
 - The lock screen shows Today's sun in your flag's colours where it used to

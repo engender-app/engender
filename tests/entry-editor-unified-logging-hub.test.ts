@@ -68,15 +68,15 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
     expect(editor).toContain('cycleTrackingActive');
   });
 
-  it('the star can be set on a new entry before its first save (ticket 18), on the second step since tester report 02', () => {
+  it('the star can be set on a new entry before its first save (ticket 18), on the field of every step since tester report 02 ticket 09', () => {
     /* Before this ticket the star was one of the header's `{#if existing}`
        actions, so a new entry - which never has an id for setEntryStarred
        to write against - could not be starred until after its first save.
        Proven on the source rather than a rendered DOM: the star's own
        markup sits inside <SaveBar>, which this screen always draws, and
        not inside the header's existing-only guard. A new entry's foot is the
-       finish control alone (ticket 04), so its star is on the second step's
-       page instead - checked after this. */
+       finish control and the way on (tickets 04 and 09), so its star is on
+       the header's field, behind the stepped guard - checked after this. */
     const saveBarPos = editor.indexOf('<SaveBar>');
     const saveBarEnd = editor.indexOf('</SaveBar>', saveBarPos);
     const starPos = editor.indexOf('data-save-star', saveBarPos);
@@ -88,17 +88,24 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
     const guardCloseBeforeStar = editor.lastIndexOf('{/if}', starPos);
     expect(guardCloseBeforeStar).toBeGreaterThan(guardOpenBeforeStar);
 
-    const secondStep = editor.slice(editor.indexOf('{#snippet secondStep()}'), editor.indexOf('{/snippet}', editor.indexOf('{#snippet secondStep()}')));
-    expect(secondStep).toContain('data-save-star');
+    const actions = editor.slice(editor.indexOf('{#snippet actions()}'), editor.indexOf('{/snippet}', editor.indexOf('{#snippet actions()}')));
+    expect(actions.indexOf('{#if stepped}')).toBeGreaterThanOrEqual(0);
+    expect(actions.indexOf('data-save-star')).toBeGreaterThan(actions.indexOf('{#if stepped}'));
   });
 
-  it('a new entry\'s second step draws marking before writing, with the attachments last (ticket 04)', () => {
-    const start = editor.indexOf('{#snippet secondStep()}');
-    const step = editor.slice(start, editor.indexOf('{/snippet}', start));
-    const order = ['{@render modeBlock()}', 'm.tags_label()', '{@render chipRow(MARKING_SECTIONS)}', '{@render cards()}',
-      '{@render noteField()}', '{@render chipRow(ATTACHMENT_SECTIONS)}', '{@render panels(ATTACHMENT_SECTIONS)}'].map((part) => step.indexOf(part));
-    expect(order.every((at) => at >= 0)).toBe(true);
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  it('a new entry\'s later steps draw marking before writing, with the attachments last (tickets 04 and 09)', () => {
+    const later = (name: string) => {
+      const start = editor.indexOf(`{#snippet ${name}()}`);
+      return start < 0 ? '' : editor.slice(start, editor.indexOf('{/snippet}', start));
+    };
+    const parts: [string, string][] = [['marksStep', '{@render modeBlock(true)}'], ['marksStep', '{@render tagPicker(true)}'],
+      ['bodyStep', '{@render bodyPicker()}'], ['bodyStep', '{@render cards()}'],
+      ['writingStep', '{@render noteField()}'], ['writingStep', '{@render chipRow(ATTACHMENT_SECTIONS)}'], ['writingStep', '{@render panels(ATTACHMENT_SECTIONS)}']];
+    for (const [step, part] of parts) expect(later(step)).toContain(part);
+    for (const step of ['marksStep', 'bodyStep', 'writingStep']) {
+      const within = parts.filter(([s]) => s === step).map(([, part]) => later(step).indexOf(part));
+      expect([...within].sort((a, b) => a - b)).toEqual(within);
+    }
     /* The single page draws the same pieces: no second copy of the cards or
        the note exists for the step to drift from. */
     expect(editor.match(/data-contextual="tryout-felt-sense"/g)).toHaveLength(1);

@@ -140,9 +140,9 @@ await block('Archive after browser installation loss', 2, async () => {
   console.log(`RECOVERY ${JSON.stringify({ revision: execFileSync('git', ['-C', resolve(here, '../..'), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), runtime: browser.version(), source: 'web', destination: 'web', producer: 'manual', sourceIdentity: source.identity, destinationIdentity: destination.identity, sourceDestroyed: true, ...destination })}`);
 });
 
-await block('rendered screen contracts', 175, async () => {
+await block('rendered screen contracts', 176, async () => {
   const result = await load('/screen-mount.html', 'screen-mount');
-  for (const [suite, expected] of Object.entries({ direction: 58, home: 58, calendar: 59 })) {
+  for (const [suite, expected] of Object.entries({ direction: 58, home: 58, calendar: 60 })) {
     const cases = result[suite];
     if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
     if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
@@ -2498,7 +2498,7 @@ await block('entry contextual text survives typing and clears before save', 1, a
    the merge produced survives the save into the tables - and the first is
    also the third's positive control. The third is the only one of the three
    testing a rule that lives in the component. */
-await block('phase 8 audit ticket 25 entry editor', 11, async () => {
+await block('phase 8 audit ticket 25 entry editor', 14, async () => {
   const r = await load('/entry-editor.html', 'entry-editor-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2579,10 +2579,35 @@ await block('phase 8 audit ticket 25 entry editor', 11, async () => {
   eq('the second step lists mode, tags, body, note, then photos, video, voice in that order', r.secondStepShape?.order, [
     'mode', 'tags', 'body', 'note', 'photos', 'video', 'voice'
   ]);
+  eq('a new entry walks today, marks, body and writing (ticket 09)', r.secondStepShape?.steps, ['today', 'marks', 'body', 'writing']);
+  eq('the way on from the first step waits for a face, takes the focus to the faces and says why (ticket 09)', r.wayOnWithoutAMood, {
+    step: 'today', focusOnAFace: true, said: 'Pick a mood first.'
+  });
+  const marks = r.marksStepSave;
+  eq('a save from the marks step writes the face and the tag, and nothing the later steps hold (ticket 09)', marks && {
+    mood: marks.mood, tags: marks.tags, note: marks.note, mode: marks.presentationId, starred: marks.starred
+  }, { mood: 3, tags: ['g-body-eu'], note: '', mode: null, starred: false });
   eq('a step back keeps the face and the note', r.secondStepShape?.backKeptDraft, true);
-  eq('one finish control, the same node on both steps', r.secondStepShape && {
+  eq('one finish control, the same node on every step', r.secondStepShape && {
     count: r.secondStepShape.footOnStep2, same: r.secondStepShape.finishSameNode
   }, { count: 1, same: true });
+});
+
+/* Tester report 02, ticket 09: a step with nothing to show is not drawn. Every
+   body region hidden and no card offered, on its own page load (?skipBody=1)
+   so the hidden regions cannot reach the cases above: the walk goes from the
+   marks step straight to the note, and the progress has three segments. It
+   fails on an editor that draws the body step regardless. */
+await block('tester report 02 ticket 09 a step with nothing to show is skipped', 2, async () => {
+  const r = await load('/entry-editor.html?skipBody=1', 'entry-editor-probe');
+  if (r.error) throw new Error(r.error);
+  const v = r.bodyStepEmpty;
+  const eq = (label, actual, expected) => {
+    if (JSON.stringify(actual) === JSON.stringify(expected)) ok(label);
+    else fail(label, `got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
+  };
+  eq('the walk skips the body step', v?.steps, ['today', 'marks', 'writing']);
+  eq('the progress counts the three steps shown', v?.segments, ['today', 'marks', 'writing']);
 });
 
 /* Tester report 02, ticket 03, box 5: a person who has unticked every scale

@@ -75,7 +75,13 @@ describe("the editor's effects card, and the cascade (ADR-0052)", () => {
     for (const card of ['{#if activeTryout}', '{#if scheduleDose &&', '{#if recoveringProcedure}']) {
       expect(editor).toContain(card);
     }
-    expect(editor.match(/effectsQuiet/g)?.length).toBe(2);
+    /* Its declaration, its card's gate, and the body step's own question of
+       whether any card shows (ticket 09), which reads the same gate. */
+    expect(editor.match(/effectsQuiet/g)?.length).toBe(3);
+    const offered = editor.slice(editor.indexOf('let cardsOffered'), editor.indexOf(');', editor.indexOf('let cardsOffered')));
+    for (const gate of ['activeTryout', 'scheduleDose', 'recoveringProcedure', 'isHrtActive && !effectsQuiet', 'cycleTrackingActive']) {
+      expect(offered).toContain(gate);
+    }
   });
 
   it('reads the finish against today, not against the entry being written', () => {

@@ -284,6 +284,19 @@ export async function calendarContracts(): Promise<Result[]> {
   }
   screen = await mountScreen(`/entry/new/${today}`, f);
   await until(() => root().querySelector('[data-save]'), 'editor ready');
+  /* The faces are on a new entry's first step and the note, the template
+     and the attachments' chips on its last (tester report 02, ticket 09). */
+  await check('New Entry opens on the faces', () => root().querySelectorAll('[data-entry-step="today"] [data-mood]').length === 5);
+  // The way on from the first step waits for a face (ticket 09's sign-off).
+  node(root(), '[data-entry-step="today"] [data-mood="3"]').click();
+  for (let hop = 0; hop < 6 && !root().querySelector('[data-entry-step] #ed-note'); hop++) {
+    const at = root().querySelector('[data-entry-step]')?.getAttribute('data-entry-step');
+    node(root(), '[data-entry-continue]').click();
+    await until(() => {
+      const steps = root().querySelectorAll('[data-entry-step]');
+      return steps.length === 1 && steps[0].getAttribute('data-entry-step') !== at;
+    }, `the step after ${at}`);
+  }
   await check(
     'New Entry keeps named title and shared surfaces',
     () =>
@@ -292,11 +305,10 @@ export async function calendarContracts(): Promise<Result[]> {
   );
 
   await check(
-    'Editor keeps save, template, note and shared mood handles',
+    'Editor keeps save, template and note on the last step',
     () =>
       root().querySelector('[data-use-template]') &&
       root().querySelector('#ed-note') &&
-      root().querySelectorAll('[data-mood]').length === 5 &&
       root().querySelector('[data-screen-title="entry"]')
   );
   for (const section of ['voice', 'video']) {

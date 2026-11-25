@@ -70,7 +70,7 @@ try {
   });
   await check('ISO new entry opens its day and preserves seedMood', async () => {
     await load('/entry/new/2026-10-05?seedMood=4');
-    await page.locator('[data-entry-step="1"]').waitFor({ timeout: 3000 });
+    await page.locator('[data-entry-step="today"]').waitFor({ timeout: 3000 });
     assert.equal(await page.locator('[data-mood="4"]').getAttribute('aria-checked'), 'true');
     assert.match(await page.locator('[data-app-scroll-region]').innerText(), /5 October/);
   });

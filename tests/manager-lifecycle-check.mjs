@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
-import { continueToTheRest, launchChromium, previewBuild } from './browser-harness.mjs';
+import { continueToTheRest, launchChromium, previewBuild, toEntryStepWith } from './browser-harness.mjs';
 import { firstRun, reachAccessSetup, ready, clientRoute, JOURNAL_SECRET } from './browser-tier/built-flow.mjs';
 
 const [serial, pkg] = process.argv.slice(2);
@@ -63,8 +63,11 @@ try {
   await closed();
   const entry = '/entry/new/20000';
   const openManager = async kind => {
-    if (kind === 'modes') await page.locator('[data-manage-presentations]').click();
-    else {
+    // A new entry's modes are on its marks step (tester report 02, ticket 09).
+    if (kind === 'modes') {
+      await toEntryStepWith(page, '[data-manage-presentations]');
+      await page.locator('[data-manage-presentations]').click();
+    } else {
       await page.locator('[data-use-template]').click();
       await page.locator('[data-manage-entry-templates]').click();
       await page.locator('[data-manage-entry-templates]').waitFor({ state: 'detached' });

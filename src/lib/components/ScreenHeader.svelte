@@ -85,7 +85,9 @@
     actions,
     blindContent,
     field,
-    heading
+    heading,
+    compact = false,
+    aside
   }: {
     title: string;
     subtitle?: string;
@@ -108,6 +110,12 @@
         entry's steps swap their heading as one step leaves and the next
         arrives. `title` stays the plain text everywhere else. */
     heading?: Snippet;
+    /** A step's field (ticket 09): the back control over a title at the
+        number size rather than the screen size, so the answers under it
+        get the room a step needs to fit the window. */
+    compact?: boolean;
+    /** Drawn at the trailing end of the subtitle's line: a step's progress. */
+    aside?: Snippet;
   } = $props();
 
   /* Everything the browser does with a click that is not "follow this link
@@ -130,6 +138,7 @@
   class:is-collapsed={titleHidden && !back && !actions && !field}
   class:is-field-only={titleHidden && !back && !actions && !!field}
   class:is-chrome={chrome}
+  class:is-compact={compact}
   data-screen-header
 >
   <!-- The subtitle is a row of its own rather than a second line inside the
@@ -208,7 +217,20 @@
        one (UpdateNoticeSlot.svelte). -->
   <UpdateNoticeSlot />
 
-  {#if subtitle}
+  {#snippet subtitleLine()}
+    <p class="screen-subtitle" data-screen-subtitle use:resize>
+      {#key subtitle}<span out:crossfade>{subtitle}</span>{/key}
+    </p>
+  {/snippet}
+
+  {#if subtitle && aside}
+    <!-- A step's date line shares its one line with the step's progress,
+         which sits at its trailing end (ticket 09). -->
+    <div class="screen-subtitle-line">
+      {@render subtitleLine()}
+      <div class="screen-subtitle-aside">{@render aside()}</div>
+    </div>
+  {:else if subtitle}
     <!-- A line that lands from a read (the return surface's, most visibly)
          swaps its words once while the screen is up. Keyed, so the previous
          line fades off the one replacing it - DayStrip's own treatment of a
@@ -217,8 +239,6 @@
          with it: the return surface's answer is a line longer than the one
          it replaces, and the page under the header took those 23px in one
          frame (ux-carpet ticket 193). -->
-    <p class="screen-subtitle" data-screen-subtitle use:resize>
-      {#key subtitle}<span out:crossfade>{subtitle}</span>{/key}
-    </p>
+    {@render subtitleLine()}
   {/if}
 </header>
