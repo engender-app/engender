@@ -9,17 +9,17 @@ import { exportFileName } from './deliver.ts';
    a person reads. */
 
 test('the file name carries the journal name and the day', () => {
-  assert.equal(exportFileName('Alicja', ARCHIVE_FILE_EXTENSION, 20676), 'alicja-journal-2026-08-11.ttbackup');
+  assert.equal(exportFileName('Alicja', ARCHIVE_FILE_EXTENSION, 20676), 'alicja-journal-2026-08-11.gnd');
 });
 
 test('a name with Polish letterforms or spaces folds to something a filesystem will take', () => {
-  assert.equal(exportFileName('Zażółć Gęślą', ARCHIVE_FILE_EXTENSION, 20676), 'zazolc-gesla-journal-2026-08-11.ttbackup');
+  assert.equal(exportFileName('Zażółć Gęślą', ARCHIVE_FILE_EXTENSION, 20676), 'zazolc-gesla-journal-2026-08-11.gnd');
 });
 
 test('a journal with no name still gets a name', () => {
-  assert.equal(exportFileName('', ARCHIVE_FILE_EXTENSION, 20676), 'journal-2026-08-11.ttbackup');
+  assert.equal(exportFileName('', ARCHIVE_FILE_EXTENSION, 20676), 'journal-2026-08-11.gnd');
 });
 
 test('a name that is nothing but punctuation is treated as no name', () => {
-  assert.equal(exportFileName('!!! ???', ARCHIVE_FILE_EXTENSION, 20676), 'journal-2026-08-11.ttbackup');
+  assert.equal(exportFileName('!!! ???', ARCHIVE_FILE_EXTENSION, 20676), 'journal-2026-08-11.gnd');
 });

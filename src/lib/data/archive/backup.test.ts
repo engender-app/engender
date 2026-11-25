@@ -73,7 +73,7 @@ for (const path of EXPORT_PATHS) {
 }
 
 test('each path names the file it delivers after the journal and the day', async () => {
-  const extensions: Record<string, string> = { encrypted: '.ttbackup', csv: '.csv', json: '.json' };
+  const extensions: Record<string, string> = { encrypted: '.gnd', csv: '.csv', json: '.json' };
   for (const path of EXPORT_PATHS) {
     const { deliver, delivered } = fakeDelivery();
     await runExport(path, source, { deliver, recordBackup: () => {} });
@@ -144,6 +144,6 @@ for (const path of EXPORT_PATHS) {
     const { deliver, delivered } = fakeDelivery();
     await runExport(path, { ...source, preferences: { ...source.preferences, disguise: true } },
       { deliver, recordBackup: () => {} });
-    assert.match(delivered[0].fileName, /^backup-\d{4}-\d{2}-\d{2}\.(ttbackup|csv|json)$/);
+    assert.match(delivered[0].fileName, /^backup-\d{4}-\d{2}-\d{2}\.(gnd|csv|json)$/);
   });
 }

@@ -14,7 +14,7 @@
    file, and a stream cannot be consumed twice. */
 
 import { chooseFiles } from '../fileDialog';
-import { ARCHIVE_FILE_EXTENSION } from './container';
+import { ARCHIVE_FILE_EXTENSION, LEGACY_ARCHIVE_FILE_EXTENSION } from './container';
 
 export interface PickedArchive {
   /** What to show the user they picked. Never a path. */
@@ -34,7 +34,7 @@ export class EmptyArchiveFileError extends Error {}
     entry that names a real MIME type (ticket 66); the extension alone
     resolved to nothing and crashed the picker before it could open. */
 export async function pickArchive(): Promise<PickedArchive | null> {
-  const [file] = await chooseFiles(`${ARCHIVE_FILE_EXTENSION},application/octet-stream`);
+  const [file] = await chooseFiles(`${ARCHIVE_FILE_EXTENSION},${LEGACY_ARCHIVE_FILE_EXTENSION},application/octet-stream`);
   if (!file) return null;
   if (file.size === 0) throw new EmptyArchiveFileError();
   return { name: file.name, bytes: () => blobBytes(file) };
