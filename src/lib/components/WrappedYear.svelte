@@ -268,8 +268,8 @@
 
 <!-- The year's letters, each opening on its own text (phase 5 deepening
      ticket 13). They sit beside the milestones - both are records of the
-     year itself - and ahead of the close line, so the last word a yearly
-     wrapped leaves you with can be your own. The rows take the milestones'
+     year itself - and close the screen, so the last word a yearly wrapped
+     leaves you with can be your own. The rows take the milestones'
      stripe: a fourth area role would re-shuffle every palette this screen
      already composes, and a list of records is a list of records. -->
 {#if letters.length}
@@ -280,4 +280,3 @@
     {/each}
   </ListCard>
 {/if}
-
