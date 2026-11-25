@@ -73,6 +73,7 @@
   import SaveBar from '$lib/components/SaveBar.svelte';
   import EntryFirstStep from '$lib/components/EntryFirstStep.svelte';
   import StepProgress from '$lib/components/StepProgress.svelte';
+  import { scrollCues } from '$lib/components/scrollCues';
   import { moodToApply } from '$lib/components/seedMoodArrival';
   import { cssPart, footContinue, stepScrub, stepTravel } from '$lib/motion/entryStep';
   import type { ScrubPart, StepScrub } from '$lib/motion/entryStep';
@@ -891,6 +892,9 @@
   }
 
   let stepScreen = $state<HTMLElement | undefined>();
+  /* The window a step scrolls in where it cannot fit (sixteen scales, a
+     big vocabulary): the foot says when more of the step is below it. */
+  let stepRegion = $derived(stepScreen?.closest<HTMLElement>('[data-app-scroll-region]') ?? null);
 
   /* Brings the step change in at the top of the page. A long step scrolled
      down would otherwise swap under the window and leave the new step's
@@ -1819,7 +1823,7 @@
            and says what it does; going on is the soft block before it,
            naming the next step in a word. One row since ticket 09: stacked
            the two took 125px of the step's window, in a row 80. -->
-      <div class="entry-foot">
+      <div class="entry-foot" use:scrollCues={{ axis: 'y', scroller: stepRegion }}>
         {#if stepAhead || previewing}
           <div class="entry-continue" transition:footContinue={{ instant: instantStep || previewing }}>
             <button
@@ -2038,10 +2042,28 @@
      gap opens and closes with it. Side by side where there is room, at the
      one-row height the editor's own foot takes at this width. */
   .entry-foot {
+    position: relative;
     width: 100%;
     display: flex;
     gap: var(--space-2);
   }
+  /* More of the step below the foot (ticket 09): the page's colour rises
+     over the last of the step at the foot's hairline, and fades away once
+     the step is scrolled to its end. Above the foot's own top padding and
+     hairline, across the column's whole width. */
+  .entry-foot::before {
+    content: '';
+    position: absolute;
+    left: calc(-1 * var(--space-5));
+    right: calc(-1 * var(--space-5));
+    bottom: calc(100% + var(--space-3) + 1px);
+    height: var(--space-8);
+    background: linear-gradient(to bottom, transparent, var(--bg));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .entry-foot:global([data-more-end])::before { opacity: 1; }
   .entry-foot .btn { width: 100%; }
   /* The way on is as wide as its word, and the finish control takes the
      rest of the row, so neither label wraps at 360px in either language. */

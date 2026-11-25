@@ -41,8 +41,13 @@ export function scrollCues(frame: HTMLElement, params: ScrollCuesParams) {
   function attach() {
     target?.removeEventListener('scroll', update);
     observer.disconnect();
-    target = current.scroller ?? (frame.firstElementChild as HTMLElement | null);
-    if (!target) return;
+    // A scroller named but not there yet (null) waits for the next update.
+    target = 'scroller' in current ? (current.scroller ?? null) : (frame.firstElementChild as HTMLElement | null);
+    if (!target) {
+      frame.removeAttribute('data-more-start');
+      frame.removeAttribute('data-more-end');
+      return;
+    }
     target.addEventListener('scroll', update, { passive: true });
     observer.observe(target);
     for (const child of target.children) observer.observe(child);
