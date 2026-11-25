@@ -147,8 +147,8 @@
   const stepped = entryId == null;
   /* The marks step holds mode and tags, so it is there while either has
      something to pick. */
-  const hasMarks = () =>
-    vocabulary.visiblePresentations.length > 0 || vocabulary.visibleTagGroups.some((group) => group.tags.length > 0);
+  const hasTags = () => vocabulary.visibleTagGroups.some((group) => group.tags.length > 0);
+  const hasMarks = () => vocabulary.visiblePresentations.length > 0 || hasTags();
   // svelte-ignore state_referenced_locally
   let step = $state<EntryStep>(
     stepped ? arrivalStep(openSection, stepsShown({ marks: hasMarks(), body: vocabulary.visibleBodyRegions.length > 0 })) : 'writing'
@@ -178,7 +178,7 @@
     },
     ownsDeparture: (departure) => {
       if (departure.type !== 'popstate' || (departure.delta ?? 0) >= 0 || !canStepBack()) return false;
-      void goToStep(previousStep(shown, step)!);
+      if (stepBehind) void goToStep(stepBehind);
       return true;
     }
   });
@@ -581,6 +581,7 @@
   });
   let shown = $derived(stepsShown(stepContent, step));
   let stepAhead = $derived(nextStep(shown, step));
+  let stepBehind = $derived(previousStep(shown, step));
 
   function stepTitle(which: EntryStep): string {
     switch (which) {
@@ -601,7 +602,7 @@
       case 'today':
         return m.home_log_heading();
       case 'marks':
-        return vocabulary.visibleTagGroups.some((group) => group.tags.length > 0) ? m.tags_label() : m.presentation_label();
+        return hasTags() ? m.tags_label() : m.presentation_label();
       case 'body':
         return m.body_map_title();
       case 'writing':
@@ -888,7 +889,7 @@
   /** Past the first step, with nothing saving and nothing saved: the only
       time Back is a step rather than a way out. */
   function canStepBack(): boolean {
-    return stepped && previousStep(shown, step) !== null && !session.saving && session.draft.savedId === undefined;
+    return stepped && stepBehind !== null && !session.saving && session.draft.savedId === undefined;
   }
 
   let stepScreen = $state<HTMLElement | undefined>();
@@ -952,7 +953,7 @@
   function beginPreview(): boolean {
     if (!canStepBack() || stepping || previewing || saving) return false;
     stepping = true;
-    previewTarget = previousStep(shown, step)!;
+    previewTarget = stepBehind!;
     /* The way on opens under the gesture only when the step being left is
        the last, which has none; every other step has one already. */
     const wayOnArrives = nextStep(shown, step) === null;
@@ -1018,7 +1019,7 @@
       return true;
     }
     if (!canStepBack()) return false;
-    void goToStep(previousStep(shown, step)!);
+    if (stepBehind) void goToStep(stepBehind);
     return true;
   };
 
@@ -1111,7 +1112,7 @@
     title={entryId != null ? m.entry() : stepped ? stepTitle(step) : m.new_entry()}
     subtitle={dateLine}
     screen="entry"
-    back={stepped && previousStep(shown, step) ? () => void goToStep(previousStep(shown, step)!) : existing ? `/day/${day}` : '/'}
+    back={stepped && stepBehind ? () => stepBehind && void goToStep(stepBehind) : existing ? `/day/${day}` : '/'}
     heading={stepped ? stepHeading : undefined}
     compact={stepped}
     aside={stepped ? stepPlace : undefined}
@@ -1229,9 +1230,9 @@
     {#if onStep}
       <!-- On a step the question is the one heading (DIRECTION.md rule 12),
            so the part under it is named in the small label the tag groups
-           use, and its link ends the row of chips (ticket 09). -->
+           use, not a heading, and its link ends the row of chips (ticket 09). -->
       <div class="step-part">
-        <h2 class="step-part-name">{m.presentation_label()}</h2>
+        <span class="step-part-name">{m.presentation_label()}</span>
       </div>
     {:else}
       <SectionHeading text={m.presentation_label()}>
@@ -1732,7 +1733,7 @@
        the tags and the body carry no heading of their own. -->
   {#snippet marksStep()}
   {@render modeBlock(true)}
-  {#if vocabulary.visibleTagGroups.some((group) => group.tags.length > 0)}
+  {#if hasTags()}
     <div class="editor-section" id="editor-section-tags" data-editor-section="tags">
       {@render tagPicker(true)}
     </div>
@@ -1766,7 +1767,7 @@
   {/snippet}
 
   {#if stepped}
-    <!-- One cell for both steps, so the one leaving and the one arriving
+    <!-- One cell for every step, so the one leaving and the one arriving
          share it for the length of the change and nothing under them moves
          ($lib/motion/entryStep). -->
     <div class="entry-stage">
@@ -1822,7 +1823,7 @@
            Finishing saves what is set and closes, so it is the ink button
            and says what it does; going on is the soft block before it,
            naming the next step in a word. One row since ticket 09: stacked
-           the two took 125px of the step's window, in a row 80. -->
+           the two took 125px of the step's window, in a row 69. -->
       <div class="entry-foot" use:scrollCues={{ axis: 'y', scroller: stepRegion }}>
         {#if stepAhead || previewing}
           <div class="entry-continue" transition:footContinue={{ instant: instantStep || previewing }}>

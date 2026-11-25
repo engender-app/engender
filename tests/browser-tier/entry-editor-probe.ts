@@ -301,6 +301,60 @@ async function finishOnTheSecondStep(journal: Journal, epochDay: number): Promis
   }
 }
 
+/** A save from a middle step (ticket 09): a face on the first step, a tag on
+    the marks step, and the finish control pressed there. Writes those two
+    and nothing the later steps hold. */
+async function finishOnTheMarksStep(journal: Journal, epochDay: number): Promise<StepTwoSave> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay }, target);
+  try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]'), 'a face')).click();
+    await toStepWith(target, '[data-editor-section="tags"]');
+    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="marks"] [data-tag="${ADDED_TAG}"]`), 'a tag')).click();
+    const finish = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-entry-finish]');
+      return button && !button.disabled && !button.dataset.saveUnmet ? button : null;
+    }, 'the finish control on the marks step');
+    finish.click();
+    await until(() => target.querySelector('[data-entry-saved]'), 'the save to finish');
+    const entry = await until(async () => (await journal.entries.entriesForDay(epochDay))[0], `the entry saved on day ${epochDay}`);
+    return {
+      mood: entry.mood, dims: entry.dims, note: entry.note, tags: entry.tags,
+      presentationId: entry.presentationId ?? null, starred: !!entry.starred
+    };
+  } finally {
+    await screen.remove();
+  }
+}
+
+/** Every body region hidden and no card offered (ticket 09): the body step
+    is not drawn, and the progress counts the steps that are. */
+async function walkWithTheBodyStepEmpty(journal: Journal): Promise<{ steps: string[]; segments: string[] }> {
+  for (const region of await journal.bodyRegions.getBodyRegions()) {
+    if (!region.hidden) await journal.bodyRegions.setRegionHidden(region.id, true);
+  }
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay: 19_009 }, target);
+  try {
+    const steps: string[] = [];
+    let segments: string[] = [];
+    for (let hop = 0; hop < 6; hop++) {
+      const at = await until(() => settledStep(target), 'a settled step');
+      steps.push(at);
+      segments = [...document.querySelectorAll<HTMLElement>('[data-step-segment]')].map((s) => s.dataset.stepSegment ?? '');
+      const ahead = at === 'writing' ? null : target.querySelector<HTMLButtonElement>('[data-entry-continue]');
+      if (!ahead) break;
+      ahead.click();
+      await until(() => (settledStep(target) && settledStep(target) !== at ? true : null), `the step after ${at}`);
+    }
+    return { steps, segments };
+  } finally {
+    await screen.remove();
+  }
+}
+
 type StepTwoShape = { steps: string[]; order: string[]; backKeptDraft: boolean; footOnStep2: number; finishSameNode: boolean };
 
 /** The later steps' parts in page order, step by step, and what going back
@@ -468,6 +522,9 @@ async function run() {
 
   /* The scales-hidden case runs on its own page load (?hideScales=1), in a
      360x640 window, so hiding every scale here cannot reach the cases below. */
+  if (new URLSearchParams(location.search).has('skipBody')) {
+    return { bodyStepEmpty: await walkWithTheBodyStepEmpty(journal) };
+  }
   if (new URLSearchParams(location.search).has('hideScales')) {
     /* "Hidden" is a scale left unticked: the entry screen offers
        `activeScales` and nothing else. */
@@ -483,6 +540,7 @@ async function run() {
     firstStepMoodOnly: await finishOnTheFirstStep(journal, 19_004, { face: 4, nudgeFirstScale: false }),
     firstStepWithAScale: await finishOnTheFirstStep(journal, 19_005, { face: 2, nudgeFirstScale: true }),
     secondStepSave: await finishOnTheSecondStep(journal, 19_006),
+    marksStepSave: await finishOnTheMarksStep(journal, 19_008),
     secondStepShape: await secondStepShape(),
     shownPresentationId: shown.id,
     hiddenPresentationId: concealed.id

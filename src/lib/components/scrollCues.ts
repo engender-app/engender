@@ -7,8 +7,9 @@
    inside it (its first child unless named), writing `data-more-start` and
    `data-more-end` on the frame. The frame's stylesheet draws the cue, so a
    cue that comes or goes fades on its own transition rather than cutting.
-   RTL needs nothing: scrollLeft runs negative there, and `start` is read
-   as the reading start. */
+   `start` is the reading start: scrollLeft runs negative right to left, so
+   the attributes hold there too, but the fades in components.css are drawn
+   left to right, which is all the app's two languages need. */
 
 export type ScrollEdges = { start: boolean; end: boolean };
 

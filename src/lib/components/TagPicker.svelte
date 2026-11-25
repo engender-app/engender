@@ -53,8 +53,8 @@
   </button>
 {/snippet}
 
-{#snippet row(g: TagGroup, sideways = false)}
-  <div class="tag-row" role="group" aria-label={m.tags_group_aria({ group: g.name })} {@attach (row) => { if (sideways) untrack(() => toFirstPick(row)); }}>
+{#snippet row(g: TagGroup)}
+  <div class="tag-row" role="group" aria-label={m.tags_group_aria({ group: g.name })} {@attach (node) => { if (rows) untrack(() => toFirstPick(node)); }}>
     {#each g.tags as t (t.id)}
       {#if t.description}
         <span class="tag-chip-wrap">
@@ -78,7 +78,7 @@
         <!-- The frame holds the fades at the row's two ends, which do not
              scroll with it; scrollCues says which end has more. -->
         <div class="tag-row-frame" use:scrollCues={{ axis: 'x' }}>
-          {@render row(g, true)}
+          {@render row(g)}
         </div>
       {:else}
         {@render row(g)}
