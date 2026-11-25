@@ -679,8 +679,10 @@
     {/if}
     <!-- Over an open journal with its chrome, and never over a gate, setup
          or the unlock's opening: a new person meets it on Today once setup
-         is done. Loaded on demand, since almost no visit asks for it. -->
-    {#if installAsked && isReadyState(bootState) && !chromeless && !ui.appOpening}
+         is done. Onboarded as well as chromeless, because a journal that is
+         not onboarded is drawn at / for a moment before the gate moves it
+         to setup. Loaded on demand, since almost no visit asks for it. -->
+    {#if installAsked && isReadyState(bootState) && prefs.onboarded && !chromeless && !ui.appOpening}
       {#await import('$lib/components/InstallSheet.svelte') then { default: InstallSheet }}
         <InstallSheet />
       {/await}
