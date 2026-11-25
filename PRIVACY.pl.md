@@ -9,7 +9,7 @@ o pomoc.
 
 ## Kontakt
 
-- e-mail: engender-app@pm.me
+- e-mail: help@engender.app
 - błędy i ogólne pytania: https://github.com/engender-app/engender/issues
 - problemy z bezpieczeństwem: https://github.com/engender-app/engender/blob/main/SECURITY.md
 
@@ -31,8 +31,7 @@ a dopiero potem engender je importuje i szyfruje.
 ## Utracone klucze i hasła
 
 Autorka nie odzyska zapomnianego hasła do dziennika, kodu PIN ani hasła do
-kopii zapasowej. Nie odzyska też utraconego klucza urządzenia ani klucza
-odzyskiwania.
+kopii zapasowej.
 
 ## Aplikacja na Androida
 
@@ -42,7 +41,7 @@ zapasową Androida w chmurze i przenoszenie danych między telefonami.
 Miejsce, z którego pobierasz aplikację (GitHub, Google Play albo F-Droid),
 obsługuje pobieranie na własnych zasadach.
 
-Na kilka rzeczy w samym Androidzie aplikacja ma tylko częściowy wpływ.
+Jest kilka rzeczy w samym Androidzie, na które aplikacja ma tylko częściowy wpływ.
 Aplikacja rezygnuje z wysyłania danych diagnostycznych WebView do Google,
 ale Google Safe Browsing pozostaje w WebView domyślnie włączone i może
 korzystać z dostępu do sieci usług Google Play. Aplikacja prosi klawiaturę,
@@ -81,7 +80,7 @@ Wynik badań skanuje się na twoim urządzeniu.
 
 ## Strona internetowa i przewodnik
 
-Strona, przewodnik i ta polityka pod adresem `engender.barankiewicz.dev`
+Strona, przewodnik i ta polityka pod adresem `engender.app`
 korzystają z hostingu lh.pl, który prowadzi dzienniki dostępu i błędów. Mogą
 one zawierać adresy IP, żądane adresy i nagłówki przeglądarki. Strona
 zapamiętuje język i motyw w lokalnej pamięci przeglądarki.
@@ -104,7 +103,7 @@ to liczby otwarć, nie osób.
 
 Kopia zapasowa albo eksport trafia tam, dokąd je wyślesz, a aplikacja lub
 usługa, która je odbiera, obsługuje je na własnych zasadach. Zaszyfrowaną
-kopię zapasową (`.ttbackup`) otwiera tylko hasło do kopii, które ustalasz.
+kopię zapasową otwiera tylko hasło do kopii, które ustalasz.
 Pozostałe eksporty służą do czytania, udostępniania albo druku, więc nie są
 szyfrowane: dane CSV i JSON, książka dziennika, zestawienie dla lekarza,
 kolaże zdjęć i filmy poklatkowe, pliki PDF i pliki kalendarza. Każdy, kto
@@ -115,17 +114,15 @@ dostanie taki plik, może go odczytać.
 - W aplikacji: Ustawienia -> Prywatność i dane -> Usuń wszystko.
 - Na Androidzie: odinstaluj aplikację albo wyczyść jej dane w ustawieniach
   systemu.
-- W przeglądarce: wyczyść dane strony `app.engender.barankiewicz.dev`.
+- W przeglądarce: wyczyść dane strony `journal.engender.app`.
 
 Żaden z tych sposobów nie usuwa plików, które już zostały wyeksportowane
 albo zapisane jako kopia zapasowa. Usuń je tam, gdzie leżą.
 
 ## Wiadomości z prośbą o pomoc
 
-Gdy piszesz na engender-app@pm.me, autorka dostaje twój adres e-mail,
-wiadomość i załączniki i używa ich, żeby ci odpowiedzieć. Nie wysyłaj
-prawdziwego dziennika, kopii zapasowej, hasła ani klucza odzyskiwania. Jeśli
-coś takiego trafi do niej przez pomyłkę, usuwa to, gdy tylko zauważy.
+Gdy piszesz na help@engender.app, autorka dostaje twój adres e-mail,
+wiadomość i załączniki i używa ich, żeby ci odpowiedzieć. Nigdy nie wysyłaj mi swojego dziennika!!!
 Korespondencja jest usuwana w ciągu 30 dni od rozwiązania zgłoszenia,
 a o wcześniejsze usunięcie możesz poprosić.
 

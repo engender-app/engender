@@ -103,14 +103,14 @@
         "bm_forgot_gate_note": "uwxg57",
         "bm_forgot_key_note": "14l6luw",
         "dbr_archive_body": "1tvxmwb",
-        "dbr_archive_open": "rj3xux",
+        "dbr_archive_open": "xdhc3",
         "exp_auto_destination_note": "nazq1x",
-        "exp_auto_password_missing": "1rgw558",
-        "exp_auto_password_saved": "5o2fhq",
+        "exp_auto_password_missing": "1ur5siw",
+        "exp_auto_password_saved": "13nz6km",
         "exp_encrypted_body": "iayocm",
         "exp_warning_body": "nkmc9b",
         "exp_warning_title": "1c2x67f",
-        "imp_merged_toast": "1t2sjil",
+        "imp_merged_toast": "19hcyjg",
         "imp_mode_replace_sub": "cgj0w5",
         "imp_replace_note": "1yx6tu5",
         "imp_replaced_toast": "6233ts",
@@ -121,7 +121,7 @@
         "pp_forgot_gate_note": "1m4nfaq",
         "rem_web_note": "1grear5",
         "rem_web_save_note": "139pw2d",
-        "reset_offer_archive_password": "9flb59",
+        "reset_offer_archive_password": "1i5x2s1",
         "rk_revoke_body": "t6wqak",
         "rk_row_sub_none_consequence": "obgh7z",
         "surgery_archive_title": "qbjr6l",
@@ -130,7 +130,30 @@
         "surgery_phase_archived": "1q4wqyo",
         "verify_ok_toast": "10ar3l",
         "store:changelogs/1000000999": "1mqm7go",
-        "store:full_description": "1gr8786"
+        "store:full_description": "1gr8786",
+        "exp_auto_deferred": "1qtzns0",
+        "privacy:13": "j75pbz",
+        "privacy:06": "125d5al",
+        "settings_backup_none": "cpr1jp",
+        "provider_private": "zut1qh",
+        "exp_auto_staged": "gsjwhf",
+        "exp_auto_title": "1ruchmf",
+        "exp_backup_password_change_body": "k91ktb",
+        "exp_backup_password_change_title": "s17z9f",
+        "exp_backup_password_changed_toast": "epvecw",
+        "exp_backup_password_new": "119sj8d",
+        "exp_backup_password_saved_toast": "1x15a1s",
+        "exp_backup_password_set_body": "6gbmkv",
+        "exp_backup_password_set_title": "x3qoik",
+        "exp_backup_password_wrong": "10tc9mi",
+        "exp_folder_failed_toast": "rruc4u",
+        "exp_folder_last_failed": "1uz4ml1",
+        "exp_folder_last_wrong_password": "1bgwgs1",
+        "exp_folder_merged_toast": "1sw3l5d",
+        "exp_folder_no_space_toast": "76j1te",
+        "exp_folder_note": "1my23ap",
+        "exp_folder_title": "wrob0n",
+        "exp_folder_wrong_password_toast": "wqoffb"
       }
     },
     {
@@ -161,6 +184,73 @@
           "ins.pl": "próbkami",
           "loc.pl": "próbkach",
           "voc.pl": "próbki"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "binder",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "The garment. Binding as an activity is \"bindowanie\" in 1 string and \"binding\" in 1.",
+      "en": {
+        "forms": {
+          "sg": "binder",
+          "pl": "binders"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "binder",
+          "gen.sg": "bindera",
+          "dat.sg": "binderowi",
+          "acc.sg": "binder",
+          "ins.sg": "binderem",
+          "loc.sg": "binderze",
+          "voc.sg": "binderze",
+          "nom.pl": "bindery",
+          "gen.pl": "binderów",
+          "dat.pl": "binderom",
+          "acc.pl": "bindery",
+          "ins.pl": "binderami",
+          "loc.pl": "binderach",
+          "voc.pl": "bindery"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "wear_session_reminder_title_binder": "of2kwx"
+      }
+    },
+    {
+      "id": "birth-certificate",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "birth certificate",
+          "pl": "birth certificates"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "akt urodzenia",
+          "gen.sg": "aktu urodzenia",
+          "dat.sg": "aktowi urodzenia",
+          "acc.sg": "akt urodzenia",
+          "ins.sg": "aktem urodzenia",
+          "loc.sg": "akcie urodzenia",
+          "voc.sg": "akcie urodzenia",
+          "nom.pl": "akty urodzenia",
+          "gen.pl": "aktów urodzenia",
+          "dat.pl": "aktom urodzenia",
+          "acc.pl": "akty urodzenia",
+          "ins.pl": "aktami urodzenia",
+          "loc.pl": "aktach urodzenia",
+          "voc.pl": "akty urodzenia"
         },
         "avoid": []
       }
@@ -217,7 +307,9 @@
         "rem_missing_action": "1d3ovb",
         "source_record_return": "18bxmog",
         "vb_passage_own_clear": "1819jg0",
-        "vc_back_to_all": "hdq1ri"
+        "vc_back_to_all": "hdq1ri",
+        "checkin_pause_back": "106o0i1",
+        "pph_pose_back": "1de00vp"
       }
     },
     {
@@ -318,7 +410,14 @@
         "tryout_feeling_delete_q": "1fxn8k5",
         "vb_practice_delete_q": "169ym6b",
         "vc_benchmark_delete_q": "1dtmnfc",
-        "wear_session_delete_q": "hyj246"
+        "wear_session_delete_q": "hyj246",
+        "delete_entry_hint": "1ef3fos",
+        "photo_delete_q": "4247gg",
+        "photos_select_delete_q": "1qxzig",
+        "pph_pose_delete_q": "73outl",
+        "provider_delete_q": "1btt5gb",
+        "roadmap_category_delete_q": "124t212",
+        "trash_delete_forever_q": "ndwmyj"
       }
     },
     {
@@ -343,7 +442,10 @@
       "ignore": {
         "coming_back_done_action": "1v35d3o",
         "home_start_done": "6g4idd",
-        "perm_take_photo_why": "1triv5f"
+        "perm_take_photo_why": "1triv5f",
+        "roadmap_institution_done_on": "tu6i3x",
+        "roadmap_institution_status_done": "1jtrcx1",
+        "privacy:09": "qrczwt"
       }
     },
     {
@@ -403,7 +505,8 @@
         "hair_removal_photo_hint": "tiiq2n",
         "regimen_schedule_after_episode": "1vug0ye",
         "tryout_photo_save_first": "23mf28",
-        "update_ready_body": "1dvliqb"
+        "update_ready_body": "1dvliqb",
+        "store:full_description": "1gr8786"
       }
     },
     {
@@ -500,7 +603,8 @@
         "avoid": []
       },
       "ignore": {
-        "surgery_consults_empty": "1rucj2d"
+        "surgery_consults_empty": "1rucj2d",
+        "store:full_description": "1gr8786"
       }
     },
     {
@@ -539,6 +643,77 @@
       }
     },
     {
+      "id": "device",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Polish says \"telefon\" in 6 of 59 strings. Keep \"telefon\" only where the copy really means the phone.",
+      "en": {
+        "forms": {
+          "sg": "device",
+          "pl": "devices"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "urządzenie",
+          "gen.sg": "urządzenia",
+          "dat.sg": "urządzeniu",
+          "acc.sg": "urządzenie",
+          "ins.sg": "urządzeniem",
+          "loc.sg": "urządzeniu",
+          "voc.sg": "urządzenie",
+          "nom.pl": "urządzenia",
+          "gen.pl": "urządzeń",
+          "dat.pl": "urządzeniom",
+          "acc.pl": "urządzenia",
+          "ins.pl": "urządzeniami",
+          "loc.pl": "urządzeniach",
+          "voc.pl": "urządzenia"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "ak_no_lock_body": "1bmu976",
+        "am_device_no_lock": "j4mmm0",
+        "am_device_unavailable": "1qfotdh",
+        "privacy:11": "jigl4e",
+        "privacy:13": "j75pbz"
+      }
+    },
+    {
+      "id": "dilation",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "dilation",
+          "pl": ""
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "",
+          "gen.sg": "",
+          "dat.sg": "",
+          "acc.sg": "",
+          "ins.sg": "",
+          "loc.sg": "",
+          "voc.sg": "",
+          "nom.pl": "",
+          "gen.pl": "",
+          "dat.pl": "",
+          "acc.pl": "",
+          "ins.pl": "",
+          "loc.pl": "",
+          "voc.pl": ""
+        },
+        "avoid": []
+      }
+    },
+    {
       "id": "disguise",
       "kind": "noun",
       "confirmed": true,
@@ -573,7 +748,7 @@
     {
       "id": "document",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -600,6 +775,10 @@
           "voc.pl": "dokumenty"
         },
         "avoid": []
+      },
+      "ignore": {
+        "hub_sub_roadmap": "1vsanhg",
+        "roadmap_institutions_title": "19zdtay"
       }
     },
     {
@@ -670,6 +849,38 @@
       }
     },
     {
+      "id": "dysphoria",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "dysphoria",
+          "pl": "dysphorias"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "dysforia",
+          "gen.sg": "dysforii",
+          "dat.sg": "dysforii",
+          "acc.sg": "dysforię",
+          "ins.sg": "dysforią",
+          "loc.sg": "dysforii",
+          "voc.sg": "dysforio",
+          "nom.pl": "dysforie",
+          "gen.pl": "dysforii",
+          "dat.pl": "dysforiom",
+          "acc.pl": "dysforie",
+          "ins.pl": "dysforiami",
+          "loc.pl": "dysforiach",
+          "voc.pl": "dysforie"
+        },
+        "avoid": []
+      }
+    },
+    {
       "id": "entry",
       "kind": "noun",
       "confirmed": true,
@@ -703,7 +914,42 @@
       "ignore": {
         "cd_added_toast": "1124wd4",
         "features_to_show_sub": "zqgbft",
-        "surgery_compare_no_data": "enxz8z"
+        "surgery_compare_no_data": "enxz8z",
+        "store:short_description": "1md5gy2"
+      }
+    },
+    {
+      "id": "episode",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "A regimen episode: one stretch on the same drug, dose and route. Polish says \"okres\" in 2 of 25 strings.",
+      "en": {
+        "forms": {
+          "sg": "episode",
+          "pl": "episodes"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "etap",
+          "gen.sg": "etapu",
+          "dat.sg": "etapowi",
+          "acc.sg": "etap",
+          "ins.sg": "etapem",
+          "loc.sg": "etapie",
+          "voc.sg": "etapie",
+          "nom.pl": "etapy",
+          "gen.pl": "etapów",
+          "dat.pl": "etapom",
+          "acc.pl": "etapy",
+          "ins.pl": "etapami",
+          "loc.pl": "etapach",
+          "voc.pl": "etapy"
+        },
+        "avoid": [
+          "epizod"
+        ]
       }
     },
     {
@@ -736,6 +982,104 @@
           "voc.pl": "ery"
         },
         "avoid": []
+      }
+    },
+    {
+      "id": "euphoria",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "euphoria",
+          "pl": "euphorias"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "euforia",
+          "gen.sg": "euforii",
+          "dat.sg": "euforii",
+          "acc.sg": "euforię",
+          "ins.sg": "euforią",
+          "loc.sg": "euforii",
+          "voc.sg": "euforio",
+          "nom.pl": "euforie",
+          "gen.pl": "euforii",
+          "dat.pl": "euforiom",
+          "acc.pl": "euforie",
+          "ins.pl": "euforiami",
+          "loc.pl": "euforiach",
+          "voc.pl": "euforie"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "file",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "file",
+          "pl": "files"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "plik",
+          "gen.sg": "pliku",
+          "dat.sg": "plikowi",
+          "acc.sg": "plik",
+          "ins.sg": "plikiem",
+          "loc.sg": "pliku",
+          "voc.sg": "pliku",
+          "nom.pl": "pliki",
+          "gen.pl": "plików",
+          "dat.pl": "plikom",
+          "acc.pl": "pliki",
+          "ins.pl": "plikami",
+          "loc.pl": "plikach",
+          "voc.pl": "pliki"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "folder",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "folder",
+          "pl": "folders"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "folder",
+          "gen.sg": "folderu",
+          "dat.sg": "folderowi",
+          "acc.sg": "folder",
+          "ins.sg": "folderem",
+          "loc.sg": "folderze",
+          "voc.sg": "folderze",
+          "nom.pl": "foldery",
+          "gen.pl": "folderów",
+          "dat.pl": "folderom",
+          "acc.pl": "foldery",
+          "ins.pl": "folderami",
+          "loc.pl": "folderach",
+          "voc.pl": "foldery"
+        },
+        "avoid": [
+          "katalog"
+        ]
       }
     },
     {
@@ -775,7 +1119,7 @@
     {
       "id": "journal",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "docs/ui-copy.md: the person has a journal, never a database.",
       "en": {
         "forms": {
@@ -807,14 +1151,16 @@
       },
       "ignore": {
         "am_setup_body": "1f846jl",
-        "exp_warning_body": "nkmc9b",
+        "exp_warning_body": "1k07jhh",
         "search_elsewhere_heading": "1lyoja0",
         "surgery_compare_no_data": "enxz8z",
         "surgery_compare_too_short": "1eyy3am",
         "tryout_compare_too_short": "6e62pu",
         "boot_failed_engine": "zn33g2",
-        "privacy:09": "or5qwx",
-        "privacy:12": "18ew632"
+        "privacy:09": "qrczwt",
+        "privacy:12": "18ew632",
+        "privacy:28": "pzbcjp",
+        "privacy:08": "bq8wpv"
       }
     },
     {
@@ -852,7 +1198,7 @@
     {
       "id": "letter",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "A time-capsule letter.",
       "en": {
         "forms": {
@@ -879,12 +1225,15 @@
           "voc.pl": "listy"
         },
         "avoid": []
+      },
+      "ignore": {
+        "appointments_update_placeholder": "xb3e42"
       }
     },
     {
       "id": "measurement",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -916,7 +1265,7 @@
     {
       "id": "milestone",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "Binding in docs/ui-copy.md: stays even though humanizer-pl lists it; the landing site uses it too. docs/ui-copy.md: never event or occasion on screen (\"event\" is not listed as avoided because cycle events use it).",
       "en": {
         "forms": {
@@ -945,12 +1294,15 @@
           "voc.pl": "kamienie milowe"
         },
         "avoid": []
+      },
+      "ignore": {
+        "tagdesc_dt_existential": "tuhsm8"
       }
     },
     {
       "id": "module-appointments",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -968,7 +1320,7 @@
     {
       "id": "module-care",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -986,7 +1338,7 @@
     {
       "id": "module-cycle",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -999,12 +1351,18 @@
           "base": "Cykl"
         },
         "avoid": []
+      },
+      "ignore": {
+        "clinician_summary_section_cycle_events": "1szn698",
+        "cycle_event_history_title": "r9o25e",
+        "cycle_tracking_toggle_title": "1p4keza",
+        "effect_cycle_cessation": "f88qmr"
       }
     },
     {
       "id": "module-dilation",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1022,7 +1380,7 @@
     {
       "id": "module-documents",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1035,12 +1393,16 @@
           "base": "Dokumenty"
         },
         "avoid": []
+      },
+      "ignore": {
+        "document_linked_here_title": "1wvmcma",
+        "roadmap_institution_delete_detail": "1mvphda"
       }
     },
     {
       "id": "module-effects",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "docs/ui-copy.md: never \"personal effect\" or \"effect\" alone.",
       "en": {
         "forms": {
@@ -1058,7 +1420,7 @@
     {
       "id": "module-hair-progress",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1076,7 +1438,7 @@
     {
       "id": "module-hair-removal",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1094,7 +1456,7 @@
     {
       "id": "module-letters",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1112,7 +1474,7 @@
     {
       "id": "module-measurements",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1130,7 +1492,7 @@
     {
       "id": "module-milestones",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1166,7 +1528,7 @@
     {
       "id": "module-resources",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1184,7 +1546,7 @@
     {
       "id": "module-roadmap",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1202,7 +1564,7 @@
     {
       "id": "module-safe-space",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1215,12 +1577,17 @@
           "base": "Bezpieczna przestrzeń"
         },
         "avoid": []
+      },
+      "ignore": {
+        "tile_safe_space_nudge_dismiss": "1fnj4hr",
+        "tile_safe_space_sub": "ikp1tz",
+        "tile_safe_space_title": "gnvp8w"
       }
     },
     {
       "id": "module-surgery",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1238,7 +1605,7 @@
     {
       "id": "module-tryouts",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1256,7 +1623,7 @@
     {
       "id": "module-voice",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1274,7 +1641,7 @@
     {
       "id": "module-wear",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1292,7 +1659,7 @@
     {
       "id": "mood",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1324,7 +1691,7 @@
     {
       "id": "note",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "English \"note\" is also a verb. \"Notatki\" is also the disguise name.",
       "en": {
         "forms": {
@@ -1354,9 +1721,41 @@
       }
     },
     {
+      "id": "notification",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "notification",
+          "pl": "notifications"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "powiadomienie",
+          "gen.sg": "powiadomienia",
+          "dat.sg": "powiadomieniu",
+          "acc.sg": "powiadomienie",
+          "ins.sg": "powiadomieniem",
+          "loc.sg": "powiadomieniu",
+          "voc.sg": "powiadomienie",
+          "nom.pl": "powiadomienia",
+          "gen.pl": "powiadomień",
+          "dat.pl": "powiadomieniom",
+          "acc.pl": "powiadomienia",
+          "ins.pl": "powiadomieniami",
+          "loc.pl": "powiadomieniach",
+          "voc.pl": "powiadomienia"
+        },
+        "avoid": []
+      }
+    },
+    {
       "id": "passage",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "The reading passage for a voice take.",
       "en": {
         "forms": {
@@ -1388,7 +1787,7 @@
     {
       "id": "passphrase",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "The journal passphrase. docs/ui-copy.md: never \"password\" in English. Polish \"hasło\" also names the phone's own password in a few keys.",
       "en": {
         "forms": {
@@ -1420,9 +1819,43 @@
       }
     },
     {
+      "id": "password-manager",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "password manager",
+          "pl": "password managers"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "menedżer haseł",
+          "gen.sg": "menedżera haseł",
+          "dat.sg": "menedżerowi haseł",
+          "acc.sg": "menedżer haseł",
+          "ins.sg": "menedżerem haseł",
+          "loc.sg": "menedżerze haseł",
+          "voc.sg": "menedżerze haseł",
+          "nom.pl": "menedżery haseł",
+          "gen.pl": "menedżerów haseł",
+          "dat.pl": "menedżerom haseł",
+          "acc.pl": "menedżery haseł",
+          "ins.pl": "menedżerami haseł",
+          "loc.pl": "menedżerach haseł",
+          "voc.pl": "menedżery haseł"
+        },
+        "avoid": [
+          "menadżer"
+        ]
+      }
+    },
+    {
       "id": "photo",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "docs/ui-copy.md: never image or asset on screen.",
       "en": {
         "forms": {
@@ -1458,9 +1891,137 @@
       }
     },
     {
+      "id": "pitch",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Voice pitch, often \"wysokość głosu\" in full. Polish says \"tony\" in 2 of 19 strings.",
+      "en": {
+        "forms": {
+          "sg": "pitch",
+          "pl": "pitches"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "wysokość",
+          "gen.sg": "wysokości",
+          "dat.sg": "wysokości",
+          "acc.sg": "wysokość",
+          "ins.sg": "wysokością",
+          "loc.sg": "wysokości",
+          "voc.sg": "wysokości",
+          "nom.pl": "wysokości",
+          "gen.pl": "wysokości",
+          "dat.pl": "wysokościom",
+          "acc.pl": "wysokości",
+          "ins.pl": "wysokościami",
+          "loc.pl": "wysokościach",
+          "voc.pl": "wysokości"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "prep-list",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "The questions gathered before an appointment.",
+      "en": {
+        "forms": {
+          "sg": "prep list",
+          "pl": "prep lists"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "lista pytań",
+          "gen.sg": "listy pytań",
+          "dat.sg": "liście pytań",
+          "acc.sg": "listę pytań",
+          "ins.sg": "listą pytań",
+          "loc.sg": "liście pytań",
+          "voc.sg": "listo pytań",
+          "nom.pl": "listy pytań",
+          "gen.pl": "list pytań",
+          "dat.pl": "listom pytań",
+          "acc.pl": "listy pytań",
+          "ins.pl": "listami pytań",
+          "loc.pl": "listach pytań",
+          "voc.pl": "listy pytań"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "procedure",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Polish says \"operacja\" in 13 of 17 strings, which is the surgery term. Decide whether a procedure is a zabieg or whether these strings should say surgery in English too.",
+      "en": {
+        "forms": {
+          "sg": "procedure",
+          "pl": "procedures"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "zabieg",
+          "gen.sg": "zabiegu",
+          "dat.sg": "zabiegowi",
+          "acc.sg": "zabieg",
+          "ins.sg": "zabiegiem",
+          "loc.sg": "zabiegu",
+          "voc.sg": "zabiegu",
+          "nom.pl": "zabiegi",
+          "gen.pl": "zabiegów",
+          "dat.pl": "zabiegom",
+          "acc.pl": "zabiegi",
+          "ins.pl": "zabiegami",
+          "loc.pl": "zabiegach",
+          "voc.pl": "zabiegi"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "pronoun",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "pronoun",
+          "pl": "pronouns"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "zaimek",
+          "gen.sg": "zaimka",
+          "dat.sg": "zaimkowi",
+          "acc.sg": "zaimek",
+          "ins.sg": "zaimkiem",
+          "loc.sg": "zaimku",
+          "voc.sg": "zaimku",
+          "nom.pl": "zaimki",
+          "gen.pl": "zaimków",
+          "dat.pl": "zaimkom",
+          "acc.pl": "zaimki",
+          "ins.pl": "zaimkami",
+          "loc.pl": "zaimkach",
+          "voc.pl": "zaimki"
+        },
+        "avoid": []
+      }
+    },
+    {
       "id": "recovery-key",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1487,12 +2048,17 @@
           "voc.pl": "klucze odzyskiwania"
         },
         "avoid": []
+      },
+      "ignore": {
+        "rk_leave_title": "1t62xpv",
+        "privacy:11": "jigl4e",
+        "privacy:31": "172ti8e"
       }
     },
     {
       "id": "regimen",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "Catalogue mostly says kuracja (38 keys) but also \"schemat leczenia\" (home_start_regimen_title, exposure_regimen_days_*) and \"etap\". Pick one.",
       "en": {
         "forms": {
@@ -1521,12 +2087,22 @@
         "avoid": [
           "schemat"
         ]
+      },
+      "ignore": {
+        "adherence_no_schedule": "yuyxzy",
+        "regimen_ended": "xnyx45",
+        "regimen_episode_legend": "jauxq5",
+        "regimen_episode_unchanged": "h3tzgs",
+        "regimen_episode_unsaved": "1fvobal",
+        "regimen_hide_action": "1loe4ys",
+        "regimen_schedule_after_episode": "1vug0ye",
+        "tile_dose_sub": "i5gb9n"
       }
     },
     {
       "id": "reminder",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1558,7 +2134,7 @@
     {
       "id": "scale",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "docs/ui-copy.md: never gender dimension, axis or metric on screen.",
       "en": {
         "forms": {
@@ -1588,6 +2164,95 @@
           "ins.pl": "skalami",
           "loc.pl": "skalach",
           "voc.pl": "skale"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "vm_pitch_typical": "1tha8g8"
+      }
+    },
+    {
+      "id": "screen-lock",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "screen lock",
+          "pl": "screen locks"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "blokada ekranu",
+          "gen.sg": "blokady ekranu",
+          "dat.sg": "blokadzie ekranu",
+          "acc.sg": "blokadę ekranu",
+          "ins.sg": "blokadą ekranu",
+          "loc.sg": "blokadzie ekranu",
+          "voc.sg": "blokado ekranu",
+          "nom.pl": "blokady ekranu",
+          "gen.pl": "blokad ekranu",
+          "dat.pl": "blokadom ekranu",
+          "acc.pl": "blokady ekranu",
+          "ins.pl": "blokadami ekranu",
+          "loc.pl": "blokadach ekranu",
+          "voc.pl": "blokady ekranu"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "screen-look-back",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "Polish says \"Statystyki\" in 2 strings and \"wstecz\" in 1; the store listing uses Statystyki.",
+      "en": {
+        "forms": {
+          "base": "Look back"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Statystyki"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "screen-settings",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Settings"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Ustawienia"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "screen-today",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "The home door. Polish also says \"dzisiaj\" in 4 of 13 strings, some of them meaning the day rather than the screen.",
+      "en": {
+        "forms": {
+          "base": "Today"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Dzień dzisiejszy"
         },
         "avoid": []
       }
@@ -1848,6 +2513,38 @@
           "ins.pl": "próbami",
           "loc.pl": "próbach",
           "voc.pl": "próby"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "tucking",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "tucking",
+          "pl": "tuckings"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "tucking",
+          "gen.sg": "tuckingu",
+          "dat.sg": "tuckingowi",
+          "acc.sg": "tucking",
+          "ins.sg": "tuckingiem",
+          "loc.sg": "tuckingu",
+          "voc.sg": "tuckingu",
+          "nom.pl": "tuckingi",
+          "gen.pl": "tuckingów",
+          "dat.pl": "tuckingom",
+          "acc.pl": "tuckingi",
+          "ins.pl": "tuckingami",
+          "loc.pl": "tuckingach",
+          "voc.pl": "tuckingi"
         },
         "avoid": []
       }
