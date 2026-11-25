@@ -648,7 +648,7 @@
   "default_title": "Domyślne",
   "delete": "Usuń",
   "delete_entry": "Usuń wpis",
-  "delete_entry_hint": "Wpis ze zdjęciami, nagraniami i wideo trafi do kosza. Przywrócisz go w Ustawieniach w ciągu 30 dni.",
+  "delete_entry_hint": "Wpis ze zdjęciami, nagraniami i wideo trafi do kosza. Przywrócisz go w Ustawieniach w ciągu 30 dni. Usunięcie na zawsze kasuje je od razu i nie da się tego cofnąć.",
   "delete_entry_q": "Usunąć ten wpis?",
   "delete_undo": "Cofnij",
   "delete_undo_failed": "Nie udało się tego cofnąć. Usunięcie zostaje.",

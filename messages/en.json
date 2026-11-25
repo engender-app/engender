@@ -636,7 +636,7 @@
   "default_title": "Default",
   "delete": "Delete",
   "delete_entry": "Delete entry",
-  "delete_entry_hint": "The entry and its photos, voice and video go to the trash. Restore them in Settings within 30 days.",
+  "delete_entry_hint": "The entry and its photos, voice and video go to the trash. Restore them in Settings within 30 days. Delete forever removes them now, and that cannot be undone.",
   "delete_entry_q": "Delete this entry?",
   "delete_undo": "Undo",
   "delete_undo_failed": "Couldn't undo that. It stays deleted.",

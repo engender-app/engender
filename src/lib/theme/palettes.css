@@ -294,6 +294,7 @@
   --accent-border: color-mix(in oklab, var(--accent) 30%, var(--outline));
   --scrim: rgb(15 20 26 / 0.45);
   --danger: #A8503C;         /* muted terracotta: destructive ACTIONS only, never data */
+  --danger-deep: #8E2B1C;    /* the one action that cannot be undone */
   --danger-soft: #F6E7E2;
   --warn-soft: #F7EEDA;
   --on-warn-soft: #6B542A;
@@ -312,6 +313,7 @@
   --accent-border: color-mix(in oklab, var(--accent) 32%, var(--outline));
   --scrim: rgb(0 0 0 / 0.6);
   --danger: #DE9583;
+  --danger-deep: #EE7A66;
   --danger-soft: #3A2521;
   --warn-soft: #38301D;
   --on-warn-soft: #E4C98A;
