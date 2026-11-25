@@ -264,7 +264,8 @@
       {#if selecting}
         <div class="compare-selection" transition:collapse>
           <p role="status" data-compare-progress>{m.ph_selection_count({ count: orderedSelected.length })}</p>
-          <p class="muted small">{selected.length < 2 ? m.ph_pick_two() : m.ph_selection_full()}</p>
+          <!-- Kept in the flow and faded, so reaching two picks moves nothing. -->
+          <p class="muted small selection-full" class:shown={selected.length >= 2} aria-hidden={selected.length < 2}>{m.ph_selection_full()}</p>
           <!-- Every picked id, a deleted one included, so a shot that went
                while it was picked can still be taken off the selection. -->
           {#each selected as id (id)}
@@ -420,6 +421,8 @@
 </div>
 
 <style>
+  .selection-full { opacity: 0; transition: opacity var(--dur-med) var(--ease-out); }
+  .selection-full.shown { opacity: 1; }
   /* The pose control and the pencil that edits its list, on one line: the
      control scrolls inside its own track when the poses outgrow it. */
   .pose-row { display: flex; align-items: center; gap: var(--space-2); }

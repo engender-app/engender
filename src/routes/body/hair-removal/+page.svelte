@@ -400,7 +400,6 @@
             {id}
             name="hair-removal-note"
             rows="3"
-            placeholder={m.hair_removal_note_placeholder()}
             bind:value={draft.note}
           ></textarea>
         {/snippet}

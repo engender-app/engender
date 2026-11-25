@@ -273,13 +273,14 @@
     remove: (id) => undoable((j) => j.feltSense.remove(id)),
     findById: (id) => feeling.find((f) => f.id === id)
   });
-  /* One example per kind, so changing the picker changes the hint too. */
-  function labelPlaceholder(kind: TryoutKind): string {
+  /* One example per kind, so changing the picker changes the hint too.
+     "Other" has none to give: its label already asks what it is. */
+  function labelPlaceholder(kind: TryoutKind): string | undefined {
     if (kind === 'name') return m.tryout_label_placeholder_name();
     if (kind === 'pronouns') return m.tryout_label_placeholder_pronouns();
     if (kind === 'style') return m.tryout_label_placeholder_style();
     if (kind === 'makeup') return m.tryout_label_placeholder_makeup();
-    return m.tryout_label_placeholder_other();
+    return undefined;
   }
 
   /* One entry in the offer registry (phase 8 features ticket 22,
@@ -394,7 +395,6 @@
               class="input"
               {id}
               rows="2"
-              placeholder={m.tryout_description_placeholder()}
               bind:value={draft.description}
             ></textarea>
           {/snippet}

@@ -144,7 +144,6 @@
       class="input"
       {id}
       name="appointment-place"
-      placeholder={m.appointments_place_placeholder()}
       bind:value={place}
     />
   {/snippet}
@@ -157,7 +156,6 @@
         {id}
         name="appointment-note"
         rows="3"
-        placeholder={m.appointments_note_placeholder()}
         bind:value={note}
       ></textarea>
     {/snippet}
@@ -170,7 +168,7 @@
      measured, the wait block's leave otherwise kept 16px under it and the
      buttons stepped up 16px the frame it was removed. -->
 <div class="ap-when">
-  <Field label={m.day_label()} hint={m.appointments_day_hint()} id="appointment-date">
+  <Field label={m.appointments_day_label()} id="appointment-date">
     {#snippet children(id, describedBy)}
       <DatePicker name="appointment-date" bind:value={date} {id} {describedBy} />
     {/snippet}

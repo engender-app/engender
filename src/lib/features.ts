@@ -419,7 +419,7 @@ export const FEATURES = {
     unprompted: ['safe-space-nudge'],
     tiles: ['safe-space-nudge'],
     routes: ['/doubt', '/doubt/comfort', '/doubt/evidence'],
-    messages: ['comfort', 'safe_space', 'doubt', 'tile_safe']
+    messages: ['comfort', 'safe_space', 'tile_safe']
   },
   resources: {
     sections: none,

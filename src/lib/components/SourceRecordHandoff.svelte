@@ -34,7 +34,7 @@
 </script>
 
 {#if id && ready && !found}
-  <Notice key="source-unavailable" title={m.source_record_unavailable()} text={m.source_record_unavailable_hint()} />
+  <Notice key="source-unavailable" title={m.source_record_unavailable()} />
 {/if}
 {#if returnTo}
   <a class="btn btn-soft press" data-source-return href={returnTo} onclick={returnToSource}>{m.source_record_return()}</a>

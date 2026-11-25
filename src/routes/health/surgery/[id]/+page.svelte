@@ -596,7 +596,6 @@
           key="surgery-planning"
           role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
           title={m.no_date_yet()}
-          text={m.surgery_planning_title()}
           action={{ label: m.surgery_set_date(), onclick: () => void goToDate() }}
           data-add-as-milestone-notice
         />
@@ -793,7 +792,6 @@
 
   <Sheet busy={sheetWrite.busy} open={questionSheet} title={m.surgery_consult_question_sheet()} onClose={() => (questionSheet = false)}>
     <h3>{m.surgery_consult_question_sheet()}</h3>
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consult_question_hint()}</p>
     <Field label={m.surgery_consult_question_label()} id="surgery-consult-question" hidden>
       {#snippet children(id)}
         <input autocomplete={journalTextAutocomplete()}
