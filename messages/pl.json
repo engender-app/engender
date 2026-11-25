@@ -1739,7 +1739,7 @@
   "install_desktop_body": "Opcja Zainstaluj jest w menu przeglądarki albo na pasku adresu. Jeśli jej tam nie ma, ta przeglądarka nie zainstaluje aplikacji.",
   "install_done": "Zainstalowano.",
   "install_firefox_addon": "Pobierz dodatek",
-  "install_firefox_body": "Ta przeglądarka sama nie instaluje aplikacji. Potrafi to dodatek Progressive Web Apps for Firefox.",
+  "install_firefox_body": "Ta przeglądarka sama nie instaluje aplikacji, ale zrobi to dodatek Progressive Web Apps for Firefox.",
   "install_firefox_tab": "Aplikacja działa też w tej karcie, nawet offline.",
   "install_ios_add": "Wybierz Do ekranu początkowego",
   "install_ios_share": "Dotknij Udostępnij (może się chować pod ⋯)",
