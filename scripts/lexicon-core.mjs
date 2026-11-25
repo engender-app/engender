@@ -40,12 +40,25 @@ export function findForms(text, forms, exact = false) {
 
 /** Words starting with `stem`, case-insensitively, skipping placeholders.
  * Used for avoided variants, which are given as stems ("kurac" for kuracja).
- * @param {string} text @param {string[]} stems */
+ * @param {string} text @param {string[]} stems @returns {{ index: number, text: string }[]} */
 export function findStems(text, stems) {
   const unique = [...new Set(stems.filter(Boolean))];
   if (!unique.length) return [];
   const pattern = new RegExp(`\\{[^}]*\\}|(?<!${LETTER})(?:${unique.map(escape).join('|')})${LETTER}*`, 'giu');
-  return [...text.matchAll(pattern)].filter((match) => !match[0].startsWith('{')).map((match) => match[0]);
+  return [...text.matchAll(pattern)].filter((match) => !match[0].startsWith('{'))
+    .map((match) => ({ index: match.index, text: match[0] }));
+}
+
+/** Short stable hash of a key's two values. A dismissed finding stays
+ * dismissed only while the strings it was judged on are unchanged.
+ * @param {unknown} en @param {unknown} pl */
+export function fingerprint(en, pl) {
+  let hash = 0x811c9dc5;
+  for (const char of JSON.stringify([en, pl])) {
+    hash ^= char.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
 }
 
 /** Give `replacement` the capitalisation of `original`.
@@ -128,8 +141,9 @@ export function termUsage(term, records) {
     const inEn = findForms(en, enForms, term.kind === 'phrase').length > 0;
     const inPl = findForms(pl, plForms, term.kind === 'phrase').length > 0;
     if (inEn || inPl) usage.keys.push(record.key);
+    if (term.ignore?.[record.key] === fingerprint(record.en, record.pl)) continue;
     if (inEn && !inPl && pl) usage.untranslated.push(record.key);
-    const avoided = [...findStems(en, term.en.avoid), ...findStems(pl, term.pl.avoid)];
+    const avoided = [...findStems(en, term.en.avoid), ...findStems(pl, term.pl.avoid)].map((match) => match.text);
     if (avoided.length) usage.avoided.push({ key: record.key, words: [...new Set(avoided)] });
   }
   return usage;
@@ -161,7 +175,7 @@ export function suggestForms(forms, texts) {
   /** @type {Map<string, number>} */
   const counts = new Map();
   for (const text of texts) {
-    for (const word of findStems(text, stems)) {
+    for (const { text: word } of findStems(text, stems)) {
       const lower = word.toLocaleLowerCase();
       counts.set(lower, (counts.get(lower) ?? 0) + 1);
     }
@@ -180,6 +194,8 @@ export function lexiconProblem(lexicon) {
     ids.add(term.id);
     if (term.kind !== 'noun' && term.kind !== 'phrase') return `${term.id}: kind is noun or phrase.`;
     if (typeof term.confirmed !== 'boolean' || typeof term.note !== 'string') return `${term.id}: needs confirmed and note.`;
+    if (term.ignore !== undefined && (!term.ignore || typeof term.ignore !== 'object' || Array.isArray(term.ignore) ||
+        Object.values(term.ignore).some((value) => typeof value !== 'string'))) return `${term.id}: ignore maps keys to fingerprints.`;
     for (const locale of /** @type {const} */ (['en', 'pl'])) {
       const side = term[locale];
       if (!side || typeof side.forms !== 'object' || !Array.isArray(side.avoid) ||

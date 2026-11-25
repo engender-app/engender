@@ -38,9 +38,19 @@
   #preview { overflow-x: auto; max-height: 60vh; overflow-y: auto; }
   mark { background: #ffe58a; }
   #operation { white-space: pre-wrap; }
+  .card { border-left: 3px solid #a00000; padding: .25rem 0 .5rem .75rem; margin: .75rem 0; }
+  .card h4 { margin: 0; font-size: 1rem; display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+  .card p { margin: .35rem 0; }
+  .card code { overflow-wrap: anywhere; min-width: 0; }
+  .card .text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .card .text strong { font-weight: normal; color: #555; margin-right: .5rem; }
+  .card textarea { display: block; width: 100%; box-sizing: border-box; min-height: 3rem; }
+  .card .buttons { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; }
+  mark.avoid { background: #ffc9c9; }
 </style>
 <h1>Lexicon</h1>
 <p>One name per thing, in both languages. A term lists the English forms, the Polish forms in every case and number, and the stems of variants to avoid. Changing a form rewrites every string that uses it, form by form: <code>schemat</code> to <code>plan</code> also turns <code>schematu</code> into <code>planu</code>. You see every change before it is saved.</p>
+<p>Two kinds of finding. <strong>Polish does not use the term</strong>: the English has the term but the Polish has none of its forms, so the Polish names the thing some other way, or the English word is used in another sense. <strong>Avoided word</strong>: the string uses a word listed under Avoid. Fix the string in the finding, or mark it as not a problem. A dismissed finding comes back if the string changes.</p>
 <p><a href="/">Message catalogues</a></p>
 <div class="toolbar">
   <button id="save" type="button" disabled>Review and save</button>
@@ -69,7 +79,7 @@
 <p id="status" role="status">Loading…</p>
 <div id="terms"></div>
 <script type="module">
-  import { NOUN_SLOTS, PHRASE_SLOTS, slotsOf, fields, renameMap, renameOccurrences, applyRename, termUsage, suggestForms, lexiconProblem, keysToReview } from '/lexicon-core.mjs';
+  import { NOUN_SLOTS, PHRASE_SLOTS, slotsOf, fields, renameMap, renameOccurrences, applyRename, termUsage, suggestForms, lexiconProblem, keysToReview, findForms, findStems, fingerprint } from '/lexicon-core.mjs';
 
   const CASE_NAMES = { nom: 'mianownik', gen: 'dopełniacz', dat: 'celownik', acc: 'biernik', ins: 'narzędnik', loc: 'miejscownik', voc: 'wołacz' };
   const $ = (selector) => document.querySelector(selector);
@@ -106,7 +116,7 @@
     $('#add').disabled = busy || Boolean(pending);
     $('#confirm').disabled = busy || !pending || pending.rows.some((row) => row.select && !row.select.value);
     $('#cancel').disabled = busy;
-    for (const node of document.querySelectorAll('#terms input, #terms textarea, #terms select, #terms button')) node.disabled = busy || Boolean(pending);
+    for (const node of document.querySelectorAll('#terms input, #terms textarea, #terms select, #terms button')) node.disabled = busy || Boolean(pending) || node.dataset.clean === 'true';
   }
 
   function renderUsage(view) {
@@ -115,27 +125,40 @@
     view.usage = usage;
     const box = view.usageBox;
     box.replaceChildren();
+    if (view.body) {
     box.append(element('h3', `Used in ${count(usage.keys.length, 'key')}`));
-    const list = (title, items, className) => {
-      if (!items.length) return;
-      box.append(element('p', title, className));
-      const ul = element('ul', undefined, 'keys');
-      for (const item of items) {
-        const li = element('li');
-        li.append(element('code', typeof item === 'string' ? item : item.key));
-        if (typeof item !== 'string') li.append(` (${item.words.join(', ')})`);
-        ul.append(li);
-      }
-      box.append(ul);
+    const byKey = new Map(records.map((record) => [record.key, record]));
+    const findingsTitle = (text, n, why) => {
+      if (!n) return;
+      box.append(element('h4', `${text} (${n})`, 'warn'), element('p', why, 'muted'));
     };
-    list(`English uses the term, Polish uses none of its forms (${usage.untranslated.length}):`, usage.untranslated, 'warn');
-    list(`Avoided variants (${usage.avoided.length}):`, usage.avoided, 'warn');
+    const lemma = term.pl.forms['nom.sg'] ?? term.pl.forms.base;
+    findingsTitle('Polish does not use the term', usage.untranslated.length,
+      `Either the Polish names it another way (put a form of “${lemma}” in), or the English word means something else there (mark it as not a problem).`);
+    for (const key of usage.untranslated) box.append(findingCard(view, byKey.get(key), 'untranslated'));
+    findingsTitle('Avoided word', usage.avoided.length, 'Replace the marked word with a form of the term, or mark it as not a problem.');
+    for (const { key } of usage.avoided) box.append(findingCard(view, byKey.get(key), 'avoided'));
+    const dismissed = Object.keys(term.ignore ?? {}).filter((key) => byKey.has(key));
+    if (dismissed.length) {
+      const list = element('details');
+      list.append(element('summary', `Marked as not a problem (${dismissed.length})`));
+      for (const key of dismissed) {
+        const row = element('p');
+        const restore = element('button', 'Show again');
+        restore.type = 'button';
+        restore.addEventListener('click', () => setIgnored(view, byKey.get(key), false));
+        row.append(element('code', key), ' ', restore);
+        list.append(row);
+      }
+      box.append(list);
+    }
     const details = element('details');
     details.append(element('summary', 'All keys'));
     const ul = element('ul', undefined, 'keys');
     for (const key of usage.keys) { const li = element('li'); li.append(element('code', key)); ul.append(li); }
     details.append(ul);
     if (usage.keys.length) box.append(details);
+    }
     const findings = usage.untranslated.length + usage.avoided.length;
     view.badges.replaceChildren(
       element('span', count(usage.keys.length, 'key'), 'tag muted'),
@@ -143,6 +166,180 @@
       ...(findings ? [element('span', count(findings, 'finding'), 'tag warn')] : []),
       ...(isDirty(term) ? [element('span', 'unsaved', 'tag')] : []));
     view.title.textContent = label(term);
+  }
+
+  /** The text with the term's forms and avoided words marked. */
+  function highlighted(text, term, locale) {
+    const marks = [
+      ...findForms(text, Object.values(term[locale].forms), term.kind === 'phrase').map((m) => ({ ...m, avoid: false })),
+      ...findStems(text, term[locale].avoid).map((m) => ({ ...m, avoid: true }))
+    ].sort((a, b) => a.index - b.index);
+    const nodes = [];
+    let at = 0;
+    for (const mark of marks) {
+      if (mark.index < at) continue;
+      nodes.push(text.slice(at, mark.index), element('mark', mark.text, mark.avoid ? 'avoid' : undefined));
+      at = mark.index + mark.text.length;
+    }
+    nodes.push(text.slice(at));
+    return nodes;
+  }
+
+  const SLOT_NAMES = Object.fromEntries(Object.entries(CASE_NAMES).flatMap(([c, name]) =>
+    [[`${c}.sg`, `${name} lp`], [`${c}.pl`, `${name} lm`]]));
+
+  /** One finding: what is wrong in words, both texts, and the fix. */
+  function findingCard(view, record, kind) {
+    const { term } = view;
+    const card = element('div', undefined, 'card');
+    const plLemma = term.pl.forms['nom.sg'] ?? term.pl.forms.base;
+    const enText = fields(record.en).map((f) => f.text).join('\n');
+    const plText = fields(record.pl).map((f) => f.text).join('\n');
+    const heading = element('h4');
+    heading.append(element('code', record.key));
+    card.append(heading);
+    let fix;
+    if (kind === 'untranslated') {
+      const said = [...new Set(findForms(enText, Object.values(term.en.forms), term.kind === 'phrase').map((m) => m.text))];
+      card.append(element('p', `English says “${said.join('”, “')}”. Polish has no form of “${plLemma}”.`));
+      fix = 'pl';
+    } else {
+      const enAvoid = findStems(enText, term.en.avoid).map((m) => m.text);
+      const plAvoid = findStems(plText, term.pl.avoid).map((m) => m.text);
+      fix = plAvoid.length ? 'pl' : 'en';
+      const words = [...new Set(fix === 'pl' ? plAvoid : enAvoid)];
+      const instead = fix === 'pl' ? plLemma : (term.en.forms.sg ?? term.en.forms.base);
+      card.append(element('p', `Says “${words.join('”, “')}”. The lexicon says “${instead}”.`));
+    }
+    for (const locale of ['en', 'pl']) {
+      if (locale === fix) continue;
+      for (const field of fields(record[locale])) {
+        const line = element('p', undefined, 'text');
+        line.lang = locale;
+        line.append(element('strong', `${locale.toUpperCase()}${field.form ? ` ${field.form}` : ''}`), ...highlighted(field.text, term, locale));
+        card.append(line);
+      }
+    }
+    const editors = fields(record[fix]).map((field) => {
+      const label = element('label', `Fix the ${fix === 'pl' ? 'Polish' : 'English'}${field.form ? ` (${field.form})` : ''}`, 'block');
+      const input = element('textarea');
+      input.lang = fix;
+      input.value = field.text;
+      input.rows = Math.min(8, Math.max(2, Math.ceil(field.text.length / 70)));
+      input.addEventListener('focus', () => { view.lastTextarea = input; });
+      input.addEventListener('input', () => {
+        save.dataset.clean = String(editors.every((e) => e.input.value === e.field.text));
+        save.disabled = busy || save.dataset.clean === 'true';
+      });
+      label.append(input);
+      card.append(label);
+      return { field, input };
+    });
+    const chips = element('div', undefined, 'chips');
+    chips.append(element('span', 'Select a word in the box, then pick the form: ', 'muted'));
+    const bySurface = new Map();
+    for (const slot of slotsOf(term, fix)) {
+      const form = term[fix].forms[slot];
+      if (form) bySurface.set(form, [...(bySurface.get(form) ?? []), SLOT_NAMES[slot] ?? slot]);
+    }
+    for (const [form, slots] of bySurface) {
+      const chip = element('button', term.kind === 'noun' && fix === 'pl' ? `${form} (${slots.join(', ')})` : form);
+      chip.type = 'button';
+      chip.addEventListener('mousedown', (event) => event.preventDefault());
+      chip.addEventListener('click', () => {
+        const input = editors.some((e) => e.input === view.lastTextarea) ? view.lastTextarea : editors[0].input;
+        input.setRangeText(form, input.selectionStart, input.selectionEnd, 'end');
+        input.dispatchEvent(new Event('input'));
+        input.focus();
+      });
+      chips.append(chip);
+    }
+    card.append(chips);
+    const buttons = element('div', undefined, 'buttons');
+    const save = element('button', 'Save fix');
+    save.type = 'button';
+    save.dataset.clean = 'true';
+    save.disabled = true;
+    save.addEventListener('click', () => saveFix(record, fix, editors, message));
+    const ignore = element('button', 'Not a problem');
+    ignore.type = 'button';
+    ignore.addEventListener('click', () => setIgnored(view, record, true));
+    const message = element('span');
+    message.setAttribute('role', 'status');
+    buttons.append(save, ignore, message);
+    card.append(buttons);
+    return card;
+  }
+
+  function refreshAllUsage() {
+    for (const view of views.values()) renderUsage(view);
+    applyFilter();
+    updateControls();
+  }
+
+  async function saveFix(record, locale, editors, message) {
+    if (busy) return;
+    busy = true;
+    updateControls();
+    try {
+      for (const { field, input } of editors) {
+        if (input.value === field.text) continue;
+        const response = await fetch('/api/strings', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locale, key: record.key, variant: field.variant, form: field.form, previous: field.text, text: input.value })
+        });
+        if (!response.ok) throw new Error(await response.text());
+        if (field.form === null) record[locale] = input.value;
+        else record[locale][field.variant].match[field.form] = input.value;
+        field.text = input.value;
+      }
+      $('#operation').textContent = `Saved ${record.key}.`;
+      busy = false;
+      refreshAllUsage();
+    } catch (error) {
+      message.textContent = ` ${error.message}`;
+    } finally {
+      busy = false;
+      updateControls();
+    }
+  }
+
+  /** Dismiss or restore one finding at once, without saving other edits in
+   * progress: the change goes onto the saved lexicon, then into the draft. */
+  async function setIgnored(view, record, ignored) {
+    if (busy) return;
+    const id = view.term.id;
+    const next = clone(saved);
+    const target = next.terms.find((term) => term.id === id);
+    if (!target) { $('#operation').textContent = 'Save this new term first.'; return; }
+    const apply = (term) => {
+      const ignore = { ...(term.ignore ?? {}) };
+      if (ignored) ignore[record.key] = fingerprint(record.en, record.pl);
+      else delete ignore[record.key];
+      if (Object.keys(ignore).length) term.ignore = ignore; else delete term.ignore;
+    };
+    apply(target);
+    busy = true;
+    updateControls();
+    try {
+      const response = await fetch('/api/lexicon', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision, lexicon: next })
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const latest = await fetch('/api/lexicon');
+      if (!latest.ok) throw new Error(await latest.text());
+      ({ revision } = await latest.json());
+      saved = next;
+      apply(view.term);
+      $('#operation').textContent = ignored ? `${record.key}: marked as not a problem for ${id}.` : `${record.key}: shown again for ${id}.`;
+    } catch (error) {
+      $('#operation').textContent = error.message;
+    } finally {
+      busy = false;
+      renderUsage(view);
+      applyFilter();
+      updateControls();
+    }
   }
 
   function renderSuggestions(view, locale) {

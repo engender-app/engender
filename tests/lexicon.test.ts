@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  applyRename, findForms, keysToReview, lexiconProblem, matchCase, NOUN_SLOTS, renameMap, renameOccurrences, suggestForms, termUsage
+  applyRename, findForms, fingerprint, keysToReview, lexiconProblem, matchCase, NOUN_SLOTS, renameMap, renameOccurrences, suggestForms, termUsage
 } from '../scripts/lexicon-core.mjs';
 import { readLexicon, writeLexicon } from '../scripts/strings.mjs';
 
@@ -87,6 +87,15 @@ describe('lexicon usage', () => {
     expect(termUsage(term(), records)).toEqual({
       keys: ['a', 'b', 'c'], untranslated: ['b'], avoided: [{ key: 'b', words: ['Kuracje'] }]
     });
+  });
+
+  it('drops a dismissed finding until its strings change', () => {
+    const dismissed = { ...term(), ignore: { b: fingerprint('Regimens', 'Kuracje') } };
+    expect(termUsage(dismissed, records)).toEqual({ keys: ['a', 'b', 'c'], untranslated: [], avoided: [] });
+    const edited = records.map((r) => r.key === 'b' ? { ...r, pl: 'Kuracje i schematy' } : r);
+    expect(termUsage(dismissed, edited).avoided).toEqual([{ key: 'b', words: ['Kuracje'] }]);
+    expect(lexiconProblem({ terms: [dismissed] })).toBeNull();
+    expect(lexiconProblem({ terms: [{ ...term(), ignore: ['b'] }] })).toBe('regimen: ignore maps keys to fingerprints.');
   });
 
   it('suggests catalogue words sharing the stem', () => {
