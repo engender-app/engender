@@ -542,7 +542,8 @@ try {
   if (walk.join() !== 'today,marks,body,writing') throw new Error(`the steps read ${walk.join()}`);
   const want = { today: 'faces', marks: 'mode,tags', body: 'body', writing: 'note,photos,video,voice' };
   for (const [at, read] of Object.entries(want)) if (parts[at] !== read) throw new Error(`the ${at} step holds ${parts[at]}, not ${read}`);
-  if (await page.locator('[data-entry-continue]').count()) throw new Error('the last step still has a way on');
+  // The last step's way on closes on its own transition; it is gone once that ends.
+  await page.locator('[data-entry-continue]').waitFor({ state: 'detached' });
   for (const section of ['photos', 'voice', 'video']) {
     await page.locator(`[data-section-chip="${section}"]`).click();
     await page.waitForSelector(`[data-editor-section="${section}"]`);
@@ -1258,7 +1259,7 @@ try {
   await page.locator('[data-mood="3"]').click();
   await toTheRest();
   await page.locator('#ed-note').fill('Duplicate tag labels survive saving');
-  await page.waitForSelector('[data-editor-section="tags"]');
+  await openSection('tags');
   const tags = page.locator('[data-tag]').filter({ hasText: /^social euphoria$/ }); // text-under-test: the intentionally equal built-in and custom labels
   if (await tags.count() !== 2) throw new Error('the editor did not offer both equal tag labels');
   await tags.nth(0).click();
@@ -4182,6 +4183,7 @@ try {
   if ((await page.locator('[data-tag="g-euphoria"]').getAttribute('aria-pressed')) !== 'true') {
     throw new Error('euphoria did not select');
   }
+  await toTheRest();
   await page.locator('#ed-note').fill('Playwright: physical and euphoria together.');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
@@ -4359,9 +4361,8 @@ try {
   if (restoredNote !== 'Killed mid-edit by Playwright.') {
     throw new Error(`note lost across reload: "${restoredNote}"`);
   }
-  // The face is on the first step, one step back, and the note is kept on the way.
-  await page.locator('[data-screen-back]').first().click();
-  await page.waitForSelector('[data-entry-step="today"] [data-mood="4"][aria-checked="true"]');
+  // The face is on the first step, a few steps back, and the note is kept on the way.
+  await toEntryStepWith(page, '[data-entry-step="today"] [data-mood="4"][aria-checked="true"]');
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
@@ -4408,8 +4409,7 @@ try {
   await toTheRest();
   const note = await page.locator('#ed-note').inputValue();
   if (note !== 'Backgrounded but never killed.') throw new Error(`note changed across backgrounding: "${note}"`);
-  await page.locator('[data-screen-back]').first().click();
-  await page.waitForSelector('[data-entry-step="today"] [data-mood="3"][aria-checked="true"]');
+  await toEntryStepWith(page, '[data-entry-step="today"] [data-mood="3"][aria-checked="true"]');
   ok('backgrounding and returning in the same process leaves an unsaved edit untouched');
 } catch (e) { fail('same-process background/resume', e); }
 });
@@ -7199,7 +7199,8 @@ try {
 
     await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
     await booted();
-    await toTheRest();
+    // The cards are on a new entry's body step (ticket 09); the body map is there either way.
+    await toEntryStepWith(page, '[data-editor-section="body"], [data-contextual="cycle-event"]');
     const cyclePanel = page.locator('[data-contextual="cycle-event"]');
     if (Boolean(await cyclePanel.count()) !== shown) throw new Error(`${locale} entry cycle prompt visibility disagreed`);
     if (shown) {
