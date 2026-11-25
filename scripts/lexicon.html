@@ -149,6 +149,7 @@
   .preview-buttons { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
 
   @media (max-width: 700px) {
+    .toolbar { position: static; }
     .strings colgroup { display: none; }
     .strings, .strings tbody, .strings tr, .strings td, .strings th { display: block; width: 100%; }
     .strings td { border-bottom: 0; padding: .2rem .5rem; }
@@ -200,6 +201,7 @@
     [[`${c}.sg`, `${name} lp`], [`${c}.pl`, `${name} lm`]]));
   const $ = (selector) => document.querySelector(selector);
   let records = [];
+  let byKey = new Map();
   let saved = { terms: [] };
   let draft = { terms: [] };
   let revision = '';
@@ -309,9 +311,9 @@
         const keys = keysToReview({ terms: [before] }, { terms: [target] }, records);
         if (keys.length) {
           await call('/api/reviews', 'PATCH', { reviewed: true, keys });
-          for (const { key } of keys) { const record = records.find((r) => r.key === key); if (record) record.reviewed = true; }
+          for (const { key } of keys) { const record = byKey.get(key); if (record) record.reviewed = true; }
           note = ` and marked ${count(keys.length, 'string')} reviewed`;
-          for (const other of views.values()) if (other.body) refreshRows(other);
+          for (const other of views.values()) { if (other.body) refreshRows(other); renderHeader(other); }
         }
       }
       setMetaState(view, 'Saved', 'saved');
@@ -476,9 +478,7 @@
       message.className = 'state failed';
     }
     refreshRow(view, record);
-    view.usage = termUsage(view.term, records);
-    renderHeader(view);
-    applyFilter();
+    updateUsage(record);
   }
   const rowDirty = (view, record) => (view.rows.get(record.key)?.editors ?? []).some((e) => e.input && dirty.has(e.input));
 
@@ -495,8 +495,7 @@
         record.reviewed = previous;
         $('#operation').textContent = error.message;
       }
-      for (const other of views.values()) if (other.body) refreshRow(other, record);
-      renderHeader(view);
+      for (const other of views.values()) { if (other.body) refreshRow(other, record); if (other.usage?.keys.includes(record.key)) renderHeader(other); }
     });
   }
 
@@ -582,12 +581,27 @@
     row.uses.textContent = used.join(' · ');
     for (const editor of row.editors) if (!editor.input) editor.paint();
   }
-  function refreshRows(view) { for (const key of view.rows.keys()) { const record = records.find((r) => r.key === key); if (record) refreshRow(view, record); } }
+  function refreshRows(view) { for (const key of view.rows.keys()) { const record = byKey.get(key); if (record) refreshRow(view, record); } }
+
+  /** One string changed: re-check only that string against every term, rather
+   * than every string against every term (about 450 ms a save). */
+  function updateUsage(record) {
+    for (const view of views.values()) {
+      const usage = view.usage;
+      if (!usage) continue;
+      const fresh = termUsage(view.term, [record]);
+      const other = (key) => key !== record.key;
+      usage.keys = [...usage.keys.filter(other), ...fresh.keys];
+      usage.untranslated = [...usage.untranslated.filter(other), ...fresh.untranslated];
+      usage.avoided = [...usage.avoided.filter(({ key }) => other(key)), ...fresh.avoided];
+      renderHeader(view);
+    }
+    applyFilter();
+  }
 
   function renderHeader(view) {
     const { term } = view;
-    const usage = view.usage ?? termUsage(term, records);
-    const byKey = new Map(records.map((record) => [record.key, record]));
+    const usage = view.usage ??= termUsage(term, records);
     const findings = usage.untranslated.length + usage.avoided.filter(({ key }) => !usage.untranslated.includes(key)).length;
     const reviewed = usage.keys.filter((key) => byKey.get(key)?.reviewed).length;
     view.title.textContent = label(term);
@@ -615,7 +629,6 @@
         node.title = `${count(n, 'string')} use “${form}”. Renaming this form rewrites them.`;
       }
     }
-    const byKey = new Map(records.map((record) => [record.key, record]));
     view.rows = new Map();
     const table = element('table', undefined, 'strings');
     const colgroup = element('colgroup');
@@ -861,6 +874,7 @@
       if (!strings.ok) throw new Error(await strings.text());
       if (!lexicon.ok) throw new Error(await lexicon.text());
       records = await strings.json();
+      byKey = new Map(records.map((record) => [record.key, record]));
       ({ revision, lexicon: saved } = await lexicon.json());
       draft = clone(saved);
     } catch (error) {

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { networkInterfaces } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
@@ -233,17 +234,36 @@ async function readJson(request) {
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new RequestError(400, 'Invalid JSON.'); }
 }
 
-/** @param {string} root */
-export function createStringsServer(root = ROOT) {
+/** Without a key the server answers only 127.0.0.1. With one it answers any
+ * address, so a phone on the LAN can use it, but only a browser that opened a
+ * page with `?key=` once: that sets a SameSite cookie every later request must
+ * carry, and a write from another site's page is refused by its Origin.
+ * @param {string} root @param {{ key?: string | null }} [options] */
+export function createStringsServer(root = ROOT, { key = null } = {}) {
+  const session = key ? createHash('sha256').update(key).digest('hex') : null;
   const server = createServer(async (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     try {
       const address = server.address();
-      const host = address && typeof address === 'object' ? `127.0.0.1:${address.port}` : '';
-      if (request.headers.host !== host ||
+      const port = address && typeof address === 'object' ? address.port : 0;
+      const host = session ? request.headers.host ?? '' : `127.0.0.1:${port}`;
+      if (request.headers.host !== host || !host.endsWith(`:${port}`) ||
           (request.headers.origin && request.headers.origin !== `http://${host}`)) {
         throw new RequestError(403, 'Use the local strings page.');
+      }
+      if (session) {
+        const url = new URL(request.url ?? '/', `http://${host}`);
+        if (request.method === 'GET' && url.searchParams.has('key')) {
+          if (url.searchParams.get('key') !== key) throw new RequestError(403, 'Wrong key.');
+          response.statusCode = 303;
+          response.setHeader('Set-Cookie', `strings-key=${session}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000`);
+          response.setHeader('Location', url.pathname);
+          response.end();
+          return;
+        }
+        const cookies = (request.headers.cookie ?? '').split(';').map((part) => part.trim());
+        if (!cookies.includes(`strings-key=${session}`)) throw new RequestError(403, 'Open the address with its key first.');
       }
       if (request.method === 'GET' && request.url === '/') {
         response.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -285,12 +305,30 @@ export function createStringsServer(root = ROOT) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const server = createStringsServer();
-  server.listen(0, '127.0.0.1', () => {
+  // `--lan`: reachable from a phone at a fixed port, behind a key kept in
+  // .scratch so a restart does not log the phone out.
+  const lan = process.argv.includes('--lan');
+  let key = null;
+  if (lan) {
+    const file = join(ROOT, '.scratch/strings-lan-key');
+    try { key = readFileSync(file, 'utf8').trim(); } catch { /* first run */ }
+    if (!key) {
+      key = randomUUID();
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, key + '\n', { mode: 0o600 });
+    }
+  }
+  const server = createStringsServer(ROOT, { key });
+  server.listen(lan ? Number(process.env.STRINGS_PORT ?? 8737) : 0, lan ? '0.0.0.0' : '127.0.0.1', () => {
     const address = server.address();
     if (address && typeof address === 'object') {
-      const base = `http://127.0.0.1:${address.port}`;
-      console.log(process.argv[2] === 'lexicon' ? `Lexicon: ${base}/lexicon` : `Strings: ${base}\nLexicon: ${base}/lexicon`);
+      const hosts = lan ? Object.values(networkInterfaces()).flat()
+        .filter((entry) => entry && entry.family === 'IPv4' && !entry.internal).map((entry) => entry?.address) : ['127.0.0.1'];
+      for (const name of hosts) {
+        const base = `http://${name}:${address.port}`;
+        const suffix = key ? `?key=${key}` : '';
+        console.log(process.argv[2] === 'lexicon' ? `Lexicon: ${base}/lexicon${suffix}` : `Strings: ${base}/${suffix}\nLexicon: ${base}/lexicon${suffix}`);
+      }
     }
   });
   server.on('error', (error) => { console.error(error.message); process.exitCode = 1; });

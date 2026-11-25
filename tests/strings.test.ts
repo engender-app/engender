@@ -483,6 +483,48 @@ describe('copy outside the catalogues', () => {
   });
 });
 
+describe('strings server on the LAN', () => {
+  it('answers any host only to a browser that opened the page with its key', async () => {
+    const root = fixture();
+    const server = createStringsServer(root, { key: 'k3y' });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('Missing server address');
+      const port = address.port;
+      // A phone reaches the server by the computer's LAN address, not 127.0.0.1.
+      const send = (path: string, headers: Record<string, string> = {}, method = 'GET', body?: string) =>
+        new Promise<{ status?: number, cookie?: string[], location?: string }>((resolve, reject) => {
+          const outgoing = request({ host: '127.0.0.1', port, path, method, headers: { Host: `192.0.2.1:${port}`, ...headers } }, (response) => {
+            response.resume();
+            resolve({ status: response.statusCode, cookie: response.headers['set-cookie'], location: response.headers.location });
+          });
+          outgoing.on('error', reject);
+          outgoing.end(body);
+        });
+      expect((await send('/')).status).toBe(403);
+      expect((await send('/api/strings')).status).toBe(403);
+      expect((await send('/?key=wrong')).status).toBe(403);
+      const opened = await send('/lexicon?key=k3y');
+      expect(opened.status).toBe(303);
+      expect(opened.location).toBe('/lexicon');
+      const cookie = opened.cookie?.[0] ?? '';
+      expect(cookie).toMatch(/HttpOnly/);
+      expect(cookie).toMatch(/SameSite=Strict/);
+      const session = cookie.split(';')[0];
+      expect((await send('/api/strings', { Cookie: session })).status).toBe(200);
+      expect((await send('/api/strings', { Cookie: 'strings-key=wrong' })).status).toBe(403);
+      const edit = JSON.stringify(plainEdit());
+      const json = { 'Content-Type': 'application/json', Cookie: session };
+      expect((await send('/api/strings', { ...json, Origin: 'https://example.com' }, 'PATCH', edit)).status).toBe(403);
+      expect((await send('/api/strings', { ...json, Origin: `http://192.0.2.1:${port}` }, 'PATCH', edit)).status).toBe(204);
+      expect(JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8')).greeting).toBe('Welcome');
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+});
+
 describe('removing a string and editing together', () => {
   const serve = async (root: string) => {
     const server = createStringsServer(root);

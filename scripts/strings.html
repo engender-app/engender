@@ -106,6 +106,19 @@
   .remove:hover:not(:disabled) { border-color: var(--bad); }
   #prose table { min-width: 0; table-layout: fixed; }
   #prose td { width: 50%; }
+  /* Phone: one row stacks as key, English, Polish, used in; the toolbar
+     scrolls away instead of covering half the screen. */
+  @media (max-width: 700px) {
+    .toolbar { position: static; }
+    #search { flex-basis: 100%; }
+    #editor table, #prose table { min-width: 0; }
+    #editor thead { display: none; }
+    #editor table, #editor tbody, #editor tr, #editor td, #editor th { display: block; width: auto !important; }
+    #rows td { border-bottom: 0; padding: .15rem .5rem; }
+    #rows tr:not(.group) { border-bottom: 1px solid var(--line); padding: .35rem 0; scroll-margin-top: 1rem; }
+    #rows td[lang]::before { content: attr(lang); display: block; font-size: .7rem; text-transform: uppercase; color: var(--ink-2); padding-left: .4rem; }
+    #rows td:last-child a { display: inline; margin-right: .75rem; }
+  }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .state { animation: none; } }
 </style>
 <h1>Message catalogues</h1>
