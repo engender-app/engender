@@ -70,7 +70,6 @@
       icon="envelope"
       key="letters-gone"
       title={m.letters_gone_title()}
-      text={m.letters_gone_body()}
       action={{ label: m.letters_title(), href: '/transition/letters' }}
       aria-live="polite"
     />

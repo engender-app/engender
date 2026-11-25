@@ -281,4 +281,3 @@
   </ListCard>
 {/if}
 
-<p class="wrapped-year-close">{m.wrapped_year_close({ year: String(year) })}</p>

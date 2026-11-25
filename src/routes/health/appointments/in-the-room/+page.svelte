@@ -290,7 +290,6 @@
         key="in-the-room-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.in_the_room_empty_title()}
-        text={m.in_the_room_empty_body()}
         action={{
           label: m.in_the_room_empty_action(),
           primary: true,

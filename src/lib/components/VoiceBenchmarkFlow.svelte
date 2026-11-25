@@ -554,7 +554,7 @@
 
       <label class="field vb-note">
         <span class="field-label">{m.note_label()}</span>
-        <textarea autocomplete={journalTextAutocomplete()} class="input" rows="2" bind:value={note} placeholder={m.vb_note_placeholder()}></textarea>
+        <textarea autocomplete={journalTextAutocomplete()} class="input" rows="2" bind:value={note}></textarea>
       </label>
     </div>
 
@@ -700,7 +700,7 @@
   <p class="muted small">{m.vb_passage_own_hint()}</p>
   <label class="field">
     <span class="field-label">{m.vb_passage_own_title()}</span>
-    <textarea autocomplete={journalTextAutocomplete()} class="input" rows="6" bind:value={passageDraft} placeholder={m.vb_passage_own_placeholder()}
+    <textarea autocomplete={journalTextAutocomplete()} class="input" rows="6" bind:value={passageDraft}
     ></textarea>
   </label>
   <div class="vb-sheet-actions">

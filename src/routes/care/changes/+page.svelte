@@ -825,7 +825,6 @@
           class="input"
           {id}
           name="new-effect-type"
-          placeholder={m.effect_type_new_placeholder()}
           bind:value={newEffectName}
         />
       {/snippet}

@@ -294,7 +294,6 @@
           icon="alert"
           key="reminders-notifications-off"
           title={m.rem_notifications_off_title()}
-          text={m.rem_notifications_off_body()}
           action={{ label: m.rem_allow_notifications(), onclick: requestNotifications }}
         />
       {/if}

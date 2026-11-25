@@ -273,7 +273,6 @@
         data-own
         icon="pencil"
         title={m.regimen_own_title()}
-        subtitle={m.regimen_own_sub()}
         onclick={() => openEditor(null, null)}
       />
       {#each vocabulary.regimenTemplates as tp (tp.key)}

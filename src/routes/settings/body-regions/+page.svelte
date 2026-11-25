@@ -80,9 +80,6 @@
        before it fills, so the lists cut in at full opacity when it did (ux-carpet
        ticket 211). Held at last visit's height, faded in. -->
   <ReadReserve ready={listsRevealed} estimate={listsEstimate} onrest={listsRemember}>
-    {#if customs.length === 0}
-      <p class="muted small">{m.body_regions_custom_empty()}</p>
-    {/if}
     <div class="managed-tags">
       {#each customs as r (r.id)}
         <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
@@ -136,7 +133,7 @@
     <h3>{m.body_regions_new_sheet()}</h3>
     <Field label={m.body_regions_new_sheet()} id="new-region-input" hidden>
       {#snippet children(id)}
-        <input autocomplete={journalTextAutocomplete()} class="input" {id} name="new-region-input" placeholder={m.body_regions_placeholder()} bind:value={newName} />
+        <input autocomplete={journalTextAutocomplete()} class="input" {id} name="new-region-input" bind:value={newName} />
       {/snippet}
     </Field>
     <button class="btn btn-primary" disabled={adding.busy} onclick={add}><span>{m.save()}</span></button>

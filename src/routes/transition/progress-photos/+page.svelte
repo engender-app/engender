@@ -264,7 +264,7 @@
       {#if selecting}
         <div class="compare-selection" transition:collapse>
           <p role="status" data-compare-progress>{m.ph_selection_count({ count: orderedSelected.length })}</p>
-          <p class="muted small">{selected.length < 2 ? m.ph_pick_two() : m.ph_selection_full()}</p>
+          {#if selected.length >= 2}<p class="muted small">{m.ph_selection_full()}</p>{/if}
           <!-- Every picked id, a deleted one included, so a shot that went
                while it was picked can still be taken off the selection. -->
           {#each selected as id (id)}
