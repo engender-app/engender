@@ -49,7 +49,8 @@ export const ARCHIVE_FILE_EXTENSION = '.gnd';
 /** What backups were called before they became `.gnd` (tester-report-02
     ticket 10), after the app's first name. Older files and the backups of
     a phone on an older build still carry it, so whatever finds backups by
-    name takes both. Restore reads the contents, never the name. */
+    name takes both. Restore reads the contents, never the name. Android
+    keeps the same pair in FolderArchives.java. */
 export const LEGACY_ARCHIVE_FILE_EXTENSION = '.ttbackup';
 
 /** The file is not something this build can read at all: not an archive,

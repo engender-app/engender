@@ -20,7 +20,8 @@ import java.util.List;
  */
 final class FolderArchives {
     static final String EXTENSION = ".gnd";
-    /** Backups before tester-report-02 ticket 10, and those of a phone on an older build. */
+    /** The name before backups became .gnd (after the app's first name), still carried
+     *  by older files and by a phone on an older build. Mirrors container.ts. */
     static final String LEGACY_EXTENSION = ".ttbackup";
 
     /** A backup by its name: either extension. Restore checks the contents. */
