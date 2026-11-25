@@ -30,9 +30,6 @@
           "voc.pl": "wizyty"
         },
         "avoid": []
-      },
-      "ignore": {
-        "roadmap_note_pl_presentational_hair": "11zk8dv"
       }
     },
     {
@@ -73,8 +70,8 @@
         ]
       },
       "ignore": {
-        "am_export_note": "1466t8e",
-        "dlb_file_too_large": "6rbfws",
+        "am_export_note": "flsvk0",
+        "dlb_file_too_large": "1nxoaji",
         "dlb_no_moods": "3o00q7",
         "dlb_nothing_new": "1acnmz4",
         "dlb_sheet_title": "g393vg",
@@ -86,58 +83,54 @@
         "exp_last_backup": "1qt25jq",
         "imp_file_placeholder": "10j97t7",
         "imp_log_source_daylio_backup": "r5f4y9",
-        "imp_not_an_archive": "45b3fw",
+        "imp_not_an_archive": "1d2059w",
         "imp_pick_first": "bunojv",
         "perm_backup_folder_why": "35vjc3",
-        "rko_body_android": "y0ubkf",
-        "settings_backup_age": "15rxmg",
-        "storage_notice_body": "1yft4mc",
-        "verify_not_an_archive": "1cuwzcq",
+        "rko_body_android": "8l7wph",
+        "settings_backup_age": "1j7djng",
+        "storage_notice_body": "1egr322",
+        "verify_not_an_archive": "hy049k",
         "android:backup_failure_description": "7cc2x3",
-        "android:backup_failure_title": "1unmywt",
-        "privacy:07": "125d5al",
-        "privacy:14": "kyhl2l",
-        "privacy:27": "1gq6nld",
-        "privacy:34": "1il484i",
-        "privacy:64": "z7bo6g",
-        "ak_forgot_gate_note": "tjoguz",
-        "ak_forgot_key_note": "6gvzcw",
-        "ak_invalidated_body": "1i12fua",
-        "am_passphrase_detail": "l3rc2v",
-        "bm_forgot_gate_note": "bt29hx",
-        "bm_forgot_key_note": "1s4x1lk",
-        "dbr_archive_body": "1cw586x",
+        "android:backup_failure_title": "1auxk69",
+        "privacy:07": "1mzg0oh",
+        "privacy:14": "jcephc",
+        "privacy:27": "m5afw4",
+        "privacy:34": "9bjhvg",
+        "ak_forgot_gate_note": "sf5g6f",
+        "ak_forgot_key_note": "1nn61ke",
+        "ak_invalidated_body": "1dys9qe",
+        "am_passphrase_detail": "1hjk55e",
+        "bm_forgot_gate_note": "uwxg57",
+        "bm_forgot_key_note": "14l6luw",
+        "dbr_archive_body": "1tvxmwb",
         "dbr_archive_open": "rj3xux",
-        "exp_auto_destination_note": "1uvbn5j",
+        "exp_auto_destination_note": "nazq1x",
         "exp_auto_password_missing": "1rgw558",
-        "exp_auto_password_needed": "1g4kurl",
         "exp_auto_password_saved": "5o2fhq",
-        "exp_encrypted_body": "ov93vc",
-        "exp_password_label": "15s8as2",
-        "exp_warning_body": "bbcf9f",
-        "exp_warning_sheet": "wff3jo",
+        "exp_encrypted_body": "iayocm",
+        "exp_warning_body": "nkmc9b",
         "exp_warning_title": "1c2x67f",
         "imp_merged_toast": "1t2sjil",
-        "imp_mode_replace_sub": "b2qdp6",
-        "imp_replace_note": "bwj02n",
-        "imp_replaced_toast": "631oio",
-        "journal_book_intro": "chjlwa",
-        "pin_forgot_gate_note": "g0b4n1",
-        "plain_notice_body": "k1k3lp",
-        "pp_change_body": "7378r8",
-        "pp_forgot_gate_note": "z8hv9i",
-        "rem_web_note": "1brdqip",
-        "rem_web_save_note": "uahuq6",
-        "reset_offer_archive_password": "vs3jmk",
-        "rk_revoke_body": "1bryrsu",
-        "rk_row_sub_none_consequence": "1ylnhez",
-        "surgery_archive_title": "10pnkxe",
-        "surgery_archive_toggle_label": "1ti69rn",
-        "surgery_archived_title": "ewelhi",
+        "imp_mode_replace_sub": "cgj0w5",
+        "imp_replace_note": "1yx6tu5",
+        "imp_replaced_toast": "6233ts",
+        "journal_book_intro": "l4fuz3",
+        "pin_forgot_gate_note": "1ihffp",
+        "plain_notice_body": "10bozfe",
+        "pp_change_body": "9gctsj",
+        "pp_forgot_gate_note": "1m4nfaq",
+        "rem_web_note": "1grear5",
+        "rem_web_save_note": "139pw2d",
+        "reset_offer_archive_password": "9flb59",
+        "rk_revoke_body": "t6wqak",
+        "rk_row_sub_none_consequence": "obgh7z",
+        "surgery_archive_title": "qbjr6l",
+        "surgery_archive_toggle_label": "illrf1",
+        "surgery_archived_title": "8jm9od",
         "surgery_phase_archived": "1q4wqyo",
-        "verify_ok_toast": "1x0re9u",
-        "store:changelogs/1000000999": "trb4d4",
-        "store:full_description": "rc6t70"
+        "verify_ok_toast": "10ar3l",
+        "store:changelogs/1000000999": "1mqm7go",
+        "store:full_description": "1gr8786"
       }
     },
     {
@@ -190,13 +183,10 @@
         "avoid": []
       },
       "ignore": {
-        "coming_back_wear_end_hint": "r270gc",
         "dilation_no_procedure_body": "3nrcex",
         "in_the_room_empty_body": "199skdp",
-        "labs_empty_body": "mq55dc",
         "regimen_pause_save_failed": "3peb6l",
         "roadmap_milestone_prompt_title": "1bc59za",
-        "surgery_empty_body": "188gzya",
         "tryout_adopt_confirm_add": "1me08vx"
       }
     },
@@ -224,7 +214,6 @@
         "exp_auto_backup_now": "dadd9s",
         "hair_removal_area_back": "faij2d",
         "home_edit_reset": "oyj7zd",
-        "ph_back_to_all": "x4g7w6",
         "rem_missing_action": "1d3ovb",
         "source_record_return": "18bxmog",
         "vb_passage_own_clear": "1819jg0",
@@ -303,7 +292,6 @@
         "avoid": []
       },
       "ignore": {
-        "affirmations_delete_q": "ru5pya",
         "appointment_prep_delete_q": "1fhpae9",
         "appointments_delete_q": "2zczvh",
         "cycle_event_delete_q": "xdn7w2",
@@ -311,36 +299,26 @@
         "dilation_session_delete_q": "1hp7fiz",
         "document_delete_q": "5507bm",
         "dose_delete_question": "243ahv",
-        "doubt_snapshot_delete_q": "l3hgvw",
-        "era_delete_q": "1u46hg0",
-        "hair_photo_delete_q": "4247gg",
+        "era_delete_q": "1g5ez7o",
         "hair_removal_delete_q": "9pt57z",
-        "hair_removal_photo_delete_q": "4247gg",
         "hair_stage_delete_q": "15spk15",
-        "journaling_pause_delete_q": "qur394",
         "labs_delete_q": "1ex4rwo",
         "letters_delete_q": "jwwcuw",
-        "margin_note_delete_q": "z9pycs",
-        "measurement_delete_q": "19nqji9",
+        "margin_note_delete_q": "v03msi",
         "ms_delete_q": "yrotwv",
         "regimen_pause_delete_q": "qur394",
         "rem_delete_q": "19vrl67",
         "roadmap_goal_delete_q": "1lluizy",
-        "saved_question_delete_q": "di0lfe",
         "side_effect_delete_q": "4rwflv",
-        "size_log_delete_q": "3itlru",
         "surgery_checklist_delete_q": "143tqnh",
         "surgery_consult_delete_q": "12yh3x0",
         "surgery_delete_q": "aexs6u",
-        "surgery_photo_delete_q": "4247gg",
         "tags_delete_q": "3a7jin",
         "tryout_delete_q": "3g31wv",
         "tryout_feeling_delete_q": "1fxn8k5",
-        "tryout_photo_delete_q": "4247gg",
         "vb_practice_delete_q": "169ym6b",
         "vc_benchmark_delete_q": "1dtmnfc",
-        "wear_session_delete_q": "hyj246",
-        "privacy:56": "yrfg61"
+        "wear_session_delete_q": "hyj246"
       }
     },
     {
@@ -422,7 +400,6 @@
         "avoid": []
       },
       "ignore": {
-        "doubt_save_snapshot": "ldamcp",
         "hair_removal_photo_hint": "tiiq2n",
         "regimen_schedule_after_episode": "1vug0ye",
         "tryout_photo_save_first": "23mf28",
@@ -558,8 +535,7 @@
         "avoid": []
       },
       "ignore": {
-        "regimen_schedule_amounts_hint": "gu75rc",
-        "care_injection_cycle_caption": "wthxfc"
+        "regimen_schedule_amounts_hint": "7dnvfn"
       }
     },
     {
@@ -725,13 +701,9 @@
         "avoid": []
       },
       "ignore": {
-        "cd_added_toast": "1ql7rwu",
-        "entry_nudges": "lfb3bw",
-        "features_to_show_sub": "1xouszy",
-        "surgery_compare_no_data": "enxz8z",
-        "tile_active_tryout_note": "1xh6ih2",
-        "tile_revisit_sub": "afqfmj",
-        "privacy:39": "3u7pdf"
+        "cd_added_toast": "1124wd4",
+        "features_to_show_sub": "zqgbft",
+        "surgery_compare_no_data": "enxz8z"
       }
     },
     {
@@ -834,15 +806,15 @@
         "avoid": []
       },
       "ignore": {
-        "am_setup_body": "bhpxo8",
-        "exp_warning_body": "bbcf9f",
+        "am_setup_body": "1f846jl",
+        "exp_warning_body": "nkmc9b",
         "search_elsewhere_heading": "1lyoja0",
         "surgery_compare_no_data": "enxz8z",
         "surgery_compare_too_short": "1eyy3am",
         "tryout_compare_too_short": "6e62pu",
-        "boot_failed_engine": "17g1yrc",
+        "boot_failed_engine": "zn33g2",
         "privacy:09": "or5qwx",
-        "privacy:12": "1ra34kf"
+        "privacy:12": "18ew632"
       }
     },
     {
@@ -1189,10 +1161,6 @@
           "base": "Zdjęcia zmian"
         },
         "avoid": []
-      },
-      "ignore": {
-        "body_region_track_photos": "1m4dy3e",
-        "progress_photos": "1m4dy3e"
       }
     },
     {
