@@ -18,7 +18,8 @@
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { entrySession } from '$lib/components/entrySession.svelte';
-  import { ATTACHMENT_SECTIONS, ENTRY_SECTIONS, MARKING_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
+  import { ATTACHMENT_SECTIONS, ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
+  import { arrivalStep, ENTRY_STEPS, nextStep, previousStep, stepsShown, type EntryStep, type StepContent } from '$lib/data/entrySteps';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
@@ -71,6 +72,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import EntryFirstStep from '$lib/components/EntryFirstStep.svelte';
+  import StepProgress from '$lib/components/StepProgress.svelte';
   import { moodToApply } from '$lib/components/seedMoodArrival';
   import { cssPart, footContinue, stepScrub, stepTravel } from '$lib/motion/entryStep';
   import type { ScrubPart, StepScrub } from '$lib/motion/entryStep';
@@ -124,22 +126,32 @@
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
-  /* A new entry walks two steps (tester report 02, ticket 03): the quick
-     answer - mood and the scales - and then the rest. Step 1 alone is a
-     complete entry. An entry that exists keeps its single page. Opened for
-     a section of the rest (`?open=`, a first photo from Getting started),
-     it starts on the rest, and Back still walks to the first step.
+  /* A new entry walks steps (tester report 02, tickets 03, 04 and 09): the
+     quick answer - mood and the scales - then what marked the day, the body
+     and the cards the day offers, and last what is written and attached
+     ($lib/data/entrySteps has the order and when a step is skipped). The
+     first step alone is a complete entry, and each step fits the window
+     wherever its content allows. An entry that exists keeps its single
+     page. Opened for a section (`?open=`, a first photo from Getting
+     started), it starts on that section's step, and Back still walks to the
+     first.
 
      The step is the screen's own state rather than a history entry: the one
-     draft runs through both, a save from either leaves the editor the way
-     it always has, and nothing has to be unwound from history first. Back
-     reaches it three ways - the header's control, Android's gesture
-     ($lib/navigation/stepBack) and the browser's, which the leave guard
-     hands over here instead of asking (ownsDeparture). */
+     draft runs through every step, a save from any of them leaves the
+     editor the way it always has, and nothing has to be unwound from
+     history first. Back reaches it three ways - the header's control,
+     Android's gesture ($lib/navigation/stepBack) and the browser's, which
+     the leave guard hands over here instead of asking (ownsDeparture). */
   // svelte-ignore state_referenced_locally
   const stepped = entryId == null;
+  /* The marks step holds mode and tags, so it is there while either has
+     something to pick. */
+  const hasMarks = () =>
+    vocabulary.visiblePresentations.length > 0 || vocabulary.visibleTagGroups.some((group) => group.tags.length > 0);
   // svelte-ignore state_referenced_locally
-  let step = $state<1 | 2>(stepped && !openSection ? 1 : 2);
+  let step = $state<EntryStep>(
+    stepped ? arrivalStep(openSection, stepsShown({ marks: hasMarks(), body: vocabulary.visibleBodyRegions.length > 0 })) : 'writing'
+  );
   /** Which way the last change went, so a step back runs the film backwards. */
   let steppingBack = $state(false);
   /** A back gesture is drawing the step back (ticket 04, box 5): the first
@@ -165,7 +177,7 @@
     },
     ownsDeparture: (departure) => {
       if (departure.type !== 'popstate' || (departure.delta ?? 0) >= 0 || !canStepBack()) return false;
-      void goToStep(1);
+      void goToStep(previousStep(shown, step)!);
       return true;
     }
   });
@@ -401,8 +413,13 @@
      existing entry's day is a read away; until it lands the line holds its
      height blank rather than naming today, which is the wrong day for
      almost every entry anyone reopens. */
+  /* On a step the line shares its width with the step's progress, so the
+     day is named in short (ticket 09): the long form wrapped to two lines
+     at 360px. */
   let dateLine = $derived(
-    entryId != null && !existing ? '\u00a0' : `${isToday ? `${m.today()} · ` : ''}${fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}${existing ? ` · ${fmtTime(existing.timestamp)}` : ''}`
+    entryId != null && !existing
+      ? '\u00a0'
+      : `${isToday ? `${m.today()} · ` : ''}${fmtDay(day, stepped ? { weekday: 'short', day: 'numeric', month: 'short' } : { weekday: 'long', day: 'numeric', month: 'long' })}${existing ? ` · ${fmtTime(existing.timestamp)}` : ''}`
   );
 
   /* The chip row and the section it opens (phase 11 ticket 19). Nothing
@@ -545,6 +562,51 @@
      alone: a save never moves the day an effect was first noticed. */
   let markersQuery = liveQuery((j) => j.personalEffects.getMarkers());
   let recordedEffects = $derived(new Map((markersQuery.value ?? []).map((marker) => [marker.effect, marker.firstNoticedEpochDay])));
+
+  /* The walk this person sees (ticket 09). The body step is there for the
+     body map or for any card the day offers; a card that arrives with its
+     read after the editor opened adds the step, and its segment opens in
+     the progress. */
+  let cardsOffered = $derived(
+    !!activeTryout ||
+      (!!scheduleDose && !episodesQuery.loading && !todayDosesQuery.loading) ||
+      !!recoveringProcedure ||
+      (isHrtActive && !effectsQuiet) ||
+      cycleTrackingActive
+  );
+  let stepContent = $derived<StepContent>({
+    marks: hasMarks(),
+    body: vocabulary.visibleBodyRegions.length > 0 || cardsOffered
+  });
+  let shown = $derived(stepsShown(stepContent, step));
+  let stepAhead = $derived(nextStep(shown, step));
+
+  function stepTitle(which: EntryStep): string {
+    switch (which) {
+      case 'today':
+        return m.home_log_heading();
+      case 'marks':
+        return m.entry_step_marks();
+      case 'body':
+        return m.entry_step_body();
+      case 'writing':
+        return m.entry_step_writing();
+    }
+  }
+
+  /** The way on names what the next step holds, in a word. */
+  function wayOnLabel(which: EntryStep): string {
+    switch (which) {
+      case 'today':
+        return m.home_log_heading();
+      case 'marks':
+        return vocabulary.visibleTagGroups.some((group) => group.tags.length > 0) ? m.tags_label() : m.presentation_label();
+      case 'body':
+        return m.body_map_title();
+      case 'writing':
+        return m.note_label();
+    }
+  }
 
   $effect(() => {
     if (entryDraft.tryoutFeltSense?.note !== undefined && entryDraft.tryoutFeltSense?.note !== null) {
@@ -800,9 +862,9 @@
   async function saveEntry() {
     if (saving || draftPreparing) return;
     if (entryDraft.savedId === undefined && moodMissing) {
-      /* The faces live on the first step: from the second, finishing without
+      /* The faces live on the first step: from a later one, finishing without
          one takes the person back to them rather than saving a moodless entry. */
-      if (stepped && step === 2) await goToStep(1);
+      if (stepped && step !== 'today') await goToStep('today');
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
@@ -825,7 +887,7 @@
   /** Past the first step, with nothing saving and nothing saved: the only
       time Back is a step rather than a way out. */
   function canStepBack(): boolean {
-    return stepped && step === 2 && !session.saving && session.draft.savedId === undefined;
+    return stepped && previousStep(shown, step) !== null && !session.saving && session.draft.savedId === undefined;
   }
 
   let stepScreen = $state<HTMLElement | undefined>();
@@ -851,12 +913,12 @@
   }
 
   let stepping = false;
-  async function goToStep(next: 1 | 2) {
+  async function goToStep(next: EntryStep) {
     if (!stepped || step === next || stepping || saving) return;
     stepping = true;
     try {
       await toTop();
-      steppingBack = next < step;
+      steppingBack = ENTRY_STEPS.indexOf(next) < ENTRY_STEPS.indexOf(step);
       step = next;
       await tick();
       /* The step's heading takes the focus, as a screen's does on arrival,
@@ -880,14 +942,20 @@
   let scrub: StepScrub | undefined;
   let previewStep = $state<HTMLElement | undefined>();
   let leavingStepEl: HTMLElement | undefined;
+  /** The step drawn under the gesture: the one Back leads to. */
+  let previewTarget = $state<EntryStep>('today');
 
   function beginPreview(): boolean {
     if (!canStepBack() || stepping || previewing || saving) return false;
     stepping = true;
+    previewTarget = previousStep(shown, step)!;
+    /* The way on opens under the gesture only when the step being left is
+       the last, which has none; every other step has one already. */
+    const wayOnArrives = nextStep(shown, step) === null;
     previewing = true;
     // The drawing goes in and is placed at its start before anything paints.
     flushSync();
-    const leavingStep = stepScreen?.querySelector<HTMLElement>('[data-entry-step="2"]');
+    const leavingStep = stepScreen?.querySelector<HTMLElement>(`[data-entry-step="${step}"]`);
     leavingStepEl = leavingStep ?? undefined;
     const leavingHeading = document.querySelector<HTMLElement>('[data-step-heading]:not([data-step-heading-preview])');
     const arrivingHeading = document.querySelector<HTMLElement>('[data-step-heading-preview]');
@@ -900,7 +968,7 @@
     if (previewStep) parts.push(cssPart(previewStep, stepTravel(previewStep, back, { direction: 'in' }), true));
     if (leavingHeading) parts.push(cssPart(leavingHeading, stepTravel(leavingHeading, back, { direction: 'out' }), false));
     if (arrivingHeading) parts.push(cssPart(arrivingHeading, stepTravel(arrivingHeading, back, { direction: 'in' }), true));
-    if (wayOn) parts.push(cssPart(wayOn, footContinue(wayOn), true));
+    if (wayOn && wayOnArrives) parts.push(cssPart(wayOn, footContinue(wayOn), true));
     const from = region?.scrollTop ?? 0;
     if (region && from > 0) {
       parts.push({
@@ -923,14 +991,14 @@
     instantStep = true;
     if (to === 1) {
       steppingBack = true;
-      step = 1;
+      step = previewTarget;
     }
     previewing = false;
     // The swap and the styles coming off land in one frame: every part is
     // at rest where the real element now stands.
     flushSync();
     // The leaving step stays in the page until its outro ends, and by now
-    // its own `{#if step === 1}` draws the first step in it. The scrub kept
+    // its own keyed block draws the step Back led to in it. The scrub kept
     // it invisible; taking the scrub's styles off must not show it again.
     if (to === 1 && leavingStepEl?.isConnected) leavingStepEl.style.display = 'none';
     leavingStepEl = undefined;
@@ -946,7 +1014,7 @@
       return true;
     }
     if (!canStepBack()) return false;
-    void goToStep(1);
+    void goToStep(previousStep(shown, step)!);
     return true;
   };
 
@@ -1036,13 +1104,30 @@
        as the href the header falls back to on a deep link or a reload
        (NAV-005, CARPET-05). -->
   <ScreenHeader
-    title={entryId != null ? m.entry() : stepped && step === 1 ? m.home_log_heading() : m.new_entry()}
+    title={entryId != null ? m.entry() : stepped ? stepTitle(step) : m.new_entry()}
     subtitle={dateLine}
     screen="entry"
-    back={stepped && step === 2 ? () => void goToStep(1) : existing ? `/day/${day}` : '/'}
+    back={stepped && previousStep(shown, step) ? () => void goToStep(previousStep(shown, step)!) : existing ? `/day/${day}` : '/'}
     heading={stepped ? stepHeading : undefined}
+    compact={stepped}
+    aside={stepped ? stepPlace : undefined}
   >
     {#snippet actions()}
+      {#if stepped}
+        <!-- The star on the field, in the same place on every step, so a
+             new entry can be starred wherever the person is (ticket 09; the
+             single page keeps it in its save bar). -->
+        <button
+          class="icon-btn press"
+          aria-label={starred ? m.unstar_entry() : m.star_entry()}
+          aria-pressed={starred}
+          data-save-star
+          disabled={saving || entryDraft.savedId !== undefined}
+          onclick={toggleStarred}
+        >
+          <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
+        </button>
+      {/if}
       {#if existing && entryDraft.savedId === undefined}
         <!-- The star left this header for the save bar (ticket 18): a new
              entry can be starred before it exists, which this header
@@ -1118,42 +1203,65 @@
 
   {/snippet}
 
-  {#snippet modeBlock()}
+  {#snippet manageModes()}
+    <!-- In place (audit item 6): raises the same sheet Settings' own
+         Tracking row opens, rather than navigating there and back. -->
+    <button
+      type="button"
+      class="kit-heading-action"
+      data-manage-presentations
+      onclick={() => (ui.raisedManager = 'modes')}
+    >
+      {m.manage()}
+    </button>
+  {/snippet}
+
+  {#snippet modeBlock(onStep = false)}
   <!-- Mode and Gender stay open on the page (Alicja, on the spike,
        17 September 2026: "some of the sections should be always-on, for
        example gender and mode"). They keep the headings and the "manage"
        and "change" links redesign ticket 51 gave them. -->
   {#if vocabulary.visiblePresentations.length > 0}
-    <SectionHeading text={m.presentation_label()}>
-      {#snippet action()}
-        <!-- In place (audit item 6): raises the same sheet Settings' own
-             Tracking row opens, rather than navigating there and back. -->
-        <button
-          type="button"
-          class="kit-heading-action"
-          data-manage-presentations
-          onclick={() => (ui.raisedManager = 'modes')}
-        >
-          {m.manage()}
-        </button>
-      {/snippet}
-    </SectionHeading>
-    <div class="contextual-chips" role="radiogroup" use:rovingRadio aria-label={m.presentation_label()}>
-      {#each vocabulary.visiblePresentations as p (p.id)}
-        {@const role = roleAt(activeFlag.roles, p.roleIndex)}
-        <button
-          type="button"
-          class="contextual-chip presentation-chip hit-floor press"
-          class:is-active={entryDraft.presentationId === p.id}
-          {...roleAttrs(role)}
-          role="radio"
-          aria-checked={entryDraft.presentationId === p.id}
-          onclick={() => entryDraft.setPresentation(entryDraft.presentationId === p.id ? null : p.id)}
-        >
-          {p.name}
-        </button>
-      {/each}
-    </div>
+    {#if onStep}
+      <!-- On a step the question is the one heading (DIRECTION.md rule 12),
+           so the part under it is named in the small label the tag groups
+           use, and its link ends the row of chips (ticket 09). -->
+      <div class="step-part">
+        <h2 class="step-part-name">{m.presentation_label()}</h2>
+      </div>
+    {:else}
+      <SectionHeading text={m.presentation_label()}>
+        {#snippet action()}
+          {@render manageModes()}
+        {/snippet}
+      </SectionHeading>
+    {/if}
+    {#snippet modeChips()}
+      <div class="contextual-chips" role="radiogroup" use:rovingRadio aria-label={m.presentation_label()}>
+        {#each vocabulary.visiblePresentations as p (p.id)}
+          {@const role = roleAt(activeFlag.roles, p.roleIndex)}
+          <button
+            type="button"
+            class="contextual-chip presentation-chip hit-floor press"
+            class:is-active={entryDraft.presentationId === p.id}
+            {...roleAttrs(role)}
+            role="radio"
+            aria-checked={entryDraft.presentationId === p.id}
+            onclick={() => entryDraft.setPresentation(entryDraft.presentationId === p.id ? null : p.id)}
+          >
+            {p.name}
+          </button>
+        {/each}
+      </div>
+    {/snippet}
+    {#if onStep}
+      <div class="step-mode-row">
+        {@render modeChips()}
+        {@render manageModes()}
+      </div>
+    {:else}
+      {@render modeChips()}
+    {/if}
   {/if}
 
   {/snippet}
@@ -1219,12 +1327,7 @@
 
   {#if sections.includes('body') && entryDraft.openSection === 'body'}
     <div class="editor-section" id="editor-section-body" data-editor-section="body" transition:disclose>
-      <BodyRegionPicker
-        regions={vocabulary.visibleBodyRegions}
-        values={entryDraft.bodyRegions}
-        onToggle={(key) => entryDraft.toggleBodyRegion(key)}
-        onFeeling={(key, feeling) => { if (!saving) entryDraft.setBodyRegionFeeling(key, feeling); }}
-      />
+      {@render bodyPicker()}
     </div>
   {/if}
 
@@ -1360,11 +1463,21 @@
 
   {/snippet}
 
-  {#snippet tagPicker()}
+  {#snippet tagPicker(rows = false)}
     <TagPicker
       groups={vocabulary.visibleTagGroups}
       selected={entryDraft.tags}
       onToggle={(id) => entryDraft.toggleTag(id)}
+      {rows}
+    />
+  {/snippet}
+
+  {#snippet bodyPicker()}
+    <BodyRegionPicker
+      regions={vocabulary.visibleBodyRegions}
+      values={entryDraft.bodyRegions}
+      onToggle={(key) => entryDraft.toggleBodyRegion(key)}
+      onFeeling={(key, feeling) => { if (!saving) entryDraft.setBodyRegionFeeling(key, feeling); }}
     />
   {/snippet}
 
@@ -1607,34 +1720,45 @@
   {@render cards()}
   {/snippet}
 
-  <!-- A new entry's second step (tester report 02, ticket 04), in the
-       order Alicja chose: what is marked comes before what is written. Mode,
-       then the tags open on the page, then the body and the cards the day
-       offers, then the note, and the photos, voice and video last. The first
-       step's mood and scales are one step back and are not repeated. -->
-  {#snippet secondStep()}
-  {@render modeBlock()}
-  <SectionHeading text={m.tags_label()} />
-  <div class="editor-section" id="editor-section-tags" data-editor-section="tags">
-    {@render tagPicker()}
-  </div>
-  {@render chipRow(MARKING_SECTIONS)}
-  {@render panels(MARKING_SECTIONS)}
+  <!-- A new entry's later steps (tester report 02, tickets 04 and 09), in
+       the order Alicja chose: what is marked comes before what is written.
+       Mode and the tags, one sideways row per group; then the body map and
+       the cards the day offers, open on their own step; then the note, and
+       the photos, video and voice last. The step's title names the step, so
+       the tags and the body carry no heading of their own. -->
+  {#snippet marksStep()}
+  {@render modeBlock(true)}
+  {#if vocabulary.visibleTagGroups.some((group) => group.tags.length > 0)}
+    <div class="editor-section" id="editor-section-tags" data-editor-section="tags">
+      {@render tagPicker(true)}
+    </div>
+  {/if}
+  {/snippet}
+
+  {#snippet bodyStep()}
+  {#if vocabulary.visibleBodyRegions.length > 0}
+    <div class="editor-section" id="editor-section-body" data-editor-section="body">
+      {@render bodyPicker()}
+    </div>
+  {/if}
   {@render cards()}
-  <button
-    type="button"
-    class="btn btn-ghost"
-    data-save-star
-    aria-pressed={starred}
-    disabled={saving || entryDraft.savedId !== undefined}
-    onclick={toggleStarred}
-  >
-    <Icon name="star" size={18} cls={starred ? 'is-starred' : ''} /><span>{starred ? m.unstar_entry() : m.star_entry()}</span>
-  </button>
+  {/snippet}
+
+  {#snippet writingStep()}
   {@render promptAndTemplate()}
   {@render noteField()}
   {@render chipRow(ATTACHMENT_SECTIONS)}
   {@render panels(ATTACHMENT_SECTIONS)}
+  {/snippet}
+
+  {#snippet laterStep(which: EntryStep)}
+  {#if which === 'marks'}
+    {@render marksStep()}
+  {:else if which === 'body'}
+    {@render bodyStep()}
+  {:else}
+    {@render writingStep()}
+  {/if}
   {/snippet}
 
   {#if stepped}
@@ -1644,14 +1768,18 @@
     <div class="entry-stage">
       {#if previewing}
         <div class="entry-step" data-entry-step-preview inert aria-hidden="true" bind:this={previewStep}>
-          <EntryFirstStep
-            mood={entryDraft.mood}
-            {dims}
-            values={entryDraft.dims}
-            saving={false}
-            onMood={() => {}}
-            onDim={() => {}}
-          />
+          {#if previewTarget === 'today'}
+            <EntryFirstStep
+              mood={entryDraft.mood}
+              {dims}
+              values={entryDraft.dims}
+              saving={false}
+              onMood={() => {}}
+              onDim={() => {}}
+            />
+          {:else}
+            {@render laterStep(previewTarget)}
+          {/if}
         </div>
       {/if}
       {#key step}
@@ -1661,7 +1789,7 @@
           in:stepTravel={{ back: steppingBack, instant: instantStep }}
           out:stepTravel={{ back: steppingBack, instant: instantStep }}
         >
-          {#if step === 1}
+          {#if step === 'today'}
             <EntryFirstStep
               mood={entryDraft.mood}
               {dims}
@@ -1672,7 +1800,7 @@
               bind:faces={moodsEl}
             />
           {:else}
-            {@render secondStep()}
+            {@render laterStep(step)}
           {/if}
         </div>
       {/key}
@@ -1683,14 +1811,30 @@
 
   <SaveBar>
     {#if stepped}
-      <!-- Finishing is the same control on both steps, in the same place: it
+      <!-- Finishing is the same control on every step, in the same place: it
            is one element, so it neither moves nor fades when the step
-           changes, and only the way on under it opens and closes
+           changes, and only the way on beside it opens and closes
            (ticket 03 chose the wording; ticket 04 keeps the control still).
            Finishing saves what is set and closes, so it is the ink button
-           and says what it does; going on is the soft block under it,
-           naming what is on the next step. -->
+           and says what it does; going on is the soft block before it,
+           naming the next step in a word. One row since ticket 09: stacked
+           the two took 125px of the step's window, in a row 80. -->
       <div class="entry-foot">
+        {#if stepAhead || previewing}
+          <div class="entry-continue" transition:footContinue={{ instant: instantStep || previewing }}>
+            <button
+              class="btn btn-soft press"
+              data-entry-continue
+              disabled={saving || entryDraft.savedId !== undefined}
+              onclick={() => stepAhead && goToStep(stepAhead)}
+            >
+              <!-- The next step's name swaps as the person walks, crossfading
+                   in place in the button that stays. -->
+              <span class="way-on-words">{#key stepAhead ?? step}<span transition:crossfade>{wayOnLabel(stepAhead ?? step)}</span>{/key}</span>
+              <Icon name="chevronRight" size={18} />
+            </button>
+          </div>
+        {/if}
         <button
           class="btn press"
           class:btn-primary={!moodMissing}
@@ -1704,18 +1848,6 @@
         >
           <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
         </button>
-        {#if step === 1 || previewing}
-          <div class="entry-continue" transition:footContinue={{ instant: instantStep || previewing }}>
-            <button
-              class="btn btn-soft press"
-              data-entry-continue
-              disabled={saving || entryDraft.savedId !== undefined}
-              onclick={() => goToStep(2)}
-            >
-              <span>{m.entry_continue()}</span><Icon name="chevronRight" size={18} />
-            </button>
-          </div>
-        {/if}
         <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
       </div>
     {:else}
@@ -1828,7 +1960,7 @@
 
   {#snippet stepHeading()}
     {#if previewing}
-      <span class="step-heading" data-step-heading data-step-heading-preview aria-hidden="true">{m.home_log_heading()}</span>
+      <span class="step-heading" data-step-heading data-step-heading-preview aria-hidden="true">{stepTitle(previewTarget)}</span>
     {/if}
     {#key step}
       <span
@@ -1836,8 +1968,12 @@
         data-step-heading
         in:stepTravel={{ back: steppingBack, instant: instantStep }}
         out:stepTravel={{ back: steppingBack, instant: instantStep }}
-      >{step === 1 ? m.home_log_heading() : m.new_entry()}</span>
+      >{stepTitle(step)}</span>
     {/key}
+  {/snippet}
+
+  {#snippet stepPlace()}
+    <StepProgress steps={shown} at={step} />
   {/snippet}
 
 </fieldset>
@@ -1889,6 +2025,9 @@
      rules still win where they set a margin. */
   :global(.entry-step > *) { margin-bottom: var(--space-5); }
   :global(.entry-step > .kit-heading) { margin-bottom: var(--space-3); }
+  /* The foot draws its own edge, so the last block needs only a breath
+     above it rather than the screen's 20 (ticket 09). */
+  :global(.entry-step > :last-child) { margin-bottom: var(--space-2); }
   /* The heading on the field, stacked the same way for the length of a
      swap, so the field holds one line's height throughout. */
   :global(h1:has(> .step-heading)) { display: grid; }
@@ -1901,15 +2040,28 @@
   .entry-foot {
     width: 100%;
     display: flex;
-    flex-direction: column;
+    gap: var(--space-2);
   }
   .entry-foot .btn { width: 100%; }
-  .entry-continue { padding-top: var(--space-2); }
-  @container app (min-width: 640px) {
-    .entry-foot { flex-direction: row; gap: var(--space-2); }
-    .entry-foot > .btn { flex: 1; }
-    .entry-continue { flex: 1; padding-top: 0; }
+  /* The way on is as wide as its word, and the finish control takes the
+     rest of the row, so neither label wraps at 360px in either language. */
+  .entry-foot .btn { padding-inline: var(--space-4); white-space: nowrap; }
+  .entry-foot > .btn { flex: 1 1 auto; min-width: 0; }
+  .entry-continue { flex: none; }
+  /* The words stacked in one cell, so the leaving name fades over the
+     arriving one without the button changing size. */
+  .way-on-words { display: inline-grid; min-width: 0; }
+  .way-on-words > :global(*) { grid-area: 1 / 1; }
+
+  /* The mode's chips with its "manage" link at the row's end, a peer of
+     the tag groups under it. */
+  .step-mode-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
   }
+  :global(.entry-step > .step-mode-row) { margin-bottom: var(--space-2); }
 
   .editor-save-row {
     width: 100%;
@@ -2011,6 +2163,10 @@
   .editor-section {
     margin: var(--space-5) 0;
   }
+  /* On a step a section is a part in its own right, not something opened
+     under a chip row, so it takes the step's own spacing (ticket 09). */
+  .entry-step > .editor-section { margin-top: 0; }
+  .entry-step > .editor-section:last-child { margin-bottom: 0; }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */
   .contextual-panel {

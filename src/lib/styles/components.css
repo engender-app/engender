@@ -1699,6 +1699,27 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 
 /* ---------- tags ---------- */
 .tag-group { margin-bottom: var(--space-4); }
+/* A part of a new entry's step, named under the step's question (ticket 09).
+   A step carries one heading, its question (DIRECTION.md rule 12), so the
+   parts under it - the scales, the mode - are named in the tag groups'
+   small label, with a part's link at the end of the same line. */
+.step-part {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--space-5);
+}
+.entry-step > .step-part { margin-bottom: var(--space-1); }
+.step-part-name {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: normal;
+  color: var(--text-2);
+}
+.step-part .kit-heading-action { margin-right: calc(-1 * var(--space-3)); }
 /* A group's name over its chips, in the field label's own type (after-release
    28: one small-label style, sentence case, no letterspaced capitals). */
 .tag-group-name { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--text-2); display: block; margin-bottom: var(--space-2); }
@@ -1708,7 +1729,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    than at the column's, and it is 48 tall so each chip's 48px target sits
    inside the scroller, which clips both ways. A fade of the page's colour
    at an end with more behind it says there is more; it fades in and out. */
-.tag-picker.is-rows .tag-group { margin-bottom: var(--space-2); }
+.tag-picker.is-rows .tag-group { margin-bottom: var(--space-1); }
+.tag-picker.is-rows .tag-group:last-child { margin-bottom: 0; }
 .tag-picker.is-rows .tag-group-name { margin-bottom: 0; }
 .tag-row-frame {
   position: relative;
