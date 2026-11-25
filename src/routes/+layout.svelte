@@ -44,6 +44,7 @@
     needsOnboardingAccessMode
   } from '$lib/stores/boot-state';
   import { registerServiceWorkerAfterBoot } from '$lib/pwa/register';
+  import { takeInstallRequest } from '$lib/pwa/installRequest';
   import { answerSplash, splashMayLeave } from '$lib/splash';
   import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
@@ -74,6 +75,11 @@
   import Toasts from '$lib/components/Toasts.svelte';
 
   let { children } = $props();
+
+  /* The landing site's install hand-off (installRequest.ts): read and taken
+     off the address before anything can navigate, so the prompt it holds
+     is listened for from the start. */
+  const installAsked = takeInstallRequest();
 
   let RetainedDoors = $state<typeof import('$lib/navigation/RetainedDoors.svelte').default | null>(null);
   let retainedFrom = $state<string | null>(null);
@@ -669,6 +675,14 @@
     {#if managersRequested && !replacesApp}
       {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
         <VocabularyManagerSheets />
+      {/await}
+    {/if}
+    <!-- Over an open journal with its chrome, and never over a gate, setup
+         or the unlock's opening: a new person meets it on Today once setup
+         is done. Loaded on demand, since almost no visit asks for it. -->
+    {#if installAsked && isReadyState(bootState) && !chromeless && !ui.appOpening}
+      {#await import('$lib/components/InstallSheet.svelte') then { default: InstallSheet }}
+        <InstallSheet />
       {/await}
     {/if}
     </div>
