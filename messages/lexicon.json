@@ -3,7 +3,7 @@
     {
       "id": "appointment",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -30,12 +30,15 @@
           "voc.pl": "wizyty"
         },
         "avoid": []
+      },
+      "ignore": {
+        "roadmap_note_pl_presentational_hair": "11zk8dv"
       }
     },
     {
       "id": "backup",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "docs/ui-copy.md: on screen \"backup\", never \"archive\" for the file. Polish says \"archiwum\" in about 30 keys and often \"kopia\" alone.",
       "en": {
         "forms": {
@@ -68,12 +71,79 @@
         "avoid": [
           "archiw"
         ]
+      },
+      "ignore": {
+        "am_export_note": "1466t8e",
+        "dlb_file_too_large": "6rbfws",
+        "dlb_no_moods": "3o00q7",
+        "dlb_nothing_new": "1acnmz4",
+        "dlb_sheet_title": "g393vg",
+        "dlb_unreadable": "bko3bm",
+        "dlb_version_note": "1yusfoy",
+        "exp_auto_failed": "qrn5lc",
+        "exp_auto_running_writing": "uouhyz",
+        "exp_auto_saved_toast": "1ppetmi",
+        "exp_last_backup": "1qt25jq",
+        "imp_file_placeholder": "10j97t7",
+        "imp_log_source_daylio_backup": "r5f4y9",
+        "imp_not_an_archive": "45b3fw",
+        "imp_pick_first": "bunojv",
+        "perm_backup_folder_why": "35vjc3",
+        "rko_body_android": "y0ubkf",
+        "settings_backup_age": "15rxmg",
+        "storage_notice_body": "1yft4mc",
+        "verify_not_an_archive": "1cuwzcq",
+        "android:backup_failure_description": "7cc2x3",
+        "android:backup_failure_title": "1unmywt",
+        "privacy:07": "125d5al",
+        "privacy:14": "kyhl2l",
+        "privacy:27": "1gq6nld",
+        "privacy:34": "1il484i",
+        "privacy:64": "z7bo6g",
+        "ak_forgot_gate_note": "tjoguz",
+        "ak_forgot_key_note": "6gvzcw",
+        "ak_invalidated_body": "1i12fua",
+        "am_passphrase_detail": "l3rc2v",
+        "bm_forgot_gate_note": "bt29hx",
+        "bm_forgot_key_note": "1s4x1lk",
+        "dbr_archive_body": "1cw586x",
+        "dbr_archive_open": "rj3xux",
+        "exp_auto_destination_note": "1uvbn5j",
+        "exp_auto_password_missing": "1rgw558",
+        "exp_auto_password_needed": "1g4kurl",
+        "exp_auto_password_saved": "5o2fhq",
+        "exp_encrypted_body": "ov93vc",
+        "exp_password_label": "15s8as2",
+        "exp_warning_body": "bbcf9f",
+        "exp_warning_sheet": "wff3jo",
+        "exp_warning_title": "1c2x67f",
+        "imp_merged_toast": "1t2sjil",
+        "imp_mode_replace_sub": "b2qdp6",
+        "imp_replace_note": "bwj02n",
+        "imp_replaced_toast": "631oio",
+        "journal_book_intro": "chjlwa",
+        "pin_forgot_gate_note": "g0b4n1",
+        "plain_notice_body": "k1k3lp",
+        "pp_change_body": "7378r8",
+        "pp_forgot_gate_note": "z8hv9i",
+        "rem_web_note": "1brdqip",
+        "rem_web_save_note": "uahuq6",
+        "reset_offer_archive_password": "vs3jmk",
+        "rk_revoke_body": "1bryrsu",
+        "rk_row_sub_none_consequence": "1ylnhez",
+        "surgery_archive_title": "10pnkxe",
+        "surgery_archive_toggle_label": "1ti69rn",
+        "surgery_archived_title": "ewelhi",
+        "surgery_phase_archived": "1q4wqyo",
+        "verify_ok_toast": "1x0re9u",
+        "store:changelogs/1000000999": "trb4d4",
+        "store:full_description": "rc6t70"
       }
     },
     {
       "id": "benchmark",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "A voice benchmark (a set of takes).",
       "en": {
         "forms": {
@@ -105,7 +175,7 @@
     {
       "id": "button-add",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -118,12 +188,22 @@
           "base": "Dodaj"
         },
         "avoid": []
+      },
+      "ignore": {
+        "coming_back_wear_end_hint": "r270gc",
+        "dilation_no_procedure_body": "3nrcex",
+        "in_the_room_empty_body": "199skdp",
+        "labs_empty_body": "mq55dc",
+        "regimen_pause_save_failed": "3peb6l",
+        "roadmap_milestone_prompt_title": "1bc59za",
+        "surgery_empty_body": "188gzya",
+        "tryout_adopt_confirm_add": "1me08vx"
       }
     },
     {
       "id": "button-back",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "\"Plecy\" under an English \"Back\" is the body part, not this button.",
       "en": {
         "forms": {
@@ -136,12 +216,25 @@
           "base": "Wstecz"
         },
         "avoid": []
+      },
+      "ignore": {
+        "backup_now": "1sjgui3",
+        "document_missing_action": "zcmuao",
+        "dose_app_site_back": "faij2d",
+        "exp_auto_backup_now": "dadd9s",
+        "hair_removal_area_back": "faij2d",
+        "home_edit_reset": "oyj7zd",
+        "ph_back_to_all": "x4g7w6",
+        "rem_missing_action": "1d3ovb",
+        "source_record_return": "18bxmog",
+        "vb_passage_own_clear": "1819jg0",
+        "vc_back_to_all": "hdq1ri"
       }
     },
     {
       "id": "button-cancel",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -159,7 +252,7 @@
     {
       "id": "button-close",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -177,7 +270,7 @@
     {
       "id": "button-continue",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -195,7 +288,7 @@
     {
       "id": "button-delete",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "English \"Remove\" is also \"Usuń\" in 3 keys.",
       "en": {
         "forms": {
@@ -208,12 +301,52 @@
           "base": "Usuń"
         },
         "avoid": []
+      },
+      "ignore": {
+        "affirmations_delete_q": "ru5pya",
+        "appointment_prep_delete_q": "1fhpae9",
+        "appointments_delete_q": "2zczvh",
+        "cycle_event_delete_q": "xdn7w2",
+        "delete_entry_q": "1lcl6gn",
+        "dilation_session_delete_q": "1hp7fiz",
+        "document_delete_q": "5507bm",
+        "dose_delete_question": "243ahv",
+        "doubt_snapshot_delete_q": "l3hgvw",
+        "era_delete_q": "1u46hg0",
+        "hair_photo_delete_q": "4247gg",
+        "hair_removal_delete_q": "9pt57z",
+        "hair_removal_photo_delete_q": "4247gg",
+        "hair_stage_delete_q": "15spk15",
+        "journaling_pause_delete_q": "qur394",
+        "labs_delete_q": "1ex4rwo",
+        "letters_delete_q": "jwwcuw",
+        "margin_note_delete_q": "z9pycs",
+        "measurement_delete_q": "19nqji9",
+        "ms_delete_q": "yrotwv",
+        "regimen_pause_delete_q": "qur394",
+        "rem_delete_q": "19vrl67",
+        "roadmap_goal_delete_q": "1lluizy",
+        "saved_question_delete_q": "di0lfe",
+        "side_effect_delete_q": "4rwflv",
+        "size_log_delete_q": "3itlru",
+        "surgery_checklist_delete_q": "143tqnh",
+        "surgery_consult_delete_q": "12yh3x0",
+        "surgery_delete_q": "aexs6u",
+        "surgery_photo_delete_q": "4247gg",
+        "tags_delete_q": "3a7jin",
+        "tryout_delete_q": "3g31wv",
+        "tryout_feeling_delete_q": "1fxn8k5",
+        "tryout_photo_delete_q": "4247gg",
+        "vb_practice_delete_q": "169ym6b",
+        "vc_benchmark_delete_q": "1dtmnfc",
+        "wear_session_delete_q": "hyj246",
+        "privacy:56": "yrfg61"
       }
     },
     {
       "id": "button-done",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "One key says \"Zrobione\".",
       "en": {
         "forms": {
@@ -228,12 +361,17 @@
         "avoid": [
           "Zrobione"
         ]
+      },
+      "ignore": {
+        "coming_back_done_action": "1v35d3o",
+        "home_start_done": "6g4idd",
+        "perm_take_photo_why": "1triv5f"
       }
     },
     {
       "id": "button-edit",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -251,7 +389,7 @@
     {
       "id": "button-not-now",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -269,7 +407,7 @@
     {
       "id": "button-save",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -282,12 +420,19 @@
           "base": "Zapisz"
         },
         "avoid": []
+      },
+      "ignore": {
+        "doubt_save_snapshot": "ldamcp",
+        "hair_removal_photo_hint": "tiiq2n",
+        "regimen_schedule_after_episode": "1vug0ye",
+        "tryout_photo_save_first": "23mf28",
+        "update_ready_body": "1dvliqb"
       }
     },
     {
       "id": "button-skip",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -300,12 +445,16 @@
           "base": "Pomiń"
         },
         "avoid": []
+      },
+      "ignore": {
+        "photo_day_prompt_hint_entry": "1bh5ivd",
+        "photo_day_prompt_hint_milestone": "cxoyfd"
       }
     },
     {
       "id": "button-try-again",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -318,12 +467,16 @@
           "base": "Spróbuj ponownie"
         },
         "avoid": []
+      },
+      "ignore": {
+        "boot_schema_too_new_still_old": "1a4niln",
+        "vb_retry_lead": "16zi061"
       }
     },
     {
       "id": "button-undo",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -341,7 +494,7 @@
     {
       "id": "consult",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -368,12 +521,15 @@
           "voc.pl": "konsultacje"
         },
         "avoid": []
+      },
+      "ignore": {
+        "surgery_consults_empty": "1rucj2d"
       }
     },
     {
       "id": "cycle",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -400,12 +556,16 @@
           "voc.pl": "cykle"
         },
         "avoid": []
+      },
+      "ignore": {
+        "regimen_schedule_amounts_hint": "gu75rc",
+        "care_injection_cycle_caption": "wthxfc"
       }
     },
     {
       "id": "disguise",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -469,7 +629,7 @@
     {
       "id": "dose",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -496,12 +656,15 @@
           "voc.pl": "dawki"
         },
         "avoid": []
+      },
+      "ignore": {
+        "adherence_multiple_episodes": "dlzy5q"
       }
     },
     {
       "id": "drug",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "English mixes \"drug\" (42 keys), \"medication\" (15) and \"med\". docs/ui-copy.md fixed \"med\" to \"Lek\".",
       "en": {
         "forms": {
@@ -533,7 +696,7 @@
     {
       "id": "entry",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "On screen \"entry\", never log or record (docs/ui-copy.md). Neither is listed as avoided: both are common verbs here (\"Logged today\", \"Record\").",
       "en": {
         "forms": {
@@ -560,12 +723,21 @@
           "voc.pl": "wpisy"
         },
         "avoid": []
+      },
+      "ignore": {
+        "cd_added_toast": "1ql7rwu",
+        "entry_nudges": "lfb3bw",
+        "features_to_show_sub": "1xouszy",
+        "surgery_compare_no_data": "enxz8z",
+        "tile_active_tryout_note": "1xh6ih2",
+        "tile_revisit_sub": "afqfmj",
+        "privacy:39": "3u7pdf"
       }
     },
     {
       "id": "era",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -597,7 +769,7 @@
     {
       "id": "injection",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -660,12 +832,23 @@
           "voc.pl": "dzienniki"
         },
         "avoid": []
+      },
+      "ignore": {
+        "am_setup_body": "bhpxo8",
+        "exp_warning_body": "bbcf9f",
+        "search_elsewhere_heading": "1lyoja0",
+        "surgery_compare_no_data": "enxz8z",
+        "surgery_compare_too_short": "1eyy3am",
+        "tryout_compare_too_short": "6e62pu",
+        "boot_failed_engine": "17g1yrc",
+        "privacy:09": "or5qwx",
+        "privacy:12": "1ra34kf"
       }
     },
     {
       "id": "lab-result",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -993,7 +1176,7 @@
     {
       "id": "module-progress-photos",
       "kind": "phrase",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1006,6 +1189,10 @@
           "base": "Zdjęcia zmian"
         },
         "avoid": []
+      },
+      "ignore": {
+        "body_region_track_photos": "1m4dy3e",
+        "progress_photos": "1m4dy3e"
       }
     },
     {
@@ -1440,7 +1627,7 @@
     {
       "id": "session",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "A hair-removal session. Polish also says \"zabieg\" in 9 keys.",
       "en": {
         "forms": {
@@ -1472,7 +1659,7 @@
     {
       "id": "side-effect",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "Kept apart from \"changes you've noticed\" (docs/ui-copy.md).",
       "en": {
         "forms": {
@@ -1506,7 +1693,7 @@
     {
       "id": "stock",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "Medication on hand.",
       "en": {
         "forms": {
@@ -1538,7 +1725,7 @@
     {
       "id": "surgery",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "Polish also uses \"operacja\" for English \"procedure\" (5 keys); decide whether procedure gets its own word. docs/ui-copy.md: on screen \"surgery journey\" and \"procedure\", never case or patient (\"case\" is not listed: too common a word).",
       "en": {
         "forms": {
@@ -1572,7 +1759,7 @@
     {
       "id": "tag",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1604,7 +1791,7 @@
     {
       "id": "take",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "One recorded voice take. English \"take\" is also a verb, so expect false hits in English usage and leave those on rename. Polish currently mixes \"nagranie\", \"próba\" and \"zapis\".",
       "en": {
         "forms": {
@@ -1636,7 +1823,7 @@
     {
       "id": "transition",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "",
       "en": {
         "forms": {
@@ -1668,7 +1855,7 @@
     {
       "id": "tryout",
       "kind": "noun",
-      "confirmed": false,
+      "confirmed": true,
       "note": "Polish also says \"próba\" for a voice take (vb_*), and the hub row is \"Próby genderowe\". One of them needs another word.",
       "en": {
         "forms": {

@@ -12,7 +12,7 @@
 
     <!-- Picker descriptions stay neutral because Android shows them even in disguise mode. -->
     <string name="widget_quick_log_title">How are you feeling?</string>
-    <string name="widget_quick_log_description">Open an entry with one of five ratings selected.</string>
+    <string name="widget_quick_log_description">Open an entry with one of five moods selected</string>
     <string-array name="widget_mood_names">
         <item>Awful</item>
         <item>Bad</item>
