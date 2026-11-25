@@ -886,6 +886,24 @@
     toast(m.saved(), { kind: 'saved' });
   }
 
+  /* The mood comes first (Alicja, 2026-11-25, ticket 09's sign-off): the
+     way on from the first step waits for a face, so a later step never
+     lacks one. Pressed without one, it stays and takes the person to the
+     faces, saying why. An address that opens on a later step (`?open=`)
+     can still arrive without one, which is what saveEntry's walk back to
+     the faces is left for. */
+  let wayOnNotice = $state('');
+  function goOn() {
+    if (!stepAhead) return;
+    if (step === 'today' && moodMissing) {
+      wayOnNotice = m.entry_mood_first();
+      moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
+      return;
+    }
+    wayOnNotice = '';
+    void goToStep(stepAhead);
+  }
+
   /** Past the first step, with nothing saving and nothing saved: the only
       time Back is a step rather than a way out. */
   function canStepBack(): boolean {
@@ -1831,7 +1849,8 @@
               class="btn btn-soft press"
               data-entry-continue
               disabled={saving || entryDraft.savedId !== undefined}
-              onclick={() => stepAhead && goToStep(stepAhead)}
+              data-save-unmet={step === 'today' && moodMissing ? 'mood' : undefined}
+              onclick={goOn}
             >
               <!-- The next step's name swaps as the person walks, crossfading
                    in place in the button that stays. -->
@@ -1853,7 +1872,7 @@
         >
           <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
         </button>
-        <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
+        <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : moodMissing ? wayOnNotice : ''}</span>
       </div>
     {:else}
     <!-- Mood stays beside saving, with its own row of full-size targets. -->

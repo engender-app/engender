@@ -186,6 +186,10 @@ export async function toEntryStepWith(page, selector) {
       const at = await page.locator('[data-entry-step]').getAttribute('data-entry-step');
       // The last step's way on is still fading out as it arrives.
       if (!(await control.count()) || at === (way === '[data-screen-back]' ? 'today' : 'writing')) break;
+      // The way on from the first step waits for a face (ticket 09's sign-off).
+      if (at === 'today' && way === '[data-entry-continue]' && !(await page.locator('[data-entry-step="today"] [data-mood][aria-checked="true"]').count())) {
+        await page.locator('[data-entry-step="today"] [data-mood="3"]').click();
+      }
       await control.click();
       await page.waitForFunction((was) => {
         const steps = document.querySelectorAll('[data-entry-step]');

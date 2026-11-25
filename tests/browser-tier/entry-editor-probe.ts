@@ -111,6 +111,10 @@ async function toStepWith(root: ParentNode, selector: string): Promise<void> {
     const at = await until(() => settledStep(root), 'a settled step');
     if (root.querySelector(`[data-entry-step] ${selector}`)) return;
     if (at === 'writing') break;
+    // The way on from the first step waits for a face (ticket 09's sign-off).
+    if (at === 'today' && !root.querySelector('[data-entry-step="today"] [data-mood][aria-checked="true"]')) {
+      root.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]')?.click();
+    }
     (await until(() => root.querySelector<HTMLButtonElement>('[data-entry-continue]'), `the way on from the ${at} step`)).click();
     await until(() => (settledStep(root) && settledStep(root) !== at ? true : null), `the step after ${at}`);
   }
@@ -338,6 +342,7 @@ async function walkWithTheBodyStepEmpty(journal: Journal): Promise<{ steps: stri
   document.querySelector('#editor')!.replaceChildren(target);
   const screen = mountInto(EntryEditor, { epochDay: 19_009 }, target);
   try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]'), 'a face')).click();
     const steps: string[] = [];
     let segments: string[] = [];
     for (let hop = 0; hop < 6; hop++) {
@@ -350,6 +355,26 @@ async function walkWithTheBodyStepEmpty(journal: Journal): Promise<{ steps: stri
       await until(() => (settledStep(target) && settledStep(target) !== at ? true : null), `the step after ${at}`);
     }
     return { steps, segments };
+  } finally {
+    await screen.remove();
+  }
+}
+
+/** The mood comes first (Alicja, ticket 09's sign-off): the way on from the
+    first step, pressed with no face picked, stays on the step, takes the
+    focus to the faces and says why. */
+async function wayOnWithoutAMood(): Promise<{ step: string | null; focusOnAFace: boolean; said: string }> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay: 19_010 }, target);
+  try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-continue]'), 'the way on')).click();
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    return {
+      step: settledStep(target),
+      focusOnAFace: !!document.activeElement?.closest('[data-first-step-moods]'),
+      said: target.querySelector('[data-save-status]')?.textContent?.trim() ?? ''
+    };
   } finally {
     await screen.remove();
   }
@@ -541,6 +566,7 @@ async function run() {
     firstStepWithAScale: await finishOnTheFirstStep(journal, 19_005, { face: 2, nudgeFirstScale: true }),
     secondStepSave: await finishOnTheSecondStep(journal, 19_006),
     marksStepSave: await finishOnTheMarksStep(journal, 19_008),
+    wayOnWithoutAMood: await wayOnWithoutAMood(),
     secondStepShape: await secondStepShape(),
     shownPresentationId: shown.id,
     hiddenPresentationId: concealed.id

@@ -103,6 +103,10 @@ try {
     }
   }
   await page.setViewportSize({ width: 390, height: 360 });
+  /* Opened on the last step with no face: the way on from the first step
+     waits for one since ticket 09, so an address is the one way to a later
+     step without a mood, which is the case Save's walk back is for. */
+  await open('/entry/new/today?open=photos');
   await continueToTheRest(page);
   await page.locator('#ed-note').scrollIntoViewIfNeeded();
   await page.locator('#ed-note').focus();

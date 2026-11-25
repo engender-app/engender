@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright-core';
 import { assertInside, physicalBounds, safeScreenBounds, webViewBounds } from './geometry.mjs';
 import { dumpHierarchy } from './hierarchy.mjs';
+import { toEntryStepWith } from '../browser-harness.mjs';
 
 const serial = process.argv[2];
 if (!/^emulator-\d+$/.test(serial ?? '')) throw new Error('Pass an emulator serial');
@@ -215,8 +216,9 @@ try {
         await navigate('/entry/new/today');
         await page.locator('[data-entry-step="today"]').waitFor();
         await capture(`${name}-editor-first`, ['[data-screen-title="entry"]', '[data-screen-back]', '[data-entry-finish]', '[data-entry-continue]', '[data-first-step-moods] [data-mood]']);
-        await page.locator('[data-entry-continue]').click();
-        await page.locator('[data-entry-step="today"]').waitFor({ state: 'detached' });
+        // The note is on a new entry's last step, past a face (ticket 09).
+        await page.locator('[data-entry-step="today"] [data-mood="3"]').click();
+        await toEntryStepWith(page, '#ed-note');
         await page.locator('#ed-note').waitFor();
         await capture(`${name}-editor`, ['[data-screen-title="entry"]', '[data-screen-back]', '[data-save]', '[data-save-star]']);
         await page.locator('[data-use-template]').click();

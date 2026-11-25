@@ -2498,7 +2498,7 @@ await block('entry contextual text survives typing and clears before save', 1, a
    the merge produced survives the save into the tables - and the first is
    also the third's positive control. The third is the only one of the three
    testing a rule that lives in the component. */
-await block('phase 8 audit ticket 25 entry editor', 13, async () => {
+await block('phase 8 audit ticket 25 entry editor', 14, async () => {
   const r = await load('/entry-editor.html', 'entry-editor-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2580,6 +2580,9 @@ await block('phase 8 audit ticket 25 entry editor', 13, async () => {
     'mode', 'tags', 'body', 'note', 'photos', 'video', 'voice'
   ]);
   eq('a new entry walks today, marks, body and writing (ticket 09)', r.secondStepShape?.steps, ['today', 'marks', 'body', 'writing']);
+  eq('the way on from the first step waits for a face, takes the focus to the faces and says why (ticket 09)', r.wayOnWithoutAMood, {
+    step: 'today', focusOnAFace: true, said: 'Pick a mood first.'
+  });
   const marks = r.marksStepSave;
   eq('a save from the marks step writes the face and the tag, and nothing the later steps hold (ticket 09)', marks && {
     mood: marks.mood, tags: marks.tags, note: marks.note, mode: marks.presentationId, starred: marks.starred
