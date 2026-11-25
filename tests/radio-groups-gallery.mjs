@@ -125,9 +125,11 @@ try {
       y: (top + bottom) / 2 - view.offsetTop };
   });
   await page.mouse.click(savePoint.x, savePoint.y);
-  // With no mood, finishing from the second step takes the person back to the faces and focuses them.
-  await page.waitForSelector('[data-entry-step="1"]');
-  await page.waitForSelector('[data-entry-step="2"]', { state: 'detached' });
+  // With no mood, finishing from a later step takes the person back to the faces and focuses them.
+  await page.waitForFunction(() => {
+    const steps = document.querySelectorAll('[data-entry-step]');
+    return steps.length === 1 && steps[0].getAttribute('data-entry-step') === 'today';
+  });
   await page.waitForFunction(() => document.querySelectorAll('[data-first-step-moods] [role="radio"]:focus').length === 1);
   assert.equal(await page.locator('[data-first-step-moods] [role="radio"]:focus').count(), 1, 'Save responds at 200% pinch zoom');
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });

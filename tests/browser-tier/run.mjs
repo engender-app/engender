@@ -2579,8 +2579,9 @@ await block('phase 8 audit ticket 25 entry editor', 11, async () => {
   eq('the second step lists mode, tags, body, note, then photos, video, voice in that order', r.secondStepShape?.order, [
     'mode', 'tags', 'body', 'note', 'photos', 'video', 'voice'
   ]);
+  eq('a new entry walks today, marks, body and writing (ticket 09)', r.secondStepShape?.steps, ['today', 'marks', 'body', 'writing']);
   eq('a step back keeps the face and the note', r.secondStepShape?.backKeptDraft, true);
-  eq('one finish control, the same node on both steps', r.secondStepShape && {
+  eq('one finish control, the same node on every step', r.secondStepShape && {
     count: r.secondStepShape.footOnStep2, same: r.secondStepShape.finishSameNode
   }, { count: 1, same: true });
 });

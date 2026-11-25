@@ -58,7 +58,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { setAppLanguage, launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
+import { setAppLanguage, launchChromium, settlePage, previewBuild, toEntryStepWith } from './browser-harness.mjs';
 import { FILL_EVERY_FEATURE_EXPRESSION, INIT_HIDE_DEMO_SCRIPT, RESET_PERSONA_EXPRESSION } from './yank-sweep-core.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -107,32 +107,30 @@ const SCENES = [
     targets: '[data-first-step-moods] [data-mood], [data-entry-finish], [data-entry-continue]'
   },
   {
-    /* The chips and the tags (open on the page) live on the second step of a new entry, one touch on. */
+    /* The mode chips and the tags, one sideways row per group, live on a new
+       entry's marks step (ticket 09); a chip scrolled into view is measured
+       inside its row. */
     key: 'entry',
     path: '/entry/new/today',
     targets: 'button.contextual-chip, .tag-chip',
-    open: async (page) => {
-      await page.locator('[data-entry-continue]').click();
-      await page.locator('[data-entry-step="2"]').waitFor();
-    }
+    open: (page) => toEntryStepWith(page, '[data-editor-section="tags"]')
   },
   { key: 'stats', path: '/stats/tags', targets: '.kit-donut-item-btn' },
   { key: 'journal', path: '/calendar', targets: '[data-cal-month-btn], .cal-field > a', whole: '[data-cal-month-btn]', apart: true, narrow: true },
   { key: 'labs', path: '/care/labs', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
   { key: 'in-the-room', path: '/health/appointments/in-the-room', targets: '[data-screen-back]', whole: '[data-room-question]', narrow: true },
   { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },
-  {
-    /* Everything a new entry's second step draws that a finger can press, not
-       only the chips: the info buttons beside the tag chips were 43px wide for
-       a while and the chips-only scene above never saw them. */
-    key: 'entry-step-2',
+  /* Everything a new entry's later steps draw that a finger can press, not
+     only the chips: the info buttons beside the tag chips were 43px wide for
+     a while and the chips-only scene above never saw them. One scene per
+     step since ticket 09, with the foot, the back control and the star on
+     the field. */
+  ...[['entry-marks', '[data-editor-section="tags"]'], ['entry-body', '[data-editor-section="body"]'], ['entry-writing', '#ed-note']].map(([key, part]) => ({
+    key,
     path: '/entry/new/today',
-    targets: '[data-entry-step="2"] :is(button, a[href], input:not([type="hidden"]), textarea, select, [role="slider"], [role="switch"], [role="button"], summary), [data-entry-finish], [data-screen-back]',
-    open: async (page) => {
-      await page.locator('[data-entry-continue]').click();
-      await page.locator('[data-entry-step="2"]').waitFor();
-    }
-  },
+    targets: '[data-entry-step] :is(button, a[href], input:not([type="hidden"]), textarea, select, [role="slider"], [role="switch"], [role="button"], summary), [data-entry-finish], [data-entry-continue], [data-screen-back], [data-save-star]',
+    open: (page) => toEntryStepWith(page, part)
+  })),
   {
     /* Templates live in a sheet raised from the Settings list (the old
        /settings/entry-templates route is gone, which is why this scene used to

@@ -213,10 +213,10 @@ try {
         await page.locator('[data-home-hello]').waitFor();
         await capture(`${name}-home`, ['[data-home-hero]', '[data-home-hello]', '[data-home-gear]', '[data-nav-item]']);
         await navigate('/entry/new/today');
-        await page.locator('[data-entry-step="1"]').waitFor();
+        await page.locator('[data-entry-step="today"]').waitFor();
         await capture(`${name}-editor-first`, ['[data-screen-title="entry"]', '[data-screen-back]', '[data-entry-finish]', '[data-entry-continue]', '[data-first-step-moods] [data-mood]']);
         await page.locator('[data-entry-continue]').click();
-        await page.locator('[data-entry-step="1"]').waitFor({ state: 'detached' });
+        await page.locator('[data-entry-step="today"]').waitFor({ state: 'detached' });
         await page.locator('#ed-note').waitFor();
         await capture(`${name}-editor`, ['[data-screen-title="entry"]', '[data-screen-back]', '[data-save]', '[data-save-star]']);
         await page.locator('[data-use-template]').click();
