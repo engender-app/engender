@@ -1163,12 +1163,12 @@
     <div out:crossfade><Skeleton variant="block" count={3} /></div>
   {:else if entryId == null || existing}
   <!-- The sections of the entry, written once. The single page (an entry
-       that exists) and a new entry's second step draw the same pieces and
+       that exists) and a new entry's later steps draw the same pieces and
        differ only in which they take and in what order, so the two cannot
        drift apart. -->
   {#snippet promptAndTemplate()}
   <!-- The guided prompt, the template and a debrief's scaffold all belong
-       to the note, so on a new entry they sit with it on the second step. -->
+       to the note, so on a new entry they sit with it on the last step. -->
   {#if prompt && !promptDismissed}
     <Notice
       icon="sparkle"
@@ -2065,11 +2065,13 @@
   }
   .entry-foot:global([data-more-end])::before { opacity: 1; }
   .entry-foot .btn { width: 100%; }
-  /* The way on is as wide as its word, and the finish control takes the
-     rest of the row, so neither label wraps at 360px in either language. */
-  .entry-foot .btn { padding-inline: var(--space-4); white-space: nowrap; }
-  .entry-foot > .btn { flex: 1 1 auto; min-width: 0; }
-  .entry-continue { flex: none; }
+  /* Two equal halves, so the finish control keeps its box while the way
+     on's word changes from step to step: sized to its word, the way on
+     moved Save entry 40px in one frame on a step change. It widens only on
+     the last step, as the way on closes beside it (footContinue). */
+  .entry-foot .btn { padding-inline: var(--space-3); white-space: nowrap; }
+  .entry-foot > .btn { flex: 1 1 0; min-width: 0; }
+  .entry-continue { flex: 1 1 0; min-width: 0; }
   /* Where the two words do not fit one row - text at 130% and up, or a
      window under 352px - the way on stands over the finish control. 22em
      follows the text size, so 360 and 390px windows at 100% keep the row.

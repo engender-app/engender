@@ -4,6 +4,7 @@
   import Sheet from './Sheet.svelte';
   import type { Tag, TagGroup } from '$lib/data/types';
   import { scrollCues } from './scrollCues';
+  import { untrack } from 'svelte';
 
   let {
     groups,
@@ -19,6 +20,21 @@
         pitch took about 590px of a 640px window. */
     rows?: boolean;
   } = $props();
+
+  /* A row comes back to its first pick (ticket 09): a tag picked far along a
+     sideways row was off the edge when the person walked back to the step,
+     with nothing saying it was there. Set as the row mounts, before it is
+     painted, so the row arrives already showing the pick rather than
+     travelling to it. */
+  function toFirstPick(row: HTMLElement) {
+    const pick = row.querySelector<HTMLElement>('.tag-chip.is-selected');
+    if (!pick) return;
+    const edge = parseFloat(getComputedStyle(row).paddingInlineStart) || 0;
+    const box = row.getBoundingClientRect();
+    const at = pick.getBoundingClientRect();
+    if (at.right <= box.right - edge) return;
+    row.scrollLeft += at.left - box.left - edge;
+  }
 
   // Only a dysphoria type tag carries a description (CONTEXT: Dysphoria
   // type), so this stays null for every chip that has no info affordance.
@@ -37,8 +53,8 @@
   </button>
 {/snippet}
 
-{#snippet row(g: TagGroup)}
-  <div class="tag-row" role="group" aria-label={m.tags_group_aria({ group: g.name })}>
+{#snippet row(g: TagGroup, sideways = false)}
+  <div class="tag-row" role="group" aria-label={m.tags_group_aria({ group: g.name })} {@attach (row) => { if (sideways) untrack(() => toFirstPick(row)); }}>
     {#each g.tags as t (t.id)}
       {#if t.description}
         <span class="tag-chip-wrap">
@@ -62,7 +78,7 @@
         <!-- The frame holds the fades at the row's two ends, which do not
              scroll with it; scrollCues says which end has more. -->
         <div class="tag-row-frame" use:scrollCues={{ axis: 'x' }}>
-          {@render row(g)}
+          {@render row(g, true)}
         </div>
       {:else}
         {@render row(g)}
