@@ -9,7 +9,7 @@ import {
   BUILT_IN_DIMENSIONS,
   BUILT_IN_PRESETS,
   BUILT_IN_TAG_GROUPS,
-  ENTRY_TEMPLATES,
+  GUIDED_PROMPT_KEYS,
   MILESTONE_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_LEAN,
@@ -27,7 +27,7 @@ const allKeys = [
   ...BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags),
   ...MILESTONE_TEMPLATE_KEYS,
   ...REGIMEN_TEMPLATE_KEYS,
-  ...ENTRY_TEMPLATES.map((t) => t.key),
+  ...GUIDED_PROMPT_KEYS,
   ...BUILT_IN_BODY_REGIONS
 ];
 
@@ -199,21 +199,8 @@ test('every regimen template carries a lean matching the hormone it starts', () 
   });
 });
 
-test('entry template keys are unique', () => {
-  const keys = ENTRY_TEMPLATES.map((t) => t.key);
-
-  expect(new Set(keys).size).toBe(keys.length);
-});
-
-test('every entry template names tags and dimensions that exist', () => {
-  const tagKeys = new Set<string>(BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags));
-  const dimensionKeys = new Set<string>(BUILT_IN_DIMENSIONS.map((d) => d.key));
-
-  const danglingTags = ENTRY_TEMPLATES.flatMap((t) => t.tags).filter((id) => !tagKeys.has(id));
-  const danglingDims = ENTRY_TEMPLATES.flatMap((t) => Object.keys(t.dims)).filter((key) => !dimensionKeys.has(key));
-
-  expect(danglingTags).toEqual([]);
-  expect(danglingDims).toEqual([]);
+test('guided prompt keys are unique', () => {
+  expect(new Set(GUIDED_PROMPT_KEYS).size).toBe(GUIDED_PROMPT_KEYS.length);
 });
 
 test('a custom group survives seeding', () => {

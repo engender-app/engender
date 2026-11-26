@@ -74,8 +74,7 @@ export async function builtInsOnlyDevice(): Promise<{ driver: SqliteDriver; jour
     built-in group, a renamed and a hidden built-in tag, a hidden dimension, a
     custom body region logged on the entry alongside a built-in one, a
     disabled effect category, a custom effect type alongside a hidden
-    built-in one, and an authored entry template carrying a custom tag, a
-    custom dimension value, a note scaffold and a presentation. Built by
+    built-in one. Built by
     `everySectionDevice` below, which is the same thing with the connection
     handed back too. */
 export const everySection = async (): Promise<Journal> => (await everySectionDevice()).journal;

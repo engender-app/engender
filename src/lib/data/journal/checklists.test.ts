@@ -5,7 +5,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
-import { debriefOfferVisible } from '../vocabulary/entryTemplates.ts';
+import { debriefOfferVisible } from '../vocabulary/debriefOffer.ts';
 
 test('a standalone checklist starts empty with no owner', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -189,7 +189,7 @@ test('a journal with no most recent past appointment gets no debrief offer', asy
      the gate are already tested apart - `getDebriefState` answers a null
      appointment id with itemCount/dismissed/debriefEntryId that all read
      as "nothing recorded" above, and `debriefOfferVisible` answers false
-     to a null id in entryTemplates.test.ts - but nothing joined them, so
+     to a null id in debriefOffer.test.ts - but nothing joined them, so
      nothing would notice a read that started defaulting the id, or a
      predicate that stopped checking it. The claim being kept is persona
      2's: a clinician-facing surface must not describe someone who has

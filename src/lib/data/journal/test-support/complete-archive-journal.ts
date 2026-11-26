@@ -53,18 +53,6 @@ export async function seedCompleteArchiveJournal(
   const androgynous = await journal.presentations.addPresentation('androgynous', 1);
   await journal.presentations.setPresentationHidden(androgynous.id, true);
 
-  // An authored template (phase 6 ticket 07): the built-ins already travel
-  // through reconcile, so what a round trip has to prove here is a
-  // custom one - its own tags, a custom dimension value, a note scaffold
-  // and a presentation, all at once.
-  await journal.entryTemplates.addEntryTemplate({
-    name: 'After a hard day',
-    tags: [tag.id],
-    dims: { [voice.key]: 3 },
-    noteScaffold: 'What made today hard?',
-    presentationId: femme.id
-  });
-
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
     timestamp: 1_700_000_000_000,

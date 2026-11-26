@@ -178,14 +178,10 @@ test('HTML in a note is converted, including a list', async () => {
   assert.equal(entryOn(result, '2026-02-25').note, '- bloods\n- call the clinic');
 });
 
-test('a writing template arrives as an entry template, its HTML body converted', async () => {
+test('a writing template is named as skipped, not imported', async () => {
   const result = await preview();
 
-  assert.equal(result.templateCount, 1);
-  assert.deepEqual(
-    result.journal.entryTemplates.map((template) => ({ name: template.name, noteScaffold: template.noteScaffold })),
-    [{ name: 'Evening', noteScaffold: 'What happened today?\nHow did it feel?' }]
-  );
+  assert.deepEqual(result.skipped.filter((skip) => skip.kind === 'templates'), [{ kind: 'templates', count: 1 }]);
 });
 
 /* Tags and groups: the person's own groups, not one invented "imported"
@@ -446,7 +442,8 @@ test('the preview names what it skipped', async () => {
     { kind: 'preferences', count: 1 },
     { kind: 'reminders', count: 1 },
     // Both of Daylio's records about goals: one success week, one goal entry.
-    { kind: 'statistics', count: 2 }
+    { kind: 'statistics', count: 2 },
+    { kind: 'templates', count: 1 }
   ]);
 });
 
@@ -679,7 +676,6 @@ test('re-importing what the journal already holds adds nothing', async () => {
   assert.equal(second.milestoneCount, 0);
   assert.equal(second.newTagCount, 0);
   assert.equal(second.photoCount, 0);
-  assert.equal(second.templateCount, 0);
   assert.equal(second.dimensionCount, 0);
 });
 

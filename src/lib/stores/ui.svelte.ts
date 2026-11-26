@@ -40,16 +40,16 @@ export const ui = $state({
      arriving and the other has nothing to arrive. */
   chooserFailed: false,
   /** Which vocabulary manager's sheet is raised over whatever screen is
-      showing (audit item 6): modes and entry templates are vocabulary
-      managers wearing an area screen's clothes even under Settings
-      (redesign ticket 51), two rows and hundreds of pixels of black for
-      anyone with few of either. Mounted once at the app root
+      showing (audit item 6): modes are a vocabulary
+      manager wearing an area screen's clothes even under Settings
+      (redesign ticket 51), hundreds of pixels of black for
+      anyone with few of them. Mounted once at the app root
       (VocabularyManagerSheets, alongside QuickAdd) rather than inside
       Settings, so the entry editor's own "manage" links (EntryEditor.svelte)
       can raise the same sheet in place, with no navigation at all - only a
       stale bookmark to the old standalone screen actually navigates, to
       Settings, before raising it the same way. */
-  raisedManager: null as 'modes' | 'templates' | null
+  raisedManager: null as 'modes' | null
 });
 
 /** Neither a view transition nor an Android tab arrival is moving. */

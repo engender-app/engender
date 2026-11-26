@@ -43,6 +43,7 @@ import { MIGRATION_HYGIENE } from './hygiene-migration.ts';
 import { PROGRESS_PHOTOS } from './progress-photo-migration.ts';
 import { EFFECT_CATEGORY_SPLIT } from './effect-category-split-migration.ts';
 import { PROGRESS_POSES_TABLE } from './progress-pose-migration.ts';
+import { ENTRY_TEMPLATES_DROP } from './entry-templates-drop-migration.ts';
 
 /** What were migrations 89 to 119, as development builds ran them. The
     released chain runs them as the one step at 119 (see the header). */
@@ -480,5 +481,8 @@ export const migrations: Migration[] = [
   { version: 121, sql: EFFECT_CATEGORY_SPLIT },
   /* Pre-release-human 12: progress photo poses as the person's own list
      (progress-pose-migration.ts). */
-  { version: 122, sql: PROGRESS_POSES_TABLE }
+  { version: 122, sql: PROGRESS_POSES_TABLE },
+  /* Pre-release-human 18: entry templates removed, saved ones deleted
+     (entry-templates-drop-migration.ts). */
+  { version: 123, sql: ENTRY_TEMPLATES_DROP }
 ];

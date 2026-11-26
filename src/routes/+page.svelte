@@ -57,7 +57,7 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { landingMilestone } from '$lib/data/milestoneStatus';
   import { resurfacing } from '$lib/unprompted/resurfacing';
-  import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
+  import { debriefOfferVisible } from '$lib/data/vocabulary/debriefOffer';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { withHasEntries } from '$lib/data/acknowledgements';
@@ -587,7 +587,7 @@
      the appointments screen already needs), joined with the standalone
      checklist's debrief state scoped to that same id
      (checklists.ts's `getDebriefState`), folded through the pure predicate
-     (vocabulary/entryTemplates.ts) rather than re-deriving the rule here.
+     (vocabulary/debriefOffer.ts) rather than re-deriving the rule here.
      Its own `itemCount` rather than a bare presence check, since an
      appointment with no prep item at all still has to read as "nothing to
      prepare for" (What to Build #1) - a checklist that has never been

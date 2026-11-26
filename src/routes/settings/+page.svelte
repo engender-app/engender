@@ -356,13 +356,10 @@
   <SectionHeading text={m.settings_lists()} />
   <!-- The reference areas (ADR-0084): each is spent on other screens - the
        entry editor's chips, the body map, the bands behind the milestone
-       rail - and created only here. Modes and entry
-       templates raise as sheets without navigating away from this list. -->
+       rail - and created only here. Modes raise as a
+       sheet without navigating away from this list. -->
   <ListCard>
     <ListRow key="presentations" icon="palette" title={m.presentations_title()} chevron={false} onclick={() => (ui.raisedManager = 'modes')}>
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-    <ListRow key="entry-templates" icon="template" title={m.entry_templates_title()} chevron={false} onclick={() => (ui.raisedManager = 'templates')}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
     <ListRow key="body-regions" icon="figure" title={m.body_regions_group()} href="/settings/body-regions" />

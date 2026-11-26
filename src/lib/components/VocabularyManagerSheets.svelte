@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Modes and entry templates, raised as sheets over whatever screen is
+  /* Modes, raised as a sheet over whatever screen is
      showing (audit item 6) - mounted once here, at the app root beside
      QuickAdd, rather than inside Settings, so the entry editor's own
      "manage" links (EntryEditor.svelte) can raise the same sheet without
@@ -10,10 +10,9 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import Sheet from './Sheet.svelte';
   import PresentationsManager from './PresentationsManager.svelte';
-  import EntryTemplatesManager from './EntryTemplatesManager.svelte';
 
   /* Ticket 254: Sheet measures its rise the instant it mounts. Raising
-     either sheet before `vocabulary.ready` mounted its manager holding
+     the sheet before `vocabulary.ready` mounted its manager holding
      only a heading and a skeleton, so the rise travelled to that height,
      then the row list resolved underneath it and the sheet lurched to fit.
      Waiting for `vocabulary.ready` here means the manager never mounts
@@ -26,7 +25,6 @@
   // Open after mounting so local transitions animate the first opening too.
   let mounted = $state(false);
   onMount(() => { mounted = true; });
-  let templatesOpen = $derived(mounted && ui.raisedManager === 'templates' && vocabulary.ready);
   let modesOpen = $derived(mounted && ui.raisedManager === 'modes' && vocabulary.ready);
 </script>
 
@@ -36,12 +34,4 @@
   onClose={() => (ui.raisedManager = null)}
 >
   <PresentationsManager />
-</Sheet>
-
-<Sheet
-  open={templatesOpen}
-  title={m.entry_templates_title()}
-  onClose={() => (ui.raisedManager = null)}
->
-  <EntryTemplatesManager />
 </Sheet>

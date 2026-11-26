@@ -10,7 +10,7 @@
    rather than through each area's API: what is under test is the archive's
    rule for a row, and a stamped UPDATE is exactly what every area's edit
    leaves behind. The rows a table's children follow (an entry's tags, a
-   template's tags, a preset's scales, a schedule's weekdays) and Trash have
+   preset's scales, a schedule's weekdays) and Trash have
    cases of their own, through the areas' APIs where one exists. */
 
 import assert from 'node:assert/strict';
@@ -98,7 +98,6 @@ const EDITS: [string, string, string, string?][] = [
   ['dose_schedule', 'doses_per_day', 'doses_per_day + 1'],
   ['effect_category', 'enabled', '1 - enabled'],
   ['entry', 'note', "'edited'"],
-  ['entry_template', 'hidden', '1 - hidden', 'key IS NOT NULL'],
   ['era', 'name', "'edited'"],
   ['felt_sense', 'note', "'edited'"],
   ['gender_dimension', 'hidden', '1 - hidden', 'is_built_in = 1'],
@@ -251,18 +250,14 @@ describe('the rows that follow their parent', () => {
     assert.equal(await tags(b.driver), before, 'the archive changed the tags without a newer entry, so they stay');
   });
 
-  test("a template's tags and a preset's scales come with the newer row", async () => {
+  test("a preset's scales come with the newer row", async () => {
     const { a, b } = await twoDevices();
-    const template = await firstId(a.driver, 'entry_template', 'key IS NULL AND id IN (SELECT template_id FROM entry_template_tag)');
     const preset = await firstId(a.driver, 'gender_preset', 'id IN (SELECT preset_id FROM preset_dimension)');
-    await a.driver.run('DELETE FROM entry_template_tag WHERE template_id = (SELECT id FROM entry_template WHERE uuid = ?)', [template]);
     await a.driver.run('DELETE FROM preset_dimension WHERE preset_id = (SELECT id FROM gender_preset WHERE COALESCE(key, uuid) = ?)', [preset]);
-    await edit(a.driver, 'entry_template', 'name', "'edited'", template, later());
     await edit(a.driver, 'gender_preset', 'name', "'edited'", preset, later());
 
     await b.journal.archive.merge(await exported(a));
 
-    assert.equal(await count(b.driver, 'SELECT COUNT(*) AS n FROM entry_template_tag WHERE template_id = (SELECT id FROM entry_template WHERE uuid = ?)', template), 0);
     assert.equal(await count(b.driver, 'SELECT COUNT(*) AS n FROM preset_dimension WHERE preset_id = (SELECT id FROM gender_preset WHERE COALESCE(key, uuid) = ?)', preset), 0);
   });
 

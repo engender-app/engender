@@ -45,7 +45,7 @@ export interface ChecklistsArea {
       answers, since an absent appointment has nothing dismissed and no
       entry either. `appointmentId` comes back out again, which is what
       makes this the exact shape `debriefOfferVisible`
-      (vocabulary/entryTemplates.ts) takes: a caller folding the predicate
+      (vocabulary/debriefOffer.ts) takes: a caller folding the predicate
       over a live read needs one query and no splicing, and cannot hand the
       predicate a different appointment than the read was scoped to. */
   getDebriefState(appointmentId: string | null): Promise<{

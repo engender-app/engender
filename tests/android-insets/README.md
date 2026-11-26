@@ -1,10 +1,9 @@
 # Android inset matrix
 
-This opt-in probe visits the real Home screen, entry editor and template sheet
+This opt-in probe visits the real Home screen and entry editor
 in an isolated demo APK. It uses Android navigation overlays, display-cutout
 overlays, rotation and the actual keyboard. It does not replace CSS inset tokens.
-Each API has 60 captures, including the sheet at its start and scrolled to its
-last action. The required matrix is API 33, 35 and 36, gesture and three-button navigation,
+Each API has 48 captures. The required matrix is API 33, 35 and 36, gesture and three-button navigation,
 trans light/dark, plain portrait, cutout portrait and cutout landscape.
 
 Build the same native shell with a separate application ID:
