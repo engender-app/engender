@@ -54,14 +54,9 @@ const browser = await launchChromium({
 });
 const page = await (await browser.newContext()).newPage();
 
-/* A module that throws on import (the familiar `$state is not defined` from
-   a probe reaching a Svelte store without the plugin, or any other load-time
-   error) never calls publish() at all, so waitForSelector below would just
-   run out its 30s default and read as an anonymous timeout. Forwarding
-   `pageerror` and racing it against the wait means load() fails with the
-   error's own text, attributed to whichever probe was loading when it
-   fired - see docs/agents/verification.md on why this differs from
-   walkthrough.test.mjs's policy of collecting page errors instead. */
+/* Race the probe's wait against pageerror. An import failure can stop
+   publish(), so report the actual error with the probe name immediately.
+   The continuous walkthrough collects page errors separately. */
 let onPageError;
 page.on('pageerror', (error) => onPageError?.(error));
 
@@ -2336,7 +2331,7 @@ await block('redesign ticket 42 browser tier', 9, async () => {
     ok(`the median mark ends on the outline, not across the box (${on.markEndsAt.toFixed(1)} against ${on.outlineAt.toFixed(1)})`);
   else fail('the median mark ends on the outline, not across the box', JSON.stringify(on));
 
-  /* Rule 9's ink, and ADR-0083's "never a fill". */
+  /* Use the chart ink as an outline only. */
   const outline = drawn.outlineInk;
   const spine = drawn.spineInk;
   if (

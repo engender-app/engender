@@ -42,7 +42,7 @@ const shots = [];
 const select = async (label, value) => {
   await page.selectOption(`select[aria-label="${label}"]`, value);
   // The stage is keyed, so this is the remount settling rather than an
-  // entrance: nothing on this screen animates in (DIRECTION, tier 4).
+  // entrance animation. The day screen opens still.
   await page.waitForTimeout(150);
 };
 

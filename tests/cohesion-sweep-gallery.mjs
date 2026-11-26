@@ -66,7 +66,7 @@ const ROUTES = [
   { path: '/body/hair-removal' },
   { path: '/body-map' },
   { path: '/care' },
-  { path: '/coming-back', exception: 'chromeless by decision (redesign ticket 35, ADR-0080)' },
+  { path: '/coming-back', exception: 'the return step hides navigation' },
   {
     path: '/onboarding',
     name: 'setup',
@@ -74,7 +74,7 @@ const ROUTES = [
        so exclude it from the deep-screen rule in this route sweep.
        tests/setup-review.mjs and the walkthrough check later steps'
        Back controls. */
-    exception: "a step machine: DIRECTION.md rules 12 to 15 own its header, and rule 12 drops the step's own back control on the welcome step, which is the step this walk reads"
+    exception: "setup keeps a fixed field and footer and hides Back on the first step"
   },
   { path: '/care/doses' },
   { path: '/care/regimen' },
@@ -144,7 +144,7 @@ const RESOLVED = [
 ];
 
 /* Rule 5's allow-list, as the radius contract test resolves it, plus the
-   proportional corner ADR-0077 gave the mood face. */
+   mood face’s proportional corner. */
 const RADII = new Set(['0px', '1px', '2px', '4px', '6px', '8px', '50%', '100%', '999px']);
 /* Rule 2's scale: 15 secondary, 16 body, 17 content title, 19 a tile's
    title, 21 a sheet heading, 28 section, 40 a number on a block, 48 a door
@@ -155,9 +155,8 @@ const SIZES = new Set([12, 13, 14, 15, 16, 17, 19, 21, 24, 28, 40, 48]);
    the inline bar at 36, and the hairline a box draws at 1. 4 is the rail the
    rule names beside the donut, which the breathing ring also draws. */
 const STROKES = new Set([0, 0.8, 1, 1.5, 2, 2.5, 3, 4, 12, 14, 36]);
-/* `PRODUCT.md`: "touch targets >= 48px (Android's floor, which is the
-   stricter of the two platforms)". `--touch-target` is 48px and
-   `accessibility-audit.test.ts` asserts the token; this asserts the box. */
+/* accessibility-audit.test.ts pins --touch-target to 48px. This checks
+   the rendered hit area against the same floor. */
 const TOUCH_FLOOR = 48;
 /* The ticket's list, plus `textarea`, which is an input by every name but
    its tag. `[tabindex]` is filtered to non-negative below: -1 is
@@ -393,14 +392,8 @@ const read = () =>
           shown *= Number(getComputedStyle(up).opacity);
         if (!shown) continue;
 
-        /* And no box at all, which `display` alone does not catch: the check
-           above skips a hidden element but `getComputedStyle` on its
-           *children* still answers `display: block`, because display is not
-           inherited and is never recomputed to none for a descendant. So a
-           paper-only heading - `.print-heading` is `display: none` until
-           `@media print` turns it on - reported its 32px h1 as live type on
-           two screens, in both themes, and `DIRECTION.md` governs screens.
-           A zero-size box is the honest test for "on screen at all". */
+        /* Descendants of a hidden parent can report display: block. Require a
+           nonzero box so print-only headings do not count as screen text. */
         const box = el.getBoundingClientRect();
         if (!box.width || !box.height) continue;
         /* And nothing parked off the frame. An element hidden by a negative

@@ -197,16 +197,9 @@ async function captureStartupFailure(error) {
   console.log(`Startup failure diagnostics: ${output}`);
 }
 
-/* The browser tier converged on forwarding pageerror (tests/browser-tier/
-   run.mjs), so a module that throws on import fails by name rather than
-   running out a timeout. This runner converges too, for a sharper reason
-   than the browser tier had: its timeout is 5 minutes, not 30 seconds - the
-   ten-year fixture takes a while to generate - so an import-time throw here
-   would otherwise sit silent for most of that before surfacing as an
-   anonymous Timeout. walkthrough.test.mjs stays on its own policy
-   (docs/agents/verification.md explains why: one continuous page across 48
-   flows has no natural per-check boundary to attribute a pageerror to, so it
-   collects them instead of racing each flow against one). */
+/* Fail on pageerror during probe setup. An import error otherwise waits
+   behind the five-minute allowance for generating the ten-year fixture.
+   The continuous walkthrough collects page errors across its flows. */
 let onPageError;
 page.on('pageerror', (error) => {
   retainStartupEvent('pageerror', error.stack ?? error.message);

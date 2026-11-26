@@ -1,16 +1,6 @@
-/* The Look back door and its readings (phase 8 UX ticket 03's emptiness
-   rule, ADR-0056; redesign ticket 11's rail; phase 11 ticket 07's tile
-   grid). The two interval folds this file used to hold left for /care
-   whole; their describe block went with them, to
-   tests/care-surfaces.test.ts.
-
-   Greps by design: every one of these is a Svelte template fact
-   - which branch a panel is inside, what order the door draws in - rather
-   than a function with an answer to call. The rule the file has to satisfy
-   is that nothing on this door renders for a practice the person has never
-   done, that one span drives every read, and that the door is a set of
-   readings each opening its own screen - and a template can only be held to
-   that by reading it. */
+/* Look back shows readings for practices present in the journal. One
+   span drives all reads, and each reading opens its own screen. These
+   checks read template branches and ordering. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -40,9 +30,8 @@ const markup = (source: string) =>
     .replace(/<!--[\s\S]*?-->/g, '');
 
 describe('the summary panels wait for the floor', () => {
-  /* WRAPPED_ENTRY_FLOOR, read off the module that owns it rather than
-     written here as a 5 - ADR-0056's "no new magic numbers". The door reads
-     it once and hands the answer to the readings that hold to it. */
+  /* Read WRAPPED_ENTRY_FLOOR once from its owning module and pass the
+     result to each reading. */
   it('reads its floor from the module that owns it, once, on the door and on the route', () => {
     for (const source of [stats, route]) {
       expect(source).toContain("import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped'");

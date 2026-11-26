@@ -107,9 +107,8 @@ const pickFile = async (name) => {
   );
 };
 
-/* DIRECTION rule 14 is measured, not eyeballed: no step in setup scrolls at
-   default text size between 320 and 430 wide, nor with a keyboard up. A new
-   step owes that number, so every shot records it. */
+/* Measure the frame at default text size from 320 to 430px, with the
+   keyboard up too. The setup answers have their own scroll region. */
 const scroll = {};
 
 const shoot = async (name, selector) => {

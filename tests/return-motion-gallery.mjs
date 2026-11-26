@@ -77,7 +77,7 @@ const settle = async (page, path) => {
     (+layout.svelte's `goto('/coming-back')`) and the only kind that runs
     the field's blind: a cold load has no outgoing screen to pull an edge
     down from, and it replaces the document, which takes the sampling loop
-    with it. The route is linked from nowhere on purpose (ADR-0062), so the
+    with it. The route is linked from nowhere on purpose, so the
     anchor the router needs is made here rather than found. */
 const enterStep = (page) =>
   page.evaluate(() => {

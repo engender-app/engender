@@ -28,10 +28,8 @@
 
   let palette = $state('trans');
   let theme = $state('dark');
-  /* The axis that actually moves the faces. ADR-0025 gives mood its own
-     colour scale, keyed on [data-mood-preset] rather than on the flag, so
-     eight palettes leave the five discs identical and it is these four that
-     change them. The palette still matters to everything around them. */
+  /* Mood faces use [data-mood-preset]. Changing the flag palette changes
+     the surrounding UI while the face colours stay fixed. */
   const PRESETS = ['amber', 'teal', 'plum', 'moss'];
   let preset = $state('amber');
   /* Off by default: the crosshair is for checking one mark's centring, and

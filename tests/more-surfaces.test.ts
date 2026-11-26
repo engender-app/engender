@@ -30,7 +30,7 @@ describe('what the More hub is built from', () => {
     expect(more).toContain("from '$lib/components/kit/SectionHeading.svelte'");
   });
 
-  it('hides its own screen title, since the tab already says "More" (DIRECTION.md 3d)', () => {
+  it('hides its own screen title, since the tab already says "More"', () => {
     expect(markup).toMatch(/<ScreenHeader\s[^>]*titleHidden/);
   });
 
@@ -61,7 +61,7 @@ describe('what the More hub is built from', () => {
     expect(more).not.toContain('nav_settings');
   });
 
-  it('puts the search box on the field and nothing else there (DIRECTION.md rule 7)', () => {
+  it('puts the search box on the field and nothing else there', () => {
     const field = /\{#snippet field\(\)\}([\s\S]*?)\{\/snippet\}/.exec(markup)?.[1] ?? '';
 
     expect(field).toContain('class="search-box"');

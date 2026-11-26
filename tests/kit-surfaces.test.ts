@@ -1,16 +1,6 @@
-/* The rules the surface kit and the chart kit have to keep, at the level a stylesheet and a component's source can be held to.
-
-   Most of what makes these surfaces right is a judgement about proportion
-   that only an eye settles, and tests/kit-gallery.mjs is where that happens.
-   What is left over is mechanical, and all of it is something the craft
-   floor or DIRECTION.md names outright - which means it is exactly the kind
-   of thing that creeps back in one screen ticket at a time unless something
-   is watching.
-
-   A stylesheet has no interface to call, so these are greps and stay
-   greps. The kit's arithmetic is the part that does have one,
-   and it is held to values in chart-geometry.test.ts rather than read out
-   of a component here. */
+/* Check structural rules in the surface and chart kit. kit-gallery.mjs
+   covers rendered proportions. chart-geometry.test.ts checks arithmetic
+   through its functions. */
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -126,7 +116,7 @@ describe('the surfaces', () => {
          against the rows of its own scale only, which is the thing the
          paired dots could not do for a list that mixed scales. */
       'DivergingBars.svelte',
-      /* Parts of a whole where the parts have no order (ADR-0058): share by tag, share by presentation, share by
+      /* Parts of a whole where the parts have no order: share by tag, share by presentation, share by
          injection site. The one mark in the kit that cannot label itself -
          an arc has nowhere to write a name that stays inside it at every
          share - which is why it is also the one that carries a legend
@@ -152,12 +142,8 @@ describe('the surfaces', () => {
          for a size; a chip and the picker ask it to be alive, which is the
          glance and the gaze together. */
       'Notice.svelte',
-      /* The other half of ADR-0058's rule: parts of a whole where the
-         order is the information. Mood distribution draws as this rather
-         than as Distribution's columns, which is the one place the two
-         forms overlap - a ring of five ordered steps cannot show
-         mostly-the-middle-two, and neither can five columns without the
-         reader measuring them against each other. */
+      /* Mood distribution preserves the scale's order in a strip. Its middle
+         steps stay adjacent so the reader can compare them together. */
       'OrderedStrip.svelte',
       /* Two positions on one scale with the gap between them: the merged
          tag card's own mark, and the survivor of a
@@ -228,7 +214,7 @@ describe('the surfaces', () => {
   });
 
   it('separates with a line and never with a shadow', () => {
-    // DIRECTION.md decision 2: two surfaces, not a stack of planes. The
+    // Separate related surfaces with a 1px line. The
     // app's one shadow belongs to the floating nav bar and its add button,
     // which are the shell's, not the kit's.
     expect(kitAllCss).not.toMatch(/box-shadow/);
@@ -288,8 +274,7 @@ describe('the surfaces', () => {
 
 describe('the charts', () => {
   it('has nowhere to say what a reading means', () => {
-    // PRODUCT.md: the app never interprets a value, and a headline is an
-    // interpretation. The heading names what the chart shows; there is no
+    // A heading names the reading without interpreting it. No summary slot follows.
     // prop for a finding and no slot under the marks for a paragraph.
     const chartCard = source('ChartCard.svelte');
     for (const forbidden of ['description', 'caption', 'finding', 'summary', 'insight', 'note']) {

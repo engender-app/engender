@@ -427,7 +427,7 @@ function analyse({ epoch, rows, cast, ownership }, { step = false, still = false
     ? rows.filter((r) => r.step).map((r) => ({ t: r.t, edge: r.step.edge, parts: r.step.parts }))
     : rows.filter((r) => r.edge !== undefined).map((r) => ({ ...r }));
   const geometry = findGeometry(series, { persist: step ? 2 : 1 });
-  /* Reduced motion substitutes a cut for a movement (ADR-0078): the edge and
+  /* Reduced motion substitutes a cut for a movement: the edge and
      the words arrive in one frame by design, so a jump or a change of opacity
      in one frame is the substitute, not a yank. What it may never do is paint
      outside the field, which the overspill and the pixels still judge. */

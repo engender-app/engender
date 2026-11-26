@@ -227,13 +227,10 @@ export const PROOF = {
   arrival: '.yank-proof-arrival|'
 };
 
-/* Each scene is a rest, a gesture, and what the gesture is supposed to be.
-    Every door direction, then the state changes ADR-0078 flipped the default
-   for: a sheet, a fold, a notice, a row leaving, a segment, a save.
-
-   `firstRun`, where present, names the setup step the scene needs the walk
-   to stop on; each transport implements its own walk (Playwright locators
-   on desktop, devtools evaluates on the device). */
+/* Each scene names a resting state, a gesture and its expected result.
+   Include door directions and changes to sheets, folds, notices, rows,
+   segments and saves. firstRun names the setup step to stop on. Each
+   transport uses its own walk. */
 const SCENES = [
   { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"], [data-rail-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind pulled up to Journal' },
   { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind between two doors' },

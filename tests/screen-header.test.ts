@@ -71,20 +71,8 @@ describe('every screen gets its header from one component', () => {
   });
 
   it('does not repeat a tab name in the screen that tab opens', () => {
-    /* DIRECTION.md 3d. Written as the rule rather than as a list of the
-       screens that happen to follow it: a screen whose title is the very
-       message its tab is labelled with has to hide it, so adding a fifth
-       tab or renaming one cannot quietly leave a screen repeating itself.
-
-       Stats is the exception DIRECTION names outright - "Stats keeps its
-       title because the subtitle there carries the active period" - so it
-       is listed here rather than derived. It used to satisfy the rule by
-       accident, through a stats_title that read "Stats · last 30 days" and
-       had no subtitle under it at all; phase 5 UX ticket 23 split that into
-       the title the tab is named with and the period beneath it, which is
-       the header shape every other screen already has and the one 3d
-       describes. A title doing two jobs was the thing to fix, not the
-       repetition. */
+    /* Hide a screen title that repeats its tab name. Look back keeps its
+       title because the subtitle names the active period. */
     /* One door's tab (the fourth) can say either of two things depending on
        disguise (ticket 08, hubTabLabel) - both are listed, so the guard
        still catches whichever one a header regresses to repeating. */

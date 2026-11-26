@@ -11,7 +11,7 @@
    because getComputedStyle returns identity values even outside a transition.
    On a settled screen, read element bounds, opacity and presence directly.
    Skip the intentionally removed outgoing screen and one-frame runs. Reduced
-   motion uses cuts by design (ADR-0078).
+   motion uses cuts by design.
 
    Run with a demo build.
      VITE_DEMO=1 npm run build

@@ -183,7 +183,7 @@ async function shoot(file) {
 }
 
 /* The pass that actually moves the faces: mood's scale is keyed on
-   [data-mood-preset] rather than on the flag (ADR-0077), so it is these
+   [data-mood-preset] rather than on the flag, so it is these
    four and not the eight palettes that change them. */
 for (const preset of PRESETS) {
   for (const theme of THEMES) {

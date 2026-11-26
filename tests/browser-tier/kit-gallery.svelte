@@ -392,8 +392,7 @@
     />
   </ChartCard>
 
-  <!-- The two forms phase 8 UX ticket 04 adds, and the rule between them
-       (ADR-0058): the same five mood steps as the distribution above, drawn
+  <!-- The same five mood steps as the distribution above, drawn
        as one ordered bar, and two rings for the case where the parts have
        no order at all.
 

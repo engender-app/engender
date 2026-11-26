@@ -31,9 +31,8 @@ const BAR = '[data-app-savebar], .editor-savebar';
    pointer target. */
 const INTERACTIVE = 'button, a, input, select, textarea, [role="slider"], [tabindex]';
 
-/* 320 is the narrowest phone the app claims, 430 the widest, 390 the one
-   every number in DIRECTION.md is measured at; 390x360 stands in for a
-   raised keyboard, as rule 14's check does. */
+/* Check phone widths at 320, 390 and 430px. Use 390x360px to
+   represent the space left above a raised keyboard. */
 const VIEWPORTS = [
   { name: '320x844', width: 320, height: 844 },
   { name: '390x844', width: 390, height: 844 },

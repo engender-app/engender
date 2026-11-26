@@ -61,7 +61,7 @@ for (const palette of PALETTES) {
 }
 
 /* A second pass over the mood presets, on one palette. Mood has its own
-   colour scale (ADR-0025) keyed on [data-mood-preset] rather than on the
+   colour scale keyed on [data-mood-preset] rather than on the
    flag, so the eight palettes above leave the five faces identical and it is
    these four that change them - which makes this the pass that actually
    answers "are the five telling apart". */

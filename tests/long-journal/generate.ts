@@ -390,7 +390,7 @@ export async function generateLongJournal(
       // GOOD_DAY_REGION_EUPHORIA_FLOOR (as a slider position: 75 or above)
       // about half the time - a mix, not an always-true or always-false
       // clause. A region is one value on the shared 0-100 scale now
-      // (ADR-0081), so this picks a side rather than rolling
+      //, so this picks a side rather than rolling
       // each axis independently; 50 itself (the midpoint) never comes up.
       const bodyRegions: Record<string, number> = {};
       if (random() < 0.16) {

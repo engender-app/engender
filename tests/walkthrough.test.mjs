@@ -939,14 +939,9 @@ try {
 } catch (e) { fail('the Journal door blocks', e); }
 });
 
-/* Today faces forward (phase 10 redesign ticket 13; ADR-0067, ADR-0073,
-   ADR-0074). The dated things lead, the mood pick is one write shape of
-   the log strip, the pinned rows draw with their readings, and each
-   section that left this screen is reachable on the door that hosts it.
-   An appointment three days out is written first, since the demo persona's
-   own dated things all fall past the agenda's week. Early in the walk, while
-   the journal is still the persona's: later flows finish areas and change
-   modes, and this one is about the screen, not about their leftovers. */
+/* Today leads with the agenda (ADR-0067), then quick logging and pinned
+   readings (ADR-0073). Seed an appointment within the week because the
+   demo's own dates lie outside it. Run before changes to areas or modes. */
 await flow('today faces forward', async () => {
 try {
   const AGENDA_KIND = 'agenda-13';
@@ -1931,9 +1926,8 @@ try {
 } catch (e) { fail('palette', e); }
 });
 
-/* 7b. mood preset switch (COL-001/ADR-0025): mood's own scale is picked
-   independently of the palette above, and persists across a reload the
-   same way the palette does. */
+/* 7b. Pick the mood ramp independently of the flag palette. Verify the
+   preset survives a reload. */
 await flow('mood preset', async () => {
 try {
   await fresh('/settings');
@@ -2125,15 +2119,9 @@ try {
   await notice.getByRole('button').click();
   await notice.waitFor({ state: 'detached' });
 
-  /* And it stays dismissed on the way back (phase 9 carpet ticket 04,
-     ADR-0071's "closed stays closed"). Every close on Home persists
-     somewhere - a preference, a journal write, a 24-hour key in localStorage
-     - and the ADR re-decided none of them, which is a claim nothing was
-     checking. This notice is the one whose close is a preference, and
-     navigating away and back is where a close that only lived in component
-     state would come undone. The greeting is waited for first: an absence
-     assertion on a screen that has not drawn yet passes for the wrong
-     reason. */
+  /* Navigate away after dismissing the notice, then return. Wait for the
+     greeting so the absence check runs after Home has drawn. The close
+     lives in preferences and must survive the component's teardown. */
   await page.locator('[data-nav-item="calendar"]').first().click();
   await page.waitForURL('**/calendar');
   await page.locator('[data-nav-item="home"]').first().click();
@@ -3456,7 +3444,7 @@ try {
      screen header does" actually means is ScreenHeader's own root, which
      every deep screen and every door but Today renders. `attached`, not
      the default `visible`: More's header has a hidden title and nothing
-     else to hold, so it collapses to nothing on screen (ADR-0075) - true
+     else to hold, so it collapses to nothing on screen - true
      of its content, not of whether a link exists in the DOM. */
   for (const path of ['/calendar', '/stats', '/more']) {
     await page.goto(BASE + path, { waitUntil: 'networkidle' });
@@ -4031,18 +4019,9 @@ try {
 } catch (e) { fail('wrapped', e); }
 });
 
-/* 21. typed dysphoria and euphoria logging: all
-   seven confirmed categories render as bare names under their own heading,
-   an info affordance tells "social" apart from "societal" - the exact pair
-   CONTEXT.md's glossary calls out as not self-explanatory - hiding one
-   follows the same built-in mechanic as any other tag, and the euphoria tag
-   stays selectable independently of a dysphoria type on the same entry.
-
-   Never run as part of the implementation loop, per this ticket's
-   merge-time note: append here rather than before flow 20 (ticket 01's,
-   which must stay last on its own branch), and run `npx svelte-kit sync`
-   first or the build this file drives dies on ENOENT for
-   .svelte-kit/output/client/service-worker.js. */
+/* 21. Check all seven built-in categories, the help text that distinguishes
+   social and societal, and built-in hiding. Euphoria tags stay selectable
+   beside a dysphoria type on the same entry. */
 await flow('typed dysphoria and euphoria logging', async () => {
 try {
   await fresh('/entry/new/today');
@@ -5256,9 +5235,8 @@ try {
   await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-wear-running]', { timeout: 8000 });
 
-  /* Ticket 50, ADR-0064: fullFixture's running session is a binder one nine
-     hours in, so the cue is showing on the card above the list. Asserted
-     before the click, because stopping it is what takes both away. */
+  /* fullFixture has a binder session nine hours in. Confirm the duration
+     cue before stopping it, which removes both the cue and running card. */
   await page.waitForSelector('[data-wear-duration-cue]', { timeout: 8000 });
 
   await page.locator('[data-wear-running]').click();
@@ -5480,7 +5458,7 @@ try {
   await page.locator('[data-hub-search]').fill('wear');
   await page.waitForSelector('[data-hub-results] [data-list-row="wear"]', { timeout: 8000 });
   /* Detached rather than absent on the next frame: the index gives its
-     height back on the way out (DIRECTION.md rule 10), so it is still in the
+     height back on the way out, so it is still in the
      document while it does, and waiting for it to go is also what proves the
      collapse finishes rather than stalling. */
   await page.waitForSelector('[data-hub-index]', { state: 'detached', timeout: 8000 });
@@ -5546,7 +5524,7 @@ try {
    it before later flows. Run before PIN and access-mode flows that
    make fresh('/') land on a gate. Use handles (ADR-0029) to check
    Home opens the return surface once and dismissal persists across
-   reload (ADR-0062). */
+   reload. */
 await flow('coming back', async () => {
 try {
   await fresh('/');
@@ -5991,12 +5969,8 @@ try {
 }
 });
 
-/* Today's header at what 200% zoom leaves of a 390px phone (redesign
-   ticket 23, DIRECTION.md rule 7). The old header reserved the sun's full
-   350px beside the hello line, which at 195px is more than the screen, and
-   Playwright read the line as hidden: zero width. The foot under the field
-   has no sun beside it, so the line has its width back, and the sun draws
-   at 0.6 so the wordmark in the field's corner is clear of it. */
+/* At 200% zoom a 390px phone leaves 195px. The greeting needs the foot's
+   full width. The sun draws at 0.6 to leave room for the wordmark. */
 await flow('the field at 200% zoom', async () => {
 try {
   await page.setViewportSize({ width: 195, height: 844 });

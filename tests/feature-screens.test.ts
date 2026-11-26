@@ -12,16 +12,8 @@ import { HUB_ROWS, rowScreen, type HubRow, type HubRowKey } from '../src/lib/dat
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
-/** The hub rows that are **not** on this list, and why. One of them, and
-    keyed by `HubRowKey`, so a row named here that stops existing is a
-    compile error rather than a silent exemption.
-
-    SCREENS.md still says "22 More-hub rows" against a hub that has been
-    longer than that since `/doubt` moved onto it under spec 08, and ticket
-    24 found the same gap from the other side and recorded it as out of its
-    scope. Correcting SCREENS.md is still nobody's ticket, and
-    reading the routes off the hub instead of off the doc makes that
-    disagreement smaller rather than pretending it is settled. */
+/** Hub-row exemptions use HubRowKey so a removed row cannot leave a stale
+    exemption. Read the route list from the hub itself. */
 const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {
   /* A header over one component (bug session 18, item 70): its markup is
      VoiceRecordings.svelte, which was the voice screen's fourth tab and is
@@ -61,7 +53,7 @@ const REACHED_FROM_INSIDE = [
      on it. */
   'settings/notifications',
   /* Reached from the shell rather than from a hub row, and deliberately
-     linked from nowhere (ADR-0062): the return
+     linked from nowhere: the return
      surface opens itself once per gap and is a moment rather than a place.
      Still a feature screen in every way this file asks about, and on the
      list for the reason the note above the list gives - a screen that is
@@ -174,7 +166,7 @@ describe('every feature screen', () => {
   });
 
   it('names its areas with the kit heading rather than a grey label', () => {
-    // DIRECTION.md 3c: display face at the screen-title size, no icon. A
+    // Use the title display face with no icon. A
     // screen with only one area needs no heading at all, so this only
     // holds the screens that had a SectionTitle to replace.
     for (const route of ['transition/letters', 'transition/tryouts/[id]', 'support/resources']) {
@@ -200,7 +192,7 @@ describe('every feature screen', () => {
   });
 
   it('reads its section colours from the shell, never from the document', () => {
-    /* DIRECTION.md, ticket 21's first rule: `<html>`'s data-palette is
+    /* The app sets <html> data-palette after SQLite preferences load, so anything
        stamped after the preferences arrive from SQLite, so anything
        reading the flag for itself at mount draws the previous one. */
     for (const route of ROUTES) {
@@ -224,12 +216,8 @@ describe('what a first-run journal sees', () => {
         'transition/milestones',
         'support/resources',
         'health/clinician-summary',
-        /* The return moment is a step rather than a screen (DIRECTION.md
-           rule 15, redesign ticket 35), and rule 12 forbids a notice on
-           one: a step carries a title on the field and one line under it,
-           and its empty state is that line saying the true sentence. It
-           does have an empty state and draws it as a surface - the
-           surface is the field and the line, not a Notice. */
+        /* The return step puts its empty message below the field title. It has
+           no separate Notice. */
         'coming-back',
         /* The permissions list is the same length on a first run as on a
            thousandth: it describes what the app can reach, not what anybody
@@ -274,7 +262,7 @@ describe('what a first-run journal sees', () => {
 });
 
 describe('what the worker is still fetching', () => {
-  /** Reference data is held in memory and read synchronously (CONTEXT.md),
+  /** Reference data is held in memory and read synchronously,
       so a screen reading only that owes no loading state. Three here:
       milestones reads the milestone catalogue, resources reads a directory
       compiled into the bundle, and the notifications view reads nothing but
@@ -321,7 +309,7 @@ describe('what the worker is still fetching', () => {
   });
 
   it('crossfades the skeleton into the content rather than popping it', () => {
-    /* DIRECTION.md tier 3: skeletons crossfade into content over --dur-fast,
+    /* The skeleton crossfades over --dur-fast,
        and the substitute under reduced motion is an instant cut, which the
        primitive's own duration read handles - the token is clamped to 1ms by
        the theme.

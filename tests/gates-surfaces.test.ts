@@ -196,19 +196,9 @@ describe('what a gate may show', () => {
 
 
   it('animates no gate onto the screen, and says why where the shell is', () => {
-    /* Rule 15 and ADR-0078's cut list: a cold start has nothing to come from
-       and a mid-session lock arriving is the one state change whose whole
-       value is being instant. Everything after that first frame moves, which
-       is what $lib/motion/appOpening is for - and it only ever runs on the
-       change that *ends* a gate.
-
-       Two negatives and one positive. Nothing a gate is built from may bring
-       the screen on: not the frame, not the field, and not the mount. The
-       title is the exception that proves it - it carries `in:`/`out:`
-       because a gate asks more than one thing over its life and that change
-       is inside a settled screen, which is the half of rule 15 that says
-       everything after the first frame moves. So the rule is written against
-       the three elements that are the screen rather than against the file. */
+    /* Cold start and mid-session lock must show the gate immediately. The
+       frame, field and mount have no entrance motion. Title transitions
+       still apply within a settled gate. appOpening runs on unlock. */
     const shellMarkup = stripComments(stripScript(read('src/lib/components/GateScreen.svelte')));
     for (const frame of ['screen screen-gate', 'gate step-field-host', 'gate-field step-field']) {
       const at = shellMarkup.indexOf(`class="${frame}"`);
@@ -232,10 +222,8 @@ describe('what a gate may show', () => {
   });
 
   it('carries no shadow, which the redesign gives only to the floating bar', () => {
-    /* DIRECTION.md decision 2: separation is a 1px outline, and the app's
-       one shadow belongs to the nav bar and its add button. Twelve elevated
-       PIN keys on a screen with no chrome were the loudest place the old
-       language survived. */
+    /* PIN keys use a 1px outline. The only shadow belongs to the floating
+       nav and its add button. */
     const components = read('src/lib/styles/components.css');
     const pinBlock = components.slice(components.indexOf('.pin-pad {'), components.indexOf('.pin-status'));
     expect(pinBlock).not.toContain('box-shadow');
@@ -308,9 +296,7 @@ describe('the first run', () => {
   });
 
   it('draws no sun at all under disguise', () => {
-    /* ADR-0035's reading, applied to the one screen that comes before
-       anything else: a crisp flag is not deniable at a glance, and being
-       first is not an exemption. */
+    /* Disguise suppresses the flag on the gate before unlock (ADR-0101). */
     expect(onboardingMarkup).toContain('{#if !prefs.disguise}');
     expect(onboardingMarkup.indexOf('{#if !prefs.disguise}')).toBeLessThan(
       onboardingMarkup.indexOf('<FlagSun />')
@@ -342,17 +328,9 @@ describe('the first run', () => {
   });
 
   it('moves a step change on the field\'s own edge, not on a shared axis', () => {
-    /* Ticket 33, DIRECTION.md rules 10 and 12. A step change is the field's
-       bottom edge being pulled to the height the next step needs, with the
-       question printed on it and the answers standing under it riding down
-       with it - the same movement a door change makes, and the reason both
-       read their numbers out of one place. The shared-axis slide this
-       replaces predated every rule in DIRECTION.md.
-
-       What is checked is that the geometry is still borrowed rather than
-       invented here: the parts come from navigation.ts, the edge from
-       stepBlind, and neither the axis nor a curve of this screen's own is
-       left behind. */
+    /* Pull the field's bottom edge to the next step's measured height.
+       The answers follow it. Use navigation.ts and stepBlind for the
+       geometry shared with screen transitions. */
     expect(onboarding).toContain("from '$lib/motion/navigation'");
     expect(onboarding).toContain("from '$lib/motion/stepBlind'");
     expect(onboardingMarkup).toContain('use:blindEdge');
@@ -381,8 +359,7 @@ describe('the first run', () => {
   });
 
   it('takes its surfaces from the kit and draws no card of its own', () => {
-    /* The same rule Home was held to (DIRECTION.md 2b): `.card` and
-       `.list-group` are the vocabulary the screen tickets replace. */
+    /* The gate uses kit surfaces instead of .card and .list-group. */
     expect(onboardingMarkup).not.toMatch(/class="[^"]*\bcard\b/);
     expect(onboardingMarkup).not.toMatch(/class="[^"]*\blist-group\b/);
   });

@@ -173,7 +173,7 @@ describe('the five mood faces', () => {
   });
 });
 
-/* Ticket 279 (ADR-0091): a face is drawn in its own step's ink, not in the
+/* Ticket 279: a face is drawn in its own step's ink, not in the
    palette's --text, because the deep end of a ramp is too dark for a dark
    ink. The component hands the step's ink over as --face-ink the same way it
    hands the fill over as --face-mood, and every rule that paints the eyes or
@@ -266,16 +266,11 @@ describe('the face draws in its own step\'s ink', () => {
   });
 });
 
-/* Redesign ticket 19's invariant: the mood icons are byte-identical to
-   ticket 27's drawing (ADR-0077), measured against that drawing rather than
-   against whatever shipped before it. The ticket builds motion around the
-   faces and touches neither file; a hash is the only assertion that can
-   tell "unchanged" from "changed in a way every other test still passes".
-   A ticket that redraws the face on purpose updates the two hashes here in
-   the same commit and says so.
+/* Pin the two shipped mood drawings by hash so a motion change cannot
+   redraw a face unnoticed. Update the hashes with an intentional redraw.
 
    Ticket 279 moved MoodFace.svelte's hash and not the drawing: one line hands
-   the face its step's ink as --face-ink (ADR-0091). moodFace.ts, which is
+   the face its step's ink as --face-ink. moodFace.ts, which is
    the drawing, is still ticket 27's byte for byte. */
 describe("the drawing is ticket 27's, byte for byte", () => {
   const PINNED: Record<string, string> = {

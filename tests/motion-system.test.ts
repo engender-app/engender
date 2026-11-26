@@ -590,13 +590,8 @@ describe('tier 1, response', () => {
       'scale(var(--press-depth-add))'
     );
 
-    /* .segment opted out (ticket 15, [data-no-press]) rather than being
-       enumerated here: it is the third control that answers a press without
-       shrinking, and DIRECTION.md's tier 1 says every one of those has to
-       say why - the pill crossing the set is already the response, and
-       scaling the label as well is two answers to one press. What is
-       pinned here is that it still answers at all - a control that does
-       nothing under the finger is the thing tier 1 exists to prevent. */
+    /* [data-no-press] opts a segment out of shrinking. The pill and label
+       colour already respond to a press. Check that feedback stays visible. */
     const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
     const segment = rules(components).find((rule) => rule.prelude === '.segment:active' && !isReduceContext(rule));
     expect(segment, '.segment still answers a press').toBeDefined();
@@ -756,10 +751,8 @@ describe('the cap that spans every material', () => {
 });
 
 describe('the token layer behind the five tiers', () => {
-  /* Every tier in DIRECTION.md has to be expressible without anyone
-     reaching for a number: tier 0 the sun's arrival and its breath, tier 1
-     the press, tier 2 navigation, tier 3 change within a screen, tier 4
-     nothing at all. */
+  /* Tokens cover authored moments, press response, navigation, changes
+     within a screen and stillness. */
   it('names a duration and an easing for each tier that moves', () => {
     const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
     for (const token of [
@@ -875,11 +868,8 @@ describe('the token layer behind the five tiers', () => {
 });
 
 
-/* Phase 10 redesign ticket 25: every change of state moves (DIRECTION.md
-   rule 10, ADR-0078). The movements this ticket adds to surfaces that
-   already existed, held at the level a stylesheet can be held to: that each
-   exists, that each spends only transform, opacity or clip-path (nothing
-   that repaints a whole region per frame), and that each clamps. */
+/* These state changes animate with transform, opacity or clip-path.
+   Check that each animation exists and clamps under reduced motion. */
 describe('ticket 25: every state change moves', () => {
   const kit = stripComments(readFileSync(join(root, 'src/lib/styles/kit.css'), 'utf8'));
   const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
@@ -1108,9 +1098,8 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(slide[1].decls.height).toContain('var(--blind-to');
   });
 
-  /* The main-thread pin (app.css, "THE MAIN-THREAD PIN"; ADR-0078's named
-     exception): the keyframes that carry it are exactly these five, each by
-     the two variables and never a literal, so the reason is written once. */
+  /* The five main-thread keyframes use the same two pin variables.
+     app.css explains why the pin keeps the edge and content in sync. */
   it('carries the main-thread pin by name in exactly the keyframes that need it', () => {
     const carrying = [...app.matchAll(/@keyframes ([\w-]+) \{/g)]
       .map((m) => m[1])

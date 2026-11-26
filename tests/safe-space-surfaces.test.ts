@@ -1,4 +1,4 @@
-/* Safe space surface and contract tests (ADR-0040). /doubt offers
+/* Safe space surface and contract tests. /doubt offers
    personal support before the breath, with good moments, comfort and
    resources on their own routes. Letters and starred photos live on
    their own screens. tests/settings-route-redirects.test.ts covers
@@ -105,7 +105,7 @@ describe('what Safe Space is built from', () => {
     expect(evidenceMarkup).toContain('data-evidence-see-all');
     expect(evidenceMarkup).not.toMatch(/data-evidence-see-all[^>]*href=/);
     expect(evidence).toContain('m.safe_space_evidence_see_all({ count: counterevidence.length })');
-    /* ADR-0078: the control discloses by moving. The rows it reveals clip
+    /* The rows it reveals clip
        open from their own left edge and the control itself collapses,
        rather than either cutting into place. */
     expect(evidence).toContain('out:disclose');

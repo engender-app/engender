@@ -4,8 +4,7 @@
    loads: this is a screen, and what it is made of lives in components.css,
    screens.css and kit.css alike.
 
-   activeFlag is refreshed here for the reason DIRECTION records: the shell
-   publishes the flag and nothing reads it for itself, so a fixture that
+   The shell publishes activeFlag, so a fixture that
    stamps `data-palette` has to tell the publisher, or every role draws the
    previous palette. */
 import { mountInto, publishFixture } from './mount.ts';
