@@ -105,19 +105,13 @@ export function playOpening(frame: HTMLElement, { reduced }: { reduced: boolean 
   if (reduced) {
     play(frame, [{ opacity: 0 }, { opacity: 1 }], { delay: 0, duration: REDUCED_FADE_MS }, 'linear');
   } else {
-    const outerFirst = [...frame.querySelectorAll<HTMLElement>('[data-opening-sun] .sun-ring')];
-    const diameters = outerFirst.map((ring) => parseFloat(ring.style.getPropertyValue('--d')) || ring.offsetWidth);
-    const beats = openingBeats(outerFirst.length);
-    outerFirst.forEach((ring, i) => {
-      const k = outerFirst.length - 1 - i;
-      play(ring, [{ scale: String(ringFromScale(diameters, i)) }, { scale: '1' }], beats.rings[k], RING_EASE);
-    });
     const rise = (distance: number): Keyframe[] => [
       { opacity: 0, translate: `0 ${distance}px` },
       { opacity: 1, translate: '0 0' }
     ];
     const md = motionDistance('--motion-distance-md');
     const sm = motionDistance('--motion-distance-sm');
+    const beats = openingBeats(0);
     for (const el of frame.querySelectorAll('[data-opening="mark"]')) play(el, rise(md), beats.mark, EASE_OUT_CSS);
     for (const el of frame.querySelectorAll('[data-opening="sign"]')) play(el, rise(sm), beats.sign, EASE_OUT_CSS);
     frame.querySelectorAll('[data-opening="line"]').forEach((el, i) =>
@@ -126,9 +120,25 @@ export function playOpening(frame: HTMLElement, { reduced }: { reduced: boolean 
     for (const el of frame.querySelectorAll('[data-opening="foot"]')) play(el, rise(sm), beats.foot, EASE_OUT_CSS);
   }
 
+  /* The rings are read when the opening starts rather than here: the flag's
+     stripes reach FlagSun after the page has mounted, so on mount the sun
+     can still have no rings to draw. Under the first frame nothing they do
+     is seen. */
+  const drawRings = () => {
+    if (reduced) return;
+    const outerFirst = [...frame.querySelectorAll<HTMLElement>('[data-opening-sun] .sun-ring')];
+    const diameters = outerFirst.map((ring) => parseFloat(ring.style.getPropertyValue('--d')) || ring.offsetWidth);
+    const beats = openingBeats(outerFirst.length);
+    outerFirst.forEach((ring, i) => {
+      const k = outerFirst.length - 1 - i;
+      play(ring, [{ scale: String(ringFromScale(diameters, i)) }, { scale: '1' }], beats.rings[k], RING_EASE);
+    });
+  };
+
   for (const animation of animations) animation.pause();
   const stop = afterSplash(frame.ownerDocument, () => {
     for (const animation of animations) animation.play();
+    drawRings();
   });
   return () => {
     stop();

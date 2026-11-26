@@ -140,10 +140,6 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
   for (const [key, value] of Object.entries(cached)) {
     if (isPreferenceKey(key)) values[key] = value as never;
   }
-  /* Through the proxy, so it is held like any write before the open and
-     reaches SQLite when the journal attaches. */
-  const held = heldLanguage();
-  if (held && !backing) prefs.language = held;
 }
 
 /* A language picked on the welcome, before there is a journal to write it
@@ -152,9 +148,15 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
    that outlives the reload: without it the journal attached with
    'system', activateLanguagePreference() resolved that against the
    browser, and a Polish browser was reloaded back into Polish at the
-   access-mode step. Under the `engender-` prefix, so a reset's sweep of
-   the browser mirrors takes it with everything else. */
-const HELD_LANGUAGE_KEY = 'engender-held-language';
+   access-mode step. attachPreferences takes it as a write made before the
+   open, which is what it is, and drops it.
+
+   Deliberately outside the `engender-` prefix. A boot that finds no
+   journal sweeps every `engender-` key as a mirror of a journal that is
+   gone (reset.ts, clearBrowserMirrors), and a first run is exactly such a
+   boot, on the reload this key exists to survive. What it holds is no more
+   than paraglide's own PARAGLIDE_LOCALE, which outlives a reset too. */
+const HELD_LANGUAGE_KEY = 'setup-language';
 
 function heldLanguage(): 'en' | 'pl' | null {
   try {
@@ -232,6 +234,11 @@ export async function detachPreferences(): Promise<void> {
 /** Boot step 2: SQLite is open and authoritative from here. Anything
     written during step 1 survives - it is newer than what the table holds. */
 export async function attachPreferences(preferences: Preferences) {
+  const held = heldLanguage();
+  if (held && !writtenBeforeOpen.has('language')) {
+    values.language = held;
+    writtenBeforeOpen.add('language');
+  }
   const stored = preferences.all();
   for (const key of Object.keys(stored) as PreferenceKey[]) {
     if (!writtenBeforeOpen.has(key)) values[key] = stored[key] as never;

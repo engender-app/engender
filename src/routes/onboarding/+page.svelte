@@ -422,7 +422,20 @@
     };
   });
 
+  /* Out of the welcome, the sun shrinks on the closing curve stepBlind
+     gives a shrinking field, so the two travel as one. On its own
+     transition's ease-out it was at 0.67 of its size while the edge had
+     travelled a third of the way, and the two read as two things
+     (pre-release-human ticket 19, frame samples). Every way out of the
+     welcome goes through here. */
+  let collapsing = $state(false);
+  let collapseDone: ReturnType<typeof setTimeout> | undefined;
   function go(to: OnboardingStep) {
+    if (step === 'welcome' && to !== 'welcome') {
+      collapsing = true;
+      clearTimeout(collapseDone);
+      collapseDone = setTimeout(() => (collapsing = false), motionDuration('--dur-slow') + 200);
+    }
     step = to;
   }
 
@@ -721,7 +734,7 @@
      is exactly the window, the answers have their own region, and the
      question and the foot cannot move at all. -->
 <div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`} bind:this={frame}>
-  <div class="setup step-field-host" class:is-hero={hero}>
+  <div class="setup step-field-host" class:is-hero={hero} class:is-collapsing={collapsing}>
     <!-- The field. Its height is the sun's reach at this step plus the
          question, so it comes down one step's worth per step with the
          question riding on it, and that edge is rule 10's blind on this
@@ -1395,6 +1408,9 @@
     transition-property: transform;
     transition-duration: var(--dur-slow);
     transition-timing-function: var(--ease-out);
+  }
+  .setup.is-collapsing .setup-sun :global(.sun) {
+    transition-timing-function: var(--ease-out-soft);
   }
 
   /* The sun's room, which is also the back control's row. Reserved as the

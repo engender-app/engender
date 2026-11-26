@@ -29,6 +29,7 @@ vi.mock('$lib/paraglide/runtime', () => ({
 
 import { PREFERENCE_DEFAULTS, type PreferenceKey, type PreferenceValues } from './catalogue';
 import type { Preferences } from './preferences';
+import { clearBrowserMirrors } from '../reset';
 
 type Store = typeof import('./store.svelte');
 
@@ -42,13 +43,14 @@ function fakePreferences(stored: PreferenceValues) {
   return { preferences, set };
 }
 
-/** A fresh copy of the store, which is what a reload gives the page. */
+/** A fresh copy of the store, which is what a reload gives the page. A
+    boot with no journal yet sweeps the journal's browser mirrors first
+    (boot-machine.ts, 'discard-erased-journal-mirrors'), and a first run is
+    such a boot. */
 async function boot(): Promise<Store> {
+  clearBrowserMirrors(localStorage);
   vi.resetModules();
-  const store = await import('./store.svelte');
-  // Boot step 1: the mirror's boot set, before SQLite has opened.
-  store.applyCachedBootPreferences({});
-  return store;
+  return import('./store.svelte');
 }
 
 beforeEach(() => {
@@ -58,7 +60,11 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', {
     getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => void storage.set(key, value),
-    removeItem: (key: string) => void storage.delete(key)
+    removeItem: (key: string) => void storage.delete(key),
+    key: (index: number) => [...storage.keys()][index] ?? null,
+    get length() {
+      return storage.size;
+    }
   });
   vi.stubGlobal('navigator', { language: 'pl-PL' });
 });
@@ -74,8 +80,6 @@ describe('a language chosen before the journal opens', () => {
     expect(paraglide.setLocale).toHaveBeenCalledWith('en');
 
     const after = await boot();
-    expect(after.prefs.language).toBe('en');
-
     const { preferences, set } = fakePreferences({ ...PREFERENCE_DEFAULTS });
     await after.attachPreferences(preferences);
     await after.flushPreferences();
