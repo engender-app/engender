@@ -32,6 +32,9 @@ const RING_MS = 560;
 /** The ring entrance's own curve (components.css, `ring-in`). */
 const RING_EASE = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 export const REDUCED_FADE_MS = 200;
+/** What the opening's animations are called, so a probe can tell them
+    from the step machine's own. */
+export const OPENING_ID = 'welcome-opening';
 
 export interface Beat {
   delay: number;
@@ -97,7 +100,7 @@ function afterSplash(doc: Document, go: () => void): () => void {
 export function playOpening(frame: HTMLElement, { reduced }: { reduced: boolean }): () => void {
   const animations: Animation[] = [];
   const play = (el: Element, keyframes: Keyframe[], beat: Beat, easing: string) =>
-    animations.push(el.animate(keyframes, { ...beat, easing, fill: 'backwards' }));
+    animations.push(el.animate(keyframes, { ...beat, easing, fill: 'backwards', id: OPENING_ID }));
 
   if (reduced) {
     play(frame, [{ opacity: 0 }, { opacity: 1 }], { delay: 0, duration: REDUCED_FADE_MS }, 'linear');
