@@ -312,7 +312,13 @@ export function disclose(
       `border-top-width: ${fadeEdges || t >= 1 ? borderTop : 0}px;` +
       `border-bottom-width: ${fadeEdges || t >= 1 ? borderBottom : 0}px;` +
       `margin-top: ${t * (marginTop - swallowed)}px;` +
-      `margin-bottom: ${restMargin + t * (marginBottom - restMargin)}px;` +
+      /* With its edges kept for the fade, the box cannot shrink below its
+         own two hairlines: a notice sat at 2px for the last 150ms of the
+         close and gave them back in the frame it was removed (pre-release
+         18, item 53). The margin under it takes those pixels back over the
+         travel instead, so the neighbours arrive where the removal leaves
+         them. */
+      `margin-bottom: ${restMargin + t * (marginBottom - restMargin) - (fadeEdges ? (1 - t) * (borderTop + borderBottom) : 0)}px;` +
       (fadeEdges ? `opacity: ${Number(Math.min(1, t / EDGES_GONE_OVER).toFixed(3))};` : '')
   };
 }
@@ -408,10 +414,34 @@ function arrivesFromAbove(node: Element): TransitionConfig {
   return {
     duration: motionDuration('--dur-slow'),
     easing: EASE_OUT,
+    tick: gapItOpens(node),
     css: (t, u) =>
       `clip-path: inset(${u * height}px 0 0 0);` +
       `margin-top: ${marginTop - u * height}px;` +
       `margin-bottom: ${restMargin + t * (marginBottom - restMargin)}px;`
+  };
+}
+
+/** A block arriving on a line of its own in a flex or grid parent opens a
+    row gap there, and no margin of its own can take that back: a line's
+    size is floored at zero, so the gap lands whole in the first frame (a
+    tile promoted onto a new line of Home's tile grid, 8px under Pinned in
+    one frame - pre-release 18, item 53). The parent's own bottom margin
+    takes the gap instead and gives it back on the arrival's curve, frame
+    by frame, and is handed back untouched at the end. Nothing to do where
+    the parent is not a flex or grid box, has no row gap, or has nothing
+    else in it to stand a gap away from. */
+function gapItOpens(node: Element): TransitionConfig['tick'] {
+  const parent = node.parentElement;
+  if (!parent || typeof getComputedStyle !== 'function') return undefined;
+  const style = getComputedStyle(parent);
+  if (!/flex|grid/.test(style.display ?? '')) return undefined;
+  const gap = parseFloat(style.rowGap ?? '') || 0;
+  if (gap <= 0 || parent.children.length < 2) return undefined;
+  const resting = parseFloat(style.marginBottom) || 0;
+  const inline = parent.style.marginBottom;
+  return (t, u) => {
+    parent.style.marginBottom = t >= 1 ? inline : `${resting - u * gap}px`;
   };
 }
 
@@ -656,6 +686,14 @@ function risesIntoSlot(node: Element, from?: Slot): TransitionConfig {
   };
 }
 
+/** Whether `node` is standing over more than half of `slot`'s height. */
+function standsInSlot(node: Element, slot?: Slot): boolean {
+  if (!slot) return false;
+  const here = node.getBoundingClientRect();
+  const overlap = Math.min(here.top + here.height, slot.top + slot.height) - Math.max(here.top, slot.top);
+  return overlap > Math.min(here.height, slot.height) / 2;
+}
+
 /** A panel that is not giving its space back: it leaves the flow in the frame
     it is dismissed and dissolves where it stood.
 
@@ -834,7 +872,20 @@ export function collapse(
      never who the swap was measured for; it still owes the column below it
      a real collapse. */
   if (replacingSlot() && (node as HTMLElement).hasAttribute('data-live-tile')) {
-    if (options?.direction === 'in') return risesIntoSlot(node, replacedSwap?.from);
+    /* Only an arrival that actually stands in the slot it replaces rises
+       into it. Stopping the wear session in the today tier promotes the
+       folded tile into the moment grid further down, on a line of its own:
+       it is a tile arriving, not a swap, and faded in at full height it
+       pushed Pinned down 128px in one frame (pre-release 18, item 53). */
+    if (options?.direction === 'in' && standsInSlot(node, replacedSwap?.slot)) {
+      return risesIntoSlot(node, replacedSwap?.from);
+    }
+  }
+  if (
+    replacingSlot() &&
+    options?.direction !== 'in' &&
+    (node as HTMLElement).hasAttribute('data-live-tile')
+  ) {
     /* The screen measures the slot before the DOM changes; without one there
        is nothing to pin the panel to and the cut is the honest fallback. */
     return replacedSwap ? dissolveAt(replacedSwap.slot) : { duration: 0 };
