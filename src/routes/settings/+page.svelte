@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import { rovingRadio } from '$lib/components/rovingRadio';
   /* Settings, on the surface kit (phase 5 ticket 24), in five open areas
      since ticket 277.
@@ -115,6 +116,23 @@
   let languageSheet = $state(false);
   let a11ySheet = $state(false);
   let tagGroupsSheet = $state(false);
+  /* Manage tags is a screen behind the Tag groups sheet. Going there with
+     the sheet still up ran two exits at once: the scrim vanished in one
+     frame and the sheet's group list faded over the new screen's identical
+     list (pre-release-human 18). The sheet closes first, the way it always
+     closes, and the screen changes once its exit is over. */
+  let afterTagGroups: string | null = null;
+  function leaveTagGroupsFor(event: MouseEvent, href: string) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    afterTagGroups = href;
+    tagGroupsSheet = false;
+  }
+  function tagGroupsClosed() {
+    const href = afterTagGroups;
+    afterTagGroups = null;
+    if (href) void goto(href);
+  }
   let eraseSheet = $state(false);
   let erasing = $state(false);
   let eraseError = $state('');
@@ -589,7 +607,7 @@
     </div>
   </Sheet>
 
-  <Sheet bind:open={tagGroupsSheet} title={m.tag_groups()}>
+  <Sheet bind:open={tagGroupsSheet} title={m.tag_groups()} onClosed={tagGroupsClosed}>
     <h3>{m.tag_groups()}</h3>
     <div class="stack-3">
       {#each vocabulary.tagGroups as g (g.key)}
@@ -598,7 +616,7 @@
           <Switch checked={g.enabled} label={m.settings_taggroup_switch({ group: g.name })} onChange={(v) => journal.tags.setGroupEnabled(g.key, v)} />
         </div>
       {/each}
-      <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
+      <a class="manage-tags-link" href="/settings/tags" onclick={(event) => leaveTagGroupsFor(event, '/settings/tags')}>{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
     </div>
   </Sheet>
 
