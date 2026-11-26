@@ -44,7 +44,7 @@
   import { moodDistribution } from '$lib/data/statsCharts';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { MOOD_RANGE } from '$lib/data/metricRange';
-  import { nativeValue, signedValue } from '$lib/data/wrappedDisplay';
+  import { nativeAmount, nativeValue, signedValue } from '$lib/data/wrappedDisplay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -246,15 +246,19 @@
   let model = $derived.by(() => {
     if (!shown) return null;
     const { a, b, ranges } = shown;
+    /* Rounded to the precision they are written at (nativeAmount), so the
+       change beside two printed values is the difference of those values
+       and the ranking agrees with what the reader sees. */
+    const at = (key: string, value: number | null | undefined) => (value == null ? null : nativeAmount(key, value));
     const scales: (ScaleSides & { name: string })[] = [
-      { key: 'mood', name: m.mood(), min: MOOD_RANGE.min, max: MOOD_RANGE.max, a: a.scales.mood ?? null, b: b.scales.mood ?? null },
+      { key: 'mood', name: m.mood(), min: MOOD_RANGE.min, max: MOOD_RANGE.max, a: at('mood', a.scales.mood), b: at('mood', b.scales.mood) },
       ...vocabulary.activeDimensions.map((d) => ({
         key: d.key,
         name: d.name,
         min: d.min,
         max: d.max,
-        a: a.scales[d.key] ?? null,
-        b: b.scales[d.key] ?? null
+        a: at(d.key, a.scales[d.key]),
+        b: at(d.key, b.scales[d.key])
       }))
     ];
     const order = chronological(ranges.a, ranges.b);

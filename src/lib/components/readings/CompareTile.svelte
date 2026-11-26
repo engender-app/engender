@@ -21,7 +21,7 @@
   import { readSide } from '$lib/data/compareSides';
   import { biggestChange } from '$lib/data/periodComparison';
   import { MOOD_RANGE } from '$lib/data/metricRange';
-  import { nativeValue } from '$lib/data/wrappedDisplay';
+  import { nativeAmount, nativeValue } from '$lib/data/wrappedDisplay';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
   import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
@@ -54,9 +54,11 @@
     const sides = sidesQuery.value;
     if (!sides) return undefined;
     const [now, earlier] = sides;
+    // Ranked at the precision the screen prints, so the two agree.
+    const at = (key: string, value: number | null | undefined) => (value == null ? null : nativeAmount(key, value));
     const scales = [
-      { key: 'mood', name: m.mood(), ...MOOD_RANGE, a: now.scales.mood ?? null, b: earlier.scales.mood ?? null },
-      ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max, a: now.scales[d.key] ?? null, b: earlier.scales[d.key] ?? null }))
+      { key: 'mood', name: m.mood(), ...MOOD_RANGE, a: at('mood', now.scales.mood), b: at('mood', earlier.scales.mood) },
+      ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max, a: at(d.key, now.scales[d.key]), b: at(d.key, earlier.scales[d.key]) }))
     ];
     const moved = biggestChange(scales);
     if (moved && moved.a !== null && moved.b !== null) {

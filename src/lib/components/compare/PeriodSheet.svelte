@@ -43,7 +43,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
-  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
 
   let {
     side,
@@ -65,7 +65,8 @@
     currentRange: EpochRange | null;
     presets: PresetOption[];
     eras: EraOption[];
-    /** The journal's first day through today: what an era's bar is drawn on. */
+    /** The journal's first day through today: what an era's bar is drawn
+        on, widened to cover every era. */
     journal: EpochRange | null;
     today: number;
     onPick: (choice: PeriodChoice) => void;
@@ -108,12 +109,22 @@
     return range && range.end <= today ? range : null;
   });
 
-  /* Where an era sits on the journal, as two fractions of its whole span. */
+  /* The whole stretch the bars are drawn on: the journal through today,
+     widened to any era dated before the first entry, so an era that
+     started before the journal still has its true length. */
+  let whole = $derived.by(() => {
+    if (!journal) return null;
+    const start = Math.min(journal.start, ...eras.map((era) => era.range.start));
+    const end = Math.max(journal.end, ...eras.map((era) => era.range.end));
+    return { start, end };
+  });
+
+  /* Where an era sits on that stretch, as two fractions of it. */
   const place = (range: EpochRange) => {
-    if (!journal) return { from: 0, width: 1 };
-    const total = Math.max(journal.end - journal.start + 1, 1);
-    const from = Math.min(1, Math.max(0, (range.start - journal.start) / total));
-    const to = Math.min(1, Math.max(0, (range.end - journal.start + 1) / total));
+    if (!whole) return { from: 0, width: 1 };
+    const total = Math.max(whole.end - whole.start + 1, 1);
+    const from = Math.min(1, Math.max(0, (range.start - whole.start) / total));
+    const to = Math.min(1, Math.max(0, (range.end - whole.start + 1) / total));
     return { from, width: Math.max(to - from, 0) };
   };
 
@@ -144,7 +155,7 @@
     </ListCard>
 
     {#if eras.length}
-      <SectionHeading text={m.eras_title()} />
+      <FieldGroupHeading legend={m.eras_title()} />
       <ListCard>
         {#each eras as era (era.id)}
           {@const at = place(era.range)}
@@ -178,7 +189,7 @@
       </ListCard>
     {/if}
 
-    <SectionHeading text={m.compare_custom_range()} />
+    <FieldGroupHeading legend={m.compare_custom_range()} />
     <div class="compare-picker">
       <div class="rows-divide date-row">
         <label class="date-row-label" for={`compare-${shownSide}-start`}>{m.start_date_label()}</label>
