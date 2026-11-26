@@ -508,7 +508,13 @@
       key="labs-analyte"
     />
 
-    {#each series as s (s.unit)}
+    <!-- By position, not by unit (pre-release 18, item 57): estradiol in
+         pg/mL and prolactin in ng/mL are different keys, so switching
+         analyte built a second chart above the first while the old block,
+         held by its mixed-units notice's outro, stayed under it for 420ms
+         and pushed the list 240px down and back. Reused, the one chart
+         tweens to the new readings in place. -->
+    {#each series as s}
         {@const chart = chartFor(s)}
         {@const mixed = comparabilityLabels(seriesComparability(s.results))}
         <div data-lab-series={s.unit}>
@@ -547,7 +553,10 @@
               title={m.labs_mixed_title()}
               text={m.labs_mixed_body()}
             />
-            <ul class="lab-mixed-list">
+            <!-- Opens and closes with the notice above it rather than
+                 riding the notice's outro and going in one frame (28px
+                 under the list on the switch away, 48px on the way in). -->
+            <ul class="lab-mixed-list" transition:disclose>
               {#each mixed as reason (reason)}<li>{reason}</li>{/each}
             </ul>
           {/if}
