@@ -403,18 +403,6 @@
   border-radius: var(--r-block);
 }
 
-.compare-metrics-row {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: var(--space-2);
-  align-items: baseline;
-  padding: var(--space-2) 0;
-}
-.compare-metrics-row span { font-variant-numeric: tabular-nums; }
-.compare-metrics-header { font-size: var(--text-sm); color: var(--text-2); }
-.compare-period-label { font-weight: var(--weight-bold); }
-.compare-metrics-tags { align-items: start; }
-
 /* ---------- Stats ---------- */
 .value-row {
   display: flex; align-items: center; gap: var(--space-3); justify-content: space-between;
@@ -999,14 +987,6 @@
 }
 
 /* ---------- Stats hub (phase 5 UX ticket 23) ---------- */
-
-/* The "pick a start and end day" notice sat a hairline under the second
-   picker (Alicja, 2026-08-25). A card and the remark about it are two
-   things, and two things get the space two things get. */
-:is(.compare-picker, .compare-metrics) + .kit-notice,
-.kit-notice + .compare-metrics {
-  margin-top: var(--space-5);
-}
 
 /* A line of context inside a chart card, above or below the plot: which
    analyte is drawn, that a fold reads the whole journal, which tags were

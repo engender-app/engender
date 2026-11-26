@@ -2771,6 +2771,9 @@ button.kit-strip-day .kit-strip-cell {
   position: relative;
   height: 18px;
   margin-top: 6px;
+  /* The dots travel in units of the track's own width (cqw), so a position
+     is a transform rather than an inset (pre-release-human ticket 21). */
+  container-type: inline-size;
 }
 
 /* The scale itself, as the faintest line the theme has. Not a gridline and
@@ -2788,27 +2791,42 @@ button.kit-strip-day .kit-strip-cell {
   background: var(--hairline);
 }
 
-/* The distance between the two readings, which is the reading. */
+/* The distance between the two readings, which is the reading. The whole
+   track's width, clipped to the stretch between the two dots, so a change
+   of values eases the clip instead of resizing a box. */
 .kit-paired-span {
   position: absolute;
   top: 50%;
-  left: var(--from);
-  width: max(calc(var(--to) - var(--from)), 2px);
+  left: 0;
+  width: 100%;
   height: 4px;
   transform: translateY(-50%);
   border-radius: 2px;
   background: var(--role-draw);
+  clip-path: inset(0 calc((1 - var(--to)) * 100%) 0 calc(var(--from) * 100%) round 2px);
+  transition:
+    clip-path var(--dur-slow) var(--ease-out),
+    opacity var(--dur-slow) var(--ease-out);
 }
 
 .kit-paired-dot {
   position: absolute;
-  top: 50%;
-  left: var(--at);
+  top: 3px;
+  left: -6px;
   width: 12px;
   height: 12px;
-  margin-left: -6px;
-  transform: translateY(-50%);
+  transform: translateX(calc(var(--at) * 100cqw));
   border-radius: 50%;
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    opacity var(--dur-slow) var(--ease-out);
+}
+
+/* A side with no reading: the dot and the segment fade where they stand
+   rather than leaving in one frame. */
+.kit-paired-dot.is-none,
+.kit-paired-span.is-none {
+  opacity: 0;
 }
 
 /* Filled is the days it happened, hollow is the rest - on every row,
@@ -2830,6 +2848,54 @@ button.kit-strip-day .kit-strip-cell {
   line-height: var(--leading-body);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
+}
+
+/* --- a bar out of a line ---
+
+   The look shared by the two bar figures that grow out of a line: the tag
+   card's diverging bars (DivergingBars, ticket 20) and /compare's paired
+   tag bars (pre-release-human 21). Thickness, track, end radius, colour
+   and the line over the bar are written once here; where the line sits,
+   how long a bar may run and how it moves stay with each figure, because a
+   diverging row and a paired row are different geometry. */
+.kit-run-track {
+  position: relative;
+  display: block;
+  height: 18px;
+}
+
+/* The scale as the faintest line the theme has, drawn as a child for the
+   reason PairedDots gives: the kit paints flat colour. */
+.kit-run-track::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background: var(--hairline);
+}
+
+/* The line a bar starts from, over the bar rather than under it: a bar
+   starts at this line and would otherwise cover it. */
+.kit-run-zero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text-2);
+  z-index: 1;
+}
+
+.kit-run-bar {
+  position: absolute;
+  top: 50%;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 2px;
+  background: var(--role-draw);
 }
 
 /* --- vertical distribution ---

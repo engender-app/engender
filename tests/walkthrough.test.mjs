@@ -1613,18 +1613,21 @@ try {
    cannot drift apart again without failing here. */
 await flow('tag insight sheet range', async () => {
 try {
-  /* The merged tag card is a reading of its own since phase 11 ticket 07,
-     and draws as paired dots (redesign ticket 05): the row's note names
-     its scale first and then its count. */
+  /* The tag card draws diverging bars grouped by scale since ticket 20:
+     a row's note reads "5,0 with · 3,4 without · 3 entries", so the
+     count is the note's last number. */
   await fresh('/stats/tags');
-  const bar = page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first();
+  const bar = page.locator('[data-chart-card="tags-moved"] [data-div-row]').first();
   await bar.waitFor();
-  const note = await bar.locator('[data-paired-note]').textContent();
-  const claimed = Number((note ?? '').match(/(\d+) /)?.[1]);
+  const note = await bar.locator('[data-div-note]').textContent();
+  const claimed = Number((note ?? '').match(/(\d+)\D*$/)?.[1]);
   if (!claimed) throw new Error('tag row has no entry count: ' + note);
 
   await bar.click();
   await page.waitForSelector('[data-sheet]');
+  if (!(await page.locator('[data-sheet] [data-insight-sheet-range]').textContent())?.trim()) {
+    throw new Error('the tag sheet does not say which range its entries come from');
+  }
   await page.waitForSelector('[data-sheet] [data-entry-card]');
   const cards = await page.locator('[data-sheet] [data-entry-card]').count();
   const capped = await page.locator('[data-insight-sheet-capped]').count();
@@ -1698,7 +1701,7 @@ try {
 await flow('tag insight entries', async () => {
 try {
   await fresh('/stats/tags');
-  await page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first().click();
+  await page.locator('[data-chart-card="tags-moved"] [data-div-row]').first().click();
   /* The sheet, and then the entries in it: the read behind them is its own
      query, so the card can arrive a frame after the sheet does. */
   await page.waitForSelector('[data-sheet] [data-entry-card]');
@@ -4383,7 +4386,27 @@ try {
 } catch (e) { fail('quick log saves without a follow-up sheet', e); }
 });
 
-/* 25. Compare two periods on the same screen. */
+/* 25. Compare two periods on the same screen. Since pre-release-human
+   ticket 21 the screen opens on a result (the last 30 days against the 30
+   before), and each side's period is picked in one sheet: presets, eras,
+   or a custom range whose two fields keep the ids the old pickers had. */
+async function pickCompareRange(side, start, end) {
+  await page.locator(`[data-compare-pick="${side}"]`).click();
+  await page.waitForSelector(`[data-compare-sheet="${side}"]`);
+  await fillDate(page, `[data-compare-sheet="${side}"] [data-compare-field="start"]`, start);
+  await fillDate(page, `[data-compare-sheet="${side}"] [data-compare-field="end"]`, end);
+  await page.locator('[data-compare-custom-apply]').click();
+  await page.waitForSelector('[data-compare-sheet]', { state: 'detached' });
+}
+/* Every figure's numbers, side A's first: the entry counts, then each
+   scale's note ("A: 3,4 · B: 3,1"). */
+async function compareNumbers() {
+  await page.waitForSelector('[data-compare-headline]');
+  const entries = (await page.locator('[data-compare-entries]').innerText()).match(/\d+/g) ?? [];
+  const notes = await page.locator('[data-compare-figure="scales"] [data-paired-note]').allTextContents();
+  return { entries, notes };
+}
+
 await flow('compare two periods', async () => {
 try {
   await fresh('/compare');
@@ -4398,24 +4421,21 @@ try {
     return { aStart: fmt(daysAgo(29)), aEnd: fmt(today), bStart: fmt(daysAgo(59)), bEnd: fmt(daysAgo(30)) };
   });
 
-  await fillDate(page, '#compare-a-start', aStart);
-  await fillDate(page, '#compare-a-end', aEnd);
-  await fillDate(page, '#compare-b-start', bStart);
-  await fillDate(page, '#compare-b-end', bEnd);
-
-  await page.waitForSelector('[data-compare-table]');
-  const entriesRow = page.locator('[data-compare-metric="entries"]');
-  const entriesValues = await entriesRow.locator('span').allTextContents();
-  if (entriesValues.length !== 3) throw new Error('entries row: ' + JSON.stringify(entriesValues));
-  if (entriesValues[1] === '0' || entriesValues[2] === '0') {
-    throw new Error('one of the two periods had no entries: ' + JSON.stringify(entriesValues));
+  // The default already is these two periods; picking them by hand has to
+  // read the same numbers back.
+  const byDefault = await compareNumbers();
+  await pickCompareRange('a', aStart, aEnd);
+  await pickCompareRange('b', bStart, bEnd);
+  const byHand = await compareNumbers();
+  if (JSON.stringify(byDefault) !== JSON.stringify(byHand)) {
+    throw new Error(`the default periods and the same periods picked by hand read differently: ${JSON.stringify(byDefault)} vs ${JSON.stringify(byHand)}`);
   }
-
-  const headerValues = await page.locator('[data-compare-period-label]').allTextContents();
-  if (headerValues[0] === headerValues[1]) throw new Error('the two period labels read the same: ' + JSON.stringify(headerValues));
-
+  if (byHand.entries.length !== 2 || byHand.entries.includes('0')) {
+    throw new Error('one of the two periods had no entries: ' + JSON.stringify(byHand.entries));
+  }
+  if (await page.locator('table, [role="table"]').count()) throw new Error('the result is still a table');
   if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('compare is not view-only');
-  ok('two independently picked periods compare side by side with no computed delta');
+  ok('compare opens on a result, and two hand-picked periods read the same figures as the default ones');
 } catch (e) { fail('compare two periods', e); }
 });
 
@@ -5758,27 +5778,32 @@ try {
     const length = stretch.end - stretch.start + 1;
     return { start: stretch.start - length, end: stretch.start - 1 };
   };
+  /* The sides it opened with, read off each side's sheet: its custom
+     fields start from the side's own range. */
+  const sideRange = async (side) => {
+    await page.locator(`[data-compare-pick="${side}"]`).click();
+    await page.waitForSelector(`[data-compare-sheet="${side}"]`);
+    const got = [await dateValue(page.locator(`[data-compare-sheet="${side}"] [data-compare-field="start"]`)), await dateValue(page.locator(`[data-compare-sheet="${side}"] [data-compare-field="end"]`))];
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('[data-compare-sheet]', { state: 'detached' });
+    return got;
+  };
   const assertOpensWithSides = async (stretch) => {
     const preceding = precedingWindow(stretch);
-    const gotA = [await dateValue(page.locator('#compare-a-start')), await dateValue(page.locator('#compare-a-end'))];
-    const gotB = [await dateValue(page.locator('#compare-b-start')), await dateValue(page.locator('#compare-b-end'))];
+    await page.waitForSelector('[data-compare-headline]');
+    const gotA = await sideRange('a');
+    const gotB = await sideRange('b');
     const wantA = [dateInputValueFromEpochDay(stretch.start), dateInputValueFromEpochDay(stretch.end)];
     const wantB = [dateInputValueFromEpochDay(preceding.start), dateInputValueFromEpochDay(preceding.end)];
     if (gotA[0] !== wantA[0] || gotA[1] !== wantA[1] || gotB[0] !== wantB[0] || gotB[1] !== wantB[1]) {
       throw new Error(`compare opened with the wrong sides: got A ${gotA} B ${gotB}, wanted A ${wantA} B ${wantB}`);
     }
-    await page.waitForSelector('[data-compare-table]');
     if (new URL(page.url()).search) throw new Error('the query parameters that opened compare were never stripped');
   };
-  /* Every metric row is a name span plus one span per side (compare/+page.svelte's
-     `data-compare-metric` rows) - side A's is always index 1. */
+  /* Side A's figures: its entry count and each scale's A value. */
   const columnA = async () => {
-    const rows = page.locator('[data-compare-metric]');
-    const values = [];
-    for (let i = 0; i < (await rows.count()); i++) {
-      values.push((await rows.nth(i).locator('span').allTextContents())[1]);
-    }
-    return values;
+    const { entries, notes } = await compareNumbers();
+    return [entries[0], ...notes.map((note) => note.split('·')[0])];
   };
 
   /* The pronoun tryout - started `today - 100`, still open - is the only
@@ -5809,11 +5834,8 @@ try {
   // back either way, which is the acceptance criterion this ticket states
   // for compare's arithmetic.
   await page.goto(BASE + '/compare', { waitUntil: 'networkidle' });
-  await fillDate(page, '#compare-a-start', dateInputValueFromEpochDay(today - 100));
-  await fillDate(page, '#compare-a-end', dateInputValueFromEpochDay(today));
-  await fillDate(page, '#compare-b-start', dateInputValueFromEpochDay(today - 100));
-  await fillDate(page, '#compare-b-end', dateInputValueFromEpochDay(today));
-  await page.waitForSelector('[data-compare-table]');
+  await pickCompareRange('a', dateInputValueFromEpochDay(today - 100), dateInputValueFromEpochDay(today));
+  await pickCompareRange('b', dateInputValueFromEpochDay(today - 100), dateInputValueFromEpochDay(today));
   const viaPickers = await columnA();
   if (JSON.stringify(viaLink) !== JSON.stringify(viaPickers)) {
     throw new Error(`compare computed different numbers for the same range depending on how it arrived: link ${JSON.stringify(viaLink)}, pickers ${JSON.stringify(viaPickers)}`);

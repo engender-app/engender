@@ -45,10 +45,10 @@
 {#snippet body(row: Row, index: number)}
   <span class="div-name" data-div-name>{row.name}</span>
   <span class="div-note" data-div-note>{row.note}</span>
-  <span class="div-track" aria-hidden="true">
-    <span class="div-zero"></span>
+  <span class="kit-run-track div-track" aria-hidden="true">
+    <span class="kit-run-zero div-zero"></span>
     <span
-      class="div-bar"
+      class="kit-run-bar div-bar"
       class:is-lower={row.share < 0}
       data-div-bar
       style={`--scale: ${scaleOf(row.share)}; --div-index: ${offset + index}`}
@@ -130,37 +130,15 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* The track, the zero line and the bar's look are kit.css's `kit-run-*`,
+     shared with /compare's paired tag bars (pre-release-human 21); what is
+     here is where this figure puts them. */
   .div-track {
-    position: relative;
-    display: block;
-    height: 18px;
     margin-top: 4px;
   }
 
-  /* The scale itself, the faintest line the theme has, drawn as a child
-     for the reason PairedDots gives: the kit paints flat colour. */
-  .div-track::before {
-    content: '';
-    position: absolute;
-    inset: 50% 0 auto 0;
-    height: 2px;
-    transform: translateY(-50%);
-    border-radius: 1px;
-    background: var(--hairline);
-  }
-
   .div-zero {
-    position: absolute;
-    top: 0;
-    bottom: 0;
     left: 50%;
-    width: 2px;
-    margin-left: -1px;
-    border-radius: 1px;
-    background: var(--text-2);
-    /* Over the bars, not under: a bar starts at this line and would
-       otherwise cover it. */
-    z-index: 1;
   }
 
   /* The bar is always the group's longest run and is scaled down to its
@@ -169,14 +147,8 @@
      property). A bar that crosses to the other side changes side at once;
      a gap does not flip sign under a person's eyes but on a write. */
   .div-bar {
-    position: absolute;
-    top: 50%;
     left: 50%;
     width: calc(var(--div-limit) * 1%);
-    height: 12px;
-    margin-top: -6px;
-    border-radius: 2px;
-    background: var(--role-draw);
     transform-origin: left center;
     transform: scaleX(var(--scale));
     transition-property: transform;

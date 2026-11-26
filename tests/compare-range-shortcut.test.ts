@@ -2,8 +2,9 @@
    Verifies:
    - 7-day span pairing with immediately preceding 7 days without overlap or off-by-one.
    - Leap day and DST transitions preserve exact calendar-day counts.
-   - Direct entry preserves blank manual selection and era choices without silent defaults.
-   - No-data periods remain valid empty comparisons.
+   - Ticket 21 replaced the shortcut: arriving with a span opens on that
+     span against the one before it, and a visit without one on the last 30
+     days.
    - Back restores the original Look back span. */
 
 import { readFileSync } from 'node:fs';
@@ -124,30 +125,17 @@ describe('preceding-span comparison shortcut (ticket 32)', () => {
       expect(compareTile).not.toContain("compareStretchQuery");
     });
 
-    it('Compare page offers explicit shortcut Notice on arrival with originating span', () => {
-      expect(comparePage).toContain("precedingWindow");
-      expect(comparePage).toContain("originSpan");
-      expect(comparePage).toContain("showShortcut");
-      expect(comparePage).toContain('key="compare-shortcut"');
-      expect(comparePage).toContain("m.compare_shortcut_title()");
-      expect(comparePage).toContain("m.compare_shortcut_body");
-      expect(comparePage).toContain("m.compare()");
+    it('Compare opens on A = the door span and B = the period before it, with no shortcut notice (ticket 21)', () => {
+      expect(comparePage).toContain("let aChoice = $state<PeriodChoice>(untrack(() => arrivalA(originSpan)));");
+      expect(comparePage).toContain("let bChoice = $state<PeriodChoice>({ kind: 'preceding' });");
+      expect(comparePage).toContain("return other ? precedingWindow(other) : null;");
+      expect(comparePage).not.toContain('compare-shortcut');
+      expect(comparePage).not.toContain('<Notice');
     });
 
-    it('Direct entry retains empty strings and preserves manual/era selection', () => {
-      expect(comparePage).toContain("let aStart = $state('');");
-      expect(comparePage).toContain("let aEnd = $state('');");
-      expect(comparePage).toContain("let bStart = $state('');");
-      expect(comparePage).toContain("let bEnd = $state('');");
-      expect(comparePage).toContain("let aMode = $state<PeriodMode>('range');");
-      expect(comparePage).toContain("let bMode = $state<PeriodMode>('range');");
-    });
-
-    it('Empty / no-data periods produce valid comparisons without error', () => {
-      expect(comparePage).toContain("entryCount: recap.entryCount");
-      expect(comparePage).toContain("averageMood: recap.averageMood");
-      expect(comparePage).toContain("topTagLabel: recap.topTags.length");
-      expect(comparePage).toContain("key=\"compare-empty\"");
+    it('A visit with no span defaults A to the last 30 days (ticket 21)', () => {
+      expect(comparePage).toContain("{ kind: 'last30' }");
+      expect(comparePage).toContain('return defaultSideA(today);');
     });
   });
 });

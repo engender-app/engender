@@ -23,33 +23,44 @@
      No colour says which way. The filled dot is the days the thing happened
      and the hollow one is the rest, on every row, whichever direction the
      gap runs (ADR-0012, F15). */
+  import type { Snippet } from 'svelte';
   import type { PairedRow } from './pairedRow';
 
-  let { rows, onPick }: { rows: PairedRow[]; onPick?: (key: string) => void } = $props();
+  /* `figure` stands in for the row's gap text where the caller draws its own
+     - /compare rolls the number between two periods (pre-release-human
+     ticket 21). */
+  let {
+    rows,
+    onPick,
+    figure
+  }: { rows: PairedRow[]; onPick?: (key: string) => void; figure?: Snippet<[PairedRow]> } = $props();
 
-  /* Where a value sits along its own track, as a percentage, clamped so a
-     value outside the metric's stated range still lands on the track rather
-     than off the end of it. */
+  /* Where a value sits along its own track, 0 to 1, clamped so a value
+     outside the metric's stated range still lands on the track rather than
+     off the end of it. */
   const at = (row: PairedRow, value: number) =>
-    Math.min(100, Math.max(0, ((value - row.min) / Math.max(row.max - row.min, 1)) * 100));
+    Math.min(1, Math.max(0, (value - row.min) / Math.max(row.max - row.min, 1)));
 </script>
 
 {#snippet body(row: PairedRow)}
-  {@const without = at(row, row.without)}
-  {@const with_ = at(row, row.with)}
+  {@const without = row.without === null ? null : at(row, row.without)}
+  {@const with_ = row.with === null ? null : at(row, row.with)}
+  {@const from = Math.min(without ?? with_ ?? 0, with_ ?? without ?? 0)}
+  {@const to = Math.max(without ?? with_ ?? 0, with_ ?? without ?? 0)}
   <div class="kit-paired-head">
     <span class="kit-paired-name" data-paired-name>{row.name}</span>
-    <span class="kit-paired-gap" data-paired-gap>{row.gap}</span>
+    <span class="kit-paired-gap" data-paired-gap>{#if figure}{@render figure(row)}{:else}{row.gap}{/if}</span>
   </div>
+  <!-- Positions are fractions of the track, drawn as transforms and a clip
+       rather than as insets, so a row whose values change carries its dots
+       and its segment to the new places on the compositor. A side with no
+       reading has no dot and no segment; the caller's note says why. -->
   <div class="kit-paired-track">
-    <span
-      class="kit-paired-span"
-      style={`--from: ${Math.min(without, with_)}%; --to: ${Math.max(without, with_)}%`}
-    ></span>
-    <span class="kit-paired-dot is-without" style={`--at: ${without}%`}></span>
-    <span class="kit-paired-dot is-with" style={`--at: ${with_}%`}></span>
+    <span class="kit-paired-span" class:is-none={without === null || with_ === null} style={`--from: ${from}; --to: ${to}`}></span>
+    <span class="kit-paired-dot is-without" class:is-none={without === null} data-paired-dot="without" style={`--at: ${without ?? from}`}></span>
+    <span class="kit-paired-dot is-with" class:is-none={with_ === null} data-paired-dot="with" style={`--at: ${with_ ?? from}`}></span>
   </div>
-  <span class="kit-paired-note" data-paired-note>{row.note}</span>
+  {#if row.note}<span class="kit-paired-note" data-paired-note>{row.note}</span>{/if}
 {/snippet}
 
 <div class="kit-paired" data-chart="paired">
