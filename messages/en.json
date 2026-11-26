@@ -464,7 +464,7 @@
   "compare_scale_values": "A: {a} · B: {b}",
   "compare_scales_heading": "Average on each scale",
   "compare_side_row": "{period}: {choice}",
-  "compare_tile_headline": "{name} {from} → {to}",
+  "compare_tile_headline": "{name}\n{from} → {to}",
   "compare_title": "Compare periods",
   "constellation_aria": "Your entries on two scales: {x}, {y}.",
   "constellation_needs_scales": "Tick two scales to plot one against the other.",

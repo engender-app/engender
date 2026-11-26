@@ -468,7 +468,7 @@
   "compare_scale_values": "A: {a} · B: {b}",
   "compare_scales_heading": "Średnie na skalach",
   "compare_side_row": "{period}: {choice}",
-  "compare_tile_headline": "{name} {from} → {to}",
+  "compare_tile_headline": "{name}\n{from} → {to}",
   "compare_title": "Porównanie okresów",
   "constellation_aria": "Twoje wpisy na dwóch skalach: {x}, {y}.",
   "constellation_needs_scales": "Zaznacz dwie skale, żeby zestawić je ze sobą.",
