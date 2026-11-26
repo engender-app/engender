@@ -136,7 +136,7 @@
 </script>
 
 <Sheet open={side !== null} {title} {onClose}>
-  <div class="compare-sheet" data-compare-sheet={shownSide}>
+  <div class="compare-sheet" data-compare-sheet={shownSide} data-compare-whole={whole ? `${whole.start}:${whole.end}` : undefined}>
     <ListCard>
       {#each presets as preset (preset.choice.kind)}
         <ListRow
@@ -162,6 +162,7 @@
           <ListRow
             key={`compare-era-${era.id}`}
             data-compare-era={era.id}
+            data-compare-era-range={`${era.range.start}:${era.range.end}`}
             title={era.name}
             subtitle={rangeLabel(era.range)}
             chevron={false}
