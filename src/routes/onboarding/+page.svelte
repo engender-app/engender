@@ -1557,7 +1557,7 @@
     gap: var(--space-2);
     align-items: flex-start;
     color: var(--text);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-body);
   }
   .setup-promise-ico {
