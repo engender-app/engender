@@ -180,3 +180,19 @@ describe('the two kinds of mark (ticket 13)', () => {
     expect(axis.marks.map((mark) => mark.lane)).toEqual([0, 1]);
   });
 });
+
+describe('noticedAxis: extreme days stay bounded', () => {
+  for (const [name, anchor] of [['calendar', null], ['onset', 0]] as const) {
+    test(`${name} axis over a day near the minimum JS date keeps a bounded tick list`, () => {
+      const started = Date.now();
+      const axis = noticedAxis([change('a', -99_000_000)], anchor, 20500);
+      expect(Date.now() - started).toBeLessThan(500);
+      expect(axis.ticks.length).toBeLessThanOrEqual(100);
+      expect(axis.ticks.length).toBeGreaterThan(0);
+      for (const tick of axis.ticks) {
+        expect(tick.epochDay).toBeGreaterThanOrEqual(axis.fromEpochDay);
+        expect(tick.epochDay).toBeLessThanOrEqual(axis.toEpochDay);
+      }
+    });
+  }
+});

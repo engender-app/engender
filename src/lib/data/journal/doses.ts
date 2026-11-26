@@ -37,6 +37,8 @@ import {
   matchDoseRoute,
   expectedSlots,
   pauseCoversDay,
+  MAX_DOSES_PER_DAY,
+  isExpectedDosesPerDay,
   isInjectionDose,
   isPositiveDoseAmount,
   isTopicalDose,
@@ -803,6 +805,9 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
        reasoning the schedule row itself already gets: a form save always
        carries the full set, never a single amount or weekday to patch. */
     async upsertSchedule(input) {
+      if (!isExpectedDosesPerDay(input.dosesPerDay)) {
+        throw new Error(`a schedule holds 1 to ${MAX_DOSES_PER_DAY} doses a day`);
+      }
       const episodeId = await episodeRowid(input.episodeId);
       const existing = await driver.query<{ id: number; uuid: string }>(
         'SELECT id, uuid FROM dose_schedule WHERE episode_id = ?',

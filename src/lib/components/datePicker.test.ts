@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { epochDayFromLocalDate } from '../data/epochDay';
-import { dayInMonth, dayStep, monthCells, monthKey, monthOfDay, parseIsoDate, rubberBand, settleStep } from './datePicker';
+import { dayInMonth, dayStep, monthCells, monthKey, monthOfDay, parseIsoDate, pickerRange, rubberBand, settleStep } from './datePicker';
 
 const day = (y: number, m: number, d: number) => epochDayFromLocalDate(new Date(y, m, d));
 
@@ -119,5 +119,16 @@ describe('rubberBand', () => {
     expect(b - a).toBeLessThan(a);
     expect(rubberBand(10_000, w)).toBeLessThan(w);
     expect(rubberBand(-60, w)).toBe(-a);
+  });
+});
+
+describe('pickerRange', () => {
+  it('never offers a day before the first or past a century from today', () => {
+    expect(pickerRange(undefined, undefined, 20000)).toEqual({ first: 0, last: 20000 + 36525 });
+    expect(pickerRange('1960-01-01', '2999-01-01', 20000)).toEqual({ first: 0, last: 20000 + 36525 });
+  });
+
+  it('keeps a narrower range the caller asked for', () => {
+    expect(pickerRange('2026-01-01', '2026-12-31', 20000)).toEqual({ first: day(2026, 0, 1), last: day(2026, 11, 31) });
   });
 });

@@ -15,6 +15,7 @@ import { openJournal } from './journal.ts';
 import { restoreArchive, verifyArchive } from './restore.ts';
 import { assertArchiveRows } from './archiveRowValidation.ts';
 import { ARCHIVE_SECTION_NAMES } from './archiveSections.ts';
+import { todayEpochDay } from '../epochDay.ts';
 
 const golden = (): ArchiveJournal => JSON.parse(readFileSync(journalPath, 'utf8'));
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -363,3 +364,69 @@ test('each row-shape check accepts its edges and refuses each half-shape', () =>
     assert.throws(() => assertArchiveRows(section as keyof ArchiveJournal, [value]), CorruptArchiveError, what);
   }
 });
+
+/* Security scan ticket 03: a row can be well-typed and still hold a value no
+   screen survives. Each case below is one crafted archive, refused whole
+   before any write, through Replace and Merge alike. */
+const FUTURE_BOUND = 36525;
+const scalarDomainRefusals: [string, (journal: ArchiveJournal) => void][] = [
+  ['entry day below the first day', (j) => { j.entries[0].epochDay = -1; }],
+  ['entry day near the minimum JS date', (j) => { j.entries[0].epochDay = -100_000_000; }],
+  ['entry day fractional', (j) => { j.entries[0].epochDay = 20000.5; }],
+  ['entry day past the future bound', (j) => { j.entries[0].epochDay = todayEpochDay() + FUTURE_BOUND + 1; }],
+  ['milestone day extreme', (j) => { j.milestones[0].epochDay = -100_000_000; }],
+  ['era start extreme', (j) => { j.eras[0].startEpochDay = -100_000_000; }],
+  ['tally day extreme', (j) => { j.tallyEvents[0].epochDay = -100_000_000; }],
+  ['side-effect day extreme', (j) => { j.sideEffects[0].epochDay = -100_000_000; }],
+  ['side-effect resolved day past the bound', (j) => { j.sideEffects[0].resolvedEpochDay = 2 ** 40; }],
+  ['taper start extreme', (j) => { j.taper[0].startEpochDay = 2 ** 52; }],
+  ['taper stages not JSON', (j) => { j.taper[0].stagesJson = '{'; }],
+  ['taper stages not a list', (j) => { j.taper[0].stagesJson = '{"days":3}'; }],
+  ['taper stage with a non-number', (j) => { j.taper[0].stagesJson = '[{"everyNDays":"1","days":14}]'; }],
+  ['taper stage with a negative step', (j) => { j.taper[0].stagesJson = '[{"everyNDays":-1,"days":14}]'; }],
+  ['taper stage with no days', (j) => { j.taper[0].stagesJson = '[{"everyNDays":1,"days":0}]'; }],
+  ['taper with too many stages', (j) => {
+    j.taper[0].stagesJson = JSON.stringify(Array.from({ length: 201 }, () => ({ everyNDays: 1, days: 1 })));
+  }],
+  ['taper stage too long', (j) => { j.taper[0].stagesJson = '[{"everyNDays":1,"days":40000}]'; }],
+  ['taper times a day over the ceiling', (j) => { j.taper[0].stagesJson = '[{"everyNDays":1,"timesPerDay":11,"days":3}]'; }],
+  ['doses a day over the maximum', (j) => { j.doseSchedules[0].dosesPerDay = 25; }],
+  ['doses a day fractional', (j) => { j.doseSchedules[0].dosesPerDay = 1.5; }],
+  ['doses a day zero', (j) => { j.doseSchedules[0].dosesPerDay = 0; }],
+  ['pitch track over the point limit', (j) => { j.voiceBenchmarks[0].pitchTrack = '100.0,'.repeat(4800) + '100.0'; }],
+  ['pitch track a million points', (j) => { j.voiceBenchmarks[0].pitchTrack = ','.repeat(1_000_000); }],
+  ['pitch track not a number', (j) => { j.voiceBenchmarks[0].pitchTrack = '178.5,abc'; }],
+  ['pitch track Infinity', (j) => { j.voiceBenchmarks[0].pitchTrack = '178.5,Infinity'; }],
+  ['pitch track exponent form', (j) => { j.voiceBenchmarks[0].pitchTrack = '178.5,1e999'; }],
+  ['pitch track above the range', (j) => { j.voiceBenchmarks[0].pitchTrack = '178.5,9000.0'; }],
+  ['pitch track below the range', (j) => { j.voiceBenchmarks[0].pitchTrack = '178.5,0.0'; }]
+];
+for (const mode of ['merge', 'replace'] as const) {
+  for (const [name, mutate] of scalarDomainRefusals) {
+    test(`${mode} refuses ${name} before any write`, async () => {
+      const incoming = golden(); mutate(incoming);
+      await refusesWithoutChanges(mode, incoming);
+    });
+  }
+
+  test(`${mode} accepts the scalar-domain boundaries`, async () => {
+    const incoming = golden();
+    incoming.entries[0].epochDay = 0;
+    incoming.entries[1].epochDay = todayEpochDay() + FUTURE_BOUND;
+    incoming.doseSchedules[0].dosesPerDay = 24;
+    incoming.taper[0].stagesJson = JSON.stringify(Array.from({ length: 200 }, (_, i) =>
+      i === 0 ? { everyNDays: 0, days: 36525 - 199 } : { everyNDays: 1, timesPerDay: 10, days: 1 }));
+    // What the editor has always let through: fractions.
+    incoming.taper[1] = { ...incoming.taper[0], id: 'fractional-taper', stagesJson: '[{"everyNDays":1.5,"days":2.5}]' };
+    incoming.voiceBenchmarks[0].pitchTrack = ['60.0', '500.0', '', '178.5'].join(',');
+    const driver = await migratedDb();
+    try {
+      await restoreArchive(driver, fakeFileStore(), mode, { journal: incoming, files: (async function* () {})() });
+      const restored = (await openJournal(driver, fakeFileStore()).archive.snapshot()).journal;
+      assert.equal(restored.doseSchedules.find((row) => row.id === incoming.doseSchedules[0].id)?.dosesPerDay, 24);
+      assert.equal(restored.voiceBenchmarks[0].pitchTrack, '60.0,500.0,,178.5');
+    } finally {
+      await driver.close();
+    }
+  });
+}

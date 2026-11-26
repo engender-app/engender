@@ -39,7 +39,7 @@
   import Icon from './Icon.svelte';
   import MonthJump from './MonthJump.svelte';
   import { registerOverlayRegion } from './overlayLock';
-  import { dayInMonth, dayStep, keyMonth, keyYear, monthCells, monthKey, monthOfDay, parseIsoDate, rubberBand, settleStep } from './datePicker';
+  import { dayInMonth, dayStep, keyMonth, keyYear, monthCells, monthKey, monthOfDay, parseIsoDate, pickerRange, rubberBand, settleStep } from './datePicker';
 
   let {
     value,
@@ -67,14 +67,15 @@
   const WHEEL_QUIET = 120;
   const WHEEL_DEAF = 160;
 
-  let minDay = $derived(min ? parseIsoDate(min) : null);
-  let maxDay = $derived(max ? parseIsoDate(max) : null);
-  let firstKey = $derived(minDay === null ? -Infinity : monthOfDay(minDay));
-  let lastKey = $derived(maxDay === null ? Infinity : monthOfDay(maxDay));
+  let range = $derived(pickerRange(min, max, today));
+  let minDay = $derived(range.first);
+  let maxDay = $derived(range.last);
+  let firstKey = $derived(monthOfDay(minDay));
+  let lastKey = $derived(monthOfDay(maxDay));
   let selected = $derived(value ? parseIsoDate(value) : null);
 
-  const inRange = (day: number) => (minDay === null || day >= minDay) && (maxDay === null || day <= maxDay);
-  const clampDay = (day: number) => Math.min(Math.max(day, minDay ?? day), maxDay ?? day);
+  const inRange = (day: number) => day >= minDay && day <= maxDay;
+  const clampDay = (day: number) => Math.min(Math.max(day, minDay), maxDay);
 
   /* The day the keyboard is on. The picker is mounted per opening, so this
      starts on the chosen day, or today, each time. */

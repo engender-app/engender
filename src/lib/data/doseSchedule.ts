@@ -265,6 +265,17 @@ function weekdayOccurrencesBefore(anchorEpochDay: number, uptoEpochDay: number, 
   return count;
 }
 
+/** The most doses a schedule expects in one day. Hourly with a night off is
+    sixteen; the ceiling is there so a count read off an archive the editor
+    never wrote cannot make the auto-log pass allocate a dose per count. */
+export const MAX_DOSES_PER_DAY = 24;
+
+/** A doses-a-day count the schedule editor may save and restore accepts: a
+    whole number from 1 to MAX_DOSES_PER_DAY. */
+export function isExpectedDosesPerDay(count: number): boolean {
+  return Number.isInteger(count) && count >= 1 && count <= MAX_DOSES_PER_DAY;
+}
+
 /** The slots `schedule` expects between `fromEpochDay` and `toEpochDay`
     inclusive. An every-N-days recurrence steps from `anchorEpochDay` - the
     episode's start day, so the progression belongs to the episode and does
@@ -280,14 +291,14 @@ function weekdayOccurrencesBefore(anchorEpochDay: number, uptoEpochDay: number, 
 
     A schedule with a non-positive dose count, a non-positive step, or an
     empty weekday set expects nothing: it describes no rhythm, and treating
-    it as daily would invent one. */
+    it as daily would invent one. So does one over MAX_DOSES_PER_DAY. */
 export function expectedSlots(
   schedule: DoseSchedule,
   anchorEpochDay: number,
   fromEpochDay: number,
   toEpochDay: number
 ): DoseSlot[] {
-  if (schedule.dosesPerDay < 1) return [];
+  if (!isExpectedDosesPerDay(schedule.dosesPerDay)) return [];
 
   const amounts = schedule.doseAmounts;
   const amountAt = (occurrence: number, indexInDay: number): DoseScheduleAmount | null =>
@@ -545,7 +556,7 @@ const AUTO_LOG_WINDOW_END_HOUR = 20;
     so a screen can ask the question without generating a range of slots to
     find out. */
 function expectsAnyDose(schedule: Pick<DoseSchedule, 'recurrence' | 'dosesPerDay'>): boolean {
-  if (schedule.dosesPerDay < 1) return false;
+  if (!isExpectedDosesPerDay(schedule.dosesPerDay)) return false;
   return schedule.recurrence.kind === 'everyNDays'
     ? schedule.recurrence.everyNDays >= 1
     : schedule.recurrence.weekdays.length > 0;

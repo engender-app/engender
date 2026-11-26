@@ -57,6 +57,12 @@ export function epochDayFromTimestamp(ts: number): number {
     and cannot go NaN in either. */
 export const FIRST_EPOCH_DAY = 0;
 
+/** How far past today a stored day may sit: a century covers a letter to a
+    future self, an expiry date and a planned procedure. Screens trust a
+    day to be human-scale (a rail of years, an axis of months), so the date
+    picker stops here and restore refuses anything past it. */
+export const MAX_FUTURE_EPOCH_DAYS = 36525;
+
 /** The timestamp of local midnight at the start of an epoch day. Not
     `epochDay * DAY`: that's a UTC instant and drifts from local midnight
     by the zone's offset, and by an extra hour on either side of a DST

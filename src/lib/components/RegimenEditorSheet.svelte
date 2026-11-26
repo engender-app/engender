@@ -45,7 +45,7 @@
     regimenIntervalToStore,
     ROUTE_OPTIONS
   } from '$lib/data/vocabulary/doseLabels';
-  import { canAutoLog } from '$lib/data/doseSchedule';
+  import { MAX_DOSES_PER_DAY, canAutoLog, isExpectedDosesPerDay } from '$lib/data/doseSchedule';
   import { doseAutoSource } from '$lib/data/autoSource';
   import { defaultReminderTimes, isHandMadeReminderFor, reminderTimesOf, resizeReminderTimes } from '$lib/data/doseReminders';
   import TimePicker from '$lib/components/TimePicker.svelte';
@@ -379,7 +379,7 @@
     if (!scheduleValues) return [];
     const { recurrence, dosesPerDay, doseAmounts, reminderTimes } = scheduleValues;
     return [
-      ...(!Number.isSafeInteger(dosesPerDay) || dosesPerDay < 1 ? [m.regimen_per_day_required()] : []),
+      ...(!isExpectedDosesPerDay(dosesPerDay) ? [m.regimen_per_day_required({ max: MAX_DOSES_PER_DAY })] : []),
       ...(recurrence.kind === 'everyNDays' && (!Number.isSafeInteger(recurrence.everyNDays) || recurrence.everyNDays < 1)
         ? [m.regimen_every_required()] : []),
       ...(recurrence.kind === 'weekdays' && recurrence.weekdays.length === 0 ? [m.regimen_weekday_required()] : []),
@@ -626,9 +626,10 @@
                     class="input"
                     type="number"
                     min="1"
+                    max={MAX_DOSES_PER_DAY}
                     {id}
                     name="regimen-per-day"
-                    aria-invalid={touched && (!Number.isSafeInteger(Number(schedule!.dosesPerDay)) || Number(schedule!.dosesPerDay) < 1)}
+                    aria-invalid={touched && !isExpectedDosesPerDay(Number(schedule!.dosesPerDay))}
                     aria-describedby="regimen-schedule-requirements"
                     inputmode="numeric"
                     bind:value={schedule!.dosesPerDay}

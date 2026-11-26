@@ -2488,7 +2488,7 @@
   "regimen_pause_start_required": "Wybierz datę rozpoczęcia przerwy.",
   "regimen_pauses_hint": "W czasie przerwy nie ma zaplanowanych dawek.",
   "regimen_pauses_legend": "Przerwy",
-  "regimen_per_day_required": "Wpisz liczbę dawek na dzień, co najmniej 1.",
+  "regimen_per_day_required": "Wpisz liczbę dawek na dzień, od 1 do {max}.",
   "regimen_period_ongoing": "od {from}",
   "regimen_period_range": "od {from} do {to}",
   "regimen_route_placeholder": "np. domięśniowo",

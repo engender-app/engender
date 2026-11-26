@@ -372,3 +372,18 @@ describe('factSpan: the list selects what the rail selects', () => {
     expect(factSpan({ id: 'c', kind: 'surgery', name: null, start: 20405, end: 20405, isDay: true }, 20400).start).toBe(20400);
   });
 });
+
+describe('yearTicks: extreme rails stay bounded', () => {
+  it('thins a rail that reaches the minimum JS date instead of building a mark per year', () => {
+    const started = Date.now();
+    const ticks = yearTicks(-99_000_000, 20500);
+    expect(Date.now() - started).toBeLessThan(500);
+    expect(ticks.length).toBeLessThanOrEqual(200);
+    expect(ticks.length).toBeGreaterThan(0);
+  });
+
+  it('copes with a start day that is not a date at all', () => {
+    expect(yearTicks(-1e300, 20500)).toEqual([]);
+    expect(yearTicks(Number.NaN, 20500)).toEqual([]);
+  });
+});

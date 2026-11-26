@@ -100,3 +100,10 @@ test('a benchmark from before the column has no track rather than an empty one',
   assert.equal(decodePitchTrack(null), null);
   assert.equal(decodePitchTrack(''), null);
 });
+
+test('decodePitchTrack refuses an oversized string before splitting it', () => {
+  const started = Date.now();
+  assert.equal(decodePitchTrack(','.repeat(50_000_000)), null);
+  assert.ok(Date.now() - started < 500);
+  assert.equal(decodePitchTrack('178.5,,176.9')?.length, 3);
+});

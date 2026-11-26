@@ -139,6 +139,23 @@ function strideFor(count: number): number {
   return TICK_STRIDES.find((stride) => Math.ceil(count / stride) <= MAX_TICKS) ?? 12;
 }
 
+/** More months than this between the axis's ends (two hundred years) is not
+    a journal: the ticks are then built at a stride from the month index
+    instead of by visiting every month, so a day stored near the minimum JS
+    date cannot make the axis allocate a month for each. */
+const MAX_SCANNED_MONTHS = 2400;
+/** The ticks that survive on such an axis. */
+const MAX_WIDE_TICKS = 100;
+
+/** Every `stride`th month index in [first, last], where the stride is a
+    multiple of twelve that keeps no more than MAX_WIDE_TICKS of them. */
+function wideMonthIndexes(first: number, last: number): number[] {
+  const stride = 12 * Math.ceil((last - first + 1) / (12 * MAX_WIDE_TICKS));
+  const indexes: number[] = [];
+  for (let n = Math.ceil(first / stride) * stride; n <= last; n += stride) indexes.push(n);
+  return indexes;
+}
+
 /** The months the axis names.
 
     On the onset axis these are the start day's own monthly anniversaries,
@@ -151,6 +168,11 @@ function onsetTicks(anchorEpochDay: number, fromEpochDay: number, toEpochDay: nu
      clamping, so this is a loop over the months drawn and not a search. */
   const first = monthIndex(fromEpochDay) - monthIndex(anchorEpochDay) - 1;
   const last = monthIndex(toEpochDay) - monthIndex(anchorEpochDay) + 1;
+  if (last - first > MAX_SCANNED_MONTHS) {
+    return wideMonthIndexes(first, last)
+      .map((n) => ({ epochDay: epochDayMonthsAgo(anchorEpochDay, -n), position: 0, monthsSinceOnset: n }))
+      .filter((tick) => tick.epochDay >= fromEpochDay && tick.epochDay <= toEpochDay);
+  }
   const months: number[] = [];
   for (let n = first; n <= last; n++) {
     const day = epochDayMonthsAgo(anchorEpochDay, -n);
@@ -163,6 +185,12 @@ function onsetTicks(anchorEpochDay: number, fromEpochDay: number, toEpochDay: nu
 }
 
 function calendarTicks(fromEpochDay: number, toEpochDay: number): NoticedTick[] {
+  if (monthIndex(toEpochDay) - monthIndex(fromEpochDay) > MAX_SCANNED_MONTHS) {
+    return wideMonthIndexes(monthIndex(fromEpochDay), monthIndex(toEpochDay))
+      .map((index) => epochDayFromLocalDate(new Date(Math.floor(index / 12), index % 12, 1)))
+      .filter((day) => day >= fromEpochDay && day <= toEpochDay)
+      .map((day) => ({ epochDay: day, position: 0, monthsSinceOnset: null }));
+  }
   const days: number[] = [];
   for (let index = monthIndex(fromEpochDay); index <= monthIndex(toEpochDay); index++) {
     const day = epochDayFromLocalDate(new Date(Math.floor(index / 12), index % 12, 1));
