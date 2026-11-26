@@ -63,7 +63,7 @@
   /* Unlocked chart annotations retain their written detail. */
   import ChartAnnotations, { type HoveredAnnotations } from './ChartAnnotations.svelte';
   import ChartEmpty from './ChartEmpty.svelte';
-  import { annotationCaption, annotationLine, annotationReadout } from './chartAnnotation';
+  import { annotationLine, annotationReadout } from './chartAnnotation';
   import { wipe } from '$lib/motion/reveal';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
 
@@ -384,7 +384,6 @@
       { dated: scrubSpansDays }
     )
   );
-  let caption = $derived(annotationCaption(shownAnnotations));
   /* Named here rather than called in the markup, for the reason the scrub
      handlers above are: kit-surfaces.test.ts reads a component's copy with a
      regex, and a message call carrying an object argument is a nested brace
@@ -754,14 +753,9 @@
   {/if}
 
   {#if shownAnnotations.length}
-    <!-- What the marks are, once, under the plot. Names only: the dates are
-         where the marks are, and a caption that repeated them would be a
-         second axis written in words. -->
-    <!-- Opens and closes its own height: it comes and goes with the plot
-         having a line (above), and its line of text is what the card under
-         it would otherwise lose in one frame. -->
-    <p class="kit-area-annotations" data-chart-annotations aria-hidden="true" transition:disclose>{caption}</p>
-    <!-- The same thing for somebody who cannot see where a mark sits. A
+    <!-- No caption under the plot: the marks are named where they are, on
+         hover and on the scrub (Alicja, bug session 18, item 39). This is
+         the same thing for somebody who cannot see where a mark sits. A
          scrub is a way of reading a picture, so it is no use here, and the
          chart's own numbers are already offered as a list by the screens
          that draw one. -->

@@ -328,7 +328,6 @@
   "chart_annotation_point": "{label}, {day}",
   "chart_annotation_readout_dated": "{day}: {text}",
   "chart_annotation_recovery": "recovery",
-  "chart_annotation_recovery_of": "{name} recovery",
   "chart_annotation_regimen": "regimen",
   "chart_annotation_regimen_end_reason": "{span}, {reason}",
   "chart_annotation_span": "{label}, {from} to {to}",

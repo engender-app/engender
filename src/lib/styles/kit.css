@@ -2477,19 +2477,6 @@ button.kit-strip-day .kit-strip-cell {
   white-space: nowrap;
 }
 
-/* Names for the marks, once, under the plot. Wraps to two lines and stops:
-   the caption is a footnote to a chart and never a paragraph beside one. */
-.kit-area-annotations {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-xs);
-  line-height: 1.35;
-  color: var(--text-2);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
 /* The range beneath, under the plot rather than under the gutter. */
 .kit-area-range {
   display: flex;
