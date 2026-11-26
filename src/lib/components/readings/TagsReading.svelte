@@ -43,7 +43,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import type { Part } from '$lib/charts/parts';
   import { crossfade, resize } from '$lib/motion/reveal';
-  import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
+  import { crossfadeDuration, fadeOnly, isReducedMotion } from '$lib/motion/tokens';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
   import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
@@ -120,6 +120,14 @@
   /* The figure for one span fades out over the next one fading in, and the
      card travels the difference in height (the gate's resize). */
   const figureIn = (_node: Element) => fadeOnly(crossfadeDuration());
+  /* The old figure leaves as `crossfade` does, but under reduced motion it
+     fades over the same crossfadeDuration the new one arrives on: the
+     stock out is an instant cut there, which left the card blank while the
+     new figure faded in from nothing. */
+  const figureOut = (node: Element) => {
+    const leaving = crossfade(node, undefined, { direction: 'out' });
+    return isReducedMotion() ? { ...leaving, duration: crossfadeDuration() } : leaving;
+  };
 
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
@@ -197,7 +205,7 @@
              resize does not see a swap inside a branch that stays 'rows'. -->
         <div use:resize>
         {#key `${answered[0].start}-${answered[0].end}`}
-          <div in:figureIn out:crossfade data-tag-scales>
+          <div in:figureIn out:figureOut data-tag-scales>
             {#if groups.length}
               <p class="reading-note" data-tag-key>{m.reading_tag_key()}</p>
               {#each groups as group, g (group.metric)}

@@ -394,7 +394,7 @@ describe('the tag card draws one section per scale as diverging bars', () => {
      for, and an answer with nothing to compare empties inside the swap. */
   it('swaps the figure on the answer, so a span change crossfades instead of cutting', () => {
     expect(readings.tags).toContain('{#key `${answered[0].start}-${answered[0].end}`}');
-    expect(readings.tags).toMatch(/<div in:figureIn out:crossfade data-tag-scales>/);
+    expect(readings.tags).toMatch(/<div in:figureIn out:figureOut data-tag-scales>/);
   });
 });
 
