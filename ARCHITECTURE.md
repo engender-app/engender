@@ -152,7 +152,6 @@ Two policies apply to dependencies. [scripts/check-licences.mjs](scripts/check-l
 ├── deploy/              nginx config, self-host Dockerfile, hosting docs
 ├── brand/mark/          the logo in svg/png/jpg + README
 ├── fixtures/released/   Archives and SQLite journals from released versions (format guard)
-├── prototypes/          throwaway spikes kept for their findings
 ├── docs/                ignored maintainer notes
 └── .github/workflows/   ci.yml, release.yml, guard-recovery-proof.yml
 ```
@@ -1306,5 +1305,3 @@ The optional nginx snippets [journal-page-count.conf](deploy/nginx/journal-page-
 **Change crypto parameters**
 
 1. Re-run `npm run benchmark:argon2` and record the result in an ADR (ADR-0013). Old wraps keep their stored parameters.
-
-A note on one ADR: ADR-0090 describes LAN pairing between devices. No pairing code exists in the tree yet. The prototype under [prototypes/02-pc-browser-lan/](prototypes/02-pc-browser-lan) holds its research.

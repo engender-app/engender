@@ -19,8 +19,6 @@ android/app/src/androidTest/assets/
 # otherwise turn the build it is packaging into a development build.
 dist/
 ci-logs/
-evidence110/
-evidence117/
 /evidence*/
 tests/*-20??-??-??.md
 
@@ -28,6 +26,9 @@ tests/*-20??-??-??.md
 .scratch/
 .claude/
 CLAUDE.md
+/codex-security.yaml
+
+/brand/film/
 
 # Docs stay out of the repo entirely. `docs/` matches folders; `/docs` also matches
 # the symlink that `npm run docs:link` puts at the root (see scripts/link-docs.mjs).
@@ -112,4 +113,3 @@ CONTEXT.md
 DIRECTION.md
 .impeccable/
 build-review/
-build-live/
