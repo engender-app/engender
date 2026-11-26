@@ -5,7 +5,7 @@
      strip. Waiting and dormant tiles follow, then chosen pins and the
      new-journal guidance. The selection and limits live in homeTiles,
      readAgenda and pinnedRows. dayAheadMarkLabel shares wording with
-     the day view (ADR-0067, ADR-0073, ADR-0074).
+     the day view (ADR-0067, ADR-0073).
 
      After unlock, disguise leaves the agenda, sun, wordmark and flag
      visible. HOME_AREA_ROLE chooses a stripe for each journal area.
@@ -71,12 +71,9 @@
   import { collapse, disclose, markScreenArrival, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
 
-  /* A fold's label changes under a standing button - "Ready letter, Active
-     tryout" loses a name when a tile is closed - and words cut, as a rule
-     (ADR-0078); Alicja asked this one for "some very small animation, a
-     simple crossfade" on the round-one flipbooks. The
-     two labels stack in one grid cell so the button keeps its width while
-     they cross, and the fade is --dur-fast, which the clamp takes to zero. */
+  /* The fold label crossfades when a tile name drops out. Stack both labels
+     in one grid cell to keep the button width stable. Reduced motion takes
+     --dur-fast to zero. */
   const labelFade = (_node: Element) =>
     !doorActive() || stillArriving() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast'));
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -585,19 +582,8 @@
     if (!tilesExpanded) rememberReserve('below', px);
   };
 
-  /* The one authored moment besides the sun: on a milestone day, opening
-     Home throws a little confetti over the notice that names it. It plays
-     once on arriving and stops - it is not a loop, which is the line
-     DIRECTION.md's tier 4 actually draws, and it is why the old celebration
-     card's infinite `cf-fall` had to go rather than move here.
-
-     The pieces are a fixed table rather than a random scatter: a moment
-     that is different every time cannot be reviewed, and a screenshot of it
-     is not evidence of anything. Nine, because that is what fits across the
-     notice's width without reading as a shower.
-
-     It threw a second burst over the streak line until phase 8 UX ticket 01
-     deleted the streak. */
+  /* Play confetti once when Home opens on a milestone day. Nine fixed
+     pieces fit the notice and make the effect repeatable. */
   const CHEER = [
     { i: 0, x: 4, d: 0, r: 200 },
     { i: 1, x: 17, d: 0.16, r: -260 },
@@ -668,7 +654,7 @@
 
 <div class="screen home" data-home-ambient="running" {@attach homeAmbient}>
   <header class="home-header" data-home-header>
-    <!-- The field (phase 10, DIRECTION.md rule 7; ADR-0075): a solid block
+    <!-- The field: a solid block
          of one of the flag's colours holding two things, the sun in its top
          right corner and the wordmark in its bottom left, under the sun's
          reach. Nothing small sits on it; the hello line, the count and the
@@ -799,12 +785,8 @@
          waits on the anniversary consent read, one of the fold's reads, so
          it arrives with the fold and the reserve travels its height rather
          than the strip below jumping 90px a frame after Today painted. -->
-    <!-- The anniversary, as one line rather than a card with a confetti loop
-         falling through it. The words are the ones it always said; what went
-         is the loop, because the app's ambient budget is two loops, the
-         sun's breath and the mood faces, and a third on the same screen
-         needs its own argument (DIRECTION.md, tiers 0 and 4). It takes the agenda's colour, since a
-         milestone landing today is the agenda's own kind of fact. -->
+    <!-- The milestone notice shares the agenda’s colour. Its confetti plays
+         on arrival and stops. The flag sun and mood faces own the loops. -->
     {#if celebrate}
       <!-- Nine pieces over the notice that says which milestone it is (Alicja,
            2026-08-25: "we want the same confetti animation when it's a
@@ -839,8 +821,8 @@
       </div>
     {/if}
 
-    <!-- Agenda lists the next 30 days and links to each fact's owner
-         (ADR-0074). Omit the whole section when the window is empty.
+    <!-- Agenda lists the next 30 days and links to each fact's owner.
+         Omit the whole section when the window is empty.
          Use a filled flag stripe for upcoming dates. The passed slot
          looks back once with an outlined block so it reads separately. -->
     {#if agenda}
@@ -875,10 +857,8 @@
             </div>
           {/each}
         </ListCard>
-        <!-- Its own list, not the last row of the one above: ADR-0074 gives
-             the passed slot its own shape so it can never be sorted among
-             the things coming, and a row under the same hairlines would read
-             as the next of them however its block was drawn. -->
+        <!-- Keep the passed slot in its own list so it reads separately from
+             the upcoming items. -->
         {#if agenda.passed}
           <!-- The one row that arrives and leaves on its own, when a slot's
                day passes or the dose is logged: it opens and closes its own
@@ -1310,9 +1290,8 @@
     margin-bottom: 0;
   }
 
-  /* The header is the field and its foot (phase 10, DIRECTION.md rule 7;
-     redesign ticket 23). The header itself is a plain block; the field
-     below it is what bleeds, clips and paints. */
+  /* The header holds the field and its foot. The field bleeds, clips and
+     paints. The header itself has no fill. */
   .home-header {
     position: relative;
   }
@@ -1344,8 +1323,8 @@
     border-radius: 0 0 var(--r-block) var(--r-block);
     min-height: calc(175px * var(--sun-breathe-scale) + var(--space-7));
   }
-  /* Use flat field ink and the door title's Outfit 800, 1.7rem to 48px
-     (DIRECTION.md rule 2). Both locales use the same wordmark.
+  /* Use flat field ink and the door title's Outfit 800, 1.7rem to 48px.
+     Both locales use the same wordmark.
 
      At 48px the wordmark is 242px wide and starts 149px below the sun's
      centre. The 350px sun breathes to 1.035, leaving a maximum horizontal
@@ -1427,27 +1406,11 @@
   @container app (min-width: 1024px) {
     .home-field { border-radius: var(--r-block); }
   }
-  /* Home ran a rhythm of its own here until this ticket - 12 between
-     blocks where every other screen has 20, and a heading with its padding
-     zeroed so its words sat on its rule. Both predate DIRECTION.md's rule 1
-     and both are gone: the screen takes `.screen > *` and `.kit-heading`
-     as written, the same three distances as every other door. */
+  /* Use the same .screen > * spacing and .kit-heading as the other tabs. */
 
-  /* The authored moment: on a milestone day, arriving on Home throws a
-     little confetti over the notice naming it, once.
-
-     It plays and stops. DIRECTION.md's tier 4 rules out a third ambient
-     *loop* beside the sun and the mood faces, which is why the celebration card's infinite `cf-fall` was
-     deleted rather than moved here; a moment with an end is the same
-     category as the sun's entrance, and it spends the authored duration
-     twice over.
-
-     Out of the flow, so the band's own height is never a permanent gap on
-     the days it does not fire - a moment cannot be allowed to decide the
-     resting layout.
-
-     Only transform and opacity move, per the performance contract, and the
-     pieces are 5x8 rectangles so there is nothing to rasterize. */
+  /* Play the one-shot milestone confetti above the notice. Keep it out of
+     flow so the resting layout stays put. Animate transform and opacity
+     on 5x8px rectangles. */
   /* The milestone day's own band. The notice is a full-width card, so the
      pieces cross its top edge rather than a line of text, and the wrapper is
      only here to be the thing they are positioned against. */

@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Safe space opens on the breathing exercise with the same choices from
-     Today, the hub or an Android launch (ADR-0040, ADR-0028). Link personal
+     Today, the hub or an Android launch (ADR-0028). Link personal
      support above the breath so it is reachable without starting the
      exercise.
 
@@ -71,7 +71,7 @@
 
   /* Centre the breath in the remaining space and preserve the
      272px ring, description and control. Short screens scroll.
-     Enter from 94% over --dur-authored (ADR-0078). Fill both ways so
+     Enter from 94% over --dur-authored. Fill both ways so
      the 1ms reduced-motion clamp still lands at rest.
 
      Animate the wrapper. Transforming the button would override
@@ -90,20 +90,10 @@
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Each way down arrives as every block in the app does: its icon square
-     clips open from its own left edge over --dur-slow, one --stagger-step
-     per row, the words beside it cutting (rule 10, ADR-0078; the agenda's
-     day block and the return surface's rows are the same movement at the
-     same size). They start one --dur-fast behind the breath rather than
-     after it: the first cut of this waited the breath's whole 700ms before
-     the first row moved and the last row then landed 1305ms after the tap,
-     measured off the trace, which is a screen still assembling long after
-     it arrived. At 150ms the rows open under a breath that is still
-     growing and the last one settles at 730ms, a beat after the breath
-     itself - so the breath still leads and the screen is done in one.
-
-     :global because the square is drawn inside ListRow and a scoped
-     selector would never reach it. */
+  /* Icon blocks clip from the left over --dur-slow, staggered per row.
+     Text cuts. Start --dur-fast after the breath begins so the last row
+     settles around 730ms. Waiting for the full breath took 1305ms in the
+     trace. Use :global to reach ListRow's icon square. */
   .screen-safe-space :global(.kit-row-ico) {
     animation: kit-block-in var(--dur-slow) var(--ease-out) both;
     animation-delay: calc(var(--dur-fast) + var(--row-index, 0) * var(--stagger-step));

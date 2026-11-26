@@ -120,7 +120,7 @@
   let autoHasPassword = $state(false);
   let autoBusy = $state(false);
 
-  /* Five bars for six operations (ADR-0070).
+  /* Five bars for six operations.
      Import and verify share one because they share their two buttons and
      cannot run at once; everything else has its own place on the screen.
      Each carries a label beside it because these operations move between
@@ -406,13 +406,9 @@
           watch: {
             signal: stop.signal,
             onProgress: (done, total) => {
-              /* The pack is the countable half. What follows it - base64
-                 across the bridge and the SAF write of a multi-megabyte
-                 archive - has no unit of work to report, so the bar goes
-                 back to sweeping under a sentence that says which half
-                 this is. Leaving it parked at 100% through the slower half
-                 would be the bar lying, which is the whole thing ADR-0070
-                 is about. */
+              /* Count packed entries. The bridge transfer and SAF write have no
+                 measurable unit, so switch to the indeterminate sweep
+                 and name the stage. */
               if (done === total) {
                 autoLabel = m.exp_auto_running_writing();
                 autoProgress.report(0, 0);
@@ -508,7 +504,7 @@
     const stop = new AbortController();
     /* Cancellable on the encrypted path alone, and not because the other
        two are dangerous to stop - nothing an export does touches the
-       journal (ADR-0070) - but because there is nothing there to stop.
+       journal - but because there is nothing there to stop.
        journalCsv and journalJson build one string before the body is ever
        pulled, so a stop button on them would refuse the only work they do
        after it was already done. */
@@ -543,7 +539,7 @@
         return;
       }
       // Before the toast, so the bar finishes its sentence rather than
-      // being talked over by the answer (ADR-0070).
+      // being talked over by the answer.
       await exportProgress.finish();
       const what = done[path]();
       toast(delivery === 'shared' ? m.exp_done_shared({ what }) : m.exp_done_downloaded({ what }));
@@ -627,7 +623,7 @@
     impError = '';
     impErrorKind = '';
     importing = true;
-    /* No stop button, on either mode (ADR-0070): Replace discards this
+    /* No stop button, on either mode: Replace discards this
        device's journal before installing the archive's and Merge writes as
        it reads, so an abort part way through has no defined rollback
        anywhere in the code. The bar says how far along it is and nothing
@@ -656,7 +652,7 @@
     verifying = true;
     // Not cancellable either, though nothing is written: a half-drained
     // archive proves nothing, and a drill that can be stopped early is a
-    // drill somebody can believe they passed (ADR-0070).
+    // drill somebody can believe they passed.
     importLabel = m.verify_running_files();
     importProgress.start();
     const result = await runVerify(picked, impPass, (done, total) => importProgress.report(done, total));
@@ -707,7 +703,7 @@
     daylioError = '';
     /* A CSV export carries no photos, so this is one stage and one label
        and it may well finish inside the bar's show delay - which is the
-       case that delay is for (ADR-0070). */
+       case that delay is for. */
     daylioProgress.start();
     try {
       const result = await journal.archive.commitDaylioImport(daylioPreview, (progress) =>
@@ -950,7 +946,7 @@ The rows stand from the first frame and only their
   {#if importLog.length > 0}
     <SectionHeading text={m.imp_log_section()} />
     <!-- The card is gone, so the hairline a list begins and ends with
-         (DIRECTION.md rule 4) is the list card's own, and the separator
+          is the list card's own, and the separator
          between two rows is `.kit-row + .kit-row`'s rather than an `.hr`
          written out per row. -->
     <ListCard>

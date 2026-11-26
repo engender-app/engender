@@ -469,7 +469,7 @@
     else if (pendingGate === 'coming-back') offerComingBack();
   });
 
-  /* comingBackSeenSince is the only repeat guard (ADR-0062). Recheck
+  /* comingBackSeenSince is the only repeat guard. Recheck
      on each Home arrival, including when demo replaces the journal.
      readReturnGap uses 18 bounded MAX queries. Only run the five
      readWhatIsWaiting queries for an unseen gap of at least three

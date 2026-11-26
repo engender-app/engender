@@ -95,7 +95,7 @@
         <ListCard>
           {#each trashed as entry (entry.id)}
             <!-- Wrapped so a restored row gives its height back and the rows
-                 under it close up with it (ADR-0078), rather than leaving in
+                 under it close up with it, rather than leaving in
                  the frame its read answers. -->
             <div class="rows-divide" transition:collapse>
               <ListRow

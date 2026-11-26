@@ -5,7 +5,7 @@
   /* The add control opens Compose in a sheet. LetterCard owns the three
      states and unfolds an opened letter in place. Show letters still
      waiting first, ordered by soonest opening, then open letters. The
-     list itself answers what is true now (DIRECTION.md rule 16). */
+     list itself answers what is true now. */
   import { scrollBehavior } from '$lib/motion/tokens';
   import { untrack } from 'svelte';
   import { page } from '$app/state';

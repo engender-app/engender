@@ -204,19 +204,8 @@
 </script>
 
 <div class="screen">
-  <!-- DIRECTION.md 3d: the hub had "More" stacked directly above its first
-       group heading, which is two headers saying nearly the same thing. The
-       title stays in the document for a screen reader and stops being a
-       second visible label - and since ticket 08 the tab and this title no
-       longer even say the same word: the tab now names the whole subject
-       (Transition) and the title names the five groups
-       actually behind it.
-
-       So what the field holds is the search box, and nothing else (rule 7).
-       It is a block of the page's own colour on the flag's, which is what
-       makes 16px legal there: the type in it is page ink on the page's
-       ground, not small text on a stripe (rule 3, and the measured pairs in
-       DIRECTION.md's "Contrast"). -->
+  <!-- Keep the hub title as a screen-reader heading. The field holds the
+       search box, which uses page ink on a page-coloured block for contrast. -->
   <ScreenHeader title={m.hub_screen_title()} titleHidden>
     {#snippet field()}
       <div class="search-box">

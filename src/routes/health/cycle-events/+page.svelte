@@ -249,15 +249,8 @@ the gate branches on one read, and the rows
             {/if}
           {/snippet}
         </SectionHeading>
-        <!-- The chart is not in a card. It is the only thing in this area of
-             the screen, and a box drawn around the one thing on a screen is
-             what DIRECTION.md 2b names as making a screen read as generic -
-             the same call the calendar's month grid made. The endpoints sit
-             above it on the kit's filter line, because they say what the
-             chart is showing rather than entering a value. Moved under the
-             reading and the strip (ticket 56, rule 16: what is true now comes
-             first, and a chart against a chosen range is a record of before,
-             not now) - the same move ticket 44 made for wear's own trend. -->
+        <!-- Draw the chart directly on the page, below the current reading and
+             strip. Its filter line names the selected range above the plot. -->
         <div class="kit-filter cd-endpoints">
           <Field label={m.range_from_label()} id="cycle-event-range-start">
             {#snippet children(id)}

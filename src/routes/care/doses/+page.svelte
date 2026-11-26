@@ -444,14 +444,8 @@
 </script>
 
 <div class="screen">
-  <!-- The one screen of the twenty-six with two real ways in. It is a hub
-       row (SCREENS.md's Health group), so the rule this ticket set - a
-       feature screen goes back to /more, not to /settings - applies to it;
-       it is also opened from inside regimen,
-       and throwing someone from there to the hub is the NAV-005 complaint
-       exactly. The header goes back where there is something to go back to
-       and takes the hub where there is not, which is the answer for a
-       screen with two doors rather than a third hardcoded one. -->
+  <!-- Doses opens from both the hub and regimen. Use back history when
+       available and fall back to /more. -->
   <ScreenHeader title={m.doses()} back={returnHref}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.doses_add_aria()} onclick={() => openEditor(null)}>
@@ -737,7 +731,7 @@
            the dialog for assistive tech. Each value is a disclosure button with
            aria-expanded and opens its fields when correction is needed. Keep
            the site picker visible because the site changes from dose to dose.
-           Use a press wash on full-width rows (DIRECTION.md, tier 1). -->
+           Use a press wash on full-width rows. -->
       <div class="dose-record">
         <button
           type="button"
@@ -1142,7 +1136,7 @@
   /* Tier 1: a row the width of the screen fills rather than scales, because
      scaling one moves the sheet it sits in. The fill is neutral rather than
      a role wash - the kit's role tokens are keyed to its own surfaces, and
-     an editor spends almost none of the flag (DIRECTION.md, ticket 22). */
+     an editor spends almost none of the flag. */
   .dose-line:active {
     background: var(--surface-2);
   }
@@ -1248,7 +1242,7 @@
   /* The floor stays on the inputs, not only on the box around them. The box
      is a plain div: it labels nothing and focuses nothing, so 48px of it
      with a 20px input centred inside is 28px of dead height that looks
-     tappable and is not. PRODUCT.md's floor is Android's 48dp and this is
+     tappable and is not. Keep a 48dp target for
      the sheet's only text entry. */
   .dose-amount input {
     font: inherit;

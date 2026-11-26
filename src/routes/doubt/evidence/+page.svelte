@@ -3,7 +3,7 @@
      an entry removes it here. Keep the subtitle aligned with the
      eligibility rules in entries.ts.
 
-     Show six at first and disclose the rest in place (ADR-0078).
+     Show six at first and disclose the rest in place.
      Opening writes nothing, as safeSpaceReads.test.ts checks. */
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -53,7 +53,7 @@
 
       {#if held.length > 0 && !expanded}
         <!-- Collapses out as the rest arrive rather than vanishing under
-             them: the control is the thing that moved (ADR-0078), so it
+             them: the control is the thing that moved, so it
              travels instead of cutting. -->
         <div out:disclose>
           <button

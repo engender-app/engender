@@ -67,7 +67,7 @@
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
-  /* Colour that carries a value takes role 0 (DIRECTION.md). The results
+  /* Colour that carries a value takes role 0. The results
      list takes the stripe after it. */
   const SECTION_ROLE = { chart: 0, results: 1 };
 
@@ -328,7 +328,7 @@ Unit likewise: a set preferred unit wins, then the
   // $state proxy from inside its own methods. So the component owns the
   // reactive copy, and the machine notifies it on every transition.
   let ocrState = $state<OcrMachineState>({ tag: 'idle' });
-  /* The scan's own bar (ADR-0070). The fraction
+  /* The scan's own bar. The fraction
      comes off the machine's state rather than a second callback, because
      `recognizing` is what carries it - and the run is started and settled
      here, in one place, rather than at each of the machine's exits. */
@@ -358,7 +358,7 @@ Unit likewise: a set preferred unit wins, then the
   async function scan(source: 'gallery' | 'camera') {
     // Stoppable because this state has written nothing: it reads a picked
     // file and runs Tesseract against it. `saving`, after the review, has,
-    // and gets no stop button (ADR-0070).
+    // and gets no stop button.
     ocrProgress.start({ onCancel: () => ocr.cancel() });
     await ocr.pickSource(source);
     if (ocrState.tag !== 'review') {

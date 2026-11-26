@@ -45,8 +45,7 @@
 
   import { PALETTES } from '$lib/theme/paletteChoices';
 
-  /* COL-001: mood's own fixed 5-step scale, picked independently of the
-     gender palette above - see ADR-0025. */
+  /* Mood has its own fixed five-step scale, independent of the flag palette. */
   const MOOD_PRESETS: [string, () => string][] = [
     ['amber', m.mood_preset_amber], ['teal', m.mood_preset_teal],
     ['plum', m.mood_preset_plum], ['moss', m.mood_preset_moss],

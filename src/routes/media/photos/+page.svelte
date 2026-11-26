@@ -8,7 +8,7 @@
      photos, where shots share a pose.
 
      Filter the same grid and selection through the query. narrow.ts
-     moves surviving tiles (ADR-0078). Video notes open the app player. */
+     moves surviving tiles. Video notes open the app player. */
   import { tick } from 'svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { page } from '$app/state';
@@ -146,7 +146,7 @@
 
   /** Narrowing by a chip, as one move rather than a repaint: measure where
       the tiles stand, change the query, then walk the survivors back to
-      where they were and release them (ADR-0078, motion/narrow.ts). The
+      their old positions and release them (motion/narrow.ts). The
       tiles the chip drops leave the flow in the same frame, so the grid
       rewraps once instead of twice. */
   /* The count's new number fading in. Only a change plays it: the {#key}

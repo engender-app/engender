@@ -363,7 +363,7 @@
     {/snippet}
   </ScreenHeader>
 
-  <!-- The opening (DIRECTION.md rule 16): what is true now, before any log.
+  <!-- The opening: what is true now, before any log.
        A block rather than a row, because the gap is the reading and a row
        would put it in a subtitle beside the address. It opens the visit's
        own screen, like every row under it. -->
@@ -521,7 +521,7 @@
                    would read as the debrief of whichever visit the eye lands on
                    next, which is the reading ticket 58 already fixed once on the
                    completed row. It opens and closes its height, so the offer
-                   arrives by moving (ADR-0078).
+                   arrives by moving.
 
                    Its own handle rather than Home's `data-debrief-offer`: Home
                    draws the same offer as a Notice with a Notice's controls, and
@@ -641,7 +641,7 @@
 
 <style>
   /* The opening block: the area's own stripe at its real hex with the visit
-     written on it, the same material a tile is (DIRECTION.md rule 3). The
+     written on it, the same material a tile is. The
      gap is the reading and takes the display face; the kind names it above,
      and where and when sit under it in the quiet half of the block's ink.
 
@@ -665,8 +665,7 @@
     font-family: inherit;
     text-align: left;
     text-decoration: none;
-    /* A block arrives by clipping open from its own left edge (rule 10,
-       ADR-0078). `kit-block-in` by name rather than a keyframe of this
+    /* A block arrives by clipping open from its own left edge. `kit-block-in` by name rather than a keyframe of this
        screen's own: it is the kit's movement for a block and this is a
        block, and a second copy of those two frames would be two things to
        keep in step. Svelte only rewrites the names it declares itself, so a

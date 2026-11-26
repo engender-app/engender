@@ -664,10 +664,8 @@
 </div>
 
 <style>
-  /* The page sits on its own, centred, with nothing drawn around it: a box
-     around the one picture on the screen is what DIRECTION.md 2b names as
-     making a screen read as generic. The corner radius is the sheet's own,
-     which is what stops a photograph of paper reading as a photograph. */
+  /* Centre the page on its own. Use the sheet's corner radius to keep the
+     paper edge consistent with the sheet. */
   .doc-page {
     display: flex;
     justify-content: center;

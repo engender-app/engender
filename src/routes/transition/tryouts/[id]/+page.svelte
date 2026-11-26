@@ -2,17 +2,9 @@
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  /* One tryout, on the surface kit.
-
-     Four cards became four named areas, which is the call ticket 22 made
-     for the entry editor and recorded in DIRECTION.md: fields sit flush to
-     the page under a heading rather than inside a box, because a box drawn
-     around a form says the form is one item in a list of them.
-
-     The felt-sense entries and the photographs kept their delete beside
-     them, on the kit's split row, so a row is one control and the delete
-     is another rather than a button floating inside a row that also opens
-     something. */
+  /* The tryout fields sit flush below section headings. For felt-sense
+     entries and photos, use the kit's split row so the delete button and
+     the row each have their own control. */
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';

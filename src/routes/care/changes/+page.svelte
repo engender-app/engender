@@ -430,7 +430,7 @@
        effects gate inside it could still be answering, its rows one wrapper
        too deep for the screen's spacing. -->
   <ReadReserve ready={bodyRevealed} estimate={bodyEstimate} onrest={rememberBody} data-changes-body>
-    <!-- What is true now, before the records (DIRECTION.md rule 16): every
+    <!-- What is true now, before the records: every
          change already marked, at the month it was noticed, on one line. -->
     <NoticedAxis
       changes={noticedChanges}

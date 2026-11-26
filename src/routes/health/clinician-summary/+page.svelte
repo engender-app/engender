@@ -387,7 +387,7 @@
     margin-top: var(--space-2);
   }
 
-  /* Flush (DIRECTION.md rule 4): no `--surface` ground and no `--r-block`
+  /* Flush: no `--surface` ground and no `--r-block`
       corner - those are `.card`'s (components.css), the box rule 4 spends
       its own carpet tickets retiring screen by screen. Just the foot gets a
       hairline, marking where the dossier ends - the print action moved

@@ -14,7 +14,7 @@
      Each active drug gets a lane with last dose, next dose and run-out.
      Today and the latest draw cross the shared axis. Stripes distinguish
      drugs without ranking them (ADR-0012). Report dates and projections
-     without judging schedules or interpreting lab values (PRODUCT.md). */
+     without judging schedules or interpreting lab values. */
   import { m } from '$lib/paraglide/messages';
   import { scrollToHash } from '$lib/navigation/scroll-region';
   import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
@@ -629,7 +629,7 @@
                 <!-- Two elements per mark, and the split is load-bearing.
                      Placement along the rail is a transform on the outer
                      box, so a dose logged now moves its marks to their new
-                     days rather than repainting them there (ADR-0078); the
+                     days rather than repainting them there; the
                      inner box carries the settle and the press, and
                      press.css holds the app's press at zero specificity
                      through :where(), so a transform of its own on the link
@@ -790,11 +790,8 @@
 
   <SectionHeading text={m.care_group_labs_stock()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
-    <!-- Every row states its own current value (DIRECTION.md 3b, and phase
-         11 ticket 10: no row on this screen is a title and a chevron
-         alone). The analyte and the result in its own unit, never converted
-         (ADR-0026), with the day it was drawn - the rail carries that day as
-         a guide and the row says which day the guide is. -->
+    <!-- Each row gives the analyte, result in its recorded unit (ADR-0026)
+         and the day it was drawn. The rail marks that day with a guide. -->
     <ListRow
       key="labs"
       icon="flask"
@@ -1105,10 +1102,8 @@
     margin-top: var(--space-4);
   }
 
-  /* One regimen, named under the rail: what one of its lines is a line
-     about. Not a ListRow in a card of its own - that is a third stacked
-     container on a 390px screen for one fact, and DIRECTION.md 2b is about
-     exactly that - but it keeps a row's touch target and a row's press. */
+  /* Name the regimen beneath the rail. Keep a row's touch target and
+     press feedback, with no extra card around it. */
   .care-regimen {
     display: flex;
     align-items: center;
@@ -1275,7 +1270,7 @@
   }
 
   /* Today and the draw, down the whole rail: 1px in --text-2, which is what
-     a guide is (DIRECTION.md rule 9) - never a lane's own colour, since a
+     a guide is - never a lane's own colour, since a
      guide belongs to no drug. Today is solid and the draw is dashed: the two
      are told apart by their captions above, and the dash says the draw is a
      thing that happened where today is simply where the reader is. */
@@ -1302,12 +1297,8 @@
     flex-direction: column;
     gap: var(--space-1);
   }
-  /* The lane the reader came back to from a dose or lab record: the same
-     answer the log and labs screens give their linked row (surface-2,
-     rounded), so returning names the lane the same way every other screen
-     names its target. It appears with the screen's own arrival rather than
-     moving after settle - ADR-0078's concern is a settled view changing in
-     place, and this is part of the entrance. */
+  /* Highlight the linked dose or lab lane with rounded surface-2 at
+     arrival. It identifies the target as it comes into view. */
   .care-lane.is-source-lane {
     background: var(--surface-2);
     border-radius: var(--r-block);
@@ -1361,7 +1352,7 @@
     position: absolute;
     top: 0;
     height: 2px;
-    /* Square ends: a series is 2px with square caps (DIRECTION.md rule 9). */
+    /* Square ends: a series is 2px with square caps. */
     transform: translateY(0);
   }
   /* Two lines, not one: the rail is read out from today in both directions,
@@ -1397,7 +1388,7 @@
 
   /* The outer box is the whole track's width and is translated by a
      fraction of itself, which is a fraction of the track: placement is a
-     transform, so a mark whose day changes travels to it (ADR-0078) instead
+     transform, so a mark whose day changes travels to it instead
      of being repainted there. Percentages in translateX resolve against the
      element's own width, which is what makes that work without the track's
      width in pixels. */

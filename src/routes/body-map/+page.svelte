@@ -99,8 +99,7 @@
 
   /* The figure's role, which is the two chart cards' own - `/stats` gives
      its charts area index 0 too, so the figure, the two charts here and
-     every chart over there are one colour. Under DIRECTION rule 3 a filled
-     region is a chart mark, the third of the three places colour may live. */
+     every chart there use one colour. A filled region is a chart mark. */
   let figureRole = $derived(roleAt(activeFlag.roles, 0));
 
   /* What the figure paints: one reading per region that has any in the

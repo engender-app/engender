@@ -160,18 +160,10 @@
     flex-direction: column;
   }
 
-  /* Every item arrives as a block does: its icon square clips open from its
-     own left edge over --dur-slow, one --stagger-step per row of the
-     arrival, the words beside it cutting (rule 10, ADR-0078; the agenda's
-     day block on Home is the same movement at the same size). --row-index
-     is set by the list and capped at the seventh where the tiles' stagger
-     is. Filled both ways so the 1ms reduced-motion clamp ends it where it
-     rests, and outset by 6px for the focus ring, as every block's is.
-
-     :global because these squares are drawn inside ListRow and a
-     scoped selector would never reach them. Here rather than in
-     kit.css because a row icon is not a block that moves anywhere else in
-     the app yet - that is ticket 20's sweep to make, not this ticket's. */
+  /* Each icon block clips open from the left over --dur-slow. Text cuts.
+     Read --row-index from the list and cap the stagger at row seven.
+     Fill both ways for the reduced-motion clamp and leave 6px for focus.
+     Use :global to reach ListRow's icon square. */
   .screen-return :global(.kit-row-ico) {
     animation: kit-block-in var(--dur-slow) var(--ease-out) both;
     animation-delay: calc(var(--row-index, 0) * var(--stagger-step));
@@ -181,8 +173,7 @@
     overflow-wrap: anywhere;
   }
 
-  /* Keep the one-action footer at the window edge (DIRECTION.md rules
-     12 and 15). margin-top: auto handles short lists and sticky handles
+  /* Keep the one-action footer at the window edge. margin-top: auto handles short lists and sticky handles
      scrolling. Cancel --nav-clearance with the bottom offset and keep
      the system inset as padding. If interactive content can fall under
      the footer, use the frame's separate foot layout. */

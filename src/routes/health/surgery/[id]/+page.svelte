@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Edit a procedure in place. Lead with the active phase and its
-     reading (DIRECTION.md rule 16), then show phase records, related
+     reading, then show phase records, related
      papers, fields and Delete.
 
      Planning, pre-op, surgery day, recovery and archived all share

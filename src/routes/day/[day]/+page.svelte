@@ -266,20 +266,11 @@
   {#if parsedDay === null}
     <Notice key="day-unavailable" title={m.source_record_unavailable()} />
   {:else}
-  <!-- What is coming (ADR-0067): today and a future day both read it, a
-       past day never does (dayAhead.ts's own floor leaves `comingRows`
-       empty there, so nothing below ever draws). The heading is the
-       appointments screen's own "Coming up" - CONTEXT.md names the same
-       concept the same way, and reusing it says one thing once rather than
-       drawing a second string for it.
+  <!-- On today and future days, use the appointments screen's Coming up
+       title (ADR-0067). dayAhead.ts returns no rows for a past day.
 
-       The role is `entriesRole` on a future day and `alsoRole` on today,
-       not the same one always: a future day shows only this card (or only
-       the empty notice below), which is the "one surface, one screen" case
-       role 0 exists for - the only index guaranteed a colour on all 8
-       palettes (`entriesRole`'s own comment below). On today this card sits
-       beside the entries card, which already claims role 0, so it takes
-       role 1 the same way the day's own "also this day" list does. -->
+       A future day can use entriesRole because this is its only card.
+       Today already uses entriesRole for the entries card, so use alsoRole. -->
   {#if comingRows.length > 0}
     <SectionHeading text={m.coming_up_title()} />
     <ListCard role={isFuture ? entriesRole : alsoRole}>

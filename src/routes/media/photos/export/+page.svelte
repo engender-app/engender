@@ -105,7 +105,7 @@
   });
 
   /** Narrowing moves the grid rather than repainting it, the same three
-      frames the library's own chip row plays (ADR-0078, motion/narrow.ts). */
+      frames the library’s chip row plays (motion/narrow.ts). */
   async function pickChip(next: PhotoChip) {
     const before = measureCells(gridEl, 'data-photo-key');
     const url = new URL(page.url);
@@ -121,7 +121,7 @@
   }
 
   let running = $state(false);
-  /* The shared bar (ADR-0070). This screen had the app's only honest
+  /* The shared bar. This screen had the app's only honest
      (done, total) already and was spending it on button-label text; what
      it gains here is the bar, the throttle and the hold at full. */
   const progress = createProgress();
@@ -196,16 +196,8 @@
     }));
 
     const from = recipe;
-    /* Live only while an export is being made, so the stop button on the
-       bar and the render loop are talking about the same run.
-
-       A fourth cancellable operation beyond the three phase-9 audit ticket
-       11 enumerates, and deliberately: this screen already shipped a stop
-       button, and it sits squarely inside ADR-0070's own rule, which
-       decides cancel by whether the journal has been written to rather
-       than by which operation is running. Rendering a collage writes
-       nothing anywhere. Taking the button away to match a list would have
-       been a regression dressed as compliance. */
+    /* One stop control and render loop per export. Rendering the collage
+       writes nothing to the journal, so stopping it is safe. */
     const controller = new AbortController();
     running = true;
     made = null;
@@ -221,7 +213,7 @@
           ? await renderCollage(frames, readPhoto, options)
           : await recordTimelapse(frames, readPhoto, options);
       // Before the preview replaces the picker, so the bar is not cut off
-      // mid-thought by the thing it was counting down to (ADR-0070).
+      // mid-thought by the thing it was counting down to.
       await progress.finish();
       if (controller.signal.aborted) return;
       made = { blob, from };

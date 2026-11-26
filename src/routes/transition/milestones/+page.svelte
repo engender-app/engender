@@ -4,8 +4,8 @@
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
-  /* Open with the rail to show which milestones fall before and after today
-     (DIRECTION.md rule 16). The list below retains editing, photos and delete.
+  /* Open with the rail to show which milestones fall before and after today.
+     The list below retains editing, photos and delete.
      Tap a row to edit or use its own delete control. The header's add control
      opens a sheet with all eight neutral templates in fixed order. */
   import { m } from '$lib/paraglide/messages';
@@ -266,8 +266,7 @@
            empty state below. -->
       <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else if sorted.length}
-      <!-- What is true now, before what was true before (DIRECTION.md rule
-           16). The rail carries today's place among the milestones and the
+      <!-- What is true now, before what was true before. The rail carries today's place among the milestones and the
            hollow marks ahead of it; the list under it is the same set as
            rows, which is where a milestone is opened, edited or deleted. -->
       <!-- Wrapped so the whole of it can leave as one when the last

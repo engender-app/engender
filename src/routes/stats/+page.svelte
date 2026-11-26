@@ -70,14 +70,9 @@
 
   const isDoorActive = useDoorActivity();
 
-  /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
-     reaches the whole app, categorically"). Every drawing on the door
-     shares role 0, the brief's own exception rather than a shortcut:
-     "colour that carries a value takes role 0", because index 0 is the only
-     one guaranteed to be a colour on every palette. The facts and the
-     resurfacing pair take the stripe after it, where an achromatic band is
-     not a problem. `1` was the two interval folds' own stripe, moved to
-     Care with them; `lookBack` keeps its index. */
+  /* Assign role 0 to charts because it is chromatic on every palette.
+     Facts and resurfacing can use an achromatic role. Keep Look back's
+     role stable independently of Care's interval folds. */
   const AREA_ROLE = { charts: 0, lookBack: 2 };
 
   /* Read on recompute rather than captured, so a session open across
@@ -370,7 +365,7 @@
   let shown = $derived(shownMetric(metricChoices()));
 
   /* ---------------------------------------------------------------------
-     The span's facts, all of one read (ADR-0056). `entryCount` is the
+     The span's facts, all of one read. `entryCount` is the
      floor every summary panel on this door is held to - WRAPPED_ENTRY_FLOOR,
      the same bar a retrospective clears - and `biggestDimensionChange`
      feeds the span's facts. One read answers both,

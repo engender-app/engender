@@ -1,7 +1,7 @@
 <script lang="ts">
   import { collapse } from '$lib/motion/reveal';
   /* Show the active tryout first with its length and felt-sense
-     readings (DIRECTION.md rule 16). List ended tryouts below with
+     readings. List ended tryouts below with
      durations. Use split rows so the entry link gets a full target
      beside Delete. */
   import { undoable } from '$lib/stores/deleteUndo';

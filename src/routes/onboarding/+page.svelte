@@ -7,7 +7,7 @@
      notifications, whose switch lives on the reminders screen.
 
      The sun grows to Home's exact size over the flow and redraws its rings
-     when the flag changes (DIRECTION.md, tier 0). Onboarding runs before
+     when the flag changes. Onboarding runs before
      unlock, so disguise keeps the neutral field and hides the sun. */
 
   import { afterNavigate, pushState } from '$app/navigation';
@@ -479,8 +479,8 @@
     return () => cancelAnimationFrame(frame);
   }
 
-  /* The question, and it is the whole of what a step says at display size
-     (DIRECTION.md rule 12). Read off a table rather than written into ten
+  /* The question, and it is the whole of what a step says at display size.
+     Read off a table rather than written into ten
      branches of markup, because the field holds one question wherever the
      flow is and the markup should say that once.
 
@@ -730,17 +730,9 @@
   }
 </script>
 
-<!-- The step (DIRECTION.md rule 12, redesign ticket 33). Four parts, in
-     this order and no other: the field with the sun and the question on it,
-     one line under it on the page, the answers, and the foot.
-
-     The frame is fixed and the answers are the one thing in it that may
-     scroll (rule 14). Before this ticket setup was a plain column inside
-     the app's own scroll region, so a step with nine rows on it carried the
-     question and the foot off the top of the window with them - measured at
-     571px of overflow on the permissions step. Now the screen
-     is exactly the window, the answers have their own region, and the
-     question and the foot cannot move at all. -->
+<!-- The step has a field with the sun and question, one line below it,
+     an answer region and a footer. Only the answers scroll, so the field
+     and footer stay in view on long steps. -->
 <div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`} bind:this={frame}>
   <div class="setup step-field-host" class:is-hero={hero} class:is-collapsing={collapsing}>
     <!-- The field. Its height is the sun's reach at this step plus the
@@ -953,8 +945,7 @@
                      its own left edge rather than fading up, which is what
                      every block in this app does when it arrives (rule 10).
 
-                     Out of the default press, and DIRECTION's tier 1 says
-                     why: a surface the width of the screen fills with a
+                     Skip the default press scale. A full-width control uses a
                      wash, because scaling one moves everything beside it.
                      0.94 on a 358px block walks each edge 10.7px inward
                      with the question and the rule holding still, which
@@ -1299,7 +1290,7 @@
 </div>
 
 <style>
-  /* Setup uses the field with a fixed footer (DIRECTION.md rules 12–14).
+  /* Setup uses the field with a fixed footer.
      Only the answer region scrolls. Field height follows the sun and
      question at each step, with its contents riding the edge.
 
@@ -1350,7 +1341,7 @@
   /* ---------- the field ---------- */
 
   /* Lay the outgoing flag paint over its replacement and wipe
-     toward the far corner on the sun's clock (ADR-0078). Put it
+     toward the far corner on the sun's clock. Put it
      before the sun in the DOM so the rings remain above both.
      Accent and role tokens on html still switch immediately. */
   .setup-paint-was {
@@ -1698,16 +1689,9 @@
     font-size: var(--text-md);
   }
 
-  /* Every answer that carries a block arrives as one: it clips open from
-     its own left edge, one --stagger-step per row and capped at the
-     seventh, with the words beside it cutting (rule 10, ADR-0078; the
-     agenda's day block and the return moment's rows are the same movement
-     at the same size). The whole run waits --dur-fast, which is the length
-     of the outgoing step's fade: no frame carries two steps' answers, so
-     none can carry two steps' blocks either.
-
-     :global because these squares are drawn inside ListRow and Check, where
-     a scoped selector would never reach them. */
+  /* Answer blocks clip from the left and stagger up to row seven. Text
+     cuts. Wait --dur-fast for the outgoing answers to fade first.
+     Use :global to reach the blocks inside ListRow and Check. */
   .setup-answers :global(.kit-row-ico),
   .setup-answers :global(.kit-check),
   .setup-flags .swatch-preview {

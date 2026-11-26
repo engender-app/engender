@@ -481,8 +481,8 @@
           <button class="btn btn-primary press" data-save-appointment disabled={!canSaveDetails} onclick={saveDetails}>
             <span>{m.save_changes()}</span>
           </button>
-          <!-- The committed day, even while the fields hold another one
-               (docs/ui-copy.md); a wait has nothing to hand to a calendar.
+          <!-- The committed day, even while the fields hold another one;
+               a wait has nothing to hand to a calendar.
                It opens its own height when a save gives a wait its day, so
                Delete travels down rather than jumping. -->
           {#if stored.epochDay !== null}

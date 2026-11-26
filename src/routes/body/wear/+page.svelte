@@ -67,7 +67,7 @@
      the Android bridge, so web offers no toggle and no hours field. */
   let isWeb = $derived(!isAndroid());
 
-  /* Colour that carries a value takes role 0 (DIRECTION.md): index 0 is the
+  /* Colour that carries a value takes role 0: index 0 is the
      only role guaranteed chromatic on every palette, and a two-line chart
      drawn in an achromatic band reads as disabled. The sessions take the
      stripe after it. */
@@ -205,7 +205,7 @@
 
   let runningElapsed = $derived(running ? hoursMinutesOf(nowTick - running.startTimestamp) : null);
   /* Recomputed off the same 30 second tick the elapsed reading is, so the
-     cue appears on its own without the screen being touched (ADR-0064). */
+     cue appears on its own without the screen being touched. */
   let showCue = $derived(
     running !== null && binderCueShowing(running, nowTick, prefs.wearDurationCueEnabled)
   );
@@ -472,7 +472,7 @@
               attrs: { 'data-wear-stop': '' }
             }}
           />
-          <!-- The cue (ADR-0064). A line inside the card the running row
+          <!-- The cue. A line inside the card the running row
                already sits in, rather than anything that interrupts: the
                row keeps its stop control, and nothing about Stop or Save
                changes when this appears. -->

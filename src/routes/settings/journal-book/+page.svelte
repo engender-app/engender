@@ -306,11 +306,8 @@
           </ListRow>
         {/each}
       </ListCard>
-      <!-- What the ticks come to, in the three numbers that decide how long
-           the book is. Its own height is what animates, both on the first
-           arrival and when a switch changes the figures: the wrapper carries
-           `resize`, and the words inside it cut, which is what ADR-0078 asks
-           of a label changing under a standing element. -->
+      <!-- Use resize on the book totals during arrival and on a selection
+           change. Replace the numbers as the wrapper changes height. -->
       <div use:resize>
         {#if summaryText}
           <p class="small book-summary" data-book-summary>{summaryText}</p>
@@ -354,7 +351,7 @@
   <!-- The printable pages sit in their own screen-part to retain screen spacing.
        The controls' resize action and disclose both animate height, so keep
        resize off the pages to avoid oscillation. The pages stay still when the
-       range changes (ADR-0078).
+       range changes.
 
        Disclosure exceeds its usual group-size cap here. Animating the one
        height scalar from 0 to 19,205px took 16 frames at 17ms, with offscreen
