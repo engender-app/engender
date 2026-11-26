@@ -1492,12 +1492,11 @@
 
   {/snippet}
 
-  {#snippet tagPicker(rows = false)}
+  {#snippet tagPicker()}
     <TagPicker
       groups={vocabulary.visibleTagGroups}
       selected={entryDraft.tags}
       onToggle={(id) => entryDraft.toggleTag(id)}
-      {rows}
     />
   {/snippet}
 
@@ -1751,7 +1750,7 @@
 
   <!-- A new entry's later steps (tester report 02, tickets 04 and 09), in
        the order Alicja chose: what is marked comes before what is written.
-       Mode and the tags, one sideways row per group; then the body map and
+       Mode and the tags, wrapped chips per group; then the body map and
        the cards the day offers, open on their own step; then the note, and
        the photos, video and voice last. The step's title names the step, so
        the tags and the body carry no heading of their own. -->
@@ -1759,7 +1758,7 @@
   {@render modeBlock(true)}
   {#if hasTags()}
     <div class="editor-section" id="editor-section-tags" data-editor-section="tags">
-      {@render tagPicker(true)}
+      {@render tagPicker()}
     </div>
   {/if}
   {/snippet}

@@ -106,9 +106,8 @@ const SCENES = [
     targets: '[data-first-step-moods] [data-mood], [data-entry-finish], [data-entry-continue]'
   },
   {
-    /* The mode chips and the tags, one sideways row per group, live on a new
-       entry's marks step (ticket 09); a chip scrolled into view is measured
-       inside its row. */
+    /* The mode chips and the tags, wrapped per group, live on a new
+       entry's marks step (ticket 09, wrapped since bug session 18 item 90). */
     key: 'entry',
     path: '/entry/new/today',
     targets: 'button.contextual-chip, .tag-chip',
