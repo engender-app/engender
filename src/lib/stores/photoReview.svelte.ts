@@ -8,6 +8,7 @@
 import { m } from '$lib/paraglide/messages';
 import { spaceShortage } from '$lib/data/spaceShortage';
 import { capturePhoto, type ReferencePhoto } from './photoPicking';
+import type { ClaimBy } from './pendingPick';
 import { toast } from './toasts.svelte';
 import type { NormalizedPhoto } from '../data/journal/photos';
 
@@ -36,14 +37,15 @@ interface PhotoReview {
 
 export function photoReview(
   getReference: () => ReferencePhoto | null,
-  onAccept: (photo: NormalizedPhoto) => void | boolean | Promise<void | boolean>
+  onAccept: (photo: NormalizedPhoto) => void | boolean | Promise<void | boolean>,
+  claimBy?: ClaimBy
 ): PhotoReview {
   let reviewingPhoto = $state<NormalizedPhoto | null>(null);
   let reviewingReference = $state<ReferencePhoto | null>(null);
   let accepting = $state(false);
 
   async function capture() {
-    const photo = await capturePhoto();
+    const photo = await capturePhoto(claimBy);
     if (photo) {
       reviewingReference = getReference();
       reviewingPhoto = photo;

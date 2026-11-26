@@ -12,6 +12,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.database.Cursor;
 import android.provider.DocumentsContract;
+import dev.engender.app.files.DocumentUris;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
@@ -315,6 +316,11 @@ public class AutoExportPlugin extends Plugin {
             }
 
             Uri uri = result.getData().getData();
+            if (uri != null && !DocumentUris.isTree(uri.toString())) {
+                // The picker is another app: only a folder of a content provider is kept or granted.
+                call.reject(DestinationGuard.INVALID);
+                return;
+            }
             if (uri == null) {
                 out.put("picked", false);
                 out.put("destinationUri", JSObject.NULL);
@@ -438,6 +444,7 @@ public class AutoExportPlugin extends Plugin {
                 // Always create a new document. Never truncate a recoverable backup.
                 DocumentFile target = folder.createFile("application/octet-stream", pendingFileName);
                 if (target == null) throw new IllegalStateException("destination-unavailable");
+                DestinationGuard.requireChild(destination, target);
                 DeliveredBackup.writeAndVerify(getContext(), folder, target, backup.file, expectedLength, sha256, passwordStore().read());
 
                 // Cleanup failure must never remove the newly verified backup.
@@ -869,9 +876,9 @@ public class AutoExportPlugin extends Plugin {
         return new PasswordStore(getContext(), preferences());
     }
 
+    /** The stored folder, cleared when it fails the check (DestinationGuard). */
     private Uri destinationUri() {
-        String raw = preferences().getString(KEY_DESTINATION_URI, null);
-        return raw == null ? null : Uri.parse(raw);
+        return DestinationGuard.storedTree(getContext(), preferences());
     }
 
     private static boolean isSchedule(String value) {

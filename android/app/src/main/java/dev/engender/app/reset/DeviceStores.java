@@ -10,6 +10,7 @@ import dev.engender.app.keystore.CredentialWrapStore;
 import dev.engender.app.clipboard.SensitiveClipboard;
 import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.photos.CameraCapture;
+import dev.engender.app.photos.PickedFiles;
 import dev.engender.app.reminders.ReminderScheduler;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
 
@@ -57,6 +58,7 @@ public final class DeviceStores {
             AutoExportPlugin::wipe,
             FileDeliveryPlugin::wipe,
             CameraCapture::cancel,
+            owner -> PickedFiles.clear(),
             LockTimingPlugin::wipe,
             ScreenCapturePlugin::wipe,
             SensitiveClipboard::wipe,

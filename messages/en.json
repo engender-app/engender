@@ -2092,6 +2092,8 @@
   "photos_select_start": "Select",
   "photos_select_start_aria": "Select photos",
   "photos_title": "Photos",
+  "picked_while_locked_added": "That came back while the app was locked. It’s ready here.",
+  "picked_while_locked_lost": "That came back while the app was locked, so it wasn’t kept. Pick it again.",
   "picker_failed": "Couldn’t open the file picker.",
   "pin_access_unavailable": "Could not read how your journal opens. Close the app and open it again to check its access settings.",
   "pin_again_title": "Type it once more",

@@ -25,6 +25,11 @@ interface PhotoPicker {
   /** The bytes of everything the user chose, or an empty array if they
       backed out. Cancelling is an ordinary outcome, not an error. */
   pick(): Promise<Uint8Array[]>;
+  /** Asked by the caller once it has finished with the bytes (normalizing)
+      and is about to hand the result to its screen. Rejects with
+      PickDeferredError when the app locked meanwhile, after giving the last
+      pick's files back to native under their tokens. Absent on the web. */
+  recheck?(): Promise<void>;
 }
 
 /** One chosen file's bytes, read when this is called and not before. */
@@ -37,6 +42,8 @@ interface PhotoSelectionPicker {
       bytes at a time, however many were picked (GD-019). `multiple: false`
       asks the picker itself for one photo. */
   pick(options?: { multiple?: boolean }): Promise<PickedBytes[]>;
+  /** As PhotoPicker.recheck, for the files read so far. */
+  recheck?(): Promise<void>;
 }
 
 // The fallback transport's own decode: a bridge response crosses as JSON,
@@ -142,8 +149,66 @@ async function pickOneFile(...args: Parameters<typeof chooseFiles>): Promise<Uin
   return [new Uint8Array(await file.arrayBuffer())];
 }
 
-export function filePhotoPicker(): PhotoSelectionPicker {
+/** A pick that came back while the app was locked: the page holds only the
+    tokens, never the bytes (stores/pendingPick.ts). */
+export class PickDeferredError extends Error {
+  constructor(readonly tokens: string[]) {
+    super('pick-deferred');
+  }
+}
+
+export type PickerOptions = {
+  /** True while the app is locked; asked once the native pick has answered. */
+  deferIf?: () => boolean;
+};
+
+/** The bytes of a pick's tokens, one at a time. The app can lock while they
+    are read (the grace ran out and the page locks as the person returns), and
+    the screen that asked is then about to unmount: native gives each file
+    back under its token and the pick is deferred, so nothing goes to it. */
+async function readTokens(options: PickerOptions | undefined, tokens: string[], last: { tokens: string[]; read?: number }): Promise<Uint8Array[]> {
+  const bytes: Uint8Array[] = [];
+  last.tokens = tokens;
+  for (const [index, token] of tokens.entries()) {
+    bytes.push(await androidPickedBytes(token));
+    // After every file, not once at the end: a lock that lands early stops the
+    // reading, and the files not read yet are still held under their tokens.
+    if (options?.deferIf?.()) {
+      last.tokens = [];
+      await deferTokens(tokens, index + 1);
+    }
+  }
+  return bytes;
+}
+
+/** Gives the first `read` files back to native and defers the whole pick. */
+async function deferTokens(tokens: string[], read: number): Promise<never> {
+  const back = await Promise.all(tokens.slice(0, read).map((token) => androidPhotos.reopenPicked({ token })));
+  // A newer pick can have replaced what native retained; a token that cannot be redeemed is lost.
+  if (back.some((answer) => !answer.reopened)) throw new Error('picked-file-lost');
+  throw new PickDeferredError(tokens);
+}
+
+/** The picker's `recheck`: the files of the pick just read, if the app has
+    locked since. */
+function recheckFor(options: PickerOptions | undefined, last: { tokens: string[]; read?: number }): () => Promise<void> {
+  return async () => {
+    const tokens = last.tokens;
+    // A lazy pick reads only the files its caller asked for; those are the ones native gives back.
+    const read = last.read ?? tokens.length;
+    last.tokens = [];
+    if (tokens.length && options?.deferIf?.()) await deferTokens(tokens, read);
+  };
+}
+
+function deferWhileLocked(options: PickerOptions | undefined, tokens: string[]): void {
+  if (tokens.length && options?.deferIf?.()) throw new PickDeferredError(tokens);
+}
+
+export function filePhotoPicker(options?: PickerOptions): PhotoSelectionPicker {
+  const last = { tokens: [] as string[], read: 0 };
   return {
+    recheck: recheckFor(options, last),
     async pick({ multiple = true } = {}) {
       if (isAndroid()) {
         return pickOnAndroid(async () => {
@@ -154,6 +219,9 @@ export function filePhotoPicker(): PhotoSelectionPicker {
           if (tokens.length > MAX_PICK_COUNT) {
             throw new MediaBudgetError('pick-selection', `Selected ${tokens.length} files; the limit is ${MAX_PICK_COUNT}`);
           }
+          deferWhileLocked(options, tokens);
+          last.tokens = tokens;
+          last.read = 0;
           // One reader per token, called one after another by the caller:
           // a multi-pick can be several files at the ceiling, and fetching
           // them concurrently would hold every one of them in the heap
@@ -162,7 +230,21 @@ export function filePhotoPicker(): PhotoSelectionPicker {
           // token's first chunk ends the first file's read wherever it had
           // got to (phase 9 audit ticket 14).
           // A read that hits the native stream limit still says too-large.
-          return tokens.map((token): PickedBytes => () => pickOnAndroid(() => androidPickedBytes(token), true));
+          // After every file the lock is asked again, as readTokens does: a
+          // lock that lands stops the reading, the files read so far go back
+          // to native and the whole pick is deferred.
+          return tokens.map(
+            (token, index): PickedBytes =>
+              async () => {
+                const bytes = await pickOnAndroid(() => androidPickedBytes(token), true);
+                last.read = index + 1;
+                if (options?.deferIf?.()) {
+                  last.tokens = [];
+                  await deferTokens(tokens, index + 1);
+                }
+                return bytes;
+              }
+          );
         }, true);
       }
 
@@ -186,13 +268,16 @@ export function filePhotoPicker(): PhotoSelectionPicker {
     Android, so a document never takes the WebView file input's crash path
     (ticket 66); the same web file input elsewhere. Bytes only, same as
     every other picker here - accept.ts is what tells a PDF from an image. */
-export function documentPicker(): PhotoPicker {
+export function documentPicker(options?: PickerOptions): PhotoPicker {
+  const last = { tokens: [] as string[] };
   return {
+    recheck: recheckFor(options, last),
     async pick() {
       if (isAndroid()) {
         return pickOnAndroid(async () => {
           const { token } = await androidPhotos.pickDocument();
-          return token ? [await androidPickedBytes(token)] : [];
+          deferWhileLocked(options, token ? [token] : []);
+          return readTokens(options, token ? [token] : [], last);
         });
       }
 
@@ -211,13 +296,16 @@ export function documentPicker(): PhotoPicker {
     may keep its own copy, so gallery behaviour depends on that camera. On
     the web, the file input's `capture` hint opens the device camera instead of
     the usual chooser (ticket 12). */
-export function cameraPhotoPicker(): PhotoPicker {
+export function cameraPhotoPicker(options?: PickerOptions): PhotoPicker {
+  const last = { tokens: [] as string[] };
   return {
+    recheck: recheckFor(options, last),
     async pick() {
       if (isAndroid()) {
         return pickOnAndroid(async () => {
           const { token } = await androidPhotos.captureImage();
-          return token ? [await androidPickedBytes(token)] : [];
+          deferWhileLocked(options, token ? [token] : []);
+          return readTokens(options, token ? [token] : [], last);
         }, true);
       }
 

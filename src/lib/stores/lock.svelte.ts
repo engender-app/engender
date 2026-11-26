@@ -34,6 +34,7 @@ import { isAndroid } from '../platform';
 import { ui } from './ui.svelte';
 import { forgetLastResults } from '../data/live/lastResults';
 import { unlockAttempts } from '../lock/unlock-attempt';
+import { dropPending } from './pendingPick';
 import { watchLeave, type NativeLeaveHooks } from '../lock/leave-lock';
 import { revealLeaveCoverAfterPaint } from '../lock/leave-cover';
 
@@ -67,11 +68,20 @@ export const beginSessionUnlock = () => attempts.begin();
 export function markUnlocked() {
   lockState.unlocked = true;
   unlockedNow = true;
+  lockEngaged = false;
 }
+
+/** The app has locked mid-session and has not been unlocked since. A
+    first-run or no-secret state is not this: nothing was left open. */
+let lockEngaged = false;
+export const isSessionLocked = () => lockEngaged && !unlockedNow;
 
 function lockNow(closeJournal: () => Promise<void>) {
   attempts.lock();
+  /* A result kept through the last lock was for the screen then open. */
+  dropPending();
   unlockedNow = false;
+  lockEngaged = true;
   lockState.unlocked = false;
   /* A locked app keeps none of the journal in the page: the reads' last
      answers go with the lock, so the first visit after unlocking reads

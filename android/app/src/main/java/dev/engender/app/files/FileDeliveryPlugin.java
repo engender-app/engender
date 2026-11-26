@@ -169,7 +169,11 @@ public final class FileDeliveryPlugin extends Plugin {
         final String expectedHash;
         final String id;
         final JSObject identity;
-        Uri uri = result == null || result.getData() == null ? null : result.getData().getData();
+        Uri returned = result == null || result.getData() == null ? null : result.getData().getData();
+        // The handler is another app: only a document URI of a content provider
+        // is ever opened, recorded or deleted under (DocumentUris).
+        final boolean refused = returned != null && !DocumentUris.isDocument(returned.toString());
+        Uri uri = refused ? null : returned;
         synchronized (this) {
             // A callback with no transfer identity cannot release another owner.
             if (call == null || callbackHandled) return;
@@ -205,6 +209,7 @@ public final class FileDeliveryPlugin extends Plugin {
                     if (!ManualExportCleanup.failed(getContext(), id, uri)) throw new IOException("export-cleanup-pending");
                 }
                 ManualExportCleanup.pickerFinished(getContext(), id);
+                if (refused) throw new IOException("invalid-destination");
                 call.resolve(identity.put("saved", false));
             } catch (Exception error) { call.reject("export-delivery-failed", error, identity); }
             finally { synchronized (this) { if (staged == delivery) cleanup(); } }

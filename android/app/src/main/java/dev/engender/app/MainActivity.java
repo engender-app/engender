@@ -5,6 +5,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -26,6 +29,7 @@ import dev.engender.app.chrome.KeyboardFollow;
 import dev.engender.app.disguise.DisguiseState;
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
+import dev.engender.app.lock.HandlerTrust;
 import dev.engender.app.lock.LeaveCover;
 import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.lock.OwnSystemUi;
@@ -157,14 +161,48 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
      * here, from the plugins and from the WebView's file chooser alike. */
     @Override
     public void startActivityForResult(Intent intent, int requestCode, Bundle options) {
-        ownSystemUi.opened(requestCode);
+        boolean opening = requestCode >= 0;
+        // The handler is another app and may draw translucent over the
+        // WebView, so the cover goes up before it exists, not when this
+        // activity is later paused. It stays until the page takes it off
+        // after an authenticated return (revealLeaveCover).
+        boolean covered = opening && LeaveCover.coverOnLeave();
+        if (covered) showLeaveCover();
+        if (opening) handlerInFront = true;
+        ownSystemUi.opened(requestCode, !opening || handlerVerified(intent));
         try {
             super.startActivityForResult(intent, requestCode, options);
         } catch (RuntimeException e) {
             // Nothing opened, so no result will ever close the window.
             ownSystemUi.closed();
+            handlerInFront = false;
+            if (covered) revealLeaveCover();
             throw e;
         }
+    }
+
+    private boolean handlerVerified(Intent intent) {
+        if (intent.getComponent() != null) return HandlerTrust.verified(true, null, null);
+        PackageManager packages = getPackageManager();
+        HandlerTrust.Handler resolved = null;
+        ResolveInfo preferred = packages.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        if (preferred != null && preferred.activityInfo != null) resolved = handler(preferred);
+        java.util.List<HandlerTrust.Handler> all = new java.util.ArrayList<>();
+        for (ResolveInfo found : packages.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)) all.add(handler(found));
+        return HandlerTrust.verified(false, resolved, all);
+    }
+
+    private static HandlerTrust.Handler handler(ResolveInfo found) {
+        int flags = found.activityInfo.applicationInfo.flags;
+        // The framework's own chooser is package "android": a choice still to be made, not a handler.
+        return new HandlerTrust.Handler(
+            (flags & (ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0,
+            "android".equals(found.activityInfo.packageName));
+    }
+
+    /** Whether the cover over the WebView is up. */
+    boolean leaveCoverVisible() {
+        return leaveCover != null && leaveCover.getVisibility() == View.VISIBLE;
     }
 
     // Closed before the result is handed on, because handling it can open the
@@ -172,6 +210,7 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         ownSystemUi.closed();
+        handlerInFront = false;
         super.onActivityResult(requestCode, resultCode, data);
     }
 
@@ -226,6 +265,9 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
      * leave whenever a lock is set, and taken off by the page once it has drawn
      * the gate (LeaveCover says why). */
     private View leaveCover;
+    private static final long LEAVE_COVER_FADE_MS = 160;
+    /** A screen opened for a result is in front and has not answered yet. */
+    private boolean handlerInFront;
 
     private void showLeaveCover() {
         if (leaveCover == null) {
@@ -235,6 +277,8 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
             addContentView(leaveCover, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
+        leaveCover.animate().cancel();
+        leaveCover.setAlpha(1f);
         leaveCover.setBackgroundColor(LeaveCover.ground());
         leaveCover.bringToFront();
         leaveCover.setVisibility(View.VISIBLE);
@@ -242,8 +286,24 @@ public class MainActivity extends BridgeActivity implements LockTimingPlugin.Lea
 
     @Override
     public void revealLeaveCover() {
+        // A reveal the page queued for an earlier return must not drop the cover under a handler opened since.
+        if (handlerInFront) return;
         LeaveCover.reveal();
-        if (leaveCover != null) leaveCover.setVisibility(View.GONE);
+        if (leaveCover == null || leaveCover.getVisibility() != View.VISIBLE) return;
+        // Fades rather than cuts: what is beneath is now the gate, or the journal after a return that
+        // did not lock, and a plain ground cut to either in one frame is a yank.
+        View cover = leaveCover;
+        cover.animate().alpha(0f).setDuration(LEAVE_COVER_FADE_MS).withEndAction(() -> {
+            // A cover raised again meanwhile cancels this fade, and the cancel also lands here.
+            if (LeaveCover.isShown()) return;
+            cover.setVisibility(View.GONE);
+            cover.setAlpha(1f);
+        }).start();
+    }
+
+    /** The cover's alpha, for tests that sample the fade. */
+    public float leaveCoverAlpha() {
+        return leaveCover == null || leaveCover.getVisibility() != View.VISIBLE ? 0f : leaveCover.getAlpha();
     }
 
     private void lockOnLeave() {

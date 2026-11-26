@@ -13,7 +13,8 @@ vi.mock('./android-bridge.ts', () => ({
     pickImages: vi.fn(),
     captureImage: vi.fn(),
     pickDocument: vi.fn(),
-    readPickedChunk: vi.fn()
+    readPickedChunk: vi.fn(),
+    reopenPicked: vi.fn()
   }
 }));
 
@@ -27,6 +28,7 @@ import { androidPhotos } from './android-bridge.ts';
 import { PhotoChannelTimeoutError } from './channel-timeout';
 import { readPickedOverChannel } from './android-pick-channel.ts';
 import {
+  PickDeferredError,
   androidPickedBytes,
   cameraPhotoPicker,
   documentPicker,
@@ -501,4 +503,152 @@ test('a native pick failure propagates without trying the fallback', async () =>
   vi.mocked(readPickedOverChannel).mockReturnValue(Promise.reject(new Error('read failed')));
   await expect(androidPickedBytes('broken')).rejects.toThrow('read failed');
   expect(androidPhotos.readPickedChunk).not.toHaveBeenCalled();
+});
+
+/* A pick that comes back while the app is locked must not be read into the
+   page: the locked route is gone, and the bytes would be journal content the
+   lock is meant to leave nowhere in the page. The tokens are all that is kept. */
+describe('a pick that returns while the app is locked', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(isAndroid).mockReturnValue(true);
+    channelAnswers([1, 2, 3]);
+  });
+
+  test.each([
+    ['photos', () => filePhotoPicker({ deferIf: () => true }), () => vi.mocked(androidPhotos.pickImages).mockResolvedValue({ tokens: ['a', 'b'] }), ['a', 'b']],
+    ['the camera', () => cameraPhotoPicker({ deferIf: () => true }), () => vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: 'c' }), ['c']],
+    ['a document', () => documentPicker({ deferIf: () => true }), () => vi.mocked(androidPhotos.pickDocument).mockResolvedValue({ token: 'd' }), ['d']]
+  ] as const)('keeps only the tokens of %s', async (_name, make, answer, tokens) => {
+    answer();
+
+    const error = await make().pick().catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(PickDeferredError);
+    expect((error as PickDeferredError).tokens).toEqual(tokens);
+    expect(vi.mocked(readPickedOverChannel)).not.toHaveBeenCalled();
+    expect(vi.mocked(androidPhotos.readPickedChunk)).not.toHaveBeenCalled();
+  });
+
+  test('reads as before while unlocked', async () => {
+    vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: 'c' });
+
+    expect(await cameraPhotoPicker({ deferIf: () => false }).pick()).toEqual([new Uint8Array([1, 2, 3])]);
+  });
+
+  test('a backed-out pick has nothing to keep', async () => {
+    vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: null });
+
+    expect(await cameraPhotoPicker({ deferIf: () => true }).pick()).toEqual([]);
+  });
+});
+
+/* The lock can land after the native answer and before the screen gets the
+   bytes (the grace ran out, so the page locks as the person returns). The bytes
+   must not go to a screen about to unmount: native gives the file back under
+   the same token and the page keeps only the token. */
+describe('a lock that lands while the picked file is being read', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(isAndroid).mockReturnValue(true);
+    channelAnswers([1, 2, 3]);
+    vi.mocked(androidPhotos.reopenPicked).mockResolvedValue({ reopened: true });
+  });
+
+  const flipsAfterTheAnswer = () => {
+    let asked = 0;
+    return () => ++asked > 1;
+  };
+
+  /** What a pick ends in: its error, from the pick itself or from reading a
+      lazy photo selection's files one after another. */
+  const outcome = async (pick: () => Promise<unknown>) => {
+    try {
+      const picked = await pick();
+      if (Array.isArray(picked)) for (const read of picked) if (typeof read === 'function') await read();
+      return picked;
+    } catch (caught: unknown) {
+      return caught;
+    }
+  };
+
+  test.each([
+    ['photos', (deferIf: () => boolean) => filePhotoPicker({ deferIf }), () => vi.mocked(androidPhotos.pickImages).mockResolvedValue({ tokens: ['a', 'b'] }), ['a', 'b'], ['a']],
+    ['the camera', (deferIf: () => boolean) => cameraPhotoPicker({ deferIf }), () => vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: 'c' }), ['c'], ['c']],
+    ['a document', (deferIf: () => boolean) => documentPicker({ deferIf }), () => vi.mocked(androidPhotos.pickDocument).mockResolvedValue({ token: 'd' }), ['d'], ['d']]
+  ] as const)('hands %s back to native and keeps only the tokens', async (_name, make, answer, tokens, read) => {
+    answer();
+
+    const error = await outcome(() => make(flipsAfterTheAnswer()).pick());
+
+    expect(error).toBeInstanceOf(PickDeferredError);
+    expect((error as PickDeferredError).tokens).toEqual(tokens);
+    for (const token of read) expect(vi.mocked(androidPhotos.reopenPicked)).toHaveBeenCalledWith({ token });
+    expect(vi.mocked(androidPhotos.reopenPicked)).toHaveBeenCalledTimes(read.length);
+  });
+
+  test('a lock that lands after the first of several files stops the reading and defers them all', async () => {
+    vi.mocked(androidPhotos.pickImages).mockResolvedValue({ tokens: ['a', 'b', 'c'] });
+    let asked = 0;
+
+    const error = await outcome(() => filePhotoPicker({ deferIf: () => ++asked > 2 }).pick());
+
+    expect(error).toBeInstanceOf(PickDeferredError);
+    expect((error as PickDeferredError).tokens).toEqual(['a', 'b', 'c']);
+    expect(vi.mocked(readPickedOverChannel)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(androidPhotos.reopenPicked)).toHaveBeenCalledTimes(2);
+  });
+
+  test('a token native can no longer redeem is reported lost, not deferred', async () => {
+    vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: 'c' });
+    vi.mocked(androidPhotos.reopenPicked).mockResolvedValue({ reopened: false });
+    let asked = 0;
+
+    const error = await cameraPhotoPicker({ deferIf: () => ++asked > 1 }).pick().catch((caught: unknown) => caught);
+
+    expect(error).not.toBeInstanceOf(PickDeferredError);
+    expect((error as Error).message).toBe('picked-file-lost');
+  });
+
+  test('a lock that never lands hands the bytes over as before', async () => {
+    vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: 'c' });
+
+    expect(await cameraPhotoPicker({ deferIf: () => false }).pick()).toEqual([new Uint8Array([1, 2, 3])]);
+    expect(vi.mocked(androidPhotos.reopenPicked)).not.toHaveBeenCalled();
+  });
+});
+
+/* The last place the lock can land: after the bytes were read and while the
+   screen's own normalizing runs. The caller asks once more before it hands the
+   result to the screen; if the app locked, the files go back to native. */
+describe('a lock that lands while the picked photo is being normalized', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(isAndroid).mockReturnValue(true);
+    channelAnswers([1, 2, 3]);
+    vi.mocked(androidPhotos.reopenPicked).mockResolvedValue({ reopened: true });
+  });
+
+  test('recheck hands the files of the last pick back and defers it', async () => {
+    vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: 'c' });
+    let locked = false;
+    const camera = cameraPhotoPicker({ deferIf: () => locked });
+    expect(await camera.pick()).toEqual([new Uint8Array([1, 2, 3])]);
+
+    locked = true;
+    const error = await camera.recheck!().catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(PickDeferredError);
+    expect((error as PickDeferredError).tokens).toEqual(['c']);
+    expect(vi.mocked(androidPhotos.reopenPicked)).toHaveBeenCalledWith({ token: 'c' });
+  });
+
+  test('recheck does nothing while unlocked, and only once per pick', async () => {
+    vi.mocked(androidPhotos.captureImage).mockResolvedValue({ token: 'c' });
+    const camera = cameraPhotoPicker({ deferIf: () => false });
+    await camera.pick();
+
+    await camera.recheck!();
+    expect(vi.mocked(androidPhotos.reopenPicked)).not.toHaveBeenCalled();
+  });
 });

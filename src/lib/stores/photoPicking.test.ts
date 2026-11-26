@@ -54,9 +54,12 @@ vi.mock('../data/media/budget', () => ({
 vi.mock('../data/documents/accept', () => ({
   DocumentRefusedError: FakeDocumentRefusedError
 }));
+vi.mock('./lock.svelte', () => ({ isSessionLocked: () => false }));
 vi.mock('../data/photos/picker', () => ({
   filePhotoPicker: () => ({ pick: filePick }),
-  cameraPhotoPicker: () => ({ pick: cameraPick })
+  cameraPhotoPicker: () => ({ pick: cameraPick }),
+  androidPickedBytes: vi.fn(),
+  PickDeferredError: class extends Error {}
 }));
 
 import { capturePhoto, pickPhotos } from './photoPicking';

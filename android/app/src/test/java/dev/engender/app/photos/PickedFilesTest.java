@@ -410,4 +410,32 @@ public class PickedFilesTest {
         assertTrue(next.closed);
     }
 
+
+    @Test
+    public void aTokenReadWhileTheAppWasLockingCanBeTakenBackOnce() throws Exception {
+        PickedFiles.hold(Collections.<PickedFiles.Source>emptyList());
+        List<String> tokens = PickedFiles.hold(Collections.singletonList(PickedFiles.ofBytes(new byte[] {1, 2, 3})));
+        String token = tokens.get(0);
+        byte[] buffer = new byte[16];
+        assertEquals(3, PickedFiles.readChunk(token, buffer));
+        assertEquals("read to the end: the token is spent", -1, PickedFiles.readChunk(token, buffer));
+
+        assertTrue(PickedFiles.reopen(token));
+        assertFalse("only once", PickedFiles.reopen(token));
+        assertEquals(3, PickedFiles.readChunk(token, buffer));
+        assertArrayEquals(new byte[] {1, 2, 3}, Arrays.copyOf(buffer, 3));
+    }
+
+    @Test
+    public void aNextPickAndAResetForgetWhatWasTakenBack() throws Exception {
+        String old = PickedFiles.hold(Collections.singletonList(PickedFiles.ofBytes(new byte[] {9}))).get(0);
+        assertNotNull(PickedFiles.take(old));
+        PickedFiles.hold(Collections.<PickedFiles.Source>emptyList());
+        assertFalse(PickedFiles.reopen(old));
+
+        String again = PickedFiles.hold(Collections.singletonList(PickedFiles.ofBytes(new byte[] {9}))).get(0);
+        assertNotNull(PickedFiles.take(again));
+        PickedFiles.clear();
+        assertFalse(PickedFiles.reopen(again));
+    }
 }

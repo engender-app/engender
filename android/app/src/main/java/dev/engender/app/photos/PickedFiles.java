@@ -59,6 +59,13 @@ public final class PickedFiles {
         person picked them; the map is small and always one pick's worth. */
     private static final Map<String, Source> HELD = new LinkedHashMap<>();
 
+    /** What was handed over for reading, kept until the next pick or a reset
+        so a read that lost a race with a lock can be taken back (reopen). It
+        is one pick's worth, like HELD, and a file here is only a way to open
+        it again, not a copy: camera bytes are the one exception, held in
+        memory until the next pick. */
+    private static final Map<String, Source> RETAINED = new LinkedHashMap<>();
+
     /** The one channel or chunked read in flight, and its token. Both
         null between reads. */
     private static String readingToken;
@@ -72,6 +79,7 @@ public final class PickedFiles {
     public static synchronized List<String> hold(List<Source> sources) {
         endRead();
         HELD.clear();
+        RETAINED.clear();
         List<String> tokens = new ArrayList<>(sources.size());
         for (Source source : sources) {
             String token = UUID.randomUUID().toString();
@@ -89,12 +97,28 @@ public final class PickedFiles {
 
         Removed before the read rather than after it, so a read that fails
         (an unmounted card, a file deleted from under the picker) leaves no
-        token to try again with. That is deliberate: the recovery is to pick
+        token to try again with (only reopen, for a lock that landed
+        mid-read, can bring one back, and only until the next pick). That is deliberate: the recovery is to pick
         again, which is also what the web half does when a File's
         arrayBuffer() rejects, and holding a token open for a retry nobody
         makes is the leak this store exists to avoid. */
     public static synchronized Source take(String token) {
-        return token == null ? null : HELD.remove(token);
+        return token == null ? null : retain(token, HELD.remove(token));
+    }
+
+    private static Source retain(String token, Source source) {
+        if (source != null) RETAINED.put(token, source);
+        return source;
+    }
+
+    /** Makes a token that was read redeemable again, once: the page read a
+        pick while the app was locking and keeps only the token instead of the
+        bytes (stores/pendingPick.ts). False for a token no longer retained. */
+    public static synchronized boolean reopen(String token) {
+        Source source = token == null ? null : RETAINED.remove(token);
+        if (source == null) return false;
+        HELD.put(token, source);
+        return true;
     }
 
     /** Keeps the source redeemable until JavaScript acknowledges the bytes.
@@ -128,8 +152,16 @@ public final class PickedFiles {
         if (channelReading && token.equals(readingToken)) endRead();
     }
 
+    /** Drops every held pick: the device reset, so a file kept through a lock
+        (pendingPick.ts) cannot outlive the journal it was picked for. */
+    public static synchronized void clear() {
+        endRead();
+        HELD.clear();
+        RETAINED.clear();
+    }
+
     static synchronized void release(String token) {
-        HELD.remove(token);
+        retain(token, HELD.remove(token));
         cancelChannelRead(token);
     }
 
@@ -159,7 +191,7 @@ public final class PickedFiles {
         if (token == null) return -1;
         if (!token.equals(readingToken) || channelReading) {
             endRead();
-            Source source = HELD.remove(token);
+            Source source = retain(token, HELD.remove(token));
             if (source == null) return -1;
             InputStream opened = source.open();
             if (opened == null) throw new IllegalStateException("could not read selected file");

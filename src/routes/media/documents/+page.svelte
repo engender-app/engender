@@ -45,7 +45,7 @@
      no other handle - search matches it and nothing else - and there is no
      honest default: a scan is called `scan_0142.jpg` and "Document 3" is
      worse than asking. */
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import DocumentThumb from '$lib/components/DocumentThumb.svelte';
@@ -68,7 +68,7 @@
   import type { DocumentFile } from '$lib/data/documents/accept';
   import { DOCUMENT_TARGET_SECTION_HEADING } from '$lib/data/vocabulary/documentTargetLabels';
   import type { JournalDocument } from '$lib/data/types';
-  import { pickDocument } from '$lib/stores/documentPicking';
+  import { claimPendingDocument, pickDocument } from '$lib/stores/documentPicking';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -92,11 +92,21 @@
     findById: (id) => documentsQuery.rows.find((document) => document.id === id)
   });
 
+  /* A file that came back while the app was locked (non-system handler under
+     Lock immediately) opens the import sheet the same way a pick does. */
+  onMount(() => {
+    void claimPendingDocument(() => active && !record.editor && !record.saving).then((content) => {
+      if (!content || !active) return;
+      record.openEditor(null);
+      record.editor!.content = content;
+    });
+  });
+
   async function startImport() {
     if (picking || record.editor || record.saving) return;
     picking = true;
     try {
-      const content = await pickDocument();
+      const content = await pickDocument('document');
       if (!content || !active) return;
       // Acquire before metadata, but compare against a draft without a file:
       // selected bytes are pending work even when every field is unchanged.
