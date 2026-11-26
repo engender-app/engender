@@ -5,8 +5,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, describe, expect, it } from 'vitest';
-import { adrShapeProblems, citationsIn, internalDocLinks, readAdrIndex, unresolved, unresolvedInRepo } from '../scripts/adr-citations.mjs';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { adrShapeProblems, citationsIn, internalDocLinks, privateReferencesInRepo, readAdrIndex, unresolved, unresolvedInRepo } from '../scripts/adr-citations.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const adrDir = join(root, 'docs', 'adr');
@@ -68,15 +68,17 @@ describe('the record shape (functional audit ticket 55)', () => {
   });
 });
 
-describe('links into docs/internal', () => {
-  const repo = mkdtempSync(join(tmpdir(), 'adr-links-'));
-  afterAll(() => rmSync(repo, { recursive: true, force: true }));
+describe('private references', () => {
+  let repo: string;
+  beforeEach(() => {
+    repo = mkdtempSync(join(tmpdir(), 'adr-links-'));
+    execFileSync('git', ['init', '-q', repo]);
+  });
+  afterEach(() => rmSync(repo, { recursive: true, force: true }));
   const put = (path: string, text: string) => {
     mkdirSync(join(repo, path, '..'), { recursive: true });
     writeFileSync(join(repo, path), text);
   };
-  execFileSync('git', ['init', '-q', repo]);
-
   it('reports the file and line of each markdown link that lands in docs/internal', () => {
     put('README.md', 'fine [ok](docs/adr/0001-one.md) and [site](https://example.com/docs/internal/x)\n\nbad [a](docs/internal/docs/ui-copy.md)\n');
     put('docs/adr/0002-two.md', '# Two\n\nsee [b](../internal/CONTEXT.md#term) and [c](./0001-one.md)\n');
@@ -85,6 +87,21 @@ describe('links into docs/internal', () => {
     expect(internalDocLinks(repo)).toEqual([
       'README.md:3: docs/internal/docs/ui-copy.md',
       'docs/adr/0002-two.md:3: docs/internal/CONTEXT.md'
+    ]);
+  });
+
+  it('reports private document names and retired ADRs on their source lines', () => {
+    put('docs/adr/README.md', '# ADRs\n\n- ADR-0078: moved to private documentation\n- ADR-0042: moved to CONTRIBUTING\n');
+    put('src/example.ts', '// See ADR-0042.\n// See ADR-0078 and SCREENS.md.\n// See docs/internal/notes.md.\n// See DIRECTION.md, PRODUCT.md and CONTEXT.md.\n');
+    put('scripts/link-docs.mjs', '// Links SCREENS.md.\n');
+    execFileSync('git', ['-C', repo, 'add', '-A']);
+    expect(privateReferencesInRepo(repo, join(repo, 'docs/adr'))).toEqual([
+      'src/example.ts:2: SCREENS.md',
+      'src/example.ts:2: ADR-0078 points to private documentation',
+      'src/example.ts:3: docs/internal',
+      'src/example.ts:4: DIRECTION.md',
+      'src/example.ts:4: PRODUCT.md',
+      'src/example.ts:4: CONTEXT.md'
     ]);
   });
 });
@@ -98,5 +115,8 @@ describe('every citation in src, tests and android', () => {
   });
   it('no tracked file links to a docs/internal path', () => {
     expect(internalDocLinks(root)).toEqual([]);
+  });
+  it('all public references can be followed without private documentation', () => {
+    expect(privateReferencesInRepo(root, adrDir)).toEqual([]);
   });
 });

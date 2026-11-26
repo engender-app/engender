@@ -1,40 +1,46 @@
-/* Every ADR cited in src, tests and android must exist. ADR-0055 and ADR-0080
-   were cited for months with no file behind them and nothing noticed. The ADRs
-   are tracked at docs/adr, so this runs in CI.
+/* Resolve citations against the tracked ADR index. A numbered citation
+   needs a record or a tombstone. A draft needs an explicit ADR prefix or
+   path so ordinary draft names stay out of the scan.
 
-   A citation resolves when docs/adr/ holds `NNNN-<slug>.md`, when the ADR
-   README carries a tombstone line for the number, or, for a not yet numbered
-   ADR, when `draft-<slug>.md` exists. A draft counts as cited only as
-   `ADR draft-<slug>` or `docs/adr/draft-<slug>`, because a bare `draft-` is
-   also an ordinary word in code (`draft-probe`). A tombstone is a list line that opens
-   with the number: `- ADR-0080: ...`.
-
-   adrShapeProblems holds the shape functional audit ticket 55 gave the
-   records: every numbered file opens, in the block under its title, with
-   Status, Decided, Last reviewed and Supersedes or Amends lines, stays at
-   1,000 words or fewer, and every number up to the highest is either a file
-   or a tombstone, never both.
-
-   internalDocLinks guards the other direction: docs/internal is the private
-   docs repo, linked into a working copy and absent from a clone, so a tracked
-   markdown file must not link to a path inside it. */
+   The record check enforces headers, contiguous numbering and the
+   1,000-word limit. The public reference checks report private pointers
+   by file and line, including links relative to a Markdown file. */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
 
 const CITATION = /\b(ADR-\d{4})|(?:\bADR |\bdocs\/adr\/)(draft-[a-z0-9][a-z0-9-]*)/g;
-const TOMBSTONE = /^- (?:\*\*)?ADR-(\d{4})\b/gm;
+const TOMBSTONE = /^- (?:\*\*)?ADR-(\d{4})(?:\*\*)?:[ \t]*(.*)$/gm;
 const SCANNED = ['src', 'tests', 'android'];
+const PRIVATE_DOC = /\b(?:(?:DIRECTION|CONTEXT|PRODUCT|SCREENS)\.md|docs\/(?:internal|ui-copy\.md|agents|research|provisioning))\b/g;
+const DOC_TOOLS = new Set([
+  '.gitignore',
+  'scripts/adr-citations.mjs',
+  'scripts/check-ai-directories.mjs',
+  'scripts/link-docs.mjs',
+  'tests/adr-citations.test.ts',
+  'tests/ai-directories.test.ts',
+  'tests/doc-blocks.test.ts',
+  'tests/doc-blocks.ts',
+  'tests/link-docs.test.ts'
+]);
 
-/** @param {string} adrDir @returns {{ numbered: Set<string>, drafts: Set<string>, tombstones: Set<string> }} */
+/** @param {string} adrDir */
 export function readAdrIndex(adrDir) {
   const files = readdirSync(adrDir);
   const numbered = new Set(files.filter((f) => /^\d{4}-.+\.md$/.test(f)).map((f) => f.slice(0, 4)));
   const drafts = new Set(files.filter((f) => /^draft-.+\.md$/.test(f)).map((f) => f.slice(0, -3)));
   const readme = join(adrDir, 'README.md');
   const text = existsSync(readme) ? readFileSync(readme, 'utf8') : '';
-  const tombstones = new Set([...text.matchAll(TOMBSTONE)].map((m) => m[1]));
-  return { numbered, drafts, tombstones };
+  const tombstones = new Set();
+  const privateTombstones = new Set();
+  for (const [, number, destination] of text.matchAll(TOMBSTONE)) {
+    tombstones.add(number);
+    if (/\bprivate documentation\b/.test(destination) || [...destination.matchAll(PRIVATE_DOC)].length) {
+      privateTombstones.add(number);
+    }
+  }
+  return { numbered, drafts, tombstones, privateTombstones };
 }
 
 /** @param {string} text @returns {string[]} */
@@ -113,6 +119,7 @@ export function internalDocLinks(root) {
   /** @type {string[]} */
   const found = [];
   for (const file of files) {
+    if (DOC_TOOLS.has(file)) continue;
     let text;
     try { text = readFileSync(join(root, file), 'utf8'); } catch { continue; }
     text.split('\n').forEach((line, i) => {
@@ -121,6 +128,34 @@ export function internalDocLinks(root) {
         if (!target || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
         const resolved = posix.normalize(target.startsWith('/') ? target.slice(1) : posix.join(dirname(file), target));
         if (/^docs\/internal(\/|$)/.test(resolved)) found.push(`${file}:${i + 1}: ${resolved}`);
+      }
+    });
+  }
+  return found;
+}
+
+/** Private document names and private ADR tombstones in tracked text.
+    Skip the declaration of a tombstone in the ADR index itself.
+    @param {string} root @param {string} adrDir @returns {string[]} */
+export function privateReferencesInRepo(root, adrDir) {
+  const index = readAdrIndex(adrDir);
+  const files = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
+  const found = [];
+  for (const file of files) {
+    if (DOC_TOOLS.has(file)) continue;
+    const path = join(root, file);
+    if (!existsSync(path) || !lstatSync(path).isFile()) continue;
+    const bytes = readFileSync(path);
+    if (bytes.includes(0)) continue;
+    bytes.toString('utf8').split('\n').forEach((line, i) => {
+      const location = file + ':' + (i + 1) + ': ';
+      for (const [name] of line.matchAll(PRIVATE_DOC)) found.push(location + name);
+      for (const citation of line.matchAll(/\bADR-(\d{4})\b/g)) {
+        const [id, number] = citation;
+        if (file === 'docs/adr/README.md' && /^- (?:\*\*)?$/.test(line.slice(0, citation.index))) continue;
+        if (index.privateTombstones.has(number) && !index.numbered.has(number)) {
+          found.push(location + id + ' points to private documentation');
+        }
       }
     });
   }

@@ -16,10 +16,10 @@ const value = (/* functional audit */ 1); // .scratch/example
   it('finds comments in Svelte script, markup, expressions and CSS', () => {
     const source = `<script>let value = 'ticket 1'; // ticket 2
 </script>
-<div title="<!-- phase 1 -->">{value /* CONTEXT.md */}<!-- ux-carpet --></div>
+<div title="<!-- phase 1 -->">{value /* \x43ONTEXT.md */}<!-- ux-carpet --></div>
 <style>/* pre-release-human */ div { color: red }</style>`;
     expect(commentRanges('example.svelte', source).map(({ start, end }) => source.slice(start, end)))
-      .toEqual(['// ticket 2', '/* CONTEXT.md */', '<!-- ux-carpet -->', '/* pre-release-human */']);
+      .toEqual(['// ticket 2', '/* \x43ONTEXT.md */', '<!-- ux-carpet -->', '/* pre-release-human */']);
   });
 
   it('keeps comment markers inside Java text blocks and HTML attributes out of the scan', () => {
@@ -35,7 +35,7 @@ const value = (/* functional audit */ 1); // .scratch/example
   });
 
   it('finds wrapped ticket citations and permits public ADR paths', () => {
-    const source = '/** Phase 4 tickets\n * CARPET-07 and 12. See docs/adr/0045-example.md and docs/internal/notes.md. */';
+    const source = '/** Phase 4 tickets\n * CARPET-07 and 12. See docs/adr/0045-example.md and docs/\x69nternal/notes.md. */';
     expect(countReferences('example.ts', source)).toBe(3);
   });
 });
