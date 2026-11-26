@@ -4,8 +4,8 @@
    always said, over a grid that read one table of six. The journal keeps a
    photograph wherever the record it belongs to keeps its own rows: `photo`
    for an entry's and a milestone's, `hair_removal_photo`,
-   `tryout_photo` and `procedure_photo` for the four records that grew
-   their own, and `video_note` for a note recorded in the editor
+   `tryout_photo`, `procedure_photo` and `progress_photo` for the records
+   that grew their own, and `video_note` for a note recorded in the editor
    (ADR-0034). Six tables, one `PhotoFileStore`, one normalisation
    (ADR-0008/0015) - and, until this, five of them with no way to be found
    again except through the day they hang off.

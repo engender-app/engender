@@ -196,7 +196,7 @@ export interface PreferenceValues {
   spanRailHintDismissed: boolean;
   /** The day HRT began, as the person set it, or null to count from the
       earliest HRT episode (functional audit ticket 18, CONTEXT: "HRT
-      start"; personalEffectWindow.ts's hrtAnchor). The effects timeline,
+      start"; personalEffectWindow.ts's hrtAnchor). The effects timeline
       and its onset bands count from it. Portable, because it is a fact
       about the journal. */
   hrtStartEpochDay: number | null;

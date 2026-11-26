@@ -17,7 +17,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AREA_GROUPS } from '../src/lib/data/areaGroups';
-import { HUB_GROUP_KEYS, HUB_ROW_HOSTS, HUB_ROWS, isHubGroup } from '../src/lib/data/hubRows';
+import { HUB_GROUP_KEYS, HUB_ROWS } from '../src/lib/data/hubRows';
 import { ARCHIVE_SECTIONS, DROPPED_ARCHIVE_SECTION_NAMES } from '../src/lib/data/journal/archiveSections';
 import { LIVE_TILE_ORDER } from '../src/lib/data/liveTiles';
 import { BOOT_KEYS, DEVICE_LOCAL_KEYS, PORTABLE_KEYS, PREFERENCE_DEFAULTS } from '../src/lib/data/prefs/catalogue';
@@ -107,23 +107,18 @@ export function renderRoutes(): string {
   ].join('\n');
 }
 
-/** SCREENS.md: the More hub's rows, group by group, then the rows another
-    screen draws instead. */
+/** SCREENS.md: the More hub's rows, group by group. */
 export function renderHubRows(): string {
-  const drawn = HUB_ROWS.filter((row) => isHubGroup(row.home));
-  const hosted = HUB_ROWS.filter((row) => !isHubGroup(row.home));
   const groupLabel = (key: string) => `${englishLabel(`hub_group_${key}`)} (${code(key)})`;
-  const hostOf = (home: string) => HUB_ROW_HOSTS[home as keyof typeof HUB_ROW_HOSTS];
   return [
-    `\`hubRows.ts\` declares ${HUB_ROWS.length} rows: ${drawn.length} drawn on the hub in ${HUB_GROUP_KEYS.length} groups, and ${hosted.length} drawn on the screen that hosts them instead (ADR-0072).`,
+    `\`hubRows.ts\` declares ${HUB_ROWS.length} rows: all drawn on the hub in ${HUB_GROUP_KEYS.length} groups.`,
     '',
     table(
       ['Where', 'Row', 'Route', 'Archive sections behind it', 'Second line'],
       [
         ...HUB_GROUP_KEYS.flatMap((group) =>
-          drawn.filter((row) => row.home === group).map((row) => [groupLabel(group), code(row.key), code(row.href), list(row.areas), row.line])
-        ),
-        ...hosted.map((row) => [`hosted on ${code(hostOf(row.home))}`, code(row.key), code(row.href), list(row.areas), row.line])
+          HUB_ROWS.filter((row) => row.home === group).map((row) => [groupLabel(group), code(row.key), code(row.href), list(row.areas), row.line])
+        )
       ]
     )
   ].join('\n');

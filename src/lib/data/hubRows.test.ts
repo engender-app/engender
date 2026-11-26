@@ -10,24 +10,20 @@ import {
   AREA_GROUP_ROW_KEYS,
   HUB_GROUP_KEYS,
   HUB_ROWS,
-  HUB_ROW_HOSTS,
   LAST_WRITE_WITHOUT_A_ROW,
   hubRowsMatching,
   hubSections,
-  isHubGroup,
   rowHidden,
   rowLine,
   rowReads,
-  rowsHostedBy,
   type HubReading,
   type HubRowSpec
 } from './hubRows.ts';
 
 const TODAY = 20000;
 
-/** How many rows the hub itself draws, which is every row minus the seven
-    drawn on a screen of their own (ticket 16). */
-const drawnRowCount = HUB_ROWS.filter((row) => isHubGroup(row.home)).length;
+/** How many rows the hub itself draws: every row. */
+const drawnRowCount = HUB_ROWS.length;
 
 const spec = (key: string): HubRowSpec => {
   const found = HUB_ROWS.find((row) => row.key === key);
@@ -128,22 +124,13 @@ test('one registration reaches exactly the surface a row names as its home, and 
      itself part of the proof: there is nowhere else to register one. So
      this proves the general claim over every real row instead, each
      standing for the hypothetical one its own shape would be: a row whose
-     `home` is a hub group is drawn there and nowhere else; a row whose
-     `home` names a host is drawn there and nowhere else; and either kind is
-     found by search. One declaration in `ROWS`, checked against all three
-     surfaces, with nothing else to edit for any of them. */
+     `home` is a hub group is drawn there and nowhere else, and is found by
+     search. One declaration in `ROWS`, checked against both surfaces, with
+     nothing else to edit for either. */
   const onHub = new Set(hubSections(reading()).flatMap((section) => section.rows.map((row) => row.spec.key)));
 
   for (const row of HUB_ROWS) {
-    if (isHubGroup(row.home)) {
-      assert.ok(onHub.has(row.key), `${row.key} names a hub group but the hub never draws it`);
-    } else {
-      assert.ok(!onHub.has(row.key), `${row.key} is hosted and still drawn by the hub`);
-      assert.ok(
-        rowsHostedBy(row.home).some((hosted) => hosted.key === row.key),
-        `${row.key} names ${row.home} as its home but that host never draws it`
-      );
-    }
+    assert.ok(onHub.has(row.key), `${row.key} names a hub group but the hub never draws it`);
 
     const matches = hubRowsMatching(reading(), row.key, (key) => key);
     assert.ok(matches.some((match) => match.spec.key === row.key), `${row.key} is registered but search cannot find it`);
@@ -154,7 +141,7 @@ test('one registration reaches exactly the surface a row names as its home, and 
 
 test('every row has its own key, and every home it names is drawn somewhere', () => {
   const keys = HUB_ROWS.map((row) => row.key);
-  const homes = [...HUB_GROUP_KEYS, ...Object.keys(HUB_ROW_HOSTS)] as readonly string[];
+  const homes = HUB_GROUP_KEYS as readonly string[];
 
   assert.equal(new Set(keys).size, keys.length);
   for (const row of HUB_ROWS) {
@@ -599,40 +586,6 @@ test('a hosted row states the day its area ended, since the hub no longer can', 
     { kind: 'suspended', epochDay: TODAY - 5 }
   );
   assert.equal(rowLine(spec('dilation'), noReads).kind, 'not-yet');
-});
-
-test('every host draws something, or is the one that writes its row by hand', () => {
-  /* `rowsHostedBy` empty for a host means `HostedRows.svelte` renders
-     nothing there, which is right for exactly one of them and a dead host
-     for any other. */
-  const empty = Object.keys(HUB_ROW_HOSTS).filter(
-    (host) => rowsHostedBy(host as keyof typeof HUB_ROW_HOSTS).length === 0
-  );
-
-  assert.deepEqual(empty, []);
-});
-
-test('a hosted row is not on the hub at all, and its screen is named (ticket 16)', () => {
-  const drawn = hubSections(reading()).flatMap((section) => section.rows.map((row) => row.spec.key));
-
-  for (const row of HUB_ROWS) {
-    if (isHubGroup(row.home)) continue;
-    assert.ok(!drawn.includes(row.key), `${row.key} is hosted and still on the hub`);
-    assert.ok(HUB_ROW_HOSTS[row.home], `${row.key} names a host that draws nothing`);
-  }
-  assert.deepEqual(
-    HUB_ROWS.filter((row) => !isHubGroup(row.home)).map((row) => row.key),
-    []
-  );
-});
-
-test('a hosted row stays on its host once it is finished, rather than joining the finished set', () => {
-  /* The finished set is the hub's, and the hub does not draw this row. Its
-     host still does, and the day the person named is on the area's own
-     screen where they said it. */
-  const sections = hubSections(reading({ states: { personalEffects: finished(TODAY - 90) } }));
-
-  assert.ok(!sections.some((section) => section.key === 'finished'));
 });
 
 test('a finished row leaves its group for the finished set, and the set comes last', () => {

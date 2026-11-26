@@ -133,7 +133,6 @@ export const PATHS: Record<string, string> = {
   book: '<path d="M4.11 18.88A2.5 2.5 0 0 1 6.61 16.38H20.11V1.38H6.61A2.5 2.5 0 0 0 4.11 3.88z"/><path d="M20.11 16.38v5H6.61a2.5 2.5 0 0 1 0-5"/>',
   zap: '<path d="M14 2 5 14h6l-1 8 9-12h-6z"/>',
   ruler: '<path d="M3 8h18v8H3z"/><path d="M7 8v3M11 8v3M15 8v3"/>',
-  comb: '<path d="M3.7 4.37h16v4H3.7z"/><path d="M5.7 8.37v13M9.2 8.37v10M12.7 8.37v13M16.2 8.37v10M19.7 8.37v13"/>',
   package:
     '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/>',
   mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4M9 21h6"/>',

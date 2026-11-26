@@ -16,9 +16,10 @@
    (pre-publish ticket 01, which folded 89 to 119 into it). A journal at 89
    to 118 came from a development build and is refused, as one below 88 is.
    Nothing is squashed after 1.0.0: a release's migrations are appended here
-   and stay. Version 120 (progress photos) is the first appended step, 121 (the effect
-   category split) the second, 122 (progress photo poses) the third, 123 (tally removed, hair progress folded
-   into progress photos) the fourth.
+   and stay. Version 120 (progress photos) is the first appended step, 121
+   (the effect category split) the second, 122 (progress photo poses) the
+   third, 123 (tally removed, hair progress folded into progress photos)
+   the fourth.
 
    A merge hazard, and the second one in this area: the next migration's number
    already collides between parallel branches, and now the number is written

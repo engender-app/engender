@@ -140,7 +140,7 @@ export async function readFileOwnership(driver: SqliteReader) {
 }
 
 /** The view lists stored names; the store also holds derived thumbnails. */
-const PHOTO_SOURCES = new Set(['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'progress']);
+const PHOTO_SOURCES = new Set(['entry', 'milestone', 'hairRemoval', 'tryout', 'procedure', 'progress']);
 export async function readCleanupFileNames(driver: SqliteReader): Promise<string[]> {
   const rows = await driver.query<{ source: string; file_name: string }>('SELECT source, file_name FROM media_file');
   return rows.flatMap(({ source, file_name }) => {

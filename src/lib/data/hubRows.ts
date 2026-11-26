@@ -44,15 +44,8 @@
        `hubRowsMatching` leave the cycle row out until a screen says yes.
      - the finished group, and the day it shows.
 
-   Phase 9 carpet ticket 16 added a fourth: where a row is drawn. A row's
-   `home` is one of the hub's groups or one of the screens in `HUB_ROW_HOSTS`,
-   and four of the twenty now name a screen - five until ticket 13 folded
-   `side-effects` into `effects` rather than moving it to a new home. This
-   file stays the registry for all of them either way, which is the point of
-   holding the field here rather than deleting the rows that left: `finishes`
-   still has to be claimed by exactly one row and the last-write registry
-   still has to be fronted or opted out of. A row that moved screens moved
-   one field.
+   A fourth is where a row is drawn: a row's `home` is one of the hub's
+   groups.
 
    `statsAreas.ts` used to read a card's icon and route off a row the same
    way, as a second enumeration of areas beside this one. Phase 10 redesign
@@ -109,67 +102,10 @@ export const HUB_GROUP_KEYS = ['health', 'body', 'transition', 'support', 'media
 
 export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
 
-/** The screens that draw a row of their own, and where each one lives.
-
-    Phase 9 carpet ticket 16's other half. Seven rows left the hub without
-    their screens going anywhere: dilation belongs to a surgery journey rather
-    than beside it, side effects are a change somebody
-    noticed, cycle events are read next to the side effects they sit among,
-    templates are how you write an entry and words are a reading of what you
-    wrote. A hub that lists all of them at the top level is a hub that has
-    stopped ranking anything.
-
-    Two of those seven have since stopped being rows at all, and by two
-    different routes. Redesign ticket 51 took entry templates to Settings: a
-    reference area (ADR-0084) is managed there rather than hosted, so its row
-    left this map the way modes left the Transition group outright, onto a
-    plain row Settings writes out itself. Redesign ticket 62 took the words
-    row off outright - the reading drew on the Look back door itself, until
-    functional audit ticket 12 cut it - so there is no second screen for a
-    row to open, and `stats` stopped being a host with it.
-
-    A third route took a fourth off, and it is the one that shrank the host
-    map itself rather than just a row in it. Phase 11 all-four-doors ticket
-    13 put side effects on the same axis and the same screen as the changes
-    somebody was hoping for (rule 16's new strip-versus-axis paragraph): the
-    `side-effects` row is not hosted anywhere any more because it is not a
-    screen of its own to link to, and `/health/side-effects` has been removed.
-
-    Pre-release-human 12 took two more rows back onto the hub, in Health:
-    cycle events (only while cycle tracking is visible) and dilation (only
-    once a procedure can carry it). Neither is hosted any more, so `care` and
-    `surgery` stopped being hosts, and one host remained for one row: hair
-    progress, on the changes screen. It folded into progress photos (version
-    123), so no host is left. The surgery list and Meds still link to them, drawn through
-    `HostedRows.svelte` with the keys they want: a link, not a home, so
-    `more-surfaces.test.ts` allows exactly those two to be on the hub and
-    linked.
-
-    Eras never was one of the seven - it kept a plain row in the Transition
-    group until redesign ticket 16 (ADR-0084) found it a reference area too,
-    spent on seven other screens and created on exactly one. It left `ROWS`
-    entirely, the way words did: the milestone rail is the one place under
-    Transition an era is still drawn, as a band rather than a row. */
-export const HUB_ROW_HOSTS = {} as const;
-
-export type HubRowHostKey = keyof typeof HUB_ROW_HOSTS;
-
-/* A host may not be named the same as a group, or `hubSections` would bucket
-   a hosted row into a group whose heading it has never had. Demonstrated by
-   renaming `care` above to `health` and watching `Ambiguous` stop being
-   `never`. */
-type Ambiguous = Extract<HubRowHostKey, HubGroupKey>;
-type AssertNoneAmbiguous<Both extends never> = Both;
-type NoHostSharesAGroupName = AssertNoneAmbiguous<Ambiguous>;
-
-/** Where a row is drawn: one of the hub's own groups, or the screen that
-    draws it instead of the hub. */
-export type HubRowHome = HubGroupKey | HubRowHostKey;
-
-/** Whether a row is drawn on the hub at all. */
-export function isHubGroup(home: HubRowHome): home is HubGroupKey {
-  return (HUB_GROUP_KEYS as readonly string[]).includes(home);
-}
+/* Cycle events and dilation are on the hub and also linked from Meds and
+   the surgery list, drawn through `HostedRows.svelte` with the keys those
+   screens ask for: a link, not a home. `more-surfaces.test.ts` allows
+   exactly those two. */
 
 /** One row, as declared. */
 /* HubRowSpec stays exported only for its own test (AU-09 test-only review). */
@@ -182,9 +118,8 @@ export interface HubRowSpec {
       than only on adjacent rows. */
   icon: string;
   href: string;
-  /** Which of the hub's groups draws the row, or which screen draws it
-      instead of the hub. */
-  home: HubRowHome;
+  /** Which of the hub's groups draws the row. */
+  home: HubGroupKey;
   /** Which archive sections sit behind the row. Empty for a row that is a
       screen rather than an area: `/care` groups four medication surfaces,
       the clinician summary is a page built out of everywhere else.
@@ -852,7 +787,6 @@ export function hubSections(reading: HubReading): HubSection[] {
   for (const key of [...HUB_GROUP_KEYS, 'finished'] as const) byKey.set(key, []);
 
   for (const spec of HUB_ROWS) {
-    if (!isHubGroup(spec.home)) continue;
     if (rowHidden(spec, reading.states)) continue;
     if (spec.key === 'cycle-events' && !reading.cycleVisible) continue;
     const line = rowLine(spec, reading);
@@ -862,24 +796,12 @@ export function hubSections(reading: HubReading): HubSection[] {
   return [...byKey].filter(([, rows]) => rows.length > 0).map(([key, rows]) => ({ key, rows }));
 }
 
-/** The rows whose name contains what somebody typed, flat: the hub's own in
-    the order its groups draw them, then the rows drawn on a screen of their
-    own (phase 10 redesign ticket 15).
+/** The rows whose name contains what somebody typed, flat, in the order the
+    hub's groups draw them (phase 10 redesign ticket 15).
 
-    All twenty of them - twenty-five until redesign ticket 51 moved
-    modes and entry templates off the registry entirely and into Settings
-    (ADR-0084), twenty-four until ticket 59 deleted the clinician-summary
-    row outright rather than hosting it, since it fronts no area,
-    twenty-three until ticket 62 took the words row off with the screen it
-    opened, twenty-one until ticket 13 folded `side-effects` into `effects`
-    rather than giving it a row of its own, and twenty until ticket 16
-    took eras off the same way ticket 62 did. The four hosted rows still
-    here are not on this screen and are still areas of this app: somebody
-    looking for dilation looks for it here, and leaving
-    them out would make the one index with a search box the one place they
-    cannot be found. A match draws the row the registry declares -
-    the same row its host screen draws - and following it lands on the
-    area's own screen rather than on the host.
+    Every drawn row is searchable, including one a screen also links to:
+    somebody looking for dilation looks for it here. A match draws the row
+    the registry declares and following it lands on the area's own screen.
 
     Assembled here rather than filtered out of `hubSections`' output, so the
     three rules about a row's existence hold for both halves in one place: a
@@ -919,24 +841,18 @@ export function hubRowsMatching(
   for (const section of hubSections(reading)) {
     for (const row of section.rows) if (named(row.spec)) matches.push({ ...row, where: section.key });
   }
-  for (const spec of HUB_ROWS) {
-    if (isHubGroup(spec.home)) continue;
-    if (rowHidden(spec, reading.states)) continue;
-    if (!named(spec)) continue;
-    matches.push({ spec, line: rowLine(spec, reading), where: spec.home });
-  }
   return matches;
 }
 
-/** A row a search found: the row as it is drawn, and where it is drawn -
-    one of the hub's sections, or the screen that hosts it.
+/** A row a search found: the row as it is drawn, and the hub section it is
+    drawn in.
 
     A flat list has no heading over a row to say which it was, so the row
     says it: a finished row found by name carries `finished`, which is what
     the heading it lost was saying, rather than the screen deciding that
     again from the line. */
 export interface MatchedRow extends DrawnRow {
-  where: HubSection['key'] | HubRowHostKey;
+  where: HubSection['key'];
 }
 
 /** A section's own place in the flag's stripes, for whichever screen is
@@ -953,19 +869,6 @@ export interface MatchedRow extends DrawnRow {
     its colour. */
 export function hubSectionRoleIndex(key: HubSection['key']): number {
   return key === 'finished' ? HUB_GROUP_KEYS.length : HUB_GROUP_KEYS.indexOf(key);
-}
-
-/** The rows one screen hosts, in declaration order.
-
-    `hubSections`' counterpart for the other side of `home`, and the reason
-    the two are worth one function each rather than one filter at five call
-    sites: what a host owes its rows is the same thing the hub owes them -
-    a row goes when every area behind it is hidden, and states the day the
-    person said it ended. `HostedRows.svelte` reads this and applies
-    `rowHidden` and `rowLine` over the area record, so the rule lives once,
-    and a screen that links to a row on the hub asks for it by key. */
-export function rowsHostedBy(host: HubRowHostKey): HubRow[] {
-  return HUB_ROWS.filter((row) => row.home === host);
 }
 
 /** Which row fronts each finishable group's finish.

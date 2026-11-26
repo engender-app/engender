@@ -637,8 +637,8 @@ const SECTIONS = [
     read: read.readProgressPoses,
     apply: apply.applyProgressPoses
   }),
-  // Inserts its own photo children, the same reasoning `progressPhotos` gives -
-  // it depends on no other section.
+  // Inserts its own photo children itself, so it depends on no other
+  // section.
   section({
     name: 'hairRemovalSessions',
     discard: ['DELETE FROM hair_removal_photo', 'DELETE FROM hair_removal_session'],

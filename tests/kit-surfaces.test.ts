@@ -183,8 +183,7 @@ describe('the surfaces', () => {
       /* Two photographs of the same body months apart, in one frame, under
          one draggable divider (phase 10 redesign ticket 55). A surface of
          its own: it draws a frame, two plates, two date blocks and a
-         handle, and two screens that both take fixed-position photographs
-         read it - the progress-photo comparison and hair progress. */
+         handle, and the progress-photo comparison reads it. */
       'PhotoWipe.svelte',
       /* Not a surface either, and the only kit component that draws no
          pixels of its own: the three-state gate thirty-one screens used to
@@ -215,8 +214,7 @@ describe('the surfaces', () => {
       'SectionHeading.svelte',
       /* An index of a long screen's halves (after-release 28): names over a
          rule, each scrolling its half into view. Not a surface, and not a
-         Segmented, whose look now only ever means a swap. Hair progress and
-         Measurements. */
+         Segmented, whose look now only ever means a swap. */
       'SectionJump.svelte',
       'Tile.svelte',
       'TileGrid.svelte',

@@ -34,7 +34,7 @@
   import { untrack, type Snippet } from 'svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { dilationGated } from '$lib/data/taperSchedule';
-  import { HUB_ROWS, rowLine, rowsHostedBy, rowHidden, type HubRow, type HubRowHostKey, type HubRowKey } from '$lib/data/hubRows';
+  import { HUB_ROWS, rowLine, rowHidden, type HubRow, type HubRowKey } from '$lib/data/hubRows';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
@@ -48,16 +48,13 @@
     ready = true,
     after
   }: {
-    /** Which screen's rows to draw, from `HUB_ROW_HOSTS`. Where `keys` is
-        given it only names the screen, for its reserve and its data
-        attribute. */
-    host: HubRowHostKey | 'care' | 'surgery';
-    /** Rows to link to that live on the hub rather than being hosted here:
-        Meds links to cycle events and the surgery list to dilation
+    /** The screen the rows sit on, for its reserve and its data attribute. */
+    host: 'care' | 'surgery';
+    /** The hub rows to link to from here: Meds links to cycle events and the surgery list to dilation
         (pre-release-human 12). The same rules apply to them - a hidden area
         takes the row out, an ended one says so. A caller whose own gate is
         shut passes none, and the card is not drawn. */
-    keys?: readonly HubRowKey[];
+    keys: readonly HubRowKey[];
     /** Whether these rows are a card of their own. False where they join a
         list the host screen already draws - Settings' tracking card, Stats'
         look-back list - and true where they are the whole of a trailing
@@ -82,7 +79,7 @@
      can carry a dilation journey. Read only for a host that has the row, which is
      fixed for the life of a screen. */
   const drawn = (): HubRow[] =>
-    keys ? HUB_ROWS.filter((row) => keys.includes(row.key)) : rowsHostedBy(host as HubRowHostKey);
+    HUB_ROWS.filter((row) => keys.includes(row.key));
   const readsProcedures = untrack(drawn).some((row) => row.key === 'dilation');
   let proceduresQuery = readsProcedures ? liveList((j) => j.procedures.getProcedures()) : null;
   let states = $derived(

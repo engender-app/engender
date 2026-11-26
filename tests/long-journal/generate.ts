@@ -243,8 +243,8 @@ const DIMENSION_KEYS: string[] = BUILT_IN_DIMENSIONS.map((d) => d.key);
    floors cleared and not, not every region logged on every day. */
 const BODY_REGION_KEYS = ['chest', 'hairline', 'genitals', 'voice_throat', 'face_jaw'];
 
-/* Hair progress photos (phase 5 ticket 33): one every ~200 days, the real
-   cadence a self-staging screen sees - nobody re-stages weekly. */
+/* Hair-pose progress photos (phase 5 ticket 33): one step every ~200 days,
+   the cadence a self-staging screen saw - nobody re-staged weekly. */
 const HAIR_STAGE_STEP_DAYS = 200;
 
 /* The dose schedule (schema v38, ADR-0027, phase 5 ticket 40): one episode

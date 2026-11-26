@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { HUB_GROUP_KEYS, HUB_ROWS, HUB_ROW_HOSTS, type HubRowHostKey } from '../src/lib/data/hubRows.ts';
+import { HUB_GROUP_KEYS, HUB_ROWS } from '../src/lib/data/hubRows.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -287,33 +287,6 @@ describe('every row the hub carries', () => {
     expect([...HUB_GROUP_KEYS].filter((key) => !used.has(key))).toEqual([]);
   });
 
-  it('draws every hosted row through the component that applies the hidden rule', () => {
-    /* The ticket's own last line - a row that left the hub is reachable from
-       exactly one place - and the rule that came off the hub with it.
-
-       Hosted rows started as a literal `<ListRow>` on each host, which
-       reached them but silently dropped ADR-0052's consequence: hiding an
-       area takes it out of the navigation, and nothing on the host was
-       asking. `HostedRows.svelte` applies `rowHidden` and `rowLine` over the
-       area record for all of them, so what this asserts is that each host
-       goes through it rather than writing the row again - a literal row is
-       both a second copy of the icon and href and a row no `hidden` flag can
-       reach.
-
-       Hosted means `home` names a screen in `HUB_ROW_HOSTS`. Two rows are
-       on the hub and also linked from a screen (pre-release-human 12),
-       which is a link rather than a home: the next test holds those. */
-    for (const [key, , href, home] of EXPECTED) {
-      if ((HUB_GROUP_KEYS as readonly string[]).includes(home)) continue;
-      const host = HUB_ROW_HOSTS[home as HubRowHostKey];
-      expect(host, `${key} names ${home}, which hosts nothing`).toBeTruthy();
-      const source = read(`src/routes${host}/+page.svelte`);
-
-      expect(source, `${host} does not draw its rows through HostedRows`).toContain(`<HostedRows host="${home}"`);
-      expect(source, `${host} writes ${key} out by hand instead`).not.toContain(href);
-    }
-  });
-
   it('links to cycle events and dilation from the screens that sit next to them', () => {
     /* Alicja, 2026-11-05: both are modules on the hub in Health, and a link
        to each stays where it was useful - dilation on the surgery list, a
@@ -345,8 +318,6 @@ describe('every row the hub carries', () => {
     expect(changes).not.toContain('/health/cycle-events');
     expect(changes).not.toContain('cycleTrackingVisible');
 
-    expect(HUB_ROW_HOSTS).not.toHaveProperty('care');
-    expect(HUB_ROW_HOSTS).not.toHaveProperty('surgery');
   });
 
   it('draws the last three cycle events inside the Cycle link card, held with it', () => {
