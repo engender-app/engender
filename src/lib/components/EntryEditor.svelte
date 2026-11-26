@@ -2221,6 +2221,10 @@
      under a chip row, so it takes the step's own spacing (ticket 09). */
   .entry-step > .editor-section { margin-top: 0; }
   .entry-step > .editor-section:last-child { margin-bottom: 0; }
+  /* Except one opened from the chip row on the same step: the chip is its
+     heading again, so it keeps rule 1's 20 under the row. At 0 the record
+     and add tiles sat flush on the chips (pre-release-human 18). */
+  .entry-step > .editor-chips + .editor-section { margin-top: var(--space-5); }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */
   .contextual-panel {
