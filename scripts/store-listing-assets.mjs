@@ -20,7 +20,7 @@ const locales = [
 const screens = [
   ['03-home', '/', '[data-home-hello]'],
   ['04-care', '/care', '[data-care-regimen]'],
-  ['01-new-entry', '/entry/new/today?seedMood=4', '[data-entry-step="1"]'],
+  ['01-new-entry', '/entry/new/today?seedMood=4', '[data-entry-step="today"]'],
   ['06-roadmap', '/transition/roadmap', '[data-goal]'],
   ['05-voice', '/voice?tab=compare', '[data-voice-cell]'],
   ['02-look-back', '/stats', '[data-lookback-readings]'],
