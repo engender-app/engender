@@ -34,6 +34,7 @@
     legend = false,
     hidden = false,
     spread = false,
+    hintAfter = false,
     children
   }: {
     label: string;
@@ -64,6 +65,10 @@
     /** The `.field.spread` row layout - a label to the left, a
         self-labelling control to the right (Switch). */
     spread?: boolean;
+    /** The hint sits under the control instead of under the label, for a
+        field in a side-by-side pair whose neighbour has none: the two
+        controls then share a top edge. */
+    hintAfter?: boolean;
     /** The control, handed the one id it should carry, the id of the hint
         paragraph it should point `aria-describedby` at where there is one,
         and whether the person has been in the field and left it. */
@@ -89,10 +94,13 @@
   {:else}
     <label class="field-label" class:visually-hidden={hidden} for={fieldId}>{label}</label>
   {/if}
-  {#if hint}
+  {#if hint && !hintAfter}
     <p class="field-hint" class:visually-hidden={hidden} id={hintId}>{hint}</p>
   {/if}
   {@render children(fieldId, hint ? hintId : undefined, touched)}
+  {#if hint && hintAfter}
+    <p class="field-hint" class:visually-hidden={hidden} id={hintId}>{hint}</p>
+  {/if}
 </div>
 
 <style>

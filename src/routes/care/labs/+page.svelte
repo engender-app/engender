@@ -672,7 +672,7 @@
         </div>
       {/if}
       <div class="cd-endpoints lab-pair">
-        <Field label={m.labs_value_label()} id="lab-value" hint={!validValue(editor.value) ? m.labs_invalid_value() : undefined}>
+        <Field label={m.labs_value_label()} id="lab-value" hintAfter hint={!validValue(editor.value) ? m.labs_invalid_value() : undefined}>
           {#snippet children(id, hintId)}
             <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
           {/snippet}
