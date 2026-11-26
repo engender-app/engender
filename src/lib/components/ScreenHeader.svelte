@@ -53,7 +53,7 @@
      block they sit on, its ink and its bleed to the window's edges. Only
      large type may sit on the field, or a block of the page's own colour
      with page ink in it, which is how the search input's 16px is legal
-     there; tests/direction-contract.test.ts holds both halves.
+     there; tests/browser-tier/direction-contracts.ts holds both halves.
 
      `chrome` is rule 7's third case (carpet 25). A door never shows a back
      control and a deep screen always does, and Settings is neither: it is
@@ -162,7 +162,7 @@
        actions. Only large type sits on it - nonbinary's purple carries
        white at 4.41:1, legal for large text and nothing smaller - which is
        why the subtitle is outside the field, on the page, and why
-       tests/direction-contract.test.ts holds every rule that sizes type
+       tests/browser-tier/direction-contracts.ts holds every rule that sizes type
        inside this element to 24px, or 18.66px bold. The unlocked app
        always paints the flag here, disguise or not (FA 42). -->
   <div class="screen-field" data-screen-field use:resize>

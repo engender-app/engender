@@ -1,7 +1,7 @@
 /* What Home's grid holds, in what order, and what each tile says (phase 8
    deepening ticket 07).
 
-   The rule this replaces was `tests/home-surfaces.test.ts:124`, which pinned
+   The rule this replaces was `tests/browser-tier/home-contracts.ts:124`, which pinned
    the tiles' gating by matching the route's source for the text of five
    `$derived` lines. That passes on a broken screen that keeps the strings
    and fails on a correct move that does not, which is what this ticket is.

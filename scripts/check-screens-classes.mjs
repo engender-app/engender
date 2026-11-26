@@ -81,7 +81,7 @@ const SHEETS = [
       'kit-notice-cta',
       /* Sibling selector .screen-header + .kit-heading references ScreenHeader */
       'screen-header',
-      /* direction-contract.test.ts asserts .kit-tile-note-text clamp in kit.css */
+      /* direction-contracts.ts asserts .kit-tile-note-text clamp in kit.css */
       'kit-tile-note-text',
       /* ReadReserve.svelte is the one consumer, but the rule that names them
          is about the heading inside, not the reserve: a .kit-heading first in

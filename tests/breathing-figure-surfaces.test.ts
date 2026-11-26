@@ -1,6 +1,6 @@
 /* Surface tests for the breathing exercise's tide (phase 12 breathing
    ticket 01). String-matching against the component source, the same shape
-   safe-space-surfaces.test.ts uses for +page.svelte - the component itself
+   safe-space-contracts.ts uses for +page.svelte - the component itself
    has no test tier a Svelte render can run under (no rune compilation
    under vitest.config.ts). The motion is held where it lives: the curve in
    breathClock.test.ts, the frames in tests/breathing-frames.mjs. */

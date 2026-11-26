@@ -63,10 +63,10 @@
      is neither: it sits on a block of its own drawn inside a 24-unit viewBox,
      so its corner is 6.4 of those units and scales with the face
      (moodFace.ts's MOOD_BLOCK, ADR-0077) - the one proportional corner in the
-     app, and the one exception direction-contract.test.ts carries. The pill survives on
+     app, and the one exception direction-contracts.ts carries. The pill survives on
      the one shape that is a capsule, a tag, and nowhere else. The ramp this
      replaces (--radius-xs..xl, --r-card 20, --r-add 18) counted twenty-three
-     distinct corners across the app; tests/direction-contract.test.ts holds
+     distinct corners across the app; tests/browser-tier/direction-contracts.ts holds
      every corner in every sheet and component to this budget. */
   --r-block: 6px;
   --radius-pill: 999px;  /* a tag, which is a pill because it is one word */
@@ -80,7 +80,7 @@
      left defined-but-unused: a token that resolves is a token the next rule
      reaches for, and `box-shadow: var(--shadow-1)` is a one-line way back
      into a world this phase spent itself leaving.
-     tests/direction-contract.test.ts holds it retired. */
+     tests/browser-tier/direction-contracts.ts holds it retired. */
 
   /* The redesign separates surfaces with a line, not a plane, so it has one
      shadow: the floating nav bar and its add button, which genuinely do sit

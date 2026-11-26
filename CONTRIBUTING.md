@@ -41,6 +41,10 @@ itself, and each is marked with a trailing `// text-under-test` comment.
 copy match, and `tests/walkthrough-handles-exist.test.ts` fails on a handle
 no source file carries.
 
+Read source text in a test only for an invariant a rendered check cannot
+observe. Name the invariant in the test. Use browser checks for rendered
+behavior.
+
 ## Adding a module
 
 A module is a tracked area with its own data and, usually, its own screen.

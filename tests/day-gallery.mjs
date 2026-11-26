@@ -9,7 +9,7 @@
    is the composition: whether a sparse day still looks like the screen it
    was, and whether a maximal one reads as a day rather than as a dump.
 
-   Run: npm run gallery:day  (or node tests/day-gallery.mjs [outDir])
+   Run: node tests/day-gallery.mjs [outDir]
    Default outDir is .claude/day-shots, which is gitignored and durable. */
 import { createServer } from 'vite';
 import { mkdir } from 'node:fs/promises';

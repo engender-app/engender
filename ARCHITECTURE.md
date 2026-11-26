@@ -1003,7 +1003,7 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 - **Android door changes** fade the live outgoing content over `--dur-fast` before the route swaps. [navigation/androidTabMotion.ts](src/lib/navigation/androidTabMotion.ts) leaves the field background in place for the incoming bridge and releases superseded routes just before their successor swaps. Sun rings close outermost first on the ring stagger. It retains no copy of journal content across a gate. Web and deep navigation use view transitions.
 - **Reduced motion.** [theme/base.css](src/lib/theme/base.css) clamps durations to 1ms under reduced motion or `html[data-a11y-motion]`. [tests/motion-system.test.ts](tests/motion-system.test.ts) requires every animation's end state to equal its element's resting state, so a clamped animation never strands an element.
 - **Ambient motion has a budget** (ADR-0050, ADR-0051, ADR-0071). Home's [motion/homeAmbient.ts](src/lib/motion/homeAmbient.ts) pauses sun breath, face blink and face glance after 30 seconds without input, or while the document or retained door is hidden. Pointer, keyboard, focus, click and wheel input resume active Home from its held phase. Sun breath uses a separate play state from its finite arrival; [motion/holdWhileStill.ts](src/lib/motion/holdWhileStill.ts) owns face clocks and composes idle holds with gaze holds. Reduced motion still removes these loops.
-- **Sweeps measure frames.** `npm run sweep:yanks` and `sweep:hydration` sample animated properties frame by frame.
+- **Sweeps measure frames.** The [yank and hydration sweeps](tests/tools/README.md#frame-sweeps) sample animated properties frame by frame.
 
 ### 8.6 i18n
 
@@ -1105,7 +1105,7 @@ flowchart TB
 | Benchmarks | `npm run benchmark:long-journal`, `test:return-floor` | A ten-year fixture against [tests/long-journal/budgets.json](tests/long-journal/budgets.json); the return-floor timing. |
 | Android | `npm run test:android` | Instrumentation tests on the `gd26` and `tracker35` emulators: native SQLite features, Keystore behaviour, the encryption claim test, the contract suite in a WebView. JVM unit tests run with `./gradlew :app:testDebugUnitTest`. |
 | Installed Android upgrade | `npm run test:android:upgrade -- <serial> <avd> <manifest>` | Opt-in update of a filled rc.1 synthetic package, journal/media/SQLite/alarm preservation, row-deleting control and failed-migration recovery. [Kit and fixture preparation](tests/android-tier/installed-upgrade.md) rebuild the APKs and Archive from source. |
-| Galleries | `npm run gallery:*`, `measure:*`, `sweep:*` | Renders and frame captures for review. Most of them gate nothing. |
+| Manual test tools | [Galleries, measurements and sweeps](tests/tools/README.md) | Renders and frame captures for review. |
 
 Screen contracts use [mount-screen.ts](tests/browser-tier/mount-screen.ts)
 to render route components over seeded, open journals. The fixture attaches

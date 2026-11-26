@@ -33,7 +33,7 @@ const stripStyle = (source: string) => source.replace(/<style[\s\S]*?<\/style>/g
 const stripComments = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
 /** One rule's declarations, by exact selector. Enough for a sheet written
-    one selector per rule, which these are; direction-contract.test.ts has
+    one selector per rule, which these are; direction-contracts.ts has
     the general parser for the checks that need one. */
 function ruleBody(css: string, prelude: string): string {
   const at = css.indexOf(`\n${prelude} {`);

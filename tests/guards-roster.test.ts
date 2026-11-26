@@ -8,7 +8,7 @@ describe('guard roster', () => {
   it('indexes every root probe, including helpers and manually run tools', () => {
     const doc = read('tests/PROBES.md');
     const scripts = JSON.parse(read('package.json')).scripts;
-    let indexed = doc;
+    let indexed = `${doc}\n${read('tests/tools/README.md')}`;
     for (const [name, command] of Object.entries(scripts)) {
       if (doc.includes(`\`${name}\``)) indexed += `\n${command}`;
     }

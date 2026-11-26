@@ -191,7 +191,7 @@
   }
 
   /* The size a row-weight tile with no value gives its title
-     (direction-contract.test.ts holds the kit's own to the same token),
+     (direction-contracts.ts holds the kit's own to the same token),
      because that is what this plate is: a block whose whole content is
      what the thing is called. Large text by WCAG's measure, so it answers
      to 3:1 on the stripe, which every band clears. */

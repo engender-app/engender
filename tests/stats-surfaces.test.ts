@@ -415,7 +415,7 @@ describe('the resurfacing block', () => {
 });
 
 /* Functional audit ticket 12. The constellation's own rendered check is in
-   tests/browser-tier/look-back-surfaces.test.ts; these hold the template
+   tests/browser-tier/look-back-contracts.ts; these hold the template
    facts beside it. */
 describe('Look back says each thing once', () => {
   it('plots the constellation without asking for a mode', () => {

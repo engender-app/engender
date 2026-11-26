@@ -27,7 +27,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const serial = process.argv[2];
-if (!serial) throw new Error('pass the device serial, e.g. emulator-5554');
+if (!/^emulator-\d+$/.test(serial ?? '')) throw new Error('Pass a disposable emulator serial, e.g. emulator-5554');
 const PKG = 'dev.engender.app';
 const APK =
   process.argv[3] ??

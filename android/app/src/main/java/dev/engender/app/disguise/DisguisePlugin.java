@@ -116,7 +116,7 @@ public class DisguisePlugin extends Plugin {
         // itself, nothing here calls killProcess or finish(). Whenever the
         // palette just picked happens to disable the alias this task is
         // still live under, the running screen goes with it (ticket 245:
-        // reproduced on-device, {@code tests/android-tier/palette-switch-crash-check.mjs}).
+        // reproduced on-device).
         //
         // So the flip waits for a moment nothing is watching: queued here,
         // applied from handleOnStop(). The cost is exactly what this method
