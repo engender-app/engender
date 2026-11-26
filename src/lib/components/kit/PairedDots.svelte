@@ -24,8 +24,6 @@
      and the hollow one is the rest, on every row, whichever direction the
      gap runs (ADR-0012, F15). */
   import type { Snippet } from 'svelte';
-  import { flip } from 'svelte/animate';
-  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
   import type { PairedRow } from './pairedRow';
 
   /* `figure` stands in for the row's gap text where the caller draws its own
@@ -67,30 +65,25 @@
 
 <div class="kit-paired" data-chart="paired">
   {#each rows as row (row.key)}
-    <!-- A wrapper per row so a reordered set travels (flip, a transform)
-         instead of jumping: /compare re-sorts its rows by the size of the
-         change whenever a period changes (pre-release-human ticket 21). -->
-    <div animate:flip={{ duration: motionDuration('--dur-slow'), easing: EASE_OUT }}>
-      {#if onPick}
-        <!-- Opts out of the default press the way BarRows' own open row does
-             (kit.css, "press is opt-out"): this row fills the card's width
-             rather than scaling to fit one, so the default press reads as the
-             whole card flexing. -->
-        <button
-          type="button"
-          class="kit-paired-row"
-          data-paired-row={row.key}
-          data-no-press
-          onclick={() => onPick(row.key)}
-        >
-          {@render body(row)}
-        </button>
-      {:else}
-        <div class="kit-paired-row" data-paired-row={row.key}>
-          {@render body(row)}
-        </div>
-      {/if}
-    </div>
+    {#if onPick}
+      <!-- Opts out of the default press the way BarRows' own open row does
+           (kit.css, "press is opt-out"): this row fills the card's width
+           rather than scaling to fit one, so the default press reads as the
+           whole card flexing. -->
+      <button
+        type="button"
+        class="kit-paired-row"
+        data-paired-row={row.key}
+        data-no-press
+        onclick={() => onPick(row.key)}
+      >
+        {@render body(row)}
+      </button>
+    {:else}
+      <div class="kit-paired-row" data-paired-row={row.key}>
+        {@render body(row)}
+      </div>
+    {/if}
   {/each}
 </div>
 

@@ -258,7 +258,8 @@
       a,
       b,
       order,
-      scales: orderScales(scales),
+      scales,
+      rank: new Map(orderScales(scales).map((scale, i) => [scale.key, i])),
       headline: biggestChange(scales),
       tags,
       tagMax: Math.max(1, ...tags.map((t) => Math.max(t.a, t.b))),
@@ -321,6 +322,32 @@
     }))
   );
 
+  /* Where each scale's slot sits: its rank by the size of the change, each
+     slot as tall as it measures, with the kit's row gap between. */
+  const SCALE_GAP = 16;
+  let slotHeights = $state<Record<string, number>>({});
+  let scaleTops = $derived.by(() => {
+    const tops: Record<string, number> = {};
+    if (!model) return tops;
+    let y = 0;
+    for (const scale of [...model.scales].sort((x, z) => (model.rank.get(x.key) ?? 0) - (model.rank.get(z.key) ?? 0))) {
+      tops[scale.key] = y;
+      y += (slotHeights[scale.key] ?? 0) + SCALE_GAP;
+    }
+    return tops;
+  });
+  let scalesHeight = $derived(
+    Math.max(0, Object.values(slotHeights).reduce((sum, h) => sum + h + SCALE_GAP, 0) - SCALE_GAP)
+  );
+  /* Transitions only once every slot has been measured, so the first
+     placement is not itself animated from the top. */
+  let scalesPlaced = $state(false);
+  $effect(() => {
+    if (model && model.scales.every((scale) => slotHeights[scale.key])) {
+      requestAnimationFrame(() => (scalesPlaced = true));
+    }
+  });
+
   /* A scale's change, later minus earlier, for the figure beside its name. */
   const scaleChange = (row: PairedRow) => {
     if (row.with === null || row.without === null || !model) return null;
@@ -329,8 +356,9 @@
   };
 
 
-  /* A tag row joining or leaving the union opens or closes its height and
-     fades with it, so the rows under it move with the height rather than
+  /* A tag row joining or leaving the union, the tag list giving way to its
+     empty line, or the days-by-mood card for a period with no mood, opens
+     or closes its height and fades with it, so the rows under it move with the height rather than
      jumping when a row is inserted or taken out of flow. Height, a layout
      property, so it is listed in tests/motion-system.test.ts's
      LAYOUT_EXEMPT with its bound and its measurement. Under reduced motion
@@ -414,21 +442,34 @@
           </section>
 
           <ChartCard level={2} heading={m.compare_scales_heading()} kind="compare-scales" {role}>
-            <div data-compare-figure="scales">
-              <PairedDots rows={scaleRows}>
-                {#snippet figure(row)}
-                  {@const change = scaleChange(row)}
-                  <span class="compare-scale-change" class:is-none={change === null} data-compare-scale={row.key}>
-                    <RollingNumber value={change ?? 0} format={fmtChange(row.key)} />
-                  </span>
-                {/snippet}
-              </PairedDots>
+            <!-- One slot per scale, in a fixed order in the DOM, moved to
+                 its rank by a transform. Sorting the rows in the DOM moved
+                 the nodes, and a moved node drops its running transitions,
+                 so its dots landed in one frame. -->
+            <div class="compare-scales" data-compare-figure="scales" style={`height: ${scalesHeight}px`}>
+              {#each scaleRows as row (row.key)}
+                <div
+                  class="compare-scale-slot"
+                  class:is-placed={scalesPlaced}
+                  bind:offsetHeight={slotHeights[row.key]}
+                  style={`transform: translateY(${scaleTops[row.key] ?? 0}px)`}
+                >
+                  <PairedDots rows={[row]}>
+                    {#snippet figure(row)}
+                      {@const change = scaleChange(row)}
+                      <span class="compare-scale-change" class:is-none={change === null} data-compare-scale={row.key}>
+                        <RollingNumber value={change ?? 0} format={fmtChange(row.key)} />
+                      </span>
+                    {/snippet}
+                  </PairedDots>
+                </div>
+              {/each}
             </div>
           </ChartCard>
 
           <ChartCard level={2} heading={m.recap_tags_title()} kind="compare-tags" {role}>
             {#if model.tags.length}
-              <div class="compare-tags" data-compare-figure="tags">
+              <div class="compare-tags" data-compare-figure="tags" transition:rowFold>
                 {#each model.tags as tag (tag.id)}
                   <div class="compare-tag" data-compare-tag={tag.id} transition:rowFold>
                     <span class="compare-tag-name">{tagLabel(tag.id)}</span>
@@ -443,11 +484,12 @@
                 {/each}
               </div>
             {:else}
-              <ChartEmpty>{m.recap_tags_none_range()}</ChartEmpty>
+              <div transition:rowFold><ChartEmpty>{m.recap_tags_none_range()}</ChartEmpty></div>
             {/if}
           </ChartCard>
 
           {#if model.anyMoodDays}
+            <div class="compare-fold-block" transition:rowFold>
             <ChartCard level={2} heading={m.stats_mood_days()} kind="compare-mood-days">
               <div class="compare-strips" data-compare-figure="mood-days">
                 {#each [{ side: 'a', steps: model.stripA, label: m.compare_period_a_label() }, { side: 'b', steps: model.stripB, label: m.compare_period_b_label() }] as strip (strip.side)}
@@ -464,6 +506,7 @@
                 {/each}
               </div>
             </ChartCard>
+            </div>
           {/if}
 
           <div class="compare-entries" data-compare-entries {...roleAttrs(role)}>
@@ -518,10 +561,18 @@
     height: 24px;
   }
 
+  /* Spacing by margin rather than gap, and inside a block that folds rather
+     than around it: a gap stays put while the block between closes to
+     nothing, and the rows under it would move by that gap in one frame. */
   .compare-result {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+  }
+  .compare-result > * + :not(.compare-fold-block) {
+    margin-top: var(--space-4);
+  }
+  .compare-fold-block {
+    padding-top: var(--space-4);
   }
 
   .compare-headline {
@@ -558,6 +609,17 @@
   .compare-headline-change {
     font-size: var(--text-md);
     color: var(--text-2);
+  }
+
+  .compare-scales {
+    position: relative;
+  }
+  .compare-scale-slot {
+    position: absolute;
+    inset: 0 0 auto 0;
+  }
+  .compare-scale-slot.is-placed {
+    transition: transform var(--dur-slow) var(--ease-out);
   }
 
   .compare-scale-change {

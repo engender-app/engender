@@ -1431,11 +1431,11 @@ describe('the cap on animating layout', () => {
         'at most 53 SVG rects within one fixed 320 by 150 viewBox; changing range resizes bars without moving surrounding layout. The FA 37 Chromium motion probe sampled 56 animation frames over 900 ms with 14 bars and no missed frame'
     },
     {
-      selector: '.compare-tag (compare `rowFold`)',
+      selector: '.compare-tag and its card blocks (compare `rowFold`)',
       props: ['height'],
       script: 'src/routes/compare/+page.svelte',
       reason:
-        "a top-tag row joining or leaving /compare's union when a period changes (pre-release-human 21): at most ten rows of about 67px, inside one card, opening or closing over --dur-slow so the rows under it move with it instead of jumping. kit collapse's clip-and-margin arrival and a flipped re-sort both moved the rows below by 67px in one frame, measured. Three runs of three period changes sampled 560 to 571 frames each, with the longest gap between two frames 18 to 28ms and at most four over 20ms. Under reduced motion the duration is 0 and the result fades out and back within --dur-crossfade"
+        "a top-tag row joining or leaving /compare's union, the tag list giving way to its empty line, or the days-by-mood card coming or going when a period changes (pre-release-human 21): at most ten 67px rows or one card at a time, inside the result column, opening or closing over --dur-slow so the rows under it move with it instead of jumping. kit collapse's clip-and-margin arrival and a flipped re-sort both moved the rows below by 67px in one frame, measured. Three runs of three period changes sampled 560 to 571 frames each, with the longest gap between two frames 18 to 28ms and at most four over 20ms. Under reduced motion the duration is 0 and the result fades out and back within --dur-crossfade"
     },
     {
       selector: '.segment (Segmented `grows`)',
