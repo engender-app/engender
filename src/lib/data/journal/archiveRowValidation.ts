@@ -96,7 +96,10 @@ const tag = object({
   id: identity,
   label: text,
   builtIn: optional(bool),
-  hidden: optional(bool)
+  hidden: optional(bool),
+  // An icon's name (pre-release-human 22). One this build does not know
+  // restores and draws no icon, so only its shape is checked.
+  icon: optional(identity)
 });
 
 const photo = object({

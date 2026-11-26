@@ -968,7 +968,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   tag_group: ['uuid', 'key', 'name', 'enabled', 'order_index'],
   // Child of tag_group, and its own rows are updated in place too
   // (applyTagGroups) - a rename or a hide reaches an already-present tag.
-  tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
+  tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'icon', 'order_index'],
   // Same update branch as gender_dimension.
   // Same update branch as gender_dimension.
   body_region: ['uuid', 'key', 'name', 'hidden'],

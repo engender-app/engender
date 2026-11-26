@@ -177,14 +177,15 @@ export async function readTagGroups({ driver }: SectionRead): Promise<ArchiveTag
   const groups = await driver.query<{ id: number; uuid: string | null; key: string; name: string; enabled: number; updated_at: number }>(
     'SELECT id, uuid, key, name, enabled, updated_at FROM tag_group ORDER BY order_index, id'
   );
-  const tags = await driver.query<{ group_id: number; uuid: string | null; key: string | null; label: string; hidden: number; updated_at: number }>(
-    'SELECT group_id, uuid, key, label, hidden, updated_at FROM tag ORDER BY order_index, id'
+  const tags = await driver.query<{ group_id: number; uuid: string | null; key: string | null; label: string; hidden: number; icon: string | null; updated_at: number }>(
+    'SELECT group_id, uuid, key, label, hidden, icon, updated_at FROM tag ORDER BY order_index, id'
   );
   const byGroup = groupBy(
     tags,
     (t) => t.group_id,
     (t): ArchiveTag => ({
-      id: domainIdOf(t, 'tag'), label: t.label, builtIn: t.key !== null, hidden: bool(t.hidden), updatedAt: t.updated_at
+      id: domainIdOf(t, 'tag'), label: t.label, builtIn: t.key !== null, hidden: bool(t.hidden),
+      ...(t.icon !== null ? { icon: t.icon } : {}), updatedAt: t.updated_at
     })
   );
   return groups.map((g) => ({

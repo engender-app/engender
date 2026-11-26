@@ -152,6 +152,9 @@ export interface ArchiveTag extends ArchiveStamped {
   label: string;
   builtIn: boolean;
   hidden: boolean;
+  /** An own tag's icon name (pre-release-human 22); absent for none and on
+      an archive written before tags had icons. */
+  icon?: string;
 }
 
 export interface ArchiveTagGroup extends ArchiveStamped {

@@ -19,7 +19,8 @@
    and stay. Version 120 (progress photos) is the first appended step, 121
    (the effect category split) the second, 122 (progress photo poses) the
    third, 123 (entry templates removed) the fourth, 124 (tally removed,
-   hair progress folded into progress photos) the fifth.
+   hair progress folded into progress photos) the fifth, 125 (a tag's icon)
+   the sixth.
 
    A merge hazard, and the second one in this area: the next migration's number
    already collides between parallel branches, and now the number is written
@@ -28,4 +29,4 @@
    assertions in that file get checked, by running the schema suite after a
    merge rather than by trusting that both sides of it were touched. */
 
-export const LATEST_SCHEMA_VERSION = 124;
+export const LATEST_SCHEMA_VERSION = 125;

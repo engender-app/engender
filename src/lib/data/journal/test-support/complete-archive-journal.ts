@@ -41,7 +41,7 @@ export async function seedCompleteArchiveJournal(
   await journal.dimensions.addPreset({ name: 'Mine', dims: [voice.key, 'femininity'] });
   await journal.dimensions.setDimensionHidden('masculinity', true);
   const group = await journal.tags.addGroup('Appointments');
-  const tag = await journal.tags.addTag(group.key, 'endo');
+  const tag = await journal.tags.addTag(group.key, 'endo', 'stethoscope');
   await journal.tags.addTag('emotions', 'wired');
   await journal.tags.renameTag('a-therapy', 'therapy session');
   await journal.tags.setTagHidden('a-work', true);

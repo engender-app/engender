@@ -220,6 +220,9 @@ export interface Tag {
       does not say (CONTEXT: Dysphoria type). Surfaced via an info
       affordance rather than shown inline. */
   description?: string;
+  /** Own tags only: the name of the icon a person picked from tagIcons.ts,
+      absent for none. A built-in's icon is looked up by its id instead. */
+  icon?: string;
 }
 
 export interface TagGroup {

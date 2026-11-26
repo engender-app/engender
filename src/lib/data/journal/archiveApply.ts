@@ -448,16 +448,16 @@ export async function applyTagGroups(restoring: Restoring): Promise<void> {
       if (tagFate === 'keep') continue;
       if (tagFate === 'update') {
         await driver.run(
-          `UPDATE tag SET group_id = ?, label = ?, hidden = ?, order_index = ?, updated_at = ?
+          `UPDATE tag SET group_id = ?, label = ?, hidden = ?, icon = ?, order_index = ?, updated_at = ?
            WHERE COALESCE(key, uuid) = ?`,
-          [groupId, tag.label, flag(tag.hidden), tagIndex, stampOf(tag, ts), tag.id]
+          [groupId, tag.label, flag(tag.hidden), tag.builtIn ? null : (tag.icon ?? null), tagIndex, stampOf(tag, ts), tag.id]
         );
         continue;
       }
       const orderIndex = mode === 'replace' ? tagIndex : await nextTagOrderIndex(driver, groupId);
       await driver.run(
-        'INSERT INTO tag (uuid, key, group_id, label, hidden, order_index, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [tag.builtIn ? null : tag.id, tag.builtIn ? tag.id : null, groupId, tag.label, flag(tag.hidden), orderIndex, stampOf(tag, ts)]
+        'INSERT INTO tag (uuid, key, group_id, label, hidden, icon, order_index, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [tag.builtIn ? null : tag.id, tag.builtIn ? tag.id : null, groupId, tag.label, flag(tag.hidden), tag.builtIn ? null : (tag.icon ?? null), orderIndex, stampOf(tag, ts)]
       );
     }
   }
