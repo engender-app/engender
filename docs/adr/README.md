@@ -121,7 +121,7 @@ never written.
 - ADR-0075: colour lives in a field and in blocks and nowhere else; moved to DIRECTION.md, "Colour lives in a field and in blocks".
 - ADR-0076: preferences are chrome, one persistent control and not a hub row; merged into ADR-0084.
 - ADR-0077: mood's ramp runs between two hues and its face sits on a block; moved to DIRECTION.md, "The mood ramp".
-- ADR-0078: a state change moves unless its ticket says why not; moved to DIRECTION.md, "Motion brief".
+- ADR-0078: a state change moves unless its change says why not; moved to DIRECTION.md, "Motion brief".
 - ADR-0079: setup does not vary by disguise and offers it last; merged into ADR-0101.
 - ADR-0080: a state change inside one tab carries the field's blind (the step-by-step travel in `screen-transition`); never written as a record; DIRECTION.md, "A state change inside one tab carries the field's blind".
 - ADR-0081: a body region is one value on one scale, the midpoint never stored; moved to CONTEXT.md, "Body-region feeling".

@@ -90,6 +90,6 @@ section. The decision itself is 150 words or fewer, the record about 600 and
 colours, frame counts, or counts of areas, tables, sections or palettes.
 `tests/adr-citations.test.ts` holds the citations, the header block, the
 1,000-word ceiling, the tombstones and the rule that no tracked file links into
-`docs/internal` (the 150-word decision is the
-author's to keep, since no check can tell which paragraph is the decision); `tests/direction-citations.test.ts` holds every
-DIRECTION.md rule, decision and tier the code cites.
+`docs/internal`. The 150-word decision is the author's to keep, since no check
+can tell which paragraph is the decision. `tests/direction-citations.test.ts`
+holds every DIRECTION.md rule, decision and tier the code cites.

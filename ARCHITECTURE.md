@@ -44,8 +44,8 @@ without links. Public contributors can use the rules
 and implementation references in this guide; a change that needs additional
 decision context should include that context in its review description.
 
-[.gitignore](.gitignore) excludes `docs/internal/`, the maintainer notes. Public architecture and privacy policies live at the
-repository root. Copy-coverage data lives under `messages/`.
+[.gitignore](.gitignore) excludes `docs/internal/`, the maintainer's private
+notes. Public architecture and privacy policies live at the repository root. Copy-coverage data lives under `messages/`.
 
 </details>
 

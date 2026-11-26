@@ -96,7 +96,7 @@ prototype/
 mockup/
 
 # The briefs the agent skills read, and the config that routes them. Same rule as
-# docs/internal above: they are working documents rather than product, they change far more
+# the private docs at docs/internal: they are working documents rather than product, they change far more
 # often than the code they describe, and the repo is public - PRODUCT.md and
 # SCREENS.md in particular carry unshipped screen-by-screen plans.
 #
@@ -105,8 +105,8 @@ mockup/
 # a clone those references now point at a file that is not there. And impeccable's
 # context.mjs reads PRODUCT.md to resolve the platform, so on a clone it falls back to
 # treating the app as a website - a real failure mode this has already caused.
-# Both are accepted on the same trade the private docs already made: these live with whoever is
-# working on the app, not in the public tree.
+# Both are accepted: like docs/internal, these live with whoever is working on
+# the app, not in the public tree.
 PRODUCT.md
 SCREENS.md
 CONTEXT.md

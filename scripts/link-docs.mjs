@@ -20,9 +20,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, readlinkSync, rmSync, symlinkSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-const NAMES = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md', 'docs/internal'];
-// docs/internal links to the docs repo root; the others to the same-named file.
-const targetName = (name) => (name === 'docs/internal' ? '' : name);
+// Each link in this checkout, and what it points at inside the docs checkout.
+const LINKS = { 'CONTEXT.md': 'CONTEXT.md', 'PRODUCT.md': 'PRODUCT.md', 'SCREENS.md': 'SCREENS.md', 'DIRECTION.md': 'DIRECTION.md', 'docs/internal': '' };
 
 function git(cwd, ...args) {
   return execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -52,7 +51,7 @@ if (branchOf(docsRepo) !== 'main') {
 }
 
 // Refuse before creating anything, so a refusal leaves no docs worktree or branch behind.
-const blocked = NAMES.filter((name) => {
+const blocked = Object.keys(LINKS).filter((name) => {
   try { return !lstatSync(join(top, name)).isSymbolicLink(); } catch { return false; }
 });
 if (blocked.length) {
@@ -88,9 +87,9 @@ if (branch) {
 
 // Work out every link first, then make them, so nothing is half-linked.
 const plan = [];
-for (const name of NAMES) {
+for (const [name, target] of Object.entries(LINKS)) {
   const link = join(top, name);
-  const want = join(source, targetName(name));
+  const want = join(source, target);
   let stat = null;
   try { stat = lstatSync(link); } catch { /* absent */ }
   if (!stat) plan.push({ link, want, replace: false });

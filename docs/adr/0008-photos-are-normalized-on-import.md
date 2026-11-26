@@ -17,7 +17,7 @@ Names are opaque and resolved against a per-platform root, because an absolute O
 
 ## Consequences
 
-**Lossy and irreversible**, and it applies to photos whose purpose is showing small changes over years. Accepted deliberately against archives too large to export. A file over 32 MB or one the browser cannot decode (HEIC included) is refused with a message, not stored.
+**Lossy and irreversible**, and it applies to photos whose purpose is showing small changes over years. Accepted deliberately against archives too large to export. A file over 50 MB or one the browser cannot decode (HEIC included) is refused with a message, not stored.
 
 The guarantee is exact, not absolute: Chromium's canvas writes its own ICC colour profile into every JPEG it encodes. It is kept because deleting the segment means post-processing the JPEG, and colour would shift on viewers that assume sRGB. A profile can name a device on some cameras, so the browser tier proves where this one comes from (`tests/browser-tier/photos-probe.ts`): a source with its profile stripped comes back with one, so the encoder adds it, and a source with a forged profile comes back without it, so nothing is carried over.
 
