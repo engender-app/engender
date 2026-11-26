@@ -1654,7 +1654,11 @@
     min-height: var(--touch-target);
     padding: var(--space-2) var(--space-3);
     background: transparent;
-    border: 1px solid var(--outline);
+    /* The hairline is an inset shadow, not a border: a border keeps 2px of
+       height that collapse cannot take, so a closing fold stopped at 2px
+       and then vanished in one frame (item 81). */
+    border: 0;
+    box-shadow: inset 0 0 0 1px var(--outline);
     border-radius: var(--r-block);
     color: var(--text-2);
     font: inherit;
@@ -1666,7 +1670,6 @@
   .home-fold:hover,
   .home-fold:active {
     color: var(--text);
-    border-color: var(--outline);
   }
 
   /* Tier 3, change within a screen: the mark turns to point at what it has
