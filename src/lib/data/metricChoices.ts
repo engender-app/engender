@@ -42,3 +42,14 @@ export function nameInSentence(name: string): string {
   if (!first || (second && second !== second.toLocaleLowerCase() && second === second.toLocaleUpperCase())) return name;
   return first.toLocaleLowerCase() + name.slice(first.length);
 }
+
+/** The label for a scale's average over the period. Mood gets a phrase of
+    its own, "Średni nastrój", because Polish agrees the adjective with the
+    noun and a user's own scale has no known gender; every other scale keeps
+    the name-first pattern. `locale` is for tests. */
+export function averageLabel(metric: MetricChoice, locale?: 'en' | 'pl'): string {
+  const options = locale ? { locale } : undefined;
+  return metric.key === 'mood'
+    ? m.lookback_facts_average_mood({}, options)
+    : m.lookback_facts_average({ name: metric.name, nameInSentence: nameInSentence(metric.name) }, options);
+}
