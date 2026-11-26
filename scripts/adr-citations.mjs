@@ -110,6 +110,7 @@ const MD_LINK = /\]\(\s*<?([^)\s>]+)/g;
     @param {string} root @returns {string[]} */
 export function internalDocLinks(root) {
   const files = execFileSync('git', ['ls-files', '-z', '--', '*.md'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
+  /** @type {string[]} */
   const found = [];
   for (const file of files) {
     let text;
