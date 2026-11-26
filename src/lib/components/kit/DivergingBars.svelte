@@ -158,6 +158,9 @@
     margin-left: -1px;
     border-radius: 1px;
     background: var(--text-2);
+    /* Over the bars, not under: a bar starts at this line and would
+       otherwise cover it. */
+    z-index: 1;
   }
 
   /* The bar is always the group's longest run and is scaled down to its
