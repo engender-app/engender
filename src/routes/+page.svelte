@@ -1458,7 +1458,7 @@
        components.css); what stays here is the box that measures it. */
     color: var(--field-ink);
     padding: var(--space-4) var(--space-5) var(--space-4);
-    margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+    margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--screen-inset)) 0;
     overflow: hidden;
     /* The same bottom corners every other field has (rule 7: "the bottom
        corners are the one radius; the top corners meet the window's edge

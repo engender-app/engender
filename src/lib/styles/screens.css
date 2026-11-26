@@ -196,7 +196,7 @@
   display: flex; gap: var(--space-3);
   overflow-x: auto; padding-bottom: var(--space-2);
   scrollbar-width: none;
-  margin: 0 calc(-1 * var(--space-5)); padding-left: var(--space-5); padding-right: var(--space-5);
+  margin: 0 calc(-1 * var(--screen-inset)); padding-left: var(--screen-inset); padding-right: var(--screen-inset);
 }
 
 /* ---------- The day detail ----------
@@ -736,8 +736,8 @@
    scrolls clips on both axes and a block reaching past the content edge
    inside it would be cut. */
 .gate-page {
-  margin: 0 calc(-1 * var(--space-5));
-  padding: 0 var(--space-5) var(--space-5);
+  margin: 0 calc(-1 * var(--screen-inset));
+  padding: 0 var(--screen-inset) var(--space-5);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -900,7 +900,7 @@
      The field takes Today's width instead, and the page under it keeps the
      gate's own 420. */
   .screen-gate[data-gate-sun] > .gate { max-width: none; --blind-edge: var(--gate-sun-field); }
-  .screen-gate[data-gate-sun] .gate-field { margin: 0 calc(-1 * var(--space-5)); }
+  .screen-gate[data-gate-sun] .gate-field { margin: 0 calc(-1 * var(--screen-inset)); }
   .screen-gate[data-gate-sun] .step-field-ask {
     min-height: calc(var(--gate-sun-field) - var(--space-6) - var(--space-4));
   }

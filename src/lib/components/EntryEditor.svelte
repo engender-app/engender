@@ -2074,8 +2074,8 @@
   .entry-foot::before {
     content: '';
     position: absolute;
-    left: calc(-1 * var(--space-5));
-    right: calc(-1 * var(--space-5));
+    left: calc(-1 * var(--screen-inset));
+    right: calc(-1 * var(--screen-inset));
     bottom: calc(100% + var(--space-3) + 1px);
     height: var(--space-8);
     background: linear-gradient(to bottom, transparent, var(--bg));

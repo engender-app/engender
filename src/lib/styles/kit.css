@@ -218,6 +218,14 @@
   margin-top: var(--space-8);
 }
 
+/* And straight under the field it has no rule: the field's own edge already
+   says where the header ends, and a 3px line a breath under it was a second
+   edge (Alicja, bug session 18, item 33, on Settings' Wygląd). */
+.screen-header + .kit-heading {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .kit-heading h2,
 .kit-heading [role="heading"] {
   font-family: var(--font-display);

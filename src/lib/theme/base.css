@@ -297,6 +297,13 @@
      and keeps 20; a browser, where the inset is 0, gives back nothing and
      the fields sit where they always did. */
   --field-bleed-top: min(9px, max(0px, var(--inset-top) - var(--space-5)));
+  /* A screen's side inset: the content's distance from the field's edges.
+     20 on the phone, where the field meets the window and text needs room
+     from the glass; none on the desktop column (app.css), where the field
+     is a card and the content runs to its edges (Alicja, bug session 18,
+     item 32). Everything that bleeds out through the screen's padding
+     bleeds by this, so it lands on the column's edge either way. */
+  --screen-inset: var(--space-5);
 
   --focus-ring-width: 2px; /* the keyboard ring; the legibility boost thickens it */
   --touch-target: 48px;   /* Android's floor, which is the stricter of the two platforms this ships on */

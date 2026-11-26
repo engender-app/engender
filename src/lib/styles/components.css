@@ -149,7 +149,7 @@
      picks. The gate wears this same class and follows it; it has no sun,
      but a step machine and a gate arriving one after the other with
      different top edges would be a jump between them. */
-  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--screen-inset)) 0;
   padding: var(--space-2) var(--space-5) var(--space-4);
   color: var(--field-ink);
   /* The paint below is a window tall and absolutely positioned in this box,
@@ -285,7 +285,7 @@
    a browser, and every field takes it back. The reasoning and the floor
    that keeps it safe on a short bar are written at the token. */
 .screen > .screen-header > .screen-field {
-  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--screen-inset)) 0;
   padding: var(--space-8) var(--space-5) var(--space-4);
   min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
 }
@@ -316,8 +316,10 @@
      field above the title's cap line, a 16px thin glyph over 34px caps set
      at 800, so it read as a stray mark. Lowered 8px, its ink ends about 16px
      over the caps, near half their height, which ties it to the title as a
-     kicker; the field's own height is unchanged. */
-  top: var(--space-2);
+     kicker; the field's own height is unchanged. That came back as too close
+     to the title (bug session 18, item 43), so it sits halfway between: 4px
+     lowered, about 20px of field between its ink and the caps. */
+  top: var(--space-1);
 }
 /* A size up and a little heavier, so the arrow holds its own next to the
    title's weight: 28px with a 2.6px stroke, against the 24px and 2px of an
@@ -1745,7 +1747,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .tag-picker.is-rows .tag-group-name { margin-bottom: 0; }
 .tag-row-frame {
   position: relative;
-  margin-inline: calc(-1 * var(--space-5));
+  margin-inline: calc(-1 * var(--screen-inset));
 }
 .tag-picker.is-rows .tag-row {
   flex-wrap: nowrap;
