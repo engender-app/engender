@@ -227,10 +227,15 @@ async function run() {
         // What the editor will do with them at ticket 08: the bytes go
         // straight into normalize(), whatever the dialog called the files.
         const normalizedSizes = [];
-        for (const bytes of picked) normalizedSizes.push(await sizeOf((await normalizePhoto(bytes)).full));
+        let firstBytes: number[] = [];
+        for (const read of picked) {
+          const bytes = await read();
+          if (!firstBytes.length) firstBytes = [...bytes.slice(0, 4)];
+          normalizedSizes.push(await sizeOf((await normalizePhoto(bytes)).full));
+        }
         (window as unknown as { __pickerResult: unknown }).__pickerResult = {
           count: picked.length,
-          firstBytes: [...picked[0].slice(0, 4)],
+          firstBytes,
           normalizedSizes
         };
       })

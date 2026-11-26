@@ -34,6 +34,7 @@
 import './pdf-floor';
 import { CACHE_PDF_WORKER } from '../../pwa/pdf-worker-cache';
 import { THUMB_EDGE, THUMB_QUALITY } from '../photos/normalize';
+import { PDF_DOCUMENT_BUDGET } from '../media/budget';
 
 type PdfjsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 
@@ -106,7 +107,12 @@ export async function openPdf(bytes: Uint8Array): Promise<OpenPdf> {
       standardFontDataUrl: STANDARD_FONTS,
       disableFontFace: true,
       isEvalSupported: false,
-      useSystemFonts: false
+      useSystemFonts: false,
+      /* An image over the pixel budget is skipped rather than decoded, and
+         pdf.js's own canvases are capped (media/budget.ts): a PDF under
+         the 25 MB file ceiling can still declare an image of billions of
+         pixels. The page still draws without it. */
+      ...PDF_DOCUMENT_BUDGET
     }).promise;
   } catch (error) {
     // A file pdf.js refuses is the common case here, not an exceptional

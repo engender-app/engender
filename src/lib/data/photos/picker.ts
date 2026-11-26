@@ -19,11 +19,24 @@ import { PhotoChannelTimeoutError } from './channel-timeout';
 import { readPickedOverChannel } from './android-pick-channel';
 import { refuseLargePhoto, PhotoTooLargeError } from './limits';
 import { refuseAboveCeiling, refuseTooLarge } from '../documents/accept';
+import { MAX_PICK_COUNT, MediaBudgetError, refuseSelectionOverBudget } from '../media/budget';
 
 interface PhotoPicker {
   /** The bytes of everything the user chose, or an empty array if they
       backed out. Cancelling is an ordinary outcome, not an error. */
   pick(): Promise<Uint8Array[]>;
+}
+
+/** One chosen file's bytes, read when this is called and not before. */
+export type PickedBytes = () => Promise<Uint8Array>;
+
+interface PhotoSelectionPicker {
+  /** What the user chose, as one reader per file, or an empty array if they
+      backed out. Nothing is read until a reader is called, so a caller that
+      normalizes each photo before asking for the next holds one file's raw
+      bytes at a time, however many were picked (GD-019). `multiple: false`
+      asks the picker itself for one photo. */
+  pick(options?: { multiple?: boolean }): Promise<PickedBytes[]>;
 }
 
 // The fallback transport's own decode: a bridge response crosses as JSON,
@@ -106,6 +119,9 @@ async function pickOnAndroid<T>(call: () => Promise<T>, photo = false): Promise<
   try {
     return await call();
   } catch (error) {
+    if (error instanceof Error && error.message.includes('selection-too-large')) {
+      throw new MediaBudgetError('pick-selection', error.message);
+    }
     if (error instanceof Error && error.message.includes('too-large')) {
       if (photo) throw new PhotoTooLargeError();
       refuseTooLarge();
@@ -126,33 +142,41 @@ async function pickOneFile(...args: Parameters<typeof chooseFiles>): Promise<Uin
   return [new Uint8Array(await file.arrayBuffer())];
 }
 
-export function filePhotoPicker(): PhotoPicker {
+export function filePhotoPicker(): PhotoSelectionPicker {
   return {
-    async pick() {
+    async pick({ multiple = true } = {}) {
       if (isAndroid()) {
         return pickOnAndroid(async () => {
-          const { tokens } = await androidPhotos.pickImages({ multiple: true });
-          // One at a time rather than all at once: a multi-pick can be
-          // several files at the ceiling, and fetching them concurrently
-          // would hold every one of them in the heap together. The fallback
-          // transport needs it too now - PickedFiles keeps one chunked read
-          // open at a time, so a second token's first chunk ends the first
-          // file's read wherever it had got to (phase 9 audit ticket 14).
-          const picked: Uint8Array[] = [];
-          for (const token of tokens) picked.push(await androidPickedBytes(token));
-          return picked;
+          const { tokens } = await androidPhotos.pickImages({ multiple });
+          // The native side refuses an oversized selection too (PhotosPlugin
+          // pickedImages); this is the same count held on this side of the
+          // bridge, so an older shell cannot hand over more.
+          if (tokens.length > MAX_PICK_COUNT) {
+            throw new MediaBudgetError('pick-selection', `Selected ${tokens.length} files; the limit is ${MAX_PICK_COUNT}`);
+          }
+          // One reader per token, called one after another by the caller:
+          // a multi-pick can be several files at the ceiling, and fetching
+          // them concurrently would hold every one of them in the heap
+          // together. The fallback transport needs the same discipline -
+          // PickedFiles keeps one chunked read open at a time, so a second
+          // token's first chunk ends the first file's read wherever it had
+          // got to (phase 9 audit ticket 14).
+          // A read that hits the native stream limit still says too-large.
+          return tokens.map((token): PickedBytes => () => pickOnAndroid(() => androidPickedBytes(token), true));
         }, true);
       }
 
       // Whatever the OS decides matches "image/*", HEIC included: the bytes
       // still go through normalize(). An entry holds several photos, so one
       // trip through the dialog can bring back several.
-      const files = await chooseFiles('image/*', { multiple: true });
+      const files = await chooseFiles('image/*', { multiple });
       // Every file's size is checked before any of them is read, so one
       // oversized photo in a multi-pick refuses the batch before the others
-      // are read too - not partway through it.
+      // are read too - not partway through it. The count and the total are
+      // the same kind of check (media/budget.ts).
+      refuseSelectionOverBudget(files.map((file) => file.size));
       for (const file of files) refuseLargePhoto(file.size);
-      return Promise.all(files.map(async (file) => new Uint8Array(await file.arrayBuffer())));
+      return files.map((file): PickedBytes => async () => new Uint8Array(await file.arrayBuffer()));
     }
   };
 }

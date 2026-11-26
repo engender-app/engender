@@ -190,7 +190,7 @@ public final class PhotoPickChannel {
         byte[] buffer = new byte[8192];
         int read;
         while ((read = input.read(buffer)) != -1) {
-            if (read > 32 * 1024 * 1024 - collected.size()) {
+            if (read > 50 * 1024 * 1024 - collected.size()) {
                 throw new java.io.IOException("too-large");
             }
             collected.write(buffer, 0, read);

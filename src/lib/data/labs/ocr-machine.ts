@@ -8,6 +8,7 @@ import {
   type OcrReviewRow
 } from './ocr';
 import { epochDayFromDateInputValue } from '../epochDay';
+import { PhotoTooLargeError } from '../photos/limits';
 
 // ---------------------------------------------------------------------------
 // Adapter interfaces (seams for injection and testing)
@@ -159,6 +160,9 @@ export function createOcrMachine(
         attempt = null;
         if (isPermissionDenied(err)) {
           machine.state = { tag: 'permission-denied' };
+        } else if (err instanceof PhotoTooLargeError) {
+          // A file the app refuses to open is a page it could not read.
+          machine.state = { tag: 'recognition-failed' };
         } else {
           // Unexpected pick failure; go back to picking
           machine.state = { tag: 'picking' };

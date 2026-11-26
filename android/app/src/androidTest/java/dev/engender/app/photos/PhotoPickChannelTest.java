@@ -91,9 +91,47 @@ public class PhotoPickChannelTest {
         }
     }
 
+        /* How much heap a photo at the 50 MiB ceiling costs to read through the
+       channel path, logged as PEAK_HEAP_50MIB for the ticket and bounded at
+       four times the file: the stream collects, then copies once. */
+    @Test public void aPhotoAtTheCeilingReadsWithinFourTimesItsSize() throws Exception {
+        long ceiling = 50L * 1024 * 1024;
+        Runtime runtime = Runtime.getRuntime();
+        System.gc();
+        long before = runtime.totalMemory() - runtime.freeMemory();
+        java.util.concurrent.atomic.AtomicLong peak = new java.util.concurrent.atomic.AtomicLong(before);
+        java.util.concurrent.atomic.AtomicBoolean running = new java.util.concurrent.atomic.AtomicBoolean(true);
+        Thread sampler = new Thread(() -> {
+            while (running.get()) {
+                long used = runtime.totalMemory() - runtime.freeMemory();
+                if (used > peak.get()) peak.set(used);
+                try { Thread.sleep(2); } catch (InterruptedException e) { return; }
+            }
+        });
+        sampler.start();
+        java.io.InputStream stream = new java.io.InputStream() {
+            long remaining = ceiling;
+            public int read() { return remaining-- > 0 ? 0 : -1; }
+            public int read(byte[] buffer, int offset, int count) {
+                if (remaining <= 0) return -1;
+                int read = (int) Math.min(remaining, count);
+                remaining -= read;
+                return read;
+            }
+        };
+        byte[] bytes = PhotoPickChannel.readFully(PhotoPickChannel.limit(stream, ceiling));
+        running.set(false);
+        sampler.join();
+        long grew = peak.get() - before;
+        Log.i("PhotoPickChannelTest", "PEAK_HEAP_50MIB grew=" + grew + " bytes=" + bytes.length + " ratio=" + (double) grew / bytes.length);
+        assertEquals(ceiling, bytes.length);
+        assertTrue("peak heap " + grew, grew < 4 * ceiling);
+    }
+
+    /* The name predates the ceiling moving from 32 to 50 MiB; the progressive-release record cites it. */
     @Test public void aPhotoProviderCannotReadBeyond32MiB() throws Exception {
         java.io.InputStream oversized = new java.io.InputStream() {
-            int remaining = 32 * 1024 * 1024 + 1;
+            int remaining = 50 * 1024 * 1024 + 1;
             public int read() { return remaining-- > 0 ? 0 : -1; }
             public int read(byte[] buffer, int offset, int count) {
                 if (remaining == 0) return -1;
@@ -104,7 +142,7 @@ public class PhotoPickChannelTest {
         };
         try {
             PhotoPickChannel.readFully(oversized);
-            org.junit.Assert.fail("read exceeded 32 MiB");
+            org.junit.Assert.fail("read exceeded 50 MiB");
         } catch (java.io.IOException expected) {
             assertEquals("too-large", expected.getMessage());
         }

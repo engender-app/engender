@@ -12,6 +12,7 @@ vi.mock('./ocr-runtime', () => ({ loadOcrRuntime: async () => ({ createWorker })
 
 import { OCR_ASSET_PREFIX } from '../../pwa/ocr-assets.generated';
 import { tesseractLabOcrEngine } from './ocr-engine';
+import { pngHeader } from '../media/image-fixtures';
 
 describe('tesseractLabOcrEngine', () => {
   beforeEach(() => {
@@ -44,6 +45,22 @@ describe('tesseractLabOcrEngine', () => {
     const [passedImage] = recognize.mock.calls[0];
     expect(passedImage).toBeInstanceOf(Blob);
     expect(typeof passedImage).not.toBe('string');
+  });
+
+  /* GD-008: Tesseract decodes the image whole, so a tiny file declaring
+     65535 x 65535 pixels is refused before a worker exists. */
+  test('refuses an image declaring over-budget dimensions before Tesseract is loaded', async () => {
+    await expect(tesseractLabOcrEngine().recognize(pngHeader(65535, 65535))).rejects.toMatchObject({
+      name: 'MediaBudgetError',
+      kind: 'image-pixels'
+    });
+    expect(createWorker).not.toHaveBeenCalled();
+    expect(recognize).not.toHaveBeenCalled();
+  });
+
+  test('still reads a scan of a format whose header the budget cannot read', async () => {
+    await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
+    expect(recognize).toHaveBeenCalledTimes(1);
   });
 
   test('propagates initialization failure without a cache download request', async () => {

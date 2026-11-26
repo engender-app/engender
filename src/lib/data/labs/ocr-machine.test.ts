@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { createOcrMachine, type OcrImageSource, type OcrMachineState, type OcrRecognizer, type OcrSaver } from './ocr-machine';
+import { PhotoTooLargeError } from '../photos/limits';
 import { epochDayFromDateInputValue } from '../epochDay';
 import type { OcrReviewRow } from './ocr';
 
@@ -258,6 +259,21 @@ describe('OcrMachine – recognition-failed path', () => {
       recognizerThat('error'),
       saverWith()
     );
+    m.open();
+    await m.pickSource('gallery');
+    expect(m.state.tag).toBe('recognition-failed');
+  });
+
+  /* GD-008: a photo the app refuses to open is a photo it could not read,
+     which is what this state already says - not a silent return to the
+     picker, which would look like the pick did nothing. */
+  test('lands in recognition-failed when the picked image is refused as too big', async () => {
+    const refused: OcrImageSource = {
+      async pickImage() {
+        throw new PhotoTooLargeError();
+      }
+    };
+    const m = createOcrMachine(refused, recognizerThat(''), saverWith());
     m.open();
     await m.pickSource('gallery');
     expect(m.state.tag).toBe('recognition-failed');

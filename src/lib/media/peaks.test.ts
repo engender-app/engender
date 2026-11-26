@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { peaksFromSamples, peaksFor, forgetPeaks, barsAt, barCountFor, PEAK_BUCKETS } from './peaks.ts';
+import { peaksFromSamples, peaksFromChannels, peaksFor, forgetPeaks, barsAt, barCountFor, PEAK_BUCKETS } from './peaks.ts';
 
 /* The bars the waveform draws, and the promise that they are drawn once.
 
@@ -126,4 +126,14 @@ test('the bar count follows the width, between a floor and the buckets there are
   // Even a track squeezed to nothing draws something rather than collapsing.
   assert.equal(barCountFor(8), 8);
   assert.equal(barCountFor(0), 8);
+});
+
+test('peaks over channels equal the peaks of their mean, with no mean made', () => {
+  const left = Float32Array.from({ length: 1000 }, (_, i) => Math.sin(i / 7));
+  const right = Float32Array.from({ length: 1000 }, (_, i) => (i % 50 < 25 ? 0.5 : -0.2));
+  const mean = Float32Array.from(left, (v, i) => v / 2 + right[i] / 2);
+  const folded = peaksFromChannels([left, right], PEAK_BUCKETS);
+  const reference = peaksFromSamples(mean, PEAK_BUCKETS);
+  assert.equal(folded.length, reference.length);
+  folded.forEach((bar, i) => assert.ok(Math.abs(bar - reference[i]) < 1e-5, `bar ${i}`));
 });
