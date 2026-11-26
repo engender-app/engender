@@ -69,8 +69,7 @@
     changes,
     anchorEpochDay,
     todayEpochDay,
-    onOpen,
-    onRecord
+    onOpen
   }: {
     /** Only the changes that carry a marker, already joined to their
         catalogue entry by the screen: an axis of what somebody noticed has
@@ -81,7 +80,6 @@
     anchorEpochDay: number | null;
     todayEpochDay: number;
     onOpen: (key: string, kind: NoticedChangeKind) => void;
-    onRecord?: () => void;
   } = $props();
 
   let axis = $derived(noticedAxis(changes, anchorEpochDay, todayEpochDay));
@@ -186,11 +184,6 @@
 <div class="noticed-axis" data-noticed-axis in:wipe={{ authored: true }}>
   <div class="na-header">
     <p class="na-summary">{summary}</p>
-    {#if onRecord}
-      <button type="button" class="btn btn-soft press na-record-btn" data-record-change onclick={onRecord}>
-        <span>{m.effect_record_change()}</span>
-      </button>
-    {/if}
   </div>
 
   <!-- The uncovering above runs left to right across this too, so the line
@@ -271,10 +264,6 @@
 
   .na-summary {
     margin: 0;
-  }
-
-  .na-record-btn {
-    flex-shrink: 0;
   }
 
   .na-plot {

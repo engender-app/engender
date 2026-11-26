@@ -721,7 +721,6 @@
   "effect_orgasm_change": {"owner":39,"sources":["src/lib/data/vocabulary/labels.ts"]},
   "effect_pelvic_tilt_feminizing": {"owner":39,"sources":["src/lib/data/vocabulary/labels.ts"]},
   "effect_perspiration_pattern": {"owner":39,"sources":["src/lib/data/vocabulary/labels.ts"]},
-  "effect_record_change": {"owner":39,"sources":["src/lib/components/NoticedAxis.svelte"]},
   "effect_reduced_confidence_feminizing": {"owner":39,"sources":["src/lib/data/vocabulary/labels.ts"]},
   "effect_reduced_substance_tolerance_feminizing": {"owner":39,"sources":["src/lib/data/vocabulary/labels.ts"]},
   "effect_regimen_start_label": {"owner":39,"sources":["src/lib/components/EffectsTimeline.svelte"]},

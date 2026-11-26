@@ -41,39 +41,31 @@ describe('ticket 20: changes methodology disclosure and record action', () => {
       }
     });
 
-    it('defines explicit record a change action label in both languages', () => {
-      expect(en.effect_record_change).toBe('Record a change');
-      expect(pl.effect_record_change).toBe('Zapisz zmianę');
+    /* Bug session 18, item 64: a change of one's own is not called a side
+       effect, and it is added at the end of the list rather than from a
+       button over the timeline. */
+    it('names a change of your own without calling it a side effect', () => {
+      expect(en.effect_record_change).toBeUndefined();
+      expect(en.side_effect_add).toBe('Add a change of your own');
+      expect(pl.side_effect_add).toBe('Dodaj własną zmianę');
+      expect(en.side_effects).toBe('Your own changes');
+      expect(pl.side_effects).toBe('Twoje zmiany');
     });
   });
 
-  describe('NoticedAxis carries the explicit record action near the timeline', () => {
-    it('accepts onRecord callback prop', () => {
-      expect(noticedAxis).toContain('onRecord');
-    });
-
-    it('renders a labelled Record a change button with data-record-change', () => {
-      expect(noticedAxis).toContain('data-record-change');
-      expect(noticedAxis).toContain('m.effect_record_change()');
-      expect(noticedAxis).toContain('onclick={onRecord}');
-    });
-
-    it('groups the summary and record action before the plot', () => {
-      const summaryPos = noticedAxis.indexOf('{summary}');
-      const recordBtnPos = noticedAxis.indexOf('data-record-change');
-      const plotPos = noticedAxis.indexOf('class="na-plot"');
-
-      expect(summaryPos).toBeGreaterThan(-1);
-      expect(recordBtnPos).toBeGreaterThan(-1);
-      expect(plotPos).toBeGreaterThan(-1);
-      expect(summaryPos).toBeLessThan(plotPos);
-      expect(recordBtnPos).toBeLessThan(plotPos);
+  describe('NoticedAxis is the timeline only', () => {
+    it('carries no record button over the timeline', () => {
+      expect(noticedAxis).not.toContain('onRecord');
+      expect(noticedAxis).not.toContain('data-record-change');
+      expect(noticedAxis.indexOf('{summary}')).toBeLessThan(noticedAxis.indexOf('class="na-plot"'));
     });
   });
 
   describe('changes route connects record action and folds long methodology', () => {
-    it('wires onRecord on NoticedAxis to the side effect record editor', () => {
-      expect(changesRoute).toMatch(/<NoticedAxis[^>]*\bonRecord=\{[^}]*record\.openEditor/s);
+    it('ends the own-changes list with a row that adds one', () => {
+      const section = changesRoute.slice(changesRoute.indexOf('data-side-effects-section'));
+      expect(section).toMatch(/data-add-own-change[^>]*onclick=\{\(\) => record\.openEditor\(null\)\}/s);
+      expect(changesRoute).not.toMatch(/<NoticedAxis[^>]*\bonRecord=/s);
     });
 
     /** The page source between `{#if literatureOpen}` at `from` and its `{/if}`. */
