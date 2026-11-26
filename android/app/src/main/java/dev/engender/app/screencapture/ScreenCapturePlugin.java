@@ -80,15 +80,33 @@ public class ScreenCapturePlugin extends Plugin {
     }
 
     public static void applyWindowFlags(Activity activity, boolean allowed) {
-        boolean disguised = DisguiseAlias.isDisguised(activity);
+        applyWindowFlags(activity, allowed, DisguiseAlias.isDisguised(activity));
+    }
+
+    /** The last value handed to setRecentsScreenshotEnabled, which has no
+        getter. Read by device tests only. */
+    static volatile Boolean recentsScreenshotEnabled;
+
+    public static void applyWindowFlags(Activity activity, boolean allowed, boolean disguised) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            activity.setRecentsScreenshotEnabled(LeaveCover.recentsPreviewAllowed(recentsPreviewShown(allowed, disguised)));
+            boolean shown = LeaveCover.recentsPreviewAllowed(recentsPreviewShown(allowed, disguised));
+            recentsScreenshotEnabled = shown;
+            activity.setRecentsScreenshotEnabled(shown);
         }
         if (windowSecure(Build.VERSION.SDK_INT, allowed, disguised)) {
             activity.getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         } else {
             activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
         }
+    }
+
+    /** Called on the main thread by the disguise switch just before the
+        launcher identity flips. The window is given the state it is about to
+        have, so a snapshot taken from here on - including the one the system
+        takes as the process goes and comes back - is already the blank one,
+        rather than the journal under the new name. */
+    public static void coverForIdentityChange(Activity activity, boolean toDisguised) {
+        applyWindowFlags(activity, isAllowed(activity), toDisguised);
     }
 
     /** The reset path removes this device's capture choice. A fresh install

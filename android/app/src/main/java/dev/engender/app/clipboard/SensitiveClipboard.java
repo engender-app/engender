@@ -16,6 +16,9 @@ import android.util.Base64;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A clipboard copy that hides itself and then takes itself back.
@@ -151,13 +154,21 @@ public final class SensitiveClipboard {
             return;
         }
 
-        CharSequence onClipboard = clip.getItemCount() == 0 ? null : clip.getItemAt(0).getText();
-        if (!isWhatWeCopied(Base64.decode(digest, Base64.NO_WRAP), onClipboard)) {
+        if (!clearIfOurs(context, digest, clip)) {
             // Somebody has copied something since. It is not ours to clear.
             forget(context);
             return;
         }
+        forget(context);
+    }
 
+    /** Clears the clipboard when {@code clip} is what {@link #copy} put
+        there. False when it is something else, which is left untouched. */
+    private static boolean clearIfOurs(Context context, String digest, ClipData clip) {
+        CharSequence onClipboard = clip.getItemCount() == 0 ? null : clip.getItemAt(0).getText();
+        if (!isWhatWeCopied(Base64.decode(digest, Base64.NO_WRAP), onClipboard)) return false;
+
+        ClipboardManager clipboard = clipboardOf(context);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             clipboard.clearPrimaryClip();
         } else {
@@ -165,7 +176,7 @@ public final class SensitiveClipboard {
             // closest thing, and it replaces the key either way.
             clipboard.setPrimaryClip(sensitiveClip(""));
         }
-        forget(context);
+        return true;
     }
 
     /** Whether what is on the clipboard is the string {@code digest} was
@@ -189,17 +200,66 @@ public final class SensitiveClipboard {
     /** Drops the pending clear, having done it or found it was not ours. */
     static void forget(Context context) {
         prefs(context).edit().clear().apply();
+        cancelArmedClear();
+    }
+
+    private static void cancelArmedClear() {
         if (armedClear != null) {
             new Handler(Looper.getMainLooper()).removeCallbacks(armedClear);
             armedClear = null;
         }
     }
 
-    /** The reset path. What is here is a digest of something that
-        may still be on the clipboard, which is not the journal but is a
-        record the reset claims to have left nothing of. */
+    /** The reset path. The recovery key may still be on the clipboard, and
+        what is stored here is the only way to tell it from something copied
+        since, so it is used before it goes: the clipboard is cleared if it
+        still holds the key, left alone if it holds anything else, and then
+        the record and the armed timer are dropped. Reset runs with the app
+        in front, which is what lets Android answer the clipboard read. Without
+        focus the read is refused, nothing is cleared and nothing is guessed.
+
+        Runs on the main thread like everything else here; a caller on
+        another thread waits for it. */
     public static void wipe(Context context) {
-        prefs(context).edit().clear().commit();
+        Context appContext = context.getApplicationContext() != null ? context.getApplicationContext() : context;
+        try {
+            onMainThread(() -> {
+                String digest = prefs(appContext).getString(KEY_DIGEST, null);
+                if (digest == null) return;
+                ClipData clip = clipboardOf(appContext).getPrimaryClip();
+                if (clip != null) clearIfOurs(appContext, digest, clip);
+            });
+        } finally {
+            /* Whatever the read did, the record and the timer go: a reset
+               that throws here must not leave the digest behind. */
+            prefs(appContext).edit().clear().commit();
+            cancelArmedClear();
+        }
+    }
+
+    private static void onMainThread(Runnable work) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            work.run();
+            return;
+        }
+        CountDownLatch done = new CountDownLatch(1);
+        AtomicReference<RuntimeException> failure = new AtomicReference<>();
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                work.run();
+            } catch (RuntimeException e) {
+                failure.set(e);
+            } finally {
+                done.countDown();
+            }
+        });
+        try {
+            if (!done.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("the clipboard wipe did not run");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while wiping the clipboard", e);
+        }
+        if (failure.get() != null) throw failure.get();
     }
 
     private static ClipData sensitiveClip(String value) {

@@ -140,3 +140,34 @@ describe('deleting a reminder, from its editor on Android', () => {
     expect(detail).toMatch(/offerUndo\([\s\S]*detail\.discard\(\)[\s\S]*replaceRoute\('\/settings\/reminders'\)/);
   });
 });
+
+describe('the old reminder copy the phone could not lock (GD-031)', () => {
+  /* A reminders payload written by an older build is rewrapped on first read.
+     When that fails the native side stops scheduling from it, and this screen
+     is the only place that says so and offers the two ways out. */
+  const bridge = read('src/lib/reminders/android-bridge.ts');
+  const plugin = read('android/app/src/main/java/dev/engender/app/reminders/RemindersPlugin.java');
+
+  it('shows a notice with a retry and a separate erase while the copy is unprotected', () => {
+    const notice = listMarkup.slice(listMarkup.indexOf("status.storedCopy === 'unprotected'"));
+    expect(notice).toContain('key="reminders-copy-unprotected"');
+    expect(notice).toMatch(/action=\{\{ label: m\.read_retry\(\), onclick: retryStoredCopy \}\}/);
+    expect(notice).toContain('key="reminders-copy-erase"');
+    expect(notice).toMatch(/onclick: eraseStoredCopy/);
+  });
+
+  it('asks the native side to retry and to erase, then syncs again', () => {
+    expect(list).toContain('androidReminders.retryStoredCopy()');
+    expect(list).toContain('androidReminders.eraseStoredCopy()');
+    expect(list.match(/resyncReminderSchedules\(\)/g)?.length).toBe(2);
+  });
+
+  it('is the bridge and the plugin that carry it', () => {
+    expect(bridge).toContain('retryStoredCopy(): Promise<void>');
+    expect(bridge).toContain('eraseStoredCopy(): Promise<void>');
+    expect(bridge).toContain("storedCopy?: 'ok' | 'unprotected'");
+    expect(plugin).toMatch(/@PluginMethod\s+public void retryStoredCopy/);
+    expect(plugin).toMatch(/@PluginMethod\s+public void eraseStoredCopy/);
+    expect(plugin).toContain('"storedCopy"');
+  });
+});

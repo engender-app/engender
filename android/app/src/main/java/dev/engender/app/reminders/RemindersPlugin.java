@@ -67,8 +67,27 @@ public class RemindersPlugin extends Plugin {
             payload.put("texts", textObject);
 
             ensureChannels(textObject);
-            ReminderScheduler.saveAndSchedule(getContext(), payload);
-            CheckInFaces.reconcile(getContext(), payload);
+            ReminderScheduler.applySync(getContext(), payload);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    @PluginMethod
+    public void retryStoredCopy(PluginCall call) {
+        try {
+            ReminderScheduler.retryStoredCopy(getContext());
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    @PluginMethod
+    public void eraseStoredCopy(PluginCall call) {
+        try {
+            ReminderScheduler.eraseStoredCopy(getContext());
             call.resolve();
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -206,6 +225,8 @@ public class RemindersPlugin extends Plugin {
             AlarmManager alarmManager = (AlarmManager) getContext().getSystemService(Context.ALARM_SERVICE);
             status.put("exactAlarms", alarmManager != null && alarmManager.canScheduleExactAlarms() ? "granted" : "denied");
         }
+
+        status.put("storedCopy", ReminderPayloadStore.legacyCopyPending(getContext()) ? "unprotected" : "ok");
 
         return status;
     }

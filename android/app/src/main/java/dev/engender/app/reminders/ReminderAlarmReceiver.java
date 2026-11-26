@@ -134,13 +134,31 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setSilent(true)
             .setAutoCancel(true)
             .setTimeoutAfter(8000)
+            .addExtras(noted())
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, routeFor(reminder), "reminder:" + reminderId, 1))
             .build();
         manager.notify("reminder:" + reminderId, 7000, noted);
     }
 
+    /** Marks the quiet "Noted" line a dose button leaves, so the sync can tell
+        it from a reminder. Not the timeout: Android 17 gives every
+        notification a default one. */
+    static final String EXTRA_NOTED = "gd_dose_noted";
+
+    private static android.os.Bundle noted() {
+        android.os.Bundle extras = new android.os.Bundle();
+        extras.putBoolean(EXTRA_NOTED, true);
+        return extras;
+    }
+
     static void postReminderNotification(Context context, JSONObject payload, JSONObject reminder) {
+        postReminderNotification(context, payload, reminder, false);
+    }
+
+    /** {@code replacing} is a repost of one that was in the shade: it must
+        not buzz, light the screen or heads-up a second time. */
+    static void postReminderNotification(Context context, JSONObject payload, JSONObject reminder, boolean replacing) {
         if (!notificationsAllowed(context)) return;
 
         String title = resolveNotificationTitle(payload, reminder);
@@ -154,6 +172,8 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOnlyAlertOnce(replacing)
+            .setSilent(replacing)
             .setAutoCancel(true)
             /* Audit finding F-05, corrected by a later audit pass:
                VISIBILITY_PRIVATE does not hide this title on a lock

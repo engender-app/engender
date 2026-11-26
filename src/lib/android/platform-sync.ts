@@ -289,6 +289,12 @@ const syncReminderSchedules = coalescing(
   (error) => console.error('Could not sync Android reminder schedules', error)
 );
 
+/** Runs the reminder sync now, for a caller that has just changed what the
+    phone holds (the old-copy retry and erase on the reminders screen). */
+export function resyncReminderSchedules(): void {
+  void syncReminderSchedules();
+}
+
 const reconcileStockRunOutReminders = coalescing(
   async () => {
     if (!active) return;

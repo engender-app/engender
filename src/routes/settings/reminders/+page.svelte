@@ -23,6 +23,7 @@
   import { collapse, disclose } from '$lib/motion/reveal';
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
   import { watchStatus } from '$lib/permissions/watchStatus';
+  import { resyncReminderSchedules } from '$lib/android/platform-sync';
 
   let reminders = liveList((j) => j.reminders.getReminders());
   /* What a medication reminder reminds about comes from its regimen and
@@ -56,6 +57,28 @@
       await androidReminders.requestExactAlarmPermission();
     } catch (error) {
       console.error('Could not request exact alarm permission', error);
+    }
+    await statusWatch?.refresh();
+  }
+
+  /* An old plaintext copy the phone could not lock (GD-031). Both ways out
+     end in a resync, so reminders come back as soon as the copy is gone. */
+  async function retryStoredCopy() {
+    try {
+      await androidReminders.retryStoredCopy();
+      resyncReminderSchedules();
+    } catch (error) {
+      console.error('Could not lock the old reminder copy', error);
+    }
+    await statusWatch?.refresh();
+  }
+
+  async function eraseStoredCopy() {
+    try {
+      await androidReminders.eraseStoredCopy();
+      resyncReminderSchedules();
+    } catch (error) {
+      console.error('Could not erase the old reminder copy', error);
     }
     await statusWatch?.refresh();
   }
@@ -217,6 +240,22 @@
         action={{ label: m.read_retry(), onclick: () => void statusWatch?.refresh() }}
       />
     {:else}
+    {#if status.storedCopy === 'unprotected'}
+      <Notice
+        icon="alert"
+        key="reminders-copy-unprotected"
+        title={m.rem_copy_unprotected_title()}
+        text={m.rem_copy_unprotected_body()}
+        action={{ label: m.read_retry(), onclick: retryStoredCopy }}
+      />
+      <Notice
+        icon="alert"
+        key="reminders-copy-erase"
+        title={m.rem_copy_erase_title()}
+        text={m.rem_copy_erase_body()}
+        action={{ label: m.rem_copy_erase_action(), onclick: eraseStoredCopy }}
+      />
+    {/if}
     {#if status.notifications === 'denied'}
       <Notice
         icon="alert"
