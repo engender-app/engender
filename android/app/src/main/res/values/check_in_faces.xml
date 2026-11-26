@@ -2,7 +2,7 @@
 <!-- The check-in notification's five faces,
      in the mood ramp's default preset, teal, on the trans palette: the
      literals of palettes.css's [data-mood-preset="teal"][data-theme="light"]
-     and the inks ADR-0091 picked for each step (steps 1 to 3 take the
+     and each step’s contrasting ink (steps 1 to 3 take the
      palette's text colour). A notification is drawn by the system, which
      knows nothing of the person's palette or preset, so these are fixed.
      values-night holds the dark ramp; the system picks between them when it
