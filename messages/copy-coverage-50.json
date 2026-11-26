@@ -1035,6 +1035,7 @@
   "hub_sub_effects": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
   "hub_sub_hair_progress": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
   "hub_sub_hair_removal": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
+  "hub_sub_milestones": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
   "hub_sub_letters": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
   "hub_sub_photos": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
   "hub_sub_roadmap": {"owner":39,"sources":["src/lib/data/vocabulary/hubLabels.ts"]},
