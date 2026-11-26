@@ -121,3 +121,22 @@ describe('the notifications master switch, on the reminders screen', () => {
     expect(off).toContain("href: '/settings/notifications'");
   });
 });
+
+describe('deleting a reminder, from its editor on Android', () => {
+  it('offers Delete on a stored reminder the person made, and never on a new one', () => {
+    expect(detailMarkup).toMatch(/\{#if !detail\.isNew && detail\.record && !detail\.record\.autoSource\}[\s\S]*data-delete-reminder/);
+    expect(detailMarkup.match(/data-delete-reminder/g)?.length).toBe(1);
+  });
+
+  it('asks first, with the shared confirm sheet and the undo hint', () => {
+    expect(detailMarkup).toContain('<ConfirmDeleteSheet');
+    expect(detailMarkup).toContain('m.rem_delete_q(');
+    expect(detailMarkup).toContain('m.delete_undo_hint()');
+  });
+
+  it('deletes undoably, offers Undo and goes back to the list', () => {
+    expect(detail).toMatch(/undoable\(\(j\) => j\.reminders\.deleteReminder\(/);
+    expect(detail).toContain('offerUndo(');
+    expect(detail).toMatch(/offerUndo\([\s\S]*detail\.discard\(\)[\s\S]*replaceRoute\('\/settings\/reminders'\)/);
+  });
+});

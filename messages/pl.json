@@ -2562,6 +2562,8 @@
   "rem_battery_link": "Otwórz ustawienia baterii",
   "rem_battery_title": "Przypomnienia i oszczędzanie baterii",
   "rem_default_name": "Przypomnienie",
+  "rem_delete_q": "Usunąć „{title}”?",
+  "rem_delete_sheet": "Usuń przypomnienie",
   "rem_dose_noted": "Zapisano. Trafi do dziennika przy następnym otwarciu aplikacji.",
   "rem_dose_of_day": "Dawka {index} z {count} na dzień",
   "rem_dose_taken": "Przyjęto",

@@ -27,7 +27,10 @@
   import { roleAt } from '$lib/theme/roles';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { journalTextAutocomplete } from '$lib/platform';
-  import { writer } from '$lib/stores/attempt.svelte';
+  import { deleter, writer } from '$lib/stores/attempt.svelte';
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
 
   /* What the segmented control offers; the stored rule is reminderRule.ts's
@@ -108,6 +111,23 @@
     // The baseline moves first, or the guard would hold the save's own exit.
     detail.commit();
     toast(m.saved(), { kind: 'record-saved' });
+    await replaceRoute('/settings/reminders');
+  }
+
+  /* Only a reminder the person made can be deleted here: one the app manages
+     (stock, wear, schedule) is rebuilt by its owner, so the editor offers
+     none. The sheet stays up until the row is gone. */
+  let confirmingDelete = $state(false);
+  const removing = deleter();
+  async function deleteReminder() {
+    const id = detail.record?.id;
+    if (!id) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.reminders.deleteReminder(id)); }))) return;
+    confirmingDelete = false;
+    offerUndo(deletion!, m.record_deleted());
+    // Deleting answered the question an unsaved edit would have asked.
+    detail.discard();
     await replaceRoute('/settings/reminders');
   }
 </script>
@@ -204,12 +224,34 @@
     </div>
   </div>
 
+  {#if !detail.isNew && detail.record && !detail.record.autoSource}
+    <button class="btn btn-ghost press" data-delete-reminder onclick={() => (confirmingDelete = true)}>
+      <span>{m.rem_delete_sheet()}</span>
+    </button>
+  {/if}
+
   <SaveBar>
     <button class="btn btn-primary" data-save disabled={saving.busy} onclick={saveReminder}>
       <Icon name="check" size={20} /><span>{m.rem_save()}</span>
     </button>
   </SaveBar>
   </div>
+
+  {#if detail.record}
+    <ConfirmDeleteSheet
+      open={confirmingDelete}
+      title={m.rem_delete_sheet()}
+      question={m.rem_delete_q({ title: detail.record.title })}
+      hint={m.delete_undo_hint()}
+      confirmLabel={m.delete()}
+      cancelLabel={m.keep_it()}
+      confirmAttrs={{ 'data-confirm-delete-reminder': '' }}
+      onConfirm={deleteReminder}
+      onCancel={() => { confirmingDelete = false; removing.dismiss(); }}
+      busy={removing.busy}
+      failed={removing.failed}
+    />
+  {/if}
   {/if}
 </div>
 
