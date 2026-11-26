@@ -52,8 +52,21 @@ export const BUILT_IN_TAG_GROUPS = [
     ]
   },
   {
+    // The first six are the emotion tags every journal has carried since
+    // phase 1, kept in their places. Pre-release-human 22 added the rest:
+    // `e-angry` as a sixth family and the finer words EMOTION_FAMILIES
+    // below files under each.
     key: 'emotions',
-    tags: ['e-happy', 'e-calm', 'e-anxious', 'e-sad', 'e-hopeful', 'e-tired']
+    tags: [
+      'e-happy', 'e-calm', 'e-anxious', 'e-sad', 'e-hopeful', 'e-tired',
+      'e-angry',
+      'e-proud', 'e-grateful', 'e-excited', 'e-close',
+      'e-content', 'e-relieved', 'e-safe', 'e-grounded',
+      'e-worried', 'e-overwhelmed', 'e-restless', 'e-panicky',
+      'e-lonely', 'e-disappointed', 'e-hurt', 'e-ashamed', 'e-empty',
+      'e-frustrated', 'e-irritated', 'e-resentful', 'e-furious',
+      'e-drained', 'e-numb', 'e-bored', 'e-unmotivated'
+    ]
   },
   {
     key: 'activities',
@@ -78,6 +91,22 @@ export const BUILT_IN_TAG_GROUPS = [
     key: 'dysphoria_type',
     tags: ['dt-physical', 'dt-biochemical', 'dt-social', 'dt-societal', 'dt-sexual', 'dt-presentational', 'dt-existential']
   }
+] as const;
+
+/* Emotion families (pre-release-human 22). A family is an ordinary emotion
+   tag that, on the marks step, opens the finer words filed under it; picking
+   a finer word picks its family too, so a family's count in stats includes
+   its finer days. Five of the six families are the phase 1 emotion tags, so
+   an older entry's tags keep their meaning; `e-hopeful` was one of those and
+   is a finer word under happy now, still the same tag. Order here is the
+   order the step shows them. */
+export const EMOTION_FAMILIES = [
+  { key: 'e-happy', finer: ['e-hopeful', 'e-proud', 'e-grateful', 'e-excited', 'e-close'] },
+  { key: 'e-calm', finer: ['e-content', 'e-relieved', 'e-safe', 'e-grounded'] },
+  { key: 'e-anxious', finer: ['e-worried', 'e-overwhelmed', 'e-restless', 'e-panicky'] },
+  { key: 'e-sad', finer: ['e-lonely', 'e-disappointed', 'e-hurt', 'e-ashamed', 'e-empty'] },
+  { key: 'e-angry', finer: ['e-frustrated', 'e-irritated', 'e-resentful', 'e-furious'] },
+  { key: 'e-tired', finer: ['e-drained', 'e-numb', 'e-bored', 'e-unmotivated'] }
 ] as const;
 
 export type BuiltInTagGroupKey = (typeof BUILT_IN_TAG_GROUPS)[number]['key'];
