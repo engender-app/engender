@@ -1613,18 +1613,21 @@ try {
    cannot drift apart again without failing here. */
 await flow('tag insight sheet range', async () => {
 try {
-  /* The merged tag card is a reading of its own since phase 11 ticket 07,
-     and draws as paired dots (redesign ticket 05): the row's note names
-     its scale first and then its count. */
+  /* The tag card draws diverging bars grouped by scale since ticket 20:
+     a row's note reads "5,0 with · 3,4 without · 3 entries", so the
+     count is the note's last number. */
   await fresh('/stats/tags');
-  const bar = page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first();
+  const bar = page.locator('[data-chart-card="tags-moved"] [data-div-row]').first();
   await bar.waitFor();
-  const note = await bar.locator('[data-paired-note]').textContent();
-  const claimed = Number((note ?? '').match(/(\d+) /)?.[1]);
+  const note = await bar.locator('[data-div-note]').textContent();
+  const claimed = Number((note ?? '').match(/(\d+)\D*$/)?.[1]);
   if (!claimed) throw new Error('tag row has no entry count: ' + note);
 
   await bar.click();
   await page.waitForSelector('[data-sheet]');
+  if (!(await page.locator('[data-sheet] [data-insight-sheet-range]').textContent())?.trim()) {
+    throw new Error('the tag sheet does not say which range its entries come from');
+  }
   await page.waitForSelector('[data-sheet] [data-entry-card]');
   const cards = await page.locator('[data-sheet] [data-entry-card]').count();
   const capped = await page.locator('[data-insight-sheet-capped]').count();
@@ -1698,7 +1701,7 @@ try {
 await flow('tag insight entries', async () => {
 try {
   await fresh('/stats/tags');
-  await page.locator('[data-chart-card="tags-moved"] [data-paired-row]').first().click();
+  await page.locator('[data-chart-card="tags-moved"] [data-div-row]').first().click();
   /* The sheet, and then the entries in it: the read behind them is its own
      query, so the card can arrive a frame after the sheet does. */
   await page.waitForSelector('[data-sheet] [data-entry-card]');
