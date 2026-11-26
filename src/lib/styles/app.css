@@ -244,13 +244,10 @@ body {
      in one frame. `.return-foot` says the same thing for the same reason
      ("opaque, or the rows scroll through it").
 
-     The ground is the page's, so nothing here is a surface (rule 4): what
-     the hairline marks is where the column ends, which is what rule 12's
-     foot is - "pinned to the bottom edge above a hairline". The app draws
-     this foot twice already, in setup and on the return moment, and both
-     draw the line. */
+     The ground is the page's, so nothing here is a surface (rule 4). No
+     hairline over it since bug session 18 (item 84): Alicja found the line
+     clutter, and the foot's buttons already say where the column ends. */
   background: var(--bg);
-  border-top: 1px solid var(--hairline);
 }
 .app-savebar .btn { width: 100%; }
 .savebar-row {

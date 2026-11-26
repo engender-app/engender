@@ -2031,7 +2031,7 @@
      rules still win where they set a margin. */
   :global(.entry-step > *) { margin-bottom: var(--space-5); }
   :global(.entry-step > .kit-heading) { margin-bottom: var(--space-3); }
-  /* The foot draws its own edge, so the last block needs only a breath
+  /* The foot marks its own edge, so the last block needs only a breath
      above it rather than the screen's 20 (ticket 09). */
   :global(.entry-step > :last-child) { margin-bottom: var(--space-2); }
   /* The heading on the field, stacked the same way for the length of a
@@ -2050,9 +2050,9 @@
     gap: var(--space-2);
   }
   /* More of the step below the foot (ticket 09): the page's colour rises
-     over the last of the step at the foot's hairline, and fades away once
-     the step is scrolled to its end. Above the foot's own top padding and
-     hairline, across the column's whole width. */
+     over the last of the step at the foot's top edge, and fades away once
+     the step is scrolled to its end. Above the foot's own top padding,
+     across the column's whole width. */
   .entry-foot::before {
     content: '';
     position: absolute;
@@ -2066,9 +2066,6 @@
     transition: opacity var(--dur-fast) var(--ease-out);
   }
   .entry-foot:global([data-more-end])::before { opacity: 1; }
-  /* No hairline over this foot (bug session 18, item 84): the fade above
-     marks where the step continues, and the line read as clutter. */
-  :global(.app-savebar:has(> .entry-foot)) { border-top: 0; }
   .entry-foot .btn { width: 100%; }
   /* Two equal halves, so the finish control keeps its box while the way
      on's word changes from step to step: sized to its word, the way on
