@@ -13,7 +13,7 @@
      m.app_name(). A chosen name can identify someone to a person
      who sees the lock screen.
 
-     Arrival is immediate on boot and lock. The field edge travels
+     Arrival is a cut on every gate. The field edge travels
      on later state changes. Keep controls, status and the exit under the field.
      Only that region can scroll. */
 
