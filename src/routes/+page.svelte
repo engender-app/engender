@@ -95,7 +95,7 @@
   } from '$lib/data/stockProjection';
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { attempt, writer } from '$lib/stores/attempt.svelte';
+  import { attempt } from '$lib/stores/attempt.svelte';
   import { collapse, disclose, markScreenArrival, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
 
@@ -708,7 +708,6 @@
     agendaExpanded = false;
     letterDismissSheetOpen = false;
     stockDismissSheetOpen = false;
-    tallyConfirmOpen = false;
     editing = false;
     arrived = false;
     decided.clear();
@@ -1334,41 +1333,6 @@
           }}
         >
           <span>{m.tile_letter_dont_show_btn()}</span>
-        </button>
-      </div>
-    </div>
-  </Sheet>
-
-  <!-- The tally a link or the widget proposed (GD-037, GD-011): named
-       with its day, and written only from the Log button. Kept mounted
-       with its last kind after it closes, so the words do not change
-       under the sheet while it slides away. -->
-  <Sheet
-    open={tallyConfirmOpen}
-    title={tallyWords.name}
-    onClose={() => (tallyConfirmOpen = false)}
-    busy={tallyWrite.busy}
-  >
-    <div data-tally-confirm>
-      <SectionHeading text={tallyWords.name} />
-      <p class="muted" style="margin-bottom:var(--space-4)">{m.tally_confirm_day({ date: fmtDay(today, { day: 'numeric', month: 'long' }) })}</p>
-      <div class="stack-3">
-        <button
-          class="btn btn-primary btn-block"
-          data-tally-confirm-log
-          disabled={tallyWrite.busy}
-          aria-busy={tallyWrite.busy}
-          onclick={logProposedTally}
-        >
-          <span>{tallyWords.log}</span>
-        </button>
-        <button
-          class="btn btn-ghost btn-block"
-          data-tally-confirm-cancel
-          disabled={tallyWrite.busy}
-          onclick={() => (tallyConfirmOpen = false)}
-        >
-          <span>{m.cancel()}</span>
         </button>
       </div>
     </div>

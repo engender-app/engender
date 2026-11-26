@@ -376,7 +376,6 @@ const scalarDomainRefusals: [string, (journal: ArchiveJournal) => void][] = [
   ['entry day past the future bound', (j) => { j.entries[0].epochDay = todayEpochDay() + FUTURE_BOUND + 1; }],
   ['milestone day extreme', (j) => { j.milestones[0].epochDay = -100_000_000; }],
   ['era start extreme', (j) => { j.eras[0].startEpochDay = -100_000_000; }],
-  ['tally day extreme', (j) => { j.tallyEvents[0].epochDay = -100_000_000; }],
   ['side-effect day extreme', (j) => { j.sideEffects[0].epochDay = -100_000_000; }],
   ['side-effect resolved day past the bound', (j) => { j.sideEffects[0].resolvedEpochDay = 2 ** 40; }],
   ['taper start extreme', (j) => { j.taper[0].startEpochDay = 2 ** 52; }],
