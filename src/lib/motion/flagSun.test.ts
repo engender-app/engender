@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { DISGUISED_PALETTE } from '../data/prefs/catalogue.ts';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -16,6 +17,9 @@ function realPalettes(): Record<string, string[]> {
   for (const match of css.matchAll(/\[data-palette="([^"]+)"\]\s*\{\s*--motif-stripes:\s*([^;]+);/g)) {
     out[match[1]] = parseMotifStripes(match[2]);
   }
+  /* Not a flag: the disguised gate's neutral palette, which draws no sun
+     (security-scan ticket 08). */
+  delete out[DISGUISED_PALETTE];
   return out;
 }
 

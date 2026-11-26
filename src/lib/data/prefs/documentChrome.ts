@@ -19,6 +19,7 @@
    Rune-free on purpose: the layout holds the reactivity, this holds the
    rule, and a node test can call it. */
 
+import { DISGUISED_PALETTE } from './catalogue.ts';
 import type { BootPreferences } from './preferences.ts';
 
 /** The boot preferences the document actually wears - the subset both
@@ -56,9 +57,19 @@ export interface DocumentChrome {
   manifest: string;
 }
 
-export function documentChrome(prefs: ChromePreferences, system: SystemPreferences): DocumentChrome {
+/** `journalShown`: the journal is on screen, not a gate, a splash or a
+    boot still under way. The pre-paint script only ever runs before that,
+    so it is the layout alone that passes true. */
+export function documentChrome(
+  prefs: ChromePreferences,
+  system: SystemPreferences,
+  journalShown = false
+): DocumentChrome {
   return {
-    palette: prefs.palette,
+    /* Disguised, nothing before the journal shows wears the person's flag
+       (security-scan ticket 08, GD-043): a gate is the screen most likely
+       to be seen by someone else, and the flag names who holds the phone. */
+    palette: prefs.disguise && !journalShown ? DISGUISED_PALETTE : prefs.palette,
     moodPreset: prefs.moodPreset,
     /* `system` is a stored value and not an attribute: the document only
        ever carries a resolved light or dark. */

@@ -344,6 +344,13 @@ export interface PreferenceValues {
       read state finally travels with a backup. The shape and its rules are
       data/acknowledgements.ts's. */
   acknowledgements: Acknowledgements;
+  /** The height each screen's late block last rested at, by slot
+      (data/homeReserve.ts), so its next visit holds that room. Home's own
+      three stay in localStorage for its first frame; these name screens
+      (dilation, doses, wear), so they live behind the journal's key
+      (security-scan ticket 08). Device-local: a height belongs to this
+      screen size. */
+  layoutReserves: Record<string, number>;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -408,8 +415,14 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   adherenceRegimenPick: null,
   pinnedRows: null,
   onboardingAreas: null,
-  acknowledgements: { snoozes: {}, readLetterIds: [], greetedLetterIds: [], hasEntries: null }
+  acknowledgements: { snoozes: {}, readLetterIds: [], greetedLetterIds: [], hasEntries: null },
+  layoutReserves: {}
 };
+
+/** What a disguised journal wears before it unlocks, in the boot mirror and
+    on every gate: palettes.css's neutral `notes`, not a flag (security-scan
+    ticket 08, GD-043). Never a value of `palette` itself. */
+export const DISGUISED_PALETTE = 'notes';
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
 export const PORTABLE_KEYS = [
@@ -482,7 +495,8 @@ export const DEVICE_LOCAL_KEYS = [
   'spanRailHintDismissed',
   'comingBackSeenSince',
   'clinicianSummaryDrugExcluded',
-  'adherenceRegimenPick'
+  'adherenceRegimenPick',
+  'layoutReserves'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Mirrored outside SQLite because it is needed before the database opens

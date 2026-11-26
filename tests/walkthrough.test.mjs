@@ -3598,11 +3598,12 @@ try {
     const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
     return boot.theme === 'dark' && boot.disguise === true;
   });
-  /* While disguised the plaintext mirror names the default palette, never
-     the person's flag (functional audit ticket 45); the real one stays in
-     the journal and is worn once the app is open. */
+  /* While disguised the plaintext mirror names the neutral notes palette,
+     never a flag, not even the default one (functional audit ticket 45,
+     security-scan ticket 08); the real one stays in the journal and is worn
+     once the app is open. */
   const mirrored = await page.evaluate(() => JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}').palette);
-  if (mirrored !== 'trans') throw new Error('the disguised boot mirror names the flag: ' + mirrored);
+  if (mirrored !== 'notes') throw new Error('the disguised boot mirror names the flag: ' + mirrored);
 
   /* Records the first time anything writes data-theme or the tab icon, and
      whether <body> existed yet. The pre-paint script sits in <head>, so it
@@ -3629,7 +3630,7 @@ try {
   await page.reload({ waitUntil: 'networkidle' });
 
   const first = await page.evaluate(() => window.__firstStamp);
-  if (first?.theme !== 'dark' || first?.palette !== 'trans' || first.hadBody) {
+  if (first?.theme !== 'dark' || first?.palette !== 'notes' || first.hadBody) {
     throw new Error('first stamp on <html>: ' + JSON.stringify(first));
   }
   await page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian', null, { timeout: 10000 });

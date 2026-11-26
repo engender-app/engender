@@ -38,7 +38,7 @@ import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { shouldSweepOrphans } from '../data/sqlite/orphan-sweep-schedule';
-import { attachJournal, journalIsClosing, journalIsOpen } from '../data/live/journal.svelte';
+import { attachJournal, journalIsClosing, journalIsOpen, journalSessionEnded } from '../data/live/journal.svelte';
 import { sessionDriver } from '../data/live/sessionDriver';
 import { bump } from '../data/live/tableVersions.svelte';
 import { observeWrites, tablesWrittenBy } from '../data/live/writes';
@@ -81,6 +81,7 @@ import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences, type Preferences } from '../data/prefs/preferences';
 import { migrateLegacyAcknowledgements } from '../data/acknowledgements';
+import { foldLegacyReserves } from '../data/homeReserve';
 import { activateLanguagePreference, applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
 import { beginSessionUnlock, isLocked, markUnlocked } from './lock.svelte';
 import { UnlockCancelledError } from '../lock/unlock-attempt';
@@ -291,6 +292,9 @@ export function closeJournalForLock(): Promise<void> {
      locked screen's to keep. */
   forgetJournalContent();
   if (android) return Promise.resolve();
+  /* Before anything waits: a change made from here on was made at the
+     locked screen and is refused, not queued for the next unlock. */
+  journalSessionEnded();
   forgetReference();
   /* Published now as well as when the lock's turn comes: a lock can wait
      behind a reopen still under way, and the boot machine has to treat the
@@ -450,11 +454,12 @@ let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
 
 /** Functional audit ticket 45: the tile snoozes, letter ids and entries hint
-    older builds kept in plaintext localStorage move into the encrypted
-    `acknowledgements` preference on the first unlock. Awaits the handle's own
-    write, which rejects on failure, rather than the reactive setter, which
-    logs and carries on - the plaintext keys are deleted only after it lands.
-    Runs before attach so the projection starts from the merged value. */
+    (and since security-scan ticket 08 the stock notice snooze) older builds
+    kept in plaintext localStorage move into the encrypted `acknowledgements`
+    preference on the first unlock. Awaits the handle's own write, which
+    rejects on failure, rather than the reactive setter, which logs and
+    carries on - the plaintext keys are deleted only after it lands. Runs
+    before attach so the projection starts from the merged value. */
 async function moveLegacyAcknowledgements(preferences: Preferences): Promise<void> {
   let storage: Storage | null = null;
   try {
@@ -465,6 +470,17 @@ async function moveLegacyAcknowledgements(preferences: Preferences): Promise<voi
   await migrateLegacyAcknowledgements(storage, preferences.get('acknowledgements'), (next) =>
     preferences.set('acknowledgements', next)
   );
+  /* And the screens' held heights, which named the screens (security-scan
+     ticket 08). Same order: the keys go only once the write has landed. */
+  if (!storage) return;
+  try {
+    const { next, keys } = foldLegacyReserves(storage, preferences.get('layoutReserves'));
+    if (keys.length === 0) return;
+    await preferences.set('layoutReserves', next);
+    for (const key of keys) storage.removeItem(key);
+  } catch (error) {
+    console.error('Could not move the screen heights into the journal', error);
+  }
 }
 
 /* Where each kind of reset lands, read by resetApp below. */

@@ -11,7 +11,7 @@ import type { ChromeCase } from './fixtures/documentChromeCase.ts';
 describe('documentChrome against the shared fixture', () => {
   for (const testCase of fixture as ChromeCase[]) {
     it(testCase.name, () => {
-      expect(documentChrome(testCase.prefs, testCase.system)).toEqual(testCase.expected);
+      expect(documentChrome(testCase.prefs, testCase.system, testCase.journalShown)).toEqual(testCase.expected);
     });
   }
 });

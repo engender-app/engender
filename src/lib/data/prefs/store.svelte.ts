@@ -20,7 +20,9 @@
      2. attachPreferences() lands the real values from SQLite.
      3. Writes go straight through. */
 
+import { untrack } from 'svelte';
 import { getLocale, setLocale } from '$lib/paraglide/runtime';
+import { useReserveStore } from '../homeReserve';
 import { PREFERENCE_DEFAULTS, isPreferenceKey, type PreferenceKey, type PreferenceValues } from './catalogue';
 import type { BootPreferences, Preferences } from './preferences';
 
@@ -256,3 +258,13 @@ export async function attachPreferences(preferences: Preferences) {
   // The journal has it now, and reads it back on every later boot.
   setHeldLanguage(null);
 }
+
+/* The screens' held heights (data/homeReserve.ts) are a preference, so
+   they are read here. Untracked: a screen reads its height once as it
+   mounts, and remembering a new one must not re-run whatever read it. */
+useReserveStore({
+  read: () => untrack(() => values.layoutReserves),
+  write: (next) => {
+    prefs.layoutReserves = next;
+  }
+});

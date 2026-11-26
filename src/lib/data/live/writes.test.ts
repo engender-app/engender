@@ -8,7 +8,7 @@ import { journalWithBuiltIns } from '../journal/test-support.ts';
 import type { Journal } from '../journal/journal.ts';
 import { journalIsBusy, prepareJournalHandover } from '../journal-busy.ts';
 import { startOfDayTimestamp } from '../epochDay.ts';
-import { JOURNAL_WIDE, observeWrites, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
+import { JOURNAL_WIDE, isJournalCommand, observeWrites, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
 import { COMPOSING_READS } from './test-support/composing-reads.ts';
 
 async function observed() {
@@ -553,4 +553,10 @@ test('a rejected public journal write cancels handover without changing its erro
   const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'Recovered draft' });
   assert.equal((await journal.entries.getEntry(id))?.note, 'Recovered draft');
   assert.equal(await retry(() => { reloaded = true; }), true);
+});
+
+test('a write is a command for the session gate, a read is not (security-scan ticket 08)', () => {
+  assert.equal(isJournalCommand('tally', 'log'), true);
+  assert.equal(isJournalCommand('wearSessions', 'getRunningSession'), false);
+  assert.equal(isJournalCommand('noSuchArea', 'log'), false);
 });

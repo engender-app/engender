@@ -837,3 +837,32 @@ describe('the legibility boost', () => {
     expect(literal, 'a focus ring with its width written out ignores the boost').toBe('');
   });
 });
+
+/* Security-scan ticket 08 (GD-043): the neutral palette a disguised journal
+   wears until it unlocks. Not in PALETTES, which is the person's choices, so
+   held to the same floors here: text on every surface, accent-coloured text,
+   and the primary button's ink on its accent. */
+describe('the disguised palette', () => {
+  it('meets the text, accent-ink and button floors in both themes', () => {
+    const percent = accentMixPercent('accent-ink');
+    const onAccent = { light: '#FFFFFF', dark: '#101820' } as const;
+    for (const theme of THEMES) {
+      const t = tokenMap('notes', theme);
+      for (const surface of ['bg', 'surface', 'surface-2']) {
+        expect(contrast(t.text, t[surface]), `notes/${theme} text on ${surface}`).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(t['text-2'], t[surface]), `notes/${theme} text-2 on ${surface}`).toBeGreaterThanOrEqual(3);
+        const ink = colorMixOklab(t.accent, percent, t.text);
+        expect(contrast(ink, t[surface]), `notes/${theme} accent-ink on ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrast(onAccent[theme], t.accent), `notes/${theme} on-accent on accent`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('carries no colour of any flag', () => {
+    for (const theme of THEMES) {
+      for (const [token, value] of Object.entries(tokenMap('notes', theme))) {
+        expect(chromaOf(value), `notes/${theme} --${token} ${value}`).toBeLessThan(0.04);
+      }
+    }
+  });
+});

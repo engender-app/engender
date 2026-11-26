@@ -88,6 +88,14 @@ export function withSnooze(ack: Acknowledgements, tileKey: string, untilMs: numb
   return { ...ack, snoozes };
 }
 
+/** The snoozes still running at `nowMs`. The same value back when none has
+    ended, so a caller can tell there is nothing to write. */
+export function withoutEndedSnoozes(ack: Acknowledgements, nowMs: number): Acknowledgements {
+  const running = Object.entries(ack.snoozes).filter(([, until]) => until > nowMs);
+  if (running.length === Object.keys(ack.snoozes).length) return ack;
+  return { ...ack, snoozes: Object.fromEntries(running) };
+}
+
 export function withoutSnooze(ack: Acknowledgements, tileKey: string): Acknowledgements {
   if (!(tileKey in ack.snoozes)) return ack;
   const snoozes = { ...ack.snoozes };
@@ -116,6 +124,10 @@ const LEGACY_GREETED_KEY = 'engender-greeted-letter-ids';
 const LEGACY_HAS_ENTRIES_KEY = 'engender-has-entries';
 const LEGACY_LETTER_SNOOZE_KEY = 'letter_tile_snooze_until';
 const LEGACY_SNOOZE_PREFIX = 'engender-tile-snooze-';
+/* Home's low-stock notice kept its snooze apart from the tiles', under two
+   names (audit finding S3 renamed it); it is the `stock-notice` tile's
+   snooze now (security-scan ticket 08). */
+const LEGACY_STOCK_SNOOZE_KEYS = ['engender-stock-notice-snooze-until', 'stock_notice_snooze_until'];
 
 type LegacyStorage = Pick<Storage, 'getItem' | 'removeItem' | 'key' | 'length'>;
 
@@ -129,6 +141,7 @@ function legacyKeys(storage: LegacyStorage): string[] {
         key === LEGACY_GREETED_KEY ||
         key === LEGACY_HAS_ENTRIES_KEY ||
         key === LEGACY_LETTER_SNOOZE_KEY ||
+        LEGACY_STOCK_SNOOZE_KEYS.includes(key) ||
         key.startsWith(LEGACY_SNOOZE_PREFIX))
     ) {
       found.push(key);
@@ -148,11 +161,12 @@ function parseIds(raw: string | null): string[] {
 /** What the old keys held, folded into `current`. Values already in
     `current` win where a fact has a single answer (a snooze deadline, the
     entries hint); id lists are unions, because a letter read on either side
-    stays read. */
+    stays read. A snooze that had already ended by `nowMs` is not carried. */
 export function foldLegacyAcknowledgements(
   current: Acknowledgements,
   storage: Pick<Storage, 'getItem'>,
-  keys: readonly string[]
+  keys: readonly string[],
+  nowMs: number = Date.now()
 ): Acknowledgements {
   const snoozes: Record<string, number> = { ...current.snoozes };
   const legacy: Record<string, unknown> = {};
@@ -166,9 +180,14 @@ export function foldLegacyAcknowledgements(
     else if (key === LEGACY_HAS_ENTRIES_KEY) {
       if (hasEntries === null) hasEntries = raw === '1' ? true : raw === '0' ? false : null;
     } else {
-      const tile = key === LEGACY_LETTER_SNOOZE_KEY ? 'ready-letter' : key.slice(LEGACY_SNOOZE_PREFIX.length);
+      const tile =
+        key === LEGACY_LETTER_SNOOZE_KEY
+          ? 'ready-letter'
+          : LEGACY_STOCK_SNOOZE_KEYS.includes(key)
+            ? 'stock-notice'
+            : key.slice(LEGACY_SNOOZE_PREFIX.length);
       const until = raw === null || raw === '' ? NaN : Number(raw);
-      if (Number.isFinite(until) && !(tile in snoozes)) legacy[tile] = until;
+      if (Number.isFinite(until) && until > nowMs && !(tile in snoozes)) legacy[tile] = until;
     }
   }
   return sanitizeAcknowledgements({
@@ -180,31 +199,33 @@ export function foldLegacyAcknowledgements(
 }
 
 /** First unlock after the upgrade: move the plaintext values into the
-    encrypted preference, then delete them.
+    encrypted preference, then delete them. Every unlock also drops the
+    snoozes that have ended since, so the map holds only running ones.
 
     `persist` must reject when the write did not land. The reactive setters
     swallow a failed write and log it, so a migration that deleted the old
     keys after one of those would lose the person's read letters on a full
     disk. The keys stay when it rejects, and the next unlock tries again.
-    Nothing is deleted when there was nothing to move. */
+    Nothing is written when there was nothing to move or drop. */
 export async function migrateLegacyAcknowledgements(
   storage: LegacyStorage | null,
   current: Acknowledgements,
-  persist: (next: Acknowledgements) => Promise<void>
+  persist: (next: Acknowledgements) => Promise<void>,
+  nowMs: number = Date.now()
 ): Promise<boolean> {
-  if (!storage) return false;
-  let keys: string[];
+  let keys: string[] = [];
   try {
-    keys = legacyKeys(storage);
-    if (keys.length === 0) return false;
-    await persist(foldLegacyAcknowledgements(current, storage, keys));
+    if (storage) keys = legacyKeys(storage);
+    const running = withoutEndedSnoozes(current, nowMs);
+    if (keys.length === 0 && running === current) return false;
+    await persist(storage && keys.length > 0 ? foldLegacyAcknowledgements(running, storage, keys, nowMs) : running);
   } catch (error) {
     console.error('Could not move the acknowledgements into the journal', error);
     return false;
   }
   for (const key of keys) {
     try {
-      storage.removeItem(key);
+      storage?.removeItem(key);
     } catch {
       /* A key that will not go is carried over again, harmlessly, next time. */
     }

@@ -106,7 +106,7 @@ function stamp(
 }
 
 describe("app.html's pre-paint script against the shared fixture", () => {
-  for (const testCase of fixture as ChromeCase[]) {
+  for (const testCase of (fixture as ChromeCase[]).filter((one) => !one.journalShown)) {
     it(testCase.name, () => {
       const stamped = stamp(testCase.prefs, testCase.system);
       /* Read back by the expected object's own keys, so a stamp added to

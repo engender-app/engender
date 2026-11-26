@@ -19,6 +19,7 @@ import type { PortablePreferences } from '../archive/payload';
 import { portablePreferencePatch } from './portableShape';
 import {
   BOOT_KEYS,
+  DISGUISED_PALETTE,
   PREFERENCE_DEFAULTS,
   isPreferenceKey,
   type BootKey,
@@ -77,11 +78,11 @@ function bootSubset(values: PreferenceValues): BootPreferences {
     boot[key] = values[key] as never;
   }
   /* The mirror is plaintext and the first paint and the lock screen read
-     it, so while the journal is disguised it names the default palette and
-     not the person's own flag (functional audit ticket 45). The real choice
-     stays in the table, and the mirror is rewritten with it the moment
-     disguise goes off. */
-  if (boot.disguise) boot.palette = PREFERENCE_DEFAULTS.palette;
+     it, so while the journal is disguised it names no flag at all, not
+     even the default one, which is a flag too (functional audit ticket 45,
+     then security-scan ticket 08). The real choice stays in the table, and
+     the mirror is rewritten with it the moment disguise goes off. */
+  if (boot.disguise) boot.palette = DISGUISED_PALETTE;
   return boot;
 }
 

@@ -49,6 +49,11 @@ function palettes() {
   for (const m of css.matchAll(/\[data-palette="([a-z]+)"\]\s*\{\s*--motif-stripes:\s*([^;]+);/g)) {
     out[m[1]] = m[2].split(',').map((s) => s.trim());
   }
+  /* `notes` is the disguised gate's neutral palette (DISGUISED_PALETTE,
+     security-scan ticket 08), not a flag: it has no mark and no launcher
+     alias, and favicon-notes.svg is the hand-drawn decoy icon, which a mark
+     rendered here would overwrite. */
+  delete out.notes;
   return out;
 }
 

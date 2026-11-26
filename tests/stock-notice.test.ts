@@ -21,6 +21,7 @@ import {
 import type { MedicationStock } from '../src/lib/data/types.ts';
 import { UNPROMPTED_ROWS } from '../src/lib/unprompted/registry.ts';
 import { NO_COST } from '../src/lib/data/cost.ts';
+import { NO_ACKNOWLEDGEMENTS, type AcknowledgementStore, type Acknowledgements } from '../src/lib/data/acknowledgements.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -31,27 +32,6 @@ const care = read('src/routes/care/+page.svelte');
 const enMessages = JSON.parse(read('messages/en.json'));
 const plMessages = JSON.parse(read('messages/pl.json'));
 
-class MemoryStorage implements Storage {
-  private store = new Map<string, string>();
-  get length(): number {
-    return this.store.size;
-  }
-  clear(): void {
-    this.store.clear();
-  }
-  getItem(key: string): string | null {
-    return this.store.get(key) ?? null;
-  }
-  key(index: number): string | null {
-    return Array.from(this.store.keys())[index] ?? null;
-  }
-  removeItem(key: string): void {
-    this.store.delete(key);
-  }
-  setItem(key: string, value: string): void {
-    this.store.set(key, value);
-  }
-}
 
 describe('Stock projection and depletion logic (ticket 02)', () => {
   const TODAY = 20000;
@@ -181,23 +161,24 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
   });
 
   it('manages 24-hour snooze suppression and restores after 24 hours', () => {
-    const storage = new MemoryStorage();
+    let value: Acknowledgements = NO_ACKNOWLEDGEMENTS;
+    const store: AcknowledgementStore = { read: () => value, write: (next) => (value = next) };
     const now = 1700000000000;
 
-    expect(isStockNoticeSnoozed(now, storage)).toBe(false);
+    expect(isStockNoticeSnoozed(store, now)).toBe(false);
 
-    snoozeStockNotice(now, storage);
-    expect(isStockNoticeSnoozed(now, storage)).toBe(true);
-    expect(isStockNoticeSnoozed(now + 12 * 3600_000, storage)).toBe(true);
-    expect(isStockNoticeSnoozed(now + 24 * 3600_000 - 100, storage)).toBe(true);
+    snoozeStockNotice(store, now);
+    expect(isStockNoticeSnoozed(store, now)).toBe(true);
+    expect(isStockNoticeSnoozed(store, now + 12 * 3600_000)).toBe(true);
+    expect(isStockNoticeSnoozed(store, now + 24 * 3600_000 - 100)).toBe(true);
 
     // After 24h, snooze expires
-    expect(isStockNoticeSnoozed(now + 24 * 3600_000 + 1, storage)).toBe(false);
+    expect(isStockNoticeSnoozed(store, now + 24 * 3600_000 + 1)).toBe(false);
 
     // Explicit clear
-    snoozeStockNotice(now, storage);
-    clearStockNoticeSnooze(storage);
-    expect(isStockNoticeSnoozed(now, storage)).toBe(false);
+    snoozeStockNotice(store, now);
+    clearStockNoticeSnooze(store);
+    expect(isStockNoticeSnoozed(store, now)).toBe(false);
   });
 });
 
@@ -220,7 +201,7 @@ describe('Home stock notice rendering and interaction', () => {
     expect(homeMarkup).toContain('data-stock-dismiss-sheet');
     expect(homeMarkup).toContain('data-stock-snooze');
     expect(homeMarkup).toContain('data-stock-dont-show');
-    expect(home).toContain('snoozeStockNotice()');
+    expect(home).toContain('snoozeStockNotice(acknowledgementStore)');
     expect(home).toContain("withSurface(prefs.surfaceOverrides, 'stock-notice', false)");
   });
 });

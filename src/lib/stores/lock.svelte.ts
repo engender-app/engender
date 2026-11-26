@@ -77,11 +77,10 @@ function lockNow(closeJournal: () => Promise<void>) {
      answers go with the lock, so the first visit after unlocking reads
      fresh (lastResults.ts, ux-carpet 201). */
   forgetLastResults();
-  /* Quick add is a layout-level sibling of the gate chain, not below it, so
-     its own open flag is the only thing keeping it up. Locking is neither a
-     navigation nor an Escape - the fan's two other ways down - and closing
-     it here is cheaper than moving quick add inside the chain it would
-     otherwise hide behind (phase 8 audit ticket 08). */
+  /* Quick add is a layout-level sibling of the gate chain, not below it.
+     The layout unmounts it while locked (security-scan ticket 08), and the
+     flag is closed too, so it comes back closed after the unlock rather
+     than open on whatever it was showing (phase 8 audit ticket 08). */
   ui.chooserOpen = false;
   /* After the flag, so the gate is already drawn over the journal while the
      database waits for its last save and closes. A close that fails leaves

@@ -1084,6 +1084,15 @@ export function tablesWrittenBy(area: string, operation: string): TableName[] {
   return tables;
 }
 
+/** Whether an area's operation changes the journal: a classified write.
+    The journal-wide operations all do, and the facade marks those itself.
+    The facade hands this to the
+    session gate, which refuses a change made after a lock rather than
+    queueing it for whoever unlocks next (security-scan ticket 08). */
+export function isJournalCommand(area: string, operation: string): boolean {
+  return BY_NAME[area]?.writes[operation] !== undefined;
+}
+
 /** The tables one classified read depends on, for the caller this half of the
     registry exists for: `liveQuery` resolves a query's dependencies from the
     operations its closure called, so no screen declares a table (phase 5

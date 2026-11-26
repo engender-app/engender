@@ -9,5 +9,8 @@ export interface ChromeCase {
   why?: string;
   prefs: ChromePreferences;
   system: SystemPreferences;
+  /** The layout's half only: the journal is on screen. The pre-paint script
+      runs before that, so its test leaves these cases out. */
+  journalShown?: boolean;
   expected: DocumentChrome;
 }

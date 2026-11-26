@@ -62,12 +62,20 @@
     "why": "The manifest is the installed app's identity and the icon is the tab's, and they are the two stamps that have to be right in the same parse tick as first paint - a flag in the tab strip for as long as boot takes, or an install started in that window taking the app's real name with it, are both the disguise failing (F24).",
     "prefs": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSizeBoost": false, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": true },
     "system": { "prefersDark": false, "prefersReducedMotion": false },
-    "expected": { "palette": "trans", "moodPreset": "teal", "theme": "light", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon-notes.svg", "manifest": "manifest-notes.webmanifest" }
+    "expected": { "palette": "notes", "moodPreset": "teal", "theme": "light", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon-notes.svg", "manifest": "manifest-notes.webmanifest" }
   },
   {
     "name": "the disguise on a dark system, with everything else moved too",
     "prefs": { "palette": "lesbian", "moodPreset": "moss", "theme": "system", "a11yTextSizeBoost": true, "a11yLegibilityBoost": false, "a11yMotionReduce": true, "disguise": true },
     "system": { "prefersDark": true, "prefersReducedMotion": false },
+    "expected": { "palette": "notes", "moodPreset": "moss", "theme": "dark", "a11yTextSize": "boost", "a11yLegibility": "normal", "a11yMotion": "reduce", "icon": "favicon-notes.svg", "manifest": "manifest-notes.webmanifest" }
+  },
+  {
+    "name": "the disguise wears the person's own palette once the journal is on screen",
+    "why": "Security-scan ticket 08 (GD-043): before the journal shows, a disguised document wears the neutral notes palette, in the mirror and on every gate. The flag comes back with the journal, inside the unlock's own transition.",
+    "prefs": { "palette": "lesbian", "moodPreset": "moss", "theme": "system", "a11yTextSizeBoost": true, "a11yLegibilityBoost": false, "a11yMotionReduce": true, "disguise": true },
+    "system": { "prefersDark": true, "prefersReducedMotion": false },
+    "journalShown": true,
     "expected": { "palette": "lesbian", "moodPreset": "moss", "theme": "dark", "a11yTextSize": "boost", "a11yLegibility": "normal", "a11yMotion": "reduce", "icon": "favicon-notes.svg", "manifest": "manifest-notes.webmanifest" }
   }
 ]

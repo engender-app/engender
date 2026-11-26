@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { sessionGate } from './sessionGate.ts';
+import { SessionClosedError, sessionGate } from './sessionGate.ts';
 
 const settled = <T>(promise: Promise<T>) =>
   Promise.race([promise.then(() => true, () => true), new Promise<boolean>((r) => setTimeout(() => r(false), 10))]);
@@ -89,4 +89,57 @@ test('a queued call counts as in flight once it starts, so the next lock waits f
   finish();
   await locking;
   assert.equal(await queued, 'done');
+});
+
+/* Security-scan ticket 08 (GD-040): a write made after a lock was queued
+   and ran against the next session, so a tap on quick add in the lock's
+   first frame landed once the owner unlocked. */
+test('a command made after a lock ended its session is rejected and never reaches the next one', async () => {
+  const gate = sessionGate<string>();
+  gate.open('first session');
+  gate.end();
+  await gate.close();
+  const ran: string[] = [];
+  const late = gate.run((value) => void ran.push(value), { command: true });
+  await assert.rejects(late, SessionClosedError);
+  gate.open('second session');
+  await Promise.resolve();
+  assert.deepEqual(ran, []);
+});
+
+test('a read made while locked still waits for the next session', async () => {
+  const gate = sessionGate<string>();
+  gate.open('first session');
+  gate.end();
+  await gate.close();
+  const read = gate.run((value) => `read from ${value}`);
+  gate.open('second session');
+  assert.equal(await read, 'read from second session');
+});
+
+test('a command made before the first session opens waits for it, as boot needs', async () => {
+  const gate = sessionGate<string>();
+  const early = gate.run((value) => `saved to ${value}`, { command: true });
+  gate.open('first session');
+  assert.equal(await early, 'saved to first session');
+});
+
+test('a close that is not a lock ends nothing: a command made then waits for the reopen', async () => {
+  /* The page put away for the back/forward cache closes the gate too. */
+  const gate = sessionGate<string>();
+  gate.open('before the page was put away');
+  await gate.close();
+  const save = gate.run((value) => `saved to ${value}`, { command: true });
+  gate.open('after it came back');
+  assert.equal(await save, 'saved to after it came back');
+});
+
+test('the lock refuses commands from the instant it ends the session, before the close has run', async () => {
+  const gate = sessionGate<string>();
+  gate.open('journal');
+  gate.end();
+  assert.equal(gate.current, null);
+  await assert.rejects(gate.run(() => 'late', { command: true }), SessionClosedError);
+  gate.open('next');
+  assert.equal(await gate.run((value) => value, { command: true }), 'next');
 });

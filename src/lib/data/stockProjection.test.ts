@@ -16,6 +16,12 @@ import {
 } from './stockProjection';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import type { DoseEvent, RegimenEpisode } from './types';
+import { NO_ACKNOWLEDGEMENTS, type AcknowledgementStore, type Acknowledgements } from './acknowledgements';
+
+function memoryAcknowledgements(): AcknowledgementStore {
+  let value: Acknowledgements = NO_ACKNOWLEDGEMENTS;
+  return { read: () => value, write: (next) => (value = next) };
+}
 
 const DAY_0 = 20000;
 
@@ -226,27 +232,6 @@ test('a stock entry younger than the trailing window is not padded with days bef
   assert.equal(projection.dailyRate, 1);
 });
 
-class MockStorage implements Storage {
-  private data = new Map<string, string>();
-  get length() {
-    return this.data.size;
-  }
-  clear() {
-    this.data.clear();
-  }
-  getItem(key: string) {
-    return this.data.get(key) ?? null;
-  }
-  key(index: number) {
-    return Array.from(this.data.keys())[index] ?? null;
-  }
-  removeItem(key: string) {
-    this.data.delete(key);
-  }
-  setItem(key: string, value: string) {
-    this.data.set(key, value);
-  }
-}
 
 test('isStockDepletingSoon returns true when runOutEpochDay is within threshold (<= 7 days)', () => {
   const asOf = DAY_0 + 10;
@@ -379,39 +364,33 @@ test('depletingStocks gates and sorts on reorderByEpochDay when a row carries on
 });
 
 test('snoozeStockNotice suppresses notice for 24 hours and expires afterwards', () => {
-  const storage = new MockStorage();
+  const store = memoryAcknowledgements();
   const now = 1700000000000;
 
-  assert.equal(isStockNoticeSnoozed(now, storage), false);
+  assert.equal(isStockNoticeSnoozed(store, now), false);
 
-  snoozeStockNotice(now, storage);
-  assert.equal(isStockNoticeSnoozed(now, storage), true);
-  assert.equal(isStockNoticeSnoozed(now + 12 * 3600_000, storage), true);
-  assert.equal(isStockNoticeSnoozed(now + 24 * 3600_000 - 100, storage), true);
+  snoozeStockNotice(store, now);
+  assert.equal(isStockNoticeSnoozed(store, now), true);
+  assert.equal(isStockNoticeSnoozed(store, now + 12 * 3600_000), true);
+  assert.equal(isStockNoticeSnoozed(store, now + 24 * 3600_000 - 100), true);
 
   // 24 hours elapsed -> un-snoozed
-  assert.equal(isStockNoticeSnoozed(now + 24 * 3600_000 + 1, storage), false);
+  assert.equal(isStockNoticeSnoozed(store, now + 24 * 3600_000 + 1), false);
 
   // Clear snooze
-  snoozeStockNotice(now, storage);
-  assert.equal(isStockNoticeSnoozed(now, storage), true);
-  clearStockNoticeSnooze(storage);
-  assert.equal(isStockNoticeSnoozed(now, storage), false);
+  snoozeStockNotice(store, now);
+  assert.equal(isStockNoticeSnoozed(store, now), true);
+  clearStockNoticeSnooze(store);
+  assert.equal(isStockNoticeSnoozed(store, now), false);
 });
 
-test('a snooze written under the pre-rename key still reads as snoozed, migrated onto the engender- key', () => {
-  /* Audit finding S3: the key used to be stock_notice_snooze_until,
-     unprefixed, so a reset's engender- sweep left it behind. Renaming it
-     must not also throw away a snooze someone already set. */
-  const storage = new MockStorage();
-  const now = 1700000000000;
-  storage.setItem('stock_notice_snooze_until', String(now + 3600_000));
-
-  assert.equal(isStockNoticeSnoozed(now, storage), true);
-  assert.equal(storage.getItem('stock_notice_snooze_until'), null);
-  assert.equal(storage.getItem('engender-stock-notice-snooze-until'), String(now + 3600_000));
+test('the snooze is the stock-notice tile in the acknowledgements, not a key of its own', () => {
+  /* Security-scan ticket 08: it used to be a plaintext localStorage key;
+     the first unlock moves an old one over (acknowledgements.test.ts). */
+  const store = memoryAcknowledgements();
+  snoozeStockNotice(store, 1700000000000);
+  assert.deepEqual(store.read().snoozes, { 'stock-notice': 1700000000000 + 24 * 3600_000 });
 });
-
 
 /* projectEveryStock, the path the stock area takes (phase 8 audit ticket
    26). Driven with a counter that answers from an in-memory dose list, so
