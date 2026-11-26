@@ -118,7 +118,7 @@ const SCENES = [
   { key: 'journal', path: '/calendar', targets: '[data-cal-month-btn], .cal-field > a', whole: '[data-cal-month-btn]', apart: true, narrow: true },
   { key: 'labs', path: '/care/labs', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
   { key: 'in-the-room', path: '/health/appointments/in-the-room', targets: '[data-screen-back]', whole: '[data-room-question]', narrow: true },
-  { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },
+  { key: 'voice', path: '/media/recordings', targets: '[data-transport-toggle]' },
   /* Everything a new entry's later steps draw that a finger can press, not
      only the chips: the info buttons beside the tag chips were 43px wide for
      a while and the chips-only scene above never saw them. One scene per

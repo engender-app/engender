@@ -430,6 +430,19 @@ const ROWS = [
     line: 'written'
   },
   {
+    /* Voice memos, back on the hub beside photos (bug session 18, item 70)
+       after ticket 17 had folded them into the voice screen as its fourth
+       tab. The same shape as photos: audio an entry owns, no section of
+       its own, a written line. */
+    key: 'recordings',
+    icon: 'mic',
+    href: '/media/recordings',
+    home: 'media',
+    areas: [],
+    finishes: null,
+    line: 'written'
+  },
+  {
     /* Paper the person keeps (phase 8 features ticket 52, ADR-0065). The
        media group's third row, and the first one in it that fronts an area
        of its own - a document belongs to no entry and no milestone.

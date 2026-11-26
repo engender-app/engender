@@ -116,11 +116,11 @@ export const FEATURES = {
       'presentation'
     ],
     journal: ['entries', 'marginNotes', 'presentations', 'voice', 'videos', 'day', 'textSearch'],
-    hubRows: none,
+    hubRows: ['recordings'],
     areaGroups: none,
     unprompted: none,
     tiles: none,
-    routes: ['/calendar', '/day/[day]', '/entry/[id]', '/entry/new/[day]', '/search'],
+    routes: ['/calendar', '/day/[day]', '/entry/[id]', '/entry/new/[day]', '/search', '/media/recordings'],
     messages: ['entry', 'tpl', 'margin', 'presentation', 'presentations', 'search', 'cal', 'heat', 'mood', 'vm', 'video', 'recording']
   },
   'gender-scales': {

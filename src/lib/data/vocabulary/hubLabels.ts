@@ -54,6 +54,7 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   effects: m.effects_timeline,
   resources: m.resources_title,
   photos: m.photos_label,
+  recordings: m.vb_tab_recordings,
   documents: m.documents_title
 };
 
@@ -87,6 +88,7 @@ const ROW_LINE: Record<HubRowKey, (() => string) | null> = {
   effects: m.hub_sub_effects,
   resources: null,
   photos: m.hub_sub_photos,
+  recordings: m.hub_sub_recordings,
   documents: m.hub_sub_documents
 };
 

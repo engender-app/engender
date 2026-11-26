@@ -67,7 +67,7 @@ try {
   guard('keyboard selects Practice and retains focus', await page.locator('[data-segment="practise"]').evaluate((el) => el.getAttribute('aria-checked') === 'true' && el === document.activeElement));
   guard('Practice controls remain reachable', await page.locator('[data-app-savebar]:not([data-savebar-leaving]) [data-vp-start]').isVisible());
   await page.evaluate(() => {
-    for (const tab of ['compare', 'recordings', 'record']) document.querySelector(`[data-segment="${tab}"]`).click();
+    for (const tab of ['compare', 'practise', 'record']) document.querySelector(`[data-segment="${tab}"]`).click();
   });
   await page.waitForTimeout(900);
   guard('rapid switches settle on latest tab', await page.locator('[data-vb-passage]').isVisible());
