@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /* Links the private docs repo into this checkout (npm run docs:link).
 
-   CONTEXT.md, PRODUCT.md, SCREENS.md, DIRECTION.md and docs/ live in a
-   private sibling git repo, `engender-docs`, next to the primary checkout.
-   Git worktrees do not share untracked files, so each checkout gets
-   gitignored symlinks at the old paths:
+   CONTEXT.md, PRODUCT.md, SCREENS.md, DIRECTION.md and the private docs live
+   in a private sibling git repo, `engender-docs`, next to the primary
+   checkout. The ADRs are not there any more: they are tracked in this repo at
+   docs/adr/. Git worktrees do not share untracked files, so each checkout
+   gets gitignored symlinks: the four root files at the repo root, and
+   docs/internal at the docs repo (or docs worktree) root. The links point at:
 
    - the primary checkout, and any detached worktree (merge and testing
      worktrees), link the docs repo's own main checkout;
@@ -15,10 +17,12 @@
    Run it from any checkout. It is safe to run twice. It never replaces a real
    file or folder, and it adds no remote and no URL anywhere. */
 import { execFileSync } from 'node:child_process';
-import { existsSync, lstatSync, readlinkSync, rmSync, symlinkSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readlinkSync, rmSync, symlinkSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-const NAMES = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md', 'docs'];
+const NAMES = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md', 'docs/internal'];
+// docs/internal links to the docs repo root; the others to the same-named file.
+const targetName = (name) => (name === 'docs/internal' ? '' : name);
 
 function git(cwd, ...args) {
   return execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -55,6 +59,15 @@ if (blocked.length) {
   fail(`${blocked.join(', ')} already exist here as real files or folders. Move them into the docs repo by hand first; this script never replaces them.`);
 }
 
+// Before the ADRs moved into this repo, `docs` itself was the link. A link is
+// safe to drop: it only points at files in the docs repo.
+try {
+  if (lstatSync(join(top, 'docs')).isSymbolicLink()) {
+    rmSync(join(top, 'docs'));
+    console.log('removed the old docs symlink');
+  }
+} catch { /* absent */ }
+
 let source = docsRepo;
 const branch = top === primary ? '' : branchOf(top);
 if (branch) {
@@ -77,7 +90,7 @@ if (branch) {
 const plan = [];
 for (const name of NAMES) {
   const link = join(top, name);
-  const want = join(source, name);
+  const want = join(source, targetName(name));
   let stat = null;
   try { stat = lstatSync(link); } catch { /* absent */ }
   if (!stat) plan.push({ link, want, replace: false });
@@ -86,6 +99,7 @@ for (const name of NAMES) {
 }
 for (const { link, want, replace } of plan) {
   if (replace) rmSync(link);
+  mkdirSync(dirname(link), { recursive: true });
   symlinkSync(want, link);
   console.log(`linked ${link} -> ${want}`);
 }

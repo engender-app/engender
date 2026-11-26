@@ -30,15 +30,15 @@ CLAUDE.md
 
 /brand/film/
 
-# Docs stay out of the repo entirely. `docs/` matches folders; `/docs` also matches
-# the symlink that `npm run docs:link` puts at the root (see scripts/link-docs.mjs).
-docs/
-/docs
+# The private docs repo, linked here by `npm run docs:link` (see
+# scripts/link-docs.mjs). No trailing slash: it is a symlink, which a
+# directory-only pattern does not match. docs/adr/ is tracked.
+/docs/internal
 
 # The same rule for the other assistants, listed ahead of anyone using one, since
 # the repo is public and these files carry working notes rather than product
 # decisions. Where a decision that matters is written down is covered below,
-# under the briefs - docs/adr/ and CONTEXT.md are both kept out of the repo too.
+# under the briefs - CONTEXT.md is kept out of the repo too.
 .agents/
 AGENTS.md
 GEMINI.md
@@ -67,8 +67,8 @@ copilot-instructions.md
 # would be read as a setup step for the app itself.
 #
 # What outlives a run is which secret goes where and which ticket reads it, and
-# that lives in docs/provisioning.md - untracked, like the rest of docs/, but the
-# file meant to hold that record. The test goes with the script
+# that lives in docs/internal/docs/provisioning.md - untracked, like the rest of
+# the private docs, but the file meant to hold that record. The test goes with the script
 # because it runs the script: kept here it would fail on any clone that has one
 # and not the other.
 scripts/provision.sh
@@ -96,7 +96,7 @@ prototype/
 mockup/
 
 # The briefs the agent skills read, and the config that routes them. Same rule as
-# docs/ above: they are working documents rather than product, they change far more
+# docs/internal above: they are working documents rather than product, they change far more
 # often than the code they describe, and the repo is public - PRODUCT.md and
 # SCREENS.md in particular carry unshipped screen-by-screen plans.
 #
@@ -105,7 +105,7 @@ mockup/
 # a clone those references now point at a file that is not there. And impeccable's
 # context.mjs reads PRODUCT.md to resolve the platform, so on a clone it falls back to
 # treating the app as a website - a real failure mode this has already caused.
-# Both are accepted on the same trade docs/ already made: these live with whoever is
+# Both are accepted on the same trade the private docs already made: these live with whoever is
 # working on the app, not in the public tree.
 PRODUCT.md
 SCREENS.md

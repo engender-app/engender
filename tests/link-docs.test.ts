@@ -1,19 +1,21 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
-  existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, writeFileSync
+  existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-/* scripts/link-docs.mjs (functional-audit ticket 01). The docs live in a
-   private sibling git repo; every app checkout links them back at the old
-   paths. These tests build a throwaway app repo and docs repo side by side in
+/* scripts/link-docs.mjs. The private docs live in a sibling git repo; every
+   app checkout links its root at docs/internal and the four context files at
+   its own root. The ADRs are tracked in the app repo and are not linked. These tests build a throwaway app repo and docs repo side by side in
    a temp directory and run the script with each checkout as the cwd. */
 
 const script = fileURLToPath(new URL('../scripts/link-docs.mjs', import.meta.url));
-const LINKS = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md', 'docs'];
+const LINKS = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md', 'docs/internal'];
+// Where each link must point, relative to the docs repo (or its docs worktree).
+const wanted = (name: string) => (name === 'docs/internal' ? '' : name);
 const env = {
   ...process.env,
   GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@example.invalid',
@@ -40,28 +42,33 @@ beforeEach(() => {
   docs = join(base, 'engender-docs');
   mkdirSync(app);
   execFileSync('git', ['init', '-q', '-b', 'main', app], { env });
-  writeFileSync(join(app, '.gitignore'), 'CONTEXT.md\nPRODUCT.md\nSCREENS.md\nDIRECTION.md\ndocs/\n/docs\n');
-  git(app, 'add', '.gitignore');
+  writeFileSync(join(app, '.gitignore'), 'CONTEXT.md\nPRODUCT.md\nSCREENS.md\nDIRECTION.md\n/docs/internal\n');
+  mkdirSync(join(app, 'docs', 'adr'), { recursive: true });
+  writeFileSync(join(app, 'docs', 'adr', '0001-public.md'), 'tracked adr\n');
+  git(app, 'add', '.gitignore', 'docs');
   git(app, 'commit', '-q', '-m', 'app');
-  mkdirSync(join(docs, 'docs', 'adr'), { recursive: true });
+  mkdirSync(join(docs, 'docs'), { recursive: true });
   execFileSync('git', ['init', '-q', '-b', 'main', docs], { env });
   writeFileSync(join(docs, '.gitignore'), '/.worktrees/\n');
   for (const f of ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md']) writeFileSync(join(docs, f), `${f} on main\n`);
-  writeFileSync(join(docs, 'docs', 'adr', '0001-first.md'), 'adr one\n');
+  writeFileSync(join(docs, 'docs', 'agents.md'), 'private\n');
   git(docs, 'add', '-A');
   git(docs, 'commit', '-q', '-m', 'docs');
 });
 afterEach(() => rmSync(base, { recursive: true, force: true }));
 
 describe('primary checkout', () => {
-  it('links the five paths to the docs repo main checkout', () => {
+  it('links the five paths to the docs repo main checkout, docs/internal at its root', () => {
     const r = run(app);
     expect(r.status, r.stderr).toBe(0);
     for (const name of LINKS) {
       expect(lstatSync(join(app, name)).isSymbolicLink()).toBe(true);
-      expect(target(app, name)).toBe(join(docs, name));
+      expect(target(app, name)).toBe(join(docs, wanted(name)));
     }
-    expect(readFileSync(join(app, 'docs', 'adr', '0001-first.md'), 'utf8')).toBe('adr one\n');
+    expect(readFileSync(join(app, 'docs', 'internal', 'docs', 'agents.md'), 'utf8')).toBe('private\n');
+    // The tracked ADRs stay real files beside the link.
+    expect(lstatSync(join(app, 'docs')).isSymbolicLink()).toBe(false);
+    expect(readFileSync(join(app, 'docs', 'adr', '0001-public.md'), 'utf8')).toBe('tracked adr\n');
   });
 
   it('is a no-op the second time', () => {
@@ -80,6 +87,18 @@ describe('primary checkout', () => {
   });
 });
 
+describe('the old docs symlink', () => {
+  it('is replaced by a real docs folder holding docs/internal, and the docs repo is untouched', () => {
+    rmSync(join(app, 'docs'), { recursive: true });
+    symlinkSync(join(docs, 'docs'), join(app, 'docs'));
+    const r = run(app);
+    expect(r.status, r.stderr).toBe(0);
+    expect(lstatSync(join(app, 'docs')).isSymbolicLink()).toBe(false);
+    expect(target(app, 'docs/internal')).toBe(docs);
+    expect(readFileSync(join(docs, 'docs', 'agents.md'), 'utf8')).toBe('private\n');
+  });
+});
+
 describe('branch worktree', () => {
   let wt: string;
   beforeEach(() => {
@@ -92,15 +111,15 @@ describe('branch worktree', () => {
     expect(r.status, r.stderr).toBe(0);
     const docsWt = join(docs, '.worktrees', 'ticket-01-demo');
     expect(git(docsWt, 'symbolic-ref', '--short', 'HEAD')).toBe('ticket-01-demo');
-    for (const name of LINKS) expect(target(wt, name)).toBe(join(docsWt, name));
+    for (const name of LINKS) expect(target(wt, name)).toBe(join(docsWt, wanted(name)));
   });
 
   it('keeps edits on its branch away from docs main and from other worktrees', () => {
     run(wt);
     run(app);
-    writeFileSync(join(wt, 'docs', 'adr', 'draft-x.md'), 'draft\n');
-    expect(existsSync(join(app, 'docs', 'adr', 'draft-x.md'))).toBe(false);
-    expect(existsSync(join(docs, 'docs', 'adr', 'draft-x.md'))).toBe(false);
+    writeFileSync(join(wt, 'docs', 'internal', 'draft-x.md'), 'draft\n');
+    expect(existsSync(join(app, 'docs', 'internal', 'draft-x.md'))).toBe(false);
+    expect(existsSync(join(docs, 'draft-x.md'))).toBe(false);
   });
 
   it('is a no-op the second time', () => {
@@ -127,7 +146,7 @@ describe('branch worktree', () => {
     git(app, 'worktree', 'add', '-q', '-b', 'integration/v9', wt2, 'main');
     const r = run(wt2);
     expect(r.status, r.stderr).toBe(0);
-    expect(git(target(wt2, 'docs') + '/..', 'symbolic-ref', '--short', 'HEAD')).toBe('integration/v9');
+    expect(git(target(wt2, 'docs/internal'), 'symbolic-ref', '--short', 'HEAD')).toBe('integration/v9');
   });
 
   it('removing the app worktree leaves the docs files alone', () => {
@@ -144,7 +163,7 @@ describe('detached worktree', () => {
     git(app, 'worktree', 'add', '-q', '--detach', wt, 'main');
     const r = run(wt);
     expect(r.status, r.stderr).toBe(0);
-    for (const name of LINKS) expect(target(wt, name)).toBe(join(docs, name));
+    for (const name of LINKS) expect(target(wt, name)).toBe(join(docs, wanted(name)));
     expect(existsSync(join(docs, '.worktrees'))).toBe(false);
   });
 });
@@ -152,13 +171,13 @@ describe('detached worktree', () => {
 describe('refusals', () => {
   it('will not replace a real file or folder', () => {
     writeFileSync(join(app, 'CONTEXT.md'), 'precious\n');
-    mkdirSync(join(app, 'docs'));
-    writeFileSync(join(app, 'docs', 'keep.md'), 'precious\n');
+    mkdirSync(join(app, 'docs', 'internal'));
+    writeFileSync(join(app, 'docs', 'internal', 'keep.md'), 'precious\n');
     const r = run(app);
     expect(r.status).not.toBe(0);
-    expect(r.stderr).toMatch(/CONTEXT\.md, docs already exist here as real files or folders/);
+    expect(r.stderr).toMatch(/CONTEXT\.md, docs\/internal already exist here as real files or folders/);
     expect(readFileSync(join(app, 'CONTEXT.md'), 'utf8')).toBe('precious\n');
-    expect(readFileSync(join(app, 'docs', 'keep.md'), 'utf8')).toBe('precious\n');
+    expect(readFileSync(join(app, 'docs', 'internal', 'keep.md'), 'utf8')).toBe('precious\n');
     // Nothing is half-linked: PRODUCT.md and SCREENS.md stay unlinked too.
     expect(existsSync(join(app, 'PRODUCT.md'))).toBe(false);
   });
@@ -169,7 +188,7 @@ describe('refusals', () => {
     writeFileSync(join(wt, 'SCREENS.md'), 'precious\n');
     const r = run(wt);
     expect(r.status).not.toBe(0);
-    expect(r.stderr).toMatch(/SCREENS\.md already exist here/);
+    expect(r.stderr).toMatch(/docs:link: SCREENS\.md already exist here/);
     expect(existsSync(join(docs, '.worktrees'))).toBe(false);
     expect(git(docs, 'branch', '--list', 'ticket-02-blocked')).toBe('');
   });
