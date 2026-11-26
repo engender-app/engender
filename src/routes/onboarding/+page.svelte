@@ -1348,6 +1348,10 @@
        must not be able to disagree: a sun grown without the room under it
        grown too is a flag with a question inside it. */
     --sun-mult: 1;
+    /* Queried by the welcome's hero (below). The frame is exactly the
+       window's height by its own rule, so containing its size changes
+       nothing about how it is laid out. */
+    container: setup-frame / size;
   }
   .screen-setup > .setup {
     /* .screen's own 20px rhythm between blocks has nothing to space here:
@@ -1584,26 +1588,83 @@
     display: flex;
     flex-direction: column;
   }
+  /* The head grows into the room and asks for none of it. Its own floor is
+     the sun's reach (175px x the scale), which on the welcome made the
+     field's smallest size 224 to 280px plus the wordmark, and a frame that
+     could not give that much pushed the foot past its bottom: 35px at
+     390x844 under the demo bar, 84px with the window at 360. The
+     walkthrough then hit the scroll region instead of "Set up the app".
+     The field now gives way first, and the sun is sized to the frame below
+     so the room it leaves is still room for it. */
   .setup.is-hero .setup-head {
     flex: 1 1 auto;
+    min-height: 0;
+  }
+  .setup.is-hero > .step-field-below,
+  .setup.is-hero .setup-stage {
+    flex: 0 0 auto;
+  }
+  /* Nothing is asked on the welcome, and the empty region's 20px of margin
+     is room the field needs on a short frame. */
+  .setup.is-hero .setup-answers {
+    display: none;
   }
   /* The hero sun keeps clear of the language switch on a narrow phone and
-     of the wordmark on a short one: its reach is the corner's quarter, and
-     the field's height is what the lines and the foot leave. */
-  @media (max-width: 399px), (max-height: 759px) {
+     of the wordmark on a short frame. Its reach is the corner's quarter,
+     and the field is what the two lines and the foot leave of the frame,
+     so the steps go by the frame's own height (the demo bar and a raised
+     keyboard both take from it, and neither shows in a media query). */
+  @media (max-width: 399px) {
     .setup.is-hero {
       --sun-mult: 0.8;
     }
   }
-  @media (max-height: 639px) {
+  /* Each step keeps the quarter's reach under where the wordmark starts,
+     measured with the larger text setting on at 412, 390, 360 and 320
+     wide. */
+  @container setup-frame (max-height: 759px) {
     .setup.is-hero {
-      --sun-mult: 0.5;
+      --sun-mult: 0.85;
     }
   }
-  .setup.is-hero > .step-field-below,
-  .setup.is-hero .setup-stage,
-  .setup.is-hero .setup-answers {
-    flex: 0 0 auto;
+  @container setup-frame (max-height: 699px) {
+    .setup.is-hero {
+      --sun-mult: 0.65;
+    }
+  }
+  @container setup-frame (max-height: 639px) {
+    .setup.is-hero {
+      --sun-mult: 0.45;
+    }
+  }
+  @container setup-frame (max-height: 559px) {
+    .setup.is-hero {
+      --sun-mult: 0.25;
+    }
+  }
+  /* A window under 480px (a raised keyboard, or a phone held sideways) has
+     no room for a display-size wordmark and its signature: the name drops
+     to the short form's question size beside the language switch, on one
+     row, and the dictionary line is left out, so the two lines and the
+     foot still fit (at 390x360 with larger text the stacked field left the
+     frame 24px short). */
+  @container setup-frame (max-height: 479px) {
+    .setup.is-hero > .setup-field {
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-4);
+    }
+    .setup.is-hero .setup-head {
+      flex: none;
+    }
+    .setup.is-hero .setup-wordmark {
+      font-size: var(--text-xl);
+      letter-spacing: var(--display-track);
+      line-height: var(--leading-display);
+    }
+    .setup.is-hero .setup-def {
+      display: none;
+    }
   }
 
   /* The name of the app at display size, in the field's ink: the same
@@ -1637,16 +1698,21 @@
      stroke and the fill hold the text's own contrast against the field,
      well over the 3:1 a control's edge owes (9.59:1 on trans, light and
      dark). 2px rather than the kit's 1.5px input edge, which Chromium
-     snaps to 1px at a 2x density and which read as faint on the flag. The
-     pill is the touch target's height and each half at least its width. */
+     snaps to 1px at a 2x density and which read as faint on the flag.
+
+     The stroke is an inset shadow rather than a border, so it takes no
+     room: as a border it left each half 44px tall inside a 48px pill,
+     under the touch floor the walkthrough's setup no-scroll flow measures
+     every button against. Each half is now the full 48 by at least 48,
+     and the pill looks the same. */
   .setup-lang {
     display: flex;
-    border: 2px solid currentColor;
     border-radius: 999px;
+    box-shadow: inset 0 0 0 2px currentColor;
   }
   .setup-lang button {
     min-width: var(--touch-target);
-    min-height: calc(var(--touch-target) - 4px);
+    min-height: var(--touch-target);
     padding: 0 var(--space-3);
     border: 0;
     border-radius: 999px;
