@@ -468,10 +468,6 @@
     </div>
   {/if}
 
-  {#if detail.isNew}
-    <p class="muted" data-tryout-photo-requirement>{m.tryout_photo_save_first()}</p>
-  {/if}
-
   {#if !detail.isNew}
     <SectionHeading text={m.tryout_feeling_title()} />
     <!-- First in how it has felt rather than after the entries (final
