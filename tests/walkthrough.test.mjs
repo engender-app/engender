@@ -210,19 +210,9 @@ async function fresh(path = '/') {
   await booted();
 }
 
-/* A navigation that arrives late (32.1). Leaving onboarding used to land on
-   Home and then be undone a moment afterwards by a goto the demo bar's
-   first-run jump had issued before the walk started - so a flow that read the
-   greeting and moved on passed inside the window.
-
-   What this can and cannot see, because it is a race and saying so is the
-   point: the late navigation arrives when the jump's journal clear ends,
-   which is about 1.6s after the jump on this machine, and any walk through
-   the flow here takes longer than that - so the arrival lands during the
-   walk, where it is harmless, rather than inside this hold. It catches the
-   defect on a device or a journal where the clear outlasts the walk, and it
-   catches any other navigation that arrives after Home. The deterministic
-   reproduction is a probe with the clear widened, not this suite. */
+/* Hold on Home to catch navigation that lands after setup. The demo reset
+   can finish before this hold begins, so resizing that race window for a
+   reproduction belongs in a separate probe. */
 async function heldOnHome(what) {
   await page.waitForTimeout(2500);
   if (!page.url().endsWith('/')) throw new Error(`${what}: ${page.url()}`);
@@ -593,21 +583,8 @@ try {
 } catch (e) { fail('slider', e); }
 });
 
-/* 3b. a slider you have let go of stays where you left it.
-
-   Melt registers its window pointermove/pointerup pair inside its `root`
-   getter, and read only from a template spread that pair is torn down and
-   re-attached on every value change. A release landing before Svelte's next
-   flush found no pointerup listener, melt's mouse-down flag is a plain field
-   so nothing else ever cleared it, and the control then committed on every
-   window pointermove for the rest of the screen's life. Measured on
-   2026-08-25: one slider walked 20, 85, 90 with the button up, and two that
-   had both been touched landed on one value. Slider.svelte reads the getter
-   once, untracked, so the pair outlives the re-renders.
-
-   Driven with the mouse rather than the keyboard on purpose - the flow above
-   already covers the keyboard, and this defect only exists on the pointer
-   path. */
+/* Release the pointer, then move it to check the value stays put. Slider.svelte
+   reads Melt's root getter untracked so its pointerup listener survives rerenders. */
 await flow('sliders do not lock together', async () => {
 try {
   await fresh('/entry/new/today');
@@ -714,19 +691,8 @@ try {
 } catch (e) { fail('sliders do not lock together', e); }
 });
 
-/* 3c. one entry straight to another, on the same route.
-
-   /entry/[id] wraps the editor in {#key page.params.id} because SvelteKit
-   reuses a route's component across a navigation between two parameter
-   values, so anything read once from page.params keeps the first id it saw.
-   The way that wrapper goes missing is somebody tidying it away as redundant
-   structure, and no unit test can see its absence - only a client-side
-   navigation from one entry to another can.
-
-   The app offers no link from one entry to another, so the link is put there
-   for the click. That is not a shortcut past the check: the bug lives in
-   SvelteKit's interception of an <a> to the same route, which is exactly what
-   this makes it do. A page.goto would be a reload and would prove nothing. */
+/* Click a client-side link between two entry IDs to exercise the keyed
+   editor remount. Inject the link because the entry page has no such link. */
 await flow('entry to entry', async () => {
 try {
   await fresh('/search');
@@ -1668,19 +1634,8 @@ try {
 } catch (e) { fail('a second scale on the day-by-day chart', e); }
 });
 
-/* 6b2. a tag insight opens the entries carrying that tag, and one of them
-   opens.
-
-   The sheet is the only place /stats draws an entry card, and the ticket's
-   own acceptance asks whether those cards reach the entries they name. The
-   assertion is the card's own href against the URL the tap landed on, not
-   just that a navigation happened: a click that navigates anywhere would
-   pass the weaker version of this check.
-
-   It is also the surface behind the ticket's fade-through carve-out. The
-   pattern itself is pinned in screen-transition.test.ts, where it is a
-   pure function; what this proves is that the tap still arrives, which is
-   the half a table cannot answer. */
+/* Compare the entry card's href with the URL reached from the tag sheet.
+   screen-transition.test.ts separately checks the fade-through pattern. */
 await flow('tag insight entries', async () => {
 try {
   await fresh('/stats/tags');
@@ -2069,19 +2024,9 @@ try {
 } catch (e) { fail('custom dimension', e); }
 });
 
-/* 10b. Back returns to the screen you were actually on (CARPET-05).
-
-   Home's stale-backup notice is the case that names it. The notice is a
-   deep link out of Home into the export screen, whose header names
-   /settings as where it sits - so back used to land on a Settings screen
-   nobody had opened. Run before the notice is dismissed below, because the
-   notice is the only link into that screen from anywhere but Settings.
-
-   The pair of flows is the whole decision: with an entry behind this one,
-   back walks history; on the entry the app booted onto there is nothing to
-   walk to and the header's href is what is left to offer. Asserting only
-   the first would pass just as well on a back control that had stopped
-   being a link at all. */
+/* Follow the stale-backup notice from Home, then check Back returns there.
+   Run before dismissing the notice. The paired direct-load case checks the
+   header fallback when there is no prior app screen. */
 await flow('back to where you came from', async () => {
 try {
   await fresh('/');
@@ -5176,21 +5121,8 @@ try {
 }
 });
 
-/* Ticket 67 acceptance: "the same link to a record inside the first batch
-   behaves as it does today". The dossier's dosage log reads oldest first,
-   so its last row is the most recent dose - always within the log's own
-   newest-first first batch - and following it must not expand anything.
-
-   Ticket 08 truncates the preview to twelve rows a table, and the demo
-   persona's default 90-day range logs doses daily on two drugs, well past
-   that floor - so the range's own last row is now `.dossier-row-overflow`,
-   invisible on screen. Narrowed to the last four days from the controls
-   sheet, both daily drugs keep the row count under the floor and the
-   demo's seeded adherence (92%/8% miss, `fullFixture.ts`) makes at least
-   one dose in the window as close to certain as a seeded draw gets - so
-   every link stays visible, and the last one is still today's or
-   yesterday's, nowhere near needing a batch past /care/doses' first
-   thirty. */
+/* Keep the dossier preview under its 12-row cap by choosing four days.
+   Its last visible dose is recent enough to open from the log's first batch. */
 await flow('deep-linked row inside the first batch is unchanged', async () => {
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
@@ -5745,22 +5677,9 @@ try {
 }
 });
 
-/* Importing a Daylio backup. The one flow in this
-   suite that hands the app a file: `chooseFiles` creates an input and
-   clicks it (data/fileDialog.ts), so Chromium's own file chooser is what
-   the picker resolves through here too.
-
-   The `.daylio` is built at run time from the same test-support builder the
-   node tier uses, rather than committed as a binary - the format was
-   learned from a real personal journal that has been deleted, and a zip
-   nobody can read is a worse fixture than a JSON literal a reviewer can.
-   Imported dynamically so a Node without type stripping fails this flow
-   rather than the suite.
-
-   Nothing here asserts on wording. The assertions are handles and counts:
-   that a preview resolved, that the sheet closed on commit, that the
-   import wrote a history row, and that picking the same file again offers
-   no confirm button, which is the whole of "re-importing adds nothing". */
+/* Choose a generated .daylio through the browser's real file input. Import the
+   fixture builder dynamically so a Node loader failure stays in this flow.
+   Check preview, commit, the history row and reimport without a confirm action. */
 await flow('daylio backup import', async () => {
 try {
   const { makeDaylioBackup } = await import('../src/lib/data/archive/test-support/daylio-backup.ts');
@@ -6167,23 +6086,8 @@ try {
 }
 });
 
-/* Quick add, rebuilt (phase 5 ticket 18, closing spec 04).
-
-   The old sheet offered two choices that both led to the same screen. What
-   is checked here is the widening - every option reaching the surface that
-   records that thing - and, separately, that both gestures reach the same
-   targets: tap the add button and tap a row, or press the button and slide
-   onto a row without ever letting go.
-
-   The two gestures are worth testing separately because they resolve
-   through different code paths in the browser even though they resolve
-   through one rule in the component: a tap ends in a click on the row, and
-   a slide ends in a pointerup the row never sees.
-
-   The wear session is asserted through the fan's flight rather than through
-   a count on a screen, and that is not the weaker check it looks like: the
-   flight starts when the write comes back from the worker, not when the
-   finger lifts. */
+/* Tap and drag-to-select use different event paths. Exercise both against the
+   same destinations. The wear animation starts after the worker confirms the write. */
 async function openQuickAdd(path = '/') {
   await fresh(path);
   await page.locator('[data-nav-fab]').click();
@@ -7091,19 +6995,8 @@ try {
 } catch (e) { fail('quick add press without a slide', e); }
 });
 
-/* The shell's window insets.
-
-   A headless desktop Chromium reports every safe-area inset as 0, so
-   env(safe-area-inset-*) can never exercise the defect here - which is why
-   the shell reads --inset-* tokens the layout can be told to change. This
-   flow sets them to a phone's numbers and then asserts against the real
-   rendered geometry rather than against the stylesheet: where content
-   actually starts, and where the bar actually ends.
-
-   The device check the acceptance list asks for is a separate thing and
-   this does not stand in for it. What this catches is a regression - a
-   screen or a control that stops consuming the insets, on every run,
-   without anyone plugging a phone in. */
+/* Set the shell's --inset-* tokens because desktop Chromium reports zero
+   safe-area insets. Check the rendered content and bar against those values. */
 const CUTOUT = { top: 48, right: 0, bottom: 24, left: 0 };
 
 async function withSimulatedInsets(fn) {
@@ -7342,21 +7235,8 @@ try {
 } catch (e) { fail('the unprompted registry view', e); }
 });
 
-/* Phase 8 features ticket 52, ADR-0065: a piece of paper filed, found,
-   opened and thrown away.
-
-   The whole of that path is UI - a file chooser, a sheet, a list row, a
-   detail screen and a confirm - so nothing below the screens can prove it,
-   which is what this flow is for. The page itself is drawn on a canvas and
-   handed to the real input, so it goes through normalizePhoto and the
-   encrypted store the way a scan would.
-
-   Phase 8 features ticket 70: this used to open on an asserted-empty
-   list, which the persona document seeded by ticket 64 broke the same
-   way it broke the PDF flow below - see that flow's own comment for the
-   mechanism. Fixed by joining the seeded row rather than unseeding it
-   (ticket 64 put it there on purpose), so this flow ends back at its
-   starting row count instead of an empty notice. */
+/* File a canvas image through the real chooser and encrypted store (ADR-0065).
+   Find and open it, then delete it and check that the seeded list count returns. */
 await flow('a place for paper', async () => {
 try {
   await fresh('/media/documents');
@@ -7699,20 +7579,9 @@ try {
 } catch (e) { fail('a roadmap goal reworded and removed', e); }
 });
 
-/* redesign ticket 17: a photo's day, asked for on import and editable
-   afterwards (ADR-0015 - the file's own capture date is never read). Backend
-   and screens shipped earlier as ticket 47; this proves the ask, the skip
-   and the after-the-fact edit through the real screens rather than assuming
-   the wiring still holds after the token/direction passes
-   repainted every surface it renders on.
-
-   Placed before the access-mode/recovery-key tests below for the same
-   reason those order themselves the way they do (see the recovery key
-   comment just past this block): the last of them leaves the journal on
-   device-bound access, whose unlock is a WebAuthn PRF ceremony a headless
-   Chromium page never resolves - a fresh() after it hangs boot rather than
-   reaching Home, which showed up here first only because this ticket's
-   tests were the first ever appended after it. */
+/* Test choosing, skipping and later editing a photo's journal day. The image
+   metadata is stripped (ADR-0015). Run before device-bound access, which
+   requires a WebAuthn PRF unlock headless Chromium cannot complete. */
 await flow("a photo's day, on screen", async () => {
 try {
   const skipPhoto = await tinyPhoto(page, '#c94f7c');
@@ -8332,21 +8201,8 @@ try {
   if (await page.locator('[data-home-hello]').count()) {
     throw new Error('a recovery unlock reached Home without choosing an access mode');
   }
-  /* This screen's arrival is the same kind of instead-of-the-route moment
-     as a mid-session lock (flow 18), and quick add is the same
-     layout-level sibling there too - the layout
-     clears the same flag here for the same reason lockNow() does.
-
-     What this check cannot do is provoke the bug: `recoveryUnlock.used`
-     only turns true from a gate that renders before AppNav exists
-     (needsPassphrase/needsAuthentication/needsDeviceRecovery are all
-     chromeless, so there is no `[data-nav-fab]` to open the fan from), and
-     the same dispatch that sets it also flips `bootState` to `ready` - so
-     this screen's own precondition is true from the instant it could ever
-     be checked, before a fan could have been opened. Unlike flow 18's
-     check, reverting the layout's clear would not fail this one; it is
-     belt-and-suspenders for a path the boot state machine does not
-     currently allow the fan to reach at all. */
+  /* Recovery unlock is chromeless until the access chooser takes over. This
+     checks the initial closed state. Flow 18 exercises clearing an open fan. */
   if (await page.locator('[data-fan]').count()) {
     throw new Error('the quick-add fan is floating over the post-recovery access-mode screen');
   }

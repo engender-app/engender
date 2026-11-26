@@ -337,20 +337,8 @@
     return () => clearTimeout(done);
   });
 
-  /** Which of the two suns paints on top, for as long as the redraw takes.
-
-      A keyed block's outgoing element and its incoming one are both in the
-      DOM together and the order they sit in is the framework's business, not
-      this screen's - so the layer is stated rather than inferred. Written as
-      a transition because that is the only thing here that holds a
-      declaration for exactly the length of a change and then lets go of it.
-
-      The length is the sun's own entrance: its outermost ring is the widest
-      and is drawn first, so once --dur-authored is up it covers everything
-      underneath and the flag below it can go. Read per call rather than
-      held, because the token is a stylesheet value and not state - and zero
-      under reduced motion, where the rings are simply there and there is
-      nothing to cover. */
+  /** Paint the incoming sun over the outgoing one until its outer ring covers
+      it. Read --dur-authored at each transition. Reduced motion needs no hold. */
   function layer(_node: Element, params: { z: number }) {
     return { duration: motionDuration('--dur-authored'), css: () => `z-index: ${params.z}` };
   }
@@ -1084,25 +1072,8 @@
                   {#key awaitingAccessMode}
                     <div class="setup-lock-part" in:fieldPart out:fieldPart>
                       {#if awaitingAccessMode}
-                        <!-- The app-lock toggle that used to head this list is
-                             gone with the gate it turned on: how the
-                             journal opens is now one choice made in the security
-                             module, and a PIN is one of its access modes rather
-                             than a switch here.
-
-                             On a brand new install this module is what a person
-                             meets on reaching this step - the same
-                             AccessModeSetup component Settings uses, wired in at
-                             this one point in the flow because this is the one
-                             step that actually creates the keystore.
-
-                             It carries its own forward and back, which is the one
-                             place setup's foot is not the way on (named in the
-                             ticket): those controls drive a state machine inside
-                             the module that four screens share, and the module's
-                             own title is this step's question while it does. What
-                             this screen does is give them the foot's drawing, so
-                             the eye meets the same shape it met on earlier steps. -->
+                        <!-- AccessModeSetup creates the keystore and owns this step's question and navigation.
+                             Style its controls as the setup footer so the shared module fits the flow. -->
                         <AccessModeSetup
                           bind:this={accessSetup}
                           purpose="setup"
@@ -1141,20 +1112,8 @@
                      something close. -->
                 <PermissionList asksOnly />
               {:else if step === 'disguise'}
-                <!-- A row with a switch, drawn as every other answer in the
-                     flow is (rule 13), and carrying the platform's own
-                     consequence as its reason rather than as a paragraph
-                     above it. On Android that reason is the one this step
-                     owes most: the app closes for a moment, because it does.
-
-                     The row is the last thing setup asks and the switch is
-                     held, not applied - `prefs.disguise` is untouched until
-                     complete(). Setup's own look does not answer it either
-                     (rule 12): the sun keeps growing and the field keeps its
-                     colour right through the finish. What does answer is the
-                     preview below, which is the one place a person can see
-                     what they are turning on before it is outside the app
-                     and too late to be surprised by. -->
+                <!-- Keep the disguise choice local until complete(). Only the preview shows
+                     the choice during setup. Tell Android users the app briefly closes. -->
                 <ListCard>
                   <ListRow
                     static
@@ -1883,22 +1842,8 @@
     transition-timing-function: var(--ease-press), var(--ease-out), ease, var(--ease-out), var(--ease-out);
   }
 
-  /* ---------- the short form (rule 14) ----------
-
-     Under 640px tall, which is what a raised keyboard leaves on any phone
-     and what a 320px phone has at rest: the field drops to the back
-     control's row plus the question at 21 and the sun draws at 0.6 of its
-     step scale. The answers do not change - the whole point of the short
-     form is that the room comes out of the frame rather than out of what is
-     being asked.
-
-     Rule 14 also says the foot's second line drops to 40px, and that one is
-     not built: 40 is under `--touch-target`, which is Android's 48dp floor
-     and the stricter of the two platforms this ships on. Measured at
-     320x568, the two ways past a step were 56.8x40 and 166.9x40. The rule
-     was written off a sheet rather than against the floor, and the eight
-     pixels it was buying come out of a region that already scrolls on the
-     steps where they were needed. */
+  /* Below 640px, shrink the frame to leave room for answers. Use a 21px question
+     and scale the sun to 0.6. Keep footer controls at the 48dp touch floor. */
   @media (max-height: 639px) {
     .screen-setup {
       --sun-mult: 0.6;

@@ -181,20 +181,8 @@ const ROWS = [
     line: 'read'
   },
   {
-    /* `eye` rather than `sparkle`, which milestones took: what this screen
-       asks is when you first *noticed* each change, and the route and the
-       title both say so now (see `personal-effects`).
-
-       Under /care because a change you noticed is what a regimen is for.
-       The hormones list above it says what is going in; this says what
-       came of it.
-
-       Two sections, one row, since ticket 13: a side effect and a change you
-       were hoping for are both something you noticed after starting a
-       regimen, and having them as sibling top-level rows made the reader
-       classify their own symptom before they could write it down. The row
-       reports whichever half was written last (`groupLastWrite`'s own
-       reasoning). */
+    /* The Care row links to noticed changes and side effects together. Use
+       an eye icon and report the most recent write across both sections. */
     /* `sprout`, a change that grew; it drew `eye`. */
     key: 'effects',
     icon: 'sprout',
@@ -361,22 +349,9 @@ const ROWS = [
     line: 'written'
   },
   {
-    /* Paper the person keeps (ADR-0065). The
-       media group's third row, and the first one in it that fronts an area
-       of its own - a document belongs to no entry and no milestone.
-
-       `line: 'read'`, against ticket 52's own line, which asked for
-       `written`. Two things in the file decided it. The row has to name its
-       area or `rowHidden` cannot see it, and a row that names an area the
-       last-write registry answers for is a reading row - the invariant
-       right below this list, total in both directions, with no exception
-       mechanism and no reason to grow one for this. And the registry entry
-       is what the ticket asks for in the same breath, because the return
-       surface has to count filing a diagnosis as having been here.
-
-       What the reading actually says is a date, and ADR-0065 puts a date
-       on every row of the list behind this one. What it keeps off both is
-       the page image. */
+    /* A document is its own media area (ADR-0065). The row reads its last-write
+       date from the registry so hiding and the return surface can use the area.
+       Leave page images out of the row. */
     key: 'documents',
     icon: 'documents',
     href: '/media/documents',
@@ -678,21 +653,9 @@ export interface HubSection {
   rows: DrawnRow[];
 }
 
-/** The hub, assembled: every group in order with its rows, then the finished
-    set, with empty sections left out.
-
-    A finished row leaves its own group rather than appearing twice - it is
-    still one tap away and its screen still works, which is the whole point of
-    an area ending rather than being deleted.
-
-    A hosted row is not here at all, finished or not. It stays on
-    the screen named by its `home`, and states its ending there: the
-    alternative is the hub adding it to the finished set while its host still
-    draws it, which is the appearing-twice the paragraph above is about. Four
-    of the nine finishable groups are hosted, so the finished set is a smaller
-    place than it was - and `HostedRows.svelte` draws those four through
-    `rowLine`, the same function this one calls, so a hosted row says what
-    ended and when in the same words the hub would have used. */
+/** Group active rows, then list finished rows once. Omit empty groups.
+    HostedRows.svelte keeps hosted rows on their own screen even after finish
+    and uses the same rowLine wording as the hub. */
 export function hubSections(reading: HubReading): HubSection[] {
   const byKey = new Map<HubGroupKey | 'finished', HubSection['rows']>();
   for (const key of [...HUB_GROUP_KEYS, 'finished'] as const) byKey.set(key, []);

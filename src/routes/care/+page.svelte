@@ -686,20 +686,8 @@
     </div>
   {/if}
 
-  <!-- One block per running regimen, in the lanes' own order. Outside the
-       rail's branch on purpose: a regimen is a reading in its own right and
-       it is the one reading that is not a day, so careSpine has nothing to
-       draw for a journal with a regimen and no dose, draw or stock count
-       yet - and while this block sat inside that branch the screen answered
-       "nothing to put on the line" without ever naming the regimen that was
-       running.
-
-       Held until every read the rail waits on has answered, not just the
-       episode read this block itself needs (ticket 99 item 42, "the 'doses,
-       draws and stock' fades in a little too yankily"): gated on one read it
-       appeared a couple of hundred milliseconds early and pushed the
-       skeleton down the screen, which is what read as a yank rather than a
-       fade. -->
+  <!-- Show running regimens even when careSpine has no dated records. Wait for
+       all rail reads before drawing the blocks so they do not displace the skeleton. -->
     {#each lanes as lane (lane.episode.id)}
       {@const route = blockRoute(lane.episode)}
       <!-- `tabindex="-1"` so the jump from the lane's own name moves the

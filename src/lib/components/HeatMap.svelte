@@ -1,19 +1,9 @@
 <script lang="ts">
-  /* The month grid shares HEAT_STEPS with Home's week strip. Gender
-     dimensions use flag-hued squares and a legend with the dimension's
-     endpoints (ADR-0012). The accent ramp supplies a fallback before the flag
-     loads. Mood uses round MoodFace swatches and its own fixed ramp.
-
-     statsCharts.ts splits a day when its first and last ratings fall on
-     different steps. The first rating goes on the left. Dates sit below the
-     swatches because one ink colour may fail 4.5:1 across a split fill. A pip
-     marks days with several readings. Empty days show only their dates,
-     future dates use --text-2 and today keeps its ring.
-
-     Month changes crossfade the old and new cells in place, in a diagonal
-     wave that follows the direction of travel. A metric change keeps the
-     same month and changes all its cells together. The legend lives with
-     the grid so it describes the same ramp. */
+  /* The month shares HEAT_STEPS with Home. Dimensions use flag hues and their
+     own endpoints (ADR-0012). Mood uses its own ramp and faces.
+     Split cells show the first rating on the left. Put dates below the fills
+     for contrast and use a pip for multiple ratings. Empty days show dates alone.
+     Month changes wave across the grid. Metric changes update the current month together. */
   import { m } from '$lib/paraglide/messages';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
@@ -91,20 +81,9 @@
     last: epochDayFromLocalDate(new Date(year, month + 1, 0))
   });
 
-  /* Four reads for the whole month rather than four per day. They ask
-     different questions: the fill comes from the metric's average, the
-     split from that day's two ends, whether a day is a link from whether
-     anything was logged at all - a day of entries carrying no mood is still
-     a day with entries - and the coming-up dot from dayAhead.
-
-     Each answer carries the month and metric it was asked about. A re-run
-     keeps showing its previous answer until the new one lands (LiveQuery),
-     so right after a month change or a metric switch every read still holds
-     the last month's or the last metric's rows. Drawn as they stand, that is
-     a grid of blanks for a round trip, or mood's values shaded on a
-     dimension's ramp - one wrong frame each, and both are yanks. So the
-     grid goes on showing the picture it has until all four have answered
-     the new question, and only then changes (`view` below). */
+  /* Read fill, split, day presence and upcoming events once per month. Each
+     result carries its month and metric. Keep the previous grid until all four
+     match the new request so stale values never use the new ramp. */
   const tagged = <T,>(metric: string, rows: Promise<T[]>) =>
     rows.then((list) => ({ first: bounds.first, metric, rows: list }));
   let averages = liveQuery((j) => {
@@ -301,20 +280,9 @@
     return [...seen.entries()].map(([name, mark]) => ({ name, mark }));
   });
 
-  /* ---------- The month change ----------
-
-     Each cell takes --dur-fast and the whole wave fits inside --dur-med, so
-     the last cell starts the difference between the two later, spread
-     evenly over the grid's diagonals (the strip's single row over its
-     days).
-     Forward, the wave starts at the first of the month and runs to the
-     last; back, it starts at the last. Both halves read the direction when
-     they start, so the leaving month and the arriving one run the same way.
-
-     Reduced motion is a substitute, not a deletion: one crossfade of the
-     whole block over --dur-crossfade, no wave. These are Web Animations
-     rather than CSS, so base.css's reduced-motion clamp does not flatten
-     that crossfade into a cut. */
+  /* Stagger cells over --dur-med, with each running for --dur-fast. Both
+     months use the same direction. Reduced motion crossfades the whole block
+     with Web Animations so the CSS clamp leaves --dur-crossfade intact. */
   function waveCells(node: HTMLElement, arriving: boolean) {
     // The tab already carries the incoming month as one moving block.
     if (arriving && ui.tabMoving) return 0;
@@ -516,22 +484,9 @@
 </div>
 
 {#if !compact}
-  <!-- The ends are the metric's own words, never "worst" and "best": neither
-       end of binary <-> nonbinary is the better one, and colour that judges is
-       the one thing this app cannot do (ADR-0012, F15).
-
-       Mood has none. Its five faces are the same five a person picks a mood
-       from every day, so a scale under them is the app explaining itself to
-       its reader - which is the call the year grid already made, and
-       Alicja's on 2026-08-25. No "no entry" swatch either, since ticket 280:
-       a day with nothing logged has no box to show a swatch of.
-
-       Disclosed rather than inserted, because it is the one thing a metric
-       switch adds to or takes from the height of the screen: mounted in one
-       frame, the key and the chips under it jumped a row.
-
-       An image to a screen reader, named by the sentence: an aria-label on
-       a plain div is not read (after-release 21, audit L04-14). -->
+  <!-- Use the metric's endpoint labels (ADR-0012). Mood's familiar faces need no
+       legend. Disclose the height when the legend changes so the chips stay in flow.
+       Give the labelled legend an image role so assistive tech reads its name. -->
   {#if !view.isMood}
     <div
       class="cal-legend"

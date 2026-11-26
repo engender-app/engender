@@ -944,20 +944,9 @@ export const prepareSceneExpression = (scene) => `(async () => {
   return true;
 })()`;
 
-/** Furniture rather than the app: the demo bar and a toast are injected over
-    whatever is being looked at. A navigation needs no exemption at all now
-    that it is read off the pseudos rather than off the tree.
-
-    `.letter-main-btn` is replaced by a non-button reading surface while
-    its card unfolds; the card's blind paints the change, and the cast
-    shows no cut. The button's DOM departure is not a visible exit.
-
-    `.sun-ring` is FlagSun's per-stripe ring, redrawn rather
-    than recoloured when a flag is picked - the flipbook that shape replaced
-    already showed two flag colours mixed in sRGB spending 200ms as a muddy
-    tan, on the one step whose whole subject is colour (FlagSun.svelte,
-    onboarding's setup-paint comment), so a colour transition here is the
-    wrong fix, not a missing one. */
+/** Ignore injected demo chrome and the letter button replaced during its
+    card's unfold. A sun ring is redrawn on flag change so it keeps the new
+    stripe colour through the transition. */
 /* Ticket 259's clipped arrivals, scrolling sheets and faded skeleton moves
    are filtered in findYanks, where their frame state can be checked. A
    mark-name exemption here would also hide real defects on those marks. */
@@ -1098,20 +1087,9 @@ export const SETTLE_PAGE_EXPRESSION = (theme) =>
     Returned as an expression string rather than a function value so the
     same code runs through Playwright's evaluate and through the WebView's
     devtools socket on a device. */
-/** The part of `box` a `clip-path: inset(...)` leaves showing. Serialized
-    into the page sampler, so it reads nothing outside itself. A clip that
-    travels between a percentage and a length (kit-block-in's `100%` to
-    `-6px`) computes to `calc(80.99% - 1.14px)` while it runs, which the
-    first version of this split on spaces, failed to read and answered with
-    the whole box: setup-step-forward at 1280 reported every scale tick
-    "0.33 to 1 in one frame" in the frame its wipe began, while the cast
-    shows the tick clipping open over 100ms (carpet 15 row 51).
-
-    `own` is for a mark's own clip: an outset (the -6px that keeps a
-    block's focus ring) shows nothing of the mark itself, so what counts
-    is cut to the box. Counted, a fully closed kit-block-in read as 0.375
-    of the tick and a quarter-open one as 0.73. An ancestor's clip keeps
-    its outset, since a child overflowing into it does show. */
+/** Parse both lengths and mixed calc() in animated inset clips. Keep this
+    helper self-contained for the page sampler. Clamp a mark's own clip to
+    its box. An ancestor's outset can show overflowing children. */
 export function clipInsetBox(box, clipPath, own = false) {
   const raw = /^inset\((.*)\)$/.exec(clipPath ?? '')?.[1];
   if (!raw) return box;
@@ -1313,24 +1291,9 @@ export function samplerExpression(act, ms, names) {
             }
             const visibleArea = Math.max(0, visibleBox.right - visibleBox.left) * Math.max(0, visibleBox.bottom - visibleBox.top);
             const visibility = Math.min(1, visibleArea / (box.width * box.height));
-            /* A box that draws nothing of its own is not something a
-               person can see teleport or vanish - what they see are the
-               painted things inside it - and it is keyed by the text of
-               its descendants, which makes it worse than useless: change
-               the words inside a wrapper and the wrapper's key changes,
-               so one mark vanishes and another arrives at the same
-               position with no pixel having moved. Setup's step change
-               does exactly that and reported 16 of
-               these across two scenes - `.app-main`, `.screen-setup`,
-               `.setup`, `.setup-field`, `.setup-ask`, `.setup-below` and
-               `.setup-stage`, every one of them a transparent box that
-               sat still at opacity 1 the whole time. The painted marks
-               inside them were clean, and the recording agrees.
-
-               So an element earns a mark by painting something of its own
-               or by holding its own words. The proof scene's marks
-               have a background and their own text, which is what keeps
-               this from being a way to make the sweep quiet. */
+            /* Sample boxes that paint a surface or contain direct text. Transparent wrappers
+               inherit descendant text in their keys, so a text change would report movement
+               for a box that never paints. The proof scene uses marks that paint. */
             const paints =
               cs.backgroundImage !== 'none' ||
               cs.borderTopWidth !== '0px' ||

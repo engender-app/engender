@@ -470,21 +470,11 @@ body {
 .nav-item.is-active { color: var(--on-accent-soft); }
 .nav-item:hover { color: var(--text); }
 
-/* AppNav.svelte supplies four insets for the active tab's highlight. Each
-   edge moves independently. The leading edge uses --ease-out-soft and
-   --dur-med. The trailing edge waits --stagger-step and closes on
-   --ease-in-out over --dur-slow, for 430ms including the delay. Using insets
-   preserves --r-block and lets a second tap retarget the moving highlight.
-
-   Four insets are a layout-animation exception for this one empty,
-   absolutely positioned box. No sibling depends on its size or position.
-   motion-system.test.ts checks the allowed layout properties. Reduced motion
-   clamps edge durations to 1ms and clears the stagger, so both edges land
-   at the destination's size.
-
-   tests/nav-motion-cost.mjs measured desktop Chromium at 390px, unthrottled
-   and at 4x CPU throttling. Frames ran at 16.7ms through the 456ms sequence apart
-   from one route-render frame per run, at 34ms and 63ms respectively. */
+/* AppNav supplies the highlight's insets. The leading edge moves first and
+   the trailing edge follows after --stagger-step. Insets preserve the radius
+   and support retargeting during a move. This isolated box is the allowed
+   layout-animation exception. Reduced motion removes the stagger and clamps
+   the edge durations. */
 .nav-pill {
   position: absolute;
   left: var(--pill-left, 0);
@@ -661,23 +651,9 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .nav-add-glyph { transform: none; }
 }
-/* ============================================================
-   Tier 2: one screen becoming another.
-
-   The pattern is chosen by $lib/navigation/screen-transition.ts and arrives
-   as data-nav on <html>; the layout starts a view transition and these
-   rules say what it looks like. Only the scroll region is named, so the old
-   and new screens animate against each other while the bar and the rail
-   fall into the root group and cross-fade - which is what an active tab
-   indicator moving should do anyway.
-
-   Every duration and easing comes from the same tokens the Svelte-driven
-   transitions read ($lib/motion/tokens.ts), which is ticket 09's rule for
-   keeping the two from drifting. What is not shared is the mechanism: these
-   run on the compositor over a captured frame, which is the reason this
-   ticket could wire tier 2 through the whole app without remounting a page
-   component on every navigation.
-   ============================================================ */
+/* Tier 2 navigation. screen-transition.ts selects data-nav. These rules animate
+   the captured scroll region while the chrome crossfades in the root group.
+   Use the same duration and easing tokens as the Svelte transitions. */
 /* The column rather than the scroll region inside it, since carpet 26 put
    the foot beside the region: a group holds one box for both sides of a
    transition, so naming the region would hand the browser a box a foot
@@ -1294,20 +1270,8 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
    Framing the rail and column together would put the border beyond
    that edge. */
 .rail-brand { padding: 0 var(--space-3) var(--space-5); }
-/* The logotype: the real mark beside the word, sized against each other
-   on purpose (ticket 37, Alicja picked option B on 2026-09-30 and asked
-   for a wider gap and a truer centre). The word's own measures are em of
-   the word: the gap is half an em and the track is -0.03em, looser than
-   --display-track because that value is tuned for a headline and closes up
-   at this size next to a solid tile. The mark is a fixed 32px (1.23em of
-   the 26px word) because Mark takes pixels, so the ratio holds at a 16px
-   root and drifts if the word is scaled alone.
-
-   Centring is optical. Outfit's box puts the line's middle 0.37em above the
-   baseline, but the word's ink (x-height 0.49em, ascender 0.73em, one
-   descender) is centred 0.25em above it, so a plain align-items:center
-   leaves the word 0.12em low against the mark. The word's bottom padding
-   lifts it by half its own size. */
+/* Keep the mark at 32px next to the 26px word. The gap and tracking follow
+   the word size. Bottom padding corrects Outfit's optical centre. */
 .lockup {
   display: flex; align-items: center; gap: 0.5em;
   font-family: var(--font-display); font-weight: var(--weight-display);

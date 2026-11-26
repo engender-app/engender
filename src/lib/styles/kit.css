@@ -5,20 +5,10 @@
    The kit- prefix lets these classes coexist with components.css's
    .card and .list-row. */
 
-/* ---------- section colour ----------
-
-   Pass roleAttrs() from kit/role.ts to a surface to set data-kit-role and the
-   inputs from theme/roles.ts. Child rows and tiles inherit the derived
-   properties. When no role arrives, --role-c falls back to --accent.
-
-   Small text uses --role-ink-in at 4.5:1. Without that input, use a 30% mix
-   of the stripe into --text, checked by tests/kit-roles.test.ts. Icons that
-   need 3:1 use --role-mark-in, with --role-ink as fallback.
-
-   Fills and chart shapes keep the raw stripe in --role-draw. Applying a
-   contrast floor to those fills can turn nonbinary yellow olive. Supply
-   --role-edge-in when a chart line's raw stripe falls below 3:1 against the
-   plot. The casing preserves the stripe and supplies its boundary. */
+/* Set roleAttrs() on the surface so rows and tiles inherit its stripe and
+   inks. Accent is the fallback stripe. Small text requires 4.5:1 and icons
+   require 3:1. Keep raw stripe fills and add a casing when a chart line's
+   boundary needs more contrast. */
 [data-kit-role] {
   --role-c: var(--role, var(--accent));
   --role-ink: var(--role-ink-in, color-mix(in oklab, var(--role-c) 30%, var(--text)));
@@ -91,19 +81,8 @@
   padding: var(--space-3) 0 0;
   margin: var(--space-8) 0 var(--space-3);
   border-top: 3px solid var(--text);
-  /* The rule draws in, left to right, ahead of its heading (phase 10 rule
-     10, redesign ticket 25): the heading's box clips open from its left
-     edge over --dur-slow, which uncovers the rule and everything under it,
-     and the words below wait a beat (the child rule under this one) so
-     the rule is always ahead of them - a heading never appears over a rule
-     that is already there. clip-path rather than a scale on the border,
-     because a border cannot be transformed on its own and a scaleX of the
-     whole heading would stretch the words on the way.
-
-     Filled both ways, so under the 1ms clamp the heading ends where it
-     rests. The end state is the box outset by 6px rather than the box
-     itself: a clip that stayed at the border edge would cut the 2px focus
-     ring, drawn 2px outside, off the heading's action for good. */
+  /* Clip the heading from the left and delay its words so the rule leads.
+     Keep a 6px outset for focus rings and fill both ways for reduced motion. */
   animation: kit-rule-in var(--dur-slow) var(--ease-out) both;
 }
 
@@ -377,22 +356,8 @@
   cursor: pointer;
 }
 
-/* ---------- the filter line ----------
-
-   A label and one control, sitting on the page rather than in a card:
-   which area the hair-removal sessions came from.
-
-   The feature screens had this as a `.field` with a full-width `<select>`
-   in it, which is the shape a form uses for something being *entered*.
-   Nothing here is being entered - the control changes what the screen is
-   showing - and a form field the width of the screen sitting above a list
-   reads as the first row of that list.
-
-   Up against its own label rather than at the end of the line, which is
-   where the calendar's own metric picker ended up after a thumb kept
-   catching the chevron above it. Same reasoning, same shape;
-   `.cal-metric` is the instance that came first and this is the one every
-   screen after it uses. */
+/* Put a filter beside its label on the page. The compact control changes the
+   visible list and stays clear of the rows below. */
 .kit-filter {
   display: flex;
   align-items: center;
@@ -447,22 +412,8 @@
   overflow: hidden;
 }
 
-/* ---------- the box on a tickable row ----------
-
-   Phase 5 ticket 35. The box carries the row's state; the row does not
-   change under it, for the reason Check.svelte gives.
-
-   The size is the icon size the rest of a row is drawn at, so the box lines
-   up with the chevrons and discs on the rows around it rather than being a
-   third measurement.
-
-   Ticked is `.tag-chip.is-selected`'s treatment, written out rather than
-   shared through a class: a chip is a pill and this is a square, and the two
-   agreeing on colour is not a reason to make one of them the other.
-
-   Named for the mark it draws rather than for the gesture, because
-   `.kit-*tick` is the chart kit's word for the axis furniture these charts
-   refuse to draw, and kit-surfaces.test.ts fails on sight of it. */
+/* The tick box carries the selection state and aligns with the row icons.
+   Share the selected chip's colours. The square keeps its own shape. */
 .kit-check {
   flex: 0 0 auto;
   width: 24px;
@@ -483,19 +434,8 @@
   border-color: var(--accent);
 }
 
-/* Tier 3, a change within the screen: the mark moves and its container does
-   not. The row's own press is tier 1 and is the wash it fills with; this is
-   the answer to the tap having landed.
-
-   The tick draws itself in over its own length rather than fading or
-   popping, which is the one gesture a check mark has: 22 units of path,
-   hidden by an offset of 22 and uncovered to 0. Unticking plays the same
-   transition backwards for nothing, which is the whole reason it is a
-   transition and not an animation.
-
-   --dur-slow, deliberately slower than the box's fill under it, so the
-   colour arrives and the mark is drawn onto it rather than the two landing
-   as one event. */
+/* Draw the tick by transitioning its dash offset from 22 to 0. Reverse it
+   on deselect. The box fill finishes before the tick. */
 .kit-check-mark {
   stroke-dasharray: 22;
   stroke-dashoffset: 22;
@@ -1272,38 +1212,15 @@ a.kit-entry:active {
   white-space: nowrap;
 }
 
-/* ---------- bare strip ----------
-
-   The week, uncontained: it sits directly on the page with no card around
-   it.
-
-   Its intensity ramp is built from the section's own stripe rather than
-   from --heat-*, which the rest of the app derives from --accent. Both are
-   single-hue and neither judges (ADR-0012), but the accent is one colour
-   the palette picked and the stripe is the flag's - and a week strip on the
-   trans palette shading in the accent's rose while the icon discs beside it
-   are the flag's blue is what "the colours do not relate to the flag" looks
-   like. The steps are the heat ramp's own (22, 45, 70, 100), so a cell here
-   and a calendar cell still read as the same scale. */
+/* The week strip sits flush on the page. Shade its cells using the section's
+   flag stripe and the 22, 45, 70 and 100 intensity steps (ADR-0012). */
 .kit-strip {
   display: grid;
   grid-template-columns: repeat(var(--strip-count, 7), minmax(0, 1fr));
   gap: var(--space-2);
   padding: 0 var(--space-1);
-  /* Caps the row at its own cells' natural width (ticket 99 item 5):
-     without this, a wide web viewport gives each column far more than a
-     cell wants, and .kit-strip-day's justify-items: center floats every
-     cell away from its column's true edge - worst at the two ends, which
-     is what read as "too far from the content edge". On mobile the strip
-     is already narrower than this cap, so nothing changes there.
-
-     Counted from --strip-count rather than from a literal seven, and from
-     --strip-cell-max rather than a literal 44px, because neither is fixed
-     any more: CARPET-02 draws fourteen cells at 38px on a desktop-width
-     container, and a cap written for seven 44px cells would have squeezed
-     that strip into half the room it was designed for (the ticket's own
-     code review caught the collision before CARPET-02 and this met). The
-     two rules state the same numbers now, so they cannot drift apart. */
+  /* Cap the strip at --strip-count times the cell width plus gaps. This keeps
+     wide columns from pulling the end cells in from the content edges. */
   --strip-cell-max: 44px;
   max-width: calc(
     var(--strip-count, 7) * var(--strip-cell-max) + (var(--strip-count, 7) - 1) * var(--space-2) + 2 *
@@ -2055,21 +1972,8 @@ button.kit-strip-day .kit-strip-cell {
   border-top-color: var(--role-2-draw);
 }
 
-/* Under the reading and quieter than it: what was going on is context for a
-   number, never a second number.
-
-   Blocks, not spans, and capped: a name is the person's own text and can be
-   any length, and inline elements ignore both `max-width` and the ellipsis
-   that goes with it - which is how a two-word readout grew into a pill lying
-   across most of the plot it was annotating.
-
-   Relative rather than a fixed `ch` count: the plate
-   around this now caps itself to half the plot so its corner-picking always
-   clears the mark it names, and a name still allowed to reach a fixed 20ch
-   of its own could grow past that half again - this ties the two caps
-   together instead of guessing a `ch` count small enough for every plot
-   width the kit is asked to draw at. Shared with .kit-area-readout-text
-   above, which caps for the same reason. */
+/* The context label sits below the reading. Use a block so ellipsis works
+   and cap it with the plate at half the plot width. */
 .kit-area-readout-annotation {
   display: block;
   max-width: 100%;
@@ -2176,19 +2080,8 @@ button.kit-strip-day .kit-strip-cell {
   font-variant-numeric: tabular-nums;
 }
 
-/* --- horizontal bars ---
-
-   The bar runs the full width of the card with its label and its value on
-   a line above it, rather than sitting in a right-hand column behind a
-   label gutter. Single-hue: the leader is the stripe at full strength and
-   every other bar is one diluted step of that same colour, which is the
-   whole of the ramp.
-
-   Row gap tightened from --space-3 to --space-2 (Alicja's review, ticket
-   14): a set of bars with no note line was reading as more air than
-   reading, five thin tracks adrift in their card rather than one dense
-   list - "3. Tighter, not airier", applied here the same
-   way it already was to card padding. */
+/* Use a full-width single-hue bar with its name and value above it.
+   The largest value gets the undiluted stripe. */
 .kit-bars {
   display: grid;
   gap: var(--space-2);
@@ -2230,21 +2123,8 @@ button.kit-strip-day .kit-strip-cell {
   transition-duration: var(--dur-fast);
 }
 
-/* The fill lands on the frame the finger does, and fades out behind it.
-
-   It used to ramp in over --dur-fast as well, which was survivable while the
-   row also scaled - a scale arrives on the same frame as the touch, so
-   something answered immediately and the wash was the slow half of a pair.
-   With the scale gone (`data-no-press` in BarRows.svelte) the wash is the
-   whole answer, and a tap is 80 to 120ms against a 150ms ramp: a real press
-   never reached more than about two thirds of it before releasing. A quiet
-   colour that also arrives late is indistinguishable from nothing happening,
-   which is the one thing tier 1 exists to prevent.
-
-   Response immediate, recovery eased - the asymmetry is the point, and it is
-   the same shape the app's own screen transitions take in the other
-   direction (an exit faster than an entrance, app.css). Reduced motion clamps
-   both ends to 1ms and the state still changes, which is the substitute. */
+/* Show the press wash immediately because it is the row's only press cue.
+   Ease out on release. Reduced motion clamps both transitions. */
 .kit-bar.is-open:active {
   background: var(--role-wash);
   transition-duration: 0s;

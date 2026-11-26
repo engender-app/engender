@@ -42,20 +42,10 @@ export interface VoiceRecording {
   fileName: string;
 }
 
-/** A standardized voice take (phase 5 deepening ticket 15, CONTEXT: "Voice
-    benchmark"). Not a VoiceRecording: that is a memo on one entry, this
-    belongs to a day and carries the acoustic figures the engine
-    (lib/audio/) measured from it under fixed conditions.
-
-    The engine measures frequency, span, spread, rate and two resonances.
-    These figures describe the sample without scoring it.
-    has a good end.
-
-    The vowel half is nullable as a group: a session that skipped the
-    sustained vowel, or whose vowel never cleared the gate, is a benchmark
-    with a passage and no resonance. `note` is the person's own words about
-    the take, not the musical note of the median, which follows from
-    `f0MedianHz` (ADR-0010). */
+/** A voice benchmark belongs to a day and holds acoustic measurements from
+    a standard sample. Vowel measurements are nullable as a group when the
+    sample has no usable vowel. note holds the person's words.
+    Derive the pitch name from f0MedianHz (ADR-0010). */
 export interface VoiceBenchmark {
   id: string;
   epochDay: number;
@@ -342,23 +332,9 @@ export interface ComfortItem {
     alongside this one for everything that is not a name or pronoun set. */
 export type TryoutKind = (typeof TRYOUT_KINDS)[number];
 
-/** Trying something out (phase 4 ticket 16, widened by phase 5 ticket 13,
-    CONTEXT: "Tryout"). `endEpochDay` is null while the tryout is still
-    going - the same "still running" shape DosePause uses for a break with
-    no end date yet - so a tryout in progress needs no placeholder end
-    invented for it, and several tryouts can overlap or sit entirely in the
-    past with no rule that exactly one of them is current.
-
-    `description` is free text alongside `label`, for a kind whose label
-    does not carry enough on its own - a style tryout usually needs more said
-    about it than a name or pronoun set does. Null for any
-    kind that has no use for it.
-
-    Which entries fall inside a tryout's range is never stored (ADR-0010):
-    TryoutsArea owns only this row, its felt-sense history and its photos,
-    and a screen reads the entries themselves through
-    entries.searchEntries('', [], { startEpochDay, endEpochDay }), the
-    plain date-range filter the search screen already offers. */
+/** A tryout can overlap other tryouts. A null endEpochDay marks one still running.
+    Use description for detail beyond the label. The area owns the record,
+    felt-sense history and photos. Read matching entries by date (ADR-0010). */
 export interface Tryout {
   id: string;
   kind: TryoutKind;
@@ -510,20 +486,9 @@ interface DoseEventFields {
   drug: string | null;
 }
 
-/* A dose event has none of the Entry fields for mood, dimensions, tags or notes.
-   over exactly those five fields.
-
-   It stores no regimen episode of its own, and usually no drug either.
-   Attribution is attributeDose(episodes, dose) at read time
-   (regimenEpisode.ts), so backdating a dose - or inserting a corrective
-   episode underneath it - changes the answer with no stored link to
-   rewrite (ADR-0010) for the common case of one episode active at a time.
-   `drug` exists only to break the tie once concurrent episodes for
-   different drugs make that resolution ambiguous.
-
-   A union rather than one interface with nullable fields, because which
-   fields a dose has is decided by its route and nothing else: an oral dose
-   has no site to be null, and no screen should have to remember that. */
+/* attributeDose assigns the episode at read time (ADR-0010). Store a drug
+   only to disambiguate concurrent episodes. The route determines which
+   fields the dose can carry. */
 export type DoseEvent =
   | (DoseEventFields & { route: 'oral' | 'sublingual' | 'rectal' | 'implant' })
   | (DoseEventFields & {
@@ -1010,22 +975,10 @@ export type ProcedureKind =
   | 'hair_transplant'
   | 'custom';
 
-/** One procedure someone is going through (phase 5 ticket 07, CONTEXT:
-    "Procedure"): a free-text name, the consults leading up to it, a surgery
-    date once there is one, and the recovery log's own notes. Several can
-    coexist - top surgery and facial feminization surgery tracked
-    independently - so nothing about this shape is a singleton.
-
-    Holds nothing derived: how far along recovery is comes from the surgery
-    date and today (recoveryDay.ts, ADR-0010), and the recovery checklist is
-    an ordinary **Checklist** owned by this procedure rather than a field
-    here.
-
-    `kind` and `dilationOptIn` are phase 9 carpet ticket 17: the name stays
-    free text and titles the record, `kind` is what the app reads. Only a
-    `custom` kind carries its own opt-in - none of the compiled-in kinds can
-    be guessed to include dilation except vaginoplasty, which the Dilation
-    gate checks by kind directly. */
+/** A procedure owns its name, date and recovery notes. Several can coexist.
+    Appointments link by procedureId. Recovery day is derived (ADR-0010) and
+    its checklist is a separate record. Read dilationOptIn only for custom kinds.
+    The dilation gate recognizes vaginoplasty by kind. */
 export interface Procedure {
   id: string;
   name: string;
@@ -1056,21 +1009,8 @@ export interface ProcedureConsult {
   epochDay: number;
 }
 
-/** One appointment (phase 8 features ticket 57, ADR-0066, CONTEXT:
-    "Appointment"): the day, a kind the person names, where it was, a note,
-    and an optional link to the procedure it belongs to.
-
-    A consult is this record with `procedureId` filled in - not a different
-    kind of thing - which is why there is one table and one type rather than
-    a sibling for each. Everything but the day is optional, because an
-    appointment is usually written down before there is anything to say
-    about it.
-
-    `kind` is free text with nothing shipped in either language (ADR-0066):
-    a built-in list of endocrinologist, psychologist, surgeon would be a
-    picture of a medical path, and the app has no opinion about whether a
-    court hearing is an appointment. Its suggestions come off this journal's
-    own previous kinds (`getKinds`). */
+/** An appointment is a dated record (ADR-0066). A consult fills procedureId.
+    Kind and other details are optional. getKinds suggests previous journal kinds. */
 export interface Appointment {
   id: string;
   epochDay: number;
@@ -1157,22 +1097,9 @@ export interface TaperStage {
   timesPerDay?: number;
 }
 
-/** The dilation schedule the person has typed in. One per
-    journal: `startEpochDay` is when the stage sequence begins, which is
-    usually a few days after the procedure's own surgery date rather than
-    the same day.
-
-    Names which procedure it follows rather than carrying a surgery date of
-    its own (audit item 7, schema v83): the taper used to keep a second copy
-    of that date, and the audit found it disagreeing with the procedure's
-    own - "Surgery day 27 February 2026" on this screen, "11 August 2025" on
-    the surgery screen for the same procedure. `procedureId` is the single
-    source now; the screen reads the linked procedure's date, and there is
-    no reconciliation left to get wrong.
-
-    Editable in place, because a surgeon changes the plan; the expansion to
-    expected sessions is pure arithmetic over this and today
-    (taperSchedule.ts) and is never itself stored (ADR-0010). */
+/** One schedule per journal. startEpochDay starts the taper, and procedureId
+    supplies the surgery date from its owner. Edit the schedule in place and
+    derive expected sessions in taperSchedule.ts (ADR-0010). */
 export interface Taper {
   id: string;
   procedureId: string;

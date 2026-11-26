@@ -660,22 +660,8 @@
          reach. Nothing small sits on it; the hello line, the count and the
          gear are in the foot below, on the page. -->
     <div class="home-field" data-home-field>
-      <!-- The blind, first so it paints under both the
-           sun and the wordmark: the field's colour, split off from the box
-           that measures it so the edge can be pulled to the next screen's
-           height while what is drawn on it leaves under its own animation.
-
-           The sun is inside it, not beside it: setup's own
-           field nests its sun inside its blind (onboarding/+page.svelte),
-           and $lib/motion/fieldBlind's `holdSun` leaves the sun unnamed on
-           purpose so it stays part of whichever capture is its nearest
-           named ancestor, riding that capture rather than crossfading
-           against its own twin. A sibling sun has the field itself for
-           that ancestor, and the field's own capture is hidden outright
-           (opacity: 0, fieldBlind.ts's own comment) - so Home's held sun
-           was vanishing for the length of setup's handover, the field it
-           rode being invisible by design. Nested here, it rides the
-           blind's own capture instead, which is never hidden. -->
+      <!-- Paint the blind under the wordmark. Nest the sun inside the blind so holdSun
+           keeps it in the blind's capture during setup handover. The field capture is hidden. -->
       <div class="field-blind" data-field-blind aria-hidden="true">
         <!-- Home owns the sun. Unlocked disguise leaves it here. -->
         <FlagSun />

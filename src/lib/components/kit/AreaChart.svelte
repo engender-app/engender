@@ -82,22 +82,9 @@
     /** What this series is. Only read when a second metric shares the plot,
         where the heading no longer answers it on its own. */
     name?: string;
-    /** A second metric on the same plot.
-
-        No `x` of its own: it is read onto `points`' positions by the caller
-        (charts/grain.ts's alignSeries), so `values` is the same length and a
-        `null` is a position this metric has no reading at. Aligning here
-        instead would mean the chart deciding what a position is, which is
-        the one thing the caller owns.
-
-        Its own range, because that is the point of it: mood's 1 to 5 and a
-        dimension's 0 to 100 are placed by where each sits inside its own
-        bounds, and the two lines are then comparable in shape without
-        either being rescaled into the other's units. That placement is the
-        **Normalized value** and it is never shown - the plot prints no
-        value gutter once there are two series on it, and every number
-        anybody reads here comes back out of `formatValue` in the metric's
-        own **Native units**. */
+    /** A second metric aligned to points by charts/grain.ts. A null marks a missing
+        reading. Scale each line to its own range and format labels in native units.
+        Hide the value gutter when two metrics share the plot. */
     overlay?: {
       values: Sample[];
       min: number;
@@ -784,22 +771,8 @@
     text-overflow: ellipsis;
   }
 
-  /* What one tick stands for, under its own name (phase 11 UI/UX ticket
-     49). The person's own sentence, so it wraps where the name above it
-     does not - and stops at two lines, because a plate the height of a
-     paragraph would cover the plot it is answering about. The plot is a
-     fixed 132px and the plate caps its own width at half of that plot, so
-     neither of those can grow under it.
-
-     Reading order rather than the plate's own edge, even in the corners
-     the plate anchors right in: right-aligned, Blink draws no ellipsis on
-     the line a clamp cut, so the sentence stopped mid-word with nothing
-     saying it had been cut. The name line above it is left-aligned for the
-     same reason - an ellipsis at the end of a line is the whole point of
-     both.
-
-     Here rather than in kit.css: one consumer, which is what
-     scripts/check-screens-classes.mjs asks a class like this to be. */
+  /* Wrap the annotation to two lines inside half the 132px plot. Left-align
+     both fields so Blink shows the ellipsis when the description is clamped. */
   .kit-area-annotation-note {
     max-width: 100%;
     white-space: normal;

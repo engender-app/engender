@@ -49,41 +49,12 @@
   background: #000;
 }
 
-/* ---------- What the .ob- prefix still means ----------
-
-   Not onboarding, any more. The first run has its own frame (below), and
-   ticket 26 took .onboarding, .onboarding-progress and .ob-title with it.
-   Recap went the other way in the same merge: ticket 23 absorbed it into
-   wrapped and deleted the route, which took .recap-progress and the .recap-*
-   block that used to sit further down this file.
-
-   .ob-text is what is left with users, and it has plenty - both settings
-   screens that carry an explanation, and the body of every sheet the gates
-   open. It keeps its name because renaming a class nine screens call by it
-   is a rename ticket, not a merge.
-
-   .ob-dot and .ob-actions had none, dead only as the sum of the two merges
-   above rather than either on its own - left standing rather than swept up
-   inside a merge commit that had no business deleting either ticket's code
-   (phase 5 audit ticket 16 is that sweep). */
+/* .ob-text styles explanatory copy in Settings and gate sheets.
+   The old .ob-dot, .ob-actions and .recap-progress selectors are retired. */
 .ob-text { color: var(--text-2); margin-bottom: var(--space-5); }
 
-/* Nothing on these screens stacks above anything. Every surface here
-   carried `position: relative; z-index: 1`, which existed to sit above
-   PrideAurora - the full-page gradient wash this redesign dropped - and
-   outlived it. On a screen whose own stacking context is created by the
-   entrance animation's transform, a z-index of 1 is enough to paint the
-   cadence switcher over the floating navigation bar, which must always be
-   on top (Alicja, 2026-08-25). Three more of these survive on screens this
-   ticket does not own: .applock, .onboarding and two in the search area.
-
-   ---------- Wrapped ----------
-   Two presentations, deliberately unalike (phase 4 features ticket 01,
-   rebuilt on the kit by phase 5 UX ticket 23). Both are built from the kit's
-   own surfaces now, so what is left here is the three things the kit has no
-   surface for - the head, the cover, and the photo strip - plus the figure
-   values inside a list row. Everything below the first block belongs to one
-   presentation or the other, never to both. */
+/* Wrapped uses kit surfaces for both presentations. This file owns the head,
+   cover, photo strip and row figures. Keep its controls below the floating nav. */
 /* The cadence switcher is the shared segmented control in its link mode
    now, and centring a link inside a segment is that control's own job
    (components.css, a.segment) rather than this screen's. */
@@ -712,20 +683,9 @@
 .gate-page:has(.pin-pad) .gate-foot { margin-top: 0; }
 .gate-note { color: var(--text-2); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
 
-/* An unlock's sun (tester-report-02 ticket 07). Where the title was, the
-   field holds Today's own sun, at Today's size and in the same corner, so
-   opening the app holds one sun still while the field opens around it.
-
-   The field is as tall as the sun wherever the window allows, so its edge
-   does not cut a ring: the outer ring's radius (175px, scaled as Today
-   scales it on a narrow window) and 16px of field under its lowest point
-   (Alicja, signing off: "make THE FIELD bigger also so that the sun isnt
-   cut off"). The corner
-   stays cut by the window's top and side, which is the mark's own drawing.
-   The value is set only on an unlock without disguise, so a disguised gate
-   keeps the base's height exactly. The title's line is held at the height
-   that makes the field that tall, and the edge starts there too, so the gate
-   arrives at its height rather than growing into it. */
+/* An undisguised unlock uses Today's sun at the same size and position.
+   Fit the scaled 175px outer radius plus 16px below it. Set the field height
+   before it draws so appOpening can keep the sun still during unlock. */
 /* The whole sun does not fit over the PIN pad, the tallest gate, on every
    window: at 360x640 the pad and everything under the field need 482px
    (the page's own 454, the screen's 20 under it and 8 to spare, measured),

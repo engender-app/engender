@@ -288,19 +288,8 @@
     top: var(--space-2);
   }
 }
-/* A hidden title with no back control and no actions leaves the field
-   nothing to hold, so the header collapses to nothing visible rather than
-   painting an empty band: the two hubs that hide their title otherwise gain
-   their field's contents from tickets 09 and 15, and /settings was here
-   until carpet 25 gave it rule 7's chrome case. A screen can hide its title
-   and still show a back control or an action, and those keep the field - the
-   room does now (carpet 27).
-
-   Unpainted, not display: none. The visually hidden title inside is still
-   the screen's heading for a screen reader and the document outline (the
-   component's own reason for hiding rather than dropping it), and a
-   display: none ancestor would take it out of the accessibility tree; the
-   walkthrough's hub characterisation reads that heading. */
+/* Collapse the field if there is no visible title, back control or action.
+   Leave the visually hidden heading in the accessibility tree. */
 .screen-header.is-collapsed,
 .screen > .screen-header.is-collapsed {
   min-height: 0;
@@ -453,19 +442,8 @@
      the one ink measured against every field: 4.41:1 at worst. */
   border-color: var(--field-ink);
 }
-/* Focus is a ring inside the box, not a colour on its edge. The edge is
-   already the field's ink, so darkening it says nothing; and --focus-ring is
-   a mix of --accent, which is a member of the flag, so the standard ring
-   drawn 2px outside a control lands on the field and measures 1.02:1 there
-   on agender dark. Two pixels *inside*, it sits on the box's own --bg, where
-   it measures 6.26:1 at worst.
-
-   The ring goes on the box rather than on the input, which is the shape a
-   person sees as the control: on the input alone it drew a rectangle around
-   the middle third and read as three cells rather than one box. The clear
-   control keeps a ring of its own so a keyboard can tell the two apart, and
-   `.search-box:focus-within`'s accent border (screens.css) is overridden
-   here at a specificity that beats it. */
+/* Inset the focus ring 2px onto the box background for contrast. Draw it
+   around the whole search box and give the clear control its own ring. */
 .screen-field .search-box:focus-within {
   border-color: var(--field-ink);
   outline: var(--focus-ring-width) solid var(--focus-ring);
@@ -635,22 +613,8 @@
 :root[data-input='pointer'] .screen-field .search-box:focus-within { border-color: var(--field-ink); }
 
 /* ---------- switch ---------- */
-/* One switch, and one accessibility contract for it. This was styled twice:
-   once for a hidden checkbox with `:checked` selectors, and once further down
-   the file for a button carrying aria-checked, each restating the checked and
-   focus rules. Only the button was ever built - Switch.svelte, on melt's
-   Toggle - so the checkbox half was a second contract with no markup behind
-   it, and its rules were the ones a reader hit first.
-
-   SH-101: the visible track is 28px tall and 44px wide, under the 48px
-   minimum, and it is the most repeated control in Settings. The hit area
-   grows to 48px in both directions without the track growing with it - it
-   used to grow in one, which left it 4px short across the axis a thumb
-   actually misses on.
-
-   It shrinks when touched like every other control its size. A switch is
-   tapped and released, not carried, so there is no reason for it to answer
-   differently from a button. */
+/* Switch.svelte uses a button with aria-checked. Extend its 44x28px track to a
+   48px hit target on both axes. Use compact press feedback for a tap. */
 .switch {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: var(--touch-target); min-height: var(--touch-target);
@@ -859,19 +823,8 @@ a.segment {
    transition can go to 1.1 or come back from it, not both. Ending at the
    resting value keeps the reduced-motion clamp from stranding it stretched,
    which is why `scale: 1 1` is declared on the sliding state too. */
-/* Pinned by its two horizontal insets rather than placed by `translate` and
-   sized by `width` (2026-09-08). The two edges are no longer on the same
-   clock: the one nearer the destination sets off first and decelerates, the
-   one left behind waits --stagger-step and then gathers after it, so the
-   width in between is the live difference of two curves rather than a value
-   with a curve of its own - which no single transform can say, since a
-   translate moves both edges together. The navigation's own pill is the same
-   mechanic and app.css carries the long version of why, including what it
-   costs to animate a layout property and the cap that holds it.
-
-   Only the travelling axis is transitioned. A segment's height is the
-   track's, so top and bottom change when the control relaid out, and a
-   relayout is not a choice being made. */
+/* Animate horizontal insets independently. The leading edge sets off first.
+   The trailing edge waits --stagger-step. Leave height changes to layout. */
 .segment-pill {
   position: absolute;
   top: 3px; bottom: 3px;
@@ -981,20 +934,9 @@ a.segment {
 }
 .input:focus { border-color: var(--accent); outline: none; }
 
-/* ---------- a typed answer, on the rule ----------
-
-   Rule 13's third shape: the display face at 28 on a 3px bottom rule, no box
-   and no fill, the placeholder in the secondary ink. The person's name is
-   the first thing in the app set in the app's own voice, "and a passphrase
-   is the same shape with its characters hidden" - which is why this is here
-   rather than in onboarding's own block, where redesign ticket 33 first drew
-   it: setup asks for a name and an archive's password, and the gates ask for
-   a journal passphrase in three places. One drawing, the
-   same argument the field and the pad already settle.
-
-   The recovery key is deliberately not this shape. It is a written-down
-   string being compared against the paper it was written on, so it keeps the
-   monospace box it was minted in (RecoveryKeyEntry.svelte). */
+/* Use a 28px display face on a 3px bottom rule for shared setup and gate
+   inputs. Mask passphrases. RecoveryKeyEntry uses a monospace box for
+   comparison with a written key. */
 .typed { position: relative; }
 .typed .field-label { display: block; margin-bottom: var(--space-2); }
 .rule-input {
@@ -1291,20 +1233,10 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   0%, 92%, 100% { transform: scaleY(1); }
   95% { transform: scaleY(0.12); }
 }
-/* MO-001: the global reduce rule below clamps every animation's duration to
-   1ms, which turns an infinite loop into a restart-every-millisecond
-   flicker rather than stillness - a photosensitivity hazard, not a comfort
-   feature. These decorative loops stop outright instead; each rests on
-   a frame already inside its own keyframes (open eyes is face-blink's
-   resting frame with no transform applied at all, and eyes front is
-   face-glance's).
-
-   The gaze needs no rule of its own. Both rows return early under reduced
-   motion (moodMagnifier, QuickAdd), so --gaze never leaves the 0 MoodFace
-   writes for a face with nothing to look at, and the armed colour is the
-   whole answer - the same substitution the magnifier's scale makes. The
-   transition on it is left to base.css's 1ms clamp, which is correct for a
-   movement that has somewhere to arrive, and wrong only for a loop. */
+/* Stop decorative loops under reduced motion. The 1ms global clamp would
+   make a loop flicker. Rest the face with open eyes and a centred gaze.
+   Mood pickers skip gaze updates under reduced motion, so the arm colour
+   is the cue. The clamp still applies to finite transitions. */
 html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: none; }
 html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation: none; }
 @media (prefers-reduced-motion: reduce) {
@@ -1723,21 +1655,9 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
     transition-duration: var(--dur-crossfade) !important;
   }
 }
-/* Carries the drag, so the sheet inside it keeps its transition's transform
-   to itself (Sheet.svelte). Sized to the sheet rather than to the scrim, or
-   it would swallow the backdrop taps that dismiss.
-
-   It also carries the height cap, and that is a fix rather than a
-   preference. `.sheet` asked for `max-height: 85%` and a percentage
-   resolves against the containing block's height - which is this element,
-   inserted between the scrim and the sheet when drag-to-dismiss was added,
-   and sized to its own content. An indefinite containing block makes a
-   percentage max-height no cap at all, so every sheet in the app grew to
-   whatever it held and `overflow-y: auto` never had anything to scroll
-   against: the effect-type list measured 4794px inside an 804px frame and
-   simply ran off the bottom (Alicja, 2026-08-26: "too long and takes the
-   whole screen with no ability to scroll"). The scrim is `inset: 0` and so
-   is definite; the cap belongs here, and the sheet stretches to it. */
+/* The wrapper carries drag so the sheet can animate its own transform.
+   Keep it sheet-width for backdrop taps. Apply the height cap here against
+   the definite scrim so the sheet's overflow has a scroll boundary. */
 /* `position: relative` puts this in the same painting layer as the scrim's
    tint, which is absolutely positioned and would otherwise paint over it
    whatever the source order says - positioned elements paint after in-flow
@@ -1980,21 +1900,8 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
   color: var(--on-accent);
   box-shadow: var(--shadow-float);
   pointer-events: none;
-  /* Delayed by exactly the fan's own exit, so it crosses an empty screen.
-     Stacked under the exit it was invisible - two things moving at once and
-     neither one read.
-
-     Two animations rather than one, because they want different curves and
-     a single declaration only has one. The travel decelerates on
-     --ease-out, which is what makes it read as an object being thrown; the
-     opacity runs linear, because --ease-out is steep enough at the front
-     that a fade sharing it is done inside the first fifth of the duration.
-     Measured, not guessed: on one curve the mark was fully opaque for about
-     30ms of a 240ms flight, which is a frame and a half.
-
-     --dur-slow, not --dur-med. This is tier 3, change within a screen, and
-     --dur-slow is that tier's duration - the earlier value was tier 2's,
-     borrowed from the navigation this is not. */
+  /* Wait for the fan to exit. Use --dur-slow with eased travel and a linear
+     fade. Easing opacity would make the mark disappear early in the flight. */
   animation:
     fan-flight-move var(--dur-slow) var(--ease-out) var(--dur-fast) both,
     fan-flight-fade var(--dur-slow) linear var(--dur-fast) both;
@@ -2196,20 +2103,10 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
    glyph itself keeps its size; this only grows the surrounding hit area. */
 .notice .icon-btn { width: var(--touch-target); height: var(--touch-target); color: inherit; }
 
-/* ---------- flag sun ----------
-   FlagSun.svelte sets each ring's --d and --c from --motif-stripes. Centre
-   the rings on .sun, a zero-size point at the field's top-right corner.
-   The field starts below the top inset, where the rings leave Android's
-   status icons on the page colour.
-
-   Home's positioned field bounds the negative stacking order so the rings
-   stay behind their own content and later cards. Rings touch.
-   Each has a 3px black border inside its diameter. The doubled stops of
-   the bisexual flag keep its 2:1:2 proportions. flagSun.test.ts checks
-   ring sizes against --motif-stripes.
-
-   Scale from the same corner. Home sets --sun-scale to 0.82 below 360px
-   and 0.6 below 240px. */
+/* FlagSun sets ring diameters and colours from --motif-stripes. Centre the
+   rings at the field corner below the top inset. Keep their borders inside
+   the diameters and the rings behind content. Doubled bisexual stops keep
+   2:1:2 proportions. Scale from the same corner on narrow screens. */
 .sun {
   position: absolute; top: 0; right: 0; width: 0; height: 0;
   z-index: -1;
@@ -2529,19 +2426,8 @@ html[data-a11y-motion='reduce'] .skeleton::after {
 
 .skeleton-line:only-child { margin: var(--space-2) 0; }
 
-/* ---------- the dropdown's own list ----------
-
-   A `<select>` is the right control here and the reasoning has not changed:
-   Android opens its own picker, and a keyboard, a screen reader and the
-   system font scale all get what they expect. What that left was a styled
-   pill that opened an unstyled list - "they look very barebones (the
-   expanded list, just the pill is nice)" (Alicja, 2026-08-26).
-
-   `appearance: base-select` is how a select keeps every one of those
-   guarantees and still takes the app's own surfaces. Behind `@supports`
-   because it is recent: where it is missing the browser opens the list it
-   always did, which is the correct control drawn plainly rather than a
-   broken one. Nothing here changes what the closed control looks like. */
+/* Keep the native select for platform accessibility. Apply base-select
+   inside @supports so browsers with that feature can style the open list. */
 @supports (appearance: base-select) {
   select.input,
   .kit-chart-pick select {

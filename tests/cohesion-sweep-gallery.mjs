@@ -1,31 +1,11 @@
-/* Audit each route's computed styles and hit targets. Static rules for
-   shared components live in tests/browser-tier/direction-contracts.ts.
+/* Audit route layout and hit targets. Consult direction-contracts.ts for shared component rules.
+   Check the token sets below, field and back controls, and the 64px Wrapped year exception.
+   Use elementFromPoint to measure 48px targets under scrolling, clipping and overlays.
 
-   Check elevation (the floating bar owns the shadow), radii (0, 1, 2, 4,
-   6, 8 and 999px, plus 50% and 100%), and the font sizes in SIZES, with a
-   64px exception for the Wrapped cover's year. Check whether doors,
-   deep screens and chrome show the expected field or back control. Flag
-   role tints used as backgrounds, strokes outside 1, 2, 12, 14 and the
-   bar-end exceptions, and surfaces outside the flush, block and ink styles.
-
-   Interactive bounds must reach 48 by 48px. Hit-test each scrolled viewport
-   with elementFromPoint to see effective coverage, overflow clipping and
-   pointer-event traps in the actual stacking order. Each finding includes
-   its selector chain so shared components can be fixed once. Save route
-   screenshots only where a route declares a shoot selector.
-
-   Run with a demo build.
-     VITE_DEMO=1 npm run build
-     node tests/cohesion-sweep-gallery.mjs
-
-   --out <dir> sets the report directory. --root <path> uses another checkout.
-   --prove must flag the undersized and covered buttons and the tonal ground.
-   A hidden heading, a round button's corners, an inert subtree and a control
-   below a scroll fold are controls and must pass.
-
-   --pin-android exposes Android-only reminder states by pinning the route's
-   isWeb value to false for a rebuild, then restores the source. Changing the
-   global platform flag would send boot to the Android SQLite driver. */
+   Run VITE_DEMO=1 npm run build, then node tests/cohesion-sweep-gallery.mjs.
+   --out sets the report folder and --root selects a checkout.
+   --prove checks that seeded defects fail and valid controls pass.
+   --pin-android temporarily changes the reminder route's isWeb flag. The global flag would switch boot to Android SQLite. */
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
@@ -598,20 +578,9 @@ const read = () =>
           if (box.bottom <= frame.top || box.right <= frame.left || box.left >= frame.right) continue;
           if (box.bottom <= 0 || box.top >= innerHeight) continue;
 
-          /* The rendered box against the 48px floor, taken here rather
-             than in the pass above because the answer needs the control on
-             screen: a box under the floor is not yet a finding, since a
-             control can be drawn small and hit large, and only hit testing
-             can see that. `.tag-info-btn` is 24x24 with an `::after` at
-             `inset: -12px` - a 48px target around a 24px glyph, the pattern
-             `.photo-remove` takes too - and a pseudo has no box to measure.
-             An element is measured as itself: a control nested inside a
-             larger control is still the thing a finger has to find.
-
-             The best reading over all the scroll positions wins, filed
-             after the walk. A control straddling the fold has its reach
-             cut by the viewport edge rather than by anything on the page,
-             and filing the first reading would make that the finding. */
+          /* Use hit testing for the 48px floor so extended targets count. Measure
+             each control at its best scroll position so viewport clipping alone does
+             not count as a target defect. */
           const best = targets.get(el) ?? { w: 0, h: 0 };
           let w = Math.round(box.width);
           let h = Math.round(box.height);
