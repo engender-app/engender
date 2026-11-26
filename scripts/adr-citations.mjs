@@ -140,6 +140,7 @@ export function internalDocLinks(root) {
 export function privateReferencesInRepo(root, adrDir) {
   const index = readAdrIndex(adrDir);
   const files = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
+  /** @type {string[]} */
   const found = [];
   for (const file of files) {
     if (DOC_TOOLS.has(file)) continue;
