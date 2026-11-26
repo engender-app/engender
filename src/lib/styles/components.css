@@ -404,10 +404,10 @@
   grid-row: 1;
   grid-column: 2;
   justify-self: end;
-  /* The mirror of the back control's own pull: a glyph sits 13px inside a
-     48px target, so the box has to hang past the content edge for the glyph
-     to look aligned with the title under it. */
-  margin-right: calc(-1 * var(--space-3));
+  /* No pull past the content edge. It used to mirror the back control's
+     -12, so the glyph lined up with the title, but the hover box then hung
+     12px out past the field's inner edge (bug session 18, item 55); its
+     right edge sits on the content edge now. */
 }
 .screen-header-row.has-back-actions .screen-title { grid-column: 1 / -1; }
 /* Under 240px (200% zoom on a 390px phone, 155px of row) that line runs
