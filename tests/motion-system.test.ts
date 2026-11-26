@@ -308,6 +308,21 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     reason: 'an entry row in a day card is list content being read, not a control - the row press read as text jumping (ticket 99 item 10)'
   },
   {
+    file: 'src/lib/components/kit/Disclosure.svelte',
+    count: 1,
+    reason: 'a fold toggle is a full-width row; the scale walked the chevron out from under the finger and the release missed the button (pre-release-human 18)'
+  },
+  {
+    file: 'src/lib/components/SpanFacts.svelte',
+    count: 1,
+    reason: 'the same full-width fold toggle as Disclosure (pre-release-human 18)'
+  },
+  {
+    file: 'src/lib/components/kit/YearDaysList.svelte',
+    count: 1,
+    reason: 'the same full-width fold toggle as Disclosure (pre-release-human 18)'
+  },
+  {
     file: 'src/lib/components/kit/ListRow.svelte',
     count: 5,
     reason: 'the row scale made a tapped list jump sideways; the row is the list, not a button on it (ticket 99 item 10)'

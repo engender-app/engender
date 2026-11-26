@@ -1212,6 +1212,12 @@ a.segment {
   text-align: left;
   cursor: pointer;
 }
+/* Tier 1: a full-width row answers a press with the fill, as .kit-row does.
+   The toggles opt out of press.css's scale, which walked the chevron out
+   from under the finger (pre-release-human 18). */
+.disclosure-toggle:active {
+  background: var(--role-wash);
+}
 .disclosure-chev {
   flex: 0 0 auto;
   display: grid;
