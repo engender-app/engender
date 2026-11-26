@@ -291,6 +291,11 @@
 }
 /* The controls on the field take its ink, not the page's text colour. */
 .screen-field .icon-btn { color: inherit; }
+/* And hover with a tint of that ink, not the page's --surface-2: on the
+   coloured field that was a solid disc, near the arrow's own darkness in the
+   dark theme (rgb 29 42 52 behind an ink of 16 24 32), so the arrow sank into
+   its hover (pre-release-human 18). */
+.screen-field .icon-btn:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
 .screen-back {
   grid-column: 1 / -1;
   justify-self: start;
