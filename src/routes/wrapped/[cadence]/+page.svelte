@@ -20,6 +20,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import WrappedCompact from '$lib/components/WrappedCompact.svelte';
   import WrappedYear from '$lib/components/WrappedYear.svelte';
+  import { notificationsTitle } from '$lib/notificationsTitle';
 
   const today = $derived(currentDay());
   const cadence = $derived(page.params.cadence as WrappedCadence);
@@ -66,7 +67,7 @@
   {/if}
   {#if !on}
     <Notice icon="info" key="wrapped-off" title={m.wrapped_off_title()} text={m.wrapped_off_body()}
-      action={{ label: m.notif_title(), href: '/settings/notifications' }} aria-live="polite" />
+      action={{ label: notificationsTitle(), href: '/settings/notifications' }} aria-live="polite" />
   {:else if loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if muted}

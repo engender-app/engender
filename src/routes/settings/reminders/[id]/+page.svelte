@@ -26,7 +26,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import SaveBar from '$lib/components/SaveBar.svelte';
-  import { isAndroid, journalTextAutocomplete } from '$lib/platform';
+  import { journalTextAutocomplete } from '$lib/platform';
   import { writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
 
@@ -77,10 +77,7 @@
      (reminder-rule.json): the preview cannot promise a moment that will not
      fire. Only an elapsed one-off has no occurrence left, and ruleFromDraft()
      dates a one-off forward every time it is called, so there is always a
-     moment here to show. On web the same line is labelled as the saved
-     schedule rather than as a firing (ticket 13): a browser stores the
-     rule and cannot ring it, so the same arithmetic reads as data. */
-  let isWeb = $derived(!isAndroid());
+     moment here to show. */
   let nextPreview = $derived.by(() => {
     return new Intl.DateTimeFormat(intlLocale(), {
       weekday: 'short',
@@ -154,16 +151,6 @@
     />
   {/if}
 
-  {#if isWeb}
-    <!-- Ticket 13: the same truth the list screen opens with. Above the
-       form rather than above Save since after-release 17 (UX-18): the web
-       list draws no add button, so a person who reaches /new by address
-       meets the reason before a form that cannot ring. Editing stored data
-       stays allowed; the notice separates keeping a rule from promising a
-       ring this device cannot deliver. -->
-    <Notice icon="bell" key="reminder-web" title={m.rem_web_list_note()} text={m.rem_web_save_note()} />
-  {/if}
-
   <Field label={m.name_label()} id="r-name">
     {#snippet children(id)}
       <input autocomplete={journalTextAutocomplete()} class="input" {id} name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
@@ -181,7 +168,7 @@
   </Field>
   <p class="next-preview">
     <Icon name="clock" size={14} />
-    {#if isWeb}{m.rem_next_web({ when: nextPreview })}{:else}{m.rem_next({ when: nextPreview })}{/if}
+    {m.rem_next({ when: nextPreview })}
   </p>
 
   {#if drugChoices.length > 0}
@@ -209,15 +196,13 @@
     </div>
   {/if}
 
-  {#if !isWeb}
-    <div class="notice notice-info">
-      <Icon name="info" size={20} />
-      <div class="notice-body">
-        {m.rem_alarm_note()}
-        <a href="/settings/reminders">{m.rem_alarm_note_link()}</a>
-      </div>
+  <div class="notice notice-info">
+    <Icon name="info" size={20} />
+    <div class="notice-body">
+      {m.rem_alarm_note()}
+      <a href="/settings/reminders">{m.rem_alarm_note_link()}</a>
     </div>
-  {/if}
+  </div>
 
   <SaveBar>
     <button class="btn btn-primary" data-save disabled={saving.busy} onclick={saveReminder}>

@@ -3560,75 +3560,22 @@ try {
 } catch (e) { fail('rail settings row', e); }
 });
 
-/* 15. reminders web note at desktop */
-await flow('reminders web', async () => {
+/* 15. reminders are Android-only: every address of theirs lands on Settings
+   in a browser (pre-release human 18), and Settings draws no row for them. */
+await flow('reminders on web', async () => {
 try {
-  await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
-  const text = await page.textContent('[data-screen]');
-  if (!text.includes('Android app')) throw new Error('web note missing');
-  ok('web reminders note');
-} catch (e) { fail('reminders web', e); }
+  for (const route of ['/settings/reminders', '/settings/reminders/new', '/settings/reminders/no-such-reminder']) {
+    await page.goto(BASE + route, { waitUntil: 'networkidle' });
+    await page.waitForFunction(() => location.pathname === '/settings', null, { timeout: 10000 }).catch(() => {
+      throw new Error(`${route} did not land on /settings`);
+    });
+  }
+  await booted();
+  if (await page.locator('a[href="/settings/reminders"]').count()) throw new Error('Settings draws a Reminders row on web');
+  ok('web reminders: every address lands on Settings, and Settings has no Reminders row');
+} catch (e) { fail('reminders on web', e); }
 });
 
-/* 15b. the web editor names its schedule preview and promises no
-   ring, and the list's Export/import handoff comes back (ticket 13). The
-   handoff lives on the list's notice; the editor is reached by direct
-   visit, which is exactly the path the audit took. */
-await flow('web reminder editor', async () => {
-try {
-  await page.goto(BASE + '/settings/reminders/new', { waitUntil: 'networkidle' });
-  await booted();
-  const editor = await page.textContent('[data-screen]');
-  if (!editor.includes('Schedule preview')) throw new Error('the web editor does not name the schedule preview');
-  if (editor.includes('Exact alarms survive reboots')) throw new Error('the web editor promises Android alarm delivery');
-  await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
-  await page.locator('[data-notice="reminders-web"] [data-notice-action]').click();
-  await page.waitForFunction(() => location.pathname === '/settings/export');
-  await page.goBack();
-  await page.waitForFunction(() => location.pathname === '/settings/reminders');
-  ok('web reminders: schedule preview, no reboot promise, export handoff returns');
-} catch (e) { fail('web reminder editor', e); }
-});
-
-/* 15c. a reminder edit asks before Back drops it, and an id that names no
-   reminder says so (phase 15 ticket 04, audit A1/V16). The editor sat on
-   detailDraft with no guard of its own, and an unknown id drew an empty
-   editable form whose Save made a new reminder. */
-await flow('reminder editor asks before leaving', async () => {
-try {
-  await page.goto(BASE + '/settings/reminders/no-such-reminder', { waitUntil: 'networkidle' });
-  await booted();
-  await page.waitForSelector('[data-notice="reminder-missing"]');
-  if (await page.locator('#r-name').count()) throw new Error('an unknown reminder id still draws the editable form');
-
-  await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
-  await booted();
-  // Web draws no add control (a browser cannot ring), so the editor is
-  // reached through an in-app link added for the walk.
-  await page.evaluate(() => {
-    const a = document.createElement('a');
-    a.href = '/settings/reminders/new';
-    a.setAttribute('data-probe-new-reminder', '');
-    a.textContent = 'new';
-    document.querySelector('[data-screen]')?.append(a);
-  });
-  await page.locator('[data-probe-new-reminder]').click();
-  await page.waitForSelector('#r-name');
-  await page.locator('#r-name').fill('Patch, not saved');
-  await page.locator('[data-screen-back]').first().click();
-  await page.waitForSelector('[data-discard-record]', { timeout: 5000 }).catch(() => {
-    throw new Error('Back left a changed reminder without asking');
-  });
-  await page.locator('[data-keep-editing]').click();
-  await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
-  if ((await page.locator('#r-name').inputValue()) !== 'Patch, not saved') throw new Error('Keep editing lost the reminder name');
-  await page.evaluate(() => window.history.back());
-  await page.waitForSelector('[data-discard-record]', { timeout: 5000 });
-  await page.locator('[data-discard-record]').click();
-  await page.waitForFunction(() => location.pathname === '/settings/reminders', null, { timeout: 10000 });
-  ok('reminder editor: unknown id is not found, Back asks, Keep keeps, Discard leaves');
-} catch (e) { fail('reminder editor asks before leaving', e); }
-});
 
 /* 16. preferences survive a reload and land before first paint (ticket 06) */
 await flow('boot preferences', async () => {
@@ -4846,7 +4793,7 @@ await flow('More hub route characterization', async () => {
 try {
   const SETTINGS_AREA_ROUTES = [
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
-    '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
+    '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash',
     '/settings/body-regions',
     '/media/photos',
     '/body/hair-progress',
@@ -5004,7 +4951,6 @@ try {
        by default, so a bare page load of `/care` never renders its
        `care-stock-empty` marker either way - the check above would pass
        without the sheet ever having been opened. */
-    ['/settings/reminders', 'reminders-empty'],
     // Phase 11 ticket 01: the whole-app audit's gaps (comfort items,
     // starred entries, an attached document, a second procedure) - two read
     // straight off their own empty-state markers the same way as every route
@@ -5338,15 +5284,7 @@ try {
 /* Ticket 32, ADR-0063: the elapsed reminder can only ever fire through the
    Android bridge, so the web wear editor offers no toggle and no hours
    field for it - checked against fullFixture's own "Binder check-in"
-   session (still running at this point, the row the reminders-list block
-   right below depends on finding).
-
-   Stopping it here doubles as the regression the ticket's notes call out:
-   reconcileReminder reads undefined as "leave this reminder alone" and null
-   as "delete it", and stopRunning is one of the three call sites that used
-   to send null on every web save regardless of whether a reminder already
-   existed. If that regressed, the row the next block looks for would
-   already be gone. */
+   session, which is still running at this point. */
 await flow('wear editor reminder field on web', async () => {
 try {
   await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
@@ -5386,38 +5324,10 @@ try {
     throw new Error('the duration cue outlived the session it was about');
   }
 
-  await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
-  if ((await page.locator('[data-list-row]', { hasText: 'wear session' }).count()) === 0) { // text-under-test: same provenance-line handle the reminders-list block below matches
-    throw new Error('stopping the session on web silently dropped its existing reminder');
-  }
-
-  ok('web wear editor hides the elapsed reminder, and saving does not drop one already set');
+  ok('web wear editor hides the elapsed reminder, and stopping it works');
 } catch (e) { fail('wear editor reminder field on web', e); }
 });
 
-/* Ticket 31: the web reminders list, once "Fill every feature" guarantees
-   it is not empty - rows with no navigation and a delete control, and a
-   wear-session's own elapsed reminder (`wear:` autoSource, fullFixture.ts's
-   "Binder check-in") that appears and can be cancelled from it, which is
-   ADR-0063's reasoning for why the web list carries a delete at all. */
-await flow('reminders list on web', async () => {
-try {
-  await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
-  if ((await page.locator('[data-list-row]').count()) === 0) throw new Error('no reminder rows shown on web');
-  if ((await page.locator('[data-list-row] a').count()) > 0) throw new Error('a reminder row navigates on web');
-  if ((await page.locator('[data-row-action]').count()) === 0) throw new Error('no delete control on a web reminder row');
-
-  const wearRow = page.locator('[data-list-row]', { hasText: 'wear session' }); // text-under-test: the only handle a wear-origin row carries is its provenance line
-  if ((await wearRow.count()) === 0) throw new Error('no wear-session reminder visible on web');
-
-  const wearRowId = await wearRow.first().getAttribute('data-list-row');
-  await page.locator(`[data-row-action="${wearRowId}"]`).click();
-  await page.locator('[data-confirm-delete-reminder]').click();
-  await page.waitForSelector(`[data-list-row="${wearRowId}"]`, { state: 'detached' });
-
-  ok('web reminders list shows rows with no navigation, and a wear-session reminder can be deleted from it');
-} catch (e) { fail('reminders list on web', e); }
-});
 
 /* The hub reading its own data (phase 8 UX ticket 02).
 

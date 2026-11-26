@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { undoable } from '$lib/stores/deleteUndo';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -18,18 +17,12 @@
   import { nextCheckIn } from '$lib/reminders/checkIn';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
-  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import Switch from '$lib/components/Switch.svelte';
-  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
-  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { collapse, disclose } from '$lib/motion/reveal';
-  import { isAndroid } from '$lib/platform';
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
   import { watchStatus } from '$lib/permissions/watchStatus';
-
-  let isWeb = $derived(!isAndroid());
 
   let reminders = liveList((j) => j.reminders.getReminders());
   /* What a medication reminder reminds about comes from its regimen and
@@ -42,13 +35,6 @@
      claiming either. */
   let status = $state<AndroidReminderStatus | 'unreadable'>({ notifications: 'not-required', exactAlarms: 'not-required' });
   let statusReady = $state(false);
-
-  // Web's one write (ADR-0063): a reminder that can never ring on this
-  // device still needs a cancel path, and this is it.
-  const record = recordEditor<Reminder>({
-    remove: (id) => undoable((j) => j.reminders.deleteReminder(id)),
-    findById: (id) => reminders.rows.find((r) => r.id === id)
-  });
 
   /* Re-read whenever the screen comes back to the front, because both
      ways out of a refusal are Android's own settings screens (ticket 41,
@@ -83,7 +69,6 @@
   }
 
   $effect(() => {
-    if (isWeb) return;
     const watch = watchStatus<AndroidReminderStatus | 'unreadable'>({
       read: () => androidReminders.getStatus(),
       unreadable: 'unreadable',
@@ -139,224 +124,166 @@
 <div class="screen" data-screen>
   <ScreenHeader title={m.reminders()} back="/settings">
     {#snippet actions()}
-      {#if !isWeb}
-        <a class="icon-btn" href="/settings/reminders/new" aria-label={m.rem_add_aria()}><Icon name="plus" size={22} /></a>
-      {/if}
+      <a class="icon-btn" href="/settings/reminders/new" aria-label={m.rem_add_aria()}><Icon name="plus" size={22} /></a>
     {/snippet}
   </ScreenHeader>
 
-  {#if isWeb}
-    <!-- Ticket 13: the limitation notice is the handoff. A browser holds
-         the rows as data (ADR-0063); the action is the transfer task the
-         text describes, not another sentence about it. -->
-    <Notice
-      icon="bell"
-      key="reminders-web"
-      title={m.rem_web_list_note()}
-      text={m.rem_web_note()}
-      action={{ label: m.exp_title(), href: '/settings/export' }}
-    />
-
-    <!-- Held until the reminders have answered, then faded in (ux-carpet
-         ticket 211): the empty notice stood in for a list that then cut in
-         at full opacity. -->
-    <ReadReserve ready={remindersRevealed} estimate={remindersEstimate} onrest={remindersRemember}>
-      {#if reminders.rows.length === 0}
-        <Notice icon="bell" key="reminders-empty" title={m.rem_empty_title()} text={m.rem_empty_body()} />
-      {:else}
-        <ListCard>
-          {#each reminders.rows as r (r.id)}
-            {@const origin = resolveReminderOrigin(r)}
-            {@const said = words(r)}
-            <div class="rows-divide" transition:collapse>
-              <ListRow
-                static
-                key={r.id}
-                data-reminder={r.id}
-                icon="bell"
-                title={said.title}
-                subtitle={[reminderScheduleLabel(r), said.detail, origin?.text]}
-                action={{
-                  icon: 'trash',
-                  label: m.rem_delete_aria({ title: said.title }),
-                  onclick: () => record.askToDelete(r)
-                }}
+  <!-- Carpet 30: the app's own daily check-in, flush on the page. It had a
+       `.card` with a 1.5px `--accent-border` edge, which was the group
+       saying "this one is mine, not a reminder you made" - a claim rule 4
+       has no treatment for, and one the row's own title makes in words.
+       The shape is the disguise sheet's, settled on carpet 29: `.spread`
+       rows in a stack, no ground, no edge, no separators. -->
+  <ReadReserve ready={preferencesAttached()} estimate={checkInEstimate} onrest={checkInRemember} data-checkin>
+    <div class="stack-3">
+      <div class="spread">
+        <span class="kit-row-text">
+          <span class="kit-row-title"><Icon name="mood" size={16} /> {m.checkin_title()}</span>
+          <span class="kit-row-sub">{m.checkin_sub()}</span>
+        </span>
+        <Switch
+          checked={prefs.checkInEnabled}
+          label={m.checkin_title()}
+          onChange={(v) => {
+            prefs.checkInEnabled = v;
+          }}
+        />
+      </div>
+      {#if prefs.checkInEnabled}
+      <!-- What the switch above turns on, opening its own height rather
+           than arriving at full size (rule 10, and it is the group's own
+           edge that used to hold these two rows together). `disclose` is
+           tier 3's primitive for exactly this, and it substitutes a cut
+           under reduced motion rather than being deleted. -->
+      <div class="disclosed" transition:disclose>
+        <!-- `Field spread`, so this row carries the same shape as the two
+             switch rows around it: the name at the left edge, the control at
+             the right. What was here wrote the pair by hand and capped the
+             input at `width: 110px`, which is under the min-content width of
+             a platform time control - notifications' `.quiet-window` already
+             says so about the same input - so the value was clipped and the
+             row read as a label losing an argument with a pill. The cap is
+             the 160px `/settings/reminders/[id]` gives the same field. -->
+        <div class="stack-3">
+          <Field label={m.time_label()} id="checkin-time" spread>
+            {#snippet children(id)}
+              <TimePicker {id} name="checkin-time" style="max-width:160px" required bind:value={prefs.checkInTime} />
+            {/snippet}
+          </Field>
+          <!-- The pause sits on the check-in itself rather than on a screen
+               of its own (functional audit ticket 08): an empty field is no
+               pause, a date is the last quiet day, and the picker's own
+               Clear is how it resumes. -->
+          <Field label={m.checkin_pause_label()} id="checkin-pause" spread>
+            {#snippet children(id)}
+              <DatePicker
+                {id}
+                name="checkin-pause"
+                style="max-width:160px"
+                min={dateInputValueFromEpochDay(today)}
+                value={pauseValue}
+                onchange={setPause}
+                placeholder={m.checkin_pause_none()}
+                data-checkin-pause
               />
+            {/snippet}
+          </Field>
+          {#if backOn}
+            <div class="disclosed" transition:disclose>
+              <p class="checkin-back" data-checkin-back>{backOn}</p>
             </div>
-          {/each}
-        </ListCard>
-      {/if}
-    </ReadReserve>
-
-    <RecordSheet
-      {record}
-      handle="reminder"
-      confirm={{
-        title: m.rem_delete_sheet(),
-        question: (reminder) => m.rem_delete_q({ title: words(reminder).title }),
-        hint: () => m.delete_undo_hint(),
-        confirmLabel: m.delete(),
-        cancelLabel: m.keep_it()
-      }}
-    />
-  {:else}
-    <!-- Carpet 30: the app's own daily check-in, flush on the page. It had a
-         `.card` with a 1.5px `--accent-border` edge, which was the group
-         saying "this one is mine, not a reminder you made" - a claim rule 4
-         has no treatment for, and one the row's own title makes in words.
-         The shape is the disguise sheet's, settled on carpet 29: `.spread`
-         rows in a stack, no ground, no edge, no separators. -->
-    <ReadReserve ready={preferencesAttached()} estimate={checkInEstimate} onrest={checkInRemember} data-checkin>
-      <div class="stack-3">
-        <div class="spread">
-          <span class="kit-row-text">
-            <span class="kit-row-title"><Icon name="mood" size={16} /> {m.checkin_title()}</span>
-            <span class="kit-row-sub">{m.checkin_sub()}</span>
-          </span>
-          <Switch
-            checked={prefs.checkInEnabled}
-            label={m.checkin_title()}
-            onChange={(v) => {
-              prefs.checkInEnabled = v;
-            }}
-          />
+          {/if}
         </div>
-        {#if prefs.checkInEnabled}
-        <!-- What the switch above turns on, opening its own height rather
-             than arriving at full size (rule 10, and it is the group's own
-             edge that used to hold these two rows together). `disclose` is
-             tier 3's primitive for exactly this, and it substitutes a cut
-             under reduced motion rather than being deleted. -->
-        <div class="disclosed" transition:disclose>
-          <!-- `Field spread`, so this row carries the same shape as the two
-               switch rows around it: the name at the left edge, the control at
-               the right. What was here wrote the pair by hand and capped the
-               input at `width: 110px`, which is under the min-content width of
-               a platform time control - notifications' `.quiet-window` already
-               says so about the same input - so the value was clipped and the
-               row read as a label losing an argument with a pill. The cap is
-               the 160px `/settings/reminders/[id]` gives the same field. -->
-          <div class="stack-3">
-            <Field label={m.time_label()} id="checkin-time" spread>
-              {#snippet children(id)}
-                <TimePicker {id} name="checkin-time" style="max-width:160px" required bind:value={prefs.checkInTime} />
-              {/snippet}
-            </Field>
-            <!-- The pause sits on the check-in itself rather than on a screen
-                 of its own (functional audit ticket 08): an empty field is no
-                 pause, a date is the last quiet day, and the picker's own
-                 Clear is how it resumes. -->
-            <Field label={m.checkin_pause_label()} id="checkin-pause" spread>
-              {#snippet children(id)}
-                <DatePicker
-                  {id}
-                  name="checkin-pause"
-                  style="max-width:160px"
-                  min={dateInputValueFromEpochDay(today)}
-                  value={pauseValue}
-                  onchange={setPause}
-                  placeholder={m.checkin_pause_none()}
-                  data-checkin-pause
-                />
-              {/snippet}
-            </Field>
-            {#if backOn}
-              <div class="disclosed" transition:disclose>
-                <p class="checkin-back" data-checkin-back>{backOn}</p>
-              </div>
-            {/if}
-          </div>
-        </div>
-        {/if}
       </div>
-    </ReadReserve>
-
-    <!-- One kit Notice per refusal (ticket 41), so each says only what its
-         own permission costs and carries its one way out, and a grant made
-         in Android's settings takes its notice away by the collapse Notice
-         owns rather than in one frame. The inexact one states the accepted
-         fallback after a revoke: Android cancels the exact alarms and the
-         app sets them again only when it next opens or the phone restarts,
-         never sooner. A read Android refused says so and offers another
-         try, rather than calling either permission on or off. -->
-    <ReadReserve ready={statusReady} estimate={permissionEstimate} onrest={permissionRemember}>
-      {#if status === 'unreadable'}
-        <Notice
-          icon="alert"
-          key="reminders-permissions-unknown"
-          title={m.perm_status_unknown_title()}
-          text={m.rem_status_unknown_body()}
-          action={{ label: m.read_retry(), onclick: () => void statusWatch?.refresh() }}
-        />
-      {:else}
-      {#if status.notifications === 'denied'}
-        <Notice
-          icon="alert"
-          key="reminders-notifications-off"
-          title={m.rem_notifications_off_title()}
-          action={{ label: m.rem_allow_notifications(), onclick: requestNotifications }}
-        />
       {/if}
-      {#if status.exactAlarms === 'denied'}
-        <Notice
-          icon="alert"
-          key="reminders-inexact"
-          title={m.rem_inexact_title()}
-          text={m.rem_inexact_body()}
-          action={{ label: m.rem_allow_exact_alarms(), onclick: requestExactAlarms }}
-        />
-      {/if}
-      {/if}
-    </ReadReserve>
-
-    <ReadReserve ready={remindersRevealed} estimate={remindersEstimate} onrest={remindersRemember}>
-      <!-- The notifications screen's Reminders switch gates every row below
-           (platform-sync.ts's schedulableReminders), and each row keeps its
-           own switch on while it is off - so the list says so rather than
-           showing a column of switched-on reminders that will not ring
-           (functional audit ticket 08). -->
-      {#if !prefs.remindersEnabled && reminders.rows.length > 0}
-        <Notice
-          icon="bell"
-          key="reminders-switched-off"
-          title={m.rem_switched_off_title()}
-          text={m.rem_switched_off_body()}
-          action={{ label: m.rem_switched_off_action(), href: '/settings/notifications' }}
-        />
-      {/if}
-      <ListCard>
-        {#each reminders.rows as r (r.id)}
-          <!-- A navigable title beside an independent Switch, and ListRow has
-               no shape for that: `href` makes the whole row the link, which
-               would toggle the switch by navigating past it; `action` renders
-               one icon button, not a Switch (ticket 18). -->
-          {@const origin = resolveReminderOrigin(r)}
-          {@const said = words(r)}
-          <div transition:collapse class="kit-row" data-list-row={r.id}>
-            <span class="kit-row-ico"><Icon name="bell" size={22} /></span>
-            <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
-              <span class="kit-row-title">{said.title}</span>
-              <span class="kit-row-sub">{reminderScheduleLabel(r)}</span>
-              {#if said.detail}<span class="kit-row-sub">{said.detail}</span>{/if}
-              {#if origin}<span class="kit-row-sub">{origin.text}</span>{/if}
-            </a>
-            <span class="kit-row-trail">
-              <Switch checked={r.enabled} label={m.rem_enable_aria({ title: said.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
-            </span>
-          </div>
-        {/each}
-      </ListCard>
-    </ReadReserve>
-
-    <div class="notice notice-info">
-      <Icon name="info" size={20} />
-      <div class="notice-body">
-        <span class="notice-title">{m.rem_battery_title()}</span>
-        {m.rem_battery_body()}
-        <button class="btn btn-soft" onclick={openBatterySettings}>{m.rem_battery_link()}</button>
-      </div>
     </div>
-  {/if}
+  </ReadReserve>
+
+  <!-- One kit Notice per refusal (ticket 41), so each says only what its
+       own permission costs and carries its one way out, and a grant made
+       in Android's settings takes its notice away by the collapse Notice
+       owns rather than in one frame. The inexact one states the accepted
+       fallback after a revoke: Android cancels the exact alarms and the
+       app sets them again only when it next opens or the phone restarts,
+       never sooner. A read Android refused says so and offers another
+       try, rather than calling either permission on or off. -->
+  <ReadReserve ready={statusReady} estimate={permissionEstimate} onrest={permissionRemember}>
+    {#if status === 'unreadable'}
+      <Notice
+        icon="alert"
+        key="reminders-permissions-unknown"
+        title={m.perm_status_unknown_title()}
+        text={m.rem_status_unknown_body()}
+        action={{ label: m.read_retry(), onclick: () => void statusWatch?.refresh() }}
+      />
+    {:else}
+    {#if status.notifications === 'denied'}
+      <Notice
+        icon="alert"
+        key="reminders-notifications-off"
+        title={m.rem_notifications_off_title()}
+        action={{ label: m.rem_allow_notifications(), onclick: requestNotifications }}
+      />
+    {/if}
+    {#if status.exactAlarms === 'denied'}
+      <Notice
+        icon="alert"
+        key="reminders-inexact"
+        title={m.rem_inexact_title()}
+        text={m.rem_inexact_body()}
+        action={{ label: m.rem_allow_exact_alarms(), onclick: requestExactAlarms }}
+      />
+    {/if}
+    {/if}
+  </ReadReserve>
+
+  <ReadReserve ready={remindersRevealed} estimate={remindersEstimate} onrest={remindersRemember}>
+    <!-- The notifications screen's Reminders switch gates every row below
+         (platform-sync.ts's schedulableReminders), and each row keeps its
+         own switch on while it is off - so the list says so rather than
+         showing a column of switched-on reminders that will not ring
+         (functional audit ticket 08). -->
+    {#if !prefs.remindersEnabled && reminders.rows.length > 0}
+      <Notice
+        icon="bell"
+        key="reminders-switched-off"
+        title={m.rem_switched_off_title()}
+        text={m.rem_switched_off_body()}
+        action={{ label: m.rem_switched_off_action(), href: '/settings/notifications' }}
+      />
+    {/if}
+    <ListCard>
+      {#each reminders.rows as r (r.id)}
+        <!-- A navigable title beside an independent Switch, and ListRow has
+             no shape for that: `href` makes the whole row the link, which
+             would toggle the switch by navigating past it; `action` renders
+             one icon button, not a Switch (ticket 18). -->
+        {@const origin = resolveReminderOrigin(r)}
+        {@const said = words(r)}
+        <div transition:collapse class="kit-row" data-list-row={r.id}>
+          <span class="kit-row-ico"><Icon name="bell" size={22} /></span>
+          <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
+            <span class="kit-row-title">{said.title}</span>
+            <span class="kit-row-sub">{reminderScheduleLabel(r)}</span>
+            {#if said.detail}<span class="kit-row-sub">{said.detail}</span>{/if}
+            {#if origin}<span class="kit-row-sub">{origin.text}</span>{/if}
+          </a>
+          <span class="kit-row-trail">
+            <Switch checked={r.enabled} label={m.rem_enable_aria({ title: said.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
+          </span>
+        </div>
+      {/each}
+    </ListCard>
+  </ReadReserve>
+
+  <div class="notice notice-info">
+    <Icon name="info" size={20} />
+    <div class="notice-body">
+      <span class="notice-title">{m.rem_battery_title()}</span>
+      {m.rem_battery_body()}
+      <button class="btn btn-soft" onclick={openBatterySettings}>{m.rem_battery_link()}</button>
+    </div>
+  </div>
 </div>
 
 <style>

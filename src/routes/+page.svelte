@@ -114,6 +114,7 @@
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
   import Icon from '$lib/components/Icon.svelte';
+  import { noticeTurnedOffToast } from '$lib/notificationsTitle';
 
   const doorActive = useDoorActivity();
   let visit = 0;
@@ -1345,7 +1346,7 @@
           onclick={() => {
             prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, 'ready-letter', false);
             letterDismissSheetOpen = false;
-            toast(m.notice_turned_off_toast());
+            toast(noticeTurnedOffToast());
           }}
         >
           <span>{m.tile_letter_dont_show_btn()}</span>
@@ -1380,7 +1381,7 @@
           onclick={() => {
             prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, 'stock-notice', false);
             stockDismissSheetOpen = false;
-            toast(m.notice_turned_off_toast());
+            toast(noticeTurnedOffToast());
           }}
         >
           <span>{m.notice_stock_dont_show_btn()}</span>

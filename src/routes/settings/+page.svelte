@@ -30,6 +30,7 @@
   import FeatureVisibilityList from '$lib/components/FeatureVisibilityList.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { isAndroid } from '$lib/platform';
+  import { notificationsTitle } from '$lib/notificationsTitle';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { changePalette, changeTheme, isAppearancePending } from '$lib/motion/paletteChange';
   import { paletteRing } from '$lib/motion/paletteRing';
@@ -332,24 +333,24 @@
   <SectionHeading text={m.settings_reminders()} />
   <!-- The app speaking up, and the words it uses when it does. -->
   <ListCard>
-    <ListRow
-      key="reminders"
-      icon="bell"
-      title={m.reminders()}
-      subtitle={isWeb
-        ? m.reminders_web_sub()
-        : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() })}
-      href="/settings/reminders"
-      chevron={false}
-    >
-      {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
-    </ListRow>
+    {#if !isWeb}
+      <ListRow
+        key="reminders"
+        icon="bell"
+        title={m.reminders()}
+        subtitle={m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() })}
+        href="/settings/reminders"
+        chevron={false}
+      >
+        {#snippet trailing()}<Icon name="chevronRight" size={20} />{/snippet}
+      </ListRow>
+    {/if}
     <!-- One screen over the unprompted registry (deepening ticket 09): what
          may show on Today and what may buzz the phone are two questions
          about the same list. `badge` rather than a second bell beside the
          reminders row, and not `zap`, which is battery optimisation in
          Permissions. -->
-    <ListRow key="notifications" icon="badge" title={m.notif_title()} href="/settings/notifications" />
+    <ListRow key="notifications" icon="badge" title={notificationsTitle()} href="/settings/notifications" />
   </ListCard>
 
   <SectionHeading text={m.settings_lists()} />
