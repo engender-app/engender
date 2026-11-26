@@ -69,12 +69,13 @@
 
   /* The tile's one line under the figure: the other currencies by code
      when there are any, since the figure is only one of them; otherwise
-     how much of it was refunded, or else how many costs it is. */
+     how much of it was refunded. No count of costs (bug session 18,
+     item 88): it said nothing the figure needed. */
   let tileNote = $derived.by(() => {
-    if (!first) return '';
+    if (!first) return undefined;
     const others = reading.currencies.slice(1).map((c) => c.currency);
     if (others.length) return m.cost_tile_also({ codes: new Intl.ListFormat(intlLocale(), { type: 'conjunction' }).format(others) });
-    return first.refunded > 0 ? m.cost_tile_refunded({ amount: money(first.refunded, first.currency) }) : m.cost_reading_count({ count: first.count });
+    return first.refunded > 0 ? m.cost_tile_refunded({ amount: money(first.refunded, first.currency) }) : undefined;
   });
 </script>
 

@@ -1700,7 +1700,6 @@
   "look_back_letter_opened": "Otwarto {date}",
   "look_back_letter_written": "Napisano {date}",
   "lookback_band_aria": "Wybierz okres {name}, od {from} do {to}",
-  "lookback_compare_before": "poprzedni okres",
   "lookback_drag_hint": "Przeciągnij końce, żeby wybrać okres",
   "lookback_empty_body": "Oś czasu zaczyna się od pierwszego wpisu, kamienia milowego albo ery.",
   "lookback_empty_title": "Oś czasu jest jeszcze pusta",

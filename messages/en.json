@@ -1664,7 +1664,6 @@
   "look_back_letter_opened": "Opened {date}",
   "look_back_letter_written": "Written {date}",
   "lookback_band_aria": "Select the stretch {name}, {from} to {to}",
-  "lookback_compare_before": "the stretch before",
   "lookback_drag_hint": "Drag the ends to choose a stretch",
   "lookback_empty_body": "The timeline starts with your first entry, milestone or era.",
   "lookback_empty_title": "Nothing on the timeline yet",
