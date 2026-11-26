@@ -698,19 +698,20 @@ describe('tier 2, the withdrawal', () => {
     expect(supports.length, 'the fallback is a @supports state, not an unstyled one').toBeGreaterThan(0);
   });
 
-  it('drops the blur under both reduced-motion paths and keeps the tint', () => {
-    const reduced = rules(stripComments(materials())).filter(isReduceContext);
-    const dropped = reduced
-      .filter((rule) => /backdrop-filter:\s*none/.test(rule.body))
-      .flatMap((rule) =>
-        rule.prelude.split(',').map((s) => s.trim().replace(/^html\[data-a11y-motion='reduce'\]\s*/, ''))
-      );
-    expect(dropped.filter((selector) => selector === '.scrim-withdraw')).toHaveLength(2);
-    for (const rule of reduced) {
-      expect(rule.body, 'the substitute keeps the scrim, it just stops withdrawing').not.toMatch(
-        /display:\s*none/
-      );
-    }
+  /* Reduced motion changes motion and nothing else (pre-release-human 18:
+     "reduce motion changes the colour of the background"). The withdrawal
+     used to give up its blur for the flat --scrim under both paths, which
+     is a different colour - 0.31 over a blur against 0.45, 0.6 in dark -
+     behind the very sheet the switch lives in. The blur never animates, so
+     it is not motion; it stays. Nor does any other reduced-motion rule
+     anywhere repaint a surface. */
+  it('repaints nothing under either reduced-motion path', () => {
+    const PAINT = /(^|;|\s)(background(-color|-image)?|backdrop-filter|color|border(-[a-z]+)?-color|fill|stroke)\s*:/;
+    const painted = allRules
+      .filter(isReduceContext)
+      .filter((rule) => !rule.prelude.startsWith('@') && PAINT.test(rule.body))
+      .map((rule) => `${rule.path}: ${rule.prelude}`);
+    expect(painted, 'a reduced-motion rule that changes a colour').toEqual([]);
   });
 });
 

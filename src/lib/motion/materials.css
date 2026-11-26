@@ -41,19 +41,10 @@
   }
 }
 
-/* The reduced-motion substitute is that same state, and on purpose: a blur
-   arriving over the screen is movement-adjacent even though nothing travels,
-   so it does not survive either reduced-motion path. What replaces it is the
-   full-strength tint, which still says "not this" without the withdrawal.
-   Substitute, never delete - the scrim itself stays, and so does everything
-   the sheet above it does. */
-html[data-a11y-motion='reduce'] .scrim-withdraw {
-  background: var(--scrim);
-  backdrop-filter: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .scrim-withdraw {
-    background: var(--scrim);
-    backdrop-filter: none;
-  }
-}
+/* No reduced-motion substitute, on purpose. The radius never animates and
+   the scrim's arrival is an opacity fade its Svelte transition already
+   shortens to --dur-crossfade, so nothing here moves. The flat --scrim the
+   reduced paths used to swap in was a different colour behind the sheet
+   (0.45 or 0.6 against 0.31 over the blur), and the Settings switch that
+   lives in a sheet repainted its own background (pre-release-human 18:
+   "reduce motion changes the colour of the background"). */

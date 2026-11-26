@@ -1929,14 +1929,17 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 /* The foot is a static flex item, and the blur layer above needs something
    to be absolute against. */
 [data-app-savebar][inert] { position: relative; }
+/* Reduced motion keeps the blurred layer and only shortens its fade to
+   the crossfade the scrim over it runs, which the 1ms clamp cannot reach.
+   It used to drop the layer outright, so the bar under an open sheet
+   looked different with the switch on (pre-release-human 18). The radius
+   never moves, so there is nothing here for reduced motion to stop. */
 html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
-  opacity: 0;
-  backdrop-filter: none;
+  transition-duration: var(--dur-crossfade) !important;
 }
 @media (prefers-reduced-motion: reduce) {
   :is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
-    opacity: 0;
-    backdrop-filter: none;
+    transition-duration: var(--dur-crossfade) !important;
   }
 }
 /* Carries the drag, so the sheet inside it keeps its transition's transform
