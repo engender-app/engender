@@ -32,7 +32,6 @@ try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
     page.on('pageerror', (error) => errors.push(error.message));
     await settlePage(page, base, '/settings', 'light');
-    await page.locator('[data-list-row="language"]').click();
     await page.locator(`[data-segment="${locale}"]`).click();
     await settlePage(page, base, '/care/regimen', 'light');
     await page.locator('[data-add]').click();

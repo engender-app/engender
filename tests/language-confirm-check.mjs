@@ -21,10 +21,9 @@ async function ready() {
   await untilSplashLets(page);
 }
 async function openLanguage() {
-  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-sheet] [role="radiogroup"]').waitFor();
 }
-const option = value => page.locator(`[data-sheet] [data-segment="${value}"]`);
+const option = value => page.locator(`[data-segmented="language"] [data-segment="${value}"]`);
 
 try {
   await page.goto(new URL('/settings', server.resolvedUrls.local[0]).href, { waitUntil: 'networkidle' });

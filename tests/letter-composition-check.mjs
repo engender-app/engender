@@ -205,7 +205,6 @@ try {
   assert.equal((await stored()).length, 3);
   console.log('PASS lock conceals composition immediately');
   await navigate('/settings');
-  await page.locator('[data-list-row="language"]').click();
   await Promise.all([
     page.waitForEvent('load'),
     page.locator('[data-segment="pl"]').click()

@@ -141,7 +141,7 @@ try {
         assert.equal(await page.locator('#care-stock-window-days').inputValue(), '30');
         assert.equal(await dateValue(page.locator('#care-stock-expiry')), '2027-03-01');
         assert.equal(await page.locator('#care-stock-pharmacy-note').inputValue(), 'Batch 7, Dworcowa');
-        await page.locator('[data-sheet] [data-segment="end"]').click();
+        await page.locator('[data-segmented="language"] [data-segment="end"]').click();
         await fillDate(page, '#care-stock-window-end', '2026-10-31');
         await page.locator('#care-stock-quantity').fill('12');
         await page.locator('[data-save-stock]').click();

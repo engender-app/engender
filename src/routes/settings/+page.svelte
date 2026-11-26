@@ -114,7 +114,6 @@
   }
   let aboutSheet = $state(false);
   let moodSheet = $state(false);
-  let languageSheet = $state(false);
   let a11ySheet = $state(false);
   let tagGroupsSheet = $state(false);
   /* Manage tags is a screen behind the Tag groups sheet. Going there with
@@ -161,9 +160,6 @@
   /* The readings on the rows that open a sheet (ticket 277): what each is
      set to, so the hub says it without the sheet being opened. */
   let moodName = $derived(MOOD_PRESETS.find(([key]) => key === prefs.moodPreset)?.[1]());
-  let languageName = $derived(
-    prefs.language === 'en' ? 'English' : prefs.language === 'pl' ? 'Polski' : m.theme_system()
-  );
   let a11yOn = $derived(
     [
       prefs.a11yTextSizeBoost && m.a11y_text_size_boost(),
@@ -295,9 +291,29 @@
     <ListRow key="mood-colours" icon="mood" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="language" icon="globe" title={m.language()} subtitle={languageName} chevron={false} onclick={() => (languageSheet = true)}>
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
+    <!-- On the row, like the theme above it, rather than a row that opens a
+         sheet holding the same three choices (bug session 18, item 78). -->
+    <div class="kit-row settings-unit-row" style="cursor:default">
+      <span class="kit-row-ico"><Icon name="globe" size={22} /></span>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.language()}</span>
+      </span>
+      <span class="kit-row-trail">
+        <Segmented
+          name={m.language()}
+          key="language"
+          compact
+          options={[
+            { value: 'system', label: m.theme_system() },
+            { value: 'en', label: 'English' },
+            { value: 'pl', label: 'Polski' },
+          ]}
+          value={prefs.language}
+          selectOnArrow={false}
+          onChange={setLanguage}
+        />
+      </span>
+    </div>
     <ListRow key="accessibility" icon="access" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.settings_row_off()} chevron={false} onclick={() => (a11ySheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
@@ -545,21 +561,6 @@
         </button>
       {/each}
     </div>
-  </Sheet>
-
-  <Sheet bind:open={languageSheet} title={m.language()}>
-    <h3>{m.language()}</h3>
-    <Segmented
-      name={m.language()}
-      options={[
-        { value: 'system', label: m.theme_system() },
-        { value: 'en', label: 'English' },
-        { value: 'pl', label: 'Polski' },
-      ]}
-      value={prefs.language}
-      selectOnArrow={false}
-      onChange={setLanguage}
-    />
   </Sheet>
 
   <Sheet bind:open={a11ySheet} title={m.settings_accessibility_pack()}>

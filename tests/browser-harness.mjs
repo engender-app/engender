@@ -249,14 +249,13 @@ export async function setAppLanguage(page, locale) {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   await untilSplashLets(page);
   const current = await page.getAttribute('html', 'lang');
-  await page.locator('[data-list-row="language"]').click();
   const reloaded = current !== locale ? page.waitForEvent('load') : null;
-  await page.locator(`[data-sheet] [data-segment="${locale}"]`).click();
+  await page.locator(`[data-segmented="language"] [data-segment="${locale}"]`).click();
   if (reloaded) await reloaded;
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   await page.waitForFunction(({ locale, label }) =>
     document.documentElement.lang === locale &&
-    document.querySelector('[data-list-row="language"]')?.textContent.includes(label),
+    document.querySelector('[data-segmented="language"] [aria-checked="true"]')?.textContent.includes(label),
     { locale, label: locale === 'pl' ? 'Polski' : 'English' });
   await page.goto(returnUrl, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });

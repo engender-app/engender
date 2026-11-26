@@ -28,8 +28,7 @@ try {
     await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
     if (await page.locator('html').getAttribute('lang') !== language) {
       await settlePage(page, base, '/settings', theme);
-      await page.locator('[data-list-row="language"]').click();
-      await page.locator(`[data-sheet] [data-segment="${language}"]`).click();
+      await page.locator(`[data-segmented="language"] [data-segment="${language}"]`).click();
       await page.waitForFunction(lang => document.documentElement.lang === lang, language);
       await page.waitForSelector('[data-app-root][data-boot="ready"]');
     }
