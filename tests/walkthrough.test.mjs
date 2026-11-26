@@ -2481,7 +2481,7 @@ try {
   const modules = page.locator('[data-feature-module]');
   // FEATURE_MODULE_ROWS in src/lib/data/hubRows.ts: one row per optional area.
   const featureCount = await modules.count();
-  if (featureCount !== 15) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 15`);
+  if (featureCount !== 14) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 14`);
   // DEFAULT_MODULES in src/lib/onboarding/features.ts: the core set arrives
   // ticked, the specialist modules do not (pre-release-human 12).
   for (const [key, on] of [['care', 'true'], ['milestones', 'true'], ['voice-benchmark', 'true'], ['tryouts', 'false']]) {
@@ -8089,7 +8089,7 @@ try {
   const sourcesOn = async () =>
     page.locator('[data-photo-source]').evaluateAll((cells) => cells.map((cell) => cell.dataset.photoSource));
   const everySource = await sourcesOn();
-  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video', 'progress']) {
+  for (const source of ['entry', 'milestone', 'hairRemoval', 'tryout', 'procedure', 'video', 'progress']) {
     if (!everySource.includes(source)) {
       throw new Error(`the library is missing its ${source} photographs: ${JSON.stringify([...new Set(everySource)])}`);
     }
@@ -8131,7 +8131,7 @@ try {
      own outro (motion/narrow.ts) and a count taken too early catches it. */
   await page.waitForFunction(() => !document.querySelector('[data-photo-source="entry"]'));
   const narrowed = await sourcesOn();
-  if (narrowed.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+  if (narrowed.some((source) => source !== 'hairRemoval')) {
     throw new Error(`Hair left something else on screen: ${JSON.stringify([...new Set(narrowed)])}`);
   }
   if (!new URL(page.url()).searchParams.get('source')) throw new Error('the chip is not in the query');
@@ -8198,7 +8198,7 @@ try {
   const exportSources = await page
     .locator('[data-photo-source]')
     .evaluateAll((cells) => [...new Set(cells.map((cell) => cell.dataset.photoSource))]);
-  if (exportSources.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+  if (exportSources.some((source) => source !== 'hairRemoval')) {
     throw new Error(`the export grid did not narrow: ${JSON.stringify(exportSources)}`);
   }
   if (!(await page.locator('[data-generate]').count())) throw new Error('the narrowed export cannot be made');
