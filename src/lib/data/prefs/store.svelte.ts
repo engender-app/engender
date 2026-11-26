@@ -140,6 +140,51 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
   for (const [key, value] of Object.entries(cached)) {
     if (isPreferenceKey(key)) values[key] = value as never;
   }
+  /* Through the proxy, so it is held like any write before the open and
+     reaches SQLite when the journal attaches. */
+  const held = heldLanguage();
+  if (held && !backing) prefs.language = held;
+}
+
+/* A language picked on the welcome, before there is a journal to write it
+   to (pre-release-human ticket 19). A write before the open is held in
+   memory, and setLocale() reloads the page, so the choice needs somewhere
+   that outlives the reload: without it the journal attached with
+   'system', activateLanguagePreference() resolved that against the
+   browser, and a Polish browser was reloaded back into Polish at the
+   access-mode step. Under the `engender-` prefix, so a reset's sweep of
+   the browser mirrors takes it with everything else. */
+const HELD_LANGUAGE_KEY = 'engender-held-language';
+
+function heldLanguage(): 'en' | 'pl' | null {
+  try {
+    const held = localStorage.getItem(HELD_LANGUAGE_KEY);
+    return held === 'en' || held === 'pl' ? held : null;
+  } catch {
+    return null;
+  }
+}
+
+function setHeldLanguage(value: 'en' | 'pl' | null) {
+  try {
+    if (value) localStorage.setItem(HELD_LANGUAGE_KEY, value);
+    else localStorage.removeItem(HELD_LANGUAGE_KEY);
+  } catch {
+    /* storage full / private mode: the choice lasts until the reload */
+  }
+}
+
+/** Picks the app's language and switches to it, which reloads the page.
+    With a journal open the write lands first, as Settings does it; before
+    one, the choice is held until the journal attaches. */
+export async function chooseLanguage(value: 'en' | 'pl'): Promise<void> {
+  if (backing) {
+    await setPreferenceDurably('language', value);
+  } else {
+    setHeldLanguage(value);
+    prefs.language = value;
+  }
+  activateLanguagePreference();
 }
 
 /** Prepare publication before Replace starts. Capture its authoritative
@@ -198,4 +243,6 @@ export async function attachPreferences(preferences: Preferences) {
   const replay = [...writtenBeforeOpen];
   writtenBeforeOpen.clear();
   for (const key of replay) write(key);
+  // The journal has it now, and reads it back on every later boot.
+  setHeldLanguage(null);
 }
