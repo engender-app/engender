@@ -1,5 +1,5 @@
 /* palettes.css owns the 16 flags. Read --motif-stripes and the ground tokens
-   from the active theme (ADR-0035). Before SQLite preferences attach,
+   from the active theme. Before SQLite preferences attach,
    app.html paints from the localStorage mirror, which can hold the previous
    palette (ADR-0009).
 

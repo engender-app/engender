@@ -9,7 +9,7 @@
   --font-body: 'Nunito', system-ui, sans-serif;
   --font-display: 'Outfit', 'Nunito', system-ui, sans-serif;
 
-  /* The phase 10 scale (DIRECTION.md rule 2): 48 / 28 / 17 / 15, set from
+  /* The phase 10 scale: 48 / 28 / 17 / 15, set from
      the top down. Secondary text is 15 at weight 600 rather than 14 at 450,
      because a flashy screen with grey 14px whispers under it is two apps;
      a content title is 17 in the body face; the section heading is 28 and a
@@ -56,13 +56,13 @@
   --space-9: 48px;
   --space-10: 64px;
 
-  /* --- Shape: one radius, and the disc (phase 10, DIRECTION.md rule 5) ---
+  /* --- Shape: one radius, and the disc ---
      Every block, every control track, every input, the sheet, the floating
      bar and its add button take --r-block. A disc - an icon that is a face, a
      heat cell that is a day - is 50%, written where it is drawn. A mood face
      is neither: it sits on a block of its own drawn inside a 24-unit viewBox,
      so its corner is 6.4 of those units and scales with the face
-     (moodFace.ts's MOOD_BLOCK, ADR-0077) - the one proportional corner in the
+     (moodFace.ts’s MOOD_BLOCK), the one proportional corner in the
      app, and the one exception direction-contracts.ts carries. The pill survives on
      the one shape that is a capsule, a tag, and nowhere else. The ramp this
      replaces (--radius-xs..xl, --r-card 20, --r-add 18) counted twenty-three
@@ -158,14 +158,9 @@
      it. */
   --dur-bloom: 800ms;
 
-  /* One pass of the progress bar's indeterminate sweep (Progress.svelte,
-     ADR-0070). Its own token rather than a tier duration, because it is
-     the only loop in the app besides the sun and it is not tier 0's: it
-     exists only while a person-initiated operation is running and it
-     always terminates. Left out of the clamp blocks below for the same
-     reason --dur-breathe is - a 1ms infinite loop is a strobe, not
-     stillness (MO-001) - and Progress.svelte stops it with
-     `animation: none` under both reduce selectors instead. */
+  /* Duration of Progress.svelte's indeterminate sweep. It lasts only
+     while work runs. Keep it out of the duration clamp. Reduced motion
+     uses animation: none because a 1ms loop would strobe. */
   --dur-sweep: 1400ms;
 
   /* The reduced-motion contract substitutes rather than deletes, and tier

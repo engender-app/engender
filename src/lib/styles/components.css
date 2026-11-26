@@ -6,14 +6,9 @@
    ============================================================ */
 
 /* ---------- text & primitives ---------- */
-/* ScreenHeader.svelte's own styles; nothing else
-   should wear these class names.
-
-   The header is two things now (phase 10, DIRECTION.md rule 7; redesign
-   ticket 23): the field, a solid block of one of the flag's colours that
-   holds the back control, the title and the actions, and under it, on the
-   page, the subtitle. The header itself paints nothing and pads nothing;
-   the field does both. */
+/* ScreenHeader.svelte owns these classes. The solid flag field holds back,
+   title and actions. The subtitle sits on the page below. The field owns
+   the fill and padding. */
 .screen-header {
   position: relative;
   min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
@@ -88,7 +83,7 @@
 [data-field-part] { view-transition-class: field-part; }
 
 /* stepBlind moves Setup and gate field edges from measured
-   heights (DIRECTION.md rules 12 and 15). These steps update in
+   heights. The steps update in
    place and let paint extend beyond a shrinking box until
    the close finishes. The door field uses navigation snapshots
    and keeps its paint clipped. */
@@ -455,8 +450,7 @@
      so on those the box had no edge a person could see and its fill is
      1.21:1 to 1.75:1 against the field - a control whose boundary is what
      says it is a control owes 3:1 against what is beside it. --field-ink is
-     the one ink measured against every field: 4.41:1 at worst
-     (DIRECTION.md's own table). */
+     the one ink measured against every field: 4.41:1 at worst. */
   border-color: var(--field-ink);
 }
 /* Focus is a ring inside the box, not a colour on its edge. The edge is
@@ -579,28 +573,23 @@
 .btn:disabled { cursor: default; opacity: 0.45; }
 .icon-btn:disabled { cursor: default; opacity: 0.45; }
 /* Ink, the same pairing as .segment's active pill, the notice's icon square
-   and a tile's action button (DIRECTION.md rule 4): --text as the ground,
+   and a tile's action button: --text as the ground,
    --bg as the type. No box-shadow - the kit's one shadow belongs to the
    floating add button, not this control. */
 .btn-primary { background: var(--text); color: var(--bg); position: relative; overflow: hidden; }
 /* Limit lift to hover-capable pointers and exclude :active.
    Chromium can retain :hover after a touch, and this later
    transform would override press scale. On mouse press the lift
-   must also yield to scale (DIRECTION.md tier 4). */
+   must also yield to scale. */
 @media (hover: hover) {
   .btn-primary:hover:not(:active) {
     transform: translateY(-1px);
     filter: saturate(1.15);
   }
 }
-/* A block of the page, DIRECTION.md rule 4 as final-audit ticket 22
-   amended it (ADR-0093): no ground, the --outline edge every block draws,
-   --text type.
-   This was a pale --accent-soft tint, 1.08:1 from the page on trans light,
-   a tonal ground the rule does not sanction. The primary action keeps the
-   ink, so a secondary one is held by its line and spends no colour, since
-   colour is content in this direction. .btn-danger is the same block with
-   --danger type. */
+/* Secondary buttons use the page ground, a 1px --outline edge and
+   --text. Use --danger ink for a destructive action. The primary action
+   keeps the filled ink treatment. */
 .btn-soft { background: none; border: 1px solid var(--outline); color: var(--text); }
 /* --accent-ink, not --accent, and it is a contrast fix rather than a look
    change: the two are the same hue and the ink is only pulled toward --text
@@ -971,18 +960,10 @@ a.segment {
    looked identical mid-tap, so a mistap on the active segment read as
    nothing happening at all. It presses to the compact depth like every other
    control its size, and it presses whether or not it is the active one. */
-/* A segment is the third control that answers a press without shrinking, and
-   like the other two it has to say why: the pill crossing the set is already
-   the response, and scaling the label as well is two answers to one press -
-   the words bounce under the finger while the highlight slides out from under
-   it (Alicja, 2026-08-25: "lose the text bounce effect when clicking on the
-   switcher - just leave the highlight animation").
-
-   The other two are in DIRECTION.md's tier 1: a slider thumb takes a ring
-   because a press on it is the start of a carry, and a row the width of the
-   screen fills with a wash because scaling a row moves the card it sits in.
-   What answers here is the colour the label already takes when it becomes
-   the active one, which the transition below still carries. */
+/* A segmented control answers a press with the moving pill and the
+   label's colour change. Scaling the label would make it bounce while
+   the pill is still travelling. A slider thumb answers with a ring,
+   and a full-width row answers with a wash. */
 .segment:active { color: var(--text); }
 
 /* ---------- inputs ---------- */
@@ -1237,7 +1218,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
    steps 1 and 5 draw lids as one stroked path, at the mouth's own weight, so
    the whole face is one drawing at one weight (moodFace.ts says why the ends
    of the ramp are the two that differ). */
-/* In the step's own ink rather than the palette's --text (ADR-0091): the deep end of a ramp is too dark for a dark ink, so each step
+/* In the step's own ink rather than the palette's --text: the deep end of a ramp is too dark for a dark ink, so each step
    says what it is drawn in. A theme or preset change moves the ink, and so
    does a Journal cell whose day changes step, so it crossfades on the
    block's own curve instead of swapping in a frame. Solid rather than the
@@ -1355,7 +1336,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 /* The unselected faces sit back at 55% - but the dimming lands on the
    disc's fill and the features only, never on the whole svg. */
 .mood-btn:not(.is-selected) .mood-face { opacity: 0.55; }
-/* As one object since ticket 279 (ADR-0091). The fill used to fade on its
+/* Dim the face as one object. The fill used to fade on its
    own and the features on their own, which compounds once a deep step draws
    in white: the fill fading toward a light page is the fill fading toward
    its ink, and teal light's step 5 came to 1.48:1. Dimming the whole face
@@ -1569,7 +1550,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 /* ---------- tags ---------- */
 .tag-group { margin-bottom: var(--space-4); }
 /* A part of a new entry's step, named under the step's question.
-   A step carries one heading, its question (DIRECTION.md rule 12), so the
+   A step carries one heading, its question, so the
    parts under it - the scales, the mode - are named in the tag groups'
    small label, with a part's link at the end of the same line. */
 .step-part {
@@ -1621,13 +1602,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    shortest chip ("social", 69px) 46px of hit width, so the pull is -4px,
    which leaves it 49px. The button sits 2px further right. */
 .tag-chip-wrap .tag-info-btn { z-index: 1; }
-/* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while
-   checking the controls it does own. What is fixed here is the floor, not the
-   chip: the pill stays 36px because a chip is a 36px pill in every reference
-   there is, and the target is extended past it by a transparent overlay the
-   way Material extends its own. Nothing about how the chip looks changes, and
-   how it looks is ticket 22's to decide. Same treatment as SH-101 gave the
-   switch, whose 28px track sits inside a 48px hit area. */
+/* The chip stays 36px tall. A transparent overlay extends its hit area
+   to the 48px floor, as on the switch with a 28px track. */
 .tag-chip {
   position: relative;
   display: inline-flex; align-items: center; gap: 5px;
@@ -2227,7 +2203,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
    status icons on the page colour.
 
    Home's positioned field bounds the negative stacking order so the rings
-   stay behind their own content and later cards (ADR-0035). Rings touch.
+   stay behind their own content and later cards. Rings touch.
    Each has a 3px black border inside its diameter. The doubled stops of
    the bisexual flag keep its 2:1:2 proportions. flagSun.test.ts checks
    ring sizes against --motif-stripes.
@@ -2403,10 +2379,7 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3);
   width: 100%; max-width: 280px; margin: 0 auto;
 }
-/* Flat with an outline, not a plane with a shadow. DIRECTION.md's decision
-   2 gives the whole app one shadow and it belongs to the floating nav bar;
-   twelve elevated keys on a screen with no chrome were the loudest place
-   the old language survived. */
+/* Keys use a flat fill and an outline. The floating nav owns the shadow. */
 /* 56, which is rule 13's number for a key and the same block the flag
    picker and a row's icon are drawn at. It was 62,
    from before the phase had a block size; the six pixels a row are 24 off

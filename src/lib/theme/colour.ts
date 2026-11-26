@@ -128,7 +128,7 @@ export function chromaOf(hex: string): number {
 
 /** Which hue a colour is, 0 to 360 in OKLab. Exported for
     tests/palette-contrast.test.ts, which holds mood's two-hue ramp to a
-    minimum travel and to one direction round the wheel (ADR-0077): "two
+    minimum travel and to one direction round the wheel: "two
     colours, not one tinted" is a claim about hue, so it is measured as one
     rather than eyeballed off a render. */
 export function hueOf(hex: string): number {

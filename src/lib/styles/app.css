@@ -264,7 +264,7 @@ body {
 /* Let tier 2 animate screen navigation. A separate entrance
    suppressed by animation: none would restart when the
    suppression clears and make the screen arrive twice. Cold
-   start shows content immediately (DIRECTION.md tier 4). */
+   start shows content immediately. */
 .screen {
   padding: 0 var(--screen-inset);
   position: relative;
@@ -348,24 +348,9 @@ body {
 }
 
 /* ---------- phone: the floating bar ----------
-
-   DIRECTION.md's decision 2 gives the whole app one shadow, and this is
-   it. Everything else separates with a 1px line; the bar is the only
-   element that genuinely sits over the content rather than beside it, so
-   it is the only one with anything to cast.
-
-   It floats rather than spanning the edge. That is what lets the bottom
-   inset be a gap the bar sits above instead of padding inside a full-width
-   plane - on a gesture-navigation phone the system's own handle then has
-   the strip to itself, and the bar reads as an object on the screen rather
-   than as the screen's bottom edge.
-
-   Opaque, not translucent. The previous bar was a blurred 88% surface,
-   which is the veil decision 2 rules out; and the app now owns blur as a
-   specific material (the withdrawal behind a sheet, motion/materials.css),
-   so spending it on chrome as well would make the one place it means
-   something mean nothing.
-   ---------- */
+   The opaque bar floats over the content and casts the app's only shadow.
+   The bottom inset stays clear for the system gesture handle. Sheets use
+   their own withdrawal blur from motion/materials.css. */
 .app-nav {
   position: absolute;
   left: calc(var(--nav-float-gap) + var(--inset-left));
@@ -467,7 +452,7 @@ body {
 /* SH-003: colour alone marked the active tab, which disappears with a
    colour vision deficiency or on a screen turned all the way down. The
    indicator is a filled shape behind the whole tab - icon and label
-   together, per DIRECTION.md - so the active state carries a second cue
+   together, so the active state carries a cue
    that survives both.
 
    The shape itself is .nav-pill below, one element for the whole bar, so
@@ -510,8 +495,7 @@ body {
   /* Keep the accent wash at 11% so tabs under the travelling pill retain
      --text-2 contrast. In light trans the ratio is 4.56:1 at 11%, 4.42:1 at
      13% and 3.95:1 at 20%. The 1px full-accent edge reaches at least
-     4.07:1 against the wash, above the 3:1 boundary floor. This edge is a
-     deliberate exception to DIRECTION.md rule 4's line strengths. */
+     4.07:1 against the wash, above the 3:1 boundary floor. */
   background: var(--accent-soft);
   border: 1px solid var(--accent);
   opacity: 0;
@@ -836,7 +820,7 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 @keyframes screen-fade-out { to { opacity: 0; transform: scale(0.97); } }
 @keyframes screen-fade-in { from { opacity: var(--nil-opacity); transform: scale(1.03); } }
 
-/* The named blind is the field's opaque paint (ADR-0078). Keep its
+/* The named blind is the field's opaque paint. Keep its
    group pinned at the incoming size and animate the rounded clip,
    so the bottom corners retain their radius. The two snapshots use
    the same --field colour and move together to avoid a dip in opacity.
@@ -930,8 +914,8 @@ html {
   --pin-from: 0px;
   --pin-to: 0.01px;
 }
-/* Pin the blind's clip, height and text ride to the main thread
-   (ADR-0078). Chromium can drop linear() on a composited clip-path
+/* Pin the blind's clip, height and text ride to the main thread.
+   Chromium can drop linear() on a composited clip-path
    and draw a straight 380ms ramp, letting text lead by up to 30px.
    Clocks on separate threads can also start a frame apart.
 
@@ -1130,8 +1114,8 @@ html[data-nav='shared-axis-back']::view-transition-new(screen) {
 }
 
 /* The tapped card and entry editor share a transition name
-   (container.svelte.ts). Their box moves over the screen crossfade
-   (DIRECTION.md tier 2). Use --dur-slow for the combined travel and
+   (container.svelte.ts). Their box moves over the screen crossfade.
+   Use --dur-slow for the combined travel and
    resize. height: 100% and object-fit: cover crop each snapshot
    instead of stretching a short card into the editor. */
 /* Out, then in, for what is left of the screen (pre-release 18, item 54).

@@ -176,7 +176,7 @@ export function heatRamp(stripe: string, text: string, ground: string): HeatStep
 }
 
 /* heatInk stays exported only for palette-contrast.test.ts, which holds
-   mood's per-step inks to the same rule (ADR-0091). */
+   mood's per-step inks to the same rule. */
 export function heatInk(fill: string, text: string): string {
   if (contrast(text, fill) >= TEXT_FLOOR) return text;
   return contrast('#FFFFFF', fill) >= contrast('#000000', fill) ? '#FFFFFF' : '#000000';

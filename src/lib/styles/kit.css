@@ -1,21 +1,9 @@
-/* The surface kit and the chart kit.
+/* Surface and chart kit. Choose a surface that suits the content.
+   A 1px outline separates surfaces. Only the floating nav and its add
+   button use a shadow. Colour comes from flat fills and coloured text.
 
-   These are the surfaces every redesigned screen is assembled from, and
-   they exist as several kinds on purpose: DIRECTION.md's decision 2b says
-   one rounded card repeated down a screen is what made the app read as
-   generic, so a screen picks the surfaces its content needs rather than
-   pouring everything into the same box.
-
-   Everything here follows the two-surface rule. Separation is a 1px
-   outline, never a shadow - the app's one shadow belongs to the floating
-   nav bar and its add button - and colour arrives as flat fill and as
-   coloured text, never as a gradient, a glow or a veil.
-
-   The classes are prefixed `kit-` while the old world is still standing.
-   `.card` and `.list-row` in components.css are the
-   screens' current vocabulary and the screen tickets replace them one
-   screen at a time; the prefix is what lets both exist in the same
-   stylesheet until the last of them goes. */
+   The kit- prefix lets these classes coexist with components.css's
+   .card and .list-row. */
 
 /* ---------- section colour ----------
 
@@ -72,7 +60,7 @@
 
 /* ---------- section header ----------
 
-   Display face at the screen-title size with no icon (DIRECTION.md 3c).
+   Display face at the screen-title size with no icon.
    The 12.5px letterspaced grey label it replaces was the flattest possible
    way to divide a screen: a screen should read as a few named areas, not
    as an undifferentiated column of cards. The rows below carry the icons;
@@ -93,7 +81,7 @@
      'however it feels...' and 'gender feeling' are all starting at different
      points in x axis"). The 4px this used to carry put every section heading
      in the app 4px right of the surface it heads. */
-  /* The rhythm (phase 10, DIRECTION.md rule 1): 40 above the heading's 3px
+  /* The rhythm: 40 above the heading's 3px
      rule, of which the block before it already owns 20 (`.screen > *`) and
      the two margins collapse; 12 between the rule and the words; 12 under
      them. The rule in --text is what makes a screen read as named areas
@@ -197,15 +185,8 @@
 }
 
 /* ---------- list card ----------
-
-   Rows with a hairline separator, an icon disc, a title, an optional
-   subtitle and a chevron. The separator runs the full width of the card:
-   an earlier pass removed separators entirely and a long list stopped
-   reading as a list.
-
-   Subtitles are earned rather than standard (DIRECTION.md 3b) - the More
-   hub's 22 rows carry titles alone - so the row draws whatever it is
-   given and nothing reserves space for a subtitle that is not there. */
+   Full-width hairlines separate the rows. Each row has an icon disc,
+   title and chevron. A subtitle takes space only when supplied. */
 /* Flush (phase 10, rule 4): a list is its rows between two full-width
    hairlines, on the page. The card around it is gone. */
 .kit-list {
@@ -215,7 +196,7 @@
 
 /* Use the plain panel to group fields or frozen context when none of
    the kit's content-specific surfaces fit. It uses the standard
-   outline and kit padding (DIRECTION.md decisions 2 and 3). */
+   outline and kit padding. */
 .kit-panel {
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
@@ -538,17 +519,9 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
 }
 
 /* ---------- day card ----------
-
-   Entries grouped under a date bar of ink, which is what makes a run of
-   days read as one list of days rather than as one unbroken column.
-
-   Inside, the day is a timeline: a hairline runs down the entries and each
-   mood sits on it, with the time beside the mark. The shape of a day -
-   three entries close together in the evening, one in the morning - is
-   then visible before a word of it is read. It also does the job the
-   separator lines were doing between entries, so those are gone and the
-   rows close up; DIRECTION.md's decision 3 asks for tighter rather than
-   airier, and two entries a whole card-padding apart was the opposite. */
+   Group entries under a date bar. A timeline places each mood beside its
+   time, so readers can see the day's gaps and clusters. The line separates
+   entries without the extra space of a card around each one. */
 /* Flush (phase 10, rule 4): a day is its date bar plus its entries on the
    page, with no outline around the group. */
 .kit-day {
@@ -828,8 +801,8 @@ a.kit-entry:active {
   }
 }
 
-/* Use the full area stripe with the ink roles.ts picked for it
-   (DIRECTION.md rule 3). The standard outline separates light and dark
+/* Use the full area stripe with the ink roles.ts picked for it.
+   The standard outline separates light and dark
    stripes from the page. Flex lets margin-top: auto pin the foot and
    align paired values under titles that wrap. */
 .kit-tile {
@@ -1230,8 +1203,8 @@ a.kit-entry:active {
 /* Each mood has its own disc, face and label. Keep the face shapes
    distinguishable without colour at 22px. Neighbours differ by 2.2
    units of mouth or by curve direction, with lids at the endpoints.
-   Selection uses an outline matching the editor and adds no layout size
-   (DIRECTION.md, tier 3). */
+   Selection uses an outline matching the editor and adds no layout size.
+   */
 .kit-moods {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1598,22 +1571,10 @@ button.kit-strip-day .kit-strip-cell {
   }
 }
 
-/* ============================================================
-   The chart kit.
-
-   Flat marks carrying their own values: no gridlines, no legend, no axis
-   furniture, and single-hue intensity with the leader at full strength and
-   the rest a diluted step of the same hue - which is the style read off
-   zabka-dashboard and also what ADR-0012 requires.
-
-   What is deliberately not taken from that reference is its editorial
-   habit. There every chart is headed by a sentence stating the finding and
-   a paragraph explaining it. Here a heading names what the chart shows and
-   never what it means: "Day by day", not "Gender feeling moved from 50 to
-   80". PRODUCT.md says the app never interprets a value, and a headline is
-   an interpretation. There is nowhere in these rules for that paragraph to
-   go, which is the point.
-   ============================================================ */
+/* The chart kit. Marks carry their own values without gridlines. A
+   single-hue ramp leads at full strength, then steps down (ADR-0012).
+   Headings name the reading, such as 'Day by day'. The chart leaves the
+   interpretation to the reader. */
 
 /* Unboxed (phase 10, rule 4): heading, plot, range, on the page. The chart
    card is gone; consecutive charts are separated by a hairline, which sits
@@ -1803,7 +1764,7 @@ button.kit-strip-day .kit-strip-cell {
 
 /* Day cards are the exception: adjacent ones are items of a day list -
    Home's recent entries, search's hit list - and those lists separate
-   their rows with a 12px grid gap by design (DIRECTION.md decision 3).
+   their rows with a 12px grid gap by design.
    The floor stacking on top of the gap read as 36px between entries,
    which is the "space between entries is too big" of ticket 99 item 9:
    the fix there belonged to the end of the screen, and the rhythm between
@@ -1970,7 +1931,7 @@ button.kit-strip-day .kit-strip-cell {
 /* Use --r-block so multiline readouts retain padding at the
    corners. A pill radius crowds the first and last lines as
    height grows. The opaque --surface-2 and outline separate the
-   readout from plot marks without a shadow (DIRECTION.md decision 2). */
+   readout from plot marks without a shadow. */
 .kit-area-readout {
   position: absolute;
   top: 0;
@@ -2058,12 +2019,8 @@ button.kit-strip-day .kit-strip-cell {
 }
 
 
-/* Which line is which. The app's second legend, and the
-   second named departure from DIRECTION.md's chart rules - the first is the
-   wear trend's, for the same reason: two unnamed lines are not a chart.
-
-   Under the plot and quiet: it says what the marks are and never what they
-   mean. */
+/* Put the key below the plot to identify the overlaid lines. The wear
+   trend also uses a key because it shares an axis between two metrics. */
 .kit-area-legend {
   /* Declared here too, not only on the plot: the legend is the plot's
      sibling, so the stripe the component sets on one does not reach the
@@ -2230,7 +2187,7 @@ button.kit-strip-day .kit-strip-cell {
    Row gap tightened from --space-3 to --space-2 (Alicja's review, ticket
    14): a set of bars with no note line was reading as more air than
    reading, five thin tracks adrift in their card rather than one dense
-   list - "3. Tighter, not airier" (DIRECTION.md), applied here the same
+   list - "3. Tighter, not airier", applied here the same
    way it already was to card padding. */
 .kit-bars {
   display: grid;
@@ -2252,13 +2209,8 @@ button.kit-strip-day .kit-strip-cell {
   --bar-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
 }
 
-/* A bar row that opens what is behind it (the Stats hub's tag insights).
-
-   Tier 1 answers with the fill and not with a scale, which is the rule
-   DIRECTION.md already writes for a row the width of the screen: this one
-   is the width of a card, and scaling it would move the card around it. The
-   wash is the same one a list row takes, so a pressable bar and a pressable
-   row feel like one control drawn two ways. */
+/* A bar row opens its details. It uses the list row's press wash because
+   scaling a full-width row also moves the card around it. */
 .kit-bar.is-open {
   display: block;
   width: 100%;
@@ -2623,7 +2575,7 @@ button.kit-strip-day .kit-strip-cell {
 
 /* --- vertical distribution ---
 
-   Mood's own ramp (ADR-0025), which is independent of the flag palette:
+   Mood's own ramp, which is independent of the flag palette:
    the bar for each step is that step's colour, so the distribution is read
    against the same scale the picker uses. */
 .kit-dist {

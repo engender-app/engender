@@ -397,22 +397,11 @@
 }
 
 /* ---------- Settings ---------- */
-/* Phase 5 ticket 24: this section moved onto the kit's ListCard for its
-   container, and picked up two motion fixes on the way, since redesigning
-   the screen that owns them is what made them this ticket's to fix.
-
-   The hover scale-and-rotate on the preview circle was DIRECTION.md tier
-   4's "no hover-dependent motion" broken outright - a leftover from before
-   the tiers existed. And the swatch never answered a touch at all: ticket
-   30's control inventory covers sliders, switches, segments and keys but
-   never named this control, so it is the one thing on this screen still
-   answering a press with nothing. `.press` is the compact-control class
-   ticket 30 already settled (--press-depth, 0.94) - a swatch is well under
-   its 64px ceiling, so it names the class rather than a number. */
+/* The theme swatch uses ListCard. Its compact .press treatment responds to
+   a touch and stays below the 64px ceiling. The preview stays still on hover. */
 /* The shared flag grid uses a 56px column floor. It fits four columns
    at 320px and reflows to two at 200% zoom. The selected flag's 3px
-   --text outline leaves its box unchanged. Keep the background untinted
-   (DIRECTION.md rule 13).
+   --text outline leaves its box unchanged. Keep the background untinted.
 
    paletteNameFit sets --word-em to the longest word's width in ems.
    Each swatch is an inline-size container and divides its width by that
@@ -502,20 +491,10 @@
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .palette-swatch.is-active .swatch-name { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
-/* flag gradients (static flag colours, not theme tokens)
-
-   Horizontal bands, the way the sun draws the same stripes and the way the
-   flags themselves are made (phase 10, DIRECTION.md rule 13, redesign
-   ticket 33). They were a 135-degree wash, which is the treatment rule 8
-   already corrected for the sun: a flag's stripes have a direction and it
-   is not diagonal. The stops are exact fractions of the stripe count now
-   rather than the rounded ones the wash carried, so no band is a pixel
-   wider than its neighbours.
-
-   One rule for both readers, setup and Settings, which draw the same
-   block. Every palette has one: the last eight had none and
-   drew as empty outlines, and settings-surfaces.test.ts holds each list to
-   the palette's --motif-stripes. */
+/* Draw hard horizontal bands from the same flag stripes the sun uses.
+   Exact fractional stops keep their widths equal. Setup and Settings
+   share these blocks. settings-surfaces.test.ts checks every palette
+   against --motif-stripes. */
 [data-swatch="trans"] { background: linear-gradient(to bottom, #5BCEFA 0 20%, #F5A9B8 20% 40%, #FFF 40% 60%, #F5A9B8 60% 80%, #5BCEFA 80%); }
 [data-swatch="nonbinary"] { background: linear-gradient(to bottom, #FCF434 0 25%, #FFF 25% 50%, #9C59D1 50% 75%, #2C2C2C 75%); }
 [data-swatch="genderfluid"] { background: linear-gradient(to bottom, #FF76A4 0 20%, #FFF 20% 40%, #C011D7 40% 60%, #2F2F2F 60% 80%, #2F3CBE 80%); }
@@ -606,20 +585,9 @@
 /* ---------- Custom dimension ---------- */
 .cd-endpoints { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 
-/* ---------- The gates (phase 5 ticket 26, redressed by redesign ticket 34)
-
-   The five pre-unlock screens and the mid-session lock, all built from
-   GateScreen.svelte. What stood here was a centred 360px column with a 60px
-   tinted disc on top of it: chrome from before DIRECTION.md, on the screens
-   most people meet most often.
-
-   A gate is a step with nothing to skip (rule 15). So it takes rule 12's
-   shape - a field from the window's top edge holding one title at 48, the
-   page under it - and loses the sun, the back, the skip, the leave and the
-   progress, none of which a gate can have. The field's drawing is the shared
-   one in components.css (`.step-field*`), the same object setup wears, so an
-   edge that moves and a thing printed on it cannot come apart between the two
-   surfaces. What is left here is a gate's own composition. */
+/* Gate composition for GateScreen.svelte. The gate uses the same
+   .step-field* edge as setup. It presents one title or sun over the
+   gate's content, with no navigation or progress controls. */
 
 /* The frame is exactly the window and never scrolls (rule 14). `clip` rather
    than `hidden`, for the reason `.screen-setup` gives: `overflow: hidden`

@@ -10,7 +10,7 @@
      DERIVED from those via color-mix, so switching palette recolours the
      whole app for free.
    - Colour never judges: the heat-map uses a single-hue intensity ramp of
-     the palette accent, never red→green. Mood (ADR-0025) is the one
+     the palette accent, never red→green. Mood is the one
      exception to "derived from the palette": it keeps its own fixed
      5-step intensity ramp, selected independently via [data-mood-preset]
      at the bottom of this file, so a mood dot is never the same colour
@@ -45,7 +45,7 @@
   --bg: #F8F6FB; --surface: #FFFFFF; --surface-2: #EFEAF6;
   --text: #241B2F; --text-2: #635C70;
   --accent: #7A3EB1; --accent-2: #8A7500;
-  --on-heat-3: #000000; /* ADR-0025: --text computes to 4.4985:1 here - inside rounding distance of 4.5:1, not comfortably clear of it */
+  --on-heat-3: #000000; /* --text reaches 4.4985:1, below the 4.5:1 floor. */
 }
 [data-palette="nonbinary"][data-theme="dark"] {
   --bg: #131019; --surface: #1C1725; --surface-2: #251F30;
@@ -66,7 +66,7 @@
   --bg: #171019; --surface: #211826; --surface-2: #2B2032;
   --text: #F5EBF4; --text-2: #B5A3B4;
   --accent: #E289F2; --accent-2: #93A0F2;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.47:1) nor --on-accent (4.44:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.47:1 and 4.44:1, below 4.5:1. */
 }
 
 /* ---------- Bisexual ---------- */
@@ -77,13 +77,13 @@
   --bg: #FAF6F9; --surface: #FFFFFF; --surface-2: #F2E9F0;
   --text: #291B27; --text-2: #6C5B69;
   --accent: #B7025F; --accent-2: #2447B0;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (4.46:1) nor --on-accent (3.68:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 4.46:1 and 3.68:1, below 4.5:1. */
 }
 [data-palette="bisexual"][data-theme="dark"] {
   --bg: #160F17; --surface: #201723; --surface-2: #2A1F2E;
   --text: #F4EAF2; --text-2: #B3A2B1;
   --accent: #F272AE; --accent-2: #8FA4F0;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.89:1) nor --on-accent (3.92:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.89:1 and 3.92:1, below 4.5:1. */
 }
 
 /* ---------- Lesbian ---------- */
@@ -114,7 +114,7 @@
   --bg: #170F14; --surface: #21171D; --surface-2: #2B1F27;
   --text: #F4EAF0; --text-2: #B4A2AD;
   --accent: #FF74B8; --accent-2: #67C6FF;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.64:1) nor --on-accent (4.19:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.64:1 and 4.19:1, below 4.5:1. */
 }
 
 /* ---------- Rainbow ---------- */
@@ -125,13 +125,13 @@
   --bg: #F8F7FB; --surface: #FFFFFF; --surface-2: #EEEDF6;
   --text: #211E30; --text-2: #605C72;
   --accent: #63348F; --accent-2: #0A7A3C;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.71:1) nor --on-accent (4.37:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.71:1 and 4.37:1, below 4.5:1. */
 }
 [data-palette="rainbow"][data-theme="dark"] {
   --bg: #121017; --surface: #1B1822; --surface-2: #24202D;
   --text: #EDEBF5; --text-2: #A9A4BA;
   --accent: #C09EE8; --accent-2: #74D99B;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.38:1) nor --on-accent (4.49:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.38:1 and 4.49:1, below 4.5:1. */
 }
 
 /* ---------- Agender ---------- */
@@ -147,7 +147,7 @@
   --bg: #11150E; --surface: #1A1F17; --surface-2: #232920;
   --text: #EDF3E8; --text-2: #A7B3A0;
   --accent: #AEEB76; --accent-2: #A6B1BC;
-  /* ADR-0025: the generic --on-heat-2 default (--text) computes to 4.28:1
+  /* The default --on-heat-2 (--text) reaches 4.28:1
      here - agender's own accent is unusually light for a dark theme, which
      pulls heat-2 lighter than the other seven palettes' heat-2 too. */
   --on-heat-2: #FFFFFF;
@@ -320,7 +320,7 @@
   --danger-soft: #F6E7E2;
   --warn-soft: #F7EEDA;
   --on-warn-soft: #6B542A;
-  /* ADR-0025: heat-3 (70% accent) sits in a contrast dead zone for some
+  /* At 70% accent, heat-3 sits in a contrast gap for some
      palettes - neither --text nor --on-accent clears 4.5:1 against it - so
      the generic default is overridden in each palette block that needs it
      (eleven palettes today, some in one theme only). */
@@ -409,16 +409,15 @@
 }
 
 /* Mood presets are independent of the flag and use five literal fills
-   between two hues (ADR-0077). Saturation increases with intensity.
+   between two hues. Saturation increases with intensity.
    Avoid red to green so mood carries no positive or negative judgment
    (ADR-0012).
 
-   Each fill has its own --mood-N-ink (ADR-0091). Use palette --text when
+   Each fill has its own --mood-N-ink. Use palette --text when
    it clears 4.5:1 across all 16 combinations. Otherwise choose whichever
    of black and white contrasts more. Light-theme OKLab lightness falls
    from 0.89 to 0.51 (amber 0.90 to 0.66). Dark-theme lightness rises from
-   0.50 to 0.84 (plum to 0.78). ADR-0077 lists hue pairs and reviewed
-   clashes. ADR-0091 records contrast measurements. */
+   0.50 to 0.84 (plum to 0.78). palette-contrast.test.ts holds the floors. */
 [data-mood-preset="amber"][data-theme="light"] {
   --mood-1: #F1D2F7; --mood-2: #F6B4D5; --mood-3: #F898A0; --mood-4: #EE835A; --mood-5: #C8801D;
   --mood-1-ink: var(--text); --mood-2-ink: var(--text); --mood-3-ink: var(--text); --mood-4-ink: var(--text); --mood-5-ink: #000000;
