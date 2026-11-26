@@ -217,10 +217,6 @@ describe('the surfaces', () => {
          its own. */
       'RecordSheet.svelte',
       'SectionHeading.svelte',
-      /* An index of a long screen's halves (after-release 28): names over a
-         rule, each scrolling its half into view. Not a surface, and not a
-         Segmented, whose look now only ever means a swap. */
-      'SectionJump.svelte',
       'Tile.svelte',
       'TileGrid.svelte',
       /* The year's days as words under YearRows' picture (phase 14
