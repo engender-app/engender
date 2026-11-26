@@ -2771,6 +2771,9 @@ button.kit-strip-day .kit-strip-cell {
   position: relative;
   height: 18px;
   margin-top: 6px;
+  /* The dots travel in units of the track's own width (cqw), so a position
+     is a transform rather than an inset (pre-release-human ticket 21). */
+  container-type: inline-size;
 }
 
 /* The scale itself, as the faintest line the theme has. Not a gridline and
@@ -2788,27 +2791,42 @@ button.kit-strip-day .kit-strip-cell {
   background: var(--hairline);
 }
 
-/* The distance between the two readings, which is the reading. */
+/* The distance between the two readings, which is the reading. The whole
+   track's width, clipped to the stretch between the two dots, so a change
+   of values eases the clip instead of resizing a box. */
 .kit-paired-span {
   position: absolute;
   top: 50%;
-  left: var(--from);
-  width: max(calc(var(--to) - var(--from)), 2px);
+  left: 0;
+  width: 100%;
   height: 4px;
   transform: translateY(-50%);
   border-radius: 2px;
   background: var(--role-draw);
+  clip-path: inset(0 calc((1 - var(--to)) * 100%) 0 calc(var(--from) * 100%) round 2px);
+  transition:
+    clip-path var(--dur-slow) var(--ease-out),
+    opacity var(--dur-slow) var(--ease-out);
 }
 
 .kit-paired-dot {
   position: absolute;
-  top: 50%;
-  left: var(--at);
+  top: 3px;
+  left: -6px;
   width: 12px;
   height: 12px;
-  margin-left: -6px;
-  transform: translateY(-50%);
+  transform: translateX(calc(var(--at) * 100cqw));
   border-radius: 50%;
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    opacity var(--dur-slow) var(--ease-out);
+}
+
+/* A side with no reading: the dot and the segment fade where they stand
+   rather than leaving in one frame. */
+.kit-paired-dot.is-none,
+.kit-paired-span.is-none {
+  opacity: 0;
 }
 
 /* Filled is the days it happened, hollow is the rest - on every row,

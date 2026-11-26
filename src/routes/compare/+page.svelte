@@ -1,445 +1,632 @@
 <script lang="ts">
-  /* Two periods side by side (phase 5 UX ticket 23's rebuild). Linked from
-     the Stats hub's own list.
+  /* Two periods, A and B, and what changed between them (pre-release-human
+     ticket 21, which reworked phase 5 UX ticket 23's table).
 
-     Every number comes straight from the recap/day-average seam (ticket 10)
-     two independent times, one per period. Nothing here computes a
-     difference between the two, and that is the whole design of the screen:
-     the reader compares, the app does not. A delta column would be the app
-     saying which period was better, which is the one thing it never does
-     (PRODUCT.md, ADR-0012).
+     The screen computes a change now: signed, in each scale's own units,
+     and never coloured. Which way a scale moved is not better or worse
+     (ADR-0012, F15), so the sign is the whole of what says which way, the
+     same as Wrapped's "scale that moved furthest". Judging is what the
+     product rules out; arithmetic is not judging.
 
-     The two pickers stack rather than sitting in two columns. They shared
-     `.compare-wrap` with the progress-photo comparison, which is a two-up
-     grid built for two photographs; two date fields squeezed into half of a
-     390px screen is not the same thing, and the two screens have nothing
-     else in common. */
+     It opens on a result. Side A is the span the Look back door handed
+     over, or the last 30 days; side B is the period before A. Each side is
+     one row at the top that opens one sheet (PeriodSheet): presets, the
+     person's eras, a custom range. The old shortcut notice that offered
+     this default is gone, since the default now is what it offered
+     (item 48: it also left in one frame).
+
+     The figures stay one object across a change of period: the dots on
+     each scale travel, the tag bars resize, the numbers roll, rows that
+     come and go grow in and collapse, and a re-sorted list moves its rows
+     rather than redrawing them. Under reduced motion the whole result
+     fades out and back in around the swap, inside --dur-crossfade. */
+  import { untrack } from 'svelte';
+  import { flip } from 'svelte/animate';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, fmtNumber } from '$lib/data/dates';
-  import { precedingWindow } from '$lib/data/compareStretch';
-  import {
-    customInclusiveRange,
-    dateInputValueFromEpochDay,
-    epochDayFromDateInputValue
-  } from '$lib/data/epochDay';
+  import { fmtDay } from '$lib/data/dates';
+  import { precedingWindow, type EpochRange } from '$lib/data/compareStretch';
+  import { customInclusiveRange, epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { eraRangeOrNull } from '$lib/data/eras';
-  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import type { Journal } from '$lib/data/journal/journal';
+  import { liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
+  import { readSide, type SideReading } from '$lib/data/compareSides';
+  import {
+    biggestChange,
+    chronological,
+    defaultSideA,
+    orderScales,
+    tagPairs,
+    yearEarlier,
+    type ScaleSides
+  } from '$lib/data/periodComparison';
+  import { moodDistribution } from '$lib/data/statsCharts';
+  import { moodName } from '$lib/data/vocabulary/labels';
+  import { MOOD_RANGE } from '$lib/data/metricRange';
+  import { nativeValue, signedValue } from '$lib/data/wrappedDisplay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
-  import Icon from '$lib/components/Icon.svelte';
-  import DatePicker from '$lib/components/DatePicker.svelte';
+  import { EASE_OUT, isReducedMotion, motionDuration, crossfadeDuration, NIL_OPACITY } from '$lib/motion/tokens';
+  import { collapse } from '$lib/motion/reveal';
+  import { fade } from 'svelte/transition';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Segmented from '$lib/components/Segmented.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
-  import { crossfade } from '$lib/motion/reveal';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
-  import Notice from '$lib/components/kit/Notice.svelte';
-  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
+  import PairedDots from '$lib/components/kit/PairedDots.svelte';
+  import OrderedStrip from '$lib/components/kit/OrderedStrip.svelte';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import type { PairedRow } from '$lib/components/kit/pairedRow';
+  import PeriodSheet, { type PeriodChoice, type PresetOption } from '$lib/components/compare/PeriodSheet.svelte';
+  import RollingNumber from '$lib/components/compare/RollingNumber.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
-  interface Period {
-    start: number;
-    end: number;
-    label: string;
-  }
-
-  /* Phase 6 ticket 03: each side takes either a date range, as before, or
-     one of the person's own eras - the two sides may be any mix, including
-     one of each, since neither side knows or cares what the other is. */
-  type PeriodMode = 'range' | 'era';
-
+  let today = $derived(currentDay());
   let erasQuery = liveList((j) => j.eras.getEras());
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
 
-  interface ComparisonSideStats {
-    entryCount: number;
-    averageMood: number | null;
-    topTagLabel: string;
-    dimensionAverages: { name: string; average: number | null }[];
-  }
-
-  let today = $derived(currentDay());
-  let todayInput = $derived(dateInputValueFromEpochDay(today));
-
-  let aMode = $state<PeriodMode>('range');
-  let bMode = $state<PeriodMode>('range');
-  let aStart = $state('');
-  let aEnd = $state('');
-  let bStart = $state('');
-  let bEnd = $state('');
-  let aEraId = $state('');
-  let bEraId = $state('');
-
-  /** Which side the era-picker sheet is open for, or none. One sheet rather
-      than two: only one side is ever being picked at a time. */
-  let eraPickerSide = $state<'a' | 'b' | null>(null);
-
-  /* A side pointing at an era that has since been deleted falls back to its
-     pre-era behaviour - a plain, empty date-range side - the same resting
-     state every other era-adopting surface gives a stale reference (the
-     acceptance criterion this ticket states for all four). `erasQuery.rows`
-     is empty both before the read lands and after a real deletion, so this
-     waits on `!erasQuery.loading` to tell the two apart. */
-  $effect(() => {
-    if (aMode === 'era' && aEraId && !erasQuery.loading && !erasQuery.rows.some((e) => e.id === aEraId)) {
-      aMode = 'range';
-      aEraId = '';
-    }
-  });
-  $effect(() => {
-    if (bMode === 'era' && bEraId && !erasQuery.loading && !erasQuery.rows.some((e) => e.id === bEraId)) {
-      bMode = 'range';
-      bEraId = '';
-    }
-  });
-
-  /* A tryout or a procedure's "compare this stretch" link hands both sides
-     over as query parameters, the same way `/settings/eras`'s "start an
-     era here" hands a day over (settings/eras/+page.svelte). Consumed once
-     on arrival and then stripped from the URL, so navigating back into this
-     screen later - the tab bar, a bookmark - does not reopen the same two
-     sides every time. */
-  $effect(() => {
-    const aStartParam = page.url.searchParams.get('aStart');
-    const aEndParam = page.url.searchParams.get('aEnd');
-    const bStartParam = page.url.searchParams.get('bStart');
-    const bEndParam = page.url.searchParams.get('bEnd');
-    if (!aStartParam || !aEndParam || !bStartParam || !bEndParam) return;
-    aMode = 'range';
-    aStart = aStartParam;
-    aEnd = aEndParam;
-    bMode = 'range';
-    bStart = bStartParam;
-    bEnd = bEndParam;
-    void replaceRoute('/compare', { noScroll: true, keepFocus: true });
-  });
-
-  /* Phase 11 ticket 32: an explicit preceding-span shortcut offered when
-     arriving with an originating span (`from` and `to`), e.g. from Look
-     back. Manual selections and era choices stay preserved; no default is
-     silently applied on direct entry. */
+  /* The span Look back handed over (`from`, `to`), or null on a visit
+     without one. */
   let originSpan = $derived.by(() => {
     const fromParam = page.url.searchParams.get('from');
     const toParam = page.url.searchParams.get('to');
     if (!fromParam || !toParam) return null;
-    const startDay = epochDayFromDateInputValue(fromParam);
-    const endDay = epochDayFromDateInputValue(toParam);
-    if (startDay === null || endDay === null || startDay > endDay || endDay > today) return null;
-    return { start: startDay, end: endDay };
+    const start = epochDayFromDateInputValue(fromParam);
+    const end = epochDayFromDateInputValue(toParam);
+    if (start === null || end === null || start > end || end > today) return null;
+    return { start, end };
   });
 
-  let preceding = $derived(originSpan ? precedingWindow(originSpan) : null);
-  let showShortcut = $derived(originSpan !== null && preceding !== null);
+  const arrivalA = (span: EpochRange | null): PeriodChoice =>
+    span ? { kind: 'range', start: span.start, end: span.end, origin: 'span' } : { kind: 'last30' };
 
-  function formatSpanLabel(start: number, end: number): string {
-    return m.range_from_to({
-      from: fmtDay(start, { day: 'numeric', month: 'short' }),
-      to: fmtDay(end, { day: 'numeric', month: 'short', year: 'numeric' })
+  let aChoice = $state<PeriodChoice>(untrack(() => arrivalA(originSpan)));
+  let bChoice = $state<PeriodChoice>({ kind: 'preceding' });
+
+  /* A new span on the same mounted screen (SvelteKit reuses the component
+     across query strings) starts over from it. */
+  let arrivedWith = untrack(() => (originSpan ? `${originSpan.start}:${originSpan.end}` : ''));
+  $effect.pre(() => {
+    const key = originSpan ? `${originSpan.start}:${originSpan.end}` : '';
+    if (key === arrivedWith) return;
+    arrivedWith = key;
+    aChoice = arrivalA(originSpan);
+    bChoice = { kind: 'preceding' };
+  });
+
+  /* A tryout or a procedure's "compare this stretch" link hands both sides
+     over as query parameters (compareStretchQuery). Consumed once on
+     arrival and then stripped from the URL, so navigating back into this
+     screen later does not reopen the same two sides every time. */
+  $effect(() => {
+    const params = page.url.searchParams;
+    const a = customInclusiveRange(epochDayFromDateInputValue(params.get('aStart') ?? ''), epochDayFromDateInputValue(params.get('aEnd') ?? ''));
+    const b = customInclusiveRange(epochDayFromDateInputValue(params.get('bStart') ?? ''), epochDayFromDateInputValue(params.get('bEnd') ?? ''));
+    if (!a || !b) return;
+    aChoice = { kind: 'range', start: a.start, end: a.end, origin: 'custom' };
+    bChoice = { kind: 'range', start: b.start, end: b.end, origin: 'custom' };
+    void replaceRoute('/compare', { noScroll: true, keepFocus: true });
+  });
+
+  /* An era as two dates: an open bound takes the journal's edge (ADR-0049),
+     and an era holding no day of the journal has no range at all. */
+  const eraRanges = $derived(
+    erasQuery.rows
+      .map((era) => {
+        const range = eraRangeOrNull(era, boundsQuery.value ?? null);
+        return range ? { id: era.id, name: era.name, range: { start: range.startEpochDay, end: range.endEpochDay } } : null;
+      })
+      .filter((era) => era !== null)
+  );
+
+  function resolve(choice: PeriodChoice, other: EpochRange | null): EpochRange | null {
+    switch (choice.kind) {
+      case 'range':
+        return { start: choice.start, end: choice.end };
+      case 'last30':
+        return defaultSideA(today);
+      case 'preceding':
+        return other ? precedingWindow(other) : null;
+      case 'year':
+        return other ? yearEarlier(other) : null;
+      case 'era':
+        return eraRanges.find((era) => era.id === choice.id)?.range ?? null;
+    }
+  }
+
+  /* A side pointing at an era that has since been deleted falls back to
+     its default, the resting state every era-adopting surface gives a stale
+     reference (ADR-0049). Waits on the read, since its rows are empty both
+     before it lands and after a real deletion. */
+  $effect(() => {
+    if (erasQuery.loading || boundsQuery.loading) return;
+    if (aChoice.kind === 'era' && !resolve(aChoice, null)) aChoice = arrivalA(originSpan);
+    if (bChoice.kind === 'era' && !resolve(bChoice, null)) bChoice = { kind: 'preceding' };
+  });
+
+  let rangeA = $derived(resolve(aChoice, null));
+  let rangeB = $derived(resolve(bChoice, rangeA));
+
+  const rangeLabel = (range: EpochRange) =>
+    m.range_from_to({
+      from: fmtDay(range.start, { day: 'numeric', month: 'short' }),
+      to: fmtDay(range.end, { day: 'numeric', month: 'short', year: 'numeric' })
     });
+
+  function choiceLabel(choice: PeriodChoice, range: EpochRange | null): string {
+    switch (choice.kind) {
+      case 'range':
+        return range ? rangeLabel(range) : '';
+      case 'last30':
+        return m.doses_window({ days: '30' });
+      case 'preceding':
+        return m.compare_preset_preceding();
+      case 'year':
+        return m.compare_preset_year();
+      case 'era':
+        return eraRanges.find((era) => era.id === choice.id)?.name ?? '';
+    }
   }
 
-  function applyShortcut() {
-    if (!originSpan || !preceding) return;
-    aMode = 'range';
-    aStart = dateInputValueFromEpochDay(originSpan.start);
-    aEnd = dateInputValueFromEpochDay(originSpan.end);
-    bMode = 'range';
-    bStart = dateInputValueFromEpochDay(preceding.start);
-    bEnd = dateInputValueFromEpochDay(preceding.end);
-    void replaceRoute('/compare', { noScroll: true, keepFocus: true });
+  let pickingSide = $state<'a' | 'b' | null>(null);
+
+  let presets = $derived.by<PresetOption[]>(() => {
+    if (pickingSide === 'a') return [{ choice: { kind: 'last30' }, label: choiceLabel({ kind: 'last30' }, null), range: defaultSideA(today) }];
+    if (!rangeA) return [];
+    return [
+      { choice: { kind: 'preceding' }, label: m.compare_preset_preceding(), range: precedingWindow(rangeA) },
+      { choice: { kind: 'year' }, label: m.compare_preset_year(), range: yearEarlier(rangeA) }
+    ];
+  });
+
+  let journalSpan = $derived(
+    boundsQuery.value ? { start: boundsQuery.value.firstEpochDay, end: Math.max(boundsQuery.value.lastEpochDay, today) } : null
+  );
+
+  function pick(choice: PeriodChoice) {
+    if (pickingSide === 'a') aChoice = choice;
+    else if (pickingSide === 'b') bChoice = choice;
+    pickingSide = null;
   }
 
-  function dismissShortcut() {
-    void replaceRoute('/compare', { noScroll: true, keepFocus: true });
+  /* Both sides in one read, so the two land in the same frame and every
+     figure moves once. Every journal call starts before readSide's first
+     await (compareSides.ts), so the query settles in one run. */
+  interface Comparison {
+    a: SideReading;
+    b: SideReading;
+    ranges: { a: EpochRange; b: EpochRange };
   }
+  let comparisonQuery = liveQuery((j): Promise<Comparison | null> => {
+    const a = rangeA;
+    const b = rangeB;
+    const keys = vocabulary.activeDimensions.map((d) => d.key);
+    if (!a || !b) return Promise.resolve(null);
+    return Promise.all([readSide(j, a, keys), readSide(j, b, keys)]).then(([sideA, sideB]) => ({
+      a: sideA,
+      b: sideB,
+      ranges: { a, b }
+    }));
+  });
+  let comparisonRead = liveListIn(comparisonQuery, (answer) => (answer ? [answer] : []));
 
-  function periodFromRange(start: string, end: string): Period | null {
-    const range = customInclusiveRange(epochDayFromDateInputValue(start), epochDayFromDateInputValue(end));
-    if (!range || range.end > today) return null;
-    return {
-      ...range,
-      label: m.range_from_to({ from: fmtDay(range.start, { day: 'numeric', month: 'short' }), to: fmtDay(range.end, {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      }) })
-    };
-  }
+  /* What the figures draw. Follows the read directly, so a change of
+     period moves the figures the frame the answer lands. Under reduced
+     motion it holds the old answer while the result fades out, then takes
+     the new one and fades back in. */
+  let held = $state<Comparison | null>(null);
+  let shown = $derived(held ?? comparisonQuery.value ?? null);
+  let resultEl = $state<HTMLElement>();
+  let lastAnswer: Comparison | null | undefined;
+  $effect.pre(() => {
+    const answer = comparisonQuery.value;
+    const before = lastAnswer;
+    lastAnswer = answer;
+    if (!before || !answer || before === answer || !isReducedMotion() || !resultEl) return;
+    const node = resultEl;
+    held = before;
+    const half = crossfadeDuration() / 2;
+    const out = node.animate([{ opacity: 1 }, { opacity: NIL_OPACITY }], { duration: half, fill: 'forwards' });
+    void out.finished.then(() => {
+      held = null;
+      const back = node.animate([{ opacity: NIL_OPACITY }, { opacity: 1 }], { duration: half, fill: 'forwards' });
+      void back.finished.then(() => {
+        out.cancel();
+        back.cancel();
+      });
+    }, () => (held = null));
+  });
 
-  /* An era id naming nothing - never picked yet, or an era deleted after it
-     was - resolves to no period, the same resting state every other
-     era-adopting surface falls back to (ADR-0049). */
-  function periodFromEra(eraId: string): Period | null {
-    const found = erasQuery.rows.find((e) => e.id === eraId);
-    if (!found) return null;
-    const range = eraRangeOrNull(found, boundsQuery.value ?? null);
-    return range ? { start: range.startEpochDay, end: range.endEpochDay, label: found.name } : null;
-  }
+  const dimensionOf = (key: string) => vocabulary.activeDimensions.find((d) => d.key === key);
+  const scaleName = (key: string) => (key === 'mood' ? m.mood() : (dimensionOf(key)?.name ?? key));
 
-  let periodA = $derived(aMode === 'era' ? periodFromEra(aEraId) : periodFromRange(aStart, aEnd));
-  let periodB = $derived(bMode === 'era' ? periodFromEra(bEraId) : periodFromRange(bStart, bEnd));
-
-  /* `recap` is called first and synchronously, so `liveQuery` already
-     declares its tables ('entry', 'dimension' among them) before this
-     function's first `await` - `dayAverages` below reads no table `recap`
-     doesn't already, so it costs nothing to discover after. No seed needed
-     here (phase 8 audit ticket 14; the coming-back screen and Home's
-     felt-sense read, whose own late reads do add a new table, take one). */
-  async function sideStats(j: Journal, period: Period): Promise<ComparisonSideStats> {
-    const recap = await j.stats.recap(period.start, period.end);
-    const dims = vocabulary.activeDimensions;
-    const series = await Promise.all(dims.map((d) => j.stats.dayAverages(d.key, period.start, period.end)));
-    return {
-      entryCount: recap.entryCount,
-      averageMood: recap.averageMood,
-      topTagLabel: recap.topTags.length
-        ? recap.topTags
-            .map((t) =>
-              m.recap_tag_count({ label: vocabulary.tag(t.id)?.label ?? t.id, count: String(t.count) })
-            )
-            .join(' · ')
-        : m.recap_tags_none_range(),
-      dimensionAverages: dims.map((d, i) => ({
+  let model = $derived.by(() => {
+    if (!shown) return null;
+    const { a, b, ranges } = shown;
+    const scales: (ScaleSides & { name: string })[] = [
+      { key: 'mood', name: m.mood(), min: MOOD_RANGE.min, max: MOOD_RANGE.max, a: a.scales.mood ?? null, b: b.scales.mood ?? null },
+      ...vocabulary.activeDimensions.map((d) => ({
+        key: d.key,
         name: d.name,
-        average: series[i].length ? series[i].reduce((sum, p) => sum + p.value, 0) / series[i].length : null
+        min: d.min,
+        max: d.max,
+        a: a.scales[d.key] ?? null,
+        b: b.scales[d.key] ?? null
       }))
+    ];
+    const order = chronological(ranges.a, ranges.b);
+    const tags = tagPairs(a.tags, b.tags);
+    return {
+      a,
+      b,
+      order,
+      scales: orderScales(scales),
+      headline: biggestChange(scales),
+      tags,
+      tagMax: Math.max(1, ...tags.map((t) => Math.max(t.a, t.b))),
+      stripA: moodDistribution(a.moodDays).map((s) => ({ ...s, name: moodName(s.step) })),
+      stripB: moodDistribution(b.moodDays).map((s) => ({ ...s, name: moodName(s.step) })),
+      anyMoodDays: a.moodDays.length + b.moodDays.length > 0
     };
-  }
+  });
 
-  let queryA = liveQuery((j) =>
-    periodA ? sideStats(j, periodA) : Promise.resolve(null)
+  /* The headline reads earlier period to later, whichever side is which. */
+  const sideValue = (side: 'a' | 'b', values: { a: number; b: number }) => values[side];
+
+  let headline = $derived.by(() => {
+    if (!model) return null;
+    const { order, headline: scale } = model;
+    if (scale && scale.a !== null && scale.b !== null) {
+      const values = { a: scale.a, b: scale.b };
+      return {
+        key: scale.key,
+        label: m.wrapped_scale_arc(),
+        name: scale.name,
+        metric: scale.key,
+        from: sideValue(order.first, values),
+        to: sideValue(order.second, values)
+      };
+    }
+    const counts = { a: model.a.entryCount, b: model.b.entryCount };
+    return {
+      key: 'entries',
+      label: m.compare_entries_label(),
+      name: null,
+      metric: 'entries',
+      from: sideValue(order.first, counts),
+      to: sideValue(order.second, counts)
+    };
+  });
+
+  const fmtMetric = (metric: string) => (n: number) =>
+    metric === 'entries' ? String(Math.round(n)) : nativeValue(metric, n);
+  const fmtChange = (metric: string) => (n: number) => signedValue(n, fmtMetric(metric));
+
+  let scaleRows = $derived<PairedRow[]>(
+    (model?.scales ?? []).map((scale) => ({
+      key: scale.key,
+      name: scale.name,
+      with: scale.a,
+      without: scale.b,
+      min: scale.min,
+      max: scale.max,
+      gap: '',
+      note:
+        scale.a === null && scale.b === null
+          ? m.compare_scale_missing({ period: `${m.compare_period_a_label()}, ${m.compare_period_b_label()}` })
+          : scale.a === null
+            ? m.compare_scale_missing({ period: m.compare_period_a_label() })
+            : scale.b === null
+              ? m.compare_scale_missing({ period: m.compare_period_b_label() })
+              : m.compare_scale_values({ a: nativeValue(scale.key, scale.a), b: nativeValue(scale.key, scale.b) })
+    }))
   );
-  let queryB = liveQuery((j) =>
-    periodB ? sideStats(j, periodB) : Promise.resolve(null)
-  );
 
-  /* An empty cell says nothing rather than drawing a glyph that stands in
-     for a sentence: docs/ui-copy.md has no dashes in it. */
-  const fmtMood = (v: number | null) => (v == null ? '' : fmtNumber(v, { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
-  const fmtDimension = (v: number | null) => (v == null ? '' : String(Math.round(v)));
-
-  /* What the field shows when it has a date, and what it says when it does
-     not. The value is painted by the row; the input over it is the press
-     target and the thing that opens Android's own picker. */
-  const shownDate = (value: string) => {
-    const day = epochDayFromDateInputValue(value);
-    return day === null || !Number.isFinite(day) ? null : fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' });
+  /* A scale's change, later minus earlier, for the figure beside its name. */
+  const scaleChange = (row: PairedRow) => {
+    if (row.with === null || row.without === null || !model) return null;
+    const values = { a: row.with, b: row.without };
+    return sideValue(model.order.second, values) - sideValue(model.order.first, values);
   };
+
+  const flipParams = () => ({ duration: motionDuration('--dur-slow'), easing: EASE_OUT });
+  const tagLabel = (id: string) => vocabulary.tag(id)?.label ?? id;
+  const role = $derived(roleAt(activeFlag.roles, 0));
 </script>
 
 <div class="screen">
   <ScreenHeader title={m.compare_title()} screen="compare" back="/stats" />
 
-  <!-- One snippet for the four fields. A date is a row of a list here, not
-       a text box: the label on the left, the date in the display face on the
-       right, and the DatePicker spread invisibly over the whole row as the
-       press target - its popup is what opens, and it knows the reader's
-       locale and their week start. -->
-  {#snippet dateRow(id: string, label: string, name: string, value: string, bind: (v: string) => void, min: string | undefined)}
-    {@const shown = shownDate(value)}
-    <div class="rows-divide date-row">
-      <label class="date-row-label" for={id}>{label}</label>
-      <span class="date-row-value">{shown ?? ''}</span>
-      <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
-      <DatePicker {id} value={value} {min} max={todayInput} ariaLabel={name} invis onchange={(v) => bind(v)} />
-    </div>
-  {/snippet}
-
-  <!-- The mode switch, one per side - a side is a date range or an era,
-       never both at once, so only one of the two rows below ever shows. -->
-  {#snippet modeSwitch(key: string, period: string, mode: PeriodMode, onPick: (v: PeriodMode) => void)}
-    <div class="compare-mode">
-      <Segmented
-        key={`compare-mode-${key}`}
-        name={m.compare_start_label({ period })}
-        compact
-        options={[
-          { value: 'range', label: m.compare_mode_range() },
-          { value: 'era', label: m.compare_mode_era() }
-        ]}
-        value={mode}
-        onChange={(v) => onPick(v as PeriodMode)}
-      />
-    </div>
-  {/snippet}
-
-  {#if showShortcut && originSpan && preceding}
-    <Notice
-      key="compare-shortcut"
-      icon="columns"
-      title={m.compare_shortcut_title()}
-      text={m.compare_shortcut_body({
-        current: formatSpanLabel(originSpan.start, originSpan.end),
-        preceding: formatSpanLabel(preceding.start, preceding.end)
-      })}
-      action={{
-        label: m.compare(),
-        onclick: applyShortcut
-      }}
-      dismiss={{
-        label: m.dismiss(),
-        onclick: dismissShortcut
-      }}
-    />
-  {/if}
-
-  <SectionHeading text={m.compare_period_a_label()} />
-  {@render modeSwitch('a', m.compare_period_a_label(), aMode, (v) => (aMode = v))}
-  {#if aMode === 'era'}
-    <ListCard role={roleAt(activeFlag.roles, 0)}>
+  <!-- The two sides, and the key to every figure below: A is the filled
+       mark, B the ring, on every chart on this screen. -->
+  <ListCard {role}>
+    {#each [{ side: 'a' as const, choice: aChoice, range: rangeA, period: m.compare_period_a_label() }, { side: 'b' as const, choice: bChoice, range: rangeB, period: m.compare_period_b_label() }] as row (row.side)}
       <ListRow
-        key="compare-era-row-a"
-        icon="era"
-        title={erasQuery.rows.find((e) => e.id === aEraId)?.name ?? m.compare_pick_era()}
-        onclick={() => (eraPickerSide = 'a')}
-      />
-    </ListCard>
-  {:else}
-    <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
-      {@render dateRow(
-        'compare-a-start',
-        m.start_date_label(),
-        m.compare_start_label({ period: m.compare_period_a_label() }),
-        aStart,
-        (v) => (aStart = v),
-        undefined
-      )}
-      {@render dateRow(
-        'compare-a-end',
-        m.end_date_label(),
-        m.compare_end_label({ period: m.compare_period_a_label() }),
-        aEnd,
-        (v) => (aEnd = v),
-        aStart || undefined
-      )}
-    </div>
-  {/if}
+        key={`compare-pick-${row.side}`}
+        data-compare-pick={row.side}
+        title={m.compare_side_row({ period: row.period, choice: choiceLabel(row.choice, row.range) })}
+        subtitle={row.choice.kind !== 'range' && row.range ? rangeLabel(row.range) : null}
+        fadeSwap
+        onclick={() => (pickingSide = row.side)}
+      >
+        {#snippet leading()}
+          <span class="compare-mark-disc"><span class="compare-mark" class:is-b={row.side === 'b'}></span></span>
+        {/snippet}
+      </ListRow>
+    {/each}
+  </ListCard>
 
-  <SectionHeading text={m.compare_period_b_label()} />
-  {@render modeSwitch('b', m.compare_period_b_label(), bMode, (v) => (bMode = v))}
-  {#if bMode === 'era'}
-    <ListCard role={roleAt(activeFlag.roles, 1)}>
-      <ListRow
-        key="compare-era-row-b"
-        icon="era"
-        title={erasQuery.rows.find((e) => e.id === bEraId)?.name ?? m.compare_pick_era()}
-        onclick={() => (eraPickerSide = 'b')}
-      />
-    </ListCard>
-  {:else}
-    <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 1))}>
-      {@render dateRow(
-        'compare-b-start',
-        m.start_date_label(),
-        m.compare_start_label({ period: m.compare_period_b_label() }),
-        bStart,
-        (v) => (bStart = v),
-        undefined
-      )}
-      {@render dateRow(
-        'compare-b-end',
-        m.end_date_label(),
-        m.compare_end_label({ period: m.compare_period_b_label() }),
-        bEnd,
-        (v) => (bEnd = v),
-        bStart || undefined
-      )}
-    </div>
-  {/if}
+  <ReadGate read={comparisonRead} variant="card" count={2}>
+    {#snippet rows()}
+      {#if model && headline}
+        <div class="compare-result" bind:this={resultEl} data-compare-result>
+          <!-- The answer first: the scale that moved furthest for its range,
+               earlier period to later. -->
+          <section class="compare-headline" data-compare-headline>
+            {#key headline.key}
+              <div class="compare-headline-body" in:fade={{ duration: motionDuration('--dur-med') }} out:fade={{ duration: motionDuration('--dur-med') }}>
+                <p class="compare-headline-label">{headline.label}</p>
+                {#if headline.name}<p class="compare-headline-name">{headline.name}</p>{/if}
+                <p class="compare-headline-figure">
+                  <span aria-hidden="true">
+                    <RollingNumber value={headline.from} format={fmtMetric(headline.metric)} />
+                    <span class="compare-headline-arrow">→</span>
+                    <RollingNumber value={headline.to} format={fmtMetric(headline.metric)} />
+                  </span>
+                  <span class="compare-headline-change" aria-hidden="true">
+                    <RollingNumber value={headline.to - headline.from} format={fmtChange(headline.metric)} />
+                  </span>
+                  <span class="visually-hidden">
+                    {m.wrapped_scale_arc_body({
+                      name: headline.name ?? headline.label,
+                      from: fmtMetric(headline.metric)(headline.from),
+                      to: fmtMetric(headline.metric)(headline.to)
+                    })}
+                  </span>
+                </p>
+              </div>
+            {/key}
+          </section>
 
-  {#if !periodA || !periodB}
-    <Notice icon="info" key="compare-empty" title={m.compare_empty()} />
-  {:else if queryA.loading || queryB.loading || !queryA.value || !queryB.value}
-    <div out:crossfade><Skeleton variant="line" count={5} /></div>
-  {:else}
-    {@const a = queryA.value}
-    {@const b = queryB.value}
-    <!-- A table, because that is what two columns of the same readings is.
-         No third column: the difference between the two is the reader's to
-         draw, and a delta would be the app naming a winner.
+          <ChartCard level={2} heading={m.compare_scales_heading()} kind="compare-scales" {role}>
+            <div data-compare-figure="scales">
+              <PairedDots rows={scaleRows}>
+                {#snippet figure(row)}
+                  {@const change = scaleChange(row)}
+                  <span class="compare-scale-change" class:is-none={change === null} data-compare-scale={row.key}>
+                    <RollingNumber value={change ?? 0} format={fmtChange(row.key)} />
+                  </span>
+                {/snippet}
+              </PairedDots>
+            </div>
+          </ChartCard>
 
-         The table roles over the drawn grid rather than a <table>: a
-         screen reader then says which period and which reading each number
-         is, instead of a flat run of numbers (after-release 21, audit
-         L08-15), and the layout stays the one already drawn. -->
-    <div class="compare-metrics" role="table" aria-label={m.compare_title()} data-compare-table>
-      <div class="rows-divide compare-metrics-row compare-metrics-header" role="row">
-        <span role="cell"></span>
-        <span class="compare-period-label" role="columnheader" data-compare-period-label>{periodA.label}</span>
-        <span class="compare-period-label" role="columnheader" data-compare-period-label>{periodB.label}</span>
-      </div>
-      <div class="rows-divide compare-metrics-row" role="row" data-compare-metric="entries">
-        <span class="compare-metric-name" role="rowheader">{m.compare_entries_label()}</span>
-        <span role="cell">{a.entryCount}</span>
-        <span role="cell">{b.entryCount}</span>
-      </div>
-      <div class="rows-divide compare-metrics-row" role="row" data-compare-metric="mood">
-        <span class="compare-metric-name" role="rowheader">{m.mood()}</span>
-        <span role="cell">{fmtMood(a.averageMood)}</span>
-        <span role="cell">{fmtMood(b.averageMood)}</span>
-      </div>
-      {#each vocabulary.activeDimensions as d, i (d.key)}
-        <div class="rows-divide compare-metrics-row" role="row" data-compare-metric={d.key}>
-          <span class="compare-metric-name" role="rowheader">{d.name}</span>
-          <span role="cell">{fmtDimension(a.dimensionAverages[i]?.average ?? null)}</span>
-          <span role="cell">{fmtDimension(b.dimensionAverages[i]?.average ?? null)}</span>
+          <ChartCard level={2} heading={m.recap_tags_title()} kind="compare-tags" {role}>
+            {#if model.tags.length}
+              <div class="compare-tags" data-compare-figure="tags">
+                {#each model.tags as tag (tag.id)}
+                  <div class="compare-tag" data-compare-tag={tag.id} animate:flip={flipParams()} transition:collapse>
+                    <span class="compare-tag-name">{tagLabel(tag.id)}</span>
+                    {#each [{ side: 'a', count: tag.a }, { side: 'b', count: tag.b }] as bar (bar.side)}
+                      <span class="compare-tag-track" aria-hidden="true">
+                        <span class="compare-tag-bar" class:is-b={bar.side === 'b'} style={`--share: ${bar.count / model.tagMax}`}></span>
+                      </span>
+                      <span class="compare-tag-count"><RollingNumber value={bar.count} format={(n) => String(Math.round(n))} /></span>
+                    {/each}
+                    <span class="visually-hidden">{m.compare_scale_values({ a: String(tag.a), b: String(tag.b) })}</span>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <ChartEmpty>{m.recap_tags_none_range()}</ChartEmpty>
+            {/if}
+          </ChartCard>
+
+          {#if model.anyMoodDays}
+            <ChartCard level={2} heading={m.stats_mood_days()} kind="compare-mood-days">
+              <div class="compare-strips" data-compare-figure="mood-days">
+                {#each [{ side: 'a', steps: model.stripA, label: m.compare_period_a_label() }, { side: 'b', steps: model.stripB, label: m.compare_period_b_label() }] as strip (strip.side)}
+                  <div class="compare-strip" data-compare-strip={strip.side}>
+                    <span class="compare-strip-label" {...roleAttrs(role)}>
+                      <span class="compare-mark" class:is-b={strip.side === 'b'}></span>{strip.label}
+                    </span>
+                    <OrderedStrip
+                      steps={strip.steps}
+                      countShort={(n) => m.strip_days_short({ n })}
+                      countFull={(n) => m.n_days({ n })}
+                    />
+                  </div>
+                {/each}
+              </div>
+            </ChartCard>
+          {/if}
+
+          <div class="compare-entries" data-compare-entries {...roleAttrs(role)}>
+            <span class="compare-entries-name">{m.compare_entries_label()}</span>
+            <span class="compare-entries-values">
+              <span class="compare-mark"></span><RollingNumber value={model.a.entryCount} format={(n) => String(Math.round(n))} />
+              <span aria-hidden="true">·</span>
+              <span class="compare-mark is-b"></span><RollingNumber value={model.b.entryCount} format={(n) => String(Math.round(n))} />
+            </span>
+          </div>
         </div>
-      {/each}
-      <div class="rows-divide compare-metrics-row compare-metrics-tags" role="row" data-compare-metric="tags">
-        <span class="compare-metric-name" role="rowheader">{m.recap_tags_title()}</span>
-        <span class="compare-metric-text" role="cell">{a.topTagLabel}</span>
-        <span class="compare-metric-text" role="cell">{b.topTagLabel}</span>
-      </div>
-    </div>
-  {/if}
+      {/if}
+    {/snippet}
+    {#snippet empty()}
+      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+    {/snippet}
+  </ReadGate>
 </div>
 
-<!-- Which era a side takes, picked whole rather than as two dates - the
-     same sheet Wrapped's own era picker is (phase 6 ticket 03). One sheet
-     for both sides, since only one is ever open at a time. -->
-<Sheet
-  open={eraPickerSide !== null}
-  title={m.eras_title()}
-  onClose={() => (eraPickerSide = null)}
->
-  {#if erasQuery.rows.length}
-    <ListCard>
-      {#each erasQuery.rows as era (era.id)}
-        <ListRow
-          key={`compare-era-${era.id}`}
-          title={era.name}
-          chevron={false}
-          onclick={() => {
-            if (eraPickerSide === 'a') aEraId = era.id;
-            else if (eraPickerSide === 'b') bEraId = era.id;
-            eraPickerSide = null;
-          }}
-        >
-          {#snippet trailing()}
-            {#if (eraPickerSide === 'a' && aEraId === era.id) || (eraPickerSide === 'b' && bEraId === era.id)}
-              <Icon name="check" size={20} />
-            {/if}
-          {/snippet}
-        </ListRow>
-      {/each}
-    </ListCard>
-  {:else}
-    <Notice icon="info" key="compare-eras-empty" title={m.eras_empty_title()} text={m.eras_empty_body()} />
-  {/if}
-</Sheet>
+<PeriodSheet
+  side={pickingSide}
+  title={pickingSide === 'b' ? m.compare_period_b_label() : m.compare_period_a_label()}
+  current={pickingSide === 'a' ? aChoice : pickingSide === 'b' ? bChoice : null}
+  currentRange={pickingSide === 'a' ? rangeA : pickingSide === 'b' ? rangeB : null}
+  {presets}
+  eras={eraRanges}
+  journal={journalSpan}
+  {today}
+  onPick={pick}
+  onClose={() => (pickingSide = null)}
+/>
 
 <style>
-  /* The range/era switch above each side (phase 6 ticket 03): its own row
-     rather than inside the card below, since Segmented already draws its
-     own pill and a second border around it would be a card inside a card. */
-  .compare-mode {
-    margin-bottom: var(--space-2);
+  /* The A/B marks: filled for A, a ring for B, in the role's own ink. The
+     same pair PairedDots draws, so the key and the figures agree. */
+  .compare-mark {
+    display: inline-block;
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--role-draw, var(--text));
+  }
+  .compare-mark.is-b {
+    background: var(--surface);
+    border: 2px solid var(--role-draw, var(--text));
+  }
+  .compare-mark-disc {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+  }
+
+  .compare-result {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .compare-headline {
+    display: grid;
+    padding: var(--space-2) 0;
+  }
+  .compare-headline-body {
+    grid-area: 1 / 1;
+  }
+  .compare-headline-label {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+  .compare-headline-name {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
+  }
+  .compare-headline-figure {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-3);
+    margin: var(--space-1) 0 0;
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    font-size: var(--text-xl);
+    font-variant-numeric: tabular-nums;
+  }
+  .compare-headline-arrow {
+    color: var(--text-2);
+  }
+  .compare-headline-change {
+    font-size: var(--text-md);
+    color: var(--text-2);
+  }
+
+  .compare-scale-change {
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+  .compare-scale-change.is-none {
+    opacity: 0;
+  }
+
+  /* Paired bars per tag: A filled, B a ring, each with its count. Every bar
+     is the track's full width moved left out of a clipping track, so a new
+     count is a transform and the bar's rounded end stays drawn. */
+  .compare-tags {
+    display: grid;
+    gap: var(--space-3);
+  }
+  .compare-tag {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-2);
+    row-gap: 4px;
+  }
+  .compare-tag-name {
+    grid-column: 1 / -1;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .compare-tag-track {
+    position: relative;
+    height: 10px;
+    overflow: hidden;
+    border-radius: 5px;
+  }
+  .compare-tag-bar {
+    position: absolute;
+    inset: 0;
+    border-radius: 5px;
+    background: var(--role-draw);
+    transform: translateX(calc((var(--share) - 1) * 100%));
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+  .compare-tag-bar.is-b {
+    background: var(--surface);
+    border: 2px solid var(--role-draw);
+  }
+  .compare-tag-count {
+    min-width: 2ch;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    text-align: right;
+  }
+
+  .compare-strips {
+    display: grid;
+    gap: var(--space-2);
+  }
+  .compare-strip-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+  /* The strip keeps clearance above itself for its own tooltip; the label
+     sits in it rather than above it, so A and B stay close. */
+  .compare-strip :global(.kit-ordered) {
+    margin-top: var(--space-2);
+  }
+
+  .compare-entries {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    background: var(--surface);
+  }
+  .compare-entries-name {
+    font-size: var(--text-sm);
+  }
+  .compare-entries-values {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: var(--weight-bold);
+    font-variant-numeric: tabular-nums;
   }
 </style>
