@@ -55,6 +55,7 @@
   import Switch from '$lib/components/Switch.svelte';
   import RegistryRow from '$lib/unprompted/RegistryRow.svelte';
   import { isAndroid } from '$lib/platform';
+  import { notificationsTitle } from '$lib/notificationsTitle';
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
   import { disclose } from '$lib/motion/reveal';
   import { watchStatus } from '$lib/permissions/watchStatus';
@@ -169,14 +170,7 @@
 </script>
 
 <div class="screen" data-screen>
-  <ScreenHeader title={m.notif_title()} back="/settings" />
-
-  {#if isWeb}
-    <!-- The in-app/phone distinction first, where the list it governs can
-         be read next to it (ticket 13): the switches below are real, and
-         what they do not do is reach a phone. -->
-    <Notice icon="info" key="notifications-web" title={m.notif_web_title()} text={m.notif_web_body()} />
-  {/if}
+  <ScreenHeader title={notificationsTitle()} back="/settings" />
 
   {#if !isWeb}
     <SectionHeading text={m.notif_section_home()} />

@@ -23,7 +23,7 @@ beforeEach(() => {
 describe('the reminders routes', () => {
   async function load() {
     const layout = await import('../src/routes/settings/reminders/+layout');
-    return layout.load({} as never);
+    return layout.load();
   }
 
   it('send a browser to Settings', async () => {

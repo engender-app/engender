@@ -415,9 +415,8 @@ const AREAS = [
      reminder is a one-off: a recurring rule has no day of its own, which is
      the same reason it holds a null `epoch_day` in the schema.
 
-     The screen it leads to is Android-only and says so on the web, which is
-     where reminders exist at all - so the hit is honest on both platforms
-     rather than absent on one. */
+     The screen it leads to exists on Android only, so searchPlatform.ts
+     keeps the hit off the web. */
   area({
     key: 'reminders',
     covers: ['reminders'],
