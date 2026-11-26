@@ -1435,7 +1435,11 @@
   .setup-feature-line {
     margin-top: 0;
   }
+  /* A new group after the features, so it stands well clear of the last
+     feature row: 40 above, the section rhythm's own gap (bug session 18,
+     item 51 - it sat a few pixels under Documents and read as one more row). */
   .setup-feature-heading {
+    margin-top: var(--space-8);
     margin-bottom: 0;
     font-size: var(--text-md);
   }
