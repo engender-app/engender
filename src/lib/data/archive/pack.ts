@@ -135,7 +135,7 @@ export async function openArchive(
      (folder sync, FA 49), the same door packing an auto-export uses. */
   const key = typeof keyOrPassword === 'function'
     ? await keyOrPassword(header.salt, kdf)
-    : await deriveKey(keyOrPassword, header.salt, kdf);
+    : await deriveKey(keyOrPassword, header.salt, kdf, { mainThread: false });
   const plaintext = byteReader(unframeArchive(reader, header, headerBytes, key));
   return decodeArchive(plaintext, header.formatVersion);
 }

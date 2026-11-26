@@ -447,7 +447,10 @@ other journal files are removed, so a refused data deletion keeps their key.
 Archive import refuses headers asking for more than 64 MiB of Argon2id memory,
 six iterations or one lane before deriving a key. This allows twice the
 released profile's combined cost. Archives written with the released default
-keep opening; export still uses 64 MiB and three iterations.
+keep opening; export still uses 64 MiB and three iterations. Import also
+refuses chunks under 64 KiB, a declared body over 8 GiB and a payload longer
+than 128 MiB before reading them, and fails instead of deriving the key on the
+main thread when the key-derivation worker cannot start.
 
 Android reminders reschedule after clock changes and exact-alarm permission
 grants, even while the journal is closed. After permission is revoked, the

@@ -11,7 +11,9 @@ import type { Argon2Params } from './params.ts';
    same parameters (ADR-0013) - argon2id.worker.ts - only another thread.
    Without a worker (the node tier, which tests this module) it runs here as
    it always did, and so does a derivation whose worker fails to start: a
-   slower unlock is better than none. */
+   slower unlock is better than none. A caller whose parameters come from an
+   untrusted file passes `mainThread: false` and gets an error instead:
+   where a worker exists, a header never buys work on the page's thread. */
 let prewarmed: Worker | null = null;
 let prewarmFailed = false;
 
@@ -69,11 +71,16 @@ async function inThread(
 export async function deriveKey(
   password: string,
   salt: Uint8Array<ArrayBuffer>,
-  params: Argon2Params
+  params: Argon2Params,
+  options: { mainThread?: boolean } = {}
 ): Promise<Uint8Array<ArrayBuffer>> {
+  const workerRequired = options.mainThread === false && typeof Worker !== 'undefined';
   const worker = prewarmFailed ? null : prewarmed ?? argon2Worker();
   prewarmed = null;
-  if (!worker) return inThread(password, salt, params);
+  if (!worker) {
+    if (workerRequired) throw new Error('argon2id worker did not start');
+    return inThread(password, salt, params);
+  }
   const answer = await new Promise<{ ok: true; key: Uint8Array<ArrayBuffer> } | { ok: false; error?: string; loadFailed?: boolean }>(
     (resolve) => {
       worker.onmessage = (event) => resolve(event.data);
@@ -93,6 +100,7 @@ export async function deriveKey(
      that ran and failed is a real argon2id failure, and fails the same way
      the in-thread call would. */
   if ('loadFailed' in answer && answer.loadFailed) {
+    if (workerRequired) throw new Error(`argon2id worker did not start${answer.error ? `: ${answer.error}` : ''}`);
     console.warn('argon2id worker did not start; deriving on the main thread', answer.error);
     return inThread(password, salt, params);
   }

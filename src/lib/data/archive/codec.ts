@@ -12,6 +12,12 @@ import { isStorableFileName } from '../photos/names';
 
 const JSON_LENGTH_PREFIX = 4;
 
+/** The payload's JSON length is read off an untrusted file and allocated
+    against, so it has a ceiling. 128 MiB is far beyond a real journal's
+    text (photos travel as separate files, not in this JSON) and well under
+    the 4 GiB a length field can express. */
+export const MAX_PAYLOAD_JSON_BYTES = 128 * 1024 * 1024;
+
 interface EncodedArchiveBody {
   bodyLength: number;
   body: AsyncGenerator<Uint8Array>;
@@ -42,6 +48,7 @@ const archiveCodecV1: ArchiveCodec = {
 
   async decode(plaintext) {
     const jsonLength = new DataView((await plaintext.readExactly(JSON_LENGTH_PREFIX)).buffer).getUint32(0);
+    if (jsonLength > MAX_PAYLOAD_JSON_BYTES) throw new CorruptArchiveError('the archive contents are not readable');
     const raw = parsePayload(await plaintext.readExactly(jsonLength));
     return { payload: raw, files: readFiles(plaintext, raw.files) };
   }
