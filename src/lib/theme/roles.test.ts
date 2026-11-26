@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { eraBandRoles, HOME_AREA_ROLE, roleAt } from './roles.ts';
+import { calmRole, eraBandRoles, HOME_AREA_ROLE, roleAt } from './roles.ts';
 
 describe('roleAt', () => {
   const roles = ['a', 'b', 'c'].map((stripe) => ({
@@ -71,5 +71,21 @@ describe("Home's area colours", () => {
   it('numbers the four distinct section roles contiguously from the strip', () => {
     const unique = [...new Set(indices)].sort((a, b) => a - b);
     expect(unique).toEqual([0, 1, 2, 3]);
+  });
+});
+
+describe('calmRole', () => {
+  const role = (stripe: string) => ({ stripe }) as never;
+  it('skips a red stripe, so the breathing water is never blood red (bug session 18, item 75)', () => {
+    const rainbow = ['#E40303', '#FF8C00', '#FFED00', '#008026', '#004DFF', '#750787'].map(role);
+    expect(calmRole(rainbow)).toEqual(role('#FF8C00'));
+    const lesbian = ['#D52D00', '#EF7627', '#FF9A56', '#FFFFFF', '#D162A4', '#B55690', '#A30262'].map(role);
+    expect(calmRole(lesbian)).toEqual(role('#EF7627'));
+  });
+  it('keeps the first role where it is not red, and falls back to it when every role is', () => {
+    const trans = ['#5BCEFA', '#F5A9B8', '#FFFFFF'].map(role);
+    expect(calmRole(trans)).toEqual(role('#5BCEFA'));
+    expect(calmRole(['#DC143C'].map(role))).toEqual(role('#DC143C'));
+    expect(calmRole([])).toBeUndefined();
   });
 });

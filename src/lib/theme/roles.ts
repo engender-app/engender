@@ -298,6 +298,25 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
   return roles[index % roles.length];
 }
 
+/** Whether a stripe reads as red: a saturated colour within 15 degrees of
+    pure red. Rainbow's #E40303 and lesbian's #D52D00 are; an orange such as
+    #EF7627 (22 degrees) and the pinks are not. */
+function isRed(hex: string): boolean {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === 0 || (max - min) / max < 0.5 || max !== r) return false;
+  const hue = (60 * (g - b)) / (max - min);
+  return hue <= 15 && hue >= -15;
+}
+
+/** The first role whose stripe is not red, for a surface meant to calm: the
+    breathing exercise filled with rainbow's first stripe read as blood
+    (bug session 18, item 75). The first role where no role qualifies. */
+export function calmRole(roles: Role[]): Role | undefined {
+  return roles.find((role) => !isRed(role.stripe)) ?? roles[0];
+}
+
 /** The flag's colours, in the order `flagRoles` put them, with its shades
     dropped rather than moved to the back.
 
