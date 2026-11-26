@@ -1845,10 +1845,24 @@
            changes, and only the way on beside it opens and closes
            (ticket 03 chose the wording; ticket 04 keeps the control still).
            Finishing saves what is set and closes, so it is the ink button
-           and says what it does; going on is the soft block before it,
+           and says what it does; going on is the soft block after it, on
+           the right where a next step reads (bug session 18, item 84),
            naming the next step in a word. One row since ticket 09: stacked
            the two took 125px of the step's window, in a row 69. -->
       <div class="entry-foot" use:scrollCues={{ axis: 'y', scroller: stepRegion }}>
+        <button
+          class="btn press"
+          class:btn-primary={!moodMissing}
+          class:btn-soft={moodMissing}
+          data-save
+          data-entry-finish
+          data-entry-saving={saving || undefined}
+          data-save-unmet={moodMissing ? 'mood' : undefined}
+          disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
+          onclick={saveEntry}
+        >
+          <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+        </button>
         {#if stepAhead || previewing}
           <div class="entry-continue" transition:footContinue={{ instant: instantStep || previewing }}>
             <button
@@ -1865,19 +1879,6 @@
             </button>
           </div>
         {/if}
-        <button
-          class="btn press"
-          class:btn-primary={!moodMissing}
-          class:btn-soft={moodMissing}
-          data-save
-          data-entry-finish
-          data-entry-saving={saving || undefined}
-          data-save-unmet={moodMissing ? 'mood' : undefined}
-          disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
-          onclick={saveEntry}
-        >
-          <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
-        </button>
         <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : moodMissing ? wayOnNotice : ''}</span>
       </div>
     {:else}
@@ -2057,7 +2058,7 @@
     position: absolute;
     left: calc(-1 * var(--screen-inset));
     right: calc(-1 * var(--screen-inset));
-    bottom: calc(100% + var(--space-3) + 1px);
+    bottom: calc(100% + var(--space-3));
     height: var(--space-8);
     background: linear-gradient(to bottom, transparent, var(--bg));
     pointer-events: none;
@@ -2065,22 +2066,28 @@
     transition: opacity var(--dur-fast) var(--ease-out);
   }
   .entry-foot:global([data-more-end])::before { opacity: 1; }
+  /* No hairline over this foot (bug session 18, item 84): the fade above
+     marks where the step continues, and the line read as clutter. */
+  :global(.app-savebar:has(> .entry-foot)) { border-top: 0; }
   .entry-foot .btn { width: 100%; }
   /* Two equal halves, so the finish control keeps its box while the way
      on's word changes from step to step: sized to its word, the way on
      moved Save entry 40px in one frame on a step change. It widens only on
      the last step, as the way on closes beside it (footContinue). */
   .entry-foot .btn { padding-inline: var(--space-3); white-space: nowrap; }
-  .entry-foot > .btn { flex: 1 1 0; min-width: 0; }
-  .entry-continue { flex: 1 1 0; min-width: 0; }
+  /* Half each and shrinking alike, rather than a zero basis: from a zero
+     basis the finish button's own padding came off before the halves were
+     shared, so it stood 26px wider than the way on. */
+  .entry-foot > .btn { flex: 1 1 50%; min-width: 0; }
+  .entry-continue { flex: 1 1 50%; min-width: 0; }
   /* Where the two words do not fit one row - text at 130% and up, or a
-     window under 352px - the way on stands over the finish control. 22em
+     window under 352px - the way on stands under the finish control. 22em
      follows the text size, so 360 and 390px windows at 100% keep the row.
      The way on carries the gap as its own padding, so the gap closes with
      it (footContinue opens and closes its height in a column). */
   @container app (max-width: 22em) {
     .entry-foot { flex-direction: column; gap: 0; }
-    .entry-continue { padding-bottom: var(--space-2); }
+    .entry-continue { padding-top: var(--space-2); }
     .entry-foot > .btn { flex: none; }
   }
   /* The words stacked in one cell, so the leaving name fades over the
