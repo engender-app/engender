@@ -3508,7 +3508,6 @@
   "vb_practice_discard": "Discard",
   "vb_practice_range_note": "Lowest to highest pitch of the take. Benchmarks show the 10th to 90th percentile instead.",
   "vb_practice_review_heading": "How did that feel?",
-  "vb_practice_sealed_note": "Saved figures become visible tomorrow.",
   "vb_practice_take_figures": "Median {median} Hz, {low} to {high} Hz, a range of {range} Hz",
   "vb_practice_takes_empty_body": "Stop a practice session above to save how it went.",
   "vb_practice_takes_empty_title": "No practice takes yet",

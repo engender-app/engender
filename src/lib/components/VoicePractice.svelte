@@ -68,8 +68,7 @@
 
   /** Set once a stopped take has something to keep - the figures never
       shown here, only used to save them, so the review step cannot become
-      a second place to read a number the seal is meant to hold back
-      (vb_practice_sealed_note). */
+      a second place to read a number the seal is meant to hold back. */
   let review = $state<PracticeTakeStats | null>(null);
   let feltSense = $state<number | null>(null);
   const saving = writer();
@@ -218,7 +217,6 @@
     <div class="screen-part vp-body">
       <SectionHeading text={m.vb_practice_review_heading()} />
       <MoodPicker value={feltSense} onPick={(v) => (feltSense = v)} />
-      <p class="muted small vp-sealed-note">{m.vb_practice_sealed_note()}</p>
     </div>
 
     <SaveBar arrange="row">
@@ -263,16 +261,13 @@
 </div>
 
 <style>
-  /* The action bar is sticky and floats over whatever is beneath it at
-     rest, and everything under it here is load-bearing - the figure's
-     caveat, the advice - so the body reserves the bar's own height rather
-     than leaving it to a scroll somebody mid-take cannot make. */
+  /* The screen's own 20 under the panel, which sits a level too deep for
+     the .screen floor to reach. It held 96px here, a reserve for a foot that
+     floated over the content; the foot is the column's flex sibling now and
+     covers nothing (bug session 18, item 68). */
   .vp-body {
-    padding-bottom: calc(var(--touch-target) * 2);
+    padding-bottom: var(--space-5);
   }
 
-  .vp-sealed-note {
-    margin: var(--space-4) 0 0;
-  }
 
 </style>
