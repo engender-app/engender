@@ -76,11 +76,11 @@ in `SCREENS.md`, terms in `CONTEXT.md`, product principles in `PRODUCT.md`, a
 local rule in a header comment at the code it governs, and contributor
 workflow here.
 
-A record starts as `docs/adr/draft-<slug>.md`, cited as `ADR draft-<slug>`,
-and gets its number when it lands on the docs repo's `main`. Numbers are
-permanent and never reused. A record that is merged into another, moved to
-one of the places above, or retired loses its file and leaves one tombstone
-line in `docs/adr/README.md` saying where it went.
+A record starts as `docs/adr/draft-<slug>.md` in the pull request that adds
+it, cited as `ADR draft-<slug>`, and gets its number when that pull request
+merges. Numbers are permanent and never reused. A record that is merged into
+another, moved to one of the places above, or retired loses its file and
+leaves one tombstone line in `docs/adr/README.md` saying where it went.
 
 Under the title come four lines: `Status`, `Decided`, `Last reviewed`, and
 `Supersedes` or `Amends`. An amendment rewrites the body to the current truth
@@ -89,6 +89,7 @@ section. The decision itself is 150 words or fewer, the record about 600 and
 1,000 at most. Name things instead of quoting values that rot: no hex
 colours, frame counts, or counts of areas, tables, sections or palettes.
 `tests/adr-citations.test.ts` holds the citations, the header block, the
-1,000-word ceiling and the tombstones (the 150-word decision is the
-author's to keep, since no check can tell which paragraph is the decision); `tests/direction-citations.test.ts` holds every
-DIRECTION.md rule, decision and tier the code cites.
+1,000-word ceiling, the tombstones and the rule that no tracked file links into
+`docs/internal`. The 150-word decision is the author's to keep, since no check
+can tell which paragraph is the decision. `tests/direction-citations.test.ts`
+holds every DIRECTION.md rule, decision and tier the code cites.

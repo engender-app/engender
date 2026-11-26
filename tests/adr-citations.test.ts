@@ -1,12 +1,14 @@
-/* The ADR citation guard (functional audit ticket 52). Dev tier: the ADRs
-   live in the private docs repo, so where `docs/adr` is not linked (CI) the
-   repo-wide check skips with a notice and the fixture tests still run. */
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+/* The ADR citation guard. The ADRs are tracked at docs/adr, so the repo-wide
+   checks run everywhere, CI included. A second rule keeps public files from
+   linking into docs/internal, the private docs repo, which a clone cannot
+   open. */
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { adrShapeProblems, citationsIn, readAdrIndex, unresolved, unresolvedInRepo } from '../scripts/adr-citations.mjs';
+import { adrShapeProblems, citationsIn, internalDocLinks, readAdrIndex, unresolved, unresolvedInRepo } from '../scripts/adr-citations.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const adrDir = join(root, 'docs', 'adr');
@@ -68,13 +70,35 @@ describe('the record shape (functional audit ticket 55)', () => {
   });
 });
 
-describe.skipIf(!existsSync(adrDir))('every citation in src, tests and android', () => {
+describe('links into docs/internal', () => {
+  const repo = mkdtempSync(join(tmpdir(), 'adr-links-'));
+  afterAll(() => rmSync(repo, { recursive: true, force: true }));
+  const put = (path: string, text: string) => {
+    mkdirSync(join(repo, path, '..'), { recursive: true });
+    writeFileSync(join(repo, path), text);
+  };
+  execFileSync('git', ['init', '-q', repo]);
+
+  it('reports the file and line of each markdown link that lands in docs/internal', () => {
+    put('README.md', 'fine [ok](docs/adr/0001-one.md) and [site](https://example.com/docs/internal/x)\n\nbad [a](docs/internal/docs/ui-copy.md)\n');
+    put('docs/adr/0002-two.md', '# Two\n\nsee [b](../internal/CONTEXT.md#term) and [c](./0001-one.md)\n');
+    put('docs/adr/0001-one.md', 'prose may name docs/internal without linking to it\n');
+    execFileSync('git', ['-C', repo, 'add', '-A']);
+    expect(internalDocLinks(repo)).toEqual([
+      'README.md:3: docs/internal/docs/ui-copy.md',
+      'docs/adr/0002-two.md:3: docs/internal/CONTEXT.md'
+    ]);
+  });
+});
+
+describe('every citation in src, tests and android', () => {
   it('resolves to an ADR file or a tombstone line', () => {
     expect(unresolvedInRepo(root, adrDir)).toEqual([]);
   });
   it('every record has its header and size, and every number up to the highest is a file or a tombstone', () => {
     expect(adrShapeProblems(adrDir)).toEqual([]);
   });
+  it('no tracked file links to a docs/internal path', () => {
+    expect(internalDocLinks(root)).toEqual([]);
+  });
 });
-
-if (!existsSync(adrDir)) console.warn('adr-citations: docs/adr is not linked (run npm run docs:link); skipping the repo-wide check.');
