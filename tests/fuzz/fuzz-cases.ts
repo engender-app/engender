@@ -42,7 +42,7 @@ const fixture = (name: string) => new Uint8Array(readFileSync(here(`../../src/li
 /* ------------------------------------------------------------------ */
 /* Outcomes                                                            */
 
-export type OutcomeKind =
+type OutcomeKind =
   | 'typed' // refused with a typed failure; journal untouched
   | 'accepted' // imported; integrity checks pass
   | 'guard' // refused by the UI-level guard the real flow runs before commit (unmapped mood)
@@ -165,7 +165,7 @@ function integrity(d: Device): string | null {
 /* ------------------------------------------------------------------ */
 /* Running one case                                                    */
 
-export const CASE_TIMEOUT_MS = Math.min(Number(process.env.FUZZ_CASE_TIMEOUT_MS ?? 20000), 30000);
+const CASE_TIMEOUT_MS = Math.min(Number(process.env.FUZZ_CASE_TIMEOUT_MS ?? 20000), 30000);
 
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | 'timeout'> {
   let timer: NodeJS.Timeout;
@@ -287,7 +287,7 @@ function bodyOf(payload: unknown, files: { name: string; bytes: Uint8Array }[]):
   return concat(len, json, ...files.map((f) => f.bytes));
 }
 
-export async function corpus(): Promise<Record<string, Uint8Array>> {
+async function corpus(): Promise<Record<string, Uint8Array>> {
   if (corpusCache) return corpusCache;
   const g = await loadGoldenBody();
   const goldenFiles = g.manifest.map((m) => ({ name: m.name, bytes: g.files.get(m.name)! }));
@@ -319,7 +319,7 @@ export async function corpus(): Promise<Record<string, Uint8Array>> {
 
 let keyCache: { salt: Uint8Array<ArrayBuffer>; key: Uint8Array<ArrayBuffer> } | null = null;
 
-export async function packBody(body: Uint8Array, formatVersion: number): Promise<Uint8Array> {
+async function packBody(body: Uint8Array, formatVersion: number): Promise<Uint8Array> {
   if (!keyCache) {
     const salt = randomSalt();
     keyCache = { salt, key: await deriveKey(GOLDEN_PASSWORD, salt, CHEAP_KDF) };
@@ -332,14 +332,14 @@ export async function packBody(body: Uint8Array, formatVersion: number): Promise
 /* ------------------------------------------------------------------ */
 /* Targets                                                             */
 
-export interface CaseSpec {
+interface CaseSpec {
   input: Uint8Array;
   mutations: string[];
   /** extra, replayable choices that are part of the case (mode, version...) */
   meta: Record<string, unknown>;
 }
 
-export interface Target {
+interface Target {
   name: string;
   make(rng: Rng): Promise<CaseSpec>;
   run(spec: CaseSpec): Promise<Outcome>;

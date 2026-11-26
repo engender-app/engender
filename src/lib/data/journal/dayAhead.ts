@@ -242,7 +242,7 @@ const SECTIONS = [
    day.ts's own `EverySectionRegistered` holds itself to. */
 type UnregisteredKind = Exclude<DayAheadMarkKind, (typeof SECTIONS)[number]['key']>;
 type AssertNoneUnregisteredKind<Missing extends never> = Missing;
-export type EveryKindRegistered = AssertNoneUnregisteredKind<UnregisteredKind>;
+type EveryKindRegistered = AssertNoneUnregisteredKind<UnregisteredKind>;
 
 /** Which archive sections the five kinds above account for. */
 type Covered = (typeof SECTIONS)[number]['covers'][number];

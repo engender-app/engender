@@ -40,7 +40,7 @@ const LICENCE_FILE = /^(licen[cs]e|copying|notice)([.-].*)?$/i;
     check-licences.mjs, with what was read written down.
 
     @type {Record<string, { file: string, read: string }>} */
-export const LICENCE_TEXT_BY_HAND = {
+const LICENCE_TEXT_BY_HAND = {
   '@fix-webm-duration/fix': {
     file: 'scripts/licence-texts/fix-webm-duration.txt',
     read: 'The 1.0.1 tarball omits LICENSE. Copied the repository licence from github.com/yusitnikov/fix-webm-duration/blob/v1.0.1/LICENSE.'
@@ -75,7 +75,7 @@ export const VENDORED_PACKAGES = [
 ];
 
 /** The npm packages whose native halves are compiled into the APK. */
-export const ANDROID_PACKAGES = ['node_modules/@capacitor/android', 'node_modules/@capacitor/app'];
+const ANDROID_PACKAGES = ['node_modules/@capacitor/android', 'node_modules/@capacitor/app'];
 
 /** The Android libraries around the WebView, by Maven group. Gradle's
     release runtime graph is the authority on what ships, and
@@ -146,7 +146,7 @@ export const ANDROID_LIBRARIES = [
 
 /** The type the app draws with, and the faces pdf.js substitutes for the
     standard PDF fonts. */
-export const FONTS = [
+const FONTS = [
   { name: 'Nunito', licence: 'OFL-1.1', files: ['static/fonts/OFL-nunito.txt'] },
   { name: 'Outfit', licence: 'OFL-1.1', files: ['static/fonts/OFL-outfit.txt'] },
   { name: 'Liberation Sans', licence: 'OFL-1.1', files: ['static/pdf-fonts/LICENSE_LIBERATION'] },

@@ -48,7 +48,7 @@ export function registerServiceWorkerAfterBoot(status: string): void {
     update to watch for. Registering anyway copied about 50 MB of the app's own
     assets into WebView cache storage - a second copy of what was already on
     the device. */
-export function registerServiceWorker(): void {
+function registerServiceWorker(): void {
   void ensureServiceWorkerRegistration().catch(() => {
     /* Background registration failure leaves the journal usable online. */
   });

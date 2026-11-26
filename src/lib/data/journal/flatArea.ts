@@ -48,7 +48,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import { assertChanged, mintUuid, now } from './support';
 
 /** A flat area's row: its travelling identity, plus one column per field. */
-export type FlatRow = Record<string, unknown> & { uuid: string };
+type FlatRow = Record<string, unknown> & { uuid: string };
 
 /** What a flat area's upsert takes: the domain object with its id optional,
     absent to insert and present to update. Declared here so an area's own

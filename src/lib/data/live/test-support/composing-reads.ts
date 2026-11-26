@@ -7,7 +7,7 @@
 
 import type { TableName } from '../writes.ts';
 
-export type Read = readonly [area: string, operation: string];
+type Read = readonly [area: string, operation: string];
 
 export interface ComposingRead {
   read: Read;

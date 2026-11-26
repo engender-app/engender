@@ -53,7 +53,7 @@ function offset(rng: Rng, length: number): number {
   return int(rng, 0, Math.max(0, length - 1));
 }
 
-export const bitFlips: Mutation = {
+const bitFlips: Mutation = {
   name: 'bitflip',
   apply(bytes, rng) {
     if (bytes.length === 0) return bytes;
@@ -64,7 +64,7 @@ export const bitFlips: Mutation = {
   }
 };
 
-export const overwriteRun: Mutation = {
+const overwriteRun: Mutation = {
   name: 'overwrite-run',
   apply(bytes, rng) {
     if (bytes.length === 0) return bytes;
@@ -79,7 +79,7 @@ export const overwriteRun: Mutation = {
   }
 };
 
-export const truncate: Mutation = {
+const truncate: Mutation = {
   name: 'truncate',
   apply(bytes, rng) {
     if (bytes.length === 0) return bytes;
@@ -87,7 +87,7 @@ export const truncate: Mutation = {
   }
 };
 
-export const duplicateChunk: Mutation = {
+const duplicateChunk: Mutation = {
   name: 'duplicate-chunk',
   apply(bytes, rng) {
     if (bytes.length === 0) return bytes;
@@ -103,7 +103,7 @@ export const duplicateChunk: Mutation = {
   }
 };
 
-export const deleteChunk: Mutation = {
+const deleteChunk: Mutation = {
   name: 'delete-chunk',
   apply(bytes, rng) {
     if (bytes.length < 2) return bytes;
@@ -117,7 +117,7 @@ export const deleteChunk: Mutation = {
 };
 
 /** A length-looking field at a random offset set to something huge. */
-export const inflateRandomField: Mutation = {
+const inflateRandomField: Mutation = {
   name: 'inflate-field',
   apply(bytes, rng) {
     if (bytes.length < 4) return bytes;
@@ -200,7 +200,7 @@ const EVIL_NAMES = ['../evil', '../../etc/passwd', '/abs/path', 'a\0b', '..\\..\
 
 /** One edit to the zip's own bookkeeping: EOCD counts and offsets, central
     directory sizes, offsets, name lengths and names, local header sizes. */
-export const zipStructureEdit: Mutation = {
+const zipStructureEdit: Mutation = {
   name: 'zip-structure',
   apply(bytes, rng) {
     const eocd = findEocd(bytes);
@@ -247,7 +247,7 @@ function safeUnzip(bytes: Uint8Array): Record<string, Uint8Array> | null {
 
 /** Re-zip with a member renamed to a hostile name, or duplicated under
     another name, or an extra hostile member added. */
-export const zipRenameMember: Mutation = {
+const zipRenameMember: Mutation = {
   name: 'zip-hostile-name',
   apply(bytes, rng) {
     const files = safeUnzip(bytes);
@@ -299,7 +299,7 @@ export const ZIP_MUTATIONS: readonly Mutation[] = [zipStructureEdit, zipStructur
 const enc = new TextEncoder();
 const dec = new TextDecoder('utf-8');
 
-export const textLineEdit: Mutation = {
+const textLineEdit: Mutation = {
   name: 'text-lines',
   apply(bytes, rng) {
     const lines = dec.decode(bytes).split('\n');
@@ -321,7 +321,7 @@ export const textLineEdit: Mutation = {
   }
 };
 
-export const invalidUtf8: Mutation = {
+const invalidUtf8: Mutation = {
   name: 'invalid-utf8',
   apply(bytes, rng) {
     if (bytes.length === 0) return bytes;
@@ -332,7 +332,7 @@ export const invalidUtf8: Mutation = {
   }
 };
 
-export const bomPrefix: Mutation = {
+const bomPrefix: Mutation = {
   name: 'bom',
   apply(bytes) {
     const out = new Uint8Array(bytes.length + 3);
@@ -419,7 +419,7 @@ export function mutateJsonValue(root: Json, rng: Rng, log?: string[]): Json {
   return clone;
 }
 
-export const jsonStructural: Mutation = {
+const jsonStructural: Mutation = {
   name: 'json-structural',
   apply(bytes, rng) {
     let parsed: Json;
@@ -467,5 +467,3 @@ export const concat = (...parts: Uint8Array[]): Uint8Array => {
   }
   return out;
 };
-
-export const toHex = (bytes: Uint8Array): string => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');

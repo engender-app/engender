@@ -21,7 +21,7 @@
 import { ACTIVE_DOOR_CONTENT, isDoorActive } from './doorActivity';
 import { overlayIsOpen } from '$lib/components/overlayLock';
 
-export const ARRIVAL_FOCUS_ATTR = 'data-arrival-focus';
+const ARRIVAL_FOCUS_ATTR = 'data-arrival-focus';
 
 export function focusArrivedScreen(region: HTMLElement | null): void {
   if (!region || overlayIsOpen()) return;

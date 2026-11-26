@@ -9,7 +9,7 @@ import { join } from 'node:path';
 /** @typedef {{avd: string, serial: string, api: number, nativeOnly: boolean, kind: string, completedStages: string[], completedChecks: string[], build: AndroidBuild, offlineOcr?: {package: string, build: {apkSha256: string, testApkSha256: string}}, revision?: string, startedAt?: string, passedAt?: string}} AndroidRun */
 /** @typedef {{revision: string, startedAt: string, passedAt: string, runs: AndroidRun[], optionalStages: Record<string, string | null>}} AndroidEvidence */
 
-export const ANDROID_CORE_STAGES = ['instrumentation', 'pin-wait', 'native-backup'];
+const ANDROID_CORE_STAGES = ['instrumentation', 'pin-wait', 'native-backup'];
 const RECORD = 'scripts/progressive-release-record.json';
 const sha = /^[a-f0-9]{40}$/;
 const digest = /^[a-f0-9]{64}$/;
@@ -49,7 +49,7 @@ export function installedUpgradeBuildProblems(build, revision, cwd) {
 }
 
 /** @param {string} cwd @param {unknown} revision @param {string} [head] */
-export function sameAndroidSource(cwd, revision, head = 'HEAD') {
+function sameAndroidSource(cwd, revision, head = 'HEAD') {
   if (typeof revision !== 'string' || !sha.test(revision)) return false;
   try {
     git(cwd, 'merge-base', '--is-ancestor', revision, head);

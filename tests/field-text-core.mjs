@@ -25,36 +25,36 @@ import { decodePng } from './png-decode.mjs';
 
 /** How far a part's box may reach below the painted edge before it counts as
     off the field. Sub-pixel rounding, nothing more. */
-export const OVERSPILL_PX = 0.75;
+const OVERSPILL_PX = 0.75;
 /** A part that moves this far relative to the edge in one frame has jumped
     rather than slid. The anchored travel is 12px over 150ms (about 2px a
     frame); 6px leaves room for a dropped frame. */
 export const TELEPORT_PX = 6;
 /** A step this size is a jump whatever surrounds it. */
-export const TELEPORT_HARD = 14;
+const TELEPORT_HARD = 14;
 /** What counts as standing still on either side of a step. */
-export const STILL_PX = 1.5;
+const STILL_PX = 1.5;
 /** An opacity step larger than this in one frame is an appearance or a
     disappearance in a single frame. */
-export const POP = 0.5;
+const POP = 0.5;
 /** The most a fade-in's first frame may show. field-part-in is an ease-out
     (--ease-out), which reaches 0.72 of its range in the first 20ms; a part
     that goes from nothing to more than this in a frame did not fade. */
-export const FADE_START_MAX = 0.85;
+const FADE_START_MAX = 0.85;
 /** Visible enough to count. */
-export const SEEN = 0.05;
+const SEEN = 0.05;
 /** Ink pixels below the field's own bottom, in one frame, before it is a
     finding. A glyph's antialiased fringe can leave a pixel or two. */
 export const INK_PIXELS = 6;
 
 /** The forced colours the pixel instrument reads. */
-export const FIELD_RGB = '#0000ff';
-export const INK_RGB = '#00ff00';
+const FIELD_RGB = '#0000ff';
+const INK_RGB = '#00ff00';
 export const PROBE_CSS = `html { --field: ${FIELD_RGB} !important; --field-ink: ${INK_RGB} !important; } .demo-bar { display: none !important; } [data-toast] { display: none !important; }`;
 
 /** Every name fieldBlind.ts hands out. Twelve parts a side is more than any
     field carries; eight rings is one more than the longest flag. */
-export const PART_NAMES = [];
+const PART_NAMES = [];
 for (const side of ['a', 'b']) {
   for (let i = 0; i < 12; i++) PART_NAMES.push(`fp-${side}-${i}`);
   for (let i = 0; i < 8; i++) PART_NAMES.push(`sun-${side}-${i}`);

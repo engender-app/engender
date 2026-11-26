@@ -80,8 +80,8 @@ export const HYDRATION_SETTLE_MS = 1600;
  *  frame table is itself JSON, so every quote in it is escaped again on
  *  the way back and a slice can arrive up to twice the size it was cut.
  *  1 MiB leaves that doubling well clear of 4. */
-export const DEVTOOLS_REPLY_CAP = 4 * 1024 * 1024;
-export const REPLY_SLICE = DEVTOOLS_REPLY_CAP / 4;
+const DEVTOOLS_REPLY_CAP = 4 * 1024 * 1024;
+const REPLY_SLICE = DEVTOOLS_REPLY_CAP / 4;
 
 /** Where to cut a reply of `total` characters so no slice exceeds `cap`.
  *  Returns `[from, to]` pairs covering the whole string in order, with no
@@ -112,7 +112,7 @@ export const COLOR_DELTA = 0.14;
  *  it is a screen-wide theme or palette switch rather than a component colour defect.
  *  A theme switch changes every colour on the screen at once (ticket 136); component
  *  colour defects affect only the component's own marks. */
-export const GLOBAL_RECOLOUR_MARKS = 6;
+const GLOBAL_RECOLOUR_MARKS = 6;
 
 function srgbToLinear(c) {
   const s = c / 255;
@@ -203,7 +203,7 @@ export function colorDistance(c1Str, c2Str) {
   return Math.hypot(L1 - L2, chA1 - chA2, chB1 - chB2, dAlpha * 0.5);
 }
 
-export function markColorDelta(a, b) {
+function markColorDelta(a, b) {
   if (!a || !b) return 0;
   const dBg = a.bg || b.bg ? colorDistance(a.bg, b.bg) : 0;
   const dFg = a.fg || b.fg ? colorDistance(a.fg, b.fg) : 0;
@@ -665,7 +665,7 @@ export async function resetSceneProfile(scene, profile, evaluate, options = {}) 
   return { profile, emptyJournalRestored: true, ready };
 }
 
-export const PROFILE_KEY = 'yank-sweep-prepared-profile';
+const PROFILE_KEY = 'yank-sweep-prepared-profile';
 export const markProfileExpression = (profile) => `localStorage.setItem(${JSON.stringify(PROFILE_KEY)}, ${JSON.stringify(profile)}); true;`;
 export const profileProofExpression = (profile) => `(() => {
   const proof = { prepared: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
@@ -675,7 +675,7 @@ export const profileProofExpression = (profile) => `(() => {
   return proof;
 })()`;
 
-export function readThemeProof(requested, env = globalThis) {
+function readThemeProof(requested, env = globalThis) {
   const button = [...env.document.querySelectorAll('.demo-bar button')].find((node) =>
     (node.textContent ?? '').trim() === (requested === 'dark' ? 'Dark' : 'Light'));
   return { requested, selected: !!button?.classList.contains('is-active'),
@@ -1045,7 +1045,7 @@ export const INJECT_PROOF_EXPRESSION =
     };
   }).toString();
 
-export const HIDE_DEMO_BAR_CSS = '.demo-bar { display: none !important; }';
+const HIDE_DEMO_BAR_CSS = '.demo-bar { display: none !important; }';
 
 export const INIT_HIDE_DEMO_SCRIPT = `(() => {
   const inject = () => {
@@ -1828,7 +1828,7 @@ export const GAP_RATIO = 2.5;
  *  dropout or bloat that was never there (ticket 192). Two rAFs plus a
  *  settle so a compositor frame actually lands on the flat fill before
  *  the navigation tears the document down. */
-export const PAINT_BLANK_SENTINEL_EXPRESSION = `(() => {
+const PAINT_BLANK_SENTINEL_EXPRESSION = `(() => {
   document.documentElement.style.cssText = 'background:#000 !important';
   if (document.body) document.body.style.cssText = 'visibility:hidden !important';
   return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -1837,7 +1837,7 @@ export const PAINT_BLANK_SENTINEL_EXPRESSION = `(() => {
 /** How long to let the sentinel settle before navigating - long enough
  *  for a slower CI box's compositor to deliver a screencast frame of
  *  it, on top of the two rAFs the expression itself already waits on. */
-export const PRENAV_SETTLE_MS = 150;
+const PRENAV_SETTLE_MS = 150;
 
 /** Runs `PAINT_BLANK_SENTINEL_EXPRESSION` and settles, on whichever
  *  transport the caller drives - Playwright's `page.evaluate` /
@@ -1916,7 +1916,7 @@ const diffMask = (a, b) => {
 
 /** Connected regions of a mask, 4-neighbour flood fill. Returned largest
  *  first, regions under `minArea` px dropped. */
-export function regions(mask, w, h, minArea) {
+function regions(mask, w, h, minArea) {
   const seen = new Uint8Array(mask.length);
   const out = [];
   for (let i = 0; i < mask.length; i++) {
@@ -2486,7 +2486,7 @@ export const EVIDENCE_CAP = 60;
  *  stray view transition (none of these scenes gesture, but a route may)
  *  is sliced off the front exactly as the gesture sweep slices its runs,
  *  so what is read is the tree that was painted. */
-export function findHydrationYanks(frames) {
+function findHydrationYanks(frames) {
   const active = frames.map((f, i) => (f.active ? i : -1)).filter((i) => i >= 0);
   const sliced = active.length ? frames.slice(active.at(-1) + 1) : frames;
   if (sliced.length < 2) return { yanks: [], frames: sliced.length, sampled: frames.length };
@@ -2607,7 +2607,7 @@ export const yesterdayEpochDay = () => Math.floor(Date.now() / 86400000) - 1;
 
 /** One scene's console line, shaped the same on both transports so a
  *  desktop log and a device log can be read side by side. */
-export function describeHydrationRun(name, dom, render) {
+function describeHydrationRun(name, dom, render) {
   return `${name}: ${dom.frames} style / ${render.cast} render frames, ${dom.yanks.length} style / ${render.findings.length} render yank(s)` +
     (dom.yanks.length || render.findings.length
       ? `\n  ${[

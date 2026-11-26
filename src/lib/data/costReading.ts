@@ -21,9 +21,9 @@ import type { Span } from './lookBackSpan';
 
 /** The areas in the order the reading lists them: the order the app's own
     areas come in, so the list reads the same in every currency. */
-export const COST_AREAS: readonly CostSource[] = ['hairRemoval', 'appointment', 'procedure', 'lab', 'stock'];
+const COST_AREAS: readonly CostSource[] = ['hairRemoval', 'appointment', 'procedure', 'lab', 'stock'];
 
-export interface CostAreaTotal {
+interface CostAreaTotal {
   source: CostSource;
   total: number;
   /** The part of `total` that was refunded. */
@@ -31,7 +31,7 @@ export interface CostAreaTotal {
   count: number;
 }
 
-export interface CostReadingCurrency {
+interface CostReadingCurrency {
   currency: string;
   total: number;
   refunded: number;

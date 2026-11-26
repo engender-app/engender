@@ -236,7 +236,7 @@ export interface RailMark {
     it. A milestone and a surgery day are the same mark on the rail, so they
     share one key, named for whichever of the two the rail holds. */
 export type RailLegendKind = 'era' | RailHistoryKind | RailMarkKey;
-export type RailMarkKey = 'milestone' | 'surgery' | 'milestone-and-surgery';
+type RailMarkKey = 'milestone' | 'surgery' | 'milestone-and-surgery';
 
 const HISTORY_OF_ANNOTATION: Partial<Record<ChartAnnotation['kind'], RailHistoryKind>> = {
   regimen: 'regimen',

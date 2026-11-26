@@ -12,7 +12,7 @@ import type { FeltSenseEntry } from '../types';
 import { mintUuid, now, rowidByUuid } from './support';
 
 /** The tryout a reading belongs to. */
-export type FeltSenseOwner = { tryoutId: string };
+type FeltSenseOwner = { tryoutId: string };
 
 interface FeltSenseInput {
   epochDay: number;

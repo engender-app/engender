@@ -36,7 +36,7 @@ export interface DayAverage {
   count: number;
 }
 
-export interface WeeklyWearHours {
+interface WeeklyWearHours {
   /** Monday of the calendar week, even when the chosen range starts later. */
   weekStart: number;
   hours: number;

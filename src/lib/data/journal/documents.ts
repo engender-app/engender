@@ -63,7 +63,6 @@ import type { DocumentTarget, JournalDocument } from '../types';
 import { filesOf, photoFileName, thumbFileName } from '../photos/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { DocumentFile } from '../documents/accept';
-export type { DocumentFile } from '../documents/accept';
 import { flatArea } from './flatArea';
 import { assertChanged, mintUuid, now } from './support';
 

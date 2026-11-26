@@ -1059,7 +1059,7 @@ const SECTIONS = [
    makes that a compile error instead. */
 type Unregistered = Exclude<ArchiveSectionName, (typeof SECTIONS)[number]['name']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
-export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
+type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
 /* ARCHIVE_SECTIONS stays exported for its own test, and cross-checked in
    archive.test.ts (AU-09 test-only review). */

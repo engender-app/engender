@@ -18,7 +18,7 @@ import { normalizePhoto } from '$lib/data/photos/normalize';
 import type { NormalizedPhoto } from '$lib/data/journal/photos';
 
 /** Width over height of the preview and of every shot it takes. */
-export const PROGRESS_FRAME_ASPECT = 3 / 4;
+const PROGRESS_FRAME_ASPECT = 3 / 4;
 
 export type CameraFacing = 'user' | 'environment';
 

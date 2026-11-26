@@ -94,7 +94,7 @@ export const AGENDA_CAP = 3;
     name, or null for one with neither - the screen draws the kind's own
     label then, the same fallback chain the appointments screen uses.
     `more` counts the other appointments on the same day. */
-export interface AgendaAppointment {
+interface AgendaAppointment {
   title: string | null;
   place: string | null;
   more: number;

@@ -48,7 +48,7 @@ function assertValidSeverity(severity: number | null): void {
 
 /** A side effect resolves on or after the day it began (functional audit
     ticket 23); null is ongoing. */
-export function assertResolvedAfterStart(epochDay: number, resolvedEpochDay: number | null): void {
+function assertResolvedAfterStart(epochDay: number, resolvedEpochDay: number | null): void {
   if (resolvedEpochDay !== null && resolvedEpochDay < epochDay) {
     throw new Error(`side effect resolved before it began: ${resolvedEpochDay} < ${epochDay}`);
   }

@@ -86,7 +86,7 @@ export interface NoticedChange {
   severity?: string | null;
 }
 
-export interface NoticedMark extends NoticedChange {
+interface NoticedMark extends NoticedChange {
   /** Where it is drawn, 0 at the line's left end and 1 at its right. */
   position: number;
   /** Which row above the line it stands in, 0 being the one on the line.
@@ -96,7 +96,7 @@ export interface NoticedMark extends NoticedChange {
   lane: number;
 }
 
-export interface NoticedTick {
+interface NoticedTick {
   epochDay: number;
   position: number;
   /** Whole months from the regimen's start, negative before it - or null on

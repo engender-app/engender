@@ -21,7 +21,7 @@ import type { Grain } from '$lib/charts/grain';
 
 /** A procedure that can anchor an axis, as the picker needs it: the
     arithmetic wants the day, an option wants the name. */
-export interface AnchorOption {
+interface AnchorOption {
   id: string;
   name: string;
   surgeryEpochDay: number;
@@ -34,14 +34,6 @@ export function dayAxisLabel(axis: DayAxis, anchors: readonly AnchorOption[]): s
   if (axis === 'interval') return m.chart_axis_interval();
   const anchor = anchors.find((candidate) => candidate.id === anchorIdOf(axis));
   return m.chart_axis_since({ name: anchor?.name ?? '' });
-}
-
-/** The picker's options, in the order `availableAxes` returned them. */
-export function dayAxisOptions(
-  axes: readonly DayAxis[],
-  anchors: readonly AnchorOption[]
-): { value: string; label: string }[] {
-  return axes.map((axis) => ({ value: axis, label: dayAxisLabel(axis, anchors) }));
 }
 
 /* A week bucket is labelled by the six days after its start, so the two

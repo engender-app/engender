@@ -5,12 +5,12 @@
 export const OCR_ROOT = '/tesseract/';
 
 /** The PDF renderer's worker, which is emitted with a hashed name. */
-export const PDF_WORKER_PATTERN = /\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/;
-export const PDF_FONT_PREFIX = '/pdf-fonts/';
+const PDF_WORKER_PATTERN = /\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/;
+const PDF_FONT_PREFIX = '/pdf-fonts/';
 
 /** The worker the sqlite-wasm package's worker1 promiser would construct,
     and which this app never does. */
-export const UNUSED_WORKER_PATTERN = /\/_app\/immutable\/workers\/sqlite3-worker1-bundler-friendly-[^/]+\.js$/;
+const UNUSED_WORKER_PATTERN = /\/_app\/immutable\/workers\/sqlite3-worker1-bundler-friendly-[^/]+\.js$/;
 
 /** What every cache this app owns is named after, one per release. Shared
     because two sides delete by it: the worker retains live document shells

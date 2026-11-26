@@ -268,7 +268,7 @@ const ROWS = [
    compile. */
 type Unregistered = Exclude<UnpromptedKind, (typeof ROWS)[number]['key']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
-export type EveryKindRegistered = AssertNoneUnregistered<Unregistered>;
+type EveryKindRegistered = AssertNoneUnregistered<Unregistered>;
 
 /* This assignment is where a row that fires without declaring a channel
    stops compiling, and it matters for a sharper reason than tidiness:

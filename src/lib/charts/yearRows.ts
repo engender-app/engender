@@ -13,7 +13,7 @@
 
 import { epochDayFromLocalDate } from '../data/epochDay';
 
-export interface YearCell {
+interface YearCell {
   epochDay: number;
   /** 0 to 11 - which month. */
   month: number;

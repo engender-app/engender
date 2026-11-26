@@ -146,7 +146,7 @@ function identityOf(table: string): Identity {
 /** What happens to one archive row: written as a new row, written over this
     device's, or left out because this device's copy (or its deletion) is
     the newer. */
-export type RowFate = 'insert' | 'update' | 'keep';
+type RowFate = 'insert' | 'update' | 'keep';
 
 export interface RowGate {
   fate(id: string, updatedAt: number | undefined): RowFate;

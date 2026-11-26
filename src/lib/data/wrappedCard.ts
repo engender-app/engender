@@ -5,7 +5,7 @@
     a locale-formatted number or a paraglide plural reads differently per
     element, and this module stays free of both so it can be used from
     either tier. */
-export interface WrappedCardStat {
+interface WrappedCardStat {
   label: string;
   value: string;
 }

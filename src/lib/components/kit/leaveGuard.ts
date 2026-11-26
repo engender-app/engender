@@ -125,5 +125,3 @@ export function leaveGuardCore(
     }
   };
 }
-
-export type LeaveGuardCore = ReturnType<typeof leaveGuardCore>;

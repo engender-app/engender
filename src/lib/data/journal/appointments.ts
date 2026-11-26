@@ -161,7 +161,7 @@ const competenceOf = (value: unknown): ProviderCompetence | null =>
 
 /** `HH:MM` on a 24-hour clock - the TimePicker's own value, and the only
     shape an archive's appointment time is accepted in. */
-export const isClockTime = (value: string): boolean => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+const isClockTime = (value: string): boolean => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 
 /** Empty, or all whitespace, is nothing written. */
 const trimmed = (value: string | null): string | null => {

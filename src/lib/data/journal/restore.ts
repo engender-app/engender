@@ -118,7 +118,7 @@ export interface RestoreContents {
     transaction. One combined fraction would need a weighting between them
     that nothing here knows, and a bar that sat at 100% through the whole
     row half would be the "the bar lied" failure the ADR is about. */
-export type RestoreStage = 'files' | 'rows';
+type RestoreStage = 'files' | 'rows';
 
 export interface RestoreProgress {
   stage: RestoreStage;

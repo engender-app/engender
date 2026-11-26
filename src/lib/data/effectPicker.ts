@@ -15,7 +15,7 @@ import { resolveHormoneDrug } from './hormoneDrug';
 import type { PersonalEffectCatalogEntry } from './types';
 import { RETIRED_PERSONAL_EFFECT_KEYS } from './vocabulary/retiredEffects';
 
-export interface EffectPickerGroup {
+interface EffectPickerGroup {
   /** The category key, `'custom'` for a person's own effects, or null for a
       flat search result, which has no heading. */
   key: string | null;

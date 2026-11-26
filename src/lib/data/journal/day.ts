@@ -299,7 +299,7 @@ const SECTIONS = [
    instead. */
 type Unregistered = Exclude<DaySectionKey, (typeof SECTIONS)[number]['key']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
-export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
+type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
 /** Which archive sections the registry above accounts for. */
 type Covered = (typeof SECTIONS)[number]['covers'][number];
