@@ -601,8 +601,13 @@
     }
   }
 
+  /* `width: 100%` because auto side margins turn off a flex item's
+     stretch, and this box is a size container: with no width of its own it
+     measured 0 and the frame inside it 2px, a dot (progress photos
+     compare, desktop). */
   @container app (min-width: 1024px) {
     .wipe {
+      width: 100%;
       max-width: 560px;
       margin-left: auto;
       margin-right: auto;
