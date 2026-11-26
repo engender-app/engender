@@ -380,12 +380,12 @@
       subtitle={backupLine}
       href="/settings/export"
     />
-    <ListRow key="journal-book" icon="book" title={m.journal_book_title()} href="/settings/journal-book" />
     <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
          no-network claim made concrete, and setup's step promises this row
          is here. -->
     <ListRow key="permissions" icon="toggle" title={m.perms_screen_title()} href="/settings/permissions" />
     <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
+    <ListRow key="journal-book" icon="book" title={m.journal_book_title()} href="/settings/journal-book" />
     <ListRow
       key="erase"
       icon="alert"

@@ -104,7 +104,8 @@ describe('what Settings is built from', () => {
     const privacy = outsideSheets.slice(
       outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />')
     ).match(/<ListCard>[\s\S]*?<\/ListCard>/)?.[0] ?? '';
-    const order = ['key="security"', '<DisguiseSetting />', 'key="export"', 'key="journal-book"', 'key="permissions"', 'key="trash"', 'key="erase"'].map((k) => privacy.indexOf(k));
+    // The PDF export sits low, just above erasing (pre-release-human 18).
+    const order = ['key="security"', '<DisguiseSetting />', 'key="export"', 'key="permissions"', 'key="trash"', 'key="journal-book"', 'key="erase"'].map((k) => privacy.indexOf(k));
     expect(order.every((at) => at > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(privacy.lastIndexOf('<ListRow')).toBeLessThan(order[6]);

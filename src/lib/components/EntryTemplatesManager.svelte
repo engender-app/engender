@@ -153,7 +153,6 @@
     <Icon name="plus" size={22} />
   </button>
 </div>
-<p class="ob-text">{m.entry_templates_intro()}</p>
 
 <div use:resize>
   {#if !settled || !vocabulary.ready}
