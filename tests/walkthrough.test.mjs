@@ -2899,7 +2899,12 @@ try {
   await emptyFirstRun();
 
   /* Hold the real frame where the arriving name question crosses Back.
-     A heading above the control used to swallow a click during this frame. */
+     A heading above the control used to swallow a click during this frame.
+     Since the welcome became a hero field (pre-release-human ticket 19) the
+     name question arrives riding the field's edge up from below the head
+     and never reaches Back, so the frame held is the first one in which
+     Back is on screen while a question is still arriving: the click it
+     takes is still a click during the arrival, which is what this asks. */
   await page.evaluate(() => {
     const probe = { frame: null, animations: [], request: 0 };
     window.__restoreBackProbe = probe;
@@ -2913,7 +2918,10 @@ try {
           const bounds = heading.getBoundingClientRect();
           return bounds.left <= x && bounds.right >= x && bounds.top <= y && bounds.bottom >= y;
         });
-        if (crossing) {
+        const arriving = [...document.querySelectorAll('[data-setup-question]')].some((heading) =>
+          (heading.closest('.setup-ask-part') ?? heading).getAnimations().some((animation) => animation.playState === 'running')
+        );
+        if (crossing || arriving) {
           probe.animations = document.getAnimations().filter((animation) => animation.playState === 'running');
           for (const animation of probe.animations) animation.pause();
           probe.frame = { x, y };
@@ -2926,7 +2934,7 @@ try {
   });
   try {
     await page.locator('[data-next]').click();
-    await waitingFor('the arriving question crossing Back', () =>
+    await waitingFor('the arriving question crossing or arriving under Back', () =>
       page.waitForFunction(() => window.__restoreBackProbe.frame !== null)
     );
     const { x, y } = await page.evaluate(() => window.__restoreBackProbe.frame);

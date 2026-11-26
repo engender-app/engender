@@ -2,8 +2,8 @@
    first screen anyone sees, and on a cold load it is assembled in one
    movement of about 1.3s: the sun's rings draw outward from the corner one
    stripe at a time, the wordmark rises onto the field, then the definition
-   and the language switch, then the two lines under the field, then the
-   actions. The actions are live from the first frame; the opening only
+   and the language switch, then the line under the field, then the
+   actions fade in. The actions are live from the first frame; the opening only
    changes how they look.
 
    It plays once per mount of the page, which is once per cold load: the
@@ -43,10 +43,9 @@ export interface Beat {
 
 const MARK: Beat = { delay: 240, duration: 640 };
 const SIGN: Beat = { delay: 400, duration: 480 };
-const LINES: Beat[] = [
-  { delay: 560, duration: 480 },
-  { delay: 640, duration: 480 }
-];
+/* One line under the field since the privacy promise left the welcome;
+   kept a list so a second line takes the next beat. */
+const LINES: Beat[] = [{ delay: 560, duration: 480 }];
 const FOOT: Beat = { delay: 780, duration: 500 };
 
 /** When the last part lands, for a flag of up to seven stripes. */
@@ -117,7 +116,12 @@ export function playOpening(frame: HTMLElement, { reduced }: { reduced: boolean 
     frame.querySelectorAll('[data-opening="line"]').forEach((el, i) =>
       play(el, rise(sm), beats.lines[Math.min(i, beats.lines.length - 1)], EASE_OUT_CSS)
     );
-    for (const el of frame.querySelectorAll('[data-opening="foot"]')) play(el, rise(sm), beats.foot, EASE_OUT_CSS);
+    /* The foot fades where it stands rather than rising. It sits on the
+       frame's bottom edge, so starting it 10px lower put it past the frame
+       for the first 1.3s: the frame overflowed by exactly those 10px, which
+       the walkthrough's setup no-scroll flow measured as a clipped step. */
+    for (const el of frame.querySelectorAll('[data-opening="foot"]'))
+      play(el, [{ opacity: 0 }, { opacity: 1 }], beats.foot, EASE_OUT_CSS);
   }
 
   /* The rings are read when the opening starts rather than here: the flag's
