@@ -210,7 +210,7 @@ test('twelve rows can report a reading and six never can', () => {
   // into `voice-benchmark`'s own Recordings tab rather than giving it a
   // row of its own. Thirteen since pre-release-human 12 added
   // `progress-photos`, a reading row, and twelve since hair progress - also
-  // 'read' - folded into progress photos (version 123).
+  // 'read' - folded into progress photos (version 124).
   assert.equal(reads.length, 12);
   assert.equal(HUB_ROWS.length - reads.length, 6);
 });

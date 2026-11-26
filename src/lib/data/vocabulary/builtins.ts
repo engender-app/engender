@@ -125,7 +125,7 @@ export type BuiltInBodyRegionKey = (typeof BUILT_IN_BODY_REGIONS)[number];
    renames or hides one and adds their own (progressPhotos.ts); these four
    are never deleted, so every photo an older journal or archive holds
    keeps the pose it names. `hair` is where the hair progress photos of
-   a journal before version 123 went (tally-and-hair-fold-migration.ts). */
+   a journal before version 124 went (tally-and-hair-fold-migration.ts). */
 export const BUILT_IN_PROGRESS_POSES = ['front', 'side', 'back', 'hair'] as const;
 
 /* The effect categories personal effects are grouped under (phase 5
@@ -278,7 +278,7 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
 
 export type BuiltInPersonalEffectKey = (typeof BUILT_IN_PERSONAL_EFFECT_TYPES)[number]['key'];
 
-/* The dimension keys, the milestone, regimen and entry templates and the
+/* The dimension keys, the milestone and regimen templates, the guided prompt keys and the
    euphoria tag keys live in builtinTemplates.ts (ux-carpet ticket 223): they
    are what the boot-time vocabulary, Today and the first run's scales step
    read, and kept in this file they carried the whole catalogue below into
@@ -290,13 +290,13 @@ export {
   MILESTONE_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_LEAN,
-  ENTRY_TEMPLATES,
+  GUIDED_PROMPT_KEYS,
   milestoneTemplateRows,
   regimenTemplateRows,
   type BuiltInDimensionKey,
   type MilestoneTemplateKey,
   type RegimenTemplateKey,
-  type EntryTemplateKey
+  type GuidedPromptKey
 } from './builtinTemplates.ts';
 
 /* Presets and milestone templates are not stored rows in Phase 1 - the

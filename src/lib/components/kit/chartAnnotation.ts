@@ -47,21 +47,6 @@ function kindWord(kind: ChartAnnotationKind): string {
   return KIND_WORD[kind]();
 }
 
-/** The short form, for the caption under a plot where two of these have to
-    fit across 390px: what the record calls itself, and the kind of thing it
-    is only where it calls itself nothing.
-
-    Recovery is the one kind that cannot go by its name alone. It takes the
-    name of the procedure it follows, and the procedure's own surgery day is
-    an annotation too, so a caption listing both wrote "top surgery, top
-    surgery" and looked like a bug in the query rather than two marks that
-    mean different things. */
-function annotationName(annotation: ChartAnnotation): string {
-  const name = recordName(annotation);
-  if (!name) return kindWord(annotation.kind);
-  return annotation.kind === 'recovery' ? m.chart_annotation_recovery_of({ name }) : name;
-}
-
 /** What the record calls itself, with the one kind whose `name` is a key
     rather than a name resolved here (phase 8 features ticket 04).
 
@@ -111,11 +96,6 @@ export function annotationLine(annotation: ChartAnnotation): string {
   if (annotation.kind !== 'regimen' || !annotation.endReason || !annotation.endsInRange) return span;
   return m.chart_annotation_regimen_end_reason({ span, reason: episodeEndReasonLabel(annotation.endReason) });
 }
-
-/** How many names the caption writes before it stops naming them. Three fits
-    across a card at 390px; a fourth wraps the caption onto a third line and
-    the chart starts being framed by its own footnote. */
-const CAPTION_NAMES = 3;
 
 /** How many the scrub readout writes. Fewer, because the readout is a pill
     over a 132px plot rather than a line under it: a day inside a regimen, a
@@ -202,13 +182,3 @@ export function annotationReadout(
   };
 }
 
-/** The caption under the plot: what is in view, named, with a count for the
-    rest. Empty where there is nothing in view, so a chart with no annotations
-    in its range draws no caption rather than an empty line. */
-export function annotationCaption(annotations: readonly ChartAnnotation[]): string {
-  if (annotations.length === 0) return '';
-  const names = annotations.slice(0, CAPTION_NAMES).map(annotationName);
-  const rest = annotations.length - names.length;
-  const listed = names.join(', ');
-  return rest > 0 ? m.names_and_count_more({ names: listed, count: String(rest) }) : listed;
-}

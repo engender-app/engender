@@ -106,7 +106,7 @@
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
   import { EASE_OUT_CSS, EASE_OUT_SOFT_CSS, NIL_OPACITY, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
-  import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
+  import { averageLabel, metricChoices, shownMetric } from '$lib/data/metricChoices';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
   import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
@@ -622,7 +622,7 @@
             </ListRow>
             {#if closingFacts.activeAverage}
               <div class="rows-divide" transition:collapse>
-                <ListRow static fadeSwap data-lookback-fact title={m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })}>
+                <ListRow static fadeSwap data-lookback-fact title={averageLabel(shown)}>
                   {#snippet trailing()}<b class="wrapped-figure-value">{closingFacts.activeAverage}</b>{/snippet}
                 </ListRow>
               </div>

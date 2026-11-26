@@ -99,7 +99,7 @@ export const FEATURES = {
     messages: ['home', 'agenda', 'quick']
   },
   entries: {
-    sections: ['entries', 'marginNotes', 'entryTemplates', 'presentations'],
+    sections: ['entries', 'marginNotes', 'presentations'],
     tables: [
       'entry',
       'entry_tag',
@@ -113,12 +113,9 @@ export const FEATURES = {
       'voice_recording',
       'video_note',
       'margin_note',
-      'entry_template',
-      'entry_template_tag',
-      'entry_template_dimension_value',
       'presentation'
     ],
-    journal: ['entries', 'marginNotes', 'entryTemplates', 'presentations', 'voice', 'videos', 'day', 'textSearch'],
+    journal: ['entries', 'marginNotes', 'presentations', 'voice', 'videos', 'day', 'textSearch'],
     hubRows: none,
     areaGroups: none,
     unprompted: none,

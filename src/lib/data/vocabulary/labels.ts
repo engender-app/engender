@@ -20,7 +20,7 @@ import type {
   BuiltInPersonalEffectKey,
   BuiltInTagGroupKey,
   BuiltInTagKey,
-  EntryTemplateKey,
+  GuidedPromptKey,
   MilestoneTemplateKey
 } from './builtins';
 import type { CycleEventKind, HairRemovalMethod, ProcedureKind, TryoutKind } from '../types';
@@ -396,32 +396,7 @@ const TEMPLATE_NAME: Record<MilestoneTemplateKey, Message> = {
   first_public: m.tpl_first_public
 };
 
-const ENTRY_TEMPLATE_NAME: Record<EntryTemplateKey, Message> = {
-  euphoria_day: m.tpl_entry_euphoria_day,
-  dysphoria_day: m.tpl_entry_dysphoria_day,
-  gendered_correctly: m.tpl_entry_gendered_correctly,
-  misgendered: m.tpl_entry_misgendered,
-  good_day: m.tpl_entry_good_day,
-  hard_day: m.tpl_entry_hard_day,
-  // Folded in from the guided prompts (ticket 07): these six had no name of
-  // their own, only the cue text below, because nothing before this ticket
-  // showed them in a titled list.
-  euphoria_moment: m.tpl_entry_euphoria_moment,
-  dysphoria_moment: m.tpl_entry_dysphoria_moment,
-  body_feeling: m.tpl_entry_body_feeling,
-  seen_moment: m.tpl_entry_seen_moment,
-  self_care: m.tpl_entry_self_care,
-  presentation_feeling: m.tpl_entry_presentation_feeling,
-  name_pronouns_feeling: m.tpl_entry_name_pronouns_feeling,
-  proud_moment: m.tpl_entry_proud_moment,
-  appointment_debrief: m.tpl_entry_appointment_debrief
-};
-
-/* Partial: only the folded-in guided prompts carry a note scaffold, the
-   same wording they had as prompts - a scaffold-less built-in (the original
-   six) is a resting state, not a gap, the same "no message" answer `lookup`
-   already gives. */
-const ENTRY_TEMPLATE_NOTE_SCAFFOLD: Partial<Record<EntryTemplateKey, Message>> = {
+const GUIDED_PROMPT_TEXT: Record<GuidedPromptKey, Message> = {
   euphoria_moment: m.prompt_euphoria_moment,
   dysphoria_moment: m.prompt_dysphoria_moment,
   body_feeling: m.prompt_body_feeling,
@@ -429,8 +404,7 @@ const ENTRY_TEMPLATE_NOTE_SCAFFOLD: Partial<Record<EntryTemplateKey, Message>> =
   self_care: m.prompt_self_care,
   presentation_feeling: m.prompt_presentation_feeling,
   name_pronouns_feeling: m.prompt_name_pronouns_feeling,
-  proud_moment: m.prompt_proud_moment,
-  appointment_debrief: m.prompt_appointment_debrief
+  proud_moment: m.prompt_proud_moment
 };
 
 /* Each lookup falls back to the key itself. A key with no message means a
@@ -472,9 +446,5 @@ export const personalEffectName = (key: string): string => lookup(PERSONAL_EFFEC
 export const effectCategoryName = (key: string): string => lookup(EFFECT_CATEGORY_NAME, key);
 export const milestoneTemplateName = (key: string) => lookup(TEMPLATE_NAME, key);
 export const bodyRegionName = (key: string) => lookup(BODY_REGION_NAME, key);
-export const entryTemplateName = (key: string) => lookup(ENTRY_TEMPLATE_NAME, key);
-/** The note scaffold a folded-in guided prompt carries, or null for a
-    built-in that never had one - the same shape `dimensionNote` gives a
-    dimension with no catalogue line. */
-export const entryTemplateNoteScaffold = (key: string): string | null =>
-  (ENTRY_TEMPLATE_NOTE_SCAFFOLD as Record<string, Message | undefined>)[key]?.() ?? null;
+/** The cue text of a guided prompt. */
+export const guidedPromptText = (key: GuidedPromptKey): string => lookup(GUIDED_PROMPT_TEXT, key);

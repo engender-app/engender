@@ -18,11 +18,9 @@ import {
   BUILT_IN_PERSONAL_EFFECT_TYPES,
   BUILT_IN_PROGRESS_POSES,
   BUILT_IN_TAG_GROUPS,
-  ENTRY_TEMPLATES,
   SEEDED_HIDDEN_BODY_REGIONS,
   SEEDED_HIDDEN_TAGS
 } from '../vocabulary/builtins';
-import { builtInTemplateHidden } from '../vocabulary/entryTemplates';
 import { RECONCILE_TABLES } from '../live/writes';
 export { RECONCILE_TABLES };
 
@@ -152,31 +150,5 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
       `INSERT INTO personal_effect_type (key, name, is_built_in, category_key, direction, updated_at) VALUES (?, '', 1, ?, ?, ?)`,
       [e.key, e.category, e.direction, seeded]
     );
-  }
-
-  /* Entry templates (phase 6 ticket 07): run after dimensions and tags
-     above, whose ids a template's own tag and dimension links resolve
-     against. A template's tags and dims are seeded rather than looked up
-     per row: `ENTRY_TEMPLATES` is small and this runs on every boot, so a
-     lookup-once-per-key pass would cost more round trips than it saves. */
-  const templateKeys = await presentKeys(driver, 'entry_template');
-  for (const t of ENTRY_TEMPLATES) {
-    if (templateKeys.has(t.key)) continue;
-    const result = await driver.run(
-      `INSERT INTO entry_template (key, name, note_scaffold, presentation_uuid, hidden, updated_at) VALUES (?, '', '', NULL, ?, ?)`,
-      [t.key, builtInTemplateHidden(t) ? 1 : 0, seeded]
-    );
-    for (const tagKey of t.tags) {
-      await driver.run(
-        `INSERT INTO entry_template_tag (template_id, tag_id) SELECT ?, id FROM tag WHERE key = ?`,
-        [result.lastInsertRowid, tagKey]
-      );
-    }
-    for (const [dimKey, value] of Object.entries(t.dims)) {
-      await driver.run(
-        `INSERT INTO entry_template_dimension_value (template_id, dimension_id, value) SELECT ?, id, ? FROM gender_dimension WHERE key = ?`,
-        [result.lastInsertRowid, value, dimKey]
-      );
-    }
   }
 }

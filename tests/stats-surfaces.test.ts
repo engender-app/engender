@@ -71,7 +71,7 @@ describe('the summary panels wait for the floor', () => {
   });
 
   it('stops offering a second scale on a chart with no first one', () => {
-    expect(readings.dayByDay).toContain('{#if metrics.length > 1 && plotted.points.length}');
+    expect(readings.dayByDay).toContain('{#if withData.length > 1 && plotted.points.length}');
   });
 
   /* The sheet and the link that opened it went in ticket 99 item 26. The
@@ -190,7 +190,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
      scale's, that card is the day-by-day reading's now. */
   it('shows the active scale\'s average, not always mood, off one series', () => {
     expect(stats).toContain('j.stats.dayAverages(shown.key, from, to)');
-    expect(stats).toContain('m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })');
+    expect(stats).toContain('averageLabel(shown)');
     expect(stats).not.toContain('metrics.map((mt) => mt.key)');
   });
 

@@ -295,29 +295,6 @@ const SECTIONS = [
       hidden: { field: 'hidden', bool: true }
     }
   }),
-  /* Entry templates (phase 6 ticket 07, ADR-0002): the six original
-     built-ins and the eight folded-in guided prompts, plus anything the
-     person authored. `after` dimensions and tagGroups: a template's own
-     tag and dimension links resolve rowids against them, the same reason
-     `entries` needs both. Discard only the customs' rows and links, the
-     same reasoning `presets`' own statement gives - a built-in the archive
-     does not carry keeps whatever reconciling gave it rather than losing
-     its row and every entry-creation flow that offers it. */
-  section({
-    name: 'entryTemplates',
-    after: ['dimensions', 'tagGroups'],
-    discard: [
-      'DELETE FROM entry_template_tag WHERE template_id IN (SELECT id FROM entry_template WHERE key IS NULL)',
-      'DELETE FROM entry_template_dimension_value WHERE template_id IN (SELECT id FROM entry_template WHERE key IS NULL)',
-      'DELETE FROM entry_template WHERE key IS NULL'
-    ],
-    // Authored vocabulary with no chronology - the same reasoning
-    // `dimensions` above gives, and a template is exactly the kind of
-    // thing worth handing to someone else setting up their own journal.
-    travels: 'whole',
-    read: read.readEntryTemplates,
-    apply: apply.applyEntryTemplates
-  }),
   // No `after`: entry_body_region.region stores a region's domain id
   // directly (a plain string, not a rowid FK), so applyEntries never
   // resolves a body region against this section's rows the way it does
@@ -1095,7 +1072,7 @@ export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map
 export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
   'doubtEntries', 'savedQuestions', 'counterevidenceSnapshots',
   'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits', 'wordIgnore',
-  'journalingPauses', 'roadmapTracks', 'tallyEvents', 'hairStages', 'hairPhotos'
+  'journalingPauses', 'roadmapTracks', 'entryTemplates', 'tallyEvents', 'hairStages', 'hairPhotos'
 ];
 
 /** A journal with every section present and empty - what an importer builds

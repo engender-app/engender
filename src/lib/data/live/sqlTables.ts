@@ -71,7 +71,6 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   effectCategory: ['effect_category'],
   personalEffectType: ['personal_effect_type'],
   presentation: ['presentation'],
-  entryTemplate: ['entry_template', 'entry_template_tag', 'entry_template_dimension_value'],
   importLog: ['import_log'],
   areaState: ['area_state'],
   marginNote: ['margin_note'],

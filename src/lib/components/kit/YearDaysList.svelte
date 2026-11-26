@@ -65,9 +65,11 @@
 </script>
 
 <div class="year-days" data-year-days-fold>
+  <!-- A full-width fold toggle answers with the wash, not a scale (pre-release-human 18). -->
   <button
     type="button"
     class="disclosure-toggle"
+    data-no-press
     aria-expanded={open}
     aria-controls={`${id}-days`}
     data-year-days-toggle

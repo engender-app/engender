@@ -57,7 +57,6 @@ import { tagMatches, type DaylioNaming } from './daylio';
 import type {
   ArchiveDimension,
   ArchiveEntry,
-  ArchiveEntryTemplate,
   ArchiveJournal,
   ArchiveMilestone,
   ArchiveTag,
@@ -115,6 +114,7 @@ export type DaylioSkipKind =
   | 'achievements'
   | 'preferences'
   | 'reminders'
+  | 'templates'
   | 'icons'
   | 'anniversaries'
   | 'scales'
@@ -136,7 +136,8 @@ const OUT_OF_SCOPE: readonly (readonly [DaylioSkipKind, readonly string[]])[] = 
   ['statistics', ['goalSuccessWeeks', 'goalEntries']],
   ['achievements', ['achievements']],
   ['preferences', ['prefs']],
-  ['reminders', ['reminders']]
+  ['reminders', ['reminders']],
+  ['templates', ['writingTemplates']]
 ];
 
 /** One mood as the backup defines it: the person's own name where there
@@ -166,7 +167,6 @@ export interface DaylioBackupPreview {
   newTagCount: number;
   milestoneCount: number;
   dimensionCount: number;
-  templateCount: number;
   photoCount: number;
   audioCount: number;
   moods: DaylioMoodResolution[];
@@ -777,28 +777,6 @@ export async function daylioBackupPreview(
   }
   if (anniversaries > 0) skipped.push({ kind: 'anniversaries', count: anniversaries });
 
-  /* Writing templates: a title and an HTML body, which is what an entry
-     template is here once the body is text. */
-  const existingTemplates = new Set(existing.entryTemplates.map((template) => template.id));
-  for (const record of list(payload.writingTemplates)) {
-    const name = str(record.title);
-    const noteScaffold = htmlToText(str(record.body));
-    if (!name && !noteScaffold) continue;
-
-    const id = await contentUuid(['daylio-template', name, noteScaffold]);
-    if (existingTemplates.has(id)) continue;
-    journal.entryTemplates.push({
-      id,
-      name,
-      tags: [],
-      dims: {},
-      noteScaffold,
-      presentationId: null,
-      builtIn: false,
-      hidden: false
-    } satisfies ArchiveEntryTemplate);
-  }
-
   /* Named as skipped, in the order the ticket puts them out of scope.
      Goals carry a repeat that this app has no recurring-goal concept for,
      including a `repeat_value` of 127 that is a seven-bit weekday mask
@@ -820,7 +798,6 @@ export async function daylioBackupPreview(
     newTagCount,
     milestoneCount: journal.milestones.length,
     dimensionCount: journal.dimensions.length,
-    templateCount: journal.entryTemplates.length,
     photoCount: attached.filter((asset) => asset.kind === 'photo').length,
     audioCount: attached.filter((asset) => asset.kind === 'audio').length,
     moods,

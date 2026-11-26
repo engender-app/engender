@@ -63,7 +63,7 @@ The app has these permissions:
 
 ## Web app
 
-The web app is served from `app.engender.barankiewicz.dev`, on an OVH
+The web app is served from `journal.engender.app`, on an OVH
 server. Your journal stays in your browser and is never uploaded. Loading
 the app or an update is an ordinary web request, so the server sees your IP
 address, the time, the address requested and the User-Agent and Referer

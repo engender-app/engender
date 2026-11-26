@@ -1,4 +1,4 @@
-/* Version 123: tally and hair stages are dropped, hair photos become progress
+/* Version 124: tally and hair stages are dropped, hair photos become progress
    photos in the 'hair' pose (tally-and-hair-fold-migration.ts). */
 
 import { test } from 'vitest';
@@ -13,7 +13,7 @@ import { openJournal } from '../journal/journal.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 
-const FOLD_VERSION = 123;
+const FOLD_VERSION = 124;
 const RC1_JOURNAL = new URL('../../../../fixtures/released/1.0.0-rc.1/journal.sqlite', import.meta.url).pathname;
 
 type Db = ReturnType<typeof makeNodeSqliteDb>;
@@ -32,7 +32,7 @@ INSERT INTO area_state (area, hidden, updated_at) VALUES
 INSERT INTO pref (key, value) VALUES ('hairPhotoProtocolDismissed', 'true');
 `;
 
-test('version 123 moves hair photos into progress photos as the hair pose and drops the three tables', async () => {
+test('version 124 moves hair photos into progress photos as the hair pose and drops the three tables', async () => {
   const db = makeNodeSqliteDb();
   await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version < FOLD_VERSION));
   db.raw.exec(SEED);
@@ -69,7 +69,7 @@ test('version 123 moves hair photos into progress photos as the hair pose and dr
   await db.close();
 });
 
-test('the rc.1 released journal reaches 123 with its hair photo as a hair-pose progress photo', async () => {
+test('the rc.1 released journal reaches 124 with its hair photo as a hair-pose progress photo', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'engender-fold-'));
   const path = join(directory, 'journal.sqlite');
   copyFileSync(RC1_JOURNAL, path);
@@ -108,6 +108,6 @@ test('after the first boot a migrated hair photo reads as the hair pose, listed 
   await db.close();
 });
 
-test('the migration list carries 123 as a literal', () => {
+test('the migration list carries 124 as a literal', () => {
   assert.ok(migrations.some((m) => m.version === FOLD_VERSION));
 });

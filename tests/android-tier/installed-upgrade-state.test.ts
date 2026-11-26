@@ -5,7 +5,7 @@ import { alarmState, assertFilledState, assertUpgradeState, compareUpgradeState,
 const sqlite = (file: string) => readFileSync(new URL(`../../src/lib/data/sqlite/${file}`, import.meta.url), 'utf8');
 /* The tables later migrations drop, read from the migration sources the way the
    upgrade command reads them, never copied here. */
-const dropped = () => droppedTables(sqlite('migrations.ts'), 88, [sqlite('closed-lists-migration.ts'), sqlite('waitlist-migration.ts'), sqlite('tally-and-hair-fold-migration.ts')]);
+const dropped = () => droppedTables(sqlite('migrations.ts'), 88, [sqlite('closed-lists-migration.ts'), sqlite('waitlist-migration.ts'), sqlite('entry-templates-drop-migration.ts'), sqlite('tally-and-hair-fold-migration.ts')]);
 
 const state = () => ({ userVersion: 88, counts: { entry: 3, side_effect: 2, milestone: 2, roadmap_check: 1 },
   linkedMilestones: 1,

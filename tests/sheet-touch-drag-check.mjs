@@ -9,7 +9,7 @@
    handle, and reads the symptom: the wrapper follows the finger mid-drag, and
    a long swipe dismisses the sheet. */
 import { preview } from 'vite';
-import { continueToTheRest, createReporter, launchChromium } from './browser-harness.mjs';
+import { createReporter, launchChromium, toEntryStepWith } from './browser-harness.mjs';
 
 const { ok, fail, finish } = createReporter();
 const app = await preview({ preview: { port: 0 } });
@@ -27,7 +27,6 @@ if (await page.locator('[data-leave-setup]').count()) {
 }
 await page.goto(`${base}/entry/new/today`, { waitUntil: 'networkidle' });
 await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
-await continueToTheRest(page);
 
 const touch = (type, x, y) =>
   cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
@@ -47,7 +46,8 @@ async function swipeDown(x, y, distance) {
 }
 
 async function openSheet() {
-  await page.locator('[data-use-template]').click();
+  await toEntryStepWith(page, '[data-manage-presentations]');
+  await page.locator('[data-manage-presentations]').click();
   await page.waitForSelector('[data-sheet]');
   await page.waitForTimeout(600);
   await page.evaluate(() => { document.querySelector('[data-sheet]').scrollTop = 0; });

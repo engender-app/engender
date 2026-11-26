@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf, washOver } from '../src/lib/theme/colour';
@@ -792,5 +793,47 @@ describe("an unlock's sun", () => {
       }
     }
     expect(short.sort()).toEqual(['asexual/dark 2.23', 'asexual/light 2.23', 'bisexual/dark 2.13', 'bisexual/light 2.13']);
+  });
+});
+
+/* "Clearer text and borders" (Settings, html[data-a11y-legibility='boost']).
+   It used to pull --text-2 to 76% of --text and each line one alpha step
+   darker, which measured as 6.47:1 at worst for secondary text and 1.53:1
+   for a hairline - real, and too small to see on a phone (pre-release-human
+   18: "the rest basically does nothing"). The boost now owes numbers a
+   person can see: secondary text at WCAG's enhanced 7:1, an outline at the
+   3:1 a non-text edge needs, a hairline at 2:1, and a heavier focus ring,
+   on all three surfaces in every palette and theme. */
+describe('the legibility boost', () => {
+  const base = readFileSync('src/lib/theme/base.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const boost = /html\[data-palette\]\[data-theme\]\[data-a11y-legibility='boost'\]\s*\{([^}]*)\}/.exec(base)?.[1] ?? '';
+  const percentOf = (token: string, pattern: RegExp) => {
+    const match = pattern.exec(rawDeclaration(boost, token) ?? '');
+    if (!match) throw new Error(`the boost does not restate --${token} as a mix of --text`);
+    return Number(match[1]);
+  };
+
+  it.each([
+    ['text-2', 7, /var\(--text\)\s*(\d+)%,\s*var\(--bg\)/],
+    ['outline', 3, /var\(--text\)\s*(\d+)%,\s*transparent/],
+    ['hairline', 2, /var\(--text\)\s*(\d+)%,\s*transparent/]
+  ] as const)('takes --%s to %i:1 wherever it is drawn', (token, floor, pattern) => {
+    const percent = percentOf(token, pattern);
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        for (const surface of ['bg', 'surface', 'surface-2']) {
+          const drawn = token === 'text-2' ? colorMixOklab(t.text, percent, t.bg) : washOver(t.text, percent, t[surface]);
+          const ratio = contrast(drawn, t[surface]);
+          expect(ratio, `${palette}/${theme}: boosted --${token} on ${surface} has ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(floor);
+        }
+      }
+    }
+  });
+
+  it('thickens the focus ring through a token, so no control restates it', () => {
+    expect(rawDeclaration(boost, 'focus-ring-width')).toBe('3px');
+    const literal = spawnSync('git', ['grep', '-n', '-E', '[0-9]px solid var\\(--focus-ring\\)', '--', 'src'], { encoding: 'utf8' }).stdout;
+    expect(literal, 'a focus ring with its width written out ignores the boost').toBe('');
   });
 });

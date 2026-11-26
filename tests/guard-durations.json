@@ -106,7 +106,6 @@
     "dose-save-check": 19.95,
     "sheet-navigation-leftover-check": 14.06,
     "settings-scroll-check": 19.45,
-    "sheet-handoff-scroll-check": 8.71,
     "sheet-touch-drag-check": 9.04,
     "yank-sweep": 153.69,
     "tryout-form-check": 38.6,
@@ -299,9 +298,6 @@
     ],
     "settings-scroll-check": [
       19.45
-    ],
-    "sheet-handoff-scroll-check": [
-      8.71
     ],
     "sheet-touch-drag-check": [
       9.04

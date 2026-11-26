@@ -52,7 +52,7 @@ control, so you can record something where you are already working.
 Entries can contain mood, gender feelings on scales you configure, tags,
 notes, photos, voice recordings, video notes and feelings about body regions.
 You can keep an entry brief or combine several kinds of records in one day.
-Entry templates and your own lists let you choose what to ask yourself.
+Your own lists let you choose what to ask yourself.
 
 The calendar shows your recorded days as a heat map. Open a day to read its
 entries, or use search and filters to find something across the journal.

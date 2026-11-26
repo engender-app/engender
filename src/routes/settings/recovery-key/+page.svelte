@@ -435,7 +435,7 @@
         />
       </ListCard>
     {:else}
-      <div class="kit-panel" data-kit-surface>
+      <div class="kit-panel rk-before-make" data-kit-surface>
         <p class="ob-text">{m.rk_intro()}</p>
         <p class="ob-text">{m.rk_intro_cost()}</p>
       </div>
@@ -528,6 +528,11 @@
 </Sheet>
 
 <style>
+  /* The make button follows this panel with no gap, so the panel's bottom
+     hairline ran along the button's top edge and read as part of it
+     (pre-release-human 18). The button closes the panel instead. */
+  .rk-before-make { border-bottom: 0; }
+
   /* Single-consumer classes live with their consumer (scripts/check-screens-classes.mjs). */
   .rk-shown-title {
     font-size: var(--text-lg);

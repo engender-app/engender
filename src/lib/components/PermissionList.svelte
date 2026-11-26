@@ -134,7 +134,10 @@
       why: () => (isAndroid() ? m.perm_clipboard_why() : m.perm_clipboard_why_web())
     },
     batteryOptimisation: { title: m.perm_battery, why: m.perm_battery_why },
-    biometric: { title: m.perm_biometric, why: m.perm_biometric_why }
+    biometric: {
+      title: m.perm_biometric,
+      why: () => m.perm_biometric_why({ appName: m.app_name() })
+    }
   };
 </script>
 

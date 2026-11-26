@@ -87,9 +87,6 @@ export const MERGE_CLASSES: Readonly<Record<string, MergeClass>> = {
   entry_fts_docsize: { by: 'none', why: "the search index's own storage" },
   entry_fts_idx: { by: 'none', why: "the search index's own storage" },
   entry_tag: parent('entry'),
-  entry_template: keyOrUuid,
-  entry_template_dimension_value: parent('entry_template'),
-  entry_template_tag: parent('entry_template'),
   era: uuid,
   era_mute: column('era_uuid'),
   felt_sense: uuid,
@@ -227,7 +224,6 @@ async function unlinkStatements(driver: SqliteDriver, table: string): Promise<st
 const BUILT_IN: Readonly<Record<string, string>> = {
   body_region: 'key IS NOT NULL',
   effect_category: '1',
-  entry_template: 'key IS NOT NULL',
   gender_dimension: 'is_built_in = 1',
   gender_preset: 'key IS NOT NULL',
   personal_effect_type: 'is_built_in = 1',

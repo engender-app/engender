@@ -235,7 +235,7 @@ body {
 .app-savebar {
   flex: 0 0 auto;
   display: flex;
-  padding: var(--space-3) var(--space-5) calc(var(--nav-clearance) - var(--space-5) + var(--space-2));
+  padding: var(--space-3) var(--screen-inset) calc(var(--nav-clearance) - var(--space-5) + var(--space-2));
   /* Opaque, and this is mechanism rather than decoration. The column gives
      up the foot's room on the last frame of its arrival and takes it back
      on the first frame of its leave ($lib/motion/foot), which is invisible
@@ -324,7 +324,7 @@ body {
    already chosen. A cold start has no transition and now simply shows the
    screen, which is tier 4's "content is simply there". */
 .screen {
-  padding: 0 var(--space-5);
+  padding: 0 var(--screen-inset);
   position: relative;
   min-height: 100%;
   width: 100%;
@@ -1567,6 +1567,7 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
      under it are two boxes that have to be the same width to line up, and
      carpet 26 is what made that two rules instead of one. */
   .app { --column-max: calc(var(--content-max) + 2 * var(--space-5)); }
+  .app-main, .app-savebar { --screen-inset: 0px; }
   .screen {
     max-width: var(--column-max);
     margin: 0 auto;

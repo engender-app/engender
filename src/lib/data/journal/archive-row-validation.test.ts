@@ -14,6 +14,7 @@ import { journalPath, goldenContents, countsOf, CHEAP_KDF, GOLDEN_PASSWORD, oneS
 import { openJournal } from './journal.ts';
 import { restoreArchive, verifyArchive } from './restore.ts';
 import { assertArchiveRows } from './archiveRowValidation.ts';
+import { ARCHIVE_SECTION_NAMES } from './archiveSections.ts';
 
 const golden = (): ArchiveJournal => JSON.parse(readFileSync(journalPath, 'utf8'));
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -101,7 +102,7 @@ for (const mode of ['merge', 'replace'] as const) {
   });
 
   test(`${mode} refuses missing identity in every current section`, async () => {
-    for (const section of Object.keys(golden()) as (keyof ArchiveJournal)[]) {
+    for (const section of ARCHIVE_SECTION_NAMES) {
       const incoming = golden();
       const row = incoming[section][0] as unknown as Record<string, unknown>;
       assert.ok(row, `golden covers ${section}`);
@@ -194,10 +195,6 @@ for (const mode of ['merge', 'replace'] as const) {
         j.hairRemovalSessions[0].photos.push({ ...clone(j.hairRemovalSessions[0].photos[0]), fileName: 'twin.jpg' });
       }],
       ['repeated checklist item id', (j) => { j.checklists[0].items.push({ ...clone(j.checklists[0].items[0]), content: 'twin' }); }],
-      ['repeated template tag', (j) => {
-        const template = j.entryTemplates.find((t) => (t.tags ?? []).length > 0)!;
-        template.tags = [template.tags![0], template.tags![0]];
-      }],
       ['milestone tryout reference', (j) => { j.milestones[0].tryoutId = 'missing_tryout'; }]
     ];
     for (const [what, mutate] of cases) {
@@ -211,9 +208,7 @@ for (const mode of ['merge', 'replace'] as const) {
   test(`${mode} refuses missing reference data before storage access`, async () => {
     const mutations: ((journal: ArchiveJournal) => void)[] = [
       (j) => { j.presets[0].dims[0] = 'missing_dimension'; },
-      (j) => { j.entryTemplates[0].dims = { missing_dimension: 30 }; },
       (j) => { j.entries[0].dims = { missing_dimension: 30 }; },
-      (j) => { j.entryTemplates[0].tags[0] = '__proto__'; },
       (j) => { j.entries[0].tags = ['missing_tag']; },
       (j) => { j.personalEffectTypes[0].categoryKey = 'missing_category'; },
       (j) => { j.milestones[0].procedureId = 'missing_procedure'; },
@@ -264,18 +259,6 @@ for (const mode of ['merge', 'replace'] as const) {
 test('the backup drill refuses a validly encrypted null-identity body as corrupt', async () => {
   const journal = golden();
   journal.bodyRegions[0].id = null as unknown as string;
-  const packed = await collect(packArchive({ journal, files: [], preferences: portablePreferences(PREFERENCE_DEFAULTS),
-    readFile: async () => { throw new Error('the fixture has no files'); } }, GOLDEN_PASSWORD, CHEAP_KDF));
-  await assert.rejects(verifyArchive(oneShot(packed), GOLDEN_PASSWORD), (error: unknown) => {
-    assert.ok(error instanceof CorruptArchiveError);
-    assert.equal(archiveFailureKind(error), 'corrupt');
-    return true;
-  });
-});
-
-test('the backup drill refuses a validly encrypted broken template reference as corrupt', async () => {
-  const journal = golden();
-  journal.entryTemplates[0].tags[0] = '__proto__';
   const packed = await collect(packArchive({ journal, files: [], preferences: portablePreferences(PREFERENCE_DEFAULTS),
     readFile: async () => { throw new Error('the fixture has no files'); } }, GOLDEN_PASSWORD, CHEAP_KDF));
   await assert.rejects(verifyArchive(oneShot(packed), GOLDEN_PASSWORD), (error: unknown) => {

@@ -514,7 +514,7 @@
   }
 
   .wipe-handle:focus-visible .wipe-grip {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: 2px;
   }
 

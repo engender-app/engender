@@ -26,8 +26,11 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import SaveBar from '$lib/components/SaveBar.svelte';
-  import { isAndroid, journalTextAutocomplete } from '$lib/platform';
-  import { writer } from '$lib/stores/attempt.svelte';
+  import { journalTextAutocomplete } from '$lib/platform';
+  import { deleter, writer } from '$lib/stores/attempt.svelte';
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
 
   /* What the segmented control offers; the stored rule is reminderRule.ts's
@@ -77,10 +80,7 @@
      (reminder-rule.json): the preview cannot promise a moment that will not
      fire. Only an elapsed one-off has no occurrence left, and ruleFromDraft()
      dates a one-off forward every time it is called, so there is always a
-     moment here to show. On web the same line is labelled as the saved
-     schedule rather than as a firing (ticket 13): a browser stores the
-     rule and cannot ring it, so the same arithmetic reads as data. */
-  let isWeb = $derived(!isAndroid());
+     moment here to show. */
   let nextPreview = $derived.by(() => {
     return new Intl.DateTimeFormat(intlLocale(), {
       weekday: 'short',
@@ -111,6 +111,23 @@
     // The baseline moves first, or the guard would hold the save's own exit.
     detail.commit();
     toast(m.saved(), { kind: 'record-saved' });
+    await replaceRoute('/settings/reminders');
+  }
+
+  /* Only a reminder the person made can be deleted here: one the app manages
+     (stock, wear, schedule) is rebuilt by its owner, so the editor offers
+     none. The sheet stays up until the row is gone. */
+  let confirmingDelete = $state(false);
+  const removing = deleter();
+  async function deleteReminder() {
+    const id = detail.record?.id;
+    if (!id) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.reminders.deleteReminder(id)); }))) return;
+    confirmingDelete = false;
+    offerUndo(deletion!, m.record_deleted());
+    // Deleting answered the question an unsaved edit would have asked.
+    detail.discard();
     await replaceRoute('/settings/reminders');
   }
 </script>
@@ -154,16 +171,6 @@
     />
   {/if}
 
-  {#if isWeb}
-    <!-- Ticket 13: the same truth the list screen opens with. Above the
-       form rather than above Save since after-release 17 (UX-18): the web
-       list draws no add button, so a person who reaches /new by address
-       meets the reason before a form that cannot ring. Editing stored data
-       stays allowed; the notice separates keeping a rule from promising a
-       ring this device cannot deliver. -->
-    <Notice icon="bell" key="reminder-web" title={m.rem_web_list_note()} text={m.rem_web_save_note()} />
-  {/if}
-
   <Field label={m.name_label()} id="r-name">
     {#snippet children(id)}
       <input autocomplete={journalTextAutocomplete()} class="input" {id} name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
@@ -181,7 +188,7 @@
   </Field>
   <p class="next-preview">
     <Icon name="clock" size={14} />
-    {#if isWeb}{m.rem_next_web({ when: nextPreview })}{:else}{m.rem_next({ when: nextPreview })}{/if}
+    {m.rem_next({ when: nextPreview })}
   </p>
 
   {#if drugChoices.length > 0}
@@ -209,14 +216,18 @@
     </div>
   {/if}
 
-  {#if !isWeb}
-    <div class="notice notice-info">
-      <Icon name="info" size={20} />
-      <div class="notice-body">
-        {m.rem_alarm_note()}
-        <a href="/settings/reminders">{m.rem_alarm_note_link()}</a>
-      </div>
+  <div class="notice notice-info">
+    <Icon name="info" size={20} />
+    <div class="notice-body">
+      {m.rem_alarm_note()}
+      <a href="/settings/reminders">{m.rem_alarm_note_link()}</a>
     </div>
+  </div>
+
+  {#if !detail.isNew && detail.record && !detail.record.autoSource}
+    <button class="btn btn-ghost press" data-delete-reminder onclick={() => (confirmingDelete = true)}>
+      <span>{m.rem_delete_sheet()}</span>
+    </button>
   {/if}
 
   <SaveBar>
@@ -225,6 +236,22 @@
     </button>
   </SaveBar>
   </div>
+
+  {#if detail.record}
+    <ConfirmDeleteSheet
+      open={confirmingDelete}
+      title={m.rem_delete_sheet()}
+      question={m.rem_delete_q({ title: detail.record.title })}
+      hint={m.delete_undo_hint()}
+      confirmLabel={m.delete()}
+      cancelLabel={m.keep_it()}
+      confirmAttrs={{ 'data-confirm-delete-reminder': '' }}
+      onConfirm={deleteReminder}
+      onCancel={() => { confirmingDelete = false; removing.dismiss(); }}
+      busy={removing.busy}
+      failed={removing.failed}
+    />
+  {/if}
   {/if}
 </div>
 

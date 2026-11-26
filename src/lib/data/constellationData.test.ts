@@ -5,6 +5,8 @@ import {
   TRACE_HALF_LIFE,
   TRACE_WINDOW,
   placeLabels,
+  planeAxes,
+  planePartners,
   plotPoints,
   tracedThrough,
   type ConstellationPoint,
@@ -296,5 +298,36 @@ describe('placing the day labels among the marks', () => {
     });
     // The dot is at 235.2: 80px to the right would end at 321.2, past 300.
     expect(rounded(wide)).toEqual(new Map([[0, { x: 229.2, y: 144, anchor: 'end' }]]));
+  });
+});
+
+describe('planeAxes', () => {
+  const pairs = [
+    { a: 'fem', b: 'masc', count: 2 },
+    { a: 'dys', b: 'fem', count: 9 }
+  ];
+  const active = ['dys', 'fem', 'masc', 'voice'];
+
+  it('keeps a pair that has points, in the order it was picked', () => {
+    expect(planeAxes(pairs, active, { x: 'masc', y: 'fem' })).toEqual({ x: 'masc', y: 'fem' });
+  });
+
+  it('moves off a pair with no points to the pair with the most', () => {
+    expect(planeAxes(pairs, active, { x: 'voice', y: 'fem' })).toEqual({ x: 'dys', y: 'fem' });
+    expect(planeAxes(pairs, active, { x: '', y: '' })).toEqual({ x: 'dys', y: 'fem' });
+  });
+
+  it('keeps the picked x and finds it a partner when only y is unplottable', () => {
+    expect(planeAxes(pairs, active, { x: 'masc', y: 'dys' })).toEqual({ x: 'masc', y: 'fem' });
+  });
+
+  it('ignores pairs on scales that are not ticked, and answers null when nothing pairs', () => {
+    expect(planeAxes(pairs, ['fem', 'masc'], { x: '', y: '' })).toEqual({ x: 'fem', y: 'masc' });
+    expect(planeAxes(pairs, ['fem', 'voice'], { x: 'fem', y: 'voice' })).toBeNull();
+  });
+
+  it('offers as x every scale with a partner, and as y the partners of x', () => {
+    expect(planePartners(pairs, active, null)).toEqual(['dys', 'fem', 'masc']);
+    expect(planePartners(pairs, active, 'fem')).toEqual(['dys', 'masc']);
   });
 });

@@ -175,7 +175,7 @@ export async function seedFullFixture(
 
   const trackingStart = today - 365;
   /* Hair progress stagings and photographs were seeded here until hair
-     progress folded into progress photos (version 123): its photographs are
+     progress folded into progress photos (version 124): its photographs are
      the hair pose of the progress photos seeded last. The draws stay, and
      only the draws - dropping them would shift the whole rest of the demo
      journal (hair removal, tryouts, procedures) for a change about another
@@ -565,15 +565,6 @@ export async function seedFullFixture(
   if (entryPhoto) await journal.photos.setStarred(entryPhoto.id, true);
   const milestonePhoto = journalPhotos.find((p) => p.milestoneName !== null);
   if (milestonePhoto) await journal.photos.setStarred(milestonePhoto.id, true);
-
-  // One custom entry template, alongside whatever built-ins ship.
-  await journal.entryTemplates.addEntryTemplate({
-    name: say('Hard day', 'Trudny dzień'),
-    tags: ['dt-physical', 'e-anxious'],
-    dims: { euphoria_dysphoria: 20 },
-    noteScaffold: say('What was hard today: ', 'Co dziś było trudne: '),
-    presentationId: null
-  });
 
   // One voice practice take, distinct from the benchmarks above - a
   // practice session has nothing to compare it against (voicePracticeTakes.ts).

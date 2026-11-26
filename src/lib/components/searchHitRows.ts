@@ -36,6 +36,8 @@
 import { m } from '$lib/paraglide/messages';
 import { photoCaptionDate } from '$lib/data/dates';
 import { hubRow, type HubRow } from '$lib/data/hubRows';
+import { hitsForPlatform } from '$lib/data/journal/searchPlatform';
+import { isAndroid } from '$lib/platform';
 import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
 import { matchWindow } from '$lib/data/searchQuery';
 import { iconOf } from './rowIcon';
@@ -188,7 +190,7 @@ function excerptOf(text: string, query: string): string {
     is not the registry - a journal from a build that had an area this one
     does not. */
 export function searchHitRows(hits: readonly SearchHit[], query: string): SearchHitRow[] {
-  return hits.flatMap((hit) => {
+  return hitsForPlatform(hits, isAndroid()).flatMap((hit) => {
     const declared = AREA_ROWS[hit.area as SearchAreaKey];
     if (!declared) return [];
     return [

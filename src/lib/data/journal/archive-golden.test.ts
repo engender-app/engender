@@ -50,7 +50,6 @@ const SECTIONS = [
   'presets',
   'tagGroups',
   'presentations',
-  'entryTemplates',
   'bodyRegions',
   'entries',
   'marginNotes',
@@ -175,7 +174,12 @@ test('a journal holding the golden archive passes the integrity and foreign key 
 test('the golden archive names its sections in the order a snapshot writes them', async () => {
   const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
 
-  assert.deepEqual(Object.keys(opened.payload.journal), [...SECTIONS]);
+  /* The committed archive was written before entry templates were removed,
+     so it still carries that one dropped section: the restore below is also
+     the proof that an older backup with templates restores. */
+  const keys = Object.keys(opened.payload.journal);
+  assert.ok(keys.includes('entryTemplates'));
+  assert.deepEqual(keys.filter((key) => key !== 'entryTemplates'), [...SECTIONS]);
 
   const target = await emptyDevice();
   await target.archive.replace({ journal: opened.payload.journal, files: opened.files });

@@ -1,4 +1,4 @@
-/* Version 123: the tally is removed, and hair progress folds into progress
+/* Version 124: the tally is removed, and hair progress folds into progress
    photos.
 
    TALLY. `tally_event` held the misgendered / correctly-gendered counter.

@@ -11,6 +11,7 @@ import {
   stepAnswers,
   stepBefore,
   stepIndex,
+  stepSun,
   sunGrowth
 } from './steps';
 
@@ -174,6 +175,25 @@ describe('the sun growing through the flow', () => {
   it('never divides by zero on a one-step flow', () => {
     expect(sunGrowth(0, 1)).toBe(1);
   });
+});
+
+describe("the welcome's sun", () => {
+  /* Pre-release-human ticket 19: the welcome is the app's first screen and
+     draws the sun large, as its hero, and the flow then starts from the
+     small sun the growth below measures. The welcome is not a step of that
+     growth any more; it is what the field collapses out of. */
+  for (const steps of [onboardingSteps(), restoreSteps()]) {
+    it(`is larger than Home's resting sun, and the step after it collapses (${steps.length} steps)`, () => {
+      expect(stepSun('welcome', steps)).toBeGreaterThan(1);
+      expect(stepSun(steps[1], steps)).toBeLessThan(stepSun('welcome', steps));
+    });
+
+    it(`hands every later step the growth it always had (${steps.length} steps)`, () => {
+      for (const step of steps.slice(1)) {
+        expect(stepSun(step, steps), step).toBe(sunGrowth(stepIndex(steps, step), steps.length));
+      }
+    });
+  }
 });
 
 describe('a first run that restores an archive', () => {

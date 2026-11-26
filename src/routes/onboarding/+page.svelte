@@ -38,11 +38,13 @@
   import { registerSetupBack } from '$lib/onboarding/back';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
-  import { flushPreferences, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
+  import { chooseLanguage, flushPreferences, prefs, setPreferenceDurably, type AppLanguage } from '$lib/data/prefs/store.svelte';
+  import { getLocale } from '$lib/paraglide/runtime';
+  import { playOpening } from '$lib/onboarding/opening';
   import { appWordmark } from '$lib/disguise/identity';
   import { fieldPart } from '$lib/motion/navigation';
   import { blindEdge } from '$lib/motion/stepBlind';
-  import { EASE_OUT_CSS, crossfadeDuration, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, crossfadeDuration, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { bootState, submitAccessModeSetup } from '$lib/stores/boot.svelte';
   import { needsOnboardingAccessMode } from '$lib/stores/boot-state';
@@ -60,7 +62,7 @@
     stepAfter,
     stepBefore,
     stepIndex,
-    sunGrowth,
+    stepSun,
     type OnboardingStep
   } from '$lib/onboarding/steps';
   import type { PickedArchive } from '$lib/data/archive/pick';
@@ -254,7 +256,52 @@
      (ticket 36, steps.ts). */
   let steps = $derived(restoring ? restoreSteps() : onboardingSteps());
   let index = $derived(stepIndex(steps, step));
-  let growth = $derived(sunGrowth(index, steps.length));
+  let growth = $derived(stepSun(step, steps));
+
+  /* The welcome is the hero (pre-release-human ticket 19): the field most of
+     a phone tall with the sun large in its corner and the wordmark on it,
+     and "Set up the app" collapses it into the first question. */
+  let hero = $derived(step === 'welcome');
+
+  /* The welcome's language switch. The labels are Settings' own options,
+     which name each language in itself; the visible text is the code.
+     Picking one reloads the page (setLocale), back onto this welcome, and
+     chooseLanguage holds the choice across that reload when there is no
+     journal yet to write it to. */
+  const LANGUAGES = [
+    ['pl', 'Polski'],
+    ['en', 'English']
+  ] as const;
+  const locale = getLocale();
+  function pickLanguage(code: AppLanguage) {
+    if (code !== locale) void chooseLanguage(code);
+  }
+
+  /* The opening ($lib/onboarding/opening.ts) plays on a cold load of the
+     welcome and never again in the same page: the back arrow returning here
+     is a step change, not a mount. Not inside a door change either, where
+     the navigation draws the arrival (FlagSun's `carried`), and not on a
+     setup entered at the restore step. */
+  const opens =
+    untrack(() => step === 'welcome') &&
+    typeof document !== 'undefined' &&
+    !('nav' in document.documentElement.dataset);
+  let frame: HTMLElement | undefined = $state();
+  /* The first sun drawn is the opening's: its CSS entrance gives way to the
+     opening's own (the stylesheet below). Marked once and never unmarked,
+     since taking the class off would restart the CSS entrance; a flag
+     picked later redraws a new sun with the entrance it always had. */
+  let openingSunDrawn = !opens;
+  function openingSun(node: HTMLElement) {
+    if (openingSunDrawn) return;
+    openingSunDrawn = true;
+    node.classList.add('is-opening');
+    node.dataset.openingSun = '';
+  }
+  onMount(() => {
+    if (!opens || !frame) return;
+    return playOpening(frame, { reduced: isReducedMotion() });
+  });
 
   /* Whether this step is the forced choice rather than the toggle under it
      (ticket 54): true from the moment the flow reaches the lock step until
@@ -372,10 +419,42 @@
       unregister();
       window.removeEventListener('popstate', popped);
       finishHistory = undefined;
+      clearTimeout(collapseDone);
     };
   });
 
+  /* Out of the welcome, the sun shrinks on the closing curve stepBlind
+     gives a shrinking field, so the two travel as one. On its own
+     transition's ease-out it was at 0.67 of its size while the edge had
+     travelled a third of the way, and the two read as two things
+     (pre-release-human ticket 19, frame samples). Every way out of the
+     welcome goes through here. */
+  let collapsing = $state(false);
+  let collapseDone: ReturnType<typeof setTimeout> | undefined;
+  /* The field's box drops to the first step's height in one layout while
+     its painted edge travels there, and .step-field cuts everything 120px
+     past its box (components.css, overflow-clip-margin), which is room for
+     every other step's close. The welcome's is 355px on a phone, so for the
+     first frames the paint, the sun and the wordmark were cut at 367px: the
+     field's edge jumped 235px and the wordmark vanished in one frame
+     (sign-off round 1, frame 20 of the collapse). For the length of this
+     close the margin is the hero's own height, which is more than the close
+     can travel. Written from here in pixels because Chromium takes no calc()
+     in overflow-clip-margin. */
+  let field: HTMLElement | undefined = $state();
+  let collapseMargin = $state<string | null>(null);
   function go(to: OnboardingStep) {
+    if (step === 'welcome' && to !== 'welcome') {
+      collapsing = true;
+      collapseMargin = field ? `${field.offsetHeight}px` : null;
+      clearTimeout(collapseDone);
+      /* The edge's own length, and a few frames over for the hold stepBlind
+         paints before it starts. */
+      collapseDone = setTimeout(() => {
+        collapsing = false;
+        collapseMargin = null;
+      }, motionDuration('--dur-slow') + 200);
+    }
     step = to;
   }
 
@@ -673,8 +752,8 @@
      571px of overflow on the permissions step (ticket 31). Now the screen
      is exactly the window, the answers have their own region, and the
      question and the foot cannot move at all. -->
-<div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`}>
-  <div class="setup step-field-host">
+<div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`} bind:this={frame}>
+  <div class="setup step-field-host" class:is-hero={hero} class:is-collapsing={collapsing}>
     <!-- The field. Its height is the sun's reach at this step plus the
          question, so it comes down one step's worth per step with the
          question riding on it, and that edge is rule 10's blind on this
@@ -683,7 +762,13 @@
          access-mode step walks to its pad, when a question re-wraps and
          when a raised keyboard drops the flow into its short form, and
          each of those has to travel rather than jump. -->
-    <div class="setup-field step-field" data-setup-field use:blindEdge>
+    <div
+      class="setup-field step-field"
+      data-setup-field
+      use:blindEdge
+      bind:this={field}
+      style:overflow-clip-margin={collapseMargin}
+    >
       <!-- The paint, split from the box that measures it (ticket 28's
            mechanism, and the same reason): what draws the field's colour is
            a block a window tall whose bottom edge is a clip, so the edge
@@ -734,7 +819,7 @@
                  widest and is drawn first, so it covers what is underneath
                  as it opens and no gap of page can show through. -->
             {#key prefs.palette}
-              <div class="setup-sun-draw" in:layer={{ z: 1 }} out:layer={{ z: 0 }}>
+              <div class="setup-sun-draw" in:layer={{ z: 1 }} out:layer={{ z: 0 }} {@attach openingSun}>
                 <FlagSun />
               </div>
             {/key}
@@ -743,9 +828,34 @@
       </div>
 
       <!-- The back control, top left, in the field's own ink. Absent on the
-           welcome and wherever a step has no way back (rule 12). -->
+           welcome and wherever a step has no way back (rule 12). The
+           welcome has the language switch in its place, and the two cross
+           in one cell as the field collapses into the first step. -->
       <div class="setup-head">
-        {#if step !== 'welcome' && !awaitingAccessMode}
+        {#if hero}
+          <div
+            class="setup-lang"
+            role="radiogroup"
+            aria-label={m.language()}
+            data-opening="sign"
+            use:rovingRadio={{ selectOnArrow: false }}
+            in:fieldPart
+            out:fieldPart
+          >
+            {#each LANGUAGES as [code, name] (code)}
+              <button
+                role="radio"
+                aria-checked={code === locale}
+                aria-label={name}
+                lang={code}
+                data-language-pick={code}
+                onclick={() => pickLanguage(code)}
+              >
+                {code.toUpperCase()}
+              </button>
+            {/each}
+          </div>
+        {:else if !awaitingAccessMode}
           <!-- NAV-006: onboarding had no way back between steps at all, so
                a typo in the name could only be finished past. Absent while
                awaitingAccessMode for the same reason Skip and "leave setup"
@@ -762,6 +872,8 @@
             data-field-part
             aria-label={m.back()}
             onclick={previousStep}
+            in:fieldPart
+            out:fieldPart
           >
             <Icon name="arrowLeft" />
           </button>
@@ -781,19 +893,35 @@
                the field and rides its edge, fading where it stands, rather
                than being part of the screen's own crossfade. Between steps
                it is the two transitions below that move it - one mechanism
-               per kind of change, both reading one set of numbers. -->
-          <h1
-            class="setup-title"
-            data-setup-question
+               per kind of change, both reading one set of numbers.
+
+               The welcome prints the wordmark instead of its question
+               (ticket 19): "Welcome!" stays the heading a screen reader
+               lands on, and the name of the app is what the eye does. -->
+          <div
+            class="setup-ask-part"
             data-field-part
-            tabindex="-1"
-            data-arrival-focus
-            {@attach questionArrives}
             in:fieldPart={{ printed: true }}
             out:fieldPart={{ printed: true }}
           >
-            {question}
-          </h1>
+            <h1
+              class="setup-title"
+              class:visually-hidden={hero}
+              data-setup-question
+              tabindex="-1"
+              data-arrival-focus
+              {@attach questionArrives}
+            >
+              {question}
+            </h1>
+            {#if hero}
+              <p class="setup-wordmark" data-opening="mark">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</p>
+              <!-- The dictionary entry spells the app's name, so under the
+                   disguise, whose name is on the field instead, it is left
+                   out rather than signed under the wrong word. -->
+              {#if !prefs.disguise}<p class="setup-def" data-opening="sign">{m.ob_welcome_def()}</p>{/if}
+            {/if}
+          </div>
         {/key}
       </div>
     </div>
@@ -816,8 +944,15 @@
                  same slot with the dictionary line above it. -->
             {#if step === 'welcome'}
               {#if erasedOnEntry}<p class="setup-line is-result" role="status" data-erased-result use:erasedArrival>{m.reset_done()}</p>{/if}
-              <p class="setup-def">{m.ob_welcome_def()}</p>
-              <p class="setup-line is-pitch">{m.ob_welcome_body({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}</p>
+              <!-- What the app is, then the promise, which is set apart by
+                   its glyph and its weight rather than by a box: the one
+                   sentence on this screen a person should be able to find
+                   again. -->
+              <p class="setup-line is-pitch" data-opening="line">{m.ob_welcome_what({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}</p>
+              <p class="setup-line is-promise" data-opening="line">
+                <span class="setup-promise-ico" aria-hidden="true"><Icon name="lock" size={16} /></span>
+                <span>{m.ob_welcome_privacy()}</span>
+              </p>
             {:else if line && step !== 'features'}
               <p class="setup-line">{line}</p>
             {/if}
@@ -1090,7 +1225,7 @@
          step side by side under it. Three controls, two lines, above a
          hairline, and it does not move between steps (rule 12) - it is
          outside the box that rides the edge for exactly that reason. -->
-    <div class="setup-foot" data-setup-foot>
+    <div class="setup-foot" data-setup-foot data-opening="foot">
       {#if setupError}<p class="setup-status" role="alert">{setupError}</p>{/if}
       {#if awaitingAccessMode}
         <!-- The module above carries its own submit action, and there is no
@@ -1302,6 +1437,9 @@
     transition-duration: var(--dur-slow);
     transition-timing-function: var(--ease-out);
   }
+  .setup.is-collapsing .setup-sun :global(.sun) {
+    transition-timing-function: var(--ease-out-soft);
+  }
 
   /* The sun's room, which is also the back control's row. Reserved as the
      sun's reach at this step rather than at full size: the reserve is what
@@ -1324,6 +1462,14 @@
     /* Keep Back above questions that cross its target during a step change. */
     z-index: 2;
     min-height: calc(175px * var(--step-grow, 1) * var(--sun-mult, 1));
+    /* One cell, so the welcome's language switch and the back control
+       that replaces it cross where they stand rather than stacking. */
+    display: grid;
+    align-content: start;
+    justify-items: start;
+  }
+  .setup-head > * {
+    grid-area: 1 / 1;
   }
   .setup-head .icon-btn {
     color: inherit;
@@ -1379,20 +1525,12 @@
 
   /* One line under the field, on the page, 12 below the edge: what the
      answer does, at 15/600 in the secondary ink (rules 2 and 12). Never a
-     paragraph - the welcome's pitch is the flow's one exception and it sits
-     in this slot under the dictionary line. */
-  .setup-line,
-  .setup-def {
+     paragraph - the welcome's two lines are the flow's one exception. */
+  .setup-line {
     margin: var(--space-3) 0 0;
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--text-2);
-  }
-  /* The app's name, read back as the word it is. Italic so it sits between
-     the question and the pitch as an aside rather than as a second line of
-     the same voice. */
-  .setup-def {
-    font-style: italic;
   }
   /* What a wipe from Settings left behind (phase 14 ticket 15): a result
      rather than a description, so it reads in the text colour above the
@@ -1404,6 +1542,135 @@
   .setup-line.is-pitch {
     font-weight: var(--weight-regular);
     line-height: var(--leading-body);
+  }
+  /* A measure for reading, which the 640px column on a desktop is not:
+     the promise ran about 85 characters a line there (impeccable). */
+  .setup-line.is-pitch,
+  .setup-line.is-promise {
+    max-width: 60ch;
+  }
+  /* The promise: in the text colour and a step heavier than the line above
+     it, behind the padlock, so it reads as the one thing on the screen
+     that is a commitment rather than a description. No box and no stripe. */
+  .setup-line.is-promise {
+    display: flex;
+    gap: var(--space-2);
+    align-items: flex-start;
+    color: var(--text);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-body);
+  }
+  .setup-promise-ico {
+    display: flex;
+    flex: none;
+    /* Centred on the first line: (line height - glyph) / 2. */
+    margin-top: calc((1em * var(--leading-body) - 16px) / 2);
+  }
+
+  /* ---------- the welcome (pre-release-human ticket 19) ----------
+
+     The app's first screen, so the field is its hero: most of a phone
+     tall, the sun large in its corner (steps.ts, WELCOME_SUN) and the
+     wordmark on its bottom edge. The field takes whatever the two lines
+     and the foot leave, up to 70% of the frame, which is 60 to 70% on a
+     phone; everything under it is its own height. "Set up the app" takes
+     the class off, the field's box drops to the first step's in one
+     layout, and stepBlind travels the painted edge up to it on the same
+     clock as every step change, while the sun shrinks on its own
+     transition: one object moving, never a cut. */
+  .setup.is-hero > .setup-field {
+    flex: 1 1 auto;
+    max-height: 70%;
+    display: flex;
+    flex-direction: column;
+  }
+  .setup.is-hero .setup-head {
+    flex: 1 1 auto;
+  }
+  /* The hero sun keeps clear of the language switch on a narrow phone and
+     of the wordmark on a short one: its reach is the corner's quarter, and
+     the field's height is what the lines and the foot leave. */
+  @media (max-width: 399px), (max-height: 759px) {
+    .setup.is-hero {
+      --sun-mult: 0.8;
+    }
+  }
+  @media (max-height: 639px) {
+    .setup.is-hero {
+      --sun-mult: 0.5;
+    }
+  }
+  .setup.is-hero > .step-field-below,
+  .setup.is-hero .setup-stage,
+  .setup.is-hero .setup-answers {
+    flex: 0 0 auto;
+  }
+
+  /* The name of the app at display size, in the field's ink: the same
+     treatment as a question (rule 2), one size up, because on this screen
+     it is the headline. The disguise name when the disguise is on. */
+  .setup-wordmark {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(3.5rem, 19vw, 6rem);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.045em;
+    line-height: 0.9;
+    overflow-wrap: break-word;
+  }
+  /* The dictionary line, signed under the wordmark: small, italic, in the
+     field's own ink. */
+  .setup-def {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-sm);
+    font-style: italic;
+    font-weight: var(--weight-medium);
+    /* "istnienia." alone on the second line at 412px otherwise. */
+    text-wrap: pretty;
+  }
+
+  /* PL / EN, top left where the back control is on every other step: one
+     pill with a stroke in the field's ink, the language in use filled with
+     that ink and lettered in the field's colour (sign-off round 1: "make
+     the language chooser a little bit more visible, maybe a stroke over the
+     button?"). The ink is what the field's text is measured in, so the
+     stroke and the fill hold the text's own contrast against the field,
+     well over the 3:1 a control's edge owes (9.59:1 on trans, light and
+     dark). 2px rather than the kit's 1.5px input edge, which Chromium
+     snaps to 1px at a 2x density and which read as faint on the flag. The
+     pill is the touch target's height and each half at least its width. */
+  .setup-lang {
+    display: flex;
+    border: 2px solid currentColor;
+    border-radius: 999px;
+  }
+  .setup-lang button {
+    min-width: var(--touch-target);
+    min-height: calc(var(--touch-target) - 4px);
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.06em;
+  }
+  .setup-lang button[aria-checked='true'] {
+    background: var(--field-ink);
+    color: var(--field);
+  }
+
+  /* The first sun's CSS entrance gives way to the opening's own, which
+     draws the rings from the corner outwards after the first frame has
+     left ($lib/onboarding/opening.ts). The breathing stays. Not under
+     reduced motion, where the rings have no animation at all and naming
+     the loop here would bring it back as a 1ms strobe. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html:not([data-a11y-motion='reduce'])) .setup-sun-draw:global(.is-opening .sun i) {
+      animation-name: none, breathe;
+    }
   }
 
   /* The answers, 20 under the line, and the one region on a step that may
@@ -1417,8 +1684,8 @@
   .setup-answers {
     flex: 1 1 0;
     min-height: 0;
-    margin: calc(var(--space-5) - 4px) calc(-1 * var(--space-5)) 0;
-    padding: 4px var(--space-5) 0;
+    margin: calc(var(--space-5) - 4px) calc(-1 * var(--screen-inset)) 0;
+    padding: 4px var(--screen-inset) 0;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -1435,7 +1702,11 @@
   .setup-feature-line {
     margin-top: 0;
   }
+  /* A new group after the features, so it stands well clear of the last
+     feature row: 40 above, the section rhythm's own gap (bug session 18,
+     item 51 - it sat a few pixels under Documents and read as one more row). */
   .setup-feature-heading {
+    margin-top: var(--space-8);
     margin-bottom: 0;
     font-size: var(--text-md);
   }
@@ -1695,6 +1966,10 @@
      because there are no window edges to bleed to any more - the column has
      its own. */
   @container app (min-width: 1024px) {
+    /* A 640px column has room for a larger quarter than a phone. */
+    .setup.is-hero {
+      --sun-mult: 1.25;
+    }
     .setup {
       max-width: 640px;
       --blind-edge: calc(var(--space-6) + 175px * var(--step-grow, 1) * var(--sun-mult, 1) + 78px);

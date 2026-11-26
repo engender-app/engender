@@ -229,6 +229,15 @@
     gap: var(--space-2);
   }
 
+  /* The first track's heading has no rule: it sits right under the sheet's
+     title and the averages, and the 3px line read as the sheet's top edge
+     drawn a second time (bug session 18, item 46). The tracks after it keep
+     theirs, which is what divides them. */
+  [data-track='trajectory'] > :global(.kit-heading) {
+    border-top: 0;
+    padding-top: 0;
+  }
+
   .inspector-empty-track {
     margin: 0;
     padding: var(--space-2) var(--space-3);

@@ -5,7 +5,7 @@ import { launchChromium } from './browser-harness.mjs';
 
 const previewServer = await preview({ preview: { host: '127.0.0.1', port: 0 } });
 const local = `http://127.0.0.1:${previewServer.httpServer.address().port}`;
-const production = 'https://app.engender.barankiewicz.dev';
+const production = 'https://journal.engender.app';
 const browser = await launchChromium();
 const context = await browser.newContext({ serviceWorkers: 'block' });
 const counts = [];

@@ -1302,7 +1302,7 @@
   .span-tl-handle.is-end::after { left: 4px; }
   .span-tl-handle:focus-visible::after {
     border: 2px solid var(--bg);
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
   }
 
   /* The one-time hint, a line of small type under the reading. */

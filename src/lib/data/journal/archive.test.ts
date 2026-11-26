@@ -953,11 +953,6 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // Child of entry. `region` stores bodyRegions' own domain key directly,
   // not a rowid, so this needs no `after` even though it is a child.
   entry_body_region: ['entry_id', 'region', 'value'],
-  // Built-in rows are updated in place, not just inserted, and the two
-  // children below are its own (applyEntryTemplates).
-  entry_template: ['uuid', 'key', 'name', 'note_scaffold', 'presentation_uuid', 'hidden'],
-  entry_template_tag: ['template_id', 'tag_id'],
-  entry_template_dimension_value: ['template_id', 'dimension_id', 'value'],
   // Shared between two owners (entry, milestone) rather than one section's
   // own table - a descriptor names one table for one section.
   photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred', 'epoch_day_override'],

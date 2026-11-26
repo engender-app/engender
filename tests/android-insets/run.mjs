@@ -221,13 +221,6 @@ try {
         await toEntryStepWith(page, '#ed-note');
         await page.locator('#ed-note').waitFor();
         await capture(`${name}-editor`, ['[data-screen-title="entry"]', '[data-screen-back]', '[data-save]', '[data-save-star]']);
-        await page.locator('[data-use-template]').click();
-        await page.locator('[data-sheet]').waitFor();
-        await capture(`${name}-sheet`, ['[data-sheet] h2', '[data-manage-entry-templates]']);
-        await page.locator('[data-sheet] [data-list-row]').last().scrollIntoViewIfNeeded();
-        await capture(`${name}-sheet-end`, ['[data-sheet] [data-list-row]:last-child']);
-        adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
-        await page.locator('[data-sheet]').waitFor({ state: 'detached' });
         await page.locator('#ed-note').click();
         for (let i = 0; i < 30 && !imeOpen(); i++) await pause(100);
         await page.locator('#ed-note').fill('');
@@ -240,7 +233,7 @@ try {
       }
     }
   }
-  assert.equal(metadata.results.length, 60, 'Every requested case must run');
+  assert.equal(metadata.results.length, 48, 'Every requested case must run');
 } catch (error) {
   metadata.error = String(error);
   throw error;

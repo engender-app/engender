@@ -727,31 +727,6 @@ export interface MilestoneTemplate {
   name: string;
 }
 
-/** A person's own suggestion for an entry (phase 4 features ticket 17,
-    folded into a stored row by phase 6 ticket 07, ADR-0002): picking one
-    pre-fills `tags`, `dims`, `noteScaffold` and `presentationId` on the
-    entry being created. What the user saves from it is an ordinary Entry,
-    and every pre-filled value stays editable up to save - a template only
-    ever seeds the draft, never gates it.
-
-    `id` is the row's travelling identity, the seeded key for a built-in or
-    the minted uuid for one the person authored (ADR-0002) - `builtIn` is
-    exactly `id` having come from a key. A former guided prompt is a
-    template whose only content is `noteScaffold`: empty `tags`, empty
-    `dims`, no `presentationId`, the same shape any newly authored
-    scaffold-only template has, which is what lets the entry-creation
-    banner keep drawing from this one list rather than a second concept. */
-export interface EntryTemplate {
-  id: string;
-  name: string;
-  tags: string[];
-  dims: Record<string, number>;
-  noteScaffold: string;
-  presentationId: string | null;
-  builtIn: boolean;
-  hidden: boolean;
-}
-
 /** A built-in suggestion for a `RegimenEpisode` (phase 5 ticket 42, CONTEXT:
     "Regimen template"): picking one pre-fills `drug`, `ester` and `route`
     only, the same shape `MilestoneTemplate` gives a milestone's name. `name`

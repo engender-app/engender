@@ -27,7 +27,7 @@
   import { metricStandings } from '$lib/data/statsCharts';
   import { nativeAmount, nativeValue, spreadNote } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
-  import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
+  import { averageLabel, metricChoices, shownMetric } from '$lib/data/metricChoices';
   import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -67,17 +67,16 @@
   const CHART_ROLE = 0;
 
   let metrics = $derived(metricChoices());
-  let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
-  let shown = $derived(shownMetric(metrics));
 
   let annotationsQuery = liveList((j) =>
     view === 'tile' ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, to, today)
   );
 
-  /* The tile draws only the active scale. The screen also draws the
-     scales card, so it needs every metric. */
+  /* Every metric, on the tile as well as the screen: which of them have
+     readings in the span decides what the picker offers and what the tile
+     draws (below). */
   let seriesQuery = liveQuery(async (j) => {
-    const keys = view === 'tile' ? [shown.key] : metrics.map((mt) => mt.key);
+    const keys = metrics.map((mt) => mt.key);
     const [rangeFrom, rangeTo] = [from, to];
     const series = await Promise.all(keys.map((key) => j.stats.dayAverages(key, rangeFrom, rangeTo)));
     return new Map(keys.map((key, i) => [key, series[i]]));
@@ -86,6 +85,15 @@
   joinReadGroup(() => !seriesQuery.loading);
   let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
   let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
+
+  /* Only scales with readings in the span are offered, and a stored choice
+     with none here falls back to the first that has some (bug session 18,
+     item 40: picking an empty scale took the whole tile off the door, and
+     with it the way back to the picker). The stored preference is kept, so
+     a span where that scale has readings shows it again. */
+  let withData = $derived(metrics.filter((mt) => seriesFor(mt.key).length > 0));
+  let shown = $derived(withData.find((mt) => mt.key === shownMetric(metrics).key) ?? withData[0] ?? shownMetric(metrics));
+  let metricOptions = $derived(withData.map((mt) => ({ value: mt.key, label: mt.name })));
 
   /* Where each scale sat over the period. The bar's length is where the
      average lands inside that metric's own range and the number beside it
@@ -113,11 +121,11 @@
   let compareKey = $state('');
   let comparing = $state(false);
   $effect(() => {
-    if (compareKey && !metrics.some((mt) => mt.key === compareKey && mt.key !== shown.key)) {
+    if (compareKey && !withData.some((mt) => mt.key === compareKey && mt.key !== shown.key)) {
       compareKey = '';
     }
   });
-  let compared = $derived(metrics.find((mt) => mt.key === compareKey));
+  let compared = $derived(withData.find((mt) => mt.key === compareKey));
   let compareOptions = $derived([
     { value: '', label: m.stats_compare_none() },
     ...metricOptions.filter((option) => option.value !== shown.key)
@@ -215,7 +223,7 @@
       name={m.stats_day_by_day()}
       href={readingHref('day-by-day', span)}
       headline={activeScaleRow?.value || undefined}
-      note={m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })}
+      note={averageLabel(shown)}
     >
       {#snippet drawing()}
         <svg viewBox="0 0 {SPARK_W} {SPARK_H}" preserveAspectRatio="none">
@@ -276,7 +284,7 @@
       {/if}
       <!-- The second scale, offered rather than presented, in one row that
            does not move: the offer and the picker it becomes. -->
-      {#if metrics.length > 1 && plotted.points.length}
+      {#if withData.length > 1 && plotted.points.length}
         <div class="reading-axes">
           <p class="reading-axis">
             {#if comparing || compared}

@@ -55,7 +55,7 @@ describe('what the More hub is built from', () => {
        preferences are chrome, not part of anybody's transition (ADR-0036,
        ADR-0076). They are reached from the gear in Today's header and the
        rail's fifth row, which ticket 09 owns. `/settings` stopped being a
-       *host* with redesign ticket 51 (ADR-0084): entry templates is a plain
+       *host* with redesign ticket 51 (ADR-0084): modes is a plain
        row on that screen now, not one this file's registry still owns. */
     expect(more).not.toContain('/settings');
     expect(more).not.toContain('nav_settings');
@@ -460,8 +460,6 @@ describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
     ['src/routes/health/appointments/+page.svelte', 'icon="ICON"\\s+key="providers-empty"', 'person', 'note'],
     ['src/routes/settings/+page.svelte', 'key="scales"\\s+icon="ICON"', 'scales', 'heart'],
     ['src/routes/settings/+page.svelte', 'key="body-regions" icon="ICON"', 'figure', 'heart'],
-    ['src/routes/settings/+page.svelte', 'key="entry-templates" icon="ICON"', 'template', 'grid'],
-    ['src/lib/components/EntryEditor.svelte', 'data-use-template[^\\n]*\\n\\s*<Icon name="ICON"', 'template', 'sparkle'],
     ['src/routes/settings/+page.svelte', 'key="mood-colours" icon="ICON"', 'mood', 'sparkle'],
     ['src/routes/settings/reminders/+page.svelte', '<Icon name="ICON" size=\\{16\\} /> {m.checkin_title\\(\\)}', 'mood', 'sparkle'],
     ['src/routes/settings/+page.svelte', 'key="notifications" icon="ICON"', 'badge', 'zap'],

@@ -55,7 +55,7 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { landingMilestone } from '$lib/data/milestoneStatus';
   import { resurfacing } from '$lib/unprompted/resurfacing';
-  import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
+  import { debriefOfferVisible } from '$lib/data/vocabulary/debriefOffer';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { withHasEntries } from '$lib/data/acknowledgements';
@@ -112,6 +112,7 @@
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
   import Icon from '$lib/components/Icon.svelte';
+  import { noticeTurnedOffToast } from '$lib/notificationsTitle';
 
   const doorActive = useDoorActivity();
   let visit = 0;
@@ -584,7 +585,7 @@
      the appointments screen already needs), joined with the standalone
      checklist's debrief state scoped to that same id
      (checklists.ts's `getDebriefState`), folded through the pure predicate
-     (vocabulary/entryTemplates.ts) rather than re-deriving the rule here.
+     (vocabulary/debriefOffer.ts) rather than re-deriving the rule here.
      Its own `itemCount` rather than a bare presence check, since an
      appointment with no prep item at all still has to read as "nothing to
      prepare for" (What to Build #1) - a checklist that has never been
@@ -1327,7 +1328,7 @@
           onclick={() => {
             prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, 'ready-letter', false);
             letterDismissSheetOpen = false;
-            toast(m.notice_turned_off_toast());
+            toast(noticeTurnedOffToast());
           }}
         >
           <span>{m.tile_letter_dont_show_btn()}</span>
@@ -1362,7 +1363,7 @@
           onclick={() => {
             prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, 'stock-notice', false);
             stockDismissSheetOpen = false;
-            toast(m.notice_turned_off_toast());
+            toast(noticeTurnedOffToast());
           }}
         >
           <span>{m.notice_stock_dont_show_btn()}</span>
@@ -1439,7 +1440,7 @@
        components.css); what stays here is the box that measures it. */
     color: var(--field-ink);
     padding: var(--space-4) var(--space-5) var(--space-4);
-    margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+    margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--screen-inset)) 0;
     overflow: hidden;
     /* The same bottom corners every other field has (rule 7: "the bottom
        corners are the one radius; the top corners meet the window's edge

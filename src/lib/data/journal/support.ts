@@ -107,7 +107,7 @@ export function entryPresentationFilter(presentationId: string | null | undefine
 }
 
 /* Tag and dimension ids by their travelling key or uuid, for the two areas
-   that write a row's tags and dimension values (entries, entry templates).
+   that write a row's tags and dimension values (entries).
    An unknown one throws, so the write aborts before anything is stored. */
 export const resolveTagIds = async (driver: SqliteDriver, tagDomainIds: string[]): Promise<number[]> => {
   if (tagDomainIds.length === 0) return [];

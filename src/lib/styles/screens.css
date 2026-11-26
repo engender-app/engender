@@ -196,7 +196,7 @@
   display: flex; gap: var(--space-3);
   overflow-x: auto; padding-bottom: var(--space-2);
   scrollbar-width: none;
-  margin: 0 calc(-1 * var(--space-5)); padding-left: var(--space-5); padding-right: var(--space-5);
+  margin: 0 calc(-1 * var(--screen-inset)); padding-left: var(--screen-inset); padding-right: var(--screen-inset);
 }
 
 /* ---------- The day detail ----------
@@ -575,7 +575,9 @@
 [data-swatch="agender"] { background: linear-gradient(to bottom, #1A1A1A 0 14.29%, #B9B9B9 14.29% 28.58%, #FFF 28.58% 42.86%, #B9F484 42.86% 57.15%, #FFF 57.15% 71.44%, #B9B9B9 71.44% 85.72%, #1A1A1A 85.72%); }
 [data-swatch="gaymen"] { background: linear-gradient(to bottom, #078D70 0 14.29%, #26CEAA 14.29% 28.57%, #98E8C1 28.57% 42.86%, #FFF 42.86% 57.14%, #7BADE2 57.14% 71.43%, #5049CB 71.43% 85.71%, #3D1A78 85.71%); }
 [data-swatch="genderqueer"] { background: linear-gradient(to bottom, #B57EDC 0 33.33%, #FFF 33.33% 66.67%, #4A8123 66.67%); }
-[data-swatch="intersex"] { background: radial-gradient(circle closest-side, #FFD800 0 38%, #7902AA 38% 62%, #FFD800 62%); }
+/* The ring is drawn, not a radial-gradient: hard gradient stops are not
+   antialiased, so the circle's edges came out stair-stepped. */
+[data-swatch="intersex"] { background: #FFD800 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='25' fill='none' stroke='%237902AA' stroke-width='12'/%3E%3C/svg%3E") center / contain no-repeat; }
 [data-swatch="asexual"] { background: linear-gradient(to bottom, #000 0 25%, #A3A3A3 25% 50%, #FFF 50% 75%, #800080 75%); }
 [data-swatch="demiboy"] { background: linear-gradient(to bottom, #7F7F7F 0 14.29%, #C4C4C4 14.29% 28.57%, #9DD7EA 28.57% 42.86%, #FFF 42.86% 57.14%, #9DD7EA 57.14% 71.43%, #C4C4C4 71.43% 85.71%, #7F7F7F 85.71%); }
 [data-swatch="demigirl"] { background: linear-gradient(to bottom, #7F7F7F 0 14.29%, #C4C4C4 14.29% 28.57%, #F3B5CD 28.57% 42.86%, #FFF 42.86% 57.14%, #F3B5CD 57.14% 71.43%, #C4C4C4 71.43% 85.71%, #7F7F7F 85.71%); }
@@ -734,8 +736,8 @@
    scrolls clips on both axes and a block reaching past the content edge
    inside it would be cut. */
 .gate-page {
-  margin: 0 calc(-1 * var(--space-5));
-  padding: 0 var(--space-5) var(--space-5);
+  margin: 0 calc(-1 * var(--screen-inset));
+  padding: 0 var(--screen-inset) var(--space-5);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -898,7 +900,7 @@
      The field takes Today's width instead, and the page under it keeps the
      gate's own 420. */
   .screen-gate[data-gate-sun] > .gate { max-width: none; --blind-edge: var(--gate-sun-field); }
-  .screen-gate[data-gate-sun] .gate-field { margin: 0 calc(-1 * var(--space-5)); }
+  .screen-gate[data-gate-sun] .gate-field { margin: 0 calc(-1 * var(--screen-inset)); }
   .screen-gate[data-gate-sun] .step-field-ask {
     min-height: calc(var(--gate-sun-field) - var(--space-6) - var(--space-4));
   }

@@ -96,6 +96,7 @@
     y,
     dayLabel,
     readingLabel,
+    hoverLines,
     scrubLabel,
     ariaLabel
   }: {
@@ -116,6 +117,9 @@
         see where the head sits. The readout is an <output>, so this is
         spoken again on every step of the scrub. */
     readingLabel: (point: ConstellationPoint) => string;
+    /** What a mouse hovering a point is told, one line each: the date and
+        both values (bug session 18, item 44). */
+    hoverLines: (point: ConstellationPoint) => string[];
     /** What the scrubber is, for a screen reader. */
     scrubLabel: string;
     /** What the plot is. The marks are decoration to it; the scrubber is
@@ -313,6 +317,35 @@
   let readoutWidth = $state(0);
   let readoutHeight = $state(0);
 
+  /* The point a mouse is over: the nearest drawn one within HOVER_REACH.
+     Mouse only - a finger reads the plane through the scrub, and a touch
+     that also hovered would leave a label standing after the finger lifts. */
+  const HOVER_REACH = 14;
+  let hovered = $state<ConstellationPoint | null>(null);
+  let hoverWidth = $state(0);
+  let hoverHeight = $state(0);
+  const hoverAt = (event: PointerEvent) => {
+    if (event.pointerType !== 'mouse') return;
+    const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const [mx, my] = [event.clientX - box.left, event.clientY - box.top];
+    let best: ConstellationPoint | null = null;
+    let bestDistance = HOVER_REACH;
+    for (const point of traced) {
+      const distance = Math.hypot(px(point) - mx, py(point) - my);
+      if (distance <= bestDistance) [best, bestDistance] = [point, distance];
+    }
+    hovered = best;
+  };
+  /* Above the point, or below it where the top of the plot leaves no room,
+     and held inside the plot sideways. */
+  const HOVER_GAP = 8;
+  let hoverBox = $derived.by(() => {
+    if (!hovered) return null;
+    const above = py(hovered) - HOVER_GAP - hoverHeight >= 0;
+    const left = Math.min(Math.max(px(hovered) - hoverWidth / 2, 0), Math.max(size - hoverWidth, 0));
+    return { left, top: above ? py(hovered) - HOVER_GAP - hoverHeight : py(hovered) + HOVER_GAP };
+  });
+
   /** Which of the drawn points also get their day written beside them, and
       where (ticket CARPET-07, last-audit UI 49). Off the same `traced`
       window everything else on the plot draws from, so a label never names
@@ -354,11 +387,20 @@
       <span>{y.low}</span>
     </div>
 
-    <div class="cn-plot-wrap" bind:clientWidth={size}>
+    <!-- The wrap takes the hover, not the plot: the plot stays no target
+         (its own note), and the two share a top-left corner. -->
+    <div class="cn-plot-wrap" role="presentation" bind:clientWidth={size} onpointermove={hoverAt} onpointerleave={() => (hovered = null)}>
       <!-- role="img" with the chart's own name: the marks are a picture and
            the slider below is the way of reading it, which is where the
            readings are actually spoken. -->
-      <svg class="cn-plot" width={size} height={size} viewBox="0 0 {size} {size}" role="img" aria-label={ariaLabel}>
+      <svg
+        class="cn-plot"
+        width={size}
+        height={size}
+        viewBox="0 0 {size} {size}"
+        role="img"
+        aria-label={ariaLabel}
+      >
         <!-- The two scales' middles, drawn as one cross rather than as a
              grid. Not axis furniture: with both scales read to their own
              ends, the middle is the only position on the plane that means
@@ -458,6 +500,28 @@
             <span class="cn-readout-mode" aria-hidden="true" {...roleAttrs(headMode.role)}>{headMode.name}</span>
           {/if}
         </output>
+      {/if}
+
+      <!-- Keyed on the point, so moving from one point to the next is one
+           label fading out where it was and the next fading in at its own
+           point, never one label jumping across the plot. -->
+      {#if hovered && hoverBox}
+        {#key hovered.slot}
+          <div
+            class="cn-hover"
+            data-constellation-hover
+            aria-hidden="true"
+            style:left="{hoverBox.left}px"
+            style:top="{hoverBox.top}px"
+            bind:offsetWidth={hoverWidth}
+            bind:offsetHeight={hoverHeight}
+            transition:dayFade|global
+          >
+            {#each hoverLines(hovered) as line, i (i)}
+              <span class:cn-hover-day={i === 0}>{line}</span>
+            {/each}
+          </div>
+        {/key}
       {/if}
 
       <span class="cn-label-ruler" aria-hidden="true" bind:this={ruler} bind:contentRect={rulerBox}>
@@ -612,6 +676,27 @@
 
   .cn-ends span {
     max-width: 45%;
+  }
+
+  .cn-hover {
+    position: absolute;
+    display: grid;
+    gap: 1px;
+    padding: 4px var(--space-2);
+    border-radius: var(--r-block);
+    background: var(--surface-2);
+    border: 1px solid var(--outline);
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1;
+  }
+
+  .cn-hover-day {
+    color: var(--ink);
+    font-weight: var(--weight-bold);
   }
 
   .cn-readout {
