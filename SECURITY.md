@@ -112,6 +112,8 @@ on 14 October 2026, including its post-recovery and Android unlocked cases.
 
 ## Android signing certificates
 
+The Android app's package is `dev.engender.app`.
+
 The release verifier checks certificate SHA-256 fingerprints as well as
 cryptographic signature validity. It requires one signer per artifact and
 rejects a valid signature from any other certificate. These public fingerprints
@@ -127,6 +129,7 @@ and the Play Console certificate records:
 
 For a downloaded or installed APK, run `apksigner verify --print-certs app.apk`
 and compare `Signer #1 certificate SHA-256 digest` with the APK's channel above.
+AppVerifier can check the certificate of an installed app on the phone.
 Use the GitHub APK fingerprint in tools that verify Obtainium downloads. For
 an APK delivered by Play, use the current Play app-signing fingerprint and
 inspect the actual installed APK. Google signs Play-delivered APKs with a

@@ -26,7 +26,8 @@ const proxy = readFileSync('deploy/nginx/journal-count-proxy.conf', 'utf8')
 const routes = readFileSync('deploy/nginx/journal-page-count.conf', 'utf8')
   .replaceAll('include snippets/engender-count-proxy.conf;', proxy);
 const dashboard = readFileSync('deploy/nginx/goatcounter-dashboard.conf', 'utf8');
-writeFileSync(join(temp, 'nginx.conf'), `events {}\nhttp { server { listen 127.0.0.1:${port}; ${routes}\n${dashboard} } }`);
+const zone = readFileSync('deploy/nginx/journal-count-zone.conf', 'utf8');
+writeFileSync(join(temp, 'nginx.conf'), `events {}\nhttp { ${zone}\nserver { listen 127.0.0.1:${port}; ${routes}\n${dashboard} } }`);
 const container = spawnSync('podman', [
   'run', '--rm', '-d', '--network', 'host',
   '-v', `${temp}/nginx.conf:/etc/nginx/nginx.conf:ro,z`,
@@ -73,7 +74,15 @@ try {
     assert.equal((await fetch(origin + path)).status, 404);
   }
   assert.equal(received.length, 2);
-  console.log('Page-count proxy: both labels isolated; visitor details stripped; bypasses refused.');
+  const flood = [];
+  for (let i = 0; i < 40; i++) {
+    flood.push((await fetch(`${origin}/_stats/app`, { method: 'POST', headers: {
+      Origin: 'https://journal.engender.app', 'User-Agent': 'Browser/1.0 private-visitor'
+    } })).status);
+  }
+  assert.ok(flood.includes(429), `a flood from one address must be cut off: ${flood}`);
+  assert.ok(received.length <= 2 + 21, `the cut-off requests must not reach GoatCounter: ${received.length}`);
+  console.log('Page-count proxy: both labels isolated; visitor details stripped; bypasses refused; floods cut off.');
 } finally {
   spawnSync('podman', ['stop', id], { stdio: 'ignore' });
   upstream.closeAllConnections();

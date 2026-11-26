@@ -123,6 +123,7 @@ hostname. Install:
 - `nginx/goatcounter-dashboard.conf` as `snippets/engender-goatcounter-dashboard.conf`
 - `nginx/goatcounter.conf` as `sites-available/engender-goatcounter.conf`
 - `nginx/journal-count-proxy.conf` as `snippets/engender-count-proxy.conf`
+- `nginx/journal-count-zone.conf` as `conf.d/engender-count-zone.conf`
 - `nginx/journal-page-count.conf` as `snippets/engender-page-count.conf`
 - the updated `nginx/journal-site.conf` as `snippets/engender-journal-site.conf`
 
@@ -132,8 +133,9 @@ from their expected origins. They strip visitor headers, refuse query
 strings, and send a fixed label and User-Agent to GoatCounter. The fixed
 User-Agent prevents GoatCounter 2.7's separate raw bot storage from keeping
 these requests. Direct `/gc/count` requests on the stats host are blocked.
-Origin and bot filters reduce accidental traffic; these public totals are
-not protected against deliberate inflation.
+Origin and bot filters reduce accidental traffic. A per-address rate
+(twelve a minute, burst of twenty) caps what one script can add, but
+many addresses can still inflate these public totals.
 
 Install `nginx/engender-logrotate` as `/etc/logrotate.d/engender`, create
 `/var/log/nginx/engender` owned by `www-data:adm`, and ensure logrotate and
