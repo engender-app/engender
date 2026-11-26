@@ -36,7 +36,7 @@ const storage = new Map<string, string>();
 
 function fakePreferences(stored: PreferenceValues) {
   const set = vi.fn(async (key: PreferenceKey, value: unknown) => {
-    (stored as Record<string, unknown>)[key] = value;
+    (stored as unknown as Record<string, unknown>)[key] = value;
   });
   const preferences = { all: () => ({ ...stored }), get: (key: PreferenceKey) => stored[key], set } as unknown as Preferences;
   return { preferences, set };
