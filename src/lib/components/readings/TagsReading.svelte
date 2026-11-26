@@ -1,16 +1,18 @@
 <script lang="ts">
   /* Tags, and how a scale moved: the merged tag card (redesign ticket 05),
-     a reading of its own since phase 11 ticket 07. One ranking spanning
-     every scale and the dose day (correlationCards.ts), drawn as paired
-     dots - each row reads against its own track, which is what lets mixed
-     scales into one set with no arithmetic of their own. A tag row opens
-     the entries carrying that tag, over the span.
+     a reading of its own since phase 11 ticket 07. One section per scale
+     (tagScaleGroups.ts, ticket 20), each tag - and the dose day - a bar out
+     of a zero line: left where the days with it averaged lower, right where
+     they averaged higher, sized against the largest gap on that scale only.
+     Scales of different ranges used to share one list, which put the same
+     tag in it twice and made no two gaps comparable. A tag row opens the
+     entries carrying that tag, over the span.
 
-     The tile's figure is the top row's tag, with its shift and the scale
-     it moved on under it. No metric picker: the ranking spans every scale
-     and each row names its own, so a picker here changed nothing on the
-     card and only rewrote the day-by-day chart's stored metric
-     (after-release 27, audit L06-06).
+     The tile's figure is the top tag, with the scale it moved and both
+     averages under it, in that scale's own units. No metric picker: every
+     scale with something to say has a section, so a picker here changed
+     nothing on the card and only rewrote the day-by-day chart's stored
+     metric (after-release 27, audit L06-06).
 
      Under it, the share by tag - "What you write about" - with one
      control: every day, or only the good days (functional audit ticket
@@ -19,15 +21,15 @@
      so they are one card here beside the other tag reading rather than two
      more tiles on the door. A good day is the bar on-this-day holds a day
      to (CONTEXT: Good day), read by the same SQL. The dose-day row stays in
-     the ranking above. */
+     its scale's section above. */
   import { m } from '$lib/paraglide/messages';
-  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { nativeValue, signedValue } from '$lib/data/wrappedDisplay';
+  import { liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
+  import { nativeValue } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
   import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { CorrelationCard } from '$lib/data/correlationCards';
-  import type { PairedRow } from '$lib/components/kit/pairedRow';
+  import { cardKey, groupCardsByScale } from '$lib/data/tagScaleGroups';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import EntryDays from '$lib/components/EntryDays.svelte';
@@ -35,7 +37,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
-  import PairedDots from '$lib/components/kit/PairedDots.svelte';
+  import DivergingBars from '$lib/components/kit/DivergingBars.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Donut from '$lib/components/kit/Donut.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -67,10 +69,20 @@
   /** How many entries the sheet behind a tag row lists. */
   const INSIGHT_ENTRIES = 20;
 
-  let correlationCardsQuery = liveList((j) => j.correlationCards.getCards(from, to));
+  /* The answer carries the span it was read for, so the figure swaps on
+     the answer and never draws the old span's rows under the new span's
+     name (the share ring below does the same with its days). The gate's
+     list is that one answer: a span with nothing to compare empties the
+     figure inside the swap rather than cutting the card to its empty line
+     in a frame. */
+  let correlationAnswer = liveQuery(async (j) => {
+    const [start, end] = [from, to];
+    return { start, end, cards: await j.correlationCards.getCards(start, end) };
+  });
+  let correlationCardsQuery = liveListIn(correlationAnswer, (answer) => [answer]);
   /* Whether there is a tile is settled once this answers (ReadGroup). */
   joinReadGroup(() => !correlationCardsQuery.loading);
-  let correlationCards = $derived(correlationCardsQuery.rows);
+  let correlationCards = $derived(correlationAnswer.value?.cards ?? []);
 
   const occurrenceLabel = (card: CorrelationCard) =>
     card.occurrence.kind === 'doseDay'
@@ -82,38 +94,39 @@
     return dimension ? { min: dimension.min, max: dimension.max } : { min: 1, max: 5 };
   };
 
-  /* A row's key rather than the bare tag id: the same tag can rank under
-     two different metrics. */
-  const correlationKey = (card: CorrelationCard) =>
-    `${card.occurrence.kind}-${card.occurrence.kind === 'tag' ? card.occurrence.id : 'dose'}-${card.metric}`;
-
-  let correlationRows = $derived<PairedRow[]>(
-    correlationCards.map((card) => {
-      const bounds = metricBounds(card.metric);
-      return {
-        key: correlationKey(card),
-        name: occurrenceLabel(card),
-        with: card.withAvg,
-        without: card.withoutAvg,
-        ...bounds,
-        gap: signedValue(card.withAvg - card.withoutAvg, (v) => nativeValue(card.metric, v)),
-        note: m.reading_tag_detail({ metric: vocabulary.metricNameOf(card.metric), detail: m.insight_row_sub({
-          count: String(card.count),
-          with: nativeValue(card.metric, card.withAvg),
-          without: nativeValue(card.metric, card.withoutAvg)
-        }) })
-      };
-    })
+  const groups = $derived(
+    groupCardsByScale(correlationCards, metricBounds).map((group) => ({
+      ...group,
+      heading: m.reading_tag_group({
+        scale: vocabulary.metricNameOf(group.metric),
+        min: String(metricBounds(group.metric).min),
+        max: String(metricBounds(group.metric).max)
+      }),
+      rows: group.rows.map((row) => ({
+        key: row.key,
+        name: occurrenceLabel(row.card),
+        share: row.share,
+        note: m.reading_tag_row_sub({
+          count: row.card.count,
+          with: nativeValue(row.card.metric, row.card.withAvg),
+          without: nativeValue(row.card.metric, row.card.withoutAvg)
+        })
+      }))
+    }))
   );
-  let topRow = $derived(correlationRows[0]);
-  let topCard = $derived(correlationCards[0]);
+  /* The first row of the first group: the largest gap on the scale that
+     moved most. */
+  let topCard = $derived(groups.length ? correlationCards.find((c) => cardKey(c) === groups[0].rows[0].key) : undefined);
+  /* The figure for one span fades out over the next one fading in, and the
+     card travels the difference in height (the gate's resize). */
+  const figureIn = (_node: Element) => fadeOnly(crossfadeDuration());
 
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
   /* Only a tag row opens the sheet: a dose day has no tag id to look one
      up by. */
   const pickCorrelationRow = (key: string) => {
-    const card = correlationCards.find((c) => correlationKey(c) === key);
+    const card = correlationCards.find((c) => cardKey(c) === key);
     if (card?.occurrence.kind === 'tag') {
       insightSheet = { id: card.occurrence.id, label: vocabulary.tag(card.occurrence.id)?.label ?? card.occurrence.id };
     }
@@ -158,34 +171,54 @@
   ];
   /* The ring for one set of days fades out over the next one fading in,
      and the card travels the difference in height (resize). */
-  const shareIn = (_node: Element) => fadeOnly(crossfadeDuration());
+  const shareIn = figureIn;
 </script>
 
 {#if view === 'tile'}
-  {#if !correlationCardsQuery.loading && topRow && topCard}
+  {#if !correlationCardsQuery.loading && topCard}
     <ReadingTile
       key="tags"
       name={m.stats_tags_moved()}
       href={readingHref('tags', span)}
-      headline={topRow.name}
-      note={m.reading_tag_gap({ value: topRow.gap, metric: vocabulary.metricNameOf(topCard.metric) })}
+      headline={occurrenceLabel(topCard)}
+      note={m.reading_tag_tile_note({
+        metric: vocabulary.metricNameOf(topCard.metric),
+        with: nativeValue(topCard.metric, topCard.withAvg),
+        without: nativeValue(topCard.metric, topCard.withoutAvg)
+      })}
     />
   {/if}
 {:else}
   <ChartCard level={2} heading={m.stats_tags_moved()} kind="tags-moved" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     <ReadGate read={correlationCardsQuery} variant="line" count={3}>
-      {#snippet rows()}
-        <PairedDots rows={correlationRows} onPick={pickCorrelationRow} />
+      {#snippet rows(answered)}
+        {#key `${answered[0].start}-${answered[0].end}`}
+          <div in:figureIn out:crossfade data-tag-scales>
+            {#if groups.length}
+              <p class="reading-note" data-tag-key>{m.reading_tag_key()}</p>
+              {#each groups as group, g (group.metric)}
+                <section class="tag-scale" data-tag-scale={group.metric}>
+                  <h3 class="tag-scale-heading">{group.heading}</h3>
+                  <DivergingBars
+                    rows={group.rows}
+                    onPick={pickCorrelationRow}
+                    offset={groups.slice(0, g).reduce((n, earlier) => n + earlier.rows.length, 0)}
+                  />
+                </section>
+              {/each}
+              <!-- Inside the card, under the rows it qualifies: the app saying
+                   which tags were left out is the app declining to interpret. -->
+              <p class="reading-note">{m.insights_note()}</p>
+            {:else}
+              <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+            {/if}
+          </div>
+        {/key}
       {/snippet}
       {#snippet empty()}
         <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
       {/snippet}
     </ReadGate>
-    <!-- Inside the card, under the rows it qualifies: the app saying which
-         tags were left out is the app declining to interpret. -->
-    {#if correlationRows.length}
-      <p class="reading-note">{m.insights_note()}</p>
-    {/if}
   </ChartCard>
 
   <Sheet open={insightSheet !== null} title={insightSheet?.label ?? ''} onClose={() => (insightSheet = null)}>
@@ -237,3 +270,16 @@
     </div>
   </ChartCard>
 {/if}
+
+<style>
+  .tag-scale {
+    margin-top: var(--space-5);
+  }
+
+  .tag-scale-heading {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    color: var(--text-2);
+  }
+</style>

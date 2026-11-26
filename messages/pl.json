@@ -2369,8 +2369,26 @@
   "reading_body_region_value": "{axis} {value}",
   "reading_day_value": "{day}: {value}",
   "reading_day_value_with_note": "{day}: {value}, {note}",
-  "reading_tag_detail": "{metric} · {detail}",
-  "reading_tag_gap": "{metric}: {value}",
+  "reading_tag_group": "{scale} · {min}-{max}",
+  "reading_tag_key": "Średnia we wpisach z tagiem wobec średniej w pozostałych.",
+  "reading_tag_row_sub": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{with} z tagiem · {without} bez · {count} wpis",
+        "countPlural=few": "{with} z tagiem · {without} bez · {count} wpisy",
+        "countPlural=many": "{with} z tagiem · {without} bez · {count} wpisów",
+        "countPlural=other": "{with} z tagiem · {without} bez · {count} wpisu"
+      }
+    }
+  ],
+  "reading_tag_tile_note": "{metric}: {with} z tagiem, {without} bez",
   "recap_tag_count": "{label} ({count})",
   "recap_tags_none_range": "Brak tagów w tym okresie.",
   "recap_tags_title": "Najczęstsze tagi",
