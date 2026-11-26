@@ -14,7 +14,6 @@
     "settings-scroll-check": "Local Fedora run on 2026-10-11, excluding build; tests/settings-scroll-check.mjs",
     "milestone-era-handoff-check": "Local Fedora run on 2026-10-12, excluding build; tests/milestone-era-handoff-check.mjs",
     "hair-removal-interaction-check": "Local Fedora run on 2026-10-12, excluding build; tests/hair-removal-interaction-check.mjs",
-    "hair-progress-photo-actions": "Local Fedora run on 2026-10-12, excluding build; tests/hair-progress-photo-actions.mjs",
     "feedback-concealment-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-14",
     "wear-entry-check": "Local Fedora run on 2026-10-14, excluding build; tests/wear-entry-check.mjs",
     "in-place-scroll-check": "Local Fedora run on 2026-10-15, dev server; tests/in-place-scroll-check.mjs",
@@ -82,8 +81,6 @@
     "content-before-dates-check": 56.83,
     "document-reader": 17.44,
     "empty-reflection": 33.46,
-    "hair-progress-photo-jump-check": 11.09,
-    "hair-progress-photo-actions": 17.99,
     "hair-removal-entry-check": 17.37,
     "hair-removal-recency-handoff-check": 9.69,
     "roadmap-tick-motion-check": 9.95,
@@ -226,12 +223,6 @@
     ],
     "empty-reflection": [
       33.46
-    ],
-    "hair-progress-photo-jump-check": [
-      11.09
-    ],
-    "hair-progress-photo-actions": [
-      17.99
     ],
     "hair-removal-entry-check": [
       17.37

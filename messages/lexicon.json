@@ -393,7 +393,6 @@
         "dose_delete_question": "243ahv",
         "era_delete_q": "1g5ez7o",
         "hair_removal_delete_q": "9pt57z",
-        "hair_stage_delete_q": "15spk15",
         "labs_delete_q": "1ex4rwo",
         "letters_delete_q": "jwwcuw",
         "margin_note_delete_q": "v03msi",
@@ -1413,24 +1412,6 @@
       "pl": {
         "forms": {
           "base": "Zauważone zmiany"
-        },
-        "avoid": []
-      }
-    },
-    {
-      "id": "module-hair-progress",
-      "kind": "phrase",
-      "confirmed": true,
-      "note": "",
-      "en": {
-        "forms": {
-          "base": "Hair progress"
-        },
-        "avoid": []
-      },
-      "pl": {
-        "forms": {
-          "base": "Zmiany włosów"
         },
         "avoid": []
       }

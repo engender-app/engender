@@ -640,8 +640,6 @@ To run one on its own, use
 | `content-before-dates-check` | milestone, side-effect, cycle and hair-stage field order, saved edits, photo and anchor retention, preparation handoff, cycle visibility and shared editor safety; English and Polish at 390px and 200% zoom |
 | `document-reader` | document identity, the enlarged reader, owner links and export, at 195/390/1280px |
 | `empty-reflection` | Safe space's empty and sparse states, and a comfort link above the fold at 320x568 |
-| `hair-progress-photo-jump-check` | the hair progress jump reaches its photo and keeps its context |
-| `hair-progress-photo-actions` | Hair progress opens its own photos in shared collage/timelapse export and preserves comparison and scroll after completion or cancellation |
 | `hair-removal-entry-check` | session field order, failed save and retry, duplicate taps, saved-owner photo continuation, library day, editing, deletion and privacy; English and Polish at 390px and 200% zoom |
 | `hair-removal-recency-handoff-check` | the recency rows open their own area prefilled, and nothing saves before Save |
 | `hair-removal-interaction-check` | saved sessions and expanded regions survive Back and interrupted navigation; recovery hides journal and editor content in both themes and motion modes, with painted captures |

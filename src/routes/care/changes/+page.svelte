@@ -65,7 +65,6 @@
   import { severityName } from '$lib/data/vocabulary/labels';
   import type { PersonalEffectCatalogEntry, SideEffect } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import HostedRows from '$lib/components/HostedRows.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -616,11 +615,6 @@
       </ReadGate>
     </div>
   </ReadReserve>
-
-  <!-- Hair progress remains available outside the regimen-dependent bands.
-       It uses a published scale and photos, so no regimen is required.
-       Cycle events moved to /care with dilation (pre-release-human 12). -->
-  <HostedRows host="effects" card />
 
   <Sheet open={editor !== null} title={editor ? editor.effect.name : ''} onClose={() => (editor = null)}>
     {#if editor}

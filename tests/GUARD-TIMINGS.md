@@ -183,7 +183,6 @@ counts as the same roster guard.
 | dev 1/3 | `photo-export` | pass | 0 / 26.11s |
 | dev 1/3 | `content-before-dates-check` | pass | 0 / 56.83s |
 | dev 1/3 | `document-reader` | pass | 0 / 17.44s |
-| dev 1/3 | `hair-progress-photo-jump-check` | pass | 0 / 11.09s |
 | dev 1/3 | `hair-removal-recency-handoff-check` | pass | 0 / 9.69s |
 | dev 1/3 | `search-filter-scope` | pass | 0 / 19.56s |
 | dev 1/3 | `noticed-effects-picker-check` | pass | 0 / 31.66s |
@@ -373,7 +372,6 @@ means a failed first attempt followed by a successful bounded retry.
 | dev 1/3 | `photo-export` | pass | 0 / 28.63s |
 | dev 1/3 | `chosen-appointment` | pass | 0 / 10.13s |
 | dev 1/3 | `appointment-entry-check` | pass | 0 / 17.87s |
-| dev 1/3 | `hair-progress-photo-jump-check` | pass | 0 / 11.35s |
 | dev 1/3 | `hair-removal-entry-check` | pass | 0 / 19.74s |
 | dev 1/3 | `measurements-sizes-jump-check` | pass | 0 / 13.59s |
 | dev 1/3 | `search-filter-scope` | pass | 0 / 22.06s |

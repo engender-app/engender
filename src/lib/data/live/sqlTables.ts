@@ -45,7 +45,6 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   cycleEvent: ['cycle_event'],
   era: ['era'],
   eraMute: ['era_mute'],
-  hairProgress: ['hair_stage', 'hair_photo'],
   hairRemoval: ['hair_removal_session', 'hair_removal_photo'],
   progressPhoto: ['progress_photo', 'progress_pose'],
   procedure: ['procedure', 'procedure_photo'],

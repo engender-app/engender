@@ -20,10 +20,8 @@
   "effectCategories": 6,
   "personalEffectTypes": 70,
   "personalEffects": 2,
-  "hairStages": 3,
-  "hairPhotos": 1,
-  "progressPhotos": 1,
-  "progressPoses": 4,
+  "progressPhotos": 2,
+  "progressPoses": 5,
   "hairRemovalSessions": 2,
   "procedures": 2,
   "providers": 1,
@@ -47,6 +45,6 @@
   "wearSessions": 1,
   "voiceBenchmarks": 1,
   "comfortItems": 2,
-  "areaStates": 5,
+  "areaStates": 3,
   "importLog": 1
 }

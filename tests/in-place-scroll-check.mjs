@@ -78,7 +78,7 @@ try {
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg'));
     const full = new Uint8Array(await blob.arrayBuffer());
     const photo = { full, thumb: full };
-    for (let day = 0; day < hair; day++) await j.hairProgress.addPhoto(16000 + day, photo);
+    for (let day = 0; day < hair; day++) await j.progressPhotos.addPhoto(16000 + day, 'hair', photo);
     for (let day = 0; day < entry; day++) {
       const id = await j.entries.upsertEntry({ epochDay: 17000 + day, mood: 3, note: '' });
       await j.photos.attach({ entryId: id }, photo);

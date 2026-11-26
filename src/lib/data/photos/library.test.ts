@@ -41,7 +41,7 @@ test('a source with no photographs draws no chip', () => {
 test('Starred chip appears with starred photos and narrows across source chips', () => {
   const entry = { ...photo('entry', 'entry', 20000), starred: true };
   const milestone = { ...photo('milestone', 'milestone', 20001), starred: true };
-  const hair = photo('hair', 'hair', 20002);
+  const hair = photo('hair', 'hairRemoval', 20002);
   const photos = [entry, milestone, hair];
 
   assert.deepEqual(chipsFor(photos), ['everything', 'body', 'hair', 'starred']);
@@ -56,11 +56,11 @@ test('one source draws no chip row at all: everything and it would be the same g
   assert.deepEqual(chipsFor([]), []);
 });
 
-test('body covers entry and milestone photos, hair covers progress and removal', () => {
+test('body covers entry and milestone photos, hair covers removal, progress has its own chip', () => {
   const photos = [
     photo('a', 'entry', 20000),
     photo('b', 'milestone', 20001),
-    photo('c', 'hair', 20002),
+    photo('c', 'progress', 20002),
     photo('d', 'hairRemoval', 20003),
     photo('e', 'tryout', 20004),
     photo('f', 'procedure', 20005),
@@ -70,7 +70,8 @@ test('body covers entry and milestone photos, hair covers progress and removal',
   const ids = (chip: Parameters<typeof narrowTo>[1]) => narrowTo(photos, chip).map((p) => p.id);
   assert.deepEqual(ids('everything'), ['a', 'b', 'c', 'd', 'e', 'f', 'g']);
   assert.deepEqual(ids('body'), ['a', 'b']);
-  assert.deepEqual(ids('hair'), ['c', 'd']);
+  assert.deepEqual(ids('progress'), ['c']);
+  assert.deepEqual(ids('hair'), ['d']);
   assert.deepEqual(ids('tryouts'), ['e']);
   assert.deepEqual(ids('surgery'), ['f']);
   assert.deepEqual(ids('video'), ['g']);
@@ -80,11 +81,11 @@ test('every source answers to exactly one chip', () => {
   const sources: LibraryPhoto['source'][] = [
     'entry',
     'milestone',
-    'hair',
     'hairRemoval',
     'tryout',
     'procedure',
-    'video'
+    'video',
+    'progress'
   ];
   for (const source of sources) {
     const one = [photo('x', source, 20000)];
@@ -101,7 +102,7 @@ test('the query names a chip, and anything else opens on everything', () => {
 });
 
 test('a chip the library no longer holds falls back to everything', () => {
-  const photos = [photo('a', 'entry', 20000), photo('b', 'hair', 20001)];
+  const photos = [photo('a', 'entry', 20000), photo('b', 'hairRemoval', 20001)];
   assert.deepEqual(narrowTo(photos, 'tryouts'), [], 'narrowing itself stays literal');
   assert.equal(chipsFor(photos).includes('tryouts'), false);
 });
@@ -114,8 +115,8 @@ test('a year mark is the first photograph of each year, and one year gets none',
   const photos = [
     photo('a', 'entry', 19723),
     photo('b', 'entry', 19800),
-    photo('c', 'hair', 20089),
-    photo('d', 'hair', 20100)
+    photo('c', 'progress', 20089),
+    photo('d', 'progress', 20100)
   ];
 
   const marks = yearMarks(photos);
@@ -137,7 +138,6 @@ const fakeJournal = () => {
   const record = (area: string) => async (id: string) => { calls.push(`${area}:${id}`); };
   const journal = {
     photos: { remove: record('photos') },
-    hairProgress: { deletePhoto: record('hairProgress') },
     hairRemoval: { deletePhoto: record('hairRemoval') },
     tryouts: { deletePhoto: record('tryouts') },
     procedures: { deletePhoto: record('procedures') },
@@ -148,13 +148,12 @@ const fakeJournal = () => {
 
 test('a photograph deleted from the library goes through the area that owns it', async () => {
   const { journal, calls } = fakeJournal();
-  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'progress'] as const) {
+  for (const source of ['entry', 'milestone', 'hairRemoval', 'tryout', 'procedure', 'progress'] as const) {
     await deleteFromOwner(journal, photo(`${source}-1`, source, 0));
   }
   assert.deepEqual(calls, [
     'photos:entry-1',
     'photos:milestone-1',
-    'hairProgress:hair-1',
     'hairRemoval:hairRemoval-1',
     'tryouts:tryout-1',
     'procedures:procedure-1',

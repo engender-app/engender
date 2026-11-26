@@ -65,7 +65,7 @@
 
   /* Where HRT began (functional audit ticket 18, CONTEXT: "HRT start"): the
      date the person set, else the earliest HRT episode. Changes you've
-     noticed and hair progress count from it, so it is said and set here,
+     noticed count from it, so it is said and set here,
      beside the episodes it is read from. */
   let hrt = $derived(hrtAnchor(episodes, prefs.hrtStartEpochDay));
   let hrtStartSub = $derived(

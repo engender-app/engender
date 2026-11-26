@@ -694,21 +694,6 @@ beforeAll(async () => {
   )) as string;
   await drive('wearSessions', 'deleteSession', () => journal.wearSessions.deleteSession(secondWearSessionId));
 
-  // --- hairProgress -------------------------------------------------------
-  const hairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19200, description: 'temples back a little' })
-  )) as string;
-  const secondHairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19230, description: 'parting wider' })
-  )) as string;
-  await drive('hairProgress', 'deleteStage', () => journal.hairProgress.deleteStage(secondHairStageId));
-  const hairPhotoId = (await drive('hairProgress', 'addPhoto', () =>
-    journal.hairProgress.addPhoto(19200, photo('hairline'))
-  )) as string;
-  await drive('hairProgress', 'deletePhoto', () => journal.hairProgress.deletePhoto(hairPhotoId));
-  // Redone so a photo row survives into the read sweep below.
-  await drive('hairProgress', 'addPhoto', () => journal.hairProgress.addPhoto(19200, photo('hairline again')));
-
   // --- progressPhotos ------------------------------------------------
   const progressPhotoId = (await drive('progressPhotos', 'addPhoto', () =>
     journal.progressPhotos.addPhoto(19210, 'side', photo('posed'))
@@ -875,7 +860,7 @@ beforeAll(async () => {
   await drive('checklists', 'deleteChecklist', () => journal.checklists.deleteChecklist(ownedChecklist!.id));
 
   // --- areaStates ---------------------------------------------------------
-  await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['hairStages'], true));
+  await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['personalEffects'], true));
   await drive('areaStates', 'setAreasFinished', () =>
     journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19250)
   );
@@ -983,7 +968,7 @@ beforeAll(async () => {
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
   void [labId, taperSessionId, doseId, stockId, sideEffectId, cycleEventId,
-    wearSessionId, hairStageId, benchmarkId, takeId];
+    wearSessionId, benchmarkId, takeId];
 
   // --- reads --------------------------------------------------------------
   // Every classified read this file can drive with no more setup than the
@@ -1112,12 +1097,6 @@ beforeAll(async () => {
   await driveRead('personalEffects', 'lastWriteEpochDay', () => journal.personalEffects.lastWriteEpochDay(19190));
   await driveRead('personalEffects', 'getEffectTypes', () => journal.personalEffects.getEffectTypes());
   await driveRead('effectCategories', 'getEffectCategories', () => journal.effectCategories.getEffectCategories());
-  await driveRead('hairProgress', 'getStages', () => journal.hairProgress.getStages());
-  await driveRead('hairProgress', 'getStagesOnDay', () => journal.hairProgress.getStagesOnDay(19200));
-  await driveRead('hairProgress', 'lastStageWriteEpochDay', () => journal.hairProgress.lastStageWriteEpochDay(19200));
-  await driveRead('hairProgress', 'getPhotos', () => journal.hairProgress.getPhotos());
-  await driveRead('hairProgress', 'getPhotosOnDay', () => journal.hairProgress.getPhotosOnDay(19200));
-  await driveRead('hairProgress', 'lastPhotoWriteEpochDay', () => journal.hairProgress.lastPhotoWriteEpochDay(19200));
   await driveRead('progressPhotos', 'getPhotos', () => journal.progressPhotos.getPhotos());
   await driveRead('progressPhotos', 'getPoses', () => journal.progressPhotos.getPoses());
   await driveRead('progressPhotos', 'lastWriteEpochDay', () => journal.progressPhotos.lastWriteEpochDay(19300));

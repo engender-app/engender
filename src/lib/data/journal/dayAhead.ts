@@ -281,7 +281,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   sideEffects: 'noted when it started, not scheduled ahead of time',
   cycleEvents: 'logged when it happened, not scheduled ahead of time',
   personalEffects: 'noted when first seen, not scheduled ahead of time',
-  hairStages: 'recorded when assessed, not scheduled ahead of time',
   doseEvents: "logged when it happened, not scheduled ahead of time - a schedule's own future slots are doseSlot above",
   wearSessions: 'recorded when it started (or is still running), not scheduled ahead of time',
   voiceBenchmarks: 'recorded when taken, not scheduled ahead of time',
@@ -301,9 +300,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   // ADR-0067: a projection off a trailing rate, not a date - already legible
   // on the care spine, where its own nature as a moving projection is clear.
   medicationStock: 'a projection off a trailing rate, not a date - already on the care spine',
-  // Hair photos have no schedule since functional audit ticket 23, which
-  // removed the 28-day photo-due prompt; there is no next day to mark.
-  hairPhotos: 'hair photos have no schedule, so there is no next day to mark',
   progressPhotos: 'taken when taken, with no schedule, so there is no next day to mark',
   // The screen this row belongs to refuses due framing outright
   // (hairRemovalSchedule.ts's own header), so there is no due day to carry

@@ -15,7 +15,6 @@ export type PhotoRow = {
 };
 export type RecordingRow = { uuid: string; file_path: string; entry_id: number; updated_at: number };
 export type VideoRow = { uuid: string; file_path: string; entry_id: number; updated_at: number };
-export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string; updated_at: number };
 export type ProgressPhotoRow = { uuid: string; epoch_day: number; pose: string; file_path: string; updated_at: number };
 export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string; updated_at: number };
 export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string; updated_at: number };
@@ -65,12 +64,6 @@ export const FILE_OWNERS = {
         ? [claim(['milestone', milestone.id, milestone.photo.id], photoNames({ file_path: milestone.photo.fileName }))]
         : [])
     ]
-  ),
-  hairPhotos: owner<HairPhotoRow>(
-    'hair_photo', ['file_path'],
-    'SELECT uuid, epoch_day, file_path, updated_at FROM hair_photo ORDER BY epoch_day, id',
-    photoNames,
-    (journal) => journal.hairPhotos.map((photo) => claim([photo.id], photoNames({ file_path: photo.fileName })))
   ),
   progressPhotos: owner<ProgressPhotoRow>(
     'progress_photo', ['file_path'],

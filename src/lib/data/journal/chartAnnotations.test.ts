@@ -251,8 +251,8 @@ test('an unfinished episode reaches to today and not to the end of the range', a
 
 test('a finished area marks the day it ended, on any chart covering it', async () => {
   const journal = await journalWith();
-  // Both halves of the hair-progress row must be finished.
-  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 20100);
+  // Both halves of the effects row must be finished.
+  await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 20100);
 
   const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   const finished = marks.filter((a) => a.kind === 'finishedArea');
@@ -262,22 +262,22 @@ test('a finished area marks the day it ended, on any chart covering it', async (
   assert.equal(finished[0].fromEpochDay, 20100);
   // The group's key, not a section name: the words are the kit's
   // (kit/chartAnnotation.ts), and one hub row can front two sections.
-  assert.equal(finished[0].name, 'hair-progress');
+  assert.equal(finished[0].name, 'effects');
 });
 
 test('a row fronting two areas marks once, and not at all until both are finished', async () => {
   const journal = await journalWith();
-  await journal.areaStates.setAreasFinished(['hairStages'], 20100);
+  await journal.areaStates.setAreasFinished(['personalEffects'], 20100);
 
   const half = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   assert.equal(half.filter((a) => a.kind === 'finishedArea').length, 0);
 
-  await journal.areaStates.setAreasFinished(['hairPhotos'], 20100);
+  await journal.areaStates.setAreasFinished(['sideEffects'], 20100);
   const whole = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   const finished = whole.filter((a) => a.kind === 'finishedArea');
 
   assert.equal(finished.length, 1, 'one gesture, one mark');
-  assert.equal(finished[0].name, 'hair-progress');
+  assert.equal(finished[0].name, 'effects');
 });
 
 test('a finish day outside the range is not drawn, like everything else', async () => {

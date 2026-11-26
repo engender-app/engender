@@ -134,12 +134,6 @@
       "budgetMs": 200,
       "targetMs": 350
     },
-    "hair-progress-anchor": {
-      "what": "hair progress, every dose since day zero plus every staging and photo",
-      "baselineMs": 653,
-      "budgetMs": 3265,
-      "targetMs": 900
-    },
     "dose-schedule-adherence": {
       "what": "dose log, 90 days of the log against its schedule",
       "baselineMs": 62,

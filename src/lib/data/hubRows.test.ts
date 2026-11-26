@@ -204,7 +204,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('thirteen rows can report a reading and six never can', () => {
+test('twelve rows can report a reading and six never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // The fifteenth is documents (phase 8 features ticket 52): the media
@@ -222,8 +222,9 @@ test('thirteen rows can report a reading and six never can', () => {
   // way. Six since phase 11 ticket 17 folded `voice` - also 'written' -
   // into `voice-benchmark`'s own Recordings tab rather than giving it a
   // row of its own. Thirteen since pre-release-human 12 added
-  // `progress-photos`, a reading row.
-  assert.equal(reads.length, 13);
+  // `progress-photos`, a reading row, and twelve since hair progress - also
+  // 'read' - folded into progress photos (version 123).
+  assert.equal(reads.length, 12);
   assert.equal(HUB_ROWS.length - reads.length, 6);
 });
 
@@ -247,11 +248,11 @@ test('a row whose areas have never been written to says what is behind it', () =
   /* Not nothing, and not "nothing yet": the spec's user story 13 wants each
      row to tell the person what is behind it, so a reading row with an empty
      area falls back to the same line a row that never reads shows. */
-  assert.deepEqual(rowLine(spec('hair-progress'), reading()), { kind: 'not-yet' });
+  assert.deepEqual(rowLine(spec('effects'), reading()), { kind: 'not-yet' });
 });
 
 test('a row that was written to recently says when', () => {
-  assert.deepEqual(rowLine(spec('hair-progress'), reading({ lastWrites: { hairStages: TODAY - 3 } })), {
+  assert.deepEqual(rowLine(spec('effects'), reading({ lastWrites: { personalEffects: TODAY - 3 } })), {
     kind: 'last',
     epochDay: TODAY - 3,
     daysAgo: 3
@@ -292,24 +293,7 @@ test('the quiet window is the one the finish offer already uses', () => {
   assert.equal(FINISH_SUGGESTION_QUIET_DAYS, 180);
 });
 
-test('a row fronting two sections reports whichever was written last', () => {
-  const line = rowLine(
-    spec('hair-progress'),
-    reading({ lastWrites: { hairStages: TODAY - 40, hairPhotos: TODAY - 4 } })
-  );
-
-  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 4, daysAgo: 4 });
-});
-
-test('an empty half does not drag a row backwards', () => {
-  /* Somebody can log hair stages for two years and never photograph one, and
-     an empty half is not a quiet half - `groupLastWrite`'s own reasoning. */
-  const line = rowLine(spec('hair-progress'), reading({ lastWrites: { hairStages: TODAY - 2, hairPhotos: null } }));
-
-  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
-});
-
-test('the merged effects row reports whichever half was written last, as hair-progress does (ticket 13)', () => {
+test('the merged effects row reports whichever half was written last (ticket 13)', () => {
   const line = rowLine(
     spec('effects'),
     reading({ lastWrites: { personalEffects: TODAY - 40, sideEffects: TODAY - 4 } })
@@ -365,8 +349,8 @@ test('a row only reads the areas it fronts, and asks for nothing else', () => {
     has: () => true
   });
 
-  rowLine(spec('hair-progress'), reading({ lastWrites: watched }));
-  assert.deepEqual(asked, ['hairStages', 'hairPhotos']);
+  rowLine(spec('effects'), reading({ lastWrites: watched }));
+  assert.deepEqual(asked, ['personalEffects', 'sideEffects']);
 
   asked.length = 0;
   rowLine(spec('care'), reading({ lastWrites: watched }));
@@ -378,7 +362,7 @@ test('a row that can never read states what is behind it whatever the journal ho
      still cannot report a recency: a letter is sealed until its unlock day, so
      the registry has no entry for it - which is also why `lastWrites` cannot
      be handed a `letters` key to try it with. A full read changes nothing. */
-  const everything = reading({ lastWrites: { hairStages: TODAY - 1, hairPhotos: TODAY - 1 } });
+  const everything = reading({ lastWrites: { personalEffects: TODAY - 1, sideEffects: TODAY - 1 } });
 
   assert.deepEqual(rowReads(spec('letters')), []);
   assert.deepEqual(rowLine(spec('letters'), everything), { kind: 'no-stream' });
@@ -461,9 +445,9 @@ test('finished and suspended still win over a forward fact', () => {
    carry a forward fact at all, and the other thirteen read exactly as they
    did before this ticket. */
 test('with nothing forward, every row falls through to the reading it had', () => {
-  const empty = reading({ lastWrites: { hairStages: TODAY - 3 } });
+  const empty = reading({ lastWrites: { personalEffects: TODAY - 3 } });
 
-  assert.deepEqual(rowLine(spec('hair-progress'), empty), { kind: 'last', epochDay: TODAY - 3, daysAgo: 3 });
+  assert.deepEqual(rowLine(spec('effects'), empty), { kind: 'last', epochDay: TODAY - 3, daysAgo: 3 });
   assert.deepEqual(rowLine(spec('care'), empty), { kind: 'no-stream' });
   assert.deepEqual(rowLine(spec('milestones'), empty), { kind: 'not-yet' });
 });
@@ -487,13 +471,13 @@ test('a finished row says the day it ended', () => {
 });
 
 test('a row fronting two sections reads as finished only when both are', () => {
-  const half: AreaStates = { hairStages: finished(TODAY - 90) };
-  const whole: AreaStates = { hairStages: finished(TODAY - 90), hairPhotos: finished(TODAY - 80) };
+  const half: AreaStates = { personalEffects: finished(TODAY - 90) };
+  const whole: AreaStates = { personalEffects: finished(TODAY - 90), sideEffects: finished(TODAY - 80) };
 
-  const written = { hairStages: TODAY - 5 };
+  const written = { personalEffects: TODAY - 5 };
 
-  assert.equal(rowLine(spec('hair-progress'), reading({ states: half, lastWrites: written })).kind, 'last');
-  assert.deepEqual(rowLine(spec('hair-progress'), reading({ states: whole, lastWrites: written })), {
+  assert.equal(rowLine(spec('effects'), reading({ states: half, lastWrites: written })).kind, 'last');
+  assert.deepEqual(rowLine(spec('effects'), reading({ states: whole, lastWrites: written })), {
     kind: 'finished',
     epochDay: TODAY - 80
   });
@@ -563,12 +547,12 @@ test('a hidden area takes its row off the hub', () => {
 });
 
 test('a row fronting two sections goes only when both are hidden', () => {
-  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden }), false);
-  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden, hairPhotos: hidden }), true);
+  assert.equal(rowHidden(spec('effects'), { personalEffects: hidden }), false);
+  assert.equal(rowHidden(spec('effects'), { personalEffects: hidden, sideEffects: hidden }), true);
 });
 
 test('a row that fronts no area is a screen, and nothing hides it', () => {
-  assert.equal(rowHidden(spec('care'), { hairStages: hidden, hairPhotos: hidden }), false);
+  assert.equal(rowHidden(spec('care'), { personalEffects: hidden, sideEffects: hidden }), false);
 });
 
 test('nothing in the area record can hide the cycle row (ADR-0043)', () => {
@@ -590,25 +574,6 @@ test('the hub draws its groups in order and leaves out the ones with nothing in 
     sections.map((section) => section.key),
     ['health', 'body', 'transition', 'support', 'media']
   );
-});
-
-test('a hidden area takes a hosted row out of its host, the way it took it off the hub', () => {
-  /* ADR-0052's own consequence - "hiding takes an area out of the
-     navigation" - and the case a hosted row could quietly lose: it is not in
-     `hubSections` any more, so nothing on the hub can answer for it.
-     `HostedRows.svelte` applies exactly this filter over the area record. */
-  const hosted = rowsHostedBy('effects').map((row) => row.key);
-  assert.deepEqual(hosted, ['hair-progress']);
-
-  const left = rowsHostedBy('effects')
-    .filter((row) => !rowHidden(row, { hairStages: hidden, hairPhotos: hidden }))
-    .map((row) => row.key);
-  assert.deepEqual(left, []);
-
-  /* Both sections behind hair progress, or the row stays - the same
-     every-section rule the hub applies. */
-  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden }), false);
-  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden, hairPhotos: hidden }), true);
 });
 
 test('a hosted row states the day its area ended, since the hub no longer can', () => {
@@ -657,7 +622,7 @@ test('a hosted row is not on the hub at all, and its screen is named (ticket 16)
   }
   assert.deepEqual(
     HUB_ROWS.filter((row) => !isHubGroup(row.home)).map((row) => row.key),
-    ['hair-progress']
+    []
   );
 });
 
@@ -738,7 +703,7 @@ test('every group is in the order Alicja set in pre-release-human 12', () => {
    made-up title per key here, so these tests hold the matching rule and not
    the catalogue. */
 const TITLES: Record<string, string> = {
-  'hair-progress': 'Hair progress',
+  effects: 'Changes you noticed',
   'hair-removal': 'Usuwanie włosów',
   wear: 'Wear log',
   photos: 'Progress photos',
@@ -752,11 +717,11 @@ test('an empty query matches nothing, since the grouped list is what an empty bo
 });
 
 test('a query matches an area by part of its name, whatever the case', () => {
-  const rows = hubRowsMatching(reading(), 'HAIR PROGRESS', titleOf);
+  const rows = hubRowsMatching(reading(), 'CHANGES YOU', titleOf);
 
   assert.deepEqual(
     rows.map((row) => row.spec.key),
-    ['hair-progress']
+    ['effects']
   );
 });
 
@@ -797,10 +762,10 @@ test('a match that has not ended names the group it belongs to', () => {
 });
 
 test('a hidden module cannot be searched up, while dilation follows surgery visibility', () => {
-  /* Hair progress fronts two sections. Hiding one keeps its row searchable. */
-  assert.equal(hubRowsMatching(reading({ states: { hairStages: hidden } }), 'hair progress', titleOf).length, 1);
+  /* Effects fronts two sections. Hiding one keeps its row searchable. */
+  assert.equal(hubRowsMatching(reading({ states: { personalEffects: hidden } }), 'changes you', titleOf).length, 1);
   assert.deepEqual(
-    hubRowsMatching(reading({ states: { hairStages: hidden, hairPhotos: hidden } }), 'hair progress', titleOf),
+    hubRowsMatching(reading({ states: { personalEffects: hidden, sideEffects: hidden } }), 'changes you', titleOf),
     []
   );
   /* taperSessions hidden is `dilationGated`'s signal: no eligible procedure. */
@@ -827,18 +792,6 @@ test('a hosted row states the day its area ended, like any other match', () => {
   assert.deepEqual(
     rows.map((row) => [row.where, row.line.kind]),
     [['finished', 'finished']]
-  );
-});
-
-test('the hub rows come first and the hosted ones after, so a match list reads as the hub then what came off it', () => {
-  const rows = hubRowsMatching(reading(), 'e', titleOf);
-  const keys = rows.map((row) => row.spec.key);
-
-  assert.ok(keys.includes('care'), 'a hub row is missing');
-  assert.ok(keys.includes('effects'), 'a hosted row is missing');
-  assert.ok(
-    keys.indexOf('care') < keys.indexOf('effects'),
-    'the hosted rows are not last'
   );
 });
 

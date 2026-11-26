@@ -12,7 +12,7 @@
   import { scrollBehavior } from '$lib/motion/tokens';
   import { tick } from 'svelte';
   import { page } from '$app/state';
-  import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { outsideDisguise } from '$lib/disguise/identity';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -76,16 +76,15 @@
   /* The whole library (phase 11 ticket 14), minus its video notes: a
      collage and a timelapse are made by decoding each frame as a
      photograph (journey-render.ts), and a note's `.webm` is not one. So
-     the grid below reads every photograph the journal holds - hair,
+     the grid below reads every photograph the journal holds - progress,
      tryouts, surgery recovery included - and the chip row narrows it, but
      Video is never one of the chips here. */
-  let fromHair = $derived(page.url.searchParams.get('from') === 'hair-progress');
-  let returnTo = $derived(fromHair ? '/body/hair-progress' : '/media/photos');
+  const returnTo = '/media/photos';
   // Recording support does not change while this screen is open.
   const canRecord = timelapseSupported();
 
   let libraryQuery = liveList((j) => j.photoLibrary.inJournal());
-  let photos = $derived(libraryQuery.rows.filter((photo) => photo.source !== 'video' && (!fromHair || photo.source === 'hair')));
+  let photos = $derived(libraryQuery.rows.filter((photo) => photo.source !== 'video'));
   let bounds = $derived(journeyRangeBounds(photos));
 
   let startInput = $state('');
@@ -225,18 +224,11 @@
       // Before the preview replaces the picker, so the bar is not cut off
       // mid-thought by the thing it was counting down to (ADR-0070).
       await progress.finish();
-      if (controller.signal.aborted) {
-        if (fromHair) await smartBackSettled(returnTo);
-        return;
-      }
+      if (controller.signal.aborted) return;
       made = { blob, from };
     } catch (error) {
       progress.abandon();
-      // Stop returns to Hair progress when it opened the export, or to
-      // the picker for an export opened from the library.
-      if (controller.signal.aborted && fromHair) {
-        await smartBackSettled(returnTo);
-      } else if (!controller.signal.aborted) {
+      if (!controller.signal.aborted) {
         console.error(`the ${output} export failed`, error);
         toast(output === 'timelapse' ? m.pj_timelapse_failed() : m.pj_failed(), { kind: 'failed' });
       }
@@ -255,10 +247,8 @@
       const delivery = await deliverBlob(journeyFileName(prefs.name, output, undefined, outsideDisguise(prefs)), showing.blob);
       if (delivery === 'cancelled') {
         toast(m.exp_cancelled());
-        if (fromHair) await smartBackSettled(returnTo);
         return;
       }
-      if (fromHair) await smartBackSettled(returnTo);
       toast(delivery === 'shared' ? m.pj_shared() : m.pj_downloaded());
     } catch (error) {
       console.error('sharing the journey export failed', error);
@@ -321,7 +311,6 @@
             </div>
           {/each}
         </div>
-        {#if fromHair}<p class="muted small" data-journey-origin>{m.hair_progress()}</p>{/if}
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
 
         <!-- The count is said once, in the bar with the button it counts
@@ -384,9 +373,6 @@
                 <span>{m.pj_again()}</span>
               </button>
             </div>
-            {#if fromHair}
-              <button class="btn btn-ghost press" data-journey-done onclick={() => smartBackSettled(returnTo)}>{m.done()}</button>
-            {/if}
           </div>
         {:else}
           <SaveBar arrange="stack">

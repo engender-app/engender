@@ -1,8 +1,8 @@
 /** Everything below is about ids and positions in a list, never about what
     a photograph holds, so the list it reads is anything with an id: the
-    journal's own photos on `/media/photos` and a hair progress photo on
-    `/body/hair-progress`, which are two different rows of two different
-    tables wanting the same answer. */
+    journal's own photos on `/media/photos` and a progress photo on
+    `/transition/progress-photos`, which are two different rows of two
+    different tables wanting the same answer. */
 type Identified = { id: string };
 
 /** Which two photographs of a list are being compared, by index: the earlier

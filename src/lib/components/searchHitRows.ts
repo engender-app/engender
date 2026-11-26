@@ -141,7 +141,6 @@ const AREA_ROWS: Record<
     label: () => m.vb_title(),
     href: () => `${hubRow('voice-benchmark').href}?tab=compare`
   },
-  hairStages: { ...iconOf('hair-progress'), label: () => m.hair_progress(), href: () => hubRow('hair-progress').href },
   hairRemovalSessions: {
     ...iconOf('hair-removal'),
     label: () => m.hair_removal(),

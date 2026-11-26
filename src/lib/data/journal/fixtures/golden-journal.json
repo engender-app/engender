@@ -1656,35 +1656,14 @@
       "updatedAt": 1793388955713
     }
   ],
-  "hairStages": [
-    {
-      "id": "430635e1-c1f9-4953-8f3a-17db5dffd64d",
-      "epochDay": 19200,
-      "description": "Norwood-Hamilton 2A",
-      "updatedAt": 1793388955713
-    },
-    {
-      "id": "ea9a61f4-c919-4499-a6ff-cf1aa30d8eb2",
-      "epochDay": 19230,
-      "description": "Sinclair 2",
-      "updatedAt": 1793388955713
-    },
-    {
-      "id": "b4fc4d10-1a58-46ce-af01-2b332b6cd185",
-      "epochDay": 19260,
-      "description": "thinner all over the top",
-      "updatedAt": 1793388955713
-    }
-  ],
-  "hairPhotos": [
+  "progressPhotos": [
     {
       "id": "7866fdd4-f577-4182-bad0-b7168f5bb85b",
       "epochDay": 19200,
+      "pose": "hair",
       "fileName": "7866fdd4-f577-4182-bad0-b7168f5bb85b.jpg",
       "updatedAt": 1793388955713
-    }
-  ],
-  "progressPhotos": [
+    },
     {
       "id": "3b0f6c52-9d1e-4a7b-8c2f-5e6a7d8b9c01",
       "epochDay": 19210,
@@ -1710,6 +1689,13 @@
     },
     {
       "id": "back",
+      "name": "",
+      "builtIn": true,
+      "hidden": false,
+      "updatedAt": 0
+    },
+    {
+      "id": "hair",
       "name": "",
       "builtIn": true,
       "hidden": false,
@@ -2168,23 +2154,9 @@
   ],
   "areaStates": [
     {
-      "area": "hairPhotos",
-      "hidden": false,
-      "finishedEpochDay": 19300,
-      "suspendedEpochDay": null,
-      "updatedAt": 1793388955713
-    },
-    {
       "area": "hairRemovalSessions",
       "hidden": false,
       "finishedEpochDay": 19250,
-      "suspendedEpochDay": null,
-      "updatedAt": 1793388955713
-    },
-    {
-      "area": "hairStages",
-      "hidden": false,
-      "finishedEpochDay": 19300,
       "suspendedEpochDay": null,
       "updatedAt": 1793388955713
     },

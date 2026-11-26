@@ -85,8 +85,8 @@ describe('a hostile or corrupted value, key by key', () => {
 
   test('a type-confused value is rejected for a boolean, a number and an array key', () => {
     expect(portableValueForKey('checkInEnabled', 'true')).toBeUndefined();
-    expect(portableValueForKey('hairAnchorEpochDay', 'soon')).toBeUndefined();
-    expect(portableValueForKey('hairAnchorEpochDay', Number.NaN)).toBeUndefined();
+    expect(portableValueForKey('hrtStartEpochDay', 'soon')).toBeUndefined();
+    expect(portableValueForKey('hrtStartEpochDay', Number.NaN)).toBeUndefined();
     expect(portableValueForKey('activeScales', 'euphoria_dysphoria')).toBeUndefined();
   });
 
@@ -139,7 +139,7 @@ describe('a valid archive', () => {
   test('a null answer stays null on every nullable key', () => {
     expect(portableValueForKey('metricDimension', null)).toBeNull();
     expect(portableValueForKey('journeyAnchorMilestoneId', null)).toBeNull();
-    expect(portableValueForKey('hairAnchorEpochDay', null)).toBeNull();
+    expect(portableValueForKey('hrtStartEpochDay', null)).toBeNull();
     expect(portableValueForKey('pinnedRows', null)).toBeNull();
   });
 });

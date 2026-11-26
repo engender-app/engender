@@ -4838,7 +4838,6 @@ try {
     '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
     '/settings/body-regions',
     '/media/photos',
-    '/body/hair-progress',
     '/body/hair-removal', '/care/labs', '/care/regimen',
     '/health/cycle-events', '/health/surgery',
     '/health/dilation',
@@ -4960,13 +4959,12 @@ try {
    show. */
 await flow('fill every feature', async () => {
 try {
-  await fresh('/body/hair-progress'); // any settings-area route boots the shell before the demo bar is queried
+  await fresh('/body/hair-removal'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-fill-every-feature]');
   await page.waitForURL('**/more', { timeout: 120000 });
   await booted();
 
   const NOT_EMPTY_ROUTES = [
-    ['/body/hair-progress', 'hair-stages-empty'],
     ['/body/hair-removal', 'hair-removal-empty'],
     ['/care/labs', 'labs-empty'],
     ['/care/regimen', 'regimen-empty'],
@@ -5552,10 +5550,6 @@ try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-hub-section="body"][data-list-row="effects"]').click();
   await page.waitForURL('**/care/changes');
-
-  // ... and the other change hanging off the same screen.
-  await page.locator('[data-list-row="hair-progress"]').click();
-  await page.waitForURL('**/body/hair-progress');
 
   // Health > Surgery journey > Dilation. The row is gated on the person
   // having a surgery journey at all, which "Fill every feature" writes -
@@ -7172,7 +7166,7 @@ try {
      if the journal starts bare. Nothing later in this file reads regimen,
      dose or injection-map state, so resetting here does not cost any flow
      after it. */
-  await fresh('/body/hair-progress'); // any settings-area route boots the shell before the demo bar is queried
+  await fresh('/body/hair-removal'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-reset-demo]');
   await page.waitForURL(BASE + '/');
   await booted();
@@ -8074,7 +8068,7 @@ try {
      top of this file: everything between the two - an archive round trip, a
      Daylio import, the discard flows - replaces the journal, so by this
      point it holds the persona's entry and milestone photographs alone. */
-  await page.goto(BASE + '/body/hair-progress', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/body/hair-removal', { waitUntil: 'networkidle' });
   await booted();
   await page.click('[data-fill-every-feature]');
   await page.waitForURL('**/more', { timeout: 120000 });

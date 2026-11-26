@@ -206,8 +206,7 @@
     }
     /* Holding, this block carries the screen's 20 under it; answered, its
        content's last block carries its own and this one carries none
-       (below), so a last block asking for something else - hair progress's
-       photos, 16 - does not change the gap at rest. The difference travels
+       (below), so a last block asking for something else - a photo row, 16 - does not change the gap at rest. The difference travels
        rather than landing in the frame of the swap. While `maskHeight`
        holds a height, the last block's margin cannot collapse out through
        this one, so the travel ends at that margin, which is what the gap

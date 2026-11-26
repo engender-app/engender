@@ -34,7 +34,6 @@ import { makeEffectCategoriesArea, type EffectCategoriesArea } from './effectCat
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
-import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
 import { makeProgressPhotosArea, type ProgressPhotosArea } from './progressPhotos';
 import { makeErasArea, type ErasArea } from './eras';
@@ -95,7 +94,7 @@ export interface Journal {
   /** Every photograph in the journal, whichever table holds it (phase 11
       ticket 14): a read across `photos` and the five areas that keep photo
       rows of their own, for the one library `/media/photos` draws. Owns no
-      table and writes nothing - `photos`, `hairProgress`, `hairRemoval`,
+      table and writes nothing - `photos`, `hairRemoval`,
       `tryouts`, `procedures` and the entry editor keep every write. */
   photoLibrary: PhotoLibraryArea;
   /** The paper a transition generates (phase 8 features ticket 52,
@@ -255,22 +254,15 @@ export interface Journal {
       (phase 5 ticket 41, CONTEXT: "Effect category") - tag_group's own
       semantics, reused. */
   effectCategories: EffectCategoriesArea;
-  /** Self-staging against a published scale, and scheduled fixed-position
-      photos (phase 4 ticket 09), read against a day resolved above this
-      seam (hairAnchor.ts's hairAnchorEpochDay). Distinct
-      from personalEffects' single "hair changes" marker - the two are not
-      merged. */
-  hairProgress: HairProgressArea;
   /** Electrolysis/laser sessions - date, area, method, pain rating, cost,
       free-text provider and optional photos (phase 5 ticket 08). Its own
-      closed area vocabulary (hairRemovalAreas.ts), distinct from
-      hairProgress's Norwood-Hamilton staging and never merged with the
+      closed area vocabulary (hairRemovalAreas.ts), never merged with the
       body-region vocabulary (bodyRegions.ts). No episode reference, the
       same reason sideEffects has none. */
   hairRemoval: HairRemovalArea;
-  /** Photographs taken on purpose in one of three poses, to compare the
-      same pose over time (pre-release-human 12, bug 25). Dated in their own
-      right, the shape hairProgress's photos have. */
+  /** Photographs taken on purpose in a pose - front, side, back, hair or
+      the person's own - to compare the same pose over time
+      (pre-release-human 12, bug 25). Dated in their own right. */
   progressPhotos: ProgressPhotosArea;
   /** The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort
       list"): who to text, which walk, which playlist, entirely their own
@@ -389,7 +381,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const effectCategories = makeEffectCategoriesArea(driver);
   const cycleEvents = makeCycleEventsArea(driver);
   const wearSessions = makeWearSessionsArea(driver, reminders);
-  const hairProgress = makeHairProgressArea(driver, files);
   const hairRemoval = makeHairRemovalArea(driver, files);
   const progressPhotos = makeProgressPhotosArea(driver, files);
   const tryouts = makeTryoutsArea(driver, files);
@@ -472,7 +463,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       cycleEvents,
       wearSessions,
       feltSense,
-      hairProgress,
       hairRemoval,
       appointments,
       procedures,
@@ -491,7 +481,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       cycleEvents,
       wearSessions,
       feltSense,
-      hairProgress,
       hairRemoval,
       progressPhotos,
       appointments,
@@ -513,7 +502,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     )(['getBook']),
     personalEffects,
     effectCategories,
-    hairProgress,
     hairRemoval,
     progressPhotos,
     procedures,

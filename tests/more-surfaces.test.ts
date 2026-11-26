@@ -274,8 +274,7 @@ describe('every row the hub carries', () => {
     ['doubt', 'shelter', '/doubt', 'support', 'written'],
     ['resources', 'lifebuoy', '/support/resources', 'support', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
-    ['documents', 'documents', '/media/documents', 'media', 'read'],
-    ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read']
+    ['documents', 'documents', '/media/documents', 'media', 'read']
   ];
 
   it('is exactly this list, in this order', () => {
@@ -475,7 +474,6 @@ describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
     ['src/routes/settings/+page.svelte', 'data-genital-effects-toggle>\\s*<span class="kit-row-ico"><Icon name="ICON"', icon('effects'), 'sparkle'],
     ['src/routes/care/changes/+page.svelte', 'icon="ICON"\\s+key="effects-no-regimen"', icon('effects'), 'sparkle'],
     ['src/lib/components/BodyRegionInspectorSheet.svelte', 'icon="ICON"\\s+title={`\\${hairRemovalAreaName', icon('hair-removal'), 'sparkle'],
-    ['src/lib/components/BodyRegionInspectorSheet.svelte', 'icon="ICON"\\s+title={hairStagingText\\(st\\)}', icon('hair-progress'), 'eye'],
     ['src/routes/transition/tryouts/[id]/+page.svelte', 'icon="ICON"\\s+key="tryout-compare"', 'columns', 'shuffle'],
     ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-compare"', 'columns', 'shuffle'],
     ['src/routes/compare/+page.svelte', 'key="compare-shortcut"\\s+icon="ICON"', 'columns', 'shuffle'],

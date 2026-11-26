@@ -30,9 +30,9 @@ try {
       const ctx = canvas.getContext('2d'); ctx.fillStyle = colour; ctx.fillRect(0, 0, 360, 360);
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg'));
       const full = new Uint8Array(await blob.arrayBuffer());
-      await journal.hairProgress.addPhoto(10000, { full, thumb: full });
+      await journal.progressPhotos.addPhoto(10000, 'hair', { full, thumb: full });
     }
-    const link = document.createElement('a'); link.href = '/media/photos/export?source=hair';
+    const link = document.createElement('a'); link.href = '/media/photos/export?source=progress';
     link.id = 'export-proof-link'; link.textContent = 'Open'; document.body.append(link);
   });
   await page.locator('#export-proof-link').click();
@@ -106,7 +106,7 @@ try {
     assert.equal(await page.locator('.photo-cell[aria-pressed="true"]').count(), 1);
     assert.equal(await dateValue(page.locator('#pj-start')), '1997-05-19');
     assert.equal(await dateValue(page.locator('#pj-end')), '1997-05-19');
-    assert.match(page.url(), /source=hair/);
+    assert.match(page.url(), /source=progress/);
     assert.equal(await page.getByRole('radio', { name: output === 'collage' ? 'Collage' : 'Timelapse', exact: true }).getAttribute('aria-checked'), 'true');
   }
   await page.locator('.photo-cell[aria-pressed="false"]').click();
@@ -229,8 +229,8 @@ try {
       const canvas = document.createElement('canvas'); canvas.width = canvas.height = 16;
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg'));
       const full = new Uint8Array(await blob.arrayBuffer());
-      const existing = await journal.hairProgress.getPhotosOnDay(10000);
-      for (let i = existing.length; i < count; i++) await journal.hairProgress.addPhoto(10000, { full, thumb: full });
+      const existing = (await journal.progressPhotos.getPhotos()).filter((photo) => photo.epochDay === 10000);
+      for (let i = existing.length; i < count; i++) await journal.progressPhotos.addPhoto(10000, 'hair', { full, thumb: full });
     }, count);
     await page.waitForFunction((count) => document.querySelectorAll('.photo-cell').length === count, count);
     assert.match(await page.locator('[data-app-savebar]').innerText(), new RegExp('Selected photos: ' + count));

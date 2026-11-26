@@ -10,8 +10,8 @@
 
    Phase 11 all-four-doors ticket 13 took `health/side-effects` off this list
    without adding a replacement: side effects finish on
-   care/changes now, under `effects`, the way hair progress's
-   two areas always have. Ticket 21 moved that screen's own address, and
+   care/changes now, under `effects`, the way voice's two areas
+   always have. Ticket 21 moved that screen's own address, and
    the voice screen's, off the retired Practice prefix.
 
    A source scan, like the clinician summary's print-parity test: these are
@@ -50,7 +50,6 @@ describe('where the finish control is mounted', () => {
 
   it('puts each group on the screen that owns it', () => {
     expect(mounts).toEqual([
-      { route: 'body/hair-progress', group: 'hair-progress' },
       { route: 'body/hair-removal', group: 'hair-removal' },
       { route: 'body/wear', group: 'wear' },
       { route: 'care/changes', group: 'effects' },
@@ -64,13 +63,13 @@ describe('where the finish control is mounted', () => {
     expect(new Set(groups).size).toBe(groups.length);
   });
 
-  it('covers every finishable area through those six screens', () => {
-    /* The sections, not the groups: hair progress, effects and
-       voice are each one screen and two areas, so a count of screens would
-       not prove the nine are reachable. */
+  it('covers every finishable area through those five screens', () => {
+    /* The sections, not the groups: effects and voice are each one screen
+       and two areas, so a count of screens would not prove the seven are
+       reachable. */
     const covered = mounts.flatMap((m) => [...AREA_GROUPS[m.group as keyof typeof AREA_GROUPS]]);
-    expect(covered.length).toBe(9);
-    expect(new Set(covered).size).toBe(9);
+    expect(covered.length).toBe(7);
+    expect(new Set(covered).size).toBe(7);
   });
 
   it('names groups the More hub has rows for, and the same screen owns both', () => {
@@ -89,7 +88,6 @@ describe('where the finish control is mounted', () => {
     const owner = Object.fromEntries(mounts.map((m) => [m.group, m.route]));
     expect(AREA_GROUP_ROW_KEYS).toEqual({
       wear: 'wear',
-      'hair-progress': 'hair-progress',
       'hair-removal': 'hair-removal',
       effects: 'effects',
       voice: 'voice-benchmark',

@@ -7,8 +7,8 @@
 
      Hiding an area takes it out of the navigation - ADR-0052's own
      consequence, and CONTEXT.md's "Hidden" says it in those words. Drawn as
-     a literal `<ListRow>` on each host, a hidden hair progress area would
-     have gone from the hub and stayed on the changes screen, which is
+     a literal `<ListRow>` on each host, a hidden dilation area would
+     have gone from the hub and stayed on the surgery screen, which is
      hiding that hides nothing. And an area the person has declared finished
      says so under its title, in the same words `area_finish_done_title`
      uses on the screen where they said it.
@@ -103,8 +103,7 @@
           .filter((row) => !rowHidden(row, states))
           /* No last write and nothing forward: a hosted row is drawn beside
              the very records it would report on (dilation on the surgery
-             screen, hair progress on the screen that asks what you
-             noticed), so its line stays the sentence about what is behind
+             screen), so its line stays the sentence about what is behind
              it. None of the three is a row `rowForward.ts` answers for
              either, so `{}` is the whole answer rather than a read this
              screen skipped. */

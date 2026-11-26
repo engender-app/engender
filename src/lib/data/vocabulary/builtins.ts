@@ -122,10 +122,11 @@ export type BuiltInBodyRegionKey = (typeof BUILT_IN_BODY_REGIONS)[number];
 
 /* The poses a progress photo is taken in that every install starts with
    (pre-release-human 12), in the order the screen offers them. A person
-   renames or hides one and adds their own (progressPhotos.ts); these three
+   renames or hides one and adds their own (progressPhotos.ts); these four
    are never deleted, so every photo an older journal or archive holds
-   keeps the pose it names. */
-export const BUILT_IN_PROGRESS_POSES = ['front', 'side', 'back'] as const;
+   keeps the pose it names. `hair` is where the hair progress photos of
+   a journal before version 123 went (tally-and-hair-fold-migration.ts). */
+export const BUILT_IN_PROGRESS_POSES = ['front', 'side', 'back', 'hair'] as const;
 
 /* The effect categories personal effects are grouped under (phase 5
    ticket 41, CONTEXT: "Effect category"), taken from genderdysphoria.fyi's

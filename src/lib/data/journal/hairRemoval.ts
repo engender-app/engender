@@ -4,14 +4,13 @@
    give for standing alone.
 
    A session's photos are their own table (hair_removal_photo) rather than a
-   third owner arm on `photo` (schema.ts explains why for hair_photo:
-   SQLite cannot widen that table's exactly-one-owner CHECK without a full
-   rebuild). Unlike hair_photo, though, a session photo genuinely belongs to
-   one session - a before/after picture of that treatment, not an
-   independently dated series - so hair_removal_photo carries a session_id
-   foreign key and is read and applied as the session's own nested children
-   (archiveRead.ts/archiveApply.ts, modeled on checklist/checklist_item
-   rather than on hair_stage/hair_photo's disjoint pair). The shared pipeline
+   third owner arm on `photo` (schema.ts explains why: SQLite cannot widen
+   that table's exactly-one-owner CHECK without a full rebuild). A session
+   photo genuinely belongs to one session - a before/after picture of that
+   treatment, not an independently dated series - so hair_removal_photo
+   carries a session_id foreign key and is read and applied as the
+   session's own nested children (archiveRead.ts/archiveApply.ts, modeled on
+   checklist/checklist_item). The shared pipeline
    is still reused exactly as the ticket asks: stagePhoto (photos.ts) writes
    the same normalized, metadata-stripped bytes through the same
    file-before-row order, and removeFilesOf reclaims them the same way on
@@ -48,9 +47,9 @@ interface HairRemovalSessionInput {
 }
 
 /** One photo attached to a hair-removal session. Its own shape rather than
-    photos.ts's DatedPhoto or hairProgress.ts's HairPhoto: it carries its
-    owning session's id rather than its own date, since (unlike a hair
-    photo) it has no date of its own to carry - a session's date is enough. */
+    photos.ts's DatedPhoto: it carries its owning session's id rather than
+    its own date, since it has no date of its own to carry - a session's
+    date is enough. */
 export interface HairRemovalPhoto {
   id: string;
   sessionId: string;

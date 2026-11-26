@@ -102,7 +102,7 @@ for (const mode of ['verify', 'merge', 'replace'] as const) {
       const full = snapshot.journal.entries[0].photos[0].fileName;
       const mutations: ((j: ArchiveJournal) => void)[] = [
         (j) => { j.milestones.find((row) => row.photo)!.photo!.fileName = full; },
-        (j) => { j.hairPhotos[0].fileName = full; },
+        (j) => { j.progressPhotos[0].fileName = full; },
         (j) => { j.hairRemovalSessions.find((row) => row.photos.length)!.photos[0].fileName = full; },
         (j) => { j.procedures.find((row) => row.photos.length)!.photos[0].fileName = full; },
         (j) => { j.tryouts.find((row) => row.photos.length)!.photos[0].fileName = full; },
@@ -111,8 +111,8 @@ for (const mode of ['verify', 'merge', 'replace'] as const) {
         (j) => { j.entries[0].videos[0].fileName = full; },
         (j) => { j.voiceBenchmarks[0].passageFileName = full; },
         (j) => { j.voiceBenchmarks[0].vowelFileName = full; },
-        (j) => { j.hairPhotos[0].fileName = thumbFileName(full); },
-        (j) => { j.hairPhotos[0].fileName = documentThumbName(j.documents.find((row) => row.fileName.endsWith('.pdf'))!.fileName); }
+        (j) => { j.progressPhotos[0].fileName = thumbFileName(full); },
+        (j) => { j.progressPhotos[0].fileName = documentThumbName(j.documents.find((row) => row.fileName.endsWith('.pdf'))!.fileName); }
       ];
       for (const mutation of mutations) await refuses(mode, await encoded(snapshot, mutation));
     } finally {

@@ -91,8 +91,6 @@ export interface LongJournalSummary {
       actually match something, rather than costing a query plan for a
       clause that never does. */
   regionEuphoriaEntries: number;
-  /** Hair-progress stagings (phase 5 ticket 33). */
-  hairStagings: number;
   /** Doses logged against the fixture's one regimen episode (phase 5
       ticket 40). */
   doseEvents: number;
@@ -245,9 +243,8 @@ const DIMENSION_KEYS: string[] = BUILT_IN_DIMENSIONS.map((d) => d.key);
    floors cleared and not, not every region logged on every day. */
 const BODY_REGION_KEYS = ['chest', 'hairline', 'genitals', 'voice_throat', 'face_jaw'];
 
-/* Hair tracking (phase 5 ticket 33): a staging every ~200 days, the real
+/* Hair progress photos (phase 5 ticket 33): one every ~200 days, the real
    cadence a self-staging screen sees - nobody re-stages weekly. */
-const HAIR_STAGES = ['temples back a little', 'crown thinner', 'about the same', 'parting wider'];
 const HAIR_STAGE_STEP_DAYS = 200;
 
 /* The dose schedule (schema v38, ADR-0027, phase 5 ticket 40): one episode
@@ -345,7 +342,6 @@ export async function generateLongJournal(
     tagWord: CUSTOM_TAG_LABELS[0].label,
     tagWordEntries: 0,
     regionEuphoriaEntries: 0,
-    hairStagings: 0,
     doseEvents: 0,
     additionalDoseEvents: 0,
     hairRemovalSessions: 0,
@@ -484,24 +480,15 @@ export async function generateLongJournal(
     }
   }
 
-  // Hair-progress stagings, spread across the decade rather than clustered:
-  // hairAnchorEpochDay and the settings screen it feeds read every staging,
-  // and a handful all on one day would not exercise that any differently
-  // from a single row. A few dated photos alongside them, its own table
-  // (hairProgress.ts) rather than the entry photos above - getPhotos()
-  // would otherwise be reading an empty table at any journal size.
+  // Hair-pose progress photos, spread across the decade rather than
+  // clustered, in their own table (progressPhotos.ts) rather than the entry
+  // photos above - getPhotos() would otherwise be reading an empty table at
+  // any journal size. One every fourth step - about every 800 days, a photo
+  // shoot being rarer than a self-staging was.
   let hairPhotoIndex = 0;
   for (let day = firstEpochDay, i = 0; day <= lastEpochDay; day += HAIR_STAGE_STEP_DAYS, i++) {
-    await journal.hairProgress.upsertStage({
-      epochDay: day,
-      description: HAIR_STAGES[i % HAIR_STAGES.length]
-    });
-    summary.hairStagings++;
-
-    // One photo every fourth staging - about every 800 days, a photo shoot
-    // being rarer than a self-staging.
     if (i % 4 === 0) {
-      await journal.hairProgress.addPhoto(day, await makePhoto(hairPhotoIndex));
+      await journal.progressPhotos.addPhoto(day, 'hair', await makePhoto(hairPhotoIndex));
       hairPhotoIndex++;
     }
   }

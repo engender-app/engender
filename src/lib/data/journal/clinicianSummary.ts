@@ -94,7 +94,7 @@ export interface ClinicianSummaryProcedure extends Procedure {
 /** A stream the person has said they are done with, and the day they said it
     ended (phase 8 features ticket 04, ADR-0052). Named by hub row rather than
     by archive section, because that is what the reader recognises and because
-    hair progress is two sections finished together. */
+    voice is two sections finished together. */
 interface ClinicianSummaryFinishedArea {
   key: AreaGroupKey;
   epochDay: number;

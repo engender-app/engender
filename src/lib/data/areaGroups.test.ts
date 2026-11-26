@@ -28,11 +28,10 @@ test('every finishable area is grouped, and none of them twice', () => {
   assert.equal(new Set(grouped).size, grouped.length);
 });
 
-test('hair progress, effects and voice front two areas', () => {
+test('effects and voice front two areas', () => {
   const several = AREA_GROUP_KEYS.filter((key) => AREA_GROUPS[key].length > 1);
 
-  assert.deepEqual(several, ['hair-progress', 'effects', 'voice']);
-  assert.deepEqual([...AREA_GROUPS['hair-progress']], ['hairStages', 'hairPhotos']);
+  assert.deepEqual(several, ['effects', 'voice']);
   assert.deepEqual([...AREA_GROUPS['effects']], ['personalEffects', 'sideEffects']);
   assert.deepEqual([...AREA_GROUPS['voice']], ['voiceBenchmarks', 'voicePracticeTakes']);
 });
@@ -45,17 +44,17 @@ test('a group of one is finished on the day its area is', () => {
 });
 
 test('a group fronting two areas is not finished until both are', () => {
-  const half: AreaStates = { hairStages: finished(19800) };
-  const whole: AreaStates = { hairStages: finished(19800), hairPhotos: finished(19800) };
+  const half: AreaStates = { personalEffects: finished(19800) };
+  const whole: AreaStates = { personalEffects: finished(19800), sideEffects: finished(19800) };
 
-  assert.equal(groupFinishedOn('hair-progress', half), null);
-  assert.equal(groupFinishedOn('hair-progress', whole), 19800);
+  assert.equal(groupFinishedOn('effects', half), null);
+  assert.equal(groupFinishedOn('effects', whole), 19800);
 });
 
 test('two areas finished on days that disagree read as the later one', () => {
-  const states: AreaStates = { hairStages: finished(19800), hairPhotos: finished(19850) };
+  const states: AreaStates = { personalEffects: finished(19800), sideEffects: finished(19850) };
 
-  assert.equal(groupFinishedOn('hair-progress', states), 19850);
+  assert.equal(groupFinishedOn('effects', states), 19850);
 });
 
 test('hiding an area does not finish it', () => {
@@ -68,13 +67,13 @@ test('the finished groups come back oldest first, each named once', () => {
   const states: AreaStates = {
     wearSessions: finished(19900),
     hairRemovalSessions: finished(19700),
-    hairStages: finished(19800),
-    hairPhotos: finished(19800)
+    personalEffects: finished(19800),
+    sideEffects: finished(19800)
   };
 
   assert.deepEqual(finishedGroups(states), [
     { key: 'hair-removal', epochDay: 19700 },
-    { key: 'hair-progress', epochDay: 19800 },
+    { key: 'effects', epochDay: 19800 },
     { key: 'wear', epochDay: 19900 }
   ]);
 });
@@ -119,9 +118,9 @@ test('the suspended groups come back oldest first, each named once, and a finish
 });
 
 test("a group's last write is the latest of its areas, and null when none has one", () => {
-  assert.equal(groupLastWrite('hair-progress', { hairStages: 19000, hairPhotos: 19500 }), 19500);
-  assert.equal(groupLastWrite('hair-progress', { hairStages: 19000, hairPhotos: null }), 19000);
-  assert.equal(groupLastWrite('hair-progress', { hairStages: null, hairPhotos: null }), null);
+  assert.equal(groupLastWrite('effects', { personalEffects: 19000, sideEffects: 19500 }), 19500);
+  assert.equal(groupLastWrite('effects', { personalEffects: 19000, sideEffects: null }), 19000);
+  assert.equal(groupLastWrite('effects', { personalEffects: null, sideEffects: null }), null);
 });
 
 test('the offer waits until an area has been quiet for the whole window', () => {
@@ -187,9 +186,9 @@ test('a group fronting two areas reads as declined from either of them', () => {
   /* Declining writes both, so the two agree today. They can only disagree
      after a regroup, and there the safe answer is still "no": re-asking is
      the failure the preference exists to prevent. */
-  assert.equal(groupDeclined('hair-progress', ['hairStages', 'hairPhotos']), true);
-  assert.equal(groupDeclined('hair-progress', ['hairStages']), true);
-  assert.equal(groupDeclined('hair-progress', []), false);
+  assert.equal(groupDeclined('effects', ['personalEffects', 'sideEffects']), true);
+  assert.equal(groupDeclined('effects', ['personalEffects']), true);
+  assert.equal(groupDeclined('effects', []), false);
 });
 
 test('a key this build has never heard of declines nothing', () => {
@@ -227,16 +226,16 @@ test('one area of a pair still being written in holds the offer back', () => {
   };
 
   assert.equal(
-    shouldOfferFinish('hair-progress', {
+    shouldOfferFinish('effects', {
       ...input,
-      lastWrites: { hairStages: 19000, hairPhotos: TODAY - 1 }
+      lastWrites: { personalEffects: 19000, sideEffects: TODAY - 1 }
     }),
     false
   );
   assert.equal(
-    shouldOfferFinish('hair-progress', {
+    shouldOfferFinish('effects', {
       ...input,
-      lastWrites: { hairStages: 19000, hairPhotos: null }
+      lastWrites: { personalEffects: 19000, sideEffects: null }
     }),
     true
   );

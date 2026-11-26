@@ -14,21 +14,20 @@
      read.
 
      Not a Segmented (after-release 28, audit V12). Dose log's segmented
-     control swaps what the screen shows; Hair progress used the same pill
+     control swaps what the screen shows; a screen once used the same pill
      to scroll to a section, so one look had two behaviours. A jump now looks like what it is - names over a rule, the
      page's own links - and a Segmented only ever swaps. The mark is the
      kit heading's 3px rule in small, travelling under the names.
 
      What moves is the scroll of the app's own region (`[data-app-scroll-
      region]`), never the window: the window does not scroll in this app,
-     which is why Hair progress's jump back used to land nowhere (audit
-     L08-07). Leaving the first half remembers where it was read to, and
+     which is why a jump back used to land nowhere (audit L08-07). Leaving the first half remembers where it was read to, and
      coming back lands there again, not at its top.
 
      The halves usually mount after this does (inside a ReadReserve, behind
      a read), so the scroll watcher waits for every target to exist before
-     it observes them; Hair progress's watcher used to look once, find
-     nothing and never attach. */
+     it observes them; a watcher used to look once, find nothing and
+     never attach. */
   import { onMount } from 'svelte';
   import { scrollBehavior } from '$lib/motion/tokens';
 

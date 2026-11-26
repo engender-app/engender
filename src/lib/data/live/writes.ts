@@ -109,18 +109,14 @@ export const TABLE_NAMES = [
      chart's boundaries) have no reason to re-run when a mute changes, and a
      mute write does not change anything `getEras()` itself returns. */
   'eraMute',
-  /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
-     nothing reads one without the other, the same reasoning 'dose' gives -
-     the screen shows both against the same anchor. */
-  'hairProgress',
   /* One name for hair-removal sessions and their photos alike (phase 5
      ticket 08): nothing reads one without the other, the same reasoning
-     'hairProgress' gives. */
+     'dose' gives. */
   'hairRemoval',
   /* Progress photos (pre-release-human 12, bug 25): one table, one name. */
   'progressPhoto',
   /* One name for a procedure and its recovery photos (phase 5 ticket 07):
-     nothing reads one without the other, the same reasoning 'hairProgress'
+     nothing reads one without the other, the same reasoning 'dose'
      gives. A procedure's recovery checklist is not in here - that is an
      ordinary 'checklist' row, and a write to it has to invalidate the
      appointment prep list's reads too. Its consults are not in here either
@@ -145,7 +141,7 @@ export const TABLE_NAMES = [
   /* Time-capsule letters (phase 4 ticket 19). */
   'letter',
   /* Voice recordings (phase 4 ticket 24). Its own name rather than folded
-     into 'entry' the way `hairProgress`/`tryout` fold two
+     into 'entry' the way `tryout` folds two
      tables into one name: unlike those, a screen elsewhere - a future
      voice-notes browsing view, or ticket 25's compare mode - could read
      recordings without reading the rest of an entry, the same reason
@@ -459,7 +455,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
         'photo',
         'entry',
         'milestone',
-        'hairProgress',
         'hairRemoval',
         'tryout',
         'procedure',
@@ -474,7 +469,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
         'photo',
         'entry',
         'milestone',
-        'hairProgress',
         'hairRemoval',
         'tryout',
         'procedure',
@@ -630,22 +624,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getRunningSession: ['wearSession'],
       latestKind: ['wearSession'],
       lastWriteEpochDay: ['wearSession']
-    }
-  }),
-  hairProgress: classify<Journal['hairProgress']>()({
-    writes: {
-      upsertStage: ['hairProgress'],
-      deleteStage: ['hairProgress'],
-      addPhoto: ['hairProgress'],
-      deletePhoto: ['hairProgress']
-    },
-    reads: {
-      getStages: ['hairProgress'],
-      getStagesOnDay: ['hairProgress'],
-      getPhotos: ['hairProgress'],
-      getPhotosOnDay: ['hairProgress'],
-      lastStageWriteEpochDay: ['hairProgress'],
-      lastPhotoWriteEpochDay: ['hairProgress']
     }
   }),
   progressPhotos: classify<Journal['progressPhotos']>()({
@@ -1024,7 +1002,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
          renaming a mode has to reach it (ticket 19). */
       constellationReadings: ['entry', 'dimension', 'presentation'],
       bodyRegionTrend: ['entry'],
-      bodyRegionBreakdown: ['entry', 'photo', 'hairRemoval', 'hairProgress'],
+      bodyRegionBreakdown: ['entry', 'photo', 'hairRemoval'],
       weeklyWearHours: ['wearSession'],
       bodyRegionMap: ['entry'],
       entryCountsByDay: ['entry'],

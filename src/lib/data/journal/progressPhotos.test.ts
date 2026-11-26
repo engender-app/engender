@@ -87,16 +87,17 @@ test('the orphan sweep keeps both files of a progress photo', async () => {
   assert.deepEqual(files.names(), [...filesOf(photo.fileName)].sort());
 });
 
-/* Poses as the person's own list (pre-release-human 12): the three built-ins
+/* Poses as the person's own list (pre-release-human 12): the four built-ins
    are seeded by key and can be renamed and hidden but never deleted; a
    custom pose is minted a uuid, and deleting it takes its photos with it. */
 
-test('the three built-in poses are there, in order, under the catalogue name', async () => {
+test('the four built-in poses are there, in order, under the catalogue name', async () => {
   const { journal } = await journalWithFiles();
   assert.deepEqual(await journal.progressPhotos.getPoses(), [
     { id: 'front', builtIn: true, name: '', hidden: false },
     { id: 'side', builtIn: true, name: '', hidden: false },
-    { id: 'back', builtIn: true, name: '', hidden: false }
+    { id: 'back', builtIn: true, name: '', hidden: false },
+    { id: 'hair', builtIn: true, name: '', hidden: false }
   ]);
 });
 
@@ -136,14 +137,14 @@ test('deleting a custom pose deletes its photos and their files, and leaves the 
   await journal.progressPhotos.deletePose(pose);
 
   assert.deepEqual((await journal.progressPhotos.getPhotos()).map((photo) => photo.id), [kept]);
-  assert.deepEqual((await journal.progressPhotos.getPoses()).map((p) => p.id), ['front', 'side', 'back']);
+  assert.deepEqual((await journal.progressPhotos.getPoses()).map((p) => p.id), ['front', 'side', 'back', 'hair']);
   for (const name of filesOf(gone.fileName)) assert.equal(await files.read(name), null);
 });
 
 test('a built-in pose cannot be deleted', async () => {
   const { journal } = await journalWithFiles();
   await assert.rejects(journal.progressPhotos.deletePose('front'));
-  assert.equal((await journal.progressPhotos.getPoses()).length, 3);
+  assert.equal((await journal.progressPhotos.getPoses()).length, 4);
 });
 
 async function contents(journal: Awaited<ReturnType<typeof journalWithFiles>>['journal'], drop?: 'progressPoses') {
@@ -167,7 +168,7 @@ test('an archive written before poses were a list (120, 121) restores with the b
 
   await target.archive.replace(await contents(source, 'progressPoses'));
 
-  assert.deepEqual((await target.progressPhotos.getPoses()).map((p) => p.id), ['front', 'side', 'back']);
+  assert.deepEqual((await target.progressPhotos.getPoses()).map((p) => p.id), ['front', 'side', 'back', 'hair']);
   assert.deepEqual((await target.progressPhotos.getPhotos()).map((p) => p.pose), ['side']);
 });
 
@@ -185,7 +186,23 @@ test('custom poses, a renamed built-in and their photos travel in an archive', a
     { id: 'front', builtIn: true, name: '', hidden: false },
     { id: 'side', builtIn: true, name: '', hidden: true },
     { id: 'back', builtIn: true, name: 'Behind', hidden: false },
+    { id: 'hair', builtIn: true, name: '', hidden: false },
     { id: pose, builtIn: false, name: 'Flexing', hidden: false }
   ]);
   assert.deepEqual((await target.progressPhotos.getPhotos()).map((p) => p.pose), [pose]);
+});
+
+test('the hair pose is a built-in like the others: shown by default, renamed or hidden at will', async () => {
+  const { journal } = await journalWithFiles();
+  const id = await journal.progressPhotos.addPhoto(20000, 'hair', shot('h'));
+
+  assert.deepEqual((await journal.progressPhotos.getPhotos()).map((p) => [p.id, p.pose]), [[id, 'hair']]);
+  assert.equal((await journal.progressPhotos.getPoses()).find((p) => p.id === 'hair')?.hidden, false);
+
+  await journal.progressPhotos.renamePose('hair', 'Scalp');
+  await journal.progressPhotos.setPoseHidden('hair', true);
+  assert.deepEqual((await journal.progressPhotos.getPoses()).find((p) => p.id === 'hair'), {
+    id: 'hair', builtIn: true, name: 'Scalp', hidden: true
+  });
+  await assert.rejects(journal.progressPhotos.deletePose('hair'));
 });

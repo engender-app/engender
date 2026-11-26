@@ -4,7 +4,7 @@
    reminders and labs - which is what most of the app is
    reviewed against, and what the walkthrough asserts specific facts about
    (150 days of entries, five estradiol results, and so on). Everything else
-   the More hub links to - regimen, hair progress, hair
+   the More hub links to - regimen, hair
    removal, roadmap, letters, tryouts, personal effects, wear sessions,
    cycle events, side effects, surgery, appointment prep, stock, voice -
    stayed empty, which is the gap ticket 25's sign-off review ran into
@@ -174,36 +174,13 @@ export async function seedFullFixture(
   }
 
   const trackingStart = today - 365;
-  const hairStages = [
-    say('Hairline where it was', 'Linia włosów tam, gdzie była'),
-    say('Temples a little further back', 'Zakola trochę głębsze'),
-    say('Temples the same, crown fuller', 'Zakola bez zmian, czubek gęstszy'),
-    say('Thinner at the crown in bright light', 'W mocnym świetle czubek rzadszy'),
-    say('Crown about the same', 'Czubek mniej więcej bez zmian'),
-    say('Parting looks narrower', 'Przedziałek chyba węższy'),
-    say('Temples filling in', 'Zakola zarastają'),
-    say('No change I can see', 'Nie widzę zmian')
-  ];
-  let hairPhotoCount = 0;
-  for (let day = trackingStart, i = 0; day <= today; day += between(60, 140), i++) {
-    await journal.hairProgress.upsertStage({ epochDay: day, description: hairStages[i % hairStages.length] });
-    /* One photograph per staging, not a 40% roll. The roll was seeded, so
-       it came up the same way every time and that way was never: the demo
-       journal had stagings and no fixed-position photographs at all, which
-       is the one thing this screen's photo half exists for and the whole
-       of what redesign ticket 55 put a wipe over. This loop only runs a
-       handful of times - 60 to 140 days a step over the tracked period -
-       so anything less than every staging leaves too few to compare.
-
-       The roll it used to be gated on is still drawn and thrown away, so
-       everything seeded after this loop lands exactly where it always did.
-       Dropping the draw instead would shift the whole rest of the demo
-       journal - hair removal, tryouts, procedures - for a change that is
-       about this screen. */
-    r();
-    await journal.hairProgress.addPhoto(day, await demoPhoto(4000 + hairPhotoCount));
-    hairPhotoCount++;
-  }
+  /* Hair progress stagings and photographs were seeded here until hair
+     progress folded into progress photos (version 123): its photographs are
+     the hair pose of the progress photos seeded last. The draws stay, and
+     only the draws - dropping them would shift the whole rest of the demo
+     journal (hair removal, tryouts, procedures) for a change about another
+     screen. */
+  for (let day = trackingStart; day <= today; day += between(60, 140)) r();
 
   let hairRemovalPhotoCount = 0;
   for (let day = trackingStart; day <= today; day++) {

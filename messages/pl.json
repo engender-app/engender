@@ -224,7 +224,6 @@
   "body_region_reading_none_aria": "{region}: nic w tym okresie",
   "body_region_session_pain": "Ból {pain}/5",
   "body_region_track_hair_removal": "Laser i depilacja",
-  "body_region_track_hair_staging": "Samoocena włosów",
   "body_region_track_trajectory": "Dysforia i euforia",
   "body_region_trajectory_empty": "Na razie nie ma tu zapisanych odczuć.",
   "body_regions_add": "Dodaj obszar ciała",
@@ -581,7 +580,6 @@
   "day_appointment_referred": "Skierowanie",
   "day_document": "Dokument",
   "day_first_noticed": "Zauważone po raz pierwszy",
-  "day_hair_photos": "Zdjęcia włosów",
   "day_label": "Dzień",
   "day_open_whole": "Cały dzień",
   "day_recovery_photos": "Zdjęcia z rekonwalescencji",
@@ -1314,25 +1312,6 @@
   "go": "Dalej",
   "guided_prompts": "Nakierowujące prompty",
   "guided_prompts_sub": "Podpowiedź do refleksji przy pisaniu wpisu.",
-  "hair_anchor_change_action": "Zmień datę początkową",
-  "hair_anchor_from_hrt": "Liczone od początku HRT, {date}.",
-  "hair_anchor_from_set": "Liczone od {date}.",
-  "hair_anchor_set_action": "Ustaw datę początkową",
-  "hair_anchor_sheet": "Data początkowa",
-  "hair_anchor_sheet_hint": "Od tej daty liczą się tygodnie. Bez niej liczą się od startu HRT.",
-  "hair_jump_label": "Sekcja",
-  "hair_jump_staging_aria": "Przejdź do samooceny",
-  "hair_other_label": "Co widać",
-  "hair_other_placeholder": "np. rzadsze na całym czubku głowy",
-  "hair_other_unwritten": "Żadna ze skal",
-  "hair_photo_compare_required": "Dodaj co najmniej dwa zdjęcia, żeby je porównać.",
-  "hair_photo_empty_body": "Ta sama głowa, kolejny odcinek.",
-  "hair_photo_exports_required": "Dodaj zdjęcie, żeby utworzyć kolaż lub film.",
-  "hair_photo_protocol_body": "Jeśli chcesz porównać zdjęcia, zachowaj ten sam kadr, światło i odległość.",
-  "hair_photo_protocol_dismiss_aria": "Ukryj tę wskazówkę",
-  "hair_photo_protocol_title": "Jak robić porównywalne zdjęcia",
-  "hair_photo_section_title": "Zdjęcia w stałym kadrze",
-  "hair_progress": "Zmiany owłosienia",
   "hair_removal": "Depilacja",
   "hair_removal_add_aria": "Zapisz zabieg depilacji",
   "hair_removal_add_photo": "Dodaj zdjęcie",
@@ -1374,15 +1353,6 @@
   "hair_removal_recency_title": "Czas od ostatniego zabiegu",
   "hair_removal_saved": "Zapisano zabieg",
   "hair_removal_sessions_title": "Zabiegi",
-  "hair_since_start": "{weeks} od początku",
-  "hair_stage_add_aria": "Dodaj samoocenę",
-  "hair_stage_delete_q": "Usunąć tę samoocenę?",
-  "hair_stage_delete_sheet": "Usuń samoocenę",
-  "hair_stage_edit_sheet": "Edytuj samoocenę",
-  "hair_stage_empty_action": "Zapisz, co widzisz",
-  "hair_stage_new_sheet": "Nowa samoocena",
-  "hair_stage_section_title": "Samoocena",
-  "hair_unanchored_note": "Ustaw datę początkową, żeby liczyć tygodnie, albo dodaj HRT do kuracji.",
   "heat_cell_coming_up": "{date}, coś w planach",
   "heat_cell_entries": [
     {
@@ -1478,7 +1448,6 @@
   "hub_sub_documents": "Opinie, skierowania, postanowienia",
   "hub_sub_doubt": "Oddech, co pomaga, dobre chwile",
   "hub_sub_effects": "Także skutki uboczne",
-  "hub_sub_hair_progress": "Opisy i zdjęcia w tej samej pozie",
   "hub_sub_hair_removal": "Laser i elektroliza",
   "hub_sub_letters": "Otwierają się w wybranym dniu",
   "hub_sub_photos": "Ze wszystkich części dziennika",
@@ -1893,23 +1862,6 @@
       }
     }
   ],
-  "n_weeks": [
-    {
-      "declarations": [
-        "input n",
-        "local nPlural = n: plural"
-      ],
-      "selectors": [
-        "nPlural"
-      ],
-      "match": {
-        "nPlural=one": "{n} tydzień",
-        "nPlural=few": "{n} tygodnie",
-        "nPlural=many": "{n} tygodni",
-        "nPlural=other": "{n} tygodni"
-      }
-    }
-  ],
   "n_years": [
     {
       "declarations": [
@@ -2115,7 +2067,6 @@
   "ph_selection_remove": "Usuń z porównania: {photo}",
   "ph_selection_unavailable": "Wybrane zdjęcie nie jest już dostępne.",
   "ph_source_entry": "Wpis",
-  "ph_source_hair": "Włosy",
   "ph_source_milestone": "Kamień milowy",
   "ph_source_procedure": "Operacja",
   "ph_source_progress": "Zdjęcie postępów",
@@ -2309,6 +2260,7 @@
   "pph_pose_delete_sheet": "Usuń pozę",
   "pph_pose_empty": "W tej pozie nie ma jeszcze zdjęć.",
   "pph_pose_front": "Przód",
+  "pph_pose_hair": "Włosy",
   "pph_pose_hidden": "ukryta",
   "pph_pose_hide_aria": "Ukryj: {pose}",
   "pph_pose_label": "Poza",

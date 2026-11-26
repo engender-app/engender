@@ -17,7 +17,7 @@ describe('BodyRegionInspectorSheet component contract', () => {
     expect(sheetFile).toContain('data-track="trajectory"');
     expect(sheetFile).toContain('data-track="photos"');
     expect(sheetFile).toContain('data-track="hair-removal"');
-    expect(sheetFile).toContain('data-track="hair-staging"');
+    expect(sheetFile).not.toContain('data-track="hair-staging"');
   });
 
   it('renders empty state when breakdown is empty', () => {

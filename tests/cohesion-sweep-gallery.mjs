@@ -124,7 +124,6 @@ const ROUTES = [
   { path: '/calendar', door: true, name: 'journal' },
   { path: '/stats', door: true, name: 'lookback' },
   { path: '/more', door: true, name: 'transition' },
-  { path: '/body/hair-progress' },
   { path: '/body/hair-removal' },
   { path: '/body-map' },
   { path: '/care' },

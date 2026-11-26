@@ -1,13 +1,13 @@
 /* Progress photos (pre-release-human 12, bug 25): a shot taken on purpose,
    in a pose, so the same pose can be compared over months. The poses are
-   the person's own list since version 122: Front, Side and Back built in,
-   renamed or hidden at will, and any others they add.
+   the person's own list since version 122: Front, Side, Back and Hair built
+   in (Hair since version 123, where the hair progress photos went), renamed
+   or hidden at will, and any others they add.
 
    The photo library (/media/photos) reads every photograph the journal
    holds wherever it is kept; this area is the record a person makes when
-   the photograph is the point. Its own table, dated in its own right, the
-   same shape hairProgress.ts gives its photographs, and through the same
-   pipeline: stagePhoto (photos.ts) writes normalized, metadata-stripped
+   the photograph is the point. Its own table, dated in its own right, and
+   through the shared photo pipeline: stagePhoto (photos.ts) writes normalized, metadata-stripped
    bytes before the row that names them, and removeFilesOf reclaims them
    after the row has gone. */
 

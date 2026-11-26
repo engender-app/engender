@@ -60,7 +60,6 @@ import type {
   DoseEvent,
   Entry,
   HairRemovalSession,
-  HairStage,
   JournalDocument,
   LabResult,
   Milestone,
@@ -76,7 +75,6 @@ import type { DocumentsArea } from './documents';
 import type { DosesArea } from './doses';
 import type { EntriesArea } from './entries';
 import type { FeltSenseArea, FeltSenseOnDay } from './feltSense';
-import type { HairProgressArea, HairPhoto } from './hairProgress';
 import type { HairRemovalArea } from './hairRemoval';
 import type { LabsArea } from './labs';
 import type { MilestonesArea } from './milestones';
@@ -105,8 +103,6 @@ export interface DayRecords {
   cycleEvents: CycleEvent[];
   wearSessions: WearSession[];
   feltSense: FeltSenseOnDay[];
-  hairStages: HairStage[];
-  hairPhotos: HairPhoto[];
   hairRemovalSessions: HairRemovalSession[];
   appointments: AppointmentDayRecord[];
   procedureRecords: ProcedureDayRecord[];
@@ -132,7 +128,6 @@ interface DayAreas {
   cycleEvents: CycleEventsArea;
   wearSessions: WearSessionsArea;
   feltSense: FeltSenseArea;
-  hairProgress: HairProgressArea;
   hairRemoval: HairRemovalArea;
   appointments: AppointmentsArea;
   procedures: ProceduresArea;
@@ -250,18 +245,6 @@ const SECTIONS = [
     // belongs to, so renaming one changes what it reads.
     tables: ['feltSense', 'tryout'],
     read: ({ feltSense, epochDay }) => feltSense.onDay(epochDay)
-  }),
-  section({
-    key: 'hairStages',
-    covers: ['hairStages'],
-    tables: ['hairProgress'],
-    read: ({ hairProgress, epochDay }) => hairProgress.getStagesOnDay(epochDay)
-  }),
-  section({
-    key: 'hairPhotos',
-    covers: ['hairPhotos'],
-    tables: ['hairProgress'],
-    read: ({ hairProgress, epochDay }) => hairProgress.getPhotosOnDay(epochDay)
   }),
   section({
     key: 'hairRemovalSessions',

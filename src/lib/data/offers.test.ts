@@ -86,7 +86,7 @@ const SUBJECTS: { [K in OfferKey]: Parameters<(typeof OFFERS)[K]['write']>[1] } 
   /* Two areas, because the one hub row that fronts two finishes both in the
      same call and a subject naming one would let a half-finished row
      through. */
-  'area-finished': { areas: ['hairStages', 'hairPhotos'], epochDay: 20000 },
+  'area-finished': { areas: ['personalEffects', 'sideEffects'], epochDay: 20000 },
   /* Two areas, the same reason: `voice` is the other group fronting more
      than one section, and the only other suspendable one besides
      hair removal (SUSPENDABLE_AREAS, areaState.ts). */

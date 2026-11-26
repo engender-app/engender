@@ -9,8 +9,8 @@
    to saying nothing takes its row with it.
 
    Two plural setters for hidden and finished rather than two singular ones,
-   because a hub row can front more than one section - hair progress is
-   `hairStages` and `hairPhotos` together - and a row half-finished by two
+   because a hub row can front more than one section - voice is
+   `voiceBenchmarks` and `voicePracticeTakes` together - and a row half-finished by two
    separate calls is a state no screen has a way to show. One call, one
    transaction, so it cannot happen. Which sections a row fronts is
    presentation and lives with the hub. `setAreasSuspended` keeps the same

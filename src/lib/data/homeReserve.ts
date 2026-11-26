@@ -18,7 +18,6 @@ export type ReserveSlot =
   | 'pinned'
   | 'clinician-summary-row'
   | 'access-mode'
-  | 'hair-progress'
   | 'care-changes'
   | 'wear'
   | 'doses'

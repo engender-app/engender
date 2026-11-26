@@ -364,17 +364,6 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['note']
   }),
-  /* The staging's own words (functional audit ticket 23), including the
-     scale-and-grade text an older staging was migrated to. */
-  area({
-    key: 'hairStages',
-    covers: ['hairStages'],
-    tables: ['hairProgress'],
-    from: 'hair_stage',
-    uuid: 'uuid',
-    date: { kind: 'epochDay', column: 'epoch_day' },
-    columns: ['description']
-  }),
   /* The provider is the one free-text field left: the cost became an amount
      and a currency (a REAL and a code, like a lab result's `value` above),
      and what was typed into the old text column moved into the note. */
@@ -533,7 +522,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // where a request stands there, read on the roadmap's own list.
   roadmapInstitutions: 'the name of an office on the roadmap list, read there',
   roadmapInstitutionChanges: 'a status and a short line about one office, read on the roadmap',
-  hairPhotos: 'no text of its own: a dated photograph',
   progressPhotos: 'no text of its own: a dated photograph and its pose',
   progressPoses: 'a pose name, read on the Progress photos screen that files photographs under it',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',

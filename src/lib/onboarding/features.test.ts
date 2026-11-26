@@ -7,7 +7,7 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
 
 describe('feature modules', () => {
   it('uses hub rows with real hideable areas and includes Care', () => {
-    expect(FEATURE_MODULE_ROWS).toHaveLength(15);
+    expect(FEATURE_MODULE_ROWS).toHaveLength(14);
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).toContain('care');
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).toContain('surgery');
     expect(FEATURE_MODULE_ROWS.map((row) => row.key)).not.toContain('dilation');

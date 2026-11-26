@@ -186,11 +186,6 @@ export interface PreferenceValues {
   quietHoursEnd: string;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone', string>>;
-  /** Whether the hair-photo capture-protocol guidance has been dismissed
-      (phase 4 ticket 09). Hair progress has only the one photo kind, so
-      this was already a single flag. Guidance is opt-in, never required to
-      take a photo, so this only ever hides a card - it blocks nothing. */
-  hairPhotoProtocolDismissed: boolean;
   /** Whether the Look back rail's "drag the ends" hint has been answered by
       a drag (phase 11 ticket 06). One flag rather than a count: the hint is
       there to say the rail can be dragged, and one drag is the whole
@@ -199,19 +194,11 @@ export interface PreferenceValues {
       installation, which does not travel with the journal - a restore on a
       new device is a screen somebody has not used before. */
   spanRailHintDismissed: boolean;
-  /** The day the hair-progress timeline counts from, as an epoch day, or
-      null when the person has not set one (phase 5 ticket 33). Null is a
-      resting state, not unfinished setup: with no date set the screen falls
-      back to the earliest dose logged, and with neither it simply shows no
-      week counts (hairAnchor.ts). Portable rather than device-local - it
-      says something about the journal's own timeline, the same way
-      `journeyAnchorMilestoneId` does. */
-  hairAnchorEpochDay: number | null;
   /** The day HRT began, as the person set it, or null to count from the
       earliest HRT episode (functional audit ticket 18, CONTEXT: "HRT
       start"; personalEffectWindow.ts's hrtAnchor). The effects timeline,
-      its onset bands and the hair anchor count from it. Portable, for the
-      reason `hairAnchorEpochDay` is: it is a fact about the journal. */
+      and its onset bands count from it. Portable, because it is a fact
+      about the journal. */
   hrtStartEpochDay: number | null;
   /** The milestone id that durations, stats ranges and wrapped figures are
       measured from (phase 5 ticket 25), or null when none is chosen - a
@@ -402,9 +389,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
   preferredLabUnits: {},
-  hairPhotoProtocolDismissed: false,
   spanRailHintDismissed: false,
-  hairAnchorEpochDay: null,
   hrtStartEpochDay: null,
   journeyAnchorMilestoneId: null,
   cycleTrackingChoice: null,
@@ -442,7 +427,6 @@ export const PORTABLE_KEYS = [
   'checkInPausedThrough',
   'preferredLabUnits',
   'journeyAnchorMilestoneId',
-  'hairAnchorEpochDay',
   'hrtStartEpochDay',
   'cycleTrackingChoice',
   'voiceComfortLowHz',
@@ -495,7 +479,6 @@ export const DEVICE_LOCAL_KEYS = [
   'storageNoticeDismissed',
   'lastVerifiedAt',
   'roadmapMilestoneSyncEnabled',
-  'hairPhotoProtocolDismissed',
   'spanRailHintDismissed',
   'comingBackSeenSince',
   'clinicianSummaryDrugExcluded',

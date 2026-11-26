@@ -113,7 +113,7 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
 
     Phase 9 carpet ticket 16's other half. Seven rows left the hub without
     their screens going anywhere: dilation belongs to a surgery journey rather
-    than beside it, side effects and hair progress are both changes somebody
+    than beside it, side effects are a change somebody
     noticed, cycle events are read next to the side effects they sit among,
     templates are how you write an entry and words are a reading of what you
     wrote. A hub that lists all of them at the top level is a hub that has
@@ -138,8 +138,9 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     Pre-release-human 12 took two more rows back onto the hub, in Health:
     cycle events (only while cycle tracking is visible) and dilation (only
     once a procedure can carry it). Neither is hosted any more, so `care` and
-    `surgery` stopped being hosts, and one host remains for one row. The
-    surgery list and Meds still link to them, drawn through
+    `surgery` stopped being hosts, and one host remained for one row: hair
+    progress, on the changes screen. It folded into progress photos (version
+    123), so no host is left. The surgery list and Meds still link to them, drawn through
     `HostedRows.svelte` with the keys they want: a link, not a home, so
     `more-surfaces.test.ts` allows exactly those two to be on the hub and
     linked.
@@ -149,9 +150,7 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     spent on seven other screens and created on exactly one. It left `ROWS`
     entirely, the way words did: the milestone rail is the one place under
     Transition an era is still drawn, as a band rather than a row. */
-export const HUB_ROW_HOSTS = {
-  effects: '/care/changes'
-} as const;
+export const HUB_ROW_HOSTS = {} as const;
 
 export type HubRowHostKey = keyof typeof HUB_ROW_HOSTS;
 
@@ -341,7 +340,7 @@ const ROWS = [
        regimen, and having them as sibling top-level rows made the reader
        classify their own symptom before they could write it down. The row
        reports whichever half was written last (`groupLastWrite`'s own
-       reasoning), the way `hair-progress` already does for its own two. */
+       reasoning). */
     /* `sprout`, a change that grew (pre-release-human 12); it drew `eye`. */
     key: 'effects',
     icon: 'sprout',
@@ -524,19 +523,6 @@ const ROWS = [
   },
 
   // --- Drawn on another screen rather than on the hub (ticket 16) ----------
-  {
-    key: 'hair-progress',
-    icon: 'comb',
-    href: '/body/hair-progress',
-    home: 'effects',
-    /* Two sections, one row: the stagings and the photographs finish
-       together and the row reports whichever of them was written last
-       (`groupLastWrite`'s own reasoning - somebody can log stages for two
-       years and never photograph one). */
-    areas: ['hairStages', 'hairPhotos'],
-    finishes: 'hair-progress',
-    line: 'read'
-  }
 ] as const satisfies readonly HubRowSpec[];
 
 /** Every row key, narrow. */
@@ -889,7 +875,7 @@ export function hubSections(reading: HubReading): HubSection[] {
     rather than giving it a row of its own, and twenty until ticket 16
     took eras off the same way ticket 62 did. The four hosted rows still
     here are not on this screen and are still areas of this app: somebody
-    looking for dilation or hair progress looks for them here, and leaving
+    looking for dilation looks for it here, and leaving
     them out would make the one index with a search box the one place they
     cannot be found. A match draws the row the registry declares -
     the same row its host screen draws - and following it lands on the

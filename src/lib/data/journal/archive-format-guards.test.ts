@@ -65,6 +65,35 @@ test('the backup drill refuses an unknown section even under the current format 
   await driver.close();
 });
 
+test('an older archive carrying tally events, hair stages and hair photos restores without them', async () => {
+  for (const name of ['tallyEvents', 'hairStages', 'hairPhotos']) {
+    assert.ok(DROPPED_ARCHIVE_SECTION_NAMES.includes(name), name);
+    assert.ok(!(ARCHIVE_SECTION_NAMES as readonly string[]).includes(name), name);
+  }
+  const driver = await migratedDb();
+  try {
+    const journal = openJournal(driver, fakeFileStore());
+    await journal.reconcileBuiltIns();
+    const snapshot = await journal.archive.snapshot();
+    const incoming = {
+      ...snapshot.journal,
+      tallyEvents: [{ id: 't1', epochDay: 100, kind: 'misgendered' }],
+      hairStages: [{ id: 'h1', epochDay: 100, description: 'thinner at the crown' }],
+      hairPhotos: [{ id: 'p1', epochDay: 100, fileName: 'p1.enc' }],
+      areaStates: [...snapshot.journal.areaStates, { area: 'hairPhotos', hidden: true, updatedAt: 1 }]
+    } as unknown as typeof snapshot.journal;
+    const packed = await collect(packArchive({
+      ...snapshot, journal: incoming, preferences: portablePreferences(PREFERENCE_DEFAULTS)
+    }, GOLDEN_PASSWORD, CHEAP_KDF));
+    await verifyArchive(oneShot(packed), GOLDEN_PASSWORD);
+    await journal.archive.replace({ journal: (await openArchive(oneShot(packed), GOLDEN_PASSWORD)).payload.journal,
+      files: (async function* () {})() });
+    assert.deepEqual((await journal.archive.snapshot()).journal, snapshot.journal);
+  } finally {
+    await driver.close();
+  }
+});
+
 test('restore and verification ignore a newly listed dropped section and its rows', async () => {
   const dropped = DROPPED_ARCHIVE_SECTION_NAMES as string[];
   dropped.push('retiredForTest');

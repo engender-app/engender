@@ -71,8 +71,6 @@
     cycleEvents: [],
     wearSessions: [],
     feltSense: [],
-    hairStages: [],
-    hairPhotos: [],
     hairRemovalSessions: [],
     appointments: [],
     procedureRecords: [],
@@ -193,12 +191,6 @@
     ],
     feltSense: [
       { id: 'f1', epochDay: DAY, mood: 5, note: 'It stopped feeling like a costume.', owner: { id: 'ty1', name: 'Robin' } }
-    ],
-    hairStages: [{ id: 'hs1', epochDay: DAY, description: 'Crown a little thinner' }],
-    hairPhotos: [
-      { id: 'hp1', epochDay: DAY, fileName: noFile() },
-      { id: 'hp2', epochDay: DAY, fileName: noFile() },
-      { id: 'hp3', epochDay: DAY, fileName: noFile() }
     ],
     hairRemovalSessions: [
       { id: 'hr1', epochDay: DAY, area: 'chin', method: 'laser', painRating: 3, minutes: 60, cost: { amount: 250, currency: 'PLN', refunded: false }, provider: 'Klinika', note: null }

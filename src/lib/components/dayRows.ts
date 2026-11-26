@@ -34,7 +34,6 @@ import {
   cycleEventKindName,
   hairRemovalAreaName,
   hairRemovalMethodName,
-  hairStagingText,
   moodName,
   severityName
 } from '$lib/data/vocabulary/labels';
@@ -68,8 +67,6 @@ export interface DoseDrugFact {
   drug: string | null;
   ambiguous: boolean;
 }
-
-const HAIR_PROGRESS = '/body/hair-progress';
 
 /* Photographs by whatever they hang off - the owning tryout or procedure -
    so each owner collapses to one row rather than one per shot. Insertion
@@ -243,32 +240,6 @@ const SECTION_ROWS: Record<
       subtitle: felt.note || moodName(felt.mood),
       href: `${hubRow('tryouts').href}/${felt.owner.id}`
     })),
-
-  /* What the staging says, in the person's words (functional audit ticket
-     23). */
-  hairStages: (day) =>
-    day.hairStages.map((stage) => ({
-      key: `hair-stage-${stage.id}`,
-      ...iconOf('hair-progress'),
-      title: hairStagingText(stage),
-      href: HAIR_PROGRESS
-    })),
-
-  // The scheduled fixed-position photos hang off nothing but the day, so
-  // they are one group by definition.
-  hairPhotos: (day) =>
-    day.hairPhotos.length === 0
-      ? []
-      : [
-          {
-            key: 'hair-photos',
-            ...iconOf('hair-progress'),
-            title: m.day_hair_photos(),
-            href: HAIR_PROGRESS,
-            photo: day.hairPhotos[0],
-            count: day.hairPhotos.length
-          }
-        ],
 
   hairRemovalSessions: (day) =>
     day.hairRemovalSessions.map((session) => ({

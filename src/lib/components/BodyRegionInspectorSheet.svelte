@@ -2,7 +2,7 @@
      Tapping any body region opens this somatic breakdown combining:
      1. Dysphoria/Euphoria trajectory
      2. Filtered progress photos
-     3. Laser & hair removal sessions & hair staging records -->
+     3. Laser & hair removal sessions -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
@@ -19,8 +19,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import {
     hairRemovalAreaName,
-    hairRemovalMethodName,
-    hairStagingText
+    hairRemovalMethodName
   } from '$lib/data/vocabulary/labels';
 
   let {
@@ -168,23 +167,6 @@
           <p class="muted small inspector-empty-track">{m.body_region_hair_removal_empty()}</p>
         {/if}
       </section>
-
-      {#if breakdown.hairStages.length > 0}
-        <section class="inspector-section" data-track="hair-staging">
-          <SectionHeading text={m.body_region_track_hair_staging()} />
-          <ListCard>
-            {#each breakdown.hairStages as st (st.id)}
-              <ListRow
-                icon="comb"
-                title={hairStagingText(st)}
-                subtitle={fmtDay(st.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-                static
-                chevron={false}
-              />
-            {/each}
-          </ListCard>
-        </section>
-      {/if}
     </div>
   {/if}
 </Sheet>

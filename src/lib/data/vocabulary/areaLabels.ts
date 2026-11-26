@@ -16,7 +16,6 @@ import { AREA_GROUPS, type AreaGroupKey } from '$lib/data/areaGroups';
 
 const GROUP_NAME: Record<AreaGroupKey, () => string> = {
   wear: m.wear_log,
-  'hair-progress': m.hair_progress,
   'hair-removal': m.hair_removal,
   effects: m.effects_timeline,
   voice: m.vb_title,

@@ -67,8 +67,6 @@ async function fillDay(journal: Journal, epochDay = DAY): Promise<void> {
   await journal.feltSense.add({ tryoutId }, { epochDay, mood: 5, note: 'it fit' });
   await journal.tryouts.addPhoto(tryoutId, epochDay, photo());
 
-  await journal.hairProgress.upsertStage({ epochDay, description: 'thinner at the front' });
-  await journal.hairProgress.addPhoto(epochDay, photo());
   await journal.hairRemoval.upsertSession({ epochDay, area: 'chin', method: 'laser', painRating: 3 });
 
   const procedureId = await journal.procedures.upsertProcedure({ name: 'orchiectomy' });
@@ -230,16 +228,16 @@ test('a maximal day costs one pass per area, not one per row', async () => {
     sparse,
     `a busy day cost ${busy} queries against a sparse day's ${sparse}: something reads per row`
   );
-  /* 26 for 17 sections as this lands: entries hydrate their dimension
+  /* 24 for 15 sections as this lands: entries hydrate their dimension
      values, tags, body regions, photos, recordings and video notes,
      milestones read their photos, and procedures asks for consults and
      recovery photos separately. Held as a number rather than derived so
      that a section quietly gaining a query has to come back here and say
-     so. Documents is the seventeenth and costs the one query a flat area
+     so. Documents is the fifteenth and costs the one query a flat area
      costs (phase 8 features ticket 52). Dilation reads its schedule
      beside its sessions, one query more, so a times-a-day day can number
      them (functional audit ticket 25). */
-  assert.equal(busy, 26, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
+  assert.equal(busy, 24, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
 });
 
 test('a test may register a section of its own and read it back through the same path', async () => {
@@ -264,7 +262,6 @@ test('a test may register a section of its own and read it back through the same
       cycleEvents: journal.cycleEvents,
       wearSessions: journal.wearSessions,
       feltSense: journal.feltSense,
-      hairProgress: journal.hairProgress,
       hairRemoval: journal.hairRemoval,
       appointments: journal.appointments,
       procedures: journal.procedures,

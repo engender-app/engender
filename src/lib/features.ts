@@ -234,17 +234,6 @@ export const FEATURES = {
     routes: ['/care/changes'],
     messages: ['effect', 'effects', 'side_effect']
   },
-  'hair-progress': {
-    sections: ['hairStages', 'hairPhotos'],
-    tables: ['hair_stage', 'hair_photo'],
-    journal: ['hairProgress'],
-    hubRows: ['hair-progress'],
-    areaGroups: ['hair-progress'],
-    unprompted: none,
-    tiles: none,
-    routes: ['/body/hair-progress'],
-    messages: ['hair_stage', 'hair_photo', 'hair_anchor']
-  },
   'cycle-events': {
     sections: ['cycleEvents'],
     tables: ['cycle_event'],

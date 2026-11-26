@@ -230,8 +230,6 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'era_mute',
     'gender_dimension',
     'gender_preset',
-    'hair_photo',
-    'hair_stage',
     'lab_result',
     'medication_stock',
     'milestone',
@@ -555,18 +553,6 @@ test('personal_effect.effect is an open catalogue, and effect_category/personal_
   );
 });
 
-/* Functional audit ticket 23: a staging is free text, with no scale or
-   grade left to check (the migration's own test is
-   hair-stage-free-text-migration.test.ts). */
-test('hair_stage holds free text and nothing else', async () => {
-  const db = await migratedDb();
-  const columns = (db.raw.prepare('PRAGMA table_info(hair_stage)').all() as Array<{ name: string }>).map((c) => c.name);
-  assert.deepEqual(columns, ['id', 'uuid', 'epoch_day', 'description', 'updated_at']);
-  assert.doesNotThrow(() =>
-    db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, description, updated_at) VALUES ('h1', 100, 'diffuse thinning all over the top', 1000)")
-  );
-});
-
 test('a dose schedule cannot claim one recurrence shape while carrying the other one data', async () => {
   const db = await migratedDb();
   db.raw.exec(
@@ -597,15 +583,15 @@ test('a dose schedule cannot claim one recurrence shape while carrying the other
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM dose_schedule_dose_amount').get() as { n: number }).n, 0);
 });
 
-test('hair_photo is its own table, not a third owner on photo', async () => {
+test('progress_photo is its own table, not a third owner on photo', async () => {
   const db = await migratedDb();
-  const columns = (db.raw.prepare('PRAGMA table_info(hair_photo)').all() as Array<{ name: string }>).map(
+  const columns = (db.raw.prepare('PRAGMA table_info(progress_photo)').all() as Array<{ name: string }>).map(
     (c) => c.name
   );
   assert.ok(!columns.some((name) => name.includes('entry') || name.includes('milestone')));
 
   assert.doesNotThrow(() =>
-    db.raw.exec("INSERT INTO hair_photo (uuid, epoch_day, file_path, updated_at) VALUES ('hp1', 100, 'hp1.jpg', 1000)")
+    db.raw.exec("INSERT INTO progress_photo (uuid, epoch_day, pose, file_path, updated_at) VALUES ('hp1', 100, 'hair', 'hp1.jpg', 1000)")
   );
 });
 

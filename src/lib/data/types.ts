@@ -837,22 +837,6 @@ export interface PersonalEffect {
   firstNoticedEpochDay: number;
 }
 
-/* A dated series, not a single replaced value like PersonalEffect: a person
-   re-stages over time to track progression, never answering "what is it
-   now" in place of what it was before. No episode or anchor reference: what
-   this is read against is resolved above this seam (hairAnchor.ts).
-
-   The person's own words since functional audit ticket 23. A staging made
-   against Norwood-Hamilton or Sinclair before that reads as the scale and
-   grade it named (hairStageScales.ts). */
-export interface HairStage {
-  id: string;
-  epochDay: number;
-  /** What the person wrote. Empty only on a row from before ticket 23 that
-      named neither scale and said nothing more. */
-  description: string;
-}
-
 /** A hair-removal session's method (phase 5 ticket 08): a small closed set
     rather than free text, so `hairRemovalMethodName` can give it a
     translated label the way a hair-staging grade does - 'other' is the
@@ -861,7 +845,7 @@ export { HAIR_REMOVAL_METHODS };
 export type HairRemovalMethod = (typeof HAIR_REMOVAL_METHODS)[number];
 
 /** One electrolysis/laser session (phase 5 ticket 08, CONTEXT: pending). A
-    dated series like Measurement and HairStage above, not a single replaced
+    dated series like Measurement above, not a single replaced
     value: a person logs many sessions over time. `area` is a plain string
     rather than a literal union here, the same treatment DoseEvent's
     `injectionSite` gets: it is validated against hairRemovalAreas.ts's own

@@ -36,12 +36,7 @@ const flows = [
     add: '[data-add]', row: '[data-cycle-event]',
     values: { 'cycle-event-date': '2024-03-12' },
     change: 'cycle-event-date', controls: () => [radio(), page.locator('#cycle-event-date')],
-    labels: { 'cycle-event-date': 'date_label' }, group: 'cycle_event_kind_label' },
-  { handle: 'hair-stage', path: 'body/hair-progress', date: 'hair-stage-date', area: 'hairProgress', operation: 'upsertStage',
-    add: '[data-add-stage]', row: '[data-hair-stage]', text: 'Fixture description',
-    values: { 'hair-stage-text': 'Fixture description', 'hair-stage-date': '2024-03-12' },
-    change: 'hair-stage-text', controls: () => [page.locator('#hair-stage-text'), page.locator('#hair-stage-date')],
-    labels: { 'hair-stage-text': 'hair_other_label', 'hair-stage-date': 'date_label' } }
+    labels: { 'cycle-event-date': 'date_label' }, group: 'cycle_event_kind_label' }
 ];
 
 async function close() {

@@ -29,7 +29,6 @@ import type {
   ArchiveFeltSenseEntry,
   ArchiveMarginNote,
   ArchiveJournal,
-  ArchiveHairPhoto,
   ArchiveProgressPhoto,
   ArchiveProgressPose,
   ArchiveHairRemovalPhoto,
@@ -65,7 +64,7 @@ const costFields = (row: CostRow): Required<ArchiveCostFields> => ({
 import { columnsOf, type FlatTable } from './archiveTable';
 
 import { readFileOwnership } from './fileOwnership';
-export type { PhotoRow, RecordingRow, VideoRow, HairPhotoRow, HairRemovalPhotoRow } from './fileOwnership';
+export type { PhotoRow, RecordingRow, VideoRow, HairRemovalPhotoRow } from './fileOwnership';
 import type { PhotoRow, RecordingRow, VideoRow } from './fileOwnership';
 
 export type SectionRead = Omit<Awaited<ReturnType<typeof readRowContext>>, 'fileNames'>;
@@ -501,10 +500,6 @@ export async function readProgressPoses({ driver }: SectionRead): Promise<Archiv
     hidden: bool(r.hidden),
     updatedAt: r.updated_at
   }));
-}
-
-export async function readHairPhotos({ hairPhotos }: SectionRead): Promise<ArchiveHairPhoto[]> {
-  return hairPhotos.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, fileName: r.file_path, updatedAt: r.updated_at }));
 }
 
 export async function readHairRemovalSessions({

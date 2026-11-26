@@ -38,7 +38,7 @@ try {
     await j.milestones.upsertMilestone({ id: milestone, name: 'Exact milestone', epochDay: 15000, photo: { action: 'replace', photo } });
     const entry = await j.entries.upsertEntry({ epochDay: 15001, mood: 4, note: 'Exact entry', attachVideos: [new Uint8Array([1])] });
     await j.photos.attach({ entryId: entry }, photo);
-    await j.hairProgress.addPhoto(15002, photo);
+    await j.progressPhotos.addPhoto(15002, 'hair', photo);
     const session = await j.hairRemoval.upsertSession({ epochDay: 15003, area: 'chin', method: 'laser', painRating: 2 });
     await j.hairRemoval.addPhoto(session, photo);
     const tryout = await j.tryouts.upsertTryout({ kind: 'name', label: 'Exact tryout', startEpochDay: 15004, endEpochDay: null });
@@ -50,7 +50,7 @@ try {
   });
 
   await visit('/media/photos');
-  const hair = fixture.ownerPhotos.find(p => p.source === 'hair');
+  const hair = fixture.ownerPhotos.find(p => p.source === 'progress' && p.epochDay === 15002);
   const tile = id => page.locator(`[data-photo-key="${id}"] [data-photo-cell]`);
   /* Ticket 52 (audit U44): the change-day action on an entry's or a
      milestone's photograph sat on the tile's bottom-left corner and its
