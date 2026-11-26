@@ -1594,6 +1594,8 @@
     font-size: var(--text-sm);
     font-style: italic;
     font-weight: var(--weight-medium);
+    /* "istnienia." alone on the second line at 412px otherwise. */
+    text-wrap: pretty;
   }
 
   /* PL / EN, top left where the back control is on every other step, in
