@@ -448,12 +448,24 @@
       collapsing = true;
       collapseMargin = field ? `${field.offsetHeight}px` : null;
       clearTimeout(collapseDone);
-      /* The edge's own length, and a few frames over for the hold stepBlind
-         paints before it starts. */
-      collapseDone = setTimeout(() => {
+      /* Let go the moment the edge lands. While the margin stands, the
+         paint (a window tall) counts as the frame's overflow, and holding
+         it for a fixed 580ms left the first step 17 to 20px "clipped" when
+         measured at 500ms (walkthrough setup no-scroll, 360x640 and
+         390x844). The timer is only the backstop for an edge that does not
+         transition, under reduced motion or when nothing moved. */
+      const host = field?.parentElement;
+      const release = () => {
+        clearTimeout(collapseDone);
+        host?.removeEventListener('transitionend', landed);
         collapsing = false;
         collapseMargin = null;
-      }, motionDuration('--dur-slow') + 200);
+      };
+      const landed = (event: TransitionEvent) => {
+        if (event.target === host && event.propertyName === '--blind-edge') release();
+      };
+      host?.addEventListener('transitionend', landed);
+      collapseDone = setTimeout(release, motionDuration('--dur-slow') + 200);
     }
     step = to;
   }
