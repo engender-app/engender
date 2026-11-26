@@ -181,8 +181,8 @@ describe('every feature screen', () => {
        off this list (the appointments screen's own verb row reaches it now),
        eighteen since phase 11 ticket 17 took the metric reference off it too
        - its markup moved to screens the hub already reaches - and sixteen
-       since audit item 6 turned modes and entry templates into sheets
-       raised over Settings: neither has a +page.svelte of its own left at
+       since audit item 6 turned modes into a sheet
+       raised over Settings: it has no +page.svelte of its own left at
        its route for this file to read (feature-screens.test.ts's own
        NOT_A_FEATURE_SCREEN equivalent for a non-hub route is simply not
        listing it at all) - and fifteen since functional audit ticket 12
@@ -251,11 +251,7 @@ describe('what a first-run journal sees', () => {
       ticket's own line. Milestones is reference data with a seeded
       catalogue and resources is a bundled directory, so neither can be
       empty; the clinician summary states its emptiness per section rather
-      than per screen. Entry templates left this list with its own route
-      (audit item 6) - it still reconciles every `ENTRY_TEMPLATES` built-in
-      on every boot and is still never empty, just not read from
-      `src/routes` any more (EntryTemplatesManager.svelte, off this file's
-      reach). */
+      than per screen. */
   const WITH_EMPTY_STATE = ROUTES.filter(
     (route) =>
       ![
@@ -316,9 +312,9 @@ describe('what the worker is still fetching', () => {
       so a screen reading only that owes no loading state. Three here:
       milestones reads the milestone catalogue, resources reads a directory
       compiled into the bundle, and the notifications view reads nothing but
-      the preference store. Presentations and entry templates read the same
+      the preference store. Presentations read the same
       mirrored vocabulary (reference.svelte.ts) rather than a live query, but
-      left this list with audit item 6 along with their routes. */
+      left this list with audit item 6 along with their route. */
   const ENTRY_DATA = ROUTES.filter(
     (route) =>
       ![

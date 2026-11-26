@@ -62,25 +62,19 @@ try {
   await page.keyboard.press('Escape');
   await closed();
   const entry = '/entry/new/20000';
-  const openManager = async kind => {
+  const openManager = async () => {
     // A new entry's modes are on its marks step (tester report 02, ticket 09).
-    if (kind === 'modes') {
-      await toEntryStepWith(page, '[data-manage-presentations]');
-      await page.locator('[data-manage-presentations]').click();
-    } else {
-      await page.locator('[data-use-template]').click();
-      await page.locator('[data-manage-entry-templates]').click();
-      await page.locator('[data-manage-entry-templates]').waitFor({ state: 'detached' });
-    }
-    await page.getByRole('dialog', { name: kind === 'modes' ? 'Modes' : 'Templates', exact: true }).waitFor();
+    await toEntryStepWith(page, '[data-manage-presentations]');
+    await page.locator('[data-manage-presentations]').click();
+    await page.getByRole('dialog', { name: 'Modes', exact: true }).waitFor();
     await settle();
   };
-  for (const kind of ['modes', 'templates']) {
+  for (const kind of ['modes']) {
     for (const back of [false, true]) {
       await route('/calendar');
       await route(entry);
       await continueToTheRest(page);
-      await openManager(kind);
+      await openManager();
       await page.evaluate(() => {
         const sheet = document.querySelector('[role="dialog"]');
         window.managerFrames = [];
@@ -112,7 +106,7 @@ try {
   // Ordinary dismissal still returns focus to the actual launcher.
   await route(entry);
   await continueToTheRest(page);
-  await openManager('modes');
+  await openManager();
   if (serial) adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
   else await page.keyboard.press('Escape');
   await closed();
@@ -135,10 +129,10 @@ try {
     assert.ok(await page.locator('[data-retained-door]').count() >= 2, 'two real doors retained');
   }
   {
-    const kind = serial ? 'modes' : 'templates';
+    const kind = 'modes';
     await route('/settings');
     if (serial) assert.ok(await page.locator('[data-retained-door]:not([data-retained-active])').count(), 'hidden retained door behind Settings');
-    await page.locator(`[data-list-row="${kind === 'modes' ? 'presentations' : 'entry-templates'}"]`).click();
+    await page.locator('[data-list-row="presentations"]').click();
     await page.locator('[role="dialog"]').waitFor();
     await settle();
     await page.evaluate(() => {

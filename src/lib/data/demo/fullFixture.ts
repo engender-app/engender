@@ -589,15 +589,6 @@ export async function seedFullFixture(
   const milestonePhoto = journalPhotos.find((p) => p.milestoneName !== null);
   if (milestonePhoto) await journal.photos.setStarred(milestonePhoto.id, true);
 
-  // One custom entry template, alongside whatever built-ins ship.
-  await journal.entryTemplates.addEntryTemplate({
-    name: say('Hard day', 'Trudny dzień'),
-    tags: ['dt-physical', 'e-anxious'],
-    dims: { euphoria_dysphoria: 20 },
-    noteScaffold: say('What was hard today: ', 'Co dziś było trudne: '),
-    presentationId: null
-  });
-
   // One voice practice take, distinct from the benchmarks above - a
   // practice session has nothing to compare it against (voicePracticeTakes.ts).
   await journal.voicePracticeTakes.addTake({

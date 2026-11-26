@@ -149,7 +149,7 @@
      picks. The gate wears this same class and follows it; it has no sun,
      but a step machine and a gate arriving one after the other with
      different top edges would be a jump between them. */
-  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--screen-inset)) 0;
   padding: var(--space-2) var(--space-5) var(--space-4);
   color: var(--field-ink);
   /* The paint below is a window tall and absolutely positioned in this box,
@@ -285,12 +285,17 @@
    a browser, and every field takes it back. The reasoning and the floor
    that keeps it safe on a short bar are written at the token. */
 .screen > .screen-header > .screen-field {
-  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--screen-inset)) 0;
   padding: var(--space-8) var(--space-5) var(--space-4);
   min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
 }
 /* The controls on the field take its ink, not the page's text colour. */
 .screen-field .icon-btn { color: inherit; }
+/* And hover with a tint of that ink, not the page's --surface-2: on the
+   coloured field that was a solid disc, near the arrow's own darkness in the
+   dark theme (rgb 29 42 52 behind an ink of 16 24 32), so the arrow sank into
+   its hover (pre-release-human 18). */
+.screen-field .icon-btn:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
 .screen-back {
   grid-column: 1 / -1;
   justify-self: start;
@@ -311,8 +316,10 @@
      field above the title's cap line, a 16px thin glyph over 34px caps set
      at 800, so it read as a stray mark. Lowered 8px, its ink ends about 16px
      over the caps, near half their height, which ties it to the title as a
-     kicker; the field's own height is unchanged. */
-  top: var(--space-2);
+     kicker; the field's own height is unchanged. That came back as too close
+     to the title (bug session 18, item 43), so it sits halfway between: 4px
+     lowered, about 20px of field between its ink and the caps. */
+  top: var(--space-1);
 }
 /* A size up and a little heavier, so the arrow holds its own next to the
    title's weight: 28px with a 2.6px stroke, against the 24px and 2px of an
@@ -513,7 +520,7 @@
    here at a specificity that beats it. */
 .screen-field .search-box:focus-within {
   border-color: var(--field-ink);
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: -2px;
 }
 .screen-field .search-input:focus-visible { outline: none; }
@@ -680,7 +687,7 @@
    The intent was a slightly rounded ring on square things, and a square
    element getting a square ring is the right answer for that anyway. */
 :is(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* A screen's heading takes focus when the screen arrives, so a screen
@@ -753,7 +760,7 @@
 }
 .switch[aria-checked="true"] .switch-track { background: var(--accent); border-color: var(--accent); }
 .switch[aria-checked="true"] .switch-thumb { background: var(--on-accent); translate: 16px; }
-.switch:focus-visible .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.switch:focus-visible .switch-track { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 2px; }
 /* The one state a switch can be in without being off: the preference it
    holds cannot apply in this mode, so the control reads dimmed rather than
    merely unchecked. Same figure as .btn:disabled, for the same reason. */
@@ -944,7 +951,7 @@ a.segment {
    user still sees exactly which segment holds focus; the mouse just sees
    the pill. */
 .segment:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: -3px;
 }
 
@@ -1211,6 +1218,12 @@ a.segment {
   font-size: var(--text-sm);
   text-align: left;
   cursor: pointer;
+}
+/* Tier 1: a full-width row answers a press with the fill, as .kit-row does.
+   The toggles opt out of press.css's scale, which walked the chevron out
+   from under the finger (pre-release-human 18). */
+.disclosure-toggle:active {
+  background: var(--role-wash);
 }
 .disclosure-chev {
   flex: 0 0 auto;
@@ -1691,7 +1704,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    alone that put a focus ring on the slider after every touch drag. The root
    is the tab stop, so the root having focus is what a ring means. */
 .slider-thumb:focus-visible { outline: none; }
-.slider:focus-visible .slider-thumb { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.slider:focus-visible .slider-thumb { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 2px; }
 
 /* An unset slider's own drawing lives with the control (Slider.svelte), out
    of this first-load sheet: only an editor ever draws one. */
@@ -1734,7 +1747,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .tag-picker.is-rows .tag-group-name { margin-bottom: 0; }
 .tag-row-frame {
   position: relative;
-  margin-inline: calc(-1 * var(--space-5));
+  margin-inline: calc(-1 * var(--screen-inset));
 }
 .tag-picker.is-rows .tag-row {
   flex-wrap: nowrap;
@@ -1929,14 +1942,17 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 /* The foot is a static flex item, and the blur layer above needs something
    to be absolute against. */
 [data-app-savebar][inert] { position: relative; }
+/* Reduced motion keeps the blurred layer and only shortens its fade to
+   the crossfade the scrim over it runs, which the 1ms clamp cannot reach.
+   It used to drop the layer outright, so the bar under an open sheet
+   looked different with the switch on (pre-release-human 18). The radius
+   never moves, so there is nothing here for reduced motion to stop. */
 html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
-  opacity: 0;
-  backdrop-filter: none;
+  transition-duration: var(--dur-crossfade) !important;
 }
 @media (prefers-reduced-motion: reduce) {
   :is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
-    opacity: 0;
-    backdrop-filter: none;
+    transition-duration: var(--dur-crossfade) !important;
   }
 }
 /* Carries the drag, so the sheet inside it keeps its transition's transform

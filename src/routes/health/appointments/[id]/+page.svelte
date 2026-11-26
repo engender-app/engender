@@ -36,7 +36,7 @@
   import type { Appointment, AppointmentStatusUpdate, WaitingAppointment } from '$lib/data/types';
   import type { AppointmentInput } from '$lib/data/journal/appointments';
   import { mostRecentPastAppointment, waitingSince } from '$lib/data/journal/appointments';
-  import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
+  import { debriefOfferVisible } from '$lib/data/vocabulary/debriefOffer';
   import { gapTo } from '$lib/data/vocabulary/hubLabels';
   import { toast } from '$lib/stores/toasts.svelte';
   import { deleter, rowWriter, writer } from '$lib/stores/attempt.svelte';

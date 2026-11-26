@@ -169,6 +169,7 @@ describe('catalogued app names', () => {
      appWordmark or tabIdentity. */
   const inApp = new Set([
     `${root}src/lib/components/AppNav.svelte`,
+    `${root}src/lib/components/PermissionList.svelte`,
     `${root}src/lib/data/vocabulary/archiveErrorLabels.ts`,
     `${root}src/routes/+page.svelte`,
     `${root}src/routes/settings/+page.svelte`

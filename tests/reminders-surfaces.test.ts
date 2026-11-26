@@ -1,11 +1,9 @@
-/* The rules the two reminders screens keep for platform honesty (phase 11
-   ticket 13), at the level a screen's source can be held to - mirrors
-   settings-surfaces.test.ts and unprompted-view.test.ts.
-
-   A stored reminder is a rule in the journal, and only Android can fire it
-   (ADR-0063, CONTEXT.md's Reminder). The web build still lists, edits and
-   deletes the rows, so the one thing these screens may not do is let a
-   browser reader mistake saved data for a schedule that will ring. */
+/* The rules the two reminders screens keep (phase 11 ticket 13, reshaped by
+   pre-release human 18). A stored reminder is a rule in the journal, and only
+   Android can fire it (ADR-0063, CONTEXT.md's Reminder), so the screens are
+   Android-only: the web has no branch of them left, and
+   reminders-android-only.test.ts holds the redirect. Mirrors
+   settings-surfaces.test.ts and unprompted-view.test.ts. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -20,45 +18,18 @@ const listMarkup = stripScript(list);
 const detail = read('src/routes/settings/reminders/[id]/+page.svelte');
 const detailMarkup = stripScript(detail);
 
-describe('the reminders list on web', () => {
-  it('hands the archive explanation a direct Export/import link', () => {
-    /* The limitation notice is where a web reader learns the data moves in
-       an encrypted export; the link is the task itself, not a second
-       explanation of it. Bounded at the Android check-in block because the
-       web branch carries an inner {:else} of its own (the empty state). */
-    const web = listMarkup.slice(listMarkup.indexOf('{#if isWeb}'), listMarkup.indexOf('data-checkin'));
-    expect(web).toContain('key="reminders-web"');
-    expect(web).toContain('m.rem_web_list_note()');
-    expect(web).toContain('m.rem_web_note()');
-    expect(web).toContain("href: '/settings/export'");
-    expect(web).toContain('m.exp_title()');
-  });
-});
-
-describe('the reminder editor on web', () => {
-  it('says the saved schedule will not ring here, before Save', () => {
-    /* The limitation sits above the save bar, so it is read before the one
-       action that commits the record. */
-    const note = detailMarkup.indexOf('key="reminder-web"');
-    expect(note).toBeGreaterThanOrEqual(0);
-    expect(note).toBeLessThan(detailMarkup.indexOf('<SaveBar>'));
-    expect(detailMarkup).toContain('m.rem_web_save_note()');
+describe('the reminders screens carry no web branch', () => {
+  it('draw one platform only, with none of the old web notices or labels', () => {
+    for (const source of [list, detail]) {
+      expect(source).not.toContain('isWeb');
+      expect(source).not.toMatch(/rem_web_|rem_next_web/);
+    }
   });
 
-  it('promises no exact alarms or reboot survival on web', () => {
-    /* "Exact alarms survive reboots" is Android delivery copy; a browser
-       reader must never see it over a Save button. One occurrence, in the
-       Android branch that follows the web notice. */
+  it('keeps the alarm note and the plain next-occurrence line in the editor', () => {
+    /* One occurrence each, no longer behind a platform check. */
     expect(detailMarkup.match(/m\.rem_alarm_note\(\)/g)?.length).toBe(1);
-    const saveNote = detailMarkup.indexOf('m.rem_web_save_note()');
-    const android = detailMarkup.slice(detailMarkup.indexOf('{:else}', saveNote));
-    expect(android).toContain('m.rem_alarm_note()');
-    expect(android).toContain('m.rem_alarm_note_link()');
-  });
-
-  it('labels the next occurrence as stored data, not as a scheduled ring', () => {
-    expect(detailMarkup).toContain('{#if isWeb}');
-    expect(detailMarkup).toContain('m.rem_next_web(');
+    expect(detailMarkup.match(/m\.rem_alarm_note_link\(\)/g)?.length).toBe(1);
     expect(detailMarkup).toContain('m.rem_next(');
   });
 });
@@ -69,9 +40,7 @@ describe('the reminders list on Android', () => {
        own request action, and the battery note keeps its own link. Ticket
        41 split the one shared notice in two, so each says only what its
        own refusal costs and leaves with the collapse kit Notice owns. The
-       slice starts at the Android check-in block, the first markup past
-       the web/Android branch, not at the first {:else} (the empty
-       state's). */
+       slice starts at the check-in block. */
     const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
     expect(android).toContain("{#if status === 'unreadable'}");
     expect(android).toContain("{#if status.notifications === 'denied'}");
@@ -150,5 +119,24 @@ describe('the notifications master switch, on the reminders screen', () => {
     expect(off).toContain('key="reminders-switched-off"');
     expect(off).toContain('m.rem_switched_off_title()');
     expect(off).toContain("href: '/settings/notifications'");
+  });
+});
+
+describe('deleting a reminder, from its editor on Android', () => {
+  it('offers Delete on a stored reminder the person made, and never on a new one', () => {
+    expect(detailMarkup).toMatch(/\{#if !detail\.isNew && detail\.record && !detail\.record\.autoSource\}[\s\S]*data-delete-reminder/);
+    expect(detailMarkup.match(/data-delete-reminder/g)?.length).toBe(1);
+  });
+
+  it('asks first, with the shared confirm sheet and the undo hint', () => {
+    expect(detailMarkup).toContain('<ConfirmDeleteSheet');
+    expect(detailMarkup).toContain('m.rem_delete_q(');
+    expect(detailMarkup).toContain('m.delete_undo_hint()');
+  });
+
+  it('deletes undoably, offers Undo and goes back to the list', () => {
+    expect(detail).toMatch(/undoable\(\(j\) => j\.reminders\.deleteReminder\(/);
+    expect(detail).toContain('offerUndo(');
+    expect(detail).toMatch(/offerUndo\([\s\S]*detail\.discard\(\)[\s\S]*replaceRoute\('\/settings\/reminders'\)/);
   });
 });

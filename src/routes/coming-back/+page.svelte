@@ -208,8 +208,8 @@
     margin-bottom: 0;
     /* Out through .screen's own 20 so the hairline runs the window's width,
        then padded back in so the control starts where the rows do. */
-    margin-inline: calc(-1 * var(--space-5));
-    padding: var(--space-3) var(--space-5) calc(var(--space-3) + var(--inset-bottom));
+    margin-inline: calc(-1 * var(--screen-inset));
+    padding: var(--space-3) var(--screen-inset) calc(var(--space-3) + var(--inset-bottom));
     border-top: 1px solid var(--hairline);
     /* Opaque, or the rows scroll through it. */
     background: var(--bg);

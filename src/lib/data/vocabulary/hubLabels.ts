@@ -78,7 +78,7 @@ const ROW_LINE: Record<HubRowKey, (() => string) | null> = {
   surgery: m.hub_sub_surgery,
   dilation: m.hub_sub_dilation,
   appointments: m.hub_sub_appointments,
-  milestones: null,
+  milestones: m.hub_sub_milestones,
   'progress-photos': m.hub_sub_progress_photos,
   roadmap: m.hub_sub_roadmap,
   letters: m.hub_sub_letters,

@@ -8,9 +8,9 @@
      the header, the span or the floor differs between them.
 
      The span comes in on the query the tile wrote (lookBackReadings.ts,
-     the same `from`/`to` /body-map reads), and is
-     written under the title in the rail's own words, so the screen says
-     what it is a reading of. A direct visit with no query, or a key no
+     the same `from`/`to` /body-map reads). It is not written under the
+     title any more: the period is picked on the door one step back, and
+     Alicja dropped the repeat (bug session 18, item 42). A direct visit with no query, or a key no
      reading answers to, says so rather than drawing the wrong thing.
      `words`, `highest` and `themes` are such keys since functional audit
      ticket 12 cut those readings, and so is `days`, whose one chart, the
@@ -59,7 +59,6 @@
 <div class="screen">
   <ScreenHeader
     title={reading ? TITLE[reading]() : m.nav_lookback()}
-    subtitle={reading ? label : undefined}
     screen={reading ? `stats-${reading}` : 'stats-reading'}
     back="/stats"
   />

@@ -218,6 +218,14 @@
   margin-top: var(--space-8);
 }
 
+/* And straight under the field it has no rule: the field's own edge already
+   says where the header ends, and a 3px line a breath under it was a second
+   edge (Alicja, bug session 18, item 33, on Settings' Wygląd). */
+.screen-header + .kit-heading {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .kit-heading h2,
 .kit-heading [role="heading"] {
   font-family: var(--font-display);
@@ -2475,19 +2483,6 @@ button.kit-strip-day .kit-strip-cell {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Names for the marks, once, under the plot. Wraps to two lines and stops:
-   the caption is a footnote to a chart and never a paragraph beside one. */
-.kit-area-annotations {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-xs);
-  line-height: 1.35;
-  color: var(--text-2);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
 }
 
 /* The range beneath, under the plot rather than under the gutter. */

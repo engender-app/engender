@@ -9,7 +9,7 @@
      an era is spent on seven other screens - the calendar, Wrapped,
      compare, on this day, stats, Today - and created on
      exactly one, which is ADR-0084's own test for a reference area. It is
-     managed in Settings now, the way modes and entry templates are, and the
+     managed in Settings now, the way modes are, and the
      milestone rail is the one place under Transition an era is still drawn
      (as a band behind the marks, MilestoneRail.svelte). `/transition/eras`
      has been removed.

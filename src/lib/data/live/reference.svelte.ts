@@ -30,7 +30,6 @@ import { prefs } from '../prefs/store.svelte';
 import type {
   BodyRegion,
   EffectCategory,
-  EntryTemplate,
   GenderDimension,
   Milestone,
   PersonalEffectCatalogEntry,
@@ -50,7 +49,6 @@ const mirror = $state<{
   effectCategories: EffectCategory[];
   personalEffectTypes: PersonalEffectCatalogEntry[];
   presentations: Presentation[];
-  entryTemplates: EntryTemplate[];
 }>({
   dimensions: [],
   tagGroups: [],
@@ -58,8 +56,7 @@ const mirror = $state<{
   bodyRegions: [],
   effectCategories: [],
   personalEffectTypes: [],
-  presentations: [],
-  entryTemplates: []
+  presentations: []
 });
 
 type MirrorSlice =
@@ -69,8 +66,7 @@ type MirrorSlice =
   | 'bodyRegions'
   | 'effectCategories'
   | 'personalEffectTypes'
-  | 'presentations'
-  | 'entryTemplates';
+  | 'presentations';
 
 /** The read that fills each slice. A slice refreshes on exactly the tables
     that read declares in writes.ts - the declaration writes.sql.test.ts
@@ -87,8 +83,7 @@ const SLICE_READS: Record<MirrorSlice, [area: string, operation: string]> = {
   bodyRegions: ['bodyRegions', 'getBodyRegions'],
   effectCategories: ['effectCategories', 'getEffectCategories'],
   personalEffectTypes: ['personalEffects', 'getEffectTypes'],
-  presentations: ['presentations', 'getPresentations'],
-  entryTemplates: ['entryTemplates', 'getEntryTemplates']
+  presentations: ['presentations', 'getPresentations']
 };
 
 let registered = false;
@@ -117,8 +112,7 @@ export async function hydrateReference(journal: Journal, current: () => void = (
     bodyRegions,
     effectCategories,
     personalEffectTypes,
-    presentations,
-    entryTemplates
+    presentations
   ] = await Promise.all([
     journal.dimensions.getDimensions(),
     journal.tags.getTagGroups(),
@@ -126,8 +120,7 @@ export async function hydrateReference(journal: Journal, current: () => void = (
     journal.bodyRegions.getBodyRegions(),
     journal.effectCategories.getEffectCategories(),
     journal.personalEffects.getEffectTypes(),
-    journal.presentations.getPresentations(),
-    journal.entryTemplates.getEntryTemplates()
+    journal.presentations.getPresentations()
   ]);
   current();
   mirror.dimensions = dimensions;
@@ -137,7 +130,6 @@ export async function hydrateReference(journal: Journal, current: () => void = (
   mirror.effectCategories = effectCategories;
   mirror.personalEffectTypes = personalEffectTypes;
   mirror.presentations = presentations;
-  mirror.entryTemplates = entryTemplates;
   hydrated = true;
 
   if (registered) return;
@@ -160,7 +152,7 @@ export async function hydrateReference(journal: Journal, current: () => void = (
   });
 }
 
-/** The lock's half (after-release ticket 10): tag, milestone and template
+/** The lock's half (after-release ticket 10): tag and milestone
     names are journal content, and a locked web journal keeps none of it in
     the page. Nothing reads the mirror behind the lock - every screen that
     does is unmounted - and the unlock hydrates it again before the app
@@ -179,7 +171,6 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('effectCategories')) mirror.effectCategories = await journal.effectCategories.getEffectCategories();
     if (slices.has('personalEffectTypes')) mirror.personalEffectTypes = await journal.personalEffects.getEffectTypes();
     if (slices.has('presentations')) mirror.presentations = await journal.presentations.getPresentations();
-    if (slices.has('entryTemplates')) mirror.entryTemplates = await journal.entryTemplates.getEntryTemplates();
   } catch (error) {
     // The write itself succeeded; only the re-read failed. Keeping the stale
     // rows beats emptying the vocabulary out from under the screen.
@@ -332,18 +323,5 @@ export const reference = {
       same "not hidden" filter `visibleTagGroups` already applies to tags. */
   get visiblePresentations(): Presentation[] {
     return mirror.presentations.filter((p) => !p.hidden);
-  },
-
-  /** Every entry template, hidden ones included (phase 6 ticket 07,
-      CONTEXT: "Hidden") - what the editing screen manages. */
-  get entryTemplates(): EntryTemplate[] {
-    return mirror.entryTemplates;
-  },
-
-  /** What the entry editor's "use template" sheet offers: hidden templates
-      removed, the same "not hidden" filter `visibleTagGroups` already
-      applies to tags. */
-  get visibleEntryTemplates(): EntryTemplate[] {
-    return mirror.entryTemplates.filter((t) => !t.hidden);
   }
 };

@@ -277,7 +277,7 @@
   async function printBook() {
     openForPrint();
     await photosDrawn();
-    void printCurrentPage(m.journal_book_title());
+    void printCurrentPage(m.journal_book_document_title());
   }
 </script>
 
@@ -406,7 +406,7 @@
 
       <div class="print-heading">
         <PrintLetterhead />
-        <h1>{m.journal_book_title()}</h1>
+        <h1>{m.journal_book_document_title()}</h1>
         <p>{m.journal_book_range({ from: dayLong(book.fromEpochDay), to: dayLong(book.toEpochDay) })}</p>
       </div>
 

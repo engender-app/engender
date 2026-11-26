@@ -310,3 +310,49 @@ export function placeLabels(
   }
   return placed;
 }
+
+/** A pair of scales and how many entries carry both (stats.constellationPairs). */
+export interface ScalePair {
+  a: string;
+  b: string;
+  count: number;
+}
+
+/** The scales the plane can put on an axis: with `x` null, every ticked
+    scale that some other ticked scale has points with; with `x` given, the
+    ticked scales that do with `x`. In `active` order, so the pickers keep
+    the order Settings gives the scales. Bug session 18, item 41: a picker
+    that offers a pair with no points makes people hunt for one that draws. */
+export function planePartners(pairs: readonly ScalePair[], active: readonly string[], x: string | null): string[] {
+  const has = new Set<string>();
+  for (const { a, b, count } of pairs) {
+    if (count < 1 || !active.includes(a) || !active.includes(b)) continue;
+    if (x === null) {
+      has.add(a);
+      has.add(b);
+    } else if (a === x) has.add(b);
+    else if (b === x) has.add(a);
+  }
+  return active.filter((key) => has.has(key));
+}
+
+/** The axes to draw: the picked pair while it has points; otherwise the
+    picked x with its first partner; otherwise the pair with the most
+    points, in `active` order. Null when no two ticked scales share an entry. */
+export function planeAxes(
+  pairs: readonly ScalePair[],
+  active: readonly string[],
+  picked: { x: string; y: string }
+): { x: string; y: string } | null {
+  const partnersOfX = planePartners(pairs, active, picked.x);
+  if (partnersOfX.includes(picked.y)) return picked;
+  if (partnersOfX.length) return { x: picked.x, y: partnersOfX[0] };
+  let best: ScalePair | null = null;
+  for (const pair of pairs) {
+    if (!active.includes(pair.a) || !active.includes(pair.b) || pair.count < 1) continue;
+    if (!best || pair.count > best.count) best = pair;
+  }
+  if (!best) return null;
+  const [x, y] = active.indexOf(best.a) <= active.indexOf(best.b) ? [best.a, best.b] : [best.b, best.a];
+  return { x, y };
+}

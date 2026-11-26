@@ -25,6 +25,8 @@
      a rename, since a typo in one otherwise sat in every picker for good
      (after-release 07). A built-in keeps the catalogue's name. */
   let renameTarget = $state<{ id: string; name: string } | null>(null);
+  /* Open on arrival, so the regions are there to read (pre-release-human 18). */
+  let builtinOpen = $state(true);
 
   /* Both sheets close once their write lands, and stay open with a toast
      when it does not (after-release 06). */
@@ -107,7 +109,7 @@
       {/each}
     </div>
 
-    <Disclosure class="managed-group" label={m.default_title()} id="body-regions-builtin" strong>
+    <Disclosure class="managed-group" label={m.default_title()} id="body-regions-builtin" strong bind:open={builtinOpen}>
       <div class="managed-tags">
         {#each builtIns as r (r.id)}
           <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>

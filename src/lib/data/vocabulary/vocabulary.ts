@@ -15,12 +15,10 @@ import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
 import { rankByLean, scaleLean } from '../lean';
-import { milestoneTemplateRows, regimenTemplateRows } from './builtinTemplates';
-import { resolveBuiltInWording } from './entryTemplates';
+import { GUIDED_PROMPT_KEYS, milestoneTemplateRows, regimenTemplateRows } from './builtinTemplates';
 import type {
   BodyRegion,
   EffectCategory,
-  EntryTemplate,
   GenderDimension,
   Milestone,
   MilestoneTemplate,
@@ -37,8 +35,7 @@ import {
   dimensionName,
   dimensionNote as builtInDimensionNote,
   effectCategoryName,
-  entryTemplateName,
-  entryTemplateNoteScaffold,
+  guidedPromptText,
   milestoneTemplateName,
   moodName,
   personalEffectName,
@@ -87,24 +84,6 @@ function localizeRegimenTemplate(t: RegimenTemplate): RegimenTemplate {
     drug: regimenTemplateDrug(t.key),
     ester: regimenTemplateEster(t.key),
     route: regimenTemplateRoute(t.key)
-  };
-}
-
-/** A built-in still seeded blank is resolved by key, the same "data lives
-    in the mirror, wording lives in labels.ts" split every other built-in
-    area uses; a custom template's name and note scaffold are the person's
-    own words and pass through untouched, same as a built-in the person has
-    edited (ticket 25's "editable-name question", answer 2: the edit
-    wins). `resolveBuiltInWording` is where that fallback direction is
-    decided and proven. */
-function localizeEntryTemplate(t: EntryTemplate): EntryTemplate {
-  if (!t.builtIn) return t;
-  return {
-    ...t,
-    ...resolveBuiltInWording(
-      { name: t.name, noteScaffold: t.noteScaffold },
-      { name: entryTemplateName(t.id), noteScaffold: entryTemplateNoteScaffold(t.id) ?? '' }
-    )
   };
 }
 
@@ -285,33 +264,9 @@ export const vocabulary = {
   presentation(id: string): Presentation | null {
     return this.presentations.find((p) => p.id === id) ?? null;
   },
-  /** Every entry template, built-in and authored, hidden ones included, in
-      the wording the current language gives a built-in (phase 6 ticket 07)
-      - what the editing screen manages. */
-  get entryTemplates(): EntryTemplate[] {
-    return reference.entryTemplates.map(localizeEntryTemplate);
-  },
-  /** What the entry editor's "use template" sheet offers: hidden templates
-      removed, the same "not hidden" filter `visibleTagGroups` already
-      applies to tags. */
-  get visibleEntryTemplates(): EntryTemplate[] {
-    return reference.visibleEntryTemplates.map(localizeEntryTemplate);
-  },
   /** One rotating reflection cue for the entry-creation banner (phase 4
-      features ticket 17). Picked from every visible template whose only
-      content is a note scaffold - no tags, no dims, no presentation - which
-      is a structural test, not a `builtIn` check: the eight folded-in
-      guided prompts (phase 6 ticket 07) always have this shape, but so does
-      any authored template a person builds the same way, and there is no
-      reason to keep the banner from offering theirs too once it exists.
-      Null once every one has been hidden, which the banner reads as
-      nothing to show rather than an error - the same resting state hiding
-      every built-in already gives any other picker. */
-  randomPrompt(): EntryTemplate | null {
-    const pool = this.visibleEntryTemplates.filter(
-      (t) => t.tags.length === 0 && Object.keys(t.dims).length === 0 && t.noteScaffold !== '' && t.presentationId === null
-    );
-    if (pool.length === 0) return null;
-    return pool[Math.floor(Math.random() * pool.length)];
+      features ticket 17). */
+  randomPrompt(): string {
+    return guidedPromptText(GUIDED_PROMPT_KEYS[Math.floor(Math.random() * GUIDED_PROMPT_KEYS.length)]);
   }
 };

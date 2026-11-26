@@ -104,7 +104,8 @@ describe('what Settings is built from', () => {
     const privacy = outsideSheets.slice(
       outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />')
     ).match(/<ListCard>[\s\S]*?<\/ListCard>/)?.[0] ?? '';
-    const order = ['key="security"', '<DisguiseSetting />', 'key="export"', 'key="journal-book"', 'key="permissions"', 'key="trash"', 'key="erase"'].map((k) => privacy.indexOf(k));
+    // The PDF export sits low, just above erasing (pre-release-human 18).
+    const order = ['key="security"', '<DisguiseSetting />', 'key="export"', 'key="permissions"', 'key="trash"', 'key="journal-book"', 'key="erase"'].map((k) => privacy.indexOf(k));
     expect(order.every((at) => at > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(privacy.lastIndexOf('<ListRow')).toBeLessThan(order[6]);
@@ -244,7 +245,8 @@ describe('what Settings is built from', () => {
       const stripes = dedupe(motif!.split(',').map((c) => hex(c.trim())));
       const rule = new RegExp(String.raw`\[data-swatch="${palette}"\]\s*\{([^}]+)\}`).exec(screens)?.[1];
       expect(rule, `no swatch for ${palette}`).toBeTruthy();
-      const drawn = dedupe([...rule!.matchAll(/#[0-9a-fA-F]{3,6}\b/g)].map((mm) => hex(mm[0])));
+      // A colour inside an inline SVG is URL-encoded, # as %23 (intersex's ring).
+      const drawn = dedupe([...rule!.matchAll(/(?:#|%23)([0-9a-fA-F]{3,6})\b/g)].map((mm) => hex('#' + mm[1])));
       if (palette === 'intersex') expect(new Set(drawn)).toEqual(new Set(stripes));
       else expect(drawn, palette).toEqual(stripes);
     }

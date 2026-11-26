@@ -69,9 +69,11 @@
 </script>
 
 <div class="span-facts" data-span-facts>
+  <!-- A full-width fold toggle answers with the wash, not a scale (pre-release-human 18). -->
   <button
     type="button"
     class="disclosure-toggle"
+    data-no-press
     aria-expanded={open}
     data-span-facts-toggle
     onclick={() => (open = !open)}

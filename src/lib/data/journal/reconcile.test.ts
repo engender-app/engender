@@ -59,47 +59,6 @@ test('restores a missing built-in without touching custom rows', async () => {
   assert.ok(emotions.tags.some((t) => t.label === 'proud'), 'custom tag survived');
 });
 
-test('the appointment debrief seeds hidden, and an ordinary template seeds visible (ticket 25)', async () => {
-  const db = await migratedDb();
-  await openJournal(db, fakeFileStore()).reconcileBuiltIns();
-
-  const debrief = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'appointment_debrief'").get() as {
-    hidden: number;
-  };
-  assert.equal(debrief.hidden, 1, 'appointment_debrief seeds hidden');
-
-  const ordinary = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'euphoria_day'").get() as {
-    hidden: number;
-  };
-  assert.equal(ordinary.hidden, 0, 'euphoria_day seeds visible');
-});
-
-test('a reconcile over an existing journal leaves a person-set entry template hidden flag alone (ticket 25)', async () => {
-  const db = await migratedDb();
-  const journal = openJournal(db, fakeFileStore());
-  await journal.reconcileBuiltIns();
-
-  db.raw.exec("UPDATE entry_template SET hidden = 0 WHERE key = 'appointment_debrief'");
-  db.raw.exec("UPDATE entry_template SET hidden = 1 WHERE key = 'euphoria_day'");
-  db.raw.exec("DELETE FROM entry_template WHERE key = 'dysphoria_day'");
-  await journal.reconcileBuiltIns();
-
-  const debrief = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'appointment_debrief'").get() as {
-    hidden: number;
-  };
-  assert.equal(debrief.hidden, 0, 'a debrief the person showed stays shown');
-
-  const ordinaryHidden = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'euphoria_day'").get() as {
-    hidden: number;
-  };
-  assert.equal(ordinaryHidden.hidden, 1, 'an ordinary template the person hid stays hidden');
-
-  const restored = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'dysphoria_day'").get() as {
-    hidden: number;
-  };
-  assert.equal(restored.hidden, 0, 'a restored built-in gets its own seed default');
-});
-
 // The physical schema tables reconcileBuiltIns inserts into, mapped to the
 // logical TableName writes.ts announces (ticket 28's drift guard): a new
 // built-in table added to reconcile.ts without an entry here, or without a
@@ -114,9 +73,6 @@ const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
   body_region: 'bodyRegion',
   effect_category: 'effectCategory',
   personal_effect_type: 'personalEffectType',
-  entry_template: 'entryTemplate',
-  entry_template_tag: 'entryTemplate',
-  entry_template_dimension_value: 'entryTemplate',
   progress_pose: 'progressPhoto'
 };
 
@@ -174,22 +130,4 @@ test('a reconcile over an existing journal leaves its duplicate built-ins as the
   assert.equal(hiddenOf(db, 'tag', 'g-body-dys'), 0);
   assert.equal(hiddenOf(db, 'tag', 'g-soc-dys'), 0);
   assert.equal(hiddenOf(db, 'body_region', 'whole_body'), 0);
-});
-
-test("a new journal's dysphoria-day template names the tags it can still pre-fill (FA 41)", async () => {
-  const db = await migratedDb();
-  await openJournal(db, fakeFileStore()).reconcileBuiltIns();
-
-  const tags = db.raw
-    .prepare(
-      `SELECT t.key, t.hidden FROM entry_template_tag ett
-       JOIN entry_template et ON et.id = ett.template_id
-       JOIN tag t ON t.id = ett.tag_id
-       WHERE et.key = 'dysphoria_day' ORDER BY t.key`
-    )
-    .all() as { key: string; hidden: number }[];
-  assert.deepEqual(tags.map((t) => ({ ...t })), [
-    { key: 'dt-physical', hidden: 0 },
-    { key: 'dt-social', hidden: 0 }
-  ]);
 });

@@ -146,24 +146,13 @@ describe('the notify column on web', () => {
   it('is absent rather than shown and inert (user story 18)', () => {
     /* A browser cannot fire a scheduled notification while the app is
        closed, so a switch there would be a promise the platform does not
-       keep - the screen says so instead of drawing dead switches. The show
+       keep. The screen is titled for in-app notices on the web instead of
+       carrying a notice that repeats it (pre-release human 18). The show
        column and the four prompts are unaffected: a notice, a card and a
        nudge are in-app UI, not notifications. */
-    expect(screenMarkup).toContain('{#if isWeb}');
-    const web = screenMarkup.slice(screenMarkup.indexOf('{#if isWeb}'), screenMarkup.indexOf('{/if}'));
-    expect(web).toContain('notif_web_title');
-    expect(web).not.toContain('<Switch');
-  });
-
-  it('explains the platform beside the rows it governs (ticket 13)', () => {
-    /* The web notice sits above the registry card, not below the prompts:
-       "every visible row has an action or a nearby explanation" is about
-       distance, and an explanation after another section was the audit's
-       finding. */
-    const notice = screenMarkup.indexOf('key="notifications-web"');
-    const rows = screenMarkup.indexOf('{#each homeRows as row (row.key)}');
-    expect(notice).toBeGreaterThanOrEqual(0);
-    expect(notice).toBeLessThan(rows);
+    expect(screenMarkup).toContain('notificationsTitle()');
+    expect(screenMarkup).not.toContain('notif_web_title');
+    expect(screenMarkup).toContain('notify={!isWeb && row.notify');
   });
 
   it('keeps phone-only controls on the platform that can fire (ticket 13)', () => {

@@ -338,29 +338,6 @@ beforeAll(async () => {
   await drive('entries', 'deleteEntry', () => journal.entries.deleteEntry(purgedEntryId));
   await drive('entries', 'purgeEntry', () => journal.entries.purgeEntry(purgedEntryId));
 
-  // --- entryTemplates -------------------------------------------------
-  const template = (await drive('entryTemplates', 'addEntryTemplate', () =>
-    journal.entryTemplates.addEntryTemplate({
-      name: 'After a hard day',
-      tags: [tag2.id],
-      dims: { [voice.key]: 3 },
-      noteScaffold: 'What made today hard?',
-      presentationId: femme.id
-    })
-  )) as { id: string };
-  await drive('entryTemplates', 'updateEntryTemplate', () =>
-    journal.entryTemplates.updateEntryTemplate(template.id, {
-      name: 'After a hard day, revised',
-      tags: [tag2.id],
-      dims: { [voice.key]: 4 },
-      noteScaffold: 'What made today hard, really?',
-      presentationId: femme.id
-    })
-  );
-  await drive('entryTemplates', 'setEntryTemplateHidden', () =>
-    journal.entryTemplates.setEntryTemplateHidden(template.id, true)
-  );
-
   // --- milestones -------------------------------------------------------
   const milestoneId = (await drive('milestones', 'upsertMilestone', () =>
     journal.milestones.upsertMilestone({
@@ -1012,7 +989,6 @@ beforeAll(async () => {
   await driveRead('entries', 'countDistinctDays', () => journal.entries.countDistinctDays());
   await driveRead('tags', 'getTagGroups', () => journal.tags.getTagGroups());
   await driveRead('presentations', 'getPresentations', () => journal.presentations.getPresentations());
-  await driveRead('entryTemplates', 'getEntryTemplates', () => journal.entryTemplates.getEntryTemplates());
   await driveRead('bodyRegions', 'getBodyRegions', () => journal.bodyRegions.getBodyRegions());
   await driveRead('dimensions', 'getDimensions', () => journal.dimensions.getDimensions());
   await driveRead('dimensions', 'getPresets', () => journal.dimensions.getPresets());
@@ -1188,6 +1164,7 @@ beforeAll(async () => {
   await driveRead('stats', 'constellationReadings', () =>
     journal.stats.constellationReadings(voice.key, 'femininity', 19000, 21000)
   );
+  await driveRead('stats', 'constellationPairs', () => journal.stats.constellationPairs(19000, 21000));
   await driveRead('stats', 'bodyRegionTrend', () =>
     journal.stats.bodyRegionTrend('chest', 'dysphoria', 19000, 21000)
   );

@@ -7,6 +7,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import OnThisDayBlock from '$lib/components/OnThisDayBlock.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import { notificationsTitle } from '$lib/notificationsTitle';
 
   let scrollTo = $derived(page.url.searchParams.get('lookback'));
 </script>
@@ -20,7 +21,7 @@
       key="on-this-day-off"
       title={m.on_this_day_off_title()}
       text={m.on_this_day_off_body()}
-      action={{ label: m.notif_title(), href: '/settings/notifications' }}
+      action={{ label: notificationsTitle(), href: '/settings/notifications' }}
       aria-live="polite"
     />
   {:else}

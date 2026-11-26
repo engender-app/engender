@@ -27,6 +27,13 @@
   let high = $state('');
   let max = $state(100);
 
+  /* The preview is a real slider to try the scale on: it starts at 60% of
+     the range and follows the finger, clamped when the maximum shrinks.
+     It used to take a fixed value and drop every input, so it would not
+     move at all (pre-release-human 18). Nothing here is saved. */
+  let previewTried = $state<number | null>(null);
+  let previewValue = $derived(Math.min(previewTried ?? Math.round(max * 0.6), max));
+
   let previewDim = $derived({
     key: 'preview',
     name: name || m.cd_preview_name(),
@@ -188,7 +195,7 @@
 
   <SectionHeading text={m.cd_preview()} />
   {#key `${previewDim.name}|${previewDim.low}|${previewDim.high}|${max}`}
-    <DimensionSlider dim={previewDim} value={Math.round(max * 0.6)} onInput={() => {}} />
+    <DimensionSlider dim={previewDim} value={previewValue} onInput={(v) => (previewTried = v)} />
   {/key}
 
   <Sheet busy={renaming.busy} open={renameTarget !== null} title={m.cd_rename_sheet()} onClose={() => (renameTarget = null)}>

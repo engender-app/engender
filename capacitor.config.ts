@@ -13,7 +13,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 /* Hosted web metadata only. Android loads the bundled app at https://localhost
    through server.hostname below; this constant does not set its origin. */
-export const JOURNAL_ORIGIN = 'app.engender.barankiewicz.dev';
+export const JOURNAL_ORIGIN = 'journal.engender.app';
 
 const config: CapacitorConfig = {
   appId: 'dev.engender.app',
