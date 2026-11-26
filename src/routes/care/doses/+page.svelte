@@ -72,6 +72,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import { careEpisodeId, careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import { takeLegacyCareDrug } from '$lib/navigation/journalTextParams';
   import Segmented from '$lib/components/Segmented.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
@@ -262,7 +263,23 @@
      Not a launch route: /doses is not in launch-routes.json (ADR-0028) and
      this is reached from inside the app only. */
   $effect(() => {
-    if (loading || page.url.searchParams.get('add') !== '1') return;
+    if (loading) return;
+    const adding = page.url.searchParams.get('add') === '1';
+    /* An address from before Care carried episode ids named the drug
+       instead; it reached here in memory (journalTextParams.ts) and is
+       rewritten to the episode it names, so return links and a reload
+       keep it without the name. */
+    const legacyDrug = sourceEpisodeId ? null : takeLegacyCareDrug();
+    if (!adding && legacyDrug === null) return;
+    const legacyEpisode = legacyDrug === null ? null
+      : activeEpisodes.find((episode) => sameDrug(episode.drug, legacyDrug))
+        ?? episodes.find((episode) => sameDrug(episode.drug, legacyDrug)) ?? null;
+    const url = new URL(page.url);
+    if (legacyEpisode) url.searchParams.set('episode', legacyEpisode.id);
+    if (!adding) {
+      if (legacyEpisode) void replaceRoute(url, { noScroll: true, keepFocus: true });
+      return;
+    }
     /* Seeded with the drug the caller already knew (phase 11 ticket 10:
        Care's regimen blocks each carry a Log button, and somebody on three
        regimens said which one by pressing that block's button rather than
@@ -272,9 +289,9 @@
        written - the loop the comment in openEditor below is about. A drug
        that is not one of the active ones falls through to the picker, same
        as arriving with no drug at all. */
-    openEditor(null, activeEpisodes.find((episode) => episode.id === sourceEpisodeId)?.drug ?? null);
+    const episodeId = legacyEpisode?.id ?? sourceEpisodeId;
+    openEditor(null, activeEpisodes.find((episode) => episode.id === episodeId)?.drug ?? null);
     // A shallow replacement leaves page.url unchanged and replays this arrival.
-    const url = new URL(page.url);
     url.searchParams.delete('add');
     url.searchParams.delete('drug');
     url.searchParams.delete('lane');

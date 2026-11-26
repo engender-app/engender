@@ -100,7 +100,10 @@ async function saveWithNavigationFailure(journal: Journal) {
   const epochDay = 19_003;
   const target = document.createElement('div');
   document.querySelector('#editor')!.replaceChildren(target);
-  const screen = mountInto(EntryEditor, { epochDay, seedMood: 4, debriefForAppointment: 'visit-1' }, target);
+  /* A real appointment on the entry's own day: the save links a debrief
+     only to an appointment the offer could be naming (GD-048). */
+  const visit = await journal.appointments.upsertAppointment({ epochDay, procedureId: null, kind: null, place: null, note: null });
+  const screen = mountInto(EntryEditor, { epochDay, seedMood: 4, debriefForAppointment: visit }, target);
   try {
     await toTheRest(target);
     (await until(() => target.querySelector<HTMLButtonElement>('[data-save-star]'), 'the star')).click();
@@ -119,7 +122,7 @@ async function saveWithNavigationFailure(journal: Journal) {
     return {
       entryCount: entries.length,
       starred: entries[0].starred,
-      debriefLinked: await journal.checklists.getDebriefEntryId('visit-1') === entries[0].id,
+      debriefLinked: await journal.checklists.getDebriefEntryId(visit) === entries[0].id,
       truthfulNotice: notice.textContent!.includes(m.saved()),
       saveOffered: target.querySelector('[data-save]') !== null,
       saveFailureReported: toasts.some((item) => item.message === m.entry_save_failed()),

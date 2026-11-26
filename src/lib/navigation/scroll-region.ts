@@ -182,7 +182,16 @@ export function restoredBatches(path: string, list: string): number {
     67): both are asking about the same hash, and reading it twice with two
     different decodings would answer the question two different ways. */
 export function hashRowId(hash: string = location.hash): string | null {
-  return hash ? decodeURIComponent(hash.slice(1)) : null;
+  if (!hash) return null;
+  /* A hash is whatever the link said, and `#%` is a link anyone can send:
+     a malformed escape names no row, so it reads as no hash at all rather
+     than throwing inside the setup of the screen that asked. */
+  try {
+    return decodeURIComponent(hash.slice(1));
+  } catch (error) {
+    if (error instanceof URIError) return null;
+    throw error;
+  }
 }
 
 /** Scrolls the element a navigation's hash names into view, once it exists.
