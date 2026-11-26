@@ -471,8 +471,8 @@ export type HubRowKey = (typeof ROWS)[number]['key'];
 export type HubRow = Omit<HubRowSpec, 'key'> & { key: HubRowKey };
 
 /* HUB_ROWS stays exported for its own test, and cross-checked in
-   feature-screens.test.ts, home-surfaces.test.ts, more-surfaces.test.ts,
-   safe-space-surfaces.test.ts (AU-09 test-only review). */
+   feature-screens.test.ts, home-contracts.ts, more-surfaces.test.ts,
+   safe-space-contracts.ts (AU-09 test-only review). */
 export const HUB_ROWS: readonly HubRow[] = ROWS;
 
 /** The same rows people can hide later. Dilation is configured by an eligible

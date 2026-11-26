@@ -1,11 +1,11 @@
 import { publishFixture } from './mount';
 import { freshOrigin } from './fresh-origin';
-import { homeContracts } from './home-surfaces.test';
-import { calendarContracts } from './calendar-surfaces.test';
-import { directionContracts, directionNarrowContracts } from './direction-contract.test';
-import { safeSpaceContracts } from './safe-space-surfaces.test';
-import { lateReadsContracts } from './late-reads-surfaces.test';
-import { lookBackContracts } from './look-back-surfaces.test';
+import { homeContracts } from './home-contracts';
+import { calendarContracts } from './calendar-contracts';
+import { directionContracts, directionNarrowContracts } from './direction-contracts';
+import { safeSpaceContracts } from './safe-space-contracts';
+import { lateReadsContracts } from './late-reads-contracts';
+import { lookBackContracts } from './look-back-contracts';
 
 publishFixture('screen-mount', async () => {
   await freshOrigin();

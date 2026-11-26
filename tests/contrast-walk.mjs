@@ -17,7 +17,7 @@
 
    Large text answers to 3:1 and anything smaller to 4.5:1 (WCAG 1.4.3); the
    boundary is 24px, or 18.66px at weight 700 or more, which is the same
-   floor tests/direction-contract.test.ts uses. */
+   floor tests/browser-tier/direction-contracts.ts uses. */
 
 /**
  * The measurement, as a function to hand to `page.evaluate`. Takes the

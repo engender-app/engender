@@ -1,6 +1,6 @@
 {
   "baseSha": "a5e3e1c962597e9ae621f952b4d02cfba60d7407",
-  "device": "Pixel 10a, Android API 37, serial 64101JEA325797",
+  "device": "Pixel 10a, Android API 37",
   "artifacts": {
     "shell-app.apk": "4c6090350287035e6f33f79f3872d767efdc3b429665e485d31e46126526805b",
     "native-app.apk": "2e72d47de56270730ed73c932df286b539658179d187a42f994369076dbc26e6",

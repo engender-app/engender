@@ -731,7 +731,6 @@ To run one on its own, use
 
 | Probe | Why not |
 | --- | --- |
-| `fa16-quick-add-return` | Demo-build check of empty and running-regimen quick actions, five linked return row kinds, and dose editor handoff. Run after `VITE_DEMO=1 npm run build`. |
 | `session-device-credential` | Android session gate credential fallback after refusal, feedback, keyboard focus and concurrent prompts; light/dark screenshots. Uses a native bridge fixture; Android instrumentation proves platform behavior. |
 | `roadmap-goal-visibility` | Demo-build hide, reload, goal source link and restore guard. `--polish --zoom` checks Polish at 195px width; `--gallery` captures hidden goals across all palettes and both themes. |
 | `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
@@ -763,72 +762,9 @@ the per-frame tracks.
 `clinician-summary-print-layout` checks English and Polish summary previews and PDFs, long lab tables, printed values and caveats, and range, section and drug selections. Run after a demo build with Poppler installed: `node tests/clinician-summary-print-layout.mjs`; `--out` chooses the evidence directory.
 | `claim-address-check` | Dev-server check that the address a pick kept through a lock is claimed under (`location.pathname`) is unchanged across lock and unlock on the new-entry editor, with and without a query, and on `/media/documents`. Run by hand for now. |
 
-## Galleries and tools
+## Galleries and measurements
 
-Screenshots, flipbooks and measurements a person reads. None of them fail a
-build. Output goes to `.claude/` unless the script takes a directory.
-
-### Component sheets, off a browser-tier fixture page (no build)
-
-| Script | Shows |
-| --- | --- |
-| `gallery:kit` | the surface kit and the chart kit, every palette and both themes |
-| `gallery:controls` | the control kit, every palette, plus reduced motion |
-| `gallery:icons` | the navigation set and mood's faces at every size they ship |
-| `gallery:mood` | mood's ramps and faces per preset (`VITE_DEMO=1 npm run build && node tests/mood-gallery.mjs --app` shoots the built app instead) |
-| `gallery:tile-block` | the tile, one crop per shape per palette |
-| `gallery:progress` | the progress bar and a strip of its indeterminate sweep |
-| `gallery:day` | a day's records in its three shapes, every palette |
-| `gallery:body-map` | the body map's figure in its four data states |
-
-### Screen editors (dev server, no build)
-
-| Script | Shows |
-| --- | --- |
-| `gallery:hair-removal` | new and saved hair-removal editors and saved-session continuation in English and Polish across palettes and themes, with 200% zoom and disguise |
-| `gallery:appointments` | the appointment editor in English and Polish across all palettes and themes, including 200% zoom and disguise |
-
-### Screens in every state they have (demo build)
-
-| Script | Shows |
-| --- | --- |
-| `gallery:gates` | the five pre-unlock gates, the security module and the first run |
-| `gallery:permissions` | every permission row state, including the Android-only ones a browser cannot reach |
-| `gallery:dose-sheet` | the log-a-dose sheet |
-| `gallery:documents` | the documents area, including a PDF page and one the renderer could not read |
-
-### Motion (demo build)
-
-| Script | Shows |
-| --- | --- |
-| `gallery:blind-motion` | the field as a blind, in depth - the yank sweep sends you here |
-| `gallery:noticed-axis-motion` | the changes axis between frames, the numbers `NoticedAxis.svelte` cites |
-| `gallery:return-motion` | the return moment's five movements |
-| `gallery:restore` | setup's restore step and the welcome's new foot |
-| `gallery:journal-month` | the Journal's open month; `--motion` records month change, metric switch and strip to grid, with a per-frame yank count per scene |
-| `gallery:flipbook` | not a gallery: turns a directory of screencast frames into one JSON bundle for a review page |
-
-### Sweeps and measurements (demo build)
-
-The two yank sweeps and the hydration sweep belong to their own phase of
-work and were kept here without being run by ticket 33. Every other entry
-on this page ran green on 2026-09-23.
-
-| Script | Measures |
-| --- | --- |
-| `sweep:yanks` | every navigation and state change, per frame, for teleports and vanishes (`--prove` injects three) |
-| `sweep:yanks-device` | the same sweep on a phone over USB; needs `--package dev.engender.app.test.<name>` (never `dev.engender.app`, refused before any adb call) and takes `--port`, `--reduced-motion`; see the file's header for the APK steps |
-| `sweep:hydration` | every screen cold-mounted in both database profiles, for the pops the gesture sweep misses |
-| `gallery:cohesion` | every route read against DIRECTION.md from the computed tree (`savebar-frame.test.ts` reads it) |
-| `gallery:savebar` | what the save bar covers, per screen and viewport, in minutes rather than the cohesion sweep's 25 |
-| `measure:setup-contrast` | every piece of type in setup against what is actually behind it (`--palettes`, `--themes`) |
-| `cost:nav-motion` | the tab highlight's frame cadence at 4x CPU throttling, the number `app.css` and `motion-system.test.ts` cite |
-| `transition-summary-overlap` (`--paint`, `--matrix`) | Transition summaries stay inside Care while replacing text; painted probe compares outgoing red ink against Surgery title blue ink in the same PNG. Matrix covers shrinking/growing summaries at 230, 430 and 1024px in light/dark and reduced motion. |
-| `probe:field-text` | (ticket 285) nothing on a field paints past its painted edge or teleports against it, on every frame of every change that moves a field: doors both ways from top, middle and bottom, interrupted and reversed, deep push and back, gear, Polish, reduced motion, resize, setup's steps and handover, and the door field's height on a cold load, at 390 and 1440; `--only`, `--runs`, `--report`, `--frames`, `--json`, and `--device <serial>` to drive the Pixel WebView over its own forwarded port (`--port`, default 9341, `--package`, default the separate probe build and never the real app, `--rate` to slow the animations for reading the edge on pixels (`field-text-edge-series.mjs` reads the frames); the PIN gate opening is a scene there). Interrupted desktop scenes also observe native transition lifetimes and check the second HTML pattern and blind variables on every frame and attribute mutation, including the first transition finishing underneath it. Run them with `--only interrupted`. Timing-dependent: run it several times |
-| `day-strip-fill-motion` (demo build, `--out <dir>`) | Records shared week-cell fill transitions on Wear, Cycle, dilation and hair removal in both themes. Fails when a changed fill has no intermediate painted colour; saves full casts and timestamped samples. |
-| `day-strip-week-motion` (demo build, `--out <dir>`) | Incoming week labels fade and outgoing labels stay anchored on Cycle, dilation, wear and hair removal in light and dark; paging, date selection, focus transfer and reduced motion retain their behavior. Saves full painted casts and frame geometry. |
-| `cycle-week-motion` (demo build, `--out <dir>`) | Weekly events withdraw and reveal while history travels between heights in light and dark. Checks event editors, date range retention, interrupted paging and reduced motion; saves full painted casts and frame geometry. |
-| `tab-bar-withdraw-crossfade` | the floating bar's withdrawal crossfade across three sheet scenes, per frame, for blur snaps and dropouts (ticket 232) |
+See [manual test tools](tools/README.md) for commands and build requirements.
 
 ## Helpers
 
@@ -848,7 +784,7 @@ created or changed by that attempt are copied; gallery-only output is excluded.
 
 `android-tier/wear-reminder-hours.mjs` covers the wear reminder hours field, which renders only on Android. It types the hours one character at a time through `adb shell input text`, checks the reminder lands 1.5 hours after the start and that the running session reopens as typed, then checks that Stop with the hours cleared and the reminder still on keeps a reminder already due. Install a demo debug APK under `dev.engender.app.test` on a disposable emulator and pass its serial; it clears that package's data first and refuses the real app id.
 
-`tryout-save-check` checks label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real tryout routes. `gallery:tryouts` also captures saved details and discard controls across every palette, both themes, English and Polish, with compact and 200% zoom checks. Its feedback arrival/removal scenes reuse the browser harness screencast and write timestamped frames plus a manifest for `panel-motion-flipbook`.
+`tryout-save-check` checks label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real tryout routes. Its `--gallery` mode also captures saved details and discard controls across every palette, both themes, English and Polish, with compact and 200% zoom checks. Its feedback arrival/removal scenes reuse the browser harness screencast and write timestamped frames plus a manifest for `panel-motion-flipbook`.
 
 ## Other retained probes
 
@@ -859,42 +795,23 @@ available for the surface or device it measures.
 | --- | --- |
 | `palette-name-wrap` | every flag name in the palette picker wraps only between words and stays over its own flag, English and Polish, at 320, 360, 390 and 430px; dev server, run with `node tests/palette-name-wrap.mjs` |
 | `quick-add-mood-withdrawal` | check scrim withdrawal before mood navigation, chosen mood and heading focus for tap, keyboard and slide in both themes and motion preferences; requires a demo build, run with `node tests/quick-add-mood-withdrawal.mjs` |
-| `quick-add-close-check` | keep the bottom bar above the scrim until its outro ends; check cancellation focus and navigation in both themes and motion preferences against a demo build |
-| `quick-add-close-motion` | measure navigation edge detail in full physical compositor captures from three dedicated Quick add closes per theme; record source frame numbers and milliseconds, and fail on blurred intermediate frames |
 | `android-tab-status-strip` | sample tab and system-icon backgrounds in an Android WebView; requires a demo build and attached device |
 | `yank-sweep-strip-check` | read a sweep's saved casts and check the status strip (`.app-strip`, inset minus 9 CSS px) against `--bg` in every frame, naming the first frame and millisecond that leaves it; a band a sheet's scrim dims evenly is not counted. Run `node tests/yank-sweep-strip-check.mjs <sweep out dir>` over a device sweep or a desktop `yank-sweep --force-inset 58` run; exits 1 when any cast moves. Seen failing on a demo build copy with `.app::before` transparent (the strip before carpet 15) (11 of 14 door and mood casts) before passing on the real build (`mood-pick` only, where the screen and editor field cover the band on both builds) |
-| `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
-| `journal-book-print-diff` | compare printed journal output between demo builds (`measure:journal-book-print`) |
-| `journal-book-summary-gallery` | capture journal book summary crops (`gallery:journal-book-summary`) |
+| `journal-book-height` | measure the journal book height against a demo build |
+| `journal-book-print-diff` | compare printed journal output between demo builds |
+| `journal-book-summary-gallery` | capture journal book summary crops |
 | `journal-book-entry-gallery` | check range and photo selection, capture entries across palettes and themes, and verify long English/Polish notes and photos in A4 PDFs; run `node tests/journal-book-entry-gallery.mjs` after a demo build; requires Poppler |
 | `settings-features-check` | checks the Features to Show manager's keyboard access, focus and scroll return, saved choices, reduced motion, palette/theme layouts, Polish disguise at 230px and actual 200% browser zoom; run after a demo build |
 | `screenshot-block-row-check` | the Android-only Block screenshots row in Settings > Security, mounted over a demo build with the platform answer swapped for that one navigation: named and off on a fresh journal in English and Polish, on survives a reload, and the thumb and track travel on every sampled frame in both themes. `--shots <dir>` writes row crops, `--frames <dir>` the painted frames of each flip with their milliseconds, `--before` captures a build from before the change without asserting |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
-| `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
+| `regimen-editor-gallery` | capture regimen editors against a demo build |
 | `locale-build` | built production locale selection, isolated startup requests, both offline graphs, and online/offline language switches through Settings with localized passphrase gates |
 
 `guard-recovery-proof` runs disposable synthetic guards through the production runner
 and checks recovery, revision identity and retained evidence. The separate Guard
 recovery proof workflow uploads both attempts for seven days, including on success.
 
-`voice-tab-panel-motion` (`tests/voice-tab-panel-motion.mjs`) captures the Voice tab panel in both themes and checks withdrawal before replacement, keyboard focus, rapid switches, reduced motion and microphone cancellation. Run after a demo build: `node tests/voice-tab-panel-motion.mjs [output-directory]`.
-
-`today-editor-opening-motion` captures Arrange Today opening in both themes with timestamped painted frames, heading styles and ancestor scroll positions. It checks final continuity, keyboard reorder and focus, tile and agenda switches, reset confirmation, and entry from an empty arrangement. Run after a demo build: `node tests/today-editor-opening-motion.mjs [output-directory] [built-root]`.
-
-`settings-cycle-motion` (`tests/settings-cycle-motion.mjs`) checks the automatic Cycle tracking explanation against a demo build. Fresh preferences in each theme expose cuts and downstream jumps; compositor casts retain frame numbers and milliseconds. It checks Enter, Space, persistence, reduced motion and layouts at 390px, 780px and 195px. Run `node tests/settings-cycle-motion.mjs [output-directory]`.
-
 `lookback-span-content-motion` (`tests/lookback-span-content-motion.mjs`) captures a one-day span changing to a populated history band in light and dark. Timestamped compositor frames and computed layout styles check reading tiles, summary facts, the thin-span explanation, Wrapped link, naming offer and resurfacing cards for overlap. The check accounts for inset clipping and bottom-navigation occlusion. Recorded transition keyframes reject height animation on the reading grid. Run after a demo build: `node tests/lookback-span-content-motion.mjs [output-directory] [built-root]`. Add `--matrix` for Polish, reduced motion, disguise, 195px layout and all 16 palettes.
-
-`stock-sheet-motion` (`tests/stock-sheet-motion.mjs`) checks Add stock against a demo build. Light and dark casts retain frame numbers, milliseconds, sheet and background geometry, scroll position and theme proof. It checks continuous size changes, reduced motion, keyboard focus, creation, editing (the expiry day and pharmacy note included, shown on the row and read back by the editor) and deletion confirmation. Run `node tests/stock-sheet-motion.mjs [output-directory]`; `--baseline` records the unfixed path without requiring smooth travel.
-
-`today-settings-sun-motion` captures both navigation directions at 195px,
-390px and 1280px in both themes. Painted stripe probes check sun continuity,
-including when outside identity is disguised. The recorder also checks
-interrupted navigation, reduced motion, lock replacement and all 16 palettes.
-Run after a demo build: `node tests/today-settings-sun-motion.mjs [output-directory]`.
-`--baseline` records without assertions; `--gate-only` limits capture to lock
-replacement; `--signoff` limits capture to 390px, both themes and both
-navigation directions with disguise off and on.
 
 `node tests/browser-tier/ocr-offline.mjs` uses the production service worker,
 then runs the real OCR engine after offline reload. It checks English/Polish

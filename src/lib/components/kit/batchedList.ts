@@ -19,8 +19,7 @@
 
 /** Rows per batch. The same number search calls a page, so the app carries
     one of these rather than two. */
-/* BATCH stays exported for its own test, and cross-checked in
-   batched-list-cost-device.svelte.ts (AU-09 test-only review). */
+/* BATCH stays exported for its own test. */
 export const BATCH = 30;
 
 /** Batches asked for, clamped to at least one: a list always renders

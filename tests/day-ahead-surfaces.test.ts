@@ -1,5 +1,5 @@
 /* `/day/[day]`'s own rules from phase 8 features ticket 62 (ADR-0067), at
-   the level a grep can hold - the same split calendar-surfaces.test.ts uses
+   the level a grep can hold - the same split calendar-contracts.ts uses
    for the calendar's own ticket 61. What each behaviour actually renders
    for a real journal is tests/walkthrough.test.mjs's question; this is the
    wiring a typecheck cannot see: that a future day's write affordances sit
@@ -65,7 +65,7 @@ describe('the day after today', () => {
     // wrong thing to say about a day that has not happened - the bug ticket
     // 62 exists to fix. Asserted negatively because the positive case (it
     // still fires for an empty past day) is unchanged and already covered
-    // by the loading-states test in calendar-surfaces.test.ts.
+    // by the loading-states test in calendar-contracts.ts.
     expect(futureBranch).not.toContain('m.nothing_logged()');
     const beforeGuard = markupOf(day).split('{#if isFuture}')[0];
     expect(beforeGuard).not.toContain('m.nothing_logged()');

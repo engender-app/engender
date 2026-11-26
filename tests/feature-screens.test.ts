@@ -1,6 +1,6 @@
 /* The feature screens, after the rebuild onto the surface kit (phase 5 UX
    ticket 25), at the level a screen's source can be held to - the same
-   shape as home-surfaces.test.ts and more-surfaces.test.ts, which is where
+   shape as home-contracts.ts and more-surfaces.test.ts, which is where
    this kind of test started.
 
    This is the grind ticket, so the thing worth watching is not any one

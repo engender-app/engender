@@ -2712,7 +2712,7 @@ export function deviceTargetFromArgs(args) {
   };
   const positional = args.filter((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'));
   const serial = positional.find((a) => !a.endsWith('.apk'));
-  if (!serial) throw new Error('pass the device serial, e.g. node tests/yank-sweep-device.mjs 64101JEA325797 --package dev.engender.app.test.<name> [apk]');
+  if (!serial) throw new Error('pass the device serial, e.g. node tests/yank-sweep-device.mjs <serial> --package dev.engender.app.test.<name> [apk]');
   const pkg = flag('package');
   if (!pkg) throw new Error('pass --package dev.engender.app.test.<name>: the runner never drives the real app');
   if (!/^dev\.engender\.app\.test\.[a-z0-9]+$/.test(pkg))

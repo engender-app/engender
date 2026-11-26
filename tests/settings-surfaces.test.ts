@@ -1,8 +1,8 @@
 /* The rules Settings keeps after the rebuild (phase 5 ticket 24), at the
-   level a screen's source can be held to - mirrors home-surfaces.test.ts and
+   level a screen's source can be held to - mirrors home-contracts.ts and
    more-surfaces.test.ts.
 
-   Sheets are not a surface (home-surfaces.test.ts's own note): the about
+   Sheets are not a surface (home-contracts.ts's own note): the about
    sheet keeps the old `.list-group`/`.list-row`/`.card`
    vocabulary inside <Sheet>, so this file's "no card of its own" check
    strips every <Sheet>...</Sheet> block first, the same way the script

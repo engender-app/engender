@@ -1,7 +1,7 @@
 /* The cohesion sweep (redesign ticket 20): every route rendered against
    DIRECTION.md, and audited from the rendered tree rather than by eye.
 
-   Why a reading and not just a gallery. `tests/direction-contract.test.ts`
+   Why a reading and not just a gallery. `tests/browser-tier/direction-contracts.ts`
    already greps the shared sheets for every rule ticket 07 landed, so a
    divergence that survives is one a grep cannot see: an old-world class on
    one screen, a literal inside a route's own <style> block, a header a

@@ -365,7 +365,7 @@ export const NOTIFICATION_ROWS: readonly NotificationRow[] = UNPROMPTED_ROWS.fil
     *shortened copy* against, not stand as its own independent source of
     truth - that job is `UnpromptedKind`'s. */
 /* UNPROMPTED_KINDS stays exported only for liveTiles.grid.test.ts,
-   home-surfaces.test.ts, which cross-check against it (AU-09 test-only
+   home-contracts.ts, which cross-check against it (AU-09 test-only
    review). */
 export const UNPROMPTED_KINDS: readonly UnpromptedKind[] = ROWS.map((row) => row.key);
 

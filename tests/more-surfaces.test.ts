@@ -1,5 +1,5 @@
 /* The rules the More hub keeps after the rebuild (phase 5 ticket 24), at the
-   level a screen's source can be held to - mirrors home-surfaces.test.ts,
+   level a screen's source can be held to - mirrors home-contracts.ts,
    which is where this shape of test started.
 
    Greps for the questions that are genuinely about what is and is not in the

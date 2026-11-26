@@ -36,7 +36,7 @@ import { isReducedMotion } from './tokens';
 
 /** The pair's shared name. Nothing outside this module needs it; app.css
     does, and that is a string in a stylesheet either way. */
-/* ENTRY_CONTAINER stays exported only for calendar-surfaces.test.ts, which
+/* ENTRY_CONTAINER stays exported only for calendar-contracts.ts, which
    cross-checks against it (AU-09 test-only review). */
 export const ENTRY_CONTAINER = 'entry-open';
 

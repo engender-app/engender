@@ -51,7 +51,7 @@ describe('the ways down from Safe space', () => {
 
   it('points good moments at its own screen and the resources at the directory', () => {
     /* The comfort list is the button above the breath, not a way down
-       (phase 14 ticket 18): safe-space-surfaces.test.ts holds it. */
+       (phase 14 ticket 18): safe-space-contracts.ts holds it. */
     expect(SAFE_SPACE_WAYS.find((w) => w.key === 'evidence')?.href).toBe('/doubt/evidence');
     expect(SAFE_SPACE_WAYS.find((w) => w.key === 'resources')?.href).toBe('/support/resources');
   });
