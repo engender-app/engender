@@ -104,6 +104,15 @@
     });
   };
 
+  const hoverLines = (point: ConstellationPoint) => {
+    const raw = readings.get(point.id);
+    return [
+      fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+      m.values_second({ name: xScale?.name ?? '', value: nativeValue(xKey, raw?.x ?? 0) }),
+      m.values_second({ name: yScale?.name ?? '', value: nativeValue(yKey, raw?.y ?? 0) })
+    ];
+  };
+
   /* The tile's plane: a square, y up as the chart draws it. */
   const PLANE = 100;
   const px = (x: number) => (x * PLANE).toFixed(1);
@@ -141,6 +150,7 @@
             y={{ low: yScale.low, high: yScale.high }}
             {dayLabel}
             {readingLabel}
+            {hoverLines}
             scrubLabel={m.constellation_scrub()}
             ariaLabel={m.constellation_aria({ x: xScale.name, y: yScale.name })}
           />

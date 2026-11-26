@@ -19,7 +19,7 @@
     ]}
     modes={[]}
     x={{ low: 'Low x', high: 'High x' }} y={{ low: 'Low y', high: 'High y' }}
-    dayLabel={(day) => String(day)} readingLabel={(point) => String(point.day)}
+    dayLabel={(day) => String(day)} readingLabel={(point) => String(point.day)} hoverLines={(point) => [String(point.day)]}
     scrubLabel="Reading" ariaLabel="Two logged readings"
   />
 </div>
