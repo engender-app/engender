@@ -68,8 +68,7 @@ running tab is a link element and does follow (`src/app.html`).
 
 ## Why
 
-The palette is the person's own flag, chosen from many, not one brand colour
-(ADR-0035's motif). A mark built on trans pink and blue
+The palette is the person's own flag, chosen from many, not one brand colour. A mark built on trans pink and blue
 is wrong the moment somebody picks the nonbinary flag, and the app answers
 that everywhere else through `--motif-stripes`. An icon that alone stayed
 trans would be the one surface that disagreed, and the one looked at most.

@@ -4,18 +4,7 @@ One file per decision, named `NNNN-slug.md`. A number is allocated when the
 record lands on `main`, and a record not yet numbered is `draft-<slug>.md` and
 is cited as `ADR draft-<slug>`.
 
-What earns a record, its header lines and its size limits are in
-CONTRIBUTING.md, "Writing an ADR". Visual and motion rules, screen notes and
-the domain glossary are kept in the maintainer's private notes, which are not
-part of this repository. A tombstone below that points to one of them records
-where the decision went, not a file you can open.
-
-A guard holds this folder (`tests/adr-citations.test.ts`, run in CI). Every
-`ADR-NNNN` cited in `src`, `tests` and `android` is a file here or a line in
-the tombstone index below. Every file opens with Status, Decided, Last
-reviewed and Supersedes or Amends, stays at 1,000 words or fewer, and every
-number up to the highest is a file or a tombstone, never both. Tracked files
-outside `docs/internal` do not link to a `docs/internal/` path.
+See [Writing an ADR](../../CONTRIBUTING.md#writing-an-adr) for the header and size rules. CI checks that citations resolve and that public files point to material available in a clone.
 
 ## Live records
 
@@ -91,45 +80,45 @@ never written.
 - ADR-0015: photo metadata is stripped on normalize; merged into ADR-0008.
 - ADR-0016: the Node tier does not import paraglide; merged into ADR-0017.
 - ADR-0024: screens read vocabulary, the reference mirror stays internal; merged into ADR-0017.
-- ADR-0025: mood gets its own colour scale; moved to DIRECTION.md, "The mood ramp".
+- ADR-0025: mood gets its own colour scale; moved to private documentation.
 - ADR-0028: Java and TypeScript twin logic is pinned by one shared fixture of cases; moved to the header comment of `src/lib/android/launch-routes.ts`.
 - ADR-0029: the walkthrough grips `data-*` handles, ids and ARIA, never classes or copy; moved to CONTRIBUTING.md, "Test conventions".
-- ADR-0030: ticked scales rank suggestion lists, never gate them; moved to PRODUCT.md, "Product Principles".
+- ADR-0030: ticked scales rank suggestion lists, never gate them; moved to private documentation.
 - ADR-0031: a clinician summary section prints because it registers; moved to the header comment of `src/lib/data/journal/clinicianSummary.ts`, which already said it.
 - ADR-0032: the streak read the journaling pause and the run-out rate never reads a dose pause; retired. There is no streak (ADR-0055) and the run-out rule is in ADR-0046.
 - ADR-0034: a video note records through a live camera surface and photos still do not; merged into ADR-0033.
-- ADR-0035: the pride flag is a Home-only motif; its visual part moved to DIRECTION.md, "The pride flag motif", and its disguise part to ADR-0101.
+- ADR-0035: the pride flag is a Home-only motif; visual decision moved to private documentation and disguise decision moved to ADR-0101.
 - ADR-0036: feature surfaces live in a More hub and Settings holds only preferences; merged into ADR-0084.
 - ADR-0038: cross-block spacing is stamped by a `[data-kit-surface]` attribute, not enumerated by class; moved to the comment above the adjacency rules in `src/lib/styles/kit.css`.
 - ADR-0039: Home live tiles are gated on data, not preference; merged into ADR-0073.
-- ADR-0040: Safe Space is a read-only crisis-mode screen named for the moment, not the mechanism; moved to SCREENS.md, `/doubt` (Safe Space).
+- ADR-0040: Safe Space is a read-only crisis-mode screen named for the moment, not the mechanism; moved to private documentation.
 - ADR-0043: cycle tracking surfaces through a testosterone regimen or an explicit opt-in; merged into ADR-0092.
 - ADR-0044: an entry and its contextual rows commit in one transaction, checked first; moved to the comment above `resolveContextual` in `src/lib/data/journal/entries.ts`.
-- ADR-0050: the ambient motion budget was two loops on Home, reversed before it shipped; retired, history in DIRECTION.md, "Ambient loops".
-- ADR-0051: the flourish is dropped and the ambient budget goes back to one loop; moved to DIRECTION.md, "Ambient loops".
-- ADR-0056: the Stats door has one emptiness rule and two floors and indexes no areas; moved to SCREENS.md, `/stats`, with its chart rules in DIRECTION.md, "The Stats tab is an index and emptiness has one rule".
+- ADR-0050: the ambient motion budget was two loops on Home, reversed before it shipped; retired, with history in private documentation.
+- ADR-0051: the flourish is dropped and the ambient budget goes back to one loop; moved to private documentation.
+- ADR-0056: the Stats door has one emptiness rule and two floors and indexes no areas; moved to private documentation.
 - ADR-0057: an entry template seeds a presentation and never becomes one; merged into ADR-0048.
-- ADR-0058: chart form follows whether the data is ordered; moved to DIRECTION.md, "Chart form follows whether the data is ordered".
+- ADR-0058: chart form follows whether the data is ordered; moved to private documentation.
 - ADR-0060: a reference band was keyed to the passage's language; merged into ADR-0059, which records why the bands went.
-- ADR-0062: the return surface is a one-time moment that reports what is waiting, threshold `RETURN_GAP_DAYS`; moved to SCREENS.md, `/coming-back`.
-- ADR-0064: a wear session has a closed kind and only a binder gets a duration cue; moved to CONTEXT.md, "Wear session".
+- ADR-0062: the return surface is a one-time moment that reports what is waiting, threshold `RETURN_GAP_DAYS`; moved to private documentation.
+- ADR-0064: a wear session has a closed kind and only a binder gets a duration cue; moved to private documentation.
 - ADR-0069: a long log grows in rendered batches while search stays paged by its control; moved to the header comment of `src/lib/components/kit/BatchedList.svelte`.
-- ADR-0070: progress is one shared component, and cancel answers what has already changed; moved to DIRECTION.md, "Progress is one shared component".
-- ADR-0071: the mood faces are the second ambient loop; moved to DIRECTION.md, "Ambient loops".
+- ADR-0070: progress is one shared component, and cancel answers what has already changed; moved to private documentation.
+- ADR-0071: the mood faces are the second ambient loop; moved to private documentation.
 - ADR-0072: a row declares which screen draws it; merged into ADR-0084.
-- ADR-0074: the agenda is a projection of the days ahead and never counts what did not happen; moved to SCREENS.md, `/` (Today), and the principle to PRODUCT.md, "Product Principles".
-- ADR-0075: colour lives in a field and in blocks and nowhere else; moved to DIRECTION.md, "Colour lives in a field and in blocks".
+- ADR-0074: the agenda is a projection of the days ahead and never counts what did not happen; moved to private documentation.
+- ADR-0075: colour lives in a field and in blocks and nowhere else; moved to private documentation.
 - ADR-0076: preferences are chrome, one persistent control and not a hub row; merged into ADR-0084.
-- ADR-0077: mood's ramp runs between two hues and its face sits on a block; moved to DIRECTION.md, "The mood ramp".
-- ADR-0078: a state change moves unless its change says why not; moved to DIRECTION.md, "Motion brief".
+- ADR-0077: mood's ramp runs between two hues and its face sits on a block; moved to private documentation.
+- ADR-0078: a state change moves unless its change says why not; moved to private documentation.
 - ADR-0079: setup does not vary by disguise and offers it last; merged into ADR-0101.
-- ADR-0080: a state change inside one tab carries the field's blind (the step-by-step travel in `screen-transition`); never written as a record; DIRECTION.md, "A state change inside one tab carries the field's blind".
-- ADR-0081: a body region is one value on one scale, the midpoint never stored; moved to CONTEXT.md, "Body-region feeling".
+- ADR-0080: a state change inside one tab carries the field's blind (the step-by-step travel in `screen-transition`); recorded in private documentation.
+- ADR-0081: a body region is one value on one scale, the midpoint never stored; moved to private documentation.
 - ADR-0082: a held vowel and a read passage answer to different floors; moved to the comments on `VOICED_SECONDS_PER_WORD` and `MAX_PLAUSIBLE_WPM` in `src/lib/audio/quality.ts`.
-- ADR-0083: a distribution over a continuous axis is a density and keeps the axis; moved to DIRECTION.md, "Density over a continuous axis".
+- ADR-0083: a distribution over a continuous axis is a density and keeps the axis; moved to private documentation.
 - ADR-0086: an auto-logged dose is a standing instruction, not an inference; merged into ADR-0045.
-- ADR-0087: one silhouette, and neutrality is measured; moved to DIRECTION.md, "One silhouette, and neutrality is measured".
+- ADR-0087: one silhouette, and neutrality is measured; moved to private documentation.
 - ADR-0090: LAN pairing keeps journal keys local; superseded by ADR-0100, the app makes no network request.
-- ADR-0091: each mood step picks its own ink; moved to DIRECTION.md, "The mood ramp".
-- ADR-0093: a secondary button is a block of the page; moved to DIRECTION.md, "A secondary button is a block of the page".
+- ADR-0091: each mood step picks its own ink; moved to private documentation.
+- ADR-0093: a secondary button is a block of the page; moved to private documentation.
 - ADR-0104: progress photos take a live camera with the last shot as a ghost; merged into ADR-0033.

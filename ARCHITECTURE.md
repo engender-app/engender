@@ -32,22 +32,7 @@ commit; their source files carry the measurement context.
 | [Self-hosting](deploy/SELF-HOSTING.md), [deployment](deploy/README.md) | Hosting, releases and rollback |
 | [Security policy](SECURITY.md), [support](SUPPORT.md) | Reporting problems without disclosing journal data |
 
-<details>
-<summary>Maintainer-only references</summary>
-
-ADRs cited as `ADR-NNNN` live in [docs/adr](docs/adr/README.md). The domain
-glossary is `CONTEXT.md`; product and screen briefs are `PRODUCT.md` and
-`SCREENS.md`. `docs/internal/docs/agents/verification.md` and
-`docs/internal/docs/agents/platform.md` hold additional test instructions.
-These files are excluded from the public repository, so they are named here
-without links. Public contributors can use the rules
-and implementation references in this guide; a change that needs additional
-decision context should include that context in its review description.
-
-[.gitignore](.gitignore) excludes `docs/internal/`, the maintainer's private
-notes. Public architecture and privacy policies live at the repository root. Copy-coverage data lives under `messages/`.
-
-</details>
+Read [the ADR index](docs/adr/README.md) for decisions cited as `ADR-NNNN`. Include any context your change needs in its review description.
 
 ---
 
@@ -136,7 +121,7 @@ Two policies apply to dependencies. [scripts/check-licences.mjs](scripts/check-l
 ```text
 .
 ├── src/                 the app (SvelteKit)
-│   ├── routes/          every screen (+page.svelte; SCREENS.md lists them), root +layout.svelte, root +error.svelte (unknown addresses)
+│   ├── routes/          every screen (+page.svelte), root +layout.svelte, root +error.svelte (unknown addresses)
 │   ├── lib/             everything else, see section 4
 │   ├── app.html         document template + pre-paint boot script
 │   ├── hooks.server.ts  build-time only: holds module preloads
@@ -160,10 +145,9 @@ Ignored working directories you will see in a maintainer's checkout:
 
 | Path | What it is |
 |---|---|
-| `.scratch/<phase>/<feature>/` | The issue tracker. One markdown file per ticket; finished phases move under `.scratch/done/` (`docs/agents/issue-tracker.md`) |
 | `.claude/` | Agent worktrees, audit evidence, review pages |
 | Root `evidence*/` directories | Private local evidence; ignored, rejected by the index guard and excluded from committed source archives |
-| `docs/internal/`, `CONTEXT.md`, `PRODUCT.md`, `SCREENS.md` | Maintainer notes and briefs, kept out of the public tree. `docs/adr/` is tracked |
+| `docs/adr/` | Architecture decision records |
 | `build/`, `.svelte-kit/`, `dist/`, `ci-logs/` | Build output, release artifacts and kept CI logs |
 
 Generated files, and where they come from:
@@ -392,7 +376,7 @@ The rest, without SQL edges:
 |---|---|
 | Body | `personal_effect`, `side_effect`, `progress_photo`, `progress_pose` (Hair is a built-in pose since 124) |
 | Voice | `voice_benchmark`, `voice_practice_take` |
-| Logs | `cycle_event` (ADR-0043), `wear_session` (ADR-0064) |
+| Logs | `cycle_event` (ADR-0043), `wear_session` (binder, tucking or compression) |
 | Self | `letter` (seal derived from dates), `document` (ADR-0065), `roadmap_check`, `roadmap_goal` (ADR-0068), `roadmap_category`, `roadmap_institution`, `roadmap_institution_change` |
 | Eras and resurfacing | `era` (ADR-0049), `era_mute`, `comfort_item` |
 | Appointments | `appointment_debrief` (keyed by the appointment's uuid, no FK) |
@@ -889,7 +873,7 @@ Catalogue sentences that name the app take an `appName` parameter from
 contains the literal name. The identity tests guard catalogue entries and
 their consumers; the rendered wordmark probe checks both languages and modes.
 
-[disguise/identity.ts](src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in [src/app.html](src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Setup and the Settings switch both write disguise with `setPreferenceDurably`, which saves it to SQLite before the projection moves, because the projection moving is what flips the alias and restarts the app. Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, export and journey file names omit the person's name under disguise. Inside the unlocked app nothing else changes (ADR-0101). Setup doesn't change with disguise and offers it last (ADR-0079).
+[disguise/identity.ts](src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0101). The pre-paint script in [src/app.html](src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Setup and the Settings switch both write disguise with `setPreferenceDurably`, which saves it to SQLite before the projection moves, because the projection moving is what flips the alias and restarts the app. Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, export and journey file names omit the person's name under disguise. Inside the unlocked app nothing else changes (ADR-0101). Setup doesn't change with disguise and offers it last (ADR-0079).
 
 ### 7.6 Web hardening
 
@@ -950,7 +934,7 @@ Lock cleanup also removes the legacy search key written by older builds.
 
 | Module | Decides |
 |---|---|
-| [navigation/routeGates.ts](src/lib/navigation/routeGates.ts) | What the person is owed before the URL's screen: `onboarding`, `close-chooser` (an access mode after a recovery unlock), `coming-back` (the return moment, ADR-0062), or nothing |
+| [navigation/routeGates.ts](src/lib/navigation/routeGates.ts) | What the person is owed before the URL's screen: `onboarding`, `close-chooser` (an access mode after a recovery unlock), `coming-back` (a one-time view of what is waiting after a long gap), or nothing |
 | [navigation/navigationTransition.ts](src/lib/navigation/navigationTransition.ts), [screen-transition.ts](src/lib/navigation/screen-transition.ts) | How one screen becomes another |
 | [navigation/smart-back.ts](src/lib/navigation/smart-back.ts), [sourceRecord.ts](src/lib/navigation/sourceRecord.ts), [searchReturn.ts](src/lib/navigation/searchReturn.ts), [journalVisit.ts](src/lib/navigation/journalVisit.ts), [scroll-region.ts](src/lib/navigation/scroll-region.ts) | Where Back goes and what the previous screen looked like |
 | [data/backgroundSchedulers.ts](src/lib/data/backgroundSchedulers.ts) | When the Android auto-export check runs: on start, every 15 minutes and on return to the foreground |
@@ -993,9 +977,9 @@ flowchart LR
 ```
 
 - `<html>` carries `data-palette`, the theme and the accessibility attributes, stamped before first paint from the boot cache.
-- Colour appears only in a field and in blocks (ADR-0075). Each area of a screen takes one stripe of the active flag, and the assignment is categorical, never ordinal.
-- Mood has its own scale, and each step picks its own ink (ADR-0025, ADR-0077, ADR-0091).
-- A secondary button is a block of the page (ADR-0093).
+- Colour appears only in a field and in blocks. Each area of a screen takes one stripe of the active flag, and the assignment is categorical, never ordinal.
+- Mood has its own five-step scale. Each step defines a fill and a contrasting ink in [palettes.css](src/lib/theme/palettes.css).
+- Secondary buttons use the page background, a 1px outline and body ink.
 - One pattern, one way (after-release 28). A `Segmented` only ever swaps what a screen shows; scrolling to a part of a long screen is `kit/SectionJump.svelte` (names over a rule, a mark that follows the scroll). Every fold is `kit/Disclosure.svelte` or the `.disclosure-toggle` row it is built on, never a native `<details>`. Areas are named by `kit/SectionHeading.svelte`, and small labels take the field label's type in sentence case, never letterspaced capitals. Each icon in [icons.ts](src/lib/components/icons.ts) means one thing: `pill` is medication, `flask` a lab result, `repeat` dilation, `dice` a random pick.
 - Dates a person reads come from [data/dates.ts](src/lib/data/dates.ts): `fmtDateValue` for a picked day ("3 Oct 2026", what a `DatePicker` field shows), `fmtDayBar` for a day card's bar. `yyyy-mm-dd` is only the stored value and the picker's typed entry; the field carries it on `data-date-value`, which the guards read through `dateValue()`/`fieldValue()` in `tests/browser-harness.mjs`.
 - The pride flag motif appears only on Home.
@@ -1006,12 +990,12 @@ flowchart LR
 
 Motion follows mechanical rules that tests and frame sweeps can check:
 
-- **A state change moves** unless its ticket says why not (ADR-0078). Nothing should paint at its destination before it has travelled there, and no frame should have an element in neither place. In this codebase both of those count as a "yank".
+- **Animate state changes.** Document exceptions beside the code that implements them. Nothing should paint at its destination before it has travelled there, and no frame should have an element in neither place. In this codebase both of those count as a "yank".
 - **Only transform, opacity and clip.** Height changes travel through primitives such as `resize`, `maskHeight`, `disclose` and `collapse` in [motion/reveal.ts](src/lib/motion/reveal.ts), never by snapping. Late-arriving reads hold their room with `kit/ReadReserve.svelte` and [ReadGate.svelte](src/lib/components/kit/ReadGate.svelte), then crossfade. A screen whose rows need two reads gates on both, and a block that opens or closes its own height after arriving sits in a reserve below the gate rather than inside it, because the gate's `resize` clips growth it is still catching up with.
 - **One easing and one set of durations.** [motion/tokens.ts](src/lib/motion/tokens.ts) mirrors `--ease-out` and the `--dur-*` tokens for Svelte and WAAPI transitions, which CSS cannot reach.
 - **Android door changes** fade the live outgoing content over `--dur-fast` before the route swaps. [navigation/androidTabMotion.ts](src/lib/navigation/androidTabMotion.ts) leaves the field background in place for the incoming bridge and releases superseded routes just before their successor swaps. Sun rings close outermost first on the ring stagger. It retains no copy of journal content across a gate. Web and deep navigation use view transitions.
 - **Reduced motion.** [theme/base.css](src/lib/theme/base.css) clamps durations to 1ms under reduced motion or `html[data-a11y-motion]`. [tests/motion-system.test.ts](tests/motion-system.test.ts) requires every animation's end state to equal its element's resting state, so a clamped animation never strands an element.
-- **Ambient motion has a budget** (ADR-0050, ADR-0051, ADR-0071). Home's [motion/homeAmbient.ts](src/lib/motion/homeAmbient.ts) pauses sun breath, face blink and face glance after 30 seconds without input, or while the document or retained door is hidden. Pointer, keyboard, focus, click and wheel input resume active Home from its held phase. Sun breath uses a separate play state from its finite arrival; [motion/holdWhileStill.ts](src/lib/motion/holdWhileStill.ts) owns face clocks and composes idle holds with gaze holds. Reduced motion still removes these loops.
+- **Ambient motion is limited to the flag sun and mood faces.** Home's [motion/homeAmbient.ts](src/lib/motion/homeAmbient.ts) pauses sun breath, face blink and face glance after 30 seconds without input, or while the document or retained door is hidden. Pointer, keyboard, focus, click and wheel input resume active Home from its held phase. Sun breath uses a separate play state from its finite arrival; [motion/holdWhileStill.ts](src/lib/motion/holdWhileStill.ts) owns face clocks and composes idle holds with gaze holds. Reduced motion still removes these loops.
 - **Sweeps measure frames.** The [yank and hydration sweeps](tests/tools/README.md#frame-sweeps) sample animated properties frame by frame.
 
 ### 8.6 i18n
@@ -1022,7 +1006,7 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 - **Import aliases.** Daylio matching loads the static English and Polish tag strings through [import-labels.ts](src/lib/data/vocabulary/import-labels.ts) when an import preview starts. Their catalogue shape and built-in tag coverage have Node tests; display labels use the active compiled locale.
 - **Human copy review.** `npm run strings` serves the local catalogue editor in [scripts/strings.mjs](scripts/strings.mjs). A field saves when it loses focus, one request at a time. Each save compares the value last read with disk before replacing it, and a refused edit stays in the browser with the reason. Literal find-and-replace previews selected languages across shown or all keys, then saves the replacements through the same operation. Individual and group checkboxes save fingerprints of the reviewed English/Polish pairs in `.scratch/copy-review.json`. Later copy changes invalidate approval for the affected keys. A filtered group checkbox applies only to the shown keys. Copy outside the catalogues (Android resources, web manifests, the store listing, the privacy policy by paragraph) is read by [scripts/strings-outside.mjs](scripts/strings-outside.mjs) as values with their offsets, so a save splices one value into its file and leaves the formatting alone. This review state is local tooling data, separate from the journal and shipped catalogues.
 - **Keys, not words, in the database.** Built-in rows store keys, and [data/vocabulary/](src/lib/data/vocabulary) turns keys into words (ADR-0024).
-- **Copy checks.** `npm run check:copy` checks that both catalogues have the same keys and that the count in [messages/untranslated-literals.txt](messages/untranslated-literals.txt) never grows. `docs/ui-copy.md` is the copy guide.
+- **Copy checks.** `npm run check:copy` checks that both catalogues have the same keys and that the count in [messages/untranslated-literals.txt](messages/untranslated-literals.txt) never grows. The app calls its data a journal and uses gender-neutral Polish when addressing the reader.
 - **Merging catalogues.** [scripts/merge-catalogue.mjs](scripts/merge-catalogue.mjs) is a git merge driver that merges catalogues by key (README).
 
 ### 8.7 Accessibility conventions
@@ -1135,8 +1119,6 @@ integrity checks and read back through the journal. Exact failing inputs and
 seed/index receipts stay in ignored `ci-logs/fuzz/`. `FUZZ_LONG=1` raises the
 default to 2,000 cases per target. Untyped refusals are report-only unless
 `FUZZ_STRICT_TYPED=1`; crashes and invariant failures always fail the run.
-
-`docs/agents/verification.md` lists what each tier needs and its known noise.
 
 ## 11. Performance architecture
 
@@ -1284,14 +1266,14 @@ The optional nginx snippets [journal-page-count.conf](deploy/nginx/journal-page-
 2. Write the area's methods in `src/lib/data/journal/<area>.ts` and compose it in [journal.ts](src/lib/data/journal/journal.ts).
 3. Classify every method in [data/live/writes.ts](src/lib/data/live/writes.ts) and extend [writes.sql.test.ts](src/lib/data/live/writes.sql.test.ts) to exercise its SQL. Section 6.4 describes the limits of that check.
 4. If the data should travel, register a section in [journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts) (ADR-0027) and extend [archive/payload.ts](src/lib/data/archive/payload.ts). A format change needs a payload migration.
-5. Add the term to `CONTEXT.md`, and an ADR if a decision was made.
+5. Define new domain terms beside the types that use them. See [Writing an ADR](CONTRIBUTING.md#writing-an-adr) for decisions that need a record.
 
 **Add a screen**
 
 1. Create `src/routes/<path>/+page.svelte`, reading through `liveQuery` and building from the kit.
 2. Map its prefix to a tab in [navigation/active-tab.ts](src/lib/navigation/active-tab.ts). If it belongs in the hub, add a row in [data/hubRows.ts](src/lib/data/hubRows.ts).
 3. Add strings to both catalogues and expose `data-*` handles for the walkthrough.
-4. Its motion follows ADR-0078. Index any probe you keep in [tests/PROBES.md](tests/PROBES.md) and [tests/guards.json](tests/guards.json).
+4. Use the shared motion primitives for state changes. Index any probe you keep in [tests/PROBES.md](tests/PROBES.md) and [tests/guards.json](tests/guards.json).
 
 **Add an external importer**
 

@@ -75,21 +75,17 @@ restores.
 
 ## Writing an ADR
 
-Write an ADR only when at least one of these holds: reversing the decision
-needs a migration, an archive-format step, a manifest or platform change, or
-breaks existing data, backups or launcher shortcuts; it is a cross-cutting
-rule many modules must follow and a newcomer would plausibly break; or it
-rejects an alternative that will be proposed again. Everything else goes
-where it is read: visual and motion rules in `DIRECTION.md`, screen behaviour
-in `SCREENS.md`, terms in `CONTEXT.md`, product principles in `PRODUCT.md`, a
-local rule in a header comment at the code it governs, and contributor
-workflow here.
+Write an ADR if reversing the decision needs a migration, changes an archive
+format, changes the platform or manifest, or breaks existing data, backups
+or launcher shortcuts. A rule that spans several modules or a decision
+that rejects a likely recurring proposal can also earn an ADR. Put local
+rules in a header comment where the code implements them. Put change-specific
+reasoning in the pull request description.
 
 A record starts as `docs/adr/draft-<slug>.md` in the pull request that adds
 it, cited as `ADR draft-<slug>`, and gets its number when that pull request
-merges. Numbers are permanent and never reused. A record that is merged into
-another, moved to one of the places above, or retired loses its file and
-leaves one tombstone line in `docs/adr/README.md` saying where it went.
+merges. Numbers are permanent. If you merge, move or retire a record, replace
+its file with a tombstone in `docs/adr/README.md` saying where it went.
 
 Under the title come four lines: `Status`, `Decided`, `Last reviewed`, and
 `Supersedes` or `Amends`. An amendment rewrites the body to the current truth
@@ -97,8 +93,6 @@ and adds to the one `History:` line at the end, rather than stacking a
 section. The decision itself is 150 words or fewer, the record about 600 and
 1,000 at most. Name things instead of quoting values that rot: no hex
 colours, frame counts, or counts of areas, tables, sections or palettes.
-`tests/adr-citations.test.ts` holds the citations, the header block, the
-1,000-word ceiling, the tombstones and the rule that no tracked file links into
-`docs/internal`. The 150-word decision is the author's to keep, since no check
-can tell which paragraph is the decision. `tests/direction-citations.test.ts`
-holds every DIRECTION.md rule, decision and tier the code cites.
+`tests/adr-citations.test.ts` checks citations, headers, the 1,000-word ceiling
+and tombstones. It also checks that readers can follow public references in
+a clone. Count the decision paragraph when you review the record.

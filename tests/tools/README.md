@@ -25,7 +25,7 @@ Run these commands from the repository root. Use [the probe index](../PROBES.md)
 | `gallery:document-import` | `node tests/document-import-check.mjs --gallery` | Document import flows |
 | `gallery:documents` | `VITE_DEMO=1 npm run build && node tests/documents-gallery.mjs` | The documents area, including a PDF page and one the renderer could not read |
 | `gallery:savebar` | `VITE_DEMO=1 npm run build && node tests/savebar-clearance-gallery.mjs --tag after` | What the save bar covers on each screen and viewport |
-| `gallery:cohesion` | `VITE_DEMO=1 npm run build && node tests/cohesion-sweep-gallery.mjs --prove && node tests/cohesion-sweep-gallery.mjs --pin-android` | Every route read against DIRECTION.md from the computed tree (`savebar-frame.test.ts` reads it) |
+| `gallery:cohesion` | `VITE_DEMO=1 npm run build && node tests/cohesion-sweep-gallery.mjs --prove && node tests/cohesion-sweep-gallery.mjs --pin-android` | Computed layout, typography, touch targets and motion across routes |
 | `gallery:blind-motion` | `VITE_DEMO=1 npm run build && node tests/blind-motion-gallery.mjs` | The field as a blind, in depth - the yank sweep sends you here |
 | `gallery:noticed-axis-motion` | `VITE_DEMO=1 npm run build && node tests/noticed-axis-motion.mjs` | The changes axis between frames, the numbers `NoticedAxis.svelte` cites |
 | `gallery:return-motion` | `VITE_DEMO=1 npm run build && node tests/return-motion-gallery.mjs` | The return moment's five movements |
