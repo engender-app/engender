@@ -1675,7 +1675,6 @@
   "resources_pl_lambda_hours": {"owner":40,"sources":["src/lib/resources/labels.ts"]},
   "resources_pl_transfuzja": {"owner":40,"sources":["src/lib/resources/labels.ts"]},
   "resources_pl_tranzycja": {"owner":40,"sources":["src/lib/resources/labels.ts"]},
-  "resources_pl_tranzycja_testosterone": {"owner":40,"sources":["src/lib/resources/labels.ts"]},
   "resources_pl_zaimki": {"owner":40,"sources":["src/lib/resources/labels.ts"]},
   "resources_reviewed": {"owner":40,"sources":["src/routes/support/resources/+page.svelte"]},
   "resources_title": {"owner":40,"sources":["src/lib/data/vocabulary/hubLabels.ts","src/routes/doubt/+page.svelte","src/routes/support/resources/+page.svelte"]},
