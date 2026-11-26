@@ -161,7 +161,7 @@ test('a draft hydrated from an existing entry copies its fields and stored photo
   assert.deepEqual(draft.bodyRegions, { chest: 20 });
 });
 
-test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty', () => {
+test('setMood, setNote, setDim and setTags each make an empty draft non-empty', () => {
   assert.equal(createEntryDraft(1).isEmpty, true);
 
   const byMood = createEntryDraft(1);
@@ -183,7 +183,7 @@ test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty'
   assert.deepEqual(byDim.dims, { masculinity: 50 });
 
   const byTag = createEntryDraft(1);
-  byTag.toggleTag('e-happy');
+  byTag.setTags(['e-happy']);
   assert.equal(byTag.isEmpty, false);
   assert.equal(byTag.hasMoodOnlyContent, false);
   assert.deepEqual(byTag.tags, ['e-happy']);
@@ -206,13 +206,14 @@ test('setDim merges into the existing dims without clobbering the others', () =>
   assert.deepEqual(draft.dims, { masculinity: 40, femininity: 60 });
 });
 
-test('toggleTag adds an absent tag and removes a present one', () => {
+test('setTags takes the whole selection, as a copy', () => {
   const draft = createEntryDraft(1);
-  draft.toggleTag('e-happy');
-  draft.toggleTag('e-sad');
-  assert.deepEqual(draft.tags, ['e-happy', 'e-sad']);
+  const picked = ['e-anxious', 'e-worried'];
+  draft.setTags(picked);
+  picked.push('e-sad');
+  assert.deepEqual(draft.tags, ['e-anxious', 'e-worried']);
 
-  draft.toggleTag('e-happy');
+  draft.setTags(['e-sad']);
   assert.deepEqual(draft.tags, ['e-sad']);
 });
 
@@ -285,7 +286,7 @@ test('toUpsert() produces the exact upsertEntry payload for a new entry', () => 
   draft.setMood(4);
   draft.setNote('a note');
   draft.setDim('masculinity', 30);
-  draft.toggleTag('e-happy');
+  draft.setTags(['e-happy']);
   draft.addPhoto(photo(9));
 
   assert.deepEqual(draft.toUpsert(), {
@@ -350,7 +351,7 @@ test('hydrating copies the existing entry, so a later mutation of it cannot disc
   const draft = createEntryDraft(1, original);
 
   draft.setNote('typed after load');
-  draft.toggleTag('e-sad');
+  draft.setTags([...draft.tags, 'e-sad']);
 
   original.note = 'clobbered';
   original.dims.masculinity = 999;

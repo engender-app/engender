@@ -21,10 +21,7 @@ test('a chip over an empty section states nothing', () => {
 
 test('tags, photos, voice and video read a count', () => {
   const draft = createEntryDraft(20_001);
-  draft.toggleTag('a');
-  draft.toggleTag('b');
-  draft.toggleTag('c');
-  draft.toggleTag('d');
+  draft.setTags(['a', 'b', 'c', 'd']);
   assert.equal(sectionState('tags', draft), '4');
   draft.addPhoto({ full: new Uint8Array(1), thumb: new Uint8Array(1), width: 1, height: 1 } as never);
   draft.addPhoto({ full: new Uint8Array(1), thumb: new Uint8Array(1), width: 1, height: 1 } as never);

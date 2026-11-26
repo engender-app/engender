@@ -41,7 +41,7 @@ test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
   const draft = createEntryDraft(20_001);
   draft.setMood(4);
   draft.setNote('hi');
-  draft.toggleTag('e-happy');
+  draft.setTags(['e-happy']);
   draft.setTryoutFeltSense({ tryoutId: 't1', mood: 5, note: 'great' });
   draft.setDoseLog({ dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' });
   draft.setProcedureRecovery({ procedureId: 'p1', notes: 'healing well' });
