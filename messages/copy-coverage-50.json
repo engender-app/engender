@@ -1152,7 +1152,6 @@
   "look_back_letter_opened": {"owner":43,"sources":["src/lib/components/LookBackLetterCard.svelte"]},
   "look_back_letter_written": {"owner":43,"sources":["src/lib/components/LetterCard.svelte","src/lib/components/LookBackLetterCard.svelte"]},
   "lookback_band_aria": {"owner":38,"sources":["src/lib/components/SpanTimeline.svelte"]},
-  "lookback_compare_before": {"owner":38,"sources":["src/lib/components/readings/CompareTile.svelte"]},
   "lookback_drag_hint": {"owner":38,"sources":["src/lib/components/SpanTimeline.svelte"]},
   "lookback_empty_body": {"owner":38,"sources":["src/routes/stats/+page.svelte"]},
   "lookback_empty_title": {"owner":38,"sources":["src/routes/stats/+page.svelte"]},
