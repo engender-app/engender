@@ -21,11 +21,10 @@
      rather than redrawing them. Under reduced motion the whole result
      fades out and back in around the swap, inside --dur-crossfade. */
   import { untrack } from 'svelte';
-  import { flip } from 'svelte/animate';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, intlLocale } from '$lib/data/dates';
   import { precedingWindow, type EpochRange } from '$lib/data/compareStretch';
   import { customInclusiveRange, epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -49,8 +48,7 @@
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
   import { EASE_OUT, isReducedMotion, motionDuration, crossfadeDuration, NIL_OPACITY } from '$lib/motion/tokens';
-  import { collapse } from '$lib/motion/reveal';
-  import { fade } from 'svelte/transition';
+  import { fade, slide } from 'svelte/transition';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -262,7 +260,12 @@
       }))
     ];
     const order = chronological(ranges.a, ranges.b);
-    const tags = tagPairs(a.tags, b.tags);
+    /* Alphabetical rather than by count, so a change of period never
+       reorders the rows that stay: a re-sort would need a flip, and a flip
+       beside rows that leave pulls the leaving ones out of flow in one
+       frame. Rows only come and go, each opening or closing its height. */
+    const collator = new Intl.Collator(intlLocale());
+    const tags = tagPairs(a.tags, b.tags).sort((x, y) => collator.compare(tagLabel(x.id), tagLabel(y.id)));
     return {
       a,
       b,
@@ -336,7 +339,16 @@
     return sideValue(model.order.second, values) - sideValue(model.order.first, values);
   };
 
-  const flipParams = () => ({ duration: motionDuration('--dur-slow'), easing: EASE_OUT });
+
+  /* A tag row joining or leaving the union opens or closes its height and
+     fades with it, so the rows under it move with the height rather than
+     jumping when a row is inserted or taken out of flow. Under
+     reduced motion the duration is 0 and the result's own fade covers the
+     swap. */
+  function rowFold(node: Element) {
+    const base = slide(node, { duration: motionDuration('--dur-slow'), easing: EASE_OUT });
+    return { ...base, css: (t: number, u: number) => `${base.css?.(t, u) ?? ''};opacity: ${t}` };
+  }
   const tagLabel = (id: string) => vocabulary.tag(id)?.label ?? id;
   const role = $derived(roleAt(activeFlag.roles, 0));
 </script>
@@ -412,7 +424,7 @@
             {#if model.tags.length}
               <div class="compare-tags" data-compare-figure="tags">
                 {#each model.tags as tag (tag.id)}
-                  <div class="compare-tag" data-compare-tag={tag.id} animate:flip={flipParams()} transition:collapse>
+                  <div class="compare-tag" data-compare-tag={tag.id} transition:rowFold>
                     <span class="compare-tag-name">{tagLabel(tag.id)}</span>
                     {#each [{ side: 'a', count: tag.a }, { side: 'b', count: tag.b }] as bar (bar.side)}
                       <span class="compare-tag-track" aria-hidden="true">
