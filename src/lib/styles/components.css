@@ -42,6 +42,14 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  /* The words sit on the field's lower edge, the way Today's name does
+     (bug session 18, item 79): a field taller than its title - a sun's
+     corner on Settings, a tall window - put the title at the top with the
+     colour hanging empty under it. The back row rides down with the title
+     it belongs to. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 /* The blind (redesign ticket 28). A window tall, hanging from the field's
    top edge, so its bottom edge can be pulled down past the field's box or
