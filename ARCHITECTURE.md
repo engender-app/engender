@@ -35,16 +35,16 @@ commit; their source files carry the measurement context.
 <details>
 <summary>Maintainer-only references</summary>
 
-ADRs cited as `ADR-NNNN` live in `docs/adr/`. The domain glossary is
-`CONTEXT.md`; product and screen briefs are `PRODUCT.md` and `SCREENS.md`.
-`docs/agents/verification.md` and `docs/agents/platform.md` hold additional
-test instructions. These files are excluded from the public repository, so
-they are named here without links. Public contributors can use the rules
+ADRs cited as `ADR-NNNN` live in [docs/adr](docs/adr/README.md). The domain
+glossary is `CONTEXT.md`; product and screen briefs are `PRODUCT.md` and
+`SCREENS.md`. `docs/internal/docs/agents/verification.md` and
+`docs/internal/docs/agents/platform.md` hold additional test instructions.
+These files are excluded from the public repository, so they are named here
+without links. Public contributors can use the rules
 and implementation references in this guide; a change that needs additional
 decision context should include that context in its review description.
 
-[.gitignore](.gitignore) excludes all files under `docs/`, including
-maintainer notes. Public architecture and privacy policies live at the
+[.gitignore](.gitignore) excludes `docs/internal/`, the maintainer notes. Public architecture and privacy policies live at the
 repository root. Copy-coverage data lives under `messages/`.
 
 </details>
@@ -163,7 +163,7 @@ Ignored working directories you will see in a maintainer's checkout:
 | `.scratch/<phase>/<feature>/` | The issue tracker. One markdown file per ticket; finished phases move under `.scratch/done/` (`docs/agents/issue-tracker.md`) |
 | `.claude/` | Agent worktrees, audit evidence, review pages |
 | Root `evidence*/` directories | Private local evidence; ignored, rejected by the index guard and excluded from committed source archives |
-| `docs/adr/`, `CONTEXT.md`, `PRODUCT.md`, `SCREENS.md` | Decisions and briefs, kept out of the public tree |
+| `docs/internal/`, `CONTEXT.md`, `PRODUCT.md`, `SCREENS.md` | Maintainer notes and briefs, kept out of the public tree. `docs/adr/` is tracked |
 | `build/`, `.svelte-kit/`, `dist/`, `ci-logs/` | Build output, release artifacts and kept CI logs |
 
 Generated files, and where they come from:

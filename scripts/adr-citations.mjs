@@ -1,5 +1,6 @@
 /* Every ADR cited in src, tests and android must exist. ADR-0055 and ADR-0080
-   were cited for months with no file behind them and nothing noticed.
+   were cited for months with no file behind them and nothing noticed. The ADRs
+   are tracked at docs/adr, so this runs in CI.
 
    A citation resolves when docs/adr/ holds `NNNN-<slug>.md`, when the ADR
    README carries a tombstone line for the number, or, for a not yet numbered
@@ -12,10 +13,14 @@
    records: every numbered file opens, in the block under its title, with
    Status, Decided, Last reviewed and Supersedes or Amends lines, stays at
    1,000 words or fewer, and every number up to the highest is either a file
-   or a tombstone, never both. */
+   or a tombstone, never both.
+
+   internalDocLinks guards the other direction: docs/internal is the private
+   docs repo, linked into a working copy and absent from a clone, so a tracked
+   markdown file must not link to a path inside it. */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 
 const CITATION = /\b(ADR-\d{4})|(?:\bADR |\bdocs\/adr\/)(draft-[a-z0-9][a-z0-9-]*)/g;
 const TOMBSTONE = /^- (?:\*\*)?ADR-(\d{4})\b/gm;
@@ -95,4 +100,28 @@ export function adrShapeProblems(adrDir) {
     if (!numbered.has(n) && !tombstones.has(n)) problems.push(`ADR-${n}: neither a file nor a tombstone`);
   }
   return problems;
+}
+
+const MD_LINK = /\]\(\s*<?([^)\s>]+)/g;
+
+/** Markdown links in tracked files whose target lands in docs/internal, as
+    `path:line: target` lines. A link is checked as written from the repo root
+    and as resolved from its own folder, fragments and queries dropped.
+    @param {string} root @returns {string[]} */
+export function internalDocLinks(root) {
+  const files = execFileSync('git', ['ls-files', '-z', '--', '*.md'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
+  const found = [];
+  for (const file of files) {
+    let text;
+    try { text = readFileSync(join(root, file), 'utf8'); } catch { continue; }
+    text.split('\n').forEach((line, i) => {
+      for (const m of line.matchAll(MD_LINK)) {
+        const target = m[1].split(/[#?]/)[0];
+        if (!target || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
+        const resolved = posix.normalize(target.startsWith('/') ? target.slice(1) : posix.join(dirname(file), target));
+        if (/^docs\/internal(\/|$)/.test(resolved)) found.push(`${file}:${i + 1}: ${resolved}`);
+      }
+    });
+  }
+  return found;
 }
