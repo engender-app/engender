@@ -298,6 +298,7 @@
      the fields sit where they always did. */
   --field-bleed-top: min(9px, max(0px, var(--inset-top) - var(--space-5)));
 
+  --focus-ring-width: 2px; /* the keyboard ring; the legibility boost thickens it */
   --touch-target: 48px;   /* Android's floor, which is the stricter of the two platforms this ships on */
   --content-max: 640px;      /* centred column at desktop width */
   --rail-width: 220px;       /* desktop navigation rail */
@@ -329,12 +330,19 @@ html[data-a11y-text-size='boost'] {
    chosen here. */
 html[data-palette][data-theme][data-a11y-legibility='boost'] {
   --leading-body: 1.65;
-  --text-2: color-mix(in oklab, var(--text) 76%, var(--bg));
-  /* The two line strengths the app has left (phase 10, rule 4), each one
-     step darker: --outline 19% -> 28%, --hairline 14% -> 22%. --border,
+  /* Sized to floors rather than to steps, because one alpha step darker
+     (76%, 28%, 22%) measured 6.47:1 and 1.53:1 at worst and read on a
+     phone as the switch doing nothing (pre-release-human 18). Secondary
+     text clears WCAG's enhanced 7:1, an outline the 3:1 a non-text edge
+     needs, a hairline 2:1, on bg, surface and surface-2 in all 16
+     palettes x 2 themes; tests/palette-contrast.test.ts holds the three.
+     --text-2 stays short of --text, so the two still read as two. --border,
      which this used to boost, retired with the ramp it belonged to. */
-  --outline: color-mix(in oklab, var(--text) 28%, transparent);
-  --hairline: color-mix(in oklab, var(--text) 22%, transparent);
+  --text-2: color-mix(in oklab, var(--text) 82%, var(--bg));
+  --outline: color-mix(in oklab, var(--text) 53%, transparent);
+  --hairline: color-mix(in oklab, var(--text) 36%, transparent);
+  /* An outline takes no layout space, so the heavier ring moves nothing. */
+  --focus-ring-width: 3px;
 }
 
 /* --dur-breathe is deliberately not clamped here. It belongs to an infinite

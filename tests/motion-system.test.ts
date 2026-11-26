@@ -208,6 +208,38 @@ function stoppedUnderReduce() {
 }
 
 describe('the reduced-motion invariant', () => {
+  /* The Settings switch has to count wherever the system setting counts
+     (pre-release-human 18: "reduce motion basically does nothing"). Every
+     selector a prefers-reduced-motion block names is matched, in the same
+     file, by one keyed on html[data-a11y-motion='reduce'] - the attribute
+     the switch and the system both feed. A rule written only under the
+     media query is a movement the switch cannot stop. */
+  it('gives every prefers-reduced-motion rule a twin keyed on the switch', () => {
+    const TOGGLE = /:global\(html\[data-a11y-motion='reduce'\]\)\s*|\[data-a11y-motion='reduce'\]/g;
+    const key = (selector: string) => {
+      const bare = selector.replace(TOGGLE, '').replace(/^html(?=$|::|\[|\s)/, '').trim();
+      return bare.replace(/^:root$/, '') || ':root';
+    };
+    const unpaired: string[] = [];
+    for (const { path, css } of styleSources()) {
+      const fileRules = rules(css);
+      const toggled = new Set(
+        fileRules
+          .filter((rule) => rule.prelude.includes("data-a11y-motion='reduce'"))
+          .flatMap((rule) => splitTopLevel(rule.prelude))
+          .filter((selector) => selector.includes("data-a11y-motion='reduce'"))
+          .map(key)
+      );
+      for (const rule of fileRules.filter((r) => r.context.some((at) => at.includes('prefers-reduced-motion')))) {
+        if (rule.prelude.startsWith('@')) continue;
+        for (const selector of splitTopLevel(rule.prelude)) {
+          if (!toggled.has(key(selector))) unpaired.push(`${path}: ${selector}`);
+        }
+      }
+    }
+    expect(unpaired, 'a movement only the system setting can stop').toEqual([]);
+  });
+
   it('ends every animation where its element rests', () => {
     const keyframes = new Map<string, ReturnType<typeof frames>>();
     for (const rule of allRules) {
@@ -681,19 +713,20 @@ describe('tier 2, the withdrawal', () => {
     expect(supports.length, 'the fallback is a @supports state, not an unstyled one').toBeGreaterThan(0);
   });
 
-  it('drops the blur under both reduced-motion paths and keeps the tint', () => {
-    const reduced = rules(stripComments(materials())).filter(isReduceContext);
-    const dropped = reduced
-      .filter((rule) => /backdrop-filter:\s*none/.test(rule.body))
-      .flatMap((rule) =>
-        rule.prelude.split(',').map((s) => s.trim().replace(/^html\[data-a11y-motion='reduce'\]\s*/, ''))
-      );
-    expect(dropped.filter((selector) => selector === '.scrim-withdraw')).toHaveLength(2);
-    for (const rule of reduced) {
-      expect(rule.body, 'the substitute keeps the scrim, it just stops withdrawing').not.toMatch(
-        /display:\s*none/
-      );
-    }
+  /* Reduced motion changes motion and nothing else (pre-release-human 18:
+     "reduce motion changes the colour of the background"). The withdrawal
+     used to give up its blur for the flat --scrim under both paths, which
+     is a different colour - 0.31 over a blur against 0.45, 0.6 in dark -
+     behind the very sheet the switch lives in. The blur never animates, so
+     it is not motion; it stays. Nor does any other reduced-motion rule
+     anywhere repaint a surface. */
+  it('repaints nothing under either reduced-motion path', () => {
+    const PAINT = /(^|;|\s)(background(-color|-image)?|backdrop-filter|color|border(-[a-z]+)?-color|fill|stroke)\s*:/;
+    const painted = allRules
+      .filter(isReduceContext)
+      .filter((rule) => !rule.prelude.startsWith('@') && PAINT.test(rule.body))
+      .map((rule) => `${rule.path}: ${rule.prelude}`);
+    expect(painted, 'a reduced-motion rule that changes a colour').toEqual([]);
   });
 });
 
@@ -1759,7 +1792,7 @@ describe('carpet 15 row 51 colour and name arrivals', () => {
   it("draws the span handles' focus ring outside the grip's clip", () => {
     const source = stripComments(readFileSync(join(root, 'src/lib/components/SpanTimeline.svelte'), 'utf8'));
     const css = source.slice(source.indexOf('<style>'));
-    expect(css).toMatch(/\.span-tl-handle:focus-visible::after \{\s*border: 2px solid var\(--bg\);\s*outline: 2px solid var\(--focus-ring\);/);
+    expect(css).toMatch(/\.span-tl-handle:focus-visible::after \{\s*border: 2px solid var\(--bg\);\s*outline: var\(--focus-ring-width\) solid var\(--focus-ring\);/);
     expect(css).not.toMatch(/\.span-tl-grip[\w-]*[^{]*\{[^}]*outline:/);
   });
 

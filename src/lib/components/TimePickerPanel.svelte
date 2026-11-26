@@ -343,7 +343,7 @@
     pointer-events: none;
   }
   .tp-col:has(.tp-drum:focus-visible) .tp-ring {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: -2px;
   }
 
