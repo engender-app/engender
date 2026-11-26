@@ -3,8 +3,7 @@
    interacting inside it, makes no network request of any kind.
 
    The whole app already holds that line - `connect-src 'self'` in
-   deploy/nginx/journal-headers.conf, and the About sheet says so in
-   m.about_no_network_title(). What is new here is a screen whose content is
+   deploy/nginx/journal-headers.conf. What is new here is a screen whose content is
    phone numbers and web addresses, which is exactly the shape that invites
    someone to make it fetch a live copy, embed an org's logo, or check whether
    a line is still up. This test is what stops that arriving unnoticed.

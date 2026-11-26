@@ -639,18 +639,6 @@
 
       <p class="about-license">{m.about_license()}</p>
 
-      <section class="about-privacy">
-        <Icon name="shield" size={22} />
-        <div class="about-privacy-copy">
-        <!-- Platform copy (UI/UX ticket 09): the no-requests claim is
-             Android's, bought by holding no internet permission. The web
-             app is itself something the browser downloads, so its sentence
-             is about what is sent rather than what is fetched. -->
-          <h3>{isAndroid() ? m.about_no_network_title() : m.about_no_network_web_title()}</h3>
-          <p>{isAndroid() ? m.about_no_network_body() : m.about_no_network_web_body()}</p>
-        </div>
-      </section>
-
       <p class="about-attribution">{m.about_attribution()}</p>
 
       <!-- A list rather than the two buttons it was: five ways out of a
@@ -760,37 +748,6 @@
 
   .about-license,
   .about-attribution {
-    margin: 0;
-    color: var(--text-2);
-    font-size: var(--text-sm);
-    line-height: 1.55;
-  }
-
-  .about-privacy {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-block);
-    background: var(--surface-2);
-    color: var(--accent);
-  }
-
-  .about-privacy-copy {
-    color: var(--text);
-  }
-
-  .about-privacy h3 {
-    margin: 0 0 var(--space-2);
-    font-family: var(--font-display);
-    font-size: var(--text-md);
-    font-weight: var(--weight-display);
-    line-height: 1.35;
-  }
-
-  .about-privacy p {
     margin: 0;
     color: var(--text-2);
     font-size: var(--text-sm);
