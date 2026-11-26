@@ -158,24 +158,21 @@
     json: m.exp_done_json
   };
 
-  /* The floor lives in archive/password.ts and the wording lives here:
-     each caller has its own sentence for an empty field, and all of them
-     share the journal passphrase's too-short line rather than inventing a
-     second one (phase 5 security ticket 02). */
-  function expPassRefusal(whenMissing: () => string): string | null {
-    const problem = archivePasswordProblem(expPass);
-    if (problem === null) return null;
-    return problem === 'missing'
-      ? whenMissing()
-      : m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) });
-  }
+  /* The floor lives in archive/password.ts and the wording lives here,
+     sharing the journal passphrase's too-short line (phase 5 security
+     ticket 02). An empty field is allowed (bug session 18, item 80): the
+     warning then says the file opens for anyone instead of asking to keep
+     a password. Its wording is fixed when the sheet opens, so typing behind
+     a closing sheet does not rewrite it. */
+  let exportWithoutPassword = $state(false);
 
   function openExportWarning() {
-    const refusal = expPassRefusal(m.exp_password_first);
-    if (refusal) {
-      toast(refusal);
+    const problem = archivePasswordProblem(expPass);
+    if (problem === 'too-short') {
+      toast(m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) }));
       return;
     }
+    exportWithoutPassword = problem === 'missing';
     exportWarningOpen = true;
   }
 
@@ -1199,17 +1196,17 @@
     <button class="btn btn-soft" data-plain="json" disabled={running !== null} onclick={() => (plainSheet = 'json')}><span>{m.plain_json()}</span></button>
   </div>
 
-  <Sheet open={exportWarningOpen} title={m.exp_warning_title()} onClose={() => (exportWarningOpen = false)}>
-    <h3>{m.exp_warning_title()}</h3>
+  <Sheet open={exportWarningOpen} title={exportWithoutPassword ? m.exp_nopass_title() : m.exp_warning_title()} onClose={() => (exportWarningOpen = false)}>
+    <h3>{exportWithoutPassword ? m.exp_nopass_title() : m.exp_warning_title()}</h3>
     <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
       <Icon name="alert" size={20} />
       <div class="notice-body">
-        {m.exp_warning_body()}
+        {exportWithoutPassword ? m.exp_nopass_body() : m.exp_warning_body()}
       </div>
     </div>
     <div class="stack-3">
       <button class="btn btn-danger" data-confirm-export onclick={confirmExport}>
-        <span>{m.exp_warning_confirm()}</span>
+        <span>{exportWithoutPassword ? m.exp_nopass_confirm() : m.exp_warning_confirm()}</span>
       </button>
       <button class="btn btn-ghost" onclick={() => (exportWarningOpen = false)}><span>{m.cancel()}</span></button>
     </div>

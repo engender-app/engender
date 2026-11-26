@@ -73,6 +73,17 @@ export interface PackWatch {
   signal?: AbortSignal;
 }
 
+/* An archive may be exported with the password left empty (bug session 18,
+   item 80), and hash-wasm refuses an empty Argon2 password. Such a file is
+   meant to open for anyone, so it is sealed under this fixed phrase instead,
+   and an empty field opens it again. Every password typed before item 80
+   was non-empty, so no existing archive derives differently. */
+const NO_PASSWORD = 'engender archive without a password';
+
+function archiveSecret(password: string): string {
+  return password === '' ? NO_PASSWORD : password;
+}
+
 export async function* packArchive(
   contents: ArchiveContents,
   keyOrPassword: string | KeyDerivation,
@@ -86,7 +97,7 @@ export async function* packArchive(
   const key =
     typeof keyOrPassword === 'function'
       ? await keyOrPassword(salt, kdf)
-      : await deriveKey(keyOrPassword, salt, kdf);
+      : await deriveKey(archiveSecret(keyOrPassword), salt, kdf);
 
   yield* frameArchive(
     key,
@@ -135,7 +146,7 @@ export async function openArchive(
      (folder sync, FA 49), the same door packing an auto-export uses. */
   const key = typeof keyOrPassword === 'function'
     ? await keyOrPassword(header.salt, kdf)
-    : await deriveKey(keyOrPassword, header.salt, kdf);
+    : await deriveKey(archiveSecret(keyOrPassword), header.salt, kdf);
   const plaintext = byteReader(unframeArchive(reader, header, headerBytes, key));
   return decodeArchive(plaintext, header.formatVersion);
 }
