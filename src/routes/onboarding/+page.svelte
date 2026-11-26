@@ -431,13 +431,29 @@
      welcome goes through here. */
   let collapsing = $state(false);
   let collapseDone: ReturnType<typeof setTimeout> | undefined;
+  /* The field's box drops to the first step's height in one layout while
+     its painted edge travels there, and .step-field cuts everything 120px
+     past its box (components.css, overflow-clip-margin), which is room for
+     every other step's close. The welcome's is 355px on a phone, so for the
+     first frames the paint, the sun and the wordmark were cut at 367px: the
+     field's edge jumped 235px and the wordmark vanished in one frame
+     (sign-off round 1, frame 20 of the collapse). For the length of this
+     close the margin is the hero's own height, which is more than the close
+     can travel. Written from here in pixels because Chromium takes no calc()
+     in overflow-clip-margin. */
+  let field: HTMLElement | undefined = $state();
+  let collapseMargin = $state<string | null>(null);
   function go(to: OnboardingStep) {
     if (step === 'welcome' && to !== 'welcome') {
       collapsing = true;
+      collapseMargin = field ? `${field.offsetHeight}px` : null;
       clearTimeout(collapseDone);
       /* The edge's own length, and a few frames over for the hold stepBlind
          paints before it starts. */
-      collapseDone = setTimeout(() => (collapsing = false), motionDuration('--dur-slow') + 200);
+      collapseDone = setTimeout(() => {
+        collapsing = false;
+        collapseMargin = null;
+      }, motionDuration('--dur-slow') + 200);
     }
     step = to;
   }
@@ -746,7 +762,13 @@
          access-mode step walks to its pad, when a question re-wraps and
          when a raised keyboard drops the flow into its short form, and
          each of those has to travel rather than jump. -->
-    <div class="setup-field step-field" data-setup-field use:blindEdge>
+    <div
+      class="setup-field step-field"
+      data-setup-field
+      use:blindEdge
+      bind:this={field}
+      style:overflow-clip-margin={collapseMargin}
+    >
       <!-- The paint, split from the box that measures it (ticket 28's
            mechanism, and the same reason): what draws the field's colour is
            a block a window tall whose bottom edge is a clip, so the edge
@@ -1607,29 +1629,37 @@
     text-wrap: pretty;
   }
 
-  /* PL / EN, top left where the back control is on every other step, in
-     the field's ink. Each is a full touch target; the one in use is bold
-     and carries the 3px rule the app marks a choice with. */
+  /* PL / EN, top left where the back control is on every other step: one
+     pill with a stroke in the field's ink, the language in use filled with
+     that ink and lettered in the field's colour (sign-off round 1: "make
+     the language chooser a little bit more visible, maybe a stroke over the
+     button?"). The ink is what the field's text is measured in, so the
+     stroke and the fill hold the text's own contrast against the field,
+     well over the 3:1 a control's edge owes (9.59:1 on trans, light and
+     dark). 2px rather than the kit's 1.5px input edge, which Chromium
+     snaps to 1px at a 2x density and which read as faint on the flag. The
+     pill is the touch target's height and each half at least its width. */
   .setup-lang {
     display: flex;
-    margin-left: calc(-1 * var(--space-3));
+    border: 2px solid currentColor;
+    border-radius: 999px;
   }
   .setup-lang button {
     min-width: var(--touch-target);
-    min-height: var(--touch-target);
+    min-height: calc(var(--touch-target) - 4px);
     padding: 0 var(--space-3);
     border: 0;
+    border-radius: 999px;
     background: none;
     color: inherit;
     font: inherit;
     font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-bold);
     letter-spacing: 0.06em;
   }
   .setup-lang button[aria-checked='true'] {
-    font-weight: var(--weight-bold);
-    text-decoration: underline 3px;
-    text-underline-offset: 6px;
+    background: var(--field-ink);
+    color: var(--field);
   }
 
   /* The first sun's CSS entrance gives way to the opening's own, which
