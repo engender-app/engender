@@ -2168,7 +2168,6 @@
   "pj_shared": "Shared.",
   "pj_stays_here": "This preview stays on this device. Sharing or saving creates an unencrypted file that anyone who gets it can view.",
   "pj_timelapse_failed": "Couldn't make a playable timelapse. Try again or make a collage.",
-  "pj_timelapse_hint": "Making it takes as long as playback.",
   "pj_timelapse_length": [
     {
       "declarations": [
