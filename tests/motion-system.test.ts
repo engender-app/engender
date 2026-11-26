@@ -390,6 +390,12 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
       "the kit's split row written out (its main half takes the row's wash, as ListRow's does), and the drag handle, held rather than tapped like the Today editor's (phase 14 ticket 18)"
   },
   {
+    file: 'src/routes/transition/roadmap/+page.svelte',
+    count: 3,
+    reason:
+      "a goal row's main half and the add row are the width of the card; the compact depth walked the tick box and the title inward under the finger, which Alicja read as a yank (pre-release-human 18, item 72)"
+  },
+  {
     file: 'src/lib/components/SpanTimeline.svelte',
     count: 5,
     reason:

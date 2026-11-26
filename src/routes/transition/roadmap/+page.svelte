@@ -575,9 +575,15 @@
      opens the step's own sheet. The row's own div, and the transition on it,
      stay in each group's each block. -->
 {#snippet builtInRow(key: RoadmapGoalKey, status: RoadmapGoalStatus)}
+  <!-- No press scale on the row's main half (pre-release 18, item 72):
+       it is most of the row's width, and the compact depth walked the
+       title and the box inward under the finger while the card held still.
+       The wash answers the tap, as it does on ListRow, and the tick's own
+       crossing is what says it worked. -->
   <button
     type="button"
     class="kit-row-main"
+    data-no-press
     aria-label={`${roadmapGoalTitle(key)} — ${stateLabel(status)}`}
     onclick={() => toggleBuiltIn(key)}
   >
@@ -621,9 +627,11 @@
 <!-- A goal the person wrote, in whichever group it sits. -->
 {#snippet customRow(goal: { id: string; track: string; text: string; status: RoadmapGoalStatus })}
   <div transition:collapse class="kit-row is-split" data-goal={goal.id} data-status={goal.status}>
+    <!-- No press scale, for the built-in row's reason above. -->
     <button
       type="button"
       class="kit-row-main"
+      data-no-press
       aria-label={`${goal.text} — ${stateLabel(goal.status)}`}
       onclick={() => toggleCustom(goal)}
     >
@@ -668,7 +676,8 @@
 <!-- The last row of every group: a goal of the person's own, added to that
      group. -->
 {#snippet addGoalRow(group: string)}
-  <button class="kit-row" data-add-goal={group} onclick={() => startAddingGoal(group)}>
+  <!-- A full-width row like the goals above it, so no press scale either. -->
+  <button class="kit-row" data-add-goal={group} data-no-press onclick={() => startAddingGoal(group)}>
     <span class="roadmap-box add-icon"><Icon name="plus" size={20} /></span>
     <span class="kit-row-text"><span class="kit-row-title muted">{m.roadmap_new_goal()}</span></span>
   </button>
