@@ -119,7 +119,8 @@
   } from '$lib/data/lookBackSpan';
   import { countUp } from '$lib/motion/countUp';
   import { crossfade } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT, EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import type { TransitionConfig } from 'svelte/transition';
   import type { Era, Milestone } from '$lib/data/types';
   import { eraBandRoles, roleAt, type Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
@@ -510,6 +511,44 @@
      themselves; marks set it to the month behind themselves. */
   const pickMark = (day: number) => commit(defaultSpan(railStart, day));
 
+  /* A mark says what it is when pointed at (bug session 18, item 83): its
+     name and day rise over it on hover, and a tap shows them for a few
+     seconds as well as picking the stretch. The marks are hidden from the
+     reader because the list under the rail holds the same facts as rows,
+     so this label is for the eye only. */
+  type MarkTip = { key: string; name: string; day: number; held: boolean };
+  let tip = $state<MarkTip | null>(null);
+  let tipTimer: ReturnType<typeof setTimeout> | undefined;
+  const TIP_HOLD_MS = 3000;
+  function hoverTip(event: PointerEvent, key: string, name: string, day: number) {
+    if (event.pointerType !== 'mouse' || tip?.held) return;
+    tip = { key, name, day, held: false };
+  }
+  function leaveTip(key: string) {
+    if (tip && !tip.held && tip.key === key) tip = null;
+  }
+  function tapTip(key: string, name: string, day: number) {
+    clearTimeout(tipTimer);
+    tip = { key, name, day, held: true };
+    tipTimer = setTimeout(() => {
+      if (tip?.key === key) tip = null;
+    }, TIP_HOLD_MS);
+  }
+  $effect(() => () => clearTimeout(tipTimer));
+  /* Which way the label hangs: centred over the mark, or held to the side
+     of it near either end of the rail so it never runs off the column. */
+  const tipAnchor = (day: number) => {
+    const at = railPosition(day, railStart, today);
+    return at < 0.2 ? 'start' : at > 0.8 ? 'end' : 'middle';
+  };
+  /* Rises 4px into place as it fades in and only fades on the way out.
+     Reduced motion keeps the fade. */
+  function tipFade(_node: Element, _params?: unknown, options?: { direction?: 'in' | 'out' | 'both' }): TransitionConfig {
+    const duration = motionDuration('--dur-fast');
+    if (isReducedMotion() || options?.direction === 'out') return fadeOnly(duration);
+    return { duration, easing: EASE_OUT, css: (t, u) => `opacity: ${t}; translate: 0 ${u * 4}px;` };
+  }
+
   const valueText = (day: number) => fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' });
   /* The span written under the rail, in the words the range picker uses.
      Years only where they carry information: the start's when it is not
@@ -728,7 +767,12 @@
         tabindex="-1"
         aria-hidden="true"
         aria-label={m.lookback_mark_aria({ name: mark.name })}
-        onclick={() => pickMark(mark.epochDay)}
+        onpointerenter={(event) => hoverTip(event, `milestone:${mark.id}`, mark.name, mark.epochDay)}
+        onpointerleave={() => leaveTip(`milestone:${mark.id}`)}
+        onclick={() => {
+          tapTip(`milestone:${mark.id}`, mark.name, mark.epochDay);
+          pickMark(mark.epochDay);
+        }}
       ></button>
     {/each}
 
@@ -746,9 +790,30 @@
         tabindex="-1"
         aria-hidden="true"
         aria-label={m.lookback_mark_aria({ name: mark.name ?? m.lookback_legend_surgery() })}
-        onclick={() => pickMark(mark.epochDay)}
+        onpointerenter={(event) => hoverTip(event, `surgery:${mark.id}`, mark.name ?? m.lookback_legend_surgery(), mark.epochDay)}
+        onpointerleave={() => leaveTip(`surgery:${mark.id}`)}
+        onclick={() => {
+          tapTip(`surgery:${mark.id}`, mark.name ?? m.lookback_legend_surgery(), mark.epochDay);
+          pickMark(mark.epochDay);
+        }}
       ></button>
     {/each}
+
+    {#key tip?.key}
+      {#if tip}
+        <span
+          class="span-tl-tip"
+          data-anchor={tipAnchor(tip.day)}
+          style:left="{railPosition(tip.day, railStart, today) * 100}%"
+          data-span-tip={tip.key}
+          aria-hidden="true"
+          transition:tipFade|global
+        >
+          <span class="span-tl-tip-name">{tip.name}</span>
+          <span class="span-tl-tip-day">{valueText(tip.day)}</span>
+        </span>
+      {/if}
+    {/key}
 
     <!-- Today, in ink: the one mark on the rail that is not the person's. -->
     <span class="span-tl-today" aria-label={m.tl_you_are_here()} role="img"></span>
@@ -1158,6 +1223,37 @@
     cursor: pointer;
     z-index: 2;
   }
+
+  /* A mark's name and day, over it (item 83). Opaque on the page's second
+     surface inside a hairline, as the kit separates anything laid over
+     marks: no shadow. Over everything on the rail, handles included: a
+     tap brings a handle onto the very mark it names. */
+  .span-tl-tip {
+    position: absolute;
+    bottom: 14px;
+    z-index: 4;
+    display: grid;
+    gap: 2px;
+    max-width: min(240px, 70vw);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-2);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    color: var(--text);
+    font-size: var(--text-sm);
+    line-height: 1.35;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateX(-50%);
+  }
+  .span-tl-tip[data-anchor='start'] { transform: translateX(-12px); }
+  .span-tl-tip[data-anchor='end'] { transform: translateX(calc(-100% + 12px)); }
+  .span-tl-tip-name {
+    font-weight: var(--weight-bold);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .span-tl-tip-day { color: var(--text-2); }
 
   /* The target is wider than the mark. */
   /* The target: the block, the 2px of gutter above it before the history
