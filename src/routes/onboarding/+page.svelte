@@ -1518,6 +1518,12 @@
     font-weight: var(--weight-regular);
     line-height: var(--leading-body);
   }
+  /* A measure for reading, which the 640px column on a desktop is not:
+     the promise ran about 85 characters a line there (impeccable). */
+  .setup-line.is-pitch,
+  .setup-line.is-promise {
+    max-width: 60ch;
+  }
   /* The promise: in the text colour and a step heavier than the line above
      it, behind the padlock, so it reads as the one thing on the screen
      that is a commitment rather than a description. No box and no stripe. */
