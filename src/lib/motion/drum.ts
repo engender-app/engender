@@ -1,4 +1,4 @@
-/* Tier 3 motion swaps glyphs inside a clipped block (DIRECTION.md rule 10).
+/* Tier 3 motion swaps glyphs inside a clipped block.
    A keyed update mounts the new face while the old leaves. Each face uses
    only a transform, with --dur-med and --ease-out.
 

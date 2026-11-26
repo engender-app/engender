@@ -1,5 +1,5 @@
 /* Focus the new screen's h1 so assistive tech announces it while
-   the tab title stays private (ADR-0035). A heading uses tabindex="-1"
+   the tab title stays private. A heading uses tabindex="-1"
    and data-arrival-focus. Fall back to the scroll region until the h1
    exists. Preserve focus already held by a new-screen control or an
    overlay. */

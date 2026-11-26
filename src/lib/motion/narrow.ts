@@ -4,7 +4,7 @@
    uses regroup.ts's FLIP to bring survivors from their old positions.
 
    Use transform and opacity only so large grids avoid layout work each
-   frame (ADR-0078, materials.css). */
+   frame. See materials.css. */
 
 import type { TransitionConfig } from 'svelte/transition';
 import { EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';
@@ -133,7 +133,7 @@ export function pinnedOut(node: Element): TransitionConfig {
     Gated on `when`, and the gate is the point. A screen's content gets no
     entrance of its own on the way in: the skeleton fades out over it and a
     second fade a moment later is the content arriving twice
-    (tests/feature-screens.test.ts, DIRECTION.md tier 3). So a caller passes
+    (tests/feature-screens.test.ts). Pass
     false for the tiles that come with the grid and true for every tile
     after that, which it knows from whether its own grid has been painted
     yet.

@@ -30,17 +30,9 @@ function cut(node: HTMLElement, cuts: boolean): boolean {
 }
 
 /**
- * Hang the foot below the frame and play it up. Called in the same step
- * that puts the node in the column, so the first painted frame already has
- * the region at full height.
- *
- * `cuts` is for a navigation: Svelte tears the screen down there too, and a
- * foot sliding up the window while the blind pulls the next screen over it
- * is two motions explaining one thing, so the foot arrives with the screen
- * instead. Reduced motion cuts for the reason `wipe` gives in reveal.ts -
- * "a change inside a screen has no journey to explain, so there is nothing
- * a fade would be standing in for". The crossfade DIRECTION.md rule 10
- * names is tier 2's substitute, for a navigation.
+ * Start the foot below the frame with the region already at full height.
+ * On navigation the foot comes in with the screen. Under reduced motion
+ * a within-screen reveal cuts, while navigation uses its own crossfade.
  */
 export function riseFoot(node: HTMLElement, cuts = false): void {
   if (cut(node, cuts)) return;

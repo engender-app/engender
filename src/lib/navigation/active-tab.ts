@@ -11,7 +11,7 @@ const TAB_ROUTES: TabRoute[] = [
      from the normal entry flow (CONTEXT: "Doubt entry") - it stays with
      Home rather than joining Calendar's entries. Coming-back joins it for
      the same reason: the layout opens it on arriving at Home and links it
-     from nowhere else (ADR-0062, ADR-0045). */
+     from nowhere else (ADR-0045). */
   { key: 'home', prefixes: ['/doubt', '/coming-back'] },
   { key: 'calendar', prefixes: ['/calendar', '/day', '/search', '/entry'] },
   /* SH-001: a look-back view used to light no tab at all, which read as

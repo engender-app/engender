@@ -25,9 +25,8 @@ export type Insets = { left: number; right: number; top: number; bottom: number 
 /** Under this, two measurements are the same place. Layout arithmetic on a
     fractional device pixel ratio lands a third of a pixel either side of
     where it landed last time, and a resize that reports the same position
-    as a new one would replay the stretch on every observer tick - which
-    would turn a moment into a loop, which DIRECTION.md's motion system
-    spends only on the flag sun and the mood faces. */
+    as a new one would replay the stretch on every observer tick. Only the
+    flag sun and mood faces use ambient loops. */
 const SAME = 0.5;
 
 export function boxesMatch(a: Box, b: Box): boolean {
@@ -53,12 +52,9 @@ export function insets(box: Box, host: Host): Insets {
   };
 }
 
-/** Which way the pill is going along its own axis, or 0 if it is not going
-    anywhere along it. The sign is what the destination icon's swing leans
-    with, so it is a direction rather than a distance: DIRECTION.md's motion
-    is the same whether a tab is next door or across the bar, and the
-    difference in how far the shape opens is already carried by the gap it
-    opens across. */
+/** Direction of the pill along its axis, or zero when still. The icon
+    leans that way regardless of how many tabs the pill passes. The pill
+    stretches across the actual gap. */
 export function travel(from: Box, to: Box, axis: Axis): -1 | 0 | 1 {
   const moved = axis === 'x' ? to.x - from.x : to.y - from.y;
   if (Math.abs(moved) < SAME) return 0;

@@ -46,19 +46,12 @@ export function replacesAppNavigation(path: string): boolean {
 
 /** Renders without the shell's chrome, whoever is looking at it. */
 export function chromelessPath(path: string): boolean {
-  /* The return moment (ADR-0062) is chromeless and
-     nothing more: it is a step in DIRECTION.md rule 15's sense - one
-     purpose, no navigation - and its foot carries the one way off, so a bar
-     over it would be both a second way and a claim that this is a place
-     rather than a moment. */
+  /* The return step is chromeless. Its footer holds the only exit. */
   return replacesAppNavigation(path) || path === '/coming-back';
 }
 
-/** Paints no tab bar, whoever is looking at it: the chromeless routes, and a
-    new entry. A new entry is a step in DIRECTION.md rule 15's sense: one purpose, one way on and one way back, so the
-    bar would be four more ways off it. It stays out of `chromelessPath`
-    because that answer also decides whether Today's retained doors stay
-    mounted, and a new entry is where the app goes from Today most often. */
+/** Hide the tab bar on chromeless routes and new entry. A new entry keeps
+    chromelessPath false so Today's retained doors stay mounted. */
 export function barlessPath(path: string, today: number = Number.MAX_SAFE_INTEGER): boolean {
   if (chromelessPath(path)) return true;
   const day = /^\/entry\/new\/([^/]+)\/?$/.exec(path)?.[1];

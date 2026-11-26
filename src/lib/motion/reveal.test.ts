@@ -124,7 +124,7 @@ describe('tier 3, the wipe', () => {
 
 
 describe('tier 3, a group opening its own height', () => {
-  /* DIRECTION.md names this case by itself: a list insertion opens its own
+  /* A list insertion opens its own
      height rather than making everything below it jump. It is the one place
      tier 3 spends a layout property, so what the test holds is that it lands
      exactly on the element's resting box - the invariant the reduced-motion

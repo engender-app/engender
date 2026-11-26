@@ -1,5 +1,5 @@
 /* Give each mood face its own glance period and delay so the row
-   never moves in a wave (ADR-0071). Glances replace the existing
+   never moves in a wave. Glances replace the existing
    face-blink loop in the ambient motion budget. Use periods with a
    long common multiple to keep the faces from drifting into sync.
 

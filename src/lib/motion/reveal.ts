@@ -77,7 +77,7 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
  * The wipe above uncovers from one edge, which is what a plot that runs left
  * to right wants. A mirrored figure does not: the paired pitch density is two
  * shapes measured outward from a spine down the middle
- * (PitchFigure.svelte, redesign ticket 42, ADR-0083), and uncovering that
+ * (PitchFigure.svelte). Uncovering it
  * from the left would draw the earlier read arriving before the later one -
  * a sequence the picture does not have. This opens from the middle instead,
  * so both shapes grow off the axis they were measured from.

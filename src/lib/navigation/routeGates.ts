@@ -10,7 +10,7 @@
    the route or considering the return moment (ADR-0054). Close quick
    add when entering that gate because it sits outside the gate chain.
 
-   Consider the return moment only on Home (ADR-0062). Explicit links,
+   Consider the return moment only on Home. Explicit links,
    notifications and Android launch routes keep their destinations.
    The layout reads the journal to decide whether there is anything to
    show. */

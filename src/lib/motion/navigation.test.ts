@@ -117,8 +117,7 @@ describe('sheet rise', () => {
   });
 
   /* Ticket 38: a 24px nudge under an opacity fade is a crossfade, which is
-     how Alicja read it on ticket 35's flipbooks. ADR-0078: a block never
-     fades up from nothing. The scrim is what announces the sheet. */
+    /* The scrim announces the sheet. The sheet itself does not fade up from nothing. */
   it('does not fade - a solid object slides', () => {
     stubDocument(TOKENS);
     const { css } = sheetRise(sheetNode(300, 800));

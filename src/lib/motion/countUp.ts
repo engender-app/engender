@@ -1,4 +1,4 @@
-/* Animate quantities as their tiles clip open (DIRECTION.md rule 10).
+/* Animate quantities as their tiles clip open.
    Names, dates and durations cut to the final string. Match
    `kit-block-in`'s duration and curve. With reduced motion, show the
    final number immediately instead of waiting 380 ms. The runner

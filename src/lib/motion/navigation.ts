@@ -206,7 +206,7 @@ export function sheetEntranceDelay(): number {
 }
 
 /**
- * Tier 2 sheets travel their full height with no opacity change (ADR-0078).
+ * Tier 2 sheets travel their full height with no opacity change.
  * The scrim fades separately. The entrance overshoots and settles, the exit
  * eases down without overshooting, and the skirt keeps the bottom covered.
  *

@@ -1,10 +1,10 @@
-/* Tier 0 of the motion system (DIRECTION.md): Home's flag sun, the app's
+/* Tier 0 of the motion system: Home's flag sun, the app's
    one authored moment and the only ambient loop that survives phase 5.
 Kept apart from the FlagSun component so the two things the
    ticket's acceptance actually pins numbers to - ring geometry and the
    per-theme colour nudge - are unit-testable without mounting Svelte. */
 
-/** The sun's outer diameter, the same for every flag (DIRECTION.md): a
+/** The sun's outer diameter, the same for every flag: a
     fixed step per ring instead would make three-stripe pansexual a third
     the size of seven-stripe agender. */
 /* SUN_OUTER stays exported only for its own test (AU-09 test-only review). */

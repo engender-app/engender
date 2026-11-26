@@ -1,5 +1,5 @@
-/* Press response uses CSS :active and the --ease-press spring
-   (DIRECTION.md tier 1). Buttons, links and role="button" in the app
+/* Press response uses CSS :active and the --ease-press spring.
+   Buttons, links and role="button" in the app
    root opt out with data-no-press when another response or invisible
    target makes scaling inappropriate. motion-system.test.ts checks
    those exceptions. Reduced motion removes scale and keeps colour or
