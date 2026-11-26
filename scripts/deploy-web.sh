@@ -51,7 +51,7 @@ ssh -T -F /dev/null \
 
 curl --fail --silent --show-error --retry 3 --max-time 30 \
   -H 'Cache-Control: no-cache' \
-  https://app.engender.barankiewicz.dev/release.json -o "$work/live.json"
+  https://journal.engender.app/release.json -o "$work/live.json"
 node --input-type=module - "$work/payload/build/release.json" "$work/live.json" <<'NODE'
 import { readFileSync } from 'node:fs';
 import { strict as assert } from 'node:assert';
@@ -66,10 +66,10 @@ NODE
 for file in index.html service-worker.js _app/version.json; do
   curl --fail --silent --show-error --retry 3 --max-time 30 \
     -H 'Cache-Control: no-cache' \
-    "https://app.engender.barankiewicz.dev/$file" -o "$work/live-file"
+    "https://journal.engender.app/$file" -o "$work/live-file"
   if ! cmp -s "$work/live-file" "$work/payload/build/$file"; then
     echo "Production $file does not match the published release" >&2
     exit 1
   fi
 done
-echo "Deployed $RELEASE_TAG to https://app.engender.barankiewicz.dev"
+echo "Deployed $RELEASE_TAG to https://journal.engender.app"

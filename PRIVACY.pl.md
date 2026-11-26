@@ -67,7 +67,7 @@ Aplikacja ma następujące uprawnienia:
 
 ## Aplikacja w przeglądarce
 
-Aplikacja w przeglądarce działa pod adresem `app.engender.barankiewicz.dev`,
+Aplikacja w przeglądarce działa pod adresem `journal.engender.app`,
 na serwerze w OVH. Dziennik zostaje w przeglądarce i nigdy nie jest
 wysyłany. Wczytanie aplikacji albo aktualizacji to zwykłe żądanie
 internetowe, więc serwer widzi adres IP, czas, żądany adres oraz nagłówki

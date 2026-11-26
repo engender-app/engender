@@ -33,7 +33,7 @@ function replay({ upload = true, live = '1.2.3', configured = true, swap = false
   const commands = {
     gh: 'touch "$TEST_ROOT/gh-called"\nwhile [[ "$1" != --dir ]]; do shift; done\ncp "$TEST_ROOT"/fixture/* "$2/"',
     ssh: `printf '%s\\n' "$@" > "$TEST_ROOT/ssh-args"\nwhile [[ "$1" != -i ]]; do shift; done\nprintf '%s' "$2" > "$TEST_ROOT/key-path"\nstat -c %a "$2" > "$TEST_ROOT/key-mode"\n${upload ? 'tar -xzf - -C "$TEST_ROOT/received"' : 'exit 42'}`,
-    curl: 'touch "$TEST_ROOT/http-called"\nfor a in "$@"; do [[ "$a" == https://* ]] && url="$a"; done\nwhile [[ "$1" != -o ]]; do shift; done\ncase "$url" in\n  */release.json) cp "$TEST_ROOT/live.json" "$2";;\n  */index.html) cp "$TEST_ROOT/live/index.html" "$2";;\n  *) cp "$TEST_ROOT/build${url#https://app.engender.barankiewicz.dev}" "$2";;\nesac'
+    curl: 'touch "$TEST_ROOT/http-called"\nfor a in "$@"; do [[ "$a" == https://* ]] && url="$a"; done\nwhile [[ "$1" != -o ]]; do shift; done\ncase "$url" in\n  */release.json) cp "$TEST_ROOT/live.json" "$2";;\n  */index.html) cp "$TEST_ROOT/live/index.html" "$2";;\n  *) cp "$TEST_ROOT/build${url#https://journal.engender.app}" "$2";;\nesac'
   };
   for (const [name, body] of Object.entries(commands)) {
     const file = join(root, 'bin', name);

@@ -8356,7 +8356,7 @@ try {
   await fresh('/settings');
   await page.locator('[data-list-row="about"]').click();
   for (const [link, expected] of [
-    ['privacy', 'https://engender.barankiewicz.dev/en/privacy/'],
+    ['privacy', 'https://engender.app/en/privacy/'],
     ['source', 'https://github.com/engender-app/engender']
   ]) {
     const href = await page.locator(`[data-about-link="${link}"]`).getAttribute('href');
