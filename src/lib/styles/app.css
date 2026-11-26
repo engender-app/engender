@@ -1387,10 +1387,24 @@ html[data-nav='shared-axis-back']::view-transition-old(screen) {
 html[data-nav='shared-axis-back']::view-transition-new(screen) {
   animation-name: screen-axis-back-in, blind-follow;
 }
+/* The incoming screen holds at nil opacity for the first 25% of its
+   --dur-med (60ms) and fades up after, while its slide runs the whole way.
+   The outgoing screen's --dur-fast ease-out is at 0.13 by then and 0.06
+   when the new one shows, so no frame holds two legible screens and only
+   one holds neither: the calendar and a day sat over each other at
+   0.56/0.29 and 0.28/0.52 for two frames (pre-release 18, item 54), the
+   double exposure redesign ticket 25 already took out of the reduced-motion
+   crossfade. */
 @keyframes screen-axis-out { to { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
-@keyframes screen-axis-in { from { opacity: var(--nil-opacity); transform: translateX(var(--motion-distance-md)); } }
+@keyframes screen-axis-in {
+  from { opacity: var(--nil-opacity); transform: translateX(var(--motion-distance-md)); }
+  25% { opacity: var(--nil-opacity); }
+}
 @keyframes screen-axis-back-out { to { opacity: 0; transform: translateX(var(--motion-distance-md)); } }
-@keyframes screen-axis-back-in { from { opacity: var(--nil-opacity); transform: translateX(calc(-1 * var(--motion-distance-md))); } }
+@keyframes screen-axis-back-in {
+  from { opacity: var(--nil-opacity); transform: translateX(calc(-1 * var(--motion-distance-md))); }
+  25% { opacity: var(--nil-opacity); }
+}
 
 /* Into the entry editor: container transform, the one place in the app
    where the thing tapped becomes the thing that opens (DIRECTION.md tier 2,
@@ -1412,12 +1426,21 @@ html[data-nav='shared-axis-back']::view-transition-new(screen) {
    `fill` against a box that is changing size: a 60px row stretched into a
    full screen is a smear, and the same two frames cropped are a card
    opening. */
+/* Out, then in, for what is left of the screen (pre-release 18, item 54).
+   The outgoing screen ran the crossfade in reverse, and an ease-out
+   reversed starts slow: the calendar stayed at 0.99 to 0.72 while the
+   editor came up to 0.96 over it, six frames of two whole screens on top
+   of each other under the travelling card. It fades away on the forward
+   curve now, and the editor waits for it the way the shared axis does. */
 html[data-nav='container']::view-transition-old(screen) {
-  animation-name: screen-crossfade;
-  animation-direction: reverse;
+  animation-name: screen-fade-away;
 }
 html[data-nav='container']::view-transition-new(screen) {
-  animation-name: screen-crossfade, blind-follow;
+  animation-name: screen-crossfade-after, blind-follow;
+}
+@keyframes screen-crossfade-after {
+  from { opacity: var(--nil-opacity); }
+  25% { opacity: var(--nil-opacity); }
 }
 
 /* The app opening for its owner: the secret is accepted and the gate gives
