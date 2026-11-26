@@ -78,7 +78,8 @@ try {
   assert.ok((await page.locator('[data-sheet]').innerText()).includes(en.hair_removal_photo_hint));
   await page.locator('#hair-removal-area').selectOption('chin');
   await page.locator('#hair-removal-cost').fill('125');
-  await page.locator('#hair-removal-cost-currency').selectOption('PLN');
+  await page.locator('#hair-removal-cost-currency').click();
+  await page.locator('[data-currency-option="PLN"]').click();
   await page.locator('#hair-removal-provider').fill('Clinic fixture');
   await fillDate(page, '#hair-removal-date', '2024-03-12');
   await page.keyboard.press('Escape');

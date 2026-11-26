@@ -556,16 +556,4 @@
     margin: 0;
     min-width: 0;
   }
-
-  .details-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  /* The gap is inside each slot rather than between them, so a slot that
-     opens or closes takes its gap with it. */
-  .action-slot {
-    padding-top: var(--space-3);
-  }
 </style>

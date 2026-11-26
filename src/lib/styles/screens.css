@@ -968,6 +968,18 @@
      second elevation on a 22px mark. */
   background: var(--surface); border: 1px solid var(--outline);
 }
+/* The foot of a detail screen's own editor (an appointment, a procedure):
+   Save changes, Add to calendar, Delete, one to a line and one width, so
+   they share a left edge and a height and the ghost Delete no longer
+   starts its label 24px in from the other two. Not laid inline the way an
+   editor sheet's foot is: Add to calendar arrives when a save gives the
+   record its day, and beside Save it dropped Save in one frame. The gap is
+   inside each slot rather than between them, so a slot that opens or
+   closes takes its gap with it. */
+.details-actions { display: flex; flex-direction: column; }
+.details-actions > .btn,
+.details-actions .action-slot > .btn { width: 100%; }
+.details-actions .action-slot { padding-top: var(--space-3); }
 .compare-gap { text-align: center; font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-display); margin-bottom: var(--space-5); }
 
 /* ---------- desktop adaptation ---------- */

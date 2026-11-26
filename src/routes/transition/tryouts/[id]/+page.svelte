@@ -401,16 +401,22 @@
         </Field>
       </div>
     {/if}
-    <Field label={m.started_label()} id="tr-start">
-      {#snippet children(id)}
-        <DatePicker name="tr-start" bind:value={draft.start} {id} />
-      {/snippet}
-    </Field>
-    <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} id="tr-end">
-      {#snippet children(id, describedBy)}
-        <DatePicker name="tr-end" min={dayRangeEndMin(draft.start)} bind:value={draft.end} {id} describedBy={rangeInverted ? `${describedBy} tr-range-error` : describedBy} aria-invalid={rangeInverted || undefined} />
-      {/snippet}
-    </Field>
+    <!-- When, as one pair: Started and Ended are one question, and side by
+         side they read as a span rather than two more rows of the form.
+         The end hint sits under its input so the two inputs share a top
+         edge, the lab editor's Value and Unit. -->
+    <div class="cd-endpoints tryout-span">
+      <Field label={m.started_label()} id="tr-start">
+        {#snippet children(id)}
+          <DatePicker name="tr-start" bind:value={draft.start} {id} />
+        {/snippet}
+      </Field>
+      <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} hintAfter id="tr-end">
+        {#snippet children(id, describedBy)}
+          <DatePicker name="tr-end" min={dayRangeEndMin(draft.start)} bind:value={draft.end} {id} describedBy={rangeInverted ? `${describedBy} tr-range-error` : describedBy} aria-invalid={rangeInverted || undefined} />
+        {/snippet}
+      </Field>
+    </div>
     <div aria-live="polite">
       {#if rangeInverted}
         <div class="disclosed" transition:disclose>
@@ -418,28 +424,30 @@
         </div>
       {/if}
     </div>
-    {#if canAdopt}
+    <div class="details-actions">
       <button
-        type="button"
         class="btn btn-primary press"
-        data-adopt-tryout
-        onclick={() => (adoptOpen = true)}
+        data-save-tryout
+        disabled={draft.label.trim().length === 0 || rangeInverted}
+        aria-describedby={rangeInverted ? "tr-range-error" : undefined}
+        onclick={saveTryout}
       >
-        <Icon name="check" size={18} />
-        <span>{m.tryout_adopt_permanently()}</span>
+        <span>{detail.isNew ? m.save() : m.save_changes()}</span>
       </button>
-    {/if}
-    <button
-      class="btn press"
-      class:btn-primary={!canAdopt}
-      class:btn-soft={canAdopt}
-      data-save-tryout
-      disabled={draft.label.trim().length === 0 || rangeInverted}
-      aria-describedby={rangeInverted ? "tr-range-error" : undefined}
-      onclick={saveTryout}
-    >
-      <span>{detail.isNew ? m.save() : m.save_changes()}</span>
-    </button>
+      {#if canAdopt}
+        <div class="action-slot">
+          <button
+            type="button"
+            class="btn btn-soft press"
+            data-adopt-tryout
+            onclick={() => (adoptOpen = true)}
+          >
+            <Icon name="check" size={18} />
+            <span>{m.tryout_adopt_permanently()}</span>
+          </button>
+        </div>
+      {/if}
+    </div>
   </fieldset>
   {#if saveFailed || navigationFailed && detail.isNew || saved}
     <div class="disclosed" transition:disclose>
@@ -630,6 +638,12 @@
     flex: 0 0 auto;
     display: grid;
     place-items: center;
+  }
+
+  @container app (max-width: 359px) {
+    .tryout-span {
+      grid-template-columns: 1fr;
+    }
   }
 
   fieldset {
