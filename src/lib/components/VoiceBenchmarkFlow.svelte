@@ -156,7 +156,12 @@
      the page routes its tab switch through `leave`. */
   const guard = leaveGuard({
     holding: () => passageTake !== null && !takeSaved,
-    busy: () => saving
+    busy: () => saving,
+    /* A figure's "what these numbers mean" link is a navigation to this
+       same screen with ?metric=, which opens the reference sheet over the
+       take and leaves it in place (item 91). */
+    staysOnScreen: (departure) =>
+      departure.to?.url.pathname === location.pathname && departure.to.url.searchParams.has('metric')
   });
 
   /** Run `after` now if no take would be lost, otherwise once the person
