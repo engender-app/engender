@@ -277,7 +277,7 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
 
 export type BuiltInPersonalEffectKey = (typeof BUILT_IN_PERSONAL_EFFECT_TYPES)[number]['key'];
 
-/* The dimension keys, the milestone, regimen and entry templates and the
+/* The dimension keys, the milestone and regimen templates, the guided prompt keys and the
    euphoria tag keys live in builtinTemplates.ts (ux-carpet ticket 223): they
    are what the boot-time vocabulary, Today and the first run's scales step
    read, and kept in this file they carried the whole catalogue below into
@@ -289,13 +289,13 @@ export {
   MILESTONE_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_LEAN,
-  ENTRY_TEMPLATES,
+  GUIDED_PROMPT_KEYS,
   milestoneTemplateRows,
   regimenTemplateRows,
   type BuiltInDimensionKey,
   type MilestoneTemplateKey,
   type RegimenTemplateKey,
-  type EntryTemplateKey
+  type GuidedPromptKey
 } from './builtinTemplates.ts';
 
 /* Presets and milestone templates are not stored rows in Phase 1 - the

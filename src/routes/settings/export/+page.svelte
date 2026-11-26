@@ -757,7 +757,6 @@
         value: m.dlb_tag_counts({ matched: String(preview.matchedTagCount), new: String(preview.newTagCount) })
       },
       { label: m.dlb_scales(), count: preview.dimensionCount, value: String(preview.dimensionCount) },
-      { label: m.entry_templates_title(), count: preview.templateCount, value: String(preview.templateCount) },
       {
         label: m.dlb_attachments(),
         count: preview.photoCount + preview.audioCount,
@@ -771,6 +770,7 @@
     achievements: m.dlb_skip_achievements,
     preferences: m.dlb_skip_preferences,
     reminders: m.dlb_skip_reminders,
+    templates: m.dlb_skip_templates,
     icons: m.dlb_skip_icons,
     anniversaries: m.dlb_skip_anniversaries,
     scales: m.dlb_skip_scales,

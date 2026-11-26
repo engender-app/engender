@@ -11,9 +11,8 @@
 
 import { BODY_REGION_MIDPOINT, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
-import { applyEntryTemplateToDraft } from './vocabulary/entryTemplates';
 import type { EntrySection } from './entrySections';
-import type { Entry, EntryTemplate } from './types';
+import type { Entry } from './types';
 import type {
   EntriesArea,
   EntryCycleEventInput,
@@ -75,19 +74,6 @@ export interface EntryDraft {
   setNote(note: string): void;
   setDim(key: string, value: number): void;
   toggleTag(id: string): void;
-  /** Merges a template's pre-fill into the draft (ticket 17, extended by
-      ticket 07 for the note scaffold and presentation): tags join the
-      selection already there rather than toggling it, so applying the same
-      template twice cannot flip a tag back off, dims overwrite by key the
-      way `setDim` does, a note scaffold only ever fills an empty note, and
-      a template's own presentation replaces the draft's when it has one.
-      Every value it sets is a plain field afterwards - `toggleTag`/`setDim`
-      edit it same as anything the person picked themselves. It also closes
-      whichever chip was open (ticket 19), so what it set reads off the
-      chips' states rather than off one section. The merge math
-      itself is `applyEntryTemplateToDraft` (vocabulary/entryTemplates.ts),
-      the same pure seam ticket 08's debrief offer reads. */
-  applyTemplate(template: EntryTemplate): void;
   /** Puts a region's slider on screen, or takes it off. Nothing is seeded:
       a region picked and left at the midpoint carries nothing and is
       dropped on save (ticket 31), so picking one is not itself content. */
@@ -190,20 +176,6 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
 
     toggleTag(id) {
       this.tags = this.tags.includes(id) ? this.tags.filter((x: string) => x !== id) : [...this.tags, id];
-    },
-
-    applyTemplate(template) {
-      const merged = applyEntryTemplateToDraft(
-        { tags: this.tags, dims: this.dims, note: this.note, presentationId: this.presentationId },
-        template
-      );
-      this.tags = merged.tags;
-      this.dims = merged.dims;
-      this.note = merged.note;
-      this.presentationId = merged.presentationId;
-      /* A template fills its chips and opens none (ticket 19): what it set
-         is read off the chips' states, not off a section it chose to open. */
-      this.openSection = null;
     },
 
     toggleBodyRegion(key) {

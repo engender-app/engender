@@ -540,17 +540,6 @@ const ROWS = {
     roleIndex: numeric,
     hidden: optional(bool)
   },
-  entryTemplates: {
-    ...STAMP,
-    id: identity,
-    name: text,
-    tags: optional(list(text)),
-    dims: optional(numericRecord),
-    noteScaffold: text,
-    presentationId: optional(nullable(text)),
-    builtIn: optional(bool),
-    hidden: optional(bool)
-  },
   comfortItems: {
     ...STAMP,
     id: identity,
@@ -694,7 +683,6 @@ export function assertArchiveReferences(journal: ArchiveJournal, externalImport 
   unique(journal.procedures.flatMap((row) => row.photos.map((photo) => photo.id)), 'procedure photos');
   unique(journal.hairRemovalSessions.flatMap((row) => row.photos.map((photo) => photo.id)), 'hair removal photos');
   unique(journal.checklists.flatMap((row) => row.items.map((item) => item.id)), 'checklist items');
-  for (const template of journal.entryTemplates) unique(template.tags ?? [], 'template tags');
   for (const schedule of journal.doseSchedules) {
     const weekdays = schedule.weekdays ?? [];
     if (new Set(weekdays).size !== weekdays.length) {
@@ -713,10 +701,6 @@ export function assertArchiveReferences(journal: ArchiveJournal, externalImport 
     if (!known.has(value)) throw new CorruptArchiveError(`the archive's ${section} reference is not readable`);
   };
   for (const preset of journal.presets) for (const key of preset.dims ?? []) referenced(key, dimensions, 'preset dimension');
-  for (const template of journal.entryTemplates) {
-    for (const key of Object.keys(template.dims ?? {})) referenced(key, dimensions, 'template dimension');
-    for (const id of template.tags ?? []) referenced(id, tags, 'template tag');
-  }
   for (const entry of journal.entries) {
     for (const key of Object.keys(entry.dims ?? {})) referenced(key, dimensions, 'entry dimension');
     // External previews reuse tags already on the destination, outside their row-only payload.

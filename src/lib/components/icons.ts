@@ -231,10 +231,6 @@ export const PATHS: Record<string, string> = {
   // A whole standing body, for the body regions behind the body map. Kept a
   // full figure so it does not read as `person`'s bust.
   figure: '<circle cx="12" cy="5" r="2.5"/><path d="M12 9.5c-2.9 0-4.6 1.7-4.6 4.2v3.1h2.1l.5 4.2h4l.5-4.2h2.1v-3.1c0-2.5-1.7-4.2-4.6-4.2z"/>',
-  // A page laid out before anything is written on it: a header and a
-  // column, for entry templates. Settings drew `grid` (the More tab) and the
-  // editor `sparkle` for the same thing.
-  template: '<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 9h17M10 9v11.5"/>',
   // A face, the shape the mood scale is drawn in, for mood colours and the
   // daily check-in that asks for a mood.
   mood: '<circle cx="12" cy="12" r="9"/><path d="M9 9.5v1M15 9.5v1"/><path d="M8.5 14.5a4.2 4.2 0 0 0 7 0"/>',

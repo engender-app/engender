@@ -81,7 +81,7 @@
   import { epochDayFromDateInputValue, dateInputValueFromEpochDay, timestampAtLocalTime } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { mostRecentPastAppointment, soonestFutureAppointment, waitingSince } from '$lib/data/journal/appointments';
-  import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
+  import { debriefOfferVisible } from '$lib/data/vocabulary/debriefOffer';
   import { gapTo } from '$lib/data/vocabulary/hubLabels';
   import AppointmentFields from '$lib/components/AppointmentFields.svelte';
   import AppointmentPrep from '$lib/components/AppointmentPrep.svelte';

@@ -19,7 +19,6 @@ import type {
   ArchiveDosePause,
   ArchiveEffectCategory,
   ArchiveEntry,
-  ArchiveEntryTemplate,
   ArchiveFeltSenseEntry,
   ArchiveHairPhoto,
   ArchiveHairRemovalSession,
@@ -47,7 +46,6 @@ import {
   applyDoseSchedules,
   applyEffectCategories,
   applyEntries,
-  applyEntryTemplates,
   applyFeltSenseEntries,
   applyHairPhotos,
   applyHairRemovalSessions,
@@ -187,71 +185,6 @@ test('applyPresets merge keeps a matched preset\'s own links, replace swaps them
   );
   assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM gender_preset'))[0].name, 'Renamed');
   assert.deepEqual(await presetDimensionKeys(driver), ['b']);
-});
-
-// applyEntryTemplates ----------------------------------------------------------
-
-test('applyEntryTemplates inserts a template with its tags and dimension values', async () => {
-  const driver = await migratedDb();
-  await seedTwoDimensions(driver);
-  await driver.run(`INSERT INTO tag_group (key, name, updated_at) VALUES ('grp', 'Group', 0)`);
-  await driver.run(
-    `INSERT INTO tag (key, group_id, label, updated_at) VALUES ('t1', (SELECT id FROM tag_group WHERE key = 'grp'), 'Tag', 0)`
-  );
-  const template: ArchiveEntryTemplate = {
-    id: 'started_hrt',
-    name: 'Started HRT',
-    tags: ['t1'],
-    dims: { a: 40 },
-    noteScaffold: 'Today I...',
-    presentationId: null,
-    builtIn: true,
-    hidden: false
-  };
-
-  await applyEntryTemplates(restoring(driver, { entryTemplates: [template] }, 'merge', 4));
-
-  const rows = await select(driver, 'SELECT key, name, note_scaffold, updated_at FROM entry_template');
-  assert.deepEqual(rows, [{ key: 'started_hrt', name: 'Started HRT', note_scaffold: 'Today I...', updated_at: 4 }]);
-  const tagLinks = await select<{ label: string }>(driver,
-    'SELECT t.label FROM entry_template_tag ett JOIN tag t ON t.id = ett.tag_id'
-  );
-  assert.deepEqual(tagLinks, [{ label: 'Tag' }]);
-  const dimLinks = await select<{ value: number }>(driver, 'SELECT value FROM entry_template_dimension_value');
-  assert.deepEqual(dimLinks, [{ value: 40 }]);
-});
-
-test('applyEntryTemplates merge leaves a matched template alone, replace re-links its children', async () => {
-  const driver = await migratedDb();
-  await seedTwoDimensions(driver);
-  await driver.run(`INSERT INTO tag_group (key, name, updated_at) VALUES ('grp', 'Group', 0)`);
-  await driver.run(
-    `INSERT INTO tag (key, group_id, label, updated_at) VALUES ('t1', (SELECT id FROM tag_group WHERE key = 'grp'), 'Tag', 0)`
-  );
-  const template: ArchiveEntryTemplate = {
-    id: 'started_hrt',
-    name: 'Started HRT',
-    tags: ['t1'],
-    dims: { a: 40 },
-    noteScaffold: 'Today I...',
-    presentationId: null,
-    builtIn: true,
-    hidden: false
-  };
-  await applyEntryTemplates(restoring(driver, { entryTemplates: [template] }, 'merge', 4));
-
-  await applyEntryTemplates(
-    restoring(driver, { entryTemplates: [{ ...template, name: 'Renamed', dims: { b: 10 } }] }, 'merge', 9)
-  );
-  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM entry_template'))[0].name, 'Started HRT');
-  assert.deepEqual(await select(driver, 'SELECT value FROM entry_template_dimension_value'), [{ value: 40 }]);
-
-  await applyEntryTemplates(
-    restoring(driver, { entryTemplates: [{ ...template, name: 'Renamed', tags: [], dims: { b: 10 } }] }, 'replace', 9)
-  );
-  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM entry_template'))[0].name, 'Renamed');
-  assert.deepEqual(await select(driver, 'SELECT value FROM entry_template_dimension_value'), [{ value: 10 }]);
-  assert.deepEqual(await select(driver, 'SELECT * FROM entry_template_tag'), []);
 });
 
 // applyTagGroups ----------------------------------------------------------------

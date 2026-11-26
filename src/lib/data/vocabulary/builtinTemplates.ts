@@ -1,6 +1,6 @@
 /* The part of the built-in catalogue (builtins.ts) the app reads at boot:
-   milestone and regimen templates for the vocabulary mirror, entry templates
-   for Today's debrief offer and the entry editor, the six dimension keys the
+   milestone and regimen templates for the vocabulary mirror, the guided
+   prompts for the entry editor, the six dimension keys the
    first run's scales step offers before there is a journal, and the euphoria tag keys
    the good-day rule reads. Split out of builtins.ts in
    ux-carpet ticket 223 so the rest of the catalogue - dimensions, tag groups,
@@ -113,48 +113,22 @@ export const REGIMEN_TEMPLATE_LEAN: Record<RegimenTemplateKey, Lean> = {
   gnrh_agonist_im: 'neutral'
 };
 
-/* Entry templates (phase 4 features ticket 17): each names the tags and
-   dimension values it pre-fills, the same "data lives here, wording lives
-   in labels.ts" split BUILT_IN_PRESETS uses for its own `dims`. Values sit
-   on the euphoria_dysphoria scale, the one dimension every built-in preset
-   includes (BUILT_IN_PRESETS above), so a template's dial reading makes
-   sense under any preset a person has chosen.
-
-   The eight with empty tags and dims after the dial templates were guided prompts (phase 4 features ticket 17) until
-   phase 6 ticket 07 folded the two concepts into one: a prompt is a
-   template with empty tags and empty dims, its note scaffold the whole of
-   its content, the same wording it always had (labels.ts's
-   `entryTemplateNoteScaffold`) but now editable, hideable and reachable
-   from the "use template" sheet like any other. */
-export const ENTRY_TEMPLATES = [
-  { key: 'euphoria_day', tags: ['g-euphoria', 'g-body-eu', 'g-soc-eu'], dims: { euphoria_dysphoria: 85 } },
-  // The dysphoria types, not g-body-dys/g-soc-dys: a new journal seeds
-  // those two hidden (builtins.ts, FA 41) and a template never pre-fills a
-  // hidden tag. A journal seeded earlier keeps the links it was given.
-  { key: 'dysphoria_day', tags: ['dt-physical', 'dt-social'], dims: { euphoria_dysphoria: 20 } },
-  { key: 'gendered_correctly', tags: ['g-gendered-ok'], dims: {} },
-  { key: 'misgendered', tags: ['g-misgendered'], dims: {} },
-  { key: 'good_day', tags: ['e-happy', 'e-calm'], dims: { euphoria_dysphoria: 75 } },
-  { key: 'hard_day', tags: ['e-sad', 'e-anxious'], dims: { euphoria_dysphoria: 30 } },
-  { key: 'euphoria_moment', tags: [], dims: {} },
-  { key: 'dysphoria_moment', tags: [], dims: {} },
-  { key: 'body_feeling', tags: [], dims: {} },
-  { key: 'seen_moment', tags: [], dims: {} },
-  { key: 'self_care', tags: [], dims: {} },
-  { key: 'presentation_feeling', tags: [], dims: {} },
-  { key: 'name_pronouns_feeling', tags: [], dims: {} },
-  { key: 'proud_moment', tags: [], dims: {} },
-  /* The appointment debrief (phase 6 ticket 08, CONTEXT: "Checklist"):
-     reachable by default only through the debrief offer, never through the
-     "use template" sheet or the entry-creation banner's random pool - both
-     of those read the visible list, and this seeds hidden. Editable and
-     un-hideable like any other built-in (What to Build #4) if someone
-     wants it in their own rotation; the offer applies it directly by key
-     regardless of its hidden flag. */
-  { key: 'appointment_debrief', tags: [], dims: {}, hidden: true }
+/* The guided prompts the entry editor offers on a new entry, one at a time:
+   keys only, the wording lives in labels.ts (`guidedPromptText`). They were
+   entry templates with only a note scaffold until entry templates were
+   removed (pre-release-human 18); the prompts themselves stayed. */
+export const GUIDED_PROMPT_KEYS = [
+  'euphoria_moment',
+  'dysphoria_moment',
+  'body_feeling',
+  'seen_moment',
+  'self_care',
+  'presentation_feeling',
+  'name_pronouns_feeling',
+  'proud_moment'
 ] as const;
 
-export type EntryTemplateKey = (typeof ENTRY_TEMPLATES)[number]['key'];
+export type GuidedPromptKey = (typeof GUIDED_PROMPT_KEYS)[number];
 
 export function milestoneTemplateRows(): MilestoneTemplate[] {
   return MILESTONE_TEMPLATE_KEYS.map((key) => ({ key, name: '' }));

@@ -6,7 +6,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { timestampAtLocalTime } from './epochDay';
 import { createEntryDraft } from './entryDraft.ts';
-import type { Entry, EntryTemplate } from './types.ts';
+import type { Entry } from './types.ts';
 import type { NormalizedPhoto } from './journal/photos.ts';
 import { journalWithBuiltIns } from './journal/test-support.ts';
 import { openJournal } from './journal/journal.ts';
@@ -114,18 +114,6 @@ test('saving consumes every contextual creation action', async () => {
   assert.equal((await journal.doses.getDoses(100, 100)).length, 1);
   assert.equal((await journal.personalEffects.getMarkers()).length, 1);
   assert.equal((await journal.cycleEvents.getCycleEvents()).length, 1);
-});
-
-const template = (overrides: Partial<EntryTemplate> = {}): EntryTemplate => ({
-  id: 'tpl',
-  name: 'Template',
-  tags: [],
-  dims: {},
-  noteScaffold: '',
-  presentationId: null,
-  builtIn: true,
-  hidden: false,
-  ...overrides
 });
 
 const existingEntry = (): Entry => ({
@@ -403,57 +391,6 @@ test('a fresh draft can be seeded with a mood and the seed survives hydration', 
   assert.equal(hydrated.mood, 3);
 });
 
-test('applyTemplate adds its tags without duplicating one already selected', () => {
-  const draft = createEntryDraft(1);
-  draft.toggleTag('g-euphoria');
-
-  draft.applyTemplate(template({ tags: ['g-euphoria', 'g-body-eu'] }));
-
-  assert.deepEqual(draft.tags, ['g-euphoria', 'g-body-eu']);
-});
-
-test('applyTemplate sets dims without clobbering a value the draft already had', () => {
-  const draft = createEntryDraft(1);
-  draft.setDim('masculinity', 40);
-
-  draft.applyTemplate(template({ dims: { euphoria_dysphoria: 85 } }));
-
-  assert.deepEqual(draft.dims, { masculinity: 40, euphoria_dysphoria: 85 });
-});
-
-test('applyTemplate pre-fills a fresh draft, and every value stays editable afterwards', () => {
-  const draft = createEntryDraft(1);
-
-  draft.applyTemplate(template({ tags: ['g-euphoria', 'g-body-eu'], dims: { euphoria_dysphoria: 85 } }));
-  assert.deepEqual(draft.tags, ['g-euphoria', 'g-body-eu']);
-  assert.deepEqual(draft.dims, { euphoria_dysphoria: 85 });
-
-  draft.toggleTag('g-euphoria');
-  draft.setDim('euphoria_dysphoria', 60);
-  assert.deepEqual(draft.tags, ['g-body-eu']);
-  assert.deepEqual(draft.dims, { euphoria_dysphoria: 60 });
-});
-
-test('applyTemplate fills an empty note from the scaffold but never overwrites what is already written', () => {
-  const blank = createEntryDraft(1);
-  blank.applyTemplate(template({ noteScaffold: 'What felt euphoric today?' }));
-  assert.equal(blank.note, 'What felt euphoric today?');
-
-  const written = createEntryDraft(1);
-  written.setNote('already writing');
-  written.applyTemplate(template({ noteScaffold: 'What felt euphoric today?' }));
-  assert.equal(written.note, 'already writing');
-});
-
-test('applyTemplate sets the presentation when the template carries one, and leaves it otherwise', () => {
-  const draft = createEntryDraft(1);
-  draft.applyTemplate(template({ presentationId: 'p1' }));
-  assert.equal(draft.presentationId, 'p1');
-
-  draft.applyTemplate(template());
-  assert.equal(draft.presentationId, 'p1', 'a template with no presentation is not an error and changes nothing');
-});
-
 test('toUpsert() drops a zero timestamp, matching upsertEntry\'s own fallback', () => {
   const draft = createEntryDraft(1);
   draft.setMood(1);
@@ -508,24 +445,6 @@ test('a picked photo carrying an epochDayOverride (ticket 47) passes through toU
   draft.addPhoto({ ...photo(9), epochDayOverride: 19000 });
 
   assert.deepEqual(draft.toUpsert().attachPhotos, [{ ...photo(9), epochDayOverride: 19000 }]);
-});
-
-
-test('applyTemplate fills its chips and opens none (ticket 19)', () => {
-  const draft = createEntryDraft(20_001);
-  draft.setOpenSection('tags');
-  draft.applyTemplate({
-    id: 't',
-    name: 't',
-    tags: ['e-happy'],
-    dims: {},
-    noteScaffold: '',
-    presentationId: null,
-    builtIn: false,
-    hidden: false
-  } as never);
-  assert.deepEqual(draft.tags, ['e-happy']);
-  assert.equal(draft.openSection, null);
 });
 
 test('effect markers toggle on and off, keep their order, and never double up (ticket 289)', () => {

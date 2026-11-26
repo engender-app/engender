@@ -41,7 +41,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import { spaceShortage } from '$lib/data/spaceShortage';
-  import type { EntryTemplate, GenderDimension } from '$lib/data/types';
+  import type { GenderDimension } from '$lib/data/types';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -95,11 +95,11 @@
     seedMood?: number | null;
     /** The appointment this new entry debriefs, by id (phase 6 ticket 08,
         rekeyed from a date by ticket 58), arriving as a query param the
-        same way `seedMood` does. Applies the hidden `appointment_debrief`
-        template once on mount and links the saved entry back to the
+        same way `seedMood` does. Opens the entry under the debrief
+        scaffold once on mount and links the saved entry back to the
         appointment in the same transaction - never on an edit
         of an existing entry, the same "creation aid, not an editing one"
-        rule the prompt and the template sheet already follow. */
+        rule the prompt already follows. */
     debriefForAppointment?: string;
     /** A chip section a new entry opens with, from the address (`?open=`).
         A resumed draft keeps its own open section. */
@@ -108,8 +108,7 @@
 
   /* The editor is a writing surface rather than a set of areas to look at,
      so it spends almost none of the flag: what colour it does take goes on
-     the two things that are not fields - the guided prompt, and the template
-     list inside its sheet. Role 0, the only index guaranteed to be a colour
+     the two things that are not fields - the guided prompt. Role 0, the only index guaranteed to be a colour
      on every palette, since there is no reading order to follow with one
      role in play. The attachments surface below is deliberately uncoloured;
      everything inside it is a photograph or a waveform bringing its own. */
@@ -279,52 +278,24 @@
   onDestroy(() => session.dispose(isLockedNow(bootState.accessMode)));
 
   let deleteOpen = $state(false);
-  let templateSheetOpen = $state(false);
   let promptDismissed = $state(false);
-  /* Guided prompts and templates are entry-creation aids (ticket 17), not
-     something to surface while editing an already-saved entry - `entryId`
-     is undefined only for a new one. Read once, like `seedMood` above: the
-     route wraps this component in {#key}, so a fresh editor always means a
-     fresh prompt, never a stale one left over from a previous mount. A
-     prompt is a template whose only content is a note scaffold (ticket 07);
-     `randomPrompt()` can now come back null once every one has been
-     hidden. */
+  /* Guided prompts are an entry-creation aid (ticket 17), not something to
+     surface while editing an already-saved entry - `entryId` is undefined
+     only for a new one. Read once, like `seedMood` above: the route wraps
+     this component in {#key}, so a fresh editor always means a fresh
+     prompt, never a stale one left over from a previous mount. */
   // svelte-ignore state_referenced_locally
-  let prompt = $state<EntryTemplate | null>(
+  let prompt = $state<string | null>(
     entryId == null && prefs.guidedPromptsEnabled ? vocabulary.randomPrompt() : null
   );
 
-  /* A template only ever pre-fills what this install currently shows -
-     a hidden dimension, tag or presentation stays out of the draft even if
-     the template names it, because the picker that would let someone edit
-     it back off is exactly what `hidden` took out of the editor (CONTEXT:
-     "Hidden"). Applying the same template twice cannot double up:
-     applyTemplate() unions the tags and overwrites the dims by key. */
-  function applyTemplate(tpl: EntryTemplate) {
-    const visibleTagIds = new Set(vocabulary.visibleTagGroups.flatMap((g) => g.tags.map((t) => t.id)));
-    const visibleDimKeys = new Set(vocabulary.visibleDimensions.map((d) => d.key));
-    const visiblePresentationIds = new Set(vocabulary.visiblePresentations.map((p) => p.id));
-    entryDraft.applyTemplate({
-      ...tpl,
-      tags: tpl.tags.filter((id) => visibleTagIds.has(id)),
-      dims: Object.fromEntries(Object.entries(tpl.dims).filter(([key]) => visibleDimKeys.has(key))),
-      presentationId: tpl.presentationId && visiblePresentationIds.has(tpl.presentationId) ? tpl.presentationId : null
-    });
-    templateSheetOpen = false;
-  }
-
   /* The debrief offer's deep link (phase 6 ticket 08): applied once, the
      same "read once at mount" rule `prompt` above follows, and only for a
-     new entry - taking the offer never reaches an existing one. Looked up
-     against the full list rather than `visibleEntryTemplates`, because the
-     template seeds hidden by design (builtins.ts) and the offer is the one
-     path that reaches it regardless. Silently does nothing if the built-in
-     has gone missing somehow (deleted from the archive by hand, say) -
-     the entry still opens as a blank one rather than failing to load. */
+     new entry - taking the offer never reaches an existing one. It opens
+     under the "How did it go?" scaffold. */
   // svelte-ignore state_referenced_locally
   if (entryId == null && debriefForAppointment != null) {
-    const debriefTemplate = vocabulary.entryTemplates.find((t) => t.id === 'appointment_debrief');
-    if (debriefTemplate) applyTemplate(debriefTemplate);
+    if (entryDraft.note === '') entryDraft.setNote(m.prompt_appointment_debrief());
     void prepareDraft(() => fillDebriefPrefill(debriefForAppointment));
   }
 
@@ -350,7 +321,7 @@
      same split every other wording split in this app follows (ADR-0016).
 
      Both sections go on in one write, past one guard: the note is appended
-     to only while it still reads exactly as applyTemplate left it. A
+     to only while it still reads exactly as the scaffold left it. A
      restored process-death draft, or the person having already started
      typing, both mean there is something here that is not this function's
      to overwrite - the offer "does not write" (ticket 19's own line), read
@@ -1185,24 +1156,18 @@
        that exists) and a new entry's later steps draw the same pieces and
        differ only in which they take and in what order, so the two cannot
        drift apart. -->
-  {#snippet promptAndTemplate()}
-  <!-- The guided prompt, the template and a debrief's scaffold all belong
+  {#snippet guidedPrompt()}
+  <!-- The guided prompt and a debrief's scaffold both belong
        to the note, so on a new entry they sit with it on the last step. -->
   {#if prompt && !promptDismissed}
     <Notice
       icon="sparkle"
       key="entry-prompt"
       {role}
-      text={prompt.noteScaffold}
+      text={prompt}
       dismiss={{ label: m.dismiss(), onclick: () => (promptDismissed = true) }}
       aria-live="polite"
     />
-  {/if}
-
-  {#if entryId == null}
-    <button class="btn btn-ghost" data-use-template onclick={() => (templateSheetOpen = true)}>
-      <Icon name="template" size={18} /><span>{m.use_template()}</span>
-    </button>
   {/if}
 
   {/snippet}
@@ -1734,7 +1699,7 @@
   {/snippet}
 
   {#snippet theRest()}
-  {@render promptAndTemplate()}
+  {@render guidedPrompt()}
   {@render noteField()}
   {@render modeBlock()}
   {@render scalesBlock()}
@@ -1768,7 +1733,7 @@
   {/snippet}
 
   {#snippet writingStep()}
-  {@render promptAndTemplate()}
+  {@render guidedPrompt()}
   {@render noteField()}
   {@render chipRow(ATTACHMENT_SECTIONS)}
   {@render panels(ATTACHMENT_SECTIONS)}
@@ -1911,31 +1876,6 @@
   </SaveBar>
   {/if}
   {/if}
-
-  <Sheet bind:open={templateSheetOpen} title={m.use_template()}>
-    <SectionHeading text={m.use_template()}>
-      {#snippet action()}
-        <!-- In place (audit item 6): closes this picker and raises the
-             manager sheet directly, rather than navigating there and back. -->
-        <button
-          type="button"
-          class="kit-heading-action"
-          data-manage-entry-templates
-          onclick={() => {
-            templateSheetOpen = false;
-            ui.raisedManager = 'templates';
-          }}
-        >
-          {m.manage()}
-        </button>
-      {/snippet}
-    </SectionHeading>
-    <ListCard {role}>
-      {#each vocabulary.visibleEntryTemplates as tpl (tpl.id)}
-        <ListRow key={tpl.id} title={tpl.name} chevron={false} onclick={() => applyTemplate(tpl)} />
-      {/each}
-    </ListCard>
-  </Sheet>
 
   <Sheet bind:open={deleteOpen} title={m.delete_entry_q()}>
     <SectionHeading text={m.delete_entry_q()} />
