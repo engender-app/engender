@@ -2504,6 +2504,8 @@
   "rem_battery_link": "Open battery settings",
   "rem_battery_title": "Reminders and battery savers",
   "rem_default_name": "Reminder",
+  "rem_delete_q": "Delete “{title}”?",
+  "rem_delete_sheet": "Delete reminder",
   "rem_dose_noted": "Noted. It goes into your journal the next time you open it.",
   "rem_dose_of_day": "Dose {index} of {count} a day",
   "rem_dose_taken": "Taken",
