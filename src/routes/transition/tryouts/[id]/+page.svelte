@@ -35,6 +35,7 @@
   import { entryDayGroups } from '$lib/data/recentEntries';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -362,6 +363,10 @@
   {:else if detail.isNew || detail.record}
 
   <fieldset disabled={saving || detail.isNew && creationId !== null} aria-busy={saving}>
+    <!-- Two named parts, what and when (bug session 18, item 74): the form
+         was five fields in a row, and its first two labels, "What are you
+         trying?" and "What is it?", asked nearly the same thing. -->
+    <FieldGroupHeading legend={m.tryout_group_what()} />
     <Field label={m.tryout_kind_label()} legend>
       {#snippet children()}
         <ChoiceChips
@@ -373,7 +378,7 @@
         />
       {/snippet}
     </Field>
-    <Field label={m.what_is_it_label()} hint={m.tryout_label_required()} id="tr-label">
+    <Field label={m.name_label()} hint={m.tryout_label_required()} id="tr-label">
       {#snippet children(id, describedBy)}
         <input autocomplete={journalTextAutocomplete()}
           class="input"
@@ -405,6 +410,7 @@
          side they read as a span rather than two more rows of the form.
          The end hint sits under its input so the two inputs share a top
          edge, the lab editor's Value and Unit. -->
+    <FieldGroupHeading legend={m.tryout_group_when()} />
     <div class="cd-endpoints tryout-span">
       <Field label={m.started_label()} id="tr-start">
         {#snippet children(id)}

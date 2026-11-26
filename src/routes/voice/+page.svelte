@@ -49,8 +49,7 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
-  import { fmtDay, fmtDuration, fmtRangeEnds } from '$lib/data/dates';
-  import { calendarDuration } from '$lib/data/epochDay';
+  import { fmtApart, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import {
     orderAnchorsByJourney,
     stepCompareAnchor,
@@ -203,8 +202,7 @@
 
   let gapLabel = $derived.by(() => {
     if (!pair) return '';
-    const duration = calendarDuration(anchors[pair.left].epochDay, anchors[pair.right].epochDay);
-    return `${fmtDuration(duration)} ${m.apart_suffix()}`;
+    return fmtApart(anchors[pair.left].epochDay, anchors[pair.right].epochDay);
   });
 
   /* Two benchmarks read against each other. Comparing across different
