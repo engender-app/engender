@@ -891,7 +891,10 @@
             </h1>
             {#if hero}
               <p class="setup-wordmark" data-opening="mark">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</p>
-              <p class="setup-def" data-opening="sign">{m.ob_welcome_def()}</p>
+              <!-- The dictionary entry spells the app's name, so under the
+                   disguise, whose name is on the field instead, it is left
+                   out rather than signed under the wrong word. -->
+              {#if !prefs.disguise}<p class="setup-def" data-opening="sign">{m.ob_welcome_def()}</p>{/if}
             {/if}
           </div>
         {/key}
