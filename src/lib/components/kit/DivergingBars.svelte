@@ -23,7 +23,7 @@
      side of the zero line, and the numbers on the row's own line carry the
      rest.
 
-     A bar stops at LIMIT of its half of the track. A filled bar that runs to
+     A bar stops at `--div-limit` of its half of the track. A filled bar that runs to
      its container's edge reads as progress, and the longest bar in a group
      is by construction the full length it can be. */
   type Row = { key: string; name: string; note: string; share: number };
@@ -59,7 +59,7 @@
 <div class="div-rows" data-chart="diverging">
   {#each rows as row, i (row.key)}
     {#if onPick}
-      <button type="button" class="div-row is-open" data-div-row={row.key} data-no-press onclick={() => onPick(row.key)}>
+      <button type="button" class="div-row" data-div-row={row.key} data-no-press onclick={() => onPick(row.key)}>
         {@render body(row, i)}
       </button>
     {:else}
@@ -194,11 +194,13 @@
   @media (prefers-reduced-motion: reduce) {
     .div-bar {
       animation: none;
+      transition: none;
     }
   }
 
   :global(html[data-a11y-motion='reduce']) .div-bar {
     animation: none;
+    transition: none;
   }
 
   @keyframes div-grow {

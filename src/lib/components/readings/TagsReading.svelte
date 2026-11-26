@@ -95,13 +95,11 @@
   };
 
   const groups = $derived(
-    groupCardsByScale(correlationCards, metricBounds).map((group) => ({
+    groupCardsByScale(correlationCards, metricBounds).map((group) => {
+      const { min, max } = metricBounds(group.metric);
+      return {
       ...group,
-      heading: m.reading_tag_group({
-        scale: vocabulary.metricNameOf(group.metric),
-        min: String(metricBounds(group.metric).min),
-        max: String(metricBounds(group.metric).max)
-      }),
+      heading: m.reading_tag_group({ scale: vocabulary.metricNameOf(group.metric), min: String(min), max: String(max) }),
       rows: group.rows.map((row) => ({
         key: row.key,
         name: occurrenceLabel(row.card),
@@ -112,7 +110,8 @@
           without: nativeValue(row.card.metric, row.card.withoutAvg)
         })
       }))
-    }))
+      };
+    })
   );
   /* The first row of the first group: the largest gap on the scale that
      moved most. */
@@ -179,7 +178,6 @@
   ];
   /* The ring for one set of days fades out over the next one fading in,
      and the card travels the difference in height (resize). */
-  const shareIn = figureIn;
 </script>
 
 {#if view === 'tile'}
@@ -269,7 +267,7 @@
       <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else}
       {#key shared.days}
-      <div in:shareIn out:crossfade data-tag-share-days={shared.days}>
+      <div in:figureIn out:crossfade data-tag-share-days={shared.days}>
         {#if enoughEntries && shareParts.length}
           <Donut parts={shareParts} restName={m.stats_tag_share_rest()} total={String(tagUses)} note={m.stats_tag_share_note()} />
         {:else if enoughEntries && shared.days === 'good'}
