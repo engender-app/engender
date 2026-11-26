@@ -173,16 +173,16 @@ describe('what the door and its groups are called', () => {
      screens stop agreeing. */
   const catalogue = (locale: string) => JSON.parse(read(`messages/${locale}.json`)) as Record<string, string>;
 
-  it('calls the group Steps in both languages', () => {
-    expect(catalogue('en').hub_group_transition).toBe('Steps');
-    expect(catalogue('pl').hub_group_transition).toBe('Kroki');
+  it('calls the group Transition steps in both languages', () => {
+    expect(catalogue('en').hub_group_transition).toBe('Transition steps');
+    expect(catalogue('pl').hub_group_transition).toBe('Kroki tranzycji');
   });
 
   it("names the same five groups in the hidden screen title, which is what the title is for", () => {
     /* `hubRows.ts` says this string goes stale the moment a group is added,
        renamed or reordered. The rename is exactly that moment. */
-    expect(catalogue('en').hub_screen_title).toBe('Health, body, steps, support and media');
-    expect(catalogue('pl').hub_screen_title).toBe('Zdrowie, ciało, kroki, wsparcie i media');
+    expect(catalogue('en').hub_screen_title).toBe('Health, body, transition steps, support and media');
+    expect(catalogue('pl').hub_screen_title).toBe('Zdrowie, ciało, kroki tranzycji, wsparcie i media');
     expect(HUB_GROUP_KEYS).toHaveLength(5);
 
     // Body was folded in audit item 10 and came back in pre-release-human 12.

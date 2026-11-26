@@ -109,7 +109,7 @@ test('a stock-managed reminder names the drug, explains the handoff, and links t
   const origin = resolveReminderOrigin(reminder({ autoSource: 'stock:Estradiol' }));
   assert.deepEqual(origin, {
     text: 'Kept in step with your Estradiol stock.',
-    hint: 'Saving stops automatic updates to this reminder. You can then change it here.',
+    hint: 'Saving stops automatic updates to this reminder.',
     href: '/care',
     actionLabel: 'View stock'
   });
@@ -119,7 +119,7 @@ test('a schedule reminder says it follows the schedule and opens the episode it 
   const origin = resolveReminderOrigin(reminder({ autoSource: 'dose:episode-1', drug: 'Progesterone' }));
   assert.deepEqual(origin, {
     text: 'Follows the dose schedule.',
-    hint: 'Saving stops automatic updates to this reminder. You can then change it here.',
+    hint: 'Saving stops automatic updates to this reminder.',
     href: '/care/regimen?episode=episode-1',
     actionLabel: 'Edit schedule'
   });
@@ -129,7 +129,7 @@ test('a wear-session reminder is recognised too, not just stock - the same auto_
   const origin = resolveReminderOrigin(reminder({ autoSource: 'wear:session-1' }));
   assert.deepEqual(origin, {
     text: 'Set from a wear session you logged.',
-    hint: 'Saving stops automatic updates to this reminder. You can then change it here.',
+    hint: 'Saving stops automatic updates to this reminder.',
     href: '/body/wear',
     actionLabel: 'View wear log'
   });
