@@ -130,20 +130,7 @@ const SCENES = [
     path: '/entry/new/today',
     targets: '[data-entry-step] :is(button, a[href], input:not([type="hidden"]), textarea, select, [role="slider"], [role="switch"], [role="button"], summary), [data-entry-finish], [data-entry-continue], [data-screen-back], [data-save-star]',
     open: (page) => toEntryStepWith(page, part)
-  })),
-  {
-    /* Templates live in a sheet raised from the Settings list (the old
-       /settings/entry-templates route is gone, which is why this scene used to
-       wait for a sheet that never opened). Its editor draws the same tag picker. */
-    key: 'templates',
-    path: '/settings',
-    targets: '[data-sheet] button.contextual-chip, [data-sheet] .tag-chip, [data-sheet] .tag-info-btn',
-    open: async (page) => {
-      await page.locator('[data-list-row="entry-templates"]').click();
-      await page.locator('[data-sheet] [data-add]').first().click();
-      await page.locator('[data-sheet] button.contextual-chip').first().waitFor();
-    }
-  }
+  }))
 ];
 
 const WIDTHS = [320, 390];

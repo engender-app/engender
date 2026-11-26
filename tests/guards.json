@@ -408,11 +408,6 @@
     "holds": "Settings scroll survives detail returns and manager sheets; fresh visits start at the top and gates hide manager content"
   },
   {
-    "name": "sheet-handoff-scroll-check",
-    "tier": "built",
-    "holds": "a sheet raised by another's close keeps the shell inert while it is up, and the editor still scrolls once both close"
-  },
-  {
     "name": "sheet-touch-drag-check",
     "tier": "built",
     "holds": "a finger dragging a sheet down from its handle or body moves it with the finger and a long swipe dismisses it (real CDP touch, where `touch-action` applies)"

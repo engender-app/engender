@@ -74,7 +74,7 @@ try {
     }
   }
 
-  for (const key of ['presentations', 'entry-templates']) {
+  for (const key of ['presentations']) {
     const row = page.locator(`[data-list-row="${key}"]`);
     await row.scrollIntoViewIfNeeded();
     const before = await position();

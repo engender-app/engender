@@ -5485,18 +5485,11 @@ try {
   await page.locator('[data-list-row="dilation"]').click();
   await page.waitForURL('**/health/dilation');
 
-  // Modes and entry templates are Settings rows now (redesign ticket 51,
-  // ADR-0084), never on the hub at all.
-  // Modes and entry templates stopped being screens of their own (audit
-  // item 6): each row now raises a sheet over Settings rather than
-  // navigating, so the URL settles back on /settings and the manager's own
-  // content is what proves the row worked.
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await page.locator('[data-list-row="entry-templates"]').click();
-  await page.waitForURL('**/settings');
-  await page.locator('[data-entry-template]').first().waitFor();
-  await page.keyboard.press('Escape');
-
+  // Modes are a Settings row now (redesign ticket 51, ADR-0084), never on
+  // the hub at all. It stopped being a screen of its own (audit item 6): the
+  // row raises a sheet over Settings rather than navigating, so the URL
+  // settles back on /settings and the manager's own content is what proves
+  // the row worked.
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="presentations"]').click();
   await page.waitForURL('**/settings');
