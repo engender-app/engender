@@ -249,3 +249,17 @@ export function sunGrowth(index: number, total: number): number {
   const progress = Math.min(Math.max(index, 0), total - 1) / (total - 1);
   return SUN_START + (1 - SUN_START) * progress;
 }
+
+/** The welcome's sun, as a multiple of Home's resting one. The welcome is
+    the first screen anyone sees, so the mark is drawn there as the hero of
+    a field most of a phone tall, and "Set up the app" collapses that field
+    into the first question with the sun shrinking to the first step's size
+    (pre-release-human ticket 19). Large enough that the quarter fills the
+    corner of a 412px phone (175px x 1.6 = 280px of reach) and leaves the
+    wordmark the bottom of the field. */
+export const WELCOME_SUN = 1.6;
+
+/** The sun's scale on `step`: the welcome's hero, then the growth above. */
+export function stepSun(step: OnboardingStep, steps: readonly OnboardingStep[]): number {
+  return step === 'welcome' ? WELCOME_SUN : sunGrowth(stepIndex(steps, step), steps.length);
+}
