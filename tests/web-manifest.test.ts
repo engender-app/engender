@@ -157,7 +157,7 @@ describe('the disguised manifest', () => {
     expect(disguisedPolish.lang).toBe('pl');
     expect(disguisedPolish.name).toBe('Notatki');
     expect(disguisedPolish.short_name).toBe('Notatki');
-    expect(disguisedPolish.description).toBe('Miejsce na notatki.');
+    expect(disguisedPolish.description).toBe('Miejsce na Twoje notatki.');
     expect(disguisedPolish.shortcuts).toBeUndefined();
   });
 

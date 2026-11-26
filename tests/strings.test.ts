@@ -482,3 +482,99 @@ describe('copy outside the catalogues', () => {
     expect(outside(root).filter((row) => row.reviewed).map((row) => row.key)).toEqual(['store:changelogs/7']);
   });
 });
+
+describe('strings server on the LAN', () => {
+  it('answers any host only to a browser that opened the page with its key', async () => {
+    const root = fixture();
+    const server = createStringsServer(root, { key: 'k3y' });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('Missing server address');
+      const port = address.port;
+      // A phone reaches the server by the computer's LAN address, not 127.0.0.1.
+      const send = (path: string, headers: Record<string, string> = {}, method = 'GET', body?: string) =>
+        new Promise<{ status?: number, cookie?: string[], location?: string }>((resolve, reject) => {
+          const outgoing = request({ host: '127.0.0.1', port, path, method, headers: { Host: `192.0.2.1:${port}`, ...headers } }, (response) => {
+            response.resume();
+            resolve({ status: response.statusCode, cookie: response.headers['set-cookie'], location: response.headers.location });
+          });
+          outgoing.on('error', reject);
+          outgoing.end(body);
+        });
+      expect((await send('/')).status).toBe(403);
+      expect((await send('/api/strings')).status).toBe(403);
+      expect((await send('/?key=wrong')).status).toBe(403);
+      const opened = await send('/lexicon?key=k3y');
+      expect(opened.status).toBe(303);
+      expect(opened.location).toBe('/lexicon');
+      const cookie = opened.cookie?.[0] ?? '';
+      expect(cookie).toMatch(/HttpOnly/);
+      expect(cookie).toMatch(/SameSite=Strict/);
+      const session = cookie.split(';')[0];
+      expect((await send('/api/strings', { Cookie: session })).status).toBe(200);
+      expect((await send('/api/strings', { Cookie: 'strings-key=wrong' })).status).toBe(403);
+      const edit = JSON.stringify(plainEdit());
+      const json = { 'Content-Type': 'application/json', Cookie: session };
+      expect((await send('/api/strings', { ...json, Origin: 'https://example.com' }, 'PATCH', edit)).status).toBe(403);
+      expect((await send('/api/strings', { ...json, Origin: `http://192.0.2.1:${port}` }, 'PATCH', edit)).status).toBe(204);
+      expect(JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8')).greeting).toBe('Welcome');
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+});
+
+describe('removing a string and editing together', () => {
+  const serve = async (root: string) => {
+    const server = createStringsServer(root);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Missing server address');
+    const url = `http://127.0.0.1:${address.port}/api/strings`;
+    const send = (method: string, body: unknown) => fetch(url, {
+      method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    const close = () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    return { send, close };
+  };
+  const catalogue = (root: string, locale: string) => JSON.parse(readFileSync(join(root, `messages/${locale}.json`), 'utf8'));
+
+  it('removes an unused key from both languages and its review, queues a used one and refuses a stale one', async () => {
+    const root = fixture();
+    const { send, close } = await serve(root);
+    try {
+      // The code still shows greeting: the request is queued for the code to change first.
+      const queued = await send('DELETE', { key: 'greeting', en: 'Hello', pl: 'Dzień dobry' });
+      expect(queued.status).toBe(202);
+      expect(await queued.json()).toMatchObject({ queued: true });
+      const queue = JSON.parse(readFileSync(join(root, '.scratch/strings-removals.json'), 'utf8'));
+      expect(queue.greeting).toMatchObject({ en: 'Hello', pl: 'Dzień dobry' });
+      expect(queue.greeting.uses.length).toBeGreaterThan(0);
+      expect(readStrings(root).find((row) => row.key === 'greeting')?.queued).toBe(true);
+      expect(readStrings(root).find((row) => row.key === 'orphan')?.queued).toBe(false);
+      expect((await send('DELETE', { key: 'orphan', en: 'Stale', pl: 'Zapisałaś' })).status).toBe(409);
+      expect((await send('DELETE', { key: 'nothing', en: null, pl: null })).status).toBe(400);
+      expect((await send('DELETE', { key: 'orphan', en: 'Unused', pl: 'Zapisałaś' })).status).toBe(204);
+      expect(Object.keys(catalogue(root, 'en'))).not.toContain('orphan');
+      expect(Object.keys(catalogue(root, 'pl'))).not.toContain('orphan');
+      expect(catalogue(root, 'en').greeting).toBe('Hello');
+      expect(readStrings(root).find((row) => row.key === 'orphan')?.change).toBe('removed');
+    } finally { await close(); }
+  });
+
+  it('keeps both edits when two people save different keys at the same moment', async () => {
+    const root = fixture();
+    const { send, close } = await serve(root);
+    try {
+      const statuses = await Promise.all([
+        send('PATCH', plainEdit('Welcome')).then((r) => r.status),
+        send('PATCH', { locale: 'pl', key: 'orphan', variant: null, form: null, previous: 'Zapisałaś', text: 'Zapisano' }).then((r) => r.status),
+        send('PATCH', { locale: 'en', key: 'missing', variant: null, form: null, previous: 'Only English', text: 'Edited' }).then((r) => r.status)
+      ]);
+      expect(statuses).toEqual([204, 204, 204]);
+      expect(catalogue(root, 'en')).toMatchObject({ greeting: 'Welcome', missing: 'Edited' });
+      expect(catalogue(root, 'pl').orphan).toBe('Zapisano');
+    } finally { await close(); }
+  });
+});

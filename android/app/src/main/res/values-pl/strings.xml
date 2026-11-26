@@ -17,7 +17,7 @@
         <item>Dobre zaimki</item>
     </string-array>
     <string name="widget_doubt_title">Bezpieczna przestrzeń</string>
-    <string name="widget_doubt_description">Oddech, dobre chwile, co pomaga i gdzie szukać wsparcia.</string>
+    <string name="widget_doubt_description">Dobre wspomnienia i ćwiczenia oddechowe</string>
     <string name="backup_failure_channel">Kopie zapasowe</string>
     <string name="backup_failure_description">Gdy zaplanowana kopia się nie uda i trzeba wybrać inny folder albo spróbować ponownie.</string>
     <string name="backup_failure_title">Zaplanowana kopia zapasowa się nie udała</string>

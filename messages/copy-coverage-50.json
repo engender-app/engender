@@ -1499,7 +1499,6 @@
   "pj_selected_count": {"owner":39,"sources":["src/routes/media/photos/export/+page.svelte"]},
   "pj_shared": {"owner":38,"sources":["src/lib/components/CalendarHandoffSheet.svelte","src/routes/media/documents/[id]/+page.svelte","src/routes/media/photos/export/+page.svelte"]},
   "pj_stays_here": {"owner":38,"sources":["src/routes/media/photos/export/+page.svelte"]},
-  "pj_timelapse_hint": {"owner":39,"sources":["src/routes/media/photos/export/+page.svelte"]},
   "pj_timelapse_length": {"owner":39,"sources":["src/routes/media/photos/export/+page.svelte"]},
   "pj_timelapse_unavailable": {"owner":39,"sources":["src/routes/media/photos/export/+page.svelte"]},
   "pj_title": {"owner":39,"sources":["src/routes/media/photos/export/+page.svelte"]},

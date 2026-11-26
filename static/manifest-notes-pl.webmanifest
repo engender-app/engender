@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Notatki",
   "short_name": "Notatki",
-  "description": "Miejsce na notatki.",
+  "description": "Miejsce na Twoje notatki.",
   "lang": "pl",
   "dir": "ltr",
   "start_url": "/",

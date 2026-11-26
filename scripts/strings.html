@@ -4,154 +4,182 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Message catalogues</title>
 <style>
-  :root { color-scheme: dark; --bg: #14151a; --panel: #1c1e25; --line: #2c2f3a; --ink: #e8e6e1;
-    --dim: #8f93a3; --accent: #f5a9b8; --note: #5bcefa; --bad: #ff7b7b; }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, sans-serif;
-    display: grid; grid-template-columns: 270px minmax(0, 1fr); }
-  input, textarea, button, select { font: inherit; color: inherit; }
-  button, select, input[type=search], input[type=text] { background: var(--panel); border: 1px solid var(--line);
-    border-radius: 4px; padding: 5px 8px; }
-  button { cursor: pointer; }
-  button:disabled { opacity: .5; cursor: default; }
-  button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  a { color: var(--dim); }
-  [hidden] { display: none !important; }
-
-  nav { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 18px 14px;
-    border-right: 1px solid var(--line); font-size: 14px; display: flex; flex-direction: column; gap: 12px; }
-  nav > * { flex: none; }
-  nav h1 { font-size: 15px; margin: 0; }
-  nav p { margin: 0; color: var(--dim); font-size: 12px; }
-  nav label { display: grid; gap: 3px; color: var(--dim); font-size: 12px; }
-  nav input[type=search], nav select { width: 100%; font-size: 14px; color: var(--ink); }
-  progress { width: 100%; accent-color: var(--accent); }
-  #themes { display: grid; gap: 2px; }
-  #themes button { display: flex; justify-content: space-between; gap: 8px; text-align: left;
-    background: none; border-color: transparent; padding: 4px 6px; }
-  #themes button:hover { background: var(--panel); }
-  #themes small { color: var(--dim); white-space: nowrap; }
-  .pair { display: flex; gap: 4px; }
-  .pair button { flex: 1; font-size: 13px; }
-  #operation { color: var(--note); min-height: 3.1em; white-space: pre-wrap; }
-  #operation.bad { color: var(--bad); }
-
-  main { padding: 0 28px 120px; }
-  #status { color: var(--dim); font-size: 13px; margin: 14px 0 0; }
-  details { margin-top: 12px; font-size: 14px; }
-  summary { cursor: pointer; color: var(--dim); }
-  .replace-fields { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
-  .replace-fields label { flex: 1 1 14rem; display: grid; gap: 3px; color: var(--dim); font-size: 12px; }
-  .replace-fields input, .replace-fields select { width: 100%; font-size: 14px; color: var(--ink); }
-  #replace-preview { max-height: 24rem; overflow: auto; margin-top: 8px; }
-  #replace-preview table { border-collapse: collapse; width: 100%; }
-  #replace-preview th, #replace-preview td { border-bottom: 1px solid var(--line); padding: 6px 8px;
-    text-align: left; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }
-
-  .group { position: sticky; top: 0; z-index: 1; background: var(--bg); margin-top: 28px; padding: 12px 0;
-    border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-  .group h2 { font-size: 20px; margin: 0; }
-  .review { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 13px; white-space: nowrap; }
-  .review input { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
-
-  /* The side padding keeps a field's focus ring inside the box content-visibility paints. */
-  .row { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; padding: 10px 5px; margin: 0 -5px;
-    border-bottom: 1px solid var(--line); content-visibility: auto; contain-intrinsic-size: auto 110px; }
-  .meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
-    font-size: 11px; color: var(--dim); margin-bottom: 2px; }
-  .meta code { font: 11px ui-monospace, monospace; overflow-wrap: anywhere; }
-  .meta .review { margin-left: auto; font-size: 12px; }
-  .mark { color: var(--accent); }
-  .sites { display: flex; flex-wrap: wrap; gap: 2px 10px; }
-  .sites a { text-decoration: none; overflow-wrap: anywhere; }
-  .sites a:hover { color: var(--note); }
-  .checks { grid-column: 1 / -1; }
-  .finding { margin: 0; color: var(--bad); font-size: 13px; }
-  .row.is-reviewed .meta code { color: var(--note); }
-  .cell { min-width: 0; }
-  .cell > p { margin: 0; color: var(--dim); font-style: italic; }
-  .field { margin-bottom: 6px; }
-  .form { display: block; font: 11px ui-monospace, monospace; color: var(--dim); }
-  /* The hidden copy of the text sizes the cell, so the textarea needs no scrollbar and no script. */
-  .grow { display: grid; max-width: 68ch; border-radius: 3px; outline: 1px solid transparent; outline-offset: 3px;
-    transition: outline-color .15s, background-color .4s; }
-  .grow::after { content: attr(data-value) ' '; visibility: hidden; }
-  .grow::after, .grow textarea { grid-area: 1 / 1; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere;
-    padding: 0; margin: 0; border: 0; }
-  .grow textarea { background: none; resize: none; overflow: hidden; outline: none; width: 100%; }
-  .grow:hover { outline-color: var(--line); }
-  .grow:focus-within { outline-color: var(--accent); }
-  .grow.changed { background: #f5a9b81f; }
-  .grow.unsaved { outline-color: var(--note); }
-  .grow.saved { background: #5bcefa3d; }
-  .grow.failed { outline-color: var(--bad); background: #ff7b7b2e; }
-  .message { display: block; font-size: 12px; color: var(--bad); }
-  .before { display: none; margin: 0 0 8px; font-size: 13px; color: var(--dim); }
-  .before strong { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
-  .before p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-  body.changed-only .before { display: block; }
-
-  body[data-lang=en] .cell[lang=pl], body[data-lang=pl] .cell[lang=en] { display: none; }
-  body[data-lang=en] .row, body[data-lang=pl] .row { grid-template-columns: 1fr; }
-  body.prose .meta code, body.prose .sites, body.prose .form { display: none; }
-
-  @media (max-width: 900px) {
-    body { display: block; }
-    nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
-    main { padding: 0 16px 80px; }
-    .row { grid-template-columns: 1fr; row-gap: 8px; }
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f5f2; --card: #fff; --ink: #1d1c1a; --ink-2: #5b5852; --line: #dcd9d2;
+    --head: #efede8; --current: #e6ecf9; --accent: #1f4fb4; --accent-ink: #fff; --ok: #1d6b3a; --bad: #b3261e; --warn: #8a5a00;
+    --toolbar-h: 8rem;
   }
+  :root[data-theme=light] { color-scheme: light; }
+  :root[data-theme=dark] {
+    color-scheme: dark;
+    --bg: #151515; --card: #1e1e1e; --ink: #ecebe7; --ink-2: #a8a59d; --line: #34332f;
+    --head: #262522; --current: #1f2738; --accent: #8db0ff; --accent-ink: #10213f; --ok: #7fd6a0; --bad: #ff9d94; --warn: #f0c36a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme=light]) {
+      --bg: #151515; --card: #1e1e1e; --ink: #ecebe7; --ink-2: #a8a59d; --line: #34332f;
+      --head: #262522; --current: #1f2738; --accent: #8db0ff; --accent-ink: #10213f; --ok: #7fd6a0; --bad: #ff9d94; --warn: #f0c36a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 0; padding: 1rem clamp(.75rem, 3vw, 2rem) 4rem; background: var(--bg); color: var(--ink); }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+  body > p { max-width: 75ch; color: var(--ink-2); margin: .25rem 0; }
+  code { font: .85em ui-monospace, monospace; }
+  kbd { font: .8em ui-monospace, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 .3rem; background: var(--card); }
+  input, textarea, button, select { font: inherit; color: inherit; }
+  input[type=search], input[type=text], select {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .4rem .6rem;
+  }
+  label { display: block; }
+  button { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .4rem .9rem; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  button, select, input[type=search] { min-height: 40px; }
+  #save-all { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  a { color: var(--accent); }
+  td a { display: block; overflow-wrap: anywhere; font-size: .85rem; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .toolbar { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line);
+    padding: .6rem 0; margin: .75rem 0 .5rem; display: grid; gap: .5rem; }
+  .toolbar .line { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+  .toolbar p { margin: 0; color: var(--ink-2); }
+  #search { flex: 1 1 16rem; max-width: 32rem; }
+  #theme { max-width: 100%; }
+  progress { width: 10rem; max-width: 100%; height: .6rem; accent-color: var(--accent); }
+  #operation { white-space: pre-wrap; flex: 1 1 12rem; }
+  .toggle { display: inline-flex; align-items: center; gap: .4rem; }
+  .toggle input, .review input { width: 1.15rem; height: 1.15rem; margin: 0; accent-color: var(--accent); }
+  .review { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-width: 32px; min-height: 32px; cursor: pointer; }
+  details { margin-top: .5rem; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 0 1rem; }
+  summary { cursor: pointer; padding: .6rem 0; font-weight: 600; }
+  details[open] { padding-bottom: 1rem; }
+  .replace-fields { display: flex; flex-wrap: wrap; gap: .75rem; margin: .75rem 0; }
+  .replace-fields label { flex: 1 1 14rem; }
+  .replace-fields input, .replace-fields select { display: block; width: 100%; }
+  #replace-preview { max-height: 24rem; overflow: auto; }
+  #replace-preview td { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 800px; margin-top: .5rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { padding: .3rem .5rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+  tr:last-child > td { border-bottom: 0; }
+  thead th { background: var(--head); font-size: .8rem; color: var(--ink-2); font-weight: 600; }
+  #editor table { table-layout: fixed; }
+  #editor th:nth-child(1) { width: 25%; }
+  #editor th:nth-child(2), #editor th:nth-child(3) { width: 30%; }
+  #editor th:nth-child(4) { width: 15%; }
+  #rows td { overflow-wrap: anywhere; }
+  #rows tr { scroll-margin-top: calc(var(--toolbar-h) + 1.5rem); scroll-margin-bottom: 40vh; }
+  #rows tr.current > td { background: var(--current); }
+  #rows tr.current { outline: 2px solid var(--accent); outline-offset: -2px; }
+  #rows tr.done textarea { color: var(--ink-2); }
+  #rows tr.done code { color: var(--ink-2); }
+  .key { display: flex; align-items: flex-start; gap: .25rem; }
+  .key code { padding-top: .4rem; }
+  tr.group th { background: var(--head); padding: .9rem .5rem .4rem; }
+  .group h2 { font-size: 1rem; margin: 0; display: inline; }
+  .group .review { margin-left: 1rem; font-weight: 400; font-size: .9rem; }
+  textarea { display: block; width: 100%; min-height: 0; resize: none; overflow: hidden; line-height: 1.45; field-sizing: content;
+    background: transparent; border: 1px solid transparent; border-radius: 6px; padding: .3rem .4rem; }
+  textarea:hover { border-color: var(--line); }
+  textarea:focus { border-color: var(--accent); background: var(--card); outline: none; }
+  td p { white-space: pre-wrap; margin: .2rem 0; }
+  .field { position: relative; }
+  .form { font-size: .75rem; color: var(--ink-2); padding: .15rem .4rem 0; }
+  .state { position: absolute; right: .3rem; bottom: .15rem; font-size: .75rem; padding: 0 .3rem; border-radius: 4px;
+    background: var(--card); color: var(--ink-2); pointer-events: none; animation: state-in .2s ease-out; }
+  .state:empty { display: none; }
+  .state.saved { color: var(--ok); }
+  .state.failed { color: var(--bad); position: static; display: block; }
+  @keyframes state-in { from { opacity: 0; } to { opacity: 1; } }
+  .removed .field { display: none; }
+  .mark { margin: 0 0 0 2.25rem; font-size: .8rem; color: var(--warn); }
+  .mark:empty, .checks:empty { display: none; }
+  .finding { color: var(--bad); font-size: .85rem; margin-left: 2.25rem; }
+  .comparison { font-size: .85rem; color: var(--ink-2); }
+  .comparison:empty { display: none; }
+  /* Before/now only while comparing with main: off, a row stays key, EN, PL. */
+  body:not(.comparing) .comparison { display: none; }
+  .comparison p, #prose p { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .remove { min-height: 26px; padding: 0 .5rem; margin: .2rem 0 0 auto; color: var(--bad); font-size: .75rem; white-space: nowrap; }
+  .remove:hover:not(:disabled) { border-color: var(--bad); }
+  .more-sites { min-height: 24px; padding: 0 .4rem; font-size: .75rem; color: var(--ink-2); margin-top: .15rem; }
+  td a[hidden] { display: none; }
+  #prose table { min-width: 0; table-layout: fixed; }
+  #prose td { width: 50%; }
+  /* Phone: one row stacks as key, English, Polish, used in; the toolbar
+     scrolls away instead of covering half the screen. */
+  @media (max-width: 700px) {
+    .toolbar { position: static; }
+    #search { flex-basis: 100%; }
+    #editor table, #prose table { min-width: 0; }
+    #editor thead { display: none; }
+    #editor table, #editor tbody, #editor tr, #editor td, #editor th { display: block; width: auto !important; }
+    #rows td { border-bottom: 0; padding: .15rem .5rem; }
+    #rows tr:not(.group) { border-bottom: 1px solid var(--line); padding: .35rem 0; scroll-margin-top: 1rem; }
+    #rows td[lang]::before { content: attr(lang); display: block; font-size: .7rem; text-transform: uppercase; color: var(--ink-2); padding-left: .4rem; }
+    #rows td:last-child a { display: inline; margin-right: .75rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .state { animation: none; } }
 </style>
-<nav>
-  <h1>Message catalogues</h1>
-  <div>
-    <p id="progress-text"></p>
+<h1>Message catalogues</h1>
+<p>Edits save by themselves a moment after you stop typing, into the file each value came from: <code>messages/en.json</code>, <code>messages/pl.json</code>, the Android resources, the web manifests, the store listing or the privacy policy. Review progress survives restarts, and changed copy needs review again.</p>
+<p><a href="/lexicon">Lexicon</a>: one name per thing, with Polish declension. Renaming a term there rewrites its strings.</p>
+<p><kbd>j</kbd> <kbd>k</kbd> move · <kbd>Space</kbd> reviewed, then next · <kbd>Enter</kbd> edit · <kbd>Esc</kbd> back to the list</p>
+<div class="toolbar" id="toolbar">
+  <div class="line">
+    <input id="search" type="search" autocomplete="off" placeholder="Search keys, English and Polish" aria-label="Search keys, English and Polish">
+    <select id="theme" aria-label="Copy theme"><option value="">All themes</option></select>
+    <select id="review-filter" aria-label="Review status"><option value="pending" selected>Not reviewed</option><option value="">All keys</option><option value="reviewed">Reviewed</option><option value="unsaved">Unsaved edits</option></select>
+    <label class="toggle"><input id="changed" type="checkbox"> Changed vs main</label>
+    <label class="toggle"><input id="prose-toggle" type="checkbox"> Read as prose</label>
+    <button id="reload" type="button">Reload from disk</button>
+    <select id="color-theme" aria-label="Colour theme"><option value="">Auto theme</option><option value="light">Light</option><option value="dark">Dark</option></select>
+  </div>
+  <div class="line">
     <progress id="progress" aria-label="Copy review progress" value="0" max="1"></progress>
+    <p id="progress-text"></p>
+    <p id="status" role="status">Loading…</p>
+    <button id="save-all" type="button" disabled>Save now</button>
+    <p id="operation" role="status"></p>
   </div>
-  <p id="operation" role="status"></p>
-  <label>Search keys, English and Polish<input id="search" type="search" autocomplete="off"></label>
-  <div id="themes" role="group" aria-label="Copy theme"></div>
-  <label>Review status
-    <select id="review-filter"><option value="">All keys</option><option value="pending">Not reviewed</option><option value="reviewed">Reviewed</option><option value="unsaved">Unsaved edits</option></select>
-  </label>
-  <div class="pair" id="lang" role="group" aria-label="Languages shown">
-    <button type="button" data-value="both">Both</button><button type="button" data-value="en">EN</button><button type="button" data-value="pl">PL</button>
+</div>
+<details id="replace-panel">
+  <summary>Find and replace</summary>
+  <p>Match exact text, including case. Replace every occurrence. Preview first. Applied replacements save automatically.</p>
+  <div class="replace-fields">
+    <label>Find text<input id="find-text" type="text"></label>
+    <label>Replace with<input id="replace-text" type="text"></label>
+    <label>Language<select id="replace-locale"><option value="pl">Polish</option><option value="en">English</option><option value="both">English and Polish</option></select></label>
+    <label>Scope<select id="replace-scope"><option value="shown">Shown keys</option><option value="all">All keys (global)</option></select></label>
   </div>
-  <div class="pair">
-    <button id="changed" type="button" aria-pressed="false">Changed vs main</button>
-    <button id="prose-toggle" type="button" aria-pressed="false">Hide keys</button>
-  </div>
-  <button id="reload" type="button">Reload from disk</button>
-  <button id="save-all" type="button" hidden>Save unsaved fields</button>
-  <p>Click any text to edit it. Leaving the field saves it to the file it came from: the catalogues, the Android resources, the web manifests, the store listing or the privacy policy. Enter saves a one-line value, Esc undoes the edit.</p>
-  <p>Tinted text differs from main. Check off a key, or the shown keys in a group, after reading both languages. Changed copy needs review again.</p>
-</nav>
-<main>
-  <details id="replace-panel">
-    <summary>Find and replace</summary>
-    <p>Match exact text, including case. Replace every occurrence. Preview first; applying saves the replaced fields.</p>
-    <div class="replace-fields">
-      <label>Find text<input id="find-text" type="text"></label>
-      <label>Replace with<input id="replace-text" type="text"></label>
-      <label>Language<select id="replace-locale"><option value="pl">Polish</option><option value="en">English</option><option value="both">English and Polish</option></select></label>
-      <label>Scope<select id="replace-scope"><option value="shown">Shown keys</option><option value="all">All keys (global)</option></select></label>
-    </div>
-    <button id="preview-replacements" type="button" disabled>Preview replacements</button>
-    <button id="apply-replacements" type="button" disabled>Apply and save</button>
-    <p id="replace-summary" role="status"></p>
-    <div id="replace-preview"></div>
-  </details>
-  <p id="status" role="status">Loading…</p>
-  <div id="rows"></div>
-</main>
+  <button id="preview-replacements" type="button" disabled>Preview replacements</button>
+  <button id="apply-replacements" type="button" disabled>Apply replacements</button>
+  <p id="replace-summary" role="status"></p>
+  <div id="replace-preview"></div>
+</details>
+<div id="editor" class="scroll">
+  <table>
+    <thead><tr><th scope="col">Key</th><th scope="col">EN</th><th scope="col">PL</th><th scope="col">Used in</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+<div id="prose" hidden>
+  <table>
+    <thead><tr><th scope="col">EN</th><th scope="col">PL</th></tr></thead>
+    <tbody id="paragraphs"></tbody>
+  </table>
+</div>
 <script type="module">
   const rows = document.querySelector('#rows');
   const search = document.querySelector('#search');
   const status = document.querySelector('#status');
   const changed = document.querySelector('#changed');
   const proseToggle = document.querySelector('#prose-toggle');
-  const themes = document.querySelector('#themes');
+  const theme = document.querySelector('#theme');
   const reviewFilter = document.querySelector('#review-filter');
   const saveAll = document.querySelector('#save-all');
   const operation = document.querySelector('#operation');
@@ -164,24 +192,18 @@
   let replacementEdits = [];
   let records = [];
   let groups = new Map();
-  let theme = '';
-  /** Fields whose text differs from disk: being typed, waiting to save, or refused. */
   const dirty = new Map();
-  /** Loading and review saves hold the page; field saves queue behind `saving` and never lock typing. */
+  // Rows reviewed since the filters last changed stay in place, dimmed,
+  // instead of vanishing from a "Not reviewed" list under the cursor.
+  const kept = new Set();
+  const rowRecord = new WeakMap();
+  let cursor = null;
   let busy = false;
-  let saving = Promise.resolve();
-  let queued = 0;
-  let checksStale = false;
 
   function element(tag, text) {
     const node = document.createElement(tag);
     if (text !== undefined) node.textContent = text;
     return node;
-  }
-
-  function say(text, bad = false) {
-    operation.textContent = text;
-    operation.classList.toggle('bad', bad);
   }
 
   function fields(value) {
@@ -191,59 +213,72 @@
     return [];
   }
 
+  function groupRow(name, columns) {
+    const row = element('tr');
+    row.className = 'group';
+    const cell = element('th');
+    cell.colSpan = columns;
+    cell.append(element('h2', name));
+    row.append(cell);
+    return row;
+  }
+
   const hasEdits = (record) => record.editors.some((editor) => dirty.has(editor.input));
   const isReviewed = (record) => record.reviewed && !hasEdits(record);
-  const shownIn = (group) => group.records.filter((record) => !record.row.hidden && record.change !== 'removed');
 
-  function reviewControl(text, label, getRecords) {
-    const wrapper = element('label', text);
+  function reviewControl(label, getRecords, visibleLabel = true) {
+    const wrapper = element('label', visibleLabel ? label : undefined);
     wrapper.className = 'review';
     const input = element('input');
     input.type = 'checkbox';
-    input.setAttribute('aria-label', label);
+    if (!visibleLabel) input.setAttribute('aria-label', label);
     input.addEventListener('change', () => saveReview(getRecords(), input.checked));
     wrapper.prepend(input);
     return { wrapper, input };
   }
 
-  function updateRecord(record) {
-    const edits = hasEdits(record);
-    record.row.classList.toggle('is-reviewed', isReviewed(record));
-    record.reviewControl.input.checked = isReviewed(record);
-    record.reviewControl.input.disabled = busy || edits || record.change === 'removed';
-    record.reviewControl.wrapper.title = edits ? 'Save edits before reviewing this key.' : '';
-  }
-
-  function updateSummary() {
+  function updateControls() {
     const current = records.filter((record) => record.change !== 'removed');
     const reviewed = current.filter(isReviewed).length;
-    document.querySelector('#progress-text').textContent =
-      `${reviewed} of ${current.length} keys reviewed` + (dirty.size ? ` · ${dirty.size} unsaved fields` : '');
+    document.querySelector('#progress-text').textContent = `${reviewed} of ${current.length} reviewed · ${dirty.size} unsaved`;
     const progress = document.querySelector('#progress');
     progress.max = current.length || 1;
     progress.value = reviewed;
-    saveAll.hidden = !dirty.size || queued > 0;
+    saveAll.disabled = busy || !dirty.size;
+    saveAll.textContent = pendingSaves ? 'Saving…' : 'Save now';
+    for (const record of records) if (record.removeButton) record.removeButton.disabled = busy || hasEdits(record) || record.change === 'removed' || record.queued;
     document.querySelector('#reload').disabled = busy;
+    for (const control of [findText, replaceText, replaceLocale, replaceScope]) control.disabled = busy;
     previewReplacements.disabled = busy || !findText.value;
     applyReplacements.disabled = busy || !replacementEdits.length;
-    for (const [name, group] of groups) {
-      const shown = shownIn(group);
-      const count = shown.filter(isReviewed).length;
-      const edits = shown.some(hasEdits);
-      group.reviewControl.input.checked = shown.length > 0 && count === shown.length;
-      group.reviewControl.input.indeterminate = count > 0 && count < shown.length;
-      group.reviewControl.input.disabled = busy || !shown.length || edits;
-      group.reviewControl.wrapper.title = edits ? 'Save edits before reviewing this group.' : 'Applies to the keys shown by the current filters.';
-      const all = group.records.filter((record) => record.change !== 'removed');
-      group.tally.textContent = `${all.filter(isReviewed).length} / ${all.length}`;
-      group.button.setAttribute('aria-pressed', theme === name);
+    for (const record of records) {
+      record.row.classList.toggle('done', isReviewed(record));
+      for (const control of [record.reviewControl, record.proseReviewControl]) {
+        if (!control) continue;
+        control.input.checked = isReviewed(record);
+        control.input.disabled = busy || hasEdits(record) || record.change === 'removed';
+        control.wrapper.title = hasEdits(record) ? 'Wait for the edit to save before reviewing this key.' : '';
+      }
     }
-    themes.firstElementChild?.setAttribute('aria-pressed', theme === '');
-  }
-
-  function updateControls() {
-    for (const record of records) updateRecord(record);
-    updateSummary();
+    for (const option of theme.options) {
+      if (!option.value) continue;
+      const all = groups.get(option.value)?.records.filter((record) => record.change !== 'removed') ?? [];
+      option.textContent = `${option.value} (${all.filter(isReviewed).length}/${all.length})`;
+    }
+    for (const [name, group] of groups) {
+      const shown = group.records.filter((record) => !record.row.hidden && record.change !== 'removed');
+      const count = shown.filter(isReviewed).length;
+      const heading = `${name} · ${count} of ${shown.length} shown reviewed`;
+      group.header.querySelector('h2').textContent = heading;
+      if (group.proseHeader) group.proseHeader.querySelector('h2').textContent = heading;
+      for (const control of [group.reviewControl, group.proseReviewControl]) {
+        if (!control) continue;
+        control.input.checked = shown.length > 0 && count === shown.length;
+        control.input.indeterminate = count > 0 && count < shown.length;
+        control.input.disabled = busy || !shown.length || shown.some(hasEdits);
+        control.wrapper.title = shown.some(hasEdits) ? 'Wait for edits to save before reviewing this group.' : 'Applies to the keys shown by the current filters.';
+      }
+    }
   }
 
   function invalidateReplacements() {
@@ -254,25 +289,9 @@
   }
 
   function trackEdit(editor) {
-    const { input, field, wrapper, message } = editor;
-    wrapper.dataset.value = input.value;
-    if (input.value === field.text) dirty.delete(input);
-    else dirty.set(input, editor);
-    wrapper.classList.toggle('unsaved', dirty.has(input));
-    wrapper.classList.remove('failed');
-    message.textContent = '';
+    if (editor.input.value === editor.field.text) dirty.delete(editor.input);
+    else dirty.set(editor.input, editor);
   }
-
-  /** A field is tinted when its text is not what main has in the same slot. */
-  function showFieldChange(editor) {
-    const { record, locale, field, wrapper } = editor;
-    const before = fields(record.previous[locale]).find((entry) =>
-      entry.variant === field.variant && entry.form === field.form);
-    const differs = Boolean(record.change) && before?.text !== field.text;
-    wrapper.classList.toggle('changed', differs);
-    wrapper.title = differs ? (before ? `On main: ${before.text}` : 'Not on main') : '';
-  }
-
   function previewReplacementEdits() {
     invalidateReplacements();
     if (busy || !findText.value) return;
@@ -314,7 +333,7 @@
       table.append(head, body);
       document.querySelector('#replace-preview').append(table);
     }
-    updateSummary();
+    updateControls();
   }
 
   function applyReplacementEdits() {
@@ -324,182 +343,238 @@
       document.querySelector('#replace-summary').textContent = 'Text changed. Preview replacements again.';
       return;
     }
-    const editors = replacementEdits.map(({ editor, after }) => {
+    const count = replacementEdits.length;
+    for (const { editor, after } of replacementEdits) {
       editor.input.value = after;
       trackEdit(editor);
-      return editor;
-    });
+      scheduleSave(editor);
+    }
+    operation.textContent = `Replacements applied to ${count} fields. They save on their own in a moment.`;
     invalidateReplacements();
-    saveEdits(editors);
+    filter();
   }
 
-  async function patch(path, body) {
+  async function patch(path, body, method = 'PATCH') {
     const response = await fetch(path, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     });
     if (!response.ok) throw new Error(await response.text());
+    return response;
   }
 
+  // A snapshot fetched before a later write landed would put old text back
+  // into a field that just saved, so it is dropped and the next poll retries.
   async function refreshFindings() {
+    const seen = writes;
     const response = await fetch('/api/strings');
     if (!response.ok) throw new Error(await response.text());
     const latest = new Map((await response.json()).map((record) => [record.key, record]));
+    if (seen !== writes) return;
+    const before = records.map((record) => record.change);
     for (const record of records) {
       const updated = latest.get(record.key);
       record.findings = updated?.findings ?? [];
-      record.change = updated?.change ?? null;
+      record.change = updated ? updated.change : 'removed';
+      record.queued = Boolean(updated?.queued);
       record.previous = updated?.previous ?? { en: null, pl: null };
-      record.reviewed = Boolean(updated?.reviewed &&
+      if (updated) for (const editor of record.editors) {
+        const theirs = editor.field.form === null ? updated[editor.locale]
+          : updated[editor.locale]?.[editor.field.variant]?.match?.[editor.field.form];
+        if (typeof theirs !== 'string' || theirs === editor.field.text || dirty.has(editor.input)) continue;
+        editor.field.text = theirs;
+        editor.input.value = theirs;
+        if (editor.field.form === null) record[editor.locale] = theirs;
+        else record[editor.locale][editor.field.variant].match[editor.field.form] = theirs;
+        editor.message.textContent = 'Updated by someone else';
+        editor.message.className = 'state saved';
+      }
+      if (!reviewing.has(record)) record.reviewed = Boolean(updated?.reviewed &&
         JSON.stringify([updated.en, updated.pl]) === JSON.stringify([record.en, record.pl]));
       showFindings(record);
       showChange(record);
     }
+    if (records.some((record, index) => record.change !== before[index])) filter();
+    else updateControls();
   }
 
-  async function saveOne(editor) {
-    const { record, locale, field, input, wrapper, message } = editor;
+  // Edits and reviews share one queue, so quick Space presses never race
+  // each other or a save, and the poll waits until the queue is empty.
+  let saveChain = Promise.resolve();
+  let writes = 0;
+  const reviewing = new Set();
+  let pendingSaves = 0;
+  function enqueue(task) {
+    pendingSaves++;
+    saveChain = saveChain.then(task).catch((error) => { operation.textContent = error.message; })
+      .finally(() => { pendingSaves--; updateControls(); });
+  }
+  function scheduleSave(editor, delay = 900) {
+    clearTimeout(editor.timer);
+    editor.message.textContent = '';
+    editor.message.className = 'state';
+    if (!dirty.has(editor.input)) return;
+    editor.message.textContent = 'Unsaved';
+    editor.timer = setTimeout(() => enqueue(() => saveEditor(editor)), delay);
+  }
+  async function saveEditor(editor) {
+    const { record, locale, field, input, message } = editor;
+    if (!dirty.has(input) || !record.row.isConnected) return;
     const text = input.value;
-    if (text === field.text) return true;
-    editor.sending = text;
+    message.textContent = 'Saving';
+    message.className = 'state saving';
     try {
       await patch('/api/strings', { locale, key: record.key, variant: field.variant,
         form: field.form, previous: field.text, text });
+      writes++;
+      field.text = text;
+      if (field.form === null) record[locale] = text;
+      else record[locale][field.variant].match[field.form] = text;
+      record.reviewed = false;
+      kept.add(record);
+      const still = input.value === text;
+      if (still) dirty.delete(input);
+      message.textContent = still ? 'Saved' : 'Unsaved';
+      message.className = still ? 'state saved' : 'state';
+      try { await refreshFindings(); } catch { /* next poll retries */ }
     } catch (error) {
-      wrapper.classList.add('failed');
       message.textContent = error.message;
-      return false;
-    } finally {
-      editor.sending = undefined;
+      message.className = 'state failed';
     }
-    field.text = text;
-    if (field.form === null) record[locale] = text;
-    else record[locale][field.variant].match[field.form] = text;
-    record.reviewed = false;
-    // Typing may have carried on while the request was out; that text is a new edit.
-    trackEdit(editor);
-    wrapper.classList.add('saved');
-    setTimeout(() => wrapper.classList.remove('saved'), 900);
-    return true;
+    filter();
   }
-
-  /** Saves run one at a time, in the order they were asked for, and never lock the fields:
-   *  a save started by leaving one field must not take the focus out of the next. */
-  function saveEdits(editors) {
-    if (!editors.length) return;
-    queued += editors.length;
-    if (editors.length > 1) say(`Saving ${editors.length} fields…`);
-    for (const editor of editors) updateRecord(editor.record);
-    updateSummary();
-    saving = saving.then(async () => {
-      let saved = 0;
-      for (const editor of editors) {
-        if (await saveOne(editor)) saved++;
-        queued--;
+  const flush = () => { for (const editor of dirty.values()) scheduleSave(editor, 0); };
+  async function removeRecord(record) {
+    if (busy || hasEdits(record)) return;
+    if (!confirm(`Remove ${record.key} from English and Polish?\nThis deletes the string from both catalogues, and from the code if it still uses it.`)) return;
+    let response;
+    try {
+      response = await patch('/api/strings', { key: record.key, en: record.en, pl: record.pl }, 'DELETE');
+      writes++;
+    } catch (error) {
+      operation.textContent = `${record.key}: ${error.message}`;
+      return;
+    }
+    if (response.status === 202) {
+      const { uses } = await response.json();
+      record.queued = true;
+      showChange(record);
+      operation.textContent = `${record.key} is queued for removal. The code still uses it in ${uses} place${uses === 1 ? '' : 's'}.`;
+      updateControls();
+      return;
+    }
+    record.change = 'removed';
+    showChange(record);
+    operation.textContent = `Removed ${record.key}.`;
+    filter();
+  }
+  async function pollRemote() {
+    if (busy || document.visibilityState !== 'visible' || pendingSaves) return;
+    try { await refreshFindings(); } catch { /* offline: try again later */ }
+  }
+  function saveReview(selected, reviewed) {
+    selected = selected.filter((record) => !hasEdits(record) && record.change !== 'removed');
+    if (busy || !selected.length) { updateControls(); return; }
+    const previous = selected.map((record) => record.reviewed);
+    for (const record of selected) { record.reviewed = reviewed; kept.add(record); reviewing.add(record); }
+    updateControls();
+    const keys = selected.map(({ key, en, pl }) => ({ key, en, pl }));
+    enqueue(async () => {
+      try {
+        await patch('/api/reviews', { reviewed, keys });
+        writes++;
+        operation.textContent = selected.length === 1
+          ? `${selected[0].key} ${reviewed ? 'reviewed' : 'not reviewed'}.`
+          : `${selected.length} keys marked ${reviewed ? 'reviewed' : 'not reviewed'}.`;
+      } catch (error) {
+        selected.forEach((record, index) => { record.reviewed = previous[index]; });
+        operation.textContent = error.message;
+      } finally {
+        for (const record of selected) reviewing.delete(record);
       }
-      const failed = editors.length - saved;
-      const what = editors.length === 1 ? `${editors[0].locale} ${editors[0].record.key}` : `${saved} of ${editors.length} fields`;
-      if (failed) say(`${failed === 1 ? 'One field was' : `${failed} fields were`} not saved. The text is still there, with the reason under it.`, true);
-      else say(`Saved ${what}`);
-      for (const editor of editors) updateRecord(editor.record);
-      updateSummary();
-      checksStale = true;
-      await refreshWhenIdle();
     });
   }
 
-  /** Findings and change marks come from the server; ask once the queue is empty, so the
-   *  answer cannot be older than a write still waiting. */
-  async function refreshWhenIdle() {
-    if (queued || !checksStale) return;
-    checksStale = false;
-    try { await refreshFindings(); }
-    catch (error) { say(`Saved, but could not refresh checks: ${error.message}`, true); }
-    updateControls();
+  function visibleRecords() {
+    return proseToggle.checked ? [] : records.filter((record) => !record.row.hidden);
+  }
+  function setCursor(record, scroll = true) {
+    cursor?.row.classList.remove('current');
+    cursor = record;
+    if (!record) return;
+    record.row.classList.add('current');
+    if (scroll) record.row.scrollIntoView({ block: 'nearest' });
+  }
+  function moveCursor(step) {
+    const shown = visibleRecords();
+    if (!shown.length) return;
+    const index = shown.indexOf(cursor);
+    setCursor(shown[index < 0 ? 0 : Math.min(shown.length - 1, Math.max(0, index + step))]);
   }
 
-  async function saveReview(selected, reviewed) {
-    if (busy || !selected.length || selected.some(hasEdits)) return;
-    const previous = selected.map((record) => record.reviewed);
-    for (const record of selected) record.reviewed = reviewed;
-    busy = true;
-    queued++;
-    updateSummary();
-    // The review takes its turn in the queue, so a field save cannot slip in between
-    // reading the values and approving them.
-    const run = saving.then(() => patch('/api/reviews', { reviewed, keys: selected.map(({ key, en, pl }) => ({ key, en, pl })) }));
-    saving = run.catch(() => {});
-    try {
-      await run;
-      say(`${selected.length} keys marked ${reviewed ? 'reviewed' : 'not reviewed'}. Progress saved.`);
-    } catch (error) {
-      selected.forEach((record, index) => { record.reviewed = previous[index]; });
-      say(error.message, true);
-    } finally {
-      queued--;
-      busy = false;
-      filter();
-      saving = saving.then(refreshWhenIdle);
+  function onKey(event) {
+    if (event.ctrlKey || event.metaKey || event.altKey || proseToggle.checked) return;
+    const target = event.target;
+    if (target instanceof HTMLTextAreaElement) {
+      if (event.key === 'Escape') { event.preventDefault(); target.blur(); }
+      return;
+    }
+    const typing = target instanceof HTMLSelectElement ||
+      (target instanceof HTMLInputElement && target.type !== 'checkbox');
+    const activates = target instanceof HTMLButtonElement || target instanceof HTMLAnchorElement ||
+      target.tagName === 'SUMMARY' || (target instanceof HTMLInputElement && !target.closest('#rows tr:not(.group)'));
+    if (typing) return;
+    if (event.key === 'j') { event.preventDefault(); moveCursor(1); }
+    else if (event.key === 'k') { event.preventDefault(); moveCursor(-1); }
+    else if (activates) return;
+    else if (event.key === ' ' && cursor) {
+      event.preventDefault();
+      if (hasEdits(cursor)) { flush(); operation.textContent = `${cursor.key} has an edit still saving. Press Space again once it saves.`; return; }
+      saveReview([cursor], !isReviewed(cursor));
+      moveCursor(1);
+    } else if ((event.key === 'Enter' || event.key === 'e') && cursor?.editors.length) {
+      event.preventDefault();
+      const input = cursor.editors[0].input;
+      input.focus({ preventScroll: true });
+      input.setSelectionRange(input.value.length, input.value.length);
     }
   }
 
   function localeCell(record, locale) {
-    const cell = element('div');
-    cell.className = 'cell';
+    const cell = element('td');
     cell.lang = locale;
     record[`${locale}Comparison`] = element('div');
-    record[`${locale}Comparison`].className = 'before';
-    cell.append(record[`${locale}Comparison`]);
-    if (record.change === 'removed') return cell;
+    record[`${locale}Comparison`].className = 'comparison';
+    if (record.change === 'removed') { cell.append(record[`${locale}Comparison`]); return cell; }
     const values = fields(record[locale]);
     if (!values.length) cell.append(element('p', 'Missing value'));
     for (const field of values) {
-      const holder = element('div');
-      holder.className = 'field';
-      if (field.form !== null) {
-        const form = element('span', field.form);
-        form.className = 'form';
-        holder.append(form);
-      }
       const wrapper = element('div');
-      wrapper.className = 'grow';
-      wrapper.dataset.value = field.text;
+      wrapper.className = 'field';
       const input = element('textarea');
-      input.rows = 1;
-      input.spellcheck = true;
       input.setAttribute('aria-label', `${record.key} ${locale.toUpperCase()} ${field.form ?? 'text'}`);
       input.value = field.text;
-      wrapper.append(input);
+      input.rows = 1;
+      input.spellcheck = true;
+      if (field.form !== null) {
+        const form = element('div', field.form);
+        form.className = 'form';
+        wrapper.append(form);
+      }
       const message = element('span');
-      message.className = 'message';
+      message.className = 'state';
       message.setAttribute('role', 'status');
-      const editor = { record, locale, field, input, wrapper, message };
+      const editor = { record, locale, field, input, message };
       record.editors.push(editor);
-      // A value that came as one line stays one line, typed or pasted.
-      const oneLine = !field.text.includes('\n');
       input.addEventListener('input', () => {
-        if (oneLine && input.value.includes('\n')) input.value = input.value.replace(/\s*\n\s*/g, ' ');
         trackEdit(editor);
+        scheduleSave(editor);
         invalidateReplacements();
-        updateRecord(record);
-        updateSummary();
+        updateControls();
       });
-      input.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-          // A save already on its way cannot be recalled, so Esc goes back to the text it is writing.
-          input.value = editor.sending ?? field.text;
-          trackEdit(editor);
-          updateRecord(record);
-          updateSummary();
-          input.blur();
-        } else if (event.key === 'Enter' && oneLine) {
-          event.preventDefault();
-          input.blur();
-        }
-      });
-      input.addEventListener('blur', () => { if (dirty.has(input)) saveEdits([editor]); });
-      holder.append(wrapper, message);
-      cell.append(holder);
+      wrapper.append(input, message);
+      cell.append(wrapper);
     }
+    cell.append(record[`${locale}Comparison`]);
     return cell;
   }
 
@@ -512,152 +587,219 @@
   }
 
   function showChange(record) {
-    record.mark.textContent = record.change ?? '';
-    for (const editor of record.editors) showFieldChange(editor);
+    const shown = JSON.stringify([record.change, record.queued, record.previous, record.en, record.pl]);
+    if (record.shown === shown) return;
+    record.shown = shown;
+    record.row.classList.toggle('removed', record.change === 'removed');
+    record.mark.textContent = [record.change, record.queued ? 'queued for removal' : null].filter(Boolean).join(' · ');
     for (const locale of ['en', 'pl']) {
       const comparison = record[`${locale}Comparison`];
       comparison.replaceChildren();
-      if (!record.change || record.change === 'added') continue;
-      comparison.append(element('strong', 'On main'));
-      const values = fields(record.previous[locale]);
-      if (!values.length) comparison.append(element('p', 'Missing value'));
-      for (const field of values) {
-        comparison.append(element('p', field.form === null ? field.text : `${field.form}: ${field.text}`));
+      if (!record.change) continue;
+      for (const [label, value] of [['Before', record.previous[locale]], ['Now', record[locale]]]) {
+        comparison.append(element('strong', label));
+        const values = fields(value);
+        if (!values.length) comparison.append(element('p', 'Missing value'));
+        for (const field of values) {
+          comparison.append(element('p', field.form === null ? field.text : `${field.form}: ${field.text}`));
+        }
       }
     }
   }
 
-  function filter() {
+  // A filter the user changes starts a fresh list; a filter() run after a
+  // save or a poll keeps what was reviewed in this pass where it is.
+  function refilter() {
+    kept.clear();
     invalidateReplacements();
+    const previous = cursor;
+    setCursor(null);
+    filter();
+    setCursor(previous && !previous.row.hidden ? previous : visibleRecords()[0] ?? null, false);
+  }
+
+  function filter() {
     const query = search.value.toLocaleLowerCase();
-    const onlyChanged = changed.getAttribute('aria-pressed') === 'true';
     let visible = 0;
-    for (const group of groups.values()) group.count = 0;
+    const paragraphs = document.createDocumentFragment();
+    for (const group of groups.values()) { group.count = 0; group.proseHeader = null; group.proseReviewControl = null; }
     for (const record of records) {
       const text = [record.key, ...['en', 'pl'].flatMap((locale) =>
         [...fields(record[locale]), ...fields(record.previous[locale])].map((field) => field.text))].join('\n');
-      record.row.hidden = (onlyChanged ? !record.change : record.change === 'removed') ||
-        (reviewFilter.value === 'pending' && isReviewed(record)) ||
-        (reviewFilter.value === 'reviewed' && !isReviewed(record)) ||
-        (reviewFilter.value === 'unsaved' && !hasEdits(record)) ||
-        (theme && record.theme !== theme) || !text.toLocaleLowerCase().includes(query);
+      record.row.hidden = (changed.checked ? !record.change : record.change === 'removed') ||
+        (!kept.has(record) && record !== cursor && !record.row.contains(document.activeElement) && (
+          (reviewFilter.value === 'pending' && isReviewed(record)) ||
+          (reviewFilter.value === 'reviewed' && !isReviewed(record)) ||
+          (reviewFilter.value === 'unsaved' && !hasEdits(record)))) ||
+        (theme.value && record.theme !== theme.value) || !text.toLocaleLowerCase().includes(query);
       if (record.row.hidden) continue;
       visible++;
-      groups.get(record.theme).count++;
+      const group = groups.get(record.theme);
+      group.count++;
+      if (proseToggle.checked) {
+        if (!group.proseHeader) {
+          group.proseHeader = groupRow(record.theme, 2);
+          group.proseReviewControl = reviewControl(`Review shown keys in ${record.theme}`, () =>
+            group.records.filter((entry) => !entry.row.hidden && entry.change !== 'removed'));
+          group.proseHeader.firstElementChild.append(group.proseReviewControl.wrapper);
+          paragraphs.append(group.proseHeader);
+        }
+        const paragraph = element('tr');
+        for (const locale of ['en', 'pl']) {
+          const cell = element('td');
+          cell.lang = locale;
+          if (locale === 'en') {
+            record.proseReviewControl = reviewControl(`Reviewed: ${record.key}`, () => [record]);
+            cell.append(record.proseReviewControl.wrapper);
+          }
+          const value = record.change === 'removed' ? record.previous[locale] : record[locale];
+          for (const field of fields(value)) cell.append(element('p', field.text));
+          paragraph.append(cell);
+        }
+        paragraphs.append(paragraph);
+      }
     }
-    for (const [name, group] of groups) {
-      group.header.hidden = group.count === 0;
-      group.heading.textContent = `${name} (${group.count})`;
+    for (const group of groups.values()) group.header.hidden = group.count === 0;
+    document.querySelector('#editor').hidden = proseToggle.checked;
+    document.querySelector('#prose').hidden = !proseToggle.checked;
+    document.querySelector('#paragraphs').replaceChildren(paragraphs);
+    status.textContent = visible ? `${visible} of ${records.length} keys shown` : 'No matching keys';
+    if (cursor?.row.hidden) {
+      const at = records.indexOf(cursor);
+      setCursor(records.slice(at + 1).find((record) => !record.row.hidden) ??
+        records.slice(0, at).findLast((record) => !record.row.hidden) ?? null, false);
     }
-    document.body.classList.toggle('changed-only', onlyChanged);
-    status.textContent = visible ? `${visible} of ${records.length} keys` : 'No matching keys';
     updateControls();
-  }
-
-  function themeButton(name, label) {
-    const button = element('button', label);
-    button.type = 'button';
-    const tally = element('small');
-    button.append(tally);
-    button.addEventListener('click', () => { theme = name; filter(); scrollTo({ top: 0 }); });
-    themes.append(button);
-    return { button, tally };
   }
 
   async function load() {
     if (busy) return;
-    await saving;
-    if (dirty.size && !confirm('Discard unsaved edits and reload from disk?')) return;
+    if ((dirty.size || pendingSaves) && !confirm('Discard unsaved edits and reload from disk?')) return;
     busy = true;
-    rows.inert = true;
+    updateControls();
     try {
       const response = await fetch('/api/strings');
       if (!response.ok) throw new Error(await response.text());
       records = await response.json();
       records.sort((a, b) => a.theme.localeCompare(b.theme));
       dirty.clear();
+      kept.clear();
+      cursor = null;
       groups = new Map();
-      themes.replaceChildren();
-      themeButton('', 'All themes');
       const fragment = document.createDocumentFragment();
       for (const record of records) {
         if (!groups.has(record.theme)) {
-          const header = element('div');
-          header.className = 'group';
-          const heading = element('h2', record.theme);
-          const group = { header, heading, records: [], ...themeButton(record.theme, record.theme) };
-          group.reviewControl = reviewControl('Review shown keys', `Review shown keys in ${record.theme}`, () => shownIn(group));
-          header.append(heading, group.reviewControl.wrapper);
+          const header = groupRow(record.theme, 4);
+          const group = { header, records: [] };
+          group.reviewControl = reviewControl('Review all shown', () =>
+            group.records.filter((entry) => !entry.row.hidden && entry.change !== 'removed'));
+          header.firstElementChild.append(group.reviewControl.wrapper);
           groups.set(record.theme, group);
           fragment.append(header);
         }
         groups.get(record.theme).records.push(record);
         record.editors = [];
-        record.row = element('div');
-        record.row.className = 'row';
-        const meta = element('div');
-        meta.className = 'meta';
-        record.mark = element('span');
-        record.mark.className = 'mark';
-        const sites = element('span');
-        sites.className = 'sites';
-        for (const site of record.sites) {
-          const link = element('a', `${site.file}:${site.line}`);
-          link.href = site.href;
-          sites.append(link);
-        }
-        record.reviewControl = reviewControl('Reviewed', `Reviewed: ${record.key}`, () => [record]);
-        meta.append(element('code', record.key), record.mark, sites, record.reviewControl.wrapper);
+        record.row = element('tr');
+        rowRecord.set(record.row, record);
+        const key = element('td');
+        const line = element('div');
+        line.className = 'key';
         record.checks = element('div');
         record.checks.className = 'checks';
-        record.row.append(meta, record.checks, localeCell(record, 'en'), localeCell(record, 'pl'));
+        record.mark = element('p');
+        record.mark.className = 'mark';
+        record.reviewControl = reviewControl(`Reviewed: ${record.key}`, () => [record], false);
+        line.append(record.reviewControl.wrapper, element('code', record.key));
+        if (!record.key.includes(':')) {
+          const remove = element('button', 'Remove');
+          remove.type = 'button';
+          remove.className = 'remove';
+          remove.setAttribute('aria-label', `Remove ${record.key}`);
+          remove.addEventListener('click', () => removeRecord(record));
+          record.removeButton = remove;
+          line.append(remove);
+        }
+        key.append(line, record.mark, record.checks);
         showFindings(record);
+        const used = element('td');
+        // Two places at most until asked, so a widely used string keeps a short row.
+        record.sites.forEach((site, index) => {
+          const link = element('a', `${site.file.split('/').slice(-2).join('/')}:${site.line}`);
+          link.href = site.href;
+          link.title = `${site.file}:${site.line}`;
+          if (index >= 2) link.hidden = true;
+          used.append(link);
+        });
+        if (record.sites.length > 2) {
+          const more = element('button', `+${record.sites.length - 2} more`);
+          more.type = 'button';
+          more.className = 'more-sites';
+          more.addEventListener('click', () => {
+            for (const link of used.querySelectorAll('a[hidden]')) link.hidden = false;
+            more.remove();
+          });
+          used.append(more);
+        }
+        record.row.append(key, localeCell(record, 'en'), localeCell(record, 'pl'), used);
         showChange(record);
         fragment.append(record.row);
       }
-      if (!groups.has(theme)) theme = '';
+      const selected = theme.value;
+      theme.replaceChildren(element('option', 'All themes'));
+      theme.firstElementChild.value = '';
+      for (const name of groups.keys()) {
+        const option = element('option', name);
+        option.value = name;
+        theme.append(option);
+      }
+      if (groups.has(selected)) theme.value = selected;
       rows.replaceChildren(fragment);
-      filter();
+      refilter();
     } catch (error) {
       status.textContent = error.message;
     } finally {
-      rows.inert = false;
       busy = false;
       updateControls();
     }
   }
 
-  function toggle(button, apply) {
-    button.addEventListener('click', () => {
-      button.setAttribute('aria-pressed', button.getAttribute('aria-pressed') !== 'true');
-      apply();
-    });
-  }
-
-  function showLanguage(value) {
-    document.body.dataset.lang = value;
-    for (const button of document.querySelectorAll('#lang button')) {
-      button.setAttribute('aria-pressed', button.dataset.value === value);
-    }
-  }
-
-  search.addEventListener('input', filter);
-  reviewFilter.addEventListener('change', filter);
-  toggle(changed, filter);
-  toggle(proseToggle, () => document.body.classList.toggle('prose', proseToggle.getAttribute('aria-pressed') === 'true'));
-  document.querySelector('#lang').addEventListener('click', (event) => {
-    if (event.target.dataset.value) showLanguage(event.target.dataset.value);
-  });
-  showLanguage('both');
-  saveAll.addEventListener('click', () => saveEdits([...dirty.values()]));
+  search.addEventListener('input', refilter);
+  changed.addEventListener('change', () => { document.body.classList.toggle('comparing', changed.checked); refilter(); });
+  proseToggle.addEventListener('change', refilter);
+  theme.addEventListener('change', refilter);
+  reviewFilter.addEventListener('change', refilter);
+  saveAll.addEventListener('click', flush);
+  setInterval(pollRemote, 10000);
   for (const control of [findText, replaceText, replaceLocale, replaceScope]) {
-    control.addEventListener('input', () => { invalidateReplacements(); updateSummary(); });
+    control.addEventListener('input', () => { invalidateReplacements(); updateControls(); });
   }
   previewReplacements.addEventListener('click', previewReplacementEdits);
   applyReplacements.addEventListener('click', applyReplacementEdits);
   document.querySelector('#reload').addEventListener('click', load);
+  document.addEventListener('keydown', onKey);
+  const colorTheme = document.querySelector('#color-theme');
+  const applyTheme = (value) => {
+    if (value) document.documentElement.dataset.theme = value;
+    else delete document.documentElement.dataset.theme;
+  };
+  try { colorTheme.value = localStorage.getItem('strings-theme') ?? ''; } catch { /* storage blocked */ }
+  applyTheme(colorTheme.value);
+  colorTheme.addEventListener('change', () => {
+    applyTheme(colorTheme.value);
+    try { localStorage.setItem('strings-theme', colorTheme.value); } catch { /* storage blocked */ }
+  });
+  rows.addEventListener('focusin', (event) => {
+    const record = rowRecord.get(event.target.closest('tr'));
+    if (record && record !== cursor) setCursor(record, false);
+  });
+  rows.addEventListener('pointerdown', (event) => {
+    const record = rowRecord.get(event.target.closest('tr'));
+    if (record && record !== cursor) setCursor(record, false);
+  });
+  const toolbar = document.querySelector('#toolbar');
+  new ResizeObserver(() => document.documentElement.style.setProperty('--toolbar-h', `${toolbar.offsetHeight}px`)).observe(toolbar);
   window.addEventListener('beforeunload', (event) => {
-    if (dirty.size || queued || busy) { event.preventDefault(); event.returnValue = ''; }
+    if (dirty.size || busy) { event.preventDefault(); event.returnValue = ''; }
   });
   load();
 </script>

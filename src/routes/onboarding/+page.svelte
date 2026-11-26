@@ -39,6 +39,7 @@
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import { flushPreferences, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
+  import { appWordmark } from '$lib/disguise/identity';
   import { fieldPart } from '$lib/motion/navigation';
   import { blindEdge } from '$lib/motion/stepBlind';
   import { EASE_OUT_CSS, crossfadeDuration, motionDuration } from '$lib/motion/tokens';
@@ -816,7 +817,7 @@
             {#if step === 'welcome'}
               {#if erasedOnEntry}<p class="setup-line is-result" role="status" data-erased-result use:erasedArrival>{m.reset_done()}</p>{/if}
               <p class="setup-def">{m.ob_welcome_def()}</p>
-              <p class="setup-line is-pitch">{m.ob_welcome_body()}</p>
+              <p class="setup-line is-pitch">{m.ob_welcome_body({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}</p>
             {:else if line && step !== 'features'}
               <p class="setup-line">{line}</p>
             {/if}

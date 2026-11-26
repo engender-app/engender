@@ -27,7 +27,7 @@ describe('ticket 20: changes methodology disclosure and record action', () => {
     it('defines short bands limitation in both languages', () => {
       expect(en.effects_bands_limitation).toContain('Shaded bands describe the literature');
       expect(en.effects_bands_limitation).toContain('not a schedule for your own body');
-      expect(pl.effects_bands_limitation).toContain('Zacieniowane pasy opisują literaturę');
+      expect(pl.effects_bands_limitation).toContain('Zacieniowane zakresy opisują literaturę');
       expect(pl.effects_bands_limitation).toContain('nie rozkład jazdy twojego ciała');
     });
 

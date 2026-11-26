@@ -8,7 +8,7 @@ app, the web app, the website and guide, and support messages.
 
 ## Contact
 
-- Email: engender-app@pm.me
+- Email: help@engender.app
 - Bugs and general questions: https://github.com/engender-app/engender/issues
 - Security problems: https://github.com/engender-app/engender/blob/main/SECURITY.md
 
@@ -76,7 +76,7 @@ a lab result happens on your device.
 
 ## Website and guide
 
-The website, the guide and this policy at `engender.barankiewicz.dev` are
+The website, the guide and this policy at `engender.app` are
 hosted by lh.pl, which keeps access and error logs. Those can include IP
 addresses, requested addresses and browser headers. The site remembers your
 language and theme in your browser's local storage.
@@ -98,7 +98,7 @@ measure openings, not people.
 ## Files you export
 
 A backup or an export goes where you send it, and whatever app or service
-receives it handles it under its own terms. An encrypted backup (`.gnd`)
+receives it handles it under its own terms. An encrypted backup
 can only be opened with the backup password you chose. Other exports are
 meant to be read, shared or printed, so they are not encrypted: CSV and JSON
 data, journal books, clinician summaries, photo collages and timelapses,
@@ -109,7 +109,7 @@ PDFs and calendar files. Anyone who gets one of those can read it.
 - In the app: Settings -> Privacy & data -> Delete everything.
 - On Android: uninstall the app, or clear its storage in the system
   settings.
-- On the web: clear the site data for `app.engender.barankiewicz.dev` in
+- On the web: clear the site data for `journal.engender.app` in
   your browser.
 
 None of these removes files you have already exported or backed up. Delete
@@ -117,7 +117,7 @@ those where you saved them.
 
 ## Support messages
 
-If you write to engender-app@pm.me, the developer receives your email
+If you write to help@engender.app, the developer receives your email
 address, your message and any attachments, and uses them to answer you.
 Please don't send a real journal, backup, password or recovery key. If you
 send one by mistake, it is deleted when noticed. Support email is deleted

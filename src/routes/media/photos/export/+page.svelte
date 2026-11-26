@@ -286,7 +286,7 @@
           />
         {/if}
         {#if output !== 'collage'}
-          <p class="muted small">{m.pj_timelapse_hint()} {m.pj_timelapse_length({ n: seconds })}</p>
+          <p class="muted small">{m.pj_timelapse_length({ n: seconds })}</p>
         {:else if !canRecord}
           <p class="muted small">{m.pj_timelapse_unavailable()}</p>
         {/if}
