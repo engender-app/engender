@@ -57,11 +57,11 @@
 <style>
   /* Off uses an outline and --text-2. Whole-element opacity at 0.6
      measured 4.04–6.13:1 and failed 8 of 16 contrast combinations. On uses
-     the disguise's neutral surfaces (ADR-0035).
+     the disguise's neutral surfaces.
 
      Keep the dashed preview border in both states so only colours change.
      Those interpolate over --dur-med while the rest of Setup keeps its own
-     theme (DIRECTION.md rule 12). */
+     theme. */
   .disguise-preview {
     display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);
     padding: var(--space-3) var(--space-4);

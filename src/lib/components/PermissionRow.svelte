@@ -89,16 +89,13 @@
     animation: perm-swap var(--dur-med) var(--ease-out) both;
   }
 
-  /* The app's secondary button, an outline block of the page (ADR-0093).
+  /* The app's secondary button, an outline block of the page.
      It was a filled block of the area's stripe, a button drawn nowhere
      else in the app (after-release 28, audit UI-08). Narrower than the
      standing button, which spends var(--space-6) either side and would
      leave a two-word label no room beside a reason. */
   .perm-grant {
-    /* Android's 48dp floor, which PRODUCT.md takes as the app's own because
-       it is the stricter of the two platforms. The row is the only thing
-       around it and the row is not itself a target, so this button is the
-       whole of what a finger has to find. */
+    /* This button is the only target in the row. Keep it at least 48dp. */
     min-height: var(--touch-target);
     padding: 0 var(--space-3);
     font-size: 15px;

@@ -91,7 +91,7 @@ const SESSION_COLUMNS = 'uuid, kind, start_timestamp, duration_ms, note';
 export const WEAR_KINDS: readonly WearKind[] = ['binder', 'tucking', 'compression'];
 
 /** How long a running binder session runs before it picks up the duration
-    cue (ADR-0064).
+    cue.
 
     Eight hours is what four independent harm-reduction sources converge on
     - Point of Pride, Desert AIDS Project, the Rainbow Project and Trans

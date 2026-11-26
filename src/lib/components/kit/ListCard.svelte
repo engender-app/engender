@@ -4,7 +4,7 @@
      the rows own everything inside it.
 
      `role` is the flag stripe this area of the screen takes as its own
-     (DIRECTION.md, "flag colour reaches the whole app, categorically"). It
+     as a category, separate from any ordered scale. It
      is set on the card rather than on every row so a card's rows cannot
      drift apart, and it inherits, which is the whole mechanism.
 

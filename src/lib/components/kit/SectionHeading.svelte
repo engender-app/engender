@@ -1,6 +1,6 @@
 <script lang="ts">
   /* A screen reads as a few named areas rather than as one column of cards
-     (DIRECTION.md 3c), and this is what names them: the display face at the
+     and this heading names them: the display face at the
      screen-title size, with no icon. The rows underneath carry the icons.
 
      The text arrives as a string rather than as copy written here, so the

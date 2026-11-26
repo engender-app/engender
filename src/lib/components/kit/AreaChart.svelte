@@ -132,7 +132,7 @@
     /**
       * The caller aligns at with points, including on re-keyed axes.
       * Ring existing points for selected presentations or voice takes
-      * (ADR-0048, ADR-0030). Keep rings visible beyond sixty points,
+      * (ADR-0048). Keep rings visible beyond sixty points,
       * when ordinary dots give way to the line.
       */
     highlight?: {
@@ -664,15 +664,9 @@
   </div>
 
   {#if overlaid && overlay}
-    <!-- Which line is which. DIRECTION.md's chart rules refuse a legend and
-         name one exception, the wear trend's: that rule is about a
-         single-series chart whose marks carry their own values, and two
-         unnamed lines are not a chart. This is the same case - two metrics
-         on two ranges against one axis - so it takes the same exception.
-
-         The swatches are line segments repeating the plot's own strokes, one
-         solid and one dashed, so the pairing holds for anybody who cannot
-         separate the two colours. -->
+    <!-- An overlaid chart needs a key because it puts two metrics against
+         one axis. Match the plot with a solid swatch and a dashed one so
+         readers can identify both lines by stroke as well as colour. -->
     <!-- The stripe is set here as well as on the plot: the two are siblings
          rather than one inside the other, so a custom property declared on
          the plot does not reach the swatch that names its line. -->

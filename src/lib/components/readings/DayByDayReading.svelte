@@ -97,8 +97,7 @@
         key: standing.key,
         name: metric?.name ?? standing.key,
         note: m.n_days({ n: standing.days }),
-        /* Empty rather than a dash on a scale nothing was logged against:
-           docs/ui-copy.md has no dashes in it. */
+        /* Leave an unlogged scale blank. */
         value: standing.value === null ? '' : nativeValue(standing.key, standing.value),
         amount: standing.share
       };

@@ -46,7 +46,7 @@ export function spreadNote(metric: string, spread: Pick<DaySpread, 'low' | 'high
     Signed and never coloured: which way a scale moved is not better or
     worse (F15, ADR-0012), so the sign is the whole of what says which way.
     The minus is U+2212, the mathematical minus, because a hyphen at this
-    size reads as a dash and docs/ui-copy.md has no dashes in it. */
+    size can look like punctuation. */
 export function signedValue(value: number, format: (n: number) => string): string {
   return `${value >= 0 ? '+' : '−'}${format(Math.abs(value))}`;
 }
@@ -79,20 +79,7 @@ export function tagInsightRows(
   }));
 }
 
-/** Which stripe each area of a wrapped takes (DIRECTION.md, "flag colour
-    reaches the whole app, categorically").
-
-    Every chart shares role 0, which is the brief's own exception rather than
-    a shortcut: "colour that carries a value takes role 0", because roles run
-    a flag's colours before its shades and index 0 is the only one guaranteed
-    to be a colour on every palette. Taken in reading order instead, a chart
-    landed on trans's white band, and white bars on a dark card read as a set
-    of disabled bars rather than as the flag.
-
-    The lists take the stripes after it, where an achromatic band costs
-    nothing: a tinted disc and a row wash carry no reading, and ticket 20
-    already gave every tinted shape a hairline so it stays a shape.
-
-    One table for both presentations, so the year and the week cannot drift
-    into colouring the same reading differently. */
+/** Flag stripes identify areas. Charts share role 0, the only stripe
+    guaranteed to be chromatic on every palette. Section rows can use
+    achromatic roles. Both Wrapped views use the same assignments. */
 export const WRAPPED_AREA_ROLE = { charts: 0, figures: 1, milestones: 2 } as const;

@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Each vertical bar uses its mood step's own fill so it matches
-     the picker (ADR-0025). Pass the index to the stylesheet for a
+     the picker. Pass the index to the stylesheet for a
      shared --stagger-step rise. */
   import { leaderShares } from './barRow';
 

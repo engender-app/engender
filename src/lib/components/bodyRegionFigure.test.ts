@@ -10,7 +10,7 @@
    put a bust back on a flat silhouette. A panel is now a band of the shared
    path clipped to it, so it is exactly as wide as the body and cannot
    disagree with it - the three measurements are in
-   `bodySilhouette.test.ts` (ADR-0087). */
+   `bodySilhouette.test.ts`. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

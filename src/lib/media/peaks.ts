@@ -84,9 +84,8 @@ export function peaksFromChannels(channels: readonly Float32Array[], buckets: nu
   return bars;
 }
 
-/** A bar and the gap after it, in CSS pixels. Two and two: thinner than the
-    2px the chart ink rule gives a series (DIRECTION rule 9) would not survive
-    a phone, and wider spends a 110px track on eight bars. */
+/** A 2px bar and a 2px gap. The series stays legible on a phone without
+    spending the 110px track on too few bars. */
 const BAR_PITCH = 4;
 
 /** Bars a track this wide can carry. The floor is what a track squeezed

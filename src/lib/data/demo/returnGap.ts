@@ -1,5 +1,5 @@
-/* Seed the usual demo persona against an anchor five weeks ago
-   (ADR-0062), beyond the return screen's three-week threshold. Add a
+/* Seed the usual demo persona against an anchor five weeks ago,
+   beyond the return screen's three-week threshold. Add a
    letter unlock, milestone and era inside the gap. The ordinary seeds
    would move their dates with the anchor and supply no era.
 

@@ -147,7 +147,7 @@ export interface StatsArea {
    * the point. Missing presentation keeps it uncoloured.
    *
    * These axes use the person's scales. Mood has its own colour system
-   * and cards (ADR-0025).
+   * and cards.
    */
   constellationReadings(
     xKey: string,
@@ -235,7 +235,7 @@ export interface StatsArea {
       simply absent, not a day of the chart it filters out. */
   presentationDays(presentationId: string, fromEpochDay: number, toEpochDay: number): Promise<number[]>;
   /**
-   * Count every visible tag used in the inclusive range (ADR-0058).
+   * Count every visible tag used in the inclusive range.
    * One entry contributes once to each tag it carries. charts/parts.ts
    * needs all tag uses to calculate shares and combine the remainder,
    * so recap()'s LIMIT 3 would inflate the ring's shares.
@@ -332,7 +332,7 @@ export function metricValues(metric: string): { sql: string; params: (string | n
    entry_body_region rows for one region key.
 
    The axis picks a range and a projection over the shared 0-100 column
-   rather than a column of its own (ADR-0081): the two sides no
+   rather than a column of its own: the two sides no
    longer live in separate columns, so "which axis" is a WHERE clause and a
    SELECT expression, not a name. `axis` is still a closed union rather than
    a caller's string, so nothing user-supplied reaches the SQL - only the

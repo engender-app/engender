@@ -162,7 +162,7 @@ CREATE INDEX idx_margin_note_entry_id ON margin_note(entry_id);
 -- A region key is plain TEXT validated against \`body_region\` below, not a
 -- CHECK and not a rowid join.
 --
--- One value on the shared 0-100 scale (ticket 39, ADR-0081), the shape
+-- One value on the shared 0-100 scale, the same shape
 -- entry_dimension_value.value has: below 50 leans dysphoric, above it
 -- euphoric. It replaced two independent nullable intensities. The CHECK
 -- excludes 50, unlike entry_dimension_value's: for a region the midpoint means
@@ -450,7 +450,7 @@ CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
 -- duration are both known at save time.
 --
 -- \`kind\` is NOT NULL because every user-facing string on that screen is
--- picked by it (ADR-0064), and the default is what rows written before the
+-- picked by it. The default is what rows written before the
 -- column existed became. No CHECK: wearSessions.ts is the one writer, and a
 -- CHECK would refuse to even read back a row arriving from an older archive.
 CREATE TABLE wear_session (

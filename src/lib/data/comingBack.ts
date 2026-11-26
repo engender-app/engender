@@ -1,4 +1,4 @@
-/* Select what is waiting after time away (ADR-0062, ADR-0039, ADR-0045).
+/* Select what is waiting after time away (ADR-0039, ADR-0045).
    Keep gaps in the journal and report available items without counting
    missed doses, absent entries or elapsed days. A letter or milestone
    appears before housekeeping. Ask about only the latest dose slot.
@@ -21,7 +21,7 @@ import type { Era, Letter, Milestone, WearKind, WearSession } from './types';
  * ordinary week and month views, and a two-week threshold would fire
  * during many holidays.
  *
- * Show the return at most once per gap (ADR-0062). It stays in the
+ * Show the return at most once per gap. It stays in the
  * app and every row can be left alone.
  */
 /* RETURN_GAP_DAYS stays exported for its own test, and cross-checked in
@@ -89,14 +89,9 @@ export type WaitingItem =
       doseUnit: string;
     };
 
-/** One item's own identity, stable across a re-read.
-
-    Two callers need it and neither could mint it: the screen, to remember
-    which rows the person has said no to for as long as the screen is up
-    (ADR-0062 - a no on a moment is not stored), and the walkthrough, whose
-    handles are keys and never copy (ADR-0029). Built from the kind plus the
-    row's own id, so the dose - the one kind with no row of its own yet -
-    is named by the slot it is about. */
+/** Stable item key for dismissals during this visit and for walkthrough
+    handles (ADR-0029). Combine the kind with its row ID. A dose uses its
+    slot ID because it has no row yet. */
 export function waitingItemKey(item: WaitingItem): string {
   switch (item.kind) {
     case 'letter':

@@ -223,7 +223,7 @@ export interface HomeTileReads {
       same exception `safeSpaceDismissedEntryId` below is, and beside the
       running session it qualifies. Not `gate.enabled`: that switches the
       whole tile off, and this only decides whether the tile picks up the
-      eight-hour marker (ADR-0064). */
+      eight-hour marker. */
   wearDurationCue: boolean;
   episodes: readonly RegimenEpisode[];
   procedures: readonly Procedure[];

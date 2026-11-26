@@ -1,4 +1,4 @@
-/* Build one shared body outline and expose its proportions (ADR-0087).
+/* Build one shared body outline and expose its proportions.
    Each edge is a chain of cubics with increasing y. Two edges and their
    chords define a part. The same curves emit the path and let spansAt
    measure width without parsing SVG.

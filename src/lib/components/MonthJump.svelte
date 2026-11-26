@@ -2,7 +2,7 @@
   /* The year steps on a drum. The highlight starts at the visible month and
      travels with keyboard moves. A tap selects immediately.
 
-     Journal dots use role 0 (DIRECTION.md). Each cell keeps its dot and
+     Journal dots use role 0. Each cell keeps its dot and
      transitions opacity across years, so a populated month never blinks.
      The date picker disables out-of-bounds months and omits dots and
      This month because it has no journal counts and already offers Today. */

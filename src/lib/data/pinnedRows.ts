@@ -33,13 +33,8 @@ const LEGACY_UNANSWERED_AREAS = DEFAULT_ONBOARDING_AREAS;
     would leave this reading a key nobody writes. */
 export type PinPreferences = Pick<PreferenceValues, 'pinnedRows' | 'onboardingAreas'>;
 
-/** One row as the front page draws it - `hubRows.ts`'s `DrawnRow` under the
-    name `CONTEXT.md` gives it, because a pinned row is the domain object
-    and a drawn row is the shape.
-
-    The line is `rowLine`'s, unchanged and not reinterpreted. A pinned row
-    that has gone quiet says the same thing about itself as its hub row
-    does, which is what stops the app having two opinions about one area. */
+/** The front page draws a pinned row as a hubRows.ts DrawnRow. Use the
+    same rowLine reading that the hub shows, including when it goes quiet. */
 export type PinnedRow = DrawnRow;
 
 /** The default set: saved onboarding choices for older journals, or the

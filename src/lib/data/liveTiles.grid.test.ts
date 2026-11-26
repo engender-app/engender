@@ -339,7 +339,7 @@ describe('what each tile says', () => {
     expect(tile.title).toBe(m.tile_wear_title_binder());
   });
 
-  /* The duration cue (ADR-0064). Nine hours in, which is past
+  /* The duration cue. Nine hours in, which is past
      the eight-hour figure the binder rule reads. */
   const NINE_HOURS_IN = { nowMs: wearSession.startTimestamp + 9 * 3600_000 };
 
@@ -556,11 +556,8 @@ describe('the dismiss controls', () => {
        cannot be hidden while it runs (ADR-0039's amendment), and the other
        two are facts about the day rather than nudges.
 
-       Safe space and the ready letter left this list in phase 9
-       carpet ticket 04 (ADR-0071). Both were closable all along - each
-       carried an `action` whose icon was an x - and only the registry field
-       said otherwise. The letter opens Home's sheet;
-       safe space forgets the entry it was about. */
+       Safe space and the ready letter both offer a close action. The
+       letter opens Home's sheet. Safe space forgets the entry it was about. */
     for (const kind of ['wear-timer', 'dose-panel', 'surgery-countdown'] as const) {
       expect(tileNamed(kind)!.dismiss).toBeUndefined();
     }

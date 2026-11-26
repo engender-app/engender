@@ -1,5 +1,5 @@
-/* Fetch the return surface's inputs for both its gate and screen
-   (ADR-0062). comingBack.ts applies the thresholds without a driver.
+/* Fetch the return surface's inputs for both its gate and screen.
+   comingBack.ts applies the thresholds without a driver.
 
    readReturnGap checks recent writes. At the three-week floor, it also
    reads distinct entry and dose days for the last year in one query.

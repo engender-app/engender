@@ -1,7 +1,6 @@
 /* Plot first-noticed dates on a linear timeline. Distances represent real
    days and months, unlike the order-focused procedure and care rails. The
-   caller supplies today and the screen supplies wording (DIRECTION.md
-   rule 16).
+   caller supplies today and the screen supplies wording.
 
    Expected windows belong to the separate literature view. This axis
    records where changes fell, with neither endpoint treated as a target

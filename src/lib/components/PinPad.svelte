@@ -11,7 +11,7 @@
      while the pad itself never does.
 
      Its motion is the half of the system that belongs on a screen met under
-     stress (DIRECTION.md tier 2): dots filling as a response to a press, a
+     stress: dots filling as a response to a press, a
      shake keyed to the refusal count so it plays once per refusal rather
      than once per mount, and nothing that arrives or leaves. */
 

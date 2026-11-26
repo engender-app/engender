@@ -155,7 +155,7 @@ export function coalescing(run: () => Promise<void>, onError: (error: unknown) =
     remembered to check.
 
     A wear session's elapsed prompt is an ordinary Reminder row on a `wear:`
-    marker (CONTEXT.md), which is why `wearElapsedEnabled` is a filter over
+    marker, which is why `wearElapsedEnabled` is a filter over
     the same list rather than a producer of its own.
 
     Finishing the wear log takes those prompts with it. Applied here rather

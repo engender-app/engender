@@ -43,10 +43,8 @@ describe('progressPercent', () => {
 
 describe('settleDelay', () => {
   it('lets the fill reach full and then holds it there', () => {
-    /* The tween and the hold, not one instead of the other: waiting
-       --dur-med alone would take the bar away 140ms before the fill had
-       finished travelling to 100%, which is the instant cut ADR-0070
-       exists to stop, wearing a hold's name. */
+    /* A hold of --dur-med alone would hide the bar 140ms before the fill
+       reaches 100%. Wait for the tween and then hold it. */
     expect(settleDelay(4000, DURATION_FALLBACK['--dur-slow'], DURATION_FALLBACK['--dur-med'])).toBe(380 + 240);
   });
 
@@ -70,7 +68,7 @@ describe('settleDelay', () => {
 
 describe('the sample cadence', () => {
   it('is slower than the fill it retriggers', () => {
-    /* The whole point of sampling (ADR-0070): the fill tweens over
+    /* The whole point of sampling: the fill tweens over
        --dur-slow, so writing a new transform faster than that never lets a
        tween finish and the bar reads as nervous rather than alive. A
        shorter cadence here would be that bug, so the invariant is asserted

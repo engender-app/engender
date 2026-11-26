@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Safe Space guides a 4-4-4-4 breath (ADR-0040). The tide rises on
+  /* Safe Space guides a 4-4-4-4 breath. The tide rises on
      inhale, drains on exhale and holds in between. The dot completes
      a lap every 16s and wraps without a reset jump.
 

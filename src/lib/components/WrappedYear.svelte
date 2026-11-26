@@ -161,7 +161,7 @@
   ]);
 
   /* The flag itself under the year, in its own hex values and its own
-     proportions, nudged for nothing (DIRECTION.md decision 1). */
+     proportions, nudged for nothing. */
   let flagFill = $derived(activeFlag.fill === 'none' ? undefined : activeFlag.fill);
 </script>
 

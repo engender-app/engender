@@ -31,11 +31,8 @@ export function isEntrySection(value: unknown): value is EntrySection {
 
 type SectionDraft = Pick<EntryDraft, 'tags' | 'bodyRegions' | 'photos' | 'recordings' | 'videos'>;
 
-/** What a chip states under its name once its section holds something -
-    "4" for four tags, "2" for two photos - or null while the section is
-    empty, in which case the chip reads its name alone (DIRECTION.md rule
-    13's key shape: the name, and the answer on a second line only where
-    there is one). */
+/** Show the count below the chip name when the section has content.
+    Return null for an empty section so the name stands alone. */
 export function sectionState(section: EntrySection, draft: SectionDraft): string | null {
   switch (section) {
     case 'tags':

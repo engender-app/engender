@@ -4,8 +4,8 @@
      or archive section (ADR-0036).
 
      Keep VoicePlayer and the entry link as siblings to avoid nesting a
-     button inside an anchor. The tab starts with count and total duration
-     (DIRECTION.md rule 16). Sum durations as players load file metadata
+     button inside an anchor. The tab starts with count and total duration.
+     Sum durations as players load file metadata
      because duration is derived from the file (ADR-0010). */
   import { page } from '$app/state';
   import { withListReturn } from '$lib/navigation/sourceRecord';

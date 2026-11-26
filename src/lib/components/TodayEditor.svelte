@@ -52,12 +52,12 @@
     pinned: PinnedRow[];
     /** The hub's one assembled read, for the add list's own lines. */
     reading: HubReading;
-    /** Today's own second hand, handed down rather than started again here
-        (ADR-0051): a wear session running while somebody is arranging their
+    /** Today's own second hand, handed down rather than started again here:
+        a wear session running while somebody is arranging their
         front page counts up in the list they are arranging. */
     nowMs: number;
     /** The stripe the pinned area of Today takes. The whole edit mode is
-        that one area (DIRECTION.md 3), so its three lists share it. */
+        one area across its three lists. */
     role?: Role;
     onDone: () => void;
   } = $props();
@@ -166,16 +166,10 @@
     travelFrom(rowElements(), rowKey, before);
   }
 
-  /* ---------- a row arriving and leaving ----------
-
-     Neither list may cut. A pin added and a pin taken off are the two state
-     changes this surface makes most, and DIRECTION.md's motion brief is
-     that a list row leaves by closing its own height with the rows below
-     closing up after it. So a write is bracketed: measure both lists and
-     the rows in them, write, then clip each list from the height it had to
-     the height it now has (`maskHeight`, the primitive the Journal door's
-     month already uses) while every row that survived travels from where it
-     stood (`travelFrom`, the reorder module's FLIP). */
+  /* Animate a pinned row's arrival or departure. Measure both lists and
+     their rows before the write. Then maskHeight clips each list from its
+     old height to its new one and travelFrom moves surviving rows from
+     their old positions. */
 
   /** Where both lists and the pinned rows stand, taken before a write. */
   function beforeWrite() {
@@ -420,7 +414,7 @@
      today". So both rows become two lines, the text across the whole of the
      row and the controls under it at the trailing edge.
 
-     A row is 48 one line and 60 with a subtitle (DIRECTION.md 6). This is
+     A list row is 48px with one line or 60px with a subtitle. This is
      neither: it is one row wearing its controls at the accessibility floor,
      and 200% zoom is where the floor and the row disagree. */
   @media (max-width: 260px) {
@@ -471,7 +465,7 @@
     border-radius: var(--r-block);
   }
 
-  /* 20 between two blocks of one section (DIRECTION.md 1); the two exits
+  /* Leave 20px between blocks. The two exits
      are one block, 8 apart inside it. */
   .today-editor-exits {
     display: grid;

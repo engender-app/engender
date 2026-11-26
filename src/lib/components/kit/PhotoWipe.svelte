@@ -1,6 +1,6 @@
 <script lang="ts" generics="TPhoto extends { id: string; epochDay: number; fileName: string | null }">
   /* The hard divider keeps each photo at full frame width without blending
-     pixels. Flat stripe handle follows DIRECTION.md rule 10. Dates pinned
+     pixels. The divider uses a flat stripe handle. Dates pinned
      to opposite corners stay readable as the divider moves. Neither photo
      gets a visual verdict (ADR-0012).
 

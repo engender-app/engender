@@ -1,4 +1,4 @@
-/* The comfort list (phase 6 ticket 14, ADR-0040, CONTEXT: "Comfort list").
+/* The comfort list.
    A user-authored list living inside Safe space - who to text, which walk,
    which playlist - entirely the person's own words, with nothing shipped by
    the app behind it, the same distinction ChecklistsArea's own doc comment

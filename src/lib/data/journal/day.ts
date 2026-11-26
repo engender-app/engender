@@ -297,13 +297,8 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   roadmapInstitutionChanges: 'read on the roadmap with the rest of its institution',
   checklists: 'no date of its own',
 
-  // ADR-0037 and ADR-0040: Safe Space is a crisis-mode read someone opens
-  // when they need it, and a snapshot is the evidence it showed them. Listing
-  // it among a day's records files a bad hour into the ordinary diary, and
-  // rereading it is the counterevidence screen's own business.
-  // Phase 6 ticket 14: the same reason, and it also carries no date at all -
-  // a comfort item is a standing line in a list, not something that
-  // happened on a day.
+  // Safe Space reads its own snapshots (ADR-0037) outside the ordinary diary.
+  // The comfort list belongs to that screen too and has no date.
   comfortItems: 'a Safe Space artefact with no date of its own',
   // A letter is written to be met on its unlock day (letterStatus.ts). A day
   // view listing the day it was written is a second place to meet it, out of

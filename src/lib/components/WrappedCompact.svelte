@@ -162,10 +162,7 @@
   <p class="wrapped-note">{m.insights_note()}</p>
 {/if}
 
-<!-- The tags you used, as the chip row: flush to the page with no container
-     at all, which is the surface DIRECTION.md 2b gives a set of small
-     labels. A different question from the insights above - how often, not
-     which days - so the two are not one card said twice. -->
+<!-- Tags sit flush on the page. Their counts answer how often each was used. -->
 {#if topTags.length}
   <SectionHeading text={m.wrapped_tags()} />
   <div class="tag-row" data-wrapped-tags>

@@ -18,7 +18,7 @@ export interface FolderSyncDeps {
   /** The staged copy's bytes. On Android a fetch from the local server. */
   read(path: string): AsyncIterable<Uint8Array>;
   /** Stops the sync before it writes. Once Merge has begun it finishes:
-      Merge has no rollback part way through (ADR-0070). */
+      Merge has no rollback part way through. */
   signal?: AbortSignal;
 }
 

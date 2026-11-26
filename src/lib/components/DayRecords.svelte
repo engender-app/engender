@@ -62,9 +62,8 @@
      at all, and short enough that a busy one stops being a wall.
 
      The overflow is a sheet rather than an in-place expand. The list can be
-     three times the height of the screen on a maximal day, and DIRECTION
-     caps `disclose()` at "a group rather than a screen - a disclosure that
-     opens half the document is a navigation and belongs to tier 2". A sheet
+     three times the viewport height on a busy day. Reserve `disclose()`
+     for a group that fits within the screen. A sheet
      is tier 2's own answer and it already has its motion, so nothing new is
      invented here.
 

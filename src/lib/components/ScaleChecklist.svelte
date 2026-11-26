@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Onboarding and Settings share individual scale choices. Each subtitle
-     explains what its scale measures (DIRECTION.md rule 3b). The full-width
+     explains what its scale measures. The full-width
      list uses a press wash (tier 1). An empty selection is valid, so let
      people untick every row and continue without a warning. */
 

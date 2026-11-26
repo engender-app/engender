@@ -52,8 +52,8 @@
     onClose?.();
   }
 
-  /* Dismissal follows the drag rather than replaying the entrance backwards
-     (DIRECTION.md, tier 2). The drag offset lives on a wrapper and the
+  /* Dismissal follows the drag rather than replaying the entrance backwards.
+     The drag offset lives on a wrapper and the
      entrance/exit transition on the sheet inside it, because a Svelte
      transition writes `transform` on the element it is applied to and would
      overwrite an inline one; on two elements the two compose, and letting go

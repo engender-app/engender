@@ -11,9 +11,8 @@
   /* Plays a video note directly from the entry view/editor - no separate
      screen. The transport is MediaTransport.svelte, the same one
      a recording wears: the same play control, the same scrub,
-     the same materials, under the frame rather than floating over it - a
-     translucent bar across the picture is the one material DIRECTION rule 10
-     refuses.
+     the same materials. Place the controls below the frame to keep
+     the image clear.
 
      What the frame adds over a recording's row is the picture itself, a
      centre control over it (the gesture everyone has for a video), and full
@@ -121,7 +120,7 @@
     {#if failed}
       <p class="video-note-failed" role="status" in:fade|global={{ duration: motionDuration('--dur-med') }}>{m.video_unreadable()}</p>
     {:else if url}
-      <!-- Uncovered from its own edge (DIRECTION rule 10), `|global` because
+      <!-- Uncover the picture from its own edge. Use `|global` because
            the {#if} is the thing that flips. -->
       <div class="video-note-picture" in:wipe|global>
         <!-- No caption track: a video note is the person's own recording of

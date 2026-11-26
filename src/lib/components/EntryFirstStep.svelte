@@ -43,7 +43,7 @@
 
 {#if dims.length > 0}
   <!-- Named in the step's small label, not a second heading: the step's
-       question is its one heading (ticket 09, DIRECTION.md rule 12). -->
+       question is its one heading. -->
   <div class="step-part"><span class="step-part-name">{m.gender_label()}</span></div>
   {#each dims as { dim, ticked } (dim.key)}
     <DimensionSlider {dim} value={values[dim.key] ?? null} onInput={(v) => { if (!saving) onDim(dim.key, v); }} />

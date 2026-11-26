@@ -3,8 +3,8 @@
      Keystore unwraps the data key only after platform authentication
      (ADR-0018). Prompt on mount and offer a retry on cancel. Every outcome
      must supply a wayForward action so each refusal has a recovery path.
-     Explain a lost key's consequence before showing that action
-     (docs/ui-copy.md). */
+     Explain a lost key's consequence before showing that action.
+     */
 
   import { m } from '$lib/paraglide/messages';
   import { bootState, openAndroidJournal, resetApp } from '$lib/stores/boot.svelte';

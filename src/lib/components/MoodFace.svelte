@@ -8,7 +8,7 @@
      pauses when the row supplies a gaze. Separate groups let both move
      without competing for a transform. moodGlance.ts assigns each face
      its own period and delay, with three gaze positions per cycle.
-     Transitions happen behind closed lids (ADR-0071). */
+     Transitions happen behind closed lids. */
   import { GAZE_REACH } from '$lib/motion/magnifier';
   import { MOOD_GLANCE, blinkCycle } from '$lib/motion/moodGlance';
   import { MOOD_BLOCK, MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from './moodFace';

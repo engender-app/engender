@@ -10,7 +10,7 @@
 import type { InjectionSite, InjectionSiteRegion } from '../data/doseSchedule';
 import { FIGURE_BOX, type Pt } from './bodySilhouette';
 
-/** Frame the first 135 units of the 100 x 176 body (ADR-0087).
+/** Frame the first 135 units of the 100 x 176 body.
     All twelve sites are above the knee. Targets need 48px with 8px gaps,
     which requires a figure width of at least 312px. The full body
     would be 549px tall at that width. Cropping to 135 units at 320px

@@ -7,7 +7,7 @@
    generates table names from migrated SQLite. features.test.ts verifies
    route and message files, unique claims, and agreement between rows, groups,
    tiles, sections and routes. npm run docs:blocks uses the same manifest for
-   the SCREENS.md route table. The app entry owns shared housekeeping,
+   the maintainer route index. The app entry owns shared housekeeping,
    preferences and the media view. */
 
 import type { RouteId } from '$app/types';

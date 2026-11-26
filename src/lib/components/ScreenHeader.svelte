@@ -106,7 +106,7 @@
        was the one thing out of the column. Above it, the title starts where
        the content does and the arrow keeps its full target. Material's own
        large-title pattern puts it there too. -->
-  <!-- The field (phase 10, DIRECTION.md rules 3 and 7; ADR-0075): a solid
+  <!-- The field is a solid block
        block of one of the flag's colours, published by activeFlag as
        --field and --field-ink, behind the back control, the title and the
        actions. Only large type sits on it - nonbinary's purple carries

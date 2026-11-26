@@ -54,7 +54,7 @@ export function metricStandings(
 }
 
 export interface MoodDay {
-  /** 1 to 5 on the mood ramp (ADR-0025). */
+  /** 1 to 5 on the mood ramp. */
   step: number;
   count: number;
 }
@@ -83,18 +83,9 @@ export function moodDistribution(days: DayAverage[]): MoodDay[] {
   return [...counts].map(([step, count]) => ({ step, count }));
 }
 
-/** What a day's cell is drawn as, once the day's own entries are known
-    (phase 6 unprompted ticket 11, CONTEXT: Spread).
-
-    `split` carries two steps rather than two values: a step is what a fill
-    is, and two entries inside one step have no edge to draw between them.
-
-    `first` and `last` are the day's own order, earliest half on the left
-    (Alicja, 2026-09-02: chronological). That is a claim the app used not to
-    make - CONTEXT.md's entry for Spread said a day never says which reading
-    came first - and it is now hers to make, so the entry says so. Nothing
-    else changed with it: the words beside the cell are still the day's
-    lowest and highest, which have no order at all. */
+/** A day cell takes the earliest step on the left and the latest on the
+    right. Two entries in the same step share a fill. The accessible words
+    describe the low and high values, independent of their order. */
 export type DayShape = { kind: 'one' } | { kind: 'split'; first: number; last: number };
 
 /** Return null for a day without readings. Split a day only when the
@@ -103,7 +94,7 @@ export type DayShape = { kind: 'one' } | { kind: 'split'; first: number; last: n
     on the Day screen. HeatMap draws a pip from the count.
 
     The caller supplies `stepOf`. Gender dimensions use four heat levels
-    and mood uses five faces (ADR-0025). */
+    and mood uses five faces. */
 export function dayShape(
   spread: DaySpread | undefined,
   stepOf: (value: number) => number

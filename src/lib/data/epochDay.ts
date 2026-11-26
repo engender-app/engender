@@ -202,11 +202,8 @@ function anniversaryInYear(milestoneDate: Date, year: number): number {
   return clampedEpochDay(year, milestoneDate.getMonth(), milestoneDate.getDate());
 }
 
-/** The next occurrence of a milestone's calendar month/day that falls on
-    or after `onOrAfterEpochDay` — the recurring-yearly anniversary
-    (CONTEXT.md), not `milestoneEpochDay + n * 365`, which drifts across
-    leap years. Returns `onOrAfterEpochDay` itself when today already is
-    the anniversary. */
+/** Find the next calendar anniversary on or after `onOrAfterEpochDay`.
+    Calendar arithmetic keeps the month and day stable through leap years. */
 export function nextAnniversaryEpochDay(milestoneEpochDay: number, onOrAfterEpochDay: number): number {
   const m = localDateFromEpochDay(milestoneEpochDay);
   const refYear = localDateFromEpochDay(onOrAfterEpochDay).getFullYear();

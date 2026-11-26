@@ -4,7 +4,7 @@
      headline is 28px. Only the chart uses the area colour. On the
      plane tile the drawing takes the headline's space.
 
-     Animate count changes (ADR-0078). When a span gains or loses a
+     Animate count changes. When a span gains or loses a
      reading, the tile fades in its cell while its neighbours travel
      to theirs. Use global transitions because the caller mounts and
      unmounts the tile. */

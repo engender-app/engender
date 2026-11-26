@@ -576,7 +576,7 @@ describe('recognition progress and cancelling', () => {
 
     /* Not 'recognition-failed': nothing failed, the person stopped it, and
        the picker is where stopping leaves them. Safe to offer at all only
-       because this state has written nothing (ADR-0070) - `saving` has,
+       because this state has written nothing - `saving` has,
        and cancel() below leaves it alone. */
     expect(stopped).toBe(true);
     expect(m.state).toEqual({ tag: 'picking' });

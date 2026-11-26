@@ -1,4 +1,4 @@
-/* Reactive progress for one operation (ADR-0070). Keep decisions in
+/* Reactive progress for one operation. Keep decisions in
    rune-free progress.ts. This wrapper owns state and three timers.
 
    The show delay avoids flashing a bar. `await progress.finish()`
@@ -25,7 +25,7 @@ export interface ProgressRun {
   /** Whether a cancel has been asked for and not yet arrived. */
   readonly stopping: boolean;
   /** Whether this run offered a way to stop it. The safety reasoning lives
-      at the call site (ADR-0070): the component only knows whether it was
+      at the call site: the component only knows whether it was
       handed a handler. */
   readonly cancellable: boolean;
 

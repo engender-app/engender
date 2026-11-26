@@ -47,8 +47,8 @@ export interface VoiceRecording {
     belongs to a day and carries the acoustic figures the engine
     (lib/audio/) measured from it under fixed conditions.
 
-    Every figure is descriptive (PRODUCT.md:109) - a frequency, a span, a
-    spread, a rate, two resonances. None of them is a score and none of them
+    The engine measures frequency, span, spread, rate and two resonances.
+    These figures describe the sample without scoring it.
     has a good end.
 
     The vowel half is nullable as a group: a session that skipped the
@@ -115,9 +115,9 @@ export interface VideoNote {
 
 /** Which side of a body region's shared 0-100 scale (bodyMap.ts) something
     is asking for - dysphoria below the midpoint, euphoria above it. Reads
-    stay split by side (ADR-0081) rather than netting the two into one
+    stay split by side rather than netting the two into one
     signed number: that would rank one side against the other, which is the
-    judgment docs/ui-copy.md forbids. */
+    signed number: that would rank one side against the other. */
 export type BodyRegionAxis = 'dysphoria' | 'euphoria';
 
 export interface Entry {
@@ -135,7 +135,7 @@ export interface Entry {
       dims and tags - ticket 09 does not require ticket 02's "physical"
       dysphoria tag to be present to log a region. A region's value is one
       position on the shared 0-100 scale (bodyMap.ts), dysphoria below the
-      midpoint and euphoria above it (ADR-0081); a region is
+      midpoint and euphoria above it; a region is
       present here only when it has something to say, so one left at the
       midpoint is dropped on save rather than stored blank. */
   bodyRegions: Record<string, number>;
@@ -510,8 +510,7 @@ interface DoseEventFields {
   drug: string | null;
 }
 
-/* A dose event is its own record type, not an Entry: it carries no mood, no
-   dimension values, no tags and no note, and CONTEXT.md's Entry is closed
+/* A dose event has none of the Entry fields for mood, dimensions, tags or notes.
    over exactly those five fields.
 
    It stores no regimen episode of its own, and usually no drug either.
@@ -667,7 +666,7 @@ export interface CycleEvent {
    is a separate row this area manages by an auto_source marker
    (wearSessions.ts), the same handoff medication_stock's run-out prompt
    uses. */
-/* Which practice the session was (ADR-0064).
+/* Which practice the session was.
    Closed to three and staying closed: each one carries its own wording and
    its own safety facts, so a fourth value would be a set of strings nobody
    wrote rather than a row the app could still draw. */
@@ -993,7 +992,7 @@ export interface RoadmapCategory {
     anything else, which keeps the record's free-text `name` as its only
     identity. The set gates which sub-modules a procedure's kind unlocks -
     dilation reads it - and nothing else; it is not a second name and the
-    app never guesses it from what someone typed (CONTEXT.md, Surgery). */
+    app never guesses it from what someone typed. */
 export type ProcedureKind =
   | 'vaginoplasty'
   | 'vulvoplasty'

@@ -90,10 +90,8 @@ export async function getRegionSomaticBreakdown(
 ): Promise<RegionSomaticBreakdown> {
   const presFilter = entryPresentationFilter(presentationId);
 
-  // 1. Feelings trajectory. dysphoria/euphoria are read back as the two
-  // intensities they always were (stats.ts's own axisFilter arithmetic,
-  // ticket 39, ADR-0081) - a row now sits on one side of the shared 0-100
-  // column, so only one of the two projections is ever non-null.
+  // 1. Feelings trajectory. Each row sits on one side of the shared 0-100
+  // scale. Project only that side's intensity, using stats.ts's arithmetic.
   const trajectoryRows = await driver.query<TrajectoryRow>(
     `SELECT e.id AS entry_id, e.epoch_day AS epoch_day,
             CASE WHEN ebr.value < 50 THEN (50 - ebr.value) * 2 END AS dysphoria,

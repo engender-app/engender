@@ -1,6 +1,6 @@
 <script lang="ts">
-  /* The heading names the reading without interpreting its values
-     (PRODUCT.md). Keep the card to its marks and at most one control.
+  /* The heading names the reading without interpreting its values.
+     Keep the card to its marks and at most one control.
      Require the caller's heading level: h2 on the screen or h3
      under a section heading. */
   import type { Snippet } from 'svelte';

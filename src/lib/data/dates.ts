@@ -60,7 +60,7 @@ export function fmtDayBar(epochDay: number, todayEpochDay: number): string {
 /** The two ends of a chart's range, written so they cannot read backwards.
 
     A gutter says what the ends of the scale are and nothing else
-    (DIRECTION.md's chart rules: no axis furniture), so a day and a short
+    so a day and a short
     month is all it needs - until the range crosses a year, at which point
     "22 Jun" on the left and "17 Jun" on the right is a chart that appears
     to run backwards. Found on the lab results screen, whose range is however long somebody has been having blood drawn

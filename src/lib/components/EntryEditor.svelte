@@ -1058,7 +1058,7 @@
 
      Put the name on .editor-bg so only the fill grows from the tapped
      row. Keep text and fields outside that raster and crossfade them
-     through the screen transition (DIRECTION.md tier 2). -->
+     through the screen transition. -->
 <!-- The fieldset is the screen rather than a wrapper inside it. Its
      `disabled` is what stops native fields taking edits during a save on a
      WebView that predates `inert`, and as a `display: contents` wrapper it
@@ -1188,7 +1188,7 @@
        and "change" links redesign ticket 51 gave them. -->
   {#if vocabulary.visiblePresentations.length > 0}
     {#if onStep}
-      <!-- On a step the question is the one heading (DIRECTION.md rule 12),
+      <!-- On a step the question is the one heading,
            so the part under it is named in the small label the tag groups
            use, not a heading, and its link ends the row of chips. -->
       <div class="step-part">
@@ -1250,7 +1250,7 @@
   {/snippet}
 
   {#snippet chipRow(sections: readonly EntrySection[])}
-  <!-- One chip per folded section, each a key (DIRECTION.md rule 13): its
+  <!-- One chip per folded section, each a key: its
        name, and under it what the section holds once it holds something -
        so a saved entry reads as a summary line under its note. A chip opens
        its section directly under the row and closes it on a second tap; one
@@ -1279,7 +1279,7 @@
   {/snippet}
 
   {#snippet panels(sections: readonly EntrySection[])}
-  <!-- ADR-0078 holds: a section discloses by moving under the note, and a
+  <!-- A section opens beneath the note. On a chip switch, the old section closes and the
        switch from one chip to another is the old section closing while the
        new one opens - two heights travelling, never a cut. A transition is
        local and does not play on first render, so a draft restored with a
@@ -1357,7 +1357,7 @@
           {#if entryDraft.recordings.length > 0}
             <div class="recording-list">
               {#each entryDraft.recordings as r, i (r)}
-                <!-- A row arrives and leaves by collapsing (DIRECTION rule 10),
+                <!-- A row opens or closes its own height,
                      so adding or removing one moves the rows under it rather
                      than jumping them. -->
                 <div class="recording-row" transition:collapse|global>
@@ -2101,7 +2101,7 @@
     font-family: var(--font-body);
   }
 
-  /* The chip row: one key per folded section (DIRECTION.md rule 13).
+  /* The chip row: one key per folded section.
      Blocks with a 1px outline edge and the app's one corner, wrapping at
      390px rather than scrolling - a row you have to scroll hides the
      question you came for, and "one tap away" has to mean visible. The

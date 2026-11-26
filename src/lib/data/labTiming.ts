@@ -122,7 +122,7 @@ export function selectTimingDose(
 }
 
 /** The axes a lab series' points can disagree on. A **Lab series**
-    (CONTEXT.md) folds results into one line by matching unit and nothing
+     folds results into one line by matching unit and nothing
     else, so one line can hold readings taken at opposite ends of an
     injection interval, on different routes, or by different labs.
 

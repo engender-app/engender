@@ -1,16 +1,8 @@
 <script lang="ts">
-  /* The bare strip: cells sitting directly on the page, no card around
-     them. One of the six surfaces precisely because it is not a card - a
-     screen built only from cards is what DIRECTION.md's decision 2b exists
-     to prevent.
-
-     Presentational: the caller brings the days and their levels, so the
-     strip draws a week of a journal, a week of a metric, or a week of
-     demo data without knowing which. DayStrip.svelte is the app's
-     journal-connected caller. Seven of them on a phone, and --strip-count
-     lets a wider caller hand over more without this file caring how many
-     (CARPET-02) - kit.css's desktop breakpoint shrinks the cells' own cap
-     to keep a longer row inside the same column. */
+  /* Cells sit directly on the page. The caller supplies days and levels.
+     DayStrip.svelte connects that shape to the journal. Seven cells fit
+     on a phone. Wider callers set --strip-count, and kit.css caps the
+     cell size to fit the row in its column. */
   import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 

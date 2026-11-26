@@ -109,7 +109,7 @@ describe('where the decoy name is allowed to appear', () => {
       .replace(/(^|[^:])\/\/.*$/gm, '$1');
 
   it('is supplied by catalogues after the pre-paint script', () => {
-    /* ADR-0035 asks for the disguise check to live in one place, and the
+    /* Keep the disguise check in identity.ts (ADR-0101). The
        cost of a surface forgetting it is not cosmetic: it shows the real
        app name to whoever the person was hiding it from.
 

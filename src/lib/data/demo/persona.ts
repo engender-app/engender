@@ -146,8 +146,8 @@ const NOTES = [
 ];
 
 /* NOTES in Polish, line for line, so the same draw picks the same day's
-   note in either language. Written without gendered first-person verbs
-   (docs/ui-copy.md), which is why so many of them sit in the present. */
+   note in either language. Written without gendered first-person verbs,
+   which is why so many of them sit in the present. */
 const NOTES_PL = [
   'Kawa z Martą. Cały czas mówiła do mnie moim imieniem, ani razu się nie zawahała. Ciągle o tym myślę.',
   'Ciężki poranek przed lustrem. Po spacerze i długiej playliście jest lepiej.',
@@ -175,24 +175,10 @@ function buildEntries(today: number, locale: PersonaLocale, presentationNames: [
   const r = rng(20240331);
   const notes = locale === 'pl' ? NOTES_PL : NOTES;
   const entries: PersonaEntry[] = [];
-  /* Body-region intensities on most entries.
-
-     /body-map's two charts and the wear trend's second line all read these
-     and all drew an empty plot on the demo, so neither screen could be
-     reviewed at all - PRODUCT.md's own line is that demo data renders every
-     screen. Four regions: the two /body-map opens on and the two the wear
-     trend offers.
-
-     Derived from the day rather than from a further draw on `r()`, the same
-     rule the presentation below follows: a new call into the generator
-     would shift every entry after it, so not one existing mood, note or tag
-     moves.
-
-     One arc across the whole journal, dysphoria easing as euphoria rises,
-     with a deterministic wobble so a line has texture and a gap every third
-     day so it has holes - a region logged on every single entry is not what
-     anybody's journal looks like. Nothing here is a claim about how a
-     transition goes; it is texture for a screenshot. */
+  /* Seed four regions for the body map and wear trend. Derive values from
+     the day so existing moods, notes and tags keep their random sequence.
+     Use a gradual curve with deterministic variation and leave every third
+     day empty so the charts show gaps. These are sample readings. */
   const REGION_ARC_DAYS = 700;
   const REGION_OFFSETS: Record<string, number> = {
     face_jaw: 0,
@@ -211,7 +197,7 @@ function buildEntries(today: number, locale: PersonaLocale, presentationNames: [
       if ((day + offset) % 3 === 0) continue;
       const dysphoria = clampIntensity(86 - progress * 50 + wobble(day + offset, 9));
       const euphoria = clampIntensity(16 + progress * 54 + wobble(day + offset * 3, 9));
-      // One slider position per region now (ADR-0081): whichever
+      // One slider position per region now: whichever
       // intensity is larger sets the side, and the stored value reads back the
       // way the reads do: below 50 is dysphoria, above it euphoria.
       logged[region] = Math.round(dysphoria >= euphoria ? 50 - dysphoria / 2 : 50 + euphoria / 2);
@@ -267,22 +253,9 @@ function buildEntries(today: number, locale: PersonaLocale, presentationNames: [
     }
   }
 
-  /* And the calendar year before last, sparsely.
-
-     The persona seeded 151 days, which is the right density for Home, the
-     calendar and the stats ranges - and it meant the one period
-     /wrapped/year ever covers, the *previous* calendar year, was empty by
-     construction. So the yearly wrapped could not be reviewed at all: it
-     drew its entry-floor notice on every build, and the year grid it exists
-     to show had nothing to draw (Alicja, 2026-08-25: "how am i supposed to
-     see how the yearly wrapped looks like?"). PRODUCT.md's own line is that
-     demo data renders every screen.
-
-     Kept separate from the loop above, and deliberately sparser - about two
-     days in five, one entry each, no photos. The recent history is what most
-     screens are reviewed against and none of its numbers move; this is a
-     year with texture in it, which is what a year grid and a year's figures
-     need. It stops before the 151-day window so the two never overlap. */
+  /* Seed about two days in five in the previous calendar year so yearly
+     Wrapped clears its entry floor. Use one entry per day and skip photos.
+     Stop before the recent 151-day fixture to keep both ranges separate. */
   const lastYear = localDateFromEpochDay(today).getFullYear() - 1;
   const yearStart = epochDayFromLocalDate(new Date(lastYear, 0, 1));
   const yearEnd = Math.min(epochDayFromLocalDate(new Date(lastYear, 11, 31)), today - 151);

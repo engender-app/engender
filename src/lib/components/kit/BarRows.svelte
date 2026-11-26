@@ -52,7 +52,7 @@
   {#each drawn as row, i (row.key)}
     {#if onPick}
       <!-- The wash in kit.css is the whole answer to a press here, which is
-           DIRECTION.md's tier 1: a row the width of the screen fills rather
+           a full-width row responds with a fill rather
            than scales, because scaling a row moves the card it sits in. The
            note beside that wash has said so since the row became pressable,
            and it was only a claim - press.css is opt-out, so this row took

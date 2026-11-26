@@ -444,7 +444,7 @@ describe('runAndroidAutoExport progress and cancellation', () => {
 
     /* Cancelling is safe here for the same reason it is on the manual
        export: nothing has been written to the journal or to the folder, so
-       it means trying again (ADR-0070). Its own outcome rather than
+       it means trying again. Its own outcome rather than
        'failed', so the screen can stay quiet about it instead of saying
        the backup broke. */
     expect(result.outcome).toBe('cancelled');

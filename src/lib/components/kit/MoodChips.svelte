@@ -1,7 +1,7 @@
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
   /* The row draws five rounded-square mood faces with labels underneath.
-     The mood ramp clears 4.5:1 against --text (ADR-0025). The faces also
+     The mood ramp clears 4.5:1 against --text. The faces also
      distinguish adjacent steps at 22px through mouth shape and eyelids,
      so the picker does not rely on hue alone.
 

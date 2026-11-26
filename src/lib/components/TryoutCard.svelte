@@ -55,8 +55,7 @@
   <div class="tc-top">
     <!-- A row the width of the card answers a press with a wash rather
          than a scale: 0.94 on a 330px card walks its edges 10px inward
-         while the list holds still, which reads as a yank (DIRECTION.md
-         tier 1). data-no-press is how that is said. -->
+         while the list holds still, which reads as a yank. data-no-press is how that is said. -->
     <!-- No aria-label. One would replace the link's own content for a
          screen reader, and the name, the kind, the last reading and how
          long it has run are all inside it. -->
@@ -179,8 +178,7 @@
      written on the stripe itself. Not large text by WCAG's measure, so it
      owes 4.5:1 and gets it: --role-fill-ink is the heat ramp's deepest
      step, held to 4.5:1 against its own fill by tests/kit-roles.test.ts.
-     No uppercase, no tracking - DIRECTION.md's own census names an
-     uppercase tracked label as the craft floor's tell and declines it. */
+     Keep the label in normal case with default letter spacing. */
   .tc-kind {
     font-size: var(--text-block);
     font-weight: var(--weight-medium);

@@ -2,8 +2,8 @@
    nonoverlapping zones that meet the minimum target size at the
    narrowest supported stage. Each visible panel sits in its own zone.
 
-   Clip rectangular bands against the single path in bodySilhouette.ts
-   (ADR-0087). Let the windows overshoot the outer contour so the path
+   Clip rectangular bands against the single path in bodySilhouette.ts.
+   Let the windows overshoot the outer contour so the path
    sets the edges. When two regions share a cross-body boundary, the
    window edge and its hairline mark their seam. The whole_body reading
    fills the limbs and handles clicks outside the other panels. The
@@ -227,7 +227,7 @@ function eachRow(area: Box, visit: (y: number, run: [number, number]) => void): 
     with the body. This is the containment rule's left-hand side - "every
     drawn shape lies inside its own box" became "every clipped band's
     bounding box lies inside its own box" when the panels stopped being
-    shapes of their own (ADR-0087). */
+    shapes of their own. */
 export function bandBox(area: Box): Box {
   let left = Infinity;
   let right = -Infinity;

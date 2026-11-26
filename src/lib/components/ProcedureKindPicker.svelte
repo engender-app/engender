@@ -1,6 +1,6 @@
 <script lang="ts">
   /* The procedure kind picker: one flat list,
-     the compiled-in set in CONTEXT.md's order with `custom` last as the
+     the compiled-in kinds in their declared order, with `custom` last as the
      escape hatch, the same shape DocumentTargetPicker gives a single-select
      list living in a sheet. No sections and no icons per kind - the kind
      gates Dilation and nothing else (Out of scope), so it earns a list of

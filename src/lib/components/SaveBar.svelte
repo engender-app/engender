@@ -3,7 +3,7 @@
      reserves its full height. app.css owns the frame styling.
 
      Use one for a full-width action, row for equal peers, and stack
-     for a primary with a way past it (DIRECTION.md rules 12 and 15). */
+     for a primary action with a way past it. */
   import type { Snippet } from 'svelte';
   import { navigating } from '$app/state';
   import { hostSaveBar } from '$lib/stores/saveBar.svelte';

@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Setup and Settings share the same permission list. Each host
-     supplies its own heading (DIRECTION.md rule 12). This component
+     supplies its own heading. This component
      reads device permission state. PermissionRow renders it with
      the token-based layout, a reason line and trailing control. */
   import { m } from '$lib/paraglide/messages';

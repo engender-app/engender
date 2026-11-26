@@ -308,18 +308,9 @@
     goto('/care/doses?add=1');
   }
 
-  /* Nearest the thumb first, because the order is a reachability decision
-     rather than an editorial one: the mood row is where a slide lands with
-     the least travel, and a dose is the one of these nobody logs in a
-     hurry.
-
-     Grouped as three cards rather than six floating pills. A card per group
-     is the app's own list surface - one plane, hairline separators, the
-     icon in the accent - so the fan reads as three things the button can
-     make rather than as a stack of identical rounded rectangles, which is
-     the generic shape DIRECTION.md's decision 2b exists to avoid. It also
-     gives the slide a better target: the highlight moves inside one plane
-     instead of jumping between separate objects. */
+  /* Order groups by thumb reach so the mood row takes the least travel.
+     The fan uses three list cards with hairline separators and accented
+     icons. A slide highlights rows on the same plane within each card. */
   const MOODS = [1, 2, 3, 4, 5];
   const MOOD_TARGET = 'mood-';
 

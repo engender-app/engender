@@ -130,7 +130,7 @@ test('a reading carries the side, the count behind its mean, and both ways', () 
   });
 });
 
-/* The scale is native and whole (ADR-0012, ADR-0081): a mean of four
+/* The scale is native and whole (ADR-0012): a mean of four
    readings is a fraction and nothing on this screen shows one. */
 test('the mean is rounded to the scale a person reads', () => {
   const summary = regionSummary(regionReading(sides({ euphoriaCount: 3, euphoriaMean: 61.666_67 })));

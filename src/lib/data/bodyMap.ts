@@ -1,4 +1,4 @@
-/* All body regions share a 0–100 intensity scale (ADR-0081).
+/* All body regions share a 0–100 intensity scale.
    Below midpoint is dysphoria, above is euphoria. builtins.ts and
    journal/bodyRegions.ts own the region keys.
 
@@ -39,18 +39,10 @@ export interface RegionSides {
   euphoriaMean: number | null;
 }
 
-/** What the body map paints for one region.
-
-    `side` is null for a region with no readings in the range, which the
-    figure draws as an outline and no fill - "undrawn" and "the faintest
-    intensity" are different statements and must not look alike, the same
-    rule the injection map's never-used dot follows.
-
-    `value` is that side's own mean, native, never a net. A chest logged at
-    dysphoria in the morning with a binder on and at euphoria in the evening
-    with it off averages out to roughly the midpoint, and painting that day
-    as "chest was fine" is false about both entries - the net CONTEXT.md
-    forbids by name. */
+/** A region without readings has a null side and draws only an outline.
+    For a filled region, value is the mean on that side. Averaging across
+    both sides could turn distinct dysphoria and euphoria into a midpoint
+    that neither reading describes. */
 export interface RegionSideReading {
   region: string;
   side: BodyRegionAxis | null;
@@ -105,7 +97,7 @@ export function regionReading(sides: RegionSides): RegionSideReading {
   * both sides would assign readings to a mean they never contributed
   * to. Distinguish an absent region, one without either side, and a
   * value. Round intensity here for display in native units
-  * (ADR-0012, ADR-0081).
+  * (ADR-0012).
   */
 export type RegionSummary =
   | { kind: 'none' }

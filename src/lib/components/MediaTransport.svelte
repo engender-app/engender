@@ -249,9 +249,7 @@
 </div>
 
 <style>
-  /* One row, 48 tall, the kit's one-line row (DIRECTION rule 6). Everything
-     in it is a block of 6 (rule 5) drawn in ink, a stripe or a line (rule 4);
-     there is no shadow and no tonal ground anywhere in here. */
+  /* A 48px row with a 6px block radius. Draw in ink, a stripe or a line. */
   .transport {
     display: flex;
     align-items: center;
@@ -380,8 +378,7 @@
 
   /* The playhead, on the same custom property as the fill so the line and
      the colour boundary are the same position by construction. */
-  /* Square ends, like every other piece of ink the app draws (DIRECTION
-     rule 9): 2 units for a series, and no cap on it. */
+  /* The playhead uses the chart series' 2-unit ink and square ends. */
   .transport-head {
     position: absolute;
     left: 0;

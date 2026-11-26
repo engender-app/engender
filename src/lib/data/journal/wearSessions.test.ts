@@ -44,7 +44,7 @@ test('the duration cue is a running binder session past eight hours, and nothing
   assert.equal(binderCueShowing(running('binder'), BINDER_CUE_HOURS * HOUR, true), true);
   assert.equal(binderCueShowing(running('binder'), 30 * HOUR, true), true);
 
-  // No equivalent computation for the other two (ADR-0064): the evidence
+  // No equivalent computation for the other two: the evidence
   // for a tucking figure is weaker than the practice it would flag, and
   // there is no compression figure anywhere to borrow.
   assert.equal(binderCueShowing(running('tucking'), 30 * HOUR, true), false);

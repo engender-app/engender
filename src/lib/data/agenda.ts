@@ -1,12 +1,11 @@
-/* Project the existing dayAhead marks into Today's agenda (ADR-0074,
-   ADR-0067). The window, ordering and fold work on supplied rows
+/* Project the existing dayAhead marks into Today's agenda (ADR-0067). The window, ordering and fold work on supplied rows
    and todayEpochDay. agendaReads.ts owns the journal reads. Only
    passedSlotSentence supplies copy here.
 
    Return null for an empty window. An elapsed slot can name just the
    latest unlogged slot from a schedule the person set. Daily schedules,
    other dated records and totals of missed events stay out. That keeps
-   the agenda from repeating a prompt most mornings (ADR-0062). */
+   the agenda from repeating a prompt most mornings. */
 
 /* Relative rather than `$lib`, the same as `liveTiles.ts` beside it: this
    file is read by the Node tier, where no alias exists. And the same reason
@@ -165,19 +164,9 @@ function passedSlot(doses: DoseScheduleComparison, todayEpochDay: number): Agend
   };
 }
 
-/** How the passed slot reads: the schedule's own arrangement and the day it
-    fell on, and nothing else. No verb about the person, no count, no run,
-    no word for what did not happen - ADR-0062's rule for `/coming-back`,
-    which states what is waiting and never what is missing.
-
-    It is the sentence `/coming-back` says, from the one key both read
-    (`scheduled_dose_on`): the two surfaces state the same fact under the
-    same rule, so a rewording has to hold on both.
-
-    Lives here, beside the rule that decides the item, rather than in
-    `dayAheadRows.ts`: a slot that passed is not a `dayAhead` mark and never
-    reaches that module. Drawn by this phase's ticket 13; until then its own
-    test is the only caller. */
+/** A passed slot states the schedule and day, without a missed count or
+    a judgment. /coming-back uses the same scheduled_dose_on key. This
+    stays next to the passed-slot rule because it is outside dayAheadRows. */
 export function passedSlotSentence(epochDay: number, fullDay: (epochDay: number) => string): string {
   return m.scheduled_dose_on({ date: fullDay(epochDay) });
 }

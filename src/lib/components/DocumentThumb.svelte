@@ -1,7 +1,7 @@
 <script lang="ts">
   /* Show the document's own preview on the index (ADR-0065). Keep
      an unreadable PDF's kind mark as fallback. A photo grid's
-     lazy colour placeholder adds no value here (DIRECTION.md rule 3).
+     lazy colour placeholder adds no value here.
 
      Read the area's thumbnail name. readThumbnail can return
      the underlying PDF bytes as JPEG after rewriting the suffix. */

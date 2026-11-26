@@ -326,10 +326,8 @@ test('a row that can never read states what is behind it whatever the journal ho
 
 // --- what is next ----------------------------------------------------------
 
-/* The choice rule this ticket exists for (phase 11 all-four-doors ticket 02,
-   DIRECTION.md rule 16). What the fact itself is and where it is read from is
-   `rowForward.test.ts`'s question; these are about which of two facts a row
-   prints when it holds both. */
+/* Check which fact wins when a row has two. rowForward.test.ts checks
+   where the facts come from. */
 
 test('a forward fact beats a last write', () => {
   const line = rowLine(

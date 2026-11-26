@@ -104,18 +104,10 @@
     return null;
   };
 
-  /* The profile card's motion (after-release 22). Pronouns and a date of
-     birth come and go as the person types them in the controls sheet, so
-     a row arrives in, or leaves, the middle of a grid that reflows around
-     it - sideways too, once the card is wide enough for columns. The card
-     is the surface, and it only moves: its height follows through
-     `resize`, and the rows it displaces travel from where they were
-     painted (reorder.svelte.ts's FLIP, in both axes). The row that came or
-     went is content on that surface, so it crossfades rather than sliding
-     or clipping (ADR-0078's object rule binds the surface; a clip on a
-     grid cell would cut the label and value apart mid-reveal). A leaving
-     row is lifted out of the flow at its own place for its fade, so the
-     rest can travel at once rather than after it has gone. */
+  /* Pronouns and date of birth can add or remove rows. resize follows the
+     card's height and reorder.svelte.ts moves surviving rows in both axes.
+     Fade the changed row so clipping cannot split its label and value.
+     Lift a departing row out of flow so the rest can move during its fade. */
   let profileGrid = $state<HTMLElement>();
   travelOnChange(
     () => (profileGrid ? [...profileGrid.querySelectorAll<HTMLElement>('[data-profile-item]')] : []),

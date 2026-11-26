@@ -1,4 +1,4 @@
-/* Fetch the agenda's inputs (ADR-0074). Keep the projection in
+/* Fetch the agenda's inputs. Keep the projection in
    `agenda.ts` so its window and passed-slot rule can run without a
    driver. The three reads are the existing forward `getDayAhead`
    (ADR-0067), a week of past dose slots and today's appointments.

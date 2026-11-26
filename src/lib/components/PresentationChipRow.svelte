@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Wear, Voice and Journal share this presentation picker (ADR-0048).
-     Choosing a mode highlights matching days (ADR-0030). The caller
+     Choosing a mode highlights matching days. The caller
      applies the selection and the vocabulary supplies visible modes. These
      chips share the entry editor's tag-pill styles.
 

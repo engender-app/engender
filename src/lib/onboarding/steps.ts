@@ -190,16 +190,8 @@ export function onboardingDestination(): string {
     as something that is about to grow. */
 const SUN_START = 0.42;
 
-/** The sun's scale at a given step: the app's identity being assembled as
-    the setup is (DIRECTION.md, tier 0's third authored moment).
-
-    It grows by one step's worth per step and arrives at exactly 1 on the
-    finish, which is the resting size Home draws a moment later - so the
-    handover between the two screens is the same object at the same size,
-    not two different suns. Scale rather than ring count, because ring count
-    is the flag's own and runs from three stripes to seven: growing "a ring
-    per step" would mean a different flow length per palette, and a flag
-    drawn with some of its bands missing is not the flag. */
+/** Grow the sun each step, reaching scale 1 at the handover to Home.
+    Scale keeps the flag's full stripe count visible on every palette. */
 export function sunGrowth(index: number, total: number): number {
   if (total <= 1) return 1;
   const progress = Math.min(Math.max(index, 0), total - 1) / (total - 1);

@@ -1,6 +1,6 @@
 <!-- Real buttons over the decorative silhouette get focus, targets and
      accessible names. injectionSiteMap.ts positions twelve points on the
-     shared body (ADR-0087). Fill shows recency, a solid ring marks this
+     shared body. Fill shows recency, a solid ring marks this
      dose's selection, and a dashed ring marks the last injection. The map
      implies no due site. -->
 <script lang="ts">

@@ -34,7 +34,7 @@ export function normalize(value: number, range: MetricRange): number {
   return Math.min(1, Math.max(0, (value - range.min) / width));
 }
 
-/** Which of the five mood steps a value rounds to (ADR-0025).
+/** Which of the five mood steps a value rounds to.
 
     A day's mood is its entries averaged, so it is a fraction, and every
     surface that draws mood as one of its five faces or five hexes has to

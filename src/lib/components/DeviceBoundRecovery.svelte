@@ -43,16 +43,10 @@
   <RecoveryKeyEntry onBack={() => (usingRecoveryKey = false)} />
 {:else}
 <GateScreen title={missingAccess ? m.dbr_missing_title() : m.dbr_title()}>
-  <!-- One body per state rather than one body plus a caveat. The original
-       ends "so this copy cannot be reopened", which above a button that
-       reopens it is the exact thing docs/ui-copy.md forbids on a risk
-       screen - and a render is what caught it, because both sentences read
-       fine on their own. -->
-  <!-- Nothing about the recovery key, including which body this is, until
-       the answer is in: at first paint this screen used to say "this copy
-       cannot be reopened" over a journal that had a key, and correct itself
-       a frame later. A title with no body for one frame is the honest
-       version (docs/ui-copy.md, the screens that carry risk). -->
+  <!-- Give each state its own body. Match its recovery claim to the action
+       the button offers. -->
+  <!-- Wait for the recovery key lookup before saying whether this copy can
+       be reopened. Show only the title while the answer is pending. -->
   {#if recoveryKeyPresence.known}
   <p class="gate-body" data-device-bound-recovery>{body}</p>
   {#if recoveryKeyPresence.exists}

@@ -1,17 +1,9 @@
 <script lang="ts">
-  /* Where a person is in a new entry's steps:
-     one segment per step they will see, filled up to the one they stand
-     on. Segments rather than "2 of 4", so the walk reads as a short path
-     and not a count of chores left; the count is the accessible name.
+  /* Show one segment per visible step and fill through the current one.
+     The accessible name gives the count. Progress.svelte handles operations.
 
-     Not Progress.svelte, which is for long-running work (DIRECTION.md,
-     "Progress is one shared component", which leaves onboarding's step
-     position out of it for the same reason).
-
-     A step that appears or goes away while the person walks (a card the
-     day offers arriving after its read) opens or closes its segment's
-     width rather than cutting it in. The fill moves along the path on the
-     step change's own clock. */
+     If a step appears or disappears, animate its segment width. The fill
+     moves on the step change's clock. */
   import { m } from '$lib/paraglide/messages';
   import { discloseWidth } from '$lib/motion/reveal';
 

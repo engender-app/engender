@@ -27,10 +27,7 @@ const PACK_CAVEAT: Record<RoadmapPackKey, Message> = {
   pl: m.roadmap_caveat_pl
 };
 
-/* The recorded sex marker's binary range, said as its own sentence pair
-   rather than folded into PACK_CAVEAT, which was already at
-   docs/ui-copy.md's two-sentence cap for an explanation before this fact
-   existed. */
+/* State the recorded marker’s range separately so PACK_CAVEAT stays at two sentences. */
 const PACK_MARKER_NOTE: Record<RoadmapPackKey, Message> = {
   pl: m.roadmap_marker_note_pl
 };

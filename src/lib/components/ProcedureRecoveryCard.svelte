@@ -153,7 +153,7 @@
   <div class="proc-top">
     <!-- A row the width of the card answers a press with a wash rather than
          a scale: 0.94 on a 330px card walks its edges 10px inward while the
-         list holds still, which reads as a yank (DIRECTION.md tier 1). -->
+         list holds still, which reads as a yank. -->
     <!-- A link to the procedure's own screen (prh12 bug 20), the way a
          tryout's card links to its own (TryoutCard). It used to be a button
          that slid the procedure's log open under the list. No aria-label:
@@ -343,10 +343,7 @@
     overflow-wrap: anywhere;
   }
 
-  /* No uppercase, no tracking. DIRECTION.md's own census names an
-     uppercase tracked label as the craft floor's tell and declines it; the
-     row this card replaced carried one, and rebuilding the card around it
-     would have kept it for another ticket. */
+  /* Keep labels in normal case with default letter spacing. */
   .proc-phase-pill {
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);

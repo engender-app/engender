@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* ADR-0070 uses .rail for app progress. progress.svelte.ts holds
+  /* The shared progress rail uses progress.svelte.ts for its timing.
      timing. Sweep for unknown totals and expose known percentages
      through aria-valuenow.
 
@@ -121,10 +121,9 @@
     font-size: var(--text-sm);
   }
 
-  /* The mark moves, not its container (DIRECTION.md, tier 3): a segment
+  /* The mark moves, not its container: a segment
      travelling the track, not a track that fills. Its own keyframe rather
-     than `breathe` - that 7s pulse is Home's sun and belongs to Home alone
-     (ADR-0050/0051, ADR-0070).
+     than `breathe`, the 7s pulse reserved for the flag sun.
 
      Written as one transform with `linear` timing rather than an eased
      one, because the pass has to loop: an ease-out per cycle would land

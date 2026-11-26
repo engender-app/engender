@@ -45,7 +45,7 @@
      platform presence through Keystore. Web offers WebAuthn PRF only after
      the browser confirms support.
 
-     State each mode's consequences before selection (docs/ui-copy.md).
+     State each mode's consequences before selection.
      For device-tied modes, explain the value of an archive if the device
      is lost. */
 
@@ -298,7 +298,7 @@
   );
 </script>
 
-<!-- One step in three states, and a state change moves (ADR-0078). The
+<!-- One step in three states, and a state change moves. The
      module's screens used to swap in a single frame: the four modes were
      there and then the chosen one's consequence was, with nothing in
      between - "a mode picked inside the gate, yank between frame 1 and 2"
@@ -346,19 +346,9 @@
   <!-- Screen one's second half: every consequence lives here,
        never on the screen that follows it. -->
   <div class="am-chosen" data-access-chosen={screen.mode}>
-    <!-- The consequence, on the screen where the choice is actually made and
-         above the control that makes it. Left, as everything on a gate is
-         since redesign ticket 34: this is four or five lines of prose whose
-         whole job is being read once and understood, and centred prose goes
-         ragged at both edges. It was centred in the first build of this
-         screen, which is what the render caught.
-
-         Neutral rather than the danger surface. Every mode here has a
-         consequence, this is the one the person just chose, and dressing a
-         chosen option in the colour of an error says they got it wrong. The
-         words carry the weight - docs/ui-copy.md's rule for the risk screens
-         is that the sentence is as final as the behaviour, not that the box
-         is red. -->
+    <!-- Put the consequence above the control that selects it. Left-align
+         the prose and use a neutral surface for each option. The words
+         state exactly what the chosen mode does. -->
     <div class="am-notice">
       <span class="am-notice-ico"><Icon name={tiedToDevice(screen.mode) ? 'alert' : 'shield'} size={20} /></span>
       <p>{consequence(screen.mode)}</p>

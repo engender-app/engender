@@ -1,4 +1,4 @@
-/* Localize each WearKind (ADR-0064). Exhaustive records make a missing
+/* Localize each WearKind. Exhaustive records make a missing
    kind a type error. Use whole messages because Polish noun forms vary
    across contexts. Keep wearSessions.ts free of Paraglide (ADR-0016).
 

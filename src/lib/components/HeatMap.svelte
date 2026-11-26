@@ -2,7 +2,7 @@
   /* The month grid shares HEAT_STEPS with Home's week strip. Gender
      dimensions use flag-hued squares and a legend with the dimension's
      endpoints (ADR-0012). The accent ramp supplies a fallback before the flag
-     loads. Mood uses round MoodFace swatches and its own fixed ramp (ADR-0025).
+     loads. Mood uses round MoodFace swatches and its own fixed ramp.
 
      statsCharts.ts splits a day when its first and last ratings fall on
      different steps. The first rating goes on the left. Dates sit below the
@@ -203,7 +203,7 @@
 
   function build(loading: boolean): MonthView {
     const metric = vocabulary.activeMetric;
-    /** Mood is the one metric with faces and a ramp of its own (ADR-0025). */
+    /** Mood is the one metric with faces and a ramp of its own. */
     const isMood = metric === 'mood';
     // The day's value stays native; only the step it picks is normalized,
     // so a 0-10 dimension and mood shade comparably (ADR-0012).
@@ -283,7 +283,7 @@
   });
 
   /* One lookup for a cell, a half and a legend swatch, so none of them can
-     disagree. On mood it is mood's own hex (ADR-0025); otherwise it is the
+     disagree. On mood it is mood's own hex; otherwise it is the
      role's computed ramp, falling back to the stylesheet's hand-tuned tokens
      where there is no flag to shade with. */
   const fillAt = (step: number, isMood: boolean) =>

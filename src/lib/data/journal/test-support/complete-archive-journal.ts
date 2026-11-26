@@ -60,10 +60,7 @@ export async function seedCompleteArchiveJournal(
     note: 'a good day, zażółć gęślą jaźń',
     dims: { [voice.key]: 7, femininity: 60 },
     tags: [tag.id, 'e-happy'],
-    // Three regions on purpose, so the fixture pins the range: one on the
-    // dysphoria side, one on the euphoria side, one further out (ticket 39,
-    // ADR-0081 - the {dysphoria, euphoria} pair ticket 31 gave this table
-    // is retired).
+    // Three regions cover both sides of the shared scale and two intensities.
     bodyRegions: {
       chest: 25,
       [bodyRegion.id]: 80,

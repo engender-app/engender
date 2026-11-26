@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Use this ring for unordered shares (ADR-0058). Ordered scales use
+  /* Use this ring for unordered shares. Ordered scales use
      OrderedStrip so the endpoints stay apart. Slices sort from largest
      to smallest and share one flag hue (ADR-0012). Each smaller arc
      uses a lighter tint, so adjacency stays legible and length and

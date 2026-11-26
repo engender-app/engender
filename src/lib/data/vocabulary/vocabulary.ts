@@ -125,7 +125,7 @@ export const vocabulary = {
     if (!dim.builtIn) return m.scale_custom_note({ low: dim.low, high: dim.high });
     return builtInDimensionNote(dim.key) ?? undefined;
   },
-  /** The lean the ticked scales carry (ADR-0030) -
+  /** The lean the ticked scales carry -
       `null` when both `femininity` and `masculinity` are ticked, or neither,
       and every lean-tagged picker should render unranked. Shared by every
       picker that ranks by lean, so the derivation is computed once rather
@@ -183,7 +183,7 @@ export const vocabulary = {
   /** The built-in regimen episode suggestions (phase 5 ticket 42, CONTEXT:
       "Regimen template"), in the wording the current language gives them -
       what the regimen editor's "add new" picker offers above manual entry.
-      Ranked by the active preset's lean (ADR-0030):
+      Ranked by the active preset's lean:
       matching templates first, the rest after in their existing order -
       every template still shown, just reordered. */
   get regimenTemplates(): RegimenTemplate[] {

@@ -5,8 +5,8 @@
      leaves the letter closed. LetterCard draws it in its ready
      state and owns the unfold and the unread text boundary.
 
-     The arrival covers the current screen without navigating
-     (ADR-0062). Its sentence sits on the field and choices below it.
+     The arrival covers the current screen without navigating.
+     Its sentence sits on the field and choices below it.
      A single blind reveals the field and page from the top over
      --dur-slow. Closing reverses the blind. Reduced motion uses
      a crossfade. */

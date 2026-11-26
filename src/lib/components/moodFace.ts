@@ -41,7 +41,7 @@ export const MOOD_FACES: Record<number, MoodDrawing> = {
 
 /** The block the face is drawn on, in the 24-unit box: inset by 0.9 so its
     own 1-unit hairline sits inside the viewBox, and rounded to the same
-    proportion of its width the app's blocks are (DIRECTION.md's one radius).
+    proportion of its width as the app uses for blocks.
     Exported because the geometry test measures the drawing against it and
     MoodFace.svelte draws it. */
 export const MOOD_BLOCK = { x: 0.9, y: 0.9, size: 22.2, radius: 6.4 } as const;

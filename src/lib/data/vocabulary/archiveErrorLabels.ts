@@ -8,7 +8,7 @@
    One whole catalogued sentence per kind, never the error's own message:
    the archive errors carry English diagnostics for the console, and a
    Polish reader must not get one of those spliced into a Polish
-   paragraph (docs/ui-copy.md).
+   paragraph.
 
    Two full records rather than one, because import and the verify drill
    say different things about the same failure - the drill only reads a

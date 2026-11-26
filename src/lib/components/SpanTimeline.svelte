@@ -757,9 +757,7 @@
     {/each}
   </div>
 
-  <!-- What the rail is showing, against the handles rather than two
-       elements away under the title (DIRECTION.md rule 7's own "say it
-       once, where it is true"). -->
+  <!-- Keep the reading next to the rail handles. -->
   <p class="span-tl-state" data-span-state-line>
     {#key spanDates}<span class="span-tl-reading" out:crossfade use:dateFadeIn>{spanDates}{`, ${m.n_days({ n: shownDays })}`}</span>{/key}
   </p>
@@ -1090,12 +1088,9 @@
   .span-tl-hband.is-open-start { border-left: 0; }
   .span-tl-hband.is-open-end { border-right: 0; }
 
-  /* A milestone: a 12px block of ink on the axis, edged in the page so it
-     reads on any band. Ink rather than a stripe, because it sits on the
-     eras' colours and a stripe would vanish into the band of its own hue;
-     the marks and today's line are the rail's time marks, and the colours
-     are the person's eras (DIRECTION.md rule 4: ink for the smallest
-     things). */
+  /* A milestone is a 12px ink block edged in the page colour. Ink stays
+     visible over any era band. The marks and today's line tell time,
+     while the bands carry the person's eras. */
   .span-tl-mark {
     position: absolute;
     bottom: -7px;

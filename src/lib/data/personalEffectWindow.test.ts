@@ -76,14 +76,10 @@ test('every tier-1 effect - the original eight plus ticket 41s widening - has a 
   for (const effect of ALL_TIER_1) assert.ok(literatureWindow(effect), `expected a window for ${effect}`);
 });
 
-/* Functional audit ticket 22: every band follows WPATH SOC8 Appendix C
-   Table 1 (p. S254), cell for cell, in months. SOC8 writes years for the
-   long figures; 2-5 y is 24-60 here, and ">5 y" is an open completion from
-   60. `null` is SOC8's "unknown" or "variable": no completion is drawn.
-   The research behind this table, and the nine cells where SOC8 departs
-   from the Hembree 2017 tables it says it adapts, are in the docs repo
-   (docs/research/onset-bands-soc8.md, ADR
-   ADR-0096). */
+/* ADR-0096 names the source: WPATH SOC8 Appendix C, Table 1 (p. S254).
+   Convert years to months. A 2-5 year span becomes 24-60 months and
+   >5 years is open from month 60. Unknown or variable completion is null
+   and draws no endpoint. */
 const SOC8_TABLE_1: Record<string, [onsetMin: number, onsetMax: number, completion: [number, number | null] | null]> = {
   // Feminizing (estradiol)
   breast_development: [3, 6, [24, 60]],

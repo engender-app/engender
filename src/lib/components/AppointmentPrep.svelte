@@ -83,7 +83,7 @@
            (carry-forward flag, delete) where `action` takes one, and a
            checkbox main that's role="checkbox" with its own .ap-box.
 
-           Each row opens and closes its own height (ADR-0078), so an item
+           Each row opens and closes its own height, so an item
            added from the sheet arrives by moving rather than appearing
            where it lands. -->
       {#each items as item (item.id)}

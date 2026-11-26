@@ -113,7 +113,7 @@ describe('the notifications view (ticket 04)', () => {
       NOTIFICATION_ROWS.map((row) => [row.key, row.notify?.channel])
     ).toEqual([
       ['reminders', 'reminders'],
-      // A wear prompt is an ordinary Reminder row (CONTEXT.md), so it
+      // A wear prompt is an ordinary Reminder row, so it
       // arrives on the reminder channel rather than one of its own.
       ['check-in', 'checkIn'],
       ['wear-elapsed', 'reminders'],

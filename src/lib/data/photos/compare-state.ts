@@ -63,8 +63,8 @@ export function stepPair(
 
 /** The two photographs a screen opens the wipe on when nobody has picked a
     pair yet: the oldest and the newest, which is the widest comparison the
-    list holds and the one an area screen is asking about when it opens
-    (DIRECTION.md rule 16). Null with fewer than two, where there is nothing
+    list holds and the one an area screen is asking about when it opens.
+    Null with fewer than two, where there is nothing
     to compare.
 
     Not a pairing rule in ADR-0012's sense - nothing here matches poses,

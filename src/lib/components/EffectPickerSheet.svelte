@@ -5,7 +5,7 @@
      Picks change the draft. A stored personal_effect stays ticked
      and keeps its first-noticed date. Remove it through /care/changes.
      Local collapse animates list changes without replaying rows when
-     the sheet opens (DIRECTION.md rule 10). */
+     the sheet opens. */
   import { m } from '$lib/paraglide/messages';
   import type { PersonalEffectCatalogEntry } from '$lib/data/types';
   import type { Role } from '$lib/theme/roles';

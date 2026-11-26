@@ -1,5 +1,5 @@
 <!-- Each selectable region is a band clipped to the same silhouette
-     (bodySilhouette.ts, ADR-0087). Adjacent bands share a 1px hairline,
+     from bodySilhouette.ts. Adjacent bands share a 1px hairline,
      keeping the contour continuous. Real buttons overlay the decorative
      SVG to provide focus, touch targets and accessible names.
 

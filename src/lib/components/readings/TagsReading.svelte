@@ -134,7 +134,7 @@
   let insightEntriesCapped = $derived(insightEntriesQuery.rows.length > INSIGHT_ENTRIES);
   let insightEntries = $derived(insightEntriesQuery.rows.slice(0, INSIGHT_ENTRIES));
 
-  /* Share by tag (ADR-0058). `tagShare` and not the recap's `topTags`: a
+  /* Share by tag. `tagShare` and not the recap's `topTags`: a
      parts-of-a-whole form computes each share against the sum of what it
      is handed, and a LIMIT 3 read drew three tags as a full circle. The
      answer carries which days it counted, so the ring swaps on the answer

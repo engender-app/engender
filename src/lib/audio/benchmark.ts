@@ -8,7 +8,7 @@
    The passage is read aloud: it carries the pitch figures and the speaking
    rate, and steadiness is not asked of it. The vowel is held: it carries the
    resonance and the signal-to-noise the resonance was measured under, and
-   all four checks apply. Both are descriptive (PRODUCT.md:109).
+   all four checks apply. Both measures describe the sample.
 
    Pure, and node-tested: nothing here decodes audio (audio/capture.ts). */
 

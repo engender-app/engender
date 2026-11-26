@@ -22,9 +22,8 @@ import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 import { iconOf } from './rowIcon';
 import { appointmentDayRow } from './appointmentDayRow';
 
-/** One line in the day's context list. `subtitle` is the earned exception
-    (DIRECTION 3b), not the standard: most rows say everything in the
-    title. */
+/** A line in the day's context list. Supply a subtitle when the title
+    needs more context. */
 export interface DayRow extends Pick<HubRow, 'icon'> {
   /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
   key: string;
@@ -129,10 +128,8 @@ const SECTION_ROWS: Record<
       href: '/care/labs'
     })),
 
-  /* The median pitch and nothing read into it (PRODUCT.md:109): a
-     descriptive parameter, no range, no colour, no good or bad end. The
-     subtitle is earned for the reason the wear row's is - a bare figure in
-     Hz does not say what kind of record it belongs to. */
+  /* Report median pitch in Hz without a reference range or judgment.
+     The subtitle identifies the benchmark the value came from. */
   // The compare surface rather than the recorder (searchHitRows.ts sends a
   // benchmark hit there too), so its icon is that surface's, read off the
   // voice-benchmark row rather than the recordings tab's own `mic`.

@@ -5,7 +5,7 @@
    component that draws them, which is the same split day.ts keeps from
    vocabulary/dayLabels.ts and BarRows.svelte from barRow.ts.
 
-   Descriptive only (PRODUCT.md:109). An annotation names a thing and a date.
+   An annotation names a thing and a date.
    None of these strings says a reading moved, rose, fell or responded, and
    none of them puts an event and a value in the same sentence: a label that
    read "estradiol started, dysphoria down" would be the causal claim the

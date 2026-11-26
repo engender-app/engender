@@ -34,7 +34,7 @@ export interface PreferenceValues {
   theme: 'system' | 'light' | 'dark';
   palette: string;
   launcherIconShape: 'current' | 'round';
-  /** Mood's own fixed 5-step scale (ADR-0025), independent of `palette` -
+  /** Mood's own fixed 5-step scale, independent of `palette` -
       selectable on its own so a mood dot never has to double as a gender
       colour. */
   moodPreset: string;
@@ -74,7 +74,7 @@ export interface PreferenceValues {
       one installation's entry screen, not anything the journal carries. */
   guidedPromptsEnabled: boolean;
   /** Whether a running binder session past eight hours picks up its
-      duration cue, on the wear screen and the live tile (ADR-0064). Default on: the figure is well enough sourced to
+      duration cue, on the wear screen and the live tile. Default on: the figure is well enough sourced to
       show unasked, and the cue blocks nothing.
 
       It covers the cue and only the cue. The static safety facts on the
@@ -129,7 +129,7 @@ export interface PreferenceValues {
       archive: this is a yes/no about whether this installation may fire. */
   remindersEnabled: boolean;
   /** Whether a wear session's own elapsed prompt is scheduled. A wear prompt is an ordinary Reminder row on a `wear:`
-      auto-source (CONTEXT.md), so this gates that subset rather than a
+      auto-source, so this gates that subset rather than a
       producer of its own, and independently of `remindersEnabled`: wanting
       medication reminders is not wanting to be told a binder has been on for
       eight hours. Device-local for the same reason `remindersEnabled` is. */
@@ -156,7 +156,7 @@ export interface PreferenceValues {
   quietHoursEnabled: boolean;
   /** When quiet hours begin, as wall-clock `HH:MM`.
       Stored as a time rather than an instant for the same reason a Reminder
-      is (CONTEXT.md): 22:00 means 22:00 after a flight, not the instant that
+      is: 22:00 means 22:00 after a flight, not the instant that
       was 22:00 at home. */
   quietHoursStart: string;
   /** When quiet hours end, as wall-clock `HH:MM`. A window may wrap past
@@ -228,7 +228,7 @@ export interface PreferenceValues {
       null. Store its journal-derived `sinceEpochDay` so reopening without
       writing does not repeat it and later gaps get their own opening.
       Keep it device-local so a restore can show the return on a new
-      installation (ADR-0062). */
+      installation. */
   comingBackSeenSince: number | null;
   /** Which drugs a person has turned off the clinician summary's regimen,
       dose-history and exposure sections, keyed by drug name (ADR-0031). On (absent or false) by default. Device-

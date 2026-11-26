@@ -193,8 +193,8 @@ const EFFECT_CATEGORY_NAME: Record<BuiltInEffectCategoryKey, Message> = {
   sexual: m.effect_category_sexual
 };
 
-/** Which side of the midpoint a body-region reading fell on, in words
-    (ADR-0081). One place, because the figure speaks it in a panel's
+/** Which side of the midpoint a body-region reading fell on, in words.
+    One place, because the figure speaks it in a panel's
     accessible name and the map screen writes it into the sentence beside
     the figure, and the two are the same word. */
 export const bodyRegionAxisName = (axis: BodyRegionAxis): string =>
@@ -297,8 +297,7 @@ const PROCEDURE_KIND_NAME: Record<ProcedureKind, Message> = {
 /** The name of a procedure's kind, including `custom`. */
 export const procedureKindName = (kind: ProcedureKind): string => PROCEDURE_KIND_NAME[kind]();
 
-/** Every procedure kind, compiled-in set first and `custom` last (CONTEXT.md,
-    Surgery) - what the procedure editor's kind picker offers. */
+/** Procedure kind picker order: compiled-in kinds, then `custom`. */
 export const PROCEDURE_KINDS: ProcedureKind[] = [
   'vaginoplasty',
   'vulvoplasty',

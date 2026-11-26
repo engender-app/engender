@@ -1,6 +1,6 @@
 <script lang="ts">
-  /* Draw the mood distribution on Look back in mood's own ramp
-     (ADR-0025). Leave it out below the entry floor or when no day
+  /* Draw the mood distribution on Look back in mood's own ramp.
+     Leave it out below the entry floor or when no day
      in the span has a mood. Look back already explains sparse spans. */
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';

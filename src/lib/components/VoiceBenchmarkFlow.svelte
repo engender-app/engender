@@ -7,7 +7,7 @@
      vowelScale.ts fits the factor across vowels with usable pairs. Only ah
      supplies the stored resonance and room figures. Advice concerns
      recording conditions and length. Figures retain their units and imply
-     no judgment about the voice (PRODUCT.md). */
+     no judgment about the voice. */
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';

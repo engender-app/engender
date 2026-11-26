@@ -79,7 +79,7 @@ describe('what a day is drawn as on the calendar', () => {
     count: values.length
   });
   /* The two step systems a caller can hand in: a gender dimension resolves
-     through the heat ramp, mood through its own five faces (ADR-0025). */
+     through the heat ramp, mood through its own five faces. */
   const onRamp = (range: { min: number; max: number }) => (value: number) => heatLevel(value, range);
 
   it('draws nothing for a day the metric was never logged on', () => {

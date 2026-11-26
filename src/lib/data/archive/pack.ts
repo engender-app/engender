@@ -53,7 +53,7 @@ export type KeyDerivation = (
   kdf: Argon2Params
 ) => Promise<Uint8Array<ArrayBuffer>>;
 
-/** Watching a pack that is already under way (ADR-0070). Both halves are optional and neither changes what comes out:
+/** Watching a pack that is already under way. Both halves are optional and neither changes what comes out:
     an export packed without them is byte for byte the one packed with. */
 export interface PackWatch {
   /** Plaintext body bytes handed to the encryptor, against the body's
@@ -66,8 +66,8 @@ export interface PackWatch {
       payload's own JSON is real work too on a decade of entries. */
   onProgress?(done: number, total: number): void;
   /** Stops the pack. Safe at any point: an interrupted export has written
-      nothing to the journal, so cancelling only means trying again
-      (ADR-0070). The abort surfaces to the caller as an AbortError from
+      nothing to the journal, so cancelling only means trying again.
+      The abort surfaces to the caller as an AbortError from
       whatever is draining the generator. */
   signal?: AbortSignal;
 }

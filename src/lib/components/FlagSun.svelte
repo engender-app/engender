@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Draw the active flag at the field's top right, one ring per stripe
-     or a disc for Polish (DIRECTION.md tier 0, ADR-0035). Read activeFlag
+     or a disc for Polish. Read activeFlag
      reactively. A mount-only read could capture the localStorage mirror
      before SQLite loads the palette.
 

@@ -40,7 +40,7 @@
     /** Set where the whole run is disclosed at once by a control (Good
         moments' "See all", phase 14 ticket 18): each day clips open from
         its own left edge, one --stagger-step behind the one above, the
-        way every block in the app arrives (rule 10, ADR-0078). Without
+        way every block in the app arrives. Without
         it a run mounts as it stands, and only a day added later opens. */
     arrive?: boolean;
     /** Each day's heading level, handed to DayCard: the placing screen's

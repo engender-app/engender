@@ -3,7 +3,7 @@
      a chevron.
 
      The subtitle is optional because subtitles are earned, not standard
-     (DIRECTION.md 3b). Plenty of rows have nothing to put there. The More
+     when a title already identifies the destination. The More
      hub used to be the example of that and is now the example of earning
      it: every one of its rows carries a second line, either a reading of
      when its area was last written to or a short line about what is behind

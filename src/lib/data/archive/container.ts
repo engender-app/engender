@@ -57,7 +57,7 @@ export const LEGACY_ARCHIVE_FILE_EXTENSION = '.ttbackup';
 /** Which of the two refusals it was. The screen picks its wording from this
     rather than from the message: the message is a diagnostic and stays
     English for the console, while the sentence a person reads has to exist
-    in both catalogues (docs/ui-copy.md). */
+    in both catalogues. */
 type UnsupportedArchiveKind = 'not-an-archive' | 'newer-version';
 
 export class UnsupportedArchiveError extends Error {

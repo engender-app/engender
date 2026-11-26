@@ -50,7 +50,7 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
     A row whose title already says what is behind it holds null and draws no
     line.
     Each is earned by a title that does not say what the screen is
-    (DIRECTION.md 3b) - "Eras", "Care", "Safe space" name
+    on its own. "Eras", "Care" and "Safe space" name
     something the app invented - and, on the reading rows, by a fresh journal
     otherwise leaving thirteen rows mute. Each is a short form of that
     screen's own intro rather than new copy, so the row and the screen behind

@@ -10,10 +10,10 @@
 
      Under disguise, gateFlag suppresses the sun and the field uses --surface-2
      and --text. Callers use appWordmark to select the decoy name or
-     m.app_name() (ADR-0035). A chosen name can identify someone to a person
+     m.app_name(). A chosen name can identify someone to a person
      who sees the lock screen.
 
-     Arrival is immediate on boot and lock (ADR-0078). The field edge travels
+     Arrival is immediate on boot and lock. The field edge travels
      on later state changes. Keep controls, status and the exit under the field.
      Only that region can scroll. */
 

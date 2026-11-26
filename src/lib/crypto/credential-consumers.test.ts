@@ -191,8 +191,7 @@ test('wrong selection mode fails explicitly', () => {
    that contradicts itself. That trade is only safe while the constant is
    what the copy says, so the constant is pinned here: a change to
    PIN_LENGTH has to fail a test rather than silently make a risk screen
-   lie (docs/ui-copy.md, "the sentence must be exactly as final as the
-   behaviour, in both languages"). */
+   lie. */
 test('the PIN length the copy is written around is the one the pad collects', async () => {
   const { PIN_LENGTH } = await import('./params.ts');
   expect(PIN_LENGTH).toBe(4);

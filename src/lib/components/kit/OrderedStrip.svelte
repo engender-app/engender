@@ -1,6 +1,6 @@
 <script lang="ts">
-  /* This strip keeps a scale's steps in order (ADR-0058). Segment widths
-     show shares and use mood's fixed colours (ADR-0025). Zero-share steps
+  /* This strip keeps a scale's steps in order. Segment widths
+     show shares and use mood's fixed colours. Zero-share steps
      stay in the sequence. A single left-to-right wipe reveals the whole
      bar without gaps.
 
@@ -42,7 +42,7 @@
      times with four chances to disagree.
 
      The denominator here is the sum of every step, not the tallest one:
-     this is a part-to-whole strip (ADR-0058), the same rule Donut's own
+     this is a part-to-whole strip, the same rule Donut's own
      whole is (charts/parts.ts's `slices`), and a different question from
      what BarRows and Distribution ask, where a row's length only means
      something next to the tallest row in the set. Left inline rather than
@@ -167,8 +167,7 @@
        --space-1 gap above the track, with a couple of pixels left over. A
        literal rather than a spacing step, because this is clearance for a
        thing drawn over the track, not rhythm between two blocks - which is
-       what the spacing scale's steps above 20 are reserved for (phase 10,
-       DIRECTION.md rule 1). */
+       what the spacing scale's steps above 20 are reserved for. */
     margin-top: 32px;
     animation: kit-ordered-in var(--dur-slow) var(--ease-out) both;
   }
@@ -214,7 +213,7 @@
 
   /* The hovered segment, blended toward the app's own ink rather than
      brightened: mood's ramp is picked to be sat on across four presets
-     and two themes (ADR-0025), and a flat brightness multiplier reads
+     and two themes, and a flat brightness multiplier reads
      right on some of those and washes out on others. Blending in --text
      instead darkens it on a light theme and lightens it on a dark one,
      which is a highlight either way - the same idiom

@@ -983,7 +983,7 @@ test('every wear session has a kind, and a write that names none gets the defaul
   const db = await migratedDb();
 
   /* NOT NULL because every user-facing string on that screen is picked by the
-     kind (ADR-0064), so there is no wording to draw without one. The default
+     kind, so there is no wording to draw without one. The default
      is what a write that says nothing gets - and what the rows written before
      the column existed became. */
   db.raw.exec(`INSERT INTO wear_session (uuid, start_timestamp, duration_ms, note, updated_at)

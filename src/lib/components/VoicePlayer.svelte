@@ -122,7 +122,7 @@
      arrives (the standing motion clause - a row that grows by 48px in one
      frame moves everything under it in one frame), and what does arrive
      arrives by being uncovered from its own edge rather than faded up from
-     nothing (DIRECTION rule 10: blocks clip in). `|global` because the {#if}
+     nothing. Use `|global` because the {#if}
      is what flips, and a transition on a child of something that is itself
      appearing would otherwise never play. -->
 <div class="voice-player" bind:this={box}>

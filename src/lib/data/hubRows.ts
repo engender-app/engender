@@ -520,11 +520,8 @@ export type HubLine =
       heading rather than moving to the finished set - it is not done, and
       grouping it with what is would say so. */
   | { kind: 'suspended'; epochDay: number }
-  /** What is running, what is next, or a last value - `rowForward.ts`'s
-      three kinds, taken whole rather than restated (phase 11 all-four-doors
-      ticket 02, DIRECTION.md rule 16). Six shapes became nine, and the four
-      past-tense ones above now speak only where a row has nothing forward to
-      say. */
+  /** rowForward.ts supplies the running, next or last value. Use one of the
+      past-tense shapes only when no forward fact is available. */
   | RowForward;
 
 /** Everything the hub reads, so nothing below asks for itself.

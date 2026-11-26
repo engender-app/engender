@@ -72,7 +72,7 @@ export function homeTiles(
   active: () => boolean = () => true,
   /** Whether something else on the screen counts seconds and needs the
       clock to tick every second even when the wear tile reads nothing -
-      Home's pinned wear row, which rides this clock (ADR-0051). */
+      Home's pinned wear row, which rides this clock. */
   secondHand: () => boolean = () => false
 ): HomeTileGrid {
   const todayEpochDay = $derived(today());
@@ -241,7 +241,7 @@ export function homeTiles(
       return composable;
     },
     /* The grid's own clock, handed out so Home's pinned rows ride it rather
-       than opening a second one (ADR-0051). The wear row counts up beside
+       than opening a second one. The wear row counts up beside
        the wear tile and the two may not disagree by a second, which is only
        true while both read the same tick (phase 11 all-four-doors ticket
        02). */

@@ -185,7 +185,7 @@ export function roadmapList<K extends string, C extends OwnGoal, Cat extends { r
 }
 
 /** Remaining work in the legal group, as a plain count rather than a
-    fraction of the whole pack (DIRECTION.md rule 16). `not-my-path` counts
+    fraction of the whole pack. `not-my-path` counts
     as resolved the same way `checked` does: a step somebody has ruled out
     is not one they are still on. */
 export function roadmapStepsLeft<K extends string, C extends OwnGoal, Cat>(

@@ -446,7 +446,7 @@
 </nav>
 
 <!-- The indicator is on the anchor, not on a wrapper inside it, so it covers
-     the icon and the label as one shape (DIRECTION.md). A pill behind the
+     the icon and the label as one shape. A pill behind the
      icon alone leaves the label sitting outside the lit area, which reads as
      two elements rather than one tab. -->
 {#snippet tab(item: (typeof NAV)[number])}

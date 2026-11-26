@@ -249,7 +249,7 @@ test('the two axes of a region trend independently, and an unlogged axis is abse
     mood: 3,
     bodyRegions: { chest: 80 } // euphoria 60
   });
-  // A region is one value now (ADR-0081), so a day carrying
+  // A region is one value now, so a day carrying
   // both a dysphoria and a euphoria reading needs two entries rather than
   // one row's two axes - the independence this test is about lives at the
   // day level, not the row.
@@ -921,8 +921,7 @@ test('tagShare counts every tag, uncapped, so a ring can be a ring of the whole 
   /* Four distinct tags, so the recap's own LIMIT 3 would drop one. That drop
      is the whole reason this read exists: a parts-of-a-whole form computes
      each share against the sum of what it is handed, so a top three drawn as
-     a full circle inflates every share and can never show the remainder
-     ADR-0058 requires. */
+       a full circle inflates every share and loses the remainder. */
   await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-tired', 'e-happy'] });
   await journal.entries.upsertEntry({ epochDay: 101, mood: 3, tags: ['e-tired', 'e-calm'] });
   await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['e-tired'] });

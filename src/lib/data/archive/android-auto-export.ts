@@ -162,7 +162,7 @@ export async function runAndroidAutoExport(
     deps.recordBackup(source.snapshotAt ?? writtenAt);
     return { outcome: 'ok', writtenAt: finished.writtenAt };
   } catch (error) {
-    /* A stopped pack is an answer, not a failure (ADR-0070): no completed archive
+    /* A stopped pack is an answer, not a failure: no completed archive
        reached the folder and nothing was stamped, so the screen has
        nothing to apologise for and disabling the schedule on it would be
        wrong. Checked before the reason strings below, because an

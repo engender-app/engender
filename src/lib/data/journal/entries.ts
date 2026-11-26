@@ -215,8 +215,8 @@ export interface EntriesArea {
       tag, and starred entries have no business surfacing there. */
   counterevidencePool(tagIds: readonly string[], limit: number): Promise<Entry[]>;
   /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
-      or body-region dysphoria intensity >= 50), newest first
-      (ADR-0040). Returns undefined when no such entry exists. */
+      or body-region dysphoria intensity >= 50), newest first.
+      Returns undefined when no such entry exists. */
   latestBadMomentEntry(dysphoriaTagIds?: readonly string[]): Promise<Entry | undefined>;
   /** The same entry's id alone, `undefined` when there is none. Its own read
       rather than a field off the one above, because hydrating an entry costs
@@ -850,7 +850,7 @@ export function makeEntriesArea(
 
   /* The newest bad moment, at whatever width the caller needs it: the two
      reads below differ only in their SELECT list, and the rule for what
-     counts as a bad moment (ADR-0040) has no business being
+     counts as a bad moment has no business being
      written twice. */
   const latestBadMomentRow = <Row extends Record<string, unknown> = EntryRow,>(
     columns: string,

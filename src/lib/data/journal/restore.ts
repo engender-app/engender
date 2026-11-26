@@ -63,7 +63,7 @@ export interface RestoreContents {
   fileCount?: number;
 }
 
-/** Which half of a restore is running and how far through it is (ADR-0070).
+/** Which half of a restore is running and how far through it is.
 
     Two stages rather than one number, because they are separately long and
     separately countable: the photos arrive one at a time off the archive's
