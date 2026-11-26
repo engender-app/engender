@@ -15,10 +15,8 @@ export function scaleLean(scales: readonly string[]): 'femme' | 'masc' | null {
   return null;
 }
 
-/** Matching-lean items first, everything else after, each group keeping its
-    own existing order. A `null` lean means the ticked scales carry none, so the list
-    score). A `null` lean means the ticked scales carry none, so the list
-    comes back unranked rather than grouped around `'neutral'`. */
+/** Put matching items first and preserve order within each group.
+    A null lean keeps the original order. */
 export function rankByLean<T extends { lean: Lean }>(items: readonly T[], lean: 'femme' | 'masc' | null): T[] {
   if (lean === null) return [...items];
   const matching = items.filter((item) => item.lean === lean);

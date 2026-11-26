@@ -1,18 +1,7 @@
 <script lang="ts">
-  /* A row of the list card: an icon disc, a title, an optional subtitle and
-     a chevron.
-
-     The subtitle is optional because subtitles are earned, not standard
-     when a title already identifies the destination. The More
-     hub used to be the example of that and is now the example of earning
-     it: every one of its rows carries a second line, either a reading of
-     when its area was last written to or a short line about what is behind
-     it (phase 8 UX ticket 02, and the spec's user story 13 - "each row to
-     tell me what is behind it, so that navigating is also reading").
-
-     Renders as a link where it navigates and as a button where it acts, so
-     a destination is a destination to the keyboard and to the screen reader
-     as well as to the eye. */
+  /* A list row has an icon, title and chevron. A subtitle can show the
+     latest reading or describe the destination. Render a link for
+     navigation and a button for an action. */
   import type { Snippet } from 'svelte';
   import { crossfade, resize } from '$lib/motion/reveal';
   import Icon from '../Icon.svelte';

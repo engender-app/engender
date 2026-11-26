@@ -106,15 +106,11 @@
        was the one thing out of the column. Above it, the title starts where
        the content does and the arrow keeps its full target. Material's own
        large-title pattern puts it there too. -->
-  <!-- The field is a solid block
-       block of one of the flag's colours, published by activeFlag as
-       --field and --field-ink, behind the back control, the title and the
-       actions. Only large type sits on it - nonbinary's purple carries
-       white at 4.41:1, legal for large text and nothing smaller - which is
-       why the subtitle is outside the field, on the page, and why
-       tests/browser-tier/direction-contracts.ts holds every rule that sizes type
-       inside this element to 24px, or 18.66px bold. The unlocked app
-       always paints the flag here, disguise or not (FA 42). -->
+  <!-- activeFlag sets --field and --field-ink behind back, title and
+       actions, including after a disguised unlock. Keep the subtitle
+       on the page below. The nonbinary field reaches 4.41:1, so its
+       text must be at least 24px or 18.66px bold. direction-contracts.ts
+       checks the field type sizes. -->
   <div class="screen-field" data-screen-field use:resize>
     <!-- The blind: the field's colour, split off from
          the box that measures it so the two can move on different clocks

@@ -274,8 +274,7 @@ describe('the surfaces', () => {
 
 describe('the charts', () => {
   it('has nowhere to say what a reading means', () => {
-    // A heading names the reading without interpreting it. No summary slot follows.
-    // prop for a finding and no slot under the marks for a paragraph.
+    // A chart heading names the reading. The chart has no findings slot.
     const chartCard = source('ChartCard.svelte');
     for (const forbidden of ['description', 'caption', 'finding', 'summary', 'insight', 'note']) {
       expect(chartCard, forbidden).not.toMatch(new RegExp(`\\b${forbidden}\\??:`));

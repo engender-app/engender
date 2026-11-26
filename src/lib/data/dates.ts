@@ -57,18 +57,9 @@ export function fmtDayBar(epochDay: number, todayEpochDay: number): string {
   });
 }
 
-/** The two ends of a chart's range, written so they cannot read backwards.
-
-    A gutter says what the ends of the scale are and nothing else
-    so a day and a short
-    month is all it needs - until the range crosses a year, at which point
-    "22 Jun" on the left and "17 Jun" on the right is a chart that appears
-    to run backwards. Found on the lab results screen, whose range is however long somebody has been having blood drawn
-    rather than the fixed window the Stats hub plots.
-
-    The year goes on both ends or neither: one dated end beside an undated
-    one reads as the undated one being the current year, which is the same
-    wrong reading in a quieter form. */
+/** Label the chart endpoints with day and short month. If the range
+    crosses a calendar year, include the year at both ends so the dates
+    read in order. */
 export function fmtRangeEnds(fromEpochDay: number, toEpochDay: number): { from: string; to: string } {
   const opts: Intl.DateTimeFormatOptions = crossesCalendarYear(fromEpochDay, toEpochDay)
     ? { day: 'numeric', month: 'short', year: 'numeric' }

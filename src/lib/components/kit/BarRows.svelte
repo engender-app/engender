@@ -51,15 +51,8 @@
 <div class="kit-bars" data-chart="bars">
   {#each drawn as row, i (row.key)}
     {#if onPick}
-      <!-- The wash in kit.css is the whole answer to a press here, which is
-           a full-width row responds with a fill rather
-           than scales, because scaling a row moves the card it sits in. The
-           note beside that wash has said so since the row became pressable,
-           and it was only a claim - press.css is opt-out, so this row took
-           the compact depth like any other button, and 0.94 on a 306px row
-           walks each edge 9.2px inward while the card around it holds still
-           (Alicja, on the screencast: the click animation yanks). ListRow
-           and DayEntry opted out for the same reason. -->
+      <!-- Use the kit.css press wash. Opt out of press scaling so the row
+           edges stay aligned with the card, as in ListRow and DayEntry. -->
       <button
         type="button"
         class="kit-bar is-open"
