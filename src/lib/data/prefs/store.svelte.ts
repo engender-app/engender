@@ -142,6 +142,56 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
   }
 }
 
+/* A language picked on the welcome, before there is a journal to write it
+   to (pre-release-human ticket 19). A write before the open is held in
+   memory, and setLocale() reloads the page, so the choice needs somewhere
+   that outlives the reload: without it the journal attached with
+   'system', activateLanguagePreference() resolved that against the
+   browser, and a Polish browser was reloaded back into Polish at the
+   access-mode step. attachPreferences takes it as a write made before the
+   open, which is what it is, and drops it.
+
+   Deliberately outside the `engender-` prefix. A boot that finds no
+   journal sweeps every `engender-` key as a mirror of a journal that is
+   gone (reset.ts, clearBrowserMirrors), and a first run is exactly such a
+   boot, on the reload this key exists to survive. What it holds is no more
+   than paraglide's own PARAGLIDE_LOCALE, which outlives a reset too. */
+const HELD_LANGUAGE_KEY = 'setup-language';
+
+/** The two languages the app ships in. */
+export type AppLanguage = 'en' | 'pl';
+
+function heldLanguage(): AppLanguage | null {
+  try {
+    const held = localStorage.getItem(HELD_LANGUAGE_KEY);
+    return held === 'en' || held === 'pl' ? held : null;
+  } catch {
+    return null;
+  }
+}
+
+function setHeldLanguage(value: AppLanguage | null) {
+  try {
+    if (value) localStorage.setItem(HELD_LANGUAGE_KEY, value);
+    else localStorage.removeItem(HELD_LANGUAGE_KEY);
+  } catch {
+    /* storage full / private mode: the choice lasts until the reload */
+  }
+}
+
+/** Picks the app's language and switches to it, which reloads the page.
+    With a journal open the write lands first, as Settings does it; before
+    one, the choice is held until the journal attaches. */
+export async function chooseLanguage(value: AppLanguage): Promise<void> {
+  if (backing) {
+    await setPreferenceDurably('language', value);
+  } else {
+    setHeldLanguage(value);
+    prefs.language = value;
+  }
+  activateLanguagePreference();
+}
+
 /** Prepare publication before Replace starts. Capture its authoritative
     snapshot inside the transaction, then publish after success without SQL.
     A lock or newer attachment owns both projection and boot mirror. */
@@ -187,6 +237,11 @@ export async function detachPreferences(): Promise<void> {
 /** Boot step 2: SQLite is open and authoritative from here. Anything
     written during step 1 survives - it is newer than what the table holds. */
 export async function attachPreferences(preferences: Preferences) {
+  const held = heldLanguage();
+  if (held && !writtenBeforeOpen.has('language')) {
+    values.language = held;
+    writtenBeforeOpen.add('language');
+  }
   const stored = preferences.all();
   for (const key of Object.keys(stored) as PreferenceKey[]) {
     if (!writtenBeforeOpen.has(key)) values[key] = stored[key] as never;
@@ -198,4 +253,6 @@ export async function attachPreferences(preferences: Preferences) {
   const replay = [...writtenBeforeOpen];
   writtenBeforeOpen.clear();
   for (const key of replay) write(key);
+  // The journal has it now, and reads it back on every later boot.
+  setHeldLanguage(null);
 }
