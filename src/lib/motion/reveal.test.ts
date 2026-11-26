@@ -226,6 +226,22 @@ describe('tier 3, a group opening its own height', () => {
     expect(frame(css!, 0)).toContain('margin-bottom: -20px');
   });
 
+  /* Pre-release 18, item 71: the block below can hold no top margin of its
+     own and still bring one, its first child's, through its bare top edge.
+     The roadmap's Social group does exactly that under the pack, and read
+     as 0 the pack's margin ended 16px short of where the two would meet. */
+  it('counts the margin a next block\'s first child brings through its top edge', () => {
+    stubDocument(false, true, { height: '54px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', overflow: 'visible', display: 'block' });
+    const heading = {};
+    const next = { firstElementChild: heading, parentElement: {} };
+    const pack = { parentElement: {}, previousElementSibling: {}, nextElementSibling: next } as unknown as Element;
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) =>
+      el === next ? { ...shared(), marginTop: '0px' } : el === heading ? { ...shared(), marginTop: '16px' } : shared();
+    expect(frame(disclose(pack).css!, 0)).toContain('margin-bottom: -16px');
+  });
+
   /* Ticket 183: Home's reserves put the notices one plain wrapper down from
      the blocks they close between, and a first child has no sibling above
      it. Its top margin still collapses through the wrapper's bare top edge

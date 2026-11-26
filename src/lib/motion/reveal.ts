@@ -487,7 +487,16 @@ function meetingMargin(node: Element, side: 'prev' | 'next'): number | null {
   let met: number | null = null;
   for (;;) {
     const sibling = side === 'prev' ? at.previousElementSibling : at.nextElementSibling;
-    if (sibling) return Math.max(met ?? 0, parseFloat(getComputedStyle(sibling)[facing]) || 0);
+    if (sibling) {
+      const style = getComputedStyle(sibling);
+      /* Below, the sibling's own first child can bring a top margin through
+         the sibling's bare top edge, and that is the margin met (pre-release
+         18, item 71: the roadmap's Social heading's 16px under the pack
+         closing with the Polish steps - read as 0, the pack's margin ended
+         16px short and the Social group rose 16px in the frame of removal). */
+      const through = side === 'next' ? collapsedTopMargin(sibling, style) : 0;
+      return Math.max(met ?? 0, parseFloat(style[facing]) || 0, through);
+    }
     const wrapper = at.parentElement;
     if (!wrapper || !marginPassesThrough(wrapper, side)) return met;
     const edge = parseFloat(getComputedStyle(wrapper)[own]) || 0;
