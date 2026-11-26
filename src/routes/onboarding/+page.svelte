@@ -38,7 +38,7 @@
   import { registerSetupBack } from '$lib/onboarding/back';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
-  import { chooseLanguage, flushPreferences, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
+  import { chooseLanguage, flushPreferences, prefs, setPreferenceDurably, type AppLanguage } from '$lib/data/prefs/store.svelte';
   import { getLocale } from '$lib/paraglide/runtime';
   import { playOpening } from '$lib/onboarding/opening';
   import { appWordmark } from '$lib/disguise/identity';
@@ -273,7 +273,7 @@
     ['en', 'English']
   ] as const;
   const locale = getLocale();
-  function pickLanguage(code: 'pl' | 'en') {
+  function pickLanguage(code: AppLanguage) {
     if (code !== locale) void chooseLanguage(code);
   }
 
@@ -291,10 +291,10 @@
      opening's own (the stylesheet below). Marked once and never unmarked,
      since taking the class off would restart the CSS entrance; a flag
      picked later redraws a new sun with the entrance it always had. */
-  let sunOpened = !opens;
+  let openingSunDrawn = !opens;
   function openingSun(node: HTMLElement) {
-    if (sunOpened) return;
-    sunOpened = true;
+    if (openingSunDrawn) return;
+    openingSunDrawn = true;
     node.classList.add('is-opening');
     node.dataset.openingSun = '';
   }
@@ -419,6 +419,7 @@
       unregister();
       window.removeEventListener('popstate', popped);
       finishHistory = undefined;
+      clearTimeout(collapseDone);
     };
   });
 
@@ -434,6 +435,8 @@
     if (step === 'welcome' && to !== 'welcome') {
       collapsing = true;
       clearTimeout(collapseDone);
+      /* The edge's own length, and a few frames over for the hold stepBlind
+         paints before it starts. */
       collapseDone = setTimeout(() => (collapsing = false), motionDuration('--dur-slow') + 200);
     }
     step = to;
@@ -807,7 +810,7 @@
            welcome has the language switch in its place, and the two cross
            in one cell as the field collapses into the first step. -->
       <div class="setup-head">
-        {#if step === 'welcome'}
+        {#if hero}
           <div
             class="setup-lang"
             role="radiogroup"

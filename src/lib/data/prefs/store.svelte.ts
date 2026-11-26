@@ -158,7 +158,10 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
    than paraglide's own PARAGLIDE_LOCALE, which outlives a reset too. */
 const HELD_LANGUAGE_KEY = 'setup-language';
 
-function heldLanguage(): 'en' | 'pl' | null {
+/** The two languages the app ships in. */
+export type AppLanguage = 'en' | 'pl';
+
+function heldLanguage(): AppLanguage | null {
   try {
     const held = localStorage.getItem(HELD_LANGUAGE_KEY);
     return held === 'en' || held === 'pl' ? held : null;
@@ -167,7 +170,7 @@ function heldLanguage(): 'en' | 'pl' | null {
   }
 }
 
-function setHeldLanguage(value: 'en' | 'pl' | null) {
+function setHeldLanguage(value: AppLanguage | null) {
   try {
     if (value) localStorage.setItem(HELD_LANGUAGE_KEY, value);
     else localStorage.removeItem(HELD_LANGUAGE_KEY);
@@ -179,7 +182,7 @@ function setHeldLanguage(value: 'en' | 'pl' | null) {
 /** Picks the app's language and switches to it, which reloads the page.
     With a journal open the write lands first, as Settings does it; before
     one, the choice is held until the journal attaches. */
-export async function chooseLanguage(value: 'en' | 'pl'): Promise<void> {
+export async function chooseLanguage(value: AppLanguage): Promise<void> {
   if (backing) {
     await setPreferenceDurably('language', value);
   } else {
