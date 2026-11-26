@@ -164,6 +164,11 @@ export interface StatsArea {
     fromEpochDay: number,
     toEpochDay: number
   ): Promise<ConstellationReading[]>;
+  /** Every pair of scales some entry in the range carries together, with
+      how many entries do - the plane's choices, so it never offers a pair
+      it would draw empty (bug session 18, item 41). Each pair once, its two
+      keys in sort order. */
+  constellationPairs(fromEpochDay: number, toEpochDay: number): Promise<{ a: string; b: string; count: number }[]>;
   /** How many entries each day in the range holds, oldest first, days with
       none left out. Not the same question as `dayAverages`: the calendar
       shades a day by the metric but links it by whether anything was logged
@@ -481,6 +486,21 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       return spreadByDay(metricValues(metric), fromEpochDay, toEpochDay);
     },
 
+    async constellationPairs(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ a: string; b: string; count: number }>(
+        `SELECT ga.key AS a, gb.key AS b, COUNT(*) AS count
+         FROM entry e
+         JOIN entry_dimension_value av ON av.entry_id = e.id
+         JOIN gender_dimension ga ON ga.id = av.dimension_id
+         JOIN entry_dimension_value bv ON bv.entry_id = e.id
+         JOIN gender_dimension gb ON gb.id = bv.dimension_id AND ga.key < gb.key
+         WHERE e.trashed_at IS NULL AND e.epoch_day BETWEEN ? AND ?
+         GROUP BY ga.key, gb.key
+         ORDER BY ga.key, gb.key`,
+        [fromEpochDay, toEpochDay]
+      );
+      return rows.map((row) => ({ a: row.a, b: row.b, count: row.count }));
+    },
     async constellationReadings(xKey, yKey, fromEpochDay, toEpochDay) {
       /* Two joins onto the same pair of tables, one per axis, which is what
          makes this an inner join on both: an entry reaches the plane only

@@ -1034,6 +1034,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
          vocabulary the same way, and carries the entry's presentation, so
          renaming a mode has to reach it (ticket 19). */
       constellationReadings: ['entry', 'dimension', 'presentation'],
+      constellationPairs: ['entry', 'dimension'],
       bodyRegionTrend: ['entry'],
       bodyRegionBreakdown: ['entry', 'photo', 'hairRemoval', 'hairProgress'],
       weeklyWearHours: ['wearSession'],

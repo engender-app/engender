@@ -1188,6 +1188,7 @@ beforeAll(async () => {
   await driveRead('stats', 'constellationReadings', () =>
     journal.stats.constellationReadings(voice.key, 'femininity', 19000, 21000)
   );
+  await driveRead('stats', 'constellationPairs', () => journal.stats.constellationPairs(19000, 21000));
   await driveRead('stats', 'bodyRegionTrend', () =>
     journal.stats.bodyRegionTrend('chest', 'dysphoria', 19000, 21000)
   );

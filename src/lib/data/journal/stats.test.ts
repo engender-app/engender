@@ -888,6 +888,23 @@ test('a constellation axis naming no scale plots nothing', async () => {
   assert.deepEqual(await journal.stats.constellationReadings('femininity', 'nope', 100, 100), []);
 });
 
+// The plane offers only pairs it can draw (bug session 18, item 41): a pair
+// of scales no entry carries together in the range is not a choice.
+test('constellationPairs counts the entries carrying each pair of scales in the range', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, dims: { femininity: 70, masculinity: 20 } });
+  await journal.entries.upsertEntry({ epochDay: 101, timestamp: 2, mood: 3, dims: { femininity: 40, masculinity: 60 } });
+  // One scale only: pairs with nothing.
+  await journal.entries.upsertEntry({ epochDay: 101, timestamp: 3, mood: 3, dims: { femininity: 90 } });
+  // Out of range, and trashed: neither counts.
+  await journal.entries.upsertEntry({ epochDay: 120, timestamp: 4, mood: 3, dims: { femininity: 1, masculinity: 1 } });
+  const gone = await journal.entries.upsertEntry({ epochDay: 100, timestamp: 5, mood: 3, dims: { femininity: 1, masculinity: 1 } });
+  await journal.entries.deleteEntry(gone);
+
+  assert.deepEqual(await journal.stats.constellationPairs(100, 102), [{ a: 'femininity', b: 'masculinity', count: 2 }]);
+  assert.deepEqual(await journal.stats.constellationPairs(102, 110), []);
+});
+
 test('presentationDays names the distinct days a presentation was logged under, and only those (ticket 17, ADR-0048)', async () => {
   const { journal } = await journalWithBuiltIns();
   const girl = await journal.presentations.addPresentation('Girl mode', 0);

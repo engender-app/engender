@@ -72,7 +72,7 @@ describe('the summary panels wait for the floor', () => {
   });
 
   it('stops offering a second scale on a chart with no first one', () => {
-    expect(readings.dayByDay).toContain('{#if metrics.length > 1 && plotted.points.length}');
+    expect(readings.dayByDay).toContain('{#if withData.length > 1 && plotted.points.length}');
   });
 
   /* The sheet and the link that opened it went in ticket 99 item 26. The
