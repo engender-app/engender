@@ -513,7 +513,7 @@
    here at a specificity that beats it. */
 .screen-field .search-box:focus-within {
   border-color: var(--field-ink);
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: -2px;
 }
 .screen-field .search-input:focus-visible { outline: none; }
@@ -680,7 +680,7 @@
    The intent was a slightly rounded ring on square things, and a square
    element getting a square ring is the right answer for that anyway. */
 :is(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* A screen's heading takes focus when the screen arrives, so a screen
@@ -753,7 +753,7 @@
 }
 .switch[aria-checked="true"] .switch-track { background: var(--accent); border-color: var(--accent); }
 .switch[aria-checked="true"] .switch-thumb { background: var(--on-accent); translate: 16px; }
-.switch:focus-visible .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.switch:focus-visible .switch-track { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 2px; }
 /* The one state a switch can be in without being off: the preference it
    holds cannot apply in this mode, so the control reads dimmed rather than
    merely unchecked. Same figure as .btn:disabled, for the same reason. */
@@ -944,7 +944,7 @@ a.segment {
    user still sees exactly which segment holds focus; the mouse just sees
    the pill. */
 .segment:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: -3px;
 }
 
@@ -1691,7 +1691,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    alone that put a focus ring on the slider after every touch drag. The root
    is the tab stop, so the root having focus is what a ring means. */
 .slider-thumb:focus-visible { outline: none; }
-.slider:focus-visible .slider-thumb { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.slider:focus-visible .slider-thumb { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 2px; }
 
 /* An unset slider's own drawing lives with the control (Slider.svelte), out
    of this first-load sheet: only an editor ever draws one. */

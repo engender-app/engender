@@ -173,7 +173,7 @@
     cursor: pointer;
   }
   .field-search-clear:focus-visible {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: -2px;
   }
   .effect-show-all { width: 100%; }

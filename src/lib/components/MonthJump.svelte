@@ -354,7 +354,7 @@
   /* The keyboard ring draws inside the block, so it never sits on top of
      today's ring outside it. */
   .month-jump-cell:focus-visible {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: -4px;
   }
 

@@ -501,7 +501,7 @@
     cursor: pointer;
   }
   :global(.screen-field) .field-search-clear:focus-visible {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: -2px;
   }
 </style>
