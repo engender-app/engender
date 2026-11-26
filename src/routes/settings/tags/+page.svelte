@@ -7,6 +7,8 @@
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import TagIconChoice from '$lib/components/TagIconChoice.svelte';
+  import { tagIconOf, tagIconSvg } from '$lib/components/tagIcons';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -19,7 +21,10 @@
   import { attempt, writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
 
-  let renameTarget = $state<{ id: string; label: string } | null>(null);
+  /* A built-in only renames: its icon is this build's. An own tag's sheet
+     edits its name and its icon together (pre-release-human 22). */
+  let renameTarget = $state<{ id: string; label: string; builtIn: boolean; icon: string | null; was: { label: string; icon: string | null } } | null>(null);
+  let newIcon = $state<string | null>(null);
 
   const record = recordEditor<{ id: string; label: string }>({
     remove: (id) => undoable((j) => j.tags.deleteTag(id)),
@@ -85,22 +90,23 @@
       bind:open={() => openGroups[g.key] ?? !g.builtIn, (next) => (openGroups[g.key] = next)}
     >
       <div class="tag-group-action">
-        <button class="btn btn-soft" data-add-tag aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>
+        <button class="btn btn-soft" data-add-tag aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; newIcon = null; }}>
           <Icon name="plus" size={20} /><span>{m.tags_new_tag()}</span>
         </button>
       </div>
       <div class="managed-tags">
         {#each g.tags as tg, i (tg.id)}
           <div transition:collapse class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
-            <span class="managed-label" data-managed-tag-label={tg.id}>{tg.label}</span>
+            <span class="managed-label" data-managed-tag-label={tg.id}>{@html tagIconSvg(tagIconOf(tg), 18)}{tg.label}</span>
             {#if tg.hidden}<span class="muted small" transition:discloseWidth>{m.tags_hidden()}</span>{/if}
             <span class="managed-actions">
               <button class="icon-btn" data-up aria-label={m.tags_move_up({ label: tg.label })} disabled={i === 0}
                 onclick={() => moveUp(g, i)}>
                 <Icon name="chevronLeft" size={16} />
               </button>
-              <button class="icon-btn" aria-label={m.tags_rename_aria({ label: tg.label })}
-                onclick={() => (renameTarget = { id: tg.id, label: tg.label })}>
+              <button class="icon-btn" aria-label={tg.builtIn ? m.tags_rename_aria({ label: tg.label }) : m.tags_edit_aria({ label: tg.label })}
+                data-edit-tag={tg.id}
+                onclick={() => (renameTarget = { id: tg.id, label: tg.label, builtIn: tg.builtIn, icon: tg.icon ?? null, was: { label: tg.label, icon: tg.icon ?? null } })}>
                 <Icon name="pencil" size={16} />
               </button>
               {#if tg.builtIn}
@@ -145,20 +151,33 @@
     </ReadReserve>
   </div>
 
-  <Sheet busy={sheetWrite.busy} open={renameTarget !== null} title={m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>
+  <Sheet busy={sheetWrite.busy} open={renameTarget !== null} title={renameTarget?.builtIn === false ? m.tags_edit_sheet() : m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>
     {#if renameTarget}
-      <h3>{m.tags_rename_sheet()}</h3>
+      <h3>{renameTarget.builtIn ? m.tags_rename_sheet() : m.tags_edit_sheet()}</h3>
       <Field label={m.tags_rename_sheet()} id="rename-input" hidden>
         {#snippet children(id)}
           <input autocomplete={journalTextAutocomplete()} class="input" {id} name="rename-input" bind:value={renameTarget!.label} />
         {/snippet}
       </Field>
+      {#if !renameTarget.builtIn}
+        <TagIconChoice name="edit-tag-icon" bind:value={renameTarget.icon} />
+      {/if}
       <button
         class="btn btn-primary"
+        data-save-tag
         disabled={sheetWrite.busy}
         onclick={() => {
-          const { id, label } = renameTarget!;
-          saveFromSheet(label.trim() ? () => journal.tags.renameTag(id, label.trim()) : null, () => (renameTarget = null));
+          const { id, builtIn, icon, was } = renameTarget!;
+          const label = renameTarget!.label.trim();
+          const renames = label !== '' && label !== was.label;
+          const reicons = !builtIn && icon !== was.icon;
+          const write = renames || reicons
+            ? async () => {
+                if (renames) await journal.tags.renameTag(id, label);
+                if (reicons) await journal.tags.setTagIcon(id, icon);
+              }
+            : null;
+          saveFromSheet(write, () => (renameTarget = null));
         }}><span>{m.save()}</span></button
       >
     {/if}
@@ -184,6 +203,7 @@
           <input autocomplete={journalTextAutocomplete()} class="input" {id} name="newtag-input" placeholder={m.tags_tag_placeholder()} bind:value={newLabel} />
         {/snippet}
       </Field>
+      <TagIconChoice name="new-tag-icon" bind:value={newIcon} />
       <button
         class="btn btn-primary"
         data-save-new-tag
@@ -191,7 +211,8 @@
         onclick={() => {
           const group = addTarget!;
           const label = newLabel.trim();
-          saveFromSheet(label ? () => journal.tags.addTag(group, label) : null, () => (addTarget = null));
+          const icon = newIcon;
+          saveFromSheet(label ? () => journal.tags.addTag(group, label, icon) : null, () => (addTarget = null));
         }}><span>{m.tags_add_tag()}</span></button
       >
     {/if}
@@ -219,5 +240,11 @@
 <style>
   .tag-group-action {
     margin: 0 0 var(--space-2);
+  }
+  .managed-label :global(.tag-icon) {
+    flex: none;
+    margin-right: var(--space-2);
+    vertical-align: -3px;
+    color: var(--text-2);
   }
 </style>
