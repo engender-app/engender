@@ -475,7 +475,7 @@
                     <span class="compare-tag-name">{tagLabel(tag.id)}</span>
                     {#each [{ side: 'a', count: tag.a }, { side: 'b', count: tag.b }] as bar (bar.side)}
                       <span class="compare-tag-track" aria-hidden="true">
-                        <span class="compare-tag-bar" class:is-b={bar.side === 'b'} style={`--share: ${bar.count / model.tagMax}`}></span>
+                        <span class="compare-tag-bar" class:is-b={bar.side === 'b'} class:is-zero={bar.count === 0} style={`--share: ${bar.count / model.tagMax}`}></span>
                       </span>
                       <span class="compare-tag-count"><RollingNumber value={bar.count} format={fmtCount} /></span>
                     {/each}
@@ -663,7 +663,14 @@
     border-radius: 5px;
     background: var(--role-draw);
     transform: translateX(calc((var(--share) - 1) * 100%));
-    transition: transform var(--dur-slow) var(--ease-out);
+    transition:
+      transform var(--dur-slow) var(--ease-out),
+      opacity var(--dur-slow) var(--ease-out);
+  }
+  /* A count of none draws no bar: the rounded end of a bar slid fully out
+     of its track still left a sliver at the start. */
+  .compare-tag-bar.is-zero {
+    opacity: 0;
   }
   .compare-tag-bar.is-b {
     background: var(--surface);
