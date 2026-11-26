@@ -1580,6 +1580,12 @@
   .setup.is-hero .setup-stage {
     flex: 0 0 auto;
   }
+  /* With one line under the field, a tall frame has room left over once
+     the field reaches its 70%: it goes above the foot, which stays on the
+     window's bottom edge as it does on every step (rule 12). */
+  .setup.is-hero > .setup-foot {
+    margin-top: auto;
+  }
   /* Nothing is asked on the welcome, and the empty region's 20px of margin
      is room the field needs on a short frame. */
   .setup.is-hero .setup-answers {
