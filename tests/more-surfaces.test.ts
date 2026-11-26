@@ -447,7 +447,6 @@ describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
     ['src/lib/components/BodyRegionInspectorSheet.svelte', 'icon="ICON"\\s+title={`\\${hairRemovalAreaName', icon('hair-removal'), 'sparkle'],
     ['src/routes/transition/tryouts/[id]/+page.svelte', 'icon="ICON"\\s+key="tryout-compare"', 'columns', 'shuffle'],
     ['src/routes/health/surgery/[id]/+page.svelte', 'icon="ICON"\\s+key="surgery-compare"', 'columns', 'shuffle'],
-    ['src/routes/compare/+page.svelte', 'key="compare-shortcut"\\s+icon="ICON"', 'columns', 'shuffle'],
     ['src/routes/stats/+page.svelte', '<Notice icon="ICON" key="lookback-empty"', 'stats', 'clock'],
     ['src/routes/voice/+page.svelte', 'icon="ICON"\\s+key="voice-benchmark-empty"', icon('voice-benchmark'), 'mic'],
     ['src/lib/components/VoicePracticeTakes.svelte', 'icon="ICON"\\s+key="voice-practice-takes-empty"', icon('voice-benchmark'), 'mic'],
@@ -475,8 +474,12 @@ describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
     ['src/routes/day/[day]/+page.svelte', '<Icon name="ICON" size=\\{20\\} /><span>{m.era_start_here\\(\\)}', 'era', 'columns'],
     ['src/routes/stats/+page.svelte', 'era-offer-said">\\s*<span class="kit-row-ico"><Icon name="ICON"', 'era', 'columns'],
     ['src/lib/components/searchHitRows.ts', "eras: { icon: 'ICON'", 'era', 'columns'],
-    ['src/routes/compare/+page.svelte', 'key="compare-era-row-a"\\s+icon="ICON"', 'era', 'curve'],
-    ['src/routes/compare/+page.svelte', 'key="compare-era-row-b"\\s+icon="ICON"', 'era', 'curve']
+    /* /compare's period sheet (pre-release-human 21): an era row is placed
+       by its bar on the journal rather than marked by the era glyph, so the
+       only mark on a chosen row is the check, and a date field is a day. */
+    ['src/lib/components/compare/PeriodSheet.svelte', '{#if same\\(current, preset.choice\\)}<Icon name="ICON"', 'check', 'era'],
+    ['src/lib/components/compare/PeriodSheet.svelte', "{#if same\\(current, \\{ kind: 'era', id: era.id \\}\\)}<Icon name=\"ICON\"", 'check', 'era'],
+    ['src/lib/components/compare/PeriodSheet.svelte', '<span class="date-row-icon"><Icon name="ICON" size=\\{18\\} />', 'calendar', 'clock']
   ];
 
   it.each(PLACES)('%s: %s draws %s, not %s', (file, place, mark, old) => {

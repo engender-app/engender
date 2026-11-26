@@ -4382,8 +4382,8 @@ try {
 async function pickCompareRange(side, start, end) {
   await page.locator(`[data-compare-pick="${side}"]`).click();
   await page.waitForSelector(`[data-compare-sheet="${side}"]`);
-  await fillDate(page, `#compare-${side}-start`, start);
-  await fillDate(page, `#compare-${side}-end`, end);
+  await fillDate(page, `[data-compare-sheet="${side}"] [data-compare-field="start"]`, start);
+  await fillDate(page, `[data-compare-sheet="${side}"] [data-compare-field="end"]`, end);
   await page.locator('[data-compare-custom-apply]').click();
   await page.waitForSelector('[data-compare-sheet]', { state: 'detached' });
 }
@@ -4422,7 +4422,7 @@ try {
   if (byHand.entries.length !== 2 || byHand.entries.includes('0')) {
     throw new Error('one of the two periods had no entries: ' + JSON.stringify(byHand.entries));
   }
-  if (await page.locator('[data-compare-table]').count()) throw new Error('the result is still a table');
+  if (await page.locator('table, [role="table"]').count()) throw new Error('the result is still a table');
   if (await page.getByRole('button', { name: /share|export/i }).count()) throw new Error('compare is not view-only');
   ok('compare opens on a result, and two hand-picked periods read the same figures as the default ones');
 } catch (e) { fail('compare two periods', e); }
@@ -5772,7 +5772,7 @@ try {
   const sideRange = async (side) => {
     await page.locator(`[data-compare-pick="${side}"]`).click();
     await page.waitForSelector(`[data-compare-sheet="${side}"]`);
-    const got = [await dateValue(page.locator(`#compare-${side}-start`)), await dateValue(page.locator(`#compare-${side}-end`))];
+    const got = [await dateValue(page.locator(`[data-compare-sheet="${side}"] [data-compare-field="start"]`)), await dateValue(page.locator(`[data-compare-sheet="${side}"] [data-compare-field="end"]`))];
     await page.keyboard.press('Escape');
     await page.waitForSelector('[data-compare-sheet]', { state: 'detached' });
     return got;

@@ -200,6 +200,7 @@
         <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
         <DatePicker
           id={`compare-${shownSide}-start`}
+          data-compare-field="start"
           value={customStart}
           max={todayInput}
           ariaLabel={m.start_date_label()}
@@ -213,6 +214,7 @@
         <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
         <DatePicker
           id={`compare-${shownSide}-end`}
+          data-compare-field="end"
           value={customEnd}
           min={customStart || undefined}
           max={todayInput}
