@@ -474,8 +474,16 @@
                   <div class="compare-tag" data-compare-tag={tag.id} transition:rowFold>
                     <span class="compare-tag-name">{tagLabel(tag.id)}</span>
                     {#each [{ side: 'a', count: tag.a }, { side: 'b', count: tag.b }] as bar (bar.side)}
-                      <span class="compare-tag-track" aria-hidden="true">
-                        <span class="compare-tag-bar" class:is-b={bar.side === 'b'} class:is-zero={bar.count === 0} style={`--share: ${bar.count / model.tagMax}`}></span>
+                      <span class="kit-run-track" aria-hidden="true">
+                        <span class="kit-run-zero compare-tag-zero"></span>
+                        <span class="compare-tag-run">
+                          <span
+                            class="kit-run-bar compare-tag-bar"
+                            class:is-ring={bar.side === 'b'}
+                            class:is-zero={bar.count === 0}
+                            style={`--share: ${bar.count / model.tagMax}`}
+                          ></span>
+                        </span>
                       </span>
                       <span class="compare-tag-count"><RollingNumber value={bar.count} format={fmtCount} /></span>
                     {/each}
@@ -629,9 +637,11 @@
     opacity: 0;
   }
 
-  /* Paired bars per tag: A filled, B a ring, each with its count. Every bar
-     is the track's full width moved left out of a clipping track, so a new
-     count is a transform and the bar's rounded end stays drawn. */
+  /* Paired bars per tag: A filled, B a ring, each with its count. The
+     track, the line the bars start from and the bar's thickness, ends and
+     ink are the kit's `kit-run-*`, the same as the tag card's diverging
+     bars (ticket 20). What differs is the geometry: these grow one way out
+     of a line at the start, not both ways out of one in the middle. */
   .compare-tags {
     display: grid;
     gap: var(--space-3);
@@ -641,40 +651,50 @@
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     column-gap: var(--space-2);
-    row-gap: 4px;
   }
   .compare-tag-name {
     grid-column: 1 / -1;
+    margin-bottom: 2px;
     font-size: var(--text-sm);
     font-weight: var(--weight-bold);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .compare-tag-track {
-    position: relative;
-    height: 10px;
+  .compare-tag-zero {
+    left: 1px;
+  }
+  /* How far a bar may run: 88% of the track, the share the diverging bars
+     take of their half (44 of 50), so the longest bar stops short of the
+     edge rather than reading as progress. A bar is that run's full width
+     slid left out of it, so a new count is a transform and a ring keeps
+     both its ends drawn. */
+  .compare-tag-run {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 88%;
     overflow: hidden;
-    border-radius: 5px;
   }
   .compare-tag-bar {
-    position: absolute;
-    inset: 0;
-    border-radius: 5px;
-    background: var(--role-draw);
+    left: 0;
+    width: 100%;
     transform: translateX(calc((var(--share) - 1) * 100%));
     transition:
       transform var(--dur-slow) var(--ease-out),
       opacity var(--dur-slow) var(--ease-out);
   }
-  /* A count of none draws no bar: the rounded end of a bar slid fully out
-     of its track still left a sliver at the start. */
-  .compare-tag-bar.is-zero {
-    opacity: 0;
-  }
-  .compare-tag-bar.is-b {
+  /* B as a ring in the same ink, the key every figure here uses: which
+     set, never which way (ADR-0012). */
+  .compare-tag-bar.is-ring {
     background: var(--surface);
     border: 2px solid var(--role-draw);
+  }
+  /* A count of none draws no bar: the end of a bar slid fully out of its
+     run still left a sliver at the start. */
+  .compare-tag-bar.is-zero {
+    opacity: 0;
   }
   .compare-tag-count {
     min-width: 2ch;

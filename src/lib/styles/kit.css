@@ -2850,6 +2850,54 @@ button.kit-strip-day .kit-strip-cell {
   font-variant-numeric: tabular-nums;
 }
 
+/* --- a bar out of a line ---
+
+   The look shared by the two bar figures that grow out of a line: the tag
+   card's diverging bars (DivergingBars, ticket 20) and /compare's paired
+   tag bars (pre-release-human 21). Thickness, track, end radius, colour
+   and the line over the bar are written once here; where the line sits,
+   how long a bar may run and how it moves stay with each figure, because a
+   diverging row and a paired row are different geometry. */
+.kit-run-track {
+  position: relative;
+  display: block;
+  height: 18px;
+}
+
+/* The scale as the faintest line the theme has, drawn as a child for the
+   reason PairedDots gives: the kit paints flat colour. */
+.kit-run-track::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background: var(--hairline);
+}
+
+/* The line a bar starts from, over the bar rather than under it: a bar
+   starts at this line and would otherwise cover it. */
+.kit-run-zero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text-2);
+  z-index: 1;
+}
+
+.kit-run-bar {
+  position: absolute;
+  top: 50%;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 2px;
+  background: var(--role-draw);
+}
+
 /* --- vertical distribution ---
 
    Mood's own ramp (ADR-0025), which is independent of the flag palette:
