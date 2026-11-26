@@ -21,8 +21,6 @@
      a title at 17, one reason line under it, one control trailing. Not
      taken: the card around each group, the per-permission paragraph, and the
      pre-prompt screens that draw the OS dialog as an illustration. */
-  import { prefs } from '$lib/data/prefs/store.svelte';
-  import { appWordmark } from '$lib/disguise/identity';
   import { m } from '$lib/paraglide/messages';
   import { attempt } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -138,7 +136,7 @@
     batteryOptimisation: { title: m.perm_battery, why: m.perm_battery_why },
     biometric: {
       title: m.perm_biometric,
-      why: () => m.perm_biometric_why({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })
+      why: () => m.perm_biometric_why({ appName: m.app_name() })
     }
   };
 </script>
