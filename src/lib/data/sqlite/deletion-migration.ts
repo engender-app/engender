@@ -88,7 +88,7 @@ const RECORDED: readonly (readonly [string, string])[] = [
 ];
 
 /** Milliseconds since the epoch, as SQLite reads the clock. */
-export const SQL_NOW_MS = "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
+const SQL_NOW_MS = "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
 
 /** The trigger that records a deletion from `table`. Exported for the
     migration that will one day rebuild one of these tables and has to put

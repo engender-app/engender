@@ -69,7 +69,7 @@ const ARCHIVE_CODECS: readonly ArchiveCodec[] = [archiveCodecV1, archiveCodecV2]
 
 export const ARCHIVE_FORMAT_VERSION = currentArchiveFormatVersion();
 
-export function currentArchiveFormatVersion(codecs: readonly ArchiveCodec[] = ARCHIVE_CODECS): number {
+function currentArchiveFormatVersion(codecs: readonly ArchiveCodec[] = ARCHIVE_CODECS): number {
   const current = codecs[codecs.length - 1];
   if (!current) throw new Error('no archive codecs are registered');
   return current.formatVersion;

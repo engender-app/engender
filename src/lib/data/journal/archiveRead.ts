@@ -63,7 +63,6 @@ const costFields = (row: CostRow): Required<ArchiveCostFields> => ({
 import { columnsOf, type FlatTable } from './archiveTable';
 
 import { readFileOwnership } from './fileOwnership';
-export type { PhotoRow, RecordingRow, VideoRow, HairRemovalPhotoRow } from './fileOwnership';
 import type { PhotoRow, RecordingRow, VideoRow } from './fileOwnership';
 
 export type SectionRead = Omit<Awaited<ReturnType<typeof readRowContext>>, 'fileNames'>;

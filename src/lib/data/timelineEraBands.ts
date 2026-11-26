@@ -71,7 +71,7 @@ export function timelineEraBands(
     UI 51). With none, the last letter of "Full time" ran into the today
     dot's ring: the name had 51px between its band's top and the ring and
     was 50px long, so a centred name ended a fraction of a pixel inside it. */
-export const ERA_LABEL_CLEARANCE_PX = 4;
+const ERA_LABEL_CLEARANCE_PX = 4;
 
 export interface EraLabelPlacement {
   /** The band, in the same pixels as the rows that placed it. */

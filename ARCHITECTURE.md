@@ -410,6 +410,15 @@ the ones its additions needed.
 
 ### 6.3 The journal facade
 
+Domain modules under [`data/`](src/lib/data) work with values a caller has
+already loaded. Modules under [`data/journal/`](src/lib/data/journal) read
+and write those values through the journal driver. For example,
+[`data/eras.ts`](src/lib/data/eras.ts) defines how eras are interpreted, and
+[`data/journal/eras.ts`](src/lib/data/journal/eras.ts) stores era records.
+[`data/archive/daylioBackup.ts`](src/lib/data/archive/daylioBackup.ts)
+previews Daylio backups. [`data/journal/archive.ts`](src/lib/data/journal/archive.ts)
+commits the import.
+
 ```mermaid
 flowchart LR
   subgraph journal.ts

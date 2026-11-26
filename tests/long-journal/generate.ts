@@ -51,7 +51,7 @@ export const TEN_YEARS_IN_DAYS = 3653;
 
 /** The last day the generated journal holds: 2026-08-11, fixed rather than
     today, so the fixture is the same one next month and next year. */
-export const LAST_EPOCH_DAY = 20676;
+const LAST_EPOCH_DAY = 20676;
 
 export interface LongJournalOptions {
   seed?: number;

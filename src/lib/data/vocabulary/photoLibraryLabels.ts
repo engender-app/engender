@@ -42,11 +42,3 @@ export function photoSourceLabel(source: PhotoSource): string {
 export function photoChipLabel(chip: PhotoChip): string {
   return CHIP_LABEL[chip]();
 }
-
-/** The line under the wipe on that side of the frame: the record's own name
-    where it has one, and what kind of photograph it is where it has not. A
-    milestone called "First appointment" says more than "Milestone" does;
-    a hair photograph has nothing but its source to give. */
-export function photoOwnerLine(photo: { source: PhotoSource; ownerName: string | null }): string {
-  return photo.ownerName ?? photoSourceLabel(photo.source);
-}

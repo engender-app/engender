@@ -94,7 +94,7 @@ const table = (head: string[], rows: string[][]) =>
   [`| ${head.join(' | ')} |`, `| ${head.map(() => '---').join(' | ')} |`, ...rows.map((row) => `| ${row.join(' | ')} |`)].join('\n');
 
 /** SCREENS.md: every page route and the feature that owns it. */
-export function renderRoutes(): string {
+function renderRoutes(): string {
   const routes = pageRoutes();
   const hubHref = new Map(HUB_ROWS.map((row) => [row.href, row.key]));
   return [
@@ -108,7 +108,7 @@ export function renderRoutes(): string {
 }
 
 /** SCREENS.md: the More hub's rows, group by group. */
-export function renderHubRows(): string {
+function renderHubRows(): string {
   const groupLabel = (key: string) => `${englishLabel(`hub_group_${key}`)} (${code(key)})`;
   return [
     `\`hubRows.ts\` declares ${HUB_ROWS.length} rows: all drawn on the hub in ${HUB_GROUP_KEYS.length} groups.`,
@@ -126,7 +126,7 @@ export function renderHubRows(): string {
 
 /** CONTEXT.md: every archive section, in wire order, and the sections older
     archives may still carry. */
-export function renderArchiveSections(): string {
+function renderArchiveSections(): string {
   const travels = (section: (typeof ARCHIVE_SECTIONS)[number]) =>
     typeof section.travels === 'string' ? section.travels : `fields: ${list(section.travels.fields)}`;
   const finishGroup = (name: string) =>
@@ -151,7 +151,7 @@ export function renderArchiveSections(): string {
 }
 
 /** CONTEXT.md: the preference catalogue. */
-export function renderPreferences(): string {
+function renderPreferences(): string {
   const portable = new Set<string>(PORTABLE_KEYS);
   const local = new Set<string>(DEVICE_LOCAL_KEYS);
   const boot = new Set<string>(BOOT_KEYS);
@@ -173,7 +173,7 @@ export function renderPreferences(): string {
 }
 
 /** CONTEXT.md: the unprompted registry. */
-export function renderUnprompted(): string {
+function renderUnprompted(): string {
   const tiles = new Set<string>(LIVE_TILE_ORDER);
   const where = (row: (typeof UNPROMPTED_ROWS)[number]) =>
     row.notify ? `notification (${code(row.notify.channel)} channel)` : tiles.has(row.key) ? 'Today (live tile)' : 'in the app';

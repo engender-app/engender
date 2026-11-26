@@ -41,12 +41,12 @@ export function entryDayGroups(entries: Entry[]): EntryDayGroup[] {
   return groups;
 }
 
-export interface YearMonth {
+interface YearMonth {
   year: number;
   month: number;
 }
 
-export interface EntryDayGroupWithDivider extends EntryDayGroup {
+interface EntryDayGroupWithDivider extends EntryDayGroup {
   /** Set when this day falls in a different month than the day before it in
       the list, so a divider falls out of the dates themselves rather than
       being inserted by a caller who already knows which month it is (ticket

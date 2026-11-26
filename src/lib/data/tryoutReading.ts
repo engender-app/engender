@@ -38,7 +38,7 @@ import type { FeltSenseEntry, Tryout } from './types';
 const MOOD_LOW = 1;
 const MOOD_HIGH = 5;
 
-export interface TryoutFeltMark {
+interface TryoutFeltMark {
   /** The entry's own id, so an `{#each}` keys on it and a reading added or
       deleted moves the marks either side of it rather than redrawing the
       whole line. */

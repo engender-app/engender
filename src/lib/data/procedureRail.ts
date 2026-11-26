@@ -51,7 +51,7 @@ export const RAIL_BACK_REACH_DAYS = 365;
 export const RAIL_MIN_BACK_DAYS = 14;
 export const RAIL_MIN_FORWARD_DAYS = 14;
 
-export type ProcedureMarkKind = 'consult' | 'surgery' | 'today';
+type ProcedureMarkKind = 'consult' | 'surgery' | 'today';
 
 export interface ProcedureMark {
   kind: ProcedureMarkKind;

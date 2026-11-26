@@ -34,7 +34,7 @@ const RING_EASE = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 export const REDUCED_FADE_MS = 200;
 /** What the opening's animations are called, so a probe can tell them
     from the step machine's own. */
-export const OPENING_ID = 'welcome-opening';
+const OPENING_ID = 'welcome-opening';
 
 export interface Beat {
   delay: number;

@@ -17,7 +17,7 @@
 import { normalize, type MetricRange } from './metricRange';
 import type { CorrelationCard } from './correlationCards';
 
-export interface ScaleGroupRow {
+interface ScaleGroupRow {
   key: string;
   card: CorrelationCard;
   /** withAvg - withoutAvg, native units. */

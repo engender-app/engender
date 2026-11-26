@@ -151,7 +151,7 @@ export interface SpineMark {
 
 /** One running drug's own line: its name, and its own three readings placed
     on the shared day axis. */
-export interface SpineLane {
+interface SpineLane {
   episodeId: string;
   drug: string;
   /** Left to right. Last dose, next dose and run-out, whichever of them

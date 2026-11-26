@@ -34,7 +34,7 @@
 import { fallFoot, riseFoot } from '$lib/motion/foot';
 
 /** Selector for the box the bar is moved into: `.app-column` in +layout.svelte. */
-export const COLUMN = '[data-app-column]';
+const COLUMN = '[data-app-column]';
 
 /* How many bars the frame is holding. The column reads it to know whether
    to stop reserving `--nav-clearance` for the floating bar, which the bar's

@@ -65,7 +65,7 @@ export function holdRoomAnswers(entry: HeldRoomAnswers): void {
     ticket 10). A lock takes it with the rest of the journal: what was said
     in a consulting room is exactly what a locked app should not still be
     holding. */
-export function forgetRoomAnswers(): void {
+function forgetRoomAnswers(): void {
   held.clear();
   visits.clear();
 }

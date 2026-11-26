@@ -29,7 +29,7 @@
 import { m } from '$lib/paraglide/messages';
 import { INSTITUTION_STATUSES, isOneOf } from '../rowValues';
 import type { LEGACY_ROADMAP_TRACKS, RoadmapGoalKey, RoadmapInstitutionKey, RoadmapPackKey } from '../roadmap';
-import type { RoadmapCategory, RoadmapInstitution } from '../types';
+import type { RoadmapCategory } from '../types';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
@@ -182,9 +182,6 @@ export const roadmapInstitutionName = (key: RoadmapInstitutionKey): string => IN
 
 /** What a built-in institution does with the ruling, in a sentence or two. */
 export const roadmapInstitutionNote = (key: RoadmapInstitutionKey): string => INSTITUTION_NOTE[key]();
-
-/** An institution the person added, by its own name. */
-export const ownInstitutionName = (institution: RoadmapInstitution): string => institution.name;
 
 const STATUS_WORD: Record<(typeof INSTITUTION_STATUSES)[number], Message> = {
   submitted: m.roadmap_institution_status_submitted,

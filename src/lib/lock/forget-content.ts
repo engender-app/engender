@@ -21,7 +21,7 @@
    here by name as well. */
 
 /** The legacy sessionStorage key used before searches stayed in memory. */
-export const HELD_SEARCH_KEY = 'engender-search-return';
+const HELD_SEARCH_KEY = 'engender-search-return';
 
 const holders = new Set<() => void>();
 

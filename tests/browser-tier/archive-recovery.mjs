@@ -1,5 +1,5 @@
 /** Independent contexts never share profiles, keys, recovery wraps or private files. */
-export async function recoveryCommand(page, name, input) {
+async function recoveryCommand(page, name, input) {
   await page.waitForFunction(() => window.recoveryProbe?.ready);
   await page.evaluate(({ name, input }) => { void window.recoveryProbe.command(name, input); }, { name, input });
   await page.waitForFunction(() => window.recoveryProbe.ready, null, { timeout: 180000 });

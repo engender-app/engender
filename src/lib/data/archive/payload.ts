@@ -448,7 +448,7 @@ export interface ArchiveAppointment extends ArchiveCostFields, ArchiveStamped {
 /** The person's own notes on somebody they see (functional-audit ticket
     27). `competence` is a key ('good', 'mixed', 'poor'); one this build does
     not know reads as not said. */
-export interface ArchiveProvider extends ArchiveStamped {
+interface ArchiveProvider extends ArchiveStamped {
   id: string;
   name: string;
   contact: string | null;

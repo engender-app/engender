@@ -52,7 +52,6 @@ import { epochDayMonthsAgo } from './epochDay';
 import { resolveHormoneDrug, type HormoneDrug } from './hormoneDrug';
 import type { EffectDirection, PersonalEffectType, RegimenEpisode } from './types';
 
-export type { EffectDirection };
 
 interface MonthRange {
   min: number;

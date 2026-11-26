@@ -73,7 +73,7 @@ export const NOTHING_GRANTED: GrantStates = {
 /** What pressing the row's trailing control does. `none` is a row with
     nothing to press: granted, unavailable, or refused with nowhere to send
     somebody afterwards. */
-export type GrantAction = 'prompt' | 'settings' | 'none';
+type GrantAction = 'prompt' | 'settings' | 'none';
 
 /** The system screen a refusal sends somebody to. `appInfo` is the app's own
     details page, which is all Android offers for the microphone and the
@@ -95,7 +95,7 @@ export type SettingsTarget = 'notifications' | 'exactAlarms' | 'appInfo';
     the button on a 390px phone, on the one step in setup with the least room
     to spare (`.claude/permissions-measurements.json`), and the label already
     says where pressing it goes. */
-export type RowNote = 'browserHolds';
+type RowNote = 'browserHolds';
 
 export interface GrantRow {
   key: GrantKey;

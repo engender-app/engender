@@ -23,7 +23,7 @@ export const ALLOWED_PREFERRED_UNITS: Record<PreferredUnitAnalyte, readonly stri
 /** The unit an analyte's allowlist is written around: the first of its allowed
     units, which every factor table below is expressed relative to. Named rather
     than indexed at each call site, so "[0] means base" stays in one place. */
-export function baseUnitFor(analyte: PreferredUnitAnalyte): string {
+function baseUnitFor(analyte: PreferredUnitAnalyte): string {
   return ALLOWED_PREFERRED_UNITS[analyte][0];
 }
 

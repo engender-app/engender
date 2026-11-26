@@ -32,7 +32,7 @@ import type { TransitionConfig } from 'svelte/transition';
 import { EASE_OUT, EASE_OUT_CSS, EASE_OUT_SOFT_CSS, fadeOnly, isReducedMotion, motionDuration } from './tokens';
 import { markScreenArrival, endScreenArrival, stillArriving, readRevealDuration } from './screenArrival';
 
-export { markScreenArrival, endScreenArrival, stillArriving, readRevealDuration };
+export { markScreenArrival, endScreenArrival, stillArriving };
 
 /** Whether the runtime can clip at all.
 
@@ -498,7 +498,7 @@ function restingMarginBelow(node: Element): number {
 
 
 /** A box in viewport coordinates: where a panel stood. */
-export type Slot = { top: number; left: number; width: number; height: number };
+type Slot = { top: number; left: number; width: number; height: number };
 
 /** A swap, as the two boxes it happens between: the slot the leaving panel
     holds, and where its replacement is coming from. */

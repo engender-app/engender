@@ -43,7 +43,7 @@ import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInpu
 /** What a procedure's checklist is owned by. A plain string rather than an
     enum of one, matching ChecklistOwner's own deliberately open `kind`
     (types.ts). */
-export const PROCEDURE_CHECKLIST_OWNER_KIND = 'procedure';
+const PROCEDURE_CHECKLIST_OWNER_KIND = 'procedure';
 
 const procedureChecklistOwner = (procedureId: string): ChecklistOwner => ({
   kind: PROCEDURE_CHECKLIST_OWNER_KIND,

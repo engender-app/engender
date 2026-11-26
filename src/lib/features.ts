@@ -51,7 +51,7 @@ type PrefixOf<Key extends string> = Key extends `${infer A}_${infer B}_${string}
   : Key extends `${infer A}_${string}`
     ? A
     : never;
-export type MessagePrefix = MessageKey | PrefixOf<MessageKey>;
+type MessagePrefix = MessageKey | PrefixOf<MessageKey>;
 
 /** One feature's keys. Every list may be empty; none may be left out, so an
     entry says "none" on purpose. */
@@ -542,13 +542,13 @@ type AssertNoneUnclaimed<Missing extends never> = Missing;
    error, so a new area, table, row or kind cannot land without its feature
    saying so. Demonstrated by deleting `'wear'` from the wear feature's
    `hubRows`: the hub row line below stops compiling. */
-export type EverySectionClaimed = AssertNoneUnclaimed<Exclude<ArchiveSectionName, Claimed<'sections'>>>;
-export type EveryTableClaimed = AssertNoneUnclaimed<Exclude<TableName, Claimed<'tables'>>>;
-export type EveryJournalMemberClaimed = AssertNoneUnclaimed<Exclude<keyof Journal, Claimed<'journal'>>>;
-export type EveryHubRowClaimed = AssertNoneUnclaimed<Exclude<HubRowKey, Claimed<'hubRows'>>>;
-export type EveryAreaGroupClaimed = AssertNoneUnclaimed<Exclude<AreaGroupKey, Claimed<'areaGroups'>>>;
-export type EveryUnpromptedKindClaimed = AssertNoneUnclaimed<Exclude<UnpromptedKind, Claimed<'unprompted'>>>;
-export type EveryTileKindClaimed = AssertNoneUnclaimed<Exclude<LiveTileKind, Claimed<'tiles'>>>;
+type EverySectionClaimed = AssertNoneUnclaimed<Exclude<ArchiveSectionName, Claimed<'sections'>>>;
+type EveryTableClaimed = AssertNoneUnclaimed<Exclude<TableName, Claimed<'tables'>>>;
+type EveryJournalMemberClaimed = AssertNoneUnclaimed<Exclude<keyof Journal, Claimed<'journal'>>>;
+type EveryHubRowClaimed = AssertNoneUnclaimed<Exclude<HubRowKey, Claimed<'hubRows'>>>;
+type EveryAreaGroupClaimed = AssertNoneUnclaimed<Exclude<AreaGroupKey, Claimed<'areaGroups'>>>;
+type EveryUnpromptedKindClaimed = AssertNoneUnclaimed<Exclude<UnpromptedKind, Claimed<'unprompted'>>>;
+type EveryTileKindClaimed = AssertNoneUnclaimed<Exclude<LiveTileKind, Claimed<'tiles'>>>;
 
 /** The feature that claims a route, for the generated route table. */
 export function featureOfRoute(route: string): FeatureName | undefined {

@@ -78,7 +78,7 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
     /* The move, and the box it moves into. A foot left where it is written
        is a foot inside `[data-app-scroll-region]`, which is the defect. */
     expect(component).toContain('use:hostSaveBar');
-    expect(store).toContain("export const COLUMN = '[data-app-column]'");
+    expect(store).toContain("const COLUMN = '[data-app-column]'");
     expect(store).toMatch(/querySelector\(COLUMN\)/);
     expect(store).toMatch(/column\.append\(node\)/);
 
