@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { test } from 'vitest';
 import { migratedDb } from '../src/lib/data/sqlite/test-support/migrated-db.ts';
 import { openJournal } from '../src/lib/data/journal/journal.ts';
@@ -11,7 +11,7 @@ import { packArchive, openArchive } from '../src/lib/data/archive/pack.ts';
 import { collect } from '../src/lib/data/archive/container.ts';
 
 test('exports a provenance fixture with the unchanged alpha producer', async () => {
-  const output = '/home/developer/_projekty/priv/gender-diary/.claude/before-release-v2-run/legacy-fixtures/alpha-2026-08-14';
+  const output = resolve(process.env.ENGENDER_LEGACY_FIXTURE_OUTPUT ?? '.scratch/internal/legacy-fixtures/alpha-2026-08-14');
   mkdirSync(output, { recursive: true });
   const driver = await migratedDb();
   try {
@@ -32,7 +32,7 @@ test('exports a provenance fixture with the unchanged alpha producer', async () 
     assert.equal(opened.payload.journal.entries[0].note, 'Alpha compatibility: zażółć gęślą jaźń');
     for await (const file of opened.files) assert.deepEqual(file.bytes, attachment);
     writeFileSync(join(output, 'archive.ttbackup'), archive, { flag: 'wx' });
-    await driver.exec(`VACUUM INTO '${join(output, 'journal.sqlite')}'`);
+    await driver.run('VACUUM INTO ?', [join(output, 'journal.sqlite')]);
     const tables = await driver.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
     const sqliteTables: Record<string, number> = {};
     for (const { name } of tables) {

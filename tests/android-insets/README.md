@@ -6,13 +6,13 @@ overlays, rotation and the actual keyboard. It does not replace CSS inset tokens
 Each API has 48 captures. The required matrix is API 33, 35 and 36, gesture and three-button navigation,
 trans light/dark, plain portrait, cutout portrait and cutout landscape.
 
-Build the same native shell with a separate application ID:
+Set `JAVA_HOME` to your JDK 21 directory, then build the native shell with a
+separate application ID.
 
 ```sh
 VITE_DEMO=1 npm run build
 npx cap sync android
-JAVA_HOME=/home/developer/.sdkman/candidates/java/21.0.12-tem \
-  ./android/gradlew -p android --no-daemon -I ../tests/android-insets/isolate.gradle :app:assembleDebug
+./android/gradlew -p android --no-daemon -I ../tests/android-insets/isolate.gradle :app:assembleDebug
 ```
 
 Use a disposable Google APIs x86_64 AVD named `backend51-api33`,

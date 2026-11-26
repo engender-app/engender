@@ -27,7 +27,7 @@ Android uses `https://localhost`, so DNS and nginx changes never move Android
 data.
 
 In the DNS provider's panel, point an A record for the new hostname at the
-journal VPS (the `journal-host` SSH alias has the address). Check both
+journal VPS. Check both
 authoritative nameservers before issuing a certificate. If the hostname has
 an AAAA record, it must reach the same server.
 
