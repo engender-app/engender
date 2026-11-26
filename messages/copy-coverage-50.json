@@ -1309,7 +1309,6 @@
   "ob_track_body": {"owner":41,"sources":["src/routes/onboarding/+page.svelte"]},
   "ob_track_title": {"owner":41,"sources":["src/routes/onboarding/+page.svelte"]},
   "ob_welcome_def": {"owner":41,"sources":["src/routes/onboarding/+page.svelte"]},
-  "ob_welcome_privacy": {"owner":41,"sources":["src/routes/onboarding/+page.svelte"]},
   "ob_welcome_title": {"owner":41,"sources":["src/routes/onboarding/+page.svelte"]},
   "ob_welcome_what": {"owner":41,"sources":["src/routes/onboarding/+page.svelte"]},
   "off": {"owner":42,"sources":["src/routes/settings/+page.svelte"]},

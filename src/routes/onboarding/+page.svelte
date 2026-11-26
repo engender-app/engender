@@ -944,15 +944,10 @@
                  same slot with the dictionary line above it. -->
             {#if step === 'welcome'}
               {#if erasedOnEntry}<p class="setup-line is-result" role="status" data-erased-result use:erasedArrival>{m.reset_done()}</p>{/if}
-              <!-- What the app is, then the promise, which is set apart by
-                   its glyph and its weight rather than by a box: the one
-                   sentence on this screen a person should be able to find
-                   again. -->
+              <!-- What the app is, and only that: the privacy promise that
+                   stood under it made the screen too busy (Alicja,
+                   pre-release-human ticket 19 sign-off). -->
               <p class="setup-line is-pitch" data-opening="line">{m.ob_welcome_what({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}</p>
-              <p class="setup-line is-promise" data-opening="line">
-                <span class="setup-promise-ico" aria-hidden="true"><Icon name="lock" size={16} /></span>
-                <span>{m.ob_welcome_privacy()}</span>
-              </p>
             {:else if line && step !== 'features'}
               <p class="setup-line">{line}</p>
             {/if}
@@ -1529,7 +1524,7 @@
 
   /* One line under the field, on the page, 12 below the edge: what the
      answer does, at 15/600 in the secondary ink (rules 2 and 12). Never a
-     paragraph - the welcome's two lines are the flow's one exception. */
+     paragraph - the welcome's line under its wordmark is the flow's one exception. */
   .setup-line {
     margin: var(--space-3) 0 0;
     font-size: var(--text-sm);
@@ -1547,35 +1542,16 @@
     font-weight: var(--weight-regular);
     line-height: var(--leading-body);
   }
-  /* A measure for reading, which the 640px column on a desktop is not:
-     the promise ran about 85 characters a line there (impeccable). */
-  .setup-line.is-pitch,
-  .setup-line.is-promise {
+  /* A measure for reading, which the 640px column on a desktop is not. */
+  .setup-line.is-pitch {
     max-width: 60ch;
-  }
-  /* The promise: in the text colour and a step heavier than the line above
-     it, behind the padlock, so it reads as the one thing on the screen
-     that is a commitment rather than a description. No box and no stripe. */
-  .setup-line.is-promise {
-    display: flex;
-    gap: var(--space-2);
-    align-items: flex-start;
-    color: var(--text);
-    font-weight: var(--weight-medium);
-    line-height: var(--leading-body);
-  }
-  .setup-promise-ico {
-    display: flex;
-    flex: none;
-    /* Centred on the first line: (line height - glyph) / 2. */
-    margin-top: calc((1em * var(--leading-body) - 16px) / 2);
   }
 
   /* ---------- the welcome (pre-release-human ticket 19) ----------
 
      The app's first screen, so the field is its hero: most of a phone
      tall, the sun large in its corner (steps.ts, WELCOME_SUN) and the
-     wordmark on its bottom edge. The field takes whatever the two lines
+     wordmark on its bottom edge. The field takes whatever the line
      and the foot leave, up to 70% of the frame, which is 60 to 70% on a
      phone; everything under it is its own height. "Set up the app" takes
      the class off, the field's box drops to the first step's in one
@@ -1611,7 +1587,7 @@
   }
   /* The hero sun keeps clear of the language switch on a narrow phone and
      of the wordmark on a short frame. Its reach is the corner's quarter,
-     and the field is what the two lines and the foot leave of the frame,
+     and the field is what the line and the foot leave of the frame,
      so the steps go by the frame's own height (the demo bar and a raised
      keyboard both take from it, and neither shows in a media query). */
   @media (max-width: 399px) {
@@ -1645,7 +1621,7 @@
   /* A window under 480px (a raised keyboard, or a phone held sideways) has
      no room for a display-size wordmark and its signature: the name drops
      to the short form's question size beside the language switch, on one
-     row, and the dictionary line is left out, so the two lines and the
+     row, and the dictionary line is left out, so the line and the
      foot still fit (at 390x360 with larger text the stacked field left the
      frame 24px short). */
   @container setup-frame (max-height: 479px) {
