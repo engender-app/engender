@@ -307,7 +307,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   it('has a tile only where the span holds data for it', () => {
     expect(readings.dayByDay).toMatch(/\{#if !seriesQuery\.loading && plotted\.points\.length\}\s*<ReadingTile/);
     expect(readings.plane).toMatch(/\{#if canPlot && !constellationQuery\.loading && points\.length\}\s*<ReadingTile/);
-    expect(readings.tags).toMatch(/\{#if !correlationCardsQuery\.loading && topRow && topCard\}\s*<ReadingTile/);
+    expect(readings.tags).toMatch(/\{#if !correlationCardsQuery\.loading && topCard\}\s*<ReadingTile/);
     expect(readings.bodyMap).toMatch(/\{#if !mapQuery\.loading && region\}\s*<ReadingTile/);
     expect(readings.compare).toMatch(/\{#if !short\}\s*<ReadingTile/);
     expect(readings.cost).toMatch(/\{#if !costsQuery\.loading && first\}\s*<ReadingTile/);
@@ -329,7 +329,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     expect(readings.dayByDay).toContain('j.stats.daySpread(shown.key, from, to)');
     expect(readings.days).toContain("j.stats.dayAverages('mood', from, to)");
     expect(readings.days).not.toContain('tagShare');
-    expect(readings.tags).toContain('j.correlationCards.getCards(from, to)');
+    expect(readings.tags).toContain('j.correlationCards.getCards(start, end)');
     expect(readings.tags).toContain("j.stats.tagShare(from, to, { goodDays: days === 'good' })");
     expect(readings.bodyMap).toContain('j.stats.bodyRegionMap(from, to)');
     expect(readings.plane).toContain('j.stats.constellationReadings(x, y, from, to)');
@@ -355,12 +355,23 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   });
 });
 
-/* Redesign ticket 05: the merged tag card draws as paired dots, not bars. */
-describe('the merged tag card draws as paired dots', () => {
-  it('feeds PairedDots, not BarRows, for the merged ranking', () => {
-    expect(readings.tags).toContain('<PairedDots rows={correlationRows} onPick={pickCorrelationRow} />');
+/* Ticket 20: the tag card is one section per scale, each row a bar out of a
+   zero line (redesign ticket 05 drew it as paired dots on one list). */
+describe('the tag card draws one section per scale as diverging bars', () => {
+  it('feeds DivergingBars per scale group, not PairedDots or BarRows', () => {
+    expect(readings.tags).toContain('<DivergingBars');
+    expect(readings.tags).toContain('{#each groups as group, g (group.metric)}');
+    expect(readings.tags).not.toContain('PairedDots');
+    expect(readings.tags).not.toContain('<BarRows');
     expect(readings.tags).not.toContain('kind="tag-insights"');
     expect(readings.tags).not.toContain('kind="correlations"');
+  });
+
+  it('says what is compared once, at the top of the card, and keeps the note under the rows', () => {
+    const card = readings.tags.slice(readings.tags.indexOf('kind="tags-moved"'), readings.tags.indexOf('kind="tag-share"'));
+    expect((card.match(/m\.reading_tag_key\(\)/g) ?? []).length).toBe(1);
+    expect(card.indexOf('m.reading_tag_key()')).toBeLessThan(card.indexOf('<DivergingBars'));
+    expect(card.indexOf('<DivergingBars')).toBeLessThan(card.indexOf('m.insights_note()'));
   });
 
   it('still opens the entries sheet for a tag row, and skips the dose-day row', () => {
@@ -370,12 +381,20 @@ describe('the merged tag card draws as paired dots', () => {
      never read a picked metric, so the picker that sat on it changed
      nothing on the card. The one picker in the file since functional audit
      ticket 12 is the share ring's days filter, on its own card. */
-  it('carries no metric picker, since the ranking spans every scale', () => {
+  it('carries no metric picker, since every scale has its own section', () => {
     const ranking = readings.tags.slice(readings.tags.indexOf('kind="tags-moved"'), readings.tags.indexOf('kind="tag-share"'));
-    expect(ranking).toContain('<PairedDots');
+    expect(ranking).toContain('<DivergingBars');
     expect(ranking).not.toContain('<ChartPicker');
     expect((readings.tags.match(/<ChartPicker/g) ?? []).length).toBe(1);
     expect(readings.tags).not.toContain('selectMetric');
+  });
+
+  /* A span change crossfades the old figure while the card resizes, as the
+     share ring does: the figure is keyed on the span its answer was read
+     for, and an answer with nothing to compare empties inside the swap. */
+  it('swaps the figure on the answer, so a span change crossfades instead of cutting', () => {
+    expect(readings.tags).toContain('{#key `${answered[0].start}-${answered[0].end}`}');
+    expect(readings.tags).toMatch(/<div in:figureIn out:figureOut data-tag-scales>/);
   });
 });
 

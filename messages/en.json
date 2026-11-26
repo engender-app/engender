@@ -2312,8 +2312,24 @@
   "reading_body_region_value": "{axis} {value}",
   "reading_day_value": "{day}: {value}",
   "reading_day_value_with_note": "{day}: {value}, {note}",
-  "reading_tag_detail": "{metric} · {detail}",
-  "reading_tag_gap": "{value} {metric}",
+  "reading_tag_group": "{scale} · {min}-{max}",
+  "reading_tag_key": "Average in entries with the tag, against the rest.",
+  "reading_tag_row_sub": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{with} with · {without} without · {count} entry",
+        "countPlural=other": "{with} with · {without} without · {count} entries"
+      }
+    }
+  ],
+  "reading_tag_tile_note": "{metric}: {with} with the tag, {without} without",
   "recap_tag_count": "{label} ({count})",
   "recap_tags_none_range": "No tags in this range.",
   "recap_tags_title": "Top tags",

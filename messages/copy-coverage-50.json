@@ -1048,7 +1048,7 @@
   "in_the_room_title": {"owner":39,"sources":["src/routes/health/appointments/+page.svelte","src/routes/health/appointments/in-the-room/+page.svelte"]},
   "in_the_room_visit_choose": {"owner":39,"sources":["src/routes/health/appointments/in-the-room/+page.svelte"]},
   "in_the_room_visit_sheet": {"owner":39,"sources":["src/routes/health/appointments/in-the-room/+page.svelte"]},
-  "insight_row_sub": {"owner":38,"sources":["src/lib/components/readings/TagsReading.svelte","src/lib/data/wrappedDisplay.ts"]},
+  "insight_row_sub": {"owner":38,"sources":["src/lib/data/wrappedDisplay.ts"]},
   "insight_sheet_capped": {"owner":38,"sources":["src/lib/components/readings/TagsReading.svelte"]},
   "insights_note": {"owner":38,"sources":["src/lib/components/WrappedCompact.svelte","src/lib/components/WrappedYear.svelte","src/lib/components/readings/TagsReading.svelte"]},
   "journal_book_empty": {"owner":38,"sources":["src/routes/settings/journal-book/+page.svelte"]},

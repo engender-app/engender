@@ -124,6 +124,11 @@ describe('the surfaces', () => {
          whose triangle and one-frame opening matched no other fold. */
       'Disclosure.svelte',
       'Distribution.svelte',
+      /* A bar out of a zero line, left for lower and right for higher, in the
+         section's one colour (ticket 20, the tag card). Sized by its caller
+         against the rows of its own scale only, which is the thing the
+         paired dots could not do for a list that mixed scales. */
+      'DivergingBars.svelte',
       /* Parts of a whole where the parts have no order (phase 8 UX ticket
          04, ADR-0058): share by tag, share by presentation, share by
          injection site. The one mark in the kit that cannot label itself -
