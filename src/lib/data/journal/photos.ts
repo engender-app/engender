@@ -20,6 +20,7 @@
    what a photo's files are lives in one place. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import { unownedNames } from './fileOwnership';
 import { afterCommit } from '../sqlite/transactor';
 import type { Photo } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
@@ -92,15 +93,19 @@ const toPhoto = (row: PhotoRow): Photo => ({ id: row.uuid, fileName: row.file_pa
     Called after the rows are gone, by all three paths that delete photo
     rows - a failure here must not resurrect them, and what it leaves
     behind is the sweep's to reclaim. */
-async function removePhotoFiles(
-  files: PhotoFileStore,
-  rows: { file_path: string }[]
-): Promise<void> {
-  for (const row of rows) for (const name of filesOf(row.file_path)) await files.remove(name);
+async function removePhotoFiles(files: PhotoFileStore, names: string[]): Promise<void> {
+  for (const name of names) await files.remove(name);
 }
 
+/** The files of these photo rows that no committed row still names. Read
+    inside the deleting transaction, after the rows are gone, so a file two
+    rows share outlives the first delete (security scan GD-024). */
+const unownedPhotoFiles = (driver: SqliteDriver, rows: { file_path: string }[]) =>
+  unownedNames(driver, rows.flatMap((row) => filesOf(row.file_path)));
+
 export async function removeFilesOf(driver: SqliteDriver, files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
-  await afterCommit(driver, () => removePhotoFiles(files, rows), markOrphanSweepDue);
+  const names = await unownedPhotoFiles(driver, rows);
+  await afterCommit(driver, () => removePhotoFiles(files, names), markOrphanSweepDue);
 }
 
 /** Best-effort cleanup after an owner save has committed. The rows are
@@ -111,9 +116,10 @@ export async function removeFilesAfterCommit(
   files: PhotoFileStore,
   rows: { file_path: string }[]
 ): Promise<void> {
+  const names = await unownedPhotoFiles(driver, rows);
   await afterCommit(driver, async () => {
     try {
-      await removePhotoFiles(files, rows);
+      await removePhotoFiles(files, names);
     } catch {
       markOrphanSweepDue();
     }

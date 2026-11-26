@@ -1120,11 +1120,15 @@ test('restore overlaps photo file writes rather than waiting on each one', async
   await journal.reconcileBuiltIns();
   const empty = await (await device()).journal.archive.snapshot();
 
+  // Owned files only: a file no row names is skipped, not written.
+  const owned = { ...empty.journal, hairPhotos: Array.from({ length: 6 }, (_, i) => ({
+    id: `hair-${i}`, epochDay: 20_000 + i, fileName: `owned-${i}.jpg`
+  })) };
   await journal.archive.replace({
-    journal: empty.journal,
+    journal: owned,
     files: (async function* () {
       for (let i = 0; i < 6; i += 1) {
-        yield { name: `orphan-${i}.jpg`, bytes: bytes(`image-${i}`) };
+        yield { name: `owned-${i}.jpg`, bytes: bytes(`image-${i}`) };
       }
     })()
   });

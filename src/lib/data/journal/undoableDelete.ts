@@ -36,6 +36,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
+import { unownedNames } from './fileOwnership';
 
 export interface UndoableDelete {
   /** Every SQL table the deletion changed, in the order it first changed them. */
@@ -215,7 +216,11 @@ export async function captureDelete<J>(
       if (state !== 'open') return;
       state = 'finished';
       log.length = 0;
-      for (const name of heldFiles) {
+      // A file another row still names stays, however the deletion reached it.
+      const unowned = await unownedNames(driver, heldFiles).catch(() => null);
+      // Unreadable ownership: leave everything to the sweep marked due above.
+      if (unowned === null) return;
+      for (const name of unowned) {
         try {
           await files.remove(name);
         } catch (error) {

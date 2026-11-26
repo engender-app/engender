@@ -57,6 +57,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';
+import { unownedNames } from './fileOwnership';
 import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
 import type { DocumentTarget, JournalDocument } from '../types';
 import { filesOf, photoFileName, thumbFileName } from '../photos/names';
@@ -226,8 +227,10 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
     async deleteDocument(id) {
       const document = await byId(id);
       await documents.delete(id);
-      if (document) await afterCommit(driver, async () => {
-        for (const name of documentFilesOf(document.fileName)) await files.remove(name);
+      if (!document) return;
+      const names = await unownedNames(driver, documentFilesOf(document.fileName));
+      await afterCommit(driver, async () => {
+        for (const name of names) await files.remove(name);
       }, markOrphanSweepDue);
     },
 
