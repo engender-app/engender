@@ -49,8 +49,7 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
-  import { fmtDay, fmtDuration, fmtRangeEnds } from '$lib/data/dates';
-  import { calendarDuration } from '$lib/data/epochDay';
+  import { fmtApart, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import {
     orderAnchorsByJourney,
     stepCompareAnchor,
@@ -79,7 +78,6 @@
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VoicePractice from '$lib/components/VoicePractice.svelte';
   import VoicePracticeTakes from '$lib/components/VoicePracticeTakes.svelte';
-  import VoiceRecordings from '$lib/components/VoiceRecordings.svelte';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { hzLabel } from '$lib/components/pitchBandCopy';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
@@ -97,8 +95,10 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  type Tab = 'record' | 'practise' | 'compare' | 'recordings';
-  const TABS: Tab[] = ['record', 'practise', 'compare', 'recordings'];
+  /* Three tasks. Recordings left for a Media row of their own (bug session
+     18, item 70); an old `?tab=recordings` link opens on Benchmark. */
+  type Tab = 'record' | 'practise' | 'compare';
+  const TABS: Tab[] = ['record', 'practise', 'compare'];
 
   /* The trend takes role 0, the picker's stripe after it - the same split
      the labs screen makes between its chart and its results.
@@ -202,8 +202,7 @@
 
   let gapLabel = $derived.by(() => {
     if (!pair) return '';
-    const duration = calendarDuration(anchors[pair.left].epochDay, anchors[pair.right].epochDay);
-    return `${fmtDuration(duration)} ${m.apart_suffix()}`;
+    return fmtApart(anchors[pair.left].epochDay, anchors[pair.right].epochDay);
   });
 
   /* Two benchmarks read against each other. Comparing across different
@@ -450,8 +449,7 @@
         options={[
           { value: 'record', label: m.vb_tab_record() },
           { value: 'practise', label: m.vb_tab_practise() },
-          { value: 'compare', label: m.compare() },
-          { value: 'recordings', label: m.vb_tab_recordings() }
+          { value: 'compare', label: m.compare() }
         ]}
         value={tab}
         onChange={changeTab}
@@ -527,8 +525,6 @@
            the comfort band is what a live figure is read against, and a
            past take's own record is what happened once already. -->
       <VoicePracticeTakes role={roleAt(activeFlag.roles, SECTION_ROLE.list)} />
-    {:else if displayedTab === 'recordings'}
-      <VoiceRecordings />
     {:else}
       <ReadGate read={benchmarksQuery} variant="line" count={4}>
         {#snippet rows()}

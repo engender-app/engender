@@ -84,7 +84,6 @@ try {
     /* Language and mood colours open as sheets from their rows (ticket
        277); the flags stay on the hub. A language change reloads, so the
        hub is opened again after it. */
-    await page.locator('[data-list-row="language"]').click();
     await page.locator(`[data-segment="${language}"]`).click();
     await open('/settings');
     await checkRadioGroup(page, page.locator('.palette-grid'));

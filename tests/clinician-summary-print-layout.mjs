@@ -82,7 +82,6 @@ try {
   await page.waitForSelector('[data-demo-busy]', { state: 'detached', timeout: 240000 });
   for (const locale of ['en', 'pl']) {
     await load('/settings');
-    await page.locator('[data-list-row="language"]').click();
     await page.locator(`[data-segment="${locale}"]`).click();
     await page.waitForFunction(language => document.documentElement.lang === language, locale);
     await summary();

@@ -39,7 +39,12 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
     scope. Correcting SCREENS.md is still nobody's ticket, and
     reading the routes off the hub instead of off the doc makes that
     disagreement smaller rather than pretending it is settled. */
-const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {};
+const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {
+  /* A header over one component (bug session 18, item 70): its markup is
+     VoiceRecordings.svelte, which was the voice screen's fourth tab and is
+     held to the kit there, through voice/+page.svelte's own assertions. */
+  recordings: 'the memo list is VoiceRecordings.svelte, mounted whole'
+};
 
 /** Every screen reached only from inside another one, or from the shell -
     the part of this list the hub cannot supply. */

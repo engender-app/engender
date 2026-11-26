@@ -105,7 +105,7 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
     expect(appCss).toMatch(/\.app-column\s*\{[^}]*flex-direction:\s*column/);
     expect(appCss).toMatch(/\.app-column\.has-savebar\s*>\s*\.app-main\s*\{\s*padding-bottom:\s*0;\s*\}/);
     expect(appCss).toMatch(
-      /\.app-savebar\s*\{[^}]*padding:\s*var\(--space-3\) var\(--space-5\) calc\(var\(--nav-clearance\) - var\(--space-5\) \+ var\(--space-2\)\)/
+      /\.app-savebar\s*\{[^}]*padding:\s*var\(--space-3\) var\(--screen-inset\) calc\(var\(--nav-clearance\) - var\(--space-5\) \+ var\(--space-2\)\)/
     );
     /* Opaque, because the room is taken and given back under it: a
        see-through foot makes both swaps a band of content vanishing in one

@@ -35,6 +35,7 @@
   import { entryDayGroups } from '$lib/data/recentEntries';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -362,6 +363,10 @@
   {:else if detail.isNew || detail.record}
 
   <fieldset disabled={saving || detail.isNew && creationId !== null} aria-busy={saving}>
+    <!-- Two named parts, what and when (bug session 18, item 74): the form
+         was five fields in a row, and its first two labels, "What are you
+         trying?" and "What is it?", asked nearly the same thing. -->
+    <FieldGroupHeading legend={m.tryout_group_what()} />
     <Field label={m.tryout_kind_label()} legend>
       {#snippet children()}
         <ChoiceChips
@@ -373,7 +378,7 @@
         />
       {/snippet}
     </Field>
-    <Field label={m.what_is_it_label()} hint={m.tryout_label_required()} id="tr-label">
+    <Field label={m.name_label()} hint={m.tryout_label_required()} id="tr-label">
       {#snippet children(id, describedBy)}
         <input autocomplete={journalTextAutocomplete()}
           class="input"
@@ -401,16 +406,23 @@
         </Field>
       </div>
     {/if}
-    <Field label={m.started_label()} id="tr-start">
-      {#snippet children(id)}
-        <DatePicker name="tr-start" bind:value={draft.start} {id} />
-      {/snippet}
-    </Field>
-    <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} id="tr-end">
-      {#snippet children(id, describedBy)}
-        <DatePicker name="tr-end" min={dayRangeEndMin(draft.start)} bind:value={draft.end} {id} describedBy={rangeInverted ? `${describedBy} tr-range-error` : describedBy} aria-invalid={rangeInverted || undefined} />
-      {/snippet}
-    </Field>
+    <!-- When, as one pair: Started and Ended are one question, and side by
+         side they read as a span rather than two more rows of the form.
+         The end hint sits under its input so the two inputs share a top
+         edge, the lab editor's Value and Unit. -->
+    <FieldGroupHeading legend={m.tryout_group_when()} />
+    <div class="cd-endpoints tryout-span">
+      <Field label={m.started_label()} id="tr-start">
+        {#snippet children(id)}
+          <DatePicker name="tr-start" bind:value={draft.start} {id} />
+        {/snippet}
+      </Field>
+      <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} hintAfter id="tr-end">
+        {#snippet children(id, describedBy)}
+          <DatePicker name="tr-end" min={dayRangeEndMin(draft.start)} bind:value={draft.end} {id} describedBy={rangeInverted ? `${describedBy} tr-range-error` : describedBy} aria-invalid={rangeInverted || undefined} />
+        {/snippet}
+      </Field>
+    </div>
     <div aria-live="polite">
       {#if rangeInverted}
         <div class="disclosed" transition:disclose>
@@ -418,28 +430,30 @@
         </div>
       {/if}
     </div>
-    {#if canAdopt}
+    <div class="details-actions">
       <button
-        type="button"
         class="btn btn-primary press"
-        data-adopt-tryout
-        onclick={() => (adoptOpen = true)}
+        data-save-tryout
+        disabled={draft.label.trim().length === 0 || rangeInverted}
+        aria-describedby={rangeInverted ? "tr-range-error" : undefined}
+        onclick={saveTryout}
       >
-        <Icon name="check" size={18} />
-        <span>{m.tryout_adopt_permanently()}</span>
+        <span>{detail.isNew ? m.save() : m.save_changes()}</span>
       </button>
-    {/if}
-    <button
-      class="btn press"
-      class:btn-primary={!canAdopt}
-      class:btn-soft={canAdopt}
-      data-save-tryout
-      disabled={draft.label.trim().length === 0 || rangeInverted}
-      aria-describedby={rangeInverted ? "tr-range-error" : undefined}
-      onclick={saveTryout}
-    >
-      <span>{detail.isNew ? m.save() : m.save_changes()}</span>
-    </button>
+      {#if canAdopt}
+        <div class="action-slot">
+          <button
+            type="button"
+            class="btn btn-soft press"
+            data-adopt-tryout
+            onclick={() => (adoptOpen = true)}
+          >
+            <Icon name="check" size={18} />
+            <span>{m.tryout_adopt_permanently()}</span>
+          </button>
+        </div>
+      {/if}
+    </div>
   </fieldset>
   {#if saveFailed || navigationFailed && detail.isNew || saved}
     <div class="disclosed" transition:disclose>
@@ -452,10 +466,6 @@
         <p class="notice" role="status" tabindex="-1" bind:this={outcome} data-tryout-saved>{m.saved()}</p>
       {/if}
     </div>
-  {/if}
-
-  {#if detail.isNew}
-    <p class="muted" data-tryout-photo-requirement>{m.tryout_photo_save_first()}</p>
   {/if}
 
   {#if !detail.isNew}
@@ -630,6 +640,12 @@
     flex: 0 0 auto;
     display: grid;
     place-items: center;
+  }
+
+  @container app (max-width: 359px) {
+    .tryout-span {
+      grid-template-columns: 1fr;
+    }
   }
 
   fieldset {

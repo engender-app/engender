@@ -156,7 +156,12 @@
      the page routes its tab switch through `leave`. */
   const guard = leaveGuard({
     holding: () => passageTake !== null && !takeSaved,
-    busy: () => saving
+    busy: () => saving,
+    /* A figure's "what these numbers mean" link is a navigation to this
+       same screen with ?metric=, which opens the reference sheet over the
+       take and leaves it in place (item 91). */
+    staysOnScreen: (departure) =>
+      departure.to?.url.pathname === location.pathname && departure.to.url.searchParams.has('metric')
   });
 
   /** Run `after` now if no take would be lost, otherwise once the person
@@ -716,22 +721,24 @@
 </Sheet>
 
 <style>
-  /* The action bar is sticky, so it floats over whatever is beneath it at
-     rest. Everything on this screen under it is load-bearing - the advice
-     the gauge is giving, the note field - so the body reserves the bar's
-     own height rather than leaving it to a scroll somebody mid-take cannot
-     make. */
+  /* The screen's own 20 under the panel, which sits a level too deep for
+     the .screen floor to reach. It held 96px here, a reserve for a foot that
+     floated over the content; the foot is the column's flex sibling now and
+     covers nothing (bug session 18, item 68). */
   .vb-body {
-    padding-bottom: calc(var(--touch-target) * 2);
+    padding-bottom: var(--space-5);
   }
 
+  /* The column's full width, justified, so the text and the hairlines
+     above and below it end where everything else on the screen does (bug
+     session 18, item 67; it was held to a 60ch measure). Hyphenated in the
+     page's language, so justified Polish does not open rivers. */
   .vb-passage {
     margin: 0;
     font-size: var(--text-lg);
     line-height: 1.6;
-    /* A passage is read off the screen at arm's length, so it gets the
-       reading measure rather than the app's usual dense body block. */
-    max-width: 60ch;
+    text-align: justify;
+    hyphens: auto;
   }
 
   .vb-passage-own {

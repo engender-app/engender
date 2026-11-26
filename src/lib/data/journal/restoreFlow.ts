@@ -59,14 +59,23 @@ export async function pickForRestore(): Promise<
 }
 
 /** The form's own refusals, before anything is opened. Pure, and the one
-    part of this file a Node test can reach. */
+    part of this file a Node test can reach. An empty password is not one of
+    them: an export may be made without a password (bug session 18, item 80),
+    so the empty field is tried, and restoreFailureKind says what it means
+    when it does not open the file. */
 export function restoreGuard(
   picked: PickedArchive | null,
   password: string
 ): RestoreGuardKind | null {
   if (!picked) return 'pick-first';
-  if (!password) return 'password-needed';
   return null;
+}
+
+/** An empty field that does not open the file was a password left out, not
+    a wrong one. */
+export function restoreFailureKind(error: unknown, password: string): RestoreFailureKind {
+  const kind = archiveFailureKind(error);
+  return kind === 'wrong-password' && !password ? 'password-needed' : kind;
 }
 
 /**
@@ -89,7 +98,7 @@ export async function runVerify(
     return { ok: true };
   } catch (error) {
     console.error('the verify drill failed', error);
-    return { ok: false, kind: archiveFailureKind(error) };
+    return { ok: false, kind: restoreFailureKind(error, password) };
   }
 }
 
@@ -133,6 +142,6 @@ export async function runRestore(
     return { ok: true };
   } catch (error) {
     console.error('the restore failed', error);
-    return { ok: false, kind: archiveFailureKind(error) };
+    return { ok: false, kind: restoreFailureKind(error, password) };
   }
 }

@@ -50,7 +50,6 @@ try {
 
     for (const locale of ['en', 'pl']) {
       await settle('/settings');
-      await page.locator('[data-list-row="language"]').click();
       await page.locator(`[data-segment="${locale}"]`).click();
       await page.waitForURL('**/settings', { timeout: 15000 });
       await page.waitForSelector('[data-app-root][data-boot="ready"]');

@@ -73,18 +73,22 @@ describe('the foot\'s way on', () => {
     expect(css(0.5, 0.5)).toContain('opacity: 0.5');
   });
 
-  it('opens its width in a row, taking its gap with it', () => {
-    const css = footContinue(foot('row', { width: 200, height: 48 })).css!;
+  it('opens its width in a row after the finish control, taking the gap before it (item 84)', () => {
+    /* A new entry's foot since bug session 18: Save entry first, the way on
+       after it, and the foot's live region after that, which is no control
+       and must not decide the side. */
+    const node = foot('row', { width: 200, height: 48 }) as unknown as { previousElementSibling: object; nextElementSibling: object };
+    node.previousElementSibling = {};
+    node.nextElementSibling = {};
+    const css = footContinue(node as unknown as Element).css!;
     expect(css(0, 1)).toContain('width: 0px');
     expect(css(0, 1)).toContain('margin-inline-start: -8px');
     expect(css(1, 0)).toContain('width: 200px');
     expect(css(1, 0)).toContain('margin-inline-start: 0px');
   });
 
-  it('takes the gap from its trailing side when it leads the row (ticket 09)', () => {
-    const node = foot('row', { width: 160, height: 48 }) as unknown as { nextElementSibling: object };
-    node.nextElementSibling = {};
-    const css = footContinue(node as unknown as Element).css!;
+  it('takes the gap from its trailing side when it leads the row', () => {
+    const css = footContinue(foot('row', { width: 160, height: 48 })).css!;
     expect(css(0, 1)).toContain('margin-inline-end: -8px');
     expect(css(0, 1)).not.toContain('margin-inline-start');
   });

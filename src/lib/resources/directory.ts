@@ -114,16 +114,6 @@ const ENTRIES = [
     url: 'https://tranzycja.pl/'
   },
   {
-    key: 'pl-tranzycja-testosterone',
-    region: 'pl',
-    kind: 'info',
-    name: 'Maskulinizująca terapia hormonalna',
-    /* tranzycja.pl's testosterone chapter, the twin of its feminising one.
-       The directory's English reading is all feminising (Transfeminine
-       Science), so this is the transmasculine reading ticket 40 asked for. */
-    url: 'https://tranzycja.pl/krok-po-kroku/maskulinizujaca-terapia-hormonalna/'
-  },
-  {
     key: 'pl-zaimki',
     region: 'pl',
     kind: 'info',

@@ -47,7 +47,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import { SAFE_SPACE_WAYS, type SafeSpaceWayKey } from '$lib/data/safeSpaceWays';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
+  import { calmRole, roleAt } from '$lib/theme/roles';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
   import { disclose } from '$lib/motion/reveal';
@@ -70,7 +70,7 @@
   <a class="btn btn-soft btn-block" href="/doubt/comfort">{m.comfort_list_title()}</a>
 
   <div class="breath-stage">
-    <BreathingExercise role={roleAt(activeFlag.roles, 0)} />
+    <BreathingExercise role={calmRole(activeFlag.roles)} />
   </div>
 
   <ListCard role={roleAt(activeFlag.roles, 1)}>

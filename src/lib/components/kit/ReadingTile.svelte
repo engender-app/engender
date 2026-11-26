@@ -191,6 +191,9 @@
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
+    /* A headline may name what it measures on a line of its own above the
+       figure (the compare tile, bug session 18 item 87). */
+    white-space: pre-line;
   }
 
   .kit-reading:not(:has(.kit-reading-draw)) .kit-reading-head {

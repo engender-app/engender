@@ -1971,8 +1971,7 @@ try {
 /* 8. language swap EN→PL (paraglide reload) */
 await flow('language', async () => {
 try {
-  await fresh('/settings');
-  await page.locator('[data-list-row="language"]').click(); // a sheet since ticket 277
+  await fresh('/settings'); // a sheet since ticket 277
   await page.locator('[data-segment="pl"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
   await openFeatures();
@@ -1982,7 +1981,6 @@ try {
     throw new Error('Polish cycle choice has no announced state');
   }
   await fresh('/settings');
-  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="en"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Today', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
@@ -3428,7 +3426,6 @@ try {
 await flow('onboarding cycle choice Polish', async () => {
 try {
   await fresh('/settings');
-  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="pl"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj');
   await booted();
@@ -3453,7 +3450,6 @@ try {
   await cycleSwitch.press('Space');
   await page.locator('[data-features-close]').click();
   await page.locator('[data-feature-visibility]').waitFor({ state: 'detached' });
-  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="en"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Today');
   await booted();
@@ -3677,7 +3673,6 @@ try {
   await page.waitForSelector('[data-tag="g-soc-eu"]:has-text("social euphoria")'); // text-under-test: the English label
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="pl"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
 
@@ -3691,7 +3686,6 @@ try {
     throw new Error('English label survived the language switch');
   }
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="en"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Today', null, { timeout: 8000 });
   ok('built-in tags follow the language, so they were seeded as keys');
@@ -6935,7 +6929,6 @@ try {
   async function checkCycleOffers(shown, locale) {
     await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
     await booted();
-    await page.locator('[data-list-row="language"]').click();
     await page.locator(`[data-segment="${locale}"]`).click();
     await page.waitForFunction((language) =>
       document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === (language === 'pl' ? 'Dzisiaj' : 'Today'), locale);

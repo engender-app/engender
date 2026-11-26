@@ -33,7 +33,6 @@ async function check(name, run) {
 
 try {
   await settlePage(page, base, '/settings', 'light');
-  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="en"]').click();
   for (const path of [
     '/day/abc', '/entry/new/abc', '/entry/new/99999', '/entry/new/NaN', '/entry/new/9999-12-31',

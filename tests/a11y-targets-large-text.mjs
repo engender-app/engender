@@ -106,9 +106,8 @@ const SCENES = [
     targets: '[data-first-step-moods] [data-mood], [data-entry-finish], [data-entry-continue]'
   },
   {
-    /* The mode chips and the tags, one sideways row per group, live on a new
-       entry's marks step (ticket 09); a chip scrolled into view is measured
-       inside its row. */
+    /* The mode chips and the tags, wrapped per group, live on a new
+       entry's marks step (ticket 09, wrapped since bug session 18 item 90). */
     key: 'entry',
     path: '/entry/new/today',
     targets: 'button.contextual-chip, .tag-chip',
@@ -118,7 +117,7 @@ const SCENES = [
   { key: 'journal', path: '/calendar', targets: '[data-cal-month-btn], .cal-field > a', whole: '[data-cal-month-btn]', apart: true, narrow: true },
   { key: 'labs', path: '/care/labs', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
   { key: 'in-the-room', path: '/health/appointments/in-the-room', targets: '[data-screen-back]', whole: '[data-room-question]', narrow: true },
-  { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },
+  { key: 'voice', path: '/media/recordings', targets: '[data-transport-toggle]' },
   /* Everything a new entry's later steps draw that a finger can press, not
      only the chips: the info buttons beside the tag chips were 43px wide for
      a while and the chips-only scene above never saw them. One scene per

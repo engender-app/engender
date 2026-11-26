@@ -42,7 +42,6 @@ try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
     page.on('pageerror', (error) => errors.push(error.message));
     await settlePage(page, base, '/settings', 'light');
-    await page.locator('[data-list-row="language"]').click();
     await page.locator(`[data-segment="${locale}"]`).click();
     const phrase = locale === 'en' ? 'Today I wrote these words in my journal.' : 'Dzisiaj zapisuję te słowa w moim dzienniku.';
     const notes = [

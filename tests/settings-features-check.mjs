@@ -117,7 +117,6 @@ try {
   await manager.getByRole('switch').click();
   await page.keyboard.press('Escape');
   await manager.waitFor({ state: 'detached' });
-  await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="pl"]').click();
   await page.waitForSelector('[data-app-root][data-boot="ready"]');
   await page.waitForFunction(() => document.querySelector('[data-list-row="features"]')?.textContent.includes('Widoczne funkcje'));

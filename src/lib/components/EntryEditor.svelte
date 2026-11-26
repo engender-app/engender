@@ -79,7 +79,7 @@
   import type { ScrubPart, StepScrub } from '$lib/motion/entryStep';
   import { armStepPreview, registerStepBack } from '$lib/navigation/stepBack';
   import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
-  import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose, discloseWidth, resize } from '$lib/motion/reveal';
   import { EASE_OUT, motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
@@ -418,6 +418,30 @@
   /* A second tap on the open chip closes it; a tap on another chip swaps
      the section. The open chip is draft state (entryDraft.ts), so the
      process-death mirror carries it. */
+  const MEDIA_SECTIONS: readonly EntrySection[] = ['photos', 'voice', 'video'];
+  /* The leaving kind's tiles fade where they stood, out of the flow: the
+     surface holds one kind at a time, so where they stood is its top,
+     whichever of the three is arriving before or after them in the
+     markup. */
+  function mediaOut(node: Element) {
+    const el = node as HTMLElement;
+    const width = el.offsetWidth;
+    Object.assign(el.style, { position: 'absolute', top: '0', left: '0', width: `${width}px`, pointerEvents: 'none' });
+    return { duration: motionDuration('--dur-fast'), easing: EASE_OUT, css: (t: number) => `opacity: ${t}` };
+  }
+
+  /* The arriving kind's tiles hold back for the first 25% of --dur-med, so
+     they come up after the leaving ones (mediaOut, --dur-fast)
+     have gone rather than over them. Held in the curve, not by a delay,
+     so the first frame already has them at nil. */
+  function mediaIn(_node: Element) {
+    return {
+      duration: motionDuration('--dur-med'),
+      easing: EASE_OUT,
+      css: (t: number) => `opacity: ${Number(Math.max(0, (t - 0.25) / 0.75).toFixed(3))}`
+    };
+  }
+
   async function toggleSection(section: EntrySection) {
     const opening = entryDraft.openSection !== section;
     entryDraft.setOpenSection(opening ? section : null);
@@ -1334,140 +1358,156 @@
        not want the recorder. Each kind keeps its own two controls, pick and
        make, since "Record" on two buttons side by side did not say which one
        was which (phase 5 ticket 22) and the chip now says it instead. -->
-  {#if sections.includes('photos') && entryDraft.openSection === 'photos'}
-    <div class="editor-section" id="editor-section-photos" data-editor-section="photos" data-editor-media transition:disclose>
-      <div class="photo-row">
-        {#each entryDraft.photos as p, i (p)}
-          <div class="photo-wrap">
-            {#if p.kind === 'stored'}
-              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: p.photo.fileName })}>
-                <PhotoThumb photo={p.photo} size={72} />
-              </button>
-              <button
-                class="photo-star"
-                class:is-starred={p.photo.starred}
-                aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
-                aria-pressed={p.photo.starred}
-                onclick={() => prepareDraft(() => togglePhotoStarred(i))}
-              >
-                <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
-              </button>
-            {:else}
-              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: null, bytes: p.photo.full })}>
-                <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
-              </button>
-            {/if}
-            <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
-              <Icon name="x" size={14} />
+  <!-- One surface for the three media kinds (pre-release 18, item 76).
+       Each kind was a section of its own, so switching chips closed one
+       under the other while the next opened: two blocks travelling, the
+       extent dipping and rising again, and its 20px margin gone in one
+       frame at each end. The surface opens and closes with the chips as
+       any section does, and between kinds it only changes height
+       (`resize`) while the tiles cross: the old ones leave the flow as
+       they fade, the new ones come up once they have gone. -->
+  {#if MEDIA_SECTIONS.some((kind) => sections.includes(kind) && entryDraft.openSection === kind)}
+    <div class="editor-section" data-editor-media-surface transition:disclose>
+      <!-- `resize` on a box of its own: on the section it fought
+           `disclose` over the same height when the surface opened or
+           closed (Notice.svelte's note on the same pair). -->
+      <div class="editor-media" use:resize>
+      {#if entryDraft.openSection === 'photos'}
+        <div class="editor-media-kind" id="editor-section-photos" data-editor-section="photos" data-editor-media in:mediaIn out:mediaOut>
+          <div class="photo-row">
+            {#each entryDraft.photos as p, i (p)}
+              <div class="photo-wrap">
+                {#if p.kind === 'stored'}
+                  <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: p.photo.fileName })}>
+                    <PhotoThumb photo={p.photo} size={72} />
+                  </button>
+                  <button
+                    class="photo-star"
+                    class:is-starred={p.photo.starred}
+                    aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
+                    aria-pressed={p.photo.starred}
+                    onclick={() => prepareDraft(() => togglePhotoStarred(i))}
+                  >
+                    <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
+                  </button>
+                {:else}
+                  <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: null, bytes: p.photo.full })}>
+                    <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
+                  </button>
+                {/if}
+                <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+            {/each}
+            <button class="photo-add press" data-add-photo aria-label={m.add()} onclick={() => prepareDraft(addPhoto)}>
+              <Icon name="image" size={22} /><span>{m.add()}</span>
+            </button>
+            <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={() => prepareDraft(entryPhotoReview.capture)}>
+              <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
             </button>
           </div>
-        {/each}
-        <button class="photo-add press" data-add-photo aria-label={m.add()} onclick={() => prepareDraft(addPhoto)}>
-          <Icon name="image" size={22} /><span>{m.add()}</span>
-        </button>
-        <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={() => prepareDraft(entryPhotoReview.capture)}>
-          <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
-        </button>
-      </div>
-    </div>
-  {/if}
+        </div>
+      {/if}
 
-  {#if sections.includes('voice') && entryDraft.openSection === 'voice'}
-    <div class="editor-section" id="editor-section-voice" data-editor-section="voice" transition:disclose>
-      {#if entryDraft.recordings.length > 0}
-        <div class="recording-list">
-          {#each entryDraft.recordings as r, i (r)}
-            <!-- A row arrives and leaves by collapsing (DIRECTION rule 10),
-                 so adding or removing one moves the rows under it rather
-                 than jumping them. -->
-            <div class="recording-row" transition:collapse|global>
-              {#if r.kind === 'stored'}
-                <VoicePlayer fileName={r.recording.fileName} />
-              {:else}
-                <VoicePlayer bytes={r.bytes} />
-              {/if}
-              <button class="recording-remove press" aria-label={m.recording_remove()} onclick={() => entryDraft.removeRecording(i)}>
-                <Icon name="x" size={16} />
-              </button>
+      {#if entryDraft.openSection === 'voice'}
+        <div class="editor-media-kind" id="editor-section-voice" data-editor-section="voice" in:mediaIn out:mediaOut>
+          {#if entryDraft.recordings.length > 0}
+            <div class="recording-list">
+              {#each entryDraft.recordings as r, i (r)}
+                <!-- A row arrives and leaves by collapsing (DIRECTION rule 10),
+                     so adding or removing one moves the rows under it rather
+                     than jumping them. -->
+                <div class="recording-row" transition:collapse|global>
+                  {#if r.kind === 'stored'}
+                    <VoicePlayer fileName={r.recording.fileName} />
+                  {:else}
+                    <VoicePlayer bytes={r.bytes} />
+                  {/if}
+                  <button class="recording-remove press" aria-label={m.recording_remove()} onclick={() => entryDraft.removeRecording(i)}>
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+              {/each}
             </div>
-          {/each}
+          {/if}
+          <div class="photo-row">
+            <button class="photo-add press" aria-disabled={recordingPending} aria-busy={recordingPending} aria-label={activeRecording ? m.stop_recording() : m.record()} onclick={() => prepareDraft(toggleRecording)}>
+              <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
+              <span>{activeRecording ? m.stop_recording() : m.record()}</span>
+            </button>
+            <button class="photo-add press" data-add-recording-file aria-label={m.add()} onclick={() => prepareDraft(addRecordingFile)}>
+              <Icon name="upload" size={22} /><span>{m.add()}</span>
+            </button>
+          </div>
         </div>
       {/if}
-      <div class="photo-row">
-        <button class="photo-add press" aria-disabled={recordingPending} aria-busy={recordingPending} aria-label={activeRecording ? m.stop_recording() : m.record()} onclick={() => prepareDraft(toggleRecording)}>
-          <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
-          <span>{activeRecording ? m.stop_recording() : m.record()}</span>
-        </button>
-        <button class="photo-add press" data-add-recording-file aria-label={m.add()} onclick={() => prepareDraft(addRecordingFile)}>
-          <Icon name="upload" size={22} /><span>{m.add()}</span>
-        </button>
-      </div>
-    </div>
-  {/if}
 
-  {#if sections.includes('video') && entryDraft.openSection === 'video'}
-    <div class="editor-section" id="editor-section-video" data-editor-section="video" transition:disclose>
-      {#if entryDraft.videos.length > 0}
-        <div class="recording-list">
-          {#each entryDraft.videos as v, i (v)}
-            <div class="video-row" transition:collapse|global>
-              {#if v.kind === 'stored'}
-                <VideoNotePlayer fileName={v.video.fileName} />
-              {:else}
-                <VideoNotePlayer bytes={v.bytes} />
-              {/if}
-              <button class="recording-remove press" aria-label={m.video_remove()} onclick={() => entryDraft.removeVideo(i)}>
-                <Icon name="x" size={16} />
-              </button>
+      {#if entryDraft.openSection === 'video'}
+        <div class="editor-media-kind" id="editor-section-video" data-editor-section="video" in:mediaIn out:mediaOut>
+          {#if entryDraft.videos.length > 0}
+            <div class="recording-list">
+              {#each entryDraft.videos as v, i (v)}
+                <div class="video-row" transition:collapse|global>
+                  {#if v.kind === 'stored'}
+                    <VideoNotePlayer fileName={v.video.fileName} />
+                  {:else}
+                    <VideoNotePlayer bytes={v.bytes} />
+                  {/if}
+                  <button class="recording-remove press" aria-label={m.video_remove()} onclick={() => entryDraft.removeVideo(i)}>
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+              {/each}
             </div>
-          {/each}
+          {/if}
+          {#if activeVideo}
+            <div class="video-preview">
+              <!-- Muted: routing the microphone back to the speaker would howl. -->
+              <!-- svelte-ignore a11y_media_has_caption -->
+              <video use:previewStream={activeVideo.stream} muted autoplay playsinline></video>
+              <span class="video-countdown">0:{videoSecondsLeft.toString().padStart(2, '0')}</span>
+            </div>
+          {:else if compressingVideo}
+            <p class="video-hint">{m.video_compressing()}</p>
+          {:else}
+            <p class="video-hint">{m.video_recording_hint()}</p>
+          {/if}
+          <div class="photo-row">
+            <button
+              class="photo-add press"
+              disabled={compressingVideo}
+              aria-disabled={videoPending || compressingVideo}
+              aria-busy={videoPending}
+              aria-label={activeVideo ? m.stop_recording() : m.record()}
+              onclick={() => prepareDraft(toggleVideo)}
+            >
+              <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
+              <span>{activeVideo ? m.stop_recording() : m.record()}</span>
+            </button>
+            <button
+              class="photo-add press"
+              data-add-video-file
+              disabled={compressingVideo || videoOwner !== null}
+              aria-label={m.add()}
+              onclick={() => prepareDraft(addVideoFile)}
+            >
+              <Icon name="upload" size={22} /><span>{m.add()}</span>
+            </button>
+          </div>
         </div>
       {/if}
-      {#if activeVideo}
-        <div class="video-preview">
-          <!-- Muted: routing the microphone back to the speaker would howl. -->
-          <!-- svelte-ignore a11y_media_has_caption -->
-          <video use:previewStream={activeVideo.stream} muted autoplay playsinline></video>
-          <span class="video-countdown">0:{videoSecondsLeft.toString().padStart(2, '0')}</span>
-        </div>
-      {:else if compressingVideo}
-        <p class="video-hint">{m.video_compressing()}</p>
-      {:else}
-        <p class="video-hint">{m.video_recording_hint()}</p>
-      {/if}
-      <div class="photo-row">
-        <button
-          class="photo-add press"
-          disabled={compressingVideo}
-          aria-disabled={videoPending || compressingVideo}
-          aria-busy={videoPending}
-          aria-label={activeVideo ? m.stop_recording() : m.record()}
-          onclick={() => prepareDraft(toggleVideo)}
-        >
-          <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
-          <span>{activeVideo ? m.stop_recording() : m.record()}</span>
-        </button>
-        <button
-          class="photo-add press"
-          data-add-video-file
-          disabled={compressingVideo || videoOwner !== null}
-          aria-label={m.add()}
-          onclick={() => prepareDraft(addVideoFile)}
-        >
-          <Icon name="upload" size={22} /><span>{m.add()}</span>
-        </button>
       </div>
     </div>
   {/if}
 
   {/snippet}
 
-  {#snippet tagPicker(rows = false)}
+  {#snippet tagPicker()}
     <TagPicker
       groups={vocabulary.visibleTagGroups}
       selected={entryDraft.tags}
       onToggle={(id) => entryDraft.toggleTag(id)}
-      {rows}
     />
   {/snippet}
 
@@ -1721,7 +1761,7 @@
 
   <!-- A new entry's later steps (tester report 02, tickets 04 and 09), in
        the order Alicja chose: what is marked comes before what is written.
-       Mode and the tags, one sideways row per group; then the body map and
+       Mode and the tags, wrapped chips per group; then the body map and
        the cards the day offers, open on their own step; then the note, and
        the photos, video and voice last. The step's title names the step, so
        the tags and the body carry no heading of their own. -->
@@ -1729,7 +1769,7 @@
   {@render modeBlock(true)}
   {#if hasTags()}
     <div class="editor-section" id="editor-section-tags" data-editor-section="tags">
-      {@render tagPicker(true)}
+      {@render tagPicker()}
     </div>
   {/if}
   {/snippet}
@@ -1815,10 +1855,24 @@
            changes, and only the way on beside it opens and closes
            (ticket 03 chose the wording; ticket 04 keeps the control still).
            Finishing saves what is set and closes, so it is the ink button
-           and says what it does; going on is the soft block before it,
+           and says what it does; going on is the soft block after it, on
+           the right where a next step reads (bug session 18, item 84),
            naming the next step in a word. One row since ticket 09: stacked
            the two took 125px of the step's window, in a row 69. -->
       <div class="entry-foot" use:scrollCues={{ axis: 'y', scroller: stepRegion }}>
+        <button
+          class="btn press"
+          class:btn-primary={!moodMissing}
+          class:btn-soft={moodMissing}
+          data-save
+          data-entry-finish
+          data-entry-saving={saving || undefined}
+          data-save-unmet={moodMissing ? 'mood' : undefined}
+          disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
+          onclick={saveEntry}
+        >
+          <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+        </button>
         {#if stepAhead || previewing}
           <div class="entry-continue" transition:footContinue={{ instant: instantStep || previewing }}>
             <button
@@ -1835,19 +1889,6 @@
             </button>
           </div>
         {/if}
-        <button
-          class="btn press"
-          class:btn-primary={!moodMissing}
-          class:btn-soft={moodMissing}
-          data-save
-          data-entry-finish
-          data-entry-saving={saving || undefined}
-          data-save-unmet={moodMissing ? 'mood' : undefined}
-          disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
-          onclick={saveEntry}
-        >
-          <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
-        </button>
         <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : moodMissing ? wayOnNotice : ''}</span>
       </div>
     {:else}
@@ -2000,7 +2041,7 @@
      rules still win where they set a margin. */
   :global(.entry-step > *) { margin-bottom: var(--space-5); }
   :global(.entry-step > .kit-heading) { margin-bottom: var(--space-3); }
-  /* The foot draws its own edge, so the last block needs only a breath
+  /* The foot marks its own edge, so the last block needs only a breath
      above it rather than the screen's 20 (ticket 09). */
   :global(.entry-step > :last-child) { margin-bottom: var(--space-2); }
   /* The heading on the field, stacked the same way for the length of a
@@ -2019,15 +2060,15 @@
     gap: var(--space-2);
   }
   /* More of the step below the foot (ticket 09): the page's colour rises
-     over the last of the step at the foot's hairline, and fades away once
-     the step is scrolled to its end. Above the foot's own top padding and
-     hairline, across the column's whole width. */
+     over the last of the step at the foot's top edge, and fades away once
+     the step is scrolled to its end. Above the foot's own top padding,
+     across the column's whole width. */
   .entry-foot::before {
     content: '';
     position: absolute;
     left: calc(-1 * var(--screen-inset));
     right: calc(-1 * var(--screen-inset));
-    bottom: calc(100% + var(--space-3) + 1px);
+    bottom: calc(100% + var(--space-3));
     height: var(--space-8);
     background: linear-gradient(to bottom, transparent, var(--bg));
     pointer-events: none;
@@ -2041,16 +2082,19 @@
      moved Save entry 40px in one frame on a step change. It widens only on
      the last step, as the way on closes beside it (footContinue). */
   .entry-foot .btn { padding-inline: var(--space-3); white-space: nowrap; }
-  .entry-foot > .btn { flex: 1 1 0; min-width: 0; }
-  .entry-continue { flex: 1 1 0; min-width: 0; }
+  /* Half each and shrinking alike, rather than a zero basis: from a zero
+     basis the finish button's own padding came off before the halves were
+     shared, so it stood 26px wider than the way on. */
+  .entry-foot > .btn { flex: 1 1 50%; min-width: 0; }
+  .entry-continue { flex: 1 1 50%; min-width: 0; }
   /* Where the two words do not fit one row - text at 130% and up, or a
-     window under 352px - the way on stands over the finish control. 22em
+     window under 352px - the way on stands under the finish control. 22em
      follows the text size, so 360 and 390px windows at 100% keep the row.
      The way on carries the gap as its own padding, so the gap closes with
      it (footContinue opens and closes its height in a column). */
   @container app (max-width: 22em) {
     .entry-foot { flex-direction: column; gap: 0; }
-    .entry-continue { padding-bottom: var(--space-2); }
+    .entry-continue { padding-top: var(--space-2); }
     .entry-foot > .btn { flex: none; }
   }
   /* The words stacked in one cell, so the leaving name fades over the
@@ -2168,6 +2212,8 @@
   .editor-section {
     margin: var(--space-5) 0;
   }
+  /* The leaving media kind is pinned to the surface's top (mediaOut). */
+  .editor-media { position: relative; }
   /* On a step a section is a part in its own right, not something opened
      under a chip row, so it takes the step's own spacing (ticket 09). */
   .entry-step > .editor-section { margin-top: 0; }

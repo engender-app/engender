@@ -95,7 +95,6 @@ try {
       if (message.type() === 'error') browserErrors.push({ locale, type: 'console', message: message.text() });
     });
     await settlePage(page, base, '/settings', locale === 'en' ? 'light' : 'dark');
-    await page.locator('[data-list-row="language"]').click();
     await page.locator(`[data-segment="${locale}"]`).click();
     await page.goto(base + '/settings/access-mode', { waitUntil: 'networkidle' });
     await page.locator('[data-lock-after-choice="immediately"]').click();

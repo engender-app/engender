@@ -50,7 +50,7 @@ async function initialize(context, language = 'en') {
   }, { seed, language });
   await page.goto(new URL('settings', origin).href);
   await ready(page);
-  await page.waitForSelector('[data-list-row="language"]');
+  await page.waitForSelector('[data-segmented="language"]');
   return page;
 }
 async function prepare(page, language = 'pl') {
@@ -153,7 +153,7 @@ async function evidence(page) {
 async function stable(page, language, name) {
   await page.waitForFunction(async ({ language, name }) => {
     const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
-    return document.querySelector('[data-list-row="language"]') &&
+    return document.querySelector('[data-segmented="language"]') &&
       document.documentElement.lang === language && prefs.name === name;
   }, { language, name }, { timeout: 60000 });
 }
@@ -224,7 +224,7 @@ try {
         await ready(page);
         await stable(page, expected, `Incoming synthetic name ${seed}`);
         pair(await evidence(page), true, restored, expected);
-        assert.ok((await page.locator('[data-list-row="language"]').innerText()).includes(
+        assert.ok((await page.locator('[data-segmented="language"] [aria-checked="true"]').innerText()).includes(
           restored === 'pl' ? 'Polski' : restored === 'en' ? 'English' : expected === 'pl' ? 'Systemowy' : 'System'));
         ok('Language row, persisted choice and rendered locale agree');
         assert.equal(await page.evaluate(async () => {

@@ -83,7 +83,6 @@ for (const c of CASES) {
   await settle('/settings');
   await page.locator('[data-palette-pick="trans"]').click();
   await page.locator('[data-segment="light"]').click();
-  await page.locator('[data-list-row="language"]').click();
   await page.locator(`[data-segment="${c.locale}"]`).click();
   await page.keyboard.press('Escape');
   await settle('/');

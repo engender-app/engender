@@ -98,7 +98,7 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
       const start = editor.indexOf(`{#snippet ${name}()}`);
       return start < 0 ? '' : editor.slice(start, editor.indexOf('{/snippet}', start));
     };
-    const parts: [string, string][] = [['marksStep', '{@render modeBlock(true)}'], ['marksStep', '{@render tagPicker(true)}'],
+    const parts: [string, string][] = [['marksStep', '{@render modeBlock(true)}'], ['marksStep', '{@render tagPicker()}'],
       ['bodyStep', '{@render bodyPicker()}'], ['bodyStep', '{@render cards()}'],
       ['writingStep', '{@render noteField()}'], ['writingStep', '{@render chipRow(ATTACHMENT_SECTIONS)}'], ['writingStep', '{@render panels(ATTACHMENT_SECTIONS)}']];
     for (const [step, part] of parts) expect(later(step)).toContain(part);

@@ -1162,10 +1162,16 @@
           </ListCard>
         {/if}
 
+        <!-- The fold opens and closes its own height (pre-release 18, item
+             53): a dismissal or a stopped wear session that promotes the
+             last folded tile takes the fold with it, and unmounted bare it
+             gave its 48px and the 8px above it back in one frame, pulling
+             Pinned up 56px under a tile that was still dissolving. -->
         {#if tileSplit.folded.length > 0}
           <button
             type="button"
             class="home-fold press"
+            transition:collapse={panel}
             data-home-tiles-fold
             aria-expanded={tilesExpanded}
             onclick={() => (tilesExpanded = !tilesExpanded)}
@@ -1626,9 +1632,11 @@
      Tighter between the blocks than Home's own rhythm between sections
      (--space-2 against --space-3): three weights of one thing sit closer
      together than two different things do. */
-  .home-tiles {
-    display: grid;
-    gap: var(--space-2);
+  /* Block flow with a margin between rather than a grid gap (pre-release
+     18, item 53): a grid's gap goes in the frame the fold is removed, and
+     no margin on the fold can take it back first. A margin can travel. */
+  .home-tiles > :global(* + *) {
+    margin-top: var(--space-2);
   }
 
   /* The fold. A row rather than a link, because it discloses in place and
@@ -1647,7 +1655,11 @@
     min-height: var(--touch-target);
     padding: var(--space-2) var(--space-3);
     background: transparent;
-    border: 1px solid var(--outline);
+    /* The hairline is an inset shadow, not a border: a border keeps 2px of
+       height that collapse cannot take, so a closing fold stopped at 2px
+       and then vanished in one frame (item 81). */
+    border: 0;
+    box-shadow: inset 0 0 0 1px var(--outline);
     border-radius: var(--r-block);
     color: var(--text-2);
     font: inherit;
@@ -1659,7 +1671,6 @@
   .home-fold:hover,
   .home-fold:active {
     color: var(--text);
-    border-color: var(--outline);
   }
 
   /* Tier 3, change within a screen: the mark turns to point at what it has
