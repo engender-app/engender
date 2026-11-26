@@ -1,13 +1,4 @@
 <script lang="ts" module>
-  import type { Action } from 'svelte/action';
-  import { crossfadeDuration, EASE_OUT_CSS, isReducedMotion, NIL_OPACITY } from '$lib/motion/tokens';
-
-  /** One bar's growth from the zero line, and the beat between bars. */
-  const GROW_MS = 400;
-  const STAGGER_MS = 40;
-  /** The stagger stops counting here, so a long set still arrives as one
-      sweep rather than as seconds of bars. */
-  const STAGGER_CAP = 12;
   /** The shortest a real gap draws, as a share of the longest bar, so a gap
       a fiftieth of the leader's is still a mark with a side. */
   const FLOOR = 0.02;
@@ -15,32 +6,6 @@
   /** A bar's scale out of its zero line. Exact above the floor; a row with
       no gap at all draws nothing rather than a sliver that picks a side. */
   const scaleOf = (share: number) => (share === 0 ? 0 : Math.max(Math.abs(share), FLOOR));
-
-  /** A bar arriving: it grows out of the zero line it is drawn from.
-
-      A Web Animation rather than a CSS one on purpose. Under reduced motion
-      the substitute is a fade, and base.css flattens every CSS animation
-      duration to 1ms, so a CSS fade would be a cut. The first keyframe is
-      held through the delay (`backwards`), so a bar waiting its turn is
-      painted at zero length and never at full length for a frame. There is
-      no end keyframe on purpose: the animation lands on the bar's own
-      resting scale, whatever its length is. */
-  const grow: Action<HTMLElement, number> = (node, index = 0) => {
-    if (typeof node.animate !== 'function') return;
-    const reduced = isReducedMotion();
-    const animation = node.animate(
-      reduced
-        ? [{ opacity: NIL_OPACITY }, { opacity: 1 }]
-        : [{ transform: 'scaleX(0)' }],
-      {
-        duration: reduced ? crossfadeDuration() : GROW_MS,
-        delay: reduced ? 0 : Math.min(index, STAGGER_CAP) * STAGGER_MS,
-        easing: EASE_OUT_CSS,
-        fill: 'backwards'
-      }
-    );
-    return { destroy: () => animation.cancel() };
-  };
 </script>
 
 <script lang="ts">
@@ -86,8 +51,7 @@
       class="div-bar"
       class:is-lower={row.share < 0}
       data-div-bar
-      style={`--scale: ${scaleOf(row.share)}`}
-      use:grow={offset + index}
+      style={`--scale: ${scaleOf(row.share)}; --div-index: ${offset + index}`}
     ></span>
   </span>
 {/snippet}
@@ -215,6 +179,35 @@
     transition-property: transform;
     transition-duration: var(--dur-slow);
     transition-timing-function: var(--ease-out);
+    /* Arrival: out of the zero line, 400ms, 40ms between bars. A CSS
+       animation on purpose: a ReadGroup holds its members' CSS animations
+       paused until it shows (ReadGroup.svelte) and finishes any other
+       running one on the spot, which is how a bar written as a Web
+       Animation arrived already full. `backwards` only, so the resting
+       transform and its transition take over when it ends. */
+    animation: div-grow 400ms var(--ease-out) backwards;
+    animation-delay: calc(min(var(--div-index, 0), 12) * 40ms);
+  }
+
+  /* Reduced motion: no transform animation. The group's and the gate's own
+     fade is the arrival. */
+  @media (prefers-reduced-motion: reduce) {
+    .div-bar {
+      animation: none;
+    }
+  }
+
+  :global(html[data-a11y-motion='reduce']) .div-bar {
+    animation: none;
+  }
+
+  @keyframes div-grow {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(var(--scale));
+    }
   }
 
   .div-bar.is-lower {

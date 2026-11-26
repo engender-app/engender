@@ -273,13 +273,15 @@
 
 <style>
   .tag-scale {
-    margin-top: var(--space-5);
+    margin-top: var(--space-6);
   }
 
+  /* One step above a row's own name (text-sm), so the scale reads as the
+     thing the rows beneath it sit on. */
   .tag-scale-heading {
     margin: 0 0 var(--space-3);
-    font-size: var(--text-xs);
+    font-family: var(--font-body);
+    font-size: var(--text-md);
     font-weight: var(--weight-bold);
-    color: var(--text-2);
   }
 </style>
