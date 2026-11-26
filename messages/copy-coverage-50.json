@@ -424,6 +424,7 @@
   "daylio_tag_counts": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
   "daylio_unmapped": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
   "daylio_unreadable": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
+  "daylio_too_large": {"owner":43,"sources":["src/routes/settings/export/+page.svelte"]},
   "days_ago": {"owner":39,"sources":["src/lib/components/InjectionSiteMap.svelte","src/routes/body/hair-removal/+page.svelte","src/routes/settings/export/+page.svelte"]},
   "dbr_archive_body": {"owner":41,"sources":["src/lib/components/DeviceBoundRecovery.svelte"]},
   "dbr_archive_confirm": {"owner":41,"sources":["src/lib/components/DeviceBoundRecovery.svelte","src/lib/components/UnreadableJournalWayOut.svelte"]},

@@ -17,7 +17,9 @@
    reason: it is the same number either way, the total this reader is about
    to hold in memory at once.
 
-   Opening scans the central directory without decompressing anything.
+   Opening scans the central directory without decompressing anything, and
+   refuses a directory with too many entries or too many name bytes as it
+   walks it, before the name collections can grow (daylioInputBudget.ts).
    Duplicate names are rejected before any member can be read; otherwise
    two payloads could share one cache key and evade the running total.
    `names()` returns the scanned names, regardless of their declared sizes.
@@ -29,27 +31,49 @@
    the running total either, or the ceiling would refuse a backup for less
    than it actually holds. */
 
+import { DAYLIO_BUDGET, ImportTooLargeError } from './daylioInputBudget';
 import { FlateErrorCode, UnzipInflate, unzipSync, type UnzipOptions } from 'fflate';
 
-/** 1536 MiB allows headroom above the 851.2 MiB ten-year import estimate
-    documented in ARCHITECTURE.md. This bounds allocations; it does
-    not guarantee the device has enough memory for every accepted import.
+/** Declared decompressed bytes across every read one reader does. The
+    numbers behind this and every limit below are in daylioInputBudget.ts.
     Keep `dlb_too_large` in sync in both message catalogues. */
-const ZIP_INFLATED_CEILING_BYTES = 1536 * 1024 * 1024;
+const ZIP_INFLATED_CEILING_BYTES = DAYLIO_BUDGET.zipInflatedBytes;
 
 /** The picked file's own size on disk, checked before it is read into
     memory at all - a cheap, separate guard from the ceiling above, which
     only applies once a file is already a `Uint8Array` fflate can look
-    inside. 1024 MiB admits the estimate even with little media compression,
-    while keeping the input buffer below the decompression budget.
-    Keep `dlb_file_too_large` in sync in both message catalogues. */
-export const IMPORT_FILE_SIZE_CEILING_BYTES = 1024 * 1024 * 1024;
+    inside. Keep `dlb_file_too_large` in sync in both message catalogues. */
+export const IMPORT_FILE_SIZE_CEILING_BYTES = DAYLIO_BUDGET.backupFileBytes;
 
-/** A zip refused a member, or a running total of members, past the ceiling
-    it was opened with - before fflate allocated anything for it. */
-export class ZipTooLargeError extends Error {
-  constructor(ceilingBytes: number) {
-    super(`declares more data, once decompressed, than the ${ceilingBytes}-byte ceiling allows`);
+/** What a zip may hold, besides the running total of decompressed bytes. */
+export interface ZipLimits {
+  /** Declared size of any one member. */
+  memberBytes: number;
+  /** Entries in the central directory. */
+  entries: number;
+  /** Bytes in one entry name. */
+  nameBytes: number;
+  /** Bytes in every entry name together. */
+  totalNameBytes: number;
+}
+
+const DEFAULT_LIMITS: ZipLimits = {
+  memberBytes: DAYLIO_BUDGET.zipMemberBytes,
+  entries: DAYLIO_BUDGET.zipEntries,
+  nameBytes: DAYLIO_BUDGET.zipNameBytes,
+  totalNameBytes: DAYLIO_BUDGET.zipTotalNameBytes
+};
+
+/** A zip refused for something it declares, before fflate allocated or
+    this reader kept anything for it: a member or a running total of members
+    past the byte ceiling, or a directory with too many or too long names. */
+export class ZipTooLargeError extends ImportTooLargeError {
+  constructor(limit: number, what: 'bytes' | 'entries' | 'name bytes' = 'bytes') {
+    super(
+      what === 'bytes'
+        ? `declares more data, once decompressed, than the ${limit}-byte ceiling allows`
+        : `holds more than ${limit} ${what}`
+    );
     this.name = 'ZipTooLargeError';
   }
 }
@@ -100,7 +124,7 @@ export interface ZipReader {
       added to every size this reader has newly accepted, still fits under
       the ceiling it was opened with - otherwise throws `ZipTooLargeError`
       rather than returning anything. */
-  read(name: string): Uint8Array | null;
+  read(name: string, maxBytes?: number): Uint8Array | null;
   /** Uncached prefix, inflated in bounded chunks for attachment sniffing. */
   readPrefix(name: string, length: number): Uint8Array | null;
 }
@@ -146,15 +170,28 @@ function localOffset(view: DataView, central: number, extraStart: number, extraE
     decompress across every `read()` call made on it. Open one per file
     being imported, not one per member - the running total is what catches
     many small members that individually look harmless. */
-export function openZip(bytes: Uint8Array, ceilingBytes: number = ZIP_INFLATED_CEILING_BYTES): ZipReader {
+export function openZip(
+  bytes: Uint8Array,
+  ceilingBytes: number = ZIP_INFLATED_CEILING_BYTES,
+  given: Partial<ZipLimits> = {}
+): ZipReader {
+  const limits = { ...DEFAULT_LIMITS, ...given };
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const directory = centralDirectory(view);
   let central = directory.offset;
   const members = new Map<string, { offset: number; size: number; originalSize: number; compression: number }>();
+  let nameBytes = 0;
   readZip(bytes, {
     filter: (entry) => {
-      if (members.has(entry.name)) throw new ZipFormatError('duplicate ZIP member name');
+      // Before anything is kept for this entry, so the collections below
+      // never grow past what the limits allow.
       requireRange(view, central, 46);
+      const nameLength = view.getUint16(central + 28, true);
+      if (members.size >= limits.entries) throw new ZipTooLargeError(limits.entries, 'entries');
+      if (nameLength > limits.nameBytes) throw new ZipTooLargeError(limits.nameBytes, 'name bytes');
+      nameBytes += nameLength;
+      if (nameBytes > limits.totalNameBytes) throw new ZipTooLargeError(limits.totalNameBytes, 'name bytes');
+      if (members.has(entry.name)) throw new ZipFormatError('duplicate ZIP member name');
       if (view.getUint32(central, true) !== 0x02014b50) throw new ZipFormatError('invalid ZIP central record');
       const extraStart = central + 46 + view.getUint16(central + 28, true);
       const extraEnd = extraStart + view.getUint16(central + 30, true);
@@ -174,9 +211,14 @@ export function openZip(bytes: Uint8Array, ceilingBytes: number = ZIP_INFLATED_C
   let total = 0;
   const cache = new Map<string, Uint8Array | null>();
   const accepted = new Set<string>();
-  function accept(name: string): void {
+  function accept(name: string, maxBytes: number = limits.memberBytes): void {
     const member = members.get(name);
-    if (accepted.has(name) || !member) return;
+    if (!member) return;
+    // On every call, not only the first: a member first accepted by a prefix
+    // read must still meet the tighter limit a later full read names.
+    const memberLimit = Math.min(maxBytes, limits.memberBytes);
+    if (member.originalSize > memberLimit) throw new ZipTooLargeError(memberLimit);
+    if (accepted.has(name)) return;
     const size = member.originalSize;
     if (total + size > ceilingBytes) throw new ZipTooLargeError(ceilingBytes);
     total += size;
@@ -188,10 +230,9 @@ export function openZip(bytes: Uint8Array, ceilingBytes: number = ZIP_INFLATED_C
       return [...members.keys()];
     },
 
-    read(name: string): Uint8Array | null {
+    read(name: string, maxBytes?: number): Uint8Array | null {
+      accept(name, maxBytes);
       if (cache.has(name)) return cache.get(name)!;
-
-      accept(name);
       const found = readZip(bytes, { filter: entry => entry.name === name });
       const value = Object.values(found)[0] ?? null;
       cache.set(name, value);
