@@ -556,7 +556,7 @@ test('a rejected public journal write cancels handover without changing its erro
 });
 
 test('a write is a command for the session gate, a read is not (security-scan ticket 08)', () => {
-  assert.equal(isJournalCommand('tally', 'log'), true);
+  assert.equal(isJournalCommand('entries', 'upsertEntry'), true);
   assert.equal(isJournalCommand('wearSessions', 'getRunningSession'), false);
   assert.equal(isJournalCommand('noSuchArea', 'log'), false);
 });

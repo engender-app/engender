@@ -115,7 +115,7 @@ for (const mode of ['merge', 'replace'] as const) {
 
   test(`${mode} writes no file that no row owns (GD-020)`, async () => {
     const made = await device();
-    const empty = { ...clone(made), entries: [] as ArchiveJournal['entries'], milestones: [], hairPhotos: [], voiceBenchmarks: [] };
+    const empty = { ...clone(made), entries: [] as ArchiveJournal['entries'], milestones: [], progressPhotos: [], voiceBenchmarks: [] };
     await whileBusy(async () => {
       await made.journal.archive[mode](withFiles(empty, { 'stray-1.jpg': 'one', 'stray-2.webm': 'two' }));
       assert.equal(made.disk.names().some((name) => name.startsWith('stray')), false);
@@ -158,11 +158,11 @@ for (const mode of ['merge', 'replace'] as const) {
 test('deleting one of two rows that name the same file leaves the bytes (GD-024)', async () => {
   const made = await device();
   const [photo] = (await made.journal.entries.entriesForDay(20_000))[0].photos;
-  await made.db.run('INSERT INTO hair_photo(uuid, epoch_day, file_path, updated_at) VALUES (?, ?, ?, ?)',
-    ['hair-alias', 20_000, made.target, 1]);
+  await made.db.run('INSERT INTO progress_photo(uuid, epoch_day, pose, file_path, updated_at) VALUES (?, ?, ?, ?, ?)',
+    ['progress-alias', 20_000, 'front', made.target, 1]);
   await made.journal.photos.remove(photo.id);
   assert.deepEqual(await made.files.read(made.target), bytes('original photo'));
-  await made.db.run('DELETE FROM hair_photo WHERE uuid = ?', ['hair-alias']);
+  await made.db.run('DELETE FROM progress_photo WHERE uuid = ?', ['progress-alias']);
 });
 
 for (const mode of ['merge', 'replace'] as const) {
