@@ -16,6 +16,7 @@
   import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import Sheet from './Sheet.svelte';
   import { registerOverlayRegion } from './overlayLock';
+  import type { PickerKind } from './pickerField.svelte';
 
   let {
     open,
@@ -32,8 +33,9 @@
     anchor: HTMLElement;
     label: string;
     /** Names the surface for tests and the popover's width: seven day
-        targets for a date, two drums for a time. */
-    kind: 'date' | 'time';
+        targets for a date, two drums for a time, one column of choices
+        for a list. */
+    kind: PickerKind;
     panel: Snippet;
     onDismiss: () => void;
   } = $props();
@@ -52,7 +54,10 @@
     above = field.bottom + GAP + h > frame.bottom - GAP && field.top - GAP - h >= frame.top + GAP;
     const top = above ? field.top - GAP - h : Math.min(field.bottom + GAP, frame.bottom - GAP - h);
     node.style.top = `${Math.max(GAP, top - frame.top)}px`;
-    node.style.left = `${Math.max(GAP, Math.min(field.left - frame.left, frame.width - w - GAP))}px`;
+    /* A list hangs by its right edge: it is wider than the small field it
+       belongs to, and from the left it ran past the sheet holding it. */
+    const edge = kind === 'list' ? field.right - w : field.left;
+    node.style.left = `${Math.max(GAP, Math.min(edge - frame.left, frame.width - w - GAP))}px`;
   }
 
   function unroll(node: Element, { closing = false }: { closing?: boolean } = {}): TransitionConfig {
@@ -118,6 +123,7 @@
     <div
       class="picker-popover"
       class:is-time={kind === 'time'}
+      class:is-list={kind === 'list'}
       role="dialog"
       aria-label={label}
       tabindex="-1"
@@ -153,4 +159,11 @@
     outline: none;
   }
   .picker-popover.is-time { width: min(calc(256px + 2 * var(--space-3) + 2px), calc(100% - 16px)); }
+  /* A column of choices hung from a small field: about as wide as the field's
+     own row, and no taller than a dropdown a pointer can scan. */
+  .picker-popover.is-list {
+    width: min(176px, calc(100% - 16px));
+    max-height: min(320px, calc(100% - 16px));
+    padding: var(--space-1);
+  }
 </style>

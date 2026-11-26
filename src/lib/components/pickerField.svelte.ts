@@ -21,20 +21,24 @@ import PickerHost from './PickerHost.svelte';
     a pointer is the likely hand and a popover beats a sheet. */
 const DESKTOP_WIDTH = 1024;
 
+/** What the picker holds: a day, a time, or a plain list of choices (the
+    currency picker). The anchor may be a readonly input or a button. */
+export type PickerKind = 'date' | 'time' | 'list';
+
 export class PickerField {
   open = $state(false);
   desktop = $state(false);
-  #field: HTMLInputElement | undefined;
+  #field: HTMLElement | undefined;
   #host: { instance: ReturnType<typeof mount>; target: HTMLElement; observer: MutationObserver } | null = null;
 
-  readonly #kind: 'date' | 'time';
+  readonly #kind: PickerKind;
   readonly #ariaLabel: () => string | undefined;
   readonly #title: () => string;
   readonly #panel: Snippet;
 
   /** The surface is named by the caller's aria-label, else the field's own
       label, else the picker's generic `title`. */
-  constructor(kind: 'date' | 'time', ariaLabel: () => string | undefined, title: () => string, panel: Snippet) {
+  constructor(kind: PickerKind, ariaLabel: () => string | undefined, title: () => string, panel: Snippet) {
     this.#kind = kind;
     this.#ariaLabel = ariaLabel;
     this.#title = title;
@@ -42,7 +46,7 @@ export class PickerField {
   }
 
   #label(): string {
-    return this.#ariaLabel() || this.#field?.labels?.[0]?.textContent?.trim() || this.#title();
+    return this.#ariaLabel() || (this.#field as HTMLInputElement | undefined)?.labels?.[0]?.textContent?.trim() || this.#title();
   }
 
   /** Close, handing focus back to the field on a desktop - on a phone the
@@ -92,7 +96,7 @@ export class PickerField {
     this.show();
   };
 
-  attach = (node: HTMLInputElement) => {
+  attach = (node: HTMLElement) => {
     this.#field = node;
     return () => this.#release();
   };

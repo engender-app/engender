@@ -15,6 +15,7 @@
   import { journalTextAutocomplete } from '$lib/platform';
   import Field from '$lib/components/kit/Field.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import CurrencyPicker from './CurrencyPicker.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { currencyChoices } from '$lib/data/cost';
   import { costDraftOk, type CostDraft } from './costDraft';
@@ -41,11 +42,7 @@
           aria-describedby={touched && !ok ? `${fieldId}-invalid` : undefined}
           bind:value={draft.amount}
         />
-        <select class="input cost-currency" id={`${id}-currency`} aria-label={m.cost_currency_label()} bind:value={draft.currency}>
-          {#each choices as code (code)}
-            <option value={code}>{code}</option>
-          {/each}
-        </select>
+        <CurrencyPicker id={`${id}-currency`} {choices} bind:value={draft.currency} />
       </div>
       {#if touched && !ok}
         <p class="cost-invalid" id={`${fieldId}-invalid`} transition:disclose>{m.cost_amount_invalid()}</p>
@@ -70,10 +67,6 @@
   .cost-amount {
     flex: 1 1 8rem;
     min-width: 0;
-  }
-  .cost-currency {
-    flex: 0 0 auto;
-    width: 6.5rem;
   }
   .cost-invalid {
     padding-top: var(--space-1);
