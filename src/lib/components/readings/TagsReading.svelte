@@ -192,6 +192,10 @@
   <ChartCard level={2} heading={m.stats_tags_moved()} kind="tags-moved" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     <ReadGate read={correlationCardsQuery} variant="line" count={3}>
       {#snippet rows(answered)}
+        <!-- The figure's own box travels the difference in height when a span
+             swaps it (the share ring's wrapper does the same); the gate's
+             resize does not see a swap inside a branch that stays 'rows'. -->
+        <div use:resize>
         {#key `${answered[0].start}-${answered[0].end}`}
           <div in:figureIn out:crossfade data-tag-scales>
             {#if groups.length}
@@ -214,6 +218,7 @@
             {/if}
           </div>
         {/key}
+        </div>
       {/snippet}
       {#snippet empty()}
         <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
