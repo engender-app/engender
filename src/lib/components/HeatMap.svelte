@@ -858,6 +858,13 @@
       border-radius var(--dur-med) var(--ease-out),
       outline-color var(--dur-med) var(--ease-out);
   }
+  /* On the desktop column a column is about 85px, and a face filling it
+     read as too big for a month (bug session 18, item 50). Capped there and
+     centred in its column, so the day letters and the dates still sit on
+     the faces; the phone's columns are under the cap and draw as before. */
+  @container app (min-width: 1024px) {
+    .cal-grid:not(.is-compact) .cal-cell { max-width: 64px; }
+  }
   .cal-fill,
   .cal-half {
     position: absolute;
