@@ -685,7 +685,9 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 420px;
+  /* The app's own column, so a gate lines up with the screens behind it
+     (bug session 18, item 52: 420 read as a narrow card in a wide window). */
+  max-width: calc(var(--content-max) + 2 * var(--space-5));
   margin: 0 auto;
   position: relative;
   /* Where the edge rests before stepBlind's first measurement, and the only
@@ -892,7 +894,7 @@
   .screen-gate[data-gate-sun] .step-field-ask {
     min-height: calc(var(--gate-sun-field) - var(--space-6) - var(--space-4));
   }
-  .screen-gate[data-gate-sun] .gate-page { max-width: 420px; width: 100%; }
+  .screen-gate[data-gate-sun] .gate-page { max-width: calc(var(--content-max) + 2 * var(--space-5)); width: 100%; }
 }
 
 /* ---------- Progress photos ---------- */

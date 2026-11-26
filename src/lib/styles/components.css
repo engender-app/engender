@@ -2761,8 +2761,11 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      padding reserves the rail's own width, rail plus the left inset it has
      already taken from the scroll region, and the sheet centres in what is
      left - the same strip .screen centres in, so the two share one axis. */
-  .sheet-scrim {
-    align-items: center;
+  .sheet-scrim { align-items: center; }
+  /* Only while there is a rail. A gate draws none and centres on the whole
+     window, and a sheet over it padded for the missing rail sat 110px right
+     of the gate (bug session 18, item 52). */
+  .app:has(.app-rail) .sheet-scrim {
     padding-left: calc(var(--rail-width) + var(--inset-left));
   }
   .sheet { border-radius: var(--r-block); --sheet-skirt: 0px; }
