@@ -3,7 +3,7 @@
 
 import type { Journal } from './journal/journal';
 import { wrappedLetters, LETTER_RETROSPECTIVE_LIMIT } from './letterRetrospective';
-import { wrappedTagInsights, wrappedTallyCounts } from './wrappedSections';
+import { wrappedTagInsights } from './wrappedSections';
 
 /** One result for a wrapped period. Start every journal call before
     awaiting so liveQuery observes every dependency on its first run. The
@@ -26,13 +26,11 @@ export async function readWrappedPeriod(
   }
 ) {
   const { start, end, today, metric, year } = period;
-  const [recap, moodTrend, scaleTrend, insights, misgendered, correctlyGendered, letters] = await Promise.all([
+  const [recap, moodTrend, scaleTrend, insights, letters] = await Promise.all([
     journal.stats.recap(start, end),
     journal.stats.dayAverages('mood', start, end),
     year ? journal.stats.dayAverages(metric, start, end) : Promise.resolve([]),
     journal.stats.tagInsights(metric, start, end),
-    journal.stats.tallyTrend('misgendered', start, end),
-    journal.stats.tallyTrend('correctly_gendered', start, end),
     year ? journal.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT) : Promise.resolve([])
   ]);
   return {
@@ -40,7 +38,6 @@ export async function readWrappedPeriod(
     moodTrend,
     scaleTrend,
     insights: wrappedTagInsights(insights),
-    tally: wrappedTallyCounts(misgendered, correctlyGendered),
     /* Written inside the period and unlocked today, which is the only way a
        past self's words may resurface. Sealed ones never reach the screen:
        letterRetrospective.ts answers the seal question. */

@@ -12,7 +12,6 @@ import {
   CYCLE_EVENT_KINDS,
   EFFECT_DIRECTIONS_STORED,
   HAIR_REMOVAL_METHODS,
-  TALLY_KINDS,
   TRYOUT_KINDS
 } from './rowValues';
 
@@ -344,16 +343,6 @@ export interface LabResult {
   cost: Cost;
 }
 
-/** The two counters ticket 10 tracks. Fixed rather than user-defined, so it
-    is a plain union rather than a keyed reference-data row. */
-export type TallyKind = (typeof TALLY_KINDS)[number];
-
-export interface TallyEvent {
-  id: string;
-  epochDay: number;
-  kind: TallyKind;
-}
-
 /** One line of the person's own comfort list (phase 6 ticket 14, CONTEXT:
     "Comfort list"): who to text, which walk, which playlist - entirely
     their own words, with nothing shipped by the app behind it, the same
@@ -674,9 +663,9 @@ export interface SideEffect {
   resolvedEpochDay: number | null;
 }
 
-/** The three states phase 5 ticket 03 logs. Fixed rather than user-defined,
-    the same reasoning TallyKind gives - 'nothing_this_month' is a real,
-    loggable state here, not the absence of a row. */
+/** The three states phase 5 ticket 03 logs. Fixed rather than user-defined;
+    'nothing_this_month' is a real, loggable state here, not the absence of
+    a row. */
 export type CycleEventKind = (typeof CYCLE_EVENT_KINDS)[number];
 
 /* No episode reference (CONTEXT: "Cycle event"): this record stands alone
@@ -823,22 +812,6 @@ export interface PersonalEffect {
   firstNoticedEpochDay: number;
 }
 
-/* A dated series, not a single replaced value like PersonalEffect: a person
-   re-stages over time to track progression, never answering "what is it
-   now" in place of what it was before. No episode or anchor reference: what
-   this is read against is resolved above this seam (hairAnchor.ts).
-
-   The person's own words since functional audit ticket 23. A staging made
-   against Norwood-Hamilton or Sinclair before that reads as the scale and
-   grade it named (hairStageScales.ts). */
-export interface HairStage {
-  id: string;
-  epochDay: number;
-  /** What the person wrote. Empty only on a row from before ticket 23 that
-      named neither scale and said nothing more. */
-  description: string;
-}
-
 /** A hair-removal session's method (phase 5 ticket 08): a small closed set
     rather than free text, so `hairRemovalMethodName` can give it a
     translated label the way a hair-staging grade does - 'other' is the
@@ -847,7 +820,7 @@ export { HAIR_REMOVAL_METHODS };
 export type HairRemovalMethod = (typeof HAIR_REMOVAL_METHODS)[number];
 
 /** One electrolysis/laser session (phase 5 ticket 08, CONTEXT: pending). A
-    dated series like Measurement and HairStage above, not a single replaced
+    dated series like Measurement above, not a single replaced
     value: a person logs many sessions over time. `area` is a plain string
     rather than a literal union here, the same treatment DoseEvent's
     `injectionSite` gets: it is validated against hairRemovalAreas.ts's own

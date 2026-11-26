@@ -48,8 +48,7 @@ const rowCounts = (tables: Record<string, unknown[]>) =>
 type Remove = (journal: Journal, id: string) => Promise<unknown>;
 
 /* Each listed deletion the screens offer: the ticket's milestones, letters,
-   photos and doses, and the rest. An entry is not here - it goes to Trash -
-   and neither is a tally tap's removal, which is itself the undo of a tap. */
+   photos and doses, and the rest. An entry is not here - it goes to Trash. */
 const CASES: [string, string, Remove][] = [
   ['a milestone with its photo and a filed document', 'SELECT m.uuid AS id FROM milestone m JOIN photo p ON p.milestone_id = m.id', (j, id) => j.milestones.deleteMilestone(id)],
   ['a letter', 'SELECT uuid AS id FROM letter', (j, id) => j.letters.deleteLetter(id)],
@@ -68,8 +67,7 @@ const CASES: [string, string, Remove][] = [
   ['a cycle event', 'SELECT uuid AS id FROM cycle_event', (j, id) => j.cycleEvents.deleteCycleEvent(id)],
   ['a dilation session', 'SELECT uuid AS id FROM taper_session', (j, id) => j.taper.deleteSession(id)],
   ['a wear session', 'SELECT uuid AS id FROM wear_session', (j, id) => j.wearSessions.deleteSession(id)],
-  ['a hair stage', 'SELECT uuid AS id FROM hair_stage', (j, id) => j.hairProgress.deleteStage(id)],
-  ['a hair photo', 'SELECT uuid AS id FROM hair_photo', (j, id) => j.hairProgress.deletePhoto(id)],
+  ['a progress photo', 'SELECT uuid AS id FROM progress_photo', (j, id) => j.progressPhotos.deletePhoto(id)],
   ['a hair-removal session', 'SELECT uuid AS id FROM hair_removal_session', (j, id) => j.hairRemoval.deleteSession(id)],
   ['a hair-removal photo', 'SELECT uuid AS id FROM hair_removal_photo', (j, id) => j.hairRemoval.deletePhoto(id)],
   ['a tryout with its readings and photos', 'SELECT t.uuid AS id FROM tryout t JOIN felt_sense f ON f.tryout_id = t.id', (j, id) => j.tryouts.deleteTryout(id)],

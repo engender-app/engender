@@ -1,6 +1,6 @@
 /* Somatic breakdown per body region queries (phase 5 deepening ticket 08).
    Combines feelings trajectory, progress photos, and
-   hair removal / staging records for an anatomical region. */
+   hair removal records for an anatomical region. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -30,7 +30,6 @@ test('empty somatic breakdown when nothing is logged for a region', async () => 
   assert.deepEqual(breakdown.trajectory, []);
   assert.deepEqual(breakdown.photos, []);
   assert.deepEqual(breakdown.hairRemovalSessions, []);
-  assert.deepEqual(breakdown.hairStages, []);
   assert.equal(breakdown.averageDysphoria, null);
   assert.equal(breakdown.averageEuphoria, null);
 });
@@ -153,7 +152,7 @@ test('the trajectory and its photos filter by presentation (ADR-0048, ticket 18)
   );
 });
 
-test('hair removal sessions and hair staging link to relevant regions', async () => {
+test('hair removal sessions link to relevant regions', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
   await journal.hairRemoval.upsertSession({
@@ -171,14 +170,10 @@ test('hair removal sessions and hair staging link to relevant regions', async ()
     painRating: 2
   });
 
-  await journal.hairProgress.upsertStage({ epochDay: 102, description: 'temples back a little' });
-
   const faceBreakdown = await getRegionSomaticBreakdown(db, 'face_jaw');
   assert.equal(faceBreakdown.hairRemovalSessions.length, 1);
   assert.equal(faceBreakdown.hairRemovalSessions[0].area, 'chin');
-  assert.equal(faceBreakdown.hairStages.length, 0);
 
   const hairlineBreakdown = await getRegionSomaticBreakdown(db, 'hairline');
-  assert.equal(hairlineBreakdown.hairStages.length, 1);
-  assert.equal(hairlineBreakdown.hairStages[0].description, 'temples back a little');
+  assert.equal(hairlineBreakdown.hairRemovalSessions.length, 0);
 });

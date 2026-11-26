@@ -9,7 +9,7 @@ import { firstRun, unlock } from './browser-tier/built-flow.mjs';
 // Route ids FA11 removed (they were redirect-only +page.ts files). None may come back: each must render the unknown-address screen.
 // BROWSER_ENGINE=firefox runs it in Firefox, on a real profile directory.
 const oldRoutes = JSON.parse(readFileSync(new URL('./old-addresses.json', import.meta.url), 'utf8'));
-assert.equal(oldRoutes.length, 52);
+assert.equal(oldRoutes.length, 54);
 const app = await previewBuild(process.cwd());
 const base = `http://localhost:${app.httpServer.address().port}`;
 

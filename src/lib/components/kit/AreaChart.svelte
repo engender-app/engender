@@ -503,7 +503,7 @@
              the tween cannot travel between them: from two readings to one,
              the area, the annotation marks and the ring all went in one
              frame and the ring jumped to the centre (phase 14 ticket 18,
-             sampled on Tally's undo). So the two drawings crossfade, the
+             sampled on a chart's undo). So the two drawings crossfade, the
              old one held as it was while it fades. -->
         {#key plottable}
         <g

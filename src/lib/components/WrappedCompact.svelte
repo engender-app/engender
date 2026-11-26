@@ -14,8 +14,8 @@
      and are a list card, so a figure can carry a supporting line under it
      instead of every one of them being a tile saying a bare number. The
      mood arc is the kit's area chart, so it carries a value scale and a
-     mark per day and re-tweens rather than being redrawn. Tag insights and
-     the tally are the kit's horizontal bars. The rest - milestones, photos, the tags you used
+     mark per day and re-tweens rather than being redrawn. Tag insights are
+     the kit's horizontal bars. The rest - milestones, photos, the tags you used
      - is the same content on the kit's own surfaces.
 
      Sections with nothing in them are left out rather than rendered saying
@@ -35,14 +35,13 @@
     WRAPPED_AREA_ROLE,
     nativeValue,
     signedValue,
-    tagInsightRows,
-    tallyRows
+    tagInsightRows
   } from '$lib/data/wrappedDisplay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import type { RecapDimChange } from '$lib/data/recapDisplay';
-  import type { WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
+  import type { WrappedTagInsight } from '$lib/data/wrappedSections';
   import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import AreaChart from './kit/AreaChart.svelte';
   import BarRows from './kit/BarRows.svelte';
@@ -60,7 +59,6 @@
     topTags,
     anchorDuration = null,
     insights = [],
-    tally = null,
   }: {
     title: string;
     subtitle: string;
@@ -78,7 +76,6 @@
     /** Which tags went with better or worse days, already named. Empty
         where the period has nothing to say (spec 06). */
     insights?: (WrappedTagInsight & { label: string })[];
-    tally?: WrappedTallyCounts | null;
   } = $props();
 
   /* Which stripe each area takes, and the two ways this app writes a
@@ -111,7 +108,6 @@
      change the scale it is a retrospective of. */
   let metric = $derived(metricKey(prefs));
   let insightRows = $derived(tagInsightRows(insights, metric));
-  let tally_rows = $derived(tallyRows(tally));
 </script>
 
 <header class="wrapped-head">
@@ -185,12 +181,6 @@
     <BarRows rows={insightRows} />
   </ChartCard>
   <p class="wrapped-note">{m.insights_note()}</p>
-{/if}
-
-{#if tally_rows.length}
-  <ChartCard level={3} heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-    <BarRows rows={tally_rows} />
-  </ChartCard>
 {/if}
 
 <!-- The tags you used, as the chip row: flush to the page with no container

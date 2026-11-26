@@ -37,8 +37,8 @@
    exhaustiveness against (`day.ts`, `textSearch.ts`), and it is a wire key,
    so it cannot be renamed casually - a hub row can be regrouped or renamed
    this afternoon without a stored key changing meaning underneath it. Where
-   one hub row fronts two sections - hair progress is `hairStages` plus
-   `hairPhotos` - the row finishes both together and the one-to-many mapping
+   one hub row fronts two sections - voice is `voiceBenchmarks` plus
+   `voicePracticeTakes` - the row finishes both together and the one-to-many mapping
    is presentation, living with the hub.
 
    Rune-free and driver-free, like `cycleTracking.ts` next door and for the
@@ -107,12 +107,7 @@ export const FINISHABLE_AREAS = [
   'wearSessions',
   'sideEffects',
   'personalEffects',
-  /* Two sections, one hub row: hair progress is the stagings and the
-     photographs together, and finishing that practice finishes both. */
-  'hairStages',
-  'hairPhotos',
-  /* Two sections, one hub row, the same shape hairStages/hairPhotos give:
-     a benchmark and a practice take are both dated records of the same
+  /* Two sections, one hub row: a benchmark and a practice take are both dated records of the same
      ongoing practice of tracking a voice, so declaring that practice done
      finishes both together (phase 8 features ticket 10).
 
@@ -193,7 +188,6 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   milestones: 'one dated point each, and the list of them never closes',
   progressPhotos: 'a photograph taken when the person wants one, and the next one is always possible',
   appointments: 'one dated visit each, and nobody declares themselves done seeing people',
-  tallyEvents: 'one dated point each, and the list of them never closes',
   cycleEvents: 'gated one-directionally by ADR-0043, which a finish flag must not reverse',
   regimenEpisodes: 'an episode carries its own end day, so a course that stopped is recorded by ending it',
   doseEvents: 'each dose is an event inside an episode, and the episode is where a course ends',

@@ -11,7 +11,7 @@
 
      Until this the grid read the `photo` table, which is an entry's
      photographs and a milestone's, and the line over it said "Every photo
-     in your journal". Four more tables hold photographs - hair progress,
+     in your journal". Four more tables hold photographs - progress photos,
      hair removal, tryouts, surgery recovery - and `video_note` holds a
      note recorded in the editor, and none of the five could be found again
      except through the day it hangs off. `journal.photoLibrary` is the one

@@ -105,7 +105,7 @@
     /** Kept out of the layout while the screen above it is still a
         skeleton. The row sits at the foot, so a screen whose body swaps in
         from a page-level skeleton with no wrapper to travel its height
-        (hair progress) threw it hundreds of pixels down in one frame
+        (it was hair progress) threw it hundreds of pixels down in one frame
         (ux-carpet ticket 193). Held, it takes no room; let go, it fades in
         where it rests. */
     held?: boolean;

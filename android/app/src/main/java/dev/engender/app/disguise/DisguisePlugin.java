@@ -12,7 +12,6 @@ import java.util.List;
 import dev.engender.app.widgets.DisguisableWidgetProvider;
 import dev.engender.app.widgets.DoubtWidgetProvider;
 import dev.engender.app.widgets.QuickLogWidgetProvider;
-import dev.engender.app.widgets.TallyWidgetProvider;
 
 /**
  * Mirrors disguise, palette and icon shape into the alias PackageManager
@@ -24,13 +23,13 @@ import dev.engender.app.widgets.TallyWidgetProvider;
 @CapacitorPlugin(name = "Disguise")
 public class DisguisePlugin extends Plugin {
 
-    /** Every at-rest widget surface (tickets 26, 33, 34) that must go
+    /** Every at-rest widget surface (tickets 26, 34) that must go
         neutral the moment disguise flips - adding a widget here is all
         DisguisePlugin needs to pick it up. These instances are only ever
         used to call updateAll; the system creates its own separate
         instances to deliver the real onUpdate broadcasts. */
     private static final List<DisguisableWidgetProvider> WIDGET_PROVIDERS = List.of(
-        new QuickLogWidgetProvider(), new TallyWidgetProvider(), new DoubtWidgetProvider()
+        new QuickLogWidgetProvider(), new DoubtWidgetProvider()
     );
 
     /** A palette change that arrived while running, queued rather than
@@ -88,8 +87,8 @@ public class DisguisePlugin extends Plugin {
             // the next cold start - disguise_app_sub_android's "the app
             // closes briefly to switch". Only when the alias actually
             // flipped: prefs sync onto every boot, and a restart nobody
-            // asked for is its own kind of leak. Already-placed quick-log,
-            // tally and doubt-entry widgets (tickets 26, 33, 34) are the
+            // asked for is its own kind of leak. Already-placed quick-log
+            // and doubt-entry widgets (tickets 26, 34) are the
             // same category of exposure as the launcher icon, so they get
             // the same immediate refresh rather than waiting on their own
             // system-scheduled update.

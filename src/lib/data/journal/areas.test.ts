@@ -1,4 +1,4 @@
-/* The dimensions, milestones, labs, reminders and hair-progress areas,
+/* The dimensions, milestones, labs, and reminders areas,
    exercised through the driver interface (ticket 07). */
 
 import { test } from 'vitest';
@@ -750,77 +750,6 @@ test('clearing a marker is the undo for a mistaken date, and is idempotent', asy
   assert.deepEqual(await journal.personalEffects.getMarkers(), []);
 });
 
-/* hair progress (phase 4 ticket 09). Staging is the person's own words
-   since functional audit ticket 23: no published scale and no grade. */
-
-test('a staging round-trips as free text with no anchor reference, ordered by day', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage({ epochDay: 200, description: 'crown thinner' });
-  const id = await journal.hairProgress.upsertStage({ epochDay: 100, description: 'hairline the same' });
-
-  const stages = await journal.hairProgress.getStages();
-  assert.deepEqual(stages.map((s) => s.epochDay), [100, 200]);
-  assert.deepEqual(stages[0], { id, epochDay: 100, description: 'hairline the same' });
-});
-
-test('re-staging adds a row rather than replacing the last one - it is a series', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage({ epochDay: 100, description: 'a' });
-  await journal.hairProgress.upsertStage({ epochDay: 200, description: 'b' });
-
-  assert.equal((await journal.hairProgress.getStages()).length, 2);
-});
-
-test('stagings update by id, throw on unknown ids and delete idempotently', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.hairProgress.upsertStage({ epochDay: 100, description: 'thin at the temples' });
-
-  await journal.hairProgress.upsertStage({ id, epochDay: 100, description: 'thin at the temples, crown fine' });
-  assert.equal((await journal.hairProgress.getStages())[0].description, 'thin at the temples, crown fine');
-
-  await assert.rejects(journal.hairProgress.upsertStage({ id: 'nope', epochDay: 1, description: 'x' }), /unknown hair stage/);
-
-  await journal.hairProgress.deleteStage(id);
-  await journal.hairProgress.deleteStage(id); // idempotent
-  assert.deepEqual(await journal.hairProgress.getStages(), []);
-});
-
-test('a hair photo writes both files and its own row, distinct from the shared photo table', async () => {
-  const db = await migratedDb();
-  const files = fakeFileStore();
-  const journal = openJournal(db, files);
-
-  const id = await journal.hairProgress.addPhoto(19000, {
-    full: new Uint8Array([1]),
-    thumb: new Uint8Array([2])
-  });
-
-  assert.match(id, UUID_PATTERN);
-  const photos = await journal.hairProgress.getPhotos();
-  assert.deepEqual(photos, [{ id, epochDay: 19000, fileName: `${id}.jpg` }]);
-  assert.deepEqual(files.names(), [`${id}-thumb.jpg`, `${id}.jpg`]);
-  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0, 'not a third owner on `photo`');
-});
-
-test('hair photos order oldest first and delete takes the row and its files; twice is success', async () => {
-  const db = await migratedDb();
-  const files = fakeFileStore();
-  const journal = openJournal(db, files);
-
-  const first = await journal.hairProgress.addPhoto(19100, { full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
-  const second = await journal.hairProgress.addPhoto(19000, { full: new Uint8Array([3]), thumb: new Uint8Array([4]) });
-
-  assert.deepEqual(
-    (await journal.hairProgress.getPhotos()).map((p) => p.id),
-    [second, first]
-  );
-
-  await journal.hairProgress.deletePhoto(first);
-  assert.deepEqual(files.names(), [`${second}-thumb.jpg`, `${second}.jpg`]);
-
-  await journal.hairProgress.deletePhoto(first); // idempotent
-});
-
 /* hair removal (phase 5 ticket 08) */
 
 test('a hair-removal session round-trips with no episode reference, ordered by day', async () => {
@@ -924,7 +853,7 @@ test('provider is stored as typed, with no list and no normalization', async () 
   );
 });
 
-test('a session photo writes both files and its own row, distinct from `photo` and `hair_photo`', async () => {
+test('a session photo writes both files and its own row, distinct from `photo`', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
   const journal = openJournal(db, files);
@@ -942,7 +871,6 @@ test('a session photo writes both files and its own row, distinct from `photo` a
   assert.deepEqual(await journal.hairRemoval.getPhotos(sessionId), [{ id, sessionId, fileName: `${id}.jpg` }]);
   assert.deepEqual(files.names(), [`${id}-thumb.jpg`, `${id}.jpg`]);
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0, 'not a third owner on `photo`');
-  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM hair_photo').get() as { n: number }).n, 0, 'not hair_photo either');
 });
 
 test('adding a photo to an unknown session throws before any file lands', async () => {

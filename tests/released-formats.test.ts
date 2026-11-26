@@ -48,7 +48,7 @@ test('rc.1 archive without a writer stamp still verifies and restores', async ()
 /* Tables the functional audit's cuts drop before 1.0 (spec: "cut means
    removed"). Their rows go with the migration, so a released fixture's count
    for them is checked as gone rather than kept. */
-const DROPPED_TABLES = new Set(['saved_question', 'doubt_snapshot', 'doubt_snapshot_entry', 'measurement', 'measurement_type', 'size_record', 'affirmation', 'revisit', 'word_frequency_ignore', 'journaling_pause', 'roadmap_track', 'entry_template', 'entry_template_tag', 'entry_template_dimension_value']);
+const DROPPED_TABLES = new Set(['saved_question', 'doubt_snapshot', 'doubt_snapshot_entry', 'measurement', 'measurement_type', 'size_record', 'affirmation', 'revisit', 'word_frequency_ignore', 'journaling_pause', 'roadmap_track', 'entry_template', 'entry_template_tag', 'entry_template_dimension_value', 'tally_event', 'hair_stage', 'hair_photo']);
 
 interface ReleasedCounts {
   archiveSections: Record<string, number>;
@@ -101,6 +101,10 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
         && opened.payload.journal.effectCategories.some((category) => (category as { key?: string }).key === 'genital_sexual') ? 1 : 0;
       assert.equal(row.n, expected - droppedRows + splitRows, `released SQLite table ${table}`);
     }
+    /* Version 124 folds hair photos into progress photos rather than dropping
+       them: every released hair photo is a hair-pose one now. */
+    const [moved] = await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM progress_photo WHERE pose = 'hair'");
+    assert.equal(moved.n, counts.sqliteTables.hair_photo ?? 0, 'released hair photos became hair-pose progress photos');
     assert.deepEqual(await driver.query('PRAGMA integrity_check'), [{ integrity_check: 'ok' }]);
     assert.deepEqual(await driver.query('PRAGMA foreign_key_check'), []);
   } finally {

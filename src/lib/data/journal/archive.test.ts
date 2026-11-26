@@ -63,7 +63,6 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
-  const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
   const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   const cycleEvent = await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   const personalEffect = await journal.personalEffects.upsertMarker({
@@ -165,7 +164,6 @@ async function populated() {
     milestone,
     milestonePhoto,
     lab,
-    tally,
     contextLab,
     reminder,
     episode,
@@ -257,14 +255,13 @@ test('the state a user put on a built-in row travels with it', async () => {
   assert.equal(activities.tags.find((t) => t.id === 'a-therapy')!.label, 'therapy session');
 });
 
-test('milestones, lab results, tally events, side effects, cycle events, reminders and regimen episodes travel whole', async () => {
+test('milestones, lab results, side effects, cycle events, reminders and regimen episodes travel whole', async () => {
   const {
     journal,
     milestone,
     milestonePhoto,
     lab,
     contextLab,
-    tally,
     sideEffect,
     cycleEvent,
     personalEffect,
@@ -324,7 +321,6 @@ test('milestones, lab results, tally events, side effects, cycle events, reminde
       costRefunded: false
     }
   ]);
-  assert.deepEqual(snapshot.journal.tallyEvents, [{ id: tally, epochDay: 20000, kind: 'misgendered' }]);
   assert.deepEqual(snapshot.journal.sideEffects, [
     { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null }
   ]);
@@ -740,14 +736,14 @@ test('a photo row whose file is gone keeps its row and leaves the manifest alone
 test('an area\'s hidden, finished and suspended state travels, and a restore keeps the days it names', async () => {
   const { journal } = await populated();
   await journal.areaStates.setAreasHidden(['wearSessions'], true);
-  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19300);
+  await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 19300);
   await journal.areaStates.setAreasSuspended(['voiceBenchmarks'], 19310);
 
   const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(snapshot.journal.areaStates, [
-    { area: 'hairPhotos', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
-    { area: 'hairStages', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    { area: 'personalEffects', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    { area: 'sideEffects', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
     { area: 'voiceBenchmarks', hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 },
     { area: 'wearSessions', hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
   ]);
@@ -759,8 +755,8 @@ test('an area\'s hidden, finished and suspended state travels, and a restore kee
   await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
 
   assert.deepEqual(await target.areaStates.getAreaStates(), {
-    hairPhotos: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
-    hairStages: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    personalEffects: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    sideEffects: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
     wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
     voiceBenchmarks: { hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 }
   });
@@ -1001,8 +997,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // procedure_photo/tryout_photo below (archive.ts's `manifest()`), so its
   // rows come from SectionRead rather than a second query the way a flat
   // section's own read would issue.
-  hair_photo: ['uuid', 'epoch_day', 'file_path'],
-  // Read once for the file manifest, the same reason hair_photo above is.
+  // Read once for the file manifest, the same reason hair_removal_photo is.
   progress_photo: ['uuid', 'epoch_day', 'pose', 'file_path'],
   progress_pose: ['uuid', 'key', 'name', 'hidden'],
   // Owns a child (hair_removal_photo) below.
@@ -1012,7 +1007,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
     'cost_amount', 'cost_currency', 'cost_refunded'],
   // session_id travels as the session's own uuid, the way dose_pause's
   // episode_id does (ADR-0002). Read once for the file manifest, the same
-  // reason hair_photo above is hand-written.
+  // reason progress_photo above is hand-written.
   hair_removal_photo: ['uuid', 'session_id', 'file_path'],
   // Owns a child (procedure_photo) below. Its consults are appointments now
   // and travel in their own section (ticket 57).
@@ -1029,7 +1024,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // procedure_id for the same reason, since schema v83 gave the taper the
   // procedure it dilates for in place of a surgery day of its own.
   taper: ['uuid', 'procedure_id', 'start_epoch_day', 'stages'],
-  // Read once for the file manifest, the same reason hair_photo above is
+  // Read once for the file manifest, the same reason progress_photo above is
   // hand-written.
   procedure_photo: ['uuid', 'procedure_id', 'epoch_day', 'file_path'],
   // Identified by a pack/goal pair (applyRoadmapChecks), not by one column
@@ -1048,15 +1043,15 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // belongs to an entry (phase 8 features ticket 07), and entry_id is a
   // rowid resolved against the entries section.
   margin_note: ['uuid', 'entry_id', 'epoch_day', 'text'],
-  // Read once for the file manifest, the same reason hair_photo above is
+  // Read once for the file manifest, the same reason progress_photo above is
   // hand-written.
   tryout_photo: ['uuid', 'tryout_id', 'epoch_day', 'file_path'],
   // Child of entry (applyEntries), read once for the file manifest the
-  // same reason hair_photo above is - `entry_id` travels as the entry's
+  // same reason progress_photo above is - `entry_id` travels as the entry's
   // own uuid (ADR-0002).
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
   // Same shape as voice_recording just above - child of entry, read once
-  // for the file manifest, the same reason hair_photo above is.
+  // for the file manifest, the same reason progress_photo above is.
   video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],
   // Owns a child (checklist_item) below; unlike a vocabulary table its own
   // row has nothing to UPDATE once created (checklists.ts has no rename or

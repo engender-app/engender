@@ -43,7 +43,7 @@ Today shows the areas you pin, an agenda of upcoming events and a way to
 start an entry. You decide which areas appear and which live tiles stay
 visible.
 
-Quick add lets you log a mood, a backdated entry, a dose, a tally or a wear
+Quick add lets you log a mood, a backdated entry, a dose or a wear
 session from the navigation bar. Each tracking screen also has its own add
 control, so you can record something where you are already working.
 
@@ -72,7 +72,7 @@ Transition brings the other tracking areas together:
   can prepare for a clinician. Appointments also hold referrals and waiting
   lists, and your own notes on the people you see. Costs can be recorded on
   appointments, procedures, labs, medication stock and hair removal.
-- Surgery records, hair progress and changes you
+- Surgery records and changes you
   notice during a regimen.
 - Milestones, named eras, a roadmap with name and document changes tracked
   per institution, and letters you write now to read later.

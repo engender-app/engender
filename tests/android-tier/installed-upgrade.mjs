@@ -59,7 +59,7 @@ if (manifest.expectedVersion !== sourceVersion || sourceVersion <= 88) throw new
 // Tables the migrations after the released schema drop, read from the source under test; their rows are not compared.
 const sqliteDir = join(repo, 'src/lib/data/sqlite');
 const dropped = droppedTables(readFileSync(join(sqliteDir, 'migrations.ts'), 'utf8'), 88,
-  ['closed-lists-migration.ts', 'waitlist-migration.ts'].map((file) => readFileSync(join(sqliteDir, file), 'utf8')));
+  ['closed-lists-migration.ts', 'waitlist-migration.ts', 'entry-templates-drop-migration.ts', 'tally-and-hair-fold-migration.ts'].map((file) => readFileSync(join(sqliteDir, file), 'utf8')));
 const installed = device('shell', 'dumpsys', 'package', packageId);
 if (!installed.includes(`versionCode=${apks.previous.versionCode} `) || !installed.includes(`versionName=${apks.previous.versionName}`)) {
   throw new Error('Prepare the filled synthetic rc.1 package before this stage');

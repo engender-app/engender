@@ -159,7 +159,7 @@ try {
     const fab = await page.locator('[data-nav-fab]').boundingBox();
     await page.mouse.move(fab.x + fab.width / 2, fab.y + fab.height / 2);
     await page.mouse.down();
-    const target = page.locator('[data-fan-target="tally-correctly_gendered"]');
+    const target = page.locator('[data-fan-target="wear"]');
     await target.waitFor({ state: 'visible' });
     await page.waitForFunction(() =>
       document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity)

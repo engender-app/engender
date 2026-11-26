@@ -21,7 +21,7 @@ export const DEFAULT_SPAN_DAYS = 30;
 /** Where the rail begins: the earliest day the person authored anything
     dated, rather than the earliest day they logged. An entry's own day (the
     journal's bounds already skip the trash), a milestone's day, an era's
-    start, a tally tap's day. A milestone still ahead is not history, and an
+    start. A milestone still ahead is not history, and an
     era with no start reaches back before the journal rather than to a day,
     so neither moves the edge. Null where nothing dated exists yet: the door has an empty
     state for that, and a rail from today to today is not it. */
@@ -30,13 +30,11 @@ export function historyStart(
     bounds: JournalBounds | null;
     milestones: readonly { epochDay: number }[];
     eras: readonly EraSpan[];
-    firstTallyDay?: number | null;
   },
   todayEpochDay: number
 ): number | null {
   const days: number[] = [];
   if (input.bounds) days.push(input.bounds.firstEpochDay);
-  if (input.firstTallyDay != null) days.push(input.firstTallyDay);
   for (const milestone of input.milestones) if (milestone.epochDay <= todayEpochDay) days.push(milestone.epochDay);
   for (const era of input.eras) if (era.startEpochDay !== null) days.push(era.startEpochDay);
   if (!days.length) return null;

@@ -62,13 +62,13 @@ test('migration discards owned rows and keeps unrelated journal rows', async () 
     await db.run("INSERT INTO measurement_type (uuid, key, name, is_built_in, hidden, updated_at) VALUES ('type-1', 'waist', 'Waist', 1, 0, 1)");
     await db.run("INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m-1', 20000, 'waist', 78, 'cm', 1)");
     await db.run("INSERT INTO size_record (uuid, epoch_day, category, size, updated_at) VALUES ('s-1', 20000, 'shirts', 'M', 1)");
-    await db.run("INSERT INTO area_state (area, hidden, updated_at) VALUES ('measurements', 1, 1), ('hairStages', 1, 1)");
+    await db.run("INSERT INTO area_state (area, hidden, updated_at) VALUES ('measurements', 1, 1), ('hairRemovalSessions', 1, 1)");
     await db.run("INSERT INTO pref (key, value) VALUES ('measurementUnit', '\"in\"'), ('name', '\"Alice\"')");
     await db.run("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e-1', 20000, 0, 1)");
     await runMigrations(db, noopFileOps(), migrations);
     const tables = await db.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'");
     for (const table of ['measurement', 'measurement_type', 'size_record']) assert.ok(!tables.some((row) => row.name === table), table);
-    assert.deepEqual(await db.query("SELECT area FROM area_state"), [{ area: 'hairStages' }]);
+    assert.deepEqual(await db.query("SELECT area FROM area_state"), [{ area: 'hairRemovalSessions' }]);
     assert.deepEqual(await db.query("SELECT key FROM pref"), [{ key: 'name' }]);
     assert.deepEqual(await db.query("SELECT uuid FROM entry"), [{ uuid: 'e-1' }]);
   } finally {
@@ -90,7 +90,7 @@ test('older archive drops measurement sections, area state and preferences', asy
       sizeRecords: [{ id: 's-1', category: 'shirts' }],
       areaStates: [
         { area: 'measurements', hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
-        { area: 'hairStages', hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
+        { area: 'hairRemovalSessions', hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
       ]
     };
     await restoreArchive(db, fakeFileStore(), 'replace', {
@@ -98,7 +98,7 @@ test('older archive drops measurement sections, area state and preferences', asy
       preferences: { name: 'Archive name', measurementUnit: 'in', measurementsNudgeEnabled: true, measurementProtocolDismissed: true } as never,
       files: (async function* () {})()
     });
-    assert.deepEqual(await db.query('SELECT area FROM area_state'), [{ area: 'hairStages' }]);
+    assert.deepEqual(await db.query('SELECT area FROM area_state'), [{ area: 'hairRemovalSessions' }]);
     const prefs = await openPreferences(db);
     assert.equal(prefs.get('name'), 'Archive name');
     for (const key of ['measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed']) {

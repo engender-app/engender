@@ -41,7 +41,7 @@ async function oneOfEach(journal: ReturnType<typeof openJournal>) {
   const milestonePhoto = (await journal.milestones.getMilestones()).find((one) => one.id === milestoneId)!
     .photo!.id;
 
-  const hairPhoto = await journal.hairProgress.addPhoto(20002, shot('h'));
+  const progressPhoto = await journal.progressPhotos.addPhoto(20002, 'hair', shot('h'));
 
   const sessionId = await journal.hairRemoval.upsertSession({
     epochDay: 20003,
@@ -76,7 +76,7 @@ async function oneOfEach(journal: ReturnType<typeof openJournal>) {
     ids: {
       entryPhoto,
       milestonePhoto,
-      hairPhoto,
+      progressPhoto,
       removalPhoto,
       tryoutPhoto,
       procedurePhoto,
@@ -91,14 +91,14 @@ test('every photograph in the journal appears once, dated, with its source and o
 
   const library = await journal.photoLibrary.inJournal();
 
-  assert.deepEqual(library.map((p) => p.ownerId), [String(entryId), owners.milestoneId, ids.hairPhoto, owners.sessionId, owners.tryoutId, owners.procedureId, String(videoEntry)]);
+  assert.deepEqual(library.map((p) => p.ownerId), [String(entryId), owners.milestoneId, ids.progressPhoto, owners.sessionId, owners.tryoutId, owners.procedureId, String(videoEntry)]);
 
   assert.deepEqual(
     library.map((photo) => [photo.id, photo.source, photo.epochDay, photo.ownerName]),
     [
       [ids.entryPhoto, 'entry', 20000, null],
       [ids.milestonePhoto, 'milestone', 20001, 'First appointment'],
-      [ids.hairPhoto, 'hair', 20002, null],
+      [ids.progressPhoto, 'progress', 20002, null],
       [ids.removalPhoto, 'hairRemoval', 20003, null],
       [ids.tryoutPhoto, 'tryout', 20004, 'Wren'],
       [ids.procedurePhoto, 'procedure', 20005, 'Orchiectomy'],
@@ -113,7 +113,7 @@ test('a photograph carries the file its own table stores, and a video note its w
 
   const byId = new Map((await journal.photoLibrary.inJournal()).map((photo) => [photo.id, photo]));
 
-  assert.equal(byId.get(ids.hairPhoto)!.fileName, `${ids.hairPhoto}.jpg`);
+  assert.equal(byId.get(ids.progressPhoto)!.fileName, `${ids.progressPhoto}.jpg`);
   assert.equal(byId.get(ids.videoNote)!.fileName, `${ids.videoNote}.webm`);
 });
 
@@ -160,8 +160,8 @@ test('order is by day, then by source, then by the order a table was written in'
   const entryId = await journal.entries.upsertEntry({ epochDay: 20000, mood: 4 });
   const second = await journal.photos.attach({ entryId }, shot('b'));
   const first = await journal.photos.attach({ entryId }, shot('a'));
-  const hair = await journal.hairProgress.addPhoto(20000, shot('h'));
-  const older = await journal.hairProgress.addPhoto(19000, shot('o'));
+  const hair = await journal.progressPhotos.addPhoto(20000, 'hair', shot('h'));
+  const older = await journal.progressPhotos.addPhoto(19000, 'hair', shot('o'));
 
   assert.deepEqual(
     (await journal.photoLibrary.inJournal()).map((photo) => photo.id),
@@ -231,7 +231,7 @@ test('the library agrees with the tables it reads: nothing is dropped and nothin
     (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`))[0].n;
   const stored =
     (await counted('photo')) +
-    (await counted('hair_photo')) +
+    (await counted('progress_photo')) +
     (await counted('hair_removal_photo')) +
     (await counted('tryout_photo')) +
     (await counted('procedure_photo')) +
@@ -253,6 +253,6 @@ test('hasAny is false on an empty library, true with one photograph, and ignores
   await journal.entries.deleteEntry(entryId);
   assert.equal(await journal.photoLibrary.hasAny(), false, 'a trashed entry has no photographs in the library');
 
-  await journal.hairProgress.addPhoto(20002, shot('h'));
+  await journal.progressPhotos.addPhoto(20002, 'hair', shot('h'));
   assert.equal(await journal.photoLibrary.hasAny(), true, 'any of the six tables counts');
 });

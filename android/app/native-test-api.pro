@@ -89,9 +89,6 @@
     int widget_mood_3;
     int widget_mood_4;
     int widget_mood_5;
-    int widget_tally_correct;
-    int widget_tally_header;
-    int widget_tally_misgendered;
 }
 
 -keep,allowobfuscation,includedescriptorclasses class dev.engender.app.backup.BackupWork {

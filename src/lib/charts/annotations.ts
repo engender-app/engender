@@ -41,7 +41,6 @@
                                    question a lab series is read with
      /body-map, both trajectories  a region's dysphoria and euphoria over a
                                    range, same shape as the values chart
-     /tally, both counters         days on a date axis
      /voice, the trend             benchmarks months apart, and a regimen
                                    episode is the thing they are read against
 

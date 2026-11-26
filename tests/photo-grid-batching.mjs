@@ -36,7 +36,7 @@ try {
     await page.waitForSelector('[data-home-hello]');
   }
 
-  console.log(`seeding ${PHOTOS} photos (hair progress, the lightest write path photoLibrary reads)...`);
+  console.log(`seeding ${PHOTOS} photos (progress photos, the lightest write path photoLibrary reads)...`);
   const libraryCount = await page.evaluate(async (total) => {
     const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
     const canvas = document.createElement('canvas');
@@ -44,11 +44,10 @@ try {
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg'));
     const full = new Uint8Array(await blob.arrayBuffer());
     const photo = { full, thumb: full };
-    // One epoch day per photo, since hairProgress keys a stage by day and
-    // the fixture wants distinct rows rather than several photos crowding
+    // One epoch day per photo, since the fixture wants distinct rows rather than several photos crowding
     // one day.
     for (let day = 0; day < total; day++) {
-      await j.hairProgress.addPhoto(1000 + day, photo);
+      await j.progressPhotos.addPhoto(1000 + day, 'hair', photo);
     }
     return (await j.photoLibrary.inJournal()).length;
   }, PHOTOS);

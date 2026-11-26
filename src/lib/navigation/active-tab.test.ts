@@ -67,10 +67,9 @@ describe('activeTabKey', () => {
   /* The body map is a Look back reading (BodyMapTile on /stats, and its
      header's back is /stats), so it lights Look back like the other
      readings rather than the fourth door the /body/* screens belong to. */
-  it('lights stats for the body map, comparison view, tally and on-this-day', () => {
+  it('lights stats for the body map, comparison view and on-this-day', () => {
     expect(activeTabKey('/body-map')).toBe('stats');
     expect(activeTabKey('/compare')).toBe('stats');
-    expect(activeTabKey('/tally')).toBe('stats');
     expect(activeTabKey('/on-this-day')).toBe('stats');
   });
 
@@ -137,7 +136,7 @@ describe('litTabKey', () => {
   });
 
   it('answers like activeTabKey everywhere else', () => {
-    for (const path of ['/', '/calendar', '/stats', '/more', '/settings/eras', '/tally', '/onboarding']) {
+    for (const path of ['/', '/calendar', '/stats', '/more', '/settings/eras', '/onboarding']) {
       expect(litTabKey(path, 'stats'), path).toBe(activeTabKey(path, 'stats'));
     }
   });
@@ -165,6 +164,6 @@ describe('borrowsTab', () => {
     expect(borrowsTab('/settings')).toBe(true);
     expect(borrowsTab('/settings/permissions')).toBe(true);
     expect(borrowsTab('/entry/41')).toBe(true);
-    for (const path of ['/', '/calendar', '/stats', '/tally', '/more']) expect(borrowsTab(path), path).toBe(false);
+    for (const path of ['/', '/calendar', '/stats', '/more']) expect(borrowsTab(path), path).toBe(false);
   });
 });

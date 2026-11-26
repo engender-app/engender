@@ -29,8 +29,6 @@ import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
 import { SEARCH_AREA_KEYS } from '../../src/lib/data/journal/textSearch.ts';
 import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
 import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
-import { hairAnchorEpochDay } from '../../src/lib/data/hairAnchor.ts';
-import { hrtAnchor } from '../../src/lib/data/personalEffectWindow.ts';
 import { readReturnGap, readWhatIsWaiting } from '../../src/lib/data/comingBackReads.ts';
 import { offeredWrappedPeriod } from '../../src/lib/data/wrapped.ts';
 import { touchesMutedEra } from '../../src/lib/data/resurfacingConsent.ts';
@@ -484,25 +482,6 @@ export async function measureLongJournal(
     return {
       result: [dysphoria, euphoria],
       detail: `${dysphoria.length} dysphoria + ${euphoria.length} euphoria points on ${BENCHMARK_REGION}`
-    };
-  });
-
-  // Hair tracking (phase 5 ticket 33, anchored on HRT by functional audit
-  // ticket 18): the screen's anchor read is the regimen's episodes, which
-  // hrtAnchor reduces to the HRT start. Passed no user-set anchor here, the
-  // fallback's own worst case. getStages/getPhotos read every row,
-  // unfiltered, the same shape milestones and lab results already read at
-  // decade scale.
-  await measure('hair-progress-anchor', 'hair progress, every regimen episode plus every staging and photo', async () => {
-    const [episodes, stages, photos] = await Promise.all([
-      journal.regimen.getEpisodes(),
-      journal.hairProgress.getStages(),
-      journal.hairProgress.getPhotos()
-    ]);
-    const anchor = hairAnchorEpochDay(null, hrtAnchor(episodes, null));
-    return {
-      result: [episodes, stages, photos, anchor],
-      detail: `${episodes.length} episodes read for the anchor, ${stages.length} stagings, ${photos.length} photos`
     };
   });
 

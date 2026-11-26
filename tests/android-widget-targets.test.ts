@@ -77,7 +77,6 @@ function backgroundInset(background: string) {
 
 const WIDGETS = [
   { layout: 'widget_quick_log', info: 'quick_log_widget_info', buttons: 5 },
-  { layout: 'widget_tally', info: 'tally_widget_info', buttons: 2 },
   { layout: 'widget_doubt', info: 'doubt_widget_info', buttons: 1 }
 ];
 

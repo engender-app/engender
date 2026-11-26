@@ -564,15 +564,8 @@ public final class ReminderScheduler {
             String mood = route.substring("/entry/new/today?seedMood=".length());
             return mood.length() == 1 && mood.charAt(0) >= '1' && mood.charAt(0) <= '5' ? route : null;
         }
-        // The tally widget's two buttons: Home reads and clears
-        // this query parameter itself (src/routes/+page.svelte) rather than
-        // a route of the widget's own existing to hold.
-        if (route.startsWith("/?tally=")) {
-            String kind = route.substring("/?tally=".length());
-            return "misgendered".equals(kind) || "correctly_gendered".equals(kind) ? route : null;
-        }
         // The Safe space widget: the existing /doubt route itself -
-        // no query parameter to carry, unlike the tally widget above.
+        // no query parameter to carry.
         if (route.equals("/doubt")) return route;
         if (!route.startsWith("/entry/new/")) return null;
         String epochDay = route.substring("/entry/new/".length());

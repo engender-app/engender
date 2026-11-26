@@ -37,7 +37,6 @@ is-ghost
 is-here
 is-lids
 is-major
-is-pair
 is-refused
 is-refusing
 is-starred

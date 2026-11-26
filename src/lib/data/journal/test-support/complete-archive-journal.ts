@@ -165,22 +165,14 @@ export async function seedCompleteArchiveJournal(
      among them because there is no such row - a state that says nothing
      keeps no row. */
   await journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19250);
-  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19300);
+  await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 19300);
   await journal.areaStates.setAreasSuspended(['voiceBenchmarks', 'voicePracticeTakes'], 19310);
   await journal.effectCategories.setCategoryEnabled('sensory', true);
   const customEffect = await journal.personalEffects.addCustomEffectType('a feeling only I have a word for', 'body_shape');
   await journal.personalEffects.setEffectTypeHidden('improved_smell_feminizing', true);
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.personalEffects.upsertMarker({ effect: customEffect.key, firstNoticedEpochDay: 19190 });
-  // Free text since functional audit ticket 23, including the text a staging
-  // migrated from each published scale reads as.
-  await journal.hairProgress.upsertStage({ epochDay: 19200, description: 'Norwood-Hamilton 2A' });
-  await journal.hairProgress.upsertStage({ epochDay: 19230, description: 'Sinclair 2' });
-  await journal.hairProgress.upsertStage({
-    epochDay: 19260,
-    description: 'thinner all over the top'
-  });
-  await journal.hairProgress.addPhoto(19200, { full: bytes('hairline'), thumb: bytes('ht') });
+  await journal.progressPhotos.addPhoto(19200, 'hair', { full: bytes('hairline'), thumb: bytes('ht') });
   await journal.progressPhotos.addPhoto(19210, 'front', { full: bytes('posed'), thumb: bytes('pp') });
   await journal.progressPhotos.addPose('Flexing');
   const hairRemovalSession = await journal.hairRemoval.upsertSession({
@@ -221,7 +213,6 @@ export async function seedCompleteArchiveJournal(
     enabled: true,
     drug: 'Estradiol valerate'
   });
-  await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
   await journal.letters.addLetter({ epochDay: 20000, text: 'read this in a year', unlockEpochDay: 20365 });
   await journal.voicePracticeTakes.addTake({ epochDay: 20000, minHz: 150, maxHz: 220, medianHz: 180, feltSense: 4 });
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');

@@ -103,7 +103,6 @@ async function populated() {
   });
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
-  await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
@@ -307,7 +306,6 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal(restoredMilestones.length, 1);
   assert.equal(restoredMilestones[0].description, 'the pharmacist barely looked up');
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
-  assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1);
   /* The dosing context comes across as it was recorded, not re-derived
      against this device's dose log (ticket 03). */
   const [restoredLab] = await target.journal.labs.getResults('estradiol');
@@ -573,7 +571,6 @@ test("replace installs the archive's journal and discards this device's", async 
     max: 5
   });
   const myMilestone = await target.journal.milestones.upsertMilestone({ name: 'mine', epochDay: 19500 });
-  await target.journal.tally.log({ epochDay: 19500, kind: 'correctly_gendered' });
   const myTryout = await target.journal.tryouts.upsertTryout({
     kind: 'pronouns',
     label: 'they/them',
@@ -587,8 +584,6 @@ test("replace installs the archive's journal and discards this device's", async 
   assert.deepEqual(await target.journal.entries.searchEntries('mine', []), []);
   assert.deepEqual((await target.journal.entries.searchEntries('zazolc', [])).map((e) => e.epochDay), [20000]);
   assert.equal((await target.journal.milestones.getMilestones()).map((m) => m.name).includes('mine'), false);
-  assert.equal((await target.journal.tally.getEvents('correctly_gendered')).length, 0, "this device's tally event is gone");
-  assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1, "the archive's tally event is here");
   const tryouts = await target.journal.tryouts.getTryouts();
   assert.equal(tryouts.some((t) => t.id === myTryout), false, "this device's tryout is gone");
   assert.ok(tryouts.some((t) => t.label === 'Alex'), "the archive's tryout is here");
@@ -715,16 +710,16 @@ test('an archive from a journal that shows the duplicate built-ins restores them
 
 test('replace keeps archived feature visibility choices', async () => {
   const source = await device();
-  await source.journal.areaStates.setAreasHidden(['hairStages', 'hairPhotos'], false);
+  await source.journal.areaStates.setAreasHidden(['personalEffects', 'sideEffects'], false);
   await source.journal.effectCategories.setCategoryEnabled('sexual', true);
   const target = await device();
-  await target.journal.areaStates.setAreasHidden(['hairStages', 'hairPhotos'], true);
+  await target.journal.areaStates.setAreasHidden(['personalEffects', 'sideEffects'], true);
 
   await target.journal.archive.replace(await exported(source.journal));
 
   const states = await target.journal.areaStates.getAreaStates();
-  assert.equal(states.hairStages?.hidden ?? false, false);
-  assert.equal(states.hairPhotos?.hidden ?? false, false);
+  assert.equal(states.personalEffects?.hidden ?? false, false);
+  assert.equal(states.sideEffects?.hidden ?? false, false);
   const categories = await target.journal.effectCategories.getEffectCategories();
   assert.equal(categories.find((c) => c.key === 'sexual')?.enabled, true);
   assert.equal(categories.find((c) => c.key === 'genital')?.enabled, false);
@@ -1045,7 +1040,7 @@ test('an archive naming the retired doubtEntries and counterevidenceSnapshots se
   const target = await device();
   await assert.doesNotReject(target.journal.archive.replace({ ...contents, journal: withRetiredSections }));
 
-  assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1, "the archive's other rows are here");
+  assert.equal((await target.journal.cycleEvents.getCycleEventsInRange(20000, 20000)).length, 1, "the archive's other rows are here");
   const snapshot = await target.journal.archive.snapshot();
   assert.equal('counterevidenceSnapshots' in snapshot.journal, false);
   assert.equal(JSON.stringify(snapshot.journal).includes('euphoric at the appointment'), false);
@@ -1234,53 +1229,6 @@ test.each(['replace', 'merge'] as const)('%s waits for successful delayed attach
   assert.deepEqual(await target.files.read(`${source.photo}.jpg`), bytes('full-photo'));
   assert.equal(seen.filter((progress) => progress.stage === 'files').length, contents.fileCount);
   assert.equal(seen.findIndex((progress) => progress.stage === 'rows'), contents.fileCount);
-});
-
-/* The one hand-written payload in this file, and it earns the exception the
-   header makes: no snapshot this build can take produces an archive without
-   a `scale`, because every row has had one since phase 5 ticket 33. This is
-   what a backup written by an older build actually looks like, and the only
-   way to check it still restores is to write one. */
-test('a staging from an archive written before there were two scales restores as Norwood-Hamilton', async () => {
-  const target = await device();
-
-  await target.journal.archive.replace({
-    journal: {
-      ...emptyArchiveJournal(),
-      hairStages: [{ id: 'legacy-staging', epochDay: 19200, stage: '3a' }]
-    },
-    files: (async function* () {})()
-  });
-
-  assert.deepEqual(await target.journal.hairProgress.getStages(), [
-    { id: 'legacy-staging', epochDay: 19200, description: 'Norwood-Hamilton 3A' }
-  ]);
-});
-
-/* FA 23: staging is free text now. An archive written before that still
-   restores, every graded row as the text the migration would give it. */
-test('a graded staging from an older archive restores as the text it read as', async () => {
-  const target = await device();
-
-  await target.journal.archive.replace({
-    journal: {
-      ...emptyArchiveJournal(),
-      hairStages: [
-        { id: 'nh', epochDay: 19200, scale: 'norwood_hamilton', stage: '3v', description: '' },
-        { id: 'si', epochDay: 19201, scale: 'sinclair', stage: '2', description: '' },
-        { id: 'ot', epochDay: 19202, scale: 'other', stage: '', description: 'thinner on top' },
-        { id: 'ft', epochDay: 19203, description: 'my own words' }
-      ]
-    },
-    files: (async function* () {})()
-  });
-
-  assert.deepEqual(await target.journal.hairProgress.getStages(), [
-    { id: 'nh', epochDay: 19200, description: 'Norwood-Hamilton 3V' },
-    { id: 'si', epochDay: 19201, description: 'Sinclair 2' },
-    { id: 'ot', epochDay: 19202, description: 'thinner on top' },
-    { id: 'ft', epochDay: 19203, description: 'my own words' }
-  ]);
 });
 
 /* Emptying the journal (phase 5 audit ticket 13). One operation, not a list

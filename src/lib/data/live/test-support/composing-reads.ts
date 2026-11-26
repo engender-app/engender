@@ -83,11 +83,8 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['sideEffects', 'getSideEffectsInRange'],
       ['personalEffects', 'getMarkersFirstNoticedOn'],
       ['cycleEvents', 'getCycleEventsInRange'],
-      ['tally', 'getEventsOnDay'],
       ['wearSessions', 'getSessions'],
       ['feltSense', 'onDay'],
-      ['hairProgress', 'getStagesOnDay'],
-      ['hairProgress', 'getPhotosOnDay'],
       ['hairRemoval', 'getSessionsOnDay'],
       ['appointments', 'getDayRecords'],
       ['procedures', 'getDayRecords'],
@@ -98,8 +95,6 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
   {
     // Its own registry's union too (lastWrite.ts's LAST_WRITE_TABLES), checked
     // the same way: one entry here per registered area's own last-write read.
-    // hairProgress appears twice, the same reason it does under 'day' above:
-    // two registered areas share one owning module.
     read: ['lastWrite', 'getLastWrites'],
     composes: [
       ['entries', 'lastWriteEpochDay'],
@@ -111,11 +106,8 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['sideEffects', 'lastWriteEpochDay'],
       ['personalEffects', 'lastWriteEpochDay'],
       ['cycleEvents', 'lastWriteEpochDay'],
-      ['tally', 'lastWriteEpochDay'],
       ['wearSessions', 'lastWriteEpochDay'],
       ['feltSense', 'lastWriteEpochDay'],
-      ['hairProgress', 'lastStageWriteEpochDay'],
-      ['hairProgress', 'lastPhotoWriteEpochDay'],
       ['hairRemoval', 'lastWriteEpochDay'],
       ['progressPhotos', 'lastWriteEpochDay'],
       ['procedures', 'lastWriteEpochDay'],

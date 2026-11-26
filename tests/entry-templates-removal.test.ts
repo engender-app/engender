@@ -18,7 +18,7 @@ test('migration 123 drops the saved templates and keeps every entry', async () =
     await db.run("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e-1', 20000, 0, 'Today I felt fine', 1)");
     await db.run('DELETE FROM entry_template WHERE uuid = ?', ['t-1']);
     await db.run("INSERT INTO entry_template (uuid, name, updated_at) VALUES ('t-2', 'Other', 1)");
-    await runMigrations(db, noopFileOps(), migrations);
+    await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= ENTRY_TEMPLATES_DROP_VERSION));
     assert.equal(await db.getUserVersion(), ENTRY_TEMPLATES_DROP_VERSION);
     const tables = await db.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'");
     for (const table of TEMPLATE_TABLES) assert.ok(!tables.some((row) => row.name === table), table);
@@ -54,14 +54,14 @@ for (const mode of ['replace', 'merge'] as const) {
         ],
         areaStates: [
           { area: 'entryTemplates', hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
-          { area: 'hairStages', hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
+          { area: 'hairRemovalSessions', hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
         ],
         deletions: [{ table: 'entry_template', id: 'tpl-gone', deletedAt: 5 }]
       };
       await restoreArchive(db, fakeFileStore(), mode, { journal: journal as never, preferences: {} as never, files: (async function* () {})() });
       const tables = await db.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'");
       for (const table of TEMPLATE_TABLES) assert.ok(!tables.some((row) => row.name === table), table);
-      assert.deepEqual(await db.query('SELECT area FROM area_state'), [{ area: 'hairStages' }]);
+      assert.deepEqual(await db.query('SELECT area FROM area_state'), [{ area: 'hairRemovalSessions' }]);
       assert.deepEqual(await db.query("SELECT row_key FROM deletion WHERE tbl = 'entry_template'"), []);
     } finally {
       await db.close();

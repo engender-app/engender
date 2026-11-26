@@ -168,17 +168,6 @@ test('a timestamp-stored area is bounded by the start of the day after today', a
   );
 });
 
-test("hair progress' two entries read their own table and never the other's", async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage({ epochDay: TODAY - 1, description: 'softer' });
-  await journal.hairProgress.addPhoto(TODAY - 9, photo());
-
-  const lastWrites = await journal.lastWrite.getLastWrites(TODAY);
-
-  assert.equal(lastWrites.hairStages, TODAY - 1);
-  assert.equal(lastWrites.hairPhotos, TODAY - 9);
-});
-
 test("procedures' last write is the later of a consult and a recovery photo, never the surgery date", async () => {
   const { journal } = await journalWithBuiltIns();
   const procedureId = await journal.procedures.upsertProcedure({ name: 'orchiectomy', surgeryEpochDay: TODAY - 100 });
@@ -229,9 +218,7 @@ test('the assembled read costs one query per registered area', async () => {
   resetRoundTrips();
   await journal.lastWrite.getLastWrites(TODAY);
 
-  /* One per registered entry - even hairProgress, which registers two
-     entries against the same underlying area, runs two queries because each
-     asks its own table. */
+  /* One per registered entry. */
   assert.equal(roundTrips().query, LAST_WRITE_ENTRIES.length);
 });
 
@@ -254,10 +241,8 @@ test('a test may register an entry of its own and read it back through the same 
       sideEffects: journal.sideEffects,
       personalEffects: journal.personalEffects,
       cycleEvents: journal.cycleEvents,
-      tally: journal.tally,
       wearSessions: journal.wearSessions,
       feltSense: journal.feltSense,
-      hairProgress: journal.hairProgress,
       hairRemoval: journal.hairRemoval,
       progressPhotos: journal.progressPhotos,
       appointments: journal.appointments,
@@ -279,16 +264,16 @@ test('selected last-write areas omit unrelated reads and retain their own answer
   const calls: string[] = [];
   const area = makeLastWriteArea(journal, driver, [
     { key: 'wearSessions', tables: [], read: async () => { calls.push('wearSessions'); return TODAY - 2; } },
-    { key: 'hairStages', tables: [], read: async () => { calls.push('hairStages'); return null; } },
+    { key: 'personalEffects', tables: [], read: async () => { calls.push('personalEffects'); return null; } },
     { key: 'cycleEvents', tables: [], read: async () => { calls.push('cycleEvents'); return TODAY; } }
   ]);
-  assert.deepEqual(await area.getLastWrites(TODAY, ['wearSessions', 'hairStages']), { wearSessions: TODAY - 2, hairStages: null });
-  assert.deepEqual(calls, ['wearSessions', 'hairStages']);
+  assert.deepEqual(await area.getLastWrites(TODAY, ['wearSessions', 'personalEffects']), { wearSessions: TODAY - 2, personalEffects: null });
+  assert.deepEqual(calls, ['wearSessions', 'personalEffects']);
   calls.length = 0;
   assert.deepEqual(await area.getLastWrites(TODAY, []), {});
   assert.deepEqual(calls, []);
-  assert.deepEqual(await area.getLastWrites(TODAY), { wearSessions: TODAY - 2, hairStages: null, cycleEvents: TODAY });
-  assert.deepEqual(calls, ['wearSessions', 'hairStages', 'cycleEvents']);
+  assert.deepEqual(await area.getLastWrites(TODAY), { wearSessions: TODAY - 2, personalEffects: null, cycleEvents: TODAY });
+  assert.deepEqual(calls, ['wearSessions', 'personalEffects', 'cycleEvents']);
 });
 
 test('writing days are distinct entry and local dose days, bounded to one year in one query', async () => {

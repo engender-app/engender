@@ -43,7 +43,7 @@ test('every attachment survives archive restore and cleanup removes only orphans
   await journal.photos.attach({ entryId: entry }, photo);
   const milestone = await journal.milestones.upsertMilestone({ name: 'First', epochDay: 20000 });
   await journal.photos.attach({ milestoneId: milestone }, photo);
-  await journal.hairProgress.addPhoto(20000, photo);
+  await journal.progressPhotos.addPhoto(20000, 'hair', photo);
   const session = await journal.hairRemoval.upsertSession({
     epochDay: 20000, area: 'chin', method: 'laser', painRating: 2
   });

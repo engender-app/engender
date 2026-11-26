@@ -61,7 +61,7 @@
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { journal } from '$lib/data/live/journal.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import type { TallyKind, WearKind, WearSession } from '$lib/data/types';
+  import type { WearKind, WearSession } from '$lib/data/types';
   import { disclose } from '$lib/motion/reveal';
   import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { MAGNIFIER_SPREAD, gazeRow, magnify } from '$lib/motion/magnifier';
@@ -85,12 +85,11 @@
     restMoods();
   }
 
-  /* Telling you it landed, for the two things that never leave the screen
+  /* Telling you it landed, for the thing that never leaves the screen
      (phase 5 ticket 18).
 
-     A tally and a wear session both resolve in place, which is the whole
-     reason they are worth reaching from anywhere - and it left them with
-     nothing to show for it where the thumb that pressed actually was. The row you chose flies into the add
+     A wear session resolves in place, which is the whole reason it is
+     worth reaching from anywhere - and it left it with nothing to show for it where the thumb that pressed actually was. The row you chose flies into the add
      button instead, and the button catches it with a tick: the exact
      reverse of the fan coming out of it, so the gesture closes the loop it
      opened. Tier 3, change within a screen - something was written, and
@@ -266,23 +265,6 @@
     backdateOpen = true;
   }
 
-  /* The tap logs the counter with no context and waits on nothing after it
-     (CONTEXT: "Tally event"), which is what makes it worth reaching from
-     any screen: the fan closes and you are still where you were. */
-  async function logTally(kind: TallyKind) {
-    const from = flightFrom(`tally-${kind}`);
-    close();
-    /* Read here rather than captured when the component mounted: the app
-       survives backgrounding, so a value taken at init logs to yesterday
-       for anyone who leaves it open across midnight. */
-    await confirmed(
-      from,
-      () => journal.tally.log({ epochDay: todayEpochDay(), kind }),
-      'tally',
-      `tally-${kind}`
-    );
-  }
-
   /* The wear session, and the reason it earns a slot the others would not
      (CONTEXT: "Wear session"). Starting one writes a row with no duration
      and stopping it later fills the duration in, so the moment you log it
@@ -349,8 +331,7 @@
 
   /* One target, two things, and the label says which: nothing is running so
      this starts, or something is and this stops it. Both are a single write
-     with nothing left to choose, which is what lets it resolve in place the
-     way a tally does.
+     with nothing left to choose, which is what lets it resolve in place.
 
      `reminderHoursAfterStart` is omitted on purpose in both directions. On
      a start that means no reminder, which matches the wear log's own line
@@ -403,8 +384,6 @@
 
   const ACTIONS: Record<string, () => void> = {
     'another-day': openBackdate,
-    'tally-misgendered': () => void logTally('misgendered'),
-    'tally-correctly_gendered': () => void logTally('correctly_gendered'),
     dose: logDose,
     wear: () => void toggleWear()
   };
@@ -686,31 +665,6 @@
           </button>
         {/each}
       </div>
-    </div>
-
-    <!-- One question asked twice, so one card holding both halves, the way
-         the five moods are one scale. -->
-    <div class="fan-card is-pair" in:fanIn out:fanOut>
-      <button
-        class="fan-item"
-        class:is-armed={armed === 'tally-misgendered'}
-        data-fan-target="tally-misgendered"
-        data-choose="tally-misgendered"
-        onclick={ACTIONS['tally-misgendered']}
-      >
-        <span class="fan-icon"><Icon name="x" size={22} /></span>
-        <span class="fan-label">{m.tally_misgendered()}</span>
-      </button>
-      <button
-        class="fan-item"
-        class:is-armed={armed === 'tally-correctly_gendered'}
-        data-fan-target="tally-correctly_gendered"
-        data-choose="tally-correctly_gendered"
-        onclick={ACTIONS['tally-correctly_gendered']}
-      >
-        <span class="fan-icon"><Icon name="check" size={22} /></span>
-        <span class="fan-label">{m.tally_correctly_gendered()}</span>
-      </button>
     </div>
 
     {#if doseAvailable || wearAvailable}

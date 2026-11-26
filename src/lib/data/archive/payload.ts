@@ -259,12 +259,6 @@ interface ArchiveTaperSession extends ArchiveStamped {
   note: string;
 }
 
-interface ArchiveTallyEvent extends ArchiveStamped {
-  id: string;
-  epochDay: number;
-  kind: string;
-}
-
 interface ArchiveSideEffect extends ArchiveStamped {
   id: string;
   name: string;
@@ -496,38 +490,8 @@ export interface ArchivePersonalEffectType extends ArchiveStamped {
   direction: EffectDirection | null;
 }
 
-/** One staging against a published scale (phase 4 ticket 09, two scales
-    since phase 5 ticket 33). `scale` and `stage` are loose strings the way
-    ArchiveMeasurement's `type` is: the schema's CHECK enforces the pair on
-    the way back in (restore.ts), not this boundary type.
-
-    `scale` and `description` are optional because archives written before
-    ticket 33 carry neither. An archive that predates it holds
-    Norwood-Hamilton stagings and nothing else, since that was the only
-    vocabulary there was, and applyHairStages reads a missing `scale` as
-    exactly that rather than dropping the row. */
-/** `scale` and `stage` come only from an archive written before functional
-    audit ticket 23, when staging was a grade on a published scale; restore
-    turns such a row into text (hairStageScales.ts). */
-interface ArchiveHairStage extends ArchiveStamped {
-  id: string;
-  epochDay: number;
-  scale?: string;
-  stage?: string;
-  description?: string;
-}
-
-/** One scheduled fixed-position hair photo (phase 4 ticket 09). Its own
-    shape, not ArchivePhoto: it carries its own date rather than an owner's,
-    since a hair photo is not an entry's or a milestone's (schema.ts). */
-export interface ArchiveHairPhoto extends ArchiveStamped {
-  id: string;
-  epochDay: number;
-  fileName: string;
-}
-
 /** One progress photo (pre-release-human 12, bug 25): dated in its own
-    right like a hair photo, with the pose it was taken in. `pose` is plain
+    right, with the pose it was taken in. `pose` is plain
     text on the wire, as in the table: a pose this build does not know reads
     as front (progressPhotos.ts). */
 export interface ArchiveProgressPhoto extends ArchiveStamped {
@@ -560,7 +524,7 @@ export interface ArchiveHairRemovalPhoto extends ArchiveStamped {
 
 /** One electrolysis/laser session (phase 5 ticket 08). `area` and `method`
     are loosened from their literal-union/closed-set typings, the way
-    ArchiveMeasurement loosens `type` and ArchiveHairStage loosens `stage`:
+    ArchiveMeasurement loosens `type`:
     the schema's CHECK enforces both on the way back in (restore.ts), not
     this boundary type. */
 export interface ArchiveHairRemovalSession extends ArchiveCostFields, ArchiveStamped {
@@ -873,8 +837,6 @@ export interface ArchiveJournal {
   personalEffects: ArchivePersonalEffect[];
   effectCategories: ArchiveEffectCategory[];
   personalEffectTypes: ArchivePersonalEffectType[];
-  hairStages: ArchiveHairStage[];
-  hairPhotos: ArchiveHairPhoto[];
   progressPhotos: ArchiveProgressPhoto[];
   progressPoses: ArchiveProgressPose[];
   hairRemovalSessions: ArchiveHairRemovalSession[];
@@ -882,7 +844,6 @@ export interface ArchiveJournal {
   providers: ArchiveProvider[];
   appointments: ArchiveAppointment[];
   reminders: ArchiveReminder[];
-  tallyEvents: ArchiveTallyEvent[];
   letters: ArchiveLetter[];
   voicePracticeTakes: ArchiveVoicePracticeTake[];
   roadmapChecks: ArchiveRoadmapCheck[];
@@ -1064,14 +1025,11 @@ const postAlphaSections = [
   'effectCategories',
   'personalEffectTypes',
   'personalEffects',
-  'hairStages',
-  'hairPhotos',
   'progressPhotos',
   'progressPoses',
   'hairRemovalSessions',
   'procedures',
   'appointments',
-  'tallyEvents',
   'letters',
   'voicePracticeTakes',
   'roadmapChecks',

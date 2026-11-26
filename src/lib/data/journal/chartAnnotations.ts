@@ -178,7 +178,7 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
             detail: writtenNote(appointment.note)
           })),
         /* The day a stream ended (phase 8 features ticket 04). One mark per
-           hub row rather than one per archive section, because hair progress
+           hub row rather than one per archive section, because voice
            is two sections finished in one gesture and two ticks on the same
            day would be the query disagreeing with the record. `name` is the
            group's key; the words are kit/chartAnnotation.ts's.

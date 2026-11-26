@@ -454,15 +454,6 @@ beforeAll(async () => {
   )) as string;
   await drive('reminders', 'deleteReminder', () => journal.reminders.deleteReminder(secondReminderId));
 
-  // --- tally --------------------------------------------------------------
-  const tallyId = (await drive('tally', 'log', () =>
-    journal.tally.log({ epochDay: 20000, kind: 'misgendered' })
-  )) as string;
-  const secondTallyId = (await drive('tally', 'log', () =>
-    journal.tally.log({ epochDay: 20001, kind: 'correctly_gendered' })
-  )) as string;
-  await drive('tally', 'deleteEvent', () => journal.tally.deleteEvent(secondTallyId));
-
   // --- regimen / doses ----------------------------------------------------
   const episodeId = (await drive('regimen', 'upsertEpisode', () =>
     journal.regimen.upsertEpisode({
@@ -680,21 +671,6 @@ beforeAll(async () => {
   )) as string;
   await drive('wearSessions', 'deleteSession', () => journal.wearSessions.deleteSession(secondWearSessionId));
 
-  // --- hairProgress -------------------------------------------------------
-  const hairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19200, description: 'temples back a little' })
-  )) as string;
-  const secondHairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19230, description: 'parting wider' })
-  )) as string;
-  await drive('hairProgress', 'deleteStage', () => journal.hairProgress.deleteStage(secondHairStageId));
-  const hairPhotoId = (await drive('hairProgress', 'addPhoto', () =>
-    journal.hairProgress.addPhoto(19200, photo('hairline'))
-  )) as string;
-  await drive('hairProgress', 'deletePhoto', () => journal.hairProgress.deletePhoto(hairPhotoId));
-  // Redone so a photo row survives into the read sweep below.
-  await drive('hairProgress', 'addPhoto', () => journal.hairProgress.addPhoto(19200, photo('hairline again')));
-
   // --- progressPhotos ------------------------------------------------
   const progressPhotoId = (await drive('progressPhotos', 'addPhoto', () =>
     journal.progressPhotos.addPhoto(19210, 'side', photo('posed'))
@@ -861,7 +837,7 @@ beforeAll(async () => {
   await drive('checklists', 'deleteChecklist', () => journal.checklists.deleteChecklist(ownedChecklist!.id));
 
   // --- areaStates ---------------------------------------------------------
-  await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['hairStages'], true));
+  await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['personalEffects'], true));
   await drive('areaStates', 'setAreasFinished', () =>
     journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19250)
   );
@@ -968,8 +944,8 @@ beforeAll(async () => {
 
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
-  void [labId, taperSessionId, tallyId, doseId, stockId, sideEffectId, cycleEventId,
-    wearSessionId, hairStageId, benchmarkId, takeId];
+  void [labId, taperSessionId, doseId, stockId, sideEffectId, cycleEventId,
+    wearSessionId, benchmarkId, takeId];
 
   // --- reads --------------------------------------------------------------
   // Every classified read this file can drive with no more setup than the
@@ -1025,11 +1001,6 @@ beforeAll(async () => {
   await driveRead('taper', 'getDaySessions', () => journal.taper.getDaySessions(19955));
   await driveRead('taper', 'lastWriteEpochDay', () => journal.taper.lastWriteEpochDay(19955));
   await driveRead('reminders', 'getReminders', () => journal.reminders.getReminders());
-  await driveRead('tally', 'getEvents', () => journal.tally.getEvents('misgendered'));
-  await driveRead('tally', 'getEventsOnDay', () => journal.tally.getEventsOnDay(20000));
-  await driveRead('tally', 'lastWriteEpochDay', () => journal.tally.lastWriteEpochDay(20000));
-  await driveRead('tally', 'latestEvent', () => journal.tally.latestEvent('misgendered', 20000));
-  await driveRead('tally', 'firstEpochDay', () => journal.tally.firstEpochDay());
   await driveRead('regimen', 'getEpisodes', () => journal.regimen.getEpisodes());
   await driveRead('regimen', 'getHiddenEpisodes', () => journal.regimen.getHiddenEpisodes());
   await driveRead('regimen', 'hasAny', () => journal.regimen.hasAny());
@@ -1102,12 +1073,6 @@ beforeAll(async () => {
   await driveRead('personalEffects', 'lastWriteEpochDay', () => journal.personalEffects.lastWriteEpochDay(19190));
   await driveRead('personalEffects', 'getEffectTypes', () => journal.personalEffects.getEffectTypes());
   await driveRead('effectCategories', 'getEffectCategories', () => journal.effectCategories.getEffectCategories());
-  await driveRead('hairProgress', 'getStages', () => journal.hairProgress.getStages());
-  await driveRead('hairProgress', 'getStagesOnDay', () => journal.hairProgress.getStagesOnDay(19200));
-  await driveRead('hairProgress', 'lastStageWriteEpochDay', () => journal.hairProgress.lastStageWriteEpochDay(19200));
-  await driveRead('hairProgress', 'getPhotos', () => journal.hairProgress.getPhotos());
-  await driveRead('hairProgress', 'getPhotosOnDay', () => journal.hairProgress.getPhotosOnDay(19200));
-  await driveRead('hairProgress', 'lastPhotoWriteEpochDay', () => journal.hairProgress.lastPhotoWriteEpochDay(19200));
   await driveRead('progressPhotos', 'getPhotos', () => journal.progressPhotos.getPhotos());
   await driveRead('progressPhotos', 'getPoses', () => journal.progressPhotos.getPoses());
   await driveRead('progressPhotos', 'lastWriteEpochDay', () => journal.progressPhotos.lastWriteEpochDay(19300));
@@ -1170,7 +1135,6 @@ beforeAll(async () => {
   );
   await driveRead('stats', 'bodyRegionBreakdown', () => journal.stats.bodyRegionBreakdown('chest'));
   await driveRead('stats', 'weeklyWearHours', () => journal.stats.weeklyWearHours(0, 30000, Date.now()));
-  await driveRead('stats', 'tallyTrend', () => journal.stats.tallyTrend('misgendered', 0, 30000));
   await driveRead('stats', 'bodyRegionMap', () => journal.stats.bodyRegionMap(19000, 21000));
   await driveRead('stats', 'entryCountsByDay', () => journal.stats.entryCountsByDay(19000, 21000));
   await driveRead('stats', 'presentationDays', () => journal.stats.presentationDays(femme.id, 19000, 21000));
@@ -1311,10 +1275,10 @@ describe('the two checks above can actually fail', () => {
   });
 
   test('a table nothing writes, added to a declaration, fails the per-coarse-name union check', () => {
-    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, tally: [...SQL_TABLES.tally, 'photo'] };
-    const owners = driven.filter((d) => d.coarse.includes('tally') && !WIPES_THE_JOURNAL.has(d.key));
-    const hit = new Set(owners.flatMap((d) => d.wrote).filter((table) => padded.tally.includes(table)));
-    assert.notDeepEqual([...hit].sort(), [...padded.tally].sort());
+    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, sideEffect: [...SQL_TABLES.sideEffect, 'photo'] };
+    const owners = driven.filter((d) => d.coarse.includes('sideEffect') && !WIPES_THE_JOURNAL.has(d.key));
+    const hit = new Set(owners.flatMap((d) => d.wrote).filter((table) => padded.sideEffect.includes(table)));
+    assert.notDeepEqual([...hit].sort(), [...padded.sideEffect].sort());
   });
 
   /* getTaper's own declaration before this check existed: it joins
@@ -1325,8 +1289,8 @@ describe('the two checks above can actually fail', () => {
   });
 
   test('a table no read touches, added to a declaration, fails the per-coarse-name read union', () => {
-    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, tally: [...SQL_TABLES.tally, 'era_mute'] };
-    const owners = drivenReads.filter((d) => declaredRead(d.key).includes('tally') && !READS_THE_JOURNAL.has(d.key));
-    assert.deepEqual(readHit('tally', owners, padded), ['tally_event']);
+    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, sideEffect: [...SQL_TABLES.sideEffect, 'era_mute'] };
+    const owners = drivenReads.filter((d) => declaredRead(d.key).includes('sideEffect') && !READS_THE_JOURNAL.has(d.key));
+    assert.deepEqual(readHit('sideEffect', owners, padded), ['side_effect']);
   });
 });

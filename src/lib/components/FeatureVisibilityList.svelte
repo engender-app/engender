@@ -1,6 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { FEATURE_MODULE_ROWS, HUB_GROUP_KEYS, HUB_ROWS, isHubGroup, type HubGroupKey, type HubRow } from '$lib/data/hubRows';
+  import { FEATURE_MODULE_ROWS, HUB_GROUP_KEYS, type HubGroupKey, type HubRow } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowDescription, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
@@ -15,14 +15,8 @@
 
   /* The switches sit under the hub's own group headings, in the hub's order,
      so this long list reads in the shape the app is laid out in (Alicja,
-     pre-release-human 18: "group those functions, make it more readable").
-     A row drawn inside another screen (hair progress, inside noticed
-     changes) goes with its host's group. */
-  const groupOf = (row: HubRow): HubGroupKey | undefined => {
-    if (isHubGroup(row.home)) return row.home;
-    const host = HUB_ROWS.find((other) => other.key === row.home);
-    return host && isHubGroup(host.home) ? host.home : undefined;
-  };
+     pre-release-human 18: "group those functions, make it more readable"). */
+  const groupOf = (row: HubRow): HubGroupKey => row.home;
   const groups = HUB_GROUP_KEYS.map((key) => ({ key, rows: FEATURE_MODULE_ROWS.filter((row) => groupOf(row) === key) }))
     .filter((group) => group.rows.length > 0);
 </script>

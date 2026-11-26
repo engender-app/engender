@@ -1018,17 +1018,6 @@ try {
   await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-home-log]');
 
-  /* A tally is the fan's now, and it still resolves in place: the fan's
-     status line is what says the write came back, and Home is still Home.
-     This waited for a toast until after-release 17, and the toast it found
-     was the storage warning every cold load used to raise; the fan has
-     confirmed by its flight and its status line since. */
-  await page.locator('[data-nav-fab]').click();
-  await page.waitForSelector('[data-fan-target="mood-3"]');
-  await page.locator('[data-choose="tally-misgendered"]').click();
-  await page.waitForFunction(() => (document.querySelector('[data-quick-add-status]')?.textContent ?? '').trim().length > 0);
-  if (new URL(page.url()).pathname !== '/') throw new Error('a tally from the fan left Home: ' + page.url());
-
   /* The pinned rows: the default set resolves for a journal that never
      answered onboarding's question, each row opens its own screen, and the
      row reads the same line the Transition door gives it. */
@@ -1083,7 +1072,7 @@ try {
   await page.click('[data-delete-appointment]');
   await page.click('[data-confirm-delete-appointment]');
   await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { state: 'detached', timeout: 8000 }); // text-under-test
-  ok('today faces forward: the agenda leads with the notices below it, a row opens its screen, the strip logs a mood and the fan a tally, the pins resolve, nothing that left is unreachable, and disguise keeps the strip');
+  ok('today faces forward: the agenda leads with the notices below it, a row opens its screen, the strip logs a mood, the pins resolve, nothing that left is unreachable, and disguise keeps the strip');
 } catch (e) { fail('today faces forward', e); }
 });
 
@@ -2492,7 +2481,7 @@ try {
   const modules = page.locator('[data-feature-module]');
   // FEATURE_MODULE_ROWS in src/lib/data/hubRows.ts: one row per optional area.
   const featureCount = await modules.count();
-  if (featureCount !== 15) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 15`);
+  if (featureCount !== 14) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 14`);
   // DEFAULT_MODULES in src/lib/onboarding/features.ts: the core set arrives
   // ticked, the specialist modules do not (pre-release-human 12).
   for (const [key, on] of [['care', 'true'], ['milestones', 'true'], ['voice-benchmark', 'true'], ['tryouts', 'false']]) {
@@ -4796,7 +4785,6 @@ try {
     '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash',
     '/settings/body-regions',
     '/media/photos',
-    '/body/hair-progress',
     '/body/hair-removal', '/care/labs', '/care/regimen',
     '/health/cycle-events', '/health/surgery',
     '/health/dilation',
@@ -4918,13 +4906,12 @@ try {
    show. */
 await flow('fill every feature', async () => {
 try {
-  await fresh('/body/hair-progress'); // any settings-area route boots the shell before the demo bar is queried
+  await fresh('/body/hair-removal'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-fill-every-feature]');
   await page.waitForURL('**/more', { timeout: 120000 });
   await booted();
 
   const NOT_EMPTY_ROUTES = [
-    ['/body/hair-progress', 'hair-stages-empty'],
     ['/body/hair-removal', 'hair-removal-empty'],
     ['/care/labs', 'labs-empty'],
     ['/care/regimen', 'regimen-empty'],
@@ -5473,10 +5460,6 @@ try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-hub-section="body"][data-list-row="effects"]').click();
   await page.waitForURL('**/care/changes');
-
-  // ... and the other change hanging off the same screen.
-  await page.locator('[data-list-row="hair-progress"]').click();
-  await page.waitForURL('**/body/hair-progress');
 
   // Health > Surgery journey > Dilation. The row is gated on the person
   // having a surgery journey at all, which "Fill every feature" writes -
@@ -6320,10 +6303,10 @@ try {
    through one rule in the component: a tap ends in a click on the row, and
    a slide ends in a pointerup the row never sees.
 
-   The tally is asserted through its toast rather than through a count on a
-   screen, and that is not the weaker check it looks like: the toast is
-   awaited behind journal.tally.log(), so it cannot appear until the write
-   has come back from the worker. */
+   The wear session is asserted through the fan's flight rather than through
+   a count on a screen, and that is not the weaker check it looks like: the
+   flight starts when the write comes back from the worker, not when the
+   finger lifts. */
 async function openQuickAdd(path = '/') {
   await fresh(path);
   await page.locator('[data-nav-fab]').click();
@@ -6386,36 +6369,6 @@ try {
 } catch (e) { fail('quick add backdate', e); }
 });
 
-await flow('quick add tallies', async () => {
-for (const kind of ['misgendered', 'correctly_gendered']) {
-  try {
-    /* From a screen with nothing to do with the tally, which is the whole
-       reason it is in this fan. */
-    await openQuickAdd('/stats');
-    await page.locator(`[data-choose="tally-${kind}"]`).click();
-    /* The write landing is a thing you can see: the row flies into the add
-       control and the control catches it with a tick. Asserted because it
-       is the only confirmation an in-place action has that is anywhere near
-       the thumb that pressed it, and because it plays when the write comes
-       back rather than when the finger lifts - so its absence would mean
-       the write never returned, not merely that an animation was dropped. */
-    await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
-    /* And the half of the confirmation a screen reader gets. Checked for
-       being non-empty rather than for what it says, so this is a live
-       region that speaks, not an assertion about wording. */
-    await page.waitForFunction(
-      () => (document.querySelector('[data-quick-add-status]')?.textContent ?? '').trim().length > 0,
-      null,
-      { timeout: 8000 }
-    );
-    if (!page.url().includes('/stats')) throw new Error(`logging a tally left for ${page.url()}`);
-    await page.waitForSelector('[data-fan-flight]', { state: 'detached', timeout: 8000 });
-    ok(`quick add: ${kind} logs from wherever you are, without leaving it`);
-  } catch (e) { fail(`quick add tally ${kind}`, e); }
-}
-
-});
-
 await flow('quick add failed write', async () => {
 try {
   /* A write that did not land must not borrow the animation of one that
@@ -6423,10 +6376,10 @@ try {
      the journal, so this checks the branch and not the wreckage: no mark
      flies, the control never wears a tick, and it says so instead. */
   await fresh('/stats');
-  await page.evaluate(() => (document.documentElement.dataset.demoFail = 'tally-misgendered'));
+  await page.evaluate(() => (document.documentElement.dataset.demoFail = 'wear'));
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-fan]');
-  await page.locator('[data-choose="tally-misgendered"]').click();
+  await page.locator('[data-choose="wear"]').click();
   await page.waitForFunction(
     () => document.querySelector('[data-nav-fab]')?.className.includes('is-refusing'),
     null,
@@ -6465,126 +6418,19 @@ try {
 } catch (e) { fail('quick add dose', e); }
 });
 
-/* In-context tally actions on /tally (phase 11 ticket 40). The two counters'
-   own log and undo sit under their own charts, so the screen that reads a
-   tally can also write one without knowing the quick-add fan exists.
-
-   Placed here, before the access-mode flows, for the same reason the
-   recovery-key flow dodges fresh(): those flows leave the journal gated, and
-   a gated journal has no demo bar to reset with. The jump below restores
-   the fill-every-feature state the suite has run on since its early flows,
-   so nothing this walk wrote before this point outlives it - which puts
-   one misgendered event and one correct-gendering event inside the default
-   30-day range (fullFixture layers no tally events of its own), and every
-   expected value below is seed-count + taps rather than arithmetic over
-   what earlier flows happened to log.
-
-   Every step is asserted through the live region's changed value, and that
-   is less indirect than it looks: the announcement is computed after the
-   write from the same stats.tallyTrend read the chart draws, so a number
-   here is the counter's real size over the range on screen.
-
-   Waits on a change from the text it read before each click, never on
-   non-empty: the region holds the previous announcement between steps, and
-   "non-empty" would race the clear-then-set that makes a repeated identical
-   value speak twice. */
-await flow('tally in-context actions', async () => {
+/* Restores the fill-every-feature state, placed here before the access-mode
+   flows for the same reason the recovery-key flow dodges fresh(): those
+   flows leave the journal gated, and a gated journal has no demo bar to
+   reset with. The jump restores the state the suite has run on since its
+   early flows, so nothing written before this point outlives it. */
+await flow('restore the full fixture', async () => {
 try {
-  await fresh('/tally');
+  await fresh('/stats');
   await page.click('[data-fill-every-feature]');
   await page.waitForURL(BASE + '/more', { timeout: 120000 });
   await booted();
-  await fresh('/tally');
-
-  const status = page.locator('[data-tally-status]');
-  const spoken = async () => ((await status.textContent()) ?? '').trim();
-  /* The announcement clears before each write and is set after it - that
-     window is what makes a repeated identical value speak twice - so the
-     wait here is for a parseable value that differs from the one read
-     before the click, never merely for "changed": on a busy worker the
-     cleared half of the window is long enough to answer "changed" all by
-     itself. */
-  const nextSpoken = async (prev) => {
-    await page.waitForFunction(
-      (p) => {
-        const text = (document.querySelector('[data-tally-status]')?.textContent ?? '').trim();
-        return /:\s*\d+$/.test(text) && text !== p;
-      },
-      prev,
-      { timeout: 8000 }
-    );
-    return spoken();
-  };
-  const count = (text) => {
-    const match = text.match(/:\s*(\d+)$/);
-    if (!match) throw new Error(`the tally announcement carried no count: "${text}"`);
-    return Number(match[1]);
-  };
-  const startsWithKind = (text, kind) => {
-    if (!text.startsWith(kind)) throw new Error(`the announcement "${text}" is not ${kind}'s`);
-  };
-
-  if ((await spoken()).length) throw new Error('the tally status spoke before any action');
-
-  /* Reading the screen writes nothing: navigating here and moving the
-     range - both reads - leave the status silent and both counters where
-     the seed put them. */
-  await page.locator('[data-segmented="tally-range"] [data-segment="90"]').click();
-  await page.waitForTimeout(500);
-  if ((await spoken()).length) throw new Error('reading the screen spoke');
-  await page.locator('[data-segmented="tally-range"] [data-segment="30"]').click();
-  await page.waitForTimeout(500);
-  if ((await spoken()).length) throw new Error('reading the screen spoke');
-
-  /* Repeated actions and repeated undos, each answered with the new value:
-     1 seeded, 2, 3, back down to the seeded 1 - and then undo stops,
-     because the seed's tap is from an earlier day (release audit U6). */
-  await page.locator('[data-tally-log="misgendered"]').click();
-  const afterLog = await nextSpoken(await spoken());
-  startsWithKind(afterLog, 'Misgendered');
-  if (count(afterLog) !== 2) throw new Error(`logging misgendered announced "${afterLog}"`);
-
-  await page.locator('[data-tally-log="misgendered"]').click();
-  const afterSecondLog = await nextSpoken(afterLog);
-  if (count(afterSecondLog) !== 3) throw new Error(`a second log announced "${afterSecondLog}"`);
-
-  await page.locator('[data-tally-undo="misgendered"]').click();
-  const afterUndo = await nextSpoken(afterSecondLog);
-  if (count(afterUndo) !== 2) throw new Error(`the first undo announced "${afterUndo}"`);
-
-  await page.locator('[data-tally-undo="misgendered"]').click();
-  const afterSecondUndo = await nextSpoken(afterUndo);
-  if (count(afterSecondUndo) !== 1) throw new Error(`the second undo announced "${afterSecondUndo}"`);
-
-  /* Undo reaches today's taps only: the seed's tap from twenty days ago is
-     still counted, and undo is disabled rather than hard-deleting it. Each
-     undo that did run named its day in a toast. */
-  if (!(await page.locator('[data-tally-undo="misgendered"]').isDisabled()))
-    throw new Error('undo stayed enabled with only an earlier day left to remove');
-  if ((await page.locator('[data-toast-kind="tally-undone"]').count()) < 1)
-    throw new Error('an undo said nothing on screen about the day it removed from');
-
-  /* And the counter still takes a log on top of the seed. */
-  await page.locator('[data-tally-log="misgendered"]').click();
-  const afterRevive = await nextSpoken(afterSecondUndo);
-  if (count(afterRevive) !== 2) throw new Error(`logging after the undos announced "${afterRevive}"`);
-
-  /* The other counter is independent: its actions move only their own
-     count, which the misgendered numbers above no longer explain. */
-  await page.locator('[data-tally-log="correctly_gendered"]').click();
-  const correctLog = await nextSpoken(afterRevive);
-  startsWithKind(correctLog, 'Correctly gendered');
-  if (count(correctLog) !== 2) throw new Error(`logging correct gendering announced "${correctLog}"`);
-
-  await page.locator('[data-tally-undo="correctly_gendered"]').click();
-  const correctUndo = await nextSpoken(correctLog);
-  if (count(correctUndo) !== 1) throw new Error(`correct gendering's undo announced "${correctUndo}"`);
-
-  /* Reading the screen never writes: this flow navigated, moved the range,
-     read and pressed the labelled actions - the numbers above are what the
-     actions moved, and nothing moved on its own. */
-  ok('tally: each counter logs and undos beside its own chart, announces the changed value, and undo never reaches an earlier day');
-} catch (e) { fail('tally in-context actions', e); }
+  ok('the full fixture is restored for the flows that follow');
+} catch (e) { fail('restore the full fixture', e); }
 });
 
 await flow('the appointment record', async () => {
@@ -7223,7 +7069,7 @@ try {
      if the journal starts bare. Nothing later in this file reads regimen,
      dose or injection-map state, so resetting here does not cost any flow
      after it. */
-  await fresh('/body/hair-progress'); // any settings-area route boots the shell before the demo bar is queried
+  await fresh('/body/hair-removal'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-reset-demo]');
   await page.waitForURL(BASE + '/');
   await booted();
@@ -8125,7 +7971,7 @@ try {
      top of this file: everything between the two - an archive round trip, a
      Daylio import, the discard flows - replaces the journal, so by this
      point it holds the persona's entry and milestone photographs alone. */
-  await page.goto(BASE + '/body/hair-progress', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/body/hair-removal', { waitUntil: 'networkidle' });
   await booted();
   await page.click('[data-fill-every-feature]');
   await page.waitForURL('**/more', { timeout: 120000 });
@@ -8146,7 +7992,7 @@ try {
   const sourcesOn = async () =>
     page.locator('[data-photo-source]').evaluateAll((cells) => cells.map((cell) => cell.dataset.photoSource));
   const everySource = await sourcesOn();
-  for (const source of ['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video', 'progress']) {
+  for (const source of ['entry', 'milestone', 'hairRemoval', 'tryout', 'procedure', 'video', 'progress']) {
     if (!everySource.includes(source)) {
       throw new Error(`the library is missing its ${source} photographs: ${JSON.stringify([...new Set(everySource)])}`);
     }
@@ -8188,7 +8034,7 @@ try {
      own outro (motion/narrow.ts) and a count taken too early catches it. */
   await page.waitForFunction(() => !document.querySelector('[data-photo-source="entry"]'));
   const narrowed = await sourcesOn();
-  if (narrowed.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+  if (narrowed.some((source) => source !== 'hairRemoval')) {
     throw new Error(`Hair left something else on screen: ${JSON.stringify([...new Set(narrowed)])}`);
   }
   if (!new URL(page.url()).searchParams.get('source')) throw new Error('the chip is not in the query');
@@ -8255,7 +8101,7 @@ try {
   const exportSources = await page
     .locator('[data-photo-source]')
     .evaluateAll((cells) => [...new Set(cells.map((cell) => cell.dataset.photoSource))]);
-  if (exportSources.some((source) => source !== 'hair' && source !== 'hairRemoval')) {
+  if (exportSources.some((source) => source !== 'hairRemoval')) {
     throw new Error(`the export grid did not narrow: ${JSON.stringify(exportSources)}`);
   }
   if (!(await page.locator('[data-generate]').count())) throw new Error('the narrowed export cannot be made');

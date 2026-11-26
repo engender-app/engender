@@ -19,8 +19,8 @@
    both directions with a restore order over them; a day asks one table for
    one epoch day and never writes. The clinician summary (ADR-0031) is keyed
    on `ClinicianSummary`, reads a *range*, and deliberately carries the parts
-   a doctor needs - it excludes entries, photographs, tally events and
-   felt-sense, which are four of the things a day is most about, and adding
+   a doctor needs - it excludes entries, photographs and
+   felt-sense, which are three of the things a day is most about, and adding
    them for this would change what a printed summary discloses. So the shape
    is copied and the list is not, and what ties this one to the archive
    registry instead is `covers` below: the archive registry is what makes an
@@ -60,13 +60,11 @@ import type {
   DoseEvent,
   Entry,
   HairRemovalSession,
-  HairStage,
   JournalDocument,
   LabResult,
   Milestone,
   PersonalEffect,
   SideEffect,
-  TallyEvent,
   VoiceBenchmark,
   WearSession
 } from '../types';
@@ -77,7 +75,6 @@ import type { DocumentsArea } from './documents';
 import type { DosesArea } from './doses';
 import type { EntriesArea } from './entries';
 import type { FeltSenseArea, FeltSenseOnDay } from './feltSense';
-import type { HairProgressArea, HairPhoto } from './hairProgress';
 import type { HairRemovalArea } from './hairRemoval';
 import type { LabsArea } from './labs';
 import type { MilestonesArea } from './milestones';
@@ -85,7 +82,6 @@ import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea, ProcedureDayRecord } from './procedures';
 import type { SideEffectsArea } from './sideEffects';
 import type { DayTaperSession, TaperArea } from './taper';
-import type { TallyArea } from './tally';
 import type { TryoutsArea, TryoutPhotoOnDay } from './tryouts';
 import type { VoiceBenchmarksArea } from './voiceBenchmarks';
 import type { WearSessionsArea } from './wearSessions';
@@ -105,11 +101,8 @@ export interface DayRecords {
   sideEffects: SideEffect[];
   personalEffects: PersonalEffect[];
   cycleEvents: CycleEvent[];
-  tallyEvents: TallyEvent[];
   wearSessions: WearSession[];
   feltSense: FeltSenseOnDay[];
-  hairStages: HairStage[];
-  hairPhotos: HairPhoto[];
   hairRemovalSessions: HairRemovalSession[];
   appointments: AppointmentDayRecord[];
   procedureRecords: ProcedureDayRecord[];
@@ -133,10 +126,8 @@ interface DayAreas {
   sideEffects: SideEffectsArea;
   personalEffects: PersonalEffectsArea;
   cycleEvents: CycleEventsArea;
-  tally: TallyArea;
   wearSessions: WearSessionsArea;
   feltSense: FeltSenseArea;
-  hairProgress: HairProgressArea;
   hairRemoval: HairRemovalArea;
   appointments: AppointmentsArea;
   procedures: ProceduresArea;
@@ -242,12 +233,6 @@ const SECTIONS = [
     read: ({ cycleEvents, epochDay }) => cycleEvents.getCycleEventsInRange(epochDay, epochDay)
   }),
   section({
-    key: 'tallyEvents',
-    covers: ['tallyEvents'],
-    tables: ['tally'],
-    read: ({ tally, epochDay }) => tally.getEventsOnDay(epochDay)
-  }),
-  section({
     key: 'wearSessions',
     covers: ['wearSessions'],
     tables: ['wearSession'],
@@ -260,18 +245,6 @@ const SECTIONS = [
     // belongs to, so renaming one changes what it reads.
     tables: ['feltSense', 'tryout'],
     read: ({ feltSense, epochDay }) => feltSense.onDay(epochDay)
-  }),
-  section({
-    key: 'hairStages',
-    covers: ['hairStages'],
-    tables: ['hairProgress'],
-    read: ({ hairProgress, epochDay }) => hairProgress.getStagesOnDay(epochDay)
-  }),
-  section({
-    key: 'hairPhotos',
-    covers: ['hairPhotos'],
-    tables: ['hairProgress'],
-    read: ({ hairProgress, epochDay }) => hairProgress.getPhotosOnDay(epochDay)
   }),
   section({
     key: 'hairRemovalSessions',

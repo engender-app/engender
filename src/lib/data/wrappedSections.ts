@@ -1,11 +1,11 @@
-/* The four things wrapped could already have said and did not (phase 5 UX
+/* The things wrapped could already have said and did not (phase 5 UX
    ticket 23, closing spec 06).
 
    The stats seam computes more than wrapped asked it for. Tag insights -
    which tags went with better or worse days - is the most wrapped-shaped
-   read in the codebase and wrapped never called it. The tally trend and the
-   signed movement on the dimension change wrapped already printed the
-   endpoints of are the other two.
+   read in the codebase and wrapped never called it. The signed movement on
+   the dimension change wrapped already printed the endpoints of is
+   another. The tally trend was the third, until the tally was removed.
 
    What is here is the conditional and nothing else: whether a period has
    anything to say for a section. That is the part worth testing, because it
@@ -15,11 +15,10 @@
    writes `{#if x}` and never a threshold of its own.
 
    Nothing here interprets. A tag insight carries the two averages and the
-   movement between them; it does not name a tag good or bad. A tally
-   carries two counts; it computes no ratio and names no direction. Neither
+   movement between them; it does not name a tag good or bad. Neither
    does the caller, and ADR-0012 and docs/ui-copy.md are why. */
 
-import type { DayAverage, TagInsight } from './journal/stats';
+import type { TagInsight } from './journal/stats';
 
 /** How many tags a wrapped's insight section names.
 
@@ -63,31 +62,5 @@ export function wrappedTagInsights(
     delta: insight.withAvg - insight.withoutAvg
   }));
   return named.length ? named : null;
-}
-
-export interface WrappedTallyCounts {
-  misgendered: number;
-  correctlyGendered: number;
-}
-
-/** The two tally counts over the period, or null where neither was tapped.
-
-    Summed rather than charted: the trend seam answers one point per day a
-    kind was logged, and what a retrospective wants from it is how many
-    times, over the period, each happened. Two counts, side by side, with no
-    ratio between them and no direction named - the two counters never
-    combine into a score (stats.ts, ticket 10), and a wrapped is the surface
-    where that rule is most tempting to break.
-
-    Null only when both are zero. One kind logged and the other not is a
-    real answer and the section shows it, because "nobody misgendered you
-    this month" is exactly the kind of thing a retrospective is for. */
-export function wrappedTallyCounts(
-  misgendered: DayAverage[],
-  correctlyGendered: DayAverage[]
-): WrappedTallyCounts | null {
-  const total = (points: DayAverage[]) => points.reduce((sum, point) => sum + point.value, 0);
-  const counts = { misgendered: total(misgendered), correctlyGendered: total(correctlyGendered) };
-  return counts.misgendered || counts.correctlyGendered ? counts : null;
 }
 

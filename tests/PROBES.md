@@ -580,14 +580,13 @@ a failed group does not cancel its siblings.
 | journal | Alice persona. Entry writes remain before search; stale-backup notice stays before archive and CSV exports. | 193 seconds |
 | setup | Alice persona. Onboarding variants stay together; the forgotten-PIN reset restores the persona before wrapped and comparison. Journal-book reset stays before regimen and route checks. | 296 seconds |
 | features | Alice persona. The demo-jump overlap check stays before fill-every-feature and its consumers. Coming-back restores the full fixture before letters, comparison, import, injection map and eras. | 205 seconds |
-| actions | Alice persona plus the full fixture, needed by quick-add dose. Tally reset stays before appointments; effects reset stays before media. Recovery-key creation, mode changes and recovery at the gate stay together at the end. | 263 seconds |
+| actions | Alice persona plus the full fixture, needed by quick-add dose. The full-fixture reset stays before appointments; effects reset stays before media. Recovery-key creation, mode changes and recovery at the gate stay together at the end. | 263 seconds |
 
 The split uses timestamps from passing [Checks run 37223064935](https://github.com/engender-app/engender/actions/runs/37223064935),
 job 111497183448. The unsplit job took 1064 seconds (17.73 runner minutes),
 including setup and build. The spans above exclude preparation and are not a
-claim about parallel speed. No assertion or fixture scale was reduced. The
-two quick-add tally cases now share a named flow so selection cannot run them
-outside their group. `walkthrough-groups.test.ts` checks complete ordered
+claim about parallel speed. No assertion or fixture scale was reduced.
+`walkthrough-groups.test.ts` checks complete ordered
 coverage and the command's selection behavior.
 
 ## Guards
@@ -641,8 +640,6 @@ To run one on its own, use
 | `content-before-dates-check` | milestone, side-effect, cycle and hair-stage field order, saved edits, photo and anchor retention, preparation handoff, cycle visibility and shared editor safety; English and Polish at 390px and 200% zoom |
 | `document-reader` | document identity, the enlarged reader, owner links and export, at 195/390/1280px |
 | `empty-reflection` | Safe space's empty and sparse states, and a comfort link above the fold at 320x568 |
-| `hair-progress-photo-jump-check` | the hair progress jump reaches its photo and keeps its context |
-| `hair-progress-photo-actions` | Hair progress opens its own photos in shared collage/timelapse export and preserves comparison and scroll after completion or cancellation |
 | `hair-removal-entry-check` | session field order, failed save and retry, duplicate taps, saved-owner photo continuation, library day, editing, deletion and privacy; English and Polish at 390px and 200% zoom |
 | `hair-removal-recency-handoff-check` | the recency rows open their own area prefilled, and nothing saves before Save |
 | `hair-removal-interaction-check` | saved sessions and expanded regions survive Back and interrupted navigation; recovery hides journal and editor content in both themes and motion modes, with painted captures |
@@ -699,7 +696,6 @@ To run one on its own, use
 | `calendar-month-a11y-check` | the open calendar month is a list named by its month with one item per day, every day says its date, axe finds nothing in it, Tab walks the date links in order, and every link is 48px or more without overlapping at 360, 390 and 411px phones and the 390px desktop page (320 is printed only) |
 | `quick-add-focus-check` | Enter on the add button puts focus in the quick-add fan, a labelled modal dialog over an inert screen; Tab stays in it and Escape gives focus back to the button, also after a slide onto a target; arrows on Today's mood faces move focus and open nothing; a keyboard screen change and quick add's mood land focus on the new screen's h1 with the tab title unchanged; each onboarding step's question takes focus and names the name field |
 | `chart-a11y-check` | every screen that places a chart card has an unbroken heading order and no axe target-size, nested-interactive or heading-order finding; the changes line's marks meet 24px and each has a 48px row, the Look back rail's reachable controls are its two 48px handles and its list holds every fact it draws at 320 and 390px |
-| `tally-chip-row-yank` | Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after |
 | `changes-methodology-check` | the changes screen's methodology disclosure and record action |
 | `entry-pending-save` | delayed encrypted attachment writes freeze every entry field, block duplicate saves and departure, retain drafts on failure, and allow correction and retry in English and Polish |
 | `radio-groups-gallery` | radio groups select by keyboard and the mood faces have full targets (a guard despite its name) |

@@ -5,7 +5,7 @@
    of data supports a different shape from a year's - but the four sections
    spec 06 added are the same readings on both, and the arithmetic for them
    was the same twenty lines in each file. This is that, once: the tag
-   insight bars, the two tally bars, and the two ways this app writes a
+   insight bars and the two ways this app writes a
    number.
 
    Naming is next door in recapDisplay.ts, which owns turning a stored key
@@ -24,7 +24,7 @@ import { m } from '$lib/paraglide/messages';
 import type { BarRow } from '$lib/components/kit/barRow';
 import type { DaySpread } from './journal/stats';
 import { coveredGround } from './statsCharts';
-import type { WrappedTagInsight, WrappedTallyCounts } from './wrappedSections';
+import type { WrappedTagInsight } from './wrappedSections';
 
 /** `value` rounded to the precision `nativeValue` prints it at (ADR-0012):
     one decimal for mood, none for a dimension.
@@ -108,29 +108,6 @@ export function tagInsightRows(
     value: signedValue(insight.delta, format),
     amount: nativeAmount(metric, Math.abs(insight.delta))
   }));
-}
-
-/** The two tally counts as bars.
-
-    Two counts side by side, with no ratio between them and no direction
-    named: the counters never combine into a score (journal/stats.ts, ticket
-    10), and a retrospective is where that rule is most tempting to break. */
-export function tallyRows(tally: WrappedTallyCounts | null): BarRow[] {
-  if (!tally) return [];
-  return [
-    {
-      key: 'misgendered',
-      name: m.tally_misgendered(),
-      value: String(tally.misgendered),
-      amount: tally.misgendered
-    },
-    {
-      key: 'correctly_gendered',
-      name: m.tally_correctly_gendered(),
-      value: String(tally.correctlyGendered),
-      amount: tally.correctlyGendered
-    }
-  ];
 }
 
 /** Which stripe each area of a wrapped takes (DIRECTION.md, "flag colour

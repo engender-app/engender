@@ -58,8 +58,8 @@
         `right` the later one, always. */
     pair: ComparePair;
     /** A press of one of the four earlier/later controls. The caller owns
-        the pair. Hair progress picks its pair with these controls alone, so
-        it passes this; Progress photos picks both from its own grid, and
+        the pair. A caller that picks its pair with these controls alone
+        passes this; Progress photos picks both from its own grid, and
         without it the controls are not drawn (pre-release-human 12: four
         arrows under a pair the person had just chosen read as clutter). */
     onPair?: (next: ComparePair) => void;

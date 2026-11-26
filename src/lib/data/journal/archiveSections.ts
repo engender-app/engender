@@ -17,7 +17,7 @@
      after     the sections whose rows must already be in the tables before
                this one's can be written, because this one resolves a rowid
                against them. Not "children go last" as a general rule -
-               a hair photo and a hair-removal session both own child
+               a hair-removal session owns child
                rows and depend on no other section, because they insert
                those children themselves
      travels   what of this area may leave in a structure file handed to
@@ -49,7 +49,6 @@
 
 import type { ArchiveJournal } from '../archive/payload';
 import { inferDrugClass } from '../drugClass';
-import { legacyHairStagingText } from '../hairStageScales';
 import * as read from './archiveRead';
 import * as apply from './archiveApply';
 import { applyDeletions, readDeletions } from './archiveMerge';
@@ -147,22 +146,6 @@ function flat<
     apply: (restoring: Restoring) => apply.applyFlatTable(table, restoring.journal[declared.name], restoring),
     flatTable: table as FlatTable<unknown>
   };
-}
-
-const HAIR_STAGES = flat({
-  name: 'hairStages',
-  travels: 'none',
-  table: 'hair_stage',
-  identity: 'uuid',
-  orderBy: 'epoch_day, id',
-  columns: { uuid: 'id', epoch_day: 'epochDay', description: { field: 'description', whenAbsent: '' } }
-});
-
-type ArchiveHairStage = ArchiveJournal['hairStages'][number];
-
-function asFreeTextStaging({ id, epochDay, scale, stage, description, updatedAt }: ArchiveHairStage): ArchiveHairStage {
-  if (stage === undefined) return { id, epochDay, description, updatedAt };
-  return { id, epochDay, description: legacyHairStagingText(scale ?? 'norwood_hamilton', stage, description ?? ''), updatedAt };
 }
 
 /** A flat section whose rows need one more statement once they have
@@ -611,23 +594,6 @@ const SECTIONS = [
     orderBy: 'effect',
     columns: { uuid: 'id', effect: 'effect', first_noticed_epoch_day: 'firstNoticedEpochDay' }
   }),
-  /* Staging is free text since functional audit ticket 23. A row from an
-     older archive still names a scale and a grade, and is written as the
-     text migration 99 gives a stored one (legacyHairStagingText). A row
-     with a stage and no scale predates phase 5 ticket 33, when
-     Norwood-Hamilton was the only scale there was. */
-  {
-    ...HAIR_STAGES,
-    apply: (restoring: Restoring) =>
-      apply.applyFlatTable(HAIR_STAGES.flatTable, restoring.journal.hairStages.map(asFreeTextStaging), restoring)
-  },
-  section({
-    name: 'hairPhotos',
-    discard: ['DELETE FROM hair_photo'],
-    travels: 'none',
-    read: read.readHairPhotos,
-    apply: apply.applyHairPhotos
-  }),
   // A posed photograph of the person, so it stays out of a structure file
   // the way every other photograph does.
   section({
@@ -648,8 +614,8 @@ const SECTIONS = [
     read: read.readProgressPoses,
     apply: apply.applyProgressPoses
   }),
-  // Inserts its own photo children, the same reasoning `hairPhotos` gives -
-  // it depends on no other section.
+  // Inserts its own photo children itself, so it depends on no other
+  // section.
   section({
     name: 'hairRemovalSessions',
     discard: ['DELETE FROM hair_removal_photo', 'DELETE FROM hair_removal_session'],
@@ -718,15 +684,6 @@ const SECTIONS = [
     }),
     apply: (restoring: Restoring) => apply.applyReminders(REMINDERS, restoring)
   },
-  flat({
-    name: 'tallyEvents',
-    travels: 'none',
-    table: 'tally_event',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: { uuid: 'id', epoch_day: 'epochDay', kind: 'kind' }
-  }),
-
   flat({
     name: 'letters',
     // A private letter to your own future or past self.
@@ -1115,7 +1072,7 @@ export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map
 export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
   'doubtEntries', 'savedQuestions', 'counterevidenceSnapshots',
   'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits', 'wordIgnore',
-  'journalingPauses', 'roadmapTracks', 'entryTemplates'
+  'journalingPauses', 'roadmapTracks', 'entryTemplates', 'tallyEvents', 'hairStages', 'hairPhotos'
 ];
 
 /** A journal with every section present and empty - what an importer builds

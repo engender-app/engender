@@ -82,7 +82,6 @@ export const TABLE_NAMES = [
      gives its own schedule and events. */
   'taper',
   'reminder',
-  'tally',
   'regimen',
   /* One name for dose events, schedules and pauses alike. Nothing reads a
      schedule or a pause without the doses they are compared against - the
@@ -109,18 +108,14 @@ export const TABLE_NAMES = [
      chart's boundaries) have no reason to re-run when a mute changes, and a
      mute write does not change anything `getEras()` itself returns. */
   'eraMute',
-  /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
-     nothing reads one without the other, the same reasoning 'dose' gives -
-     the screen shows both against the same anchor. */
-  'hairProgress',
   /* One name for hair-removal sessions and their photos alike (phase 5
      ticket 08): nothing reads one without the other, the same reasoning
-     'hairProgress' gives. */
+     'dose' gives. */
   'hairRemoval',
   /* Progress photos (pre-release-human 12, bug 25): one table, one name. */
   'progressPhoto',
   /* One name for a procedure and its recovery photos (phase 5 ticket 07):
-     nothing reads one without the other, the same reasoning 'hairProgress'
+     nothing reads one without the other, the same reasoning 'dose'
      gives. A procedure's recovery checklist is not in here - that is an
      ordinary 'checklist' row, and a write to it has to invalidate the
      appointment prep list's reads too. Its consults are not in here either
@@ -145,7 +140,7 @@ export const TABLE_NAMES = [
   /* Time-capsule letters (phase 4 ticket 19). */
   'letter',
   /* Voice recordings (phase 4 ticket 24). Its own name rather than folded
-     into 'entry' the way `hairProgress`/`tryout` fold two
+     into 'entry' the way `tryout` folds two
      tables into one name: unlike those, a screen elsewhere - a future
      voice-notes browsing view, or ticket 25's compare mode - could read
      recordings without reading the rest of an entry, the same reason
@@ -442,7 +437,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
         'photo',
         'entry',
         'milestone',
-        'hairProgress',
         'hairRemoval',
         'tryout',
         'procedure',
@@ -457,7 +451,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
         'photo',
         'entry',
         'milestone',
-        'hairProgress',
         'hairRemoval',
         'tryout',
         'procedure',
@@ -613,22 +606,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getRunningSession: ['wearSession'],
       latestKind: ['wearSession'],
       lastWriteEpochDay: ['wearSession']
-    }
-  }),
-  hairProgress: classify<Journal['hairProgress']>()({
-    writes: {
-      upsertStage: ['hairProgress'],
-      deleteStage: ['hairProgress'],
-      addPhoto: ['hairProgress'],
-      deletePhoto: ['hairProgress']
-    },
-    reads: {
-      getStages: ['hairProgress'],
-      getStagesOnDay: ['hairProgress'],
-      getPhotos: ['hairProgress'],
-      getPhotosOnDay: ['hairProgress'],
-      lastStageWriteEpochDay: ['hairProgress'],
-      lastPhotoWriteEpochDay: ['hairProgress']
     }
   }),
   progressPhotos: classify<Journal['progressPhotos']>()({
@@ -843,16 +820,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getDebriefEntryId: ['checklist']
     }
   }),
-  tally: classify<Journal['tally']>()({
-    writes: { log: ['tally'], deleteEvent: ['tally'] },
-    reads: {
-      getEvents: ['tally'],
-      getEventsOnDay: ['tally'],
-      lastWriteEpochDay: ['tally'],
-      latestEvent: ['tally'],
-      firstEpochDay: ['tally']
-    }
-  }),
   regimen: classify<Journal['regimen']>()({
     // Each carries the episode's schedule reminders along with it: a rename,
     // an end day or hiding all change or remove them (functional audit 21).
@@ -1018,9 +985,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       constellationReadings: ['entry', 'dimension', 'presentation'],
       constellationPairs: ['entry', 'dimension'],
       bodyRegionTrend: ['entry'],
-      bodyRegionBreakdown: ['entry', 'photo', 'hairRemoval', 'hairProgress'],
+      bodyRegionBreakdown: ['entry', 'photo', 'hairRemoval'],
       weeklyWearHours: ['wearSession'],
-      tallyTrend: ['tally'],
       bodyRegionMap: ['entry'],
       entryCountsByDay: ['entry'],
       // Filters entry.presentation_uuid directly, the same reason

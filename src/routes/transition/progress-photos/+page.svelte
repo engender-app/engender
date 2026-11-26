@@ -52,7 +52,8 @@
   const BUILT_IN_LABEL: Record<BuiltInProgressPose, () => string> = {
     front: m.pph_pose_front,
     side: m.pph_pose_side,
-    back: m.pph_pose_back
+    back: m.pph_pose_back,
+    hair: m.pph_pose_hair
   };
 
   let photosQuery = liveList((j) => j.progressPhotos.getPhotos());

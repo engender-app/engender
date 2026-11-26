@@ -21,13 +21,6 @@
         <item>Great</item>
     </string-array>
 
-    <string name="widget_tally_title">Log the moment</string>
-    <string name="widget_tally_description">Record one of two options.</string>
-    <string-array name="widget_tally_labels">
-        <item>Misgendered</item>
-        <item>Correctly gendered</item>
-    </string-array>
-
     <string name="widget_doubt_title">Safe space</string>
     <string name="widget_doubt_description">Breathing, good moments, what helps and who to call.</string>
     <string name="backup_failure_channel">Backups</string>

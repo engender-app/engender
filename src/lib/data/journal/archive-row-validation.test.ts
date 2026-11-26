@@ -170,10 +170,6 @@ for (const mode of ['merge', 'replace'] as const) {
       }],
       ['document target half set', (j) => { j.documents[0].targetId = null; }],
       ['checklist owner half set', (j) => { j.checklists[0].ownerId = null; }],
-      ['legacy hair stage with a scale and no stage', (j) => { Object.assign(j.hairStages[0], { scale: 'ludwig' }); }],
-      ['legacy hair stage with text beside a named scale', (j) => {
-        Object.assign(j.hairStages[0], { scale: 'norwood_hamilton', stage: '2a', description: 'and more' });
-      }],
       ['repeated preset dimension', (j) => { j.presets[0].dims = [j.presets[0].dims[0], j.presets[0].dims[0]]; }],
       ['repeated schedule weekday', (j) => {
         Object.assign(j.doseSchedules[0], { recurrenceKind: 'weekdays', everyNDays: null, weekdays: [1, 1] });
@@ -229,7 +225,6 @@ for (const mode of ['merge', 'replace'] as const) {
       (j) => { j.personalEffectTypes[0].direction = 'sideways' as never; },
       (j) => { j.documents[0].targetKind = 'missing' as never; },
       (j) => { j.hairRemovalSessions[0].area = 'missing' as never; },
-      (j) => { j.hairStages[0].stage = 'missing'; },
       (j) => { j.reminders[0].recurrence = null; },
       (j) => { j.doseSchedules[0].recurrenceKind = 'missing' as never; },
       (j) => { j.doseSchedules[0].weekdays = [8]; },

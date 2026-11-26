@@ -1130,28 +1130,9 @@ export async function applyPersonalEffectTypes(restoring: Restoring): Promise<vo
   }
 }
 
-/* A hair photo owns no other row (its own table in schema.ts, not a
+/* A progress photo owns no other row (its own table in schema.ts, not a
    third owner on `photo`), so it is matched and written directly by uuid:
    there is no owner row to resolve. */
-export async function applyHairPhotos(restoring: Restoring): Promise<void> {
-  const { driver, journal, ts } = restoring;
-  const gate = await rowGate(restoring, 'hair_photo');
-
-  const inserting: unknown[][] = [];
-  for (const photo of journal.hairPhotos) {
-    const fate = fateOf(gate, photo.id, photo, ts);
-    if (fate === 'insert') inserting.push([photo.id, photo.epochDay, photo.fileName, stampOf(photo, ts)]);
-    if (fate === 'update') {
-      await driver.run('UPDATE hair_photo SET epoch_day = ?, file_path = ?, updated_at = ? WHERE uuid = ?', [
-        photo.epochDay, photo.fileName, stampOf(photo, ts), photo.id
-      ]);
-    }
-  }
-  await insertRows(driver, 'INSERT INTO hair_photo (uuid, epoch_day, file_path, updated_at)', inserting);
-}
-
-/* A progress photo owns no other row either, so it is matched and written by
-   uuid the way a hair photo is. */
 export async function applyProgressPhotos(restoring: Restoring): Promise<void> {
   const { driver, journal, ts } = restoring;
   const gate = await rowGate(restoring, 'progress_photo');

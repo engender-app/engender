@@ -307,7 +307,7 @@ test('the registry answers the spec\'s worked cases for what travels', () => {
 
   /* "Entries, photos, doses, labs and every other record of
      what happened" - one section standing in for each of those four. */
-  for (const record of ['entries', 'hairPhotos', 'doseEvents', 'labResults']) {
+  for (const record of ['entries', 'progressPhotos', 'doseEvents', 'labResults']) {
     assert.equal(travelsOf(record), 'none', `${record} is a record of what happened and must not travel`);
   }
 });

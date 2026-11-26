@@ -10,12 +10,6 @@
         <item>Dobrze</item>
         <item>Świetnie</item>
     </string-array>
-    <string name="widget_tally_title">Zapisz chwilę</string>
-    <string name="widget_tally_description">Zapisuje jedną z dwóch opcji.</string>
-    <string-array name="widget_tally_labels">
-        <item>Misgenderowanie</item>
-        <item>Dobre zaimki</item>
-    </string-array>
     <string name="widget_doubt_title">Bezpieczna przestrzeń</string>
     <string name="widget_doubt_description">Dobre wspomnienia i ćwiczenia oddechowe</string>
     <string name="backup_failure_channel">Kopie zapasowe</string>

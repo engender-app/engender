@@ -32,7 +32,6 @@ import type { HubGroupKey, HubLine, HubRowKey } from '$lib/data/hubRows';
 import type { NextWhat, RunningWhat } from '$lib/data/rowForward';
 
 const ROW_TITLE: Record<HubRowKey, () => string> = {
-  'hair-progress': m.hair_progress,
   'hair-removal': m.hair_removal,
   care: m.care_title,
   'cycle-events': m.cycle_events,
@@ -71,7 +70,6 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
     screen's own intro rather than new copy, so the row and the screen behind
     it say the same thing (ADR-0024). */
 const ROW_LINE: Record<HubRowKey, (() => string) | null> = {
-  'hair-progress': m.hub_sub_hair_progress,
   'hair-removal': m.hub_sub_hair_removal,
   care: m.hub_sub_care,
   'cycle-events': m.hub_sub_cycle_events,

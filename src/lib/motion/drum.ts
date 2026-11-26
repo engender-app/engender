@@ -2,8 +2,8 @@
    redesign ticket 19).
 
    The log strip's squares are blocks of the flag's stripe with a glyph in
-   the block's ink, and two of them change what they show without leaving
-   the screen: a tally answers a tap with the day's count, and the wear
+   the block's ink, and one of them changes what it shows without leaving
+   the screen: the wear
    shape turns from "start" to "stop" when a session begins. DIRECTION.md
    rule 10 says a block's contents move like objects and never fade from
    nothing, so the glyph is a drum face: the old one rises out through the

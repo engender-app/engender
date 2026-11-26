@@ -167,9 +167,7 @@ test('it writes the phase 5 content the new measurements read (ticket 01)', asyn
   expect(withRegions.length).toBeGreaterThan(0);
   expect(withRegions.some((e) => Object.values(e.bodyRegions).some((value) => value >= 75))).toBe(true);
 
-  expect(summary.hairStagings).toBeGreaterThan(0);
-  expect(await journal.hairProgress.getStages()).toHaveLength(summary.hairStagings);
-  expect((await journal.hairProgress.getPhotos()).length).toBeGreaterThan(0);
+  expect((await journal.progressPhotos.getPhotos()).filter((photo) => photo.pose === 'hair').length).toBeGreaterThan(0);
 
   // Three episodes as of ticket 36: the original plus two more that overlap
   // it (concurrent-episode coverage lives in the next test, below).
@@ -267,7 +265,6 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'entries',
       'firstEpochDay',
       'hairRemovalSessions',
-      'hairStagings',
       'labResults',
       'lastEpochDay',
       'lastSingleEpisodeEpochDay',
@@ -296,7 +293,7 @@ test('the fixture exercises all photo owners through the unified photo library',
   const { journal } = await generate({ seed: 9, days: 800 });
   const library = await journal.photoLibrary.inJournal();
   const sources = new Set(library.map((p) => p.source));
-  expect(sources).toEqual(new Set(['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video']));
+  expect(sources).toEqual(new Set(['entry', 'milestone', 'progress', 'hairRemoval', 'tryout', 'procedure', 'video']));
 });
 
 test('the fixture exercises concurrent Care episodes, schedules, pauses, stock, doses and totals', async () => {

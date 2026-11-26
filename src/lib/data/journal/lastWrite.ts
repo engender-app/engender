@@ -63,7 +63,6 @@ import type { DocumentsArea } from './documents';
 import type { DosesArea } from './doses';
 import type { EntriesArea } from './entries';
 import type { FeltSenseArea } from './feltSense';
-import type { HairProgressArea } from './hairProgress';
 import type { HairRemovalArea } from './hairRemoval';
 import type { ProgressPhotosArea } from './progressPhotos';
 import type { LabsArea } from './labs';
@@ -72,7 +71,6 @@ import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea } from './procedures';
 import type { SideEffectsArea } from './sideEffects';
 import type { TaperArea } from './taper';
-import type { TallyArea } from './tally';
 import type { TryoutsArea } from './tryouts';
 import type { VoiceBenchmarksArea } from './voiceBenchmarks';
 import type { WearSessionsArea } from './wearSessions';
@@ -89,10 +87,8 @@ interface LastWriteAreas {
   sideEffects: SideEffectsArea;
   personalEffects: PersonalEffectsArea;
   cycleEvents: CycleEventsArea;
-  tally: TallyArea;
   wearSessions: WearSessionsArea;
   feltSense: FeltSenseArea;
-  hairProgress: HairProgressArea;
   hairRemoval: HairRemovalArea;
   progressPhotos: ProgressPhotosArea;
   appointments: AppointmentsArea;
@@ -175,11 +171,6 @@ const ENTRIES = [
     read: ({ cycleEvents, todayEpochDay }) => cycleEvents.lastWriteEpochDay(todayEpochDay)
   }),
   entry({
-    key: 'tallyEvents',
-    tables: ['tally'],
-    read: ({ tally, todayEpochDay }) => tally.lastWriteEpochDay(todayEpochDay)
-  }),
-  entry({
     key: 'wearSessions',
     tables: ['wearSession'],
     read: ({ wearSessions, todayEpochDay }) => wearSessions.lastWriteEpochDay(todayEpochDay)
@@ -188,16 +179,6 @@ const ENTRIES = [
     key: 'feltSenseEntries',
     tables: ['feltSense'],
     read: ({ feltSense, todayEpochDay }) => feltSense.lastWriteEpochDay(todayEpochDay)
-  }),
-  entry({
-    key: 'hairStages',
-    tables: ['hairProgress'],
-    read: ({ hairProgress, todayEpochDay }) => hairProgress.lastStageWriteEpochDay(todayEpochDay)
-  }),
-  entry({
-    key: 'hairPhotos',
-    tables: ['hairProgress'],
-    read: ({ hairProgress, todayEpochDay }) => hairProgress.lastPhotoWriteEpochDay(todayEpochDay)
   }),
   entry({
     key: 'progressPhotos',

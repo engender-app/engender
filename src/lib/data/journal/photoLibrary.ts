@@ -3,9 +3,9 @@
    "Every photo in your journal, oldest first" is what `/media/photos` has
    always said, over a grid that read one table of six. The journal keeps a
    photograph wherever the record it belongs to keeps its own rows: `photo`
-   for an entry's and a milestone's, `hair_photo`, `hair_removal_photo`,
-   `tryout_photo` and `procedure_photo` for the four records that grew
-   their own, and `video_note` for a note recorded in the editor
+   for an entry's and a milestone's, `hair_removal_photo`,
+   `tryout_photo`, `procedure_photo` and `progress_photo` for the records
+   that grew their own, and `video_note` for a note recorded in the editor
    (ADR-0034). Six tables, one `PhotoFileStore`, one normalisation
    (ADR-0008/0015) - and, until this, five of them with no way to be found
    again except through the day they hang off.
@@ -24,7 +24,7 @@
    they compare against the table: `demo/journal-seed.ts` clears the table
    by looping over it, `demo/fullFixture.ts` stars the first of each owner,
    `tests/long-journal/generate.test.ts` asserts its length, and the
-   browser tier's archive probe counts it across a restore. A hair
+   browser tier's archive probe counts it across a restore. A progress
    photograph handed to `photos.remove()` deletes no row and leaves its
    files behind, without saying so.
 
@@ -36,7 +36,7 @@
    that carry an `order_index` have anything to put in the first of them.
 
    Dates come from whatever each row has. A `photo` row can carry an
-   override (ticket 47) over its owner's day; a hair, tryout or procedure
+   override (ticket 47) over its owner's day; a progress, tryout or procedure
    photograph is dated in its own right; a hair-removal photograph has only
    its session's day, and a video note only its entry's. A trashed entry
    hides both the photographs and the notes hanging off it, the same way
@@ -57,7 +57,7 @@ export interface PhotoLibraryArea {
       The `photo` table alone, because `starred` is a column the `photo`
       table alone has. The other five arms would be a provably empty
       contribution to a union, which is a claim about the schema better
-      made in a sentence than in SQL nothing can satisfy. Starring a hair
+      made in a sentence than in SQL nothing can satisfy. Starring a progress
       photograph means a migration, an archive round trip and a control
       that does not exist; it is not this ticket's. */
   starred(): Promise<LibraryPhoto[]>;

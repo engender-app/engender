@@ -364,17 +364,6 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['note']
   }),
-  /* The staging's own words (functional audit ticket 23), including the
-     scale-and-grade text an older staging was migrated to. */
-  area({
-    key: 'hairStages',
-    covers: ['hairStages'],
-    tables: ['hairProgress'],
-    from: 'hair_stage',
-    uuid: 'uuid',
-    date: { kind: 'epochDay', column: 'epoch_day' },
-    columns: ['description']
-  }),
   /* The provider is the one free-text field left: the cost became an amount
      and a currency (a REAL and a code, like a lab result's `value` above),
      and what was typed into the old text column moved into the note. */
@@ -518,11 +507,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // rating on the app's own mood scale, none of it text.
   voicePracticeTakes: 'no text of its own: three pitch figures and a felt-sense rating',
   cycleEvents: 'no text of its own: one of three kinds on a day',
-  // `tally_event.context` is a column with no reader and no writer left
-  // (tally.ts: register finding 32.4 dropped its entry point, and a
-  // forward-only migration cannot un-write it from journals that hold it).
-  // Registering it would offer a search over text nothing can put there.
-  tallyEvents: 'no text of its own: a kind on a day, and a context column nothing writes',
   dosePauses: 'no text of its own: a start day, an end day and a reason from a closed pair',
   // The row is a uuid pointing at an era, whose own name is what `eras`
   // above already searches - and a mute is presence, not a value.
@@ -537,7 +521,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // where a request stands there, read on the roadmap's own list.
   roadmapInstitutions: 'the name of an office on the roadmap list, read there',
   roadmapInstitutionChanges: 'a status and a short line about one office, read on the roadmap',
-  hairPhotos: 'no text of its own: a dated photograph',
   progressPhotos: 'no text of its own: a dated photograph and its pose',
   progressPoses: 'a pose name, read on the Progress photos screen that files photographs under it',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',

@@ -34,14 +34,13 @@
     WRAPPED_AREA_ROLE,
     nativeValue,
     signedValue,
-    tagInsightRows,
-    tallyRows
+    tagInsightRows
   } from '$lib/data/wrappedDisplay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import type { RecapDimChange } from '$lib/data/recapDisplay';
-  import type { WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
+  import type { WrappedTagInsight } from '$lib/data/wrappedSections';
   import type { RetrospectiveLetter } from '$lib/data/letterRetrospective';
   import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import BarRows from './kit/BarRows.svelte';
@@ -62,7 +61,6 @@
     topTags,
     anchorDuration = null,
     insights = [],
-    tally = null,
     letters = []
   }: {
     /** The calendar year, as a number: the cover prints it and the month
@@ -84,7 +82,6 @@
         is left out rather than shown as a gap. */
     anchorDuration?: { name: string; duration: string } | null;
     insights?: (WrappedTagInsight & { label: string })[];
-    tally?: WrappedTallyCounts | null;
     /** The year's unlocked letters, already selected by the caller
         (letterRetrospective.ts): written inside the period, sealed ones
         kept out. A retrospective shows a past self's words only once the
@@ -143,7 +140,6 @@
      no picker for the heading line to hold, because a retrospective cannot
      change the scale it is a retrospective of. */
   let insightRows = $derived(tagInsightRows(insights, metric));
-  let tally_rows = $derived(tallyRows(tally));
 
   let figures = $derived([
     { key: 'entries', label: m.wrapped_stat_entries(), value: String(recap.entryCount), note: undefined },
@@ -223,12 +219,6 @@
     <BarRows rows={insightRows} />
   </ChartCard>
   <p class="wrapped-note">{m.insights_note()}</p>
-{/if}
-
-{#if tally_rows.length}
-  <ChartCard level={3} heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-    <BarRows rows={tally_rows} />
-  </ChartCard>
 {/if}
 
 <!-- All of them, with their counts, not just the year's single loudest tag:

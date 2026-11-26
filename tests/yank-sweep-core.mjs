@@ -2099,14 +2099,12 @@ const HYDRATION_SCENES = [
   { name: 'stats', at: '/stats', is: 'the look-back index, charts and all' },
   { name: 'stats-reading', at: '/stats/day-by-day', is: 'a look-back reading' },
   { name: 'body-map', at: '/body-map', is: 'the body map over its range' },
-  { name: 'tally', at: '/tally', is: 'the tally chart' },
   { name: 'compare', at: '/compare', is: 'then versus now' },
   { name: 'wrapped-week', at: '/wrapped/week', when: 'persona', is: 'a wrapped week' },
   { name: 'wrapped-month', at: '/wrapped/month', when: 'persona', is: 'a wrapped month' },
   { name: 'wrapped-year', at: '/wrapped/year', when: 'persona', is: 'a wrapped year' },
   /* More hub and the Body group */
   { name: 'more', at: '/more', is: 'the hub itself' },
-  { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged as free text' },
   { name: 'hair-removal', at: '/body/hair-removal', is: 'electrolysis and laser sessions' },
   /* Ticket 21: wear moved off the retired Practice prefix onto its own
      door. */

@@ -193,12 +193,6 @@ const EFFECT_CATEGORY_NAME: Record<BuiltInEffectCategoryKey, Message> = {
   sexual: m.effect_category_sexual
 };
 
-/** What a hair staging says (functional audit ticket 23): the person's own
-    words, or, for an older staging that named neither published scale and
-    said nothing more, the label it always read as. */
-export const hairStagingText = (stage: { description: string }): string =>
-  stage.description || m.hair_other_unwritten();
-
 /** Which side of the midpoint a body-region reading fell on, in words
     (ADR-0081). One place, because the figure speaks it in a panel's
     accessible name and the map screen writes it into the sentence beside

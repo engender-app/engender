@@ -3,9 +3,9 @@
 
    `areaState.ts` keys the record by `ArchiveSectionName`, because that is
    what is compile-checkable and wire-stable. Nobody meets an archive section.
-   What somebody meets is a screen, such as Hair progress, and
-   and hair progress is two sections, `hairStages` and `hairPhotos`, which
-   finish together in one transaction or not at all.
+   What somebody meets is a screen, such as Voice, and voice is two sections,
+   `voiceBenchmarks` and `voicePracticeTakes`, which finish together in one
+   transaction or not at all.
 
    ADR-0052 calls that one-to-many mapping presentation and says it lives with
    the hub. It is here rather than in `more/+page.svelte` because four things
@@ -29,7 +29,6 @@ import { areaQuiet, type AreaStates, type FinishableArea, type SuspendableArea, 
     own row keys, because that is what the screens behind them are called. */
 export type AreaGroupKey =
   | 'wear'
-  | 'hair-progress'
   | 'hair-removal'
   | 'effects'
   | 'voice'
@@ -37,11 +36,9 @@ export type AreaGroupKey =
 
 /** Which areas each group finishes, together.
 
-    Four of the seven front exactly one area. Hair progress fronts two, and
-    so does voice (phase 8 features ticket 10): a benchmark and a practice
-    take are both dated records of the same practice, so `voice` finishes
-    them together the way hair progress finishes its stagings and its
-    photographs. A voice memo belongs to an entry and travels inside
+    Most of them front exactly one area. Voice fronts two (phase 8 features
+    ticket 10): a benchmark and a practice take are both dated records of
+    the same practice, so `voice` finishes them together. A voice memo belongs to an entry and travels inside
     `entries` (CONTEXT: "Area"), so the memos screen is not finishable and
     has no group here.
 
@@ -55,7 +52,6 @@ export type AreaGroupKey =
     merging. */
 export const AREA_GROUPS = {
   wear: ['wearSessions'],
-  'hair-progress': ['hairStages', 'hairPhotos'],
   'hair-removal': ['hairRemovalSessions'],
   effects: ['personalEffects', 'sideEffects'],
   voice: ['voiceBenchmarks', 'voicePracticeTakes'],

@@ -1,9 +1,9 @@
 /* Multi-track somatic breakdown per body region queries (phase 5 deepening ticket 08).
    Aggregates dysphoria/euphoria trajectory, progress photos,
-   and laser/hair removal sessions & staging for an anatomical zone. */
+   and laser/hair removal sessions for an anatomical zone. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { HairRemovalSession, HairStage } from '../types';
+import type { HairRemovalSession } from '../types';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
 import { bool, entryPresentationFilter } from './support';
 import { SESSION_COLUMNS, toHairRemovalSession, type HairRemovalSessionRow } from './hairRemoval';
@@ -22,7 +22,7 @@ interface RegionSomaticPhoto {
   epochDay: number;
   starred: boolean;
   entryId?: number;
-  source: 'entry' | 'hair_removal' | 'hair_progress';
+  source: 'entry' | 'hair_removal';
 }
 
 export interface RegionSomaticBreakdown {
@@ -34,7 +34,6 @@ export interface RegionSomaticBreakdown {
   latestEuphoria: number | null;
   photos: RegionSomaticPhoto[];
   hairRemovalSessions: HairRemovalSession[];
-  hairStages: HairStage[];
   isEmpty: boolean;
 }
 
@@ -78,18 +77,6 @@ type HairRemovalPhotoRow = {
   uuid: string;
   file_path: string;
   epoch_day: number;
-};
-
-type HairPhotoRow = {
-  uuid: string;
-  file_path: string;
-  epoch_day: number;
-};
-
-type HairStageRow = {
-  uuid: string;
-  epoch_day: number;
-  description: string;
 };
 
 export async function getRegionSomaticBreakdown(
@@ -178,21 +165,6 @@ export async function getRegionSomaticBreakdown(
     }
   }
 
-  if (region === 'hairline') {
-    const hairPhotoRows = await driver.query<HairPhotoRow>(
-      `SELECT uuid, file_path, epoch_day FROM hair_photo ORDER BY epoch_day DESC, id`
-    );
-    for (const r of hairPhotoRows) {
-      photos.push({
-        id: r.uuid,
-        fileName: r.file_path,
-        epochDay: r.epoch_day,
-        starred: false,
-        source: 'hair_progress'
-      });
-    }
-  }
-
   photos.sort((a, b) => b.epochDay - a.epochDay);
 
   // 4. Laser & Hair Removal Sessions
@@ -209,20 +181,10 @@ export async function getRegionSomaticBreakdown(
     hairRemovalSessions = sRows.map(toHairRemovalSession);
   }
 
-  // 5. Hair staging, in the person's own words
-  let hairStages: HairStage[] = [];
-  if (region === 'hairline' || region === 'whole_body') {
-    const stageRows = await driver.query<HairStageRow>(
-      `SELECT uuid, epoch_day, description FROM hair_stage ORDER BY epoch_day DESC, id DESC`
-    );
-    hairStages = stageRows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, description: r.description }));
-  }
-
   const isEmpty =
     trajectory.length === 0 &&
     photos.length === 0 &&
-    hairRemovalSessions.length === 0 &&
-    hairStages.length === 0;
+    hairRemovalSessions.length === 0;
 
   return {
     region,
@@ -233,7 +195,6 @@ export async function getRegionSomaticBreakdown(
     latestEuphoria,
     photos,
     hairRemovalSessions,
-    hairStages,
     isEmpty
   };
 }

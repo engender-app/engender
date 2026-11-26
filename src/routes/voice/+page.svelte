@@ -492,8 +492,7 @@
            distinguishes, and the memo half already says what it holds in its
            own empty notice. `disclose` because the read answers after the
            tab strip is drawn, and a paragraph arriving at full height would
-           shove the tab under it down a line (hair-progress's wipe pair is
-           the same case). `skip` while the app is navigating away, because
+           shove the tab under it down a line. `skip` while the app is navigating away, because
            Svelte runs an out-transition for a block the *page* unmounts too,
            and a line collapsing its own height on the way off the screen is
            the More hub's own note here. -->

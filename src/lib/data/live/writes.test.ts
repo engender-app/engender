@@ -49,8 +49,8 @@ test('hiding or finishing an area announces it, and a read of the states announc
      that announced nothing would leave the row it hid on screen until the
      next unrelated write - the class of staleness this whole module exists
      for (phase 8 deepening ticket 13). */
-  await journal.areaStates.setAreasHidden(['hairStages'], true);
-  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19900);
+  await journal.areaStates.setAreasHidden(['personalEffects'], true);
+  await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 19900);
   assert.deepEqual(announced, [['areaState'], ['areaState']]);
 
   announced.length = 0;

@@ -37,11 +37,11 @@ test('hiding an area reads back, and hiding it does not finish it', async () => 
 test('one hub row fronting two sections finishes both, in one call', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19900);
+  await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 19900);
 
   const states = await journal.areaStates.getAreaStates();
-  assert.deepEqual(states.hairStages, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
-  assert.deepEqual(states.hairPhotos, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
+  assert.deepEqual(states.personalEffects, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
+  assert.deepEqual(states.sideEffects, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
   assert.equal(await rowCount(db), 2);
 });
 

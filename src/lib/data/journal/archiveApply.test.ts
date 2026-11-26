@@ -20,12 +20,12 @@ import type {
   ArchiveEffectCategory,
   ArchiveEntry,
   ArchiveFeltSenseEntry,
-  ArchiveHairPhoto,
   ArchiveHairRemovalSession,
   ArchiveImportLogRecord,
   ArchiveJournal,
   ArchiveMarginNote,
   ArchiveMilestone,
+  ArchiveProgressPhoto,
   ArchivePersonalEffectType,
   ArchivePreset,
   ArchiveProcedure,
@@ -47,11 +47,11 @@ import {
   applyEffectCategories,
   applyEntries,
   applyFeltSenseEntries,
-  applyHairPhotos,
   applyHairRemovalSessions,
   applyImportLog,
   applyMarginNotes,
   applyMilestones,
+  applyProgressPhotos,
   applyPersonalEffectTypes,
   applyPresets,
   applyProcedures,
@@ -773,17 +773,19 @@ test('applyPersonalEffectTypes inserts and merge leaves a matched key alone, rep
   assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM personal_effect_type'))[0].name, 'Renamed');
 });
 
-// applyHairPhotos -----------------------------------------------------------
+// applyProgressPhotos -------------------------------------------------------
 
-test('applyHairPhotos inserts and leaves a matched uuid alone', async () => {
+test('applyProgressPhotos inserts and leaves a matched uuid alone', async () => {
   const driver = await migratedDb();
-  const p: ArchiveHairPhoto = { id: 'hp1', epochDay: 20000, fileName: 'hp1.jpg' };
+  const p: ArchiveProgressPhoto = { id: 'hp1', epochDay: 20000, pose: 'hair', fileName: 'hp1.jpg' };
 
-  await applyHairPhotos(restoring(driver, { hairPhotos: [p] }, 'merge', 2));
-  assert.deepEqual(await select(driver, 'SELECT uuid, file_path FROM hair_photo'), [{ uuid: 'hp1', file_path: 'hp1.jpg' }]);
+  await applyProgressPhotos(restoring(driver, { progressPhotos: [p] }, 'merge', 2));
+  assert.deepEqual(await select(driver, 'SELECT uuid, pose, file_path FROM progress_photo'), [
+    { uuid: 'hp1', pose: 'hair', file_path: 'hp1.jpg' }
+  ]);
 
-  await applyHairPhotos(restoring(driver, { hairPhotos: [{ ...p, fileName: 'other.jpg' }] }, 'merge', 5));
-  assert.equal((await select(driver, 'SELECT * FROM hair_photo')).length, 1);
+  await applyProgressPhotos(restoring(driver, { progressPhotos: [{ ...p, fileName: 'other.jpg' }] }, 'merge', 5));
+  assert.equal((await select(driver, 'SELECT * FROM progress_photo')).length, 1);
 });
 
 // applyHairRemovalSessions ----------------------------------------------------

@@ -70,17 +70,15 @@ test('areaStateResting is true only where every field is at rest', () => {
 });
 
 test('one area answering does not answer for another', () => {
-  const states: AreaStates = { hairStages: { hidden: true, finishedEpochDay: 19000, suspendedEpochDay: null } };
+  const states: AreaStates = { personalEffects: { hidden: true, finishedEpochDay: 19000, suspendedEpochDay: null } };
 
-  assert.equal(areaQuiet('hairStages', states, TODAY), true);
-  assert.equal(areaQuiet('hairPhotos', states, TODAY), false);
+  assert.equal(areaQuiet('personalEffects', states, TODAY), true);
+  assert.equal(areaQuiet('sideEffects', states, TODAY), false);
 });
 
 test('finishable areas include practice takes and dilation, with voice fronting two sections', () => {
   assert.deepEqual([...FINISHABLE_AREAS].sort(), [
-    'hairPhotos',
     'hairRemovalSessions',
-    'hairStages',
     'personalEffects',
     'sideEffects',
     'taperSessions',

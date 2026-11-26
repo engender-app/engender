@@ -37,8 +37,8 @@
   { "route": "/settings/reminders?seedMood=3", "accepted": false },
   { "route": "/wrapped/week?seedMood=3", "accepted": false },
 
-  { "route": "/?tally=misgendered", "accepted": true },
-  { "route": "/?tally=correctly_gendered", "accepted": true },
+  { "route": "/?tally=misgendered", "accepted": false },
+  { "route": "/?tally=correctly_gendered", "accepted": false },
   { "route": "/?tally=neutral", "accepted": false },
   { "route": "/?tally=", "accepted": false },
   { "route": "/?tally=misgendered&extra=1", "accepted": false },

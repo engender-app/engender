@@ -1,6 +1,5 @@
 import { flushSync } from 'svelte';
 import { mountScreen, until } from './mount-screen';
-import { setScreenRoute } from './screen-router.svelte';
 import { mountInto } from './mount';
 import { prepareScreenJournal } from './screen-journal';
 import {
@@ -72,7 +71,7 @@ export async function homeContracts(): Promise<Result[]> {
       ) && !/streak/i.test(root().textContent!)
   );
   await check(
-    'Home has no tally, doubt, onset or effects card',
+    'Home has no doubt, onset or effects card',
     () =>
       !root().querySelector(
         '[data-live-tile="effects"],[data-live-tile="hrt-onset"],[data-doubt-card]'
@@ -189,22 +188,10 @@ export async function homeContracts(): Promise<Result[]> {
     return await until(() => root().querySelector('[data-home-editing]'), 'Home editor');
   });
   await screen.remove();
-  const before = (await f.journal.tally.getEventsOnDay(today)).length;
-  screen = await mountScreen('/?tally=misgendered', f);
-  await check('Widget tally deep link still writes a tally', async () => {
-    await until(() => root().querySelector('[data-home-log]'), 'tally Home');
-    for (let i = 0; i < 100; i++) {
-      if ((await f.journal.tally.getEventsOnDay(today)).length === before + 1) return true;
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    return false;
-  });
-  await screen.remove();
   /* Midnight on a Home that stays mounted (after-release ticket 02): the
-     greeting moves to the new day, and a widget tap that navigates to
-     /?tally= logs to the new day, not to the day Home was opened on. The
-     clock is shifted in the page and the day store woken the way a page
-     coming back to the foreground wakes it. */
+     greeting moves to the new day. The clock is shifted in the page and
+     the day store woken the way a page coming back to the foreground wakes
+     it. */
   screen = await mountScreen('/', f);
   await until(() => root().querySelector('[data-home-hello]'), 'Home greeting');
   const greetingBefore = node(root(), '[data-home-hello]').textContent;
@@ -218,9 +205,6 @@ export async function homeContracts(): Promise<Result[]> {
       return RealDate.now() + shift;
     }
   }
-  const newDayTallies = () => f.journal.tally.getEventsOnDay(today + 1);
-  const mountDayTallies = () => f.journal.tally.getEventsOnDay(today);
-  const [newBefore, oldBefore] = [(await newDayTallies()).length, (await mountDayTallies()).length];
   globalThis.Date = ShiftedDate as DateConstructor;
   try {
     document.dispatchEvent(new Event('visibilitychange'));
@@ -230,14 +214,6 @@ export async function homeContracts(): Promise<Result[]> {
         'greeting on the new day'
       );
       return true;
-    });
-    setScreenRoute('/?tally=misgendered');
-    await check('A tally link on a mounted Home after midnight lands on the new day', async () => {
-      for (let i = 0; i < 100; i++) {
-        if ((await newDayTallies()).length === newBefore + 1) return (await mountDayTallies()).length === oldBefore;
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
-      return false;
     });
   } finally {
     globalThis.Date = RealDate;
@@ -322,11 +298,11 @@ export async function homeContracts(): Promise<Result[]> {
   document.querySelector('#screens')!.replaceChildren(fanTarget);
   const fan = mountInto(QuickAdd, {}, fanTarget);
   flushSync();
-  await check('Quick add retains dose, tally and wear write shapes', async () => {
+  await check('Quick add retains dose and wear write shapes', async () => {
     ui.chooserOpen = true;
     flushSync();
     await until(() => fanTarget.querySelector('[data-choose="dose"]'), 'quick add');
-    return ['dose', 'tally-misgendered', 'tally-correctly_gendered', 'wear'].every((key) =>
+    return ['dose', 'wear'].every((key) =>
       fanTarget.querySelector(`[data-choose="${key}"]`)
     );
   });

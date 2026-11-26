@@ -9,8 +9,8 @@
    are not the same vocabulary: "Body" is entry and milestone photographs
    together, because the person who took them was photographing themselves
    either way and which record it hangs off is the app's bookkeeping rather
-   than theirs. "Hair" is the same trade over hair progress and hair
-   removal.
+   than theirs. "Hair" is hair removal's photographs; a hair-pose progress
+   photograph is a progress photograph and answers to Progress.
 
    Colour says none of this. ADR-0012's rule for a wipe holds for a grid
    too: the tile carries its source as words, in the accessible name and in
@@ -26,7 +26,6 @@ import type { Journal } from '../journal/journal';
 const PHOTO_SOURCES = [
   'entry',
   'milestone',
-  'hair',
   'hairRemoval',
   'tryout',
   'procedure',
@@ -46,10 +45,10 @@ export interface LibraryPhoto {
   source: PhotoSource;
   /** The owning record's own name, where it has one: a milestone's name, a
       tryout's label, a procedure's name. Null where the row hangs off
-      nothing that is named - a hair photograph, a hair-removal session, an
-      entry, a video note. */
+      nothing that is named - a progress photograph, a hair-removal session,
+      an entry, a video note. */
   ownerName: string | null;
-  /** The ID accepted by the owner's existing route. Hair photos own themselves. */
+  /** The ID accepted by the owner's existing route. Progress photos own themselves. */
   ownerId: string;
   starred: boolean;
 }
@@ -71,7 +70,6 @@ export type PhotoChip = (typeof PHOTO_CHIPS)[number];
 const CHIP_OF: Record<PhotoSource, Exclude<PhotoChip, 'everything' | 'starred'>> = {
   entry: 'body',
   milestone: 'body',
-  hair: 'hair',
   hairRemoval: 'hair',
   tryout: 'tryouts',
   procedure: 'surgery',
@@ -145,7 +143,6 @@ export function photoOwnerHref(photo: LibraryPhoto): string {
     case 'entry':
     case 'video': return `/entry/${id}`;
     case 'milestone': return `/transition/milestones?edit=${id}`;
-    case 'hair': return `/body/hair-progress?photo=${id}`;
     case 'hairRemoval': return `/body/hair-removal?session=${id}`;
     case 'tryout': return `/transition/tryouts/${id}`;
     case 'procedure': return `/health/surgery/${id}`;
@@ -169,8 +166,6 @@ export function deleteFromOwner(journal: Journal, photo: LibraryPhoto): Promise<
     case 'entry':
     case 'milestone':
       return journal.photos.remove(photo.id);
-    case 'hair':
-      return journal.hairProgress.deletePhoto(photo.id);
     case 'hairRemoval':
       return journal.hairRemoval.deletePhoto(photo.id);
     case 'tryout':

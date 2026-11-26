@@ -47,7 +47,7 @@ try {
     await j.milestones.upsertMilestone({ id: milestone, name: 'Exact milestone', epochDay: 15000, photo: { action: 'replace', photo } });
     const entry = await j.entries.upsertEntry({ epochDay: 15001, mood: 4, note: 'Exact entry', attachVideos: [new Uint8Array([1])] });
     await j.photos.attach({ entryId: entry }, photo);
-    await j.hairProgress.addPhoto(15002, photo);
+    await j.progressPhotos.addPhoto(15002, 'hair', photo);
     const session = await j.hairRemoval.upsertSession({ epochDay: 15003, area: 'chin', method: 'laser', painRating: 2 });
     await j.hairRemoval.addPhoto(session, photo);
     const tryout = await j.tryouts.upsertTryout({ kind: 'name', label: 'Exact tryout', startEpochDay: 15004, endEpochDay: null });
@@ -186,7 +186,7 @@ try {
   const missingRoutes = [
     `/transition/milestones?edit=${missing}`, `/health/surgery/${missing}`,
     `/care/regimen?episode=${missing}`, `/transition/roadmap?goal=${missing}`,
-    `/body/hair-progress?photo=${missing}`, `/body/hair-removal?session=${missing}`,
+    `/transition/progress-photos?photo=${missing}`, `/body/hair-removal?session=${missing}`,
     `/transition/tryouts/${missing}`, '/entry/2147483647'
   ];
   for (const href of missingRoutes) {

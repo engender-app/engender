@@ -2169,11 +2169,6 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
   overflow: hidden;
   will-change: transform, opacity;
 }
-/* One question asked twice: two halves of a row, split by the same hairline
-   that separates rows elsewhere. */
-.fan-card.is-pair { display: grid; grid-template-columns: 1fr 1fr; }
-.fan-card.is-pair .fan-item + .fan-item { border-left: 1px solid var(--hairline); }
-
 .fan-item {
   display: flex; align-items: center; gap: var(--space-3);
   width: 100%;
@@ -2205,24 +2200,6 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
 .fan-item.is-armed .fan-icon,
 .fan-item:hover:not(:disabled) .fan-icon,
 .fan-item:focus-visible .fan-icon { color: var(--on-accent); }
-
-/* A pair's halves stack their icon over the label, so the longer of two
-   labels that only mean anything together gets a second line rather than an
-   ellipsis: side by side at a phone's width there is about 90px of text
-   room per half, and "Correctly gendered" wants 145. */
-.fan-card.is-pair .fan-item {
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: var(--space-3) var(--space-2);
-  text-align: center;
-}
-.fan-card.is-pair .fan-label {
-  white-space: normal;
-  overflow: visible;
-  font-size: var(--text-sm);
-  line-height: 1.25;
-}
 
 /* The mood row is the bottom of the entry card, not a card of its own:
    picking a mood is how today's entry starts, so it belongs to the surface

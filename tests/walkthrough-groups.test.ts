@@ -33,7 +33,7 @@ describe('walkthrough selection command', () => {
     expect(result.status).toBe(0);
     const selected = JSON.parse(result.stdout);
     expect(selected.state).toBe('full');
-    expect(selected.flows).toContain('quick add tallies');
+    expect(selected.flows).toContain('quick add wear session');
     expect(selected.flows).toContain('the recovery key at the gate');
     expect(selected.flows).not.toContain('onboarding');
   });

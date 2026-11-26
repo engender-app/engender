@@ -34,7 +34,6 @@ import {
   cycleEventKindName,
   hairRemovalAreaName,
   hairRemovalMethodName,
-  hairStagingText,
   moodName,
   severityName
 } from '$lib/data/vocabulary/labels';
@@ -68,8 +67,6 @@ export interface DoseDrugFact {
   drug: string | null;
   ambiguous: boolean;
 }
-
-const HAIR_PROGRESS = '/body/hair-progress';
 
 /* Photographs by whatever they hang off - the owning tryout or procedure -
    so each owner collapses to one row rather than one per shot. Insertion
@@ -210,25 +207,6 @@ const SECTION_ROWS: Record<
       href: hubRow('cycle-events').href
     })),
 
-  /* Both counters as one row each, with the day's count on them. A tally is
-     a tap someone makes as it happens, and eight of them are eight taps -
-     not eight events worth reading one by one. */
-  tallyEvents: (day) =>
-    (['misgendered', 'correctly_gendered'] as const)
-      .map((kind) => ({ kind, count: day.tallyEvents.filter((event) => event.kind === kind).length }))
-      .filter(({ count }) => count > 0)
-      .map(({ kind, count }) => ({
-        key: `tally-${kind}`,
-        // No screen of its own to read a row from - its own tab, not a hub
-        // row (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so it draws the
-        // marks quick add logs it with: x for misgendered, check for
-        // correctly gendered.
-        icon: kind === 'misgendered' ? 'x' : 'check',
-        title: kind === 'misgendered' ? m.tally_misgendered() : m.tally_correctly_gendered(),
-        href: '/tally',
-        count
-      })),
-
   wearSessions: (day) =>
     day.wearSessions.map((session) => {
       const { hours, minutes } = hoursMinutesOf(session.durationMs ?? 0);
@@ -262,32 +240,6 @@ const SECTION_ROWS: Record<
       subtitle: felt.note || moodName(felt.mood),
       href: `${hubRow('tryouts').href}/${felt.owner.id}`
     })),
-
-  /* What the staging says, in the person's words (functional audit ticket
-     23). */
-  hairStages: (day) =>
-    day.hairStages.map((stage) => ({
-      key: `hair-stage-${stage.id}`,
-      ...iconOf('hair-progress'),
-      title: hairStagingText(stage),
-      href: HAIR_PROGRESS
-    })),
-
-  // The scheduled fixed-position photos hang off nothing but the day, so
-  // they are one group by definition.
-  hairPhotos: (day) =>
-    day.hairPhotos.length === 0
-      ? []
-      : [
-          {
-            key: 'hair-photos',
-            ...iconOf('hair-progress'),
-            title: m.day_hair_photos(),
-            href: HAIR_PROGRESS,
-            photo: day.hairPhotos[0],
-            count: day.hairPhotos.length
-          }
-        ],
 
   hairRemovalSessions: (day) =>
     day.hairRemovalSessions.map((session) => ({

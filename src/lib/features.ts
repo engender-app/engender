@@ -200,17 +200,6 @@ export const FEATURES = {
     routes: ['/settings/eras'],
     messages: ['era', 'eras']
   },
-  tally: {
-    sections: ['tallyEvents'],
-    tables: ['tally_event'],
-    journal: ['tally'],
-    hubRows: none,
-    areaGroups: none,
-    unprompted: none,
-    tiles: none,
-    routes: ['/tally'],
-    messages: ['tally']
-  },
   care: {
     sections: ['regimenEpisodes', 'doseEvents', 'doseSchedules', 'dosePauses', 'medicationStock', 'labResults'],
     tables: [
@@ -241,17 +230,6 @@ export const FEATURES = {
     tiles: none,
     routes: ['/care/changes'],
     messages: ['effect', 'effects', 'side_effect']
-  },
-  'hair-progress': {
-    sections: ['hairStages', 'hairPhotos'],
-    tables: ['hair_stage', 'hair_photo'],
-    journal: ['hairProgress'],
-    hubRows: ['hair-progress'],
-    areaGroups: ['hair-progress'],
-    unprompted: none,
-    tiles: none,
-    routes: ['/body/hair-progress'],
-    messages: ['hair_stage', 'hair_photo', 'hair_anchor']
   },
   'cycle-events': {
     sections: ['cycleEvents'],

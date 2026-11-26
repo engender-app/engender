@@ -183,7 +183,6 @@ counts as the same roster guard.
 | dev 1/3 | `photo-export` | pass | 0 / 26.11s |
 | dev 1/3 | `content-before-dates-check` | pass | 0 / 56.83s |
 | dev 1/3 | `document-reader` | pass | 0 / 17.44s |
-| dev 1/3 | `hair-progress-photo-jump-check` | pass | 0 / 11.09s |
 | dev 1/3 | `hair-removal-recency-handoff-check` | pass | 0 / 9.69s |
 | dev 1/3 | `search-filter-scope` | pass | 0 / 19.56s |
 | dev 1/3 | `noticed-effects-picker-check` | pass | 0 / 31.66s |
@@ -216,7 +215,6 @@ counts as the same roster guard.
 | built 2/6 | `sheet-touch-drag-check` | pass | 0 / 9.04s |
 | built 2/6 | `yank-sweep` | pass | 0 / 153.69s |
 | built 2/6 | `calendar-month-a11y-check` | pass | 0 / 197.43s |
-| built 2/6 | `tally-chip-row-yank` | pass | 0 / 57.84s |
 | built 2/6 | `radio-groups-gallery` | fail | 1 / 34.41s; 1 / 34.27s |
 | built 2/6 | `boot-error-alone` | pass | 0 / 15.04s |
 | built 3/6 | `no-auto-keyboard` | pass | 0 / 25.17s |
@@ -374,7 +372,6 @@ means a failed first attempt followed by a successful bounded retry.
 | dev 1/3 | `photo-export` | pass | 0 / 28.63s |
 | dev 1/3 | `chosen-appointment` | pass | 0 / 10.13s |
 | dev 1/3 | `appointment-entry-check` | pass | 0 / 17.87s |
-| dev 1/3 | `hair-progress-photo-jump-check` | pass | 0 / 11.35s |
 | dev 1/3 | `hair-removal-entry-check` | pass | 0 / 19.74s |
 | dev 1/3 | `measurements-sizes-jump-check` | pass | 0 / 13.59s |
 | dev 1/3 | `search-filter-scope` | pass | 0 / 22.06s |
@@ -409,7 +406,6 @@ means a failed first attempt followed by a successful bounded retry.
 | built 1/6 | `boot-error-alone` | pass | 0 / 16.43s |
 | built 2/6 | `sheet-focus-check` | pass | 0 / 21.23s |
 | built 2/6 | `care-cold-load-yank` | pass | 0 / 71.98s |
-| built 2/6 | `tally-chip-row-yank` | pass | 0 / 60.44s |
 | built 2/6 | `changes-methodology-check` | pass | 0 / 8.56s |
 | built 2/6 | `documents-rows-settle` | pass | 0 / 89.76s |
 | built 2/6 | `tile-arrival-timing` | pass | 0 / 121.89s |

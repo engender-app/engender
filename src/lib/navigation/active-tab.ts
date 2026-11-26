@@ -1,6 +1,6 @@
-/* Ticket 09: seven routes matched no prefix here at all, so no tab lit for
-   them - the body map, the comparison view, doses, the doubt journal, the
-   tally screen, an open entry, and on-this-day. A table keyed by tab, rather
+/* Ticket 09: six routes matched no prefix here at all, so no tab lit for
+   them - the body map, the comparison view, doses, the doubt journal, an
+   open entry, and on-this-day. A table keyed by tab, rather
    than a chain of `path.startsWith` branches, keeps adding a route to one
    place: append the prefix to the array for the tab it belongs to. */
 
@@ -17,7 +17,7 @@ const TAB_ROUTES: TabRoute[] = [
   /* SH-001: a look-back view used to light no tab at all, which read as
      having left the app's structure. They group with Stats rather than
      getting IA a new tab. A wrapped joins that group even though Home is
-     where it is offered from. Body map, tally and compare are the same
+     where it is offered from. Body map and compare are the same
      kind of look-back, linked from Stats' own list. On-this-day joins for
      the same reason as wrapped - it too is offered from Home
      (OnThisDayHomeCard) rather than from Stats (ticket 09).
@@ -29,7 +29,6 @@ const TAB_ROUTES: TabRoute[] = [
       '/stats',
       '/wrapped',
       '/body-map',
-      '/tally',
       '/compare',
       '/on-this-day'
     ]

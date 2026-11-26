@@ -85,8 +85,8 @@ function everyPreferenceSet(): PreferenceValues {
     autoExportSchedule: 'monthly',
     lastBackupAt: 1_700_000_000_000,
     backupNoticeDismissed: true,
-    pinnedRows: ['wear', 'hair-progress', 'care'],
-    onboardingAreas: ['hair-progress'],
+    pinnedRows: ['wear', 'effects', 'care'],
+    onboardingAreas: ['effects'],
     surfaceOverrides: { 'wear-timer': false },
     acknowledgements: {
       snoozes: { 'ready-letter': 1_800_000_000_000 },
@@ -200,7 +200,7 @@ test('the front page somebody arranged survives an archive, in their order', asy
      The pins deliberately disagree with the onboarding answer travelling
      beside them - three rows against one - so an import that dropped the
      arrangement and fell back to the default would come back as
-     `hair-progress` alone rather than as a passing test. */
+     `effects` alone rather than as a passing test. */
   const { contents } = await contentsOf();
 
   const { payload } = await unpack(await pack(contents));
@@ -209,7 +209,7 @@ test('the front page somebody arranged survives an archive, in their order', asy
 
   assert.deepEqual(
     pinnedRows(restored, reading).map((row) => row.spec.key),
-    ['wear', 'hair-progress', 'care']
+    ['wear', 'effects', 'care']
   );
 });
 

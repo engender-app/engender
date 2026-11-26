@@ -189,8 +189,7 @@ test("the demo persona's own journal is fitted against it too: near-daily entrie
   const alice = persona(TODAY);
   const aliceLastWrites = {
     entries: Math.max(...alice.entries.map((entry) => entry.epochDay)),
-    labResults: Math.max(...alice.labResults.map((lab) => lab.epochDay)),
-    tallyEvents: Math.max(...alice.tallyEvents.map((tally) => tally.epochDay))
+    labResults: Math.max(...alice.labResults.map((lab) => lab.epochDay))
   };
 
   assert.equal(medianWriteGap(Object.values(aliceLastWrites), TODAY), null);

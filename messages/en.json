@@ -222,7 +222,6 @@
   "body_region_reading_none_aria": "{region}: nothing logged in this range",
   "body_region_session_pain": "Pain {pain}/5",
   "body_region_track_hair_removal": "Laser & hair removal",
-  "body_region_track_hair_staging": "Hair staging",
   "body_region_track_trajectory": "Dysphoria & euphoria",
   "body_region_trajectory_empty": "No feelings logged here yet.",
   "body_regions_add": "Add body region",
@@ -570,7 +569,6 @@
   "day_appointment_referred": "Referred",
   "day_document": "Document",
   "day_first_noticed": "First noticed",
-  "day_hair_photos": "Hair photos",
   "day_label": "Day",
   "day_open_whole": "The whole day",
   "day_recovery_photos": "Recovery photos",
@@ -1280,25 +1278,6 @@
   "go": "Go",
   "guided_prompts": "Guided prompts",
   "guided_prompts_sub": "A reflection prompt while you write an entry.",
-  "hair_anchor_change_action": "Change the start date",
-  "hair_anchor_from_hrt": "Counting from your HRT start, {date}.",
-  "hair_anchor_from_set": "Counting from {date}.",
-  "hair_anchor_set_action": "Set a start date",
-  "hair_anchor_sheet": "Start date",
-  "hair_anchor_sheet_hint": "Weeks count from this date. Cleared, they count from your HRT start.",
-  "hair_jump_label": "Section",
-  "hair_jump_staging_aria": "Jump to staging",
-  "hair_other_label": "What you see",
-  "hair_other_placeholder": "e.g. thinner all over the top",
-  "hair_other_unwritten": "Neither scale",
-  "hair_photo_compare_required": "Add at least two photos to compare them.",
-  "hair_photo_empty_body": "Same head, new episode.",
-  "hair_photo_exports_required": "Add a photo to make a collage or timelapse.",
-  "hair_photo_protocol_body": "Try the same framing, lighting and distance for photos you want to compare.",
-  "hair_photo_protocol_dismiss_aria": "Hide this guidance",
-  "hair_photo_protocol_title": "Keeping photos consistent",
-  "hair_photo_section_title": "Fixed-position photos",
-  "hair_progress": "Hair progress",
   "hair_removal": "Hair removal",
   "hair_removal_add_aria": "Log a hair-removal session",
   "hair_removal_add_photo": "Add photo",
@@ -1340,15 +1319,6 @@
   "hair_removal_recency_title": "Since last session",
   "hair_removal_saved": "Session saved",
   "hair_removal_sessions_title": "Sessions",
-  "hair_since_start": "{weeks} from the start",
-  "hair_stage_add_aria": "Add a staging",
-  "hair_stage_delete_q": "Delete this staging?",
-  "hair_stage_delete_sheet": "Delete staging",
-  "hair_stage_edit_sheet": "Edit staging",
-  "hair_stage_empty_action": "Log what you see",
-  "hair_stage_new_sheet": "New staging",
-  "hair_stage_section_title": "Staging",
-  "hair_unanchored_note": "Set a start date to count weeks, or add an HRT episode to the regimen.",
   "heat_cell_coming_up": "{date}, something coming up",
   "heat_cell_entries": [
     {
@@ -1442,7 +1412,6 @@
   "hub_sub_documents": "Opinions, referrals, court orders, rulings",
   "hub_sub_doubt": "Breathing, good moments, a list of what helps",
   "hub_sub_effects": "On HRT, side effects too",
-  "hub_sub_hair_progress": "Notes and comparisons over time",
   "hub_sub_hair_removal": "Laser and electrolysis",
   "hub_sub_letters": "They open on a date you choose",
   "hub_sub_milestones": "Important days and their anniversaries",
@@ -1842,21 +1811,6 @@
       }
     }
   ],
-  "n_weeks": [
-    {
-      "declarations": [
-        "input n",
-        "local nPlural = n: plural"
-      ],
-      "selectors": [
-        "nPlural"
-      ],
-      "match": {
-        "nPlural=one": "{n} week",
-        "nPlural=other": "{n} weeks"
-      }
-    }
-  ],
   "n_years": [
     {
       "declarations": [
@@ -2058,7 +2012,6 @@
   "ph_selection_remove": "Remove from comparison: {photo}",
   "ph_selection_unavailable": "Selected photo is no longer available.",
   "ph_source_entry": "Entry",
-  "ph_source_hair": "Hair",
   "ph_source_milestone": "Milestone",
   "ph_source_procedure": "Surgery",
   "ph_source_progress": "Progress photo",
@@ -2246,6 +2199,7 @@
   "pph_pose_delete_sheet": "Delete pose",
   "pph_pose_empty": "Nothing in this pose yet.",
   "pph_pose_front": "Front",
+  "pph_pose_hair": "Hair",
   "pph_pose_hidden": "hidden",
   "pph_pose_hide_aria": "Hide {pose}",
   "pph_pose_label": "Pose",
@@ -2421,7 +2375,7 @@
   "regimen_hide_hint": "Hiding it takes it out of Meds and the clinician summary.",
   "regimen_hide_legend": "Added by mistake?",
   "regimen_hrt_start_from_episode": "From your first HRT episode, {date}",
-  "regimen_hrt_start_hint": "Changes you've noticed and hair progress count from this date. Clear it to count from your first HRT episode.",
+  "regimen_hrt_start_hint": "Changes you've noticed count from this date. Clear it to count from your first HRT episode.",
   "regimen_hrt_start_none": "Set a date or add an HRT episode",
   "regimen_hrt_start_set": "{date}, set by you",
   "regimen_hrt_start_title": "HRT start",
@@ -3253,21 +3207,6 @@
   "tags_show_aria": "Show {label}",
   "tags_tag_placeholder": "Tag name",
   "take_a_photo": "Take a photo",
-  "tally_correctly_gendered": "Correctly gendered",
-  "tally_count_spoken": "{kind}: {count}",
-  "tally_log_correctly_gendered": "Log correct gendering",
-  "tally_log_misgendered": "Log misgendering",
-  "tally_misgendered": "Misgendered",
-  "tally_tile_figures": "{misgendered}  ·  {correct}",
-  "tally_tile_note": "Misgendered · correctly gendered",
-  "tally_trend_title": "Tally",
-  "tally_undo_correctly_gendered": "Undo today's correct gendering",
-  "tally_undo_misgendered": "Undo today's misgendering",
-  "tally_undone": "{kind}: removed one from {date}.",
-  "tally_words_none": "Nothing logged in this range.",
-  "tally_words_once": "Once in this range, on {date}.",
-  "tally_words_one_day": "{count} times in this range, all on {date}.",
-  "tally_words_span": "{count} times in this range, between {from} and {to}.",
   "theme": "Theme",
   "theme_dark": "Dark",
   "theme_light": "Light",

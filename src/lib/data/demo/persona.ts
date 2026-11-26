@@ -14,7 +14,6 @@
 
 import type { PreferenceValues } from '../prefs/catalogue';
 import type { LabResultInput } from '../journal/labs';
-import type { TallyEventInput } from '../journal/tally';
 import type { EntryInput } from '../journal/entries';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
@@ -111,7 +110,6 @@ interface Persona {
   waiting: { appointment: AppointmentInput & { epochDay: null }; updates: { epochDay: number; status: string }[] }[];
   documents: DocumentInput[];
   labResults: LabResultInput[];
-  tallyEvents: TallyEventInput[];
 }
 
 function rng(seed: number) {
@@ -483,16 +481,6 @@ export function persona(today: number = todayEpochDay(), locale: PersonaLocale =
       { epochDay: today - 70, analyte: 'testosterone', value: 27, unit: 'ng/dL', note: '' },
       { epochDay: today - 430, analyte: 'prolactin', value: 14, unit: 'ng/mL', note: '' },
       { epochDay: today - 70, analyte: 'prolactin', value: 17, unit: 'ng/mL', note: '' },
-    ],
-    tallyEvents: [
-      { epochDay: today - 60, kind: 'misgendered' },
-      { epochDay: today - 60, kind: 'misgendered' },
-      { epochDay: today - 45, kind: 'misgendered' },
-      { epochDay: today - 20, kind: 'misgendered' },
-      { epochDay: today - 55, kind: 'correctly_gendered' },
-      { epochDay: today - 30, kind: 'correctly_gendered' },
-      { epochDay: today - 30, kind: 'correctly_gendered' },
-      { epochDay: today - 10, kind: 'correctly_gendered' },
     ],
   };
 }

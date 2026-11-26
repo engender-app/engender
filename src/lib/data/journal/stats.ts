@@ -23,7 +23,7 @@ import { regionReading, type RegionSideReading, type RegionSides } from '../body
 import { normalize } from '../metricRange';
 import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from '../safeSpaceNudge';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { BodyRegionAxis, Photo, TallyKind } from '../types';
+import type { BodyRegionAxis, Photo } from '../types';
 import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtinTemplates';
 import { getRegionSomaticBreakdown, type RegionSomaticBreakdown } from './bodyMapQueries';
 import { bool, entryPresentationFilter } from './support';
@@ -247,15 +247,9 @@ export interface StatsArea {
       either. Never both conditions read as a caveat - this is a plain
       yes/no, the way the rule itself is absolute. */
   isGoodDay(epochDay: number): Promise<boolean>;
-  /** One point per day a tally kind was logged at least once in the range,
-      oldest first, both ends inclusive - the same DayAverage shape as
-      dayAverages and bodyRegionTrend, so the tally trend reuses the same
-      chart (ticket 10). `value` and `count` are both the day's tap count:
-      there is nothing to average, only how many times it happened. */
-  tallyTrend(kind: TallyKind, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
   /** Every distinct day in the range on which at least one untrashed entry
       carried `presentationId` (ADR-0048), oldest first. The presentation
-      chip on tally, wear, voice and calendar reads this to highlight a
+      chip on wear, voice and calendar reads this to highlight a
       day; it never removes one - the chart it is passed to draws exactly
       what it drew before, and this only says which of those days to mark
       (ticket 17). A day nothing was logged under this presentation on is
@@ -611,16 +605,6 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       return [...byWeek.entries()]
         .sort((a, b) => a[0] - b[0])
         .map(([weekStart, totalMs]) => ({ weekStart, hours: totalMs / 3600000 }));
-    },
-
-    async tallyTrend(kind, fromEpochDay, toEpochDay) {
-      const rows = await driver.query<{ day: number; n: number }>(
-        `SELECT epoch_day AS day, COUNT(*) AS n FROM tally_event
-         WHERE kind = ? AND epoch_day BETWEEN ? AND ?
-         GROUP BY epoch_day ORDER BY epoch_day`,
-        [kind, fromEpochDay, toEpochDay]
-      );
-      return rows.map((r) => ({ day: r.day, value: r.n, count: r.n }));
     },
 
     async tagShare(fromEpochDay, toEpochDay, options) {

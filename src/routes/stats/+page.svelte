@@ -100,7 +100,6 @@
   import TagsReading from '$lib/components/readings/TagsReading.svelte';
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
-  import TallyTile from '$lib/components/readings/TallyTile.svelte';
   import CostReading from '$lib/components/readings/CostReading.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
@@ -134,10 +133,7 @@
      milestones (mirrored, ADR-0004, so no query), and the eras. */
   let erasQuery = liveList((j) => j.eras.getEras());
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
-  /* And the first tally tap (after-release 17 review): a journal of taps
-     alone had no rail, so no tiles, so no way to the counters' tile. */
-  let firstTallyQuery = liveQuery((j) => j.tally.firstEpochDay());
-  let railLoading = $derived(erasQuery.loading || boundsQuery.loading || firstTallyQuery.loading);
+  let railLoading = $derived(erasQuery.loading || boundsQuery.loading);
   /* A rail answering with less than its fade's length of an Android tab
      arrival left keeps its skeleton until the field stops, then fades in
      at full length (screenArrival.ts). Before anything has painted there
@@ -158,8 +154,7 @@
           {
             bounds: boundsQuery.value ?? null,
             milestones: vocabulary.milestones,
-            eras: erasQuery.rows,
-            firstTallyDay: firstTallyQuery.value ?? null
+            eras: erasQuery.rows
           },
           today
         )
@@ -732,7 +727,6 @@
       <TagsReading span={resolvedSpan} view="tile" />
       <BodyMapTile span={resolvedSpan} />
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
-      <TallyTile span={resolvedSpan} />
       <CostReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
     </ReadGroup>

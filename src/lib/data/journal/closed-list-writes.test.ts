@@ -21,7 +21,6 @@ const count = async (db: Awaited<ReturnType<typeof open>>['db'], table: string) 
 
 test('every write path refuses a word outside its set, naming it, and writes nothing', async () => {
   const { db, journal } = await open();
-  await assert.rejects(journal.tally.log({ epochDay: 1, kind: 'confused' as never }), /tally kind: confused/);
   await assert.rejects(
     journal.cycleEvents.upsertCycleEvent({ epochDay: 1, kind: 'irregular' as never }),
     /cycle event kind: irregular/
@@ -38,7 +37,7 @@ test('every write path refuses a word outside its set, naming it, and writes not
     journal.hairRemoval.upsertSession({ epochDay: 1, area: 'knees', method: 'laser', painRating: 2 }),
     /hair-removal area: knees/
   );
-  for (const table of ['tally_event', 'cycle_event', 'tryout', 'hair_removal_session']) {
+  for (const table of ['cycle_event', 'tryout', 'hair_removal_session']) {
     assert.equal(await count(db, table), 0, `${table} stayed empty`);
   }
 });

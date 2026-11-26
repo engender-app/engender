@@ -23,7 +23,7 @@
    exactly-one-owner CHECK cannot be widened in place). They carry both an
    owning procedure and their own date, unlike either existing photo table:
    a recovery photo belongs to one procedure the way hair_removal_photo
-   belongs to one session, and is dated the way hair_photo is, because when
+   belongs to one session, and is dated the way progress_photo is, because when
    in recovery it was taken is the whole point of it. The shared pipeline is
    reused unchanged: stagePhoto (photos.ts) writes the same normalized,
    metadata-stripped bytes through the same file-before-row order, and
@@ -74,8 +74,8 @@ interface ProcedureInput {
   cost?: CostInput;
 }
 
-/** One dated recovery photo. Its own shape rather than hairProgress.ts's
-    HairPhoto or hairRemoval.ts's HairRemovalPhoto: it is the only photo in
+/** One dated recovery photo. Its own shape rather than hairRemoval.ts's
+    HairRemovalPhoto: it is the only photo in
     the app that carries both an owner and a date. */
 export interface ProcedurePhoto {
   id: string;
