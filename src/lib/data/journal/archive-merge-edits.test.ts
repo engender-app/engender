@@ -137,7 +137,6 @@ const EDITS: [string, string, string, string?][] = [
   ['tag_group', 'name', "'edited'", 'uuid IS NOT NULL'],
   ['taper', 'start_epoch_day', 'start_epoch_day + 1'],
   ['taper_session', 'note', "'edited'"],
-  ['tally_event', 'epoch_day', 'epoch_day + 1'],
   ['tryout', 'label', "'edited'"],
   ['tryout_photo', 'epoch_day', 'epoch_day + 1'],
   ['voice_benchmark', 'note', "'edited'"],

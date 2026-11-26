@@ -477,15 +477,6 @@ beforeAll(async () => {
   )) as string;
   await drive('reminders', 'deleteReminder', () => journal.reminders.deleteReminder(secondReminderId));
 
-  // --- tally --------------------------------------------------------------
-  const tallyId = (await drive('tally', 'log', () =>
-    journal.tally.log({ epochDay: 20000, kind: 'misgendered' })
-  )) as string;
-  const secondTallyId = (await drive('tally', 'log', () =>
-    journal.tally.log({ epochDay: 20001, kind: 'correctly_gendered' })
-  )) as string;
-  await drive('tally', 'deleteEvent', () => journal.tally.deleteEvent(secondTallyId));
-
   // --- regimen / doses ----------------------------------------------------
   const episodeId = (await drive('regimen', 'upsertEpisode', () =>
     journal.regimen.upsertEpisode({
@@ -991,7 +982,7 @@ beforeAll(async () => {
 
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
-  void [labId, taperSessionId, tallyId, doseId, stockId, sideEffectId, cycleEventId,
+  void [labId, taperSessionId, doseId, stockId, sideEffectId, cycleEventId,
     wearSessionId, hairStageId, benchmarkId, takeId];
 
   // --- reads --------------------------------------------------------------
@@ -1049,11 +1040,6 @@ beforeAll(async () => {
   await driveRead('taper', 'getDaySessions', () => journal.taper.getDaySessions(19955));
   await driveRead('taper', 'lastWriteEpochDay', () => journal.taper.lastWriteEpochDay(19955));
   await driveRead('reminders', 'getReminders', () => journal.reminders.getReminders());
-  await driveRead('tally', 'getEvents', () => journal.tally.getEvents('misgendered'));
-  await driveRead('tally', 'getEventsOnDay', () => journal.tally.getEventsOnDay(20000));
-  await driveRead('tally', 'lastWriteEpochDay', () => journal.tally.lastWriteEpochDay(20000));
-  await driveRead('tally', 'latestEvent', () => journal.tally.latestEvent('misgendered', 20000));
-  await driveRead('tally', 'firstEpochDay', () => journal.tally.firstEpochDay());
   await driveRead('regimen', 'getEpisodes', () => journal.regimen.getEpisodes());
   await driveRead('regimen', 'getHiddenEpisodes', () => journal.regimen.getHiddenEpisodes());
   await driveRead('regimen', 'hasAny', () => journal.regimen.hasAny());
@@ -1193,7 +1179,6 @@ beforeAll(async () => {
   );
   await driveRead('stats', 'bodyRegionBreakdown', () => journal.stats.bodyRegionBreakdown('chest'));
   await driveRead('stats', 'weeklyWearHours', () => journal.stats.weeklyWearHours(0, 30000, Date.now()));
-  await driveRead('stats', 'tallyTrend', () => journal.stats.tallyTrend('misgendered', 0, 30000));
   await driveRead('stats', 'bodyRegionMap', () => journal.stats.bodyRegionMap(19000, 21000));
   await driveRead('stats', 'entryCountsByDay', () => journal.stats.entryCountsByDay(19000, 21000));
   await driveRead('stats', 'presentationDays', () => journal.stats.presentationDays(femme.id, 19000, 21000));
@@ -1334,10 +1319,10 @@ describe('the two checks above can actually fail', () => {
   });
 
   test('a table nothing writes, added to a declaration, fails the per-coarse-name union check', () => {
-    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, tally: [...SQL_TABLES.tally, 'photo'] };
-    const owners = driven.filter((d) => d.coarse.includes('tally') && !WIPES_THE_JOURNAL.has(d.key));
-    const hit = new Set(owners.flatMap((d) => d.wrote).filter((table) => padded.tally.includes(table)));
-    assert.notDeepEqual([...hit].sort(), [...padded.tally].sort());
+    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, sideEffect: [...SQL_TABLES.sideEffect, 'photo'] };
+    const owners = driven.filter((d) => d.coarse.includes('sideEffect') && !WIPES_THE_JOURNAL.has(d.key));
+    const hit = new Set(owners.flatMap((d) => d.wrote).filter((table) => padded.sideEffect.includes(table)));
+    assert.notDeepEqual([...hit].sort(), [...padded.sideEffect].sort());
   });
 
   /* getTaper's own declaration before this check existed: it joins
@@ -1348,8 +1333,8 @@ describe('the two checks above can actually fail', () => {
   });
 
   test('a table no read touches, added to a declaration, fails the per-coarse-name read union', () => {
-    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, tally: [...SQL_TABLES.tally, 'era_mute'] };
-    const owners = drivenReads.filter((d) => declaredRead(d.key).includes('tally') && !READS_THE_JOURNAL.has(d.key));
-    assert.deepEqual(readHit('tally', owners, padded), ['tally_event']);
+    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, sideEffect: [...SQL_TABLES.sideEffect, 'era_mute'] };
+    const owners = drivenReads.filter((d) => declaredRead(d.key).includes('sideEffect') && !READS_THE_JOURNAL.has(d.key));
+    assert.deepEqual(readHit('sideEffect', owners, padded), ['side_effect']);
   });
 });

@@ -53,7 +53,7 @@ const DUMP = flag('dump', '') && resolve(flag('dump', ''));
 const ROUTES = flag(
   'routes',
   '/transition/tryouts,/health/surgery,/transition/letters,/body/hair-removal,/media/photos/export,' +
-    '/tally,/care/labs,/care/changes,/health/clinician-summary,/coming-back,' +
+    '/care/labs,/care/changes,/health/clinician-summary,/coming-back,' +
     '/more,/settings/tags,/body/hair-progress,/settings/access-mode'
 ).split(',');
 const JUMP_PX = 24;

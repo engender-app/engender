@@ -494,14 +494,6 @@
     "holds": "every screen that places a chart card has an unbroken heading order and no axe target-size, nested-interactive or heading-order finding; the changes line's marks meet 24px and each has a 48px row, the Look back rail's reachable controls are its two 48px handles and its list holds every fact it draws at 320 and 390px"
   },
   {
-    "name": "tally-chip-row-yank",
-    "tier": "built",
-    "holds": "Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after",
-    "diagnostics": [
-      ".claude/tally-chip-row/*"
-    ]
-  },
-  {
     "name": "changes-methodology-check",
     "tier": "built",
     "holds": "the changes screen's methodology disclosure and record action",

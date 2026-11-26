@@ -5,7 +5,7 @@ import { isLegacyHairStaging } from '../hairStageScales';
 import {
   CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
   EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
-  TALLY_KINDS, DROPPED_TRYOUT_KINDS, TRYOUT_KINDS, INSTITUTION_STATUSES
+  DROPPED_TRYOUT_KINDS, TRYOUT_KINDS, INSTITUTION_STATUSES
 } from '../rowValues';
 import {
   BUILT_IN_DIMENSIONS, BUILT_IN_EFFECT_CATEGORIES, BUILT_IN_TAG_GROUPS
@@ -350,12 +350,6 @@ const ROWS = {
     enabled: optional(bool),
     autoSource: nullable(text),
     drug: optional(nullable(text))
-  },
-  tallyEvents: {
-    ...STAMP,
-    id: identity,
-    epochDay: numeric,
-    kind: oneOf(TALLY_KINDS)
   },
   letters: {
     ...STAMP,

@@ -127,7 +127,6 @@ export const MERGE_CLASSES: Readonly<Record<string, MergeClass>> = {
   side_effect: uuid,
   tag: keyOrUuid,
   tag_group: column('key'),
-  tally_event: uuid,
   taper: uuid,
   taper_session: uuid,
   tryout: uuid,

@@ -75,7 +75,6 @@ const only = flag('only', null)?.split(',');
 const SCENES = [
   { key: 'home', path: '/', targets: '.kit-tile-act, .home-fold' },
   { key: 'settings', path: '/settings', targets: '.segment' },
-  { key: 'tally', path: '/tally', targets: '.segment' },
   { key: 'wear', path: '/body/wear', targets: '.segment, .tag-chip' },
   { key: 'body-map', path: '/body-map', targets: '.tag-chip' },
   { key: 'letters', path: '/transition/letters', targets: '.letter-act, [data-letter-open]', narrow: true },

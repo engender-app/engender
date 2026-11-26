@@ -19,8 +19,8 @@
    both directions with a restore order over them; a day asks one table for
    one epoch day and never writes. The clinician summary (ADR-0031) is keyed
    on `ClinicianSummary`, reads a *range*, and deliberately carries the parts
-   a doctor needs - it excludes entries, photographs, tally events and
-   felt-sense, which are four of the things a day is most about, and adding
+   a doctor needs - it excludes entries, photographs and
+   felt-sense, which are three of the things a day is most about, and adding
    them for this would change what a printed summary discloses. So the shape
    is copied and the list is not, and what ties this one to the archive
    registry instead is `covers` below: the archive registry is what makes an
@@ -66,7 +66,6 @@ import type {
   Milestone,
   PersonalEffect,
   SideEffect,
-  TallyEvent,
   VoiceBenchmark,
   WearSession
 } from '../types';
@@ -85,7 +84,6 @@ import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea, ProcedureDayRecord } from './procedures';
 import type { SideEffectsArea } from './sideEffects';
 import type { DayTaperSession, TaperArea } from './taper';
-import type { TallyArea } from './tally';
 import type { TryoutsArea, TryoutPhotoOnDay } from './tryouts';
 import type { VoiceBenchmarksArea } from './voiceBenchmarks';
 import type { WearSessionsArea } from './wearSessions';
@@ -105,7 +103,6 @@ export interface DayRecords {
   sideEffects: SideEffect[];
   personalEffects: PersonalEffect[];
   cycleEvents: CycleEvent[];
-  tallyEvents: TallyEvent[];
   wearSessions: WearSession[];
   feltSense: FeltSenseOnDay[];
   hairStages: HairStage[];
@@ -133,7 +130,6 @@ interface DayAreas {
   sideEffects: SideEffectsArea;
   personalEffects: PersonalEffectsArea;
   cycleEvents: CycleEventsArea;
-  tally: TallyArea;
   wearSessions: WearSessionsArea;
   feltSense: FeltSenseArea;
   hairProgress: HairProgressArea;
@@ -240,12 +236,6 @@ const SECTIONS = [
     covers: ['cycleEvents'],
     tables: ['cycleEvent'],
     read: ({ cycleEvents, epochDay }) => cycleEvents.getCycleEventsInRange(epochDay, epochDay)
-  }),
-  section({
-    key: 'tallyEvents',
-    covers: ['tallyEvents'],
-    tables: ['tally'],
-    read: ({ tally, epochDay }) => tally.getEventsOnDay(epochDay)
   }),
   section({
     key: 'wearSessions',

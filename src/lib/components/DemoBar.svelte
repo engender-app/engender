@@ -104,10 +104,10 @@
     return () => document.body.classList.remove('demo-phone-frame');
   });
 
-  let failMisgendered = $state(false);
+  let failWear = $state(false);
   $effect(() => {
     const root = document.documentElement;
-    if (failMisgendered) root.dataset.demoFail = 'tally-misgendered';
+    if (failWear) root.dataset.demoFail = 'wear';
     else delete root.dataset.demoFail;
     return () => delete root.dataset.demoFail;
   });
@@ -150,9 +150,9 @@
   <div class="demo-group" role="group" aria-label="Quick add">
     <button
       class="demo-btn"
-      aria-pressed={failMisgendered}
-      class:is-active={failMisgendered}
-      onclick={() => (failMisgendered = !failMisgendered)}>Fail misgendered</button
+      aria-pressed={failWear}
+      class:is-active={failWear}
+      onclick={() => (failWear = !failWear)}>Fail wear</button
     >
   </div>
   <div class="demo-group" role="group" aria-label="Safe area">

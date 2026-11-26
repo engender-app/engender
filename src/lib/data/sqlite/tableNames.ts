@@ -69,7 +69,6 @@ export const TABLE_NAMES = [
   'side_effect',
   'tag',
   'tag_group',
-  'tally_event',
   'taper',
   'taper_session',
   'tryout',

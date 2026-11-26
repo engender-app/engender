@@ -199,7 +199,6 @@ const ROUTES = [
   { path: '/settings/security' },
   { path: '/settings/tags' },
   { path: '/settings/trash' },
-  { path: '/tally' },
   { path: '/compare' },
   { path: '/transition/letters' },
   { path: '/transition/milestones' },

@@ -24,7 +24,6 @@ export type ReserveSlot =
   | 'doses'
   | 'cycle-events'
   | 'words-ignored'
-  | 'tally'
   | 'tags'
   | 'dilation'
   | 'on-this-day'

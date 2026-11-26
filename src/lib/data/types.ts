@@ -12,7 +12,6 @@ import {
   CYCLE_EVENT_KINDS,
   EFFECT_DIRECTIONS_STORED,
   HAIR_REMOVAL_METHODS,
-  TALLY_KINDS,
   TRYOUT_KINDS
 } from './rowValues';
 
@@ -344,16 +343,6 @@ export interface LabResult {
   cost: Cost;
 }
 
-/** The two counters ticket 10 tracks. Fixed rather than user-defined, so it
-    is a plain union rather than a keyed reference-data row. */
-export type TallyKind = (typeof TALLY_KINDS)[number];
-
-export interface TallyEvent {
-  id: string;
-  epochDay: number;
-  kind: TallyKind;
-}
-
 /** One line of the person's own comfort list (phase 6 ticket 14, CONTEXT:
     "Comfort list"): who to text, which walk, which playlist - entirely
     their own words, with nothing shipped by the app behind it, the same
@@ -674,9 +663,9 @@ export interface SideEffect {
   resolvedEpochDay: number | null;
 }
 
-/** The three states phase 5 ticket 03 logs. Fixed rather than user-defined,
-    the same reasoning TallyKind gives - 'nothing_this_month' is a real,
-    loggable state here, not the absence of a row. */
+/** The three states phase 5 ticket 03 logs. Fixed rather than user-defined;
+    'nothing_this_month' is a real, loggable state here, not the absence of
+    a row. */
 export type CycleEventKind = (typeof CYCLE_EVENT_KINDS)[number];
 
 /* No episode reference (CONTEXT: "Cycle event"): this record stands alone

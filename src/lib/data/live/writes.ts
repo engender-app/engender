@@ -83,7 +83,6 @@ export const TABLE_NAMES = [
      gives its own schedule and events. */
   'taper',
   'reminder',
-  'tally',
   'regimen',
   /* One name for dose events, schedules and pauses alike. Nothing reads a
      schedule or a pause without the doses they are compared against - the
@@ -861,16 +860,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getDebriefEntryId: ['checklist']
     }
   }),
-  tally: classify<Journal['tally']>()({
-    writes: { log: ['tally'], deleteEvent: ['tally'] },
-    reads: {
-      getEvents: ['tally'],
-      getEventsOnDay: ['tally'],
-      lastWriteEpochDay: ['tally'],
-      latestEvent: ['tally'],
-      firstEpochDay: ['tally']
-    }
-  }),
   regimen: classify<Journal['regimen']>()({
     // Each carries the episode's schedule reminders along with it: a rename,
     // an end day or hiding all change or remove them (functional audit 21).
@@ -1037,7 +1026,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       bodyRegionTrend: ['entry'],
       bodyRegionBreakdown: ['entry', 'photo', 'hairRemoval', 'hairProgress'],
       weeklyWearHours: ['wearSession'],
-      tallyTrend: ['tally'],
       bodyRegionMap: ['entry'],
       entryCountsByDay: ['entry'],
       // Filters entry.presentation_uuid directly, the same reason

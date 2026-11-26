@@ -46,7 +46,6 @@ const SCREENS = [
   '/care/labs',
   '/body/wear',
   '/body-map',
-  '/tally',
   '/voice?tab=compare',
   '/stats/day-by-day',
   '/stats/plane',

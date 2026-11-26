@@ -519,11 +519,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // rating on the app's own mood scale, none of it text.
   voicePracticeTakes: 'no text of its own: three pitch figures and a felt-sense rating',
   cycleEvents: 'no text of its own: one of three kinds on a day',
-  // `tally_event.context` is a column with no reader and no writer left
-  // (tally.ts: register finding 32.4 dropped its entry point, and a
-  // forward-only migration cannot un-write it from journals that hold it).
-  // Registering it would offer a search over text nothing can put there.
-  tallyEvents: 'no text of its own: a kind on a day, and a context column nothing writes',
   dosePauses: 'no text of its own: a start day, an end day and a reason from a closed pair',
   // The row is a uuid pointing at an era, whose own name is what `eras`
   // above already searches - and a mute is presence, not a value.

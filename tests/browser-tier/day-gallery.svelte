@@ -69,7 +69,6 @@
     sideEffects: [],
     personalEffects: [],
     cycleEvents: [],
-    tallyEvents: [],
     wearSessions: [],
     feltSense: [],
     hairStages: [],
@@ -111,8 +110,7 @@
         vehicle: 'oil'
       }
     ],
-    wearSessions: [{ id: 'w1', kind: 'binder', startTimestamp: at(9), durationMs: 5_400_000, note: null }],
-    tallyEvents: [{ id: 't1', epochDay: DAY, kind: 'correctly_gendered' }]
+    wearSessions: [{ id: 'w1', kind: 'binder', startTimestamp: at(9), durationMs: 5_400_000, note: null }]
   };
 
   /* Maximal: every registered section with something in it, which is the
@@ -189,11 +187,6 @@
     sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY, resolvedEpochDay: null }],
     personalEffects: [{ id: 'pe1', effect: 'skin_softening', firstNoticedEpochDay: DAY }],
     cycleEvents: [{ id: 'c1', kind: 'spotting', epochDay: DAY }],
-    tallyEvents: [
-      { id: 't1', epochDay: DAY, kind: 'correctly_gendered' },
-      { id: 't2', epochDay: DAY, kind: 'correctly_gendered' },
-      { id: 't3', epochDay: DAY, kind: 'misgendered' }
-    ],
     wearSessions: [
       { id: 'w1', kind: 'binder', startTimestamp: at(9), durationMs: 5_400_000, note: null },
       { id: 'w2', kind: 'binder', startTimestamp: at(19), durationMs: null, note: 'still on' }

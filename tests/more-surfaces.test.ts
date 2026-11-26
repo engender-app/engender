@@ -518,10 +518,4 @@ describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
     expect(source).not.toMatch(at(old));
     expect(source).toMatch(at(mark));
   });
-
-  it('draws a gendered tally on a day the way quick add does', () => {
-    const rows = read('src/lib/components/dayRows.ts');
-    expect(rows).toContain("icon: kind === 'misgendered' ? 'x' : 'check'");
-    expect(rows).not.toContain("icon: 'stats'");
-  });
 });

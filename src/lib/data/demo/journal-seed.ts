@@ -73,7 +73,7 @@ export async function writePersonaJournal(
   source: ReturnType<typeof persona>,
   makePhoto: typeof demoPhoto = demoPhoto
 ): Promise<void> {
-  const { customTag, presentations, entries, milestones, eras, reminders, providers, appointments, waiting, documents, labResults, tallyEvents } =
+  const { customTag, presentations, entries, milestones, eras, reminders, providers, appointments, waiting, documents, labResults } =
     source;
 
   /* What the journal held before this ran, so the check at the end reads a
@@ -143,7 +143,6 @@ export async function writePersonaJournal(
   for (const document of documents) await journal.documents.addDocument(document, await makePhoto(document.epochDay));
 
   for (const result of labResults) await journal.labs.upsertResult(result);
-  for (const event of tallyEvents) await journal.tally.log(event);
 
   /* And it is all still there (ticket 135). A seed that stops part way
      through throws where it stops - `upsertEntry` refusing a presentation

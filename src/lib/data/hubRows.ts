@@ -610,7 +610,6 @@ export const LAST_WRITE_WITHOUT_A_ROW: Record<Exclude<LastWriteKey, RowArea>, st
   entries: 'the journal itself, which Home and the calendar are already about',
   doseEvents: 'behind the care row, whose own screen opens on the last dose',
   labResults: 'behind the care row, whose own screen opens on the last lab draw',
-  tallyEvents: 'its own tab, not a row here',
   feltSenseEntries: 'written on a tryout, whose row is fronted by the tryout itself rather than its readings'
 };
 

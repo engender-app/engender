@@ -4,8 +4,8 @@
    one way into Wrapped and none while Wrapped is off, and the two "is off"
    notices open the screen where their switches live. Since Alicja's
    sign-off note, the mood strip draws on the door itself rather than
-   behind a "Mood across days" tile, which leaves six tiles on a journal
-   with no cost. Ticket 31's Cost reading, a seventh tile when the span holds
+   behind a "Mood across days" tile, which leaves five tiles on a journal
+   with no cost. Ticket 31's Cost reading, a sixth tile when the span holds
    a cost, is checked last, absent and then present. */
 import { mountScreen, until } from './mount-screen';
 import { fixture, assertions, today, type Result } from './screen-contracts/fixture';
@@ -36,9 +36,6 @@ export async function lookBackContracts(): Promise<Result[]> {
       note: `Look back contract ${i}`
     });
   }
-  /* A body map mark and a tally tap, so every tile the door has is drawn
-     and the count below is the whole door's. */
-  await f.journal.tally.log({ epochDay: today - 3, kind: 'misgendered' });
   const span = spanRangeQuery({ start: today - 80, end: today });
   let screen = await mountScreen(`/stats/plane${span}`, f);
   const root = () => screen.target;
@@ -84,9 +81,9 @@ export async function lookBackContracts(): Promise<Result[]> {
   await check('Look back has no Words, Highest days or affirming themes tile', () =>
     !root().querySelector('[data-reading="words"],[data-reading="highest"],[data-reading="themes"]'));
   const tiles = () => [...root().querySelectorAll('[data-lookback-readings] [data-reading]')].map((t) => t.getAttribute('data-reading'));
-  await check('Look back draws an even number of tiles, none of them Mood across days', () => {
+  await check('Look back draws five tiles, none of them Mood across days', () => {
     const drawn = tiles();
-    return drawn.length === 6 && !drawn.includes('days');
+    return drawn.length === 5 && !drawn.includes('days');
   });
   await check('the mood strip draws on Look back itself, all five steps', () =>
     until(() => root().querySelectorAll('[data-chart-card="mood-days"] [data-strip-step]').length === 5, 'mood strip on the door'));
@@ -129,7 +126,7 @@ export async function lookBackContracts(): Promise<Result[]> {
   screen = await mountScreen('/stats', f);
   await until(() => root().querySelector('[data-lookback-readings] [data-reading]'), 'Look back tiles, no costs');
   await settle(400);
-  await check('a span with no cost in it has no Cost tile', () => tiles().length === 6 && !costTile());
+  await check('a span with no cost in it has no Cost tile', () => tiles().length === 5 && !costTile());
   await screen.remove();
   screen = await mountScreen(`/stats/cost${span}`, f);
   await check('the Cost screen over a span with no cost says so in its card', () =>

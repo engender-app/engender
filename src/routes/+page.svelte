@@ -42,7 +42,6 @@
   import { tick, untrack } from 'svelte';
   import { navigating, page } from '$app/state';
   import { goto } from '$app/navigation';
-  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { TODAY_PHOTO_HREF } from '$lib/data/entrySections';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -53,7 +52,6 @@
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { latestMood } from '$lib/data/latestMood';
-  import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { landingMilestone } from '$lib/data/milestoneStatus';
   import { resurfacing } from '$lib/unprompted/resurfacing';
@@ -697,22 +695,6 @@
     if (mood == null) return;
     goto(`/entry/new/today?seedMood=${mood}`);
   }
-
-  /* The tally widget's two buttons (phase 4 ticket 33) deep-link here with
-     the kind as a query param, since neither button opens a route of its
-     own, and `/` is the route the launcher is allowed to open
-     (android/launch-routes.ts). Home no longer draws the two directions -
-     quick add does - but it is still where the widget lands, so the write
-     stays. No follow-up sheet and no confirmation: a widget tap gets no
-     further screen. The param is cleared after logging, so reloading or going back never re-logs it. */
-  $effect(() => {
-    if (!doorActive() || page.url.pathname !== '/') return;
-    const raw = page.url.searchParams.get('tally');
-    if (!raw) return;
-    const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
-    if (kind) void attempt(() => journal.tally.log({ epochDay: todayEpochDay(), kind }), m.write_failed());
-    void replaceRoute('/', { noScroll: true, keepFocus: true });
-  });
 
   $effect.pre(() => {
     if (doorActive()) {

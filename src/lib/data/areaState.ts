@@ -193,7 +193,6 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   milestones: 'one dated point each, and the list of them never closes',
   progressPhotos: 'a photograph taken when the person wants one, and the next one is always possible',
   appointments: 'one dated visit each, and nobody declares themselves done seeing people',
-  tallyEvents: 'one dated point each, and the list of them never closes',
   cycleEvents: 'gated one-directionally by ADR-0043, which a finish flag must not reverse',
   regimenEpisodes: 'an episode carries its own end day, so a course that stopped is recorded by ending it',
   doseEvents: 'each dose is an event inside an episode, and the episode is where a course ends',

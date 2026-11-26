@@ -203,17 +203,6 @@ export const FEATURES = {
     routes: ['/settings/eras'],
     messages: ['era', 'eras']
   },
-  tally: {
-    sections: ['tallyEvents'],
-    tables: ['tally_event'],
-    journal: ['tally'],
-    hubRows: none,
-    areaGroups: none,
-    unprompted: none,
-    tiles: none,
-    routes: ['/tally'],
-    messages: ['tally']
-  },
   care: {
     sections: ['regimenEpisodes', 'doseEvents', 'doseSchedules', 'dosePauses', 'medicationStock', 'labResults'],
     tables: [

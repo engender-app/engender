@@ -122,7 +122,6 @@
     "calendar-month-a11y-check": 197.43,
     "quick-add-focus-check": 12,
     "chart-a11y-check": 228.26,
-    "tally-chip-row-yank": 57.84,
     "changes-methodology-check": 10.55,
     "entry-pending-save": 118.44,
     "radio-groups-gallery": 68.68,
@@ -348,9 +347,6 @@
     ],
     "chart-a11y-check": [
       228.26
-    ],
-    "tally-chip-row-yank": [
-      57.84
     ],
     "changes-methodology-check": [
       10.55

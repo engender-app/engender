@@ -31,7 +31,6 @@ const readings = {
   tags: read('src/lib/components/readings/TagsReading.svelte'),
   bodyMap: read('src/lib/components/readings/BodyMapTile.svelte'),
   compare: read('src/lib/components/readings/CompareTile.svelte'),
-  tally: read('src/lib/components/readings/TallyTile.svelte'),
   cost: read('src/lib/components/readings/CostReading.svelte')
 };
 const markup = (source: string) =>
@@ -89,7 +88,7 @@ describe('the summary panels wait for the floor', () => {
    held to, which outlives the block itself. */
 describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
   it('asks for no per-area read at all', () => {
-    for (const call of ['getMeasurementsInRange', 'getMostRecentAnalyte', 'weeklyWearHours', 'tallyTrend']) {
+    for (const call of ['getMeasurementsInRange', 'getMostRecentAnalyte', 'weeklyWearHours']) {
       expect(stats).not.toContain(call);
     }
   });
@@ -285,7 +284,6 @@ describe('the readings are tiles, each opening its own screen at the span', () =
       '<TagsReading span={resolvedSpan}',
       '<BodyMapTile span={resolvedSpan}',
       '<CompareTile span={resolvedSpan}',
-      '<TallyTile span={resolvedSpan}',
       '<CostReading span={resolvedSpan}'
     ];
     let last = body.indexOf('<ReadingGrid');
@@ -304,20 +302,6 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     }
     expect(readings.bodyMap).toContain('href={`/body-map${spanRangeQuery(span)}`}');
     expect(readings.compare).toContain('href={`/compare${spanRangeQuery(span)}`}');
-    expect(readings.tally).toContain('href={`/tally${spanRangeQuery(span)}`}');
-  });
-
-  /* Review finding: the tile counted the span and its screen opened on the
-     last thirty days, so a tile from an older era opened onto empty charts. */
-  it('opens the tally screen on the span the tile counted', () => {
-    const tally = read('src/routes/tally/+page.svelte');
-    expect(tally).toContain("page.url.searchParams.get('from')");
-    expect(tally).toContain("page.url.searchParams.get('to')");
-    expect(tally).toContain("j.stats.tallyTrend('misgendered', from, to)");
-    expect(tally).toContain("j.stats.tallyTrend('correctly_gendered', from, to)");
-    // A tap lands today, so a span ending earlier offers no log or undo.
-    expect(tally).toContain('let logsToday = $derived(to >= today);');
-    expect((tally.match(/\{#if logsToday\}\s*<div class="tally-actions">/g) ?? []).length).toBe(2);
   });
 
   it('has a tile only where the span holds data for it', () => {
@@ -326,7 +310,6 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     expect(readings.tags).toMatch(/\{#if !correlationCardsQuery\.loading && topRow && topCard\}\s*<ReadingTile/);
     expect(readings.bodyMap).toMatch(/\{#if !mapQuery\.loading && region\}\s*<ReadingTile/);
     expect(readings.compare).toMatch(/\{#if !short\}\s*<ReadingTile/);
-    expect(readings.tally).toMatch(/\{#if !misgenderedQuery\.loading && !correctQuery\.loading && misgendered \+ correct > 0\}\s*<ReadingTile/);
     expect(readings.cost).toMatch(/\{#if !costsQuery\.loading && first\}\s*<ReadingTile/);
   });
 
@@ -335,7 +318,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   it('gives the plane\'s tile no headline and every other tile one', () => {
     const planeTile = markup(readings.plane).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
     expect(planeTile).not.toContain('headline=');
-    for (const key of ['dayByDay', 'tags', 'bodyMap', 'compare', 'tally', 'cost'] as const) {
+    for (const key of ['dayByDay', 'tags', 'bodyMap', 'compare', 'cost'] as const) {
       const tile = markup(readings[key]).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
       expect(tile, key).toContain('headline=');
     }

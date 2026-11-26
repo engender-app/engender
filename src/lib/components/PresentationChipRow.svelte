@@ -1,7 +1,7 @@
 <script lang="ts">
   /* The presentation chip (phase 8 features ticket 17, ADR-0048): choosing
      a mode highlights the days logged under it on whatever chart sits
-     below - tally, wear, voice and calendar all take this same row rather
+     below - wear, voice and calendar all take this same row rather
      than each drawing their own, so the one control looks and behaves
      identically everywhere it appears.
 
@@ -34,7 +34,7 @@
      row, the mirror is still empty at first paint, so "no modes to offer"
      and "the mirror hasn't answered yet" used to read as the same absent
      row, and the chips popped in at full height a few frames later,
-     pushing whatever sits below (tally's charts, wear's log, voice's
+     pushing whatever sits below (wear's log, voice's
      benchmarks, the calendar's hint) down in one frame. `ReadReserve`
      holds a fixed-height placeholder while `!ready` (a chip row barely
      varies in height, unlike Home's fold that primitive was built for, so
@@ -42,7 +42,7 @@
      fades the chips in - or, for a journal with no modes, fades in
      nothing and the placeholder collapses to it, margin included. Its
      wrapper carries no spacing of its own either way, so whichever of
-     tally's `.screen`, the calendar's `.cal-month-body` grid, wear's
+     the calendar's `.cal-month-body` grid, wear's
      `.screen`, or voice's `ReadGate` hosts it keeps spacing it exactly as
      it always did. A warm navigation (the mirror already filled from an
      earlier screen this session) has `ready` true from the first frame,
@@ -50,7 +50,7 @@
 
      `ReadReserve`'s own wrapper stays mounted, at rest, once ready and
      empty (Home's three slots never render nothing, so it was never asked
-     to disappear outright) - fine for tally, wear and voice, whose `.kit-
+     to disappear outright) - fine for wear and voice, whose `.kit-
      row` neighbours are spaced by a self-collapsing margin, but the
      calendar's `.cal-month-body` spaces its children with grid `gap`,
      which a still-present, zero-height grid item still earns on both

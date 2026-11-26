@@ -37,7 +37,7 @@ public class AppLaunchAuthenticationTest {
 
     @Test
     public void routesWithoutThisInstallNonceAreRejected() {
-        Intent foreign = new Intent().putExtra(ReminderScheduler.EXTRA_ROUTE, "/?tally=misgendered");
+        Intent foreign = new Intent().putExtra(ReminderScheduler.EXTRA_ROUTE, "/entry/new/today?seedMood=3");
         assertNull(AppLaunch.authenticatedRoute(context, foreign));
         foreign.putExtra("gd_route_nonce", "another-install");
         assertNull(AppLaunch.authenticatedRoute(context, foreign));
@@ -45,19 +45,19 @@ public class AppLaunchAuthenticationTest {
 
     @Test
     public void appRoutesAuthenticateAcrossContextInstances() {
-        Intent own = AppLaunch.routeIntent(context, "/?tally=misgendered", "tally");
-        assertEquals("/?tally=misgendered", AppLaunch.authenticatedRoute(context, own));
-        assertEquals("/?tally=misgendered", AppLaunch.authenticatedRoute(context.getApplicationContext(), own));
+        Intent own = AppLaunch.routeIntent(context, "/entry/new/today?seedMood=3", "widget-quick-log");
+        assertEquals("/entry/new/today?seedMood=3", AppLaunch.authenticatedRoute(context, own));
+        assertEquals("/entry/new/today?seedMood=3", AppLaunch.authenticatedRoute(context.getApplicationContext(), own));
         own.putExtra("gd_route_nonce", "wrong-nonce");
         assertNull(AppLaunch.authenticatedRoute(context, own));
     }
 
     @Test
-    public void exportedLauncherDoesNotStoreAnUnauthenticatedTallyRoute() {
+    public void exportedLauncherDoesNotStoreAnUnauthenticatedRoute() {
         context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE)
             .edit().remove("launch-route").commit();
         Intent foreign = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName())
-            .putExtra(ReminderScheduler.EXTRA_ROUTE, "/?tally=misgendered")
+            .putExtra(ReminderScheduler.EXTRA_ROUTE, "/entry/new/today?seedMood=3")
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(foreign)) {
             scenario.onActivity(activity -> assertNull(context

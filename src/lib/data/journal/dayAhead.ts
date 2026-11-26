@@ -281,7 +281,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   sideEffects: 'noted when it started, not scheduled ahead of time',
   cycleEvents: 'logged when it happened, not scheduled ahead of time',
   personalEffects: 'noted when first seen, not scheduled ahead of time',
-  tallyEvents: 'logged when it happened, not scheduled ahead of time',
   hairStages: 'recorded when assessed, not scheduled ahead of time',
   doseEvents: "logged when it happened, not scheduled ahead of time - a schedule's own future slots are doseSlot above",
   wearSessions: 'recorded when it started (or is still running), not scheduled ahead of time',

@@ -93,7 +93,7 @@ describe('the shell hands the walkthrough a grip on everything it can press', ()
        so mood-N is what the flows grip now. */
     expect(quickAdd).not.toContain('data-choose="today"');
     expect(quickAdd).toContain('data-choose="date"');
-    for (const key of ['another-day', 'tally-misgendered', 'tally-correctly_gendered', 'dose', 'wear']) {
+    for (const key of ['another-day', 'dose', 'wear']) {
       expect(quickAdd, `${key} is offered`).toContain(`data-fan-target="${key}"`);
     }
     /* The five moods, which are the entry-for-today target. */

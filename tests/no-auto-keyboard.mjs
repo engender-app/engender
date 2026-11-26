@@ -28,7 +28,6 @@ const ROUTES = [
   '/',
   '/more',
   '/calendar',
-  '/tally',
   '/settings/tags',
   '/settings/eras',
   '/transition/letters',

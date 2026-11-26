@@ -742,15 +742,6 @@ const SECTIONS = [
     apply: (restoring: Restoring) => apply.applyReminders(REMINDERS, restoring)
   },
   flat({
-    name: 'tallyEvents',
-    travels: 'none',
-    table: 'tally_event',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: { uuid: 'id', epoch_day: 'epochDay', kind: 'kind' }
-  }),
-
-  flat({
     name: 'letters',
     // A private letter to your own future or past self.
     travels: 'none',
@@ -1138,7 +1129,7 @@ export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map
 export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
   'doubtEntries', 'savedQuestions', 'counterevidenceSnapshots',
   'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits', 'wordIgnore',
-  'journalingPauses', 'roadmapTracks'
+  'journalingPauses', 'roadmapTracks', 'tallyEvents'
 ];
 
 /** A journal with every section present and empty - what an importer builds

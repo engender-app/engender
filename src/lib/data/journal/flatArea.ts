@@ -16,8 +16,8 @@
 
    WHAT IS NOT HERE. The reads. `read` takes whatever follows the FROM and
    nothing else - each area still writes its own WHERE and ORDER BY, because
-   the read set is not a bounded enum: tally needs by-kind and journaling
-   pauses need all-only.
+   the read set is not a bounded enum: one area needs by-kind and another
+   all-only.
    Describing that declaratively is where a factory grows options, and
    ADR-0027 already refused a descriptor that is really a policy language.
 
@@ -29,8 +29,8 @@
    NOT THE ARCHIVE'S DESCRIPTOR. `archiveTable.ts`'s `FlatTable` maps the
    same seven tables column-by-column and looks like the same declaration
    written twice. It is not: that one says what **travels**, this one says
-   what is **stored**, and the two legitimately differ - `tally_event.context`
-   is a stored column no archive carries, and an archive descriptor also
+   what is **stored**, and the two legitimately differ - a stored column
+   no archive carries, and an archive descriptor also
    carries the wire concerns (`bool`, `whenAbsent`, `whenNull`) that a local
    write has no opinion about. Folding them into one declaration would need
    an option per divergence, which is the descriptor-as-policy-language

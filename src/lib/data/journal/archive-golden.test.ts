@@ -75,7 +75,6 @@ const SECTIONS = [
   'providers',
   'appointments',
   'reminders',
-  'tallyEvents',
   'letters',
   'voicePracticeTakes',
   'roadmapChecks',

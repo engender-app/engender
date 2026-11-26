@@ -48,8 +48,7 @@ const rowCounts = (tables: Record<string, unknown[]>) =>
 type Remove = (journal: Journal, id: string) => Promise<unknown>;
 
 /* Each listed deletion the screens offer: the ticket's milestones, letters,
-   photos and doses, and the rest. An entry is not here - it goes to Trash -
-   and neither is a tally tap's removal, which is itself the undo of a tap. */
+   photos and doses, and the rest. An entry is not here - it goes to Trash. */
 const CASES: [string, string, Remove][] = [
   ['a milestone with its photo and a filed document', 'SELECT m.uuid AS id FROM milestone m JOIN photo p ON p.milestone_id = m.id', (j, id) => j.milestones.deleteMilestone(id)],
   ['a letter', 'SELECT uuid AS id FROM letter', (j, id) => j.letters.deleteLetter(id)],

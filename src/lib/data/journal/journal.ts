@@ -60,7 +60,6 @@ import { makeStatsArea, type StatsArea } from './stats';
 import { makeStockArea, type StockArea } from './stock';
 import { makeCostsArea, type CostsArea } from './costs';
 import { makeTagsArea, type TagsArea } from './tags';
-import { makeTallyArea, type TallyArea } from './tally';
 import { makeTextSearchArea, type TextSearchArea } from './textSearch';
 import { makeTryoutsArea, type TryoutsArea } from './tryouts';
 import { makeVideoArea, type VideoArea } from './videoNotes';
@@ -145,9 +144,6 @@ export interface Journal {
       arithmetic over the schedule and today (taperSchedule.ts, ADR-0010). */
   taper: TaperArea;
   reminders: RemindersArea;
-  /** Misgendering and correct-gendering events (CONTEXT: "Tally event").
-      Its own record type, never an Entry or a quick log. */
-  tally: TallyArea;
   regimen: RegimenArea;
   /** The dose log, plus the schedules and pauses read alongside it. Stores
       no episode link: which episode a dose belongs to is resolved from its
@@ -392,7 +388,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const personalEffects = makePersonalEffectsArea(driver);
   const effectCategories = makeEffectCategoriesArea(driver);
   const cycleEvents = makeCycleEventsArea(driver);
-  const tally = makeTallyArea(driver);
   const wearSessions = makeWearSessionsArea(driver, reminders);
   const hairProgress = makeHairProgressArea(driver, files);
   const hairRemoval = makeHairRemovalArea(driver, files);
@@ -427,7 +422,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     labs,
     taper,
     reminders,
-    tally,
     regimen,
     doses,
     stock: makeStockArea(driver, doses, regimen),
@@ -476,7 +470,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       sideEffects,
       personalEffects,
       cycleEvents,
-      tally,
       wearSessions,
       feltSense,
       hairProgress,
@@ -496,7 +489,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       sideEffects,
       personalEffects,
       cycleEvents,
-      tally,
       wearSessions,
       feltSense,
       hairProgress,

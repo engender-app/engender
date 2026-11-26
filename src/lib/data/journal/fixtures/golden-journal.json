@@ -1906,14 +1906,6 @@
       "updatedAt": 1793388955726
     }
   ],
-  "tallyEvents": [
-    {
-      "id": "a54c093a-84bb-49a5-b6b0-3526567016ba",
-      "epochDay": 20000,
-      "kind": "misgendered",
-      "updatedAt": 1793388955714
-    }
-  ],
   "letters": [
     {
       "id": "87406332-3fde-41ae-850e-e5972db99363",

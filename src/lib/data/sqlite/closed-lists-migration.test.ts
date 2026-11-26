@@ -57,9 +57,6 @@ test('an unknown value in each closed-list column inserts at the SQL level', asy
     run(`INSERT INTO tryout (uuid, kind, label, start_epoch_day, updated_at) VALUES ('t-kind', 'hat', 'x', 1, 1)`)
   );
   assert.doesNotThrow(() =>
-    run(`INSERT INTO tally_event (uuid, epoch_day, kind, updated_at) VALUES ('y-kind', 1, 'confused', 1)`)
-  );
-  assert.doesNotThrow(() =>
     run(`INSERT INTO cycle_event (uuid, epoch_day, kind, updated_at) VALUES ('c-kind', 1, 'irregular', 1)`)
   );
 });

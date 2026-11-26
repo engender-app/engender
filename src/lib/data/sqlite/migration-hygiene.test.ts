@@ -81,7 +81,6 @@ test('version 119 drops the four columns nothing writes, and keeps the hidden fl
   assert.deepEqual(columnsOf(db, 'checklist'), ['id', 'uuid', 'owner_kind', 'owner_uuid', 'updated_at']);
   assert.ok(!columnsOf(db, 'hair_removal_session').includes('cost'));
   assert.ok(columnsOf(db, 'regimen_episode').includes('hidden'));
-  assert.ok(!columnsOf(db, 'tally_event').includes('context'));
 });
 
 test('version 119 keeps every row, counter and index of the tables it rebuilds', async () => {

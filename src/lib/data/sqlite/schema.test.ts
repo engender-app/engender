@@ -208,7 +208,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 122);
+  assert.equal(db.getUserVersion(), 123);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -249,7 +249,6 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'side_effect',
     'tag',
     'tag_group',
-    'tally_event',
     'video_note',
     'voice_benchmark',
     'voice_recording',
@@ -441,15 +440,6 @@ test('reminder shape: one-off needs epoch_day, EVERY_N_DAYS needs interval and a
   assert.throws(() =>
     insert("INSERT INTO reminder (uuid, title, time, updated_at) VALUES ('r5', 'Nothing', '20:00', 1000)")
   );
-});
-
-test('tally_event.kind takes both counters; the vocabulary is the code\'s (FA 04)', async () => {
-  const db = await migratedDb();
-  const insert = (kind: string) =>
-    db.raw.exec(`INSERT INTO tally_event (uuid, epoch_day, kind, updated_at) VALUES ('t-${kind}', 100, '${kind}', 1000)`);
-
-  assert.doesNotThrow(() => insert('misgendered'));
-  assert.doesNotThrow(() => insert('correctly_gendered'));
 });
 
 test('cycle_event carries no episode reference and takes its three kinds', async () => {

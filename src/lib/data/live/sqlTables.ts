@@ -37,7 +37,6 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   lab: ['lab_result'],
   taper: ['taper', 'taper_session'],
   reminder: ['reminder'],
-  tally: ['tally_event'],
   regimen: ['regimen_episode'],
   dose: ['dose_event', 'dose_schedule', 'dose_schedule_weekday', 'dose_schedule_dose_amount', 'dose_pause'],
   stock: ['medication_stock'],

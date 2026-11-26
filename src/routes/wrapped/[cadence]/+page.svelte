@@ -37,7 +37,6 @@
   const moodTrend = $derived(periodQuery.value?.moodTrend ?? []);
   const scaleTrend = $derived(periodQuery.value?.scaleTrend ?? []);
   const insights = $derived(nameTagInsights(periodQuery.value?.insights ?? []));
-  const tally = $derived(periodQuery.value?.tally ?? null);
   const yearLetters = $derived(periodQuery.value?.letters ?? []);
   const dimChange = $derived(recap ? recapDimChange(recap) : null);
   const topTags = $derived(recap ? recapTopTags(recap) : []);
@@ -79,9 +78,9 @@
     </div>
   {:else if cadence === 'year'}
     <WrappedYear year={period.year} intro={subtitle} {recap} {scaleTrend} {dimChange} {topTags}
-      {anchorDuration} {insights} {tally} letters={yearLetters} />
+      {anchorDuration} {insights} letters={yearLetters} />
   {:else}
     <WrappedCompact {title} {subtitle} {recap} {moodTrend} {dimChange} {topTags}
-      {anchorDuration} {insights} {tally} />
+      {anchorDuration} {insights} />
   {/if}
 </div>

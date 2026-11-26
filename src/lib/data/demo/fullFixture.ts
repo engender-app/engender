@@ -1,7 +1,7 @@
 /* The "fill every feature" persona (phase 5 ticket 36).
 
    The persona (persona.ts) writes entries, moods, tags, photos, milestones,
-   reminders, labs and tally events - which is what most of the app is
+   reminders and labs - which is what most of the app is
    reviewed against, and what the walkthrough asserts specific facts about
    (150 days of entries, five estradiol results, and so on). Everything else
    the More hub links to - regimen, hair progress, hair

@@ -63,7 +63,6 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
-  const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
   const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   const cycleEvent = await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   const personalEffect = await journal.personalEffects.upsertMarker({
@@ -165,7 +164,6 @@ async function populated() {
     milestone,
     milestonePhoto,
     lab,
-    tally,
     contextLab,
     reminder,
     episode,
@@ -257,14 +255,13 @@ test('the state a user put on a built-in row travels with it', async () => {
   assert.equal(activities.tags.find((t) => t.id === 'a-therapy')!.label, 'therapy session');
 });
 
-test('milestones, lab results, tally events, side effects, cycle events, reminders and regimen episodes travel whole', async () => {
+test('milestones, lab results, side effects, cycle events, reminders and regimen episodes travel whole', async () => {
   const {
     journal,
     milestone,
     milestonePhoto,
     lab,
     contextLab,
-    tally,
     sideEffect,
     cycleEvent,
     personalEffect,
@@ -324,7 +321,6 @@ test('milestones, lab results, tally events, side effects, cycle events, reminde
       costRefunded: false
     }
   ]);
-  assert.deepEqual(snapshot.journal.tallyEvents, [{ id: tally, epochDay: 20000, kind: 'misgendered' }]);
   assert.deepEqual(snapshot.journal.sideEffects, [
     { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null }
   ]);

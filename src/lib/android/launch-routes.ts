@@ -23,8 +23,6 @@ export function isValidAndroidLaunchRoute(route: string): boolean {
     /^\/entry\/new\/\d+$/.test(route) ||
     // The quick-log widget's mood buttons.
     /^\/entry\/new\/today\?seedMood=[1-5]$/.test(route) ||
-    // The tally widget's two buttons.
-    /^\/\?tally=(?:misgendered|correctly_gendered)$/.test(route) ||
     // The Safe Space widget's single tap target.
     route === '/doubt' ||
     /^\/wrapped\/(?:week|month|year)$/.test(route) ||

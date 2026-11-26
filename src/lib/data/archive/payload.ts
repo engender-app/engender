@@ -259,12 +259,6 @@ interface ArchiveTaperSession extends ArchiveStamped {
   note: string;
 }
 
-interface ArchiveTallyEvent extends ArchiveStamped {
-  id: string;
-  epochDay: number;
-  kind: string;
-}
-
 interface ArchiveSideEffect extends ArchiveStamped {
   id: string;
   name: string;
@@ -882,7 +876,6 @@ export interface ArchiveJournal {
   providers: ArchiveProvider[];
   appointments: ArchiveAppointment[];
   reminders: ArchiveReminder[];
-  tallyEvents: ArchiveTallyEvent[];
   letters: ArchiveLetter[];
   voicePracticeTakes: ArchiveVoicePracticeTake[];
   roadmapChecks: ArchiveRoadmapCheck[];
@@ -1094,7 +1087,6 @@ const postAlphaSections = [
   'hairRemovalSessions',
   'procedures',
   'appointments',
-  'tallyEvents',
   'letters',
   'voicePracticeTakes',
   'roadmapChecks',

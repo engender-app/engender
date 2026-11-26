@@ -17,8 +17,7 @@ const root = process.cwd();
 
 const NOT_UNDOABLE: Record<string, string> = {
   'entries.deleteEntry': 'moves the entry to Trash, which is its own way back (phase 5 ticket 19)',
-  'entries.purgeEntry': 'Delete forever, from Trash, is final on purpose (functional audit ticket 46)',
-  'tally.deleteEvent': 'removing a tally tap is itself the undo of the tap (functional audit ticket 46)'
+  'entries.purgeEntry': 'Delete forever, from Trash, is final on purpose (functional audit ticket 46)'
 };
 
 function sources(directory: string): string[] {

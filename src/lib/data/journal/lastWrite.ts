@@ -72,7 +72,6 @@ import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea } from './procedures';
 import type { SideEffectsArea } from './sideEffects';
 import type { TaperArea } from './taper';
-import type { TallyArea } from './tally';
 import type { TryoutsArea } from './tryouts';
 import type { VoiceBenchmarksArea } from './voiceBenchmarks';
 import type { WearSessionsArea } from './wearSessions';
@@ -89,7 +88,6 @@ interface LastWriteAreas {
   sideEffects: SideEffectsArea;
   personalEffects: PersonalEffectsArea;
   cycleEvents: CycleEventsArea;
-  tally: TallyArea;
   wearSessions: WearSessionsArea;
   feltSense: FeltSenseArea;
   hairProgress: HairProgressArea;
@@ -173,11 +171,6 @@ const ENTRIES = [
     key: 'cycleEvents',
     tables: ['cycleEvent'],
     read: ({ cycleEvents, todayEpochDay }) => cycleEvents.lastWriteEpochDay(todayEpochDay)
-  }),
-  entry({
-    key: 'tallyEvents',
-    tables: ['tally'],
-    read: ({ tally, todayEpochDay }) => tally.lastWriteEpochDay(todayEpochDay)
   }),
   entry({
     key: 'wearSessions',
