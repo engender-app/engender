@@ -18,10 +18,9 @@
   import { precedingWindow, stretchTooShortToCompare } from '$lib/data/compareStretch';
   import { spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
   import { liveQuery } from '$lib/data/live/journal.svelte';
-  import { readSide } from '$lib/data/compareSides';
+  import { readSide, scaleSides } from '$lib/data/compareSides';
   import { biggestChange } from '$lib/data/periodComparison';
-  import { MOOD_RANGE } from '$lib/data/metricRange';
-  import { nativeAmount, nativeValue } from '$lib/data/wrappedDisplay';
+  import { nativeValue } from '$lib/data/wrappedDisplay';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
   import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
@@ -54,12 +53,7 @@
     const sides = sidesQuery.value;
     if (!sides) return undefined;
     const [now, earlier] = sides;
-    // Ranked at the precision the screen prints, so the two agree.
-    const at = (key: string, value: number | null | undefined) => (value == null ? null : nativeAmount(key, value));
-    const scales = [
-      { key: 'mood', name: m.mood(), ...MOOD_RANGE, a: at('mood', now.scales.mood), b: at('mood', earlier.scales.mood) },
-      ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max, a: at(d.key, now.scales[d.key]), b: at(d.key, earlier.scales[d.key]) }))
-    ];
+    const scales = scaleSides(now, earlier, vocabulary.activeDimensions, m.mood());
     const moved = biggestChange(scales);
     if (moved && moved.a !== null && moved.b !== null) {
       return m.compare_tile_headline({ name: moved.name, from: nativeValue(moved.key, moved.b), to: nativeValue(moved.key, moved.a) });

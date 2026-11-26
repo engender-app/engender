@@ -1,5 +1,14 @@
 <script lang="ts" module>
   import type { EpochRange } from '$lib/data/compareStretch';
+  import { m } from '$lib/paraglide/messages';
+  import { fmtDay } from '$lib/data/dates';
+
+  /** A range as the screen and the sheet both write it. */
+  export const rangeLabel = (range: EpochRange) =>
+    m.range_from_to({
+      from: fmtDay(range.start, { day: 'numeric', month: 'short' }),
+      to: fmtDay(range.end, { day: 'numeric', month: 'short', year: 'numeric' })
+    });
 
   /** What a side of /compare is set to. `preceding` and `year` are read
       against the other side, so they move with it. */
@@ -31,8 +40,6 @@
      Klarna's filter sheet are the references: a preset says its own dates,
      and the custom range sits under the presets rather than behind a
      switch, which is what the old range/era toggle was. */
-  import { m } from '$lib/paraglide/messages';
-  import { fmtDay } from '$lib/data/dates';
   import {
     customInclusiveRange,
     dateInputValueFromEpochDay,
@@ -60,7 +67,7 @@
     /** Which side is being picked, or null for a closed sheet. */
     side: 'a' | 'b' | null;
     title: string;
-    current: PeriodChoice | null;
+    current: PeriodChoice;
     /** What that side resolves to now, which the custom fields start from. */
     currentRange: EpochRange | null;
     presets: PresetOption[];
@@ -73,14 +80,8 @@
     onClose: () => void;
   } = $props();
 
-  const rangeLabel = (range: EpochRange) =>
-    m.range_from_to({
-      from: fmtDay(range.start, { day: 'numeric', month: 'short' }),
-      to: fmtDay(range.end, { day: 'numeric', month: 'short', year: 'numeric' })
-    });
-
-  const same = (a: PeriodChoice | null, b: PeriodChoice) => {
-    if (!a || a.kind !== b.kind) return false;
+  const same = (a: PeriodChoice, b: PeriodChoice) => {
+    if (a.kind !== b.kind) return false;
     if (a.kind === 'era' && b.kind === 'era') return a.id === b.id;
     if (a.kind === 'range' && b.kind === 'range') return a.origin === 'custom' && b.origin === 'custom' && a.start === b.start && a.end === b.end;
     return true;
@@ -136,6 +137,7 @@
 </script>
 
 <Sheet open={side !== null} {title} {onClose}>
+  <h3>{title}</h3>
   <div class="compare-sheet" data-compare-sheet={shownSide} data-compare-whole={whole ? `${whole.start}:${whole.end}` : undefined}>
     <ListCard>
       {#each presets as preset (preset.choice.kind)}

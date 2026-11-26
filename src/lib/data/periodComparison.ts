@@ -83,7 +83,8 @@ export interface TagPair {
 
 /** Both periods' top five, merged: a tag in either list is drawn with its
     count on both sides, so a tag that dropped out of one period's top five
-    still shows how often it came up there. Largest combined count first. */
+    still shows how often it came up there. In first-seen order (A's top
+    five, then B's); the screen picks its own order. */
 export function tagPairs(
   a: readonly { id: string; count: number }[],
   b: readonly { id: string; count: number }[]
@@ -92,8 +93,7 @@ export function tagPairs(
   const countB = new Map(b.map((t) => [t.id, t.count]));
   const ids = new Set([...a.slice(0, TOP_TAGS), ...b.slice(0, TOP_TAGS)].map((t) => t.id));
   return [...ids]
-    .map((id) => ({ id, a: countA.get(id) ?? 0, b: countB.get(id) ?? 0 }))
-    .sort((x, y) => y.a + y.b - (x.a + x.b) || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
+    .map((id) => ({ id, a: countA.get(id) ?? 0, b: countB.get(id) ?? 0 }));
 }
 
 /** Which side came first in time, so a change reads earlier to later.

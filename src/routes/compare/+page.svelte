@@ -24,31 +24,29 @@
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, intlLocale } from '$lib/data/dates';
+  import { intlLocale } from '$lib/data/dates';
   import { precedingWindow, type EpochRange } from '$lib/data/compareStretch';
   import { customInclusiveRange, epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { eraRangeOrNull } from '$lib/data/eras';
   import { liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
-  import { readSide, type SideReading } from '$lib/data/compareSides';
+  import { readSide, scaleSides, type SideReading } from '$lib/data/compareSides';
   import {
     biggestChange,
     chronological,
     defaultSideA,
     orderScales,
     tagPairs,
-    yearEarlier,
-    type ScaleSides
+    yearEarlier
   } from '$lib/data/periodComparison';
   import { moodDistribution } from '$lib/data/statsCharts';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import { MOOD_RANGE } from '$lib/data/metricRange';
-  import { nativeAmount, nativeValue, signedValue } from '$lib/data/wrappedDisplay';
+  import { nativeValue, signedValue } from '$lib/data/wrappedDisplay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
   import { EASE_OUT, isReducedMotion, motionDuration, crossfadeDuration, NIL_OPACITY } from '$lib/motion/tokens';
-  import { fade, slide } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -58,7 +56,7 @@
   import OrderedStrip from '$lib/components/kit/OrderedStrip.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import type { PairedRow } from '$lib/components/kit/pairedRow';
-  import PeriodSheet, { type PeriodChoice, type PresetOption } from '$lib/components/compare/PeriodSheet.svelte';
+  import PeriodSheet, { rangeLabel, type PeriodChoice, type PresetOption } from '$lib/components/compare/PeriodSheet.svelte';
   import RollingNumber from '$lib/components/compare/RollingNumber.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
@@ -148,12 +146,6 @@
   let rangeA = $derived(resolve(aChoice, null));
   let rangeB = $derived(resolve(bChoice, rangeA));
 
-  const rangeLabel = (range: EpochRange) =>
-    m.range_from_to({
-      from: fmtDay(range.start, { day: 'numeric', month: 'short' }),
-      to: fmtDay(range.end, { day: 'numeric', month: 'short', year: 'numeric' })
-    });
-
   function choiceLabel(choice: PeriodChoice, range: EpochRange | null): string {
     switch (choice.kind) {
       case 'range':
@@ -170,9 +162,17 @@
   }
 
   let pickingSide = $state<'a' | 'b' | null>(null);
+  /* The side the sheet was last opened for. Everything the sheet shows
+     reads this rather than `pickingSide`, so a closing sheet keeps its
+     contents while it leaves instead of swapping to the other side's. */
+  let sheetSide = $state<'a' | 'b'>('a');
+  const openSheet = (side: 'a' | 'b') => {
+    sheetSide = side;
+    pickingSide = side;
+  };
 
   let presets = $derived.by<PresetOption[]>(() => {
-    if (pickingSide === 'a') return [{ choice: { kind: 'last30' }, label: choiceLabel({ kind: 'last30' }, null), range: defaultSideA(today) }];
+    if (sheetSide === 'a') return [{ choice: { kind: 'last30' }, label: choiceLabel({ kind: 'last30' }, null), range: defaultSideA(today) }];
     if (!rangeA) return [];
     return [
       { choice: { kind: 'preceding' }, label: m.compare_preset_preceding(), range: precedingWindow(rangeA) },
@@ -223,7 +223,9 @@
     const answer = comparisonQuery.value;
     const before = lastAnswer;
     lastAnswer = answer;
-    if (!before || !answer || before === answer || !isReducedMotion() || !resultEl) return;
+    /* A swap already fading keeps going: when it lets go of `held` the
+       figures take whatever the read holds by then. */
+    if (!before || !answer || before === answer || held || !isReducedMotion() || !resultEl) return;
     const node = resultEl;
     held = before;
     const half = crossfadeDuration() / 2;
@@ -244,21 +246,7 @@
   let model = $derived.by(() => {
     if (!shown) return null;
     const { a, b, ranges } = shown;
-    /* Rounded to the precision they are written at (nativeAmount), so the
-       change beside two printed values is the difference of those values
-       and the ranking agrees with what the reader sees. */
-    const at = (key: string, value: number | null | undefined) => (value == null ? null : nativeAmount(key, value));
-    const scales: (ScaleSides & { name: string })[] = [
-      { key: 'mood', name: m.mood(), min: MOOD_RANGE.min, max: MOOD_RANGE.max, a: at('mood', a.scales.mood), b: at('mood', b.scales.mood) },
-      ...vocabulary.activeDimensions.map((d) => ({
-        key: d.key,
-        name: d.name,
-        min: d.min,
-        max: d.max,
-        a: at(d.key, a.scales[d.key]),
-        b: at(d.key, b.scales[d.key])
-      }))
-    ];
+    const scales = scaleSides(a, b, vocabulary.activeDimensions, m.mood());
     const order = chronological(ranges.a, ranges.b);
     /* Alphabetical rather than by count, so a change of period never
        reorders the rows that stay: a re-sort would need a flip, and a flip
@@ -280,8 +268,8 @@
     };
   });
 
-  /* The headline reads earlier period to later, whichever side is which. */
-  const sideValue = (side: 'a' | 'b', values: { a: number; b: number }) => values[side];
+  /* The headline reads earlier period to later, whichever side is which
+     (`order` names the earlier side first). */
 
   let headline = $derived.by(() => {
     if (!model) return null;
@@ -293,8 +281,8 @@
         label: m.wrapped_scale_arc(),
         name: scale.name,
         metric: scale.key,
-        from: sideValue(order.first, values),
-        to: sideValue(order.second, values)
+        from: values[order.first],
+        to: values[order.second]
       };
     }
     const counts = { a: model.a.entryCount, b: model.b.entryCount };
@@ -303,13 +291,14 @@
       label: m.compare_entries_label(),
       name: null,
       metric: 'entries',
-      from: sideValue(order.first, counts),
-      to: sideValue(order.second, counts)
+      from: counts[order.first],
+      to: counts[order.second]
     };
   });
 
   const fmtMetric = (metric: string) => (n: number) =>
-    metric === 'entries' ? String(Math.round(n)) : nativeValue(metric, n);
+    metric === 'entries' ? fmtCount(n) : nativeValue(metric, n);
+  const fmtCount = (n: number) => String(Math.round(n));
   const fmtChange = (metric: string) => (n: number) => signedValue(n, fmtMetric(metric));
 
   let scaleRows = $derived<PairedRow[]>(
@@ -336,18 +325,35 @@
   const scaleChange = (row: PairedRow) => {
     if (row.with === null || row.without === null || !model) return null;
     const values = { a: row.with, b: row.without };
-    return sideValue(model.order.second, values) - sideValue(model.order.first, values);
+    return values[model.order.second] - values[model.order.first];
   };
 
 
   /* A tag row joining or leaving the union opens or closes its height and
      fades with it, so the rows under it move with the height rather than
-     jumping when a row is inserted or taken out of flow. Under
-     reduced motion the duration is 0 and the result's own fade covers the
-     swap. */
+     jumping when a row is inserted or taken out of flow. Height, a layout
+     property, so it is listed in tests/motion-system.test.ts's
+     LAYOUT_EXEMPT with its bound and its measurement. Under reduced motion
+     the duration is 0 and the result's own fade covers the swap. */
   function rowFold(node: Element) {
-    const base = slide(node, { duration: motionDuration('--dur-slow'), easing: EASE_OUT });
-    return { ...base, css: (t: number, u: number) => `${base.css?.(t, u) ?? ''};opacity: ${t}` };
+    const row = node as HTMLElement;
+    const height = row.offsetHeight;
+    const set = (property: string, value: string) => row.style.setProperty(property, value);
+    return {
+      duration: motionDuration('--dur-slow'),
+      easing: EASE_OUT,
+      tick: (t: number) => {
+        if (t === 1) {
+          row.style.removeProperty('height');
+          row.style.removeProperty('opacity');
+          row.style.removeProperty('overflow');
+          return;
+        }
+        set('height', `${t * height}px`);
+        set('opacity', String(t));
+        set('overflow', 'clip');
+      }
+    };
   }
   const tagLabel = (id: string) => vocabulary.tag(id)?.label ?? id;
   const role = $derived(roleAt(activeFlag.roles, 0));
@@ -366,7 +372,7 @@
         title={m.compare_side_row({ period: row.period, choice: choiceLabel(row.choice, row.range) })}
         subtitle={row.choice.kind !== 'range' && row.range ? rangeLabel(row.range) : null}
         fadeSwap
-        onclick={() => (pickingSide = row.side)}
+        onclick={() => openSheet(row.side)}
       >
         {#snippet leading()}
           <span class="compare-mark-disc"><span class="compare-mark" class:is-b={row.side === 'b'}></span></span>
@@ -430,7 +436,7 @@
                       <span class="compare-tag-track" aria-hidden="true">
                         <span class="compare-tag-bar" class:is-b={bar.side === 'b'} style={`--share: ${bar.count / model.tagMax}`}></span>
                       </span>
-                      <span class="compare-tag-count"><RollingNumber value={bar.count} format={(n) => String(Math.round(n))} /></span>
+                      <span class="compare-tag-count"><RollingNumber value={bar.count} format={fmtCount} /></span>
                     {/each}
                     <span class="visually-hidden">{m.compare_scale_values({ a: String(tag.a), b: String(tag.b) })}</span>
                   </div>
@@ -463,9 +469,9 @@
           <div class="compare-entries" data-compare-entries {...roleAttrs(role)}>
             <span class="compare-entries-name">{m.compare_entries_label()}</span>
             <span class="compare-entries-values">
-              <span class="compare-mark"></span><RollingNumber value={model.a.entryCount} format={(n) => String(Math.round(n))} />
+              <span class="compare-mark"></span><RollingNumber value={model.a.entryCount} format={fmtCount} />
               <span aria-hidden="true">·</span>
-              <span class="compare-mark is-b"></span><RollingNumber value={model.b.entryCount} format={(n) => String(Math.round(n))} />
+              <span class="compare-mark is-b"></span><RollingNumber value={model.b.entryCount} format={fmtCount} />
             </span>
           </div>
         </div>
@@ -479,9 +485,9 @@
 
 <PeriodSheet
   side={pickingSide}
-  title={pickingSide === 'b' ? m.compare_period_b_label() : m.compare_period_a_label()}
-  current={pickingSide === 'a' ? aChoice : pickingSide === 'b' ? bChoice : null}
-  currentRange={pickingSide === 'a' ? rangeA : pickingSide === 'b' ? rangeB : null}
+  title={sheetSide === 'b' ? m.compare_period_b_label() : m.compare_period_a_label()}
+  current={sheetSide === 'a' ? aChoice : bChoice}
+  currentRange={sheetSide === 'a' ? rangeA : rangeB}
   {presets}
   eras={eraRanges}
   journal={journalSpan}

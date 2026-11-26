@@ -9,6 +9,10 @@
 import type { Journal } from './journal/journal';
 import type { DayAverage } from './journal/stats';
 import type { EpochRange } from './compareStretch';
+import type { ScaleSides } from './periodComparison';
+import type { GenderDimension } from './types';
+import { MOOD_RANGE } from './metricRange';
+import { nativeAmount } from './wrappedDisplay';
 
 export interface SideReading {
   entryCount: number;
@@ -42,4 +46,26 @@ export async function readSide(
   const scales: Record<string, number | null> = { mood: recapAnswer.averageMood };
   dimensionKeys.forEach((key, i) => (scales[key] = mean(dimAnswers[i])));
   return { entryCount: recapAnswer.entryCount, scales, tags: tagAnswer, moodDays: moodAnswer };
+}
+
+/** A scale over both sides, named and on its own range. */
+export interface NamedScale extends ScaleSides {
+  name: string;
+}
+
+/** Mood and each active dimension over the two sides, each value rounded
+    to the precision it is printed at (nativeAmount), so a change is the
+    difference of two printed numbers and the ranking agrees with what the
+    reader sees. One list for the screen and the tile. */
+export function scaleSides(
+  a: SideReading,
+  b: SideReading,
+  dimensions: readonly GenderDimension[],
+  moodName: string
+): NamedScale[] {
+  const at = (key: string, value: number | null | undefined) => (value == null ? null : nativeAmount(key, value));
+  return [
+    { key: 'mood', name: moodName, ...MOOD_RANGE, a: at('mood', a.scales.mood), b: at('mood', b.scales.mood) },
+    ...dimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max, a: at(d.key, a.scales[d.key]), b: at(d.key, b.scales[d.key]) }))
+  ];
 }

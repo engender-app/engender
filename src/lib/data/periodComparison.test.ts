@@ -57,7 +57,7 @@ test('orderScales sorts by relative change and puts one-sided scales last', () =
   expect(orderScales(scales).map((s) => s.key)).toEqual(['mood', 'gender', 'dysphoria', 'empty']);
 });
 
-test('tagPairs takes the union of both top fives with each side counted, biggest first', () => {
+test('tagPairs takes the union of both top fives with each side counted', () => {
   const a = [
     { id: 't1', count: 9 },
     { id: 't2', count: 7 },
@@ -72,7 +72,7 @@ test('tagPairs takes the union of both top fives with each side counted, biggest
     { id: 't6', count: 2 }
   ];
   const pairs = tagPairs(a, b);
-  expect(pairs.map((p) => p.id)).toEqual(['t1', 't7', 't2', 't3', 't4', 't5', 't6']);
+  expect(pairs.map((p) => p.id)).toEqual(['t1', 't2', 't3', 't4', 't5', 't7', 't6']);
   expect(pairs.find((p) => p.id === 't6')).toEqual({ id: 't6', a: 1, b: 2 });
   expect(pairs.find((p) => p.id === 't7')).toEqual({ id: 't7', a: 0, b: 8 });
 });
