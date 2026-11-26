@@ -40,11 +40,11 @@ try {
 
   await block('Record a change action operates without regimen', 3, async () => {
     await goto(page, '/care/changes');
-    const recordBtn = page.locator('[data-record-change]');
+    const recordBtn = page.locator('[data-side-effects-section]').getByRole('button', { name: 'Add a change of your own' }).first();
     await recordBtn.waitFor({ state: 'visible', timeout: 15000 });
 
     const btnText = await recordBtn.textContent();
-    check(btnText && btnText.includes('Record a change'), `button has explicit text: ${btnText}`);
+    check(btnText && btnText.includes("Add a change of your own"), `row has explicit text: ${btnText}`);
 
     // Click Record a change button
     await recordBtn.click();

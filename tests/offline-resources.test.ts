@@ -3,8 +3,7 @@
    interacting inside it, makes no network request of any kind.
 
    The whole app already holds that line - `connect-src 'self'` in
-   deploy/nginx/journal-headers.conf, and the About sheet says so in
-   m.about_no_network_title(). What is new here is a screen whose content is
+   deploy/nginx/journal-headers.conf. What is new here is a screen whose content is
    phone numbers and web addresses, which is exactly the shape that invites
    someone to make it fetch a live copy, embed an org's logo, or check whether
    a line is still up. This test is what stops that arriving unnoticed.
@@ -84,17 +83,16 @@ test('every outbound link opens outside the app', () => {
   expect(outbound.filter((a) => !a.includes('target="_blank"'))).toEqual([]);
 });
 
-/* The directory stays complete: geographic links are document fragments,
-   not a filter or a second route. Each target is its group's heading, so a
-   keyboard user arrives at named content rather than an anonymous list. */
-test('geographic jumps address every directory group by its heading', () => {
+/* One country at a time since bug session 18 (item 77): the switch used to
+   jump down one page and name each country twice. Both regions stay
+   compiled in, so the directory is complete offline either way; within a
+   region, helplines and support come first and reading after. */
+test('a country switch shows one region, talk first and reading after', () => {
   const screen = readFileSync(join(rootPath, SCREEN), 'utf8');
 
-  // The kit's SectionJump since after-release 28: it draws each group as a
-  // link to `#target` and names the nav with `name`.
   expect(screen).toContain('name={m.resources_jump_label()}');
-  expect(screen).toContain("id: 'resources-pl'");
-  expect(screen).toContain("id: 'resources-int'");
-  expect(screen).toContain('target: group.id');
-  expect(screen).toContain('id={group.id} focusable text={group.title()}');
+  expect(screen).toContain('<Segmented');
+  expect(screen).toContain("resourcesFor(region).filter((resource) => resource.kind !== 'info')");
+  expect(screen).toContain("resourcesFor(region).filter((resource) => resource.kind === 'info')");
+  expect(screen.indexOf('m.resources_talk()')).toBeLessThan(screen.indexOf('m.resources_read()'));
 });

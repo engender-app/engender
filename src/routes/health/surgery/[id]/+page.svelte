@@ -880,18 +880,6 @@
     min-width: 0;
   }
 
-  .details-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  /* The gap is inside each slot rather than between them, so a slot that
-     opens or closes takes its gap with it. */
-  .action-slot {
-    padding-top: var(--space-3);
-  }
-
   .sj-box {
     border: 2px solid var(--outline);
     border-radius: var(--r-block);

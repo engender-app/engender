@@ -97,9 +97,8 @@ try {
   assert.equal(await page.locator('#tr-label').getAttribute('aria-invalid'), 'true');
   const help = await page.locator('#tr-label').getAttribute('aria-describedby');
   assert.match(await page.locator(`#${help}`).innerText(), /Add a label/);
-  assert.match(await page.locator('[data-tryout-photo-requirement]').innerText(), /Save.*photo/);
   assert.equal(await page.locator('[data-add-photo]').count(), 0);
-  console.log('PASS required label and saved-owner photo guidance');
+  console.log('PASS required label, and no photo control before the tryout is saved');
   await page.evaluate(async () => {
     const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
     const original = bootState.journal.tryouts.upsertTryout.bind(bootState.journal.tryouts);
@@ -406,7 +405,7 @@ try {
       await page.waitForURL('**/transition/tryouts/new');
       await page.locator('#tr-label').waitFor();
       await page.waitForFunction(() => document.querySelector('#tr-label')?.value === '');
-      await page.locator('[data-tryout-photo-requirement]').waitFor();
+      await page.locator('#tr-label-hint').waitFor();
       assert.equal(await page.locator('#tr-label').getAttribute('aria-describedby'), 'tr-label-hint');
       assert.equal(await page.locator('.screen').evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true);
       assert.match(await page.locator('#tr-label-hint').innerText(), locale === 'en' ? /Add a label/ : /Dodaj nazwę/);

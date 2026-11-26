@@ -1797,8 +1797,12 @@ button.kit-strip-day .kit-strip-cell {
    `--space-5`, the same gap `.screen > *` gives two blocks that do not
    touch (32.14 moved it from --space-4), is that distinction drawn in the
    surface instead of only in the comment. */
+/* Across the whole notice, from the icon square's edge to the dismiss
+   column's, not only under the text: starting at the text's left edge put
+   the button 52px in from the notice's own edge and left the icon hanging
+   over an empty strip ("looks awkward", Alicja, 2026-11-26). */
 .kit-notice-cta {
-  grid-column: 2;
+  grid-column: 1 / -1;
   grid-row: 2;
   justify-self: stretch;
   margin-top: var(--space-5);

@@ -72,7 +72,7 @@ try {
         await go('/voice');
         await page.locator('[data-segment="recordings"]').click();
         await page.locator('[data-open-entry]').first().waitFor();
-        route = '/voice?tab=recordings';
+        route = '/media/recordings';
         link = page.locator(`[data-open-entry][href^="/entry/${id}?"]`);
       } else if (source === 'Search' || source === 'Margin') {
         route = '/search?starred=1';

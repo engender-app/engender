@@ -17,8 +17,8 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, type LiveList } from '$lib/data/live/journal.svelte';
-  import { fmtDay, fmtDuration, photoCaptionDate } from '$lib/data/dates';
-  import { calendarDuration, todayEpochDay } from '$lib/data/epochDay';
+  import { fmtApart, fmtDay, photoCaptionDate } from '$lib/data/dates';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import type { BuiltInProgressPose, ProgressPhoto, ProgressPose, ProgressPoseRow } from '$lib/data/journal/progressPhotos';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { orderAnchorsByJourney, toComparePair } from '$lib/data/photos/compare-state';
@@ -159,8 +159,7 @@
 
   let gapLabel = $derived.by(() => {
     if (!pair) return '';
-    const duration = calendarDuration(shots[pair.left].epochDay, shots[pair.right].epochDay);
-    return `${fmtDuration(duration)} ${m.apart_suffix()}`;
+    return fmtApart(shots[pair.left].epochDay, shots[pair.right].epochDay);
   });
 
   function toggle(id: string) {

@@ -17,7 +17,9 @@ function departure(over: Partial<Departure> = {}): Departure & { cancelled: bool
   return nav;
 }
 
-function setup(start: { holding?: boolean; busy?: boolean; owns?: (departure: Departure) => boolean } = {}) {
+function setup(
+  start: { holding?: boolean; busy?: boolean; owns?: (departure: Departure) => boolean; stays?: (departure: Departure) => boolean } = {}
+) {
   const flags = { holding: start.holding ?? true, busy: start.busy ?? false };
   const state: LeaveGuardState = { pendingDeparture: null };
   const onDiscard = vi.fn();
@@ -26,7 +28,7 @@ function setup(start: { holding?: boolean; busy?: boolean; owns?: (departure: De
     goto: vi.fn<(url: URL) => Promise<unknown>>(() => Promise.resolve())
   };
   const guard = leaveGuardCore(
-    { holding: () => flags.holding, busy: () => flags.busy, onDiscard, ownsDeparture: start.owns },
+    { holding: () => flags.holding, busy: () => flags.busy, onDiscard, ownsDeparture: start.owns, staysOnScreen: start.stays },
     navigator,
     state
   );
@@ -48,6 +50,18 @@ describe('leaveGuardCore', () => {
     guard.beforeNavigate(nav);
     expect(nav.cancelled).toBe(true);
     expect(state.pendingDeparture).not.toBeNull();
+  });
+
+  it('lets a navigation that keeps the screen through without asking (bug session 18, item 91)', () => {
+    /* The voice screen's "what these numbers mean" link opens a sheet by a
+       real navigation to the same route with ?metric=; the take is still
+       there afterwards, so there is nothing to discard. */
+    const stays = vi.fn((nav: Departure) => nav.to?.url.searchParams.has('metric') ?? false);
+    const { guard, state } = setup({ stays });
+    const nav = departure({ to: { url: new URL('https://app.test/voice?metric=pitch') } });
+    guard.beforeNavigate(nav);
+    expect(nav.cancelled).toBe(false);
+    expect(state.pendingDeparture).toBeNull();
   });
 
   it('hands a departure the screen takes as its own back without asking', () => {

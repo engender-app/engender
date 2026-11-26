@@ -6,7 +6,7 @@
 import { formatNumber } from './numbers';
 import { getLocale } from '$lib/paraglide/runtime';
 import { m } from '$lib/paraglide/messages';
-import { crossesCalendarYear, durationParts, localDateFromEpochDay } from './epochDay';
+import { calendarDuration, crossesCalendarYear, durationParts, localDateFromEpochDay } from './epochDay';
 import type { CalendarDuration, DurationUnit } from './epochDay';
 
 export function intlLocale(): string {
@@ -112,4 +112,13 @@ export function fmtDuration(d: CalendarDuration): string {
   return durationParts(d)
     .map((part) => DURATION_WORD[part.unit](part.n))
     .join(' ');
+}
+
+/** How far apart two compared things were made: "2 months apart", or
+    "Same day" for two on one day, where the span would read "0 days apart"
+    (bug session 18, item 63). Progress photos and voice benchmarks both
+    label a compared pair with it. */
+export function fmtApart(fromEpochDay: number, toEpochDay: number): string {
+  if (fromEpochDay === toEpochDay) return m.same_day();
+  return `${fmtDuration(calendarDuration(fromEpochDay, toEpochDay))} ${m.apart_suffix()}`;
 }

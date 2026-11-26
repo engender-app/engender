@@ -226,6 +226,22 @@ describe('tier 3, a group opening its own height', () => {
     expect(frame(css!, 0)).toContain('margin-bottom: -20px');
   });
 
+  /* Pre-release 18, item 71: the block below can hold no top margin of its
+     own and still bring one, its first child's, through its bare top edge.
+     The roadmap's Social group does exactly that under the pack, and read
+     as 0 the pack's margin ended 16px short of where the two would meet. */
+  it('counts the margin a next block\'s first child brings through its top edge', () => {
+    stubDocument(false, true, { height: '54px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', overflow: 'visible', display: 'block' });
+    const heading = {};
+    const next = { firstElementChild: heading, parentElement: {} };
+    const pack = { parentElement: {}, previousElementSibling: {}, nextElementSibling: next } as unknown as Element;
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) =>
+      el === next ? { ...shared(), marginTop: '0px' } : el === heading ? { ...shared(), marginTop: '16px' } : shared();
+    expect(frame(disclose(pack).css!, 0)).toContain('margin-bottom: -16px');
+  });
+
   /* Ticket 183: Home's reserves put the notices one plain wrapper down from
      the blocks they close between, and a first child has no sibling above
      it. Its top margin still collapses through the wrapper's bare top edge
@@ -521,7 +537,7 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(leaving.css!, 0.5)).not.toContain('flex:');
 
     markScreenArrival(performance.now() - 1000);
-    markSlotReplacement({ slot: { top: 300, left: 20, width: 160, height: 100 } });
+    markSlotReplacement({ slot: { top: 0, left: 20, width: 160, height: 100 } });
     const arriving = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'in' });
     expect(arriving.duration).toBe(380);
     expect(frame(arriving.css!, 0)).toBe('opacity: 0');
@@ -580,9 +596,28 @@ describe('tier 3, a panel giving its space back', () => {
   it('fades alone when nothing says where it came from', () => {
     stubDocument();
     markScreenArrival(performance.now() - 1000);
-    markSlotReplacement({ slot: { top: 300, left: 20, width: 160, height: 100 } });
+    markSlotReplacement({ slot: { top: 0, left: 20, width: 160, height: 100 } });
     const { css } = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'in' });
     expect(frame(css!, 0)).toBe('opacity: 0');
+  });
+
+  /* Pre-release 18, item 53: stopping the wear session in the today tier
+     promoted the folded tile into the moment grid, a screen further down
+     and on a line of its own. Read as a swap, it faded in at full height
+     and pushed Pinned down 128px in one frame. A tile that does not stand
+     in the slot it replaces is an arrival, and opens its own height. */
+  it('opens its own height when the promoted tile lands away from the slot', () => {
+    stubDocument();
+    markScreenArrival(performance.now() - 1000);
+    markSlotReplacement({ slot: { top: 300, left: 20, width: 680, height: 122 }, from: { top: 1343, left: 20, width: 680, height: 48 } });
+    const node = panel({ width: 680, height: 176 }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '0px' });
+    (node as unknown as { getBoundingClientRect: () => unknown }).getBoundingClientRect = () => ({
+      top: 1343, bottom: 1519, left: 20, width: 680, height: 176
+    });
+    const { css } = collapse(node, undefined, { direction: 'in' });
+    expect(frame(css!, 0)).not.toBe('opacity: 0');
+    expect(frame(css!, 0)).toContain('margin-top: -176px');
+    expect(frame(css!, 1)).toContain('margin-top: 0px');
   });
 
   /* Without a slot there is nothing to pin to, so the cut is what is left. */
@@ -812,6 +847,21 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 0.175)).toContain('opacity: 0.5');
     expect(frame(css!, 0)).toContain('opacity: 0');
     expect(frame(css!, 1)).toContain('opacity: 1');
+  });
+
+  /* Pre-release 18, item 53: kept for the fade, the two hairlines are a
+     floor the box cannot shrink through, so a notice sat at 2px for the end
+     of its close and the content below took those 2px in the frame it was
+     removed. The margin under it gives them back over the travel. */
+  it('gives its hairlines\' height back through the margin below as it closes', () => {
+    const node = panel(
+      { beside: [[120, 220]] },
+      { paddingTop: '0px', paddingBottom: '0px', marginBottom: '0px', borderTopWidth: '1px', borderBottomWidth: '1px' }
+    );
+    const { css } = collapse(node, undefined, { direction: 'out' });
+    expect(frame(css!, 1)).toContain('margin-bottom: 0px');
+    expect(frame(css!, 0.5)).toContain('margin-bottom: -1px');
+    expect(frame(css!, 0)).toContain('margin-bottom: -2px');
   });
 
   it('never fades a panel in: an arriving block does not come from nothing', () => {

@@ -274,6 +274,7 @@ describe('every row the hub carries', () => {
     ['doubt', 'shelter', '/doubt', 'support', 'written'],
     ['resources', 'lifebuoy', '/support/resources', 'support', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
+    ['recordings', 'mic', '/media/recordings', 'media', 'written'],
     ['documents', 'documents', '/media/documents', 'media', 'read']
   ];
 

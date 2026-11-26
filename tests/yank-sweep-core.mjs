@@ -2150,7 +2150,7 @@ const HYDRATION_SCENES = [
   { name: 'voice', at: '/voice', is: 'the voice benchmark' },
   { name: 'voice-record', at: '/voice?tab=record', is: 'the benchmark record tab' },
   { name: 'voice-metrics', at: '/voice?metric=pitch', is: 'the metric reference' },
-  { name: 'voice-memos', at: '/voice?tab=recordings', is: 'the memo browser' },
+  { name: 'voice-memos', at: '/media/recordings', is: 'the memo browser' },
   /* Support group (ticket 21: resources moved off the retired Practice
      prefix onto the door ADR-0072 gave it) */
   { name: 'resources', at: '/support/resources', is: 'organisations and helplines' },

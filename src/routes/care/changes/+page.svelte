@@ -464,7 +464,6 @@
       {anchorEpochDay}
       todayEpochDay={today}
       onOpen={openMark}
-      onRecord={() => record.openEditor(null)}
     />
 
     <!-- Under the axis rather than over it, and no longer instead of it.
@@ -601,6 +600,19 @@
                 />
               </div>
             {/each}
+            <!-- The way to add one, at the end of the list it adds to (bug
+                 session 18, item 64): it was a button over the timeline,
+                 named for a side effect. -->
+            <div class="rows-divide">
+              <ListRow
+                key="add-own-change"
+                data-add-own-change
+                icon="plus"
+                title={m.side_effect_add()}
+                chevron={false}
+                onclick={() => record.openEditor(null)}
+              />
+            </div>
           </ListCard>
         {/snippet}
         {#snippet empty()}

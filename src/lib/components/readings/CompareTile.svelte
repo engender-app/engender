@@ -68,6 +68,5 @@
     name={m.compare_title()}
     href={`/compare${spanRangeQuery(span)}`}
     headline={headline}
-    note={m.lookback_compare_before()}
   />
 {/if}

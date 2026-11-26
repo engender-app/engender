@@ -27,11 +27,10 @@
     region ? (vocabulary.visibleBodyRegions.find((r) => r.id === region.region)?.name ?? region.region) : ''
   );
   /* Which way the region mostly sat, and how strongly: the figure's own
-     line. A region that went both ways evenly has no side, and says only
-     how often it was marked. */
+     line. A region that went both ways evenly has no side, and has no
+     line: a count of entries said nothing the name needed (item 88). */
   let note = $derived.by(() => {
-    if (!region) return '';
-    if (region.side === null || region.value === null) return m.n_entries({ n: region.count });
+    if (!region || region.side === null || region.value === null) return undefined;
     const axis = region.side === 'dysphoria' ? m.body_region_axis_dysphoria() : m.body_region_axis_euphoria();
     return m.reading_body_region_value({ axis, value: fmtNumber(Math.round(region.value)) });
   });

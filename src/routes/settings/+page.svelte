@@ -114,7 +114,6 @@
   }
   let aboutSheet = $state(false);
   let moodSheet = $state(false);
-  let languageSheet = $state(false);
   let a11ySheet = $state(false);
   let tagGroupsSheet = $state(false);
   /* Manage tags is a screen behind the Tag groups sheet. Going there with
@@ -161,9 +160,6 @@
   /* The readings on the rows that open a sheet (ticket 277): what each is
      set to, so the hub says it without the sheet being opened. */
   let moodName = $derived(MOOD_PRESETS.find(([key]) => key === prefs.moodPreset)?.[1]());
-  let languageName = $derived(
-    prefs.language === 'en' ? 'English' : prefs.language === 'pl' ? 'Polski' : m.theme_system()
-  );
   let a11yOn = $derived(
     [
       prefs.a11yTextSizeBoost && m.a11y_text_size_boost(),
@@ -295,9 +291,29 @@
     <ListRow key="mood-colours" icon="mood" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="language" icon="globe" title={m.language()} subtitle={languageName} chevron={false} onclick={() => (languageSheet = true)}>
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
+    <!-- On the row, like the theme above it, rather than a row that opens a
+         sheet holding the same three choices (bug session 18, item 78). -->
+    <div class="kit-row settings-unit-row" style="cursor:default">
+      <span class="kit-row-ico"><Icon name="globe" size={22} /></span>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.language()}</span>
+      </span>
+      <span class="kit-row-trail">
+        <Segmented
+          name={m.language()}
+          key="language"
+          compact
+          options={[
+            { value: 'system', label: m.theme_system() },
+            { value: 'en', label: 'English' },
+            { value: 'pl', label: 'Polski' },
+          ]}
+          value={prefs.language}
+          selectOnArrow={false}
+          onChange={setLanguage}
+        />
+      </span>
+    </div>
     <ListRow key="accessibility" icon="access" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.settings_row_off()} chevron={false} onclick={() => (a11ySheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
@@ -547,21 +563,6 @@
     </div>
   </Sheet>
 
-  <Sheet bind:open={languageSheet} title={m.language()}>
-    <h3>{m.language()}</h3>
-    <Segmented
-      name={m.language()}
-      options={[
-        { value: 'system', label: m.theme_system() },
-        { value: 'en', label: 'English' },
-        { value: 'pl', label: 'Polski' },
-      ]}
-      value={prefs.language}
-      selectOnArrow={false}
-      onChange={setLanguage}
-    />
-  </Sheet>
-
   <Sheet bind:open={a11ySheet} title={m.settings_accessibility_pack()}>
     <h3>{m.settings_accessibility_pack()}</h3>
     <div class="stack-3">
@@ -637,18 +638,6 @@
       </header>
 
       <p class="about-license">{m.about_license()}</p>
-
-      <section class="about-privacy">
-        <Icon name="shield" size={22} />
-        <div class="about-privacy-copy">
-        <!-- Platform copy (UI/UX ticket 09): the no-requests claim is
-             Android's, bought by holding no internet permission. The web
-             app is itself something the browser downloads, so its sentence
-             is about what is sent rather than what is fetched. -->
-          <h3>{isAndroid() ? m.about_no_network_title() : m.about_no_network_web_title()}</h3>
-          <p>{isAndroid() ? m.about_no_network_body() : m.about_no_network_web_body()}</p>
-        </div>
-      </section>
 
       <p class="about-attribution">{m.about_attribution()}</p>
 
@@ -759,37 +748,6 @@
 
   .about-license,
   .about-attribution {
-    margin: 0;
-    color: var(--text-2);
-    font-size: var(--text-sm);
-    line-height: 1.55;
-  }
-
-  .about-privacy {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-block);
-    background: var(--surface-2);
-    color: var(--accent);
-  }
-
-  .about-privacy-copy {
-    color: var(--text);
-  }
-
-  .about-privacy h3 {
-    margin: 0 0 var(--space-2);
-    font-family: var(--font-display);
-    font-size: var(--text-md);
-    font-weight: var(--weight-display);
-    line-height: 1.35;
-  }
-
-  .about-privacy p {
     margin: 0;
     color: var(--text-2);
     font-size: var(--text-sm);
