@@ -1,4 +1,4 @@
-/* Entry Editor Unified Logging Hub structural and integration verification (Phase 5 Deepening Ticket 04, ADR-0044). */
+/* Entry Editor Unified Logging Hub structural and integration verification (ADR-0044). */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -75,7 +75,7 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
        Proven on the source rather than a rendered DOM: the star's own
        markup sits inside <SaveBar>, which this screen always draws, and
        not inside the header's existing-only guard. A new entry's foot is the
-       finish control and the way on (tickets 04 and 09), so its star is on
+       finish control and the way on, so its star is on
        the header's field, behind the stepped guard - checked after this. */
     const saveBarPos = editor.indexOf('<SaveBar>');
     const saveBarEnd = editor.indexOf('</SaveBar>', saveBarPos);

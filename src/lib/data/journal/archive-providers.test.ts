@@ -1,5 +1,4 @@
-/* An appointment's time and its provider travel in archives (functional-audit
-   ticket 27). The provider is its own section, which appointments resolve
+/* An appointment's time and its provider travel in archives. The provider is its own section, which appointments resolve
    their `providerId` against; an archive written before the ticket restores
    with no times and nobody named; a malformed time is refused as a corrupt
    row rather than failing inside SQLite. */

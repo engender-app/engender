@@ -1,5 +1,4 @@
-/* What the app may leave in plaintext browser storage (functional audit
-   ticket 45).
+/* What the app may leave in plaintext browser storage.
 
    localStorage is readable without unlocking the journal, so a key there is
    a fact about the journal that anyone with the device's files can read.

@@ -1,24 +1,10 @@
-/* Palette names under the flags in Settings and setup (pre-publish ticket 03).
+/* Check Settings and setup palette names at phone widths in both
+   languages. Four columns stay fixed. Fit whole words starting at
+   --text-xs down to 75% (9px) without overflow. Panseksualna needs
+   9.3px at 320px. First paint uses final sizes. In setup, flags in
+   each row share a wipe delay that increases row by row.
 
-   The grid is four flags across at every phone width. A name is one word
-   or two, and a word is never broken: the Polish picker showed
-   "Transpłciow / a" at 360px, because the grid's names wrapped with
-   overflow-wrap: anywhere. A three-column grid kept the words whole but
-   left the sixteenth flag alone on its last row, which Alicja rejected
-   (2026-11-04). So a name whose longest word does not fit its column
-   steps its type down from --text-xs, as far as 0.75 of it (9px); a name that
-   fits keeps --text-xs. Every name, both languages, at the widths a phone
-   gives: no break inside a word, four columns, the type size as small as
-   the name needs and no smaller, and nothing painted past its own flag.
-   At 320px "Panseksualna" needs 9.3px, which the 9px floor allows.
-
-   Setup's flags arrive row by row (onboarding's .setup-flags stagger),
-   so the same sweep reads each flag's wipe delay there and checks that
-   the flags sharing a visual row share a delay and every row waits
-   longer than the one above it. And in both places the first frame the
-   grid paints already carries each name's settled size.
-
-   Run: node tests/palette-name-wrap.mjs   (dev server, no build needed) */
+   Run node tests/palette-name-wrap.mjs against the dev server. */
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
 import { launchChromium, setAppLanguage, settlePage, untilSplashLets } from './browser-harness.mjs';

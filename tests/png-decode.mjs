@@ -1,5 +1,5 @@
 // @ts-nocheck
-/* A PNG decoder for the device yank sweep (ticket 100) - enough of one to
+/* A PNG decoder for the device yank sweep - enough of one to
    read what Chrome's Page.screencastFrame hands back, and no more.
 
    The repo already depends on fflate for inflate; a PNG is chunk walking,

@@ -160,10 +160,9 @@ function typedNumber(value: unknown): number | null {
     needs some days. Inside MAX_TAPER_STAGES and MAX_TAPER_DAYS: what a
     restore of the saved schedule accepts. A
     cleared frequency used to read as 0 and save a rest stage nobody asked
-    for (after-release ticket 01).
+    for.
 
-    A row that carries `timesPerDay` is a times-a-day stage (functional
-    audit ticket 25): its frequency field is not read, the count has to be
+    A row that carries `timesPerDay` is a times-a-day stage: its frequency field is not read, the count has to be
     a whole number from 1 to `MAX_TIMES_PER_DAY`, and it saves as a daily
     stage with that count. */
 export function stagesFromInput(

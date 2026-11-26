@@ -1,4 +1,4 @@
-/* The appointment record (phase 8 features ticket 57, ADR-0066). What is
+/* The appointment record (ADR-0066). What is
    asked here is that one record covers both cases - a consult that names a
    procedure and an appointment that stands on its own - that the delete
    contract holds (ADR-0053), that the kind suggestions come off this
@@ -264,7 +264,7 @@ test('getAppointment reads one row by id, or undefined for an unknown one', asyn
   assert.equal(await journal.appointments.getAppointment('no-such-appointment'), undefined);
 });
 
-/* soonestFutureAppointment and mostRecentPastAppointment (ticket 58): pure
+/* soonestFutureAppointment and mostRecentPastAppointment: pure
    selectors over an already-fetched, oldest-first list (getAppointments's
    own order), the same shape liveTiles.ts's shouldShow* functions take -
    already-fetched rows plus today, no clock of their own. Today itself
@@ -334,7 +334,7 @@ test('chosenAppointmentOnDay resolves the visit the room belongs to', () => {
   assert.equal(chosenAppointmentOnDay([at(20100, 'morning'), at(20100, 'afternoon')], today, 'deleted'), null);
 });
 
-/* Waiting lists (functional-audit ticket 26). A referral is an appointment
+/* Waiting lists. A referral is an appointment
    with no day yet: it carries the service (its kind), where (its place), the
    day it was referred on, dated status updates and notes, and is later given
    a day without becoming a different record. */

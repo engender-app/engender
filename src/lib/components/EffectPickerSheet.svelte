@@ -1,23 +1,11 @@
 <script lang="ts">
-  /* The entry editor's noticed-effects sheet (phase 12 ux-carpet ticket
-     289). What it lists is `buildEffectPicker`'s job - the regimen's
-     direction filter, the category groups, the search - and this is the
-     drawing of it plus the two bits of state that belong to one opening of
-     the sheet: the query and the "show all" lift.
+  /* buildEffectPicker owns filtering and grouping. Reset search and
+     show-all on open so closing never redraws during exit.
 
-     Both are reset when the sheet opens rather than when it closes: a reset
-     on close would redraw the list while the sheet is still sliding out.
-
-     Choosing is draft-only. A row ticks and unticks; an effect that already
-     has a `personal_effect` row shows ticked with its date and cannot be
-     toggled here, because a save never deletes one and never moves the day
-     it was first noticed. Taking one off the record is `/care/changes`.
-
-     Every row, heading and notice here arrives and leaves by collapsing
-     (DIRECTION rule 10), so typing in the box or lifting the filter moves the
-     rows under it instead of cutting them. The transitions are local on
-     purpose: the list is part of the sheet that slides in, and a global one
-     would collapse every row open again on each opening. */
+     Picks change the draft. A stored personal_effect stays ticked
+     and keeps its first-noticed date. Remove it through /care/changes.
+     Local collapse animates list changes without replaying rows when
+     the sheet opens (DIRECTION.md rule 10). */
   import { m } from '$lib/paraglide/messages';
   import type { PersonalEffectCatalogEntry } from '$lib/data/types';
   import type { Role } from '$lib/theme/roles';

@@ -1,68 +1,21 @@
 <script lang="ts">
-  /* Saying you are done with an area, on the area's own screen (phase 8
-     features ticket 04, ADR-0052, ADR-0045).
+  /* Finish or pause an area on its own screen (ADR-0052, ADR-0045). Voice and
+     hair removal can pause. journal/areaStates.ts enforces one state at a
+     time. Finished and paused states each describe the change and offer a
+     labelled action to reverse it.
 
-     Not in Settings and not in a menu: the area is where the person is when
-     they decide they are done with it. Six screens mount this, one line each,
-     and one component keeps those lines in step.
+     The confirmation spells out what changes. Records remain searchable,
+     prompts stop, and the change can be undone. The date appears in charts
+     and the clinician summary, so the sheet says that before the person
+     confirms. This action uses the primary button.
 
-     ## The states, and why the middle ones are sheets
+     offers.ts can offer to finish an area after six months without a write.
+     Accepting opens the same sheet with the last write's date. answerOffer
+     handles the write after confirmation. A decline stays in
+     areaFinishOfferDeclined for that area for the life of the journal.
 
-     Not finished, it is one quiet row at the foot of the screen - two, on
-     voice and hair removal, since pausing is the other thing those two
-     screens can say (phase 8 features ticket 51, ADR-0052 amendment).
-     Finished, it is what the person said and a row to undo it - two rows,
-     not an icon button, because un-finishing has to be at least as easy as
-     finishing and an unlabelled glyph is not. Suspended reads the same way,
-     with "resume" standing in for "pick it back up".
-
-     A stream is active, suspended or finished, never two of those at once
-     (`journal/areaStates.ts` enforces it on write), so the card never has to
-     choose which of two conflicting rows to draw - only one of the three
-     states is ever true, and finishing while suspended (or the reverse) just
-     moves it from one to the other.
-
-     The confirmation exists for the reason the photo-section milestone's
-     does: the gesture reads as destructive and nothing is destroyed, so the
-     sheet's whole job is to say what actually happens. Records stay, search
-     still finds them, the prompts stop, and this can be undone. It is a
-     primary button and not a danger one for the same reason.
-
-     It also names the two consequences that leave this screen, which is the
-     part a shorter sentence would have left out: the day is drawn on every
-     chart covering it and printed in the clinician summary. Somebody who
-     stopped a course of treatment for a hard reason should not find that out
-     from a page they are about to hand a doctor.
-
-     Three sentences, where docs/ui-copy.md puts an explanation at two. That
-     file's own exception is for the screens where "the sentence must be
-     exactly as final as the behaviour" and where "three or four sentences
-     there beat a short sentence that leaves something out". Printing a line
-     onto a document meant for a doctor is that case, so the rule is being
-     used rather than missed.
-
-     ## The offer
-
-     An area with something in it and nothing added for half a year may be
-     offered. It is a registered offer (`offers.ts`) rather than a fifth
-     hand-wiring of one, and its yes opens the same sheet - pre-filled with
-     the day of the last write, since that is the honest guess at when the
-     practice stopped - so there is one confirmation and one write, and both
-     go through `answerOffer`. Its words are the registry's too, the way every
-     other offer's screen reads them, so the list stays auditable as copy. Its
-     no is kept forever in `areaFinishOfferDeclined`, per section rather than
-     per row, so the question is asked at most once per area for the life of
-     the journal and a later regroup cannot un-say it.
-
-     ## Motion
-
-     Tier 3, change within a screen, and the verb is a settle rather than a
-     dissolve. The card is one object saying something different at three
-     different moments, not one piece of content replacing another, so it
-     stays mounted and `resize` carries the height from a row to two rows and
-     back (motion/reveal.ts). The offer leaves through Notice's own
-     `disclose`, so answering it collapses the space it held instead of
-     dropping everything under it a frame. */
+     Keep the card mounted so resize can carry the height between states.
+     The offer collapses through Notice's disclose. */
   import { m } from '$lib/paraglide/messages';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
   import { announce } from '$lib/stores/announcer.svelte';
@@ -105,8 +58,8 @@
     /** Kept out of the layout while the screen above it is still a
         skeleton. The row sits at the foot, so a screen whose body swaps in
         from a page-level skeleton with no wrapper to travel its height
-        (it was hair progress) threw it hundreds of pixels down in one frame
-        (ux-carpet ticket 193). Held, it takes no room; let go, it fades in
+        (it was hair progress) threw it hundreds of pixels down in one frame.
+        Held, it takes no room; let go, it fades in
         where it rests. */
     held?: boolean;
   } = $props();
@@ -126,7 +79,7 @@
   const today = $derived(currentDay());
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /** Null for every group but voice and hair removal (ticket 51) - the two
+  /** Null for every group but voice and hair removal - the two
       areas this group's own areas were named for. */
   let suspendableAreas = $derived(suspendableAreasOf(group));
 
@@ -267,21 +220,10 @@
     />
   {/if}
 
-  <!-- One card, always here, its rows saying whichever of the three things
-       is true. Kept mounted rather than swapped under a `{#key}`: `resize`
-       animates a box that changes size under its own content, which is what
-       this is - a row that becomes two, or a row that says something else.
-       A `{#key}` would have destroyed and rebuilt it, and `crossfade` takes
-       the leaving node out of flow, so the pair would collapse the block to
-       nothing for a beat and then snap, which is the jump `disclose` and
-       `resize` were both written to stop.
-
-       While the offer is up this card carries the offer's *other* answer.
-       Both answers are then labelled rows in the app's own shapes - the
-       notice asks and offers the yes, this is the no - rather than one
-       labelled action and an unmarked x, which is the same glyph that means
-       "hide this, I have read it" on every other notice in the app and would
-       be spending a decision the app never asks about again. -->
+  <!-- Keep one mounted card so resize can follow its changing rows.
+       A keyed replacement would remove the outgoing card from flow
+       during crossfade and collapse the gap briefly. While the notice
+       asks the question, this card supplies a labelled decline row. -->
   <!-- Put in once the states have been read, holding what they say then,
        so arriving on the screen is not announced as a change. -->
   {#if statesQuery.value !== undefined}

@@ -5,10 +5,10 @@
    /usr/bin/chromium-browser path. Starting the actual server each script
    drives Chromium against stays with that script - a probe-page server, a
    built-app preview server and a real dev server are different enough not
-   to share. `fillDate` joined the same way (redesign ticket 17), once the
+   to share. `fillDate` joined the same way, once the
    walkthrough and a gallery script both needed it. `previewBuild` is the
    one exception to that: every probe that takes `--root` needs the same
-   chdir, and twelve copies of it had already gone wrong (ticket 226). */
+   chdir, and twelve copies of it had already gone wrong. */
 import { chromium, firefox, webkit } from 'playwright-core';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -23,7 +23,7 @@ const NO_CRASH_REPORTER = ['--disable-crash-reporter', '--disable-breakpad'];
     binary (e.g. on a machine or CI image where chromium-browser lives
     somewhere else) instead of editing source.
 
-    The crash reporter is off in both launchers (ticket 239): system
+    The crash reporter is off in both launchers: system
     Chromium aborted at startup inside crash_reporter::InitializeCrashpad
     seven times on 2026-09-24, and each core dump raised a notification on
     the desktop. Neither flag touches rendering. A caller's own `args`
@@ -55,8 +55,8 @@ export function launchChromium(options = {}) {
 }
 
 /** Launches headless Chromium against a real profile directory and returns
-    the context, for the checks a throwaway incognito context cannot answer
-    (ticket 03): Chromium calls an incognito profile uninstallable before it
+    the context, for the checks a throwaway incognito context cannot answer:
+Chromium calls an incognito profile uninstallable before it
     looks at anything else, and "restart the app" means a profile that was
     still there afterwards. The caller owns `userDataDir` and removes it. */
 /** @param {string} userDataDir
@@ -155,7 +155,7 @@ export async function fillTime(page, selector, hhmm) {
 }
 
 /** Until the splash mark lets go of input. The mark holds after boot until
-    the screen under it has painted and settled (ticket 08), about 350 ms in
+    the screen under it has painted and settled, about 350 ms in
     headless Chromium, and until it starts to fade the app takes no pointer
     input, so a press or a wheel given at boot-ready lands on nothing. */
 /** @param {import('playwright-core').Page} page */
@@ -166,7 +166,7 @@ export async function untilSplashLets(page) {
   }, null, { timeout: 30000 });
 }
 
-/** A new entry walks steps (tester report 02, tickets 03, 04 and 09): how is
+/** A new entry walks steps: how is
  *  today, what marked it, the body, then the note and the attachments, and a
  *  step with nothing to show is skipped. Walks forward through the steps
  *  until `selector` is in the page, then back from the last if it was not
@@ -301,7 +301,7 @@ export async function screencast(page, fn) {
 
 /** Collects PASS/FAIL lines in the format all three scripts already
     printed, plus the closing summary line and failure count, and `block()`
-    (ticket 06) for a group of checks that has an expected roster: without
+ for a group of checks that has an expected roster: without
     one, a throw partway through a block silently abandons whatever checks
     were still to come, and a summary that only counts failures says
     nothing happened. */
@@ -362,8 +362,8 @@ export function createReporter() {
     preview until then, whose document had no CSP and no held module hints.
 
     It still changes into `root` first, as it did for vite preview, whose
-    SvelteKit adapter read the built server from the working directory
-    (tickets 224 and 226): a probe given `--root <other tree>` that reads
+    SvelteKit adapter read the built server from the working directory:
+a probe given `--root <other tree>` that reads
     relative paths afterwards keeps reading that tree. Resolve any output
     path the caller takes before calling it. Without `--root` the root is
     the checkout the probe runs in and the change is a no-op. */

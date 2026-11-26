@@ -1,49 +1,16 @@
-/* The appointment record (phase 8 features ticket 57, ADR-0066, CONTEXT:
-   "Appointment"). One row per appointment: the day, a kind the person names,
-   a place, a note, and an optional link to a procedure.
+/* Store visits and waiting records together (ADR-0066). A consult
+   has a procedureId, which resolves the traveling UUID to a local
+   row. An appointment without a day is a wait. Assigning a day edits
+   the same row. getAppointments returns visits and getWaiting returns
+   waits. waitingSince reports only elapsed time.
 
-   There is no separate consult. `procedure_consult` was this record with one
-   field permanently filled in - `comingBack.ts` said so in as many words,
-   calling a consult "an appointment somebody books ahead of" - so v73 grew
-   it into the general case. A consult is an appointment whose `procedureId`
-   is set, and procedures.ts reads those rows back as the surgery journey's
-   own consults rather than owning a table of its own.
+   Suggest the journal's own kinds in frequency order. Store blank
+   kind, place and note as NULL. A visit can have an HH:MM time for
+   calendar sharing. A wait has no time.
 
-   THE KIND SHIPS NOTHING. `getKinds` reads the kinds this journal has
-   already used, most used first, and that is the whole suggestion list. A
-   built-in list of endocrinologist, psychologist, surgeon is a picture of a
-   medical path, and it would need translating into a second language, which
-   doubles the claim (ADR-0066). It also means the app has no opinion about
-   whether a court hearing is an appointment, which it should not have.
-
-   Blank is not a value here: a kind, place or note that is empty or all
-   whitespace is stored as NULL, so "typed nothing" and "cleared it" are one
-   state rather than two that read the same and compare differently.
-
-   Not a `flatArea` (flatArea.ts): the procedure link is a rowid resolved
-   from a travelling uuid, which is exactly the join that factory says it
-   does not do.
-
-   A WAIT IS THE SAME RECORD BEFORE ITS DAY (functional-audit ticket 26). A
-   referral to a gender clinic, an NFZ queue or a surgery list is an
-   appointment with no day yet: the kind is the service, plus the day it was
-   referred on, dated status updates and the note. Giving it a day later
-   edits the same row. `getAppointments` reads visits only (rows with a day),
-   because every reader of it - the next visit, the debrief, the room, the
-   clinician summary, the day-ahead marks - is asking about a day;
-   `getWaiting` reads the rest. How long somebody has waited is stated as
-   elapsed time and never as an estimate of what is left (`waitingSince`).
-
-   A TIME AND A WHO (functional-audit ticket 27). A visit can keep its time
-   of day, `HH:MM` or nothing, which the calendar hand-off then uses rather
-   than asking for one on every share. A wait has no day, so it has no time
-   either. And a visit or a wait can name its provider: the person's own
-   record of somebody they see, with a contact, how trans-competent they
-   were and their impressions. Providers live here rather than in an area
-   of their own because nothing reads one except as an appointment's who;
-   they are a flat table (flatArea.ts) and never leave the journal except
-   in the person's own backup. Deleting one leaves its appointments with
-   nobody named (`ON DELETE SET NULL`). */
+   A visit or wait may link a provider, stored as a flat journal table
+   and carried by backups. Deleting it clears provider links through
+   ON DELETE SET NULL. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { calendarDuration, type CalendarDuration } from '../epochDay';
@@ -56,12 +23,12 @@ export interface AppointmentInput {
   /** Absent to create, present to update. Updating an unknown id throws
       (ADR-0053). */
   id?: string;
-  /** Null while it waits for a day (ticket 26). */
+  /** Null while it waits for a day. */
   epochDay: number | null;
   /** The day it was referred on, or null. Absent is null, on an update as
       on a create: the one screen that edits a wait always passes it. */
   referredEpochDay?: number | null;
-  /** `HH:MM`, or empty or absent for none (ticket 27). Refused on a wait
+  /** `HH:MM`, or empty or absent for none. Refused on a wait
       with no day, and refused when it is not a 24-hour clock time. */
   time?: string | null;
   /** The provider this is with, or null; absent is null. Throws if the
@@ -86,7 +53,7 @@ export interface AppointmentDayRecord {
       status update. */
   id: string;
   /** What happened on the day: the visit itself, the referral, or one
-      update on the wait (ticket 26). */
+      update on the wait. */
   event: 'visit' | 'referred' | 'status';
   /** The update's text, on a status update only. */
   status: string | null;
@@ -104,7 +71,7 @@ export interface AppointmentsArea {
       which end of today a row falls on is the screen's question, not this
       one's. A wait with no day yet is `getWaiting`'s. */
   getAppointments(): Promise<Appointment[]>;
-  /** Every appointment still waiting for a day (ticket 26), the longest wait
+  /** Every appointment still waiting for a day, the longest wait
       first and an unknown referred-on day last. */
   getWaiting(): Promise<WaitingAppointment[]>;
   /** Every status update on every appointment, oldest first. A small table
@@ -142,7 +109,7 @@ export interface AppointmentsArea {
       One query for every procedure rather than one per row, the same reason
       `photosByMilestone` (photos.ts) exists. */
   consultsByProcedure(): Promise<Map<string, { id: string; epochDay: number }[]>>;
-  /** Every provider, by name (ticket 27). */
+  /** Every provider, by name. */
   getProviders(): Promise<Provider[]>;
   /** Returns the provider's id. A blank name throws; updating an unknown id
       throws (ADR-0053). Contact and impressions left blank are stored as
@@ -184,14 +151,13 @@ const firstNotYetHappened = (appointments: Appointment[], todayEpochDay: number)
   return index === -1 ? appointments.length : index;
 };
 
-/** The appointment prep screen's own date (ticket 58): the earliest one at
+/** The appointment prep screen's own date: the earliest one at
     or after today, or null. */
 export function soonestFutureAppointment(appointments: Appointment[], todayEpochDay: number): Appointment | null {
   return appointments[firstNotYetHappened(appointments, todayEpochDay)] ?? null;
 }
 
-/** The debrief's and the clinician summary's own appointment (ticket 58,
-    ADR-0066): the latest one strictly before today, or null. Only ever the
+/** The debrief's and the clinician summary's own appointment (ADR-0066): the latest one strictly before today, or null. Only ever the
     most recent one: back-filling history is entering a record, not living
     through a visit. */
 export function mostRecentPastAppointment(appointments: Appointment[], todayEpochDay: number): Appointment | null {
@@ -200,7 +166,7 @@ export function mostRecentPastAppointment(appointments: Appointment[], todayEpoc
 
 /** How long somebody has waited: the calendar time from the referred-on day
     to today, or null when that day is unknown or still ahead. Elapsed time
-    only, by design (ticket 26): the app has nothing to predict a queue from,
+    only, by design: the app has nothing to predict a queue from,
     and a guess at the rest of a wait is the kind of claim it never makes. */
 export function waitingSince(referredEpochDay: number | null, todayEpochDay: number): CalendarDuration | null {
   if (referredEpochDay === null || referredEpochDay > todayEpochDay) return null;

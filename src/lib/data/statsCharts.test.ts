@@ -123,7 +123,7 @@ describe('what a day is drawn as on the calendar', () => {
   it('leaves a dip whole when the day ended on the step it started on', () => {
     /* Good, awful, good: the first and last are one face, so a split would
        have no edge to draw. The dip is the Day screen's to show; a second
-       split rule for the grid was ruled out (ticket 280). */
+       split rule for the grid was ruled out. */
     expect(dayShape(day(5, 1, 5), moodStep)).toEqual({ kind: 'one' });
     expect(dayShape(day(80, 10, 20, 85), onRamp(FEMININITY))).toEqual({ kind: 'one' });
   });

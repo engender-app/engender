@@ -83,7 +83,7 @@ test('unlock derives with the parameters the metadata carries, not the constants
 test('parsing a keystore from a newer format version refuses rather than misreads', async () => {
   const { metadata } = await createKeystore('passphrase');
   // One past what this build writes. Version 1 is a readable format now
-  // (ticket 53), so the refusal has to be tested above the current one.
+  //, so the refusal has to be tested above the current one.
   const newer = serializeKeystore(metadata).replace('"version":2', '"version":3');
   expect(() => parseKeystore(newer)).toThrow(/version/);
 });
@@ -114,7 +114,7 @@ test.each(['salt', 'nonce', 'wrappedKey'])('a non-string keystore %s cannot be c
   }
 });
 
-/* --- the secret source (ticket 53, ADR-0041) --------------------------- */
+/* --- the secret source (ADR-0041) --------------------------- */
 
 /* Cheap params where the test is about the record rather than about the
    cost: the real pin-encryption profile is 64 MiB over 4 passes, and

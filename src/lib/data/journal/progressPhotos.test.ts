@@ -6,7 +6,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 
-/* journal.progressPhotos (pre-release-human 12, bug 25): a shot taken on
+/* journal.progressPhotos: a shot taken on
    purpose in a pose, dated in its own right, stored through the same
    file-before-row pipeline every other photograph uses. */
 
@@ -87,7 +87,7 @@ test('the orphan sweep keeps both files of a progress photo', async () => {
   assert.deepEqual(files.names(), [...filesOf(photo.fileName)].sort());
 });
 
-/* Poses as the person's own list (pre-release-human 12): the four built-ins
+/* Poses as the person's own list: the four built-ins
    are seeded by key and can be renamed and hidden but never deleted; a
    custom pose is minted a uuid, and deleting it takes its photos with it. */
 

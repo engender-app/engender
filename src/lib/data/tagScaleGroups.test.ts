@@ -1,4 +1,4 @@
-/* The tag card's row model (ticket 20): cards grouped by the scale they
+/* The tag card's row model: cards grouped by the scale they
    were measured on, bars signed and sized inside their own group. */
 
 import { test } from 'vitest';

@@ -1,4 +1,4 @@
-/* How an annotation is written (phase 5 deepening ticket 23).
+/* How an annotation is written.
 
    The selection rule is in $lib/charts/annotations.ts, which stays Node-tier
    safe and so imports no paraglide (ADR-0016). The words are here, beside the
@@ -48,7 +48,7 @@ function kindWord(kind: ChartAnnotationKind): string {
 }
 
 /** What the record calls itself, with the one kind whose `name` is a key
-    rather than a name resolved here (phase 8 features ticket 04).
+    rather than a name resolved here.
 
     A finished area's `name` is its group key, because journal/chartAnnotations.ts
     is Node-tier and cannot reach paraglide (ADR-0016). The chart

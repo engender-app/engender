@@ -79,12 +79,12 @@
 
   /* The schedule and the pauses belong to an episode, so they are edited
      here beside it rather than on the dose log: the log holds events, this
-     screen holds what an episode expects of them (phase 4 ticket 02). */
+     screen holds what an episode expects of them. */
   let schedulesQuery = liveList((j) => j.doses.getSchedules());
   let pausesQuery = liveList((j) => j.doses.getPauses());
   let editorSchedule = $derived((schedulesQuery.rows).find((s) => s.episodeId === editor?.id) ?? null);
   let editorPauses = $derived((pausesQuery.rows).filter((p) => p.episodeId === editor?.id));
-  /* The schedule's reminders (functional audit ticket 21): the rows marked
+  /* The schedule's reminders: the rows marked
      as derived from this episode, and the person's own reminders for its
      drug, which the schedule's first reminders replace. */
   let remindersQuery = liveList((j) => j.reminders.getReminders());
@@ -104,13 +104,12 @@
     startDate: string;
     /** `''` while the episode is still ongoing (types.ts's null). */
     endDate: string;
-    /** Whatever the loaded episode already carries (ticket 43) - preserved
+    /** Whatever the loaded episode already carries - preserved
         on a straight edit of the other fields, and only ever set to
         something new through `endEpisodeToday` below. */
     endReason: EpisodeEndReason | null;
   } | null>(null);
-  /* Whether the drug class in the editor is the person's own pick (ticket
-     18). Until it is, a new episode's class follows what its drug infers to
+  /* Whether the drug class in the editor is the person's own pick. Until it is, a new episode's class follows what its drug infers to
      as it is typed; an episode already saved keeps its stored class. */
   let classChosen = $state(false);
 
@@ -160,12 +159,12 @@
     weekdays: number[];
     dosesPerDay: string;
     doseAmounts: { dose: string; doseUnit: string }[];
-    /** The day auto-logging went on, or null for off (ticket 11). Held as
+    /** The day auto-logging went on, or null for off. Held as
         the stored day rather than a boolean, so saving an already-on
         schedule keeps the day it started from instead of restarting it and
         reaching over the days in between. */
     autoLogFromEpochDay: number | null;
-    /** Whether the schedule rings a reminder for each dose (ticket 21),
+    /** Whether the schedule rings a reminder for each dose,
         and at what times - one per dose a day, resized as that count
         changes (`shownReminderTimes`). */
     remind: boolean;
@@ -181,7 +180,7 @@
      for every other field; these two inputs are hand-rolled (see below). */
   const leftDose = new SvelteSet<object>();
   const leftUnit = new SvelteSet<object>();
-  /** The reason chip picked before pressing "End episode" (ticket 43) - not
+  /** The reason chip picked before pressing "End episode" - not
       part of `editor` itself, since it names what is *about* to happen
       rather than what the loaded episode already carries. Optional: no
       chip picked stays a valid way to end an episode. */
@@ -390,7 +389,7 @@
   });
   let scheduleCanSave = $derived(scheduleValues !== null && scheduleRequirements.length === 0);
 
-  /* Whether the auto-log switch is offered at all (ticket 11, ADR-0086):
+  /* Whether the auto-log switch is offered at all (ADR-0086):
      only where the fields in front of the person add up to something
      definite to write - a rhythm, an amount, and a route the dose log can
      record. Read off the schedule draft and the committed episode route, so the
@@ -637,7 +636,7 @@
                 {/snippet}
               </Field>
 
-              <!-- The schedule's reminders (functional audit ticket 21): one
+              <!-- The schedule's reminders: one
                    time per dose a day, saved with the rhythm above and
                    rung on its days. The times open under the switch the
                    way the auto-log switch's own text does, and each row
@@ -696,13 +695,13 @@
               {#if schedule.doseAmounts.length}
                 <ListCard role={roleAt(activeFlag.roles, EDITOR_ROLE)}>
                   {#each schedule.doseAmounts as amount, index (index)}
-                    <!-- Hand-rolled rather than `<ListRow static>` (ticket 40):
+                    <!-- Hand-rolled rather than `<ListRow static>`:
                          the row's text is a pair of bound inputs under the
                          screen's own two-column class, not a title and a
                          subtitle.
 
                          The two `.field` spans stay hand-written rather than
-                         Field.svelte (ticket 10): Field renders a div, and a
+                         Field.svelte: Field renders a div, and a
                          div inside this row's `<span class="kit-row-text">`
                          is content a span can't hold. Each already carries a
                          real aria-label of its own. -->
@@ -762,7 +761,7 @@
                 <span>{m.save_schedule()}</span>
               </button>
 
-              <!-- The standing instruction (ticket 11, ADR-0086). Under the
+              <!-- The standing instruction (ADR-0086). Under the
                    save button rather than among the fields above it: those
                    describe the rhythm and are saved together, this one is a
                    decision about what the app does with that rhythm and takes
@@ -799,8 +798,8 @@
             <div transition:collapse>
               <ListCard role={roleAt(activeFlag.roles, EDITOR_ROLE)}>
                 {#each editorPauses as pause (pause.id)}
-                  <!-- Hand-rolled rather than ListRow's action/is-split shape
-                       (ticket 16): that shape always renders the main span as a
+                  <!-- Hand-rolled rather than ListRow's action/is-split shape:
+that shape always renders the main span as a
                        button or a link, and this one names nothing to press -
                        it only states a pause. Routing it through would add
                        .kit-row-main's :active wash and a tab stop to text that
@@ -927,7 +926,7 @@
 
       {#if editor.id}
         <!-- The target's own screen lists the documents pointing at it
-             (ticket 56, ADR-0065); the episode stores nothing about the
+             (ADR-0065); the episode stores nothing about the
              link. -->
         <LinkedDocuments kind="episode" id={editor.id} />
       {/if}

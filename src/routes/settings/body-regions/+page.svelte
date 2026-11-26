@@ -25,7 +25,7 @@
      a rename, since a typo in one otherwise sat in every picker for good
      (after-release 07). A built-in keeps the catalogue's name. */
   let renameTarget = $state<{ id: string; name: string } | null>(null);
-  /* Open on arrival, so the regions are there to read (pre-release-human 18). */
+  /* Open on arrival, so the regions are there to read. */
   let builtinOpen = $state(true);
 
   /* Both sheets close once their write lands, and stay open with a toast
@@ -61,8 +61,7 @@
 <div class="screen">
   <ScreenHeader title={m.body_regions_group()} back="/settings" subtitle={m.body_regions_intro()} />
 
-  <!-- Custom before built-in, and the add button with it (phase 11 ticket
-       38): the same order other reference-area screens take, for the same
+  <!-- Custom before built-in, and the add button with it: the same order other reference-area screens take, for the same
        reason - ten built-in regions stood between arriving here and adding
        the one region a person came to name. -->
   <SectionHeading text={m.body_regions_custom_heading()} />
@@ -79,8 +78,7 @@
   </button>
 
   <!-- Gated on the vocabulary mirror (ticket 152's gap): a cold open paints
-       before it fills, so the lists cut in at full opacity when it did (ux-carpet
-       ticket 211). Held at last visit's height, faded in. -->
+       before it fills, so the lists cut in at full opacity when it did. Held at last visit's height, faded in. -->
   <ReadReserve ready={listsRevealed} estimate={listsEstimate} onrest={listsRemember}>
     <div class="managed-tags">
       {#each customs as r (r.id)}

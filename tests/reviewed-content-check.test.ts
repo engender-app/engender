@@ -1,5 +1,4 @@
-/* The release-time half of the reviewed-on guard (functional audit ticket
-   40): the script the release workflow runs loads the real registry, warns
+/* The release-time half of the reviewed-on guard: the script the release workflow runs loads the real registry, warns
    once per entry past its limit, and still exits 0. */
 
 import { execFileSync } from 'node:child_process';

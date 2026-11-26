@@ -10,28 +10,14 @@
 
 import type { Lean, MilestoneTemplate, RegimenTemplate } from '../types.ts';
 
-/* The six default scales an entry can carry a number on.
+/* Default scales: four describe gender, one describes feeling about
+   it, and `gender_stability` describes change. A position scale can
+   give shifting and steady days the same reading. Both ends of the
+   stability scale are descriptive. Keep certainty and rumination
+   off the log form (ADR-0037).
 
-   Five of these are the original set, which predates this tracker and was
-   never argued from a source: four of them describe the content of a
-   gender (how feminine, how masculine, how binary, how strongly present)
-   and the fifth describes a feeling about it. `gender_stability` came out
-   of `.scratch/phase-5/gender-scale-axes-research.md` and describes
-   movement. Every other scale here records a position; none of them can say
-   that the position moved. `binary_nonbinary` and `agender_gendered` each
-   collapse a day that shifted to whatever it averaged out at, which is the
-   same reading a flat day gets.
-
-   Deliberately not a certainty or doubt scale, which is the neighbouring
-   idea and a different one. The GRRS measures rumination about one's own
-   gender as a harm, and ADR-0037 has just removed the surface that asked
-   somebody to narrate their doubt; a daily slider for how sure you are
-   would put that question back on the log form. Steady and shifting are
-   descriptive and neither is the better end.
-
-   `social_recognition` was removed from the default vocabulary. Existing
-   journal rows and their recorded values remain readable through the
-   retired label mapping in labels.ts. */
+   Read existing `social_recognition` values through the retired
+   label mapping in labels.ts. */
 export const BUILT_IN_DIMENSIONS = [
   { key: 'euphoria_dysphoria', min: 0, max: 100 },
   { key: 'femininity', min: 0, max: 100 },
@@ -49,7 +35,7 @@ export type BuiltInDimensionKey = (typeof BUILT_IN_DIMENSIONS)[number]['key'];
     counterevidence pool, the good-day rule). Not narrowed to g-euphoria
     alone: someone whose euphoria is mostly social or body-specific tags
     g-soc-eu/g-body-eu faithfully for months and must not find the app
-    blind to it (phase 5 ticket 32). */
+    blind to it. */
 export const EUPHORIA_TAG_KEYS = ['g-euphoria', 'g-soc-eu', 'g-body-eu'] as const;
 
 /* MILESTONE_TEMPLATE_KEYS stays exported only for its own test (AU-09
@@ -92,7 +78,7 @@ export const REGIMEN_TEMPLATE_KEYS = [
 
 export type RegimenTemplateKey = (typeof REGIMEN_TEMPLATE_KEYS)[number];
 
-/** CONTEXT: "Lean" (phase 5 ticket 43). This is where lean does its real
+/** CONTEXT: "Lean". This is where lean does its real
     work: the estradiol templates are feminizing HRT, the testosterone ones
     masculinizing, so the split is the drug each one starts, not a judgment
     call. */
@@ -116,7 +102,7 @@ export const REGIMEN_TEMPLATE_LEAN: Record<RegimenTemplateKey, Lean> = {
 /* The guided prompts the entry editor offers on a new entry, one at a time:
    keys only, the wording lives in labels.ts (`guidedPromptText`). They were
    entry templates with only a note scaffold until entry templates were
-   removed (pre-release-human 18); the prompts themselves stayed. */
+   removed; the prompts themselves stayed. */
 export const GUIDED_PROMPT_KEYS = [
   'euphoria_moment',
   'dysphoria_moment',

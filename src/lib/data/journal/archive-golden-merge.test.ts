@@ -1,23 +1,7 @@
-/* Merge, swept across every registered archive section (ADR-0027, ticket
-   12).
-
-   Before this file, merge coverage was 45 hand-written assertions in
-   restore.test.ts, each naming its own section by calling into that area's
-   own read API - and eight sections were never named there at all
-   sessions, procedures, letters, medication stock, wear sessions). A section
-   whose apply forgets its present-ids filter and double-inserts on a
-   repeated merge would pass every one of those 45 assertions, because none
-   of them counts rows.
-
-   This sweeps `ARCHIVE_SECTION_NAMES` - the live registry, not a copy of it -
-   so a section registered after this file is written is swept without
-   anyone having to come back and add it by hand. Two things it can state
-   generically for every section: merging the same archive twice must not
-   change a section's row count, and every row a device already had must
-   still be there afterwards. What it cannot state - a specific row's
-   *content* surviving a merge that has no opinion on it, such as a target's
-   own roadmap tick - stays hand-written in restore.test.ts, next to a note
-   on why. */
+/* Sweep the live ARCHIVE_SECTION_NAMES registry (ADR-0027).
+   Merging the same archive twice must preserve every section's
+   row count and existing rows. restore.test.ts owns field-level
+   checks such as a roadmap item's local tick. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';

@@ -1,5 +1,5 @@
 /* Expected taper sessions: pure arithmetic over a start day and a stage
-   sequence (phase 8 features ticket 12). No clock, no database - every case
+   sequence. No clock, no database - every case
    here is a table of days. */
 
 import { test } from 'vitest';

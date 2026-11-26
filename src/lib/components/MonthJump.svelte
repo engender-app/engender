@@ -1,29 +1,11 @@
 <script lang="ts">
-  /* The Journal's month picker, the body of the sheet the month label opens
-     (ticket 281). It was flatpickr inline: a whole day grid to choose a
-     month from, weeks starting on Sunday over a grid that starts on Monday,
-     and thin arrows under the year's heavy chevrons. The sheet only ever
-     jumps to a month, so the control is twelve months and a year.
+  /* The year steps on a drum. The highlight starts at the visible month and
+     travels with keyboard moves. A tap selects immediately.
 
-     The year steps on a drum (motion/drum.ts), turning the way the year
-     went. The months are blocks, one per month, and the one the cursor is
-     on wears the inverted pill the segmented control uses - one shape for
-     the set, travelling on motion/indicator.ts rather than lit on one cell
-     and dark on another. The cursor starts on the month the grid behind the
-     sheet is showing and only the keyboard moves it: a tap picks at once,
-     so a pointer never sees the pill travel, and it does not have to wait
-     through a travel before the sheet closes either.
-
-     A dot says a month has entries, in role 0 (DIRECTION.md, "colour that
-     carries a value takes role 0"), read as the year's day counts folded
-     into months. Each cell keeps its own dot and only its opacity changes,
-     so stepping the year crossfades each dot to that year's answer where it
-     stands; a month with entries in both years never blinks.
-
-     The date picker's title opens it too (phase 12 pickers, ticket 01),
-     with two differences a Journal has no use for: months outside the
-     picker's bounds are shut, and there is no journal behind it to count,
-     so no dots and no "This month" (the picker's own Today does that). */
+     Journal dots use role 0 (DIRECTION.md). Each cell keeps its dot and
+     transitions opacity across years, so a populated month never blinks.
+     The date picker disables out-of-bounds months and omits dots and
+     This month because it has no journal counts and already offers Today. */
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { intlLocale } from '$lib/data/dates';

@@ -1,26 +1,9 @@
-/* Voice benchmarks (phase 5 deepening ticket 15, CONTEXT: "Voice
-   benchmark").
-
-   Its own table and its own area, deliberately not part of voiceRecordings.ts.
-   A recording is a memo on one entry. A benchmark belongs to a day and only
-   means anything because its conditions were fixed - the same passage, the
-   same held vowel, the same quality floor - which is what makes two of them
-   six months apart comparable. Nothing about that fits on voice_recording,
-   and nothing here touches it.
-
-   Files before rows, the ordering photos.ts's header sets out and
-   voiceRecordings.ts follows: both takes are written through the injected
-   PhotoFileStore before the row that names them exists, so a crash in the
-   gap leaves a file no row references (which the boot sweep reclaims) rather
-   than a row pointing at audio that is not there. The bytes are what
-   MediaRecorder produced, stored as they arrived; the store the journal is
-   handed is already the encrypting one (photos/encrypted-file-store.ts, ADR
-   -0018/-0020), so nothing in this module encrypts anything itself.
-
-   The acoustic figures arrive computed. The analysis is pure (lib/audio/)
-   and runs where the audio can be decoded, which is the browser; this area
-   stores what it is handed and reads it back, exactly as photos.ts stores
-   bytes it never re-encodes. */
+/* Voice benchmarks belong to a day and use a fixed passage, vowel
+   and quality floor. Store them separately from entry recordings.
+   Write both MediaRecorder takes through the injected encrypting
+   PhotoFileStore before creating the row (ADR-0018, ADR-0020). A crash
+   can leave files for boot cleanup rather than a row with missing audio.
+   The browser computes the figures in `lib/audio/` before storage. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { VoiceBenchmark } from '../types';
@@ -77,13 +60,13 @@ interface NewVoiceBenchmark {
 export interface VoiceBenchmarksArea {
   /** Every benchmark, oldest first. */
   getBenchmarks(): Promise<VoiceBenchmark[]>;
-  /** The benchmarks recorded on one day (phase 5 deepening ticket 21). Its
+  /** The benchmarks recorded on one day. Its
       own query rather than a filter over that one, so the day view pays for
       the day it is showing. */
   getBenchmarksOnDay(epochDay: number): Promise<VoiceBenchmark[]>;
   /** Writes both takes, then the row. Returns the benchmark's uuid. */
   saveBenchmark(input: NewVoiceBenchmark): Promise<string>;
-  /** Removes the row, then both audio files (ticket 16) - the row-then-files
+  /** Removes the row, then both audio files - the row-then-files
       ordering voiceRecordings.ts's own delete helper already carries.
       Idempotent, like the journal's other deletes: a row already gone
       leaves nothing to remove. */

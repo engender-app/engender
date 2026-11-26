@@ -1,25 +1,10 @@
-/* What a signed tag turns into (phase 2 ticket 06): a web bundle, a source
-   archive, checksums over both, and the proof that the bundle can be rebuilt
-   from the same tag byte for byte.
+/* Package a signed tag into a web bundle, source archive and checksums
+   (ADR-0022). Build the web bundle twice and require matching digests.
+   Checksum all output files, including signed Android artifacts
+   already in the output directory.
 
-   The version comes from scripts/app-version.mjs, which reads the signed tag,
-   and this script refuses to package anything else. A development version in
-   a release artifact is the failure ADR-0022 exists to prevent, and it is
-   cheaper to refuse here than to unpublish a release later.
-
-   Reproducibility is checked rather than claimed: the build runs twice and the
-   two bundles have to have the same digest. A checksum over a bundle nobody
-   can rebuild says only that the download was not corrupted, which is the
-   smaller half of what a checksum is for. Two builds also cost two minutes,
-   and a release happens rarely.
-
-   Everything in the output directory is checksummed, including files this
-   script did not write. That is how ticket 18's signed Android artifacts join
-   a release: put them in the directory before this runs.
-
-   Run `node scripts/package-release.mjs`. On a checkout with no signed tag,
-   ENGENDER_VERSION=<version> is the deliberate way in (ADR-0022) and a dry
-   run of the whole path. */
+   Run `node scripts/package-release.mjs`. On an untagged checkout, set
+   `ENGENDER_VERSION=<version>` to exercise the packaging path. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';

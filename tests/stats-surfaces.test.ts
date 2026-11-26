@@ -1,10 +1,10 @@
 /* The Look back door and its readings (phase 8 UX ticket 03's emptiness
    rule, ADR-0056; redesign ticket 11's rail; phase 11 ticket 07's tile
    grid). The two interval folds this file used to hold left for /care
-   whole (redesign ticket 05); their describe block went with them, to
+   whole; their describe block went with them, to
    tests/care-surfaces.test.ts.
 
-   Greps by design (ticket 08): every one of these is a Svelte template fact
+   Greps by design: every one of these is a Svelte template fact
    - which branch a panel is inside, what order the door draws in - rather
    than a function with an answer to call. The rule the file has to satisfy
    is that nothing on this door renders for a practice the person has never
@@ -22,7 +22,7 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 const stats = read('src/routes/stats/+page.svelte');
 const route = read('src/routes/stats/[reading]/+page.svelte');
 /* The rail is its own component, and three of this door's own rules live
-   in it rather than on the page (ticket 06). */
+   in it rather than on the page. */
 const timeline = read('src/lib/components/SpanTimeline.svelte');
 const readings = {
   dayByDay: read('src/lib/components/readings/DayByDayReading.svelte'),
@@ -208,7 +208,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   /* ux-carpet ticket 255: the facts answered within the screen's own arrival
      window and popped in at full opacity, shoving the quick picks below by
      94-184px in one frame - nothing held their room. `ReadReserve` is the
-     standing fix for a late-arriving block (ticket 183/193/205/211): hold
+     standing fix for a late-arriving block: hold
      last visit's height, fade the answer in over it, let any guess error
      travel rather than jump. */
   it('holds the facts\' room and fades the read in, rather than popping at full opacity', () => {

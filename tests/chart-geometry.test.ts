@@ -1,4 +1,4 @@
-/* The chart kit's arithmetic (phase 5 ticket 20), kept out of the Svelte
+/* The chart kit's arithmetic, kept out of the Svelte
    components so the numbers the ticket pins - the re-tween between
    datasets and the single-hue bar ramp's leader - can be held to a value
    without mounting anything. The point cap lives in charts/grain.ts

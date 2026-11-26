@@ -1,28 +1,11 @@
-/* The wear log (phase 5 ticket 04, CONTEXT: "Wear session"). Two ways to
-   reach the same row: a live start/stop timer - a running session is a row
-   with a real start_timestamp and a null duration_ms - or a backfilled
-   start day plus duration entered directly. Its own record type, not an
-   Entry: no mood, dimension values, tags or note beyond its own free-text
-   comfort/pain field.
+/* A running wear session has start_timestamp and a null duration_ms.
+   Backfilled sessions use a day and entered duration. Every session has
+   a practice kind, plus its own comfort/pain field.
 
-   Every row says which practice it was (`kind`, schema v71, phase 8
-   features ticket 50). The screen's wording and the duration cue use it.
-
-   Its optional Reminder hook is reconciled here rather than at the UI seam,
-   the same reason stock.ts owns its run-out reminder rather than leaving it
-   to a screen: every save that can move a session's start time or reminder
-   hours runs through the one function that decides what changes.
-
-   Simpler than stock's reconcileStockReminder on purpose: a wear session's
-   reminder has exactly one rule (a one-off, N hours after start) with
-   nothing to recompute the way a moving run-out projection does, so there
-   is no everCreated/dismissed bookkeeping here. The trade-off: if someone
-   edits or deletes this session's auto reminder from the general reminders
-   editor and then re-saves the session with its hours unchanged, a fresh
-   reminder is recreated rather than staying cleared - a session is a
-   one-time event a person is unlikely to keep re-saving after taking a
-   reminder over by hand, which is why that gap is accepted rather than
-   built around. */
+   Reconcile its optional reminder on every relevant session save. This
+   is one alert N hours after start, without a dismissal record. If the
+   person changes or deletes that alert separately, saving the session
+   again can recreate it. */
 
 import { epochDayFromLocalDate, epochDayFromTimestamp, startOfDayTimestamp, timestampAtLocalTime } from '../epochDay';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -33,7 +16,7 @@ import { wearAutoSource } from '../autoSource';
 
 interface WearSessionInput {
   id?: string;
-  /** Required on every write, not just a create (ticket 50): every caller
+  /** Required on every write, not just a create: every caller
       that updates a session is holding the row it read, so asking for the
       kind back costs nothing and keeps the column out of the "sometimes
       set" category a partial update would put it in. */
@@ -67,7 +50,7 @@ export interface WearSessionsArea {
       this area arbitrates. */
   getRunningSession(): Promise<WearSession | null>;
   /** The kind of the most recently started session, or null with nothing
-      logged. What a screen with no kind to hand opens on (ticket 50): the
+      logged. What a screen with no kind to hand opens on: the
       wear sheet's blank draft, and quick add's one-tap start, which has no
       picker to offer at all. */
   latestKind(): Promise<WearKind | null>;

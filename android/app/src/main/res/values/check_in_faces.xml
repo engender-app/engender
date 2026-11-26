@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The check-in notification's five faces (tester report 02, ticket 05),
+<!-- The check-in notification's five faces,
      in the mood ramp's default preset, teal, on the trans palette: the
      literals of palettes.css's [data-mood-preset="teal"][data-theme="light"]
      and the inks ADR-0091 picked for each step (steps 1 to 3 take the

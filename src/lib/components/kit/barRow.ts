@@ -3,8 +3,7 @@
 
    The type lived here already - the rows are built by the screens and by
    $lib/data/wrappedDisplay, and a `.ts` file cannot import a type out of a
-   `.svelte` one. The denominator moved in beside it (phase 8 audit ticket
-   23): it used to sit inside BarRows.svelte and Distribution.svelte, reachable
+   `.svelte` one. The denominator moved in beside it: it used to sit inside BarRows.svelte and Distribution.svelte, reachable
    only by an eye on a gallery render (ADR-0016, the Node tier cannot reach a
    component), and it had already been got wrong twice that way. Same split
    kit/role.ts already makes: the drawing is the component's, what a share is

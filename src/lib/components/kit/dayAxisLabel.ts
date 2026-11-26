@@ -1,4 +1,4 @@
-/* How a re-keyed axis is written (phase 8 features ticket 16).
+/* How a re-keyed axis is written.
 
    The rule for what axis is on offer and what it keys by is in
    $lib/charts/dayAxis.ts, which stays Node-tier safe and so imports no
@@ -47,24 +47,13 @@ function calendarLabel(grain: Grain, day: number): string {
   return `${fmtDay(day, short)} - ${fmtDay(day + GRAIN_WEEK_SPAN, short)}`;
 }
 
-/** What one position is called.
-
-    Four forms rather than one signed number, because "Day -12" is
-    arithmetic and "Day 12 before" is what somebody waiting on an operation
-    would say. All four lead with the same word so the two ends written
-    under a plot stay parallel - "Day 209 before" against "Days 396 to 406",
-    not "209 days before" against "Days 396 to 406" - and leading with
-    Day/Days is also what carries the number's agreement, which is why
-    neither before-form needs a plural of its own.
-
-    The case analysis is closed: a bucket is entirely before the anchor or
-    entirely from it onward and never both, because foldPositionGroup lays
-    its buckets off zero for exactly this reason.
-
-    A folded bucket is named by its own span rather than by the days inside
-    it actually carrying a reading, which is the convention the calendar
-    axis already follows - a week bucket reads "3 Sep - 9 Sep" whether one
-    day in it was logged or all seven. */
+/**
+  * Name single positions and ranges with Day or Days first.
+  * Use before for buckets before the anchor and the forward
+  * form otherwise. foldPositionGroup never crosses zero.
+  * Use each bucket's full date span regardless of which days
+  * have readings.
+  */
 function positionLabel(width: number, position: number): string {
   const last = position + width - 1;
   if (position < 0) {

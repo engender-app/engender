@@ -1,22 +1,7 @@
-/* The "fill every feature" persona (phase 5 ticket 36).
-
-   The persona (persona.ts) writes entries, moods, tags, photos, milestones,
-   reminders and labs - which is what most of the app is
-   reviewed against, and what the walkthrough asserts specific facts about
-   (150 days of entries, five estradiol results, and so on). Everything else
-   the More hub links to - regimen, hair
-   removal, roadmap, letters, tryouts, personal effects, wear sessions,
-   cycle events, side effects, surgery, appointment prep, stock, voice -
-   stayed empty, which is the gap ticket 25's sign-off review ran into
-   (Alicja, 2026-08-26: "add a ticket for expanding the long journal
-   fixture so that all features can be checked before final sign off of
-   redesign - regimens, labs, everything needs to be filled out").
-
-   Layered on top of the persona rather than replacing it, through a second
-   demo-bar control (controls.ts's resetDemoFull) - the persona's own reset
-   stays exactly as it was, so a reviewer can still see every one of these
-   screens in its designed empty state, and the walkthrough's assumptions
-   about the persona never see this module at all. */
+/* Extend the standard persona with data for otherwise empty features.
+   The separate `resetDemoFull` control fills those screens for review.
+   Standard reset still shows their empty states and keeps walkthrough
+   expectations such as 150 entry days and five estradiol results. */
 
 import type { Journal } from '../journal/journal';
 import { todayEpochDay, weekdayOfEpochDay } from '../epochDay';
@@ -81,7 +66,7 @@ export async function seedFullFixture(
     dosesPerDay: 1,
     doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
     autoLogFromEpochDay: null,
-    // Its reminder comes from the schedule (functional audit ticket 21),
+    // Its reminder comes from the schedule,
     // at the hour the injections below are logged.
     reminderTimes: ['19:00']
   });
@@ -122,7 +107,7 @@ export async function seedFullFixture(
     doseAmounts: [{ dose: 100, doseUnit: 'mg' }],
     autoLogFromEpochDay: null
     // No reminder times: the persona's own "Progesterone" reminder is
-    // what this schedule's editor offers to take over (ticket 21).
+    // what this schedule's editor offers to take over.
   });
   for (let day = progesteroneStart; day <= today; day++) {
     if (r() < 0.08) continue;
@@ -139,7 +124,7 @@ export async function seedFullFixture(
   // A non-hormone episode - an SSRI, daily, oral - so every screen this
   // track touches (labs timing, the care spine, the clinician summary
   // toggle, quick add's picker) has a real non-hormone branch to render
-  // during a demo, not only a unit test (phase 8 features ticket 42).
+  // during a demo, not only a unit test.
   // resolveHormoneDrug returns null for it.
   const sertralineStart = today - 250;
   const sertralineEpisodeId = await journal.regimen.upsertEpisode({
@@ -215,7 +200,7 @@ export async function seedFullFixture(
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
   await journal.roadmap.addCustomGoal(say('Tell my manager', 'Powiedzieć szefowej'), comingOut.id);
 
-  // Name and document changes (functional audit ticket 35): a few offices
+  // Name and document changes: a few offices
   // at different stages, a diploma that bounced, and one office of the
   // person's own. Fixed, not drawn from r(), so the rest of the persona's
   // random stream stays where it was.
@@ -256,7 +241,7 @@ export async function seedFullFixture(
     await journal.tryouts.addPhoto(tryoutId, spec.startEpochDay + 5, await demoPhoto(6000 + spec.startEpochDay));
     /* Readings across the tryout's own span rather than one at its start.
        A single reading is a single mark, which is honest and is also the
-       one shape the tryouts index cannot be reviewed against (ticket 53) -
+       one shape the tryouts index cannot be reviewed against -
        the screen draws how a tryout has felt over time, and every tryout
        in the fixture having exactly one reading left that undrawable.
        Every twelfth day, so a hundred-day tryout gets nine marks rather
@@ -274,7 +259,7 @@ export async function seedFullFixture(
   await journal.effectCategories.setCategoryEnabled('sexual', true);
   const effectTypes = BUILT_IN_PERSONAL_EFFECT_TYPES.filter((t) => t.direction === 'feminizing').filter((_, i) => i % 3 === 0);
   /* Written out rather than stepped, because the axis at the top of that
-     screen (ticket 57) has two shapes to show and an even 45-day step only
+     screen has two shapes to show and an even 45-day step only
      ever produced one of them: four of these land inside three weeks and
      stack into lanes, and the rest stand alone with months between them.
      Which days go to which effect is not arbitrary - only the effects in an
@@ -302,7 +287,7 @@ export async function seedFullFixture(
   /* Wear sessions: a year, irregular, most backfilled with a duration and
      one still running so the live timer state is reachable too. All three
      kinds, so every per-kind wording and the binder-only duration cue are
-     reachable in the demo (ticket 50), off one draw per session rather than
+     reachable in the demo, off one draw per session rather than
      two - a second conditional draw would spend a different count of the
      seeded sequence depending on the first, and everything seeded after
      this would move with it. */
@@ -319,8 +304,8 @@ export async function seedFullFixture(
   // Its elapsed reminder is what ticket 31's web reminders list has to show
   // and delete - the one write that screen offers on web (ADR-0063).
   /* Nine hours in, not two: past the eight-hour figure, so the binder
-     duration cue is reachable in the demo on both surfaces that carry it
-     (ticket 50). */
+     duration cue is reachable in the demo on both surfaces that carry it.
+     */
   await journal.wearSessions.upsertSession({
     kind: 'binder',
     startTimestamp: now - 9 * 3_600_000,
@@ -353,10 +338,10 @@ export async function seedFullFixture(
 
   // Surgery: one procedure, dated in the past, with consults, notes and a
   // recovery checklist. `kind` defaults to `custom`, and the dilation gate
-  // only reads a `custom` procedure's own opt-in (ticket 17), so this needs
+  // only reads a `custom` procedure's own opt-in, so this needs
   // it set to be the seed the surgery-journey and dilation screens read.
   // Archived by hand: nothing archives a procedure by its date any more
-  // (functional-audit ticket 24), and the persona keeps one in the archive
+  //, and the persona keeps one in the archive
   // so the screen shows both groups.
   const procedureId = await journal.procedures.upsertProcedure({
     name: 'top surgery',
@@ -378,7 +363,7 @@ export async function seedFullFixture(
   // Dilation: names the same procedure above rather than carrying its own
   // surgery day (audit item 7, schema v83) - a daily stage easing to every
   // third day, and most - not all - of the expected sessions actually
-  // logged, so the gap rendering has something real to show (ticket 12).
+  // logged, so the gap rendering has something real to show.
   const taperStart = today - 400 + 5;
   const taper = {
     procedureId,
@@ -432,7 +417,7 @@ export async function seedFullFixture(
   }
 
   // Stock: current supply for the two drugs in regimen. The vial carries an
-  // opened date and an in-use window (ticket 13), past it on purpose - the
+  // opened date and an in-use window, past it on purpose - the
   // demo persona is the one place "past it, with no adjective" gets seen.
   await journal.stock.upsertEntry({
     drug: estradiol,
@@ -456,7 +441,7 @@ export async function seedFullFixture(
      on the compare tab is a reading against the person's own earlier takes
      and one benchmark shows none of it: the pitch density, the six
      own-history lines, the pair comparison and the break a change of phone
-     puts in a series all need a history behind them (redesign ticket 42).
+     puts in a series all need a history behind them.
      Without these the whole tab renders empty and nothing on it can be
      reviewed.
 
@@ -497,23 +482,11 @@ export async function seedFullFixture(
     attachRecordings: [demoAudioBytes(r)]
   });
 
-  /* Two video notes, which ticket 01 left for this ticket to decide about
-     and ticket 14 decided in favour of: a note is in the photo library
-     now, so "Fill every feature" has to put one there or the Video chip
-     is a control nobody can review.
-
-     Arbitrary bytes rather than a recorded clip, the trade demoAudioBytes
-     already makes for a voice recording and for the same reason: nothing
-     decodes a note to draw its tile (the library draws a glyph, not a
-     still frame), and encoding real WebM here would mean running
-     MediaRecorder for the length of the clip on every reset. A reviewer
-     who taps play gets a player with nothing to play, exactly as they do
-     for the persona's recordings.
-
-     Its own stream rather than the fixture's `r`, because 4000 draws per
-     note would shift every roll made after this point: nothing is rolled
-     below here today, and a fixture whose contents depend on that staying
-     true is a trap for whoever adds the next block. */
+  /* Add two video placeholders so reviewers can exercise the photo
+     library's Video chip. Tiles show a glyph and do not decode bytes.
+     Synthetic payloads keep reset fast and are not playable.
+     Use a separate random stream so 4000 draws per note do not shift
+     other fixture data. */
   const videoRandom = rng(4242);
   for (const back of [11, 95]) {
     await journal.entries.upsertEntry({
@@ -576,7 +549,7 @@ export async function seedFullFixture(
     feltSense: 4
   });
 
-  /* Progress photos (pre-release-human 12, bug 25): four shots in each pose,
+  /* Progress photos: four shots in each pose,
      a season apart and ending this week, so every pose has a timeline, a
      pair to compare and a last shot for the camera to lay over its
      picture. Seeded last and off no draw of `r`, so nothing above moves. */
@@ -625,7 +598,7 @@ async function demoProgressPhoto(seed: number, pose: ProgressPose): Promise<Norm
   return { full: await draw(480), thumb: await draw(240) };
 }
 
-/** A minimal, valid one-page PDF (phase 11 ticket 01), built the same way
+/** A minimal, valid one-page PDF, built the same way
     tests/pdf-fixture.mjs is - independently, since src/ cannot import from
     tests/: precise object offsets are what make this a file pdf.js will
     actually open, not just a header with bytes after it. */

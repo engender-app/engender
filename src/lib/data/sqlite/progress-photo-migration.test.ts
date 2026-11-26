@@ -1,4 +1,4 @@
-/* Version 120: progress photos (pre-release-human 12, bug 25). A shot taken
+/* Version 120: progress photos. A shot taken
    on purpose in one of three poses gets its own table, joins the media view
    so the library and the orphan sweep both see it, and records its own
    deletion for an archive Merge. */

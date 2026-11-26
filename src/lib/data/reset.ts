@@ -28,8 +28,8 @@ export interface LocalDataTargets {
   storageRoot: () => Promise<ListableDirectory>;
   /** What a platform holds outside that root, where it holds anything. On
       Android the journal itself is an app-private file and the data key is
-      in the platform key store, and the WebView's storage reaches neither
-      (ticket 13). Absent on the web, where the root is everything. */
+      in the platform key store, and the WebView's storage reaches neither.
+Absent on the web, where the root is everything. */
   wipePlatformStorage?: () => Promise<void>;
   /** What a platform holds that is not the journal and not in that root
       either: on Android the reminder, auto-export and lock-timing preference

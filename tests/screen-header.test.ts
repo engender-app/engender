@@ -2,7 +2,7 @@ import { globSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/* One per-screen header, and it stays one (phase 5 ticket 18).
+/* One per-screen header, and it stays one.
 
    The state this replaced was 56 hand-written header blocks that had
    drifted from each other in small ways, so the thing worth guarding is
@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
    writing its own.
 
    That is a negative over every .svelte file in the repo, so it is a grep
-   and could not be anything else (ticket 08). */
+   and could not be anything else. */
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');

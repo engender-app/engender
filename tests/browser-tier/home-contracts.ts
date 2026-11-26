@@ -188,7 +188,7 @@ export async function homeContracts(): Promise<Result[]> {
     return await until(() => root().querySelector('[data-home-editing]'), 'Home editor');
   });
   await screen.remove();
-  /* Midnight on a Home that stays mounted (after-release ticket 02): the
+  /* Midnight on a Home that stays mounted: the
      greeting moves to the new day. The clock is shifted in the page and
      the day store woken the way a page coming back to the foreground wakes
      it. */
@@ -564,8 +564,7 @@ export async function homeContracts(): Promise<Result[]> {
   });
   await screen.remove();
   /* A milestone landing today, not `?celebrate=1`: this tier builds with
-     __DEMO__ off, where the parameter does nothing (functional audit
-     ticket 32). */
+     __DEMO__ off, where the parameter does nothing. */
   await f.journal.milestones.upsertMilestone({ name: 'Started HRT', epochDay: today });
   screen = await mountScreen('/', {
     ...f,

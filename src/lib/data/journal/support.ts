@@ -92,7 +92,7 @@ export function assertChanged(result: { changes: number }, what: string): void {
 }
 
 /** The SQL and params for filtering an already-joined `entry e` by
-    presentation (ADR-0048, phase 5 deepening ticket 18) - three states:
+    presentation (ADR-0048) - three states:
     omitted keeps every entry (the default, unfiltered view), `null` keeps
     only entries that carry none, and a uuid keeps only that presentation's.
     Shared because bodyRegionTrend (stats.ts) and the somatic breakdown

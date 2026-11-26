@@ -1,4 +1,4 @@
-/* The reactive half of compareStretch.ts (phase 8 features ticket 18) - the
+/* The reactive half of compareStretch.ts - the
    two liveQuery reads the rule needs (the journal's own first day, and
    whether the preceding window has anything logged in it), with the rule
    itself, the state type and the view it resolves to

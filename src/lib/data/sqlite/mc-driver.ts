@@ -17,7 +17,7 @@
    composition holds. What the worker's ordering does not give is one
    transaction at a time - a transaction spans several messages with the
    caller's own awaits between them - so that comes from
-   oneTransactionAtATime() (ticket 134). */
+   oneTransactionAtATime(). */
 
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
@@ -142,30 +142,14 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
 
 type Connection = ReturnType<typeof connectWorker>;
 
-/* A tab that navigates away or reloads while a connection is open leaves its
-   access handles for the browser to reclaim from a worker it is about to
-   kill outright - which a moment later is late enough for the next boot's
-   own `attach()` (ux-carpet 243): "Access Handles cannot be created if there
-   is another open Access Handle", thrown while the handles this tab's own
-   worker held are still being torn down. Real, not a fixture of one probe -
-   `pagehide` fires for exactly this tab's own reload or navigation, on both
-   the archive-restore path this was found on and any ordinary reload of an
-   open Journal.
+/* Post close to live workers on pagehide so pauseVfs releases their OPFS
+   handles before another attach on navigation or reload. The page cannot
+   wait for a reply. The worker's close handler is idempotent.
 
-   `pauseVfs()` (mc-worker.ts's `close`) is what actually lets go of the pool,
-   synchronously once the worker's message reaches it - so posting `close` to
-   every live connection here, ahead of the browser's own teardown, is what
-   the next `attach()` needs already done rather than raced. Fire-and-forget
-   deliberately: a page hiding for good has nothing to wait for an answer
-   with, and one still open in another tab (`gone()` false, not yet asked to
-   close otherwise) tolerates a second `close` later - the worker's own
-   handler is idempotent, `db` and `poolUtil` already null.
-
-   A retained document releases live drivers through their existing drain.
-   Posting close directly would overtake statements inside an admitted
-   transaction. Session disposal still bounds a stalled drain. Once every
-   release settles, a new worker can reacquire the pool; connections created
-   during that release wait for it. The prewarm slot cannot retain a closed worker. */
+   Drain retained documents before closing so an admitted transaction
+   can finish. Session disposal bounds a stalled drain. New connections
+   wait until releases settle to reacquire the pool, and prewarm must
+   discard a closed worker. */
 export function releaseOnPageHide(retained = false): Promise<void> {
   prewarmed = null;
   const closing = [...liveConnections];

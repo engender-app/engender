@@ -94,7 +94,7 @@
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => place(node));
     };
-    /* On the intro's end, Sheet.svelte's reason (ticket 115); the timer is
+    /* On the intro's end, Sheet.svelte's reason; the timer is
        its fallback too, for an intro that is cut short or never fires. */
     const focusCursor = () => {
       clearTimeout(fallback);

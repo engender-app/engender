@@ -44,7 +44,7 @@ test('every number dials from a Polish phone as written', () => {
 
 test('an adult in Poland has a free line that answers at night and at weekends', () => {
   // Lambda answers on weekday evenings only. 116 123 and 800 70 2222 answer
-  // at any hour (ticket 40); 116 111 does too, but only for under-18s.
+  // at any hour; 116 111 does too, but only for under-18s.
   const polishLines = resourcesFor('pl').flatMap((r) => (r.kind === 'helpline' && r.phone ? [r.phone] : []));
 
   expect(polishLines).toEqual(expect.arrayContaining(['116 123', '800 70 2222']));

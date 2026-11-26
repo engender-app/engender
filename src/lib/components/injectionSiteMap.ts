@@ -10,22 +10,11 @@
 import type { InjectionSite, InjectionSiteRegion } from '../data/doseSchedule';
 import { FIGURE_BOX, type Pt } from './bodySilhouette';
 
-/** The part of the silhouette the map frames, in the figure's own units.
-
-    The shared body is 100 x 176 from the crown to the soles (ADR-0087), and
-    this map shows the first 135 of it: the head, the arms, the torso and the
-    legs to just above the knee. The shins are out of frame for the reason
-    the drawing this replaces had none - every one of the twelve sites is
-    above the knee, so 41 units of leg would be picture carrying no site.
-
-    It is a frame rather than a cap, and it is the resolution of a conflict
-    the ticket asked to have stated rather than settled quietly. Twelve 48px
-    targets 8px apart need the body drawn at least 312px wide whatever else
-    is true, because a dot has to stay on the part it names and this body is
-    35 units across the torso. At 312px wide the whole 176 units are 549px
-    tall, and the sheet scrolls its content in a 505px window, so the figure
-    and its caption could not be seen at once. Framing the top 135 units at
-    320px wide is 432px, which can. */
+/** Frame the first 135 units of the 100 x 176 body (ADR-0087).
+    All twelve sites are above the knee. Targets need 48px with 8px gaps,
+    which requires a figure width of at least 312px. The full body
+    would be 549px tall at that width. Cropping to 135 units at 320px
+    gives 432px and leaves room for the caption in a 505px sheet. */
 export const MAP_VIEW = { width: FIGURE_BOX.width, height: 135 } as const;
 
 /** The figure's box in CSS px, and the px each figure unit is drawn at.
@@ -57,22 +46,11 @@ export const MAP_TOUCH_GAP = 8;
     number, so the test and the drawing cannot drift. */
 export const MAP_DOT_SIZE = 22;
 
-/** Where each region sits on the silhouette, in the figure's own units: the
-    right-hand dot of the pair, which the left one mirrors.
-
-    Stated in figure units rather than as percentages of the box, because
-    what a dot has to be on is the drawing - `spansAt` says how wide the
-    body is at a height, and the test asks it in these coordinates.
-
-    Six rows have to come down a body between the shoulder (the arm leaves
-    the torso at y=48) and the knee (y=132.8), and 48px plus 8px of clear
-    space is 17.5 units at the size this renders at, so the rows are 17.5
-    apart and the whole run is spent. That is what fixes a row's height:
-    every one of them is as high up the body as the row above it allows. The
-    body is 35 units across the torso, so the left/right pair carries the
-    same constraint sideways - 9 units either side of the midline is the
-    narrowest a pair may be, which is why the abdomen's dots sit well in from
-    the flank while the love handles sit on it. */
+/** Store right-hand dot coordinates in body units and mirror each
+    left-hand dot. Check spansAt so sites stay on the silhouette.
+    Between shoulder y=48 and knee y=132.8, six rows use 17.5-unit
+    spacing for 48px targets and 8px gaps. Each pair sits at least
+    9 units to either side of the midline. */
 const PLACEMENT: Record<InjectionSiteRegion, Pt> = {
   deltoid: { x: 74, y: 49 },
   abdomen: { x: 59, y: 58.5 },

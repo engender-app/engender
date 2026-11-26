@@ -1,33 +1,11 @@
-/* The five mood faces have to be telling apart at the smallest size any
-   surface draws them (phase 5 ticket 31).
+/* Keep adjacent mood faces distinct at entry size. The smallest shipped
+   face is 28px. The check keeps the margin chosen for 22px, where one unit
+   in the 24-unit view box is 0.92px.
 
-   28px is that size now - an entry inside a day card - but the drawing was
-   settled against the 22 an entry drew at until Alicja called the marks on
-   Home too small, so the margin below is the one that harder size needed and
-   every shipped size clears it. At 22px one user unit of the 24 box is 0.92
-   of a pixel. That number is the whole reason this test
-   exists: the five mouths used to be five depths of one arc, 1.0 to 1.4 units
-   between neighbours, so steps 1 and 2 were about a pixel apart and so were
-   4 and 5. Side by side you could nearly pick them out; alone on an entry,
-   which is how they actually appear, you could not.
-
-   The rule the drawing now answers to, and what each half is for:
-
-   - Neighbouring steps differ by at least 2 units of mouth depth, OR by the
-     direction the mouth curves. A change of direction is categorical and
-     needs no size to read at all, which is what carries 2-3 and 3-4; a
-     change of depth needs to be big, which is what carries 1-2 and 4-5.
-   - The two ends of the ramp draw lids instead of dots. That is a second,
-     independent channel on exactly the pairs that have only depth to go on,
-     and a change of shape rather than of dimension - the only kind that
-     survives being scaled down this far.
-   - Nothing leaves the block, so no face is ever clipped by the shape it
-     sits on. The block replaced the disc in ticket 27 and the drawing grew
-     into it: one 9.4-unit span for every mouth against the 7.2 to 8.0 the
-     five used to be, eyes at 1.45 rather than 1.25 and 1.4 further apart, and
-     a 1.9-unit stroke rather than 1.6. The margin below is what a corner has
-     left after the stroke's outer edge, which is the tightest place a rounded
-     square is worse than a circle - and the only place it is. */
+   Adjacent mouths need at least 2 units of depth difference or a different
+   curve direction. The first and last faces also use lids so the depth-only
+   pairs differ by shape. Check every feature against the rounded block
+   after accounting for the 1.9-unit stroke. */
 
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -154,7 +132,7 @@ describe('the five mood faces', () => {
     }
   });
 
-  /* The eyes move now (phase 9 carpet ticket 01): the row turns them toward
+  /* The eyes move now: the row turns them toward
      the finger and the face turns them again on its own idle glance, and the
      two groups are nested so the offsets add. The drawing has to survive both
      at once in both directions - an eye clipped by its own block for the half
@@ -235,21 +213,11 @@ describe('the face draws in its own step\'s ink', () => {
     }
   });
 
-  /* The picker's unchosen faces sit back, and they used to do it in parts:
-     the block's fill at 0.55 over the page and the features at 0.41 over
-     that. With a dark ink on a pale fill the two fades roughly cancelled;
-     with ticket 279's white ink on a deep fill they compound, because the
-     fill fading toward a light page is the fill fading toward the ink.
-     Computed for teal on trans, the worst unchosen face went from 2.16:1 on
-     main to 1.48:1 (light step 5) and 1.64:1 (dark step 2). Dimming the face
-     as one object keeps ink and fill moving together: 2.13:1 at worst, and
-     every dark-theme face better than main.
-
-     The border is why it was ever done in parts (ce91bdc6): 1px of the
-     outline at 55% vanished on the dark theme. So the unchosen block draws
-     its edge at 35% of --text, which comes back to --outline's 19% once the
-     face's own 0.55 is applied, and the fade is on the face's opacity, which
-     .mood-face already transitions. */
+  /* Dim the whole unchosen face at 0.55 opacity so fill and ink move
+     together. Separate fades had pushed contrast to 1.48:1 light and
+     1.64:1 dark. Whole-face dimming measures at least 2.13:1. Draw the
+     edge at 35% of --text so the dim leaves the equivalent of
+     --outline's 19%. */
   it('dims an unchosen face as one object, with a border that survives it', () => {
     expect(componentsCss).not.toMatch(/\.mood-face-disc\s*\{[^}]*fill-opacity/);
     expect(componentsCss).not.toMatch(/\.mood-btn[^{]*\.mood-face-(eye|mouth)\s*\{[^}]*opacity/);

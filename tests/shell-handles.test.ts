@@ -2,28 +2,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/* Every interactive element in the shell carries a handle (phase 5 ticket
-   18, ADR-0029).
-
-   The shell is the part of the app the walkthrough touches on its way to
-   everywhere else: the tabs, the rail, the add control, quick add's
-   targets, a screen's back arrow, a sheet. A missing handle here is not one
-   broken assertion, it is a flow that has to reach for a class name and
-   then breaks silently the next time that class is restyled - which is the
-   failure ADR-0029 exists to stop.
-
-   A handle that must exist is the textbook case for a grep (ticket 08):
-   it is a fact about a file, and the flow that depends on it fails in a
-   browser twenty minutes later as an anonymous timeout. So this stays a
-   source match on purpose.
-
-   What is checked is the chrome. Screen-level controls are out of scope
-   here and belong to their own screens and tickets - with one exception
-   that is worth naming rather than leaving to be discovered: the shell's
-   own walkthrough flows measure real screens, so Home's header and hero
-   and the More hub's rows carry handles this ticket added. They are there
-   for the safe-area checks, which have to measure where a screen's content
-   actually starts, and not for those screens' own tests. */
+/* Check shell handles in source (ADR-0029) so the walkthrough keeps
+   selectors for tabs, rail, quick add, back and sheets. Home's header
+   and hero and More's rows also expose handles for safe-area geometry.
+   Other screen controls have their own checks. */
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 

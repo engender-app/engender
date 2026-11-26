@@ -1,4 +1,4 @@
-/* Screenshots of the control kit (phase 5 ticket 30), one per palette per
+/* Screenshots of the control kit, one per palette per
    theme, plus one pass under reduced motion.
 
    Same shape as tests/kit-gallery.mjs and for the same reason: a control

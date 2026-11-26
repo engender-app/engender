@@ -1,19 +1,11 @@
-/* The one rebuild of the closed lists (functional-audit ticket 04, CHECK
-   policy). SQLite cannot alter a CHECK, so moving a vocabulary out of one
-   means rebuilding its table: create the new shape, copy, drop the old table,
-   rename. The runner holds foreign keys off for the step and checks them after.
+/* Rebuild these tables to remove vocabulary CHECKs. Create, copy, drop
+   and rename with foreign keys disabled for the migration, then check
+   them. Keep structural CHECKs. `rowValues.ts` validates vocabulary
+   on writes and Archive import. Unknown stored values render as Other.
 
-   After this, a CHECK holds a structural invariant only (a rating range, the
-   shape of a reminder's rule). Which words a column may hold is rowValues.ts,
-   checked by the write path and by archive import, and a stored word the code
-   does not know renders as "other".
-
-   The same rebuilds carry the cheap structural changes other tickets need, so
-   no table is rebuilt twice: hair_removal_session.pain_rating and .cost become
-   nullable and a nullable note column appears; tally_event.context is dropped.
-   Each AUTOINCREMENT counter is carried over, so an id that was deleted is not
-   handed out again, and each table's indexes (and the reminder trigger) are
-   recreated because dropping the old table dropped them. */
+   The rebuild makes hair removal pain and cost nullable, adds a
+   nullable note and drops tally event context. Preserve AUTOINCREMENT
+   counters and recreate indexes and the reminder trigger. */
 
 export const CLOSED_LISTS_REBUILD = `
 CREATE TABLE hair_removal_session_new (

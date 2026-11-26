@@ -1,23 +1,8 @@
 <script lang="ts">
-  /* Every state a permission row can be in, at once, against the real tokens
-     (phase 10 redesign ticket 31).
-
-     The app itself can only ever show two of them at a time: a desktop
-     browser has no notification permission to grant and no exact alarms to
-     link to, so on the web those two rows are permanently "Android only",
-     and the four Android states - the prompt, the settled grant, the refusal
-     that becomes a settings link, and the row that never had a prompt at all
-     - are unreachable in a screenshot of the built web app. `PermissionRow`
-     takes a resolved row and nothing else, which is what lets them all be
-     drawn here side by side.
-
-     `grantRows` is the shipped decision function, not a fixture copy: the
-     states below are produced by handing it the platform, what the OS says
-     and what has already been asked, exactly as the list does.
-
-     The strings are shipped copy, read through the same message keys the app
-     uses - this tier runs the real bundle in a real browser, so paraglide
-     resolves here the way it does in the app (mount.ts's own note). */
+  /* Draw every permission state against real tokens and copy. Web rows
+     for notifications and exact alarms are Android-only. Feed grantRows
+     simulated platform, grant and request history to show Android
+     prompt, grant, refusal and no-prompt states via PermissionRow. */
   import { m } from '$lib/paraglide/messages';
   import {
     NOTHING_GRANTED as NOTHING,

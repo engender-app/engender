@@ -1,4 +1,4 @@
-/* The catalogue merge driver (phase 12 copy-tooling ticket 02): a merge by
+/* The catalogue merge driver: a merge by
    key, so two branches adding neighbouring keys no longer conflict. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';

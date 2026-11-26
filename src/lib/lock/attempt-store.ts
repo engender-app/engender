@@ -1,4 +1,4 @@
-/* Where the wrong-attempt count lives between page loads (ticket 17), the
+/* Where the wrong-attempt count lives between page loads, the
    same shape as the boot cache's mirror and for the same reason: the
    throttle itself stays free of browser APIs so it can be tested in the
    Node tier, and the Android shell can hand it a Capacitor Preferences

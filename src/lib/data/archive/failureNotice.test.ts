@@ -1,5 +1,5 @@
-/* The scheduled-backup failure notice under the unprompted registry's rules
-   (phase 6 ticket 04). The interesting case is the hold: unlike every other
+/* The scheduled-backup failure notice under the unprompted registry's rules.
+The interesting case is the hold: unlike every other
    producer this one happens once, on a weekly schedule, so quiet hours have
    to remember it rather than let the next check catch it. */
 

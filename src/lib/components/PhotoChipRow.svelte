@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The chips over a photo grid (phase 11 ticket 14).
+  /* The chips over a photo grid.
 
      Drawn by the library and by the journey export, which is the whole
      reason it is a component: the two screens narrow the same list by the

@@ -1,4 +1,4 @@
-/* Ticket 17 (phase 2): one archive format, both directions.
+/* Ticket 17: one archive format, both directions.
 
    This probe runs inside the Android app's WebView and boots both storage
    implementations there: the web stack (OPFS + SQLocal/sqlite3mc) and the

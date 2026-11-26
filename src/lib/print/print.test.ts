@@ -1,4 +1,4 @@
-/* Which print path each platform takes (phase 5 ticket 17). The bug this
+/* Which print path each platform takes. The bug this
    guards is silent by nature: window.print() in the Android WebView returns
    normally and prints nothing, so nothing anywhere failed for the whole time
    the clinician summary's button was dead there. */

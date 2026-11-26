@@ -1,33 +1,13 @@
-/* Version 124: the tally is removed, and hair progress folds into progress
-   photos.
+/* Version 124 drops tally_event and hair_stage, including their stored rows.
+   The misgendered entry tag remains. Move hair photos to the fourth built-in
+   progress pose, 'hair', preserving uuid, day, filename, clock and file bytes.
+   Boot seeds the pose before the first read; until then it falls back to front.
 
-   TALLY. `tally_event` held the misgendered / correctly-gendered counter.
-   The misgendered tag on an entry is the one way to record it now, so the
-   table is dropped with its rows: nothing reads them.
-
-   HAIR PROGRESS. Hair photos become progress photos in a fourth built-in
-   pose, 'hair' (builtins.ts). A hair photo and a progress photo are the
-   same shape - a uuid, a day and a file the shared photo pipeline wrote
-   (stagePhoto, photos.ts) - so each row is copied across with its uuid,
-   day, file name and clock, and the file itself never moves. The 'hair'
-   pose row is seeded by reconcile.ts on the next boot, as the other three
-   are (the schema version is part of the built-ins stamp, so a journal
-   that migrated reconciles once); until then a photo naming it reads as
-   front (progressPhotos.ts), which no screen shows in between because
-   boot reconciles before the first read. Hair stages (dated free text)
-   are dropped with their rows, and no caption takes their place.
-
-   Dropping a table takes its indexes and its deletion-log trigger
-   (version 117) with it. `media_file` is a view over every photo table, so
-   it is dropped and created again without the 'hair' arm; the copied
-   photos appear in it through the progress arm, ranked as every progress
-   photo is. The arms are otherwise version 120's unchanged
-   (progress-photo-migration.ts). The deletion log's rows for the three
-   tables, the `area_state` rows that said an area was finished
-   (tallyEvents, hairStages, hairPhotos) and the dismissed hair photo
-   protocol preference name something that no longer exists, so they go
-   too. An archive that still carries the three sections skips them on
-   restore (DROPPED_ARCHIVE_SECTION_NAMES). */
+   Dropping the old tables also removes their indexes and deletion triggers
+   (v117). Rebuild media_file with v120's remaining arms; the copied photos
+   now appear in its progress arm. Remove stale deletion log and area_state
+   rows for tallyEvents, hairStages and hairPhotos, and the dismissed hair
+   photo protocol preference. Restore skips those legacy Archive sections. */
 
 export const TALLY_AND_HAIR_FOLD = `
 INSERT INTO progress_photo (uuid, epoch_day, pose, file_path, updated_at)

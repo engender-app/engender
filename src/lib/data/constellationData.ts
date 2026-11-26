@@ -1,50 +1,12 @@
-/* The constellation chart's geometry (phase 5 deepening ticket 19,
-   ADR-0048): where a reading sits on a plane of two scales, and how much of
-   the path behind the scrubber is drawn.
+/* Map the chosen scales to the two axes through metricRange.normalize
+   (ADR-0048). Keep native units for displayed values (ADR-0012).
+   The screen resolves presentation IDs to palette roles.
 
-   Two things this deliberately does not decide. It does not choose the two
-   scales - they are the person's, picked on the screen, and no dimension key
-   appears anywhere in this file or in the component that draws it. And it
-   does not know what a presentation looks like: a reading carries the id and
-   the screen resolves it through `roleAt()`, so a palette switch recolours
-   the whole chart and nothing here has to know a colour exists.
-
-   Both axes are read to 0..1 through `normalize` (metricRange.ts), the same
-   function that turns a value into a colour, and for the same reason: the
-   two scales are usually not the same scale - a 0-10 custom one against a
-   0-100 built-in - and a plane whose two directions mean different amounts
-   is not a plane. Native units are the rule for anything shown as a number
-   (ADR-0012); a position is not a number shown, which is the line that
-   module's own note draws.
-
-   ## The overlap answer
-
-   A year of daily entries is 365 readings inside a square about 330px
-   across, which is the honest risk the ticket names. Four things were
-   available - jitter, opacity, binning and recency weighting - and the
-   choice here is the last two words of that list and none of the first two.
-
-   No jitter. A point's position is its two readings, and moving it so the
-   picture reads better is the chart lying about the values it exists to
-   show. No binning either: a bin is an average, and the average of two
-   opposite days is a day nobody had.
-
-   What is left is depth, and a bound on how much is drawn at once. Each
-   reading is drawn at a strength that halves every TRACE_HALF_LIFE readings
-   back from the scrubber, down to a floor it never goes below, so the recent
-   stretch reads as a path and everything older sits behind it as a cloud.
-   Coincident readings stack their alpha, so a spot returned to many times
-   comes out darker, which is density as information rather than as a smear.
-   The half-life counts readings rather than days, so the recent stretch
-   looks the same whether the journal holds thirty of them or three hundred.
-
-   And the plot holds TRACE_WINDOW readings, not all of them. A year of
-   daily entries at once is 365 marks inside a square 330px across: about
-   270 square pixels each, which is a smear whatever is done to the alpha.
-   The window is what the scrubber moves, so nothing is unreachable - drag
-   back and the older stretch is on the plot - and the picture at any one
-   position is a stretch of path rather than a whole journal poured onto one
-   square. */
+   Keep each point at its actual readings. Stacked alpha makes repeated
+   positions darker. Strength halves every TRACE_HALF_LIFE readings
+   behind the scrubber down to a floor, so equally recent stretches read
+   the same in sparse and dense journals. TRACE_WINDOW bounds the marks
+   per frame. Scrub backward to see older readings. */
 
 import { normalize, type MetricRange } from './metricRange';
 
@@ -244,24 +206,9 @@ function segmentToRect(ink: Ink, r: Rect): number {
 const overlaps = (a: Rect, b: Rect, gap: number) =>
   a.left < b.right + gap && b.left < a.right + gap && a.top < b.bottom + gap && b.top < a.bottom + gap;
 
-/** Which points get their day written beside them, and where, on a square
-    plane of `plot` pixels inset by `pad` (ticket CARPET-07, last-audit UI
-    49). Every point still plots; this only decides which of them also gets
-    a label.
-
-    A label tries four places around its dot - up and right, up and left,
-    down and right, down and left - and takes the first whose box stays
-    inside the plane and keeps LABEL_CLEARANCE from every mark in `ink`,
-    every box in `keepOut` and every label already placed. No place clear
-    means no label: a day written over a mark strikes the mark and the day
-    out together, which is what the audit found on the demo journal.
-
-    Highest weight first, which is the same recency order the dots
-    themselves are already drawn at, and no labelled dot within `minGap`
-    of another, so a cluster carries a few days rather than one per dot.
-    Nothing here moves a point to make room - the same rule the plane
-    itself is held to (see this file's header) - a label is dropped rather
-    than a reading nudged. */
+/**
+ * Place labels in descending weight, matching draw recency. For each dot at least `minGap` from another labeled dot, try upper right, upper left, lower right, then lower left. Use the first box inside the inset plot that clears `ink`, `keepOut`, and placed labels by `LABEL_CLEARANCE`. Omit labels that cannot fit. Point positions stay fixed.
+ */
 export function placeLabels(
   points: readonly ConstellationPoint[],
   plane: {

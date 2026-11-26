@@ -1,5 +1,5 @@
-/* What a lock does to an open web journal and what unlocking undoes
-   (after-release ticket 10). The ports are the parts that live in runes or
+/* What a lock does to an open web journal and what unlocking undoes.
+The ports are the parts that live in runes or
    in a worker; the session's own state - which driver is open, whether the
    key is handed out - is what these tests read. */
 

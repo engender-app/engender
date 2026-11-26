@@ -1,5 +1,4 @@
-/* End-to-end guard of the appointment debrief loop (phase 6 ticket
-   08), driving the real demo build through the whole flow rather than
+/* End-to-end guard of the appointment debrief loop, driving the real demo build through the whole flow rather than
    trusting unit tests alone. Scheduled in the built guard tier.
 
    Run: node tests/debrief-offer-check.mjs (builds its demo surface) */
@@ -61,7 +60,7 @@ try {
   );
 
   // The prep screen's own date row is a read of the appointment record now
-  // (ticket 58) - a past appointment is written on the appointments screen
+  // - a past appointment is written on the appointments screen
   // itself, not by driving a date picker on prep.
   const writeAppointment = async (date) => {
     await settle('/health/appointments');

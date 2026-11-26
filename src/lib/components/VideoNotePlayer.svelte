@@ -9,8 +9,8 @@
   import MediaTransport from './MediaTransport.svelte';
 
   /* Plays a video note directly from the entry view/editor - no separate
-     screen (ticket 22). The transport is MediaTransport.svelte, the same one
-     a recording wears (ticket 46): the same play control, the same scrub,
+     screen. The transport is MediaTransport.svelte, the same one
+     a recording wears: the same play control, the same scrub,
      the same materials, under the frame rather than floating over it - a
      translucent bar across the picture is the one material DIRECTION rule 10
      refuses.

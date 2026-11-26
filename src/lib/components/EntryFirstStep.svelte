@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* A new entry's first step (tester report 02, ticket 03): the quick answer
+  /* A new entry's first step: the quick answer
      before the writing. The five faces and every scale the person has ticked,
      in their own order, and nothing else - a person who only wants to mark
      the day is done here, and nothing on it is required.

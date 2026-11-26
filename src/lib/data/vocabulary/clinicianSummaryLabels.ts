@@ -1,5 +1,4 @@
-/* What each part of the clinician summary is called (phase 5 ticket 06,
-   ADR-0031): one name per registered section, used as the heading it prints
+/* What each part of the clinician summary is called (ADR-0031): one name per registered section, used as the heading it prints
    under, its table's label and its include switch. Here rather than in the
    registry for the reason its neighbours give: the wording speaks
    paraglide, and nothing the Node tier touches may import that (ADR-0016).

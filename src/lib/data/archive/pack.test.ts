@@ -291,7 +291,7 @@ test('a file that is not an archive is refused', async () => {
   await assert.rejects(unpack(bytes('PK a zip file, or a photo, or anything else')), UnsupportedArchiveError);
 });
 
-/* The backup health drill (ticket 28): proves an archive still opens
+/* The backup health drill: proves an archive still opens
    without ever handing it a driver or a file store to write into. Every
    case below reuses the same refusals openArchive/unpack already prove -
    the drill's whole point is that it is the restore path with the write

@@ -30,7 +30,7 @@ test('the first day names the list\'s month, and a divider falls wherever the mo
   const jul20 = epochDayFromLocalDate(new Date(2026, 6, 20));
   const headed = recentDayMonths(entryDayGroups([entry(1, aug31), entry(2, aug15), entry(3, jul20)]));
   // August is the heading's sub-line, not a divider over its own first day:
-  // one heading above the first day (ux-carpet ticket 282).
+  // one heading above the first day.
   assert.deepEqual(headed.month, { year: 2026, month: 7 });
   assert.deepEqual(
     headed.groups.map((g) => [g.epochDay, g.monthDivider]),

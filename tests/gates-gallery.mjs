@@ -1,4 +1,4 @@
-/* Screenshots of the chromeless screens (phase 5 ticket 26): the five
+/* Screenshots of the chromeless screens: the five
    pre-unlock gates, the security module on both platforms, and every step of
    the first run (tests/setup-flow.mjs holds the order).
 
@@ -42,8 +42,8 @@ const THEMES = themeAt >= 0 ? argv[themeAt + 1].split(',') : ['dark', 'light'];
    window shortened to what a raised keyboard leaves. A gate's frame is
    `overflow: clip`, which draws no scrollbar and still reports what it is
    hiding, so a gate that stopped fitting would cut its own way out off the
-   bottom in silence. Measured here rather than asserted in the stylesheet
-   (redesign ticket 34). */
+   bottom in silence. Measured here rather than asserted in the stylesheet.
+*/
 const FLOOR_SIZES = [
   { width: 320, height: 568 },
   { width: 360, height: 640 },
@@ -88,9 +88,9 @@ const SCENES = [
 ];
 
 /* The security module is the one surface whose *content* differs by
-   platform, not just its frame (ticket 53): device-bound is labelled as the
+   platform, not just its frame: device-bound is labelled as the
    screen lock on Android and cannot be moved to there at all, and the web's
-   biometric row is there only where the browser can do PRF (ticket 55).
+   biometric row is there only where the browser can do PRF.
    Three lists, so these scenes are shot on each of the other two as well. */
 const PLATFORM_SCENES = ['access-choice', 'access-change'];
 const OTHER_PLATFORMS = ['android', 'web-no-prf'];
@@ -221,7 +221,7 @@ await fixture.listen();
   }
   await select('Palette', 'trans');
 
-  /* Rule 14, measured rather than asserted (redesign ticket 34): every gate
+  /* Rule 14, measured rather than asserted: every gate
      at every size, reading what the frame is hiding. Two reads, because they
      answer different questions - the frame says the gate did not grow past
      the window, and the page inside it is the one region that may scroll and

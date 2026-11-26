@@ -1,26 +1,11 @@
-/* Charts as a screen reader and a finger meet them (phase 14 ticket 29,
-   accessibility audit findings A04 and A12).
+/* Keyboard- and screen-reader-accessible chart controls meet 24px
+   by size or an isolated 24px circle. For targets below 48px, require
+   the same fact in a 48px list target on that screen. Check ChartCard
+   headings do not skip levels. Fail axe target-size, nested-interactive
+   and heading-order findings, and report the rest.
 
-   What the audit found, and what this checks for each:
-
-   - A04, targets. The noticed-change marks on /care/changes were 22 x 18
-     and the history bands and day marks on the Look back rail 8, 6 and 12
-     px high, so axe reported target-size on both screens. Every chart
-     control a screen reader or Tab can reach must now meet WCAG's 24px
-     (its size, or a 24px circle that touches no other target), and one
-     that stays under the 48px floor must have its fact in a list on the
-     same screen at the floor.
-   - A12, headings. ChartCard always wrote an h3, often straight after the
-     screen's h1. On every screen that places one, no heading may skip a
-     level on the way down.
-
-   Each screen also gets axe with the audit's own tag set; target-size,
-   nested-interactive and heading-order fail the run, anything else axe
-   says is printed for the record.
-
-   Against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/chart-a11y-check.mjs [--root <built tree>] [--url <running server>] [--axe <axe.min.js>] [--width 320,390] */
+   VITE_DEMO=1 npm run build
+   node tests/chart-a11y-check.mjs [--root <built tree>] [--url <running server>] [--axe <axe.min.js>] [--width 320,390] */
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { createRequire } from 'node:module';

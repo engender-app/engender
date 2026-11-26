@@ -1,31 +1,9 @@
-/* The one presentation for anything the app created rather than the person
-   (phase 5 deepening ticket 22, ADR-0045): a milestone minted from a
-   roadmap goal, a surgery day or an adopted tryout, and a reminder the
-   stock projection is keeping in step with a drug. A hand-written record
-   asks this for nothing - resolveMilestoneOrigin and resolveReminderOrigin
-   both return null the moment their own linking column is null, which is
-   also what a since-cleared link (procedures.ts, tryouts.ts) leaves behind,
-   so "no line" already covers both without a second check.
+/* Resolve provenance for milestones and automated reminders (ADR-0045).
+   A null link yields no source line. Deleted custom roadmap goals leave
+   their milestone link intact (ADR-0068), so an unresolved goal uses the
+   shared fallback. Other deletions clear their links.
 
-   A roadmap goal key is the one link that is never cleared - deleting a
-   custom goal leaves the milestone it minted whole, link and all
-   (ADR-0068) - so it is also the one case that can still be set while
-   failing to resolve: a key from a pack, or a custom goal this journal no
-   longer has because it was deleted or because the key arrived in an
-   archive from a device that still had it. That earns the single shared
-   fallback line below rather than three near-duplicates, since the other
-   two links can't dangle in practice (milestones.ts, tryouts.ts null them
-   out on delete) and a defensive string for an unreachable case would be
-   copy nobody ever reads.
-
-   Live tiles are the third surface the ticket names and end up not needing
-   any of this: a tile is never something a person wrote by hand, so there
-   is no "who made this" ambiguity to resolve, and its own title is already
-   the feature name (unprompted/registry.ts, and every Tile's own `title`
-   prop in src/routes/+page.svelte) - "Wear timer" over an elapsed time is
-   already what this module would otherwise be saying. One presentation,
-   and one surface it turns out not to apply to rather than two shapes
-   of it. */
+   Live tiles already name their feature in the title. */
 
 import { m } from '$lib/paraglide/messages';
 import { DOSE_PREFIX, STOCK_PREFIX, WEAR_PREFIX } from './autoSource';
@@ -44,7 +22,7 @@ interface Origin {
 function builtinGoalTitle(key: string): string | null {
   if (isBuiltInGoal(key)) return roadmapGoalTitle(key);
   /* A milestone minted from a post-ruling step that became an institution
-     (functional audit ticket 35) keeps its key, which now names the
+      keeps its key, which now names the
      institution. */
   return isBuiltInInstitution(key) ? roadmapInstitutionName(key) : null;
 }
@@ -88,7 +66,7 @@ export function resolveReminderOrigin(reminder: Reminder): ReminderOrigin | null
   }
   if (reminder.autoSource.startsWith(DOSE_PREFIX)) {
     // No drug in the line: the reminder's own title is the drug's name,
-    // which the schedule keeps in step (functional audit ticket 21).
+    // which the schedule keeps in step.
     const episodeId = reminder.autoSource.slice(DOSE_PREFIX.length);
     return {
       text: m.prov_reminder_dose(),

@@ -1,9 +1,9 @@
 /* The deployed nginx header sends `Permissions-Policy` with an empty
-   allowlist for every feature the app does not use (phase 2 ticket 05). An
+   allowlist for every feature the app does not use. An
    empty allowlist denies the page's own origin too, not just embeds, and
    nothing in dev sets this header at all - so a feature that opens a
    microphone or camera can pass every local check and still be dead on the
-   deployed origin, silently (phase 8 ticket 01).
+   deployed origin, silently.
 
    This derives the set of browser capabilities the app actually calls from
    the source, rather than hard-coding it, so a new getUserMedia call for a

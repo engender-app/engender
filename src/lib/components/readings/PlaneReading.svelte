@@ -1,22 +1,9 @@
 <script lang="ts">
-  /* Two scales at once: the constellation (phase 5 deepening ticket 19,
-     ADR-0048), a reading of its own since phase 11 ticket 07. It was the
-     deepest thing on the Look back door and sat 510px into the scroll,
-     where nobody scrubbed it; on its own screen it opens at the door's span
-     with the scrub and the play control it always had.
-
-     Its tile has no figure (Alicja, on the spike: "drop the title - just
-     show the small header and a bigger graph"): the reading is the shape,
-     so the drawing takes the room a headline would - every point of the
-     span faint, the last one solid, on a 1px cross for the two midlines.
-
-     Gated on data and on nothing else: the reading exists once two scales
-     are ticked and the span holds an entry carrying both, and there is no
-     preference to turn it on. A mode is not one of its conditions
-     (functional audit ticket 12): an entry logged under no mode is drawn
-     uncoloured (ADR-0048), so a journal that never named a mode still has
-     a plane. Its two axes are the person's own scales, defaulting to the
-     pair with the most points in the span (planeAxes); no dimension key is written here. */
+  /* Constellation's tile previews the span with faint points and
+     a solid latest point. Detail offers scrub and play (ADR-0048).
+     Require two enabled scales and a co-recorded point in the span.
+     Draw entries without a mode uncoloured. planeAxes defaults to
+     the pair with the most points without storing dimension keys. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { liveList } from '$lib/data/live/journal.svelte';

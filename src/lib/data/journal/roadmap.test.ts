@@ -63,7 +63,7 @@ test('goals are ticked independently of one another, whatever their key', async 
   });
 });
 
-/* Acceptance box 3 (phase 4 ticket 23): a second country's pack has to be
+/* Acceptance box 3: a second country's pack has to be
    content alone. The stub key here has no bundled pack behind it and no
    migration was run for it, which is the whole assertion. */
 test('a second pack keeps its own statuses, with no schema change behind it', async () => {
@@ -132,8 +132,7 @@ test('setting a custom goal that does not exist fails loudly rather than doing n
   await assert.rejects(() => journal.roadmap.setCustomGoalStatus('not-a-real-uuid', 'checked'));
 });
 
-/* Editing and deleting a custom goal (phase 8 features ticket 69,
-   ADR-0068). A built-in goal has neither and never will: there is no row
+/* Editing and deleting a custom goal (ADR-0068). A built-in goal has neither and never will: there is no row
    to edit and nothing to delete, so everything below is about the kind
    somebody typed themselves. */
 
@@ -405,7 +404,7 @@ test('removing a category removes its goals, unfiles their paper, and leaves eve
   assert.equal(unfiled.targetId, null);
 });
 
-/* Name and document changes per institution (functional audit ticket 35).
+/* Name and document changes per institution.
    An institution the person adds is a row of its own; a built-in one is
    only a key, and both collect dated changes. */
 test('an institution the person adds gets a uuid, keeps its name, and can be renamed', async () => {

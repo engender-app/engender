@@ -1,49 +1,13 @@
 <script lang="ts">
-  /* The one screen over the unprompted registry (phase 6 tickets 02 and 04,
-     merged from two screens onto one by deepening ticket 09). "Stop showing
-     me this" and "stop buzzing my phone" are two questions about the same
-     list, so this is one `{#each}` with two toggle columns rather than two
-     screens each running their own - ADR-0039's amendment argues for
-     exactly this consolidation. `/settings/live-tiles` used to be the first
-     question's own screen; that address was removed.
+  /* Draw one RegistryRow per registered kind with separate Show and Notify
+     controls (ADR-0039). isLiveTileKind keeps Today's live tiles in the
+     Today editor. The writing prompt below the list is a single preference
+     and has no registry kind of its own.
 
-     **Minus Today's own thirteen** (phase 11 ticket 04). A live tile is
-     arranged where it draws, in Today's editor, so this screen is every
-     other registered kind: the stock notice, the two look-back cards, and
-     the four that fire. `isLiveTileKind` is the filter rather than a second
-     list, so the editor and this screen cannot each think they own a kind.
-     That also takes the last of the Home column's untruth with it - two of
-     the three rows left draw on Look back, never on Home - which is why the
-     column head asks whether the app may show the thing at all rather than
-     naming a screen.
-
-     The rows are not written here: $lib/unprompted/registry.ts is what a
-     later ticket extends, and RegistryRow draws one, so this page is the
-     {#each} and nothing else.
-
-     **The prompt below the list** came off Settings' Tracking section
-     with the same ticket, where it floated under no heading of its own,
-     next to three others that have since moved. The binder cue went to
-     Wear (functional audit ticket 37) and the roadmap's milestone prompt
-     onto the roadmap itself (ticket 34), each beside the thing it is
-     about. What stays is the app speaking up without being asked, after
-     a mood-only save or while writing - which is the question this whole
-     screen is about. It is not a registry row: it is not a kind of its
-     own with a surface and a channel, only one boolean a single feature
-     reads, so it sits under a heading of its own rather than being forced
-     into a list whose shape promises two columns.
-
-     Absent on web rather than shown and inert, for the notify column only
-     (user story 18): a browser cannot fire a scheduled notification while
-     the app is closed, so a switch there would be a promise the platform
-     does not keep. The show column carries no such limit - a notice or a
-     card is in-app UI, not an OS notification - so it stays live on web,
-     and so do the prompts; only the notify slot on each row, the
-     permission notice and the two notification-only cards after the list
-     drop out. What takes their place on web sits above the rows it
-     explains (ticket 13): the platform notice opens the screen, so every
-     row's Show toggle is read beside the explanation of why there is no
-     second toggle, not three sections later. */
+     Web keeps Show and the prompts. It omits Notify, the permission notice
+     and the notification-only cards because a closed browser cannot deliver
+     these scheduled notifications. Put the platform notice above the rows
+     to explain the controls available there. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -119,8 +83,8 @@
   });
 
   /* Both cascades from the two screens this merged, unchanged: turning a
-     kind off also turns its notification off (phase 4 features ticket 04),
-     and turning a notification on turns the kind itself on (ticket 04). One
+     kind off also turns its notification off,
+     and turning a notification on turns the kind itself on. One
      invariant either direction keeps - nothing fires for a kind that is off
      - whichever switch the person just touched. */
   function setKind(row: UnpromptedRow, v: boolean) {
@@ -136,7 +100,7 @@
   }
 
   /* The check-in's switch lives on the reminders screen, beside its time and
-     its pause (functional audit ticket 08); a second one here wrote the same
+     its pause; a second one here wrote the same
      preference from a screen that could show neither. Its row here is a way
      there that says where it stands. */
   let checkInState = $derived.by(() => {

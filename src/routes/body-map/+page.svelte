@@ -1,32 +1,11 @@
 <script lang="ts">
-  /* One body region's dysphoria and euphoria over time (phase 5 UX ticket
-     23's rebuild) and multi-track somatic breakdown inspector (deepening
-     ticket 08).
+  /* Dysphoria and euphoria are independent axes with their own days and
+     counts, so give each a separate chart (stats.ts). Tapping a body
+     region selects both readings. The separate inspector row opens the
+     breakdown sheet.
 
-     Two charts rather than one with two lines on it. The seam answers one
-     axis per call and says why (stats.ts, ticket 31): the two are
-     independent, a day can carry a euphoria and no dysphoria, so the two
-     series have their own days and their own counts and nothing pairs them
-     up. Drawn as an overlay they needed a legend to say which line was
-     which, and DIRECTION.md's chart rules have no legend in them - the
-     heading names the reading instead, one per card, which is also the
-     honest shape for two things the screen never adds up.
-
-     Redesign ticket 40 turned the figure into the reading. One region could
-     be chosen four ways here - a hotspot, a chip, the picker in the first
-     chart card's header, and an inspect button beside it - and all four
-     opened the inspector sheet, so the map could not be browsed at all:
-     every tap left the screen. Now exactly one control selects, a tap only
-     says which region the charts describe, and the sheet is one explicit
-     row under them.
-
-     Redesign ticket 05 took the screen's own 7d-to-365d range picker off
-     it: the only way here is Look back's list, at the same span/query
-     shape the Look back readings already use (spanRangeQuery), so the range
-     picker on this side would only ever disagree with the one the person
-     just dragged. A direct visit with no query still gets a window - the
-     door's own default of the last thirty days - rather than an empty
-     screen. */
+     Use the range passed from Look back via spanRangeQuery. A visit with
+     no query defaults to the last 30 days. */
   import { scrollBehavior } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -58,7 +37,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import BodyRegionInspectorSheet from '$lib/components/BodyRegionInspectorSheet.svelte';
 
-  /* Undefined is the unfiltered view (ADR-0048, ticket 18) - every entry,
+  /* Undefined is the unfiltered view (ADR-0048) - every entry,
      with and without a presentation, byte for byte what this screen showed
      before the filter existed. There is no "no presentation" option: an
      entry with none already reads back in the unfiltered view like every
@@ -83,12 +62,12 @@
 
   let inspectorOpen = $state(false);
 
-  // Same inclusive-range rule as the stats screen (ticket 10): the journal
+  // Same inclusive-range rule as the stats screen: the journal
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
   let today = $derived(currentDay());
 
-  /* The span, reached from Look back (redesign ticket 05) at the same query
+  /* The span, reached from Look back at the same query
      Look back readings use (spanRangeQuery) - this screen
      only ever wants the two dates out of it. A direct visit with no query,
      or one that fails to parse, falls back to the door's own default
@@ -102,8 +81,8 @@
 
   let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', spanFrom, spanTo, modeFilter));
   let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', spanFrom, spanTo, modeFilter));
-  /* Both readings cover one calendar range and take the same annotations
-     (ticket 23). */
+  /* Both readings cover one calendar range and take the same annotations.
+     */
   let annotationsQuery = liveList((j) =>
     j.chartAnnotations.getAnnotations(spanFrom, spanTo, today)
   );
@@ -187,7 +166,7 @@
   });
 
   /* Latched: the mirror re-arms `ready` on a journal re-open, and a reserve
-     must not put its placeholder back over the map (ticket 211). */
+     must not put its placeholder back over the map. */
   let mapRevealed = $state(false);
   $effect.pre(() => {
     if (vocabulary.ready) mapRevealed = true;
@@ -200,7 +179,7 @@
   <ScreenHeader title={m.body_map_title()} screen="body-map" back="/stats" />
 
   <!-- Held at last visit's height until the vocabulary mirror names the
-       regions, then faded in (ux-carpet ticket 211): the figure cut in at
+       regions, then faded in: the figure cut in at
        full opacity when it did. -->
   <ReadReserve ready={mapRevealed} estimate={mapEstimate} onrest={mapRemember}>
     {#if regions.length}
@@ -378,7 +357,7 @@
     margin-bottom: var(--space-3);
   }
 
-  /* The pick, in words (ticket 30). Under the drawing rather than beside it:
+  /* The pick, in words. Under the drawing rather than beside it:
      at 390px there is no beside, and the card the figure is on is where the
      selection lives. */
   .body-map-selected {

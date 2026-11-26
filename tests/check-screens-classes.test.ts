@@ -1,4 +1,4 @@
-/* The screens.css single-consumer ratchet (phase 5 audit ticket 16), which
+/* The screens.css single-consumer ratchet, which
    caught it growing back to a dumping ground once already: a class only
    one screen reads belongs in that screen's own <style> block, where an
    unused rule is a compiler warning rather than silent dead text. */

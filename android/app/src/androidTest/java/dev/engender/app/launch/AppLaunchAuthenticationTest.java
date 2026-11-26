@@ -66,7 +66,7 @@ public class AppLaunchAuthenticationTest {
         }
     }
 
-    /* The check-in's faces (tester report 02, ticket 05) sit in the
+    /* The check-in's faces sit in the
        notification's own layout, where autoCancel does not reach, so the
        activity dismisses the notification the launch names - but only for
        a launch this install built. */

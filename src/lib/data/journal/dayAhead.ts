@@ -1,40 +1,11 @@
-/* What is coming up: one read, and five kinds of fact earn a mark (phase 8
-   features ticket 61, ADR-0067, CONTEXT: "Coming up").
+/* Register facts that mark upcoming days (ADR-0067). The caller supplies
+   the date range and todayEpochDay, so Calendar can ask for a month and
+   Today can ask for one day. No mark can fall before today.
 
-   `dayAhead(from, to)` is a registry in the shape `day.ts` and `lastWrite.ts`
-   already share: a key, the tables it touches, a read, and an opt-out record
-   naming every excluded area with a reason. A **range**, not a horizon - the
-   calendar asks for a month, Home for today, a day view for one day, and no
-   single number is right for all three (`careSpine.ts`'s 120 days stay
-   `careSpine`'s own).
-
-   `DAY_AHEAD_OPT_OUTS` below is `day.ts`'s own opt-out record inverted: most
-   of what a day view refuses to show because it is a schedule, a span or
-   reference data is refused here for the same reason, restated for "a day
-   still to come" instead of "something that already happened". Five areas
-   flip the other way: `appointments`, `procedures`, `milestones`, `letters`
-   and `doseSchedules` say nothing about a day that already happened but do
-   say something about one still ahead, so they are covered here and opted
-   out nowhere else that asks the forward question.
-
-   What one section declares:
-
-     key     the mark's own kind, which is also the whole of what a mark
-             says - never a countdown, a due date or a verdict
-     covers  which archive sections this one accounts for, the same
-             completeness check DAY_OPT_OUTS uses (day.ts)
-     tables  the tables its read touches, single-sourced here the same
-             reason DAY_TABLES/LAST_WRITE_TABLES are
-     read    every day in range this kind has a fact for, through that
-             area's own read path - never a raw SQL string written here,
-             for the reason lastWrite.ts's own header gives
-
-   Every read is bounded below by `todayEpochDay`, the same discipline
-   lastWrite.ts holds above it: a day already passed is `day.ts`'s question,
-   not this one's, so a fact whose day has gone by never earns a mark here
-   even when the range asked for includes it. Nothing here reads a clock -
-   `todayEpochDay` arrives as an argument, the same as every pure module
-   above this seam. */
+   Appointments, procedures, milestones, letters and dose schedules qualify.
+   Each section declares its mark kind, archive coverage, tables and its
+   area's existing read path. DAY_AHEAD_OPT_OUTS accounts for every excluded
+   section. A mark conveys the kind of fact and no judgement or countdown. */
 
 import { expectedSlots, isDailySchedule, pauseCoversDay } from '../doseSchedule';
 import { lastDayWithin } from '../regimenEpisode';

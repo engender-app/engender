@@ -575,29 +575,13 @@ describe('the field and the fills (phase 10)', () => {
     expect(flagField([])).toBeUndefined();
   });
 
-  /* The voice figure's own two claims (redesign ticket 42).
-
-     The pitch value sits on a block of the stripe at 19px bold, which is
-     large text and answers to 3:1 - the floor rule 11 states, and the one
-     every flag clears with nonbinary's 4.41 as the worst of the eight. It
-     is the same ink and the same block the picking rows carry.
-
-     The density is a chart mark, so it takes the stripe undiluted and owes
-     no ratio at all: `kit.css`'s own note records why, in Alicja's words
-     from 2026-08-25 about what a contrast floor did to nonbinary's yellow.
-     What is asserted here instead is that it cannot quietly become a second,
-     floored colour - the shape is the trace's colour exactly - and the
-     measured worst case is pinned so that a change to either the wash or
-     the stripe list shows up as a number rather than as nothing.
-
-     Measured, both themes, every chromatic role of every flag: the outline
-     against the 18 per cent band wash, against the 9 per cent middle band,
-     and against the bare surface between them. The worst of all three is
-     nonbinary's yellow on the light theme at 1.13:1 against its own band -
-     the same 1.16:1 the pitch trace has always had against the surface.
-     Since phase 15 ticket 20 that is no longer the whole line: the stripe
-     keeps its colour and an edge drawn under it carries the 3:1, measured in
-     the essential-graphics cases below. */
+  /* The 19px bold pitch value meets large text's 3:1 floor on the stripe.
+     Nonbinary is the lowest of eight at 4.41:1. The density trace keeps
+     its exact stripe colour. Across both themes and every chromatic role,
+     check its colour against the 18% band wash, 9% middle band and bare
+     surface. The weakest case is nonbinary yellow at 1.13:1 on the light
+     band (1.16:1 on the surface). The under-stroke meets 3:1, checked
+     separately below. */
   it('draws the density in the flag colour itself, never a floored one', () => {
     let worst = { ratio: 99, where: '' };
     for (const palette of PALETTES) {
@@ -734,7 +718,7 @@ describe('the field and the fills (phase 10)', () => {
 
   });
 
-  /* The day bar is a block of ink (ux-carpet ticket 282): its 13px date
+  /* The day bar is a block of ink: its 13px date
      and aside are --bg on --text. 13px is small text whatever its weight,
      so the pair answers to 4.5:1. */
   it("keeps the day bar's date readable on its ink in every palette and theme", () => {

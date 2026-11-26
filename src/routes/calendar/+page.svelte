@@ -1,65 +1,17 @@
 <script lang="ts">
-  /* The Journal door: your days (phase 10 redesign ticket 10).
+  /* Journal leads with recent entries. Earlier entries grows the read five days
+     at a time (ADR-0069). recentDayMonths puts the first month's name under the
+     heading and inserts dividers at later month boundaries. Search opens from
+     the header and contains the starred filter.
 
-     What this screen was: a month bar, a metric picker and the heat map,
-     and nothing else. The heat map is the better picture of a journal and
-     the worse landing - somebody arriving at this door is usually looking
-     for something they wrote - so the picture is folded away to a strip
-     until it is asked for, and what they wrote leads.
+     The field carries the month label and controls. The label opens the month
+     picker and slides in the direction of travel. The compact strip and expanded
+     grid share the same HeatMap read and metric picker. Opening the month is
+     local state, so Back leaves the door. motion/regroup.ts moves each day
+     between its bar and cell.
 
-     Recent entries came off Home in the shape Home drew them (ticket 13
-     took the week strip itself off Home, and its compact copy lived under
-     "Recent days" here until ticket 18 retired that duplicate - see below).
-     Search stays in the header where it already was; starred moved out of
-     the header entirely, ticket 18's decision that the starred shelf has
-     one door now and it is search's own `?starred=1` filter.
-
-     Ticket 18: "Recent entries" no longer stops at five days and a strip
-     underneath repeating the same week. It grows five days at a tap
-     ("Earlier entries", the same limit-growing control search's own
-     "show N more" already used - ADR-0069), with the months falling out of
-     the dates themselves (recentEntries.ts's `recentDayMonths`): the first
-     day's month is the heading's own sub-line and every later change of
-     month is a small divider, so there is one heading above the first day
-     rather than two stacked on each other (ux-carpet ticket 282). The top
-     strip stays exactly what it was: the affordance that opens the month,
-     not a second reading of the same seven days.
-
-     The header is ticket 23's field, and DIRECTION.md rule 7 says what this
-     door puts on it: the month at the section-heading size and those two
-     controls on the same line, no title. The month label is still the way
-     into the jump sheet and still slides the way the month went (ticket
-     31); it is in the field now rather than between two chevrons, so the
-     two chevrons moved down to the strip's own control line.
-
-     **The one new interaction: the month opens.** Collapsed, the month is a
-     strip of bars - HeatMap's own drawing of the same read, see its
-     `compact` prop. Expanded, it is the grid, its key and the highlight
-     chips. It is screen state and not a route: a month you
-     opened is not somewhere you navigated to, and back should leave the
-     door rather than close a panel. Both states carry the metric picker,
-     which is the one control for a choice this screen makes twice (the
-     strip and the week strip shade on it, and so does the grid) - two
-     controls writing one preference is the NAV-007 complaint the picker was
-     itself the fix for.
-
-     Mobbin, on how a compact month behaves: Finch collapses a whole month
-     into one line with a chevron on its label and Bevel leads its Journal
-     with a strip over the entries, which is the arrangement here; timespent
-     draws the same month twice, once as a grid and once as a micro-strip,
-     which is what makes a strip and a grid legible as one thing. The travel
-     between them is ours (motion/regroup.ts): every day flies from its bar
-     to its cell and grows, because a month does not stop existing and a
-     different month appear - it opens.
-
-     Colour: the strip and the grid are one reading of one day, so both take
-     role 0 - the only index guaranteed to be a colour on every palette
-     (roles.ts; DIRECTION.md, "colour that carries a value takes role 0").
-     Written out rather than through that table because here
-     it is the rule about value-carrying colour and not this screen's turn in
-     a reading order. The day cards do take their turn from the table, and
-     take the one they took on Home, so an entry looks the same wherever it
-     is drawn. */
+     Both forms use role 0 for the date values, since every flag palette gives
+     that role a colour. Day cards use the same role as Home. */
   import { flushSync, untrack } from 'svelte';
   import { onNavigate } from '$app/navigation';
   import { navigating } from '$app/state';
@@ -128,7 +80,7 @@
      month controls and heatmap into layout. */
   let entryCountQuery = liveQuery((j) => j.entries.countAll());
   /* The last answer lives in the encrypted acknowledgements preference now,
-     not in plaintext localStorage (functional audit ticket 45). */
+     not in plaintext localStorage. */
   let cachedHasEntries = $derived(prefs.acknowledgements.hasEntries);
 
   $effect(() => {
@@ -167,7 +119,7 @@
   let totalDaysQuery = liveQuery((j) => j.entries.countDistinctDays());
   let moreDaysRemaining = $derived(Math.max(0, (totalDaysQuery.value ?? 0) - dayGroups.length));
 
-  /* Which era each month belongs to (phase 6 ticket 03): each era paired
+  /* Which era each month belongs to: each era paired
      with the role it draws in, the same way role 0 is picked for the
      metric below - by position, since an era stores no colour of its own
      (ADR-0049). */
@@ -181,7 +133,7 @@
     return out;
   });
 
-  /* The presentation chip (ticket 17, ADR-0048): highlights, never
+  /* The presentation chip (ADR-0048): highlights, never
      filters, so the metric shading above stays exactly what it draws
      today. HeatMap resolves the day set itself, bounded to whichever
      month is on screen; this only resolves the role, the same division of
@@ -207,23 +159,11 @@
     ...vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))
   ]);
 
-  /* Which way the months are moving, so the label leaves the way the month
-     went (ticket 31). Tier 3, change within a screen: the mark moves and its
-     container does not.
-
-     Two walls, and the slot's own clip is both of them: one whose top edge is
-     level with the text's bottom, one whose bottom edge is level with the
-     text's top. The old month slides down behind the lower one and the new
-     arrives from above the upper one - which is why neither half touches
-     opacity. Nothing fades here; the wall is what hides them, and a piece of
-     text that dissolves while it travels reads as two effects rather than one
-     object going behind something.
-
-     Sequenced, not crossed. The incoming label waits out the outgoing one's
-     whole duration, because "as soon as the old text disappears" is the point
-     of the effect: two months visible at once in one slot would read as a
-     dissolve however they were moving. Svelte starts both halves of a keyed
-     swap together, so the delay is what makes it a queue. */
+  /* Keep one clipped slot while labels slide in the direction of
+     the month change. The clip hides them at the edges without
+     opacity. Delay the incoming label by the entire outgoing
+     duration because Svelte starts both halves of a keyed swap
+     together. */
   let dir = $state(1);
 
   const LEAVE = () => motionDuration('--dur-fast');
@@ -331,7 +271,7 @@
   /* Closing, the faces and dots go first. A face is laid out in its cell,
      and the frame after the tap the cell is a 7px bar scaled back up to the
      size it was, so a face still showing in it is squashed into a sliver -
-     a different drawing from one frame to the next (ticket 280). So they
+     a different drawing from one frame to the next. So they
      fade where they stand, unscaled, and the days fold once they are gone.
      The key and the chips under the grid go in the same beat: the strip has
      neither, and they used to be gone in the frame of the tap while the
@@ -394,7 +334,7 @@
        exception and every spend of it is tracked in that one file.
 
        Panel and days run on --ease-out-soft, the curve for a long travel
-       setting off (phase 14 ticket 28). On --ease-out the farthest day, 427px
+       setting off. On --ease-out the farthest day, 427px
        from its bar on a 390px phone, covered 19% of that, 81px, in its first
        frame: continuous, but a lurch. Soft it is 4%, 18px, and no frame
        moves it more than 46px. */
@@ -503,7 +443,7 @@
         <!-- On the month's own line, not in `actions`, which is the title's
              line: rule 7 puts all three of these on one line, and the title
              this door does not show is what the line above would have been
-             for. One control now (ticket 18): starred is a filter search
+             for. One control now: starred is a filter search
              offers on its own screen, not a second door this field hosts. -->
         <a class="icon-btn press" href="/search" aria-label={m.search()}><Icon name="search" size={22} /></a>
       </div>
@@ -584,8 +524,7 @@
 
        The heading waits for the first entry, which is Home's own rule and
        its own citation: "a row of grey cells and a heading over an empty
-       list are two more of day one's four placeholders" (phase 8 UX ticket
-       01). Day one gets the notice under the field and nothing else. -->
+       list are two more of day one's four placeholders". Day one gets the notice under the field and nothing else. -->
   {#if hasEntries}
     <!-- The sub-line's room is held from the first frame, empty until the
          read answers, so the month fading in moves nothing under it. -->
@@ -715,7 +654,7 @@
     line-height: var(--leading-display);
   }
 
-  /* The slot the month name changes inside (ticket 31). One grid cell
+  /* The slot the month name changes inside. One grid cell
      holding both labels, so the outgoing and the incoming month occupy the
      same place rather than pushing each other, and `overflow: hidden` is the
      pair of walls the effect is built on: one whose top is level with the

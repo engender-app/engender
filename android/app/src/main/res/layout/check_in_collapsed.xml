@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The check-in notification folded (tester report 02, ticket 05): five
+<!-- The check-in notification folded: five
      faces with the question under them, so a person sees what is asked
      without unfolding. Each face is one equal share of the width, a touch
      target at least 48dp wide and exactly 48dp tall. The faces come first

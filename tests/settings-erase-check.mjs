@@ -1,4 +1,4 @@
-/* Settings' "Delete everything" (phase 14 ticket 15), against a plain
+/* Settings' "Delete everything", against a plain
    build (npm run build) and real browser storage, once per access mode the
    web offers: passphrase, PIN, biometric (WebAuthn PRF, through Chromium's
    virtual authenticator), and device-bound, the web's Unlocked - the mode

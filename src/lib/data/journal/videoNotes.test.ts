@@ -12,7 +12,7 @@ async function journalWithFiles() {
   return { files, journal };
 }
 
-/* journal.videos.inJournal (ticket 22): the one query that lists video notes
+/* journal.videos.inJournal: the one query that lists video notes
    across entries, voice.inJournal's twin - entry-only, so there is no owner
    name to carry alongside the date. */
 

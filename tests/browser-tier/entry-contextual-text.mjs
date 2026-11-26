@@ -9,7 +9,7 @@ export async function entryContextualText(page, base) {
   const save = page.locator('[data-save]');
   for (const existing of [false, true]) {
     if (existing) await page.evaluate(() => window.contextualText.open(true));
-    // A new entry's cards are on its body step (tester report 02, ticket 09).
+    // A new entry's cards are on its body step.
     await toEntryStepWith(page, '[data-contextual="tryout-felt-sense"]');
     await page.locator('[data-contextual="tryout-felt-sense"] [role="radio"]').first().click();
     for (const field of [reflection, recovery]) {

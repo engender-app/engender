@@ -4,7 +4,7 @@
    to decode it. Chromium cannot decode HEIC at all, and HEIC is what an
    iPhone hands over by default, so it earns a message that says what to do
    instead of whatever createImageBitmap() throws for a format it does not
-   know (ticket 11).
+   know.
 
    Everything else is left to the decoder rather than checked against a
    list of formats. A whitelist here would reject AVIF, BMP and TIFF -

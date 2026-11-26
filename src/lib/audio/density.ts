@@ -1,35 +1,10 @@
-/* Where a voice spent its time, as a shape (redesign ticket 42).
+/* Draw a pitch density profile from the decoded track on the same log2-Hz
+   axis as the trace. A kernel smooths short tracks sampled at four points
+   per second, and a bandwidth floor avoids spurious detail.
 
-   The take already reports three percentiles of one distribution - the
-   median, and the p10-p90 span - and until this existed that distribution
-   was never drawn. A person was handed three abstractions off a shape they
-   had never seen, and the shape is the thing they came for: "most of the
-   read sat here, with a tail down to there" is one look, where three
-   numbers are three lookups.
-
-   It is the same decoded track the trace is drawn from, on the same log2-Hz
-   axis (bands.ts). Nothing new is stored and nothing is decoded twice -
-   benchmark.ts's note about a second caller downsampling its own copy
-   applies here as much as it did there.
-
-   **A smoothed shape rather than a histogram.** A stored track is four
-   points a second, so a five-second read is twenty numbers: binned raw,
-   twenty numbers over an axis this tall is a comb, and the comb's teeth
-   would be read as structure in a voice that has none. The kernel is what
-   makes a short read honest, and the bandwidth floor below is what stops it
-   inventing detail on a long one.
-
-   **Peak-normalised, not area-normalised.** What the figure draws is the
-   shape's own profile against the axis, so the mode fills the width it is
-   given whether the read was five seconds or forty. Two takes compared side
-   by side are then two proportions of their own reads rather than two
-   durations, which is the only comparison between them that means anything
-   - a longer read is not a louder claim.
-
-   Pure arithmetic over frames, like the rest of $lib/audio: no clock, no
-   database, nothing from paraglide, so the Node tier proves it without a
-   browser. Positions on a drawing are the component's; this produces
-   frequencies and weights only. */
+   Normalize the peak so the mode fills the given width regardless of take
+   duration. This module returns frequencies and weights. The component
+   positions them. */
 
 import type { PitchFrame } from './pitch';
 import type { PitchAxis } from './bands';

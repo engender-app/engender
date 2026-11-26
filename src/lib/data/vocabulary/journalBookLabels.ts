@@ -1,4 +1,4 @@
-/* What each part of the journal book is called (phase 5 ticket 17), here
+/* What each part of the journal book is called, here
    rather than in journalBook.ts for the reason its neighbour gives: the
    wording speaks paraglide, and nothing the Node tier touches may import
    that (ADR-0016).

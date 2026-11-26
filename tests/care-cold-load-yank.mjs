@@ -1,33 +1,12 @@
-/* Care's cold load, one surface at a time (ux-carpet ticket 184).
+/* Sample cold /care from the first frame, including under CPU throttling
+   so the journal read can finish after first paint. Rail captions hold
+   their x, content below the skeleton waits for the rail, and the heading,
+   lane name and hosted row first paint below 0.5 opacity. The navigation
+   pill stays within the tab's width even on first placement.
 
-   Four yanks on a cold /care, measured here from the first frame of the
-   document rather than from boot-ready, at full speed and under a slowed
-   CPU so the journal's first answer reliably lands after the first paint -
-   the order a phone always sees and the desktop sweep only caught one run
-   in three.
-
-   - Every rail caption (`.care-mark`) sits where its settle animation will
-     put it before that animation starts. Its x against the rail may not
-     step in one frame: the old keyframes centred the caption only once the
-     staggered delay ran out, so each one jumped half its own width (26 to
-     30px) on the frame it began to fade in.
-   - Nothing below the care read's skeleton is painted before the rail is.
-     The interval-mood card and the hosted "Changes you've noticed" row used
-     to draw under the skeleton and then get pushed some 1500px down the
-     screen when the rail landed above them.
-   - What the care read answers with fades in. The rail's heading, a lane's
-     name and the hosted row each start their first frame under half
-     opacity; they used to arrive at 1 over the skeleton still fading out.
-   - The navigation's pill never paints wider than the tab it lights. On
-     its first placement it used to open as the whole bar and sweep across
-     to the tab (0 to 295px over 250ms), because its inset transitions were
-     live for the one placement that is not a slide.
-
-   Run against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/care-cold-load-yank.mjs [--runs 5] [--cpu 1,4] [--out <abs dir>]
-   Runs every CPU rate given, --runs times each.
-   Exits 1 on any finding. */
+   VITE_DEMO=1 npm run build
+   node tests/care-cold-load-yank.mjs [--runs 5] [--cpu 1,4] [--out <abs dir>]
+   Run each CPU rate --runs times. Exit 1 on any finding. */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -146,7 +125,7 @@ for (const CPU of CPUS) for (let run = 0; run < RUNS; run += 1) {
   /* Each arrival's opacity on the first frame it exists. */
   const arrivals = {};
   /* `hosted` is sampled but not required: Meds draws its Cycle link only
-     with cycle tracking on (pre-release-human 12). */
+     with cycle tracking on. */
   for (const key of ['heading', 'lane']) arrivals[key] = frames.find((f) => f.seen[key] !== null)?.seen[key] ?? null;
   const hostedArrival = frames.find((f) => f.seen.hosted !== null)?.seen.hosted;
   if (hostedArrival !== undefined) arrivals.hosted = hostedArrival;

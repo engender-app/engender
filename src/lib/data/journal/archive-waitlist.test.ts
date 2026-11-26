@@ -1,4 +1,4 @@
-/* Waiting lists travel in archives (functional-audit ticket 26). A referral
+/* Waiting lists travel in archives. A referral
    is an appointment with no day, its referred-on day and its dated status
    updates; all three go out in the `appointments` section and come back on
    the other device, and an archive written before the ticket still restores

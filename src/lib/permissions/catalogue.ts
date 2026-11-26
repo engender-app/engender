@@ -1,24 +1,7 @@
-/* Everything this app can ask the phone for, in one list (phase 10 redesign
-   ticket 31).
-
-   The app asks for four things and, until this list existed, never explained
-   them together: notifications from the reminders screen, exact alarms from a
-   warning notice, the microphone and the camera at the moment somebody taps
-   record. Each had its own inline sentence and there was no shared picture.
-   For an app whose whole claim is that nothing leaves the device, the list is
-   the claim made concrete - four things it can ask for, several it reaches
-   only by handing you a system picker, and no internet permission at all
-   (`tests/browser-tier/verify-build.mjs` asserts that last one).
-
-   What lives here is the shape of the list and the rule for what a row's
-   trailing control does. The states themselves come from the OS
-   (`status.svelte.ts`), and the words come from the catalogue, so this module
-   is rune-free and DOM-free and runs in the Node tier next to the rest of the
-   pure model (ADR-0017).
-
-   The inventory this was written from, with the file references and the
-   deep-links that already existed, is
-   `.scratch/phase-10/redesign/permissions-inventory.md`. */
+/* List notification, exact alarm, microphone and camera permissions
+   and decide each row's trailing action. status.svelte.ts supplies OS
+   state and the message catalogue supplies copy. Keep both the DOM and
+   runes out of this testable model (ADR-0017). */
 
 /** The ones an OS dialog or a system settings screen exists for. In the
     order the list draws them: the two that make the app speak first, then

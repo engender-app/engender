@@ -1,31 +1,12 @@
-/* Whether the journal is in the middle of something an update must not land
-   on (ticket 04).
+/* Block service worker activation and hide the update action during journal
+   writes and migrations. writes.ts wraps all journal writes, including
+   Archive imports; boot.ts covers migrations. Count overlapping operations so
+   the first completion cannot clear the guard. Keep the counter rune-free for
+   Node tests and service worker messaging.
 
-   A waiting service worker that takes over during a write swaps the code out
-   from under a half-finished one. For an entry save that is a spinner that
-   never resolves; for a migration it can be the
-   journal. So the app never asks a waiting worker to activate while anything
-   here is open, and never offers the update action either - update.ts reads
-   this, and the notice appears when it clears.
-
-   Journal writes and migrations enter: every journal write, which writes.ts wraps at one choke
-   point and which covers an Archive import too (an import is a declared write
-   on every table); and the migrations in boot.ts.
-
-   A counter rather than a flag, because two writes overlap routinely - an
-   entry save and the photo store's write land on their own schedules - and the
-   first one finishing does not mean the journal is idle. Rune-free like
-   writes.ts, for the same two reasons: the Node tier can test it, and a
-   service worker's message plumbing has no business in reactive state.
-
-   Two things it deliberately does not cover. Preference writes: one upsert
-   into `pref`, which either committed or did not, and a preference is not part
-   of the journal (CONTEXT: "Journal") - it is none of the four the ticket
-   names. And a second tab, which this counter cannot see: the guard is
-   per-page module state, so a tab sitting idle would not know another was
-   saving. ADR-0020 is what makes that moot rather than lucky - the encrypted
-   driver holds the pool's access handles for one connection per origin, so
-   the second tab has no journal open to write to. */
+   Preference writes are a single atomic pref upsert outside this guard.
+   The counter is page-local; the encrypted driver holds one writing
+   connection per origin (ADR-0020). */
 
 let open = 0;
 let failedWrites = 0;
@@ -70,8 +51,7 @@ export function onJournalBusyChange(listener: (busy: boolean) => void): () => vo
   return () => listeners.delete(listener);
 }
 
-/** For housekeeping that must not run alongside a write (phase 5 audit ticket
-    02). Both boot passes read rows and then act on what they read, and since
+/** For housekeeping that must not run alongside a write. Both boot passes read rows and then act on what they read, and since
     they moved off boot's critical path they run with the screens live - so a
     write that lands between the read and the act would make the purge delete
     an entry somebody restored, or the sweep delete the files of a photo

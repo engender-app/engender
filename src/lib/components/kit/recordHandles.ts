@@ -1,5 +1,4 @@
-/* The walkthrough vocabulary a record sheet stamps (ADR-0029, phase 5 audit
-   ticket 09).
+/* The walkthrough vocabulary a record sheet stamps (ADR-0029).
 
    Twenty-nine save-and-delete button pairs across sixteen screens carried
    twenty-two distinct save handles, each spelled out by hand beside its

@@ -3,7 +3,7 @@
    control keeping its label association, the shell writing the
    accessibility attributes it promises to write.
 
-   Greps by design (ticket 08). Each of these is a construct that either
+   Greps by design. Each of these is a construct that either
    appears in a source file or does not, and what breaks when one goes
    missing is silent - a screen reader reads nothing where a label was.
    Nothing here stands in for a rule that could be moved into a module and
@@ -18,8 +18,7 @@ function read(path: string) {
 
 describe('phase 2 accessibility seams', () => {
   it('keeps chart values available as text in stats', () => {
-    /* The chart carries a value gutter and a mark per reading (phase 5 UX
-       ticket 23), and neither is a number a screen reader can report. The
+    /* The chart carries a value gutter and a mark per reading, and neither is a number a screen reader can report. The
        series has to be readable as text somewhere on this screen, which is
        what this check is about - not which control opens it.
 
@@ -29,7 +28,7 @@ describe('phase 2 accessibility seams', () => {
        numbers reachable. If that list ever goes too, this check should fail
        rather than be updated again. */
     /* The chart and its list moved off the door onto the day-by-day
-       reading's own screen (phase 11 ticket 07); the rule moved with them. */
+       reading's own screen; the rule moved with them. */
     const stats = read('src/lib/components/readings/DayByDayReading.svelte');
     expect(stats).toContain('data-values-list');
     expect(stats).toMatch(/<ul class="visually-hidden" data-values-list/);
@@ -37,8 +36,8 @@ describe('phase 2 accessibility seams', () => {
     /* Each row still carries its own name and reading as text, which is the
        property the sheet's bar rows used to provide. */
     expect(stats).toMatch(/m\.reading_day_value\(\{ day: row\.name, value: row\.value \}\)/);
-    /* And a second scale joins that list rather than only the picture
-       (phase 6 ticket 12). The plot is one image to a screen reader and a
+    /* And a second scale joins that list rather than only the picture.
+The plot is one image to a screen reader and a
        scrub is a way of reading a picture, so a comparison whose numbers
        lived on the plot alone would be a reading only sighted people get.
        Held to the catalogue message the row is written with rather than to
@@ -70,7 +69,7 @@ describe('phase 2 accessibility seams', () => {
     expect(components).toContain('@media (prefers-reduced-motion: reduce)');
   });
 
-  /* MO-002 (ticket 09): both reduced-motion paths must stop the remaining
+  /* MO-002: both reduced-motion paths must stop the remaining
      decorative mood-eye loop, not clamp it to a 1ms flicker. */
   it('stops decorative infinite loops under both reduced-motion paths instead of clamping them', () => {
     const components = read('src/lib/styles/components.css');
@@ -114,8 +113,7 @@ describe('phase 2 accessibility seams', () => {
 
   /* This used to be the one place label association got checked at all - a
      grep against wrapped's two date fields, which is one screen's worth of
-     evidence for a pattern 131 call sites repeat by hand (phase 5 audit
-     ticket 10). tests/browser-tier/run.mjs's "field association" block is
+     evidence for a pattern 131 call sites repeat by hand. tests/browser-tier/run.mjs's "field association" block is
      what replaced it: Field.svelte mints the id and hands the same string
      to the label and the control, and that block renders several of them -
      an explicit id, two minted ones, a legend - and reads the DOM back to

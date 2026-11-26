@@ -1,5 +1,5 @@
 /* How a tryout mostly felt, as the adoption sheet sums it up before anyone
-   confirms (phase 5 deepening ticket 11). Adoption used to write this step
+   confirms. Adoption used to write this step
    onto the new milestone as a felt-sense reading; functional audit ticket
    32 cut milestone readings, so it is a line on the sheet and nothing more.
 

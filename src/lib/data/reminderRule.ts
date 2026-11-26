@@ -83,8 +83,7 @@ export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
 }
 
 /** The latest moment the rule fired at or before `at`, or null when it had
-    not fired yet. Which firing a Taken or Skip tap answers (functional
-    audit ticket 20): the tap can land after midnight, after quiet hours
+    not fired yet. Which firing a Taken or Skip tap answers: the tap can land after midnight, after quiet hours
     held the alarm, or days later, and the dose belongs to the occurrence's
     own day. JavaScript only - the alarm side never needs to look back. */
 export function previousOccurrence(rule: ReminderRule, at: Date): Date | null {

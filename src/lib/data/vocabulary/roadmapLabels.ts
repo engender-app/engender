@@ -1,30 +1,13 @@
-/* Wording for the transition roadmap (phase 4 ticket 23): a pack name,
-   and a title plus an optional note per goal. roadmap.ts holds
-   the keys and takes no paraglide, the same split builtins.ts and this
-   file's neighbour labels.ts keep (ADR-0002, ADR-0016).
+/* Localize pack names and goal titles, with optional procedural notes.
+   roadmap.ts contains stable keys without Paraglide (ADR-0002, ADR-0016).
+   An exhaustive title map catches a missing translation at typecheck.
 
-   The title map is a full Record over every bundled goal key, so a goal
-   added to a pack without wording is a typecheck failure rather than a raw
-   key on screen. Notes are Partial on purpose: a goal with nothing
-   procedural to add gets no note, since a forced one would be filler.
-
-   The Polish pack's legal and procedural wording was checked against
-   tranzycja.pl (the step-by-step guides on medical transition, the court
-   case and the USC name change), the Supreme Court's own announcement of
-   resolution III CZP 6/24 of 4 March 2025, the Ombudsman's guide to
-   ustalenie plci proceedings, and the relevant gov.pl pages, on the date
-   POLISH_PACK.reviewedOn records. What that check turned up is said out
-   loud rather than hidden: roadmap_caveat_pl names that there is still no
-   gender recognition statute and that whether identity alone grounds a
-   change is pending before the Supreme Court as III CZP 20/26, and
-   roadmap_marker_note_pl names that the recorded sex marker itself only
-   ever holds K or M, so no procedure produces a third value. Both are
-   their own strings rather than one long caveat, on docs/ui-copy.md's
-   sentence-count rule for an explanation.
-
-   Every item describes procedure. None of them tells anyone what to do
-   about their own case, which is the ticket's out-of-scope line and the
-   reason the notes carry deadlines and fees rather than recommendations. */
+   POLISH_PACK.reviewedOn dates the review against tranzycja.pl, Supreme
+   Court resolution III CZP 6/24 of 4 March 2025, the Ombudsman's ustalenie
+   płci guide, and gov.pl. The separate caveats record the law as reviewed:
+   no gender recognition statute, III CZP 20/26 pending on whether identity
+   alone grounds a change, and K/M as the only recorded marker values.
+   Notes cover procedure, deadlines and fees. */
 
 import { m } from '$lib/paraglide/messages';
 import { INSTITUTION_STATUSES, isOneOf } from '../rowValues';
@@ -150,7 +133,7 @@ const LEGACY_CATEGORY_NAME: Record<(typeof LEGACY_ROADMAP_TRACKS)[number], Messa
 export const roadmapCategoryName = (category: RoadmapCategory): string =>
   category.name || (LEGACY_CATEGORY_NAME[category.id as keyof typeof LEGACY_CATEGORY_NAME]?.() ?? '');
 
-/* The institutions (functional audit ticket 35). Every one has a note:
+/* The institutions. Every one has a note:
    each says who acts and on what, which is what somebody standing at that
    office needs. The notes for the ID card, passport and driving licence
    are the post-ruling steps' own, unchanged; the rest were checked against

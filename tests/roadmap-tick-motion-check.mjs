@@ -1,25 +1,10 @@
-/* Real-browser check for ux-carpet ticket 236: ticking a roadmap step used
-   to fill the box, draw the tick and strike the title in one frame - a
-   colour delta of 0.69-0.84 on `.roadmap-box` in a single frame, 3/3 dark
-   and 2/3 light in the final desktop sweep (2026-09-24). The fill, the
-   tick and the strike are all appearances, which the standing "no yanks
-   anywhere" clause says must animate, not cut.
+/* Sample rAF frames after ticking a roadmap step. Require at least
+   two intermediate values in border colour, tick opacity and scale,
+   and the done title's strike reveal. Read rendered styles to catch
+   cuts that fixed timeouts could miss.
 
-   What it proves, sampling every animation frame across the tap
-   (`requestAnimationFrame`, not a fixed wait - a fast CSS transition can
-   finish inside one setTimeout tick):
-   - `.roadmap-box`'s border-color passes through at least two colours
-     strictly between "empty" and "ticked" (the acceptance criterion, read
-     off the real computed style rather than eyeballed);
-   - the tick glyph's opacity and scale each pass through at least two
-     intermediate values, the same `.ap-tick` shape appointment-prep
-     already uses;
-   - the strike drawn through a done title (a clipped copy of the title
-     since after-release 28) also opens through at least two intermediate
-     values, rather than snapping from 0 to 1.
-
-   Run against a dev server (no build needed):
-     node tests/roadmap-tick-motion-check.mjs */
+   node tests/roadmap-tick-motion-check.mjs
+   Uses the dev server. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

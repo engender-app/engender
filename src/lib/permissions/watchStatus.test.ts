@@ -1,5 +1,4 @@
-/* The one way a screen keeps a permission status current (last-audit UI
-   ticket 41). A grant made in Android's settings changes the answer while
+/* The one way a screen keeps a permission status current. A grant made in Android's settings changes the answer while
    the app is in the background, so a screen that read once at mount kept
    saying "denied" after somebody had fixed it. */
 

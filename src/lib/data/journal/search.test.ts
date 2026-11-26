@@ -289,7 +289,7 @@ test('pagination and total count stay accurate with structured filters', async (
   assert.equal(total, 3);
 });
 
-/* Round trips, not milliseconds (ticket 07). Every driver call is one
+/* Round trips, not milliseconds. Every driver call is one
    serialized bridge crossing on Android (android-driver.ts), and a crossing
    costs tens of milliseconds whatever the SQL behind it does - so what makes
    search slow on a real phone is how many calls a page of hits takes, and

@@ -2,7 +2,7 @@
    reference.svelte directly rather than going through the validated
    accessor above it.
 
-   A grep, and it could not be anything else (ticket 08). An import ban is
+   A grep, and it could not be anything else. An import ban is
    a negative over every file in the tree - there is nothing to call that
    can answer "and nowhere else", which is the same reason
    disguise/identity.test.ts keeps one. */

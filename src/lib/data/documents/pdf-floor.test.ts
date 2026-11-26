@@ -1,5 +1,4 @@
-/* The one API pdf.js needs that the WebView floor does not have (phase 8
-   features ticket 55).
+/* The one API pdf.js needs that the WebView floor does not have.
 
    Run against a realm with `.at` taken away, which is the only way to
    watch the polyfill work: on the machine running this it is native on all

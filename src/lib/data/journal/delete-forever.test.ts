@@ -1,4 +1,4 @@
-/* Delete forever (functional audit ticket 46): a trashed entry can be purged
+/* Delete forever: a trashed entry can be purged
    now rather than after its 30 days, and the purge leaves no row and no file
    of it anywhere. Checked against the whole database and the whole file
    store, so a later table that keeps a copy of an entry fails here without
@@ -37,7 +37,7 @@ async function richEntry() {
 
 /** Every column of every table that holds the entry's rowid as an entry
     reference, its uuid, or its note. The deletion log is read on its own
-    below: it keeps the uuid on purpose (functional audit ticket 48). */
+    below: it keeps the uuid on purpose. */
 async function rowsOfEntry(driver: SqliteDriver, id: number, uuid: string): Promise<string[]> {
   const columns = await driver.query<{ tbl: string; col: string }>(
     `SELECT m.name AS tbl, p.name AS col FROM sqlite_master m JOIN pragma_table_info(m.name) p

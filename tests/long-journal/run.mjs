@@ -1,20 +1,7 @@
-/* The one- and ten-year benchmark (phase 2 ticket 20). Run with
-   `npm run benchmark:long-journal`.
-
-   Its own script rather than another block in tests/browser-tier/run.mjs,
-   and its own CI job. The run takes about 90 seconds, most of it writing the
-   fixtures, and it leaves about 390MB in the origin's storage. Folding it
-   into the browser tier would put that alongside every other probe's SAHPool for
-   the rest of that run, and add about 90 seconds to a suite that answers a
-   different kind of question. This one gates on timing rather than on
-   correctness, so a wobble here should not turn the correctness suite red,
-   and its log should be retrievable on its own. As a separate CI job it
-   also runs concurrently, which costs nothing in wall clock.
-
-   Two modes. By default it measures and fails on anything over budget or
-   scaling limit, which is what CI wants. With --record it prints the numbers in the shape
-   budgets.json wants and fails on nothing, which is what re-baselining on
-   new hardware wants. */
+/* Run the one- and ten-year benchmark with npm run benchmark:long-journal.
+   Its separate job keeps about 90 seconds and 390 MB of fixture work
+   outside the correctness tier. Default mode gates timing and scaling.
+   --record prints values for budgets.json without enforcing budgets. */
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -293,7 +280,7 @@ for (const m of measurements) {
   console.log(`  ${pad('', widest)}  ${m.detail}`);
   /* A screen mount's own line, because time is the least of what it says:
      the statements are round trips through a serialising boundary and the
-     bytes are what that boundary carries (phase 8 audit ticket 01). */
+     bytes are what that boundary carries. */
   if (m.statements != null) {
     const small = oneYear.measurements.find((measurement) => measurement.name === m.name);
     const counts = `1y ${small?.statements} statements, ${kb(small?.bytes)}; 10y ${m.statements} statements, ${kb(m.bytes)} across the driver seam`;

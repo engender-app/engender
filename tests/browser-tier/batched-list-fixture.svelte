@@ -1,6 +1,6 @@
 <script lang="ts">
-  /* A batched list inside a scroll region the size of a small screen
-     (phase 8 features ticket 66). The region carries the app's own
+  /* A batched list inside a scroll region the size of a small screen.
+The region carries the app's own
      `data-app-scroll-region`, because that is what the component roots its
      observer at - a fixture that left it off would be testing the viewport
      fallback rather than the thing the app runs. */
@@ -14,7 +14,7 @@
   }: {
     items: { id: string; title: string }[];
     key?: string;
-    /** A deep link's row index (phase 8 features ticket 67), passed straight
+    /** A deep link's row index, passed straight
         through to `BatchedList` - the probe's own way of mounting the same
         fixture as a screen would after finding a hash's row in its own
         ordered array. */

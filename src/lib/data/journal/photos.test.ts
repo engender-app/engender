@@ -313,7 +313,7 @@ test('the sweep reclaims a deleted PDF document’s file and its page', async ()
 
 test('mood cannot be cleared from an entry even with a photo still on it', async () => {
   const { journal } = await journalWithFiles();
-  // Mood is required unconditionally now (ticket 04): a photo does not
+  // Mood is required unconditionally now: a photo does not
   // exempt an entry from carrying one, so clearing it is rejected even
   // though the photo remains.
   const entryId = await journal.entries.upsertEntry({ epochDay: 20001, mood: 3 });
@@ -326,7 +326,7 @@ test('mood cannot be cleared from an entry even with a photo still on it', async
   assert.equal(entry?.photos.length, 1);
 });
 
-/* One query for the Progress screen (ticket 08, ADR-0008): entry photos and
+/* One query for the Progress screen (ADR-0008): entry photos and
    milestone photos are rows in the same table, so the screen that shows
    every photo in the journal chronologically is a query, not a union
    assembled in JavaScript. */

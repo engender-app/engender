@@ -1,27 +1,10 @@
-/* When a new release is allowed to take over (ticket 04, and the decision
-   ADR-0021 deliberately left to it).
+/* Offer a waiting service worker only while the journal is idle
+   (ADR-0021). Writes, migrations, encryption conversions and Archive
+   imports must finish before code swaps. Only a user action applies an
+   update, so going idle may show the notice but never reload the app.
 
-   The worker installs a new release quietly and then waits. Left alone the
-   browser would activate it whenever the last page using the old one goes
-   away, which is safe but can be weeks for an installed app that is never
-   fully closed. So the app asks - and the rule for when it may ask is the
-   whole point of this module:
-
-     - never while the journal is busy. A write, a migration, an encryption
-       conversion or an Archive import in flight means the code must not be
-       swapped, so nothing is offered and nothing is sent
-       (journal-busy.ts).
-     - only when a person acts. There is no timer and no automatic apply: a
-       reload the person did not ask for is an interruption whatever the
-       journal is doing.
-
-   That is also why the notice can appear on its own but never disappear into
-   an update: going idle is allowed to offer, and only a tap applies.
-
-   Rune-free, so the browser tier can drive it without the Svelte plugin
-   (tests/browser-tier/update-probe.ts) and the Node tier can drive its
-   decisions against a fake registration. UpdateNotice.svelte is the reactive
-   half, over onUpdateReadyChange. */
+   Keep this module rune-free for browser and Node probes.
+   UpdateNotice.svelte owns the reactive display. */
 
 import { SKIP_WAITING } from './sw-messages';
 import { onJournalBusyChange, journalIsBusy, prepareJournalHandover } from '../data/journal-busy';
@@ -132,7 +115,7 @@ export function watchForUpdates(registration: WatchedRegistration, updateEnviron
 /** Goes and asks the origin whether there is a newer release, and reports
     whether one is now waiting and could be applied.
 
-    What the rollback-refusal screen offers (ticket 04): older code has met a
+    What the rollback-refusal screen offers: older code has met a
     Journal a newer build already migrated, and the way out is to get that
     build back. The commonest cause is a service worker that is still serving
     the old release, which is precisely what this fixes; when the origin itself
@@ -170,23 +153,13 @@ export async function checkForNewerRelease(): Promise<boolean> {
   return registration.waiting != null;
 }
 
-/** Hands the app over to the waiting release: asks it to stop waiting, then
-    reloads once it has taken control and journal writes have finished.
-    Refuses activation if nothing is waiting or the journal is busy -
-    a quick log saved in the same moment as the tap is enough for that, and
-    the save is the thing that must not be interrupted.
+/** Ask the waiting worker to activate unless the journal is busy.
+    Wait for `controllerchange` before reloading so the new release
+    serves the page. Bound the wait for a worker that never takes over.
 
-    Waiting for `controllerchange` before reloading is what makes the reload
-    land on the new release: reload first and the old worker is still in
-    charge, so the page comes back on the old release and the notice with it.
-
-    It is waited for with a limit, though, because it is not this page's to
-    guarantee - an install that goes redundant, or a worker that never gets to
-    activate, would otherwise leave the button disabled for the rest of the
-    session with nothing on screen to say why. After either outcome the
-    journal owner waits for writes to finish before reloading. A failed write
-    cancels that attempt so its recovery remains available; a later tap can
-    finish the reload, even after worker takeover. */
+    Wait for journal writes after takeover or timeout. A failed write
+    cancels the reload so recovery stays available. A later tap can
+    finish it even if the worker has already taken control. */
 export async function applyUpdate(): Promise<boolean> {
   const waiting = watched?.waiting;
   if ((!waiting && !pendingReload) || !environment || applying || journalIsBusy()) return false;

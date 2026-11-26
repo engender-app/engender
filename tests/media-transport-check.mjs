@@ -1,31 +1,10 @@
-/* The four things a hand-built transport can quietly lose (phase 10
-   redesign ticket 46): the keyboard, the spoken position, full screen, and
-   working with the radio off.
+/* Check imported audio and video offline before playback. Match
+   Chromium's keyboard controls: Space and Enter toggle play, arrows
+   seek five seconds, and Home and End seek to the ends. Check scrubber
+   role, name, range, and aria-valuetext for position and duration.
+   Verify video enters full screen.
 
-   The native `<audio controls>` and `<video controls>` this replaced were
-   keyboard-operable and screen-reader labelled with nobody doing any work,
-   and that is the one thing a custom transport can quietly lose. So the
-   behaviour is checked against theirs rather than against what the new
-   component happens to do: in Chromium a media element's own transport
-   answers Space or Enter on the play control, moves five seconds on the
-   left and right arrows, and goes to the ends on Home and End. Each of
-   those is a line below, driven with the keyboard and nothing else, on a
-   real recording and a real video note imported through the app's own
-   picker.
-
-   The spoken part is checked too, because a slider whose value is "3.41" is
-   not a transport anybody can follow: the scrub carries a role, a name, a
-   range, and an `aria-valuetext` that reads as a position in a length.
-
-   Full screen and the offline check are here for the same reason: they are
-   behaviours the native elements had for free, and each is one line of this
-   file rather than a claim in a commit message. The page is put offline
-   before anything is played, so a player that had reached for a CDN - which
-   is what the libraries this ticket turned down do by default - would fail
-   here rather than in somebody's kitchen.
-
-   Run against a demo build:
-     VITE_DEMO=1 npm run build && node tests/media-transport-check.mjs */
+   VITE_DEMO=1 npm run build && node tests/media-transport-check.mjs */
 import { preview } from 'vite';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

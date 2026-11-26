@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-/* scripts/link-docs.mjs (functional-audit ticket 01). The docs live in a
+/* scripts/link-docs.mjs. The docs live in a
    private sibling git repo; every app checkout links them back at the old
    paths. These tests build a throwaway app repo and docs repo side by side in
    a temp directory and run the script with each checkout as the cwd. */

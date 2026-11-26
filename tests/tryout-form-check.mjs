@@ -1,27 +1,10 @@
-/* The tryout form and the current experiment (phase 11 pre-production UI/UX
-   ticket 43), against the built demo app in a real browser.
+/* Read the end-date field's accessible name and separate description.
+   Check kind chips wrap without clipping and all four work by keyboard
+   and touch at 320px. Save and reopen a tryout to check retention.
+   Long names stay within cards and an unlogged feeling has an empty state.
 
-   Three things a source grep cannot answer, so they are answered here:
-
-   1. What a screen reader is handed for a field whose help used to live
-      inside its label. The audit read the end-date field's name as
-      "EndedLeave blank if there is no end date." - one string, because the
-      hint was a span inside the <label> and Svelte trimmed the space in
-      front of it. The name and the description are separate elements now,
-      so this reads both back off the DOM the way a screen reader would.
-
-   2. Whether the kind picker keeps every label readable at phone widths.
-      Phase 15 ticket 05 replaces the scrolling track with wrapping chips.
-      Labels must fit inside their chips and the group without clipping.
-
-   3. That all four kinds are reachable at 320px by keyboard and by touch,
-      that creating, saving and reopening a tryout still keeps what was
-      typed, and that the cards tell each other apart: a name far longer
-      than the plate is wide stays inside the card, and a tryout nobody has
-      recorded a feeling against says so rather than going blank.
-
-   Run: VITE_DEMO=1 npm run build && node tests/tryout-form-check.mjs
-        (npm run test:tryout-form does both) */
+   VITE_DEMO=1 npm run build && node tests/tryout-form-check.mjs
+   npm run test:tryout-form runs both. */
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';

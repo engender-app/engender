@@ -1,33 +1,11 @@
-/* When leaving the app asks for its secret again (lock-timing ticket 01).
+/* Time a web leave from page visibility and an Android leave from the
+   activity. A web window that merely loses focus remains visible. Evaluate
+   timeouts on return because the background runtime may suspend. An
+   immediate lock engages on leave before the app switcher captures it.
 
-   The clock starts when the page is hidden - a switched tab, a backgrounded
-   app, a screen turned off - or, on Android, when the activity reports
-   leaving. A desktop window losing focus
-   while it is still on screen is not leaving, and used to lock the diary the
-   moment somebody clicked the window beside it.
-
-   The check happens on the way back rather than on a timer. A timer set while
-   hidden may never run, since a backgrounded WebView is suspended, and the
-   return is the first moment anything could be seen anyway. The one timing
-   that cannot wait for the return is `immediately`, which locks as the page
-   goes so the app switcher's thumbnail is taken of a locked screen.
-
-   On Android the activity is the only judge of leaving, and the page's
-   visibility is not listened to at all. A photo picker, the camera, a folder
-   picker and a permission dialog each cover the WebView and hide the page
-   while the person is still in the middle of something here, and only the
-   activity knows that it started them (MainActivity's own-system-UI window),
-   so it says so when it reports that leave. Under `immediately` such a leave
-   gets a minute of grace instead of a lock. Not unlimited grace, because
-   Home or Recents pressed on top of a picker never reaches this app at all:
-   the time on the picker is all there is to go on, and a picker open for
-   longer than a minute is treated as the person having gone. The screen
-   going off does reach the activity, picker or not, and locks as before.
-
-   Wall-clock time, not performance.now(): a monotonic clock can stop while
-   the device sleeps, which would under-count exactly the long absences this
-   is for. A wall clock can be moved instead, so time running backwards counts
-   as long enough rather than as none. */
+   Android gives its own picker, camera and permission screens up to one
+   minute under immediate timing. Screen-off still locks. Use wall-clock
+   time so sleep counts. A backward clock also expires the wait. */
 
 import type { LockAfter } from '../data/prefs/catalogue.ts';
 

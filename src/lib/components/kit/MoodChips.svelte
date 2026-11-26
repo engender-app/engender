@@ -1,45 +1,13 @@
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
-  /* The mood row: five moods, flush to the page with no container around it
-     at all.
+  /* The row draws five rounded-square mood faces with labels underneath.
+     The mood ramp clears 4.5:1 against --text (ADR-0025). The faces also
+     distinguish adjacent steps at 22px through mouth shape and eyelids,
+     so the picker does not rely on hue alone.
 
-     Each one is a step of the ramp with the face drawn in it, and the label
-     underneath. What it replaced was a filled tile with the label inside it
-     and the face drawn without its disc.
-
-     The face was a circle from 2026-08-25 ("the mood icon should always be
-     a circle. no chips.") until phase 10 carpet ticket 99 round 2 reversed
-     that (Alicja, 2026-09-09): it is now the same rounded square the entry
-     editor's picker uses (.mood-btn .mood-face).
-
-     The tile existed for a real reason, worth writing down because it is the
-     thing this now has to carry another way. ADR-0025's five steps are
-     literal hexes chosen so --text clears 4.5:1 on top of them - they are
-     built to be sat on - and on the dark theme they are all dark, so five of
-     them as small flat dots on a dark panel have very little separation from
-     each other or from the panel. A tile gave each step enough area to be
-     read as a colour.
-
-     What carries it now is the drawing rather than the area. Ticket 31 put
-     2.2 units of mouth or a change of curve direction between neighbouring
-     steps and gave the two ends of the ramp lids instead of dots, so a mood
-     is legible from its face alone at 22px - well under the 40 these are.
-     The colour is no longer the only thing telling the five apart, which is
-     what the tile was compensating for.
-
-     Selection is a ring outside the shape, which is the same answer the
-     editor's picker gives (DIRECTION.md, tier 3: a picked mood lifts and
-     takes its ring). It used to be the accent taking the tile's edge.
-
-     Labels come from the vocabulary rather than from a catalogue read here,
-     which is where every other mood label in the app comes from.
-
-     The handle is `data-mood`, which is what the entry editor's own picker
-     already carries: one concept, one handle (ADR-0029). This component had
-     a `data-mood-chip` of its own while it had no screen to live on, and
-     two names for "a mood option in a picker" is the drift the ADR exists
-     to stop - the walkthrough would have had to learn which of the two a
-     given screen happened to use. */
+     Selection lifts the face and draws a ring outside it. Read the labels
+     from the mood vocabulary and use data-mood, the entry editor's picker
+     handle (ADR-0029). */
   import { m } from '$lib/paraglide/messages';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { moodMagnifier } from '../moodMagnifier.svelte';

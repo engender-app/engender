@@ -1,4 +1,4 @@
-/* Section colour, from the flag (phase 5 ticket 20). Two things are worth
+/* Section colour, from the flag. Two things are worth
    holding to a number here.
 
    The de-duplication: a symmetric flag lists its stripes twice, so a screen
@@ -364,7 +364,7 @@ describe("kit.css's fallback ink", () => {
   }
 });
 
-/* The heat ramp in a role's hue (phase 5 ticket 22). The week strip already
+/* The heat ramp in a role's hue. The week strip already
    shades in the flag; the calendar's cells are the same reading on the same
    scale, and they carry a day number, which is the whole difficulty. The
    accent ramp got its on-colours by hand, one --on-heat-N per palette and

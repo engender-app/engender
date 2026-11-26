@@ -1,25 +1,10 @@
-/* Tryouts (phase 4 ticket 16, widened past name/pronoun by phase 5 ticket
-   13, CONTEXT: "Tryout"). Two tables, one area, since a tryout's own fields and
-   its photos belong to the same screen and nothing reads one without the
-   other.
+/* Store tryout fields and photos in one journal area. Search dated
+   entries through the usual date range. `feltSense.ts` owns feelings
+   both the tryout and entry editor can write.
 
-   Which entries fall inside a tryout's date range is not read through
-   here: it is an ordinary date-range search
-   (entries.searchEntries('', [], { startEpochDay, endEpochDay })), the
-   same filter the search screen's date chip already produces. This area
-   only owns what it alone writes - the tryout's own fields and its photos.
-
-   A tryout's felt-sense history lives in feltSense.ts instead (CONTEXT:
-   "Felt-sense entry"), which the entry editor writes as well as the
-   tryout screens.
-
-   Tryout photos are their own table (tryout_photo) rather than a third
-   owner arm on `photo`, the same reasoning procedures.ts gives for
-   procedure_photo: `photo`'s exactly-one-owner CHECK cannot be widened in
-   place (schema.ts). The shared pipeline is reused unchanged:
-   stagePhoto (photos.ts) writes the same normalized, metadata-stripped
-   bytes through the same file-before-row order, and removeFilesOf
-   reclaims them the same way on delete. */
+   Use `tryout_photo` because SQLite cannot widen the main photo
+   table's owner CHECK in place. Reuse the normalized file-before-row
+   pipeline and shared file removal. */
 
 import { assertOneOf, TRYOUT_KINDS } from '../rowValues';
 import { assertSpanOrdered } from '../span';
@@ -53,7 +38,7 @@ interface AdoptTryoutResult {
 }
 
 /** A tryout photo read without knowing whose it is, so it can say which
-    tryout it was taken for (phase 5 deepening ticket 21) - the same reason
+    tryout it was taken for - the same reason
     feltSense.ts's own day read carries its owner. */
 export interface TryoutPhotoOnDay extends TryoutPhoto {
   tryoutLabel: string;
@@ -69,8 +54,8 @@ export interface TryoutsArea {
   deleteTryout(id: string): Promise<void>;
   /** A tryout's photos, oldest first. */
   getPhotos(tryoutId: string): Promise<TryoutPhoto[]>;
-  /** The tryout photos taken on one day, whichever tryout they belong to
-      (phase 5 deepening ticket 21), each carrying that tryout's label.
+  /** The tryout photos taken on one day, whichever tryout they belong to,
+      each carrying that tryout's label.
 
       The photos and not the tryout: a tryout runs across a stretch of days
       and a day view says what happened on one, so what reaches it from here
@@ -91,8 +76,8 @@ export interface TryoutsArea {
   deletePhoto(id: string): Promise<void>;
   /** Adopts a tryout permanently: closes it on `endEpochDay` (defaults to
       today) and optionally mints a timeline milestone linked to it. The
-      milestone carries no felt-sense reading: a milestone holds none
-      (functional audit ticket 32). */
+      milestone carries no felt-sense reading: a milestone holds none.
+      */
   adoptTryout(id: string, options?: AdoptTryoutOptions): Promise<AdoptTryoutResult>;
 }
 

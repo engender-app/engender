@@ -3,7 +3,7 @@
    Years only where they carry information - the start's when it is not
    this year, the end's when it is not this year either. Here rather than
    on the door so a reading's screen can write the same line under its
-   title (phase 11 ticket 07). */
+   title. */
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from './dates';
 import { localDateFromEpochDay } from './epochDay';

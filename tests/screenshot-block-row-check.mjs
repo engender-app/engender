@@ -1,5 +1,4 @@
-/* The Settings > Security screenshot blocker, over a demo build (tester
-   report 02, ticket 02).
+/* The Settings > Security screenshot blocker, over a demo build.
 
    The row is Android-only and the web build has no Android behind it, so the
    Capacitor platform answer is swapped for the one navigation that mounts the

@@ -1,6 +1,6 @@
 import type { BuiltInPersonalEffectKey } from './builtins';
 
-/* Built-ins the functional audit pruned (ticket 23). They stay in the
+/* Built-ins the functional audit pruned. They stay in the
    catalogue (builtins.ts) and reconcile still seeds them, because a marker
    names its effect by key and an older archive may carry one: a retired
    effect somebody already marked keeps showing, and nobody is offered one

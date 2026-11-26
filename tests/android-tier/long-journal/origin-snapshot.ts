@@ -1,23 +1,9 @@
-/* What the long-journal probe leaves in the app's origin: nothing (ux-carpet
-   216).
-
-   The probe runs inside the app itself - LongJournalBenchmarkTest points the
-   app's own WebView at it with setServerBasePath - so it shares the app's
-   origin, https://localhost, and with it the app's OPFS and localStorage. The
-   benchmark's unlock measurement calls addJournalPassphrase, which writes
-   keystore.json into the OPFS root. On a phone whose journal is in unlocked or
-   device-bound mode that root is otherwise empty, and a keystore there turns the
-   next boot into a passphrase unlock for a passphrase nobody on that phone ever
-   set. That is how the Pixel's demo journal was lost on 2026-09-24.
-
-   So the probe takes a snapshot of both before it starts and puts them back
-   when it ends, whether it passed or failed: every top-level OPFS entry that was
-   not there before is removed, every file that was there gets its bytes back,
-   and localStorage is returned key for key. Directories that existed before are
-   left alone; the probe creates none.
-
-   Written against the two small shapes below rather than the DOM types, so the
-   Node tier can test it with fakes (origin-snapshot.test.ts). */
+/* Snapshot OPFS and localStorage before benchmarking in the app
+   WebView's origin. The unlock probe can write keystore.json that
+   would affect the next boot. Restore on success or failure: remove
+   new top-level OPFS entries, restore existing file bytes, leave
+   existing directories alone, and restore localStorage key for key.
+   The probe creates no directories. Node tests supply fakes. */
 
 export interface OriginFile {
   readonly kind: 'file';

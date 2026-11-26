@@ -30,7 +30,7 @@ describe('a query can wait for a condition before it runs', () => {
     expect(live).toMatch(/export function liveQueryWhen<T>\(when: \(\) => boolean, run: \(journal: Journal\) => Promise<T>\): LiveQuery<T>/);
     /* Before `++latest`, the way a query waits for the journal to open, so
        the run it eventually makes is still its first-ever attempt and keeps
-       that attempt's retry (ticket 161). */
+       that attempt's retry. */
     const opened = live.indexOf('if (!ready) return;');
     const waits = live.indexOf('if (!started && !when()) return;');
     expect(waits).toBeGreaterThan(opened);

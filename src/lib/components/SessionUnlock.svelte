@@ -1,30 +1,12 @@
 <script lang="ts">
-  /* Getting back in mid-session (ticket 53, replacing LockScreen's unlock
-     job).
+  /* Unlock with the access mode's own secret (ADR-0041). On web, locking
+     closes the database and drops its key, so one busy state covers both
+     derivation and reopening. Android retains its key. The PIN profile
+     accounts for one Argon2id derivation per re-entry.
 
-     It asks for the access mode's own secret and actually re-derives with
-     it, rather than comparing against a second, weaker secret kept around
-     to make re-entry cheap. That second secret was the app-lock PIN, and
-     ADR-0041 retires it: one word, one meaning. On the web the derived key
-     is also what opens the journal again, since a lock there closes the
-     database and lets go of the key (after-release ticket 10); the wait
-     for that reopen sits inside the same busy state as the derivation, a
-     few tens of milliseconds on top of it. Android's lock keeps its key and
-     does not reopen anything.
-
-     The price is one Argon2id derivation per re-entry, which is honest and
-     which the PIN profile was sized around (crypto/params.ts).
-
-     Four shapes, one per mode that has a secret: a passphrase field, a PIN
-     pad, Android's Keystore prompt, and the web biometric's own (ticket 55,
-     where the platform prompt is the secret exactly as Keystore's is). Web
-     device-bound mode has none, so it never reaches here - isLocked() is
-     false for it. The device-bound branch below still checks
-     isAndroid() itself even though isLocked() already guarantees it: a
-     button that calls Android's Keystore bridge is the wrong failure mode
-     for that guarantee ever breaking (final audit U2 - the gallery's own
-     `session-device` scene, retired, is what used to force the
-     combination on purpose). */
+     Web device-bound has no unlock prompt. Keep the isAndroid() guard
+     before calling the Keystore bridge even though isLocked() already
+     excludes web device-bound. */
 
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -53,7 +35,7 @@
 
   /* What every one of the four ways in below ends on: the app coming back,
      as the field opening from this screen's title onto the one Home draws
-     rather than this screen being replaced (redesign ticket 34).
+     rather than this screen being replaced.
 
      Here rather than inside `markUnlocked`, which the cold-start gates reach
      through the boot machine's own `mark-unlocked` effect: that path is
@@ -343,7 +325,7 @@
   {#if resetError}
     <!-- In the sheet, which stays open: the sheet is where the button was
          pressed, and closing it on a failure left the gate looking as if
-         nothing had happened (after-release ticket 09). -->
+         nothing had happened. -->
     <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
   {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">

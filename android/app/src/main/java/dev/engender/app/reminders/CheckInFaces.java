@@ -15,23 +15,13 @@ import dev.engender.app.disguise.DisguiseAlias;
 import dev.engender.app.launch.AppLaunch;
 
 /**
- * The five mood faces on the daily check-in notification (tester report 02,
- * ticket 05). A face answers "How are you today?" where the question is
- * asked: it opens a new entry for today with that mood already picked.
+ * Open today's entry with the selected mood, without writing it.
+ * Use the same launch route as the widget, with AppLaunch's nonce,
+ * allowlists and lock gate.
  *
- * <p>It only opens. Nothing is written and nothing is kept: the journal is
- * encrypted and a closed app has no key, and keeping the mood on the device
- * until the next unlock was turned down (2026-11-10). So a face is a launch
- * route like the quick-log widget's buttons, the same
- * /entry/new/today?seedMood=N, which goes through AppLaunch's nonce and the
- * launch-route allowlists on both sides, and waits behind app lock's gate
- * like every other route.
- *
- * <p>Each face is its own PendingIntent straight to the activity. Android 12
- * refuses a notification tap that starts an activity from a receiver or a
- * service, so there is no trampoline to dismiss the notification on the way:
- * the intent carries the notification's id and MainActivity dismisses it on
- * arrival (AppLaunch.dismissNotification).
+ * <p>Each face sends a PendingIntent directly to the activity.
+ * Android 12 blocks notification trampolines through receivers or
+ * services. MainActivity dismisses the notification by ID on arrival.
  */
 final class CheckInFaces {
 

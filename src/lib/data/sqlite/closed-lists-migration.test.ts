@@ -115,7 +115,7 @@ test('migrating a populated 92 keeps every row, child link and id counter, and c
   assert.deepEqual({ ...(hair as object) }, { area: 'chin', method: 'laser', pain_rating: 3, cost: '40 EUR', note: null });
 
   // Indexes survive the rebuild of their tables. The legacy-weekly trigger
-  // went with version 109 (functional audit ticket 08).
+  // went with version 109.
   const names = (db.raw.prepare(`SELECT name FROM sqlite_schema WHERE type IN ('index','trigger')`).all() as Array<{ name: string }>)
     .map((r) => r.name);
   for (const name of ['idx_hair_removal_session_epoch_day', 'idx_hair_removal_session_area', 'idx_tryout_start',

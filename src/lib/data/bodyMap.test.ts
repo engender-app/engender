@@ -1,4 +1,4 @@
-/* The rule the body map paints by (phase 10 redesign ticket 40): a region's
+/* The rule the body map paints by: a region's
    reading over a range is the side it mostly sits on, at the mean of that
    side alone. The other side is never subtracted, only not drawn. */
 

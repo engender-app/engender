@@ -1,24 +1,11 @@
-/* Transition-roadmap progress (phase 4 ticket 23, widened phase 5 ticket
-   20 for a "not my path" tri-state and custom goals; CONTEXT: "Roadmap
-   goal", "Country pack", "Custom"): which goals of which country pack
-   someone has ticked off, checked or ruled out, plus whatever goals they
-   added to a track themselves.
+/* Store bundled and custom roadmap goals separately (ADR-0002).
+   A bundled goal is keyed by pack and goal. Missing means unchecked
+   and visible. Remove its overlay when neither status nor visibility
+   is set. A custom goal always has its own row and `unchecked` status.
 
-   Two storage shapes for two identities, the same split ADR-0002 draws
-   between a built-in and a custom row. A bundled goal is named by its
-   pack and goal key and its row exists only because it has a status
-   or visibility recorded. No row means unchecked and visible. Clearing
-   either choice deletes the row only when neither choice remains. A custom
-   goal is the opposite: it is the user's own free text, so its row exists the moment
-   it is added regardless of its tick, and 'unchecked' is an ordinary
-   value of that same row's `status` column.
-
-   A custom goal's `track` column says where the goal sits. Functional
-   audit ticket 34 left one built-in group, the Polish legal steps, written
-   'legal', and gave the person categories of their own (roadmap_category),
-   whose uuid a goal in one of them holds. A goal written before the trim
-   under social, presentational or medical sits in a category migration 111
-   made for that track, its uuid the track key. */
+   A custom goal's `track` is `legal` for Polish legal steps or a
+   `roadmap_category` UUID. Migration 111 creates categories for
+   legacy social, presentational and medical tracks. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { CustomRoadmapGoal, InstitutionChange, RoadmapCategory, RoadmapGoalStatus, RoadmapInstitution } from '../types';
@@ -45,7 +32,7 @@ export interface RoadmapArea {
   addCustomGoal(text: string, track?: string): Promise<CustomRoadmapGoal>;
   setCustomGoalStatus(id: string, status: RoadmapGoalStatus): Promise<void>;
   /** The person's own words, so they can be changed after the fact
-      (phase 8 features ticket 69, ADR-0068). Throws on an unknown id the
+      (ADR-0068). Throws on an unknown id the
       way `setCustomGoalStatus` above it does. A milestone this goal minted
       keeps the name it was given on the day; only its provenance line
       moves, because that re-resolves through the join on every read. */
@@ -71,7 +58,7 @@ export interface RoadmapArea {
   deleteCategory(id: string): Promise<void>;
 
   /** Institutions the person added to the list of name and document
-      changes (functional audit ticket 35), in the order added. The built-in
+      changes, in the order added. The built-in
       ones are keys in roadmap.ts and have no row. */
   getInstitutions(): Promise<RoadmapInstitution[]>;
   /** Refuses a blank name: a nameless row has nothing to be told apart by. */

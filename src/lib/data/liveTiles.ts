@@ -1,5 +1,4 @@
-/* State-dependent live tile trigger predicates (phase 5 deepening ticket 03,
-   ADR-0039, ADR-0036), and - since phase 8 deepening ticket 07 - what Home's
+/* State-dependent live tile trigger predicates (ADR-0039, ADR-0036), and - since phase 8 deepening ticket 07 - what Home's
    grid is made of.
 
    Pure functions evaluating when Home's live tiles qualify to mount.
@@ -45,7 +44,7 @@ import type { AreaStates } from './areaState';
 import type { LetterSeal } from './journal/letters';
 
 /* ------------------------------------------------------------------------
-   Home's grid (phase 8 deepening ticket 07)
+   Home's grid
 
    Eleven tiles used to be eleven `{#if}` blocks in a route, each holding its
    own reads, its own preference gate and its own answer to "how many
@@ -90,31 +89,17 @@ export const LIVE_TILE_ORDER = [
   'ready-letter'
 ] as const satisfies readonly LiveTileKind[];
 
-/** How much of the screen a tile is worth (phase 8 UX ticket 01, ADR-0055).
-
-    Three bands rather than a number per kind, because the tier is what the
-    ordering and the three visual weights are both read off - a per-kind
-    priority would be a fourth thing to keep in step with them and would
-    still have to be bucketed to draw.
-
-    - `today` is true today and false tomorrow: a wear session running now.
-      An appointment on today's date is the agenda's today row since
-      functional-audit ticket 14, and a dose slot the day expects is the
-      dose panel's since ticket 15, not a tile of its own.
-    - `moment` is something that has happened and is waiting: a letter that
-      unlocked, a bad moment Safe Space can answer, the days after a
-      surgery.
-    - `dormant` is a thing nothing is asking for. No live tile sits there
-      since functional-audit tickets 05 and 14 cut the nudges and the tryout
-      tile; the tier stays so the next quiet nudge has a place.
-
-    The dose panel is a moment rather than bound to today on purpose. It
-    qualifies for as long as an episode is active, which would make it a
-    permanent full-width row. On a day a dose is due it rises to `today`,
-    the one kind whose band moves with the day: it took over that day from
-    the patch-schedule tile, which was a `today` tile of its own
-    (functional-audit ticket 15), and a dose due now drawn below the agenda
-    would be the screen's most urgent fact in its quietest place. */
+/**
+ * Tile bands set order and visual weight (ADR-0055).
+ * - today: a wear session running now. Today's appointments live in the
+ *   agenda and dose slots in the dose panel.
+ * - moment: an unlocked letter, a Safe Space offer, recent surgery or a
+ *   dose panel with an active episode.
+ * - dormant: reserved for a quiet nudge; no live tile currently uses it.
+ *
+ * The dose panel rises to today on a day with a dose due. This keeps a
+ * current dose above the agenda without making it a permanent wide row.
+ */
 type HomeTileTier = 'today' | 'moment' | 'dormant';
 
 /** The three bands, in the order Home draws them. */
@@ -148,7 +133,7 @@ export const HOME_TILE_CAP = 3;
     inside each one.
 
     Derived rather than written out a second time, and read by both the grid
-    and Today's editor (phase 11 ticket 04). The editor lists one switch per
+    and Today's editor. The editor lists one switch per
     kind in draw order, so a hand-kept second list there would be the order
     stated twice with nothing holding the two together - and `composeHomeTiles`
     below walks this rather than nesting the same two loops it is made of. */
@@ -158,7 +143,7 @@ export const LIVE_TILE_DRAW_ORDER: readonly LiveTileKind[] = HOME_TILE_TIERS.fla
 
 /** Whether a registered kind is one of the grid's, which is how a screen
     tells a tile the editor arranges from a notice or a notification it does
-    not (phase 11 ticket 04). Over the registry's own union rather than over
+    not. Over the registry's own union rather than over
     `string`, so a caller cannot ask it about a kind that does not exist. */
 export function isLiveTileKind(kind: UnpromptedKind): kind is LiveTileKind {
   return (LIVE_TILE_ORDER as readonly UnpromptedKind[]).includes(kind);
@@ -238,7 +223,7 @@ export interface HomeTileReads {
       same exception `safeSpaceDismissedEntryId` below is, and beside the
       running session it qualifies. Not `gate.enabled`: that switches the
       whole tile off, and this only decides whether the tile picks up the
-      eight-hour marker (ticket 50, ADR-0064). */
+      eight-hour marker (ADR-0064). */
   wearDurationCue: boolean;
   episodes: readonly RegimenEpisode[];
   procedures: readonly Procedure[];
@@ -299,7 +284,7 @@ export interface HomeTilesInput {
   nowMs: number;
   enabled: Record<LiveTileKind, boolean>;
   snoozed: Record<LiveTileKind, boolean>;
-  /** Which areas are hidden or finished (phase 8 features ticket 04). The
+  /** Which areas are hidden or finished. The
       grid takes the states rather than a third resolved `Record`, because
       which tile belongs to which area is the unprompted registry's to say
       and `unpromptedQuiet` is where that is read. */
@@ -321,7 +306,7 @@ interface TileGate {
     `LIVE_TILE_TIER`'s to say and `composeHomeTiles` stamps on - so no
     builder can disagree with the table the ordering reads. The dose panel
     is the one exception, and only upward: `dueToday` moves it to `today`
-    on a day its schedule expects a dose (functional-audit ticket 15). */
+    on a day its schedule expects a dose. */
 type TileBuilder = (gate: TileGate) => (Omit<HomeTile, 'tier'> & { dueToday?: boolean }) | null;
 
 /** What the dose panel states about one regimen: the episode, and the
@@ -331,8 +316,7 @@ interface PanelDose {
   next: { epochDay: number; amount: DoseScheduleAmount | null } | null;
 }
 
-/** The regimens Today's dose panel states, the one it leads with first
-    (functional-audit ticket 15).
+/** The regimens Today's dose panel states, the one it leads with first.
 
     The panel stands for every regimen the agenda would have drawn a
     `doseSlot` row for, which is what lets Today withhold that kind whenever
@@ -416,12 +400,11 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       if (!gate.enabled || gate.snoozed) return null;
       const active = activeEpisodesAt(reads.episodes, nowMs);
       if (active.length === 0) return null;
-      /* When the next one falls (phase 11 ticket 03), for every regimen the
+      /* When the next one falls, for every regimen the
          agenda would have drawn a row for. The panel is the dose's one home
          on Today - the agenda withholds its `doseSlot` rows while this tile
          is up (agendaReads.ts), and the patch-schedule tile that used to
-         stand beside it on a due day is folded in here (functional-audit
-         ticket 15) - so the day each schedule expects is stated here or
+         stand beside it on a due day is folded in here - so the day each schedule expects is stated here or
          nowhere.
 
          The dose owner pairs each episode's full tolerance window. An early
@@ -429,8 +412,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       const [lead, ...others] = panelDoses(input, active);
       const { episode, next } = lead;
       /* What the app did on the person's behalf yesterday, which the panel
-         states ahead of the next day it expects (phase 11 ticket 11,
-         ADR-0086). Ahead, not beside: the line holds one sentence, and on
+         states ahead of the next day it expects (ADR-0086). Ahead, not beside: the line holds one sentence, and on
          the morning after an auto-logged slot the fact worth reading is the
          row that was written without them, not a date they can work out
          from the schedule they wrote. */
@@ -477,8 +459,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       };
     },
 
-    /* The days after a surgery, and only those (functional-audit ticket
-       14). The agenda states the date while it is ahead and on the day
+    /* The days after a surgery, and only those. The agenda states the date while it is ahead and on the day
        itself, so a countdown here said it twice. Procedures not yet behind
        today are left out before the nearest is picked, so an upcoming one
        closer to today cannot hide the recovery that is running. */
@@ -561,8 +542,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
     here - the cap is `splitHomeTiles` below, so the fold has the tiles it is
     folding.
 
-    A tile whose area is hidden or finished never reaches its builder (phase 8
-    features ticket 04). Folded into `enabled` rather than added as a third
+    A tile whose area is hidden or finished never reaches its builder. Folded into `enabled` rather than added as a third
     field on the gate, because the two say the same thing to a builder - do
     not show - and the four builders with no predicate to pass a gate to would
     otherwise each need a second check. */

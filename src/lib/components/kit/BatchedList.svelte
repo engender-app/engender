@@ -1,44 +1,13 @@
 <script lang="ts" generics="T">
-  /* A list card that renders a batch at a time and grows as it is scrolled
-     (phase 8 features ticket 66, ADR-0069).
+  /* Render the log in batches so the scrollbar reflects the rows present
+     (ADR-0069). The sentinel adds rows without an entrance animation.
+     Keep the end control for keyboard use and lists with autoGrow=false.
+     Find-in-page and print see only mounted rows. Restore the batch count
+     for the path and list key before restoring scroll.
 
-     Why not simply render the whole log: on web the app draws a real
-     scrollbar, on `[data-app-scroll-region]` rather than on the window, and a
-     few hundred rows give it a thumb a few pixels tall. Growing the rendered
-     count keeps that bar honest about what is there. It is also why this is
-     not a virtual list - windowing renders a fixed count inside a spacer of
-     the full height, which gives the tiny thumb from the first frame and
-     makes the complaint permanent.
-
-     SCREENS.md rules infinite scroll out for `/search`, and that stands: a
-     person searching their own history is looking for one day, not grazing.
-     A log is grazing, which is the whole of the distinction (ADR-0069).
-     DIRECTION.md tier 4 refuses scroll-triggered reveals, and this is not
-     one: what the scroll triggers is rendering, and the rows are simply
-     there when they arrive.
-
-     The control at the end stays even with the sentinel, because a keyboard
-     reaches it, and the dose log (autoGrow false) grows only by it. Known
-     cost, accepted: a row not yet rendered is not in the DOM, so find-in-page
-     and print miss it, and that control is the way out. The batch count is
-     remembered per path and list key (scroll-region.ts) and restored before
-     the scroll position, or the region would be too short to land where the
-     person left it. This comment is where ADR-0069 lives now.
-
-     The caller keeps its own `{#each}` and its own key, over the slice this
-     hands it. That is deliberate rather than a row-shaped prop: the rows are
-     the screen's, they carry `{@const}` and handles and half a dozen kit
-     props, and a component that owned them would be re-describing every list
-     in the app.
-
-     The wrapper element around the card is load-bearing twice over. The
-     card's hairline is `.kit-row + .kit-row`, an adjacent-sibling rule, so
-     anything wrapped *inside* the card - a batch, say - loses the line where
-     one batch meets the next, and `display: contents` does not rescue that,
-     because sibling combinators read the DOM tree rather than the box tree.
-     And ticket 68 needs somewhere to hang a height animation that is not
-     `ListCard` itself, which every settings row in the app would otherwise
-     inherit. */
+     The caller owns row markup and keys. Keep the animation wrapper outside
+     the card. Adjacent rows need to remain siblings for .kit-row + .kit-row
+     to draw the hairline, even across batches. */
   import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
@@ -74,7 +43,7 @@
     /** The screen's rows, rendered over the slice that is showing. */
     rows: Snippet<[T[]]>;
     /** The index in `items` a deep link named, if the screen found one
-        (phase 8 features ticket 67) - the screen's own question, since it
+         - the screen's own question, since it
         already knows which row an id resolves to in its own ordered array.
         Expands the mounting render to include it in one step, over
         `restoredBatches` rather than replacing it: whichever asks for more
@@ -101,7 +70,7 @@
   let remaining = $derived(remainingCount(batches, items.length));
 
   /* When focusIndex resolves asynchronously after mount, expand batches so
-     the target row is rendered in the DOM for scrollToHash (phase 11 ticket 18). */
+     the target row is rendered in the DOM for scrollToHash. */
   $effect(() => {
     if (focusIndex !== null && focusIndex !== undefined && focusIndex >= 0) {
       const needed = batchesFor(focusIndex);

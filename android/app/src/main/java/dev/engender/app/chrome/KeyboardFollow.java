@@ -12,35 +12,15 @@ import androidx.core.view.WindowInsetsCompat;
 
 import java.util.List;
 
-/**
- * The app's window follows the keyboard frame by frame (tester report 02,
- * ticket 04).
+/** Resizes the edge-to-edge WebView with each keyboard animation frame.
  *
- * The app is edge-to-edge, so nothing resizes it for the keyboard on its
- * own: Capacitor's SystemBars listener pads the decor view's bottom by the
- * keyboard's height, and the WebView inside shrinks by that much. Window
- * insets are applied once per keyboard change, at the end state, so that
- * padding arrived in one step: on a Pixel 10a the page went from 923 to 564
- * css px in a single frame and the pinned "Save entry" jumped 335.6 px,
- * with up to six frames before that in which the rising keyboard covered it.
+ * <p>Capacitor writes the end-state inset. A later content-view listener
+ * reapplies each frame's animated inset before layout, clamped to the resting
+ * padding. Pinned controls move with the WebView. On animation end,
+ * Capacitor applies the resting inset again.
  *
- * The platform does report the keyboard's movement on every frame, to an
- * insets animation callback, with the keyboard's own inset for that frame.
- * This one sets the padding to that inset on each frame (never below where
- * the window rests), so the page's bottom edge rides on the keyboard's top.
- * Capacitor's listener keeps running mid-movement and would set the padding
- * back, so a listener on the content view, which the same pass reaches
- * after Capacitor's and before layout, puts the frame's value back. The
- * WebView resizes with the padding, so every pinned control and the focused
- * field follow the window as they do on any resize, with no code in the
- * page. When the movement ends Capacitor's listener is asked once more, so
- * what the padding rests at is still whatever it decided.
- *
- * Android 11 (API 30) is where the platform reports the keyboard's real
- * movement. Below that the compat library only simulates it, so nothing is
- * installed and the window resizes as it always has. With animations off
- * there is no movement to follow and the padding lands in one step, as the
- * keyboard itself does.
+ * <p>Install from API 30. Earlier APIs keep their previous resize behavior.
+ * With animations disabled, the final padding arrives in one step.
  */
 public final class KeyboardFollow {
     private KeyboardFollow() {}

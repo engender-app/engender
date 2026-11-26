@@ -1,7 +1,7 @@
 <script lang="ts">
-  /* Compare's tile on the Look back door (phase 11 ticket 07). The screen
+  /* Compare's tile on the Look back door. The screen
      is `/compare`, carrying the span, which opens on this span against the
-     same-length stretch before it (pre-release-human ticket 21).
+     same-length stretch before it.
 
      The headline is what /compare leads with: the scale that moved
      furthest for its range between the stretch before and this one,

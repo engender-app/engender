@@ -124,8 +124,7 @@ describe('which navigations cut instead of moving', () => {
 });
 
 describe('the routes with no tab bar over them', () => {
-  /* A new entry is a step in DIRECTION.md rule 15's sense (tester report
-     02, ticket 03): one purpose and no bottom bar. It is not chromeless in
+  /* A new entry is a step in DIRECTION.md rule 15's sense: one purpose and no bottom bar. It is not chromeless in
      the wider sense, because Today's retained doors have to stay mounted
      under it - it is where the app goes most often from Today. */
   it('is a new entry, on any day', () => {

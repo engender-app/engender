@@ -5,8 +5,8 @@
     <!-- viewport-fit=cover is what makes env(safe-area-inset-*) report anything
          but 0. Without it the browser letterboxes the page inside the display
          cutout and the insets read as zero everywhere, so the layout below has
-         nothing to consume - which is the shell defect SCREENS.md records
-         (phase 5 ticket 18). It also means the page now extends under the
+         nothing to consume - which is the shell defect SCREENS.md records.
+         It also means the page now extends under the
          status and navigation bars on all four sides, so app.css pads the
          scroll region back off every one of them rather than only the bottom. -->
     <!-- No maximum-scale, no user-scalable: the browser's zoom belongs to
@@ -81,8 +81,8 @@
         root.dataset.a11yMotion = boot.a11yMotionReduce || matchMedia('(prefers-reduced-motion: reduce)').matches
           ? 'reduce'
           : 'normal';
-        /* The tab icon, which is the mark in the flag the person picked
-           (ticket 50), and under disguise the neutral one instead. Set on
+        /* The tab icon, which is the mark in the flag the person picked,
+           and under disguise the neutral one instead. Set on
            every boot rather than only a disguised one: the document ships
            pointing at the default palette's file, so a person on any other
            flag would otherwise wear trans in the tab strip until the
@@ -192,22 +192,13 @@
       #splash rect { stroke: var(--splash-ink); }
       #splash.is-leaving { opacity: 0; }
       html[data-disguised] #splash i { display: none; }
-      /* The other half of the crossfade (Alicja, after-release ticket 31:
-         "splash with crossfade"). The app's screen waits under the first
-         frame and fades in on the same curve and length as the first frame
-         fades out, so no part of it sits at full opacity under a
-         half-transparent mark. The layer that fades is the app root, not
-         the body: the body carries the ground, so the ground never dims.
-         lib/splash.ts sets "leaving" with the answer and takes the
-         attribute off with the element.
+      /* Fade the app root in as the splash fades out on the same curve.
+         The body keeps the ground opaque. lib/splash.ts marks leaving
+         and removes it with the splash.
 
-         It waits at 0.004 under a mark at 0.996, not 0 under 1, which no
-         eye can tell apart (ticket 08). Blink does not paint a subtree at
-         opacity 0 and nothing under an opaque layer is rastered, so the
-         WebView met every GPU pipeline the screen needs on the fade's
-         first frame and stalled through it. This way the screen paints
-         while the mark holds still. Until the fade starts it takes no taps:
-         a control nobody can see yet must not open under the mark. */
+         Start at app opacity 0.004 and splash opacity 0.996 so Blink
+         paints the app and warms the GPU before the fade. Keep app
+         input disabled until leaving. */
       html[data-splash] [data-app-root] {
         opacity: 0.004;
         will-change: opacity;

@@ -5,40 +5,16 @@
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
-  /* One document (phase 8 features ticket 52, ADR-0065).
+  /* The detail route shows the full document (ADR-0065). Edit title
+     and date below the viewer. Search indexes the title and leaves
+     the page content unread. Use the document's date. detailDraft
+     tracks the route ID reactively because SvelteKit can reuse this
+     component.
 
-     This is the only screen in the app that draws a document's page at all.
-     The list behind it is deliberately text (ADR-0065), so the tap that
-     lands here is what the person chose to show themselves, and the image
-     follows its stored title, date and owner. Editable metadata stays
-     below the reader.
-
-     The two fields are editable for one reason: the title is the only
-     handle anything has on a document - the list shows it, search matches
-     it, the app never reads the page - so a typo in it is a document that
-     cannot be found again, and re-importing needs a file the person may no
-     longer have. The date is the same field the import asks for, and the
-     same reason it is editable there: paper is dated by when it was written,
-     not by when it was scanned.
-
-     Reached by id through `detailDraft`, which reads the route parameter
-     reactively - a `const id = page.params.id` goes stale when SvelteKit
-     reuses this component across two ids. There is no `new` here: a
-     document cannot exist before its file does, so it is always born on the
-     list screen's import.
-
-     A PDF (tickets 53 and 55, ADR-0065) shows its first page the same way,
-     from the thumbnail drawn once at import, and then the page itself as
-     the renderer finishes it - which is what the thumbnail is for: the
-     screen has something to show in the moment before a megabyte of
-     library has even loaded. Pages after that are turned here, and there
-     is no text layer on any of them (ADR-0065): what a document says is
-     not something this app reads.
-
-     It keeps its size and its export, which is the honest fallback for a
-     file the renderer cannot read: written back out unchanged through the
-     share sheet or a download (archive/deliver.ts), the only way this app
-     hands a file to anything outside its own encryption. */
+     PDFs show the stored first-page thumbnail while the renderer
+     loads, then render pages without a text layer. Keep size and
+     export available on render failure. archive/deliver.ts hands out
+     the unchanged file through share or download. */
   import { m } from '$lib/paraglide/messages';
   import { deleter } from '$lib/stores/attempt.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -84,7 +60,7 @@
 
   let confirming = $state(false);
 
-  /* What the document is filed under (ticket 56, ADR-0065). The four reads
+  /* What the document is filed under (ADR-0065). The four reads
      behind the name are documentTargets.svelte.ts's, shared with the picker
      the pencil opens, and they answer in three states rather than two: a
      read still in flight is not a target that is gone. */
@@ -117,27 +93,15 @@
     void replaceRoute(url, { noScroll: true, keepFocus: true });
   }
 
-  /* The page, drawn at whatever shape it is rather than through PhotoThumb.
-     That primitive is a fixed square tile with a caption across the bottom,
-     which is right for a grid of photographs and wrong for one sheet of
-     A4: it crops the letterhead off the top and repeats the title that is
-     already in the field below. So the read and the blob's lifetime are
-     here, the same two moves PhotoThumb makes, with the aspect left alone.
+  /* Preserve the page's aspect ratio with a local blob lifetime. Use
+     full-resolution images for enlargement. A PDF uses its import
+     thumbnail until a page renders. Resolve its thumbnail name through
+     the area because readThumbnail's extension rewrite can return the
+     PDF bytes as JPEG.
 
-     Images use their full stored resolution for enlargement. A PDF uses
-     its import thumbnail until the renderer has a page of its own. The
-     PDF thumbnail name comes from the area rather than readThumbnail,
-     whose extension rewrite would read the PDF bytes as a JPEG.
-
-     `fileName` is its own derived rather than `stored?.fileName` read
-     straight in each effect below: `stored` is a liveQuery answer, and a
-     table write anywhere else in the journal can hand back a new record
-     object for the same row. A derived's output is compared by value, so
-     an unchanged filename does not re-signal; read off `stored` directly,
-     both effects below reran on every such answer - measured on the
-     hydration sweep as the image flashing fully in and out inside 300ms
-     of the reader mounting (ticket 240), and it would have cost the PDF
-     path a second decrypt of its bytes for the same reason. */
+     Derive fileName by value. An unrelated journal write can emit a
+     fresh record for the same row. A stable filename prevents image
+     flashes and a repeated PDF decrypt. */
   let fileName = $derived(stored?.fileName);
   let pageUrl = $state<string | null>(null);
   let thumbnail = $state<HTMLImageElement | null>(null);
@@ -553,7 +517,7 @@
         {:else if isPdf && !unreadable}
           <!-- The count row is one library-open late; its place is held
                empty so the file's own block below does not step down when
-               the count arrives (ticket 240). Held at the one-page shape -
+               the count arrives. Held at the one-page shape -
                a count alone - so a multi-page document's chevrons still
                settle 24px lower, which no measurement has asked about. -->
           <div class="doc-pager one-page reserving" aria-hidden="true"><p class="doc-page-count"></p></div>
@@ -763,8 +727,8 @@
   /* The rendered page stands at the sheet's full height while the import
      thumbnail is shorter than that; holding the reader open at the same
      height while a PDF's first page is still rendering keeps the controls
-     below from stepping down when the page replaces the thumbnail
-     (ticket 240). */
+     below from stepping down when the page replaces the thumbnail.
+     */
   .doc-reader.reserving {
     height: var(--doc-sheet-height);
   }

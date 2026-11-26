@@ -52,7 +52,7 @@
     density?: readonly DensitySample[] | null;
     /** Two takes on one axis, back to back across a shared spine: the
         earlier read's shape to the left of it, the later read's to the
-        right (redesign ticket 42).
+        right.
 
         Its own prop rather than a second `density`, because it replaces the
         time plot rather than sitting beside one. Two traces stacked is what

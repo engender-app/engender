@@ -45,7 +45,7 @@ export function historyStart(
     rail is shorter than that.
 
     The day is today when the door opens, which is what this was written
-    for, and the day of a mark when somebody taps one (ticket 06): a mark is
+    for, and the day of a mark when somebody taps one: a mark is
     one day and one day is not a reading, so pointing at one asks for the
     same window the door itself opens on, ending there. */
 export function defaultSpan(railStart: number, endEpochDay: number): Span {
@@ -168,30 +168,13 @@ export function eraBands(
   return out;
 }
 
-/* ## The rest of the history (phase 11 ticket 06)
+/* Select RegimenEpisode and Tryout spans and Procedure days from
+   journal/chartAnnotations.ts, the shared dated-history query. The rail
+   draws eras and milestones separately, so omit duplicate annotations.
 
-   The rail drew two of the five dated histories the journal holds - the
-   eras as bands, the milestones as marks - and the reading people most want
-   from this door, "my moods over the HRT episode", was a stretch it could
-   not select. Two more record types carry a stretch (RegimenEpisode,
-   Tryout) and one carries a day (Procedure).
-
-   None of them is read here. `journal/chartAnnotations.ts` is already the
-   one query that asks every area what it has dated, and every one of these
-   is already in its answer - so the rail asks it over its own two days and
-   the functions below select. A fifth gatherer of dated history would have
-   been a second place for "what happened between these days" to drift.
-
-   What is deliberately dropped from that answer, and why: `milestone` and
-   `era`, which the rail already draws its own way and would otherwise draw
-   twice; `dosePause`, `appointment`, `finishedArea` and `suspendedArea`,
-   which are things inside an episode or a day in a stream rather than
-   stretches of the person's own history; `recovery`, which is a reading of
-   a procedure (Home's own cutoff) rather than a stretch anybody lived
-   through as its own thing - the surgery day is the fact, and it is drawn.
-   The journaling pause was a third lane until the sign-off renders (Alicja,
-   2026-09-16: "lets remove pauses from the strip"), and functional audit
-   ticket 08 cut the record altogether. */
+   Omit dose pauses, appointments and area completion or suspension:
+   they belong inside episodes or streams. Draw procedure days without
+   Home's derived recovery cutoff. The journaling pause was retired. */
 
 /** The two kinds of stretch the history layer draws under the eras. Not
     merged into one record type: `span.ts`'s header refuses that, and this
@@ -316,7 +299,7 @@ export function spanRangeQuery(span: Span): string {
   return `?from=${dateInputValueFromEpochDay(span.start)}&to=${dateInputValueFromEpochDay(span.end)}`;
 }
 
-/** Whether a settled span (redesign ticket 48) is due the "name this
+/** Whether a settled span is due the "name this
     stretch" offer, given the spans already handled - named or dismissed -
     this session. Never for a span overlapping one already handled, which is
     what keeps a handle nudged by a day, or a span narrowed inside the one
@@ -428,7 +411,7 @@ export function yearTicks(railStart: number, todayEpochDay: number): { epochDay:
 }
 
 /** The Look back door's active span across in-session visits and Back
-    restoration (phase 11 ticket 32). Plain module memory, cleared on reload. */
+    restoration. Plain module memory, cleared on reload. */
 let lastLookBackSpan: Span | null = null;
 
 export function getLastLookBackSpan(): Span | null {

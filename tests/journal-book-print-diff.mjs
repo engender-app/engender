@@ -1,29 +1,10 @@
-/* What the journal book actually prints, captured so two builds can be
-   compared (phase 12 final-audit ticket 20).
+/* Dispatch beforeprint, wait for file-store photos, then emulate print.
+   Record visible trimmed text and data-book-* boxes relative to the
+   printed root in document order. Compare JSON for the same range across
+   builds. Vite preview serves the current directory.
 
-   The ticket folds the pages away behind a disclosure that starts closed,
-   and the one thing that may not change is the document: the acceptance
-   asks for the printed output to be identical for the same range before and
-   after. So this drives the real print path rather than reading the markup -
-   it dispatches `beforeprint`, which is what the screen listens for, waits
-   for the photos to come off the file store, switches the page to print
-   media and then writes down everything that is still drawn.
-
-   What is written down, in document order:
-
-     text   every text run inside the app root that print media leaves
-            visible, trimmed.
-     boxes  every element carrying a `data-book-*` handle, with its position
-            and size relative to the printed root.
-
-   Run against a built tree in the current working directory:
-     node tests/journal-book-print-diff.mjs --tag after --out /abs/dir
-   `--tag before` wants the other checkout's build, and `vite preview` serves
-   the cwd rather than any root it is handed, so run it with that checkout as
-   the cwd (photo-grid-batching-gallery.mjs's own note):
-     node -e "process.chdir('/path/to/before'); process.argv.push('--','--tag','before','--out','/abs/dir'); import('/abs/tests/journal-book-print-diff.mjs')"
-
-   Then diff the two JSON files. */
+   node tests/journal-book-print-diff.mjs --tag after --out /abs/dir
+   node -e "process.chdir('/path/to/before'); process.argv.push('--','--tag','before','--out','/abs/dir'); import('/abs/tests/journal-book-print-diff.mjs')" */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

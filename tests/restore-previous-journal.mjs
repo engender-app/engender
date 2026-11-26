@@ -1,37 +1,17 @@
-/* After a migration fails on the web, the journal from before it comes back
-   (phase 12 ux-carpet ticket 219, ticket 04's safety net).
+/* Check that a failed web migration can restore its pre-migration journal
+   after boot has closed the worker. Recovery must check the copy and restore
+   it without depending on that dead connection.
 
-   boot() closes its driver when migrating fails, and closing the web driver
-   terminates its worker. The two things the failure screen does next both
-   went through that same connection: asking whether the pre-migration copy
-   is usable, and putting it back. After ticket 215 a dead worker refuses
-   rather than hangs, so the copy check answered "no copy" and the screen
-   never offered the restore at all; before 215 it waited forever.
+   Wrap the real worker to report schema 0 on its first read. This takes a real
+   VACUUM INTO copy and enters migration even when old schemas lack an upgrade
+   path. After the copy, stamp the live file with unsupported schema 1 and
+   refuse the first migration statement. Remove the wrapper before Restore.
+   A retry without restore must fail, proving the stamped file could not boot.
 
-   The failure is forced in the real journal worker, wrapped on its way in:
-   its first user_version answer is 0, so the runner takes the populated
-   journal for a first run, takes its pre-migration copy for real (VACUUM
-   INTO) and then the first migration statement after the copy is refused.
-   That is a migration failing after the copy exists, which is the case the
-   restore exists for. It used to answer one lower than the truth, but since
-   the v88 squash (after-release ticket 42) there is no step between the
-   baseline and the latest version, and a journal one short of the baseline
-   is refused before any copy is taken. The
-   wrapper is dropped before Restore is pressed, so the recovery and the boot
-   after it run on the stock worker.
+   Restore must boot from the copy and remove the offer. The probe also
+   checks silent completion of interrupted restore with schema 0 and a
+   readable copy, and five immediate Retry clicks against a slower control.
 
-   Right after the copy the wrapper also stamps the live file as schema 1,
-   which this build cannot boot, so "the restored journal boots" can only be
-   the copy coming back. A control run retries instead of restoring and has
-   to fail, which is what shows the stamp landed.
-
-   Checks: the failure screen offers the restore, pressing it reloads into a
-   journal that boots, and the copy is cleaned up by that boot (the offer
-   does not come back). Ticket 222 adds the interrupted restore (live file
-   at schema 0 beside a readable copy, finished without asking) and a retry
-   pressed in the frame its button appears, five times, against a slow one.
-
-   Against a demo build:
      VITE_DEMO=1 npm run build
      node tests/restore-previous-journal.mjs [--root <built tree>] */
 import { resolve, dirname } from 'node:path';

@@ -1,28 +1,10 @@
-/* Which tables each journal mutation writes, and a wrapper that announces
-   them once the write has landed (ticket 08).
+/* Classify journal operations by the tables they write. The journal wrapper
+   announces committed writes to the reference mirror and async readers
+   (ADR-0004), limiting refresh to queries that read those tables.
 
-   ADR-0004 splits reads by size: reference data is mirrored and entry data
-   is queried asynchronously. Both halves need the same thing from a write -
-   to be told what just changed - and neither should have to ask the screen
-   that performed it. A screen calling `journal.entries.upsertEntry` cannot
-   be relied on to remember that Home's list, the calendar and the stats
-   charts all read that table; miss one and it shows yesterday's
-   answer with no sign that it is doing so.
-
-   So the announcement is taken off the call sites and attached to the
-   journal itself. Everything above reads through the wrapper, and the
-   invalidation is as scoped as this table is precise: editing a lab result
-   leaves the entry queries alone.
-
-   Rune-free on purpose, like the journal below it (ADR-0017): the mapping is
-   the part with a rule in it, and the Node tier can only test what has no
-   `$state` in it. The reactive half is journal.svelte.ts, which supplies
-   `onWrite`.
-
-   Unclassified operations are rejected outright rather than assumed to be
-   reads. A read misfiled as a write costs a needless re-query; a write
-   misfiled as a read shows stale data forever, and the failure looks like a
-   Svelte bug rather than a missing line here. */
+   Reject unclassified operations. Treating an unknown write as a read
+   would leave stale data. This mapping stays rune-free for Node tests
+   (ADR-0017); journal.svelte.ts supplies the reactive onWrite callback. */
 
 import { markJournalBusy } from '../journal-busy';
 import { NOTHING_WRITTEN } from '../journal/nothingWritten';
@@ -76,8 +58,7 @@ export const TABLE_NAMES = [
   'milestone',
   'photo',
   'lab',
-  /* The dilation taper's schedule and its session log alike (phase 8
-     features ticket 12): nothing reads a session without knowing whether
+  /* The dilation taper's schedule and its session log alike: nothing reads a session without knowing whether
      there is a schedule to compare it against, the same reasoning 'dose'
      gives its own schedule and events. */
   'taper',
@@ -88,105 +69,104 @@ export const TABLE_NAMES = [
      adherence view needs all three - so splitting them would be precision
      no screen can use. */
   'dose',
-  /* Medication stock (phase 4 ticket 04). Its projection reads doses and
+  /* Medication stock. Its projection reads doses and
      regimen episodes too, but those are announced under their own names
      already - a stock-only screen re-running on a dose write is exactly
      the point. */
   'stock',
   'sideEffect',
   'personalEffect',
-  /* Cycle events (phase 5 ticket 03). */
+  /* Cycle events. */
   'cycleEvent',
-  /* The person's named eras (phase 6 ticket 01, ADR-0049). Its own name and
+  /* The person's named eras (ADR-0049). Its own name and
      not folded into 'entry', even though `getJournalBounds` reads the entry
      table: an era read has to re-run when an era is written, and an entry
      write already announces 'entry', so the two names together are what
      keeps a clamped range from going stale in either direction. */
   'era',
-  /* Which eras are muted (phase 6 ticket 05, ADR-0049). Its own name rather
+  /* Which eras are muted (ADR-0049). Its own name rather
      than folded into 'era': plenty of era reads (/compare, the calendar, a
      chart's boundaries) have no reason to re-run when a mute changes, and a
      mute write does not change anything `getEras()` itself returns. */
   'eraMute',
-  /* One name for hair-removal sessions and their photos alike (phase 5
-     ticket 08): nothing reads one without the other, the same reasoning
+  /* One name for hair-removal sessions and their photos alike: nothing reads one without the other, the same reasoning
      'dose' gives. */
   'hairRemoval',
-  /* Progress photos (pre-release-human 12, bug 25): one table, one name. */
+  /* Progress photos: one table, one name. */
   'progressPhoto',
-  /* One name for a procedure and its recovery photos (phase 5 ticket 07):
+  /* One name for a procedure and its recovery photos:
      nothing reads one without the other, the same reasoning 'dose'
      gives. A procedure's recovery checklist is not in here - that is an
      ordinary 'checklist' row, and a write to it has to invalidate the
      appointment prep list's reads too. Its consults are not in here either
      any more; they are 'appointment' rows below. */
   'procedure',
-  /* Appointments (phase 8 features ticket 57). Its own name rather than
+  /* Appointments. Its own name rather than
      folded into 'procedure', unlike the consults it grew out of: most
      appointments belong to no procedure at all, and the appointments screen
      has to re-read when one is written from the surgery journey - which a
      name shared with 'procedure' would give in one direction only. The
      procedure screen's own reads name both. */
   'appointment',
-  /* The person's own comfort list (phase 6 ticket 14). */
+  /* The person's own comfort list. */
   'comfortItem',
-  /* A tryout's own fields (phase 4 ticket 16). Its felt-sense history is
+  /* A tryout's own fields. Its felt-sense history is
      'feltSense' instead, below, so a screen that reads only the tryout's
      own fields is not made stale by every reading logged against it. */
   'tryout',
-  /* A felt-sense entry's own name (phase 5 ticket 24): the tryout screens
+  /* A felt-sense entry's own name: the tryout screens
      and the day view invalidate on a write to this table. */
   'feltSense',
-  /* Time-capsule letters (phase 4 ticket 19). */
+  /* Time-capsule letters. */
   'letter',
-  /* Voice recordings (phase 4 ticket 24). Its own name rather than folded
+  /* Voice recordings. Its own name rather than folded
      into 'entry' the way `tryout` folds two
      tables into one name: unlike those, a screen elsewhere - a future
      voice-notes browsing view, or ticket 25's compare mode - could read
      recordings without reading the rest of an entry, the same reason
      'photo' gets its own name instead of folding into 'entry' too. */
   'voiceRecording',
-  /* Voice benchmarks (phase 5 deepening ticket 15). Kept apart from
+  /* Voice benchmarks. Kept apart from
      'voiceRecording' for the same reason the table is: a benchmark and a
      memo are different records, and the benchmark surfaces - Home's nudge
      tile, the compare view - must not re-query every time an entry's voice
      memo changes, nor the reverse. */
   'voiceBenchmark',
-  /* Practice takes (phase 8 features ticket 10). Its own name and not
+  /* Practice takes. Its own name and not
      folded into 'voiceBenchmark': the two are different activities, never
      read together, and a practice save should not re-run a benchmark
      screen's own reads. */
   'voicePracticeTake',
-  /* Video notes (phase 5 ticket 22). Its own name rather than folded into
+  /* Video notes. Its own name rather than folded into
      'entry' or shared with 'voiceRecording', for the reason that one gives:
      a screen could read video notes without reading recordings or the rest
      of an entry, and a shared name would make every recording read stale
      whenever a video note changed. */
   'videoNote',
-  /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
+  /* Roadmap goal ticks. One name for every country
      pack's ticks: they live in one table and a screen shows one pack at a
      time, so there is nothing a per-pack name would let a query skip. */
   'roadmapCheck',
-  /* Custom roadmap goals (phase 5 ticket 20), kept apart from
+  /* Custom roadmap goals, kept apart from
      'roadmapCheck': a screen reading the custom goals someone added
      should not re-query just because a bundled goal's tick changed, and
      the reverse. */
   'roadmapGoal',
-  /* The person's roadmap categories (functional audit ticket 34), apart
+  /* The person's roadmap categories, apart
      from 'roadmapGoal' so that ticking a goal does not re-read the
      category names. */
   'roadmapCategory',
-  /* The institutions on the roadmap's list of name and document changes
-     (functional audit ticket 35), the added ones and the dated changes
+  /* The institutions on the roadmap's list of name and document changes,
+     the added ones and the dated changes
      together: no screen reads one without the other, the reason 'dose'
      gives for its own pair. */
   'roadmapInstitution',
-  /* Checklists and their items alike (phase 5 ticket 05): nothing reads a
+  /* Checklists and their items alike: nothing reads a
      checklist without its items, the same reasoning 'dose' gives. */
   'checklist',
-  /* The binder/tucking wear log (phase 5 ticket 04). */
+  /* The binder/tucking wear log. */
   'wearSession',
-  /* The body-region reference-data area (phase 5 ticket 30). An entry's
+  /* The body-region reference-data area. An entry's
      own body-region intensities are still announced under 'entry' - this
      is only the region rows themselves: built-in hide/unhide and a custom
      region being added. */
@@ -195,7 +175,7 @@ export const TABLE_NAMES = [
      CONTEXT: "Effect category") - tag_group's own semantics, over the
      effect vocabulary rather than tags. */
   'effectCategory',
-  /* The effect vocabulary itself (phase 5 ticket 41): the open catalogue
+  /* The effect vocabulary itself: the open catalogue
      'personalEffect' markers name, built-in and custom alike. Hiding or
      adding an effect type has not touched a single marker, and the reverse. */
   'personalEffectType',
@@ -206,29 +186,28 @@ export const TABLE_NAMES = [
      'tag' and 'entry_tag' get - resolving which presentation an id names is
      this table's business, not the entry's. */
   'presentation',
-  /* The import log (phase 7 ticket 03): its own name so the settings
+  /* The import log: its own name so the settings
      screen's `importLog` read does not re-run on every other write - only
      an import itself touches this table. */
   'importLog',
-  /* Which areas are hidden and which are finished (phase 8 deepening ticket
-     13, ADR-0052). Its own name rather than folded into any of the areas it
+  /* Which areas are hidden and which are finished (ADR-0052). Its own name rather than folded into any of the areas it
      speaks about: a hub row reading every area's state at once would have to
      re-run on a write to any of nineteen tables, and hiding an area has not
      touched a single record in it. */
   'areaState',
-  /* A margin note (phase 8 features ticket 07). Its own name and not
+  /* A margin note. Its own name and not
      folded into 'entry': the whole point of the feature is that a margin
      note and the entry it annotates are read and written apart, so an
      entry's own query must not re-run when a margin note changes, and the
      reverse - adding, editing or removing a note must not make every
      screen reading entries think the entry itself changed. */
   'marginNote',
-  /* The documents area (phase 8 features ticket 52, ADR-0065). Its own
+  /* The documents area (ADR-0065). Its own
      name rather than folded into 'photo': a document belongs to no entry
      and no milestone, so nothing that reads a photo reads one of these,
      and filing a diagnosis must not re-run every entry query in the app. */
   'document',
-  /* What this device has deleted (functional audit ticket 48). Written by a
+  /* What this device has deleted. Written by a
      trigger on every delete, which no SQL text names, and by an archive
      restore; read only by the archive snapshot. No screen shows it. */
   'deletion'
@@ -274,8 +253,7 @@ const HYDRATED_ENTRY: TableName[] = ['entry', 'dimension', 'tag', 'photo', 'voic
 /** Every operation each area offers, split by whether it changes anything.
     `writes` maps to the tables the operation writes; `reads` to the tables
     the operation reads - the same shape, because both halves answer the same
-    question and a screen should have to ask neither (phase 5 audit ticket
-    03). A read's list is what the read's own SQL touches, transitively
+    question and a screen should have to ask neither. A read's list is what the read's own SQL touches, transitively
     through the areas it composes: `stock.getProjections` reads the episode
     history through `regimen.getEpisodes`, so `regimen` is on its list.
 
@@ -303,7 +281,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
         'personalEffect',
         'cycleEvent'
       ],
-      // Trashes the entry rather than removing it (phase 5 ticket 19), but
+      // Trashes the entry rather than removing it, but
       // still takes it out of every other read here, the same as before.
       deleteEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
       // Brings a trashed entry, its photos, recordings and video notes back.
@@ -390,7 +368,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       // A milestone save can preserve, remove or replace its photo.
       upsertMilestone: ['milestone', 'photo'],
-      // Nulls a document's link to it (ticket 56).
+      // Nulls a document's link to it.
       deleteMilestone: ['milestone', 'photo', 'document']
     },
     // A milestone is read back with its photos on it, the same way an entry
@@ -415,7 +393,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       attach: ['photo', 'entry', 'milestone'],
       remove: ['photo', 'entry', 'milestone'],
       setStarred: ['photo', 'entry', 'milestone'],
-      // Changes which day the photo itself reads as (ticket 47), which both
+      // Changes which day the photo itself reads as, which both
       // reads below fold into what they hand an entry or milestone.
       setEpochDayOverride: ['photo', 'entry', 'milestone']
     },
@@ -423,7 +401,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // it hangs off.
     reads: { inJournal: ['photo', 'entry', 'milestone'] }
   }),
-  /* The library across all six photo-carrying tables (phase 11 ticket 14),
+  /* The library across all six photo-carrying tables,
      and reads only - every one of those tables is written through the area
      that owns it, which announces its own name. So the names here are the
      ones whose rows the union reads: the six tables plus `entry` and
@@ -460,7 +438,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     }
   }),
   /* One table and one owner - itself - so unlike `photos` above there is no
-     second name to announce (phase 8 features ticket 52). The day view and
+     second name to announce. The day view and
      search reach these rows through their own registries, whose tables are
      folded in from `DAY_TABLES` and `SEARCH_TABLES` rather than listed
      again here. */
@@ -483,7 +461,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   // Read-only, the same reason exposure and stats are: a recording's row is
   // owned by upsertEntry/deleteEntry (voiceRecording is already announced
   // there), and this area only reads it back dated for the compare picker
-  // (ticket 25).
+  //.
   voice: classify<Journal['voice']>()({
     writes: {},
     reads: { inJournal: ['voiceRecording', 'entry'], lastWriteEpochDay: ['voiceRecording', 'entry'] }
@@ -641,8 +619,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
      'procedure': the recovery checklist is an ordinary checklist row, so a
      screen watching checklists has to hear about it.
 
-     The consult pair writes 'appointment' rather than 'procedure' (ticket
-     57): it is an appointment row now, and the appointments screen has to
+     The consult pair writes 'appointment' rather than 'procedure': it is an appointment row now, and the appointments screen has to
      hear about one added from the surgery journey. deleteProcedure writes
      both, because the cascade takes that procedure's appointments with it.
      Every read that shows a consult names both tables for the same reason. */
@@ -682,7 +659,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // reads one without the appointment it belongs to (sqlTables.ts).
       addStatusUpdate: ['appointment'],
       deleteStatusUpdate: ['appointment'],
-      // A provider too (ticket 27): nothing reads one except as an
+      // A provider too: nothing reads one except as an
       // appointment's who, and renaming one redraws every row naming it.
       upsertProvider: ['appointment'],
       deleteProvider: ['appointment']
@@ -727,7 +704,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       upsertTryout: ['tryout'],
       // Takes its felt-sense history along too, and unlinks any milestone
       // it was adopted into rather than leaving its tryout_uuid dangling
-      // (phase 5 deepening ticket 22, ADR-0045).
+      // (ADR-0045).
       deleteTryout: ['tryout', 'feltSense', 'milestone'],
       addPhoto: ['tryout'],
       deletePhoto: ['tryout'],
@@ -753,7 +730,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       forTryout: ['feltSense', 'tryout'],
       // Keyed by the tryout's own uuid, so the owner table is joined the way
       // `forTryout` joins it.
-      // The same join, every tryout at once (ticket 53).
+      // The same join, every tryout at once.
       byTryout: ['feltSense', 'tryout'],
       // The tryout's label travels on a day's rows.
       onDay: ['feltSense', 'tryout'],
@@ -834,13 +811,13 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       upsertDose: ['dose'],
       deleteDose: ['dose'],
-      // A schedule's reminders follow it (functional audit ticket 21).
+      // A schedule's reminders follow it.
       upsertSchedule: ['dose', 'reminder'],
       // Only ever removes reminders whose episode has ended.
       reconcileDoseReminders: ['reminder'],
       upsertPause: ['dose'],
       deletePause: ['dose'],
-      // The auto-log pass writes dose rows and nothing else (ticket 11).
+      // The auto-log pass writes dose rows and nothing else.
       autoLogDueDoses: ['dose']
     },
     // A schedule and a pause both hang off an episode, and are read back
@@ -886,7 +863,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   /* Read-only for the same reason exposure below is: an annotation is
      selected out of seven other areas' rows on every read and stored nowhere
-     (ADR-0010, phase 5 deepening ticket 23). One table per area behind it -
+     (ADR-0010). One table per area behind it -
      'dose' covers the pauses, which is where DosePause lives. 'era' joined
      in phase 6 ticket 03, for the boundary a bounded era's start draws. */
   chartAnnotations: classify<Journal['chartAnnotations']>()({
@@ -895,7 +872,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       /* 'areaState' since phase 8 features ticket 04: the day a stream
          ended draws beside the seven kinds above. */
       // 'appointment' because getProcedures reads it for a journey's
-      // consults (ticket 57), not because an appointment draws a mark of
+      // consults, not because an appointment draws a mark of
       // its own - that is ticket 59's.
       getAnnotations: [
         'milestone',
@@ -916,7 +893,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: { getCounters: ['dose', 'regimen'] }
   }),
   /* Read-only, the same reason exposure is: a clinician summary assembles
-     rows other areas own and stores nothing of its own (phase 4 ticket 12).
+     rows other areas own and stores nothing of its own.
      Its table list is the union of the section registry's own
      (CLINICIAN_SUMMARY_TABLES above), and a test fails when a section's
      tables leave it, so a summary cannot go stale on a write to an area
@@ -959,7 +936,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   // Read-only, the same reason clinicianSummary is: a book is assembled
   // from entries, milestones, side effects and a recap on every read and
-  // stored nowhere (phase 5 ticket 17). It has never read the doubt journal,
+  // stored nowhere. It has never read the doubt journal,
   // which this comment used to claim it did.
   journalBook: classify<Journal['journalBook']>()({
     writes: {},
@@ -981,7 +958,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       daySpread: ['entry', 'dimension'],
       /* The constellation reads both scales through the dimension
          vocabulary the same way, and carries the entry's presentation, so
-         renaming a mode has to reach it (ticket 19). */
+         renaming a mode has to reach it. */
       constellationReadings: ['entry', 'dimension', 'presentation'],
       constellationPairs: ['entry', 'dimension'],
       bodyRegionTrend: ['entry'],
@@ -1001,12 +978,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     }
   }),
   // Read-only, the same reason exposure is: a card is recomputed from
-  // stats, the dose log and dimensions on every read (phase 4 ticket 21).
+  // stats, the dose log and dimensions on every read.
   correlationCards: classify<Journal['correlationCards']>()({
     writes: {},
     reads: { getCards: ['entry', 'dimension', 'tag', 'dose'] }
   }),
-  /* An import rewrites the journal (ticket 14), so it invalidates all of it -
+  /* An import rewrites the journal, so it invalidates all of it -
      every query and every mirrored slice. Naming the tables one at a time
      would be a list to keep in step with what a restore happens to touch,
      and a Replace touches everything by definition. */
@@ -1033,7 +1010,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
 
 /* The operations that are the journal's rather than an area's, and so have no
    entry in the map above: reconciling the built-in vocabulary, and emptying
-   the journal of every row (phase 5 audit ticket 13). Both are classified
+   the journal of every row. Both are classified
    where they are wrapped instead - one against the reference tables
    reconcile.ts names, the other against all of them.
 
@@ -1060,7 +1037,7 @@ const BY_NAME = OPERATIONS as unknown as Record<
     resolves - never before, and never when it rejects: a write that threw
     changed nothing, so nothing that read those tables is stale.
 
-    Each mutation also holds the update guard while it runs (ticket 04), which
+    Each mutation also holds the update guard while it runs, which
     is why this wrapper is where that belongs: it is the one place that knows
     which operations are writes, so a service worker cannot take over under
     one that a later ticket adds. An Archive import comes free, being a
@@ -1072,7 +1049,7 @@ const BY_NAME = OPERATIONS as unknown as Record<
     the same change from outside the journal handle: boot's trash purge
     finishes the delete `deleteEntry` starts, over the driver rather than
     through the wrapper, and still has to invalidate what that write
-    invalidates (phase 5 audit ticket 02).
+    invalidates.
 
     Here rather than as a second list at the call site, for this file's own
     reason: a table added to an operation above must not need a second edit
@@ -1095,8 +1072,7 @@ export function isJournalCommand(area: string, operation: string): boolean {
 
 /** The tables one classified read depends on, for the caller this half of the
     registry exists for: `liveQuery` resolves a query's dependencies from the
-    operations its closure called, so no screen declares a table (phase 5
-    audit ticket 03).
+    operations its closure called, so no screen declares a table.
 
     Throws on anything that is not a declared read - a write among them. A
     query closure that performs a write is a bug in the closure, and it should

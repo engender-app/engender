@@ -1,49 +1,17 @@
-/* The regression budget (phase 2 ticket 20), and the rule for reading it.
+/* The ten-year journal suite records three times per measurement.
+   baselineMs is the recorded fixture run on the host named in budgets.json.
+   budgetMs is the CI limit, derived from the baseline by budgetFor().
+   targetMs is the maximum acceptable wait. A baseline above its target
+   needs investigation. Housekeeping has a looser target because it runs
+   off the screen's critical path.
 
-   Three numbers per measurement, each with a different job:
+   The 200ms floor and 5x multiplier absorb shared-runner timing variability.
+   The user target caps that allowance where one exists. CI fails when a
+   measurement has no budget so new measurements always get coverage.
 
-     baselineMs           what the ten-year run actually measured, on the
-                          machine and browser named in budgets.json.
-     budgetMs             what CI fails on: five times the baseline, with a
-                          200ms floor. Set that far above the baseline
-                          because the baseline came off a quiet desktop and
-                          the gate runs on a shared ubuntu-latest runner,
-                          which is the slower machine by an unknown factor.
-                          A gate that trips on that difference gets disabled
-                          within a week. This one is here to catch a
-                          pagination-shaped regression - work that grew with
-                          the journal, which arrives as a multiple rather
-                          than a percentage - not noise. If CI turns out to
-                          be quieter than feared, re-record from a CI run
-                          and tighten it; widening it further is not the
-                          answer.
-     targetMs             what a person waiting for that screen can stand.
-                          Nothing to do with the baseline. A measurement
-                          whose baseline is over its target is a release
-                          problem and gets its own ticket with the
-                          measurement attached; optimization is not this
-                          ticket's job. The two housekeeping passes get a
-                          loose one on purpose: nothing on screen waits for
-                          them since phase 5 audit ticket 02, so what their
-                          target asks is whether the pass is still small
-                          enough to run in one go on an idle machine.
-
-  Memory is intentionally not watched here.
-
-  The desktop probe can be launched with flags that expose gc() and
-  performance.memory, but Android WebView does not expose those in this
-  harness. That leaves one platform sampling and one not, and the sampled
-  deltas swing with collector timing enough to be noisy (the same fixture
-  produced 58.4MB and then 7.5MB for Archive export). A noisy gate gets
-  switched off, and a one-platform gate gives false confidence.
-
-  If this suite starts watching memory again, it needs one stable
-  measurement API that works in both harnesses without launch-only flags,
-  then a rerun on device to set real baselines.
-
-   A measurement with no entry here is a breach rather than a pass. The
-   alternative fails open: adding a measurement to measure.ts and
-   forgetting the budget would leave CI quietly not watching it. */
+   Memory stays out of the gate until both desktop and Android WebView can
+   measure it without special launch flags and with repeatable baselines.
+   Collector timing made previous readings too variable. */
 
 import { readFileSync } from 'node:fs';
 

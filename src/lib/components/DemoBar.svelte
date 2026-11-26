@@ -33,25 +33,14 @@
     prefs.theme = t;
   }
 
-  /* One state jump at a time (ticket 135). A jump is a journal clear and a
-     reseed through the worker, a second or more of writes, and the seed
-     writes presentations before the entries that name them. A second jump
-     starting inside the first deletes those presentations between the two
-     steps, `assertKnownPresentation` throws, and what is left is a journal
-     missing whatever the persona had not written yet - with nothing on
-     screen to say so.
+  /* Serialize demo jumps. Each clears and reseeds the journal.
+     Interleaving can delete presentations before entries use them
+     and leave a partial seed.
 
-     `data-demo-busy` on the bar is the signal that means finished, and the
-     reason it has to exist: `[data-home-hello]` is already on screen when
-     the button is clicked, and `/more` is reached by the goto that runs
-     after the seed, so a harness waiting on either was waiting on
-     something that was already true. The disabled state is the same answer
-     for a person with a mouse.
-
-     The two jumps that `goto` hold it until the navigation lands, so the
-     screen a harness reads is the one the jump meant. The five-weeks jump
-     reloads instead, and `location.assign` returns before it does, so its
-     window ends at the call and the document goes away a moment later. */
+     data-demo-busy and disabled controls cover writes and awaited
+     navigation. A harness must wait for busy to clear because target
+     markup can already exist. The five-week jump ends at
+     location.assign, which returns before the reload. */
   let busy = $state(false);
   async function stateJump(run: () => Promise<void>) {
     if (busy) return;
@@ -164,7 +153,7 @@
     >
   </div>
   <!-- A handle like its two neighbours below, so a harness grips this the
-       way it grips them rather than by matching the label (ticket 135). -->
+       way it grips them rather than by matching the label. -->
   <button
     class="demo-btn"
     data-reset-demo
@@ -227,8 +216,7 @@
 
 <style>
   /* Lived in styles/app.css, which ships. Here it belongs to the component,
-     so a production build that drops DemoBar drops its styling too (ticket
-     05) - verify-build.mjs greps the emitted CSS as well as the JavaScript.
+     so a production build that drops DemoBar drops its styling too - verify-build.mjs greps the emitted CSS as well as the JavaScript.
      Every selector reaches outside this component, hence :global(). */
   :global(body.has-demo-bar) { display: flex; flex-direction: column; height: 100dvh; }
   :global(body.has-demo-bar .app-viewport) { flex: 1; min-height: 0; }
@@ -251,7 +239,7 @@
   }
   :global(.demo-btn:hover) { background: light-dark(#e8e4df, #45403a); }
   /* A state jump is a second or more of writes and nothing else may start
-     one while it runs (ticket 135), so say so rather than swallowing the
+     one while it runs, so say so rather than swallowing the
      click in silence. */
   :global(.demo-btn:disabled), :global(.demo-jump select:disabled) { opacity: 0.45; cursor: progress; }
   :global(.demo-btn:disabled:hover) { background: none; }

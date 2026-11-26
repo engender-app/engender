@@ -29,7 +29,7 @@ import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInpu
 interface StockEntryInput {
   /** The entry being edited. With it the row is matched by id, so a new
       drug name renames that row rather than starting a second one beside
-      it (after-release ticket 01). Without it the row is matched by drug,
+      it. Without it the row is matched by drug,
       as before. */
   id?: string;
   drug: string;
@@ -48,11 +48,10 @@ interface StockEntryInput {
       01). Optional and defaulted to null, so every caller before this ticket
       keeps working unchanged. */
   leadTimeDays?: number | null;
-  /** Doses one unit holds (after-release ticket 01). Optional and defaulted
+  /** Doses one unit holds. Optional and defaulted
       to null, one dose per unit. */
   dosesPerUnit?: number | null;
-  /** The supply held now: when it expires and where it came from (functional
-      audit ticket 47). Optional and defaulted to null; like the opened date
+  /** The supply held now: when it expires and where it came from. Optional and defaulted to null; like the opened date
       they are what the editor resubmits, so a count that leaves them out
       clears them. Blank text is stored as null. */
   expiryEpochDay?: number | null;
@@ -163,7 +162,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
     all.find((reminder) => reminder.autoSource === autoSourceFor(drug)) ?? null;
 
   /* Every drug's projection as of `asOfEpochDay`, from counts rather than
-     from the doses counted (phase 8 audit ticket 26). Someone whose oldest
+     from the doses counted. Someone whose oldest
      count was taken years ago used to have their whole dose log crossed the
      seam here so that three numbers per drug could be reduced out of it -
      the single largest thing Home read on arrival.

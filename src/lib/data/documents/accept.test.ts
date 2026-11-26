@@ -1,5 +1,4 @@
-/* The accept/refuse boundary and the size ceiling (phase 8 features ticket
-   53) - both pure predicates over bytes, so both run at the Node tier with
+/* The accept/refuse boundary and the size ceiling - both pure predicates over bytes, so both run at the Node tier with
    no canvas at all.
 
    normalizePhoto() itself needs a real decoder (photos/normalize.ts's own

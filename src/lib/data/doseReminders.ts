@@ -29,7 +29,7 @@ const DAILY = (time: string): DoseReminderRule => ({ time, recurrence: 'DAILY', 
     Every-N-days counts from the episode's start, the same anchor the
     expected slots use (doseSchedule.ts), so a reminder rings on the days a
     dose is expected. A reminder has no weekday rule since the WEEKLY branch
-    went (functional audit ticket 08), so each chosen weekday is its own
+    went, so each chosen weekday is its own
     every-7-days rule anchored on the first such day from the start; all
     seven is simply daily. */
 export function doseReminderRules(

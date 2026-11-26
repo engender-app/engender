@@ -1,4 +1,4 @@
-/* Replace and merge (ticket 14), the most destructive path in the app.
+/* Replace and merge, the most destructive path in the app.
 
    Every test here restores between two journals over real SQLite, and the
    archive it restores is a real snapshot rather than a hand-written payload:
@@ -138,7 +138,7 @@ async function populated() {
   /* Saved after the injection above, so it carries a frozen day-of-interval
      the importing device could not work out for itself: the result travels
      without any promise that the dose log it was measured against travels
-     with it, or ever existed there (ticket 03). */
+     with it, or ever existed there. */
   await journal.labs.upsertResult({
     epochDay: epochDayFromTimestamp(1_700_000_000_000) + 4,
     analyte: 'estradiol',
@@ -307,7 +307,7 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal(restoredMilestones[0].description, 'the pharmacist barely looked up');
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
   /* The dosing context comes across as it was recorded, not re-derived
-     against this device's dose log (ticket 03). */
+     against this device's dose log. */
   const [restoredLab] = await target.journal.labs.getResults('estradiol');
   assert.equal(restoredLab.drawTime, '07:40');
   assert.equal(restoredLab.provider, 'Diagnostyka');
@@ -651,8 +651,7 @@ test('a tag merged into a group this device already has lands after the tags in 
   assert.deepEqual(emotions.tags.slice(-2).map((t) => t.label), ['restless', 'wired']);
 });
 
-/* Merge takes the newer of the two copies of a built-in row (functional
-   audit ticket 48): the source's group and tag settings, made after the
+/* Merge takes the newer of the two copies of a built-in row: the source's group and tag settings, made after the
    target seeded its own, and the target's own rename, made after the
    source's. */
 test('replace applies the state the archive put on built-in rows; merge takes the newer copy of each', async () => {
@@ -1235,7 +1234,7 @@ test.each(['replace', 'merge'] as const)('%s waits for successful delayed attach
   assert.equal(seen.findIndex((progress) => progress.stage === 'rows'), contents.fileCount);
 });
 
-/* Emptying the journal (phase 5 audit ticket 13). One operation, not a list
+/* Emptying the journal. One operation, not a list
    each caller walks: a Replace runs it before it installs an archive's rows,
    and the demo bar's state jumps run it on its own. Its order comes from the
    section registry, reversed - what used to be 51 statements hand-ordered in

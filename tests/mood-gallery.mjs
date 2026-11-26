@@ -1,21 +1,10 @@
-/* Screenshots of mood's ramp and mood's five faces (phase 10 ticket 27),
-   one per preset per theme, plus one sweep across the eight flags.
+/* Capture each mood preset in both themes and sweep eight flags.
+   Check the two-colour ramps and distinct faces at 28px.
 
-   The icon gallery next door draws both mark families at every size and
-   answers "do these read as one set". This one answers the two questions
-   ticket 27 is: does each preset read as two colours end to end, and do the
-   five faces still tell apart at 28px now that the drawing is filled rather
-   than stroked. Only mood is on the page, so a reviewer is looking at what
-   changed instead of finding it.
-
-   Run: node tests/mood-gallery.mjs [outDir] [--tag before|after]
-   Default outDir is .claude/mood-shots, which is gitignored and durable.
-
-   `--app` runs a second pass instead of the first: the same drawing and the
-   same ramp on the real screens that draw them, with the demo persona's own
-   data, which is the pass that answers "does every surface that reads a mood
-   still draw one" rather than "is the drawing right". It needs a demo build
-   (`VITE_DEMO=1 npm run build`) and writes to .claude/mood-app/. */
+   node tests/mood-gallery.mjs [outDir] [--tag before|after]
+   Defaults to .claude/mood-shots. --app checks the real screens on the
+   demo persona and writes .claude/mood-app/. Build that mode with
+   VITE_DEMO=1 npm run build. */
 import { createServer, preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

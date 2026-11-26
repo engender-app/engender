@@ -1,4 +1,4 @@
-/* The effect-category split (pre-release-human 12): 'genital_sexual' becomes
+/* The effect-category split: 'genital_sexual' becomes
    'genital' and 'sexual'. Both new categories start in the state the old one
    was in, every built-in effect lands where the split puts it, and a custom
    effect a person filed under the old category moves to 'genital'. */

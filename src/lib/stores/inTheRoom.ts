@@ -1,28 +1,10 @@
-/* What was jotted in the room, on its way to the debrief (phase 8 features
-   ticket 60).
+/* Hold in-the-room answers only in module memory, keyed by appointment.
+   Write them as the person types so Back does not lose them during the
+   session. No journal write or storage mirror happens here.
 
-   Module state, deliberately, and nothing else. Ticket 60 adds no record of
-   any kind: the answers are the debrief's, and they travel from the
-   in-the-room screen to the entry editor's pre-fill the way a picked photo
-   travels from the picker to the draft. Nothing is written to the journal
-   here and nothing is mirrored to storage, so what somebody said in a
-   consulting room does not outlive the process that heard it.
-
-   Written as the person types rather than on the way out, so a back press
-   in the middle of a visit loses nothing while the app is still running.
-
-   Read non-destructively. Taking the offer, discarding the entry and taking
-   the offer again has to pre-fill both times - a consumed-once read would
-   silently hand the second attempt a blank note, which is the one thing the
-   person could not get back.
-
-   Keyed by appointment, because the pre-fill path is (checklists.ts, ticket
-   58): answers held for one appointment must never surface in another's
-   debrief. One entry per appointment rather than one held at a time
-   (ticket 12, audit I3): the one-at-a-time rule assumed the room had to
-   guess which visit a day meant, and the room now asks - so a day with
-   two visits holds two answer sets, and which one a debrief means is
-   settled by the appointment id the deep link already carries. */
+   The debrief reads a matching appointment non-destructively. Discarding
+   an attempted entry and reopening the offer still prefills the note.
+   Two appointments on one day keep separate answers. */
 import type { DebriefAnswer } from '../data/journal/debriefNote';
 import { forgetOnLock } from '../lock/forget-content';
 
@@ -61,8 +43,7 @@ export function holdRoomAnswers(entry: HeldRoomAnswers): void {
   held.set(entry.appointmentId, entry);
 }
 
-/** Lets go of everything jotted, for every appointment (after-release
-    ticket 10). A lock takes it with the rest of the journal: what was said
+/** Lets go of everything jotted, for every appointment. A lock takes it with the rest of the journal: what was said
     in a consulting room is exactly what a locked app should not still be
     holding. */
 function forgetRoomAnswers(): void {

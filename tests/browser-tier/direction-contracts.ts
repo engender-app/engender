@@ -223,7 +223,7 @@ export async function directionContracts(): Promise<Result[]> {
       css('.kit-area-line').strokeLinecap === 'square' &&
       css('.kit-area-line').strokeLinejoin === 'miter'
   );
-  /* A casing (phase 15 ticket 20) is not a weight of its own: it is the
+  /* A casing is not a weight of its own: it is the
      edge of a 2px series, a pixel either side, so it is 4px and is held to
      that rather than to the weights a mark may take. */
   const CASING = '.kit-area-casing, .kit-area-ring-casing';

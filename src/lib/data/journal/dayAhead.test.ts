@@ -1,4 +1,4 @@
-/* The dayAhead registry (phase 8 features ticket 61, ADR-0067): that every
+/* The dayAhead registry (ADR-0067): that every
    archive section either earns a mark or is written down as deliberately
    earning none, that a mark never predates today even when the range asked
    for reaches back before it, and that each of the five kinds reads what the

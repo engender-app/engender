@@ -1,25 +1,10 @@
-/* Whether a failed write ran out of space, and where (last-audit ui 37).
+/* Classify storage failures without changing unrelated error messages.
+   Device storage can report SQLITE_FULL, ENOSPC, “No space left on
+   device”, QuotaExceededError, or the export bridge's `storage-full`.
+   The bridge reports a full save location as `destination-full`.
 
-   A full disk used to read as any other failure: "Couldn't save this entry",
-   "Couldn't finish the export", "Something went wrong while opening it". The
-   person had no way to know that freeing space was the fix. This names the
-   one failure that has a fix they can make, and nothing else: an unnamed
-   failure keeps its own message.
-
-   - `device`: storage this app writes to directly ran out. SQLite says
-     "database or disk is full" (SQLITE_FULL) on both drivers, a native file
-     write says ENOSPC, java.nio says "No space left on device", and a
-     browser refuses with QuotaExceededError. The export bridge rejects its
-     own staging failure with the code `storage-full`, because Capacitor
-     hands JavaScript the rejection's message and code, never the exception.
-   - `destination`: the place an export was being saved to was full, either
-     by the save's own preflight or when the provider refused the bytes. The
-     export bridge rejects with `destination-full`; the text never says so.
-
-   Read through `cause` and AggregateError's `errors`: the transactor keeps a
-   statement's error first when SQLite has already rolled back and the
-   explicit ROLLBACK is refused (backend 76), and a failure that arrives
-   wrapped keeps the original underneath. */
+   Inspect `cause` and AggregateError's `errors` so an outer rollback
+   failure does not hide an earlier storage error. */
 
 export type SpaceShortage = 'device' | 'destination';
 

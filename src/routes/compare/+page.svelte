@@ -1,25 +1,12 @@
 <script lang="ts">
-  /* Two periods, A and B, and what changed between them (pre-release-human
-     ticket 21, which reworked phase 5 UX ticket 23's table).
+  /* Report signed change in each scale's units without ranking
+     direction by colour (ADR-0012). Side A starts at the Look back
+     span or the last 30 days. Side B defaults to the preceding
+     period. Each row opens PeriodSheet.
 
-     The screen computes a change now: signed, in each scale's own units,
-     and never coloured. Which way a scale moved is not better or worse
-     (ADR-0012, F15), so the sign is the whole of what says which way, the
-     same as Wrapped's "scale that moved furthest". Judging is what the
-     product rules out; arithmetic is not judging.
-
-     It opens on a result. Side A is the span the Look back door handed
-     over, or the last 30 days; side B is the period before A. Each side is
-     one row at the top that opens one sheet (PeriodSheet): presets, the
-     person's eras, a custom range. The old shortcut notice that offered
-     this default is gone, since the default now is what it offered
-     (item 48: it also left in one frame).
-
-     The figures stay one object across a change of period: the dots on
-     each scale travel, the tag bars resize, the numbers roll, rows that
-     come and go grow in and collapse, and a re-sorted list moves its rows
-     rather than redrawing them. Under reduced motion the whole result
-     fades out and back in around the swap, inside --dur-crossfade. */
+     Keep result marks and rows mounted through changes so values can
+     travel and lists reorder. With reduced motion, crossfade the
+     whole result over --dur-crossfade. */
   import { untrack } from 'svelte';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
@@ -640,7 +627,7 @@
   /* Paired bars per tag: A filled, B a ring, each with its count. The
      track, the line the bars start from and the bar's thickness, ends and
      ink are the kit's `kit-run-*`, the same as the tag card's diverging
-     bars (ticket 20). What differs is the geometry: these grow one way out
+     bars. What differs is the geometry: these grow one way out
      of a line at the start, not both ways out of one in the middle. */
   .compare-tags {
     display: grid;

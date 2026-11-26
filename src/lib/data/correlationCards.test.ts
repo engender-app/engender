@@ -1,4 +1,4 @@
-/* Factor-impact correlation cards (phase 4 ticket 21): the pure ranking
+/* Factor-impact correlation cards: the pure ranking
    math, tested without a driver. journal/correlationCards.test.ts covers
    the area that wires this to the dose log and the day-average queries. */
 

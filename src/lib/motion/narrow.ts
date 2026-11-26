@@ -1,27 +1,10 @@
-/* Narrowing a grid by a chip: the tiles that stay travel, the tiles that go
-   leave the flow where they stood (phase 11 ticket 14, ADR-0078).
+/* When a photo filter changes, pin outgoing tiles out of flow before their
+   outros. A keyed each block otherwise keeps their boxes until the fade
+   ends, then reflows in one frame. Once the grid settles, travelCells
+   uses regroup.ts's FLIP to bring survivors from their old positions.
 
-   Two grids ask for this - the photo library's and the journey export's -
-   and they ask for the same three frames. Tapping "Hair" over a grid of
-   twenty-one photographs is a state change, so it moves: the hair
-   photographs that were scattered through the grid walk to the front of
-   it, and the rest fade out of where they were standing rather than
-   blinking away underneath them.
-
-   THE ORDER MATTERS, and it is the reason this is a module rather than two
-   lines in each screen. A tile removed from a keyed `{#each}` keeps its
-   box for the length of its own outro, so the grid does not rewrap until
-   the fade is over - and then it rewraps in one frame, which is the yank
-   the animation was supposed to prevent. So the leaving tile is pinned out
-   of the flow in the frame it leaves (`pinnedOut`, the same trick
-   reveal.ts's `dissolveAt` plays for a dismissed panel), the grid reaches
-   its final layout immediately, and the survivors are walked back to where
-   they stood and released (`travelCells`, the FLIP arithmetic
-   regroup.ts already holds).
-
-   Transform and opacity only, per materials.css: a grid of a hundred
-   thumbnails cannot afford a layout property per frame on a mid-range
-   phone. */
+   Use transform and opacity only so large grids avoid layout work each
+   frame (ADR-0078, materials.css). */
 
 import type { TransitionConfig } from 'svelte/transition';
 import { EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';

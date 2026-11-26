@@ -1,28 +1,8 @@
-/* What each of the day registry's sections looks like as a row (phase 5
-   deepening ticket 21).
-
-   day.ts holds the keys and the reads and speaks no paraglide (ADR-0016);
-   this is where they get their words, the same split
-   clinicianSummaryLabels.ts keeps. It sits beside DayRecords.svelte rather
-   than in vocabulary/ because none of it is vocabulary: it is one screen's
-   reading of rows other screens own.
-
-   Every row states the record in the record's own terms and goes to the
-   screen that owns it. Nothing here computes a figure that screen does not
-   already show (ADR-0010), and nothing writes.
-
-   Two rules the whole map answers to:
-
-   *A row's icon is the icon of the screen it goes to.* Not one glyph per
-   record type - the disc says where the row leads, so a dose and a wear
-   session both wearing `clock` is the app agreeing with itself rather than
-   a collision. The More hub is where those icons are decided.
-
-   *Photographs collapse, records do not.* Five recovery photos are one row
-   with the first of them on it and the count beside it; five doses are five
-   rows. A photo is one record among several that were taken at once and a
-   dose is not, and a day that logged eight hair photos should not read as
-   eight events. */
+/* Localized rows for the day registry. `day.ts` owns keys and reads
+   without Paraglide (ADR-0016). Each row uses its destination's More
+   hub icon and the owning screen's figures (ADR-0010). Rows never write.
+   Group photos with the first thumbnail and a count. Keep other records
+   individual, including repeated doses. */
 
 import { m } from '$lib/paraglide/messages';
 import { hubRow, type HubRow } from '$lib/data/hubRows';
@@ -166,7 +146,7 @@ const SECTION_ROWS: Record<
     })),
 
   // "Session 2 of 3" on a day a times-a-day stage asked for several
-  // (functional audit ticket 25), beside the note when there is one.
+  //, beside the note when there is one.
   taperSessions: (day) =>
     day.taperSessions.map((session) => ({
       key: `taper-${session.id}`,
@@ -223,7 +203,7 @@ const SECTION_ROWS: Record<
            a clock says nothing about what was worn for it, and this is the
            only record on a day whose title is a bare number. What the person
            wrote comes first where they wrote anything. */
-        // The kind rather than the screen's name (ticket 50): a day row is
+        // The kind rather than the screen's name: a day row is
         // about one session, and a session is always one of the three.
         subtitle: session.note || wearKindLabel(session.kind),
         href: hubRow('wear').href
@@ -251,8 +231,8 @@ const SECTION_ROWS: Record<
 
   /* A row per procedure rather than per photograph: four shots of the same
      recovery on one day are one thing that happened. The consults that used
-     to share this section are appointments now and have one of their own
-     (ticket 57). */
+     to share this section are appointments now and have one of their own.
+     */
   procedureRecords: (day) =>
     groupedBy(day.procedureRecords, (record) => record.procedureId).map((group) => ({
       key: `recovery-photos-${group[0].procedureId}`,

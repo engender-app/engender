@@ -1,32 +1,12 @@
-/* The active flag, published once by whoever decides which flag is active.
+/* palettes.css owns the 16 flags. Read --motif-stripes and the ground tokens
+   from the active theme (ADR-0035). Before SQLite preferences attach,
+   app.html paints from the localStorage mirror, which can hold the previous
+   palette (ADR-0009).
 
-   Everything the flag is used for - the sun's rings, a section's colour, the
-   bar under a tile's number - is read off `--motif-stripes` and the theme's
-   own ground tokens, because palettes.css is the one place the 16 flags are
-   written down and a parallel table in TypeScript would be a second thing to
-   keep in step (ADR-0035's motif, and $lib/theme/roles.ts). That read is
-   right; where to make it was not.
-
-   The trap is the timing. `data-palette` and `data-theme` are stamped on
-   <html> by +layout.svelte, from the preferences, and on a cold start the
-   preferences arrive from SQLite after boot (ADR-0009) - app.html's pre-paint
-   script stamps whatever the localStorage mirror held, which can be a palette
-   ago. Anything that reads the stripes for itself at mount is racing that,
-   and losing the race is silent: the screen is simply drawn in the previous
-   flag's colours, with nothing on fire.
-
-   Both readers had that bug. FlagSun read its stripes in onMount, so
-   changing the palette in Settings and walking back to Home drew the old
-   flag's sun until the app was restarted. Home's section colours had the
-   same shape of problem the day they were added.
-
-   So the shell publishes and everything else reads. +layout.svelte calls
-   refresh() as the last thing in the effect that stamps the two attributes,
-   which makes the order impossible to get wrong rather than merely right
-   today, and a screen or a component that wants the flag reads it from here
-   and needs to know nothing about when the palette settled.
-
-   Unlocked screens use the active flag regardless of launcher identity. */
+   +layout.svelte publishes refresh() after stamping data-palette and
+   data-theme. Consumers read the published flag, so a mount cannot race
+   preference loading or keep stale colours after a Settings change. Unlocked
+   screens use this flag regardless of launcher identity. */
 
 import { parseMotifStripes } from '$lib/motion/flagSun';
 import { flagField, readFlagFill, readFlagRoles, type FlagField, type Role } from './roles';

@@ -1,5 +1,4 @@
-/* The fluidity engine's presentation area (phase 5 deepening ticket 17,
-   ADR-0048): no built-ins, no delete, and an MRU order that reads the entry
+/* The fluidity engine's presentation area (ADR-0048): no built-ins, no delete, and an MRU order that reads the entry
    table directly rather than a stored "last used" column. The MRU cases
    below insert an `entry` row by hand rather than through
    journal.entries.upsertEntry - this module's own ordering is what is under

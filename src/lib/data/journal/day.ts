@@ -1,58 +1,13 @@
-/* What one day holds, across every area that records something dated
-   (phase 5 deepening ticket 21, ADR-0001, CONTEXT: "Day").
+/* Read every registered area for a single epoch day (ADR-0001).
+   Each registry entry names its DayRecords key, the Archive sections
+   it covers, the SQL tables it reads and the area's own read method.
+   The declaration order also sets screen order.
 
-   Ticket 04 unified where a day is captured: one editor commits the note,
-   the mood, the scales, the body map, the photos, the dose, the felt sense,
-   the recovery note, the physical change and the cycle event in a single
-   transaction (ADR-0044). Nothing unified where a day is read back, so
-   `/day/[day]` showed the entries and everything else was findable only by
-   opening the screen that owns it and scrolling to the right date.
-
-   This is the read side of that, and it is a registry for the reason the
-   two registries before it are (ADR-0027, ADR-0031): the alternative is a
-   hand-written list of imports that a new dated area is silently missing
-   from, with no test able to notice.
-
-   A third registry rather than an extension of either, and the ticket asks
-   for that check to be made rather than assumed. Neither fits. The archive
-   registry (ADR-0027) is keyed on `ArchiveJournal` and moves whole tables in
-   both directions with a restore order over them; a day asks one table for
-   one epoch day and never writes. The clinician summary (ADR-0031) is keyed
-   on `ClinicianSummary`, reads a *range*, and deliberately carries the parts
-   a doctor needs - it excludes entries, photographs and
-   felt-sense, which are three of the things a day is most about, and adding
-   them for this would change what a printed summary discloses. So the shape
-   is copied and the list is not, and what ties this one to the archive
-   registry instead is `covers` below: the archive registry is what makes an
-   area exist at all, so it is the right thing to be checked against.
-
-   What one entry declares:
-
-     key     where the section's rows land in `DayRecords`
-     covers  which archive sections this one accounts for, which is what
-             makes "every dated area is registered" checkable rather than
-             remembered - see DAY_OPT_OUTS below
-     tables  the tables its read touches, so the live layer's dependency
-             list for `getDay` is derived from the registry rather than
-             maintained beside it (writes.ts, the same single-sourcing
-             RECONCILE_TABLES gets)
-     read    how the area's rows for one day come out, through that area's
-             own read path
-
-   The order sections are declared in is the order they are read in and the
-   order the screen lays them out. Nothing is computed here: each read
-   selects its own area's rows for one epoch day and stops, so the day view
-   introduces no figure the screen that owns those rows does not already
-   show (ADR-0010).
-
-   It is a pure read. Writing a day still happens in the editor and in each
-   area's own screen; `getDay` performs no write, and day.test.ts holds that
-   against the driver rather than leaving it to be noticed.
-
-   Wording is not here. Section titles live in
-   vocabulary/dayLabels.ts, keyed by section, the same split
-   clinicianSummary.ts keeps and for the same reason: this file stays
-   Node-tier safe by importing no paraglide (ADR-0016). */
+   The coverage assertion catches dated areas absent from the registry
+   or DAY_OPT_OUTS. SQL dependencies come from the same declarations.
+   A day reads individual records, including photos and felt sense,
+   while the clinician summary has its own disclosure rules (ADR-0031).
+   getDay writes nothing. vocabulary/dayLabels.ts supplies headings. */
 
 import type { TableName } from '../live/writes';
 import type {
@@ -196,8 +151,7 @@ const SECTIONS = [
     tables: ['lab'],
     read: ({ labs, epochDay }) => labs.getResultsOnDay(epochDay)
   }),
-  /* A standardized take, recorded on a day the way a lab draw is (phase 5
-     deepening ticket 15). Next to the lab results because it is the same
+  /* A standardized take, recorded on a day the way a lab draw is. Next to the lab results because it is the same
      kind of record: a number measured under controlled conditions, reported
      and not read. */
   section({
@@ -211,7 +165,7 @@ const SECTIONS = [
     covers: ['taperSessions'],
     tables: ['taper', 'procedure'],
     // Numbered against the schedule's count for the day, so a times-a-day
-    // stage reads "session 2 of 3" here (functional audit ticket 25).
+    // stage reads "session 2 of 3" here.
     read: ({ taper, epochDay }) => taper.getDaySessions(epochDay)
   }),
   section({
@@ -252,8 +206,8 @@ const SECTIONS = [
     tables: ['hairRemoval'],
     read: ({ hairRemoval, epochDay }) => hairRemoval.getSessionsOnDay(epochDay)
   }),
-  /* An appointment happened on a day, which is the whole of what it is
-     (ticket 57). Both cases come through here, the one that belongs to a
+  /* An appointment happened on a day, which is the whole of what it is.
+     Both cases come through here, the one that belongs to a
      surgery journey included: `getDayRecords` names the procedure on the
      row where there is one, so a consult reaches a day once rather than
      twice, and `procedureRecords` below is the recovery photos alone. */
@@ -304,33 +258,15 @@ type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 /** Which archive sections the registry above accounts for. */
 type Covered = (typeof SECTIONS)[number]['covers'][number];
 
-/** Every dated area that deliberately does **not** show on a day, and why.
-
-    This is the ticket's "registered nowhere" check, and it is a full
-    `Record` over whatever the registry above does not cover: an area added
-    to the archive registry - which is what makes an area exist at all
-    (ADR-0027) - is a compile error here until somebody either registers a
-    day section for it or writes down why it has none. Nobody has to
-    remember the check; the only way past it is to state an answer.
-
-    Four reasons, and each one is a rule rather than a case:
-
-    *Reference data.* Vocabulary the app records with, not a record of any
-    day. A tag group is not something that happened.
-
-    *A span or a schedule.* It describes what was true across a stretch of
-    days, not what happened on one - and a day view that listed every
-    episode, pause and reminder covering a day would say the same thing on
-    every day of a two-year course. The screen's title is what happened in
-    this day.
-
-    *No date of its own.* A roadmap tick and a checklist item carry only an
-    `updated_at`, which is bookkeeping and not a day someone lived.
-
-    *Its own reason*, for the two that need one. Photos, voice recordings
-    and video notes appear on none of these lists because they are not
-    archive sections at all: they travel inside the entry or the milestone
-    that owns them, which is exactly how they reach the day view too. */
+/**
+ * Require every Archive section to have a day read or an explicit
+ * DAY_OPT_OUTS entry (ADR-0027). Reference data has no day. A span
+ * or schedule describes a period. An updated_at on a checklist or
+ * roadmap tick is bookkeeping, rather than a day record.
+ *
+ * Photos, voice recordings and video notes travel inside their
+ * owner's Archive section and appear on that owner's day.
+ */
 /* DAY_OPT_OUTS stays exported only for its own test (AU-09 test-only review). */
 export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   dimensions: 'reference data',
@@ -357,7 +293,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   roadmapGoals: 'no date of its own',
   roadmapInstitutions: 'no date of its own',
   // Dated, but read on the roadmap, where one institution's changes sit
-  // together in order (functional audit ticket 35).
+  // together in order.
   roadmapInstitutionChanges: 'read on the roadmap with the rest of its institution',
   checklists: 'no date of its own',
 
@@ -442,7 +378,7 @@ async function assembleDay(
 
 export interface DayArea {
   /** Everything recorded on one epoch day, section by section. Reads only
-      (phase 5 deepening ticket 21) - opening a day writes nothing. */
+       - opening a day writes nothing. */
   getDay(epochDay: number): Promise<DayRecords>;
 }
 

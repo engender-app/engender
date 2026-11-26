@@ -275,7 +275,7 @@ test('adoptTryout closes the tryout and optionally creates a timeline milestone,
   assert.equal(created?.tryoutId, id);
   assert.equal(created?.tryoutLabel, 'Alicja');
 
-  // A milestone holds no felt-sense readings (functional audit ticket 32):
+  // A milestone holds no felt-sense readings:
   // the tryout keeps its three and nothing else is written.
   assert.equal((await journal.feltSense.forTryout(id)).length, 3);
   assert.equal((await journal.feltSense.byTryout()).size, 1);

@@ -39,8 +39,8 @@ const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
 
 const isNotFound = (error: unknown): boolean => (error as DOMException)?.name === 'NotFoundError';
 
-/** One named slot in the browser's key store. Two things keep keys here now
-    (ticket 53): this journal's device-bound wrapping key, and PIN mode's
+/** One named slot in the browser's key store. Two things keep keys here now:
+this journal's device-bound wrapping key, and PIN mode's
     binding key (data/device-secret.ts). Same database and store, different
     slot names - a second database would be a second thing a reset has to
     remember. */

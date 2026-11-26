@@ -1,33 +1,11 @@
-/* Everything that runs while the app is ready on Android and nowhere else:
-   reminder schedule sync, medication stock run-out reconciliation, launch-route
-   consumption, visibility/focus resync, the back button, the disguise alias and
-   the lock-timing mirror. These seven pieces used to be seven separate effects
-   in +layout.svelte, accumulated one at a time because
-   no narrower seam existed for "Android, and the journal is open" - this is that
-   seam.
+/* Run reminder sync, stock reconciliation, launch routes, visibility and
+   focus resync, back, disguise alias and the lock-timing mirror while the
+   Android journal is open. Inject dependencies so Node tests can use fakes.
 
-   Dependencies arrive as arguments rather than imports so this module can run in
-   the Node tier with fakes: no Svelte runes here, `$state` is not defined
-   there. Reacting to a preference such as `checkInEnabled` still needs
-   real Svelte reactivity, though, and that only exists in a `.svelte` file - so
-   +layout.svelte's one platform-sync effect reads every preference this module
-   cares about and calls `startAndroidPlatformSync` again on any of their changes.
-   Because that effect returns `stop`, Svelte tears the previous run down before
-   the next one starts, so a change to e.g. `lockAfter` also re-runs the reminder
-   resync and re-attaches the visibility/back-button listeners, not only the
-   lock-timing sync. That is wasted work, not a behaviour change: the bridges are
-   themselves no-ops when nothing actually changed, and re-attaching a listener
-   that was just removed is what the original effects already did whenever their
-   own dependency changed.
-
-   `onTablesWritten` (tableVersions.notify.ts) has no unsubscribe - a write
-   announcer built to outlive every one of its listeners for the app's whole
-   session. Subscribing to it again on every restart would leak a listener per
-   preference change, compounding for as long as the app runs, so the two
-   subscriptions below are the one piece that does not follow the "safe to
-   repeat" rule above: each is made exactly once, guarded the same way the
-   original effects guarded it with `remindersListenerAttached` and
-   `stockReminderListenerAttached`. */
+   The reactive effect in +layout.svelte reads every relevant preference and
+   stops the previous run before starting another. Unchanged bridge inputs
+   are no-ops. onTablesWritten has no unsubscribe, so attach the reminder and
+   stock subscriptions once per app session. */
 
 import type { DoseSchedule, RegimenEpisode, Reminder } from '$lib/data/types';
 import type { ReminderWordsContext } from '$lib/data/vocabulary/doseReminderLabel';
@@ -72,7 +50,7 @@ export interface PlatformSyncDeps {
     quietHoursStart: string;
     quietHoursEnd: string;
     disguise: boolean;
-    /** The launcher icon follows the flag (ticket 50), which is why a
+    /** The launcher icon follows the flag, which is why a
         palette change reaches this module at all. */
     palette: string;
     launcherIconShape: 'current' | 'round';
@@ -83,15 +61,15 @@ export interface PlatformSyncDeps {
     reminders: { getReminders(): Promise<Reminder[]> };
     entries: { recentDays(dayCount: number): Promise<Array<{ epochDay: number }>> };
     stock: { reconcileRunOutReminders(asOfEpochDay: number): Promise<unknown> };
-    /** Removes a schedule's reminders once its episode's end day has come
-        (functional audit ticket 21): every write already keeps them in
+    /** Removes a schedule's reminders once its episode's end day has come:
+        every write already keeps them in
         step, but an end day can arrive while the app is closed. */
     doses: {
       reconcileDoseReminders(asOfEpochDay: number): Promise<unknown>;
       getSchedules(): Promise<DoseSchedule[]>;
     };
     /** With the schedules: what a medication reminder's notification says
-        it reminds about (ticket 21). */
+        it reminds about. */
     regimen: { getEpisodes(): Promise<RegimenEpisode[]> };
     /** Which areas are hidden or finished: finishing the wear log stops
         its elapsed prompts the same way the preference does, read here
@@ -105,8 +83,7 @@ export interface PlatformSyncDeps {
     pendingDoseActions(): Promise<{ actions: PendingDoseAction[] }>;
     clearDoseActions(options: { ids: string[] }): Promise<void>;
   };
-  /** Taken and Skip from a medication reminder's notification (functional
-      audit ticket 20): `apply` writes one kept tap into the open journal
+  /** Taken and Skip from a medication reminder's notification: `apply` writes one kept tap into the open journal
       (doseActions.ts), `confirm` tells the person what it did, and
       `resolveLaunchRoute` turns a dose reminder's route into its drug's
       dose log. Injected, like everything else here that reaches the

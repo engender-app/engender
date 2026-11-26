@@ -9,7 +9,7 @@ import dev.engender.app.R;
 
 /**
  * A home-screen widget deep-linking straight into Safe space, the existing
- * /doubt route (ticket 34): one tap target, no route of its own to hold -
+ * /doubt route: one tap target, no route of its own to hold -
  * the widget opens /doubt via AppLaunch.openAppIntent (generalized in
  * ticket 26 for exactly this reuse). Safe space is a place to read, not to
  * write (ADR-0037 retired its free-write entry): it opens on a breathing

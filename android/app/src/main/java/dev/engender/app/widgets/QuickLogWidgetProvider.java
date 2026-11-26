@@ -8,7 +8,7 @@ import java.util.List;
 import dev.engender.app.R;
 
 /**
- * A home-screen widget offering one-tap mood logging (ticket 26). Each of
+ * A home-screen widget offering one-tap mood logging. Each of
  * the five buttons deep-links (AppLaunch.openAppIntent) into the same
  * mood-seeded entry composer the in-app quick log on Home already uses -
  * app lock's own gate (+layout.svelte's {#if locked}) is what stands

@@ -1,4 +1,4 @@
-/* The provenance line's own decisions (phase 5 deepening ticket 22): which
+/* The provenance line's own decisions: which
    of a milestone's three links wins, what a since-cleared or since-stale
    one renders as, and a reminder's auto_source read the same way. */
 

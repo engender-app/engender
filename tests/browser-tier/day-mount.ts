@@ -1,4 +1,4 @@
-/* Mounts the day gallery (phase 5 deepening ticket 21) with the app's own
+/* Mounts the day gallery with the app's own
    stylesheets, in the same order +layout.svelte imports them, so the
    composition is judged against the real cascade. Same set gates-mount.ts
    loads: this is a screen, and what it is made of lives in components.css,

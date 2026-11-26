@@ -1,4 +1,4 @@
-/* A new entry's steps (tester report 02, tickets 03, 04 and 09).
+/* A new entry's steps.
 
    A new entry walks these steps in this order, each with one purpose, so
    each can be answered at a glance without scrolling: the quick answer

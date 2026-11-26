@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* A provider's own editor (functional-audit ticket 27): the person's own
+  /* A provider's own editor: the person's own
      notes on somebody they see. Opened from the list at the foot of the
      appointments screen, or from "Someone new" in an appointment's fields -
      the one case that also hands what was just made back to whoever opened

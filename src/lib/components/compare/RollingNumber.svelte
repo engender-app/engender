@@ -1,6 +1,6 @@
 <script lang="ts">
-  /* A figure that rolls to its new value when /compare's periods change
-     (pre-release-human ticket 21), on the tier-3 curve and duration, the
+  /* A figure that rolls to its new value when /compare's periods change,
+on the tier-3 curve and duration, the
      way countUp.ts rolls a tile's count. Not countUp itself: that one
      rounds to whole numbers, and mood carries a decimal. The caller's
      `format` is applied on every frame, so the figure is always written the

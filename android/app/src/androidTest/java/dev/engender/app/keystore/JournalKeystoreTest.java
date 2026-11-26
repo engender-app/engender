@@ -44,29 +44,14 @@ import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;
 
 /**
- * The Keystore half of the encryption claim, on a device, because none of it
- * is true anywhere else. Whether a key is really in Android Keystore, whether it is
- * really bound to the lock screen, and what the platform does when that lock
- * screen is removed are properties of the platform rather than of this code.
+ * Verify the real Android Keystore and its lock-screen binding.
+ * {@link LockScreenTestSupport#ensureLockScreen()} only sets a missing
+ * credential. Cases that remove the credential run only on emulators
+ * because a real phone's credential cannot be restored by the test.
  *
- * <p>Most cases only need a lock screen to already exist, so {@link
- * LockScreenTestSupport#ensureLockScreen()} sets one through the shell only
- * when none is there - on a real phone that is never, so its own credential
- * is left untouched. Only the two cases that need to see the screen come off
- * entirely - creating with none, and losing the key when one that existed is
- * removed - clear it, and they run only on an emulator ({@link
- * LockScreenTestSupport#isEmulator()}): a throwaway lock screen can be put
- * back the way this class found it afterwards, a phone's daily-driver
- * credential cannot, so those two are skipped rather than failed anywhere
- * else.
- *
- * <p>What this deliberately does not do is authenticate. An emulator cannot
- * be made to present a finger, so the unwrap is asserted from the other
- * direction, which is the direction that matters: without authentication the
- * platform refuses, and the wrapped blob on disk yields nothing. Every
- * biometric state is covered exhaustively over the error codes themselves in
- * {@code BiometricOutcomesTest}, a JVM test, and the reasoning for that split
- * is written there.
+ * <p>Verify unauthenticated unwrap is refused. The emulator cannot
+ * present a fingerprint. {@code BiometricOutcomesTest} covers error
+ * code handling on the JVM.
  */
 @RunWith(AndroidJUnit4.class)
 public class JournalKeystoreTest {

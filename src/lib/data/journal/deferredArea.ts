@@ -1,32 +1,11 @@
-/* An area whose implementation arrives the first time something asks for it
-   (phase 9 audit ticket 03).
+/* Defer large journal areas until first use without changing the facade's
+   static type (ADR-0017). Opening Home then need not parse the Archive
+   pack/apply pipeline; writes.ts still checks the real interface.
 
-   journal.ts composes the whole journal in one call, which is what lets
-   live/writes.ts classify every method by walking the object and what lets a
-   screen name any area without knowing how it was built (ADR-0017). The cost
-   is that composing is also a static import: opening Home parsed the whole
-   archive pack/apply pipeline (and, until the hormone curve was cut, the
-   pharmacokinetics of injectable esters) on the way to a greeting, thousands
-   of lines no first screen runs.
-
-   A deferred area keeps the facade exactly as it was above the seam. Its
-   type is still static, so nothing above changes and writes.ts still checks
-   the real interface; only the implementation is behind an `import()`, the
-   same shape sqlite/boot.ts uses for migrations.ts and archive.ts uses for
-   restore.ts.
-
-   THE LIST OF NAMES is the price. writes.ts walks `Object.entries(area)` at
-   boot to build its wrapper, so a deferred area has to present its method
-   names before its module exists, and no type survives to runtime to supply
-   them. Two things keep the list honest: the call site is a compile error
-   when a method is missing from it (`missing` below), and
-   deferredArea.test.ts compares each deferred facade's keys against the
-   eager area's, so a name that drifts fails a test rather than a screen.
-
-   NOT A GENERAL WRAPPER for the other areas. Most are a few
-   hundred lines and splitting them all would trade one clear module for
-   dozens of lazy ones and a list of names each - the ticket's own "out of
-   scope". This is for the few that carry real weight. */
+   writes.ts walks Object.entries(area) at boot, before import() resolves,
+   so the facade exposes its method names up front. The missing type check
+   requires every name, and deferredArea.test.ts compares runtime keys
+   against the eager area. Use this wrapper for areas that justify a split. */
 
 /** The names of an area's callable members, and only those - the same shape
     writes.ts's `Operation` picks out, and for the same reason. An area

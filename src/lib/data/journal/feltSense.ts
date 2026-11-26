@@ -20,8 +20,7 @@ interface FeltSenseInput {
   note?: string | null;
 }
 
-/** A felt-sense entry read without knowing whose it is (phase 5 deepening
-    ticket 21): the day view asks a day what it holds, so the tryout has to
+/** A felt-sense entry read without knowing whose it is: the day view asks a day what it holds, so the tryout has to
     travel with the row for it to say "how the name felt" rather than a
     mood with nothing attached.
 

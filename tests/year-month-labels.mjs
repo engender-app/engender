@@ -1,21 +1,10 @@
-/* The month names over the year's days on /wrapped/year (last-audit UI
-   ticket 50, finding U42).
+/* Check month labels on /wrapped/year in both languages at phone,
+   200% zoom (195px), and desktop widths. Labels keep calendar order,
+   match the chart's small text size, clear one another by MIN_GAP,
+   and fit above their own days. The underlying day order stays fixed.
 
-   Twelve month columns shared one row of labels, and a short month name is
-   wider than a twelfth of a phone: at 390px "Sept" and "Oct" sat about 1px
-   apart and read as one word, May and Jun nearly touched, and at the 200%
-   zoom floor (a 195px window) every name ran over its neighbours. This
-   reads the painted labels on the real route, in both languages, at the
-   phone width, the zoom floor and a desktop window, and holds:
-
-   - every month keeps its own name, in calendar order, at the text size
-     the rest of the chart's small print uses;
-   - no two names come closer than MIN_GAP, on any side, and none is cut;
-   - each name sits on its own month's days, so nothing reads as the label
-     of the column beside it;
-   - the days themselves are the same cells in the same order.
-
-   Run: node tests/year-month-labels.mjs   (dev server, no build needed) */
+   node tests/year-month-labels.mjs
+   Uses the dev server. */
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
 import { launchChromium, setAppLanguage, settlePage } from './browser-harness.mjs';

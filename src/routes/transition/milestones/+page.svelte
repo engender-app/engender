@@ -4,34 +4,10 @@
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
-  /* Milestones, on the surface kit (phase 5 UX ticket 25).
-
-     Two things were crowded.
-
-     The screen opened on an "add a milestone" card - a heading, a shuffle
-     control, a dashed row for writing your own and three shuffled
-     templates - so the first thing a person with fourteen milestones saw
-     was a picker for a fifteenth. The templates are a sheet now, opened
-     from the header's add control the way every feature screen on the hub
-     opens its editor, and the screen opens on the milestones. The sheet
-     lists all eight templates, in one fixed order (functional audit ticket
-     32): three at a time behind a dice hid five of eight for no reason, and
-     ranking them by lean did nothing, since every one of them is neutral.
-
-     And each row carried two icon buttons, an edit and a delete, on top of
-     a photo, a name and a status line. Tapping the row is the edit, which
-     is what a row with an editor behind it means everywhere else in the
-     app; the delete stays as the row's own one control.
-
-     Phase 10 redesign ticket 43 put the rail on top of it. The same
-     milestones were drawn twice, a door apart: a rail at /timeline that
-     said which side of today each one fell on, and this list, where
-     "Coming out to my parents, 2 years ago" and "Name-change hearing, in
-     16 days" sat in the same row shape and the same grey. The rail opens
-     the screen (DIRECTION.md rule 16, an area screen opens by saying what
-     is true now) and the list runs under it, because a compressed rail
-     cannot be the place you edit or delete one specific milestone - the
-     editor, the photo prompt and the delete all live on the list. */
+  /* Open with the rail to show which milestones fall before and after today
+     (DIRECTION.md rule 16). The list below retains editing, photos and delete.
+     Tap a row to edit or use its own delete control. The header's add control
+     opens a sheet with all eight neutral templates in fixed order. */
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
   import { goto, afterNavigate } from '$app/navigation';
@@ -75,7 +51,7 @@
 
   let templates = $derived(vocabulary.milestoneTemplates);
   let picking = $state(false);
-  /* Closed by default (redesign ticket 16): the rail already says what is
+  /* Closed by default: the rail already says what is
      true now, and the record beneath it - where a milestone is edited or
      deleted - is a delete affordance most visits never need open. */
   let milestoneListOpen = $state(false);
@@ -89,7 +65,7 @@
       remembers what was there when the editor opened, so Save can describe
       preserve, remove or replace. Nothing is committed until Save (F1), so
       closing the sheet undoes both. `originalPhoto` is that same starting
-      point held separately: the alignment review (ticket 12) compares a
+      point held separately: the alignment review compares a
       retake against the photo this milestone had before this edit, even
       after removing it clears `photo` to make room for a new one. */
   type Draft = {
@@ -101,7 +77,7 @@
     storedPhotoId: string | null;
     originalPhoto: Photo | null;
     templateKey: string | null;
-    /* Part of the record and of Save (functional audit ticket 32), unlike
+    /* Part of the record and of Save, unlike
        the journey anchor below: whether Home celebrates a milestone is a
        fact about this milestone, not a global choice pointing at one. */
     celebrate: boolean;
@@ -113,7 +89,7 @@
   /* Eras aren't mirrored the way milestones are, so the rail's bands read
      a live query - `erasQuery.rows` is `[]` before it resolves, which
      draws a rail with no bands rather than one waiting on a loading
-     state that never shows (redesign ticket 16). */
+     state that never shows. */
   let erasQuery = liveList((j) => j.eras.getEras());
 
   /* What a blank draft is seeded from, set by whichever row of the picker
@@ -287,7 +263,7 @@
       <!-- `sorted` reads `[]` on a cold navigation straight to this screen
            for a few frames before the mirror behind it hydrates, which
            otherwise looked exactly like the true "no milestones yet"
-           empty state below (ticket 152/162). -->
+           empty state below. -->
       <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else if sorted.length}
       <!-- What is true now, before what was true before (DIRECTION.md rule
@@ -487,7 +463,7 @@
       </Field>
       {#if editor.id}
         <!-- Written straight to the preference the moment the switch moves,
-             not part of Save (ticket 10, ADR-0049): the anchor is one
+             not part of Save (ADR-0049): the anchor is one
              global choice this milestone points at, not a field the record
              itself owns, and a brand-new milestone has no id for it to
              point at yet. -->
@@ -508,7 +484,7 @@
           {/snippet}
         </Field>
         <!-- The target's own screen lists the documents pointing at it
-             (ticket 56, ADR-0065); the milestone stores nothing about the
+             (ADR-0065); the milestone stores nothing about the
              link. -->
         <LinkedDocuments kind="milestone" id={editor.id} />
       {/if}

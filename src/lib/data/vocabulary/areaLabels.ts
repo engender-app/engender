@@ -1,4 +1,4 @@
-/* What a finishable area is called on screen (phase 8 features ticket 04),
+/* What a finishable area is called on screen,
    here rather than in `areaGroups.ts` for the reason its neighbours give:
    the wording speaks paraglide, and nothing the Node tier touches may import
    that (ADR-0016). `areaGroups.ts` holds the keys and the areas behind them;

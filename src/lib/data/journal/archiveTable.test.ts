@@ -1,4 +1,4 @@
-/* The flat descriptor itself (phase 5 ticket 13): that one declaration is
+/* The flat descriptor itself: that one declaration is
    enough to read an area's rows out, write them back and match the ones
    already there.
 
@@ -86,7 +86,7 @@ test('the declared columns are what the read carries, in the order it declares t
 
   const rows = await readFlatTable(MOON_PHASE, reading(driver));
 
-  // Each row's own `updated_at` travels after them (functional audit ticket 48).
+  // Each row's own `updated_at` travels after them.
   assert.deepEqual(rows, [
     { id: 'm-1', epochDay: 20000, phase: 'waxing', waxing: true, note: '', updatedAt: 1 },
     { id: 'm-2', epochDay: 20007, phase: 'full', waxing: false, note: 'clear', updatedAt: 1 }
@@ -117,7 +117,7 @@ test('a row carrying its own stamp keeps it rather than taking the import clock'
   assert.deepEqual((await landed(driver)).map((row) => row.updated_at), [5]);
 });
 
-/* A Merge (functional audit ticket 48): a row the identity column already
+/* A Merge: a row the identity column already
    holds is never duplicated. The archive's copy is written over it when it is
    the newer, and left out otherwise, including when it carries no stamp at
    all. */

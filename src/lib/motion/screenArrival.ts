@@ -107,7 +107,7 @@ export function markScreenArrival(now: number = performance.now()): void {
 /**
  * Closes the window early, for an arrival that outlasts it.
  *
- * The app opening is the one (redesign ticket 34): it runs for --dur-slow
+ * The app opening is the one: it runs for --dur-slow
  * and the boot marks an arrival part-way through it, when the journal
  * finishes opening, so the window was still standing after the screen had
  * stopped moving.

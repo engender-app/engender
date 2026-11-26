@@ -150,7 +150,7 @@ describe('sheet rise', () => {
     expect(frame(sheetRise(sheetNode(120, 800)).css!, 0)).toMatch(/translateY\(680px\)/);
   });
 
-  /* The field's own settle (ticket 28), which is what Alicja asked a sheet to
+  /* The field's own settle, which is what Alicja asked a sheet to
      take: coming up it runs past its mark and comes back. Svelte reads an
      entrance as t = easing(p) and the geometry below uses u = 1 - t, so an
      easing that passes 1 is the sheet passing its resting place. */
@@ -271,7 +271,7 @@ describe('container transform, into the entry editor', () => {
   });
 });
 
-/* A printed part leaving while it is still arriving (ticket 285): the two are
+/* A printed part leaving while it is still arriving: the two are
    separate transitions, so the leave has to start from what is drawn or the
    part steps to full opacity and to its resting place in one frame. */
 describe('a printed part leaving', () => {

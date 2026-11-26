@@ -1,4 +1,4 @@
-/* Late reads on Good moments and Tryouts (last-audit UI ticket 20).
+/* Late reads on Good moments and Tryouts.
 
    Tryouts gates a second read beside its list, the felt-sense readings.
    It used to sit outside the gate, so the screen painted without it and

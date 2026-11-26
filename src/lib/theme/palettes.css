@@ -339,7 +339,7 @@
   --danger-soft: #3A2521;
   --warn-soft: #38301D;
   --on-warn-soft: #E4C98A;
-  /* The dark theme's half of the retired ramp (redesign ticket 20); see
+  /* The dark theme's half of the retired ramp; see
      theme/base.css for why it is gone rather than unused. */
   --shadow-float: 0 4px 16px -6px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.22);
   --shadow-float-pressed: 0 1px 5px -3px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.26);
@@ -408,30 +408,17 @@
   --input-edge: color-mix(in oklab, var(--text) 53%, transparent);
 }
 
-/* ============================================================
-   Mood presets (ADR-0077, superseding ADR-0025's single-hue clause;
-   COL-001) — mood's own fixed 5-step scale, selected via
-   [data-mood-preset] and completely independent of [data-palette]. Each
-   preset runs between two deliberately chosen hues, step 1 to step 5,
-   getting more saturated the whole way: amber from orchid to gold, teal
-   from periwinkle to cyan, plum from sky to magenta, moss from sand to
-   green. Never red→green, per this file's header rule and ADR-0012, so
-   mood keeps reading as "how much" rather than "good or bad" - and it
-   still borrows nothing from the active flag, so a mood dot and a heat
-   cell never collide into one system by sharing a scale.
+/* Mood presets are independent of the flag and use five literal fills
+   between two hues (ADR-0077). Saturation increases with intensity.
+   Avoid red to green so mood carries no positive or negative judgment
+   (ADR-0012).
 
-   Every step is a literal colour, not a color-mix() formula, and so is
-   the ink its face is drawn in (ADR-0091, amending ADR-0077's ink clause).
-   Each step carries --mood-N-ink beside its fill, picked by roles.ts's
-   heat-cell rule: the palette's own --text wherever it clears 4.5:1 on
-   that fill in all 16 palettes, otherwise whichever of black and white
-   contrasts more. With the ink free to change, the light ramp deepens as
-   the mood rises (OKLab lightness 0.89 to 0.51, amber 0.90 to 0.66 since a
-   gold has no chroma left lower down) and the dark ramp brightens (0.50 to
-   0.84, plum to 0.78), each step a clear move from the last. See
-   docs/adr/0091-each-mood-step-picks-its-own-ink.md for the numbers and
-   docs/adr/0077-moods-ramp-runs-between-two-hues.md for the hue pairs, the
-   hue-clash review against all 16 palettes, and the residual-risk pairs. */
+   Each fill has its own --mood-N-ink (ADR-0091). Use palette --text when
+   it clears 4.5:1 across all 16 combinations. Otherwise choose whichever
+   of black and white contrasts more. Light-theme OKLab lightness falls
+   from 0.89 to 0.51 (amber 0.90 to 0.66). Dark-theme lightness rises from
+   0.50 to 0.84 (plum to 0.78). ADR-0077 lists hue pairs and reviewed
+   clashes. ADR-0091 records contrast measurements. */
 [data-mood-preset="amber"][data-theme="light"] {
   --mood-1: #F1D2F7; --mood-2: #F6B4D5; --mood-3: #F898A0; --mood-4: #EE835A; --mood-5: #C8801D;
   --mood-1-ink: var(--text); --mood-2-ink: var(--text); --mood-3-ink: var(--text); --mood-4-ink: var(--text); --mood-5-ink: #000000;

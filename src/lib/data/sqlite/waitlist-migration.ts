@@ -1,21 +1,10 @@
-/* Waiting lists (functional-audit ticket 26). An appointment can exist
-   before it has a day: a referral to a gender clinic, an NFZ queue or a
-   surgery list is the same record, waiting. SQLite cannot drop a NOT NULL,
-   so `appointment` is rebuilt the way the closed lists were (create the new
-   shape, copy, carry the AUTOINCREMENT counter, drop, rename, recreate the
-   indexes); the runner holds foreign keys off for the step and checks them
-   after.
+/* Rebuild appointment to allow an undated wait. Copy rows and
+   AUTOINCREMENT state, then recreate indexes. The migration runner
+   disables foreign keys for the step and checks them afterwards.
+   Append referred_epoch_day for the start of each wait.
 
-   `referred_epoch_day` is the day somebody was referred on, the fact a wait
-   is counted from. It sits last so a later column (a time, a provider, a
-   cost) appends after it without another rebuild.
-
-   `appointment_status` holds the dated updates a wait collects ("letter
-   came", "phoned, still on the list"). Its own table because there can be
-   any number of them, cascading with the appointment they belong to, and
-   with `updated_at` like every user-owned row so archive Merge can classify
-   it. Free text with no vocabulary: the app ships no list of what a queue
-   can say back. */
+   appointment_status stores free-text dated updates and cascades
+   with its appointment. Keep updated_at for archive Merge. */
 
 export const WAITLIST_REBUILD = `
 CREATE TABLE appointment_new (

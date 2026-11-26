@@ -3,7 +3,7 @@
      its own notice under its field (UpdateNoticeSlot.svelte), so a new one
      mounts at every navigation and after every unlock, and a flag kept in
      the component came back false each time: a notice somebody had closed
-     reappeared and was announced again (last-audit UI ticket 21). A reload
+     reappeared and was announced again. A reload
      starts the module afresh, which is the policy below: dismissed for this
      load of the app, offered again on the next.
 
@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  /* The quiet update action (ticket 04).
+  /* The quiet update action.
 
      A notice rather than a modal or a toast, and the reasons are in the
      acceptance wording. It does not interrupt: a toast would expire before

@@ -4,7 +4,7 @@
    (magnifyRow, gazeRow), and the fan keeps its own loop because it also arms
    a target mid-gesture.
 
-   It carries the gaze as well as the scale now (phase 9 carpet ticket 01).
+   It carries the gaze as well as the scale now.
    The two are one gesture read two ways: the scale says which face the finger
    is on, which only one face can answer, and the gaze says the row is being
    crossed, which all five can. Both come off the same pointermove and both

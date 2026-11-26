@@ -1,27 +1,12 @@
-/* Settings' disguise switch, and the order it has to keep on Android
-   (last-audit UI ticket 02).
+/* Persist disguise in SQLite before projecting the preference. The layout
+   requests the new launcher alias when that value changes. If Android
+   kills the process on the alias flip before persistence, boot would
+   read the old value and reverse it.
 
-   Flipping disguise swaps the launcher alias, and DisguisePlugin kills the
-   process the moment the alias flips. The alias is requested by
-   +layout.svelte, which reads the projected `prefs.disguise` and hands it
-   to startAndroidPlatformSync, whose start calls setLauncherIdentity. An
-   effect re-runs only when what it read changes, so the alias is requested
-   exactly when the projection moves. If it moves before SQLite has the
-   value, the process dies with the write still out, the next boot reads
-   the old answer and swaps the alias straight back.
-
-   Two halves, because only one of them is behaviour. The store's durable
-   write is called here for real, with a SQLite stand-in that answers when
-   the test says so. That the Settings switch is the one calling it, and
-   never with a second write in flight, is a question about the route's
-   source, which this tier cannot run, so it is pinned line by line - the
-   same kind of check gates-surfaces.test.ts makes of onboarding. Changing
-   those lines should mean changing this test on purpose.
-
-   The store is a runes module and this tier has no Svelte compiler, so
-   `$state` is shimmed as a plain value. Nothing below needs reactivity:
-   the layout effect's trigger is the projected value, and the test reads
-   that value directly at each step. */
+   Use a controllable SQLite stand-in for the durable store write. Check
+   the Settings source for the call and its in-flight guard, since this
+   tier cannot render the route. Shim $state and read the projection
+   directly. */
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

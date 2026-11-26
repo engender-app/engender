@@ -1,53 +1,14 @@
 <script lang="ts">
-  /* Arranging Today (phase 10 redesign ticket 14; ADR-0073, ADR-0067,
-     ADR-0043).
+  /* Arrange Today in place (ADR-0073, ADR-0067, ADR-0043). The editor grows
+     from the block it changes and offers current pins, available pins, tile
+     switches, reset and Done. pinnedRows.ts owns all arrangement rules.
 
-     Ticket 05 made the front page a set the person put there and gave it a
-     default. This is where they change it, which is the whole point of the
-     feature: the app ranks nothing centrally and infers nothing, so the
-     only way Today becomes theirs is a surface where they say so.
+     Drag from the handle so the rest of the row still scrolls. Pointer moves
+     measure each row's box and shift intervening rows aside. The same handle
+     accepts arrow keys and moves one place through travelFrom.
 
-     One edit mode, three things in it, in the order somebody works through
-     them: the rows they have, the rows they could add, and the tiles Today
-     may put above them. Then the two exits - back to the default set, and
-     done. The agenda's five kind switches went in functional-audit ticket
-     14: the agenda draws every kind ADR-0067 admits.
-
-     There is no per-row menu and no second reset (the ticket's own scope),
-     and nothing here sorts, scores, suggests or highlights: every rule about what the arrangement becomes
-     is `pinnedRows.ts`'s, and this file only says which gesture calls
-     which of them.
-
-     The tiles joined in phase 11 ticket 04. They were switched at
-     /settings/live-tiles, which is two taps and a screen away from the row
-     directly under them, so one front page was curated in two places - the
-     tell, as the ticket puts it, that tiles and pins are one system. Same
-     preferences, same registry, no migration: only the switches moved.
-
-     **Why it is not a screen.** The rows being arranged are the rows on
-     Today, so the arrangement happens where they are - the surface grows
-     out of the block it edits, at the place in the page where that block
-     sits. A route would have meant looking at a copy of the list somewhere
-     else, and it would have owed a screen registry entry, a header and a
-     back control for a mode that is two taps long.
-
-     **The drag.** Pointer events rather than HTML5 drag-and-drop, which
-     has no touch story at all, and a handle rather than the whole row:
-     dragging from anywhere on a row makes a list you cannot scroll with a
-     thumb. The gesture is measured against the rows' own boxes, so a
-     one-line row and a two-line row are each their own height rather than
-     a guessed constant, and the rows between the grab and the drop shift
-     out of the way as it moves. Its keyboard equivalent is on the same
-     handle - the arrow keys move a row one place, which is the whole of
-     what the drag does - and that move animates through `travelFrom`
-     ($lib/motion/reorder.svelte.ts, shared with Things that help), since a
-     row that teleports is exactly what DIRECTION.md's motion brief rules
-     out.
-
-     **What the person can see is not the whole arrangement.** A pin whose
-     area is hidden stays stored and draws nothing (`pinnedRows.ts`), so
-     every write here is stated as row keys - "put this one where that one
-     is" - and never as an index into what is on screen. */
+     Pins for hidden areas remain stored. Write reorders against row keys
+     because the visible positions omit those pins. */
   import { onMount, tick } from 'svelte';
   import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { m } from '$lib/paraglide/messages';
@@ -150,26 +111,14 @@
     prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, kind, on);
   }
 
-  /** Back to what onboarding was told, which is null rather than a list:
-      an arrangement written back as the default set would be a set nobody
-      chose, and the next answer to onboarding's question would not reach
-      it. The tile switches go with it - one edit mode, one reset.
-
-      The tiles come back by losing their entry in `surfaceOverrides`, so
-      each reads the registry's default again: what the app ships with is the
-      registry's to say, and a default changed there would otherwise leave
-      this one handing back the old answer. Overrides for kinds this editor
-      does not draw (the stock notice, wrapped, on this day) stay as they
-      are.
-
-      Behind a question, unlike every other write on this surface. The rest
-      are each one row and each undone by one tap; this is the only one that
-      throws away work, and what it throws away is somebody's own curation -
-      the row they took off because an anniversary is painful, the tile they
-      switched off during a taper. A stray tap on the button under Done may
-      not cost that silently. Unpinning stays unconfirmed for the same
-      reason read the other way: a row somebody wants gone should go the
-      moment they say so. */
+  /**
+    * Reset pins to null so future onboarding choices still determine
+    * defaults. Remove the displayed tile kinds' surfaceOverrides so
+    * they follow the registry again. Preserve other overrides.
+    *
+    * Ask before resetting because this discards someone's curation.
+    * Individual changes remain immediate and reversible.
+    */
   let resetAsked = $state(false);
 
   function reset() {
@@ -371,26 +320,10 @@
     </div>
   {/if}
 
-  <!-- The tiles, in the order Home draws them: the three bands outside and
-       the kinds inside each one (`LIVE_TILE_DRAW_ORDER`), so the list reads
-       down the page the way the page does rather than alphabetically or in
-       the order the tiles were written. No icon on the row, unlike the pins
-       above: a tile has none on Today either, and inventing one per tile
-       here would name each tile a second way in the one place both names
-       would be read at once.
-
-       Each row keeps the registry's line, for the reason the add list above
-       keeps its own and the pinned list drops them: a line under a row being
-       dragged is in the way, and a line under a row being decided about is
-       the decision. Each switch explains what it puts in front
-       of you (the impeccable critique's own first finding, 2026-09-16).
-
-       Every kind, including one whose area is hidden or finished. The
-       switch means "never show me this kind" rather than "hide the instance
-       that is true today" (ADR-0039's amendment), so it answers a different
-       question from the area's own state, and a list that dropped rows
-       would make somebody turn an area back on to find the switch they came
-       for. -->
+  <!-- Match Home's band and tile order through LIVE_TILE_DRAW_ORDER.
+       Keep the registry's explanatory line next to each switch. Include
+       hidden and finished areas because a switch disables a kind
+       independently of its area's current state (ADR-0039). -->
   <SectionHeading text={m.home_edit_tiles_heading()} />
   <p class="today-editor-hint">{m.home_edit_tiles_hint()}</p>
   <div class="today-editor-tiles">

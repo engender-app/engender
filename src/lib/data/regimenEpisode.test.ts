@@ -384,7 +384,7 @@ test('showAttributionLabel: two episodes agreeing on one drug hide the "not reco
 });
 
 /* The day-ahead dose marks read each episode only as far as its own span
-   reaches into the range (after-release ticket 01). */
+   reaches into the range. */
 
 test('an open episode that began before the range runs to the end of it', () => {
   assert.equal(lastDayWithin(episode('a', 100), 150, 160), 160);

@@ -1,4 +1,4 @@
-/* The checklists area, exercised through the driver interface (ticket 05):
+/* The checklists area, exercised through the driver interface:
    standalone and owned checklists sharing one schema, add/edit/check/
    uncheck/delete/reorder, loud failures on unknown ids, idempotent deletes. */
 

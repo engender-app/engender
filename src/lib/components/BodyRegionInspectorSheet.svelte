@@ -1,4 +1,4 @@
-<!-- Multi-track anatomical inspector sheet (phase 5 deepening ticket 08).
+<!-- Multi-track anatomical inspector sheet.
      Tapping any body region opens this somatic breakdown combining:
      1. Dysphoria/Euphoria trajectory
      2. Filtered progress photos

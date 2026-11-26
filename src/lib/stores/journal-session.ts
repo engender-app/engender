@@ -1,39 +1,13 @@
-/* What a mid-session lock does to an open web journal, and what unlocking
-   undoes (after-release ticket 10, the confirmed decision in pre-release
-   human 03, item 11).
+/* Suspend the open web journal during a lock. Wait for in-flight work and
+   preference writes, close the worker and release the app's references to
+   the key and journal content. Existing saves need their original key until
+   they finish. JavaScript leaves key bytes to garbage collection. SECURITY.md
+   describes the limits.
 
-   A lock used to hide the screen and nothing else: the database stayed open
-   and the data key stayed in this page, so anybody at a locked tab who
-   opened devtools could still query the journal. Now, in a lockable web
-   mode, a lock lets every call already running finish, closes the database
-   worker, and drops the references this app keeps to the key. Unlocking
-   derives the key the way it always did, from the access mode's own
-   secret, and opens the journal again under it.
-
-   What "drops the references" can and cannot mean is said once, here and
-   in SECURITY.md: JavaScript has no way to overwrite memory on demand. The
-   key's bytes become garbage for the engine to collect whenever it chooses,
-   and the worker that held the database's copy is terminated. Nothing here
-   overwrites the bytes either, on purpose - a save that was already
-   encrypting under them when the lock arrived must still finish with the
-   key it started with.
-
-   Rune-free so the Node tier reaches it. The parts that are runes or
-   workers arrive as ports from boot.svelte.ts:
-
-     - `suspend` stops the journal facade handing anything out and resolves
-       once what it already handed out has settled (sessionGate.ts), and
-       flushes the preference writes in flight;
-     - `open` builds a driver and a journal over the key and resolves once
-       the database has answered;
-     - `release` lets go of everything else built over the key - the photo
-       stores, the driver's file operations - and the journal content held
-       in memory outside the database unless retained navigation keeps it;
-     - `prewarm` starts a keyless worker for the next unlock, so the reopen
-       costs one `open` rather than a worker start as well.
-
-   Android's lock is out of scope and does not come through here: its
-   database lives behind a native plugin with a lock path of its own. */
+   Unlock derives the key from the current access mode and reopens the
+   journal. boot.svelte.ts supplies suspend, open, release and keyless worker
+   prewarm ports so the Node tier can test this logic. Android uses its native
+   lock path. */
 
 import { unlockAttempts, UnlockCancelledError } from '../lock/unlock-attempt.ts';
 import { sessionGate, type SessionGate } from '../data/live/sessionGate.ts';

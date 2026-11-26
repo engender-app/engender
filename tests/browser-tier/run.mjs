@@ -1,4 +1,4 @@
-/* Browser tier (ticket 03): the Node tier (vitest.config.ts) cannot
+/* Browser tier: the Node tier (vitest.config.ts) cannot
    exercise the encrypted SQLite driver, which needs a real browser's OPFS. This script serves
    the probe pages in this directory over a standalone dev server, drives
    a real Chromium through them with Playwright, and prints PASS/FAIL
@@ -28,7 +28,7 @@ import { verifyWarmSchema } from '../warm-schema-check.mjs';
 
 /** A probe's casingOf() reading (casing.ts) says the line is cased: the
     element under it is stroked in the role's edge, over the same geometry,
-    two pixels wider in all (phase 15 ticket 20). */
+    two pixels wider in all. */
 const isCased = (c) =>
   c?.found && c.expected !== null && c.casing === c.expected && c.widens === 2 && c.sameGeometry === true;
 
@@ -605,7 +605,7 @@ await block('ticket 13 browser tier', 10, async () => {
   const r = await load('/archive.html', 'archive-probe');
   if (r.error) throw new Error(r.error);
 
-  /* Format version 2 (phase 5 ticket 35): the payload's preferences
+  /* Format version 2: the payload's preferences
      changed shape (the active preset became the list of scales it stood
      for), which moved the version this probe writes and reads without
      touching the body layout it is actually checking here. See
@@ -691,7 +691,7 @@ await block('ticket 13 browser tier', 10, async () => {
   console.log('INFO  cross-platform archive round-trips are verified in tests/android-tier');
 });
 
-// --- Ticket 09 (phase 2): at-rest encryption, gated by the closed-app scan -
+// --- Ticket 09: at-rest encryption, gated by the closed-app scan -
 await block('ticket 09 (phase 2) browser tier', 10, async () => {
   const r = await load('/encryption.html', 'encryption-probe');
   if (r.error) throw new Error(r.error);
@@ -699,7 +699,7 @@ await block('ticket 09 (phase 2) browser tier', 10, async () => {
   if (r.keystoreRoundTrips) ok('the keystore file round-trips: unlock returns the same data key that was created');
   else fail('the keystore file round-trips', 'unlocked key differs from the created one');
 
-  // F-08 (ticket 04): the web database cipher is pinned rather than left to
+  // F-08: the web database cipher is pinned rather than left to
   // sqlite3mc's compiled default.
   if (r.cipher === 'chacha20') ok(`the web database cipher is pinned explicitly (${r.cipher})`);
   else fail('the web database cipher is pinned explicitly', `got ${JSON.stringify(r.cipher)}`);
@@ -783,7 +783,7 @@ await block('legacy storage refusal', 3, async () => {
   else fail('legacy refusal leaves files untouched', JSON.stringify(r));
 });
 
-// --- Ticket 04 (phase 2): when a waiting release may take over ------------
+// --- Ticket 04: when a waiting release may take over ------------
 await block('ticket 04 (phase 2) update guard', 5, async () => {
   const r = await load('/update.html', 'update-probe');
   if (r.error) throw new Error(r.error);
@@ -831,7 +831,7 @@ await block('ticket 04 (phase 2) update guard', 5, async () => {
     );
 });
 
-// --- Ticket 04 (phase 2): forward migration, refusal and the copy ---------
+// --- Ticket 04: forward migration, refusal and the copy ---------
 await block('ticket 04 (phase 2) migration and rollback', 10, async () => {
   const r = await load('/migration.html', 'migration-probe');
   if (r.error) throw new Error(r.error);
@@ -2208,7 +2208,7 @@ await block('phase 8 audit ticket 03 mic teardown', 7, async () => {
 
 });
 
-// --- Ticket 16 (phase 8 deepening): the draft mirror's stale-removal repro,
+// --- Ticket 16: the draft mirror's stale-removal repro,
 //     and that clearing it on save (EntryEditor.svelte's fix) closes it.
 await block('ticket 16 browser tier', 10, async () => {
   const r = await load('/draft-mirror.html', 'draft-mirror-probe');
@@ -2257,7 +2257,7 @@ await block('ticket 16 browser tier', 10, async () => {
   else fail('the re-save no longer throws', after.resaveError);
 });
 
-/* --- Ticket 27 (phase 8 features): the metric reference, and that the
+/* --- Ticket 27: the metric reference, and that the
        sentence under a figure lands on that figure's own section. --- */
 await block('ticket 27 browser tier', 7, async () => {
   const r = await load('/voice-metrics.html', 'voice-metrics-probe');
@@ -2385,7 +2385,7 @@ await block('redesign ticket 42 browser tier', 9, async () => {
   else fail('a change of capture chain takes the history off every figure at once', JSON.stringify(broken));
 });
 
-/* --- Ticket 29 (phase 8 features): the own-series trends, and that a
+/* --- Ticket 29: the own-series trends, and that a
        change of capture chain arrives as a break with a reason in it. --- */
 await block('ticket 29 browser tier', 7, async () => {
   const r = await load('/voice-own-series.html', 'voice-own-series-probe');
@@ -2708,7 +2708,7 @@ await block('phase 8 features ticket 66 batched list', 8, async () => {
 
 // --- Ticket redesign-30: the lock step splits choosing from typing --------
 await block('ticket redesign-30 the lock step splits in two', 2, async () => {
-  /* The gates fixture (phase 5 ticket 26), not a probe page: this is the
+  /* The gates fixture, not a probe page: this is the
      real JournalGate over the real stylesheets, moved into the same
      first-run "choosing a mode" state the screenshot script drives. */
   await page.goto(`http://localhost:${port}/gates.html`, { waitUntil: 'networkidle' });

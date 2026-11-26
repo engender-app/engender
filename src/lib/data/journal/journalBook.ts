@@ -1,23 +1,10 @@
-/* The journal book (phase 5 ticket 17, CONTEXT: "Journal book"): everything
-   a person chose to put in a keepsake print of a chosen range, assembled in
-   one read. A view over rows entries, milestones and side effects own, the
-   same way clinicianSummary.ts is a view over its own five areas - nothing
-   here is stored, and nothing here computes a figure one of those areas
-   does not already produce (ADR-0010).
+/* Assemble the chosen Journal book sections for one date range.
+   Read only the selected types and strip excluded photos and tags
+   before rendering. The book stores nothing and uses the owning
+   areas' calculations (ADR-0010).
 
-   This is not a second clinician summary and deliberately does not reuse
-   that area's section registry. The audience is the person themselves, the
-   sections have nothing in common with a doctor's five, and the difference
-   that matters is the one the registry has no room for: a book carries what
-   was *chosen*, section by section, rather than everything the range holds.
-
-   Which is why an unchosen type is not read at all rather than read and
-   left undrawn. The inclusion below decides what the SQL asks for - and an
-   entry's photos and tags are stripped here rather than in the markup, so
-   the screen has nothing to opt back in by accident.
-
-   Wording is not here (ADR-0016): the inclusion picker's labels live in
-   vocabulary/journalBookLabels.ts, keyed the same way. */
+   The selection UI reads labels from `vocabulary/journalBookLabels.ts`
+   so this layer stays free of locale code (ADR-0016). */
 
 import type { Entry, Milestone, Photo, SideEffect } from '../types';
 import type { EntriesArea } from './entries';
@@ -151,7 +138,7 @@ interface JournalBookAreas {
 /* searchEntries with no query and no tags is the entries area's own range
    read - the search screen's path with its two date filters set and nothing
    else, which is what tryouts already reaches for. It excludes trashed
-   entries, as every read there does (ticket 19), and answers newest first,
+   entries, as every read there does, and answers newest first,
    so a book turns it around. */
 async function readEntries(
   { entries, tags }: JournalBookAreas,

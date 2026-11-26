@@ -1,4 +1,4 @@
-/* Recording a voice note in the editor (ticket 24).
+/* Recording a voice note in the editor.
 
    One seam, both platforms, unlike photoPicking.ts's camera capture: an
    Android photo needs the system camera app (photos/picker.ts), but audio

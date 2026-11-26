@@ -1,18 +1,10 @@
-/* Hold a photograph to start picking photographs to delete
-   (pre-release-human 12). One piece for both photo grids, Progress photos
-   and the photo library: `cell` goes on each tile with {@attach}, and
-   HoldSelectBar.svelte draws the bar that deletes what was picked.
+/* Attach `cell` to a tile in either photo grid. Hold, right-click
+   or press the context menu key to select. The accessible Select
+   button starts the same mode with no picks. Tap toggles a tile
+   until Cancel, Back or dropping the last selection leaves the mode.
 
-   The selection is the mode. Holding a tile picks it, and from then on a
-   tap picks or drops a tile instead of opening it; dropping the last one,
-   Cancel and Back all leave. A hold is invisible to anyone who does not
-   know it is there and to a screen reader, so each grid also has a Select
-   button (`start`): the same mode with nothing picked yet, which stays
-   until Cancel or Back since there was no first pick to drop. A press that travels is a scroll and picks
-   nothing (holdSelect.ts), and nothing here cancels a touchmove, so the
-   page scrolls under a finger exactly as it did. A right click or the
-   keyboard's context-menu key on a tile is the same hold, for a mouse and
-   a keyboard. */
+   A moving press remains a scroll. This module never cancels touchmove.
+   HoldSelectBar handles deletion. */
 import { tick } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
 import { scale, type TransitionConfig } from 'svelte/transition';

@@ -2,28 +2,10 @@
   import { collapse } from '$lib/motion/reveal';
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
-  /* Letters to your future self (phase 5 UX ticket 25, redrawn by phase 10
-     redesign ticket 45).
-
-     Two things were crowded, and phase 5 fixed the first: composing is a
-     sheet now, opened from the header's add control the way every other
-     feature screen on the hub opens its editor, and the screen itself is
-     what it says it is.
-
-     What ticket 45 changes is what a letter looks like once it is here. All
-     three states were one list row - a lock glyph, "Sealed", and `Opens 19
-     Aug 2031` in secondary grey - so five years of waiting read like an
-     ordinary record. They are three drawings now and `LetterCard` holds them;
-     opening one unfolds it in place rather than replacing it with a sheet
-     of text.
-
-     Rule 16 asks an area screen to open by saying what is true now. This one
-     answers it with its order rather than with a second drawing above the
-     list: the letters still waiting come first, soonest to open at the top,
-     and the ones already open run underneath - Appointments' Coming up and
-     Behind you, on the only fact that changes which of them you want. The
-     next letter to open, and how long until it does, is then the first thing
-     on the screen and is not repeated anywhere. */
+  /* The add control opens Compose in a sheet. LetterCard owns the three
+     states and unfolds an opened letter in place. Show letters still
+     waiting first, ordered by soonest opening, then open letters. The
+     list itself answers what is true now (DIRECTION.md rule 16). */
   import { scrollBehavior } from '$lib/motion/tokens';
   import { untrack } from 'svelte';
   import { page } from '$app/state';

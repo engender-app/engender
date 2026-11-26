@@ -1,8 +1,8 @@
 /* Whether Home and the appointment screens offer the appointment debrief
-   (phase 6 ticket 08, ADR-0066). Pure, so the rule is provable without the
+   (ADR-0066). Pure, so the rule is provable without the
    journal. */
 
-/** What the offer predicate below needs to know (ticket 58, ADR-0066): the
+/** What the offer predicate below needs to know (ADR-0066): the
     most recent past appointment (appointments.ts's
     `mostRecentPastAppointment`), the standing prep list's own state read
     off the standalone checklist (checklists.ts), scoped to that same
@@ -32,7 +32,7 @@ export interface DebriefOfferState {
     this specific appointment has not already been resolved one way or the
     other. Once, whether taken or dismissed (What to Build #1): the offer
     never reappears for the same appointment, and a newer past appointment
-    is what re-arms it (ticket 58) - `appointmentId` moving on is itself
+    is what re-arms it - `appointmentId` moving on is itself
     the re-arm, there is no date to change or column to clear. */
 export function debriefOfferVisible(state: DebriefOfferState): boolean {
   if (state.appointmentId == null) return false;

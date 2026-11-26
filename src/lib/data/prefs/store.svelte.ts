@@ -1,24 +1,9 @@
-/* The one preference object screens read and write.
+/* Project SQLite preferences into synchronous Svelte state for reads
+   and bindings. `preferences.ts` owns the rune-free persistence layer.
 
-   preferences.ts is async and rune-free so it can be tested in the Node
-   tier; a Svelte template needs a synchronous, reactive read and a plain
-   assignment it can `bind:` to. This is the thin layer between the two: a
-   $state projection of the pref table, with writes forwarded to SQLite.
-
-   It is a projection, not a second store. Nothing else caches a preference
-   and nothing writes to `values` except this module, so `activeScales`
-   cannot end up with two sources of truth while the demo store still owns
-   entries (ticket 07 takes those).
-
-   Three phases in a cold start, in order:
-
-     1. Nothing attached. Values are the defaults, then the boot set from
-        the cache once boot() reaches step 1. A write here is remembered
-        and replayed - onboarding is reachable before SQLite finishes
-        opening, and losing the name the user just typed would be its own
-        bug.
-     2. attachPreferences() lands the real values from SQLite.
-     3. Writes go straight through. */
+   Start with defaults and cached boot preferences. Remember writes
+   made before attachment and replay them when SQLite attaches, so
+   early setup input survives. Subsequent writes go straight through. */
 
 import { untrack } from 'svelte';
 import { getLocale, setLocale } from '$lib/paraglide/runtime';
@@ -33,8 +18,8 @@ const values = $state<PreferenceValues>({ ...PREFERENCE_DEFAULTS });
     opens, and a preference that is not in the boot set reads its default
     until then - `lastBackupAt` read null, so the export screen told a
     persona with a 34-day-old backup that it had never been backed up, for
-    about 170ms (ticket 176). The same distinction `vocabulary.ready` draws
-    for the reference mirror (ticket 152). Stays true across a re-attach:
+    about 170ms. The same distinction `vocabulary.ready` draws
+    for the reference mirror. Stays true across a re-attach:
     the values being replaced are already this journal's, not defaults. */
 let attached = $state(false);
 export function preferencesAttached(): boolean {
@@ -145,7 +130,7 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
 }
 
 /* A language picked on the welcome, before there is a journal to write it
-   to (pre-release-human ticket 19). A write before the open is held in
+   to. A write before the open is held in
    memory, and setLocale() reloads the page, so the choice needs somewhere
    that outlives the reload: without it the journal attached with
    'system', activateLanguagePreference() resolved that against the
@@ -225,7 +210,7 @@ export function activateLanguagePreference() {
   if (target !== getLocale()) setLocale(target);
 }
 
-/** The lock's half (after-release ticket 10): the database is about to
+/** The lock's half: the database is about to
     close, so the writes already out at it are waited for, and anything
     written from here on is held the way writes before the first open are,
     for `attachPreferences` to replay once the journal reopens. The values

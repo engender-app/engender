@@ -82,7 +82,7 @@ export const BUILT_IN_TAG_GROUPS = [
 
 export type BuiltInTagGroupKey = (typeof BUILT_IN_TAG_GROUPS)[number]['key'];
 
-/* Built-ins a new journal seeds hidden (functional audit ticket 41), because
+/* Built-ins a new journal seeds hidden, because
    each one repeats another built-in. `g-body-dys` and `g-soc-dys` are the
    physical and social dysphoria types again under the gender group, without
    the line saying what each means; the euphoria tags they sat beside stay,
@@ -120,37 +120,23 @@ export const BUILT_IN_BODY_REGIONS = [
 
 export type BuiltInBodyRegionKey = (typeof BUILT_IN_BODY_REGIONS)[number];
 
-/* The poses a progress photo is taken in that every install starts with
-   (pre-release-human 12), in the order the screen offers them. A person
+/* The poses a progress photo is taken in that every install starts with,
+   in the order the screen offers them. A person
    renames or hides one and adds their own (progressPhotos.ts); these four
    are never deleted, so every photo an older journal or archive holds
    keeps the pose it names. `hair` is where the hair progress photos of
    a journal before version 124 went (tally-and-hair-fold-migration.ts). */
 export const BUILT_IN_PROGRESS_POSES = ['front', 'side', 'back', 'hair'] as const;
 
-/* The effect categories personal effects are grouped under (phase 5
-   ticket 41, CONTEXT: "Effect category"), taken from genderdysphoria.fyi's
-   own grouping across its two second-puberty pages. Body shape and
-   composition, and skin and hair, are on by default - together they hold
-   every one of the eight effects that shipped before this ticket, so an
-   existing journal loses no visible effect and a new journal meets a
-   screen no longer than today's. Genital and sexual, cognitive and
-   emotional, and sensory ship off by default: as much a privacy and
-   comfort decision as a length one. Genital and sexual in particular names
-   ejaculate changes, orgasm changes and genital odour - intimate in a way
-   the rest of the catalogue is not, on a screen in an app whose disguise
-   mode exists because its readers sometimes hand
-   their phone to someone. Built-in only: no custom-category creation is
-   asked for, so unlike a tag group there is no per-row `builtIn` flag.
+/* Group personal effects using genderdysphoria.fyi's second-puberty
+   categories. Body shape and composition and skin and hair are visible
+   by default, preserving the first eight effects. Sensitive and longer
+   groups start hidden. Categories are built-ins only.
 
-   Pre-release-human 12 split genital and sexual in two, so a person can
-   show one without the other; there are six now. Both new ones go last,
-   where version 121 (effect-category-split-migration.ts) leaves them in a
-   journal that had the old one, so a fresh journal and a migrated one list
-   the categories in the same order. Cycle cessation is filed under genital:
-   no non-sensitive category fits a period stopping, it is retired
-   (retiredEffects.ts) so only a person who already marked it ever sees it,
-   and under genital it keeps the default-off visibility it always had. */
+   Genital and sexual have separate switches, for six groups total.
+   Place both last to match journals migrated by v121. Keep retired
+   cycle cessation under genital, hidden by default and available only
+   to journals that recorded it. */
 export const BUILT_IN_EFFECT_CATEGORIES = [
   { key: 'body_shape', defaultEnabled: true },
   { key: 'skin_hair', defaultEnabled: true },
@@ -162,37 +148,22 @@ export const BUILT_IN_EFFECT_CATEGORIES = [
 
 export type BuiltInEffectCategoryKey = (typeof BUILT_IN_EFFECT_CATEGORIES)[number]['key'];
 
-/* The full personal-effects catalogue (phase 5 ticket 41, the third
-   revisit of this list's closure - it stops closing it): the eight keys
-   that shipped before this ticket, unchanged, plus a wider set
-   transcribed from genderdysphoria.fyi's two second-puberty pages
-   ("Estrogenic Second Puberty 101", "Androgenic Second Puberty 101",
-   fetched 2026-08-19) and cross-checked against GenderGP's HRT timeline
-   tables (gendergp.com/blog/hrt-timelines-hormones-effects/, also fetched
-   2026-08-19, citing WPATH Standards of Care v7). Each row names a
-   category and a direction; whether an effect is tier 1 is derived from
-   whether personalEffectWindow.ts's literature-window map lists its key,
-   not stored here a second time (personalEffectWindow.ts's `effectTier`
-   joins the two).
+/* Retain the original eight effect keys. The additional effects come
+   from genderdysphoria.fyi's Estrogenic and Androgenic Second Puberty 101
+   and GenderGP's HRT timeline tables (both fetched 2026-08-19). Category
+   and direction live here; personalEffectWindow.ts derives tier from
+   the current literature-window map.
 
-   Excluded, recorded here rather than only in the implementation note:
-   genderdysphoria.fyi's "Cyclical Period-like Symptoms" section (a
-   recurring monthly state, not a dated first-noticed change - out of
-   scope for the reason ongoing states generally are) and its "Changes to
-   Pap Test" section (a medical finding, not a body change a person
-   notices, also out of scope). "Reduced Body Hair" and "Changes to Scalp
-   Hair" (feminizing) and "Body Hair, Everywhere" (masculinizing) are
-   folded into the existing `hair_changes`/`facial_body_hair` keys rather
-   than duplicated as a second row for the same change.
+   Exclude cyclical period-like symptoms because they recur, and Pap test
+   findings because they are not self-noticed changes. Fold body and scalp
+   hair variants into hair_changes and facial_body_hair.
 
-   Functional audit ticket 22 re-sourced every band to WPATH SOC8 Appendix
-   C Table 1, which moved two keys across the tier line without moving
-   their rows here (row order is the catalogue's sort order):
-   `male_pattern_baldness_ceasing` is tier 2 now (SOC8: variable / variable)
-   and `scalp_hair_loss_masculinizing` is tier 1 (SOC8: 6-12 months, more
-   than five years). */
+   Bands now use WPATH SOC8 Appendix C Table 1. Male-pattern baldness
+   ceasing stays tier 2 (variable/variable); masculinizing scalp hair
+   loss is tier 1 (6–12 months onset, more than five years maximum).
+   Tier changes leave catalogue order intact. */
 export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
-  // Feminizing, tier 1: the original four (phase 4 ticket 07) plus ticket
+  // Feminizing, tier 1: the original four plus ticket
   // 41's five-effect widening.
   { key: 'breast_development', category: 'body_shape', direction: 'feminizing' },
   { key: 'fat_redistribution', category: 'body_shape', direction: 'feminizing' },
@@ -238,7 +209,7 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'orgasm_change_feminizing', category: 'sexual', direction: 'feminizing' },
   { key: 'attraction_change_feminizing', category: 'sexual', direction: 'feminizing' },
 
-  // Masculinizing, tier 1: the original four (phase 5 ticket 02) plus
+  // Masculinizing, tier 1: the original four plus
   // ticket 41's four-effect widening.
   { key: 'voice_drop', category: 'body_shape', direction: 'masculinizing' },
   { key: 'facial_body_hair', category: 'skin_hair', direction: 'masculinizing' },
@@ -279,7 +250,7 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
 export type BuiltInPersonalEffectKey = (typeof BUILT_IN_PERSONAL_EFFECT_TYPES)[number]['key'];
 
 /* The dimension keys, the milestone and regimen templates, the guided prompt keys and the
-   euphoria tag keys live in builtinTemplates.ts (ux-carpet ticket 223): they
+   euphoria tag keys live in builtinTemplates.ts: they
    are what the boot-time vocabulary, Today and the first run's scales step
    read, and kept in this file they carried the whole catalogue below into
    every first load. Re-exported so nothing that reads the catalogue has to

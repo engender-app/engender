@@ -1,93 +1,30 @@
-/* What was happening around the numbers a chart draws.
+/* Select dated context for charts without changing their values.
+   A moment marks a day and a stretch spans an interval. An open
+   regimen episode ends at the supplied today. Keep this logic pure
+   and put labels and drawing in the chart kit (ADR-0016).
 
-   Every time chart in the app plots the person's own readings against a date
-   axis and draws nothing else. A dysphoria line that dropped in March does
-   not say that March is when the regimen started; a lab series does not say
-   where the schedule was paused. Those dates are already stored, one table
-   away from the chart, and before this each chart would have had to fetch
-   and draw them itself.
+   Annotate dated values, per-analyte lab series, body-map trajectories
+   and voice trends. Keep Safe Space's 30-day chart free of unsolicited
+   surgery and recovery context. Interval mood uses positions within
+   a dosing interval, so date annotations do not apply.
 
-   So: one selection rule here, one drawing layer in the kit
-   (components/kit/ChartAnnotations.svelte), and a chart opts in by passing
-   the annotations it wants. Two kinds of thing, because a moment and a
-   stretch are not the same picture - a milestone is a day, a regimen episode
-   is a period, and drawing the second as the first would be a lie about what
-   the record holds.
-
-   Descriptive throughout (PRODUCT.md:109). An annotation says what happened
-   and when. Nothing here, and nothing the layer draws, says a reading moved
-   because of it: there is no correlation, no ordering of cause, and no
-   arithmetic that touches the plotted values at all. correlationCards.ts is
-   a separate thing and this does not go near it.
-
-   Pure, and above the journal seam the way milestoneStatus.ts and
-   regimenEpisode.ts are: nothing here reads a clock or a database. `today`
-   arrives as an argument because an unfinished episode reaches to today and
-   the schema stores no end for it. Node-tier safe, so it imports
-   no paraglide: the words an annotation is written with live in
-   components/kit/chartAnnotation.ts, the same split day.ts keeps from
-   vocabulary/dayLabels.ts.
-
-   ## Which charts take annotations, and which take none
-
-   This is decided per chart rather than switched on everywhere, and the
-   ones that take nothing are named with a reason.
-
-   Taking them:
-
-     /stats, the values chart      a scale over a date range, which is the
-                                   central case this rule is built around
-     /care/labs, per analyte       "where did the schedule change" is the
-                                   question a lab series is read with
-     /body-map, both trajectories  a region's dysphoria and euphoria over a
-                                   range, same shape as the values chart
-     /voice, the trend             benchmarks months apart, and a regimen
-                                   episode is the thing they are read against
-
-   Taking none:
-
-     Safe Space's 30-day timeline  it is a crisis screen. The window would
-                                   clip out old milestones on
-                                   its own, but the ones it would keep are
-                                   the surgery dates and recovery windows of
-                                   the last month, and a screen someone opens
-                                   on a bad night is not where those should
-                                   arrive unasked.
-     /stats, interval mood         same reason: x is a position in the dosing
-                                   interval.
-
-   One thing the app stores dates for and this deliberately does not draw:
-   entries themselves - every logged day would be an annotation, which is
-   the line already on the chart. A consult used to be excluded for the same
-   reason recorded here once, back when it lived only inside a procedure's
-   own history; every appointment later got a row of its own, and a consult
-   is one of those rows, so it draws like any other appointment now. */
+   Entry days already appear in the plotted series. Appointments,
+   including consults, qualify as dated context. The annotations say
+   what happened and when. The separate correlation code owns any
+   analysis of readings. */
 
 import type { EpisodeEndReason } from '../data/types';
 import { spanOverlapsRange } from '../data/span';
 
-/** The kinds of thing that get annotated, and nothing else: this draws dates
-    the app already stores rather than introducing an event type of its own.
-
-    `surgery` and `recovery` both come from one Procedure - the day, and the
-    stretch after it - because a chart wants to show the operation and the
-    weeks it was recovered through as two different marks.
-
-    `finishedArea` is a point on the day somebody said a stream of theirs
-    ended. It belongs in
-    `getAnnotations` rather than beside the six above, because that day is
-    exactly what a flat stretch on any chart covering it needs explaining
-    with: without it the reader cannot tell a practice that ended from a
-    month nobody logged. Its `name` is the area's own key, resolved by
-    kit/chartAnnotation.ts.
-
-    `appointment` is one point per past appointment, named by the person's
-    own kind where they typed one -
-    the same rule `name` already follows everywhere else, so no fallback
-    lives here. A consult is an appointment whose procedureId is set and
-    carries no kind of its own here: it draws exactly like any other
-    appointment, which is the point of it having stopped being a separate
-    thing. */
+/**
+ * Use dates the journal already stores. A Procedure supplies the
+ * surgery point and recovery span. finishedArea marks the day the
+ * person ended the stream. The chart kit resolves its area key to
+ * a label so a finished practice is distinct from a reporting gap.
+ *
+ * Plot each past appointment, including consults, by its own date
+ * and optional kind.
+ */
 export type ChartAnnotationKind =
   | 'milestone'
   | 'surgery'

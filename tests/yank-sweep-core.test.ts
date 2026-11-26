@@ -1,12 +1,11 @@
 // @ts-nocheck
-/* The yank sweep's arithmetic, unit-tested on synthetic frames (ticket
-   100). The desktop sweep proved itself by injecting wrong marks into a
+/* The yank sweep's arithmetic, unit-tested on synthetic frames. The desktop sweep proved itself by injecting wrong marks into a
    real browser; that proves the whole chain but says nothing about which
    half broke when it goes quiet. These pin the four failure shapes - and,
    just as much, the shapes that must NOT be flagged, because a detector
    that fires on every legitimate animation is a detector nobody reads.
 
-   The hydration sweep's additions (ticket 108) are pinned here too: the
+   The hydration sweep's additions are pinned here too: the
    wider teleport floor over its calmer window, the camera's transient
    arithmetic on synthetic gray frames, and the screen inventory the two
    crawlers walk. */

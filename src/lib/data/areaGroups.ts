@@ -1,27 +1,11 @@
-/* What a person finishes, as opposed to what the journal stores it against
-   (phase 8 features ticket 04, ADR-0052).
+/* Map finishable archive sections to the areas people see (ADR-0052).
+   Grouped sections, such as Voice benchmarks and practice takes,
+   finish together in one transaction.
 
-   `areaState.ts` keys the record by `ArchiveSectionName`, because that is
-   what is compile-checkable and wire-stable. Nobody meets an archive section.
-   What somebody meets is a screen, such as Voice, and voice is two sections,
-   `voiceBenchmarks` and `voicePracticeTakes`, which finish together in one
-   transaction or not at all.
-
-   ADR-0052 calls that one-to-many mapping presentation and says it lives with
-   the hub. It is here rather than in `more/+page.svelte` because four things
-   now need it and none of them is the hub: the control on each area's own
-   screen, the mark a finished area draws on a chart, the line in the clinician
-   summary, and the offer. Written once and checked, rather than eight screens
-   each naming their own sections and a ninth quietly disagreeing.
-
-   This is not a second list of areas. `FINISHABLE_AREAS` remains the list;
-   `EveryFinishableAreaGrouped` below refuses to compile until whatever is
-   added there is grouped here, and areaGroups.test.ts refuses a section
-   grouped twice.
-
-   Node-tier safe: no clock, no driver, no paraglide. A group's own name is
-   `vocabulary/areaLabels.ts`'s, the same split `day.ts` keeps from
-   `vocabulary/dayLabels.ts`. */
+   `FINISHABLE_AREAS` is the source of truth. The type check requires
+   every finishable section to be grouped, and areaGroups.test.ts
+   rejects duplicates. Keep the mapping free of clocks, drivers and
+   Paraglide. Localized names live in `vocabulary/areaLabels.ts`. */
 
 import { areaQuiet, type AreaStates, type FinishableArea, type SuspendableArea, SUSPENDABLE_AREAS } from './areaState';
 
@@ -36,8 +20,7 @@ export type AreaGroupKey =
 
 /** Which areas each group finishes, together.
 
-    Most of them front exactly one area. Voice fronts two (phase 8 features
-    ticket 10): a benchmark and a practice take are both dated records of
+    Most of them front exactly one area. Voice fronts two: a benchmark and a practice take are both dated records of
     the same practice, so `voice` finishes them together. A voice memo belongs to an entry and travels inside
     `entries` (CONTEXT: "Area"), so the memos screen is not finishable and
     has no group here.
@@ -103,7 +86,7 @@ export function finishedGroups(states: AreaStates): { key: AreaGroupKey; epochDa
   return found.sort((a, b) => a.epochDay - b.epochDay);
 }
 
-/** The groups whose areas are all suspendable (phase 8 features ticket 51).
+/** The groups whose areas are all suspendable.
     Derived from `SUSPENDABLE_AREAS` rather than typed out a second time - the
     same reason this file's own header exists: one list, checked, instead of
     a screen and a rule quietly disagreeing about which groups these are. */
@@ -187,22 +170,10 @@ export function groupLastWrite(
   return latestWrite(AREA_GROUPS[key], lastWrites);
 }
 
-/** How long an area has to go unwritten before the app asks about it once.
-
-    Half a year. The number itself is a judgement rather than a measurement:
-    the one cadence the tree actually pins is the voice benchmark nudge's, which
-    speaks up after 30 days (`liveTiles.ts`), and 180 is six times that. The
-    rest is plausibility - electrolysis runs on a four-to-six-week course, a
-    wear session is a most-weeks thing, a benchmark happens when somebody
-    remembers - so what the window buys is that no ordinary gap and no hard
-    season comes near it.
-
-    What actually keeps this from being a nag is structural, and it is not
-    the number. The offer is made on the area's own screen, which somebody
-    reached on purpose, never on Home and never as a notification; and a no
-    is kept forever, so the question is asked at most once per area for the
-    life of the journal. If the number turns out to be wrong, it is wrong by
-    asking a little early or a little late, once. */
+/** Offer to finish an area after 180 days without a write, six times
+    the Voice benchmark nudge interval. This is a conservative threshold
+    for normal gaps. Offer only on the area's screen, never on Home or
+    by notification. A decline lasts for the life of the journal. */
 export const FINISH_SUGGESTION_QUIET_DAYS = 180;
 
 interface FinishOfferInput {

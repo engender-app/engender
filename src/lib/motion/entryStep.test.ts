@@ -54,7 +54,7 @@ describe('a new entry stepping forward and back', () => {
   });
 });
 
-/* The way on under the finish control (ticket 04): it opens and closes along
+/* The way on under the finish control: it opens and closes along
    the foot's own direction, so the finish control is carried continuously. */
 describe('the foot\'s way on', () => {
   const foot = (flexDirection: string, size: { width: number; height: number }) => {

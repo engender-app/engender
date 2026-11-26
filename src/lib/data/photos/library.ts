@@ -1,21 +1,7 @@
-/* What the photo library is made of, and how it narrows (phase 11 ticket
-   14). Pure, so the node tier tests the rules and the screens draw them:
-   the read itself is journal/photoLibrary.ts.
-
-   The library is one list over six photo-carrying tables, and a person
-   looking at it wants two questions answered that a single grid cannot
-   answer on its own - where did this photograph come from, and show me
-   only those. A source answers the first and a chip the second, and they
-   are not the same vocabulary: "Body" is entry and milestone photographs
-   together, because the person who took them was photographing themselves
-   either way and which record it hangs off is the app's bookkeeping rather
-   than theirs. "Hair" is hair removal's photographs; a hair-pose progress
-   photograph is a progress photograph and answers to Progress.
-
-   Colour says none of this. ADR-0012's rule for a wipe holds for a grid
-   too: the tile carries its source as words, in the accessible name and in
-   a label, never as a stripe that would rank one kind of photograph over
-   another. */
+/* Group photos from six tables and filter by chips. Body includes
+   entry and milestone photos. Hair means removal, and hair-pose photos
+   belong to Progress. Show the source in the visible label and
+   accessible name (ADR-0012). journal/photoLibrary.ts does the reads. */
 
 import { localDateFromEpochDay } from '../epochDay';
 import type { Journal } from '../journal/journal';
@@ -57,8 +43,8 @@ export interface LibraryPhoto {
     first because it is where the library opens; `starred` narrows by flag
     across source chips. */
 /* `progress` sits next to `body`: both are the person photographing
-   themselves, and a progress shot is the one taken on purpose for it
-   (pre-release-human 12, bug 25). Its own chip rather than folded into
+   themselves, and a progress shot is the one taken on purpose for it.
+   Its own chip rather than folded into
    Body, because finding the posed shots among every other photograph is
    what the chip is for. */
 const PHOTO_CHIPS = ['everything', 'body', 'progress', 'hair', 'tryouts', 'surgery', 'video', 'starred'] as const;
@@ -150,8 +136,8 @@ export function photoOwnerHref(photo: LibraryPhoto): string {
   }
 }
 
-/** Whether the library can delete this photograph itself, with a hold
-    (pre-release-human 12). A video note cannot: no area deletes one on its
+/** Whether the library can delete this photograph itself, with a hold.
+    A video note cannot: no area deletes one on its
     own, only the entry editor does, as part of saving its entry. */
 export function libraryDeletable(photo: LibraryPhoto): boolean {
   return photo.source !== 'video';

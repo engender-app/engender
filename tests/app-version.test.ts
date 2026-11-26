@@ -1,4 +1,4 @@
-/* The one version value (phase 2 ticket 01). Everything that names a release -
+/* The one version value. Everything that names a release -
    the built bundle, the About screen, the release notes and the Android
    artifacts - reads it from scripts/app-version.mjs, so the rules for what
    counts as a release and what counts as a development build are asserted
@@ -67,7 +67,7 @@ describe('resolveAppVersion', () => {
 });
 
 describe('isReleaseVersion', () => {
-  /* Two callers ask this and have to agree (phase 2 ticket 06): the pipeline
+  /* Two callers ask this and have to agree: the pipeline
      refuses to package a development version, and the build only pins its
      build id - and with it every chunk hash - when what it was handed can be
      rebuilt from a tag. */

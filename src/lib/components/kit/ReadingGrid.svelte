@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The grid the reading tiles sit in (phase 11 ticket 07): two columns at
+  /* The grid the reading tiles sit in: two columns at
      390px, every row the height of its tallest tile, hairlines between -
      a list's rule (rule 4) read across two columns. The grid draws the
      lines and the tiles sit between them, so a tile absent for want of

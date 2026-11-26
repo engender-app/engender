@@ -10,24 +10,11 @@
 </script>
 
 <script lang="ts">
-  /* The year's days as words (phase 14 pre-release ticket 30, accessibility
-     audit A06), drawn under YearRows.svelte's grid.
-
-     The grid is a picture: its cells carry no names a screen reader reaches,
-     a finger or a keyboard cannot raise a `title`, and the ramp's steps are
-     told apart by shade alone (WCAG 1.4.1). This is the same days written
-     out, in a fold so the card stays the chart until somebody asks: a month
-     at a time, every day with its weekday and date and either its value or
-     "Not logged". The written value is the non-colour way to read the ramp,
-     and the swatch beside it ties each row back to its cell.
-
-     A month at a time rather than all 365 rows: two buttons step it, so the
-     open card is three tab stops, and the fold stays about a screen tall
-     instead of opening half the document.
-
-     The calendar steps its month with the same pair of icon buttons, but
-     inline in its route rather than as a component, so this draws its own
-     pair the same way rather than reusing one. */
+  /* Give YearRows an accessible text equivalent (WCAG 1.4.1).
+     Each disclosed row names its weekday, date and value or Not
+     logged. A swatch ties it to the grid without relying on colour.
+     Page one month at a time to keep the open list and its three tab
+     stops manageable. */
   import { m } from '$lib/paraglide/messages';
   import type { YearRows } from '$lib/charts/yearRows';
   import { disclose, resize } from '$lib/motion/reveal';
@@ -65,7 +52,7 @@
 </script>
 
 <div class="year-days" data-year-days-fold>
-  <!-- A full-width fold toggle answers with the wash, not a scale (pre-release-human 18). -->
+  <!-- A full-width fold toggle answers with the wash, not a scale. -->
   <button
     type="button"
     class="disclosure-toggle"

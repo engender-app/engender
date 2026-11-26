@@ -1,59 +1,15 @@
 <script lang="ts">
-  /* The Look back door: the person's own history as a rail, the span
-     pointed at on it, that span's facts, and a short set of deep readings
-     each opening a screen at the same span (phase 11 ticket 07).
+  /* One span drives Look back. SpanTimeline bounds it from the earliest
+     authored day to today, then the same dates feed the facts, the reading
+     tiles and their full screens under /stats/<reading>.
 
-     What it was before this: a scroll of eleven cards, eight defaulting
-     to mood, roughly six viewports, with one section heading and nothing
-     sticky - the whole-app audit's finding 6. Every card was drawn in full
-     under the rail, so the deepest reading on the door (the constellation)
-     sat 510px into the scroll where nobody scrubbed it, and a person who
-     dragged a span read four cards before reaching the one they meant.
+     A reading tile shares its component's calculation with the full card.
+     Readings with no data in the span leave the grid and the remaining tiles
+     reflow. What it cost appears last when the span holds a cost. The mood
+     strip renders in full above the grid.
 
-     The door now, top to bottom: the field and the title; the rail with
-     its legend and state line (ticket 06); the span's three facts (ticket
-     05); a grid of reading tiles, each stating one headline figure for
-     the span and opening `/stats/<reading>` where the full card draws with
-     its controls; and the resurfacing block, the wrapped tile beside the
-     on-this-day tile, which opens in place. Nothing else.
-
-     The wrapped tile is the door's one way into Wrapped (functional audit
-     ticket 12). The door used to offer three: last week, last month and
-     last year as quick picks under the facts, a "wrapped for this span"
-     link, and the tile. The range link went with the range cadence (ticket
-     13); the quick picks went here, since the wrapped screen carries its
-     own week, month and year tabs and the tile already opens it. With
-     Wrapped off the tile is not mounted, so the door says nothing about
-     Wrapped at all.
-
-     A tile is a summary of a screen rather than the screen (Revolut's
-     analytics, MacroFactor's insights), flush on the page between hairlines
-     rather than a block of the stripe - Alicja's call on the rendered spike
-     (2026-09-16). A reading with no data in the span has no tile ("absent,
-     never empty"), so the count varies with the span and the grid rewraps.
-     Every reading component here draws itself twice - as its tile and, on
-     its own route, as its card - so the figure on the door and the card
-     behind it are one read, never two. The mood strip is the exception:
-     it has no tile, only its card, drawn on the door.
-
-     Three cards left the door for good in this ticket rather than becoming
-     tiles: "Each scale, this period" draws under the day-by-day chart on
-     that reading's screen, since it reads the same series; "Days at each
-     mood" and "What you write about" were one tile, "How the days fell",
-     since both ask what the span was made of; and the journey anchor's
-     caption is wrapped's own line now, not a fourth thing on this door.
-     Functional audit ticket 12 then took the share by tag out of that tile
-     and into Tags, which is where every other tag reading on the door
-     lives, and cut Words and Highest days. What was left behind the tile
-     was the mood strip alone, so on Alicja's sign-off the tile and its
-     screen went and the strip draws here over the grid, which leaves six
-     tiles, three rows of two. Functional audit ticket 31 added a seventh,
-     What it cost, last and only when the span holds a cost.
-
-     Redesign ticket 11: one span drives every read on this screen. The rail
-     runs from the earliest day the person authored anything dated to today
-     (SpanTimeline, lookBackSpan.ts), two handles bound a span, and that
-     span is what every tile and every screen behind it is read over. */
+     Below the readings, On this day opens inline. The Wrapped tile is the
+     route into Wrapped and is omitted when that feature is off. */
   import { m } from '$lib/paraglide/messages';
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -121,14 +77,14 @@
      one guaranteed to be a colour on every palette. The facts and the
      resurfacing pair take the stripe after it, where an achromatic band is
      not a problem. `1` was the two interval folds' own stripe, moved to
-     Care with them (redesign ticket 05); `lookBack` keeps its index. */
+     Care with them; `lookBack` keeps its index. */
   const AREA_ROLE = { charts: 0, lookBack: 2 };
 
   /* Read on recompute rather than captured, so a session open across
-     midnight moves on (ticket 10). */
+     midnight moves on. */
   let today = $derived(currentDay());
 
-  /* The rail (redesign ticket 11): where the person's history starts, from
+  /* The rail: where the person's history starts, from
      the three things the journal already dates - its own entry bounds, the
      milestones (mirrored, ADR-0004, so no query), and the eras. */
   let erasQuery = liveList((j) => j.eras.getEras());
@@ -160,7 +116,7 @@
         )
   );
 
-  /* The rest of the rail's history (ticket 06): regimen episodes and
+  /* The rest of the rail's history: regimen episodes and
      tryouts as bands, procedures as marks - one question over the whole
      rail rather than four, since `getAnnotations` is already the app's
      single "what happened between these days" query. */
@@ -192,7 +148,7 @@
 
   /* The span, settled. Null until the rail is known, then wrapped's own
      default window; from there it is the person's. `live` is the same span
-     as the finger has it. Restored on Back navigation (phase 11 ticket 32). */
+     as the finger has it. Restored on Back navigation. */
   let span = $state<Span | null>(getLastLookBackSpan());
   let live = $state<Span | null>(getLastLookBackSpan());
 
@@ -366,7 +322,7 @@
     eraOfferSpan = nextOffer;
   };
 
-  /* The "name this stretch" offer (redesign ticket 48): once a span the
+  /* The "name this stretch" offer: once a span the
      person dragged settles, one offer to turn it into an era, on this
      surface and nowhere else. Plain component state, gone on reload. */
   let eraOfferSpan = $state<Span | null>(null);
@@ -417,7 +373,7 @@
      The span's facts, all of one read (ADR-0056). `entryCount` is the
      floor every summary panel on this door is held to - WRAPPED_ENTRY_FLOOR,
      the same bar a retrospective clears - and `biggestDimensionChange`
-     feeds the span's facts (redesign ticket 05). One read answers both,
+     feeds the span's facts. One read answers both,
      and the tiles that hold to the floor are handed its answer rather than
      asking again (ADR-0010).
 
@@ -452,8 +408,8 @@
      beat after the entries row with nothing gating that second pop. */
   let factsAnswered = $derived(!factsQuery.loading && vocabulary.ready);
 
-  /* Held at last visit's height until the read answers, then faded in
-     (ux-carpet ticket 255): a cold load drew the facts at full opacity the
+  /* Held at last visit's height until the read answers, then faded in:
+     a cold load drew the facts at full opacity the
      frame the read resolved, and nothing reserved their room, so the quick
      picks below shoved down 94-184px in that one frame. Latched: a reserve
      must not put its placeholder back once the read has answered once. */
@@ -518,8 +474,8 @@
     live = span;
   });
 
-  /* What replaces the rail's skeleton fades in over it (ticket 157), the
-     way ReadGate's answer does (ticket 184): the skeleton's `out:crossfade`
+  /* What replaces the rail's skeleton fades in over it, the
+     way ReadGate's answer does: the skeleton's `out:crossfade`
      only handles the leaving half, and on a journal with nothing dated the
      empty notice was drawn at full opacity in the frame the skeleton began
      to go - on the phone, in 16 of 16 cold loads. The branch is a run of
@@ -557,11 +513,11 @@
 
 <div class="screen" bind:this={screen}>
   <!-- The door's title at 48 on the field, and nothing under it: the span
-       is written under the rail, against the handles that move it
-       (ticket 06). -->
+       is written under the rail, against the handles that move it.
+       -->
   <ScreenHeader title={m.nav_lookback()} screen="stats" />
 
-  <!-- The history, and the span pointed at on it (redesign ticket 11).
+  <!-- The history, and the span pointed at on it.
        Entry data behind the rail's start, so it waits; a journal with
        nothing dated yet says so instead of drawing a rail from today to
        today. -->
@@ -653,7 +609,7 @@
       {/if}
     </ReadReserve>
 
-    <!-- "Name this stretch" (redesign ticket 48): a person who has just
+    <!-- "Name this stretch": a person who has just
          dragged out a span is offered the chance to name it, here and
          nowhere else. `disclose` opens and gives back its own height. -->
     {#if eraOfferSpan && factsCurrent}
@@ -691,24 +647,11 @@
       </div>
     {/if}
 
-    <!-- The readings, as tiles. Each component draws its own tile off its
-         own read and stays absent where the span holds nothing for it;
-         the grid draws the hairlines between whatever is there. In the
-         ticket's order: the two over the scales first, then tags, then
-         the three screens that were screens already. Above the grid, in
-         the same group, the mood strip draws in full: it was one chart
-         behind a tile of its own until Alicja's sign-off on functional
-         audit ticket 12, and a single chart needs no screen. Above and
-         not below, because a span change lifts the leaving tiles out of
-         flow (gridCell), so the leaving grid folds to nothing: a strip
-         under it jumped 530px up over the fading tiles in one frame.
-
-         Drawn as one group once every tile has decided whether it exists
-         (ticket 190): drawn as each answered, a tile landing a tick after
-         its neighbours - "How the days fell" waits on the recap as well
-         as its own read - was inserted between them
-         and the tiles after it jumped a cell in one frame. The recap and
-         the vocabulary mirror are the two reads the screen holds for them. -->
+    <!-- Each tile draws only when its span has data. Wait for recap
+         and vocabulary so eligible tiles arrive together and never
+         jump to make room for a late read. Put the mood strip above
+         the grid because leaving tiles exit flow on span changes,
+         which would lift a following strip through the fade. -->
     <!-- A new span replaces the reading group in its own space. Reusing
          its cells let the old tiles travel across the
          new figures while their independent reads answered. The old group
@@ -736,10 +679,10 @@
     </div>
 
     <!-- The resurfacing block: the two look-back offers, moved here from
-         Home (redesign ticket 11), each gating itself on its own preference
+         Home, each gating itself on its own preference
          and its own floor. The on-this-day tile opens in place: the day,
-         its photos and the way to the whole day disclose under the pair
-         (ticket 07). One group for the same reason as the readings above:
+         its photos and the way to the whole day disclose under the pair.
+         One group for the same reason as the readings above:
          on its own, whichever card answered first stood full width for a
          frame before the other halved it. No fade: each tile's own clip
          from the left, on the grid's stagger, is the arrival. -->
@@ -796,15 +739,14 @@
     gap: var(--space-5);
   }
 
-  /* The day's blocks now arrive through OnThisDayBlock's reserve (ux-carpet
-     ticket 211), one wrapper down, spaced by the reserve's own 20 rather
+  /* The day's blocks now arrive through OnThisDayBlock's reserve, one wrapper down, spaced by the reserve's own 20 rather
      than this grid's gap. A grid item holds its content's last margin in,
      so the last block gives its 20 up here or the day ends 20px taller. */
   .lookback-day :global(.read-reserve-body > :last-child) {
     margin-bottom: 0;
   }
 
-  /* The "name this stretch" offer (redesign ticket 48), drawn as rule 13's
+  /* The "name this stretch" offer, drawn as rule 13's
      offer row - the icon block, the title, one reason line, and the two
      labelled answers under them. Not a `Notice`: this offer lives on the
      surface the person just drove, not in the app's generic voice. */

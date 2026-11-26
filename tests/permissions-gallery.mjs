@@ -1,5 +1,4 @@
-/* Renders for the permissions step and its screen (phase 10 redesign ticket
-   31).
+/* Renders for the permissions step and its screen.
 
    Two sources, because the ticket has two kinds of thing to look at.
 

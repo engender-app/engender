@@ -2,7 +2,7 @@
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  /* One tryout, on the surface kit (phase 5 UX ticket 25).
+  /* One tryout, on the surface kit.
 
      Four cards became four named areas, which is the call ticket 22 made
      for the entry editor and recorded in DIRECTION.md: fields sit flush to
@@ -284,8 +284,7 @@
     return undefined;
   }
 
-  /* One entry in the offer registry (phase 8 features ticket 22,
-     ADR-0045). No `openOffer` guard here, unlike the roadmap and the
+  /* One entry in the offer registry (ADR-0045). No `openOffer` guard here, unlike the roadmap and the
      surgery hub: what stops this being offered twice is `canAdopt` below -
      a tryout that has ended cannot be adopted again - and there is no
      minted record to check for.

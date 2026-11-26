@@ -40,8 +40,8 @@
     pitchAxis({ hz: [...(trace?.map((frame) => frame.hz) ?? []), medianHz, p10Hz, p90Hz], comfort })
   );
 
-  /** Where the read sat, off the same decoded track the trace is drawn from
-      (redesign ticket 42). One decode feeds both, and the figure is handed
+  /** Where the read sat, off the same decoded track the trace is drawn from.
+One decode feeds both, and the figure is handed
       a shape rather than a track so it stays a drawing component. */
   let density = $derived(trace ? pitchDensity(trace, axis) : null);
 </script>

@@ -5,56 +5,19 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  /* The step-by-step checklist, on the surface kit (phase 5 UX ticket 25).
+  /* The roadmap has two optional built-in packs. Social and presentation
+     steps default on and store ticks under the social pack. Polish legal
+     steps default off in every language. Personal categories and their
+     goals remain available in either case. The milestone prompt lives here
+     because it responds to roadmap ticks.
 
-     The pack's provenance was five paragraphs stacked in one card - what
-     the pack is, what it does not cover, what a marker means, that none of
-     it is advice, and where it came from and when it was checked - which
-     is the first thing on the screen and reads as a wall before a single
-     step of the roadmap. It is a notice carrying the first two, which are
-     the ones that change how the list is read, and a quiet block under it
-     carrying the rest. Nothing is deleted: this is a bundled claim about
-     somebody's legal and medical path and every word of it stays.
+     The main control cycles a goal through its three states and announces
+     its name and state. The separate kit-row-act opens the goal sheet in
+     any state (ADR-0068). A document may arrive before its goal is checked.
 
-     The rows stay written out rather than built from ListRow: a row here
-     is a three-state tick whose accessible name is the goal and its state
-     together, and a ListRow announces a title and goes somewhere.
-
-     Ticket 56/ADR-0068 splits the row in two rather than reaching for
-     ListRow anyway: the tap that cycles the tick keeps `.kit-row-main`,
-     and a trailing `.kit-row-act` opens the goal's own sheet - the same two
-     classes ListRow's own `action` prop draws from, borrowed for their
-     structure and CSS rather than through the component, since the box and
-     the done/skip title colouring still don't fit ListRow's plain string
-     title (ticket 16's own reason for hand-rolling these rows at all). The
-     control shows on every row, ticked or not - ADR-0068: the Polish pack's
-     "keep opinions" goal is exactly the case where paper arrives before a
-     tick ever could.
-
-     Functional audit ticket 34 left one built-in group, the Polish court
-     procedure, behind a "Polish legal steps" switch that is off until
-     somebody turns it on (it followed the app's language until tester
-     report 02, ticket 08). The social, presentational and
-     medical tracks went, and with them the track switcher and the per-track
-     "not my path", which the switch now says for the only group left. Under
-     it, whatever the switch says, sit the person's own categories: each one
-     named, renamed and removed by them, with goals of their own in it
-     (round two, Alicja at sign-off: "it should be possible to add your own
-     goal/category"). The roadmap-to-milestone prompt moved
-     here from the notifications screen, beside the switch, since it is
-     about this screen's ticks and nothing else. The count beside the
-     heading says how many steps are still unchecked, in words rather than
-     a percentage or a ring (ADR-0012, ticket 54's "no score, anywhere").
-     The caveat and the marker note stay at the top, since both change how
-     the list below is read; the sources line and the reviewed-on date
-     carry no such warning and sit at the foot.
-
-     Pre-release human ticket 17 added a second built-in group above the
-     legal one, the social and presentation steps, under a switch of its
-     own that is on until somebody turns it off (nothing in it is tied to a
-     country, so there is no language to follow). Its steps are ticked,
-     hidden and given documents exactly like the legal ones; its ticks are
-     stored under pack 'social'. */
+     Keep the caveat and marker key above the legal list so readers know
+     how to read it. Sources and the review date sit below. The heading
+     counts unchecked steps in words (ADR-0012). */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { attempt, deleter, writer } from '$lib/stores/attempt.svelte';
@@ -122,7 +85,7 @@
      below assumes there is one. */
   const pack = POLISH_PACK;
 
-  /* Closed by default (redesign ticket 16): the pack's own provenance used
+  /* Closed by default: the pack's own provenance used
      to be the first thing the screen said. */
   let packDetailsOpen = $state(false);
 
@@ -138,14 +101,14 @@
   let categoryQuery = liveList((j) => j.roadmap.getCategories());
   let categories = $derived(categoryQuery.rows);
 
-  /* The institution list (functional audit ticket 35), read here rather
+  /* The institution list, read here rather
      than in its own component so the reserve below waits for it too. */
   let institutionQuery = liveList((j) => j.roadmap.getInstitutions());
   let institutionChangeQuery = liveList((j) => j.roadmap.getInstitutionChanges());
   let institutionsPanel = $state<ReturnType<typeof Institutions> | null>(null);
 
-  /* The switch (functional audit ticket 34). Null until somebody touches
-     it, and null is off in every language (tester report 02, ticket 08). The
+  /* The switch. Null until somebody touches
+     it, and null is off in every language. The
      ticks stay stored either way, so switching back brings back exactly
      what was ticked. */
   let polishShown = $derived(polishLegalStepsShown(prefs.roadmapPolishStepsChoice));
@@ -315,8 +278,7 @@
     return 'unchecked';
   }
 
-  /* One entry in the offer registry (phase 8 features ticket 22,
-     ADR-0045), and `answerOffer` below is the only path from a tick to a
+  /* One entry in the offer registry (ADR-0045), and `answerOffer` below is the only path from a tick to a
      milestone. */
   const MILESTONE_OFFER = OFFERS['roadmap-goal-milestone'];
   let promptGoal = $state<{ key: string; title: string } | null>(null);
@@ -373,7 +335,7 @@
     newGoalText = '';
   };
 
-  /* The goal sheet (ticket 56, ADR-0068): identity only, never a status
+  /* The goal sheet (ADR-0068): identity only, never a status
      snapshot, so the sheet keeps reading the live tick after it opens
      rather than showing what the status was the moment it was tapped. */
   let selectedGoal = $state<{ key: string; title: string; builtin: boolean } | null>(null);
@@ -386,7 +348,7 @@
   );
   let selectedMilestone = $derived(selectedGoal ? milestoneMintedByGoal(vocabulary.milestones, selectedGoal.key) : null);
 
-  /* Read live for the same reason the tick is (ticket 69): a custom goal's
+  /* Read live for the same reason the tick is: a custom goal's
      text is editable from inside this sheet, so the title it was opened
      under is a snapshot the moment somebody saves a new wording. A built-in
      goal's title is bundled text and has nowhere else to come from. */
@@ -404,7 +366,7 @@
     goalDraft = goal.text;
   };
 
-  /* Editing and deleting a custom goal (ticket 69, ADR-0068), both of them
+  /* Editing and deleting a custom goal (ADR-0068), both of them
      inside the sheet and neither of them offered on a built-in goal: there
      is no row to edit and nothing to delete.
 
@@ -553,7 +515,7 @@
   }
 
 
-  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  /* Latched: a reserve must not put its placeholder back. */
   let roadmapRevealed = $state(false);
   $effect.pre(() => {
     if (!roadmapRevealed && loaded && vocabulary.ready) roadmapRevealed = true;
@@ -693,7 +655,7 @@
   />
 
   <!-- The two questions this screen answers for itself, above what they
-       govern (functional audit ticket 34): whether the Polish steps show
+       govern: whether the Polish steps show
        at all, and whether ticking one offers a milestone. Plain divs, the
        rule the notifications screen keeps for its switch rows: the row
        does nothing when tapped, the switch inside it does. -->
@@ -727,9 +689,9 @@
     </div>
   </ListCard>
 
-  <!-- Held at last visit's height until the goals have answered, then faded in (ux-carpet ticket 211): the list and sources cut in at full opacity over the skeleton. -->
+  <!-- Held at last visit's height until the goals have answered, then faded in: the list and sources cut in at full opacity over the skeleton. -->
   <ReadReserve ready={roadmapRevealed} estimate={roadmapEstimate} onrest={roadmapRemember}>
-    <!-- The pack's provenance, collapsed to one row (redesign ticket 16),
+    <!-- The pack's provenance, collapsed to one row,
          and only while its steps show: with the switch off there is no
          Polish procedure on screen for it to qualify. -->
     {#if polishShown}
@@ -819,13 +781,13 @@
           {/snippet}
         </SectionHeading>
         <ListCard role={roleAt(activeFlag.roles, 1)}>
-          <!-- Every row below is hand-rolled rather than ListRow (ticket 16):
+          <!-- Every row below is hand-rolled rather than ListRow:
                .roadmap-box is a three-state control (checked/not-my-path/
                unchecked, two different glyphs), which ListRow's binary
                `checked` has no room for, and the done/skip title styling needs
                a class ListRow's plain `title` string can't carry.
 
-               The split shape (ticket 56, ADR-0068) is still ListRow's own,
+               The split shape (ADR-0068) is still ListRow's own,
                borrowed for its classes rather than the component: the tap that
                cycles the tick is `.kit-row-main`, and `.kit-row-act` opens the
                goal's own sheet, on every row whether ticked or not. The glyph
@@ -859,7 +821,7 @@
           {roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}
         </p>
         <!-- After the court steps, the offices to update once the ruling is
-             final (functional audit ticket 35). Inside this section rather
+             final. Inside this section rather
              than beside it, so the switch moves one block: two blocks
              collapsing at once on two curves made the second one rise into
              view and sink again, and its margin dropped the categories 20px
@@ -1013,7 +975,7 @@
   failed={removingCategory.failed}
 />
 
-<!-- The institution's sheet (functional audit ticket 35), outside the
+<!-- The institution's sheet, outside the
      switch's block so a document's link opens it whatever the switch says. -->
 <Institutions
   part="sheet"
@@ -1034,7 +996,7 @@
   onDismiss={() => void answerMilestoneOffer('decline', null)}
 />
 
-<!-- The goal sheet (ticket 56, ADR-0068): a step, not a record. It holds
+<!-- The goal sheet (ADR-0068): a step, not a record. It holds
      the tick, the documents filed against it, and a link out to the
      milestone it minted - and nothing a person wrote, because a built-in
      goal has nowhere to write it and a custom one's own text editing is
@@ -1275,26 +1237,11 @@
     color: var(--text-2);
   }
 
-  /* Struck through rather than hidden or moved: the list is the procedure,
-     and a done step still says what the next one follows from. The line
-     itself is drawn rather than declared (ux-carpet ticket 236): a native
-     text-decoration has no "from" state a transition can start from, so it
-     cut into place with the box's own fill.
-
-     Drawn as an inline background, not a pseudo-element over a block:
-     `box-decoration-break: clone` gives every line of a wrapped title its
-     own copy of the background, so each line is struck through its own
-     middle. The old ::after was one line across the whole inline-block,
-     and on a stock title that wraps at 390px ("How you are addressed at
-     work or school") it sat in the gap between the two lines and read as
-     an underline (after-release 28, audit V08).
-
-     The background sits on a transparent copy of the words laid over them
-     (the `struck` snippet), and the copy is clipped from the left: the
-     strike draws in by clip-path over the same --dur-fast the box's fill
-     uses, and the motion stays within transform, opacity and clip. The
-     line is --text-2, the done title's own ink; currentColor would be the
-     copy's transparent. */
+  /* Keep completed steps in place. Overlay a transparent text copy
+     whose inline background uses box-decoration-break: clone so
+     every wrapped line gets its own strike. Reveal it via clip-path
+     over --dur-fast, in sync with checkbox fill. Use --text-2
+     because currentColor on the copy is transparent. */
   .roadmap-done {
     color: var(--text-2);
   }

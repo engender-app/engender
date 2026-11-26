@@ -1,4 +1,4 @@
-/* How long an undoable deletion stays undoable (functional audit ticket 46),
+/* How long an undoable deletion stays undoable,
    rune-free so the Node tier can hold it to the clock. The window owns the
    clock: the toast that offers Undo has no timer of its own, goes when the
    window says it has closed, and closes the window early when it is cleared

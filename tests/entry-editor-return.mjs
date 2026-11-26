@@ -1,31 +1,15 @@
-/* The entry editor's Save name, date line, return path and delete (phase 14
-   pre-release ticket 03: audit findings U1, U3, U4, U5), and its header,
-   media sections and unset scales (phase 15 after-release ticket 04: UI-01,
-   UX-05, UX-17).
+/* At 390 and 1280, check Save has an accessible name and both new and
+   existing dates remain clear of the header and tappable. Save and Delete
+   return to Calendar, Search, Day and On this day. Search survives return
+   and clears on reload. Delete offers Restore and reports failure.
 
-   Holds:
-   - Save is a button with a name in the accessibility tree, at 390 and 1280
-     (the live region sits beside it, not inside it);
-   - the date line sits clear of the header and is what a tap on it lands on,
-     for a new and an existing entry at 390 and 1280;
-   - Save and Delete on an entry opened from Calendar, Search, a day and
-     On this day return to that screen; Search keeps its query in memory,
-     while a reload drops the query;
-   - Delete says "Moved to trash" with Restore, Restore brings the entry
-     back, and a failed delete says so on screen;
-   - the header's field spans the same box as Care's and Day's, and the
-     blocks under it take the screen's 20px floor;
-   - tapping Photos, Voice or Video leaves the opened section above the foot
-     with its chip still on screen;
-   - an untouched scale draws no thumb and no fill, and saving the entry
-     stores no value for it.
+   Check header alignment with Care and Day, 20px block spacing, and
+   Photos, Voice and Video opening above the foot with the chip visible.
+   An unset scale shows no thumb or fill and saves no value.
 
-   Run against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/entry-editor-return.mjs
-   or against a build some other server already serves (a base build, to
-   watch the checks fail): node tests/entry-editor-return.mjs --base <url>
-   Exits 1 on any failure. */
+   VITE_DEMO=1 npm run build
+   node tests/entry-editor-return.mjs [--base <url>]
+   Exit 1 on any failure. */
 import { continueToTheRest, launchChromium, previewBuild, settlePage, createReporter } from './browser-harness.mjs';
 import {
   DEMO_THEME_EXPRESSION,

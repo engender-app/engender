@@ -1,33 +1,13 @@
-/* What redesign ticket 36 changed, and only that.
+/* Capture 390x844 restore screens in two themes and palettes with
+   distinct accent and danger colours. Compare the welcome footer with
+   and without the restore control. Capture empty, focused, file chosen,
+   refused and running restore states, plus the restored finish.
 
-   Two surfaces are new and one is edited, so this renders those three and
-   leaves the rest of setup out of shot (Alicja, 2026-09-07: "only showcase
-   the things that actually changed in this ticket, not the whole app every
-   time"):
+   Record the file block opening and the 3px focus rule drawing in.
+   Save JPEGs and a manifest with timings and samples for
+   tests/panel-motion-flipbook.mjs.
 
-   - the welcome's foot, which gains a second action, shot with the new
-     control and again with it hidden so the pair is a before and an after
-     of the same build rather than two builds;
-   - the restore step, in every state it has: empty, focused, holding a
-     file, refused, and running;
-   - the finish, which on a restored first run says something different and
-     whose button is the restore.
-
-   Stills at 390x844, the phone the renders are read on. The palettes are
-   the ones whose --accent and --danger differ most, in both themes, because
-   the new drawing is a block on --surface-2 with an --outline edge, a rule
-   in --text and a status line in --danger, and those are what a palette
-   moves.
-
-   Two motion scenes beside them, recorded as Chromium screencast frames the
-   way tests/state-motion-gallery.mjs does, because a still cannot review a
-   transition: the file block clipping open when a file is picked, and the
-   3px rule drawing in when the password field takes focus. Frames land as
-   JPEGs plus a manifest.json with the millisecond each was painted at and
-   the per-frame samples, which tests/panel-motion-flipbook.mjs turns into a
-   scrubbable flipbook.
-
-   Run: VITE_DEMO=1 npm run build && node tests/restore-gallery.mjs */
+   VITE_DEMO=1 npm run build && node tests/restore-gallery.mjs */
 import { preview } from 'vite';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

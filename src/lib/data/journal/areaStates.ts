@@ -1,33 +1,11 @@
-/* Reading and writing which areas are hidden, which are finished, and which
-   are suspended (phase 8 deepening ticket 13, phase 8 features ticket 51,
-   ADR-0052). The rule these rows are read by is `areaState.ts`, above the
-   journal seam and driver-free, the way `cycleTracking.ts` sits above
-   `cycleEvents.ts`. This half is only storage.
+/* Store hidden, finished and suspended states (ADR-0052). areaState.ts owns
+   the rules. A state with no remaining information deletes its row; keys are
+   known section names (ADR-0053).
 
-   It holds one invariant of its own: the table is sparse. A row exists
-   because something was said about that area, so a state that has gone back
-   to saying nothing takes its row with it.
-
-   Two plural setters for hidden and finished rather than two singular ones,
-   because a hub row can front more than one section - voice is
-   `voiceBenchmarks` and `voicePracticeTakes` together - and a row half-finished by two
-   separate calls is a state no screen has a way to show. One call, one
-   transaction, so it cannot happen. Which sections a row fronts is
-   presentation and lives with the hub. `setAreasSuspended` keeps the same
-   shape, narrowed to `SuspendableArea` (areaState.ts): only voice practice
-   and hair removal have a real case for it (ticket 51).
-
-   Finished and suspended are mutually exclusive (areaState.ts): setting one
-   to a day clears the other. Un-setting either with null leaves the other
-   alone - un-finishing a stream does not un-suspend it and vice versa,
-   because only one of them could have been set to begin with.
-
-   No delete method and no unknown-id case (ADR-0053): every area key is a
-   section name this build already has, so there is no id here to name a row
-   that is not there. `setAreasFinished(areas, null)` is how a person
-   un-finishes a stream that restarted, and it has to stay exactly as easy as
-   finishing one; `setAreasSuspended(areas, null)` is the same gesture for
-   resuming a paused one. */
+   Batch all sections behind a hub row in one transaction, including voice's
+   benchmarks and practice takes. Suspension applies only to SuspendableArea
+   (voice practice and hair removal). Setting a finish or suspension day
+   clears the other; passing null clears only the selected state. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { AreaStates, FinishableArea, HideableArea, SuspendableArea } from '../areaState';
@@ -51,8 +29,7 @@ export interface AreaStatesArea {
   setAreasFinished(areas: readonly FinishableArea[], finishedEpochDay: number | null): Promise<void>;
   /** Records the day every area named was paused, or clears it with null to
       resume. Suspending an area that was finished clears the finished day,
-      for the same reason the other direction does (phase 8 features ticket
-      51). */
+      for the same reason the other direction does. */
   setAreasSuspended(areas: readonly SuspendableArea[], suspendedEpochDay: number | null): Promise<void>;
 }
 

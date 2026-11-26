@@ -1,4 +1,4 @@
-/* Turning a photo journey into one file (ticket 27).
+/* Turning a photo journey into one file.
 
    The browser half of journey.ts: it needs a decoder, a canvas and - for
    the timelapse - MediaRecorder, so it is tested against a real Chromium in

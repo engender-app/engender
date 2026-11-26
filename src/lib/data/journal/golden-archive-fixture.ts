@@ -1,7 +1,7 @@
 /* What archive-golden.test.ts and archive-golden-merge.test.ts both build on:
    the fixture's paths, the password and cheap KDF it was packed with, a
    journal with something in every section, and the two ways to change what
-   is committed (ADR-0027, ticket 12).
+   is committed (ADR-0027).
 
    `everySection()` lives here rather than in either test file because both
    need it - the golden test packs a fresh one when GOLDEN_ARCHIVE=rebuild

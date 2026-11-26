@@ -1,6 +1,5 @@
 <script lang="ts">
-  /* Your numbers, your trend, on the surface and chart kits (phase 5 UX
-     ticket 25).
+  /* Your numbers, your trend, on the surface and chart kits.
 
      The first thing on the screen was a card of unit preferences - a
      heading, an explanation and one select per analyte - so a screen about
@@ -74,11 +73,11 @@
 
   let unitsOpen = $state(false);
 
-  /* Deep link handling (phase 11 ticket 14): resolve the lab result by its
+  /* Deep link handling: resolve the lab result by its
      UUID directly so the screen switches to the analyte the result belongs
      to and scrolls to the highlighted row. A missing or deleted result gets
      the unavailable state SourceRecordHandoff renders for every source
-     link's target (phase 11 ticket 11). */
+     link's target. */
   let deepLinkedLabId = $derived(page.url.searchParams.get('lab') ?? hashRowId(page.url.hash));
   let deepLinkedLabQuery = liveQuery(async (j) => {
     const id = deepLinkedLabId;
@@ -89,7 +88,7 @@
   );
 
   /* No hormone assumed: the screen opens on whatever the journal actually
-     has, and stays empty until getMostRecentAnalyte resolves (ticket 37). */
+     has, and stays empty until getMostRecentAnalyte resolves. */
   let analyte = $state('');
 
   /* Two lists, two questions: the picker offers analytes with results behind
@@ -100,7 +99,7 @@
   let analytes = $derived(usedQuery.rows);
   let offeredQuery = liveList((j) => j.labs.getAnalytes());
   /* Which analyte the screen opens on, or falls back to after the one on
-     screen stops having results (ticket 37). Gated on both queries loading:
+     screen stops having results. Gated on both queries loading:
      deciding early off usedQuery alone would settle on analytes[0] before
      mostRecentQuery answers, and never revisit it once analyte is no longer
      "missing". */
@@ -130,7 +129,7 @@
   let returnHref = $derived(careLaneReturnHref(page.url));
 
   /* The list is every result this analyte has, in order. The charts are those
-     same results split by unit (ticket 02): a value in ng/dL and one in
+     same results split by unit: a value in ng/dL and one in
      nmol/L differ by a factor of about 29, so a single line over both would
      draw a cliff where nothing happened.
 
@@ -143,7 +142,7 @@
   let seriesQuery = liveList((j) => j.labs.getSeries(analyte));
   let series = $derived(seriesQuery.rows);
 
-  /* What was happening around these draws (ticket 23). One query across every
+  /* What was happening around these draws. One query across every
      series this analyte has, narrowed per chart below: a series exists per
      unit and each one covers however long that unit has been drawn in, so
      there is no single range to ask for - and asking once per chart would be
@@ -162,8 +161,7 @@
      annotations are asked over the series' own span, so their real answer
      comes a round trip after the series', and the caption under a chart
      arrived a frame after the chart did - 20px in one frame, pushing the
-     list under it while the gate's fade was still running (ux-carpet
-     ticket 193). `loading` on the query itself cannot say this: it goes
+     list under it while the gate's fade was still running. `loading` on the query itself cannot say this: it goes
      false on the first answer, the one asked over an empty span. Latched,
      like a read's own loading: a span that changes later (a new result) is
      the chart's own change, not an arrival. */
@@ -243,8 +241,8 @@
       date: dateInputValueFromEpochDay(todayEpochDay()),
       time: '',
       /* Whatever the screen is already showing - itself the most
-         recently logged analyte, or none - rather than a hormone
-         (ticket 37). Unit likewise: a set preferred unit wins, then the
+         recently logged analyte, or none - rather than a hormone.
+Unit likewise: a set preferred unit wins, then the
          last unit this analyte was actually recorded in. */
       analyte,
       customAnalyte: '',
@@ -330,7 +328,7 @@
   // $state proxy from inside its own methods. So the component owns the
   // reactive copy, and the machine notifies it on every transition.
   let ocrState = $state<OcrMachineState>({ tag: 'idle' });
-  /* The scan's own bar (phase 9 audit ticket 11, ADR-0070). The fraction
+  /* The scan's own bar (ADR-0070). The fraction
      comes off the machine's state rather than a second callback, because
      `recognizing` is what carries it - and the run is started and settled
      here, in one place, rather than at each of the machine's exits. */
@@ -544,7 +542,7 @@
             {/if}
           </ChartCard>
           <!-- Stated, not warned about: the series is drawn whole, and this
-               says what it is made of (ticket 03). -->
+               says what it is made of. -->
           {#if mixed.length}
             <Notice
               icon="info"
@@ -570,7 +568,7 @@
            draws its card once the read has answered. -->
       {#if !resultsQuery.loading}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
-          <!-- Hand-rolled rather than ListRow (ticket 16): the value carries
+          <!-- Hand-rolled rather than ListRow: the value carries
                .lab-value (app.css) to opt back into text selection, and the
                context line carries .lab-context's own size and colour -
                both classes ListRow's plain title/subtitle strings have no

@@ -47,35 +47,12 @@
          resolveAndroidBackAction; this changes how the gesture is drawn,
          not where it goes. -->
 
-    <!-- The platform's backup service (F-02). Off, by both of the two
-         attributes it takes.
-
-         The default is on, and with no dataExtractionRules or
-         fullBackupContent to narrow it the whole private directory was
-         eligible for Google's cloud backup and for device-to-device
-         transfer. The journal itself survived that harmlessly - the RSA
-         private half never leaves the platform keystore and is not backed
-         up, so a restored copy is ciphertext nobody can open, which is what
-         AndroidEncryptionClaimTest proves by reading the bytes. The leak was
-         everything beside it: the WebView's localStorage draft, the reminder
-         titles, the backup destination's label. Those left the device
-         without anyone choosing it, and CONTEXT.md's claim is that journal
-         data stays on the device unless the person deliberately creates or
-         delivers an archive.
-
-         Rules excluding sharedpref and the WebView directory would have kept
-         backup for the encrypted database alone. Not taken: what a backup of
-         it would restore is a database whose key is gone, on a phone whose
-         keystore never had it - nothing recoverable, in exchange for a
-         surface that has to be re-audited every time the app writes
-         somewhere new. The archive export is the recovery path, and it is
-         the one the app tells people about.
-
-         dataExtractionRules beside it rather than instead of it: from
-         Android 12 the flag below only stops cloud backup, and the rules
-         file is what stops device-to-device transfer. The flag still covers
-         the Android 11 and older half of the range, which starts at the
-         app's floor of API 26. -->
+    <!-- Disable platform backup to keep app storage on the device.
+         allowBackup covers Android 11 and older (minimum API 26) and
+         cloud backup on Android 12+. dataExtractionRules also blocks
+         device-to-device transfer on Android 12+. The journal key is
+         bound to the Keystore, while WebView drafts and other state
+         can contain private data. Export an archive for recovery. -->
     <application
         android:name=".JournalApplication"
         android:allowBackup="false"
@@ -128,40 +105,16 @@
 
         </activity>
 
-        <!-- The launcher identity. The LAUNCHER category
-             lives on these aliases rather than on MainActivity itself, so
-             which icon and label the system shows is a matter of which
-             alias is enabled, not a string this app renders. Exactly one
-             is enabled at a time - dev.engender.app.disguise.DisguiseAlias
-             is what flips that, and it enumerates these aliases off this
-             file rather than keeping a second list of them.
+        <!-- Keep LAUNCHER on the aliases. DisguiseAlias enumerates them from
+             this manifest and enables exactly one. Launch01 is the default.
+             LAUNCHER_IDENTITY names the palette, round variant or disguise.
+             Use new neutral numbers for new aliases. Keep existing numbers
+             stable because Android exposes component names.
 
-             Each flag has current and round artwork aliases, plus one
-             disguised alias. Launch01 is the default palette's current
-             artwork, so an untouched install never flips an alias.
-
-             The names are numbers on purpose. Apps that list launcher
-             activities print them, and they are fixed for good from 1.0,
-             so a name such as LauncherDisguised or LauncherTrigender would
-             say what the app is to anyone holding the phone (FA 43). What
-             each alias draws is its LAUNCHER_IDENTITY meta-data: a palette,
-             the palette with "-round", or "disguised". New aliases take the
-             next number; a number is never reused or renamed.
-
-             Android kills and restarts the app process on the disguise
-             flip, which is the "closes briefly to switch"
-             disguise_app_sub_android warns about. A flag change does not:
-             it is not urgent the way hiding the app is, so the launcher
-             picks the new icon up by the next cold start (ADR-0088).
-
-             Each alias also answers OPEN_ROUTE, the action widget and
-             notification taps send (launch/AppLaunch.java). Recents and the
-             window title TalkBack reads take their label and icon from the
-             component that started the task, so a tap that named
-             MainActivity showed "engender" even under disguise. Sent as an
-             action, the tap resolves to whichever alias is enabled when it
-             lands, the same one the launcher starts. MainActivity must not
-             declare the action, or it would match too. -->
+             Disguise restarts the process. A flag-only change updates the
+             launcher by the next cold start (ADR-0088). Route widget and
+             notification actions through the enabled alias so Recents and
+             TalkBack use its identity. Keep OPEN_ROUTE off MainActivity. -->
         <activity-alias
             android:name=".Launch01"
             android:targetActivity=".MainActivity"
@@ -870,40 +823,15 @@
 
     <!-- Permissions -->
 
-    <!-- No android.permission.INTERNET, and that absence is the point. The
-         app makes no off-origin request anywhere -
-         tests/browser-tier/verify-build.mjs asserts that online and offline -
-         and the bundle it runs is served out of the APK by Capacitor's asset
-         loader, which intercepts the request before any socket exists. So the
-         permission bought nothing, and dropping it turns "no telemetry" into
-         something a reader of the permission list can verify rather than take
-         on trust.
+    <!-- The app omits android.permission.INTERNET (ADR-0100). Capacitor
+         intercepts bundled asset requests before they reach a socket, including
+         the language data OCR loads. verify-build.mjs checks for off-origin
+         app requests online and offline.
 
-         Answered with a build rather than an opinion. With this line removed,
-         the connected suite was run on a Pixel 10a and then compared against
-         the same suite with the line restored: the two runs fail the same
-         tests. Nothing regressed on removal, and what passes covers the paths
-         that could plausibly have wanted a socket - the WebView boots the real
-         bundle, the native driver opens the journal and passes the whole
-         contract suite over SQLCipher, the photo write channel writes and reads
-         its files, the keystore holds the data key, the three widgets render,
-         print reaches the spooler, and WebViewCspEnforcementTest fetches a
-         bundled Tesseract asset off the app's own origin, which is the
-         mechanism OCR loads its language data through.
-
-         Four tests fail on that phone in both runs and none of them is about
-         this: DisguiseAliasTest.mainActivityIsExcludedFromRecents asserts the
-         opposite of what the manifest now says and of what
-         tests/android-manifest-recents.test.ts asserts, two JournalKeystoreTest
-         cases need a phone with no lock screen, and
-         ArchiveCrossPlatformRoundTripTest cannot create its probe photo
-         directory. The archive one is the only gap worth naming here, since an
-         export is a path this question is about; it fails with the permission
-         present too, on the same device, in the same isolated run.
-
-         If something here ever does need a socket, put the line back with a
-         comment naming what needed it, and supersede the decision this keeps
-         (ADR-0100). -->
+         An isolated Pixel 10a comparison found the same instrumentation
+         results with the permission present and absent. The archive round-trip
+         test could not create its probe photo directory in either run.
+         A new socket dependency needs a decision superseding ADR-0100. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />

@@ -40,36 +40,14 @@
 </script>
 
 <script lang="ts">
-  /* One security module, four named choices (ticket 53, ADR-0041; the
-     fourth added by ticket 55).
+  /* Onboarding and Settings share access mode choices (ADR-0041).
+     Device-bound has its own row. Android's device-bound key already uses
+     platform presence through Keystore. Web offers WebAuthn PRF only after
+     the browser confirms support.
 
-     What a person used to meet was three disconnected things at three
-     moments: a passphrase gate that looked mandatory but hid a "Skip" into
-     device-bound mode, a PIN toggle buried in onboarding that encrypted
-     nothing, and on Android a biometric prompt that just happened. This is
-     all of it, once, as a choice between equals - and it is the same
-     component in both places it appears, the first run (ticket 54 wires it
-     there) and Settings.
-
-     No "Skip" anywhere. Device-bound mode is a row like the others, with its
-     trade written next to it rather than behind an acknowledgement
-     checkbox.
-
-     Four rows, or three, and which one is not a guess. ADR-0041's fourth
-     mode is the web's WebAuthn PRF biometric (ticket 55), and it appears
-     only where the browser answers that it can actually do PRF - a mode
-     that is unavailable is one that is never offered, never one that is
-     offered and fails. On Android the biometric is not a fourth thing at
-     all but what device-bound mode already does, so that row says so
-     instead of offering a second mechanism (its Keystore key is not
-     released until the platform confirms who is present).
-
-     Copy rule for this screen, and it is the strict one (docs/ui-copy.md,
-     "The screens that carry risk"): every mode states its own consequence
-     before it is chosen, not after. Three of the four tie the journal to this
-     device, and for those the archive is the only thing that survives losing
-     it - so that sentence sits under the choice rather than in a help page
-     nobody opens. */
+     State each mode's consequences before selection (docs/ui-copy.md).
+     For device-tied modes, explain the value of an archive if the device
+     is lost. */
 
   import { onMount } from 'svelte';
   import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
@@ -136,8 +114,7 @@
   let localError = $state('');
   /* Which mode the parent's `error` answers. The parent owns that text and
      keeps it until its next attempt, so without this a refusal of one mode
-     ("needs a device lock") sat under the next mode's form (after-release
-     ticket 09). Choosing again, or going back, lets go of it here. */
+     ("needs a device lock") sat under the next mode's form. Choosing again, or going back, lets go of it here. */
   let attempted = $state<Mode | null>(null);
 
   function submit(mode: Mode, secret: string) {
@@ -146,7 +123,7 @@
   }
   let refusals = $state(0);
 
-  /* The two screens (ticket 30), as one state machine: accessModeSetup.ts
+  /* The two screens, as one state machine: accessModeSetup.ts
      decides what the next screen is, this only ever holds what it returns. */
   let screen = $state<AccessModeScreen>({ screen: 'list' });
 
@@ -174,7 +151,7 @@
   /* On Android, the native Keystore bridge wraps an existing data key for
      both 'device-bound' (gated by lock screen) and 'unlocked' (hardware key,
      no prompt), so both can be selected on setup and on change without
-     re-encrypting the journal (ticket 101). On the web, 'device-bound' is
+     re-encrypting the journal. On the web, 'device-bound' is
      the ungated mode. */
   let candidateModes: Mode[] = $derived(
     android
@@ -263,7 +240,7 @@
     attempted = null;
   }
 
-  /** Screen two back to screen one, the mode still chosen (ticket 30) - only
+  /** Screen two back to screen one, the mode still chosen - only
       the typed-so-far secret is thrown away, not the choice that led here. */
   /** Delegate setup's external Back to the same controls this module draws. */
   export function back(): void {
@@ -366,7 +343,7 @@
     <p class="gate-note" data-access-current>{m.am_current({ mode: title(current) })}</p>
   {/if}
 {:else if screen.screen === 'detail'}
-  <!-- Screen one's second half (ticket 30): every consequence lives here,
+  <!-- Screen one's second half: every consequence lives here,
        never on the screen that follows it. -->
   <div class="am-chosen" data-access-chosen={screen.mode}>
     <!-- The consequence, on the screen where the choice is actually made and

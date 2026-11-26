@@ -1,4 +1,4 @@
-/* The reviewed-on guard (functional audit ticket 40). Each limit is checked
+/* The reviewed-on guard. Each limit is checked
    on both sides of its edge with a fixture, so moving a limit or getting the
    month arithmetic wrong fails here rather than in a release log. */
 

@@ -1,21 +1,7 @@
-/* The mark's numbers and its stillness (ticket 50).
-
-   Two different kinds of assertion live here and both are deliberate.
-
-   The numbers are pinned rather than derived, because they are a decision
-   and not a calculation: Alicja moved the sliders on 2026-09-21 and said
-   keep this one. Ticket 38 of the last UI audit changes the tile radius to
-   30 so Play's corner mask keeps the outline. Nothing computes these values,
-   so a test fails when they move and
-   makes whoever moved them come here and mean it.
-
-   The stillness is read off the source text of this module and of
-   Mark.svelte, which is a grep and knows it. A rendered assertion would be
-   better and cannot be had here: the mark has no state to drive, so there
-   is no frame to sample and nothing to catch except the words that would
-   introduce motion in the first place. "The logos ARE NOT SUPPOSED TO MOVE
-   AT ALL" (Alicja, 2026-09-21) is a rule about what may be written, and
-   this is that rule written down. */
+/* Pin mark geometry to the chosen design. A 30px tile radius
+   keeps its outline inside Play's corner mask. Check stillness
+   in source because the mark has no state or interaction to
+   drive a render-time check. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 

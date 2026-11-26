@@ -53,7 +53,7 @@
      the tag list re-queries (any hide/show write does this), so the
      expression re-runs and writes the DOM property again, closing a
      built-in group right back up the moment its own hide button is used
-     inside it (ticket 272). Tracked here instead, seeded from the same
+     inside it. Tracked here instead, seeded from the same
      default and updated only by the element's own toggle. */
   let openGroups = $state<Record<string, boolean>>({});
 
@@ -122,7 +122,7 @@
   {/snippet}
 
   <!-- Your own groups and the way to make one come before the built-in
-       catalogue (phase 11 ticket 38): five built-in groups carry 28 tags
+       catalogue: five built-in groups carry 28 tags
        between them, and both a custom group and the button that creates one
        used to sit under all of it. -->
   <button class="btn btn-soft" data-new-tag-group onclick={() => { groupSheet = true; newGroupName = ''; }}>
@@ -136,7 +136,7 @@
        the mirror empty for a few frames. The outer box carries the first
        heading's 16px while the placeholder stands: the button above is
        inline-level, so that margin adds to the button's 20 rather than
-       collapsing into it (ticket 193). -->
+       collapsing into it. -->
   <div style:margin-top={tagsRevealed ? null : 'var(--space-4)'}>
     <ReadReserve ready={tagsRevealed} estimate={tagsEstimate} onrest={tagsRemember}>
       {#each customGroups as g (g.key)}{@render groupSection(g)}{/each}

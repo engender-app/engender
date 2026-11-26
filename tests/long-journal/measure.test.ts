@@ -1,4 +1,4 @@
-/* The harness's own tests (phase 2 ticket 20). Node tier, over node:sqlite
+/* The harness's own tests. Node tier, over node:sqlite
    and a fake file store, at four months rather than ten years: what these
    check is that the harness measures what it says it measures and that
    budgets.json covers exactly what it produces. The numbers themselves are
@@ -109,7 +109,7 @@ test("archive-restore's phases account for the whole of it", async () => {
   expect(at('archive-restore-read').ms).toBeLessThanOrEqual(files);
 });
 
-/* --- the screen mounts (phase 8 audit ticket 01) ------------------------
+/* --- the screen mounts ------------------------
 
    Five measurements are budgeted on what crossed the driver seam rather
    than on time. What this tier can check is that the counts arrive, that

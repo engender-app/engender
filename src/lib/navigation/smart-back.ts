@@ -1,22 +1,8 @@
-/* NAV-005: a handful of screens hardcoded where "back" goes, so arriving at
-   Day from the Home heat-map and pressing back landed on Calendar - a screen
-   the user never visited. The question this answers is whether there is an
-   in-app entry behind this one to return to; where there is not - a deep
-   link, or a reload - the hardcoded destination is the fallback rather than
-   leaving the app.
+/* Use in-app history for Back. A deep link or reload falls back to the
+   screen's default destination so Back stays inside the app (NAV-005).
 
-   It used to answer that by reading `sveltekit:index` off `history.state`,
-   which SvelteKit no longer writes: the state carries `sveltekit:history`
-   and `sveltekit:navigation` timestamps now, and neither of them counts
-   anything. So the read was `undefined` on every screen and every back
-   control took its fallback - which is how opening an entry from the
-   counterevidence screen landed on that entry's day, and how going into the
-   dose log from a regimen came back to the More hub (Alicja, 2026-08-26).
-   The unit test did not catch it because it stubbed the key itself.
-
-   So the app counts its own depth instead. That is a number this app owns
-   rather than one it reads out of another project's private state, which is
-   the whole reason the old version could rot silently. */
+   Track depth here. SvelteKit no longer stores `sveltekit:index`;
+   its history and navigation timestamps cannot count entries. */
 
 import { goto } from '$app/navigation';
 import { holdScroll } from './scroll-region';
@@ -82,29 +68,14 @@ export function navigationDepth(): number {
 }
 
 /**
- * Navigate by replacing the current history entry rather than pushing one.
+ * Replace the current entry when switching views of the same screen.
+ * SvelteKit reports these as `goto`, so mark the replacement to keep
+ * the app's history depth accurate. The navigation-depth boundary test
+ * requires callers to use this helper.
  *
- * The screens that do this are swapping a view of themselves - wrapped's
- * seven periods, a filter dropping out of a URL - and a pushed entry per
- * swap made back walk the switcher instead of leaving the screen. That part
- * `goto(url, { replaceState: true })` already did. What it could not do is
- * tell the count above, which sees `afterNavigate` report type `goto` and
- * has no way to know no entry was added; so a screen the app booted onto and
- * then replaced looked one deep, and its back control walked out of the app
- * instead of taking its fallback.
- *
- * Going through here rather than passing the option at the call site is what
- * keeps the two facts together. `tests/navigation-depth-boundary.test.ts`
- * holds the rest of the app to it.
- *
- * If the navigation never settles the mark is spent by whichever one settles
- * next, which undercounts by one - back takes its fallback where it could
- * have gone through history. That is the safe direction: a fallback stays
- * inside the app, and walking out of it does not.
- *
- * `noScroll` is the other fact SvelteKit keeps to itself: it holds the
- * window still, and the app scrolls its own region (scroll-region.ts), so
- * the region is told here too.
+ * If navigation never settles, the next settlement spends the mark.
+ * Undercounting then favors an in-app fallback. Forward `noScroll` to
+ * the app's scroll region as well as SvelteKit.
  */
 export function replaceRoute(
   url: string | URL,

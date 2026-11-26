@@ -1,4 +1,4 @@
-/* The Capacitor end of the Keystore plugin (ticket 13).
+/* The Capacitor end of the Keystore plugin.
 
    Kept apart from android-key.ts so that the flow which decides whether the
    Journal opens is a pure function of the bridge's answers, testable on the

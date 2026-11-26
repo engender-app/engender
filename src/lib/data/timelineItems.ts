@@ -1,4 +1,4 @@
-/* What the timeline draws, in order (phase 5 UX ticket 23).
+/* What the timeline draws, in order.
 
    The screen shows milestones past and future on one rail, with the long
    empty stretches compressed and a marker for where today falls between

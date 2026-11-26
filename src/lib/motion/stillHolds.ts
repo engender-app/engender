@@ -1,22 +1,9 @@
-/* Where a looping keyframe animation actually moves, and when it next will
-   (ux-carpet 228).
-
-   A face's glance and blink are infinite CSS loops (moodGlance.ts), and for
-   most of each cycle they hold still: the glance moves for three 190ms
-   stretches in 13-15s, the blink for 8% of 4.3-5.1s. Chromium cannot tell a
-   hold from motion, so a running animation costs a frame on every vsync for
-   its whole life - 120 a second on the Pixel for five faces that are, most of
-   the time, not moving. The eyes are SVG children, which never run on the
-   compositor, so every one of those frames is main-thread work.
-
-   So the face pauses its own animations while they hold and lets them run
-   only across the stretches where the keyframes change. This file is the
-   arithmetic for that: given an animation's keyframe offsets, its duration and
-   its delay, where the moving windows are and how long until the next one.
-   Nothing here changes what the animation shows - pausing inside a flat
-   stretch leaves the value exactly where the running animation would have it.
-
-   Rune-free, for the Node tier (stillHolds.test.ts). */
+/* Compute moving windows and time to the next one from keyframe
+   offsets, duration and delay. Pausing in a flat window keeps the
+   rendered value. Otherwise Chromium repaints the SVG eyes on the
+   main thread at each vsync (120Hz on the Pixel) even while still.
+   Glances move for three 190ms windows per 13–15s. Blinks move for
+   8% of 4.3–5.1s. Keep this rune-free for stillHolds.test.ts. */
 
 /** A stretch of one iteration, as fractions 0..1, in which the value changes. */
 export type MovingWindow = { from: number; to: number };

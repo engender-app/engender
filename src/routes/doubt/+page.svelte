@@ -1,45 +1,12 @@
 <script lang="ts">
-  /* Safe space (ADR-0040, CONTEXT: "Safe space"), rebuilt by phase 10
-     redesign ticket 47 to open on one thing.
+  /* Safe space opens on the breathing exercise with the same choices from
+     Today, the hub or an Android launch (ADR-0040, ADR-0028). Link personal
+     support above the breath so it is reachable without starting the
+     exercise.
 
-     It used to be a dashboard: a breathing exercise, then two tiles, two
-     charts, three letters, six photographs, twenty entries, a run of saved
-     snapshots and the comfort list, 5908px of it on a demo journal with
-     every feature filled - the second longest screen in the app after the
-     roadmap. It is also the screen a person opens on their worst day, and
-     it is reachable from a live tile on Today, from a hub row and as a
-     pinned Android launch route (ADR-0028), so a cold start can land
-     straight on it. The app's longest surface was the one its most
-     distressed reader arrived at, and it asked them to scroll past their
-     own charts to reach the breathing exercise.
-
-     Nothing was cut then. The screen kept the breath, full bleed, and
-     everything it held went one tap down, in the order safeSpaceWays.ts
-     states and explains. The sections themselves moved wholesale into
-     /doubt/moments, /doubt/comfort, /doubt/evidence and /doubt/readings
-     with their bounds, their handovers and their reasons intact.
-
-     Phase 11 ticket 15 folded two of those four into other screens, and
-     functional audit ticket 09 took their rows away too: "Letters and
-     photos" went to /transition/letters and the readings row to Look back,
-     so each tap switched the lit tab mid-crisis. Safe space keeps the
-     breath, good moments, the comfort list and the resources.
-
-     Personal support is now linked above the breath, so it is reachable
-     on a short screen without starting the exercise (UI/UX ticket 14). It
-     is the only way to it: the same list as a row among the ways down said
-     "Things that help" twice on one screen (phase 14 ticket 18, release
-     audit U11).
-
-     **The same choices, however you arrived.** A surface that
-     opens differently depending on whether you came from the tile, the hub
-     or a launch intent is one you cannot learn, and learning it is the
-     whole point for a person who is not in a state to read. Same screen
-     every time.
-
-     The breath paints without waiting for SQLite. A bounded pool read
-     decides whether Good moments has anything to open; until it answers,
-     that optional row stays absent. Each way down owns its full reads. */
+     The breath renders before SQLite answers. A bounded pool read decides
+     whether to offer Good moments, which stays absent until the read
+     finds something. Each destination owns its full reads. */
   import { m } from '$lib/paraglide/messages';
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -102,26 +69,13 @@
     flex-direction: column;
   }
 
-  /* Full bleed in the only sense that matters on this screen: the ring is
-     centred in everything the header and the list leave, so at 390x844 it
-     is what a person sees and there is nothing above it to read first. It
-     never shrinks below its own drawing - 272px of ring plus the
-     description and the control - so a 320x568 phone scrolls rather than
-     squashing it.
+  /* Centre the breath in the remaining space and preserve the
+     272px ring, description and control. Short screens scroll.
+     Enter from 94% over --dur-authored (ADR-0078). Fill both ways so
+     the 1ms reduced-motion clamp still lands at rest.
 
-     The breath arrives rather than being painted where it lands: it comes
-     up from 94% over --dur-authored on --ease-out (rule 10, ADR-0078).
-     --dur-authored is Home's cold-boot entrance and the longest arrival the
-     app has, read here rather than redefined: this is the one screen where
-     slow is the subject, and a calming tool that snaps into place is the
-     thing the ticket refused. Filled both ways, so the 1ms reduced-motion
-     clamp ends it at rest instead of leaving it at 94%.
-
-     The animation is on this wrapper and not on the component's own root,
-     because the halo inside it is a button and press.css puts the app's
-     press on every button at zero specificity - a transform of ours on the
-     control itself would outrank :active and make the one thing on this
-     screen unpressable. */
+     Animate the wrapper. Transforming the button would override
+     press.css's :active transform. */
   .breath-stage {
     flex: 1 1 auto;
     display: flex;

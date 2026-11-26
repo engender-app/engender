@@ -1,34 +1,13 @@
 <script lang="ts">
-  /* Two readings of the same scale, and the distance between them.
-
-     This is the correlation cards' own mark, and it exists because they are
-     not a bar chart. A bar answers "how much"; a correlation card answers
-     "these days sat here, the other days sat there" - two positions on one
-     scale, and the gap is the whole reading. Drawn as bars they were six
-     rows of the same shape as the two bar charts above them on the screen,
-     which is what "busy, overloaded, looks unfinished" was about (Alicja,
-     2026-08-25, twice).
-
-     So: one track per row, the metric's own range end to end, a hollow dot
-     for the days without and a filled one for the days with, and the segment
-     between them drawn thick. Nothing is ranked against another row, which a
-     bar chart cannot help doing - every bar there is measured against the
-     longest one - and nothing needs a shared scale, because each row's
-     track is its own metric's range. That is what let the rows drop the
-     sentence they used to carry, and it is also why this component needed no
-     normalizing when redesign ticket 05 admitted rows from more than one
-     scale into one card: a bar's leader measure compares magnitudes across
-     the whole set, and this never has.
-
-     No colour says which way. The filled dot is the days the thing happened
-     and the hollow one is the rest, on every row, whichever direction the
-     gap runs (ADR-0012, F15). */
+  /* Each row uses its own metric's full range. Hollow marks days without
+     the condition, filled marks days with it, and the thick segment shows
+     their gap. Keep that mapping when the direction reverses. Colour
+     assigns no rank (ADR-0012). */
   import type { Snippet } from 'svelte';
   import type { PairedRow } from './pairedRow';
 
   /* `figure` stands in for the row's gap text where the caller draws its own
-     - /compare rolls the number between two periods (pre-release-human
-     ticket 21). */
+     - /compare rolls the number between two periods. */
   let {
     rows,
     onPick,

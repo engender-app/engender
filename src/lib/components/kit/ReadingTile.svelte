@@ -1,36 +1,13 @@
 <script lang="ts">
-  /* One reading of the Look back door, as a tile (phase 11 ticket 07).
+  /* A reading tile opens its full screen at the same Look back span.
+     ReadingGrid draws the hairlines. The label is 15px and the
+     headline is 28px. Only the chart uses the area colour. On the
+     plane tile the drawing takes the headline's space.
 
-     The door used to draw every reading in full, one card under another,
-     and a person scrolled six viewports to find the one they meant. Each
-     reading is a tile now: its name, a small drawing where the reading has
-     one, one headline figure for the span, and a chevron, opening a screen
-     of its own at the same span. Revolut's analytics and MacroFactor's
-     insights are the shape - a card summarises a screen rather than being
-     it - without the card.
-
-     Flush, not a block (rule 4; Alicja's call on the spike, 2026-09-16:
-     "flush it is"). Nine blocks of one stripe made the door a wall, and
-     the two look-back tiles under the grid already spend the stripe. So a
-     reading sits on the page between hairlines: the name at 15 in the
-     secondary ink, the figure in the page's own ink at 28, and colour only
-     where it carries a value - the drawing, in the chart stripe (rule 9).
-     The grid draws the lines (ReadingGrid.svelte); the tile is what sits
-     between them.
-
-     A tile with no headline is the plane's: its drawing takes the room the
-     figure had ("drop the title - just show the small header and a bigger
-     graph"), which is what `flex: 1` on the drawing slot does when nothing
-     follows it.
-
-     The figure counts to its new value when the span moves where it is a
-     count (ADR-0078, the same rule Tile.svelte keeps), and a tile joins and
-     leaves the grid by fading in its cell while the tiles around it travel
-     to theirs (readingGrid.ts, ticket 196) rather than in one frame: a
-     reading with no data in the span has no tile, so the count varies with
-     the span and the grid rewraps. `|global`, for the reason Tile
-     gives - the block that creates and destroys a tile is the caller's, not
-     this component's own body. */
+     Animate count changes (ADR-0078). When a span gains or loses a
+     reading, the tile fades in its cell while its neighbours travel
+     to theirs. Use global transitions because the caller mounts and
+     unmounts the tile. */
   import { untrack, type Snippet } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
@@ -63,12 +40,11 @@
     [attribute: string]: unknown;
   } = $props();
 
-  /* Also stood down while a ReadGroup is holding it (ticket 190): nobody
+  /* Also stood down while a ReadGroup is holding it: nobody
      can see it arrive under the group's placeholder, and the group's fade
      is the arrival.
 
-     A function called as the transition starts, not a `$derived` (ticket
-     196). Svelte reads the params again when the outro starts, and a
+     A function called as the transition starts, not a `$derived`. Svelte reads the params again when the outro starts, and a
      derived read from an effect that is already being destroyed hands back
      its cached value (Svelte's `derived_inert`) - which was the value from
      mount, `skip: true` while the group still held it. Every tile on the

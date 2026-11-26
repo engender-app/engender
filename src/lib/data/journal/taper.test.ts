@@ -1,4 +1,4 @@
-/* The taper area's own reads (functional audit ticket 25): a times-a-day
+/* The taper area's own reads: a times-a-day
    stage round-trips through the schedule's JSON, and a day's sessions say
    which of the day's expected sessions each one is. */
 

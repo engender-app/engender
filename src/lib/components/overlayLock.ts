@@ -1,30 +1,11 @@
-/* What an overlay owes the screen it covers: nothing behind it reachable,
-   nothing behind it scrolling, and focus back where it came from.
+/* Make the shell's other children inert while a sheet or letter arrival
+   is open. Skip the child containing the overlay. Lock the scroll region
+   and restore focus to the opener on close (SF-001).
 
-   Lifted out of Sheet.svelte by redesign ticket 45, which added the second
-   surface that covers the whole app - a letter's arrival, which is not a
-   sheet: it does not rise from the bottom edge and it must not be
-   dismissible by a drag, because the two ways out of it mean different
-   things. What it does share is all of this, and SF-001's reasoning applies
-   to it unchanged.
-
-   SF-001: every confirmation in the app is a sheet, and without this the
-   background stayed reachable behind an open dialog - Tab walked straight
-   out of it, and closing dropped focus to the document. `inert` on the app
-   shell's other children keeps assistive tech and Tab out of the background
-   regardless of how deep in that subtree the overlay itself lives (the
-   `.contains` check below skips whichever child holds it); the scroll lock
-   stops the scroll region moving underneath an overlay that does not cover
-   it edge to edge; focus returns to whatever opened it on close.
-
-   Full-frame overlays mount directly in `.app`: `.app-column` carries
-   `view-transition-name: screen` and is a stacking context, so an overlay
-   left inside it cannot beat the floating bar's 30. The background lock
-   then marks sibling surfaces inert while the overlay covers them.
-
-   Queries `data-app-root`/`data-app-scroll-region` rather than
-   `.app`/`.app-main` so this stays wired to the shell even if those
-   presentational class names ever change. */
+   Mount full-frame overlays directly in .app. .app-column's view
+   transition creates a stacking context that cannot cover the floating
+   bar at z-index 30. Query data-app-root and data-app-scroll-region so
+   class renames leave the lock wired to the shell. */
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';

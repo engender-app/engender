@@ -1,8 +1,7 @@
 <script lang="ts">
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
-  /* Every dose, and how it sits against the schedule, on the surface kit
-     (phase 5 UX ticket 25).
+  /* Every dose, and how it sits against the schedule, on the surface kit.
 
      The log row was four lines deep: the dose and its route, when and
      where, which regimen episode it falls under, and - where the dose came
@@ -104,7 +103,7 @@
   let deepLinkedDoseId = $derived(page.url.searchParams.get('dose') ?? hashRowId(page.url.hash));
   let targetSlotDate = $derived(page.url.searchParams.get('date'));
   let sourceEpisodeId = $derived(careEpisodeId(page.url));
-  /** The schedule view's regimen, picked on this visit (ticket 15); the
+  /** The schedule view's regimen, picked on this visit; the
       read weighs it against a Care spine link's episode UUID and the stored
       pick, so a link can outrank the preference without writing it. */
   let pickedRegimenDrug = $state<string | null>(null);
@@ -165,7 +164,7 @@
     if (v === 'schedule' || v === 'log') view = v;
   });
   /** The old intro, folded under the tab bar rather than printed over every
-      row (ticket 09). Closed by default: the log opens on the log. */
+      row. Closed by default: the log opens on the log. */
   let attributionOpen = $state(false);
 
   /* Null when the row has no site rather than when the route has none: a
@@ -186,7 +185,7 @@
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
 
   /** What an auto-logged dose says about itself on its second line, or null
-      for one the person logged (ticket 11, ADR-0086). A skipped one says
+      for one the person logged (ADR-0086). A skipped one says
       both things at once rather than wearing the status chip beside the
       marker: "skipped" and "was logged from your schedule" are one sentence
       about the same row. */
@@ -243,7 +242,7 @@
     editor !== null && !editor.id && activeDrugChoices.length > 1 && activeEpisode === null && !editor.drug
   );
 
-  /* Which of the record's three lines is open (phase 5 UX ticket 37).
+  /* Which of the record's three lines is open.
      One at a time, which is `disclose`'s own cap: a second group open
      underneath the first is two heights animating over each other, and the
      line that closed still states its value, so nothing is lost by closing
@@ -302,7 +301,7 @@
      across a hash, the browser's anchor scroll fires before the log's
      liveQuery answers, and this is the second chance that actually sees the
      row. `deepLinkedDoseIndex` above is what gets the row into the DOM at
-     all once the log batches (ticket 67) - this only has to wait for the
+     all once the log batches - this only has to wait for the
      layout scrollToHash's own settle loop already handles. */
   $effect(() => {
     if (!loading && view === 'log' && !deepLinkedDoseUnavailable && deepLinkedDoseId && deepLinkedDoseIndex < 0) return;
@@ -337,7 +336,7 @@
     /* A line whose fact the app does not know opens as the fields that make
        one. Those are the two cases that also block the save: an amount
        nothing seeded, and several active episodes tied with no drug named
-       yet (ticket 40). Everything else opens stated and closed. */
+       yet. Everything else opens stated and closed. */
     openGroup = seeded.dose === '' || (activeDrugChoices.length > 1 && !seeded.drug) ? 'what' : null;
     record.editor = seeded;
   }
@@ -389,7 +388,7 @@
   let editorIsInjection = $derived(editor !== null && isInjectionDose(editor));
 
   /** The map's two history marks, both read at the moment of the dose being
-      logged rather than one from then and one from today (ticket 13). The
+      logged rather than one from then and one from today. The
       recency shades every dot and the last injection rings one of them, so
       a dose being edited a fortnight back would otherwise carry a fill
       measured from today under a ring measured from then. For a new dose,
@@ -435,7 +434,7 @@
   /* Back to the Care lane the spine mark came from (sourceRecord.ts). */
   let returnHref = $derived(careLaneReturnHref(page.url));
 
-  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  /* Latched: a reserve must not put its placeholder back. */
   let dosesRevealed = $state(false);
   $effect.pre(() => {
     if (!dosesRevealed && (!loading)) dosesRevealed = true;
@@ -473,7 +472,7 @@
   />
 
   <!-- The intro used to be the ScreenHeader's own subtitle, printed above
-       every row whether or not anyone needed it (ticket 09). With the
+       every row whether or not anyone needed it. With the
        stock cards gone too, the log opens on the log now - this stays
        reachable folded, under the tab bar rather than over the rows. -->
   <button
@@ -492,7 +491,7 @@
     </div>
   {/if}
 
-  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <!-- Held at last visit's height until the reads answer, then faded in: a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={dosesRevealed} estimate={dosesEstimate} onrest={dosesRemember}>
     {#if view === 'log'}
       {#if deepLinkedDoseUnavailable}
@@ -591,7 +590,7 @@
       {/snippet}
     {:else}
       {#if activeDrugChoices.length > 1}
-        <!-- Only drawn while more than one regimen is active (ticket 15): with
+        <!-- Only drawn while more than one regimen is active: with
              at most one there is nothing to choose between, and the picker
              would be a control with a single, forced answer.
 
@@ -623,7 +622,7 @@
         <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
       {:else if scheduleView.reason === 'multipleEpisodes'}
         <!-- Reachable only when two active episodes share one drug name
-             (ticket 15) - the picker above already resolves the ordinary
+              - the picker above already resolves the ordinary
              concurrent-regimens case to a single one. -->
         <Notice icon="info" key="adherence-multiple" text={m.adherence_multiple_episodes()} />
       {:else if scheduleView.reason === 'noSchedule'}
@@ -734,31 +733,11 @@
     }}
   />
   {#snippet doseFields(editor: DoseDraft)}
-      <!-- The record, and the whole of this redesign (phase 5 UX ticket 37).
-
-           Alicja, 2026-08-26: "current setting in the popup are too many
-           and too big". Six controls stood here for a dose logged as it was
-           taken - a day, a time, a route, an amount, a unit and a status -
-           and an active regimen already settles four of them. So they are
-           not controls any more. Three lines state what is about to be
-           recorded, each one opening the fields that made it if the
-           statement is wrong, and what is left drawn as a control is the
-           part that genuinely changes from dose to dose: where the needle
-           went.
-
-           There is no heading above them. Every other sheet in the app
-           opens with one, and the argument for dropping it here is that
-           this sheet opens on the thing itself - "4 mg estradiol" in the
-           display face is a better answer to "what did I just tap" than
-           the words "Log a dose" over the same information smaller. The
-           sheet still carries the title as its accessible name (Sheet.svelte
-           passes it to aria-label), so nothing is lost to a screen reader.
-
-           Each line is a button whose name is the value it states, plus
-           aria-expanded, which is what a disclosure owes: the values are
-           the useful half of the name and "collapsed" is already spoken.
-           A row the width of the screen answers a press by filling rather
-           than by scaling (DIRECTION.md, tier 1), so no .press here. -->
+      <!-- The dose summary leads with the amount and drug. Sheet still names
+           the dialog for assistive tech. Each value is a disclosure button with
+           aria-expanded and opens its fields when correction is needed. Keep
+           the site picker visible because the site changes from dose to dose.
+           Use a press wash on full-width rows (DIRECTION.md, tier 1). -->
       <div class="dose-record">
         <button
           type="button"
@@ -829,8 +808,8 @@
                  inputs carry it as an accessible name, which is what a
                  field without a visible label owes.
 
-                 Left hand-written rather than moved onto Field.svelte
-                 (ticket 10): Field is one label naming one control, and
+                 Left hand-written rather than moved onto Field.svelte:
+                 Field is one label naming one control, and
                  this wrapper holds two, each already named its own way. -->
             <div class="field">
               <div class="dose-amount">
@@ -1082,7 +1061,7 @@
     margin: 0;
   }
 
-  /* The old intro, folded (ticket 09): a quiet row rather than a full-width
+  /* The old intro, folded: a quiet row rather than a full-width
      card, since it is a hint about bookkeeping rather than a reading. */
   .doses-attribution-toggle {
     display: flex;
@@ -1140,7 +1119,7 @@
     font-weight: var(--weight-medium);
   }
 
-  /* The record's three lines (phase 5 UX ticket 37). Uncontained: the sheet
+  /* The record's three lines. Uncontained: the sheet
      is already the app's second surface and a panel drawn inside it would be
      a card inside a card. What divides the lines is the hairline a list row
      uses, so the three read as one object rather than as three blocks. */

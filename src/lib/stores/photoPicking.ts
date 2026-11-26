@@ -29,8 +29,8 @@ export type EditorPhoto =
   | { kind: 'stored'; photo: { id: string; fileName: string | null; starred: boolean } }
   | { kind: 'picked'; photo: NormalizedPhoto };
 
-/** The default comparison photo a screen hands the post-capture review
-    (ticket 12): a stored photo's file name, or the bytes of one already
+/** The default comparison photo a screen hands the post-capture review:
+a stored photo's file name, or the bytes of one already
     picked in this same editing session and not yet written to disk - the
     same stored/picked split EditorPhoto draws, for the same reason. */
 export type ReferencePhoto = { fileName: string } | { bytes: Uint8Array };
@@ -85,7 +85,7 @@ export async function claimPendingPhotos(claimBy: ClaimBy, canUse: () => boolean
   const tokens = claimPending(claimBy, location.pathname);
   if (!tokens) return [];
   // Read one at a time inside normalizeAll, so a held multi-pick keeps the
-  // one-raw-file-at-a-time budget (ticket 07).
+  // one-raw-file-at-a-time budget.
   const photos = await normalizeAll(tokens.map((token): PickedBytes => () => androidPickedBytes(token)));
   if (photos.length) toast(m.picked_while_locked_added());
   return photos;

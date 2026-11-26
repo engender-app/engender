@@ -1,35 +1,16 @@
-/* Renders and measurements for redesign ticket 40, the body map's figure.
+/* Capture the body map's four figure states in both themes and its controls
+   on the real route. shots/ contains the crops and sheet.html presents them
+   side by side.
 
-   Only what the ticket changed: the figure alone, cropped to the figure, in
-   the four data states that have to look different from one another. A
-   review page of whole screens across a half-done redesign is unreviewable
-   (Alicja, ticket 07's sign-off), so the route itself appears here only
-   where the ticket changed the whole of it - the control area, where four
-   pickers became one.
+   contrast.json measures each label against its painted background.
+   Computed color-mix values may remain in oklab, so sample the resolved
+   color from canvas pixels. mixed.json checks the mixed mark at every ramp
+   step and each shape's edge against the card. The figure is one silhouette
+   with clipped bands. Each band shares a rect for fill and hairline, and the
+   selected edge has its own pass.
 
-   Three things come out of one run:
-
-   - **shots/**: each scene cropped to its figure, per theme, plus the
-     control-area crop off the real route, and **sheet.html**, which is the
-     two themes of each scene beside each other for sign-off.
-   - **contrast.json**: rule 11 measured rather than asserted. Every piece of
-     type the figure draws, walked against its own resolved ground. A body
-     region's fill is a `color-mix` that `getComputedStyle` hands back
-     unresolved as `oklab(...)`, so every ground here is painted into a
-     canvas and read back as pixels rather than parsed out of a string.
-   - **mixed.json**: the mixed mark measured against its own fill at every
-     step of the ramp, in both themes, and each shape's edge measured
-     against the card behind it. "Legible in both themes and at the palest
-     fill" is the one claim on this screen a render cannot settle, since the
-     ends of the ramp are where a mark has least to work with.
-
-   Run: node tests/body-map-gallery.mjs [--out <abs dir>] [--palette trans]
-   Default out is .claude/ticket40, which is gitignored and durable.
-
-   Phase 11 ticket 47 redrew what this shoots - the figure is one silhouette
-   and a panel is a band of it, clipped - and the probes below follow the
-   elements that carries: a panel's fill and its hairline are one rect, and
-   the picked edge is a pass of its own over every fill. */
+   node tests/body-map-gallery.mjs [--out <abs dir>] [--palette trans]
+   The default output directory is ignored by Git. */
 import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

@@ -1,22 +1,8 @@
-/* Last-audit UI ticket 21 (audit U12, U31): the waiting-update notice keeps
-   its place and its dismissal.
-
-   The notice was a direct child of `.app`, which is a row at desktop width,
-   so a waiting release drew it as a third column between the rail and the
-   content and squeezed the screen. And its dismissal lived in the component,
-   which is unmounted at every lock, so unlocking brought back a notice the
-   person had already closed for this page. At sign-off Alicja placed it
-   under the screen's field at the width of the content
-   (UpdateNoticeSlot.svelte), so each screen draws its own.
-
-   Drives the production update module (src/lib/pwa/update.ts) with a
-   registration whose waiting worker is put there by hand, the way
-   tests/browser-tier/update-probe.ts does: the dev server registers no
-   service worker. Measures the rail, the column, the field and the notice
-   at 390, 1024 and 1280, samples every animation frame while the notice
-   arrives, travels across a navigation and leaves, dismisses, locks and
-   unlocks, applies the update through the real handover, and reloads to
-   confirm a fresh page offers it again. */
+/* Inject a waiting worker into the real update module because the
+   dev server registers none. Measure the notice under the field at
+   390, 1024 and 1280 and sample entry, navigation and exit. Dismissal
+   survives lock/unlock on the current page. Check the real handover
+   and confirm a fresh page offers a waiting update again. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

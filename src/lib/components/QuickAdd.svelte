@@ -1,58 +1,17 @@
 <script lang="ts">
-  /* Quick add (phase 5 ticket 18, closing spec 04).
+  /* Quick add contains actions that make sense across the app. Each feature
+     keeps its own add control for records that belong on that screen.
 
-     The bottom bar's centre button opened a sheet with two choices, "today"
-     and a backdate, and both landed on the same new-entry screen. A control
-     in the most reachable place on the screen did one thing.
+     Release chooses the action under the pointer. Release over the add
+     button leaves the fan open for a second tap. Holding and sliding can
+     choose an action within the opening gesture.
 
-     What earns a slot here is being cross-cutting, not being popular
-     (CONTEXT: "Quick add"). A log belongs because you might want it while
-     looking at something unrelated; adding a lab result while reading your
-     lab results should not route through a global sheet. So every feature
-     surface keeps its own in-context add control and this never replaces
-     one.
-
-     ## Why a fan and not a sheet
-
-     Two gestures have to reach the same targets, and only one shape serves
-     both. Tap the add button and the options are there to tap. Or press it
-     and keep pressing: the options come out under your thumb and you slide
-     onto the one you want and let go, without ever lifting a finger. The
-     second is the whole reason this is not a bottom sheet - a sheet is a
-     surface you arrive at, and it cannot be crossed in one gesture from the
-     button that opened it.
-
-     Both gestures resolve through one rule, which is why there is no mode
-     flag anywhere below: on release, whatever target the pointer is over
-     wins. Let go over the button itself and nothing is chosen, so the fan
-     stays up and the next tap picks - that is the tap flow, falling out of
-     the same line of code as the slide.
-
-     ## The motion
-
-     Focal moment: the button throws its options out and takes them back.
-     Every row starts at the button's own position and travels to its place,
-     nearest the thumb first, so the fan reads as the button's contents
-     rather than as a menu that happened to appear above it. Coming back
-     they collapse into the button together and faster, because an exit that
-     takes as long as an entrance reads as hesitation.
-
-     Continuity: the plus turns 45 degrees into a cross while the fan is up
-     (AppNav.svelte), so the control that opened it is visibly the control
-     that closes it.
-
-     Feedback: the row under the pointer lifts and fills with the accent
-     inside --dur-fast, and a slide re-targets continuously, so the answer
-     to "what will this do if I let go" is always on screen.
-
-     Budget: the fan entrance uses transform and opacity. A newly available
-     card discloses its height. The scrim is .scrim-withdraw, whose cost
-     ticket 28 already bounded.
-
-     Reduced motion substitutes rather than deletes: the rows arrive where
-     they belong with no travel and no stagger, and the highlight keeps its
-     colour and loses its lift. Both gestures still work, which is the part
-     that matters. */
+     Options travel from the button, nearest the thumb first, and collapse
+     back together on close. AppNav.svelte rotates the plus 45 degrees while
+     the fan is open. The current target lifts and fills on --dur-fast.
+     Entrance uses transform and opacity, and newly available cards disclose
+     their height. Reduced motion drops travel, stagger and lift while
+     preserving colour feedback and both gestures. */
   import { beforeNavigate, goto } from '$app/navigation';
   import { fade } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
@@ -85,31 +44,13 @@
     restMoods();
   }
 
-  /* Telling you it landed, for the thing that never leaves the screen
-     (phase 5 ticket 18).
+  /* A successful in-place wear write closes the fan and flies the chosen
+     row back into the add button, which shows a tick. Start after the write
+     returns. The overlay takes no pointer events and delays no new action.
+     Under reduced motion, show static marks for the same duration.
 
-     A wear session resolves in place, which is the whole reason it is
-     worth reaching from anywhere - and it left it with nothing to show for it where the thumb that pressed actually was. The row you chose flies into the add
-     button instead, and the button catches it with a tick: the exact
-     reverse of the fan coming out of it, so the gesture closes the loop it
-     opened. Tier 3, change within a screen - something was written, and
-     this is the mark moving rather than a new surface arriving to say so.
-
-     Nothing waits for it. The fan is already shut and the app is already
-     usable; the flight is an overlay with no pointer events that happens to
-     still be on screen. It starts when the write comes back rather than
-     when the finger lifts, so it means "this is recorded" and not "this was
-     sent" - the round trip is tens of milliseconds, so the honesty is free.
-
-     Under reduced motion nothing travels and the marks still appear, for
-     the same duration.
-
-     Neither outcome raises a toast. The control says both things where the
-     thumb already is, and a line of text at the far end of the screen was
-     the same news a second time. What a toast was also doing, though, is
-     the part an animation cannot do at all: it was role="status", so a
-     screen reader spoke it. That half stays, as a visually hidden live
-     region below - the announcement without the notification. */
+     The button gives visual feedback. A hidden role="status" region
+     announces both outcomes without a toast. */
   /* The beats, and why they are sequenced rather than stacked. The first
      version started the flight the instant the write came back, which was
      while the fan was still on its way out - so two things moved at once
@@ -315,7 +256,7 @@
     }
   }
 
-  /* Fired once at creation, not gated on the fan opening (ticket 189):
+  /* Fired once at creation, not gated on the fan opening:
      this component mounts once for the app's whole life, so a read kicked
      off here has the entire time before the first press to land, rather
      than starting the same round trip only once the fan is already up.
@@ -457,7 +398,7 @@
     return key;
   }
 
-  /* The mood row's magnifier (phase 5 ticket 31). The falloff is in
+  /* The mood row's magnifier. The falloff is in
      $lib/motion/magnifier.ts with its own tests; what is here is the
      measuring, and the two decisions that need the fan in front of them.
 
@@ -473,7 +414,7 @@
      the moment it crosses the hairline. Approach is part of the gesture. */
   let moodScale = $state<number[]>(MOODS.map(() => 1));
 
-  /* The fan's faces answer the slide twice over (phase 9 carpet ticket 01):
+  /* The fan's faces answer the slide twice over:
      with size, which only the one under the finger can do, and with a look,
      which all five do at once. moodMagnifier.svelte.ts carries the same pair
      for the two plain rows; the fan keeps its own copy of the loop because it
@@ -559,28 +500,13 @@
     if (key) runTarget(key);
   }
 
-  /* The fan is a modal, for the keyboard and for assistive tech as well as
-     for the eye (audit A11Y-01). It looked like one and was not: focus
-     stayed on the add button, fifteen Tabs walked the dimmed screen under
-     the scrim before the sixteenth reached the fan, and Escape was a window
-     listener that dropped focus to the body. It takes a sheet's contract
-     now, through the same module (overlayLock.ts): the rest of the app is
-     inert, the overlay stack owns Tab and Escape (and Android's back, which
-     goes through the same stack), and the release puts focus back on
-     whatever opened it.
+  /* The fan uses overlayLock's modal stack for inert background, Tab,
+     Escape, Android back and focus restoration. Keep its outside-click
+     scrim, opener and live region active. AppNav makes the other bar
+     controls inert.
 
-     Two things stay live, because the fan is drawn over them on purpose.
-     The scrim is how a tap outside closes it. The bar is lifted above the
-     scrim so the add button reads as the control that closes what it
-     opened; AppNav makes the bar's own tabs inert while the fan is up, so
-     only the button in it can be reached. So does the fan's own live region
-     below, which an inert subtree would silence. Neither withdraws with a blur of
-     its own either: the scrim already blurs everything under it.
-
-     Released the moment the fan starts closing rather than after its exit,
-     so a target that navigates finds the new screen live and can take focus
-     on it (the layout's arrival focus), instead of focusing into a screen
-     that is still inert. */
+     Release the lock as closing begins so landing focus can reach the
+     next screen while the exit animation finishes. */
   let fanEl = $state<HTMLElement>();
   let scrimEl = $state<HTMLElement>();
   let statusEl: HTMLElement;

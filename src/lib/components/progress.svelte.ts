@@ -1,20 +1,9 @@
-/* One long operation's bar, as a thing a screen can hold (phase 9 audit
-   ticket 11, ADR-0070). The reactive half of progress.ts, deliberately thin
-   the way documentTargets.svelte.ts is: `$state` and the three timers only,
-   so every decision with a right answer stays in the rune-free module a
-   node test can reach.
+/* Reactive progress for one operation (ADR-0070). Keep decisions in
+   rune-free progress.ts. This wrapper owns state and three timers.
 
-   Why a run object rather than three `$state` variables per screen. Two of
-   the four behaviours ADR-0070 asks for are not renderable from a value the
-   screen already has: the show delay means the bar appears later than the
-   operation starts, and the completion hold means whatever happens next -
-   a toast, a screen swap, a sheet closing - waits for the bar rather than
-   racing it. `await progress.finish()` is that wait, and it is the reason
-   this is an object with a method instead of a prop.
-
-   It is not a task registry (ADR-0070's own out-of-scope list). Nothing
-   registers with it, it knows nothing about what is running, and a screen
-   that wants two of them makes two. */
+   The show delay avoids flashing a bar. `await progress.finish()`
+   holds completion before a toast, screen swap or sheet close.
+   Each operation gets its own instance. */
 
 import { tick } from 'svelte';
 import { motionDuration } from '$lib/motion/tokens';

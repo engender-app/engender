@@ -53,8 +53,7 @@ export type KeyDerivation = (
   kdf: Argon2Params
 ) => Promise<Uint8Array<ArrayBuffer>>;
 
-/** Watching a pack that is already under way (phase 9 audit ticket 11,
-    ADR-0070). Both halves are optional and neither changes what comes out:
+/** Watching a pack that is already under way (ADR-0070). Both halves are optional and neither changes what comes out:
     an export packed without them is byte for byte the one packed with. */
 export interface PackWatch {
   /** Plaintext body bytes handed to the encryptor, against the body's

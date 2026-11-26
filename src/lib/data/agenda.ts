@@ -1,50 +1,12 @@
-/* The agenda: one projection of what is coming (phase 10 redesign ticket 04,
-   ADR-0074, CONTEXT: "Agenda").
+/* Project the existing dayAhead marks into Today's agenda (ADR-0074,
+   ADR-0067). The window, ordering and fold work on supplied rows
+   and todayEpochDay. agendaReads.ts owns the journal reads. Only
+   passedSlotSentence supplies copy here.
 
-   Everything the app draws looks backwards. The half of a transition that
-   arrives with dates on it - an appointment, a surgery day, a milestone
-   still ahead, a letter opening, an injection on a day that is not every
-   day - is exactly what `dayAhead` already computes (ADR-0067), and this is
-   the projection Today draws over it. No second forward read is introduced
-   here and no sixth kind of mark: the five are the ADR's five, and its six
-   opt-outs stay opted out, run-out day included.
-
-   Split from `agendaReads.ts` beside it for the reason `comingBack.ts` is
-   split from `comingBackReads.ts` and `liveTiles.ts` from its own
-   `.svelte.ts`: the window, the ordering, the fold, the absence rule and
-   the passed slot are the decisions, they want a Node test with no driver,
-   so they take rows. Nothing here reads a clock: `todayEpochDay` arrives as
-   an argument, the same as every pure module at this seam.
-
-   One sentence does live here, `passedSlotSentence` at the foot of the
-   file, and paraglide is imported for it - `liveTiles.ts` next door carries
-   its tiles' words for the same reason. The marks' own words are
-   `dayAheadRows.ts`'s, because a mark is already drawn there; a slot that
-   passed is not a mark and reaches no other module.
-
-   Three rules are worth reading before changing anything:
-
-   *Absent, never empty.* A window with nothing in it returns `null` rather
-   than an empty projection, so a caller has no empty state to draw. Day one
-   of a new journal is the common case, and "Nothing coming up" on the first
-   screen is the app talking about itself.
-
-   *A passed slot is a fact, never a tally.* One item, the most recent slot
-   that went by with nothing logged against it, carrying its own date and
-   nothing else - never a count, never a streak, never a run of them.
-   ADR-0062's rule for `/coming-back` governs the words as well: what is
-   waiting gets named, what did not happen does not.
-
-   *Only a schedule the person set themselves, and never a daily one.* The
-   passed item is a dose slot and can be nothing else. A schedule is the one
-   dated thing in the app the person authored, so stating that its day went
-   by states their own arrangement back to them; an appointment's date
-   belongs to a clinic, and an app telling somebody they missed one would be
-   inventing a duty out of somebody else's calendar. A daily schedule is
-   excluded for ADR-0067's own reason, restated backwards: a daily slot
-   marks every day a screen can draw, so a daily one that passed would put a
-   row on this screen most mornings, which is wallpaper if it is lucky and a
-   scolding if it is not. */
+   Return null for an empty window. An elapsed slot can name just the
+   latest unlogged slot from a schedule the person set. Daily schedules,
+   other dated records and totals of missed events stay out. That keeps
+   the agenda from repeating a prompt most mornings (ADR-0062). */
 
 /* Relative rather than `$lib`, the same as `liveTiles.ts` beside it: this
    file is read by the Node tier, where no alias exists. And the same reason
@@ -89,8 +51,7 @@ export const AGENDA_PASSED_DAYS = 7;
     be argued to a different figure without dragging the other with it. */
 export const AGENDA_CAP = 3;
 
-/** Which appointment today's appointment row is about (functional-audit
-    ticket 14). `title` is the appointment's own kind, or its procedure's
+/** Which appointment today's appointment row is about. `title` is the appointment's own kind, or its procedure's
     name, or null for one with neither - the screen draws the kind's own
     label then, the same fallback chain the appointments screen uses.
     `more` counts the other appointments on the same day. */
@@ -108,7 +69,7 @@ interface AgendaAppointment {
     never which letter. The one exception is today's appointment row, which
     names the visit and its place: on the day itself the date is the least
     useful thing about it, and that row is where the appointment-today tile
-    folded to (functional-audit ticket 14). */
+    folded to. */
 export interface AgendaItem {
   /** The row's own walkthrough handle (ADR-0029) - stable, never the copy.
       Keyed by kind *and* day, since a weekly injection earns one mark per

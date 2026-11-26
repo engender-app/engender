@@ -1,18 +1,7 @@
-/* A mood is required (CONTEXT: "Entry"): the editor will not save a new
-   entry without one ("Pick a mood to save", EntryEditor.svelte). This file
-   holds the floor underneath that, for every stored row, including rows an
-   archive or an import brings in: an entry holds at least one of mood, a
-   dimension value, a tag, a non-blank note, a photo, a voice recording, a
-   video note, a body-region intensity - or it does not exist. One predicate,
-   because it is enforced in the journal, again in the demo-store repository
-   for the ticket 07-to-08 window, and echoed by the editor's save guard -
-   three sites that must never drift.
-
-   `recordingCount` joined at ticket 24: a voice recording is
-   first-class entry media alongside a photo, so a recording-only entry is
-   as valid as a photo-only one already was. `videoCount` joined at phase 5
-   ticket 22 on the same grounds - a video note is the third citizen of that
-   set, so a video-only entry is a real entry too. */
+/* The editor requires a mood for a new entry. Stored and imported
+   rows need at least one mood, dimension value, tag, non-blank note,
+   photo, voice recording, video note or body-region intensity.
+   Keep this predicate shared across persistence and editor guards. */
 
 export interface EntryContent {
   mood: number | null;

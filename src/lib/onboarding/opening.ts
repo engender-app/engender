@@ -1,28 +1,11 @@
-/* The welcome's opening (pre-release-human ticket 19). The welcome is the
-   first screen anyone sees, and on a cold load it is assembled in one
-   movement of about 1.3s: the sun's rings draw outward from the corner one
-   stripe at a time, the wordmark rises onto the field, then the definition
-   and the language switch, then the line under the field, then the
-   actions fade in. The actions are live from the first frame; the opening only
-   changes how they look.
+/* Play the 1.3 s welcome opening once per mount. The sun draws its rings,
+   then the wordmark and copy appear before the actions fade in. Actions
+   are live from the first frame; step navigation does not replay it.
 
-   It plays once per mount of the page, which is once per cold load: the
-   back arrow returning to the welcome is a step change inside the same
-   page and never reaches this.
-
-   It waits for the first frame to leave. app.html paints the mark over
-   the app, and the screen underneath is drawn at a nil opacity until the
-   app is settled (lib/splash.ts), so an opening that started on mount
-   played out unseen under the mark - and held the mark up for its own
-   length, since the splash waits for finite animations to end. The
-   animations are made paused, at their first frame, and played on the
-   frame the mark starts to leave. A paused animation is not one the splash
-   waits for.
-
-   Reduced motion: the whole screen crossfades in over 200ms and nothing
-   moves. Web Animations rather than CSS, because base.css flattens every
-   CSS animation to 1ms under reduced motion, which would make the
-   substitute a cut. */
+   Create paused animations and start them when the splash begins to
+   leave. Otherwise they run unseen and hold the splash while it waits for
+   finite animations to end. Reduced motion uses a 200 ms Web Animations
+   crossfade because base.css clamps CSS animations to 1 ms. */
 
 import { EASE_OUT_CSS, motionDistance } from '../motion/tokens';
 

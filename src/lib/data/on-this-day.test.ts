@@ -1,4 +1,4 @@
-/* The on-this-day lookback rule (phase 4 features ticket 03). Rune-free and
+/* The on-this-day lookback rule. Rune-free and
    import-light for the same reason wrapped.test.ts is - run under both
    timezones:
 

@@ -7,34 +7,14 @@
   import { takeLegacyCareDrug } from '$lib/navigation/journalTextParams';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { navigating, page } from '$app/state';
-  /* The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
-     surface, so it lives in the More hub rather than under /settings).
+  /* Care is a feature surface in the More hub (ADR-0036). Read draw timing,
+     exposure and stock from their existing modules. careSpine.ts only
+     positions dates on the shared axis.
 
-     What this screen does NOT do is the point of it. The ticket it comes
-     from used to ask for an interactive care canvas - a pharmacokinetic
-     computed draw context, an exposure counter, a stock horizon -
-     and those had already shipped: labTiming.ts, journal/exposure.ts,
-     stockProjection.ts. So there is no modelling here
-     and no second calculation of anything. Every figure on this screen is a
-     live read of a module that already owned it, and the only arithmetic in
-     the diff is careSpine.ts working out where a set of days sit on one
-     line.
-
-     One lane per running drug (phase 11 ticket 10). A stripe per drug and
-     no drug primary: colour is categorical here as everywhere, which is
-     ADR-0012's line rather than this ticket's. Before it
-     the rail drew one episode's days and every other running regimen fell
-     to a grey two-line row under an "Other regimens" heading - which for
-     the ordinary case of a hormone beside a daily pill meant two of three
-     drugs were running off the rail. Each lane now carries its own last
-     dose, next dose and run-out against the shared axis, and today and the
-     most recent draw are drawn once down the whole of it.
-
-     Nothing here judges. A lane says when things happened and when the
-     schedule expects the next one; no mark is late, no interval is the right
-     one, no lane is ranked against another, and no lab value is read as
-     anything (PRODUCT.md:109, and labTiming.ts as the worked
-     precedents). */
+     Each active drug gets a lane with last dose, next dose and run-out.
+     Today and the latest draw cross the shared axis. Stripes distinguish
+     drugs without ranking them (ADR-0012). Report dates and projections
+     without judging schedules or interpreting lab values (PRODUCT.md). */
   import { m } from '$lib/paraglide/messages';
   import { scrollToHash } from '$lib/navigation/scroll-region';
   import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
@@ -862,7 +842,7 @@
     />
   </ListCard>
 
-  <!-- A link to the cycle log (pre-release-human 12), only behind
+  <!-- A link to the cycle log, only behind
        `cycleTrackingVisible` (ADR-0043), with the last three events under
        it. The module itself is on the More hub, in Health. The events are
        static rows (the shape regimen's pause rows use): they name nothing to
@@ -1464,7 +1444,7 @@
        keyframe and not on this rule. With `forwards` a waiting caption had
        no transform at all, so it sat uncentred until its delay ran out and
        then jumped half its own width (26-30px) on the frame it began to
-       fade in (ux-carpet ticket 184). */
+       fade in. */
     opacity: 0;
     animation: care-mark-settle var(--dur-med) var(--ease-out) both;
     animation-delay: calc(var(--care-settle) * var(--dur-authored));

@@ -1,38 +1,11 @@
-/* The mood faces looking around the room (phase 9 carpet ticket 01).
+/* Give each mood face its own glance period and delay so the row
+   never moves in a wave (ADR-0071). Glances replace the existing
+   face-blink loop in the ambient motion budget. Use periods with a
+   long common multiple to keep the faces from drifting into sync.
 
-   ## Why there are two ambient loops now
-
-   DIRECTION.md's budget was one: the flag sun's 7s breath, on the one element
-   that carries identity, and ADR-0051 refused a second one after four rounds
-   of form failed to earn it. This is the second one, and it is deliberate
-   (ADR-0071, Alicja 2026-09-07). It does not cite ADR-0050, which the budget
-   forbids; the argument is its own and it is about what was already there.
-
-   The faces were never still. `face-blink` ran forever on five of them
-   wherever a mood was being chosen, so the budget had already been spent - it
-   had just been spent on a loop that said nothing. A blink is a timer. What
-   this replaces it with is the same amount of motion doing the job the drawing
-   was made for: MoodFace's five faces are one face in five moods, and a face
-   with eyes that never move is a mask of one.
-
-   ## Why every face runs its own clock
-
-   Five faces on one delay is a wave: the same movement crossing the row left
-   to right, over and over, which reads as a mechanism rather than as five
-   things that happen to be alive. So no two steps share a period, no two share
-   a delay, the delays are not a ramp, and the periods have no small common
-   multiple - 12.9 and 13.5 seconds only agree again after 43 and 45 cycles,
-   about ten minutes in, by which time nobody is still watching a mood picker.
-   The row drifts apart and stays apart.
-
-   ## Why the blink divides the cycle exactly
-
-   A real eye moves during a blink. The saccade is masked by the lid, which is
-   why you never see your own eyes jump in a mirror. So each face's blink is
-   exactly a third of its glance, and the glance changes direction on the beat
-   the blink lands on: three positions per cycle, each arrived at behind a
-   closed lid. That is the whole reason the numbers are what they are, and the
-   one thing in this file a test has to hold. */
+   Each blink takes exactly one third of its face's glance cycle.
+   Change eye position on the blink beat so each of the three moves
+   happens under a closed lid. */
 
 export type MoodGlance = {
   /** Seconds for one pass through the three glance positions. */

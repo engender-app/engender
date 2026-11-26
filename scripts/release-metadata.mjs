@@ -1,4 +1,4 @@
-/* Writes `build/release.json` (phase 2 ticket 05): what the release directory
+/* Writes `build/release.json`: what the release directory
    sitting on the server is, in a form the server and a person can both read
    without unpacking anything.
 

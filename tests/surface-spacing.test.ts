@@ -1,23 +1,7 @@
-/* Cross-block spacing, opted into by attribute rather than by a list of
-   surface class names (phase 5 ticket 41, ADR-0038).
-
-   The same bug role-attrs.test.ts guards for colour, one axis over: a
-   surface that exists but never gets added to a hand-maintained selector
-   somewhere else. For colour the symptom was that nothing drew; here it is
-   that the gap above a block silently reverts to the browser's default
-   collapse. `.kit-strip` was already living that bug when this ticket
-   started - it sat in the two-surface list but not the one below a control,
-   so a week strip under a segmented control had no gap at all.
-
-   The lead side of the rule stays a class list on purpose. Those are
-   screen-level presentational names with no owning component root
-   (`.tag-row` alone is 14 ad-hoc call sites across 7 files), and a class
-   opts every instance in for free - an attribute there would be one more
-   thing to remember per call site, not one less.
-
-   Greps by design (ticket 08). The rule is which selectors a stylesheet
-   carries and which surfaces opt in, so both halves are facts about a
-   file's text with no call form. */
+/* Surfaces opt into cross-block spacing by attribute to avoid a
+   second list of component class names (ADR-0038). Keep the preceding
+   control side class-based because it has no common owning component.
+   Check stylesheet selectors and surface attributes in source. */
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';

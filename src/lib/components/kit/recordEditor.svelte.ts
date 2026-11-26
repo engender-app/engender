@@ -57,7 +57,7 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
     return found;
   }
 
-  /* The sheet stays up until the record is gone (after-release ticket 06):
+  /* The sheet stays up until the record is gone:
      a delete that fails says so inside it and leaves the record where it
      was, and a second tap while one is running deletes nothing. */
   const removeOnce = oneAtATime(() => {}, (value) => { deleting = value; });

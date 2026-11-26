@@ -1,5 +1,4 @@
-/* The rules the chromeless screens keep after the rebuild (phase 5 ticket
-   26), at the level their source can be held to.
+/* The rules the chromeless screens keep after the rebuild, at the level their source can be held to.
 
    What makes them right is mostly proportion and copy, which an eye and the
    walkthrough settle between them. What is left is mechanical, and every
@@ -24,7 +23,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 const stripScript = (source: string) => source.replace(/<script[\s\S]*?<\/script>/g, '');
 /** The step-count checks below are about script logic - a `--space-7` in
-    the first run's own <style> block (phase 5 audit ticket 16) is a
+    the first run's own <style> block is a
     spacing token, not a hardcoded step count, and \b7\b cannot tell the
     difference from the name alone. */
 const stripStyle = (source: string) => source.replace(/<style[\s\S]*?<\/style>/g, '');
@@ -276,7 +275,7 @@ describe('the first run', () => {
   it('leaves and finishes through one function, so the two cannot drift', () => {
     /* "Straight to the app" and "Start writing" are the same act: keep what
        was chosen, mark the first run done, go. Leaving early routes through
-       one more function first (ticket 54): before an access mode is chosen
+       one more function first: before an access mode is chosen
        there is no keystore for complete()'s writes to land in, so leave()
        detours through the lock step instead of writing straight to prefs -
        but it is still the one place either control's write can come from. */
@@ -365,7 +364,7 @@ describe('the first run', () => {
        question and the page it sits on would come apart.
 
        The clock moved out of this screen's own block and into the shared
-       sheet when the gates took the same field (redesign ticket 34), so
+       sheet when the gates took the same field, so
        what is asserted here is that the screen wears the shared drawing and
        writes no second clock of its own. Two surfaces reading one set of
        numbers is the whole point of rules 12 and 15 sharing a field. */

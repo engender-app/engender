@@ -1,25 +1,10 @@
-/* Keeps a permission status current while a screen is open (last-audit UI
-   ticket 41).
+/* Refresh permission status on return from system settings.
+   Use the caller's unreadable fallback on failure instead of a stale
+   grant. Reminders and Notifications report failed reads; the
+   permissions list shows denied rows as `readGrantStates` does.
 
-   The way out of a refusal is a system screen, so the answer changes while
-   the app is not looking: somebody grants notifications or exact alarms in
-   Android's settings and swipes back. The permissions list already re-read
-   on the way back; the Reminders and Notifications screens read once at
-   mount and kept a "denied" notice up after the grant. One owner now, for
-   all three.
-
-   Three rules a screen should not have to remember:
-
-   - A read that fails shows `unreadable`, never an older answer: a
-     remembered "granted" is exactly what a failed read can no longer vouch
-     for. Reminders and Notifications pass a value of its own and say they
-     could not check; the permissions list passes its denied rows, which
-     readGrantStates already settles a failed read to.
-   - The newest read wins. A read started before the trip to settings can
-     answer after the one started on the return, and must not put the stale
-     answer back.
-   - `stop()` takes the listener off and drops any answer still in flight,
-     so a screen that has gone cannot be written to. */
+   Only the newest read applies. `stop()` removes the listener and
+   invalidates pending reads. */
 
 export type VisiblePage = Pick<Document, 'visibilityState'> & {
   addEventListener(type: 'visibilitychange', listener: () => void): void;

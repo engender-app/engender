@@ -1,28 +1,8 @@
-/* Normalizing a picked photo (ADR-0008, ADR-0015).
-
-   One function, one input (the raw bytes), one output (JPEG bytes plus a
-   thumbnail). It knows nothing about where the bytes came from or where
-   they are going, which is what lets the same call serve the web file
-   input, the Android picker and ticket 14's import.
-
-   Everything ADR-0008 and ADR-0015 ask for falls out of one decode and one
-   re-encode:
-
-     - Re-encoded to JPEG, so the 4-12MB the camera produced does not go
-       into every future archive.
-     - Capped at 2048px on the long edge, never upscaled.
-     - All metadata gone. Not stripped tag by tag - a canvas has no way to
-       carry EXIF through, so re-encoding through one is what drops GPS,
-       device identifiers and the rest.
-     - Orientation baked into the pixels, because the decode asks for
-       imageOrientation: 'from-image'. It has to happen in this order: the
-       rotation is applied while decoding, and the tag that described it is
-       gone by the time the canvas is encoded. Skip it and every photo an
-       iPhone took sideways stores sideways.
-
-   This is browser-only - it needs a decoder and a canvas - so the Node
-   tier tests the pieces that are pure (bytes.ts) and the browser tier
-   tests this against a real Chromium. */
+/* Normalize bytes to JPEG and thumbnail (ADR-0008, ADR-0015).
+   Cap the long edge at 2048 px without upscaling. Decode with
+   `imageOrientation: 'from-image'` before re-encoding through canvas
+   so orientation stays in the pixels while EXIF, GPS and identifiers
+   drop out. Test the pure helpers in Node and the decoder in Chromium. */
 
 import type { NormalizedPhoto } from '../journal/photos';
 import { judgeImage } from '../media/budget';

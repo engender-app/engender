@@ -1,35 +1,15 @@
-/* Drawing a stored PDF (phase 8 features ticket 55, ADR-0065).
+/* Render PDFs locally as images (ADR-0065). An OS viewer requires a decrypted
+   file in shared storage; CSP blocks embedded native viewers. The viewer
+   supports no text layer, selection or search.
 
-   The renderer ships with the app because both ways out are worse: handing
-   the bytes to the OS viewer writes a decrypted diagnosis into shared
-   storage, and an embedded native viewer is refused by the app's own CSP
-   (`object-src 'none'`, `frame-src 'none'`). So pdf.js is here, bundled,
-   and everything it needs comes off this origin.
+   pdf.js uses /pdf-fonts/ for standard fonts under connect-src 'self'. The
+   1.7 MB CJK cmaps are omitted, so documents needing them can miss glyphs.
+   disableFontFace draws glyph outlines on canvas, avoiding data: fonts under
+   font-src 'self'. Disable eval and system fonts so the renderer follows
+   script-src and uses the document's fonts.
 
-   **Pages come back as images, never as text.** No text layer, no
-   selection, no search over contents - ADR-0065 draws that line and this
-   module is where it holds: the only thing it can produce is pixels.
-
-   Four options are what make it work under this app's rules:
-
-     - `standardFontDataUrl` at /pdf-fonts/, because pdf.js's default is a
-       CDN and `connect-src` is 'self' (scripts/prepare-vendor-assets.mjs
-       writes the directory). No `cMapUrl`: the CJK cmaps are 1.7 MB and
-       out of scope, and a document that needs them draws the rest of
-       itself and misses those glyphs.
-     - `disableFontFace`, because loading a font pdf.js has extracted means
-       a data: URL through `font-src 'self'`, which the CSP refuses. Off,
-       pdf.js draws glyph outlines onto the canvas instead - which is the
-       right side of the trade for a viewer that has no text layer anyway.
-     - `isEvalSupported: false`, for `script-src` with no 'unsafe-eval'.
-     - `useSystemFonts: false`, so a font on the device can never stand in
-       for one the document named. The picture is the paper, not this
-       machine's idea of it.
-
-   Everything here runs on the main thread and hands the parsing to a
-   worker (pdf-worker.ts). The canvases are OffscreenCanvas, so no part of
-   this touches the DOM: the same reason photos/normalize.ts is shaped that
-   way, and what lets an import render a thumbnail with no screen open. */
+   pdf-worker.ts parses the document; the main thread renders into
+   OffscreenCanvas. Import can create thumbnails without a mounted screen. */
 
 import './pdf-floor';
 import { CACHE_PDF_WORKER } from '../../pwa/pdf-worker-cache';

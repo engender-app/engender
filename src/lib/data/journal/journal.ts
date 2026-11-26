@@ -90,8 +90,7 @@ export interface Journal {
   dimensions: DimensionsArea;
   milestones: MilestonesArea;
   photos: PhotosArea;
-  /** Every photograph in the journal, whichever table holds it (phase 11
-      ticket 14): a read across `photos` and the five areas that keep photo
+  /** Every photograph in the journal, whichever table holds it: a read across `photos` and the five areas that keep photo
       rows of their own, for the one library `/media/photos` draws. Owns no
       table and writes nothing - `photos`, `hairRemoval`,
       `tryouts`, `procedures` and the entry editor keep every write. */
@@ -109,8 +108,8 @@ export interface Journal {
       onto the entry row; this area owns only the presentation rows
       themselves. */
   presentations: PresentationsArea;
-  /** Every voice recording (ticket 24), read back dated and oldest first for
-      the voice compare picker (ticket 25) - entry-only, so unlike photos
+  /** Every voice recording, read back dated and oldest first for
+      the voice compare picker - entry-only, so unlike photos
       this owns no attach/remove of its own; those stay on upsertEntry's
       attachRecordings/removeRecordingIds (voiceRecordings.ts). */
   voice: VoiceArea;
@@ -118,12 +117,12 @@ export interface Journal {
       benchmark") - a different kind of record from `voice`, on its own
       table, so a memo and a benchmark can never be mistaken for each other. */
   voiceBenchmarks: VoiceBenchmarksArea;
-  /** How a practice session went (phase 8 features ticket 10) - a different
+  /** How a practice session went - a different
       activity from a benchmark and never compared to one, on its own table
       for the same reason `voiceBenchmarks` has one. */
   voicePracticeTakes: VoicePracticeTakesArea;
 
-  /** Every video note (phase 5 ticket 22), read back dated and oldest first
+  /** Every video note, read back dated and oldest first
       - entry-only, so like `voice` it has no attach/remove of its own:
       entries.ts owns the rows through attachVideos/removeVideoIds. */
   videos: VideoArea;
@@ -142,16 +141,16 @@ export interface Journal {
       timestamp above this seam (regimenEpisode.ts). */
   doses: DosesArea;
   /** What a person last reported having of each drug, and the run-out
-      projection and reminder reconciliation built over it and the dose log
-      (phase 4 ticket 04). A view over rows `doses`, `regimen` and
+      projection and reminder reconciliation built over it and the dose log.
+A view over rows `doses`, `regimen` and
       `reminders` own, not a fourth owner for any of them. */
   stock: StockArea;
   /** Every record that carries a cost, read across the five areas that
-      hold one (functional audit ticket 30). Read-only; totals go through
+      hold one. Read-only; totals go through
       costTotalsByCurrency (cost.ts), never across currencies. */
   costs: CostsArea;
   /** Cumulative dose totals, days-on-each-route and time-on-each-regimen,
-      purely descriptive (phase 4 ticket 05). A view over rows `doses` and
+      purely descriptive. A view over rows `doses` and
       `regimen` own, not a third owner for either one. */
   exposure: ExposureArea;
   sideEffects: SideEffectsArea;
@@ -178,8 +177,7 @@ export interface Journal {
       rows here outlive the era they name, and resurfacingConsent.ts is the
       one place that reads the two areas together. */
   eraMutes: EraMutesArea;
-  /** What was happening around the numbers a time chart draws (phase 5
-      deepening ticket 23): milestones, regimen episodes, dose pauses,
+  /** What was happening around the numbers a time chart draws: milestones, regimen episodes, dose pauses,
       tryouts, and a procedure's surgery day and recovery window, for one
       date range. A view over rows other areas own, storing nothing of
       its own - the same kind of area `exposure` and `clinicianSummary` are. */
@@ -190,21 +188,20 @@ export interface Journal {
       on `reminders` below. */
   wearSessions: WearSessionsArea;
   /** A one-shot, printable assembly of labs, doses, regimen history, side
-      effects and exposure counters for a chosen range (phase 4 ticket 12).
+      effects and exposure counters for a chosen range.
       A view over rows regimen, doses, labs, exposure and sideEffects own,
       not a sixth owner for any of them - every figure on it already comes
       from one of those areas' own read paths. */
   clinicianSummary: ClinicianSummaryArea;
   /** Everything one calendar day holds, drawn from every area that records
-      something dated (phase 5 deepening ticket 21, ADR-0001). A view over
+      something dated (ADR-0001). A view over
       rows sixteen areas own, like clinicianSummary above and for the same
       reason - each section reads through the area's own path and computes
       nothing (ADR-0010). Which areas show, and which are written down as
       deliberately not showing, is day.ts's registry rather than a list of
       imports on the screen. Reads only: opening a day writes nothing. */
   day: DayArea;
-  /** The day of the most recent write in every registered area (phase 8
-      features ticket 03, ADR-0027, ADR-0010) - one bounded read per area
+  /** The day of the most recent write in every registered area (ADR-0027, ADR-0010) - one bounded read per area
       rather than a fetched list reduced in JS, assembled the way `day`
       above is. Which areas answer, and which are written down as
       deliberately having no last write, is lastWrite.ts's registry rather
@@ -212,15 +209,13 @@ export interface Journal {
   lastWrite: LastWriteArea;
   /** Every forward mark from a range - an appointment, a surgery date, a
       milestone still ahead, a letter's unlock day, and a dose slot only
-      where the schedule is not daily (phase 8 features ticket 61,
-      ADR-0067). A view over rows five areas own, like `day` above and for
+      where the schedule is not daily (ADR-0067). A view over rows five areas own, like `day` above and for
       the same reason - which areas earn a mark, and which are written down
       as deliberately earning none, is dayAhead.ts's registry rather than a
       list of imports here. Reads only, and nothing new is stored: every
       fact behind a mark is a column or a schedule that already exists. */
   dayAhead: DayAheadArea;
-  /** Every area that holds text, matched against one query (phase 5
-      deepening ticket 24, ADR-0005). A view over rows eighteen areas own, like
+  /** Every area that holds text, matched against one query (ADR-0005). A view over rows eighteen areas own, like
       `day` above and for the same reason - which areas are searchable, and
       which are written down as deliberately holding nothing to search, is
       textSearch.ts's registry rather than a list of imports on the screen.
@@ -229,7 +224,7 @@ export interface Journal {
       searching writes nothing. */
   textSearch: TextSearchArea;
   /** A keepsake print of a chosen range, carrying only the record types the
-      person picked (phase 5 ticket 17). A view over rows entries,
+      person picked. A view over rows entries,
       milestones and side effects own, like clinicianSummary above and for
       the same reason - but a different audience, a different set of parts,
       and an inclusion the caller supplies rather than a fixed section list.
@@ -248,14 +243,14 @@ export interface Journal {
       semantics, reused. */
   effectCategories: EffectCategoriesArea;
   /** Electrolysis/laser sessions - date, area, method, pain rating, cost,
-      free-text provider and optional photos (phase 5 ticket 08). Its own
+      free-text provider and optional photos. Its own
       closed area vocabulary (hairRemovalAreas.ts), never merged with the
       body-region vocabulary (bodyRegions.ts). No episode reference, the
       same reason sideEffects has none. */
   hairRemoval: HairRemovalArea;
   /** Photographs taken on purpose in a pose - front, side, back, hair or
-      the person's own - to compare the same pose over time
-      (pre-release-human 12, bug 25). Dated in their own right. */
+      the person's own - to compare the same pose over time.
+Dated in their own right. */
   progressPhotos: ProgressPhotosArea;
   /** The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort
       list"): who to text, which walk, which playlist, entirely their own
@@ -266,23 +261,23 @@ export interface Journal {
   /** Which areas are hidden, and which the person has said are finished
       (ADR-0052). The rule these rows are read by is `areaState.ts`. */
   areaStates: AreaStatesArea;
-  /** Name and pronoun tryouts (phase 4 ticket 16). Reads the entries in a
+  /** Name and pronoun tryouts. Reads the entries in a
       tryout's date range through entries.searchEntries('', [], {
       startEpochDay, endEpochDay }) rather than owning a link of its own
       (ADR-0010) - this area owns only what it alone writes. Its
-      felt-sense history lives in `feltSense` instead (phase 5 ticket 24). */
+      felt-sense history lives in `feltSense` instead. */
   tryouts: TryoutsArea;
   /** A tryout's felt-sense history (phase 5 ticket 24, CONTEXT:
       "Felt-sense entry"). Never required - offering one is the tryout
       screens' and the entry editor's business, not this area's. */
   feltSense: FeltSenseArea;
   /** Free-write letters to the person's future self, sealed until a
-      chosen unlock day (phase 4 ticket 19). Stores the text and the
+      chosen unlock day. Stores the text and the
       unlock day and nothing else - letterStatus.ts derives sealed/
       unlocked against today (ADR-0010) above this seam. */
   letters: LettersArea;
   /** Which goals of which country pack someone has ticked off on the
-      transition roadmap (phase 4 ticket 23). Holds ticks only: what the
+      transition roadmap. Holds ticks only: what the
       goals say is a bundled content module, not a table, so this area
       never validates a pack key it was handed. */
   roadmap: RoadmapArea;
@@ -309,7 +304,7 @@ export interface Journal {
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
   /** Descriptive co-occurrence cards between a tag or a dose-log day and
-      mood or a gender dimension (phase 4 ticket 21) - a deliberate
+      mood or a gender dimension - a deliberate
       reversal of phase 3's explicit exclusion of correlation analysis,
       not scope drift. A view over rows `stats`, `doses` and `dimensions`
       own, not a fourth owner for any of them. */
@@ -337,8 +332,7 @@ export interface Journal {
       either - the rows go, and the next boot's orphan sweep reclaims what
       they named (photos.ts). */
   discardEverything(): Promise<void>;
-  /** Runs one deletion so that it can be taken back for a while (functional
-      audit ticket 46): every row it removes or changes is recorded, its file
+  /** Runs one deletion so that it can be taken back for a while: every row it removes or changes is recorded, its file
       removals wait, and the handle either puts the rows back or lets the
       files go (undoableDelete.ts). `remove` is handed a journal over the
       deletion's own transaction and must make its writes through that one;
@@ -534,7 +528,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     correlationCards: deferredArea<CorrelationCardsArea>(async () =>
       (await import('./correlationCards')).makeCorrelationCardsArea(driver, doses, dimensions)
     )(['getCards']),
-    /* Deferred (ticket 03), and the larger of the two: the pack, read, apply
+    /* Deferred, and the larger of the two: the pack, read, apply
        and section machinery plus five importers, none of which a screen
        reaches before somebody opens settings and asks to export or import. */
     archive: deferredArea<ArchiveArea>(async () =>

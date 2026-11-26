@@ -1,4 +1,4 @@
-/* Naming a recap's dimension change and top tags for display (ticket 05):
+/* Naming a recap's dimension change and top tags for display:
    both wrapped and on-this-day take a `Recap` and have to turn its stored
    keys - a dimension key, a tag's domain id - into the words the message
    catalogue has for them at display time. One shared transform rather than

@@ -137,7 +137,7 @@ export function dumpSchema(raw: DatabaseSync): string {
 }
 
 /** Every row every table holds, as text, for proving that two ways of building
-    a schema also leave the same data behind (after-release ticket 42). A fresh
+    a schema also leave the same data behind. A fresh
     schema has no authored rows, so what this compares is what the DDL itself
     writes: FTS5's config and structure records, and the AUTOINCREMENT
     counters in `sqlite_sequence`. Rows are sorted by their own text rather

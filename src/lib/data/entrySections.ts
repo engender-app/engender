@@ -1,4 +1,4 @@
-/* The editor's chip row (phase 11 ticket 19): one chip per folded
+/* The editor's chip row: one chip per folded
    section, under the note, each opening its section directly under the
    row. Mode and Gender are not here: Alicja's note on the spike (17
    September 2026) was that those two stay open on the page, so the chips
@@ -16,7 +16,7 @@ import type { EntryDraft } from './entryDraft';
 export const ENTRY_SECTIONS = ['tags', 'body', 'photos', 'voice', 'video'] as const;
 export type EntrySection = (typeof ENTRY_SECTIONS)[number];
 
-/* A new entry's last step (tester report 02, tickets 04 and 09) draws only
+/* A new entry's last step draws only
    the attachments' chips, after the note; tags and the body are open on
    their own steps. */
 export const ATTACHMENT_SECTIONS: readonly EntrySection[] = ['photos', 'video', 'voice'];

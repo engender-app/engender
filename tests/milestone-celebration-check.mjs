@@ -1,5 +1,4 @@
-/* Milestones: a celebration the person controls (functional audit ticket
-   32), against real routes on a dev server.
+/* Milestones: a celebration the person controls, against real routes on a dev server.
 
    1. The add sheet lists every milestone template, in one order, with no
       shuffle control.

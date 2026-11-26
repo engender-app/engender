@@ -1,5 +1,5 @@
 /* Every DIRECTION.md rule, decision or motion tier cited in src, tests and
-   android must exist in DIRECTION.md (functional audit ticket 55). The file
+   android must exist in DIRECTION.md. The file
    was lost once, in a deleted scratch folder, while some 150 comments kept
    citing it by number.
 

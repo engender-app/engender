@@ -1,4 +1,4 @@
-/* Screenshots of the progress bar (phase 9 audit ticket 11), one per
+/* Screenshots of the progress bar, one per
    palette per theme, plus a strip of the indeterminate sweep across one
    pass and one pass under reduced motion.
 

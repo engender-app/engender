@@ -1,24 +1,10 @@
-/* Screenshots of the log-a-dose sheet (phase 5 UX ticket 37), in every
-   state it has and in both themes.
+/* Capture every log-a-dose state in both themes. Use a demo build to
+   open the app and seed regimens through its own UI. Use one browser
+   context per scenario because OPFS holds the active-episode count.
 
-   The ticket exists because a click-through found the old sheet too big, so
-   a click-through is what closes it: these are the pictures the redesign is
-   signed off against.
-
-   Everything here drives the app's own production build, which has to be a
-   demo build (VITE_DEMO=1) or every screen renders as the passphrase gate.
-   Nothing is faked at the component level, because what is under review is
-   what the sheet does with a real regimen: the demo persona carries no
-   regimen episode and no dose log, so each scenario builds the journal it
-   needs through the regimen screen first, exactly as a person would.
-
-   One page per scenario, because a page is a profile: OPFS is per browser
-   context, and the difference between "one active episode" and "two" is a
-   difference in stored data rather than in a prop.
-
-   Run: npm run test:walkthrough  (or any VITE_DEMO=1 build) first, then
-        node tests/dose-sheet-gallery.mjs [outDir]
-   Default outDir is .claude/dose-shots, which is gitignored and durable. */
+   npm run test:walkthrough, or build with VITE_DEMO=1 npm run build
+   node tests/dose-sheet-gallery.mjs [outDir]
+   Defaults to .claude/dose-shots. */
 import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -116,8 +102,8 @@ async function closeDoseSheet(page) {
 
 /** "Fill every feature", which is the only seed with a real rotation behind
     it: 500 days of weekly injections around six of the twelve sites, so the
-    map has every swatch of the recency ramp and six sites never used
-    (ticket 13). It resets the preferences too, so the look is set after
+    map has every swatch of the recency ramp and six sites never used.
+    It resets the preferences too, so the look is set after
     this rather than before. */
 async function fillEveryFeature(page) {
   await goto(page, '/stats');
@@ -280,7 +266,7 @@ for (const theme of THEMES) {
   await page.close();
 }
 
-/* ---------- the recency ramp on the dots (ticket 13) ----------
+/* ---------- the recency ramp on the dots ----------
    All eight palettes and both themes, unlike the scenarios above: what the
    map spends is the accent's own heat ramp, so this is the one part of the
    sheet where every palette is a different picture. The map is shot on its
@@ -308,7 +294,7 @@ for (const palette of PALETTES) {
        2026-09-02 - "no screen with a list visible" - and it is the shot
        that shows what the figure's height costs, which is why the figure is
        432px and frames the silhouette from the crown to just above the knee
-       rather than drawing all 176 units of it (ticket 48). */
+       rather than drawing all 176 units of it. */
     if (palette === 'trans') {
       for (const [name, handle] of [
         ['map', '.site-map'],

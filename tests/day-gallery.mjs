@@ -1,4 +1,4 @@
-/* Screenshots of what a day looks like (phase 5 deepening ticket 21): the
+/* Screenshots of what a day looks like: the
    three day shapes the ticket names - one entry and nothing else, a day
    someone logged properly, and every registered section at once - across all
    8 palettes and both themes.

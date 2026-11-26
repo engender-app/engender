@@ -1,36 +1,15 @@
-/* The breathing exercise, frame by frame (phase 12 breathing ticket 01).
+/* Track the breathing figure's geometry, opacity and dash offset every
+   frame across a lap wrap, a pause, a resume and a second pause. Enforce
+   JUMP_PX, JUMP_DASH and JUMP_ALPHA. The lap dot must advance, and nodes
+   must fade in and out. Pausing or hiding the page stops motion. Returning
+   resumes it. Changing reduced motion mid-breath takes effect next visit.
 
-   A yank, in Alicja's words, is "things teleporting/disappearing in 1
-   frame". This samples every drawn node in the exercise's figure on every
-   animation frame - its box, its opacity, its fill opacity and its dash
-   offset - across a start from rest, more than a whole cycle (so the lap
-   wraps), a pause, a resume and a second pause, and fails on any of:
+   With reduced motion, only the lap dot moves. It advances once a second
+   in sixteen steps. The Polish hold label must clear the vessel by 16px on
+   each side at widths of 390px and 320px.
 
-   - a box that moves or resizes more than JUMP_PX between two frames (the
-     water's fastest is about 1.2px a frame, the dot's about 0.8);
-   - the lap's dot going backwards round the track;
-   - a dash offset that moves more than JUMP_DASH between two frames;
-   - an opacity that changes more than JUMP_ALPHA between two frames;
-   - a node that arrives already visible, or leaves while still visible;
-   - anything moving while the exercise is paused;
-   - reduced motion being switched mid-breath changing anything (the
-     component reads it once per visit);
-   - the app going to the background and coming back: nothing may move
-     while it is hidden, and the breath must carry on by itself after;
-   - the Polish hold word, the longest, not clearing the vessel by 16px
-     either side at 390 and 320.
-
-   Then the same under reduced motion, where nothing but the lap's dot may
-   move at all. The dot is exempt there: it steps once a second, sixteen
-   steps a lap, which is the substitute decided in grilling because it
-   carries the time.
-
-   Generic on purpose, so it can be run against the component this ticket
-   replaced and seen to fail there: the old ring's dash offset dropped from
-   full to empty in one frame at every phase boundary.
-
-   `node tests/breathing-frames.mjs` starts its own demo dev server;
-   `node tests/breathing-frames.mjs <base-url>` uses one already running. */
+   node tests/breathing-frames.mjs starts a demo server. Pass a base URL to
+   use an existing server. */
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
 import { launchChromium } from './browser-harness.mjs';

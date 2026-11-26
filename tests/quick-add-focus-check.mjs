@@ -1,31 +1,12 @@
-/* Where keyboard focus goes when quick add opens and when a screen changes
-   (phase 15 release blockers ticket 08, audit findings A11Y-01, A11Y-02,
-   A11Y-08, A11Y-12 and L04-15).
+/* Enter opens a labelled quick-add modal and puts focus inside. The
+   background becomes inert, Tab and Shift+Tab stay inside, and Escape
+   returns focus to Add. Dragging from Add to a target leaves Enter usable.
+   Mood arrows move focus and Space commits. Tab navigation and quick-add
+   mood put focus on the new heading and preserve the title. Onboarding
+   focuses each step's question, which also labels the name field.
 
-   The 5 October audit found the quick-add fan was a modal for the eye only:
-   Enter on the add button left focus on the button, fifteen Tabs walked the
-   dimmed screen before the sixteenth reached the fan, and Escape dropped
-   focus to the body. A screen change left focus on the body too, so a
-   screen reader heard the tab title ("engender", on purpose) and nothing
-   else, and onboarding lost focus on two of its step changes.
-
-   This checks, against a demo build:
-
-   - Enter on the add button puts focus inside the fan, which is a labelled
-     modal dialog; the screen behind it is inert; Tab and Shift+Tab stay in
-     the fan; Escape closes it and gives focus back to the add button.
-   - A press on the add button that slides onto a target and lets go there
-     does not leave the button swallowing the next keyboard Enter.
-   - Arrow keys on Today's mood faces move focus and open nothing; Space
-     still commits.
-   - After a keyboard navigation through the bar, and after quick add's
-     mood opens the editor, focus is on the new screen's heading rather
-     than the body, and the tab title has not changed.
-   - Onboarding never drops focus to the body between steps, each step's
-     question takes focus, and the name field is named by its question.
-
-     VITE_DEMO=1 npm run build
-     node tests/quick-add-focus-check.mjs [--root <built tree>] [--url <running server>] */
+   VITE_DEMO=1 npm run build
+   node tests/quick-add-focus-check.mjs [--root <built tree>] [--url <running server>] */
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';

@@ -637,7 +637,7 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
 
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledWith(20313);
-    // An episode whose end day came while the app was closed (ticket 21).
+    // An episode whose end day came while the app was closed.
     expect(deps.journal.doses.reconcileDoseReminders).toHaveBeenCalledWith(20313);
     expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({ disguised: false, palette: 'trans', shape: 'current' });
     expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart' });

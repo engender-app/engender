@@ -73,7 +73,7 @@ const DIMENSION_HIGH: Record<BuiltInDimensionKey, Message> = {
   gender_stability: m.dim_gender_stability_high
 };
 
-/* One line per built-in scale saying what it measures (phase 5 ticket 35),
+/* One line per built-in scale saying what it measures,
    for the checklist that replaced the eight presets. "Binary <-> nonbinary"
    is not self-explanatory to somebody twenty minutes into this app, and the
    list is the second screen they ever see.
@@ -206,11 +206,11 @@ export const bodyRegionAxisName = (axis: BodyRegionAxis): string =>
 const SEVERITY_NAME: Message[] = [m.severity_1, m.severity_2, m.severity_3, m.severity_4, m.severity_5];
 
 /** The name of a severity, 1 to 5, or null when none was given - the
-    caller's own business, not a word here (ticket 23). */
+    caller's own business, not a word here. */
 export const severityName = (value: number | null): string | null =>
   value === null ? null : (SEVERITY_NAME[value - 1]?.() ?? String(value));
 
-/* Hair-removal treatment areas (phase 5 ticket 08) are a fixed set, not a
+/* Hair-removal treatment areas are a fixed set, not a
    built-in row, with their
    own vocabulary, deliberately not BODY_REGION_NAME below. */
 const HAIR_REMOVAL_AREA_NAME: Record<HairRemovalAreaKey, Message> = {
@@ -273,7 +273,7 @@ const CYCLE_EVENT_KIND_NAME: Record<CycleEventKind, Message> = {
 export const cycleEventKindName = (kind: string): string =>
   (CYCLE_EVENT_KIND_NAME as Record<string, Message | undefined>)[kind]?.() ?? m.cycle_event_kind_other();
 
-/* A procedure's kind (phase 9 carpet ticket 17) is a fixed set, not a
+/* A procedure's kind is a fixed set, not a
    built-in row, the same reasoning TRYOUT_KIND_NAME gives - `custom` gets a
    name here too, since the picker lists it beside the compiled-in ones. */
 const PROCEDURE_KIND_NAME: Record<ProcedureKind, Message> = {

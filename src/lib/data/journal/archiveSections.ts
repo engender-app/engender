@@ -1,51 +1,14 @@
-/* Which areas travel in an archive, and in what order they are inserted back
-   (ADR-0027).
+/* Declare each Archive section once (ADR-0027). The name is the
+   wire key. Entries supply read and apply methods, or declare a flat
+   table once for both directions. The registry's order controls the
+   wire and snapshot order. The after dependencies order restore rows
+   that need a foreign row ID. A section can insert its own children.
 
-   Before this registry the answer was spelled out three times - once in the
-   wire type (archive/payload.ts), once in the snapshot that reads the rows
-   out (archive.ts) and once in the restore that writes them back
-   (restore.ts) - plus once more in every test that builds an empty journal.
-   Nothing checked the four against each other, so a new area that got three
-   of them and missed the fourth simply did not travel, and no test failed:
-   the archive was short an area and every expectation was built from the
-   same code that had just forgotten it.
-
-   One entry here is now what makes an area travel. What it declares:
-
-     name      the section's key in ArchiveJournal, which is also its key on
-               the wire
-     after     the sections whose rows must already be in the tables before
-               this one's can be written, because this one resolves a rowid
-               against them. Not "children go last" as a general rule -
-               a hair-removal session owns child
-               rows and depend on no other section, because they insert
-               those children themselves
-     travels   what of this area may leave in a structure file handed to
-               someone else (phase 7, ADR-0049) - a different question from
-               whether it is backed up, which every section above already
-               is. 'none', 'whole', or the named few fields of a row that
-               do. The boundary is not "has a date" but "is a record of
-               something that happened to you", which is a judgement made
-               per area rather than a property a type can expose - so this
-               is required the same way `discard` is, and a section added
-               without an answer is a compile error
-     read      how the area's rows come out of the journal (archiveRead.ts)
-     apply     how they go back in, mode and all (archiveApply.ts)
-
-   A flat area declares none of the last two. It declares its table instead -
-   the columns, the column a present row is matched by, and the read's order
-   (archiveTable.ts) - and both directions are derived from that one
-   declaration. `flat` below is that form, `section` the hand-written one.
-
-   The order sections are declared in is the order they travel in and the
-   order they are read in. `after` is what re-orders them for the restore,
-   so a section can be declared next to the area it belongs with rather than
-   wherever the insert happens to have to go.
-
-   Which copy of a row a Merge keeps is archiveMerge.ts's one rule for every
-   table; what else merging an area means stays inside its apply function,
-   with the reasoning where the differences are. The registry decides which
-   areas exist and in what order they insert. */
+   The travels field controls structure-file export (ADR-0049).
+   Declare none, whole, or the explicit shareable fields for each
+   section independently of backup support. archiveMerge.ts chooses
+   which copy of a row wins. Section application owns any additional
+   merge rules. */
 
 import type { ArchiveJournal } from '../archive/payload';
 import { inferDrugClass } from '../drugClass';
@@ -61,7 +24,7 @@ export type { Restoring } from './archiveApply';
 
 export type ArchiveSectionName = keyof ArchiveJournal;
 
-/** What one area contributes to a structure file (ticket 04, ADR-0049) -
+/** What one area contributes to a structure file (ADR-0049) -
     a plaintext container a person hands to someone else, unlike the
     encrypted archive every section above already travels in whole. Never
     the fields that stay behind, so a row that grows a new field defaults to
@@ -163,7 +126,7 @@ function withAfterApply<Section extends { apply: (restoring: Restoring) => Promi
   };
 }
 
-/* A cost's three columns (functional audit ticket 30), absent on an archive
+/* A cost's three columns, absent on an archive
    written before it and read as no cost. */
 const COST_COLUMNS = {
   cost_amount: { field: 'costAmount', whenAbsent: null },
@@ -274,8 +237,7 @@ const SECTIONS = [
     read: read.readTagGroups,
     apply: apply.applyTagGroups
   }),
-  /* The fluidity engine's presentations (phase 5 deepening ticket 17,
-     ADR-0048). Flat: one table, no children, no built-ins to preserve -
+  /* The fluidity engine's presentations (ADR-0048). Flat: one table, no children, no built-ins to preserve -
      there is no "only the customs" discard statement. No `after`: an
      entry's own `presentation_uuid` is plain text (entries' own section
      resolves no rowid against it), the same reason milestones needs none
@@ -334,7 +296,7 @@ const SECTIONS = [
     read: read.readEntries,
     apply: apply.applyEntries
   }),
-  /* A margin note hangs off an entry's rowid (phase 8 features ticket 07),
+  /* A margin note hangs off an entry's rowid,
      the same reasoning `feltSenseEntries` gives for its tryout: it
      resolves a rowid against a section already applied, so `entries` has
      to be there first. `travels: 'none'`, the same call `entries` itself
@@ -349,7 +311,7 @@ const SECTIONS = [
     read: read.readMarginNotes,
     apply: apply.applyMarginNotes
   }),
-  /* The paper the person keeps (phase 8 features ticket 52, ADR-0065).
+  /* The paper the person keeps (ADR-0065).
      Flat: one table, no children, no owner to resolve a rowid against, so
      it needs no `after` either.
 
@@ -442,7 +404,7 @@ const SECTIONS = [
       ...COST_COLUMNS
     }
   }),
-  /* The dilation taper schedule (ticket 12) - a plan the person typed in,
+  /* The dilation taper schedule - a plan the person typed in,
      not a record of anything that happened to them, so `travels: 'none'`
      the same way a dose schedule would if it were archive-registered at
      all.
@@ -489,25 +451,13 @@ const SECTIONS = [
     orderBy: 'epoch_day, id',
     columns: { uuid: 'id', kind: 'kind', epoch_day: 'epochDay' }
   }),
-  /* The person's named eras (phase 6 ticket 01, ADR-0049). Flat: one table,
-     no children, no built-ins - nothing ships seeded, so every row is the
-     person's own and `uuid` alone tells two devices' rows apart. No `after`:
-     nothing resolves a rowid against an era, and the resurfacing consent
-     layer that will reference one holds its uuid as plain text.
+  /* Export named eras as a flat section keyed by UUID (ADR-0049).
+     Sort the open start first. Nothing resolves an era by row ID, so
+     the section has no restore dependency.
 
-     The read's order puts the era with no start first, which is the order
-     the screen shows them in and the order they read as a timeline.
-
-     A merge can leave two eras overlapping, and does so knowingly. The two
-     invariants are enforced where an era is authored (eras.ts), and a merge
-     writes rows this device never saw being authored: two devices that each
-     named "before I knew" mint two uuids for it, so neither matches the
-     other and both land. The alternative is dropping an incoming era that
-     collides, which loses a name the person gave a stretch of their life
-     with nothing on screen to say so. An overlap is visible on
-     /settings/eras and editable there, and every read stays total meanwhile
-     - `eraForDay` answers with the first era covering the day, so a day
-     still resolves to at most one. */
+     Merge may keep two independently named overlapping eras. Dropping
+     one would silently lose a name. The settings editor lets a person
+     resolve the overlap. eraForDay returns the first covering era. */
   /* Does not travel (ticket 04's own worked case). An era carries a name
      and two dates and nothing else, so what would travel is a name with no
      bounds - nearly nothing, and not worth a structure section over. Said
@@ -525,7 +475,7 @@ const SECTIONS = [
       end_epoch_day: 'endEpochDay'
     }
   }),
-  /* Which of those eras are muted (phase 6 ticket 05, ADR-0049). Flat, and
+  /* Which of those eras are muted (ADR-0049). Flat, and
      the smallest kind of flat: one column, no `after` - `era_uuid` is free
      text the same way `era` itself carries no foreign key to anything, so
      nothing here has to resolve against the `eras` section landing first.
@@ -635,7 +585,7 @@ const SECTIONS = [
     read: read.readProcedures,
     apply: apply.applyProcedures
   }),
-  /* Appointments (ticket 57, ADR-0066). Declared here rather than nested
+  /* Appointments (ADR-0066). Declared here rather than nested
      under a procedure the way consults were: most appointments belong to no
      procedure, and the link is a uuid this section resolves against the rows
      `procedures` has already written - which is what `after` is for.
@@ -644,10 +594,9 @@ const SECTIONS = [
      a rowid on this device and a uuid on the wire.
 
      Archives without this section restore with an empty appointment list.
-     A wait's status updates (ticket 26) travel nested in their appointment
+     A wait's status updates travel nested in their appointment
      and are discarded with it. */
-  /* The person's own notes on the people they see (functional-audit ticket
-     27). Flat: one table, uuid-identified, nothing ships. Declared before
+  /* The person's own notes on the people they see. Flat: one table, uuid-identified, nothing ships. Declared before
      appointments, which resolve their `providerId` against it. Never shared:
      the whole point is that a judgement of a named doctor stays with the
      person who made it. */
@@ -733,7 +682,7 @@ const SECTIONS = [
     columns: { uuid: 'id', name: 'name' }
   }),
   /* Uuid-identified like a checklist. A merge takes the copy of a goal
-     written last, its rewording (ticket 69) and status together, and a
+     written last, its rewording and status together, and a
      deleted goal's deletion the same way (archiveMerge.ts). Its track is 'legal' or a
      category's uuid since ticket 34; a goal from an older archive under a
      cut track gets that track's nameless category once the goals land
@@ -753,7 +702,7 @@ const SECTIONS = [
     apply.adoptLegacyRoadmapTracks
   ),
   /* The institutions the person added to the roadmap's list of name and
-     document changes (functional audit ticket 35), and the dated changes at
+     document changes, and the dated changes at
      every institution, built-in or added. Both uuid-identified, so a merge
      matches a row already here and keeps the copy written last. Changes name their institution by a built-in
      key or an added one's uuid, the way a goal names its group, so the
@@ -895,7 +844,7 @@ const SECTIONS = [
     read: read.readTryouts,
     apply: apply.applyTryouts
   }),
-  // A felt-sense row hangs off a tryout's rowid (phase 5 ticket 16), the
+  // A felt-sense row hangs off a tryout's rowid, the
   // same way a dose schedule hangs off an episode's.
   section({
     name: 'feltSenseEntries',
@@ -950,7 +899,7 @@ const SECTIONS = [
       note: 'note'
     }
   }),
-  /* Voice benchmarks (phase 5 deepening ticket 15). Flat: one row per take,
+  /* Voice benchmarks. Flat: one row per take,
      no children, no rowid resolved against another section. Its two audio
      files travel in the body the way a recording's does - archive.ts's
      manifest reads their names off this table - and the file names in these
@@ -986,11 +935,10 @@ const SECTIONS = [
          carry the field, and neither does a benchmark taken before schema
          v58 that is still in the journal. Both restore as no track. */
       pitch_track: { field: 'pitchTrack', whenAbsent: null },
-      /* `capture_chain` the same way, one ticket later (ticket 28,
-         ADR-0061): an archive written before it carries no chain, and
+      /* `capture_chain` the same way, one ticket later (ADR-0061): an archive written before it carries no chain, and
          neither does a benchmark from before schema v65. */
       capture_chain: { field: 'captureChain', whenAbsent: null },
-      /* `resonance_scale` the same way again (ticket 30): an archive
+      /* `resonance_scale` the same way again: an archive
          written before it carries no factor, and neither does a benchmark
          from before schema v66 or one that held fewer than two vowels. */
       resonance_scale: { field: 'resonanceScale', whenAbsent: null }
@@ -1012,8 +960,7 @@ const SECTIONS = [
     orderBy: 'position, id',
     columns: { uuid: 'id', text: 'text', position: 'position' }
   }),
-  /* Hidden, finished and suspended, per area (phase 8 deepening ticket 13,
-     phase 8 features ticket 51, ADR-0052). Identified by `area` - a natural
+  /* Hidden, finished and suspended, per area (ADR-0052). Identified by `area` - a natural
      key like `personal_effect.effect`, and already a wire key because it is
      a section name from this very list. `updated_at` stays behind like
      every other table's.
@@ -1037,7 +984,7 @@ const SECTIONS = [
       suspended_epoch_day: 'suspendedEpochDay'
     }
   }),
-  /* The import log (phase 7 ticket 03, ADR-0027). Hand-written rather than
+  /* The import log (ADR-0027). Hand-written rather than
      `flat()`: `counts` is a small map rather than a scalar column, which the
      descriptor has no transform for. Never `whole` - a structure file is
      something one person hands another (ADR-0049), and an import record is
@@ -1116,38 +1063,17 @@ export function orderedSections(sections: readonly ArchiveSection[] = ARCHIVE_SE
   return ordered;
 }
 
-/** Everything an archive is about to install, gone: every section's own
-    statements, sections in the reverse of the order they insert in.
-
-    What makes this derived rather than maintained is that each section owns
-    its own statements - the 51 that used to be hand-ordered in restore.ts
-    named tables no section admitted to, and the demo kept a second copy of
-    the list that reached only seven of the thirty-six sections. The registry
-    now supplies both the statements and their order, and its oracle checks
-    them against the schema table by table (archiveSections.test.ts).
-
-    The reverse of the insert order, specifically, because that is the order
-    that stays correct as statements get more particular. A section that
-    resolves a rowid against another's rows says so with `after`, so it
-    inserts second and therefore clears first, before the rows it points at
-    are gone; children inside one section are that section's own business and
-    are declared children-first. Today the reversal is what keeps the five
-    foreign keys that do not cascade from firing: each child's section
-    inserts after its parent's, so it clears first, by `after` for milestones
-    and by declaration order for the rest. appointment_debrief.entry_id sets
-    null. The rest cascade, and every child table is emptied wholesale anyway.
-    The one ordering a statement depends on is inside a section: `presets`
-    filters preset_dimension by a subselect over gender_preset, and has to
-    run before it empties that.
-
-    Not a caller's list to compose: restore.ts runs it inside its Replace
-    transaction and `Journal.discardEverything` runs it on its own (journal.ts,
-    for the demo bar's state jumps), and both mean the same thing by emptying
-    the journal.
-
-    Built-in reference rows survive, per the statements themselves: an
-    archive's entries reference dimensions and tags by key, and deleting those
-    rows would leave the references nothing to resolve against. */
+/**
+ * Clear each registered section before Replace, in reverse restore
+ * order. A section that resolves a parent row ID inserts after that
+ * parent and clears first. Within each section, clear children first.
+ * For presets, delete preset_dimension before its gender_preset
+ * subquery loses the rows it references.
+ *
+ * Restore and Journal.discardEverything share this list. Keep
+ * built-in rows that incoming tags and dimensions resolve by key.
+ * archiveSections.test.ts checks coverage against the schema.
+ */
 export function discardStatements(sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS): string[] {
   return orderedSections(sections)
     .reverse()
@@ -1176,7 +1102,7 @@ export async function readArchiveJournal(
 export async function applyArchiveJournal(
   restoring: Restoring,
   sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS,
-  /** How far through the sections this is (phase 9 audit ticket 11). The
+  /** How far through the sections this is. The
       section is the unit rather than the row: rows go in as batched
       inserts per section, so there is no per-row moment to report from,
       and the registry is the only thing that knows how many sections

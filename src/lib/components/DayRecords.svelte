@@ -1,41 +1,12 @@
 <script lang="ts">
-  /* What one day looks like (phase 5 deepening ticket 21): the entries, and
-     everything else the app recorded that day around them.
+  /* DayRecords composes the day and leaves its date, query and gate
+     to the route. Entries use their timeline card. Other records share
+     one list in registry order, with no markup for empty areas. The
+     entries use role 0 and the list role 1.
 
-     Separated from the route so that "how a day is read" and "what a day
-     looks like" are two things. The route owns the epoch day, the live query
-     and the gate; this owns the composition, which is the part of the ticket
-     that needed deciding and the part that gets looked at
-     (tests/browser-tier/day-gallery.svelte drives it across the three day
-     shapes, every palette and both themes).
-
-     The composition, and the reasoning it answers to:
-
-     *The entry is the day's centre.* It keeps the day card and the timeline
-     it has had since ticket 20, unchanged, so a day with an entry and nothing
-     else renders exactly what it rendered before this ticket existed.
-
-     *Everything else is one list, not a section each.* Sixteen areas can put
-     a record on a day. A heading per area would turn a day with one dose into
-     a screen of empty framework, so the rest of the day is one card of rows
-     in the registry's order under one heading: one more record is one more
-     row. A section with nothing in it produces no row and therefore no DOM.
-
-     *Two areas, so two roles, in reading order.* The day card takes role 0 -
-     the only index guaranteed to be a colour on every palette - and the list
-     around it takes role 1.
-
-     *No motion, but one earned exception.* Arriving here is the shared axis
-     (screen-transition.ts) and a row answers a press the way every row does.
-     Nothing on this screen changes state under a person's eyes - except a
-     dose row's title, which `dayRows.ts` builds from `doseDrugs`, a
-     route-batched read that lands after mount. `fadeSwap` on the two
-     `ListRow` calls below covers exactly that one case (ticket 145): the
-     rest of tier 4 still covers everything else (DIRECTION, "Tier 4,
-     still").
-
-     It writes nothing: every row is a link into the screen that owns the
-     record. */
+     Keep the rows still except for a dose title whose route-batched
+     drug attribution arrives after mount. Only those ListRows use
+     fadeSwap. Rows link to the screens that own the records. */
   import { m } from '$lib/paraglide/messages';
   import { fmtTime } from '$lib/data/dates';
   import type { DayRecords } from '$lib/data/journal/day';
@@ -69,15 +40,14 @@
     /** The context list's stripe, role 1 at the call site. */
     alsoRole?: Role;
     /** Batched by the route, the same reason `records` itself is: one read
-        for the whole screen rather than one per entry (phase 8 features
-        ticket 07). Omitted, every entry reads as carrying none - the
+        for the whole screen rather than one per entry. Omitted, every entry reads as carrying none - the
         gallery probe that renders this component with no journal behind it
         (tests/browser-tier/day-gallery) has nothing to batch, and an entry
         with none still draws its own "add a note" affordance, which needs
         no read at all. */
     marginNotesByEntry?: Map<number, MarginNote[]>;
-    /** One `attributeDrug` answer per logged dose, resolved by the route
-        (phase 11 ticket 19). Omitted, every dose row states the amount and
+    /** One `attributeDrug` answer per logged dose, resolved by the route.
+        Omitted, every dose row states the amount and
         route alone - the same gallery probe has no episodes to attribute
         with, and a row must never borrow today's regimen to fill the gap. */
     doseDrugs?: ReadonlyMap<string, DoseDrugFact>;

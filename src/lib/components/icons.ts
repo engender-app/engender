@@ -1,57 +1,16 @@
 /* Lucide-style 24px/2px-stroke icon set, inlined (ISC-licensed path data style).
-   The app deliberately inlines SVG so icons colour via currentColor tokens.
+   Inline SVG inherits the currentColor tokens.
 
-   ## Optical centring
+   Keep the optical center within 0.75 units of (12, 12). It is the
+   midpoint of the ink bounding-box center and the arc-length-weighted
+   ink centroid. tests/icon-geometry.test.ts holds this rule, including
+   marks whose ink sits off center to balance its weight.
 
-   Every mark in here is held to one rule, and `tests/icon-geometry.test.ts`
-   fails on a glyph that breaks it:
-
-     A mark's optical centre is the midpoint between the centre of its ink
-     bounding box and its arc-length-weighted ink centroid, and it must lie
-     within 0.75 user units of (12, 12).
-
-   The reasoning, and why neither half of that measure works alone, is in
-   that test's header. What it means in practice is that a mark is allowed to
-   sit off-centre in its box when its weight is lopsided - `shuffle` has
-   3 units of clear space on the right and 1.5 on the left precisely because
-   its two arrowheads live on the right - and that "centred" is never decided
-   by eyeballing a bounding box again.
-
-   ## The navigation set
-
-   `home`, `calendar`, `stats`, `grid` and `plus` are drawn as one family
-   rather than borrowed one at a time, because they are the only five marks a
-   person sees on every screen (phase 5 ticket 31). What makes them a set:
-
-   - One stroke: 2 units, round caps and joins, set once by `icon()` below.
-   - One corner: 2 units of radius wherever a silhouette turns, as an
-     absolute value and not a proportion of the shape. At 22px a corner is
-     read as a corner, so a big shape and a small one want the same radius,
-     which is why `calendar`'s page and one of `grid`'s four tiles are both
-     rx 2 despite one being three times the other's width.
-   - One optical size: the five fill about 16 of the box's 24 units, so no
-     mark looks larger than its neighbour because it reaches further. Sized
-     against each other in the gallery rather than pinned to one rectangle -
-     a mark whose weight is lopsided has to sit off the middle of its box to
-     look centred in it, so a shared bounding rectangle and the centring rule
-     above cannot both hold. `home` is the case in point: a house is a thin
-     roof over a heavy base, and it centres by sitting about a unit higher
-     than `calendar` does, which is under a pixel at either shipped size.
-   - One level of detail: a silhouette plus its internal marks, and never
-     more than two of those.
-
-   `stats` carries the app's own chart language rather than a generic bar
-   chart: no baseline, because DIRECTION.md's chart style has no axis
-   furniture, and heights that go medium, tall, short rather than ascending.
-   Three bars climbing left to right is a picture of improvement, and this
-   app does not tell anyone their transition is going well (ADR-0012 is the
-   same principle applied to colour).
-
-   `grid` is the More tab's mark and it is deliberately not `dots`. Three
-   dots is an overflow menu - the thing that opens when there is no room for
-   the real controls - and /more is not that: it is a hub of feature cards,
-   which is what four tiles say. `dots` stays as it is for the two places
-   that do mean a row of dots, a drag handle and an entry's day count. */
+   The five navigation icons share round 2-unit strokes and corners.
+   Fill about 16 of the 24 units and use at most two internal marks.
+   The stats bars run medium, tall, short, with no baseline or visual
+   suggestion of improvement (ADR-0012). Use grid for the More hub and
+   dots for handles and day-count marks. */
 
 /* PATHS stays exported only for hubRows.test.ts, icons-gallery.svelte,
    icon-geometry.test.ts, which cross-check against it (AU-09 test-only
@@ -105,7 +64,7 @@ export const PATHS: Record<string, string> = {
   sparkle: '<path d="M10.2 2l1.9 5.1L17.2 9l-5.1 1.9L10.2 16l-1.9-5.1L3.2 9l5.1-1.9z"/><path d="M17.2 16l0.8 2.2L20.2 19l-2.2 0.8L17.2 22l-0.8-2.2L14.2 19l2.2-0.8z"/>',
   heart: '<path d="M19.5 6a5 5 0 0 0-7.5 0.7A5 5 0 0 0 4.5 6c-2 2-2 5.1 0 7.1L12 21l7.5-7.9c2-2 2-5.1 0-7.1z"/>',
   dots: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
-  /* The handle a row is dragged by (phase 10 redesign ticket 14). Six dots
+  /* The handle a row is dragged by. Six dots
      in two columns, which is what a handle looks like everywhere a list can
      be reordered. Drawn as dots rather than as the two rules that were here
      first: at 22px two rules read as an equals sign, and an equals sign
@@ -140,7 +99,7 @@ export const PATHS: Record<string, string> = {
   play: '<polygon points="6 3 20 12 6 21 6 3"/>',
   pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
   video: '<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 11 6-3.5v9L16 13z"/>',
-  // The two halves of the video note's full-screen control (ticket 46):
+  // The two halves of the video note's full-screen control:
   // four corners opening outwards, and the same four closing back in. Both
   // are symmetric about the centre of the box, so neither needs the optical
   // offset a lopsided mark like `shuffle` does.
@@ -148,12 +107,12 @@ export const PATHS: Record<string, string> = {
   collapse: '<path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/>',
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
   bookmark: '<path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5-7 4.5V4.5a1 1 0 0 1 1-1z"/>',
-  // A margin note (phase 8 features ticket 07): a page with its corner
+  // A margin note: a page with its corner
   // turned down, the way a person folds one to mark a place they came back
   // to - distinct from `book` (a whole journal or letter) and `pencil`
   // (editing what is already there).
   note: '<path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/><path d="M8 12h6M8 16h4"/>',
-  // The documents area (phase 8 features ticket 52, ADR-0065): two plain
+  // The documents area (ADR-0065): two plain
   // sheets, one behind the other. Deliberately not `note`'s page - that one
   // is a single sheet with its corner turned down and writing on it, which
   // is a note somebody made, and this is paper that arrived. The sheet
@@ -161,7 +120,7 @@ export const PATHS: Record<string, string> = {
   // through each other's middle.
   documents:
     '<rect x="4" y="7" width="12" height="14" rx="1.5"/><path d="M8 7V4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 20 4.5v11A1.5 1.5 0 0 1 18.5 17H16"/>',
-  // Five marks for the Transition group's rows (pre-release-human 12), each
+  // Five marks for the Transition group's rows, each
   // drawn to say what its module is. Roadmap drew `globe`, tryouts `tag`,
   // wear `clock`, hair removal `shuffle` and voice `curve`.
   //
@@ -181,7 +140,7 @@ export const PATHS: Record<string, string> = {
   // A voice as sound: bars about a midline with no baseline, which keeps it
   // apart from `stats`'s three bars standing on one.
   waveform: '<path d="M4.5 10.5v3M8.25 7.5v9M12 4v16M15.75 6.5v11M19.5 9.5v5"/>',
-  // Five marks for the Health and Support rows (pre-release-human 12), drawn
+  // Five marks for the Health and Support rows, drawn
   // the same way. Appointments drew `check`, surgery `flag`, letters `book`,
   // Safe Space `heart` and resources `info`. Care took `pill`, which is
   // already the medication mark on its own screen.

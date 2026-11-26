@@ -1,22 +1,7 @@
-/* What this file is for: the ways down from Safe space are an order
-   somebody argued for, and an order is the one thing a screenshot of the
-   screen cannot prove stayed put. Ticket 47's acceptance asks for the
-   surfaces to be reachable "in a stated order", so the order is stated here
-   and read back.
-
-   The route check is the other half: a way that points at a route nobody
-   built is a tap into a 404, and on this screen that lands on a person
-   having a bad day.
-
-   The third check: a way must land on the screen itself and not on a
-   redirect to it. A bookmark taking a hop and the crisis screen's own row
-   taking one are different things.
-
-   Functional audit ticket 09 took two rows away: the letters and the Look
-   back reading. Each one switched the lit tab mid-crisis, landing a person
-   on another door's screen. Safe space keeps breathing, good moments, the
-   comfort list (the button above the breath) and the resources, and the
-   list says so. */
+/* Pin the designed order of Safe Space's links. Every link must
+   reach its screen directly so a broken route or redirect cannot
+   interrupt a crisis flow. Keep breathing, good moments, comfort
+   and resources on this door. */
 
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -25,7 +10,7 @@ import { SAFE_SPACE_WAYS } from './safeSpaceWays.ts';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
-/** A way's href without the fragment a row may carry (ticket 15). */
+/** A way's href without the fragment a row may carry. */
 const routeOf = (href: string) => href.split('#')[0];
 
 describe('the ways down from Safe space', () => {
@@ -50,8 +35,8 @@ describe('the ways down from Safe space', () => {
   });
 
   it('points good moments at its own screen and the resources at the directory', () => {
-    /* The comfort list is the button above the breath, not a way down
-       (phase 14 ticket 18): safe-space-contracts.ts holds it. */
+    /* The comfort list is the button above the breath, not a way down:
+       safe-space-contracts.ts holds it. */
     expect(SAFE_SPACE_WAYS.find((w) => w.key === 'evidence')?.href).toBe('/doubt/evidence');
     expect(SAFE_SPACE_WAYS.find((w) => w.key === 'resources')?.href).toBe('/support/resources');
   });
@@ -83,7 +68,7 @@ describe('the ways down from Safe space', () => {
   });
 
   it('anchors a way into the middle of a screen only where that screen names the section', () => {
-    /* `#opened` is the letters screen's Open section (ticket 15). An
+    /* `#opened` is the letters screen's Open section. An
        anchor nothing answers scrolls nowhere, and the person who most needs
        it is the one who tapped this row. */
     for (const way of SAFE_SPACE_WAYS) {

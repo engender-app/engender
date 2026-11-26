@@ -1,30 +1,10 @@
-/* The mark's silhouette, in pixels (ticket 50).
+/* Detect a pale halo by sampling eight directions at four sizes. Any
+   pixel brighter than the ground outside the ink counts as fringe.
+   Separate antialiasing on the clip and inside stroke let the light
+   fill show through. mark.ts strokes the clip path at twice seam width
+   and clips the outer half to leave one boundary.
 
-   "why the fuck is there this small white glitch around the corners? this
-   is supposed to be pixel perfect, its a logo for chrissake" - Alicja,
-   2026-09-21, on the mark at 48px on a dark sheet.
-
-   She was right and the cause is compositing rather than geometry. Drawn
-   the obvious way, the tile has two antialiased boundaries on the same
-   curve: the clip path's, and the outer half of an edge stroked inside it.
-   Neither is wrong on its own and their coverage does not sum to one, so a
-   sliver of the white ground escapes past the ink and reads as a pale halo,
-   worst at the corners where the two curves disagree fastest. Measured on
-   the diagonal out of the bottom-left corner at 96px on the app's dark
-   surface, the pixel outside the ink came out at luma 44 against a ground
-   of 37. It is 22 now - darker than the ground, which is what antialiasing
-   black into a dark page is supposed to look like.
-
-   What fixed it is in mark.ts: the edge is the clip path itself, stroked at
-   twice the seam, so the clip throws the outer half away and the drawing
-   has exactly one boundary.
-
-   This is a rendered check rather than a source one because the defect was
-   never in the source - every number was already right. Eight walks out of
-   the mark's outside at four sizes, and any pixel brighter than the ground
-   before the ink is a fringe.
-
-   Run: node tests/mark-edge-fringe.mjs */
+   Run node tests/mark-edge-fringe.mjs. */
 import { launchChromium } from './browser-harness.mjs';
 import { decodePng } from './png-decode.mjs';
 import { MARK_SEAM, markSvg } from '../src/lib/components/mark.ts';

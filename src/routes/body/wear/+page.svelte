@@ -72,7 +72,7 @@
      drawn in an achromatic band reads as disabled. The sessions take the
      stripe after it. */
   /* The strip's fill is a colour carrying a value, so it takes role 0 with
-     the chart rather than the sessions' stripe (ticket 44) - index 0 is
+     the chart rather than the sessions' stripe - index 0 is
      the only one guaranteed chromatic on every palette, and a logged day
      filled in a palette's achromatic band is a day drawn as nothing. The
      calendar states the same rule for its own three readings of a day. */
@@ -107,7 +107,7 @@
 
   let completed = $derived(sessions.filter((s) => s.durationMs !== null));
 
-  /* The log is a week at a time now (phase 10 redesign ticket 44), drawn
+  /* The log is a week at a time now, drawn
      as a strip with the running session under it at full size - the same
      treatment dilation takes, and for the same reason. Ninety days of wear
      rows captured this screen at 2794px on a demo build with every feature
@@ -383,7 +383,7 @@
      (wearSessions.reconcileReminder). Web has no way to change the
      reminder, so it must always send undefined - never re-derive null from
      an editor.reminderEnabled that a hidden toggle left at its prefilled
-     value (ticket 32). Stop is the one save canSave does not gate, so an
+     value. Stop is the one save canSave does not gate, so an
      enabled reminder whose hours were cleared also sends undefined there:
      the reminder already set stays, rather than being deleted with the
      toggle still on. */
@@ -408,7 +408,7 @@
   let fromWeekLabel = $derived(fmtDay(fromWeek, { day: 'numeric', month: 'short' }));
   let toWeekLabel = $derived(fmtDay(toWeek, { day: 'numeric', month: 'short' }));
 
-  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  /* Latched: a reserve must not put its placeholder back. */
   let wearRevealed = $state(false);
   $effect.pre(() => {
     if (!wearRevealed && (!loading)) wearRevealed = true;
@@ -426,7 +426,7 @@
     {/snippet}
   </ScreenHeader>
 
-  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <!-- Held at last visit's height until the reads answer, then faded in: a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={wearRevealed} estimate={wearEstimate} onrest={wearRemember}>
       <!-- What is true now, before what was true before (rule 16): the week
            as a strip, and the session that is actually running under it. -->
@@ -585,7 +585,7 @@
         </div>
       </ListCard>
 
-    <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+    <!-- Saying you are done with this area. -->
     <AreaFinish group="wear" />
   </ReadReserve>
 

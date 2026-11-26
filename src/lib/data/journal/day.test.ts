@@ -1,4 +1,4 @@
-/* The day registry (phase 5 deepening ticket 21): that every dated area is
+/* The day registry: that every dated area is
    either registered or written down as deliberately absent, that one day's
    read costs one pass per area rather than one per row, and that opening a
    day writes nothing.
@@ -179,7 +179,7 @@ test('a felt-sense row says which tryout it belongs to, and a procedure record w
     ['orchiectomy']
   );
   // A consult reaches a day as an appointment naming its journey, not as a
-  // second procedure record (ticket 57).
+  // second procedure record.
   assert.deepEqual(
     day.appointments.map((a) => [a.kind, a.procedureName]),
     [[null, 'orchiectomy']]
@@ -234,9 +234,9 @@ test('a maximal day costs one pass per area, not one per row', async () => {
      recovery photos separately. Held as a number rather than derived so
      that a section quietly gaining a query has to come back here and say
      so. Documents is the fifteenth and costs the one query a flat area
-     costs (phase 8 features ticket 52). Dilation reads its schedule
+     costs. Dilation reads its schedule
      beside its sessions, one query more, so a times-a-day day can number
-     them (functional audit ticket 25). */
+     them. */
   assert.equal(busy, 24, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
 });
 

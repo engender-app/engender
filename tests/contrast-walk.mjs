@@ -1,23 +1,7 @@
-/* Every piece of type on a screen, measured against what is actually behind
-   it (DIRECTION.md rule 11).
-
-   Rule 11 computes the eight field/ink pairs from the hexes, and
-   palette-contrast.test.ts holds them at the 3:1 large-text floor. That is
-   the palette's arithmetic; this is the screen's. The two things a table
-   cannot answer are what an element's effective background really is once a
-   fill, a wash or a role has been resolved, and which of the two floors
-   applies once a browser has laid the type out at whatever size the cascade
-   actually gave it.
-
-   Written once and read by two walkers, which is redesign ticket 34's own
-   finding: setup and the gates wear one field (rules 12 and 15), so a
-   measurement that had to know how a field paints could not be two
-   measurements. tests/setup-contrast.mjs walks setup's steps in the app;
-   tests/gate-contrast.mjs walks the gates in their fixture.
-
-   Large text answers to 3:1 and anything smaller to 4.5:1 (WCAG 1.4.3); the
-   boundary is 24px, or 18.66px at weight 700 or more, which is the same
-   floor tests/browser-tier/direction-contracts.ts uses. */
+/* Resolve computed text size, weight and painted background
+   including field, wash and role, for setup and gate contrast walkers.
+   WCAG 1.4.3 requires 3:1 at 24px or 18.66px with weight at least 700.
+   Smaller text needs 4.5:1. Match browser-tier/direction-contracts.ts. */
 
 /**
  * The measurement, as a function to hand to `page.evaluate`. Takes the
@@ -81,7 +65,7 @@ export const MEASURE = (rootSelector) => {
   });
   const behind = (el) => {
     let stack = [];
-    /* The field paints nothing (redesign tickets 28 and 33): its colour is a
+    /* The field paints nothing: its colour is a
        sibling block a window tall whose bottom edge is a clip, which is what
        lets the edge move without the box being resized. So climbing the
        ancestors from the title would walk straight past the flag colour and
@@ -89,8 +73,8 @@ export const MEASURE = (rootSelector) => {
        against a light page it is not drawn on. Anything inside a field is
        measured against that field's own paint.
 
-       `.step-field` is the shared class setup and the gates both wear
-       (redesign ticket 34), so the one lookup answers both; `.screen-field`
+       `.step-field` is the shared class setup and the gates both wear,
+       so the one lookup answers both; `.screen-field`
        is a door's, where the paint is a child rather than a sibling and the
        climb below would find it anyway. */
     const field = el.closest('.step-field');

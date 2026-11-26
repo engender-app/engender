@@ -1,24 +1,10 @@
-/* Do three lanes' captions collide at 390px, in Polish? (phase 11
-   all-four-doors ticket 10, AC 4.)
+/* Measure three Polish care lanes at 390px. Report painted caption
+   boxes and same-row overlaps per lane and the shared pair at the
+   head. Rows may reuse the same horizontal space. careSpine.ts sizes
+   for the widest label, Następna dawka.
 
-   careSpine.ts sizes MIN_LABEL_GAP against Polish rather than English -
-   "Następna dawka" is the widest label either catalogue holds - and the
-   number, 0.30 of the rail, was measured against the 330px of rail a 390px
-   screen leaves. A lane per drug keeps that rail width (the drug's name
-   sits above its line rather than in a left column, which is what a name
-   column would have cost), so the rule should hold per lane unchanged.
-   This is what measures whether it does, rather than asserting it.
-
-   What it prints, per lane and for the shared pair at the head: every
-   caption's painted box, and every overlap between two captions that share
-   a label row. A caption pushed to its own row may overlap one above it -
-   that is what the rows are for - so only same-row pairs count.
-
-   Everything here drives the app's own production build, which has to be a
-   demo build (VITE_DEMO=1 npm run build) or every screen renders as the
-   passphrase gate.
-
-   Run: VITE_DEMO=1 npm run build, then node tests/care-lane-labels.mjs */
+   VITE_DEMO=1 npm run build
+   node tests/care-lane-labels.mjs */
 import { preview } from 'vite';
 import { createReporter, launchChromium } from './browser-harness.mjs';
 

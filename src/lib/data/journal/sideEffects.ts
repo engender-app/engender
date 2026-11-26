@@ -1,4 +1,4 @@
-/* The side-effect area (phase 4 ticket 06). A side effect is not an Entry
+/* The side-effect area. A side effect is not an Entry
    (CONTEXT: "Side effect"): no mood, dimension values, tags or note, and no
    regimen-episode reference - it has to work whether or not a regimen
    episode exists.
@@ -46,8 +46,7 @@ function assertValidSeverity(severity: number | null): void {
   }
 }
 
-/** A side effect resolves on or after the day it began (functional audit
-    ticket 23); null is ongoing. */
+/** A side effect resolves on or after the day it began; null is ongoing. */
 function assertResolvedAfterStart(epochDay: number, resolvedEpochDay: number | null): void {
   if (resolvedEpochDay !== null && resolvedEpochDay < epochDay) {
     throw new Error(`side effect resolved before it began: ${resolvedEpochDay} < ${epochDay}`);

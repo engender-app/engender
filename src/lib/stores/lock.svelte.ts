@@ -1,32 +1,10 @@
-/* Whether the app is showing its journal or asking for its secret again
-   (ticket 17, rebuilt by ticket 53).
+/* Keep the unlocked state in memory. A cold start begins locked for modes
+   with an access secret, even after a crash or process death. Mid-session
+   unlock uses that mode's original secret. Web locks close the database and
+   release the key through journal-session.ts. Android has a native path.
 
-   The question used to be "is there a PIN, and has it been entered since this
-   page loaded", against a PIN that gated the UI and encrypted nothing
-   (ADR-0014). That gate is retired: a PIN is an access mode now, and there is
-   no second secret sitting on top of the one that opens the journal.
-
-   So the question is "does this journal's access mode have a secret, and has
-   it been given since this page loaded". A stored "locked" flag would still
-   be wrong for the reason it always was - the ways out are a killed tab, a
-   crash and a swipe from the app switcher, none of which run code - so
-   `unlocked` still starts false and a cold start is still locked before
-   anything decides anything. Boot sets it the moment a secret is typed.
-
-   What this earns mid-session: the lock timing locks the app, and the
-   access mode's own secret is the way back in (SessionUnlock.svelte).
-   Re-entry costs one Argon2id derivation, which is the honest price of not
-   keeping a second, weaker secret around to make it cheaper. On the web the
-   lock is more than this flag since after-release ticket 10: it also closes
-   the database and lets go of the data key (journal-session.ts), so the
-   derivation is what opens the journal again rather than a check on who is
-   there. Android keeps its own lock path.
-
-   One combination has no way back and it is named rather than papered over:
-   device-bound mode on the web has no secret to ask for, so no screen asks
-   when to lock there. Android's
-   device-bound mode does have one - the Keystore prompt - because Keystore
-   will not release the key until the platform confirms who is present. */
+   Web device-bound mode hides lock timing because it has no prompt to
+   re-enter. Android's device-bound mode uses the Keystore prompt. */
 
 import { prefs } from '../data/prefs/store.svelte';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
@@ -90,7 +68,7 @@ function lockNow(closeJournal: () => Promise<void>) {
   /* Quick add is a layout-level sibling of the gate chain, not below it.
      The layout unmounts it while locked (security-scan ticket 08), and the
      flag is closed too, so it comes back closed after the unlock rather
-     than open on whatever it was showing (phase 8 audit ticket 08). */
+     than open on whatever it was showing. */
   ui.chooserOpen = false;
   /* After the flag, so the gate is already drawn over the journal while the
      database waits for its last save and closes. A close that fails leaves

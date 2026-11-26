@@ -1,4 +1,4 @@
-/* Multi-track somatic breakdown per body region queries (phase 5 deepening ticket 08).
+/* Multi-track somatic breakdown per body region queries.
    Aggregates dysphoria/euphoria trajectory, progress photos,
    and laser/hair removal sessions for an anatomical zone. */
 
@@ -83,7 +83,7 @@ export async function getRegionSomaticBreakdown(
   driver: SqliteDriver,
   region: string,
   /** Filters the trajectory and its progress photos by presentation
-      (ADR-0048, ticket 18) - the two tracks joined against `entry`.
+      (ADR-0048) - the two tracks joined against `entry`.
       Hair removal sessions and hair staging carry no
       presentation of their own and are never filtered by this. */
   presentationId?: string | null

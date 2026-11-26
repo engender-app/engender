@@ -1,6 +1,5 @@
 <script lang="ts">
-  /* The progress-photo journey export, on the surface kit (phase 5 UX
-     ticket 25).
+  /* The progress-photo journey export, on the surface kit.
 
      Three cards became three named areas. Each of them held one control
      and a line of hint under a `.row-title` borrowed from a list row, so
@@ -73,7 +72,7 @@
      until somebody shares it or leaves the screen, which is what keeps the
      export off the device unless a person asked for it. */
 
-  /* The whole library (phase 11 ticket 14), minus its video notes: a
+  /* The whole library, minus its video notes: a
      collage and a timelapse are made by decoding each frame as a
      photograph (journey-render.ts), and a note's `.webm` is not one. So
      the grid below reads every photograph the journal holds - progress,
@@ -358,7 +357,7 @@
             {#if output === 'collage'}
               <img src={previewUrl} alt={m.pj_preview_collage_alt()} style:background={JOURNEY_SURROUND} />
             {:else}
-              <!-- The app's own video player (ticket 46), not the browser's
+              <!-- The app's own video player, not the browser's
                    transport: a timelapse this app just rendered is played
                    with the same control, scrub and materials as a video note
                    and a recording. The URL stays this screen's to revoke. -->
@@ -426,7 +425,7 @@
     margin-top: var(--space-4);
   }
 
-  /* The collage only: a timelapse is VideoNotePlayer now (ticket 46), which
+  /* The collage only: a timelapse is VideoNotePlayer now, which
      brings its own frame and its own corner. */
   .journey-preview img {
     display: block;

@@ -28,7 +28,7 @@
         own and nothing re-centres. The caller animates that height. */
     crossfade?: boolean;
     /** A second line under the heading saying which part of the area comes
-        first - the Journal's month over its first day (ux-carpet ticket 282).
+        first - the Journal's month over its first day.
         An empty string draws the line with nothing on it yet (its
         min-height keeps the room), for a sub-line that waits on a read: the
         text then fades in on a line that is already there, and nothing

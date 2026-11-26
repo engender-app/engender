@@ -1,37 +1,9 @@
-/* What each of the search registry's areas looks like as a hit (phase 5
-   deepening ticket 24).
+/* Add labels, icons and destinations to textSearch.ts results (ADR-0016).
+   Use the owning screen's icon from the More hub and name the record kind
+   in its subtitle. Keep results in one newest-first list across all areas.
 
-   textSearch.ts holds the keys, the tables and the reads and speaks no
-   paraglide (ADR-0016); this is where they get their words, the same split
-   dayRows.ts keeps from day.ts. Beside the components rather than in
-   vocabulary/ for the reason dayRows.ts is: none of it is vocabulary, it is
-   one screen's reading of rows other screens own.
-
-   Three rules the whole map answers to, and the first and third are
-   dayRows.ts's:
-
-   *A hit's icon is the icon of the screen it goes to.* Not one glyph per
-   record type - the disc says where the hit leads, so a milestone and a
-   surgery journey both wearing `flag` is the app agreeing with itself. The
-   More hub is where those icons are decided.
-
-   *Every hit says what kind of thing it is, on the row.* That is the
-   ticket's own condition, and it was first met by grouping - a heading per
-   area, in the registry's order. Built and looked at, that was wrong for the
-   same reason DayRecords.svelte gives for refusing it: eighteen areas can
-   answer a query, and a display-size heading over a card of one row turns
-   three hits into a screen of framework with slivers of content in it.
-   Grouping also threw away the order the hits arrived in, which is newest
-   first across every area and is the useful one.
-
-   So the kind is the row's subtitle and the hits stay in one list, newest
-   first. `search_elsewhere_heading` names the list once, the way
-   "Also this day" names a day's context list.
-
-   *A hit goes to the record where there is a screen for one, and to the
-   screen that owns it otherwise.* A letter and a tryout have their own
-   route; a side effect does not, and sending somebody to the side-effects
-   screen is honest where inventing a deep link would not be. */
+   Link to the individual record if it has a route. Otherwise, link to the
+   screen that owns it. The search registry owns reads and tables. */
 
 import { m } from '$lib/paraglide/messages';
 import { photoCaptionDate } from '$lib/data/dates';
@@ -152,7 +124,7 @@ const AREA_ROWS: Record<
   // icon it always had already agrees with that row's, so read it off there.
   regimenEpisodes: { ...iconOf('care'), label: () => m.regimen(), href: () => '/care/regimen' },
   /* No screen of its own to deep-link into any more - the stock editor is
-     a sheet off Care's own regimen block (ticket 09, ADR-0084) - so a hit
+     a sheet off Care's own regimen block (ADR-0084) - so a hit
      lands on Care itself rather than on a stub that would bounce it there
      a second time. That is the care row's own screen, exactly, so its icon
      comes from there too. */

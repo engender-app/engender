@@ -1,31 +1,10 @@
-/* The app opening for its owner (redesign ticket 34).
+/* Unlock is a layout state change rather than navigation. Wrap it in a view
+   transition so carryBlind and app.css can move the short gate field down
+   to the app's 175px field, carrying the gate title while Today's sun stays
+   still. data-nav selects each screen's motion.
 
-   Every other screen change in the app is a navigation, so `+layout.svelte`
-   catches it in `onNavigate` and runs the blind over it. This one is not: a
-   gate is not a route. It renders instead of the route, out of the `{#if}`
-   chain in the layout, and it stops rendering the moment the secret is
-   accepted - so the app arriving was a `{#if}` flipping, which the browser
-   draws as one frame of gate and the next of Home.
-
-   That moment is the one piece of motion in the product somebody sees
-   hundreds of times, and a cut is what it was. So the state change that ends
-   a gate runs inside a view transition here, with the same blind every
-   navigation carries: the gate's field is short - one title's height - and
-   the app's is 175px of flag with a sun in it, so the edge opens downward,
-   whatever the gate printed on it rides down with it, and the page follows
-   the edge instead of appearing under it. An unlock's field carries Today's
-   own sun since tester-report-02 ticket 07, and that sun is held still while
-   the edge travels (below).
-
-   Nothing about the arrival is new machinery. `carryBlind` names both sides
-   and publishes the two heights, app.css moves them, and `data-nav` says
-   which pattern the two screens themselves take. What is new is only that
-   there is no navigation to hang it on.
-
-   The reverse - a gate arriving - deliberately does not come through here.
-   A cold start has nothing to come from, and a mid-session lock arriving is
-   the one state change whose whole value is being instant (GateScreen.svelte
-   says why, at length). */
+   Cold start has no outgoing screen. Showing a gate during a mid-session
+   lock stays instant; see GateScreen.svelte. */
 
 import { tick } from 'svelte';
 

@@ -1,26 +1,12 @@
-/* Runs the real SQLite boot sequence once (ticket 04) and exposes its
-   result reactively, so +layout.svelte can show a handled error state
-   instead of a blank screen if opening the database or running migrations
-   fails. This only runs in the browser (ssr = false).
+/* Construct the SQLite journal and publish browser boot state to the
+   layout and gates (ADR-0017). data/live/ is the UI seam. boot-machine.ts
+   owns the sequence and handles platform, first run, unlock, legacy
+   storage and newer schemas. This adapter runs effects and returns events
+   to the reducer so failures can render a handled state.
 
-   It is also the thin app-level module ADR-0017 asks for: the one place that
-   constructs the journal over the driver and hands it to the UI. The driver
-   stops here - screens reach the journal through data/live/, which is the
-   only thing above this file that knows a database is involved at all.
-
-   Since phase 5 audit ticket 14 it decides nothing. boot-machine.ts holds the
-   order - web and Android, first run and unlock, unsupported legacy storage, a refused key, a
-   schema from a newer build - and this is its adapter: an effect arrives, the
-   platform is asked, and what it answered goes back as an event. The reducer's
-   state is mirrored into the rune below and read by the layout and the gates
-   exactly as before.
-
-   Two things arrive in two steps each, matching boot()'s own sequence.
-   Preferences: the mirrored boot set is read synchronously before anything
-   renders, so theme and palette match what the pre-paint script in app.html
-   already stamped on <html>, then SQLite replaces the lot. Reference data:
-   the built-ins are reconciled and the mirror filled at step 3, so the first
-   screen to render already has a vocabulary. */
+   Start with the synchronous preference mirror matching app.html's
+   pre-paint attributes, then attach SQLite preferences. Reconcile built-ins
+   and fill the vocabulary mirror before the first screen reads it. */
 
 import { boot, migrateJournal } from '../data/sqlite/boot';
 import { prewarmJournalWorker, releasePrewarmedJournalWorker } from '../data/sqlite/mc-driver';
@@ -276,7 +262,7 @@ export function journalDataKey(): Promise<Uint8Array<ArrayBuffer>> {
   return session.key.next();
 }
 
-/** The mid-session lock's half on the web (after-release ticket 10). Closes
+/** The mid-session lock's half on the web. Closes
     the database and releases the key in a mode a secret reopens; in any
     other - web device-bound and unlocked, which never lock, and Android,
     whose lock path is its own - and before the journal is open, it does
@@ -449,7 +435,7 @@ function reportReopenPreparationFailure(error: ReopenPreparationError, current: 
 }
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
-    it needs the file ops of the driver that failed (ticket 04). */
+    it needs the file ops of the driver that failed. */
 let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
 
@@ -497,7 +483,7 @@ const RESET_DESTINATION = {
     starting the page again.
 
     `erased` is the same wipe asked for from Settings rather than from a
-    gate (phase 14 ticket 15): setup's welcome then says what happened,
+    gate: setup's welcome then says what happened,
     since nobody there forgot anything and the result cannot be undone. */
 export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
   invalidateCredentialApprovals();
@@ -528,7 +514,7 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
     storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
     /* Android keeps the journal and the wrapped data key in app-private
        storage rather than in the WebView's, so emptying the OPFS root - all
-       the web's reset has to do - reaches neither (ticket 13). Erasing only
+       the web's reset has to do - reaches neither. Erasing only
        the key would be worse than doing nothing: the ciphertext would stay,
        unopenable, and the next boot would mint a fresh key and meet a
        database it cannot read. The rest of what the phone holds - the
@@ -558,8 +544,8 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
      the authenticator rather than in anything this app can reach. It is
      harmless once the keystore is gone - its PRF output opens nothing - but
      it does stay in the platform's own credential list until somebody
-     removes it there, which is worth knowing rather than assuming away
-     (ticket 55). */
+     removes it there, which is worth knowing rather than assuming away.
+     */
   /* The device-bound wrapping key and PIN mode's binding key
      (data/device-secret.ts) both live here. Not covered by the OPFS sweep
      above - it's IndexedDB - and a key left behind after a reset is key
@@ -586,7 +572,7 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
 }
 
 /** Puts the pre-migration copy back as the live Journal and starts the app
-    again on it (ticket 04, ADR-0006).
+    again on it (ADR-0006).
 
     Reached two ways. From the migration-failure screen, when a person decides
     to go back: what comes back is the Journal as it was before the update that
@@ -645,7 +631,7 @@ export function startBoot() {
   if (started) return;
   started = true;
   /* What needs no key starts now, beside the survey and the unlock rather
-     than after them (ux-carpet ticket 209): the web's database worker, its
+     than after them: the web's database worker, its
      wasm, which the Journal's driver takes over once the key
      exists, and - where the unlock will derive one - the argon2id worker
      with hash-wasm compiled. Neither is given a secret here. */
@@ -685,7 +671,7 @@ export async function submitPassphraseUnlock(passphrase: string): Promise<void> 
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true, secretAuthenticated: true });
 }
 
-/** The setup module's PIN choice (ticket 53). The PIN just chosen also opens
+/** The setup module's PIN choice. The PIN just chosen also opens
     this session, the same way a chosen passphrase does. */
 async function submitPinSetup(pin: string): Promise<void> {
   await finishSetup(() => setupJournalPin(pin), 'pin');
@@ -703,7 +689,7 @@ export async function submitPinUnlock(pin: string, gateCurrent: () => void = () 
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true, secretAuthenticated: true });
 }
 
-/** The setup module's biometric choice (ticket 55). The prompt the platform
+/** The setup module's biometric choice. The prompt the platform
     draws is the whole of the interaction, and the secret it releases opens
     this session as well as every later one. Throws BiometricUnavailableError
     at the screen when the authenticator will not answer, which is a
@@ -828,7 +814,7 @@ async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Pro
 export type AccessModeSetupResult = DeviceBoundSetupResult | 'biometric-unavailable' | 'setup-failed';
 
 /** The setup module's whole submit path, wherever it is offered. JournalGate
-    and onboarding's own lock step (ticket 54) both hand a chosen mode here
+    and onboarding's own lock step both hand a chosen mode here
     rather than each keeping its own copy of which submit call a mode maps
     to and which failure is which - the four submits above stay what an
     *unlock* screen calls directly, since only setup branches on the mode at
@@ -1043,7 +1029,7 @@ async function changeAccessModeWithoutPending(
 
 /** The Android gate's submit, and the first run's own call. Asks Keystore for
     the data key and either opens the Journal under it or leaves the gate
-    something to say (ticket 13).
+    something to say.
 
     The prompt copy arrives from the component rather than being read here:
     Android draws the dialog, so its words are UI copy and belong in the
@@ -1254,7 +1240,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
     },
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
     shouldSweepOrphans,
-    /* The standing instruction, carried out (phase 11 ticket 11, ADR-0086).
+    /* The standing instruction, carried out (ADR-0086).
        Through the journal rather than the driver, unlike the two passes
        above: this one is an ordinary area operation, so it takes the write
        guard and the write recorder on the way like every other write does.
@@ -1276,7 +1262,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
 
   current();
 
-  // Off the path the reads below take (ticket 202): whenever the browser
+  // Off the path the reads below take: whenever the browser
   // answers, a refusal still reaches the toast - it just no longer holds up
   // journal-opened to do it.
   result.persistRequest.then((denied) => {
@@ -1289,7 +1275,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
      than on onboarding. Gated on the preference table being empty rather
      than on the journal being empty, so the demo bar's "first run" jump -
      which empties the journal on purpose - is not undone by the next
-     reload. Dropped whole from a production build (ticket 05). */
+     reload. Dropped whole from a production build. */
   if (__DEMO__ && preferences.openedEmpty()) {
     /* The worker prepared the persona before reference hydration. Android and
        older web canvases keep clear-first, preferences-last journal writes. */

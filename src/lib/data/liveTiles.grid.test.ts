@@ -1,5 +1,4 @@
-/* What Home's grid holds, in what order, and what each tile says (phase 8
-   deepening ticket 07).
+/* What Home's grid holds, in what order, and what each tile says.
 
    The rule this replaces was `tests/browser-tier/home-contracts.ts:124`, which pinned
    the tiles' gating by matching the route's source for the text of five
@@ -166,7 +165,7 @@ const tileNamed = (kind: LiveTileKind, overrides?: Overrides) =>
   composeHomeTiles(input(overrides)).find((t) => t.key === kind);
 const ORDER: LiveTileKind[] = [...LIVE_TILE_ORDER];
 /** The order the grid actually comes out in: tier first, LIVE_TILE_ORDER
-    inside a tier (phase 8 UX ticket 01). Written out rather than derived
+    inside a tier. Written out rather than derived
     from `LIVE_TILE_TIER`, which is the thing under test. */
 const TIERED: LiveTileKind[] = [
   // Bound to today.
@@ -336,11 +335,11 @@ describe('what each tile says', () => {
     expect(tile.note).toBe(m.wear_session_running_since({ time: `time:${wearSession.startTimestamp}` }));
     expect(tile.action?.attrs).toEqual({ 'data-wear-stop': '' });
     expect(tile.dismiss).toBeUndefined();
-    // Named by the kind, not by "wear" (ticket 50).
+    // Named by the kind, not by "wear".
     expect(tile.title).toBe(m.tile_wear_title_binder());
   });
 
-  /* The duration cue (ticket 50, ADR-0064). Nine hours in, which is past
+  /* The duration cue (ADR-0064). Nine hours in, which is past
      the eight-hour figure the binder rule reads. */
   const NINE_HOURS_IN = { nowMs: wearSession.startTimestamp + 9 * 3600_000 };
 
@@ -383,8 +382,7 @@ describe('what each tile says', () => {
      else on the screen the day is stated. The fixture's schedule falls
      every three days from fifteen days ago, which lands on today. */
   it('the dose panel says a dose the day expects is today, with how much and how', () => {
-    /* What the patch-schedule tile used to say beside it (functional-audit
-       ticket 15): the episode's amount, since the schedule sets none, and
+    /* What the patch-schedule tile used to say beside it: the episode's amount, since the schedule sets none, and
        the route in words. */
     expect(tileNamed('dose-panel')!.note).toBe(
       m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:patch' })

@@ -1,4 +1,4 @@
-/* The Android key flow, tested where it can actually go wrong (ticket 13).
+/* The Android key flow, tested where it can actually go wrong.
 
    The module under test is the one that turns "what the Keystore and the
    biometric prompt said" into "does the journal open". Every test here is

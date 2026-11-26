@@ -1,32 +1,10 @@
-/* A failed boot shows its notice and nothing else (phase 12 ux-carpet
-   ticket 213).
+/* Drive real boot failure with an unreadable journal, refused WASM and
+   a worker without COEP. The failure notice replaces the app and uses
+   localized copy without driver text. A pre-baseline development journal
+   only offers start-over. Check normal boot still mounts Today.
 
-   The layout rendered the route whenever no gate claimed the screen, and a
-   boot that failed claimed none, so Today mounted under "Couldn't open your
-   journal": the greeting, the mood row, the nav and the quick-add button, on
-   a journal that never opened. A person saw their home screen with an error
-   on top of it, and automation that waited for `data-home-hello` read it as
-   a boot (ticket 210 found it that way).
-
-   The failure is an unreadable journal, the case ticket 210 left a phone in:
-   the journal worker is swapped for one that answers every request the way
-   SQLite answers a wrong key, "file is not a database", so boot() fails
-   through its real path and the notice offers 210's way out. Then the page is read for anything a
-   booted app draws. A normal boot is checked alongside, so the probe cannot
-   pass by hiding Today altogether.
-
-   Ticket 215 adds the database that never loads: a refused wasm request
-   and a worker served without COEP both have to reach the same notice.
-
-   After-release ticket 09 adds what the notice says: a sentence for the
-   failure, never the driver's text, and a journal from a development build
-   (below the squashed baseline) reaching the start-over way out with no
-   retry. The worker for that one answers the demo seed the way the real
-   one does for such a journal.
-
-   Against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/boot-error-alone.mjs [--root <built tree>] */
+   VITE_DEMO=1 npm run build
+   node tests/boot-error-alone.mjs [--root <built tree>] */
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, screencast, previewBuild } from './browser-harness.mjs';

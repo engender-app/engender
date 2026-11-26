@@ -1,4 +1,4 @@
-/* The agenda projection (phase 10 redesign ticket 04, ADR-0074): the
+/* The agenda projection (ADR-0074): the
    window, the ordering, the fold, the absence rule, the passed slot. Every one of them is decided in `agenda.ts` and asserted
    here, because ticket 13 draws what this returns and can only be as
    truthful as the projection under it. */

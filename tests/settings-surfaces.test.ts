@@ -1,4 +1,4 @@
-/* The rules Settings keeps after the rebuild (phase 5 ticket 24), at the
+/* The rules Settings keeps after the rebuild, at the
    level a screen's source can be held to - mirrors home-contracts.ts and
    more-surfaces.test.ts.
 
@@ -10,7 +10,7 @@
    already - phase 5 ticket 35 put the checklist there, and it is the same
    component the first run draws.
 
-   Greps by design (ticket 08): every assertion here is a class that may
+   Greps by design: every assertion here is a class that may
    not appear or a component that has to, which is a negative or a wiring
    over a file rather than a rule with a return value. Anything on this
    screen that decides something lives in a module with a test that calls
@@ -38,7 +38,7 @@ describe('what Settings is built from', () => {
     expect(settings).toContain("from '$lib/components/kit/ListRow.svelte'");
     expect(settings).toContain("from '$lib/components/kit/SectionHeading.svelte'");
     /* The wrapped/on-this-day permission notice left with its toggles for
-       the live-tiles screen (ticket 51); the sheets that remain carry no
+       the live-tiles screen; the sheets that remain carry no
        Notice. */
     expect(settings).not.toContain("from '$lib/components/kit/Notice.svelte'");
   });
@@ -104,7 +104,7 @@ describe('what Settings is built from', () => {
     const privacy = outsideSheets.slice(
       outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />')
     ).match(/<ListCard>[\s\S]*?<\/ListCard>/)?.[0] ?? '';
-    // The PDF export sits low, just above erasing (pre-release-human 18).
+    // The PDF export sits low, just above erasing.
     const order = ['key="security"', '<DisguiseSetting />', 'key="export"', 'key="permissions"', 'key="trash"', 'key="journal-book"', 'key="erase"'].map((k) => privacy.indexOf(k));
     expect(order.every((at) => at > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);

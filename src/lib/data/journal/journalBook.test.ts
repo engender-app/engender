@@ -1,4 +1,4 @@
-/* The journal book (phase 5 ticket 17): a keepsake assembly over rows
+/* The journal book: a keepsake assembly over rows
    entries, milestones and side effects own, recomputed on every read. The
    inclusion picker is what these tests are mostly about - what a book
    carries has to be decided by the choice, not by the renderer deciding

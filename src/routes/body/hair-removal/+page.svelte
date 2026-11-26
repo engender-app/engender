@@ -3,8 +3,7 @@
   import { journalTextAutocomplete } from '$lib/platform';
   import { navigating, page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  /* Electrolysis and laser sessions, on the surface kit (phase 5 UX
-     ticket 25). Two lists on the screen and a third inside the editor,
+  /* Electrolysis and laser sessions, on the surface kit. Two lists on the screen and a third inside the editor,
      all of them `.list-group` before this; the recency rows open the
      add-session form with their own area chosen (pre-production UI/UX
      ticket 28), the session photos state something and go nowhere, so

@@ -1,31 +1,10 @@
 <script lang="ts">
-  /* Good moments (ADR-0037, CONTEXT: "counterevidence pool"), lifted out
-     of Safe space by phase 10 redesign ticket 47 and bounded by phase 11
-     ticket 15.
+  /* Good moments reads the live counterevidence pool (ADR-0037). Deleting
+     an entry removes it here. Keep the subtitle aligned with the
+     eligibility rules in entries.ts.
 
-     The pool is days the person named as good - tagged as euphoria, or
-     starred - offered back on a day that says none of it happened.
-
-     It used to have a second half: "Save this for later" froze a copy of
-     the pool into a snapshot table. Functional audit ticket 09 cut it. The
-     copy carried each entry's note with no link back, so an entry the
-     person deleted kept its words in a snapshot they could not see from
-     the entry. The pool is a live read, so a deleted entry leaves it.
-
-     **Six, then the rest on request.** Twenty entry cards ran the screen to
-     3990px on the demo journal. Six is what fits in a viewport. The rest
-     are not gone and not a second screen: "See all" discloses them in
-     place (ADR-0078).
-
-     **What the subtitle promises, the query keeps.** The pool's third arm
-     used to admit an entry on one positively marked body region alone, so
-     the screen could hand back a day the person had tagged as dysphoria
-     and written up as miserable. entries.ts narrows that arm; the subtitle
-     here is the rule stated in the person's own terms, and the two have to
-     move together.
-
-     Purely a read (ADR-0037, src/lib/data/journal/safeSpaceReads.test.ts
-     pins it at the driver): opening this screen writes nothing. */
+     Show six at first and disclose the rest in place (ADR-0078).
+     Opening writes nothing, as safeSpaceReads.test.ts checks. */
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';

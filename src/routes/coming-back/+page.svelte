@@ -30,7 +30,7 @@
 
   /* Seeded rather than left to discover itself: every one of `readWhatIsWaiting`'s
      five reads sits past the gap's own `await`, so an unseeded query would
-     re-run once for nothing on every mount (phase 8 audit ticket 14). */
+     re-run once for nothing on every mount. */
   let waitingQuery = liveQuery(async (j) => {
     const asOf = today; // before the await, so the read follows the day
     const since = await gap;
@@ -181,26 +181,11 @@
     overflow-wrap: anywhere;
   }
 
-  /* ---- the foot ----------------------------------------------------
-     Rule 12's foot with rule 15's one control, pinned to the window's
-     bottom edge above a hairline and never moving between states.
-
-     `margin-top: auto` puts it on the bottom edge of a screen whose list is
-     short; `position: sticky` keeps it there when the list is long enough
-     to scroll under it. The negative offset is what a sticky bottom costs:
-     it is measured from the scroll port's padding edge and the region holds
-     --nav-clearance of padding there, so a foot that means to sit *on* the
-     window's edge gives that breath back. The system inset stays, as the
-     foot's own padding.
-
-     Kept where it is by carpet 26, which moved the save bar out of the
-     column and into the frame for having this same shape (`.app-savebar`,
-     app.css, and $lib/stores/saveBar.svelte for why). Two things make this
-     one different: it is opaque and it hugs the window's edge rather than
-     sitting on a floating bar there is none of, and carpet 28's occlusion
-     pass reads this screen clean - the list is short by rule 15 and nothing
-     interactive ends up under it. A screen where that stops being true
-     takes the frame's foot instead of thickening this one. */
+  /* Keep the one-action footer at the window edge (DIRECTION.md rules
+     12 and 15). margin-top: auto handles short lists and sticky handles
+     scrolling. Cancel --nav-clearance with the bottom offset and keep
+     the system inset as padding. If interactive content can fall under
+     the footer, use the frame's separate foot layout. */
   .return-foot {
     position: sticky;
     bottom: calc(-1 * var(--space-5));

@@ -1,25 +1,11 @@
-/* The archive container (ADR-0007, ticket 13): a plaintext header followed
-   by the body encrypted as a sequence of AES-256-GCM chunks of roughly
-   1 MB, each with its own nonce.
+/* Archive container (ADR-0007). Read the plaintext version and KDF
+   parameters before key derivation. The body streams in roughly
+   1 MB AES-256-GCM chunks, each with its own nonce.
 
-   The header is plaintext because F14 wants unknown and corrupt files
-   rejected safely, and that is only possible if the format version and the
-   key-derivation parameters can be read before any key is derived. Reading
-   it costs nothing and reveals nothing an attacker could not work out from
-   the file's length.
-
-   Every chunk's AAD is the whole header followed by the chunk's index. The
-   header carries the total chunk count, so binding it means truncating,
-   reordering or re-labelling the file fails authentication instead of
-   decrypting into a silently short archive - the worst possible outcome
-   for a restore. It also covers the salt and the KDF parameters, which
-   costs one concatenation and makes the whole plaintext prefix
-   tamper-evident rather than just the parts that would have failed anyway.
-
-  Nothing here knows what the body means; codec.ts owns the versioned body
-  encode/decode contract and pack.ts routes archives through it. Everything
-  is an async iterable of byte pieces, so neither side ever holds more than
-  a chunk plus whatever the caller is holding. */
+   Authenticate the full header and chunk index as AAD. The authenticated
+   count, salt and KDF parameters bind the prefix and detect missing,
+   reordered or relabeled chunks. `codec.ts` versions the body and
+   `pack.ts` selects its codec. Streaming bounds buffering per chunk. */
 
 import { open, seal, SEAL_OVERHEAD } from '../../crypto/aesGcm';
 import { ARCHIVE_ARGON2_MAX_PARAMS, type Argon2Params } from '../../crypto/params';

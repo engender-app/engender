@@ -1,5 +1,5 @@
-/* Release-time warning for shipped reference content past its review limit
-   (functional audit ticket 40). The list and the limits live in
+/* Release-time warning for shipped reference content past its review limit.
+The list and the limits live in
    src/lib/reviewedContent.ts; this prints what is due.
 
    It warns and exits 0. A stale date asks for the source to be read again

@@ -115,7 +115,7 @@
 .wrapped-thin .wrapped-title { overflow-wrap: anywhere; }
 .wrapped-thin .muted { margin-top: var(--space-2); }
 
-/* The wrapped card (ticket 16): a self-contained frame, unlike the wrapped
+/* The wrapped card: a self-contained frame, unlike the wrapped
    screens above which lay their stats directly on the page. It reuses
    .wrapped-stats/.wrapped-stat rather than duplicating that tile styling. */
 .wrapped-card { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--r-block); padding: var(--space-5); }
@@ -257,7 +257,7 @@
 .search-input:focus-visible { outline: none; }
 
 /* The chips are the only place the state of the query is visible once the
-   filters moved into a sheet (phase 5 ticket 22), so they sit directly under
+   filters moved into a sheet, so they sit directly under
    the field rather than under the count. */
 .search-chips {
   display: flex;
@@ -306,24 +306,10 @@
   padding: var(--space-2) var(--space-4);
 }
 
-/* ---------- the date field ----------
-
-   A `<input type="date">` inherits `.input`, which is the app's text field,
-   so a date read as something to be typed rather than picked (Alicja,
-   2026-08-25: "the date renderer should be redesigned - looks like a
-   textbox"). A row of a list instead: the label on the left, the date on the
-   right in the display face, a drawn calendar icon after it, and the whole
-   row is the control.
-
-   The native picker is what opens, because Android's own is better than
-   anything drawn here and knows the reader's locale and their week start.
-   Getting the whole row to open it takes two steps: the input is stretched
-   invisibly over the row, and its picker indicator is stretched over the
-   input. Hiding the indicator instead left nothing reliable to press -
-   Chromium opens the picker from the indicator, not from the text - and
-   leaving it where it lands drew a second calendar glyph on top of the
-   label, because with the date text hidden the indicator moves to the start
-   of the field. */
+/* Stretch the invisible native date input over the whole row
+   and its picker indicator over the input. Chromium opens the
+   picker from the indicator. Keep that target even though the
+   row already paints its own calendar icon. */
 .date-row {
   /* Not redundant with .rows-divide's own position: relative, even though
      every .date-row currently carries that class. The invisible full-bleed
@@ -423,27 +409,16 @@
    answering a press with nothing. `.press` is the compact-control class
    ticket 30 already settled (--press-depth, 0.94) - a swatch is well under
    its 64px ceiling, so it names the class rather than a number. */
-/* The flag picker, one drawing for setup and Settings (ticket 277): a block
-   of the flag's own stripes, the one radius, a 1px edge, the name under it
-   on the page. Four across at phone width; the 56px floor is what lets 200%
-   zoom drop to two columns instead of shrinking the flags or clipping the
-   names. Nothing tints behind a flag (rule 13); the chosen one takes a 3px
-   --text frame closing in onto its own edge, drawn as an outline so the
-   block's box never changes.
+/* The shared flag grid uses a 56px column floor. It fits four columns
+   at 320px and reflows to two at 200% zoom. The selected flag's 3px
+   --text outline leaves its box unchanged. Keep the background untinted
+   (DIRECTION.md rule 13).
 
-   A name wraps between words and never inside one: overflow-wrap: anywhere
-   broke "Transpłciowa" as "Transpłciow / a" at 360px (pre-publish 03). Three
-   columns kept the words whole but left the sixteenth flag alone on its last
-   row, so the grid stays four across down to 320px (a 56px column floor; at
-   320px a column is 58.5px) and the name gives way instead: each swatch is
-   an inline-size container, paletteNameFit hands its name the longest
-   word's width in ems as --word-em, and the type is the column divided by
-   that, between 0.75 and 1 times --text-xs (9px to 12px). A name that fits keeps
-   --text-xs; "Panseksualna", 75.2px at 12px, is set at 10.95px in a 68.5px
-   column at 360px. At 320px it needs 9.3px, which the 9px floor allows, so no name
-   reaches past its flag at any phone width.
-   tests/palette-name-wrap.mjs sweeps 320 to 430px and 1280px in both
-   languages, in Settings and in setup. */
+   paletteNameFit sets --word-em to the longest word's width in ems.
+   Each swatch is an inline-size container and divides its width by that
+   value, clamped to 0.75–1 times --text-xs (9–12px), to keep words whole.
+   tests/palette-name-wrap.mjs covers both languages and screens from
+   320px to 430px and at 1280px. */
 .palette-grid {
   display: grid; position: relative;
   grid-template-columns: repeat(auto-fill, minmax(max(56px, calc((100% - 3 * var(--space-3)) / 4)), 1fr));
@@ -481,22 +456,10 @@
   white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: normal; hyphens: manual;
 }
 .mood-preset-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
-/* .kit-row-text's own min-width: 0 lets it shrink to nothing before
-   anything wraps, which is right for a chevron or a Switch beside it but
-   not for a two-segment control next to a two-line title and a three-line
-   subtitle: the text column gave up most of its width to the segments and
-   wrapped hard enough to crowd against them (Alicja, 2026-08-28, on
-   theme controls - "way too crowded"). A floor on the text column turns
-   that shrink into a wrap once the row is too narrow to give both their
-   due, and margin-left: auto keeps the control at the row's own trailing
-   edge whether it is sharing the line or alone on one of its own - a plain
-   width-triggered wrap, not a forced one, so a wide-enough screen still
-   shows both side by side exactly as before. Scoped here rather than in
-   kit.css: Settings' segmented rows are the only rows in the kit that
-   pair a Segmented with a title. Since ticket 277 they carry no subtitle,
-   so the floor is the title's own one-line width rather than a fixed 160px:
-   "Theme" keeps its three segments on its line, and a title too long to
-   share one moves the control under it instead of breaking. */
+/* Pair Settings titles with segmented controls using the title's
+   one-line width as its floor. When both no longer fit, move the
+   control to the next line. margin-left: auto keeps it trailing on
+   either line. Scope this rule to Settings' title-and-control rows. */
 .settings-unit-row { flex-wrap: wrap; row-gap: var(--space-2); }
 .settings-unit-row .kit-row-text { min-width: max-content; }
 .settings-unit-row .kit-row-trail { margin-left: auto; }
@@ -550,7 +513,7 @@
    wider than its neighbours.
 
    One rule for both readers, setup and Settings, which draw the same
-   block. Every palette has one (ticket 277): the last eight had none and
+   block. Every palette has one: the last eight had none and
    drew as empty outlines, and settings-surfaces.test.ts holds each list to
    the palette's --motif-stripes. */
 [data-swatch="trans"] { background: linear-gradient(to bottom, #5BCEFA 0 20%, #F5A9B8 20% 40%, #FFF 40% 60%, #F5A9B8 60% 80%, #5BCEFA 80%); }
@@ -587,8 +550,7 @@
   font-size: var(--text-sm); font-weight: var(--weight-bold);
   padding: var(--space-2) 0; min-height: var(--touch-target); align-items: center;
 }
-/* The disguise preview's two classes left with the block itself (phase 10
-   redesign ticket 32): Settings and setup's last question both draw it, so
+/* The disguise preview's two classes left with the block itself: Settings and setup's last question both draw it, so
    it is DisguisePreview.svelte's now and its styles are scoped there. */
 
 /* ---------- Manage tags ---------- */
@@ -716,7 +678,7 @@
   color: var(--field-ink);
   text-wrap: balance;
   /* A 48px word is wider than a 195px window at 200% zoom, which is where
-     every title in the app took this rule (ticket 35). */
+     every title in the app took this rule. */
   overflow-wrap: break-word;
 }
 
@@ -925,8 +887,8 @@
    against an indefinite button resolves to auto and leaves the cell as wide
    as whatever it happens to hold. A loaded photograph hid that - its own
    320px intrinsic width filled the track - but a tile with no pixels in it
-   yet, and a video note's tile, which holds a 26px glyph and nothing else
-   (phase 11 ticket 14), both collapsed to about 36px. It also takes the jump
+   yet, and a video note's tile, which holds a 26px glyph and nothing else,
+   both collapsed to about 36px. It also takes the jump
    out of an ordinary photo tile, which used to grow from the glyph's width
    to the track's in the frame its thumbnail arrived. */
 .photo-cell {
@@ -937,7 +899,7 @@
 .photo-cell .photo-thumb { width: 100% !important; aspect-ratio: 1; height: auto !important; }
 .photo-cell .photo-thumb { outline: 3px solid transparent; outline-offset: 2px; transition: outline-color var(--dur-fast) var(--ease-out); }
 /* The ring fades in rather than landing in the frame of the tap, the hold
-   that starts picking included (pre-release-human 12). */
+   that starts picking included. */
 .photo-cell.is-selected .photo-thumb { outline-color: var(--accent); }
 .photo-date { font-size: var(--text-xs); color: var(--text-2); }
 .photo-check {
@@ -1000,7 +962,7 @@
   }
 }
 
-/* ---------- Stats hub (phase 5 UX ticket 23) ---------- */
+/* ---------- Stats hub ---------- */
 
 /* A line of context inside a chart card, above or below the plot: which
    analyte is drawn, that a fold reads the whole journal, which tags were
@@ -1016,8 +978,8 @@
    ChartCard takes no prop for a paragraph and does not need one; this is
    body content, which is what its `children` slot is for. */
 
-/* The figures, as rows of a list card rather than a row of small tiles
-   (phase 5 UX ticket 23). What the list buys is room for a supporting line
+/* The figures, as rows of a list card rather than a row of small tiles.
+   What the list buys is room for a supporting line
    under a figure, which a tile stating a bare number has nowhere to put. */
 .wrapped-figure-value {
   font-family: var(--font-display);
@@ -1044,7 +1006,7 @@
   color: var(--text-2);
 }
 
-/* ---------- On this day (phase 5 UX ticket 23) ----------
+/* ---------- On this day ----------
    The photos from the day that resurfaced, under the entries that mention
    them. A wrapping row rather than a scroller: a single day's photos are a
    handful, and a strip you have to drag hides some of them behind an edge. */

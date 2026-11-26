@@ -1,29 +1,11 @@
-<!-- The personal effects timeline (phase 4 ticket 07): one horizontal track
-     per fixed effect, all sharing the same day axis anchored at the HRT
-     start (personalEffectWindow.ts's hrtAnchor). A track shows the literature's
-     onset and completion windows as background bands and, when set, the
-     person's own first-noticed day as a marker - never framed against each
-     other, since the acceptance criterion this file exists to keep is that
-     nothing here reads as "ahead" or "behind" the bands.
+<!-- All effects share an axis anchored at HRT start. Show the person's
+     first-noticed marks independently of the literature's onset and
+     completion bands. Leave missing bands blank to avoid implying a
+     judgment about the person.
 
-     A row whose caller passed no onset window draws no band at all, and
-     draws nothing in its place either (phase 5 ticket 27): an empty track
-     is the literature having nothing to say about that change, and the
-     screen must not turn that into a gap in the person.
-
-     Purely a renderer:
-     every row's label is resolved by the caller (personalEffectName), and
-     the chart adds only its own fixed wording (the legend, the two edge
-     captions) via paraglide directly, inline rather than threaded through as a
-     prop. Decorative only - the day-by-day detail a screen reader needs
-     lives in the textual list the caller renders alongside this.
-
-     The bands are drawn only while `literature` is true, the screen's "What
-     the literature says" disclosure (functional audit ticket 22). Closed,
-     the chart is the person's own markers on the months since HRT began;
-     opening it wipes each band in from its own start, and closing covers it
-     again from the same edge. The legend's two literature swatches stay in
-     place and fade with them, last in the row, so nothing beside them moves. -->
+     Only show bands while literature is true. Wipe from each band's start
+     and fade its legend swatches in place. The caller supplies row names
+     and renders the accessible textual detail alongside the chart. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { scaleLinear } from 'd3-scale';
@@ -35,7 +17,7 @@
     key: string;
     label: string;
     /** Null when the literature has nothing to say about this change for
-        this person's regimen (phase 5 ticket 27) - the row still draws its
+        this person's regimen - the row still draws its
         label, its axis and their own marker, and simply carries no band. */
     onset: { start: number; end: number } | null;
     /** Null when the literature gives no completion window at all, and
@@ -56,7 +38,7 @@
     rows: EffectTimelineRow[];
     anchorEpochDay: number;
     todayEpochDay: number;
-    /** Whether the literature's bands are shown (ticket 22). */
+    /** Whether the literature's bands are shown. */
     literature: boolean;
   } = $props();
 

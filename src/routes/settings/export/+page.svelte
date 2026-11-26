@@ -120,7 +120,7 @@
   let autoHasPassword = $state(false);
   let autoBusy = $state(false);
 
-  /* Five bars for six operations (phase 9 audit ticket 11, ADR-0070).
+  /* Five bars for six operations (ADR-0070).
      Import and verify share one because they share their two buttons and
      cannot run at once; everything else has its own place on the screen.
      Each carries a label beside it because these operations move between
@@ -515,7 +515,7 @@
     exportProgress.start(path === 'encrypted' ? { onCancel: () => stop.abort() } : undefined);
     try {
       // No "still opening" branch: a call through data/live's handle queues until
-      // the database is open (ticket 08), and every screen reaches it that way.
+      // the database is open, and every screen reaches it that way.
       const delivery = await runExport(
         path,
         {
@@ -621,7 +621,7 @@
   }
 
   /* The import, run by restoreFlow.ts so the welcome step's restore and this
-     one are the same act (ticket 36). What is left here is what this screen
+     one are the same act. What is left here is what this screen
      says about it. */
   async function doImport() {
     impError = '';
@@ -647,7 +647,7 @@
     importing = false;
   }
 
-  /* The backup health drill (ticket 28): the same picked file and password
+  /* The backup health drill: the same picked file and password
      as import, but only decrypting, parsing and validating it - nothing here
      is written to. */
   async function doVerify() {
@@ -730,7 +730,7 @@
 
   /* The backup import, beside the CSV one above and deliberately not folded
      into it: the two files carry different things, and somebody holding a
-     CSV export has a CSV export (phase 7 ticket 09). */
+     CSV export has a CSV export. */
 
   function openBackup() {
     backupName = '';
@@ -784,7 +784,7 @@
     try {
       // Some Android file providers type a .daylio file as
       // application/octet-stream rather than zip, and Capacitor's picker
-      // greys out a file that matches no accept entry at all (ticket 66) -
+      // greys out a file that matches no accept entry at all -
       // application/zip alone made that file unselectable.
       const [file] = await chooseFiles('.daylio,application/zip,application/octet-stream');
       if (!file) return;
@@ -878,8 +878,8 @@
   <!-- Both ages are preferences outside the boot set, so on a cold
        navigation straight here they read null until SQLite opens: the card
        said "never" with a tick for a persona backed up 34 days ago, then
-       lost a line and shoved everything under it up 19px in one frame
-       (ticket 176). The rows stand from the first frame and only their
+       lost a line and shoved everything under it up 19px in one frame.
+The rows stand from the first frame and only their
        values wait, a one-line bar in each, so a one-line age lands without
        moving anything; the two-line "never" grows the card through
        `resize`. -->
@@ -1475,7 +1475,7 @@
     height: 28px;
     border-radius: var(--r-block);
   }
-  /* From components.css once Settings stopped drawing one (ticket 277):
+  /* From components.css once Settings stopped drawing one:
      this screen is the only reader left. */
   .hr {
     border: none;

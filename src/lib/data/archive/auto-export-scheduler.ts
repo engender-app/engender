@@ -19,8 +19,7 @@ let lastAttemptAt = 0;
 
 const MIN_GAP_MS = 60 * 1000;
 
-/* The failure notice, under the unprompted registry's rules (phase 6 ticket
-   04). It lives here rather than in runAndroidAutoExport because a
+/* The failure notice, under the unprompted registry's rules. It lives here rather than in runAndroidAutoExport because a
    notification is only ever right for the scheduled path, and because
    holding one needs the next tick: a failure inside quiet hours sets
    `heldExportFailureNotice` and a later check outside the window posts it,

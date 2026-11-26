@@ -1,4 +1,4 @@
-/* HTML to text, for imported note bodies (phase 7 ticket 09).
+/* HTML to text, for imported note bodies.
 
    Daylio stores an entry's note as HTML, and only a small minority of
    notes contain any markup - which is exactly why this exists. A reader

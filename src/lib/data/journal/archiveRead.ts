@@ -54,7 +54,7 @@ import { bool, domainIdOf } from './support';
 import type { CostRow } from '../cost';
 import type { ArchiveCostFields } from '../archive/payload';
 
-/** A costed row's three columns as they travel (functional audit ticket 30). */
+/** A costed row's three columns as they travel. */
 const costFields = (row: CostRow): Required<ArchiveCostFields> => ({
   costAmount: row.cost_amount,
   costCurrency: row.cost_currency,
@@ -563,7 +563,7 @@ export async function readAppointments({ driver }: SectionRead): Promise<Archive
        LEFT JOIN provider p ON p.id = a.provider_id
       ORDER BY a.epoch_day IS NULL, a.epoch_day, a.id`
   );
-  // A wait's dated updates (ticket 26), nested under the appointment they
+  // A wait's dated updates, nested under the appointment they
   // belong to and read in one query rather than one per appointment.
   const statuses = await driver.query<{ appointment_id: number; uuid: string; epoch_day: number; status: string; updated_at: number }>(
     'SELECT appointment_id, uuid, epoch_day, status, updated_at FROM appointment_status ORDER BY epoch_day, id'
@@ -692,7 +692,7 @@ export async function readDosePauses({ driver }: SectionRead): Promise<ArchiveDo
   }));
 }
 
-/** The import history (phase 7 ticket 03): source, when, and net additions
+/** The import history: source, when, and net additions
     by kind. Ordered so the wire order is stable and a round trip compares
     row by row - the settings screen that shows these most-recent-first
     reverses this itself, the same split `readComfortItems` and its

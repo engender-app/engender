@@ -10,7 +10,7 @@ interface LabOcrEngine {
 
 const TESSERACT_LANGS = ['eng', 'pol'];
 
-/* The one status worth turning into a bar (phase 9 audit ticket 11). The
+/* The one status worth turning into a bar. The
    installed tesseract.js reports through its logger under several statuses
    - loading its core, fetching each language's traineddata, initialising
    the API - and each of those sweeps its own 0 to 1. Reporting all of them

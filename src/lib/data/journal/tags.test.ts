@@ -1,4 +1,4 @@
-/* The tags area, exercised through the driver interface (ticket 07):
+/* The tags area, exercised through the driver interface:
    id-or-key addressing only, F17's hide/delete asymmetry, loud failures
    on unknown write ids, idempotent deletes. */
 

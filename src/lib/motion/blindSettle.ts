@@ -1,43 +1,13 @@
-/* How the blind's edge lands on its mark (redesign ticket 28).
+/* Settle the blind's edge with a sampled linear() assigned to
+   --blind-ease. Add a nonnegative half-sine to the content's
+   --ease-out and scale it to the required peak. The edge stays
+   ahead of the moving content and both finish together in
+   --dur-slow. A slow spring let the content outrun the cover.
 
-   The edge runs past where it is going and comes back - about 6% of the
-   distance it travelled, capped at 8px - which is the one thing none of the
-   app's three easings can do: a cubic-bezier approaches its end from one
-   side however far its handles reach, and tests/motion-system.test.ts holds
-   every control point inside its own range for exactly that reason (phase 5
-   ticket 29 retired an --ease-spring that pretended otherwise).
-
-   So the settle is sampled and handed to the stylesheet as a linear() on
-   --blind-ease, the way --ease-press already is. What is sampled is not a
-   spring, and the difference is a defect this ticket found on its own
-   flipbooks. A second-order step response starts slowly, and the content
-   under the blind travels on a plain --ease-out, which does not: measured
-   on Transition to Today, the content's top ran up to 14.4px ahead of the
-   edge through the middle of the run and that band of page showed under the
-   blind for about 120ms. The blind is what covers the difference between
-   the two curves, so it may never fall behind the curve it is covering.
-
-   What is sampled instead is that same --ease-out with a swell added on
-   top: a half sine that is zero at both ends, scaled so the sum peaks at
-   the overshoot asked for. It cannot lag, because it is the content's own
-   curve plus something that is never negative; it ends exactly on the mark,
-   because the swell has died by then; and it is one curve inside one
-   --dur-slow rather than a phase followed by another phase.
-
-   It is computed per navigation rather than written as a token because the
-   overshoot is a fraction of a distance that is only known then: 6% of a
-   100px pull is 6px, 6% of a 300px one would be 18 and is held to 8, and
-   below 24px of travel there is nothing worth settling from.
-
-   Two cases get no overshoot at all, and the second is a correction to the
-   ticket rather than an omission. On the way down the blind leads the
-   content and covers everything between them. On a close it is the other
-   way round - the edge is rising, the content is rising under it, and an
-   edge that runs past the mark uncovers a band of page between itself and
-   the content's top, which is the gap the ticket forbids. A close that
-   lands at nothing is the exception the ticket names: its overshoot happens
-   above the window's top edge, where the only thing to uncover is the page
-   the fieldless screen is drawn on anyway. */
+   Overshoot 6% of travel up to 8px. Skip travel below 24px and
+   closes that end inside the viewport, where running past the
+   mark would reveal content. A close to zero can overshoot
+   above the window edge. */
 
 import { EASE_OUT_SOFT_POINTS } from './tokens';
 

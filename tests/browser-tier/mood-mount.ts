@@ -1,4 +1,4 @@
-/* Mounts the mood gallery (phase 10 ticket 27) against the app's own tokens
+/* Mounts the mood gallery against the app's own tokens
    and fonts, the way the icon gallery does - a ramp judged against a copy of
    the palette is a ramp judged against the wrong colours.
 

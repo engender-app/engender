@@ -3,27 +3,12 @@
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { photoOwnerHref } from '$lib/data/photos/library';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
-  /* The photo library: every photograph in the journal, wherever it is
-     kept (phase 11 ticket 14). Browse only since pre-release-human 12:
-     comparing two photographs moved to Progress photos
-     (/transition/progress-photos), where the shots are taken in the same
-     pose on purpose and a side-by-side reads as something.
+  /* journal.photoLibrary reads photos and video notes across all six
+     tables. This screen browses them. Compare lives in Progress
+     photos, where shots share a pose.
 
-     Until this the grid read the `photo` table, which is an entry's
-     photographs and a milestone's, and the line over it said "Every photo
-     in your journal". Four more tables hold photographs - progress photos,
-     hair removal, tryouts, surgery recovery - and `video_note` holds a
-     note recorded in the editor, and none of the five could be found again
-     except through the day it hangs off. `journal.photoLibrary` is the one
-     read across all six; this screen is where it is looked at.
-
-     What the chips do is narrow, not navigate. The grid is the same grid
-     either way and the selection is the same selection, so tapping "Hair"
-     moves the photographs rather than repainting the screen (ADR-0078,
-     motion/narrow.ts). The chip lives in the query, so a link can open the
-     library already narrowed and a reload keeps it.
-
-     A video note's tile plays it in the app's own player. */
+     Filter the same grid and selection through the query. narrow.ts
+     moves surviving tiles (ADR-0078). Video notes open the app player. */
   import { tick } from 'svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { page } from '$app/state';
@@ -444,7 +429,7 @@
 </div>
 
 <style>
-  /* The day-edit affordance on a browse cell (ticket 47): a sibling of
+  /* The day-edit affordance on a browse cell: a sibling of
      .photo-cell rather than a change to it, so export/+page.svelte's own
      .photo-cell button - screens.css's shared class - keeps meaning
      exactly what it always has there.

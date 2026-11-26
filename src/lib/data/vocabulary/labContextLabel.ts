@@ -1,4 +1,4 @@
-/* Display wording for a lab draw's dosing context (phase 4 ticket 03), here
+/* Display wording for a lab draw's dosing context, here
    beside doseLabels.ts for the reason that file gives: the wording speaks
    paraglide, and nothing the Node tier touches may import that (ADR-0016).
    labTiming.ts derives the figures and stays free of it; this is where they

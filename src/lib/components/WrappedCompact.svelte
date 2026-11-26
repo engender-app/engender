@@ -1,29 +1,8 @@
 <script lang="ts">
-  /* The weekly, monthly and picked-range wrapped (phase 4 features ticket
-     01, rebuilt on the kit by phase 5 UX ticket 23). One screen you scroll
-     once, glance at, and leave. The three share it because the questions a
-     week, a month and an arbitrary window answer are the same size - how
-     much did I log, how did it move, what did I tag - and the only
-     difference between them is the heading, which arrives as a prop.
-
-     A year does not share it. WrappedYear.svelte is a separate presentation
-     rather than this one with more sections, because twelve months of data
-     supports a shape a week's worth cannot fill.
-
-     What changed in the rebuild. The figures were four small tiles in a row
-     and are a list card, so a figure can carry a supporting line under it
-     instead of every one of them being a tile saying a bare number. The
-     mood arc is the kit's area chart, so it carries a value scale and a
-     mark per day and re-tweens rather than being redrawn. Tag insights are
-     the kit's horizontal bars. The rest - milestones, photos, the tags you used
-     - is the same content on the kit's own surfaces.
-
-     Sections with nothing in them are left out rather than rendered saying
-     "none". That is the same call the entry floor makes about the period as
-     a whole, applied one card down: a wrapped is worth opening or it is not
-     shown, and a card is worth reading or it is not there. Every one of the
-     four sections spec 06 adds arrives already answered - null for "no
-     section" - from $lib/data/wrappedSections. */
+  /* Weekly, monthly and custom-range summaries share this presentation and
+     take the heading as a prop. WrappedYear has its own month-by-month view.
+     Skip empty sections. wrappedSections returns null when an entire
+     section has no reading. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { atGrain, type Grain } from '$lib/charts/grain';
@@ -69,7 +48,7 @@
         movement as well as the two endpoints (spec 06). */
     dimChange: RecapDimChange | null;
     topTags: { id: string; label: string; count: number }[];
-    /** The journey anchor's duration (phase 5 ticket 25), already named and
+    /** The journey anchor's duration, already named and
         formatted. Optional and null by default so a caller with no anchor
         concept of its own does not have to pass one. */
     anchorDuration?: { name: string; duration: string } | null;
@@ -221,7 +200,7 @@
 <style>
   /* The recap's tag counts, a quieter chip than a picker's (.tag-chip,
      components.css). Here since the old entry card, its other reader, gave
-     way to the kit's day entry (phase 14 ticket 18). --text-2 on
+     way to the kit's day entry. --text-2 on
      --surface-2 clears 4.5:1 in every palette without any extra opacity
      (P10-007/probe 2). */
   .tag-chip.is-mini {

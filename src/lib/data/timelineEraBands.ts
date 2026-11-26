@@ -1,21 +1,7 @@
-/* Which of the milestone rail's rows (redesign ticket 16) an era's band
-   covers.
-
-   The rail has no continuous day-to-pixel scale the way the Look back
-   rail's does (lookBackSpan.ts's `railPosition`) - the long empty stretches
-   between milestones are compressed to a single gap row rather than drawn
-   to real proportion, so a day cannot be interpolated into a pixel here.
-   A band is anchored to whichever rows actually exist instead: the
-   earliest row whose own span touches the era to the latest one. The
-   component then measures those rows like any other block on the rail,
-   the same way its axis line already spans from the first item to the
-   last without needing a day scale of its own.
-
-   An era with no row inside its span - swept entirely into one compressed
-   gap between two milestones that both fall outside it - draws no band.
-   There is nothing on the rail for it to run behind, and a rail is a
-   record of what is on it rather than a full accounting of every era ever
-   named. */
+/* Anchor an era band between the first and last rail rows whose spans
+   touch it. The rail compresses long gaps into one row, so the
+   component measures those rows rather than mapping dates to pixels.
+   An era with no row in its span draws no band. */
 
 import type { Era } from './types';
 import type { TimelineItem } from './timelineItems';
@@ -97,29 +83,17 @@ function largestGap(top: number, bottom: number, rings: readonly (readonly [numb
   return best[1] > best[0] ? best : [top, bottom];
 }
 
-/** Where an era's band and its name go, given where its rows put it.
-
-    `band` is the stretch from the band's first row to its last, `rings`
-    the dots on those rows with their cut-out rings, `nameLength` the
-    rendered length of the name and `minHeight` the shortest band the rail
-    draws for it. All of them in the same pixels.
-
-    A band shorter than `minHeight` is lengthened around its own middle,
-    so it still reads as centred on its rows. The name then goes in the
-    longest stretch of the band no ring reaches into, never the band's own
-    centre, which would run it through whichever dot sits there. When even
-    that stretch is too short for the name and its clearance, the band is
-    lengthened again at whichever end already has the more room, by exactly
-    the shortfall: a name between two dots cannot be helped by moving the
-    band's ends, and a stretch that already holds most of the name only
-    needs the rest. A band whose last row is today (`endsToday`) takes
-    this second lengthening upwards only: below today is the future, and
-    an era drawn into the milestones still ahead would say it runs on into
-    them. The first lengthening stays centred even then. That is the
-    drawing chosen for short bands on 2026-09-16, it reaches only half the
-    shortfall past today (12px on the demo journal), and moving all of it
-    above would bring the demo's "Full time" band to 0.6px of the name of
-    the era before it at 1280px. */
+/**
+ * Place the band around its first and last row, centered when extending
+ * it to minHeight. Find the longest gap between the rings and put the
+ * name there. If that gap reaches an end and lacks room, extend that end
+ * by the exact shortfall. Moving the ends cannot help a gap between dots.
+ *
+ * For endsToday, the extra room for the name goes above today so the
+ * band does not imply future coverage. The initial minHeight extension
+ * stays centered. The 2026-09-16 demo showed 12px past today; moving that
+ * extension entirely up left 0.6px from the previous era's label at 1280px.
+ */
 export function placeEraLabel(
   band: { top: number; height: number },
   rings: readonly (readonly [number, number])[],

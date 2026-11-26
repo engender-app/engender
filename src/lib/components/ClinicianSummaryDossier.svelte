@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The clinician summary as the page it prints (phase 5 ticket 09). One
+  /* The clinician summary as the page it prints. One
      snippet per registered section (clinicianSummary.ts, ADR-0031), drawn
      in the registry's order by walking its keys; a section switched off
      arrives as null and draws nothing. `SECTION_SNIPPETS` is a full record
@@ -71,7 +71,7 @@
      `data-dossier-truncate`, for a test to find either. */
   const PREVIEW_ROW_FLOOR = 12;
 
-  /** The footnote marker for a dose a schedule wrote (phase 11 ticket 11).
+  /** The footnote marker for a dose a schedule wrote.
       A dagger rather than an asterisk, which the printed page already spends
       on nothing else, and rather than a word in the cell: the table has six
       columns on paper and a seventh reading "from a schedule" on one row in
@@ -86,7 +86,7 @@
 
   const episodeSpan = (ep: RegimenEpisode) => {
     const range = `${dayShort(ep.startEpochDay)} – ${ep.endEpochDay === null ? m.regimen_ongoing() : dayShort(ep.endEpochDay)}`;
-    // A reason is never set without an end day (ticket 43), so this only
+    // A reason is never set without an end day, so this only
     // ever fires on a row that already prints a real end date, not "ongoing".
     return ep.endReason
       ? m.clinician_summary_regimen_end_reason({ range, reason: episodeEndReasonLabel(ep.endReason) })
@@ -144,7 +144,7 @@
     return fadeOnly(crossfadeDuration());
   }
 
-  /* A part switched on or off on the sheet (functional audit ticket 39)
+  /* A part switched on or off on the sheet
      travels its whole height, often several hundred pixels. disclose's
      own --ease-out leaves at four times its average speed, which put 119px
      of a 379px part into the first frame; a long travel setting off takes
@@ -351,8 +351,7 @@
                 <td data-label={m.status_label()}>
                   {dose.status !== 'taken' ? statusLabel(dose.status) : m.dose_status_taken()}
                   <!-- The footnote marker for a dose a schedule wrote
-                       rather than the person (phase 11 ticket 11,
-                       ADR-0086). In the status cell, because what it
+                       rather than the person (ADR-0086). In the status cell, because what it
                        qualifies is the status: "taken" on this row is the
                        schedule's word for it. aria-hidden, with the
                        legend under the table carrying the meaning in
@@ -596,7 +595,7 @@
   </section>
 {/snippet}
 
-<!-- 6. Changes noticed (functional audit ticket 39): each change the
+<!-- 6. Changes noticed: each change the
      person marked, oldest first, with the day they first noticed it. A
      built-in change is named in the reader's language from its key; one
      the person added keeps the name they gave it. -->
@@ -785,7 +784,7 @@
   {/if}
 {/snippet}
 
-<!-- 10. Tracking that ended (phase 8 features ticket 04). A stopped stream
+<!-- 10. Tracking that ended. A stopped stream
      reads as a decision with a date rather than as missing data, which is
      what the flat stretch on the charts above needs explaining with. -->
 {#snippet finishedAreasSection(finishedAreas: Section<'finishedAreas'>)}

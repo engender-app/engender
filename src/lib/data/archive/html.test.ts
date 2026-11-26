@@ -1,5 +1,4 @@
-/* HTML note bodies, as an imported journal actually holds them (phase 7
-   ticket 09). The dangerous case is the ordinary one: most notes carry no
+/* HTML note bodies, as an imported journal actually holds them. The dangerous case is the ordinary one: most notes carry no
    markup at all, so a reader that mishandles the few that do looks
    correct on almost the whole journal. */
 

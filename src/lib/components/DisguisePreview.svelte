@@ -1,7 +1,7 @@
 <script lang="ts">
   /* What the disguise looks like from outside the app, and what it does not
      cover. Settings has drawn this since ticket 15; setup's last question
-     asks for the same thing (phase 10 redesign ticket 32), and two copies
+     asks for the same thing, and two copies
      of a block whose whole job is to be accurate about the launcher is how
      the two drift.
 
@@ -55,38 +55,13 @@
 <p class="muted small">{isAndroid() ? m.disguise_android_gap_note() : `${m.disguise_installed_note({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })} ${m.disguise_web_gap_note({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}`}</p>
 
 <style>
-  /* Moved out of screens.css with the block itself: a class with one
-     consumer belongs in that consumer's own style block, which is what
-     check-screens-classes' baseline asks each ticket to do for one more
-     of the long tail.
+  /* Off uses an outline and --text-2. Whole-element opacity at 0.6
+     measured 4.04–6.13:1 and failed 8 of 16 contrast combinations. On uses
+     the disguise's neutral surfaces (ADR-0035).
 
-     P10-007/probe 2: whole-element opacity 0.6 for the "off" state
-     computed to 4.04-6.13:1, failing 8/16 combinations - blending
-     everything inside toward the page background shrinks the contrast
-     between them. --text-2 (inherited by the plain "Notes" text) gives the
-     same quieter, inactive look at a contrast the token layer already
-     guarantees; the nested .muted.small line already used --text-2
-     regardless.
-
-     Off and on are a drawing and the thing drawn. Off, the block is an
-     outline on the page: nothing is filled, because nothing is in force.
-     On, it fills with --surface-2 and its tile lifts to --surface, so the
-     preview is a solid object sitting on the page rather than a proposal
-     about one - which is the difference the switch actually makes, and
-     read at a glance rather than by comparing two border hues.
-
-     The border stays dashed in both, because the block is a preview in
-     both: this is never the launcher, it is a picture of it. And the
-     colour it fills with is the disguise's own neutral pair rather than
-     the flag's accent, which is the point of the thing being previewed
-     (ADR-0035) and also what makes every property here animate - a
-     border-style swap would snap in the middle of the fade.
-
-     The whole change is background, border and text colour, all of which
-     interpolate, so the switch is answered by one move at --dur-med rather
-     than by a cut (ticket 25). Setup's own look does not respond to the
-     switch at all (DIRECTION rule 12): this is the preview answering for
-     itself, and it is the only thing on the step that does. */
+     Keep the dashed preview border in both states so only colours change.
+     Those interpolate over --dur-med while the rest of Setup keeps its own
+     theme (DIRECTION.md rule 12). */
   .disguise-preview {
     display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);
     padding: var(--space-3) var(--space-4);

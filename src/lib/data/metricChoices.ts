@@ -1,6 +1,6 @@
 /* The scales a picker offers, in the order every chart offers them: mood
    first, then the person's active dimensions, each with the range its
-   values are read on (phase 11 ticket 07).
+   values are read on.
 
    One place rather than three. The Look back door derived this list once
    for every card it drew; splitting the cards into readings of their own

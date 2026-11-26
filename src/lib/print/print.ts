@@ -1,4 +1,4 @@
-/* Opening the print dialog, on either platform (phase 5 ticket 17).
+/* Opening the print dialog, on either platform.
 
    `window.print()` is a Chrome method, not a WebView one. On the Android
    build it returns without printing and without failing, so both printing

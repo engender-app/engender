@@ -3,26 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import capacitorConfig from '../capacitor.config.ts';
 
-/* Which platforms own magnification (pre-production audit, finding U2).
-
-   Zoom is a web capability and only a web capability. The browser half
-   is decided by the viewport meta: `maximum-scale` and `user-scalable`
-   are how a page takes pinch and browser zoom away from the person
-   using it, which WCAG 1.4.4 and the product's own 200 percent floor
-   both forbid. The Android half is decided elsewhere: Capacitor's bridge
-   maps `android.zoomEnabled` to `setBuiltInZoomControls`, the WebView
-   setting that actually governs pinch input, and the shell wants it off
-   so two-finger gestures belong to the app's own surfaces (photo wipe,
-   timeline drag) rather than to the page behind them.
-
-   Neither half can be observed in a headless browser - Chromium there
-   reports the same layout whether or not magnification is allowed, and
-   the WebView setting lives in Java. So this asserts the two sources
-   every platform reads before it renders anything: the markup a browser
-   loads and the config `cap sync` copies into the APK. safe-area.test.ts
-   guards the viewport's other responsibilities; this one guards only
-   the zoom policy, which is why the meta is matched by the `name`
-   attribute rather than assumed to sit on a single line. */
+/* Keep web zoom available to 200% by checking the viewport meta for
+   maximum-scale and user-scalable restrictions. Capacitor uses
+   android.zoomEnabled to disable WebView pinch so photo and timeline
+   gestures reach the app. Check source because headless Chromium
+   cannot measure magnification and cap sync copies config into the APK. */
 
 const appHtml = readFileSync(fileURLToPath(new URL('../src/app.html', import.meta.url)), 'utf8');
 

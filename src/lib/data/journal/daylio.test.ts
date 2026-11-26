@@ -118,7 +118,7 @@ test('preview counts equal the merge, and importing the same Daylio CSV twice is
 
   const afterRepeat = (await journal.archive.snapshot()).journal;
   // A no-op re-import still commits - it is still authorship, just of
-  // nothing new - so it still gets its own record (ticket 03), even though
+  // nothing new - so it still gets its own record, even though
   // every other section is unchanged.
   assert.deepEqual({ ...afterRepeat, importLog: [] }, { ...afterFirstImport, importLog: [] });
   assert.equal(afterRepeat.importLog.length, 2);

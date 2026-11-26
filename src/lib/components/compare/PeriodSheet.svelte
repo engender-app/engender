@@ -33,7 +33,7 @@
 </script>
 
 <script lang="ts">
-  /* One side's period, picked in one sheet (pre-release-human ticket 21):
+  /* One side's period, picked in one sheet:
      the presets first, each with the dates it resolves to, then the
      person's eras with their dates and where each sits on the journal,
      then two date fields for anything else. Starling's date range sheet and

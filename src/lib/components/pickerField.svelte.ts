@@ -1,19 +1,10 @@
-/* The field half of a picker (phase 12 pickers, tickets 01 and 02): a
-   readonly field that opens the picker on a tap, Enter or ArrowDown, and
-   the picker's host (PickerHost.svelte) mounted behind it. DatePicker and
-   TimePicker each hold one.
+/* DatePicker and TimePicker use a readonly field that opens on tap,
+   Enter or ArrowDown. Mount PickerHost in the enclosing sheet scrim
+   or app frame to avoid scroll clipping and stacking issues.
+   Svelte owns the new host and its teardown.
 
-   The picker is mounted outside the screen, into whatever holds the field:
-   the scrim of the sheet it sits in, or the app frame. A sheet inside a
-   sheet's scroll box would scroll with it and be clipped by it, and a
-   popover inside a screen is spent inside `.app-main`'s stacking context
-   under the floating bar (overlayLock.ts). Svelte's `mount` does that
-   rather than moving a node the screen's markup owns - a moved node is not
-   between the anchors its block removes by (carpet 26). It is mounted on
-   the first opening, not with the field: 39 screens carry a date field,
-   and a picker for each would be built for nothing on most visits (ticket
-   165's reason). It is let go once it has closed and its exit has played,
-   which is when its host is empty again. */
+   Mount on first open to avoid unused hosts across 39 date-field
+   screens. Release it once the exit animation finishes. */
 import { flushSync, mount, unmount, type Snippet } from 'svelte';
 import PickerHost from './PickerHost.svelte';
 

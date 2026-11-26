@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Every surface and every chart in the kit (phase 5 ticket 20), on one
+  /* Every surface and every chart in the kit, on one
      page, at phone width, against the real tokens.
 
      A fixture rather than a route: the kit has no screen to live on until
@@ -61,7 +61,7 @@
       y: 50 + 26 * Math.sin(i / 23 + shift) + 12 * Math.sin(i / 3.1 + shift)
     }));
 
-  /* What the annotation layer has to survive (phase 5 deepening ticket 23):
+  /* What the annotation layer has to survive:
      a stretch that started before the chart did, one that has not ended, two
      that overlap, and a moment inside both. The year fixture also carries the
      dense case the ticket sets a floor for - three moments on adjacent days -
@@ -85,7 +85,7 @@
       : annotationsInRange(ANNOTATION_SOURCES, { from: 0, to: 364, today: 364 })
   );
 
-  /* Two scales on one plot (phase 6 ticket 12), which is where the palettes
+  /* Two scales on one plot, which is where the palettes
      have to be looked at: two roles of one flag, and on several of them the
      second is a shade rather than a colour. The dash is what has to carry the
      pair there.

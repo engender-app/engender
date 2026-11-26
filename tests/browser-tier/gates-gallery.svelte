@@ -1,34 +1,12 @@
 <script lang="ts">
-  /* Every chromeless gate, one at a time, against the real tokens (phase 5
-     ticket 26; extended by ticket 53).
+  /* Screenshot the real gates by driving bootState through the app's transitions.
+     tests/gates-gallery.mjs runs the fixture across palettes and themes.
 
-     A fixture rather than a route because most of these are boot states
-     rather than URLs: the journal gate, the Android key gate, the
-     device-recovery gate and the schema-too-new gate all render because of
-     how boot went, and there is no address that produces them on demand.
-     That is fine for the app and useless for looking at them, which is what
-     this page is for.
-
-     The components are the real ones, not copies. What the fixture supplies
-     is the state they read - `bootState`, moved through the same transitions
-     boot itself uses, so a gate here is drawing exactly what it draws in the
-     app. tests/gates-gallery.mjs drives the selectors below across palettes
-     and themes for the screenshot grid.
-
-     Ticket 53 adds the platform selector. The security module presents a
-     different list of modes on each of the three platforms it can be on -
-     device-bound is labelled as the screen lock on Android and cannot be
-     moved *to* there, and the web's biometric row (ticket 55) is there only
-     where the browser can actually do WebAuthn PRF - and all three have to
-     be looked at. `isAndroid()` reads `window.Capacitor.getPlatform()` and
-     the PRF check reads `PublicKeyCredential`, so the fixture stubs exactly
-     those two rather than adding props the app would carry for the gallery's
-     benefit. The stage is keyed on the answer, because the components read it
-     during render and a stub swapped underneath them would not re-run.
-
-     Headless Chromium has no platform authenticator, so `web` here is the
-     stub saying it does and `web-no-prf` is the honest browser: those are
-     the two lists a person can meet, and both are worth a picture. */
+     Stub window.Capacitor.getPlatform() and PublicKeyCredential to show
+     Android and both web mode lists. Headless Chromium has no platform
+     authenticator, so web simulates PRF support and web-no-prf uses the
+     browser's actual capabilities. Recreate the stage when the platform
+     changes so the components read the new values during render. */
 
   import { bootState } from '$lib/stores/boot.svelte';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
@@ -78,8 +56,8 @@
     'unlock-pin-with-key',
     'device-recovery-with-key',
     'android-key-invalidated-with-key',
-    /* The boot-failure notice, one scene per failure the boot can name
-       (after-release ticket 09). Not a gate, but drawn where the gates are
+    /* The boot-failure notice, one scene per failure the boot can name.
+       Not a gate, but drawn where the gates are
        and from the same boot state, so it is looked at beside them. */
     'boot-failure-unreadable',
     'boot-failure-below-baseline',

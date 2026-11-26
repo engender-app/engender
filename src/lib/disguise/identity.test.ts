@@ -52,8 +52,8 @@ describe('what the tab says', () => {
 
 describe('the Recents preview', () => {
   /* FA 43 hid the Recents card under disguise by making the whole window
-     secure, which also refused screenshots with the capture switch on
-     (tester report 02, ticket 01). Disguise now hides only the card; the
+     secure, which also refused screenshots with the capture switch on.
+Disguise now hides only the card; the
      window flag follows the capture choice. Both are decided natively before
      the first frame, so the read has to be the native one: the live launcher
      alias, the same read the widgets and notifications make.

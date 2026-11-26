@@ -1,40 +1,10 @@
-/* Hover info for the app's icon-only controls (ticket 99 item 16: "the
-   icons such as star, 'see it again' and delete should have a hover info on
-   web").
+/* Give icon-only controls a hover hint on pointers that support fine
+   hover. Mirror aria-label into a missing title at the app root.
+   Leave controls with visible text and existing titles alone.
 
-   Every one of those controls already carries the words: an icon button
-   with no accessible name is unusable by voice and unannounceable by a
-   screen reader, so `aria-label` is on all of them by construction and the
-   kit's own components refuse to take a handler without one. What was
-   missing is that a sighted mouse user never hears any of it. `title` is
-   the one hover affordance the platform gives for free, and mirroring the
-   label into it means the hover text can never drift from what the control
-   announces.
-
-   Done here, once, over the app root rather than at 48 call sites. A rule
-   about a whole class of control belongs in one place, and this way an
-   icon button written next month gets the hover text without its author
-   remembering to ask for it.
-
-   Web with a mouse only. `(hover: hover) and (pointer: fine)` is false in
-   the Android WebView, so neither the observer nor its work exists on the
-   phone - where a `title` does nothing anyway, since there is no pointer to
-   rest on it.
-
-   The name is left alone. An element whose text content is empty is one
-   whose label lives entirely in `aria-label`; anything with visible words
-   already says what it is, and giving it a `title` on top would be a second
-   copy of its own label in a tooltip. A caller that has written its own
-   `title` keeps it - this only fills a gap, it never overrides a decision.
-
-   The accname tradeoff, since it is a real one: with both present the
-   accessible name still comes from `aria-label`, and `title` falls to being
-   the description. Some screen readers read that description after the
-   name, so a few users may hear the same short phrase twice. Weighed
-   against a mouse user having no way at all to learn what an icon does,
-   the repeat is the smaller cost - and it is the same tradeoff any
-   icon-button tooltip makes. A designed tooltip, with its own placement and
-   its own timing, is a component rather than a polish fix and is not this. */
+   The accessible name remains aria-label. Screen readers that announce
+   title as a description may repeat the phrase. The media query keeps
+   the observer inactive on touch-only WebViews. */
 
 import type { Action } from 'svelte/action';
 

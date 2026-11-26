@@ -1,26 +1,10 @@
-/* Which letters a retrospective surface may show (phase 5 deepening ticket
-   13).
+/* Select letters for Wrapped and On this day from rows the caller
+   loaded. Each function checks `unlockEpochDay` against
+   `todayEpochDay` itself (ADR-0010). Retrospectives never expose
+   sealed text.
 
-   A letter reaches a retrospective twice: the annual wrapped names the
-   letters written during its year, and on-this-day resurfaces the letters
-   written or unlocked on a lookback day. Both are
-   selections over the letters the caller already read - the same shape as
-   wrappedSections.ts, where the conditional lives in a tested function and
-   the screen only writes `{#if}`.
-
-   The rule that owns the file: a sealed letter is not a retrospective fact.
-   "Sealed" is not stored anywhere (ADR-0010) - it is `unlockEpochDay`
-   against today (letterStatus.ts), so every function here takes
-   `todayEpochDay` and answers the seal question itself rather than trusting
-   its caller to have filtered. Nothing below hands back a letter's text
-   unless the letter is readable today; there is no retrospective view of a
-   sealed letter (spec: exposing sealed contents is out of scope under any
-   circumstance).
-
-   `kind` says why a letter matched, for the card's own label: a letter read
-   on the day it unlocked surfaced as an opening, not as something written
-   that day. A letter both written and unlocked on the candidate day reads
-   as written - that is the day its words are from. */
+   Report whether a letter matched its writing or unlock day so the
+   card can label it. Writing wins when both match. */
 
 import { isLetterSealed } from './letterStatus';
 import type { Letter } from './types';
@@ -56,25 +40,9 @@ export function wrappedLetters(
     .map((letter) => ({ letter, kind: 'written' as const }));
 }
 
-/** Every unlocked letter Safe Space may show, most recently unlocked
-    first, ties broken by whichever was written most recently and then by
-    id so two letters unlocked and written the same day still order the
-    same way on every read (phase 5 deepening ticket 14 for the ordering,
-    phase 8 features ticket 21 for the widening from one letter to all of
-    them, CONTEXT: "Safe space").
-
-    Unlike the retrospectives above, there is no candidate day and no
-    range: Safe Space is not looking back at a particular day, it is
-    reaching for what a person's past self wrote them on purpose. Recency
-    of unlock is the order because the letter somebody most recently
-    finished waiting on is the one they are least likely to have read
-    already - it is not a claim that an older letter says less, and no
-    strength ranking is implied or wanted (ticket 21 rules one out).
-
-    Returns the whole unlocked set rather than a capped one: the seal rule
-    and the order are this file's to own, how many rows a screen has space
-    for is the screen's. Sorts a copy, so a caller's live-query array is
-    left as the journal handed it over. */
+/** Return every unlocked letter for Safe Space, without ranking
+    strength or imposing a cap. Sort a copy by newest unlock, then
+    newest writing day, then ID. The screen decides how many to show. */
 export function safeSpaceLetters(letters: Letter[], todayEpochDay: number): Letter[] {
   return letters
     .filter((l) => !isLetterSealed(l, todayEpochDay))
@@ -93,7 +61,7 @@ export const LETTER_OPENING_LIMIT = 200;
 
 /** What a list row may carry of a letter: its opening, flattened to one
     run of text and cut to `limit` characters on a word boundary, with an
-    ellipsis where the cut happened (phase 8 features ticket 21).
+    ellipsis where the cut happened.
 
     The row's own two-line clamp is CSS, and CSS cuts the paint rather than
     the text - so a row whose text is a whole letter hands a screen reader

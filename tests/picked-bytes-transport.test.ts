@@ -1,5 +1,4 @@
-/* One module decides how a picked file's bytes come in (phase 9 audit
-   ticket 06).
+/* One module decides how a picked file's bytes come in.
 
    The finding that ticket started from was not that base64 was chosen once
    - it was that the pick path never got the treatment writes and file-store

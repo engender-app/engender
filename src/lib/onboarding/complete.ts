@@ -1,23 +1,9 @@
-/* The last thing setup does, and the one order it survives (phase 10
-   redesign ticket 32, ADR-0079).
+/* Commit setup answers before changing the Android launcher alias
+   (ADR-0079). The alias flip can kill the process, so flipping first
+   can discard every answer and start setup again.
 
-   Setup holds every answer in local state and writes them all at the end,
-   which is what lets any step be skipped and any step be left from. That
-   was uncomplicated until disguise became one of the answers. Turning
-   disguise on swaps the Android launcher alias, and DisguisePlugin kills
-   the process the moment the alias actually flips - so the write and the
-   flip are in a race, and the loser is the whole first run: a person who
-   answered seven questions and turned disguise on would come back to a
-   disguised launcher icon and setup at step one.
-
-   Hence a function rather than five lines inside the route. The order is
-   the risky part of this ticket, it fails only on a device and only
-   silently, and a rune-free module is something the Node tier can hold to
-   it (ADR-0017).
-
-   Deliberately not a place to add anything else. It sequences four things
-   the route supplies and knows nothing about preferences, SQLite or
-   Capacitor. */
+   Keep the four injected steps rune-free so Node tests can verify
+   ordering without preferences, SQLite or Capacitor. */
 
 export interface SetupCompletion {
   /** Every answer setup has been holding, `onboarded` among them. */

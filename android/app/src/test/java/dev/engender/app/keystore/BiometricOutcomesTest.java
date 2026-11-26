@@ -9,7 +9,7 @@ import androidx.biometric.BiometricPrompt;
 import org.junit.Test;
 
 /**
- * Every biometric state, asserted without a device (ticket 13).
+ * Every biometric state, asserted without a device.
  *
  * <p>A JVM test rather than an instrumentation one, and deliberately: an
  * emulator can be made to report two or three of these - no hardware,

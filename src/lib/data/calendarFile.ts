@@ -1,22 +1,10 @@
-/* One .ics for one dated thing - an appointment, a surgery date, or a
-   letter's unlock day (phase 10 redesign ticket 03, ADR-0067; ticket 18 puts
-   this on screen through the share path deliver.ts already has). Pure and
-   clock-free like every module at this seam: `nowEpochMs` arrives as an
-   argument rather than a read of the clock, so the same input always
-   produces the same text and a test can assert on it exactly.
+/* Generate one deterministic .ics event for an appointment, surgery
+   date or letter unlock (ADR-0067). Inject `nowEpochMs` and omit
+   recurrence, including repeating dose slots.
 
-   One event, never a series or a recurrence rule: a repeating slot is
-   wallpaper on somebody else's calendar, which is ADR-0067's own reasoning
-   for refusing a daily dose slot a mark, and why this ticket's scope
-   excludes doses for the same reason.
-
-   Floating local time throughout - no TZID, no UTC `Z` on DTSTART/DTEND -
-   the same choice a device-bound date already makes everywhere else in this
-   app: a date read off `epochDay` means the calendar day it names, wherever
-   the file is opened, not an instant translated across a time zone.
-   DTSTAMP is the one exception RFC 5545 makes: it records when the file was
-   built rather than when the thing happens, and that property alone must be
-   UTC. */
+   Use floating local DTSTART and DTEND without TZID or UTC Z so the
+   event keeps its calendar date across zones. RFC 5545 requires UTC
+   for the file's DTSTAMP. */
 
 import { localDateFromEpochDay, timestampAtLocalTime } from './epochDay';
 

@@ -15,25 +15,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The Android half of the driver seam (ADR-0017): SQL in, rows out, and
- * nothing above it can tell this from the web driver.
+ * Implement the SQL seam (ADR-0017) with SQLCipher and a raw random
+ * data key supplied as hex (ADR-0018, ADR-0020). Java derives no key.
  *
- * <p>Written here rather than taken from {@code @capacitor-community/sqlite}
- * because of the key model, not the library - see ADR-0020's ticket 11
- * amendment. That plugin takes a passphrase and derives the database key
- * itself; ADR-0018 wants a random data key held by the Keystore and handed to
- * SQLCipher raw. So the open below accepts a hex key and passes it through
- * unchanged, and derives nothing.
- *
- * <p>Every method is one bridge call. The JS side sends them without waiting
- * for each other and numbers them, and {@link CallSequencer} runs them in
- * that order on this plugin's one worker thread (ADR-0089), so the
- * connection is only ever used from one thread and needs no locking of its
- * own beyond what {@link SqliteConnection} already gives it. Transactions are
- * explicit begin/commit/rollback calls rather than a callback across the
- * bridge, matching what the web driver does over its worker for the same
- * reason: the migration runner's callback calls back into the driver's own
- * exec.
+ * <p>{@link CallSequencer} runs numbered bridge calls on the single
+ * plugin worker (ADR-0089). Keep begin, commit and rollback explicit,
+ * matching the web worker and allowing a migration to call exec
+ * within its transaction.
  */
 @CapacitorPlugin(name = "Sqlite")
 public class SqlitePlugin extends Plugin {
@@ -91,7 +79,7 @@ public class SqlitePlugin extends Plugin {
 
     /**
      * Whether the named database is a plaintext one, asked before anything is
-     * opened (ticket 13). A journal written by the pre-encryption Android
+     * opened. A journal written by the pre-encryption Android
      * build is the only way this is true, and the boot says so plainly rather
      * than letting a raw-key open fail as a corrupt file.
      */
@@ -234,7 +222,7 @@ public class SqlitePlugin extends Plugin {
         });
     }
 
-    /** Whether there is a copy worth going back to (ticket 04). */
+    /** Whether there is a copy worth going back to. */
     @PluginMethod
     public void preMigrationCopyIsUsable(PluginCall call) {
         sequenced(call, () -> {
@@ -273,7 +261,7 @@ public class SqlitePlugin extends Plugin {
         });
     }
 
-    /** The reset path's wipe (ticket 13): the journal's files, which are in
+    /** The reset path's wipe: the journal's files, which are in
         app-private storage rather than in the WebView's, so emptying OPFS
         does not reach them. */
     @PluginMethod

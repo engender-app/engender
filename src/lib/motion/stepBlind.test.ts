@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { blindEdge, edgeShown, holdsDirection, rideShown } from './stepBlind';
 
-/* The whole defect (ticket 156) is which box the observer subscribes to,
+/* The whole defect is which box the observer subscribes to,
    not what the callback does with an entry - so the stub only needs to
    record the `observe()` call, never fire the callback. Simulating an
    actual resize here would test the stub's timing, not the contract. */
@@ -44,7 +44,7 @@ describe('blindEdge, which box it watches', () => {
   });
 });
 
-/* The three readings an interrupting change continues from (ticket 285). */
+/* The three readings an interrupting change continues from. */
 describe('what a step change continues from', () => {
   it('holds the printed words\' direction while an edge is landing or a word is fading', () => {
     const base = { now: 1000, lastChange: 900, settleMs: 380, fading: false };

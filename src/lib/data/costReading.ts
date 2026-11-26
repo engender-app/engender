@@ -1,4 +1,4 @@
-/* What the Look back span cost (functional audit ticket 31): the Cost
+/* What the Look back span cost: the Cost
    reading's arithmetic, kept out of the component so it is tested as
    arithmetic.
 

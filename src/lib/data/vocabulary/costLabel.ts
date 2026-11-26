@@ -1,4 +1,4 @@
-/* A cost as a row reads it (functional audit ticket 30): the amount in its
+/* A cost as a row reads it: the amount in its
    own currency, as the app's locale writes money, then "Refunded" when it
    was. One line for every record that carries a cost, so a session, a
    visit, a draw, a procedure and the stock row say it the same way. Never

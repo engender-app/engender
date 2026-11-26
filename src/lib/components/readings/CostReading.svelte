@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* What the span cost (functional audit ticket 31): the Cost reading, as
+  /* What the span cost: the Cost reading, as
      its tile on the Look back door and as its screen at /stats/cost.
 
      One read, ticket 30's `getCosts()`, and every figure made by

@@ -1,5 +1,5 @@
 /* The acknowledgements preference's rules, and the first-unlock move out of
-   the plaintext keys older builds used (functional audit ticket 45). */
+   the plaintext keys older builds used. */
 
 import { describe, expect, it, vi } from 'vitest';
 import {

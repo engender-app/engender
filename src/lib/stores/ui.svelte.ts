@@ -19,7 +19,7 @@ export const ui = $state({
   appOpening: false,
   /** The Android tab field is moving; nested month entrances ride it. */
   tabMoving: false,
-  /** A view transition between two screens is running (ticket 09). */
+  /** A view transition between two screens is running. */
   screenMoving: false,
   /* Whether the pointer that opened the fan is still down. The add control
      sets it and quick add clears it, because the press-and-slide gesture
@@ -41,8 +41,8 @@ export const ui = $state({
   chooserFailed: false,
   /** Which vocabulary manager's sheet is raised over whatever screen is
       showing (audit item 6): modes are a vocabulary
-      manager wearing an area screen's clothes even under Settings
-      (redesign ticket 51), hundreds of pixels of black for
+      manager wearing an area screen's clothes even under Settings,
+hundreds of pixels of black for
       anyone with few of them. Mounted once at the app root
       (VocabularyManagerSheets, alongside QuickAdd) rather than inside
       Settings, so the entry editor's own "manage" links (EntryEditor.svelte)

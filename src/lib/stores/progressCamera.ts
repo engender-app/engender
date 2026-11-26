@@ -1,4 +1,4 @@
-/* The in-app camera behind a progress photo (pre-release-human 12, bug 25).
+/* The in-app camera behind a progress photo.
 
    Every other still photo goes through the OS camera (ADR-0033), which can
    show nothing of this app over its viewfinder. A progress photo needs one

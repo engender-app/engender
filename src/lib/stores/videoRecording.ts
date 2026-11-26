@@ -1,25 +1,11 @@
-/* Recording a video note in the editor (ticket 22).
+/* Record video through getUserMedia and MediaRecorder on web and
+   Android. Capacitor's WebChromeClient handles native CAMERA and
+   RECORD_AUDIO permission requests.
 
-   One seam, both platforms, for voiceRecording.ts's reason: video capture is
-   plain `getUserMedia`/`MediaRecorder`, which the Chromium WebView Capacitor
-   wraps on Android handles exactly like the browser does. Capacitor's own
-   WebChromeClient requests CAMERA and RECORD_AUDIO at the OS level and grants
-   the WebView resource on approval - see AndroidManifest.xml's permission
-   block - so there is no native bridge here the way photos.ts needs one for
-   the still-camera intent.
-
-   Unlike a voice recording, a video note is not stored as MediaRecorder
-   produced it. Ticket 22 caps it at 30 seconds and 1080p and asks for a
-   re-encode when the file is still too big afterwards, so this store owns
-   three things a recording does not: the constraints that pin the
-   resolution, the timer that enforces the duration, and the wall clock the
-   re-encode's target is worked out from (limits.ts explains why the clock
-   has to be ours - WebM out of MediaRecorder carries no duration).
-
-   The codec fallback chain is journey-render.ts's rather than
-   voiceRecording.ts's single fixed type: video codec support genuinely
-   varies where audio/opus does not, and a WebView at this app's floor
-   (capacitor.config.ts's minWebViewVersion) may have VP8 without VP9. */
+   Cap notes at 30 seconds and 1080p. Re-encode oversized output using
+   wall-clock duration because MediaRecorder's WebM has no duration
+   metadata. Use the renderer's codec fallback chain because a
+   supported WebView may have VP8 without VP9. */
 
 import { chooseFiles } from '$lib/data/fileDialog';
 import { m } from '$lib/paraglide/messages';

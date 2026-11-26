@@ -1,4 +1,4 @@
-/* Which reminders a dose schedule stands for (functional audit ticket 21):
+/* Which reminders a dose schedule stands for:
    the rules, the default times, and which hand-made reminders count as
    being about the same drug. */
 

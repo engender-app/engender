@@ -131,7 +131,7 @@
   }
 
   /* The track, the zero line and the bar's look are kit.css's `kit-run-*`,
-     shared with /compare's paired tag bars (pre-release-human 21); what is
+     shared with /compare's paired tag bars; what is
      here is where this figure puts them. */
   .div-track {
     margin-top: 4px;

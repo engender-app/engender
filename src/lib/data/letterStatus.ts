@@ -13,7 +13,7 @@
    comparison rather than a three-way status like milestoneStatus()'s.
 
    Live tile state (read resolution and 24h snooze) lives in the encrypted
-   `acknowledgements` preference (ADR-0039, functional audit ticket 45), not
+   `acknowledgements` preference (ADR-0039), not
    in a table and no longer in plaintext localStorage. Every function that
    touches it takes the AcknowledgementStore to use. */
 
@@ -39,7 +39,7 @@ export function markLetterRead(letterId: string, store: AcknowledgementStore): v
   if (next !== current) store.write(next);
 }
 
-/** The letters whose arrival has already been met (ticket 45).
+/** The letters whose arrival has already been met.
 
     A separate set from the read one, because the two facts differ: a person
     can be shown a letter's arrival and choose to leave it closed, and that

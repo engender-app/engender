@@ -1,26 +1,13 @@
 package dev.engender.app.lock;
 
 /**
- * Whether the activity covers its window on the way out, and with what.
+ * Cover the window before Android takes a task snapshot when a lock
+ * is configured. The JS gate may paint too late. MainActivity owns
+ * the cover view and leave-cover.ts removes it after the gate draws.
  *
- * A lock set at any timing leaves the screen in the task snapshot. "Lock
- * immediately" locks in JavaScript, which the activity asks for with
- * evaluateJavascript as it is left. Android photographs the window for its
- * task snapshot before the WebView has drawn the gate, and draws that
- * snapshot first when the person comes back, so the screen they left was
- * visible for about 190ms of every return, and for seconds when the WebView
- * was slow to draw again (tester-report-02 ticket 07). The activity cannot
- * wait for the page, so it covers the window itself, in the same callback,
- * with a block of the page's ground; the snapshot is then of the cover. The
- * page takes it off once it has drawn the gate (leave-cover.ts).
- *
- * The page mirrors what the activity needs ahead of time, because there is
- * no asking it while leaving: whether a lock is set, and the ground.
- * Process memory is enough. A new process starts locked and has drawn
- * nothing of the journal for a snapshot to keep.
- *
- * Plain Java, so the decision is held by a JVM test; MainActivity owns the
- * View.
+ * The page mirrors lock state and background ahead of time. Process
+ * memory is enough because a fresh process starts locked. Test the
+ * decision on the JVM.
  */
 public final class LeaveCover {
     private static volatile boolean coverConfigured;

@@ -6,7 +6,7 @@
   import MediaTransport from './MediaTransport.svelte';
 
   /* Plays a recording directly from the entry view/editor - no separate
-     screen (ticket 24). The transport is MediaTransport.svelte, the app's
+     screen. The transport is MediaTransport.svelte, the app's
      own, which replaced a plain `<audio controls>` on ticket 46; the element
      is still what plays the audio, with its own controls off.
 

@@ -1,5 +1,4 @@
-/* Where a procedure's recovery stands against a given day (phase 5 ticket
-   07). Pure and kept above the journal seam next to milestoneStatus.ts for
+/* Where a procedure's recovery stands against a given day. Pure and kept above the journal seam next to milestoneStatus.ts for
    the same two reasons: nothing here is stored (ADR-0010 - the schema holds
    the surgery date and nothing derived from it, and which day is "today" is
    a local calendar question the data layer has no business answering), and
@@ -30,14 +29,14 @@ export function recoveryDay(surgeryEpochDay: number | null, todayEpochDay: numbe
 }
 
 /** How long a completed procedure continues to show its recovery day on Home
-    before dropping away on its own (phase 5 ticket 47). 90 days covers the
+    before dropping away on its own. 90 days covers the
     standard active post-operative recovery window (initial wound healing,
     follow-up checks, lifting of restrictions) across major gender-affirming
     procedures; beyond ~3 months, recovery is long-term and no longer active
     news on Home. */
 export const SURGERY_RECOVERY_CUTOFF_DAYS = 90;
 
-/** Selects the nearest active procedure for Home's live tile (ticket 47).
+/** Selects the nearest active procedure for Home's live tile.
     A procedure qualifies if it has a surgery date set and is either
     upcoming, on surgery day, or within the active recovery cutoff.
     With multiple candidates, the nearest one by distance to today wins. */
@@ -68,7 +67,7 @@ export function activeSurgeryProcedure<T extends { surgeryEpochDay: number | nul
   return candidates[0].procedure;
 }
 
-/** The 5 lifecycle phases of a surgical procedure (phase 5 ticket 12).
+/** The 5 lifecycle phases of a surgical procedure.
     - `planning`: no surgery date set yet
     - `pre_op`: surgery date set in future
     - `surgery_day`: surgery day is today (prompt for milestone recording)
@@ -76,7 +75,7 @@ export function activeSurgeryProcedure<T extends { surgeryEpochDay: number | nul
       archived
     - `archived`: after surgery, and the person moved it to the archive
 
-    No date ages a procedure into the archive (functional-audit ticket 24).
+    No date ages a procedure into the archive.
     `procedure.archived` is the person's own organising choice (schema.ts),
     and it used to be overridden 90 days after surgery, which moved a
     procedure nobody had touched into the archive and back out of reach of

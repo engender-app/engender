@@ -1,5 +1,5 @@
 /* What the `.daylio` source accepts, what it refuses, and what it
-   produces (phase 7 ticket 09).
+   produces.
 
    The failure cases are the bulk of this file on purpose. The format is
    undocumented by its vendor and its version number does not move when

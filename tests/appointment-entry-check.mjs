@@ -53,7 +53,7 @@ async function valuesMatch() {
 }
 
 async function fieldOrder() {
-  // Who (functional-audit ticket 27) answers the kind, so its chips follow
+  // Who answers the kind, so its chips follow
   // the kind's; the time follows the day it belongs to.
   const controls = [page.locator('#appointment-kind'), ...await page.locator('[data-kind]').all(),
     ...await page.locator('[data-who]').all(), page.locator('[data-who-new]'),
@@ -183,7 +183,7 @@ try {
   await back();
   console.log('PASS create/reopen retains all fields; suggestions fill kind; discard preserves saved record; note and details save apart');
 
-  /* Waiting lists (functional-audit ticket 26): an appointment saved with no
+  /* Waiting lists: an appointment saved with no
      day waits, says how long as a fact, collects dated updates, and later
      takes a day without becoming another record. */
   async function clearDate(selector) {
@@ -242,7 +242,7 @@ try {
   await back();
   console.log('PASS the referral and its update show in the day view on their dates, and it later takes a day as the same record');
 
-  /* A time and a who (functional-audit ticket 27): somebody made from
+  /* A time and a who: somebody made from
      inside the editor is attached to it, the time is kept, and the calendar
      hand-off uses it without asking. */
   await openScreen(row);

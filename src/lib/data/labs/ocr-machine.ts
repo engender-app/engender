@@ -18,8 +18,7 @@ export interface OcrImageSource {
   pickImage(source: 'gallery' | 'camera'): Promise<Uint8Array | null>;
 }
 
-/** Watching a recognition pass that is already running (phase 9 audit
-    ticket 11, ADR-0070). */
+/** Watching a recognition pass that is already running (ADR-0070). */
 export interface OcrWatch {
   /** How far through the pass Tesseract says it is, or null while it is
       still loading its language data and has nothing to divide by. */

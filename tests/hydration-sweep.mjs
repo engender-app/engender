@@ -1,52 +1,21 @@
-/* The hydration sweep (ticket 108): every screen in the app, cold-mounted
-   one at a time, recorded from the navigation itself through a three
-   second settle, in both database profiles - the empty journal a first
-   run leaves behind and the populated Alice persona - looking for the
-   cold-mount pops the gesture sweep is built to miss.
+/* Cold-mount each screen with an empty journal and the populated persona.
+   The gesture sweep settles before sampling, so hydration has its own
+   window and a 24px teleport threshold. Both use yank-sweep-core.mjs for
+   scenes, profiles, thresholds and detection.
 
-   Why a second sweep. The yank sweep settles 1400ms before its first
-   sample, because a gesture needs a screen at rest underneath it; the
-   defects that keep finding their way past it (tickets 106, 107) live
-   entirely inside that wait - SQLite liveQuery resolving 500ms to 1500ms
-   after mount, a skeleton taller than its chart unmounting, pinned rows
-   arriving a second late and snapping everything below them down. Those
-   are the same four failure shapes (teleport, vanish, limbo, bloat) read
-   over a different window with a wider teleport floor (HYDRATION_PX, the
-   ticket's own 24px), so this sweep reuses the whole instrument rather
-   than inventing a second arithmetic that could disagree with the first.
+   CDP screencast spans navigation because page.goto destroys the old page
+   and its DOM sampler. Start the new sampler at boot ready and observe for
+   three seconds. The casts catch paint flashes across load. The sampler
+   identifies which element moved once the shell is ready.
 
-   Why a camera as well as the sampler. A cold mount is the one moment the
-   DOM sampler cannot watch: page.goto destroys the page doing the
-   sampling. So each cold scene is also screencast frame by frame through
-   the same CDP `Page.startScreencast` the device sweep uses - the
-   compositor's own frames, which keep arriving across the load - and the
-   render detector from the shared core reads them. The camera sees
-   flashes and bloated paints the style trace cannot; the sampler, started
-   the moment boot reports ready, sees which element moved. Between them
-   the only uncovered stretch is the sub-100ms between the document
-   loading and `data-boot="ready"`, which belongs to the shell, not to any
-   screen's hydration.
-
-   The scene table, the thresholds, the detectors, the profile
-   expressions and the analysis over a recorded scene all live in
-   `tests/yank-sweep-core.mjs`, shared with `tests/yank-sweep-device.mjs
-   --hydration`, which points the same instruments at a real phone. What
-   stays here is only the desktop's own driving: the preview server, the
-   CDP session, Playwright.
-
-   Run against a demo build:
      VITE_DEMO=1 npm run build
-     node tests/hydration-sweep.mjs
-     node tests/hydration-sweep.mjs --prove
-   `--scenes a,b` narrows the run; `--profiles persona` or `--profiles
-   empty` runs one journal state; `--themes light,dark` (light by default,
-   unlike the device sweep, whose camera has caught theme-conditional
-   defects often enough to earn both by default); `--out <dir>` names the
-   report directory; `--pin` the throwaway PIN the lock-gate epilogue
-   wraps the journal with (1111, as on the device); `--dump` writes every
-   scene's style frames as JSON alongside the report, and any scene with a
-   style finding gets its frames written whether or not it was asked for -
-   the frames are the evidence a person reads a yank out of. */
+     node tests/hydration-sweep.mjs [--prove]
+
+   --scenes a,b narrows the run. --profiles persona,empty selects journal
+   states. --themes light,dark overrides the light default. --out <dir>
+   sets the report directory. --pin sets the fixture PIN for the lock-gate
+   check (default 1111). --dump writes style frames for every scene. Scenes
+   with a style finding save those frames automatically. */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

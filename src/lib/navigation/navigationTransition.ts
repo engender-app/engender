@@ -20,7 +20,7 @@ import { holdUntilPainted } from '$lib/motion/paintHold';
 const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
 let currentTransition: ViewTransition | null = null;
 
-/* Tier 2 (phase 5 ticket 18): one screen becoming another.
+/* Tier 2: one screen becoming another.
 
    Driven by the View Transitions API rather than by a keyed block with
    Svelte transitions on it. A keyed block is the usual way to get an
@@ -89,29 +89,16 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
        leaving is the app opening. The table says which is which. */
     isChromeless:
       replacesApp || cutsInsteadOfMoving(navigation.from?.url.pathname ?? null, navigation.to.url.pathname),
-    /* Gathered here: whether a sheet is open over the outgoing screen is
-       not something the two URLs can answer, and screen-transition.ts
-       stays a pure table by being told rather than by looking. Read off the
-       shell rather than plumbed down from Sheet, because a navigation out
-       of a sheet is started by whatever is inside it and none of those
-       callers know they are in one. Still open at this point - the sheet
-       unmounts with the screen it belongs to, which happens inside the
-       capture below.
-
-       The selector is the dialog's ARIA, not `[data-sheet]`, which is a
-       walkthrough handle: ADR-0029 grants those on the terms that they
-       "carry no styling and change no component's behavior", and a
-       navigation animation keyed on one makes renaming it a silent
-       behaviour change that only the walkthrough would catch. `role` and
-       `aria-modal` are Sheet's own contract with assistive tech and
-       cannot be renamed at all, and any future modal that sets them
-       honestly is a modal for this purpose too. */
+    /* Read whether a modal is open before the outgoing screen unmounts.
+       Pass that state to the pure transition rule. Use role and
+       aria-modal so every accessible modal is covered. data-sheet
+       is a walkthrough handle with no effect on behavior (ADR-0029). */
     fromSheet: document.querySelector('[role="dialog"][aria-modal="true"]') !== null,
     chromeOrigin: chromeTabOrigin()
   });
-  /* Scopes app.css's shorter --blind-dur to just this one departure
-     (ticket 159) - see screen-transition.ts's own comment on
-     leavesHomeForEntry for why this is not folded into `pattern` above.
+  /* Scopes app.css's shorter --blind-dur to just this one departure.
+     See leavesHomeForEntry in screen-transition.ts for why this is separate
+     from `pattern` above.
      Read here rather than inside the closure below, where TS no longer
      trusts `navigation.to`'s guard above across the function boundary. */
   const shortBlindHold = leavesHomeForEntry(
@@ -133,7 +120,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
   ) return animateAndroidTab(navigation, releasePrevious);
   if (!document.startViewTransition || pattern === 'none') return releasePrevious();
 
-  /* The field is a blind over the content (redesign ticket 28): named
+  /* The field is a blind over the content: named
      before the old side is captured, handed to the incoming screen after
      the swap, and given back when the transition is over, along with the
      two heights and the settle it measured. On every navigation rather
@@ -176,7 +163,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
            zero-length outro that cannot finish while rendering is paused,
            and a new-side capture with two screens stacked in the scroll
            region is a picture of the wrong layout - every door with tiles
-           snapped at the end of its transition (redesign ticket 25). See
+           snapped at the end of its transition. See
            $lib/motion/outgoingScreen for why waiting is not an option. */
         dropOutgoingScreens();
         /* Before the "new" side is captured, not after: a view transition

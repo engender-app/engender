@@ -1,4 +1,4 @@
-/* One transaction at a time over one connection (ticket 134). Part of the
+/* One transaction at a time over one connection. Part of the
    Node tier; run with `npm test`. */
 
 import assert from 'node:assert/strict';

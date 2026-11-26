@@ -33,9 +33,9 @@ export function registerServiceWorkerAfterBoot(status: string): void {
   whenIdle(registerServiceWorker);
 }
 
-/** Installs the offline shell (phase 2 ticket 03), which is also what makes
+/** Installs the offline shell, which is also what makes
     the app installable: without a worker Chromium offers no install prompt.
-    Then watches for the next release (ticket 04).
+    Then watches for the next release.
 
     Not in development, where the precached shell would be served ahead of
     every edit and no change would reach the browser until the worker was

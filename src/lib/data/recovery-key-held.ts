@@ -1,32 +1,11 @@
-/* A new recovery key that a lock took off the screen before it was
-   acknowledged (last-audit UI 09).
+/* Keep an unacknowledged recovery key available after a lock unmounts its
+   screen. Seal it in memory with the journal key and open it after
+   authorization. Clear it on acknowledgment or intentional dismissal.
+   On web, journal-session.ts releases access to the journal key during
+   the lock. Android uses its native gate. See SECURITY.md.
 
-   A lock unmounts the route under it, and the recovery key screen held the
-   only copy of a freshly minted key in its own state. Replacing a key kills
-   the old one the moment the new wrap is written, so a lock that arrived
-   while somebody went to another app to write the new one down left them
-   with neither: the screen came back after unlocking saying a key was
-   active, and nothing said the one they never saw was gone.
-
-   So the key is held here, outside the screen, from the moment it is shown
-   until it is acknowledged or left behind on purpose, and the screen shows
-   it again when it is next drawn. What makes that compatible with the lock
-   is that this module never holds the characters themselves. It holds them
-   sealed under the journal's data key, the key a lock lets go of on the web
-   (journal-session.ts), so while the gate is up the page has ciphertext and
-   nothing that opens it, and only the access mode's own secret brings the
-   key back - the same secret that brings the journal back. On Android the
-   lock leaves the data key in the page, behind its native gate, and the
-   sealed copy is then no weaker than the journal itself: whoever could open
-   it already holds a key that reads every entry and, since the data key is
-   not rotated, every copy of the journal (SECURITY.md).
-
-   Memory only, on purpose. Nothing here touches storage, sealed or not, and
-   a killed process loses the key along with this module; what a replacement
-   interrupted by process death should leave behind is UI 42's protocol, not
-   something a memory holder can answer.
-
-   Rune-free so the Node tier reaches it. */
+   Process death drops this copy. The replacement protocol and persisted
+   wraps own recovery across restarts. This module stays rune-free. */
 
 import { open, seal } from '../crypto/aesGcm';
 

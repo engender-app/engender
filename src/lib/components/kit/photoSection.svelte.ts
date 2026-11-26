@@ -1,6 +1,6 @@
 /* The picker, the review store and the delete-only record editor every
    photo-owning screen assembled for itself around recordEditor.svelte.ts
-   and photoReview.svelte.ts (phase 5 audit ticket 11) - wired here once
+   and photoReview.svelte.ts - wired here once
    instead of at each of five call sites. The reactive half of
    photoSection.ts, deliberately thin: `$state` only works here, so every
    branch stays in the rune-free module and this delegates to it, the same

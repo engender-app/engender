@@ -1,6 +1,6 @@
 import type { KeystoreBootSource } from './keystore-file';
 
-/* How this journal opens (ADR-0041, tickets 53 and 55).
+/* How this journal opens (ADR-0041).
 
    All four of ADR-0041's modes are here. The three secret-derived ones are
    one wrap system with three secret sources (crypto/keystore.ts): a

@@ -57,7 +57,7 @@
   let draft = $derived(detail.draft);
   let origin = $derived(detail.record ? resolveReminderOrigin(detail.record) : null);
 
-  /* Which drug the reminder is for (functional audit ticket 20): one of the
+  /* Which drug the reminder is for: one of the
      regimens running today, or the one it already names. Picking one makes
      its notification open that drug's dose log, with Taken and Skip; the
      chip picked again un-picks it. A reminder the app manages (stock, wear)
@@ -160,8 +160,7 @@
   {#if origin}
     <!-- Editing and saving clears autoSource (reminders.ts), so this notice
          is itself the warning that Save takes the reminder over - shown
-         once, before the editor rather than after (phase 5 deepening
-         ticket 22). -->
+         once, before the editor rather than after. -->
     <Notice
       icon="sparkle"
       key="reminder-provenance"

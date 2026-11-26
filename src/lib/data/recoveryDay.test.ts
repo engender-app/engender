@@ -1,4 +1,4 @@
-/* The day-since-surgery counter (phase 5 ticket 07). Pure: no clock, no
+/* The day-since-surgery counter. Pure: no clock, no
    database, so every case here is a surgery date and a day. */
 
 import { test } from 'vitest';

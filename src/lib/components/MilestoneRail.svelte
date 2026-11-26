@@ -1,57 +1,13 @@
 <script lang="ts">
-  /* The milestone rail (phase 5 UX ticket 23, moved off its own screen by
-     phase 10 redesign ticket 43). Past and future on one line, the long
-     empty stretches compressed, and a marker for where today falls among
-     them.
+  /* The rail opens Milestones with past and future on one line. timelineItems
+     orders dates, compresses empty stretches and places today's marker even
+     when every milestone is ahead. Milestones arrive in the boot mirror
+     (ADR-0004). Use the flag role for the rail and hollow marks for future dates.
 
-     It was a screen of its own at /timeline until this ticket, reached from
-     Look back while the list of the same milestones sat one door away on
-     Transition. One dataset drawn twice, and the drawing that said which
-     side of today a milestone fell on was the one behind the other tab. The
-     rail opens the milestones screen now and the list runs under it
-     (DIRECTION.md rule 16), which is why this is a component rather than
-     markup inside that screen: the arithmetic, the markup and the classes
-     that draw a rail are one thing, and the screen that carries it is
-     already 500 lines of editor, picker and photo prompt.
-
-     What the rail is built from is $lib/data/timelineItems - the ordering,
-     the gap rule and today's place are calendar arithmetic and belong in a
-     module with tests rather than in markup. That is also where the defect
-     went: the marker used to be inserted only between two milestones, so a
-     journal whose milestones were all still ahead drew a timeline of the
-     future with no present on it.
-
-     Milestones are mirrored (ADR-0004), so this needs no loading state:
-     they arrive with boot, bounded at tens of rows and already in date
-     order from the journal.
-
-     The rail takes the flag rather than the accent, the same rule every
-     other area of the app follows (DIRECTION.md). A future milestone is the
-     same mark drawn hollow, which is the one place here where colour
-     carries a meaning - and it is a fact about time, not a judgement, so
-     ADR-0012 has nothing to say about it.
-
-     ## Era bands (redesign ticket 16)
-
-     Eras left Transition's own hub row for Settings (ADR-0084: spent on
-     seven other screens, created on exactly one), and this rail is the one
-     place left under Transition where an era is still drawn - a low layer
-     behind the marks rather than a row of its own.
-
-     The rail has no continuous day-to-pixel scale the way the Look back
-     rail's does: the long empty stretches are compressed to one gap row,
-     so a band cannot be positioned by interpolating a day into a pixel.
-     `timelineEraBands` anchors it to whichever rows actually exist instead
-     - the first row an era's span touches to the last - and this component
-     measures those rows the way anything else on the page is measured,
-     through their own elements rather than a scale. An era with no row
-     inside it (swept entirely into a compressed gap between two milestones
-     that both fall outside it) draws no band; there is nothing on the rail
-     for it to run behind.
-
-     The colour is `theme/roles.ts`'s `eraBandRoles` - the same cycle the
-     Look back rail's own era bands use, so the two rails agree on which
-     stripe a given era gets. */
+     A compressed gap has no continuous day-to-pixel scale. timelineEraBands
+     anchors each era to the first and last rendered rows it touches, then the
+     component measures those elements. An era wholly inside a compressed
+     gap draws no band. eraBandRoles gives it the same colour as Look back. */
   import { m } from '$lib/paraglide/messages';
   import { calendarDuration } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -275,28 +231,10 @@
   bind:this={rail}
   {...roleAttrs(roleAt(activeFlag.roles, 0))}
 >
-  <!-- The low layer redesign ticket 16 adds: one band per era, centred on
-       the thread the way the ticket's own reference draws it. It sits
-       above the bare thread and below the rows: the thread's own colour is
-       what a stretch with no era draws, and a band is what the same stretch
-       draws once one is named, not a second thing layered over the first
-       (Alicja, 2026-09-16, on why the two don't need to coexist: "the
-       thread needs to be below the era rails"). A dot still paints over
-       both, which is what lets its ring read as a mark on the line rather
-       than a mark floating beside it.
-
-       The name is the harder half: a band spans every row its era covers,
-       and a name centred on the whole span runs straight through whichever
-       dot happens to sit near the middle - the defect version of this drew
-       "First year on HRT" through the milestone it was naming (2026-09-16).
-       `measureBands` places it in the band's biggest dot-free stretch
-       instead (`largestGap`), never the band's own geometric centre, so
-       the two only compete for space when a band is too short to give the
-       name anywhere else to be - and then the band is lengthened at its
-       roomier end until the name fits with room either side
-       (`placeEraLabel`, last-audit UI 51). Each band is a button rather than a link,
-       the same reason the milestone rows below are: it opens a sheet on
-       this screen's own address, not a destination. -->
+  <!-- Era bands cover the thread under the rows, and dots paint above both.
+       measureBands places a name in the largest dot-free gap. If the gap is
+       too small, placeEraLabel extends the band at its roomier end to fit
+       the label and padding. Each band is a button that opens a local sheet. -->
   {#each eraBandRanges as band, index (band.id)}
     <span class="tl-era-ruler" aria-hidden="true" bind:this={rulerEls[index]}>{band.name}</span>
   {/each}
@@ -381,26 +319,15 @@
 </div>
 
 <style>
-  /* Back to the shape that worked (Alicja, 2026-08-25: "it looks much better
-     before - what have you done? we want the vertical time axis on the left
-     just like before"). The axis is a continuous line down the left, every
-     milestone is a point on it, and the description sits beside the point.
-
-     What ticket 23's own rebuild had got wrong: it kept the same parts and
-     loosened all of them. The rail was 32% of a stripe on a dark ground, so it
-     read as a suggestion; the dots sat outside a card with no card edge to
-     measure against; and the axis stopped and restarted around the gap and the
-     today marker, so there was no continuous line at all. The parts are the
-     old ones again, tightened rather than restyled: the axis runs the whole
-     height without a break, the dots are on it, and the only thing kept from
-     the rebuild is that it wears the flag instead of the accent - which is the
-     rule every other area of the app follows. */
+  /* Draw a continuous left-hand axis in the flag stripe. Put each
+     milestone dot on the line and its description beside it. Keep
+     the line continuous through gaps and today's mark. */
   .timeline {
     position: relative;
     padding-left: 30px;
   }
 
-  /* Widened only when there is a band to show (redesign ticket 16): a
+  /* Widened only when there is a band to show: a
      journal with no eras spends nothing on the extra room. The dot/axis
      column moves 10px further right to make that room on its own left,
      symmetric with the 10px the band's other edge takes on its right - so
@@ -431,7 +358,7 @@
     left: 15px;
   }
 
-  /* An era's band (redesign ticket 16): centred on the thread and the dots
+  /* An era's band: centred on the thread and the dots
      rather than beside them, the way the ticket's own reference draws it,
      over the bare thread and under the dots (a dot's own ring still cuts a
      clean gap through a band or a name behind it, the way it always has

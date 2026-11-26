@@ -1,22 +1,8 @@
-/* The Android PhotoFileStore (ticket 12): app-private files through the
-   local Photos plugin. Names stay opaque and relative exactly as on web.
-
-   Reads fetch from Capacitor's local server, which keeps the bytes binary
-   from disk to Uint8Array and is bound by the disk rather than by the
-   bridge (ticket 07) - a plugin response crosses into the WebView as a JSON
-   string, and on a Pixel 10a that crossing moved photo bytes at 0.8MB/s
-   however they were batched, which made a decade of photos take seven
-   minutes to read for an Archive export.
-
-   Writes measured the same 0.8MB/s (ticket 17: an archive restore writing
-   750 files spent 97% of its time in this call), because the local server
-   only serves files - it has no matching path for the WebView to hand bytes
-   back in. `writeOverChannel` is that path's own fix: a WebMessageListener
-   carries the bytes across as a structured-clone ArrayBuffer, which never
-   becomes a JSON string (ticket 19). Below the WebView versions that carry
-   it, `window.androidPhotoWriteChannel` does not exist and this falls back
-   to the base64 bridge call exactly as it always has - the same shape as
-   `Object.hasOwn` and `crypto.randomUUID`'s fallbacks (ADR-0023). */
+/* Store opaque relative names through the Android Photos plugin.
+   Read binary files through Capacitor's local server to bypass JSON.
+   The server only serves files, so write ArrayBuffers through a
+   WebMessageListener. On older WebViews without
+   window.androidPhotoWriteChannel, use the base64 bridge (ADR-0023). */
 
 import { Capacitor } from '@capacitor/core';
 import type { PhotoFileStore } from '../journal/journal';

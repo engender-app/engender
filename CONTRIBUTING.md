@@ -45,6 +45,15 @@ Read source text in a test only for an invariant a rendered check cannot
 observe. Name the invariant in the test. Use browser checks for rendered
 behavior.
 
+## Source comments
+
+Explain the behavior a maintainer needs to preserve and why it matters.
+Refer to decisions by ADR number and evidence by a public source. Leave
+private tickets, sessions, audit labels and working documents out of comments.
+`npm run check:comments` checks tracked source and test comments against a
+baseline. After removing old references, run
+`npm run check:comments -- --update` to record the lower counts.
+
 ## Adding a module
 
 A module is a tracked area with its own data and, usually, its own screen.

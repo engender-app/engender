@@ -1,23 +1,10 @@
-/* On-device proof for setup's disguise step (phase 10 redesign ticket 32).
+/* Check disguise during setup finishes the install even when changing
+   launcher alias restarts the app. Drive the debug WebView on a
+   disposable emulator by explicit serial.
 
-   The acceptance criterion this answers: turning the disguise on during
-   setup produces a finished install rather than a setup that died halfway.
-   It cannot be shown in a browser, because what makes it hard is Android's
-   alone - flipping the launcher alias kills the process
-   (DisguisePlugin.setDisguised), and setup holds every answer in memory
-   until complete() writes them.
+   node tests/android-tier/disguise-setup-probe.mjs emulator-5554 [apk]
 
-   Driven through the debug build's WebView devtools socket rather than by
-   input events, for the reason [[webview-devtools-over-adb]] gives: the app
-   sets FLAG_SECURE, so a screencap is black, and the live page is the
-   authority anyway. Screenshots come from Page.captureScreenshot, which is
-   the renderer rather than the framebuffer and so is not blocked.
-
-   Run against an emulator, by serial, never against a phone that happens to
-   be plugged in:
-     node tests/android-tier/disguise-setup-probe.mjs emulator-5554 [apk]
-
-   Build the APK first, with JDK 21 and the web assets copied in:
+   Build the debug APK with JDK 21 and copied web assets:
      npm run build
      npx cap copy android
      JAVA_HOME=~/.sdkman/candidates/java/21.0.12-tem \

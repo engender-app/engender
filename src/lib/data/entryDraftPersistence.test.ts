@@ -1,4 +1,4 @@
-/* entryDraftPersistence's transition rules (ticket 14): what survives a
+/* entryDraftPersistence's transition rules: what survives a
    killed process is a plain, storage-shaped snapshot of the draft's
    editable fields, matched back to the entry/day it belongs to and
    reapplied on top of a freshly created draft - never the picked photos'

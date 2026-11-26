@@ -1,23 +1,13 @@
-/* Sign-off render for ux-carpet ticket 280: the Journal's open month. Crops
-   of the grid only (the header, the controls and the day cards are not what
-   changed), trans palette, light and dark.
+/* Capture the Journal's open month grid in trans light and dark.
+   For --motion, record month and metric switches, strip/grid toggles
+   and reduced-motion switches. Sample each cell per frame for jumps
+   and cuts. tests/panel-motion-flipbook.mjs reads the screencast frames.
 
-   Run against a demo build (VITE_DEMO=1 npm run build):
-     node tests/journal-month-gallery.mjs --tag after --out /abs/dir
-     node tests/journal-month-gallery.mjs --motion --out /abs/dir
-   `vite preview` serves SvelteKit's output under the working directory, so
-   the before shots come from running this file with a checkout of main as
-   the cwd, built there (photo-grid-batching-gallery.mjs's own note).
-
-   `--motion` records each scene the ticket names - month change forward and
-   back, metric switch both ways, strip to grid and back, and the month
-   change and metric switch under reduced motion - as every frame Chromium's screencast paints
-   (tests/panel-motion-flipbook.mjs turns the directory into a flipbook).
-   Beside the frames, a rAF loop samples every cell's box, opacity and face,
-   and the scene's `yanks` list is what that sampling found: something
-   appearing or vanishing within one frame, or jumping across the grid in
-   one. A recording shows that something moved; the samples say by how much
-   and on which frame, which is what to look at the pixels of. */
+   VITE_DEMO=1 npm run build
+   node tests/journal-month-gallery.mjs --tag after --out /abs/dir
+   node tests/journal-month-gallery.mjs --motion --out /abs/dir
+   Vite preview serves the working directory. Build and run there
+   when comparing another checkout. */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

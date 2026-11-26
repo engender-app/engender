@@ -1,30 +1,12 @@
-/* The first frame, as CSS (phase 14 pre-release ticket 13).
+/* Put the splash markup and CSS in app.html so the browser paints before
+   JavaScript loads. A slow phone otherwise stayed white for 3.4–3.7 s.
+   npm run render:splash generates palette CSS between the app.html markers;
+   tests/splash.test.ts checks the generated block against palettes.css.
 
-   Until the app's JavaScript has run nothing on screen carries a colour: the
-   token layer is imported by the app, so the document is white for as long as
-   the scripts take to arrive, 3.4 to 3.7 s on a slow phone. app.html now
-   ships a ground and the mark as markup and CSS of its own, so the browser
-   paints them as soon as the document is parsed, and the app fades them out
-   once boot has answered (lib/splash.ts does that).
-
-   The colours cannot be imported: they have to be in the document itself.
-   They are generated from palettes.css instead of copied by hand, between the
-   two markers in src/app.html, by `npm run render:splash`, and
-   tests/splash.test.ts fails when the block no longer says what this file
-   would write. Dropping a palette or retuning a ground therefore cannot
-   leave the first frame wearing last release's colours.
-
-   What is drawn is the mark's own corner sun (mark.ts owns the rule and the
-   numbers): one ring per stripe of the flag, a black seam on the outer side
-   of each, at the reviewed position and scale, in a white tile with a
-   black edge. As CSS gradients rather than the SVG, because the document is
-   the critical path and sixteen inline SVGs would be most of it. The seam
-   and the radii are mark.ts's constants and ringRadii, so the two drawings
-   share their numbers, and the review page for this ticket lays the two over
-   each other.
-
-   The mark does not move, here or on the way out: it only fades, with the
-   ground, the way the logo is never animated (ticket 38). */
+   CSS gradients recreate mark.ts's corner sun using its radii and seams:
+   one ring per flag stripe, a black outer seam, and a white tile with a black
+   edge. This keeps sixteen SVGs off the critical path. lib/splash.ts fades
+   the fixed mark and ground once boot answers. */
 
 import { MARK_SEAM, MARK_SUN_R, MARK_SUN_X, MARK_SUN_Y, MARK_TILE, MARK_TILE_RADIUS } from '../components/mark.ts';
 import { ringRadii } from '../motion/flagSun.ts';

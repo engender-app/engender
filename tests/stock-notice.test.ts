@@ -1,4 +1,4 @@
-/* Contract and behavioral tests for stock running out notice (ticket 02).
+/* Contract and behavioral tests for stock running out notice.
    Verifies:
    - Projection trigger criteria (<= 7 days remaining, 0 units / exhausted).
    - Depleting stocks multi-drug urgency sorting.
@@ -253,7 +253,7 @@ describe('The reorder-by day, on screen (ticket 16)', () => {
   });
 
   it('the care spine reads the same actionableEpochDay and relabels its mark', () => {
-    // One lane per running drug (phase 11 ticket 10), so both halves are
+    // One lane per running drug, so both halves are
     // now per lane: the mark's day is that lane's own stock row, and the
     // label reads that row's own lead time.
     expect(care).toContain('runOutEpochDay: lane.runOut?.actionableEpochDay ?? null');

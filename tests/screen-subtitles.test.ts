@@ -40,7 +40,7 @@ function subtitleKeys(): { file: string; key: string }[] {
 describe('what a screen puts under its title', () => {
   const keys = subtitleKeys();
 
-  /* 9 since the copy sweep (tester report 02, ticket 08) cut five more header
+  /* 9 since the copy sweep cut five more header
      taglines that only restated their titles, 14 after the subtext audit
      (2026-11-05) before it; the floor guards the grep, not a count of
      subtitles a screen ought to have. */

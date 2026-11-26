@@ -285,7 +285,7 @@ export async function calendarContracts(): Promise<Result[]> {
   screen = await mountScreen(`/entry/new/${today}`, f);
   await until(() => root().querySelector('[data-save]'), 'editor ready');
   /* The faces are on a new entry's first step and the note and the
-     attachments' chips on its last (tester report 02, ticket 09). */
+     attachments' chips on its last. */
   await check('New Entry opens on the faces', () => root().querySelectorAll('[data-entry-step="today"] [data-mood]').length === 5);
   // The way on from the first step waits for a face (ticket 09's sign-off).
   node(root(), '[data-entry-step="today"] [data-mood="3"]').click();

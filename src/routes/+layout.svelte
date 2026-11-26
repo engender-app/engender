@@ -6,7 +6,7 @@
   import '$lib/styles/components.css';
   import '$lib/styles/screens.css';
   import '$lib/styles/kit.css';
-  /* $lib/motion last, after the sheets it applies over (phase 5 ticket 28).
+  /* $lib/motion last, after the sheets it applies over.
      Both files are opt-in classes a screen puts on top of a component's own
      class - .press-add on the add button, .scrim-withdraw on a scrim - and
      each declares a resting value the material animates away from. At equal
@@ -63,7 +63,7 @@
 
   /* Mark screen arrival at layout script execution time so initial cold-mount
      components rendering during boot treat their mount as part of screen
-     arrival rather than as a panel change on a settled screen (ticket 111). */
+     arrival rather than as a panel change on a settled screen. */
   markScreenArrival();
   import { depthAfter, navigationDepth, recordNavigation, replaceRoute, sameUrl } from '$lib/navigation/smart-back';
   import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
@@ -108,7 +108,7 @@
   }
 
   /* Started here rather than from an $effect so that boot's first step -
-     reading the mirrored theme and palette (ticket 06) - has run before the
+     reading the mirrored theme and palette - has run before the
      effect below stamps them on <html>. From an effect it would land one
      step too late and briefly undo what app.html's pre-paint script did. */
   startBoot();
@@ -133,7 +133,7 @@
     registerServiceWorkerAfterBoot(bootState.status);
   });
 
-  /* The passphrase gate (ticket 09) renders before the database can even
+  /* The passphrase gate renders before the database can even
      open, the same way the lock renders instead of the app: no route shows
      journal content, because there is no journal to show yet. Unsupported
      legacy storage meets this gate's refusal screen. */
@@ -146,14 +146,14 @@
     if (RetainedDoors && path !== retainedFrom) retaining = true;
   });
 
-  /* A brand new install (ticket 54); routeGates.ts says why onboarding
+  /* A brand new install; routeGates.ts says why onboarding
      renders over this one gate state instead of meeting it. */
   let onboardingFirstRun = $derived(needsOnboardingAccessMode(bootState));
   let needsPassphrase = $derived(gate === 'passphrase' && !onboardingFirstRun);
 
   /* The same moment on Android, where nothing is typed: Keystore is holding
-     the data key and wants the platform's word for who is here first
-     (ticket 13). Its own gate rather than a branch inside the passphrase
+     the data key and wants the platform's word for who is here first.
+     Its own gate rather than a branch inside the passphrase
      one - they share the job and none of the words. */
   let needsAuthentication = $derived(gate === 'authentication');
 
@@ -166,7 +166,7 @@
      route, not over it, so no screen mounts and no query runs behind a
      screen somebody has not finished. */
   let needsAccessModeAfterRecovery = $derived(isReadyState(bootState) && recoveryUnlock.used);
-  /* Older code against a newer Journal (ticket 04). Its own screen rather
+  /* Older code against a newer Journal. Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
   let schemaTooNew = $derived(gate === 'schema-too-new');
@@ -292,8 +292,7 @@
        back to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */
     if (navigation.to) restoreScroll(navigation.to.url, navigation.type);
-    /* And a screen that just arrived is not a screen changing (phase 9
-       carpet ticket 04). Its panels are gated on reads that answer a few
+    /* And a screen that just arrived is not a screen changing. Its panels are gated on reads that answer a few
        dozen milliseconds from here, so without this every one of them would
        play an entrance on the way back from the calendar and the screen
        would assemble itself in front of you. The shell is the only thing
@@ -407,8 +406,8 @@
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);
-    /* The same answer for the native bar, which the meta above cannot reach
-       (carpet ticket 154): theme-color is the installed PWA's, and the
+    /* The same answer for the native bar, which the meta above cannot reach:
+       theme-color is the installed PWA's, and the
        Capacitor shell draws an edge-to-edge window whose status bar icons
        Android tints from its own DayNight resolution unless the app says
        otherwise. Here rather than beside this effect, because the value is
@@ -470,24 +469,12 @@
     else if (pendingGate === 'coming-back') offerComingBack();
   });
 
-  /* What stops the return moment opening twice is the preference and
-     nothing else (ADR-0062). The surface stamps `comingBackSeenSince` as it
-     draws, so this has an answer before the person could have left it, and
-     a flag latching the decision for the page load would only add a second
-     guard that disagrees - it also has to be wrong for a demo build, where
-     the journal underneath can be replaced without a reload.
-
-     So this does re-read on every arrival at Home, and what makes that
-     affordable is that the first read answers on its own for almost
-     everybody: `readReturnGap` is eighteen bounded `MAX`es, the same read
-     AreaFinish already makes on eight screens, and the five behind
-     `readWhatIsWaiting` are only paid for once three weeks have passed and
-     the gap is one this person has not met. The `path` check runs again
-     after the awaits, because a slow read must not pull somebody off a
-     screen they navigated to in the meantime.
-
-     Nothing is navigated to on an empty answer: a gap with nothing waiting
-     in it is not a return worth a screen, and the person is left on Home. */
+  /* comingBackSeenSince is the only repeat guard (ADR-0062). Recheck
+     on each Home arrival, including when demo replaces the journal.
+     readReturnGap uses 18 bounded MAX queries. Only run the five
+     readWhatIsWaiting queries for an unseen gap of at least three
+     weeks. Recheck path after awaiting and stay on Home if nothing
+     is waiting. */
   function offerComingBack() {
     const day = todayEpochDay();
     void import('$lib/data/comingBackReads').then(async ({ readReturnGap, readWhatIsWaiting }) => {
@@ -522,8 +509,8 @@
   /* Every Android-only effect that used to live here one at a time -
      reminder schedule sync, stock run-out reconciliation, launch-route
      consumption, visibility/focus resync, the back button, the disguise
-     alias and the lock-timing mirror - now lives behind platform-sync.ts
-     (phase 5 deepening ticket 04). This effect is what makes it reactive:
+     alias and the lock-timing mirror - now lives behind platform-sync.ts.
+     This effect is what makes it reactive:
      the module itself takes no runes (ADR-0017, so it can run in the Node
      tier), so watching a preference like `disguise` for a change has to
      happen here and be handed to the module as a fresh start. Restarting
@@ -552,7 +539,7 @@
     const disguise = outsideDisguise(prefs);
     /* Read here for the same reason, and it is the one preference on this
        list that reaches the native side purely to be looked at: the
-       launcher icon follows the flag (ticket 50). */
+       launcher icon follows the flag. */
     const palette = prefs.palette;
     const launcherIconShape = prefs.launcherIconShape;
     const lockAfter = prefs.lockAfter;
@@ -678,7 +665,7 @@
        finish before it clears storage, or it interrupts the very writes it
        then asserts against (tests/walkthrough.test.mjs). -->
   <!-- is-chromeless is what tells the scroll region there is no bar floating
-       over it (phase 5 ticket 26). The clearance below the content is sized
+       over it. The clearance below the content is sized
        for the bar, its float gap and the system inset, and on a screen with
        no bar that is room held for nothing: it pushed a vertically-centred
        gate up by most of a bar's height. -->
@@ -697,7 +684,7 @@
   >
     {#if isErrorState(bootState)}
       <!-- What happened, in the person's words, and the doors that failure
-           leaves (after-release ticket 09). -->
+           leaves. -->
       <BootFailureNotice />
     {/if}
     <!-- Before <main>, which is what puts the rail to the left of the
@@ -754,7 +741,7 @@
         {:else if redirectingToOnboarding}
           <!-- The effect above is already navigating here; nothing renders
                for the frame that takes, so a brand new install's first paint
-               is never whatever route the URL happened to be (ticket 54). -->
+               is never whatever route the URL happened to be. -->
         {:else if retaining && RetainedDoors && (!chromeless || browserSession.recovering)}
           <!-- Recovery keeps the route someone is using mounted, hidden and
                inert above, so an unsaved draft survives a BFCache restore.

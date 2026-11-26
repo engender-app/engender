@@ -1,34 +1,12 @@
-/* Which passage a benchmark was read from (phase 5 deepening ticket 15,
-   CONTEXT: "Benchmark passage").
+/* Benchmark records carry a passage key so speaking rate and pitch span
+   compare across takes of the same text. The texts live in messages/.
 
-   A benchmark's speaking rate and pitch span only compare across months
-   because the same words were read each time, so the row records which text
-   that was and ticket 16's compare surface keys on it rather than assuming.
-
-   **Which passages ship, and the licence question underneath them.**
-   English is the Rainbow Passage (Fairbanks, 1940), the standard first
-   paragraph, and Polish is "Północny wiatr i słońce", the Aesop fable the
-   IPA uses, in wording written for this app rather than lifted from the
-   Journal of the IPA's own Polish illustration, which is Cambridge's.
-
-   Alicja chose the Rainbow Passage on 2026-08-31 after being shown the
-   alternative. The alternative was a passage written for the app: nothing
-   about a benchmark needs a *standard* passage, only the *same* one, since
-   the comparison is a person against their own earlier takes and never
-   against a published norm - and the Rainbow Passage is a 1940 publication
-   whose status is unsettled, reproduced everywhere in speech work and
-   licensed by nobody. That is her call to make and it is recorded here
-   rather than argued again.
-
-   The English text is verbatim, American spelling and all, because a
-   standard passage edited is not the standard passage any more. Its last
-   sentence is the one to watch if this ever comes up again: it reads "when
-   a man looks for something beyond his reach, his friends say he is looking
-   for the pot of gold", which is a gendered line for somebody to read aloud
-   in this particular app.
-
-   Pure: the texts live in messages/, and what is here is how a text becomes
-   a series key. */
+   English uses Fairbanks's 1940 Rainbow Passage verbatim, including American
+   spelling and its gendered final sentence. It was chosen on 2026-08-31 over
+   an app-written passage, with its copyright status unsettled. Comparison is
+   against one's own takes, independent of published norms. The Polish
+   “Północny wiatr i słońce” uses app-written wording for the Aesop fable,
+   separate from the Journal of the IPA wording. */
 
 /** The word count a speaking rate is measured over, taken from the text
     rather than written down beside it: a passage and a hand-maintained

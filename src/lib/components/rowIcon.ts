@@ -1,4 +1,4 @@
-/* The one icon reader searchHitRows.ts and dayRows.ts share (ticket 30):
+/* The one icon reader searchHitRows.ts and dayRows.ts share:
    each file draws rows for a registry of its own (textSearch.ts, day.ts)
    and neither registry names a screen, so neither file can call `hubRow()`
    with a key its own registry handed it. What both files do share is the

@@ -1,5 +1,4 @@
-/* Whether a dated span covers a day, or overlaps a range (phase 8 deepening
-   ticket 11). eras.ts's eraCoversDay, doseSchedule.ts's pauseCoversDay and
+/* Whether a dated span covers a day, or overlaps a range. eras.ts's eraCoversDay, doseSchedule.ts's pauseCoversDay and
    regimenEpisode.ts's isActiveOn all answered this same question over their
    own row, and two more inline copies differed by one token nothing named.
    This module hoists the arithmetic only - the modules keep their own types, their own

@@ -1,4 +1,4 @@
-/* The web key model (ADR-0018, ticket 09): a random 32-byte data key
+/* The web key model (ADR-0018): a random 32-byte data key
    encrypts the Journal; the Journal passphrase only wraps that key. What
    persists beside the ciphertext is this metadata - salt, the Argon2id
    parameter set the wrap was made with, and the AES-GCM-wrapped key - none
@@ -55,7 +55,7 @@ export type PinBinding = 'browser' | 'keystore';
 
 const PIN_BINDINGS: readonly PinBinding[] = ['browser', 'keystore'];
 
-/** What biometric mode needs before it has a secret at all (ticket 55): the
+/** What biometric mode needs before it has a secret at all: the
     credential to ask, and the salt to ask it about. A PRF output is a
     function of both, so neither can be re-derived and both have to be kept.
     Neither is secret - the credential id is a handle the authenticator
@@ -208,7 +208,7 @@ export async function unlockKeystore(
     nonce, current parameter constants. Throws without side effects when the
     current secret is wrong.
 
-    Also how the access mode changes (ticket 53): naming a different
+    Also how the access mode changes: naming a different
     `newSource` rewraps under that source's profile, and the Journal itself
     is never re-encrypted either way. Omitting it keeps the source the
     keystore already had, which is the plain change-my-secret case. */

@@ -1,37 +1,17 @@
-/* Undo for every deletion other than an entry's (functional audit ticket 46).
+/* Provide a short undo window for hard deletes. Install transaction-
+   local triggers to record inverse DELETE, UPDATE and INSERT statements
+   with original identities and timestamps. Cascades and SET NULL
+   changes enter the same log. Read and drop temporary objects before
+   commit.
 
-   An entry is soft-deleted: it carries `trashed_at` and waits in Trash. Nothing
-   else does, and the audit ruled out adding soft-delete columns to the other
-   areas. So a deletion here is the ordinary hard delete, run in a way that can
-   be taken back for a short window:
+   Hold file removals until finish(). Mark the orphan sweep due before
+   returning so a killed app can still clean up. undo() replays in
+   reverse with deferred foreign keys. If a row identity is occupied
+   or an affected row has a newer edit, roll back the whole undo.
+   The original deletion stands.
 
-   - The whole delete runs as one transaction. Before it starts, a temporary
-     trigger is put on every table for DELETE, UPDATE and INSERT. Each one
-     writes the statement that reverses its row's change into a temporary log:
-     the row as it was for a delete (every column, its rowid included), the old
-     values of the columns that changed for an update, and a delete by rowid
-     for an insert. Foreign-key cascades and SET NULLs fire the same triggers,
-     so a row the delete only reached through the schema is in the log as
-     well. The log is read, then the triggers and the log are dropped, before
-     the transaction commits. Nothing temporary outlives the delete.
-   - File removals the delete asks for are held back, not done. The orphan
-     sweep is marked due at once, so a window that never closes (the app is
-     killed) still loses the files at a later boot.
-   - `undo()` runs the log backwards in one transaction with foreign keys
-     deferred to its commit, which puts back the same rows with the same ids,
-     uuids and `updated_at` stamps. To anything that reads the database
-     afterwards, Merge included (ticket 48), an undone deletion never
-     happened. If a row cannot go back (something new took its rowid or its
-     uuid), or a row the deletion only changed has been written since (a
-     provider named again on the appointment it was cleared from), the
-     transaction rolls back and `undo()` rejects; the deletion stands and the
-     newer edit is kept.
-   - `finish()` closes the window: the held files are removed. Calling `undo()`
-     after it, or `finish()` after an undo, does nothing.
-
-   The log lives in this module's memory between the delete and the end of the
-   window, and the caller drops it (by calling `finish()`) when the window
-   closes, the app locks included. */
+   Keep the inverse log in memory. Finish on expiry or lock. Repeating
+   a completed action is harmless. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';

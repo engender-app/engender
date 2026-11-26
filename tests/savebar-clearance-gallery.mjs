@@ -1,30 +1,11 @@
-/* What the save bar covers, and what it stops covering (carpet 26).
+/* For each screen and width, hit-test interactive boxes against the save
+   bar at top, mid-scroll and bottom. Record its host and the gap between
+   the last block and bar. Match [data-app-savebar] or legacy .editor-savebar
+   so one script can compare both builds.
 
-   Carpet 28's sweep reads occlusion over every route and takes 25 minutes;
-   this is the same hit test aimed at one object, so a change to the foot can
-   be measured in a couple of minutes and photographed for sign-off in the
-   same run. It answers three things per screen and viewport:
-
-     covered   every interactive box the foot itself covers, hit-tested a
-               pixel at a time, at rest, mid-column and at the end of the
-               column - the positions carpet 28 walks, for the reason it
-               walks them: a pinned thing covers what is under it at every
-               position and not only at rest.
-     hosted    whether the foot is in the app column or inside the scroll
-               region, which is the whole mechanism of the fix.
-     gap       the distance from the last block of the column to the top of
-               the foot, so the arrangement can be read as well as the
-               defect.
-
-   Both sides of the change run the same file. The foot is
-   `[data-app-savebar]` after carpet 26 and `.editor-savebar` before it, so
-   the selector names both and the before column needs no separate script.
-
-   Run against a demo build, once per side, with the before side's checkout
-   (built the same way) handed as --root:
-     VITE_DEMO=1 npm run build
-     node tests/savebar-clearance-gallery.mjs --tag after --out /abs/path
-     node tests/savebar-clearance-gallery.mjs --tag before --root /path/to/main-worktree --out /abs/path
+   VITE_DEMO=1 npm run build
+   node tests/savebar-clearance-gallery.mjs --tag after --out /abs/path
+   node tests/savebar-clearance-gallery.mjs --tag before --root /path/to/main-worktree --out /abs/path
 */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -467,7 +448,7 @@ for (const viewport of VIEWPORTS) {
 
 /* Chromeless, which is the one case the ticket named and no screen with a
    foot is: `--nav-clearance` narrows to the system inset plus a breath on
-   `.app.is-chromeless` (phase 5 ticket 26), and the foot's padding is
+   `.app.is-chromeless`, and the foot's padding is
    written against that token rather than against the bar's height, so a
    chromeless screen that grew a foot would hold the inset and the hairline
    and not room for a bar there is none of. Read by putting the class on the

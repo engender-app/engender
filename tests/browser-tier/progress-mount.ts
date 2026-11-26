@@ -1,4 +1,4 @@
-/* Mounts the progress bar (phase 9 audit ticket 11) with the app's own
+/* Mounts the progress bar with the app's own
    stylesheets.
 
    components.css is imported for the same reason controls-mount.ts imports

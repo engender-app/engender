@@ -81,7 +81,7 @@ test('a query matching nothing yields no ids', () => {
   assert.deepEqual(tagIdsMatching('pierogi', tags), []);
 });
 
-/* The window a hit shows (phase 5 deepening ticket 24): the third thing a
+/* The window a hit shows: the third thing a
    search needs, at the other end from the two above. */
 
 test('a short hit is shown whole, split at the match', () => {

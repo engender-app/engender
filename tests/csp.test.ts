@@ -1,24 +1,8 @@
-/* The production CSP is split across two policies (phase 2 ticket 05): a header
-   from nginx, and a meta policy SvelteKit writes into the document because only
-   a build knows the hashes of the scripts inside it. This file guards the half
-   that can drift silently - a hash that no longer matches blocks the script it
-   was for, and nothing about the build fails.
-
-   Since phase 5 ticket 03 the meta policy carries the whole directive set
-   rather than `script-src` alone, and the reason the list is pinned here is
-   that the split hid a hole for two releases: the Capacitor shell serves its
-   own origin and never sees an nginx header, so on Android the enforced policy
-   was the script half and nothing else - no connect-src, which is the directive
-   that turns a script injection into something that cannot send the data key
-   anywhere. A directive that goes missing from svelte.config.js now fails a
-   test here rather than a deployment nobody runs.
-
-   The two policies are also cross-checked against each other below, because
-   the failure mode this ticket fixed was them drifting apart, not either one
-   being wrong on its own.
-
-   It reads `build/`, so it needs a build. `npm run build` runs before `npm test`
-   in CI for two other reasons already. */
+/* Nginx sends a CSP header and the build generates a meta policy with
+   inline script hashes. Capacitor only gets the meta policy, so pin all
+   required directives there, including connect-src, and compare both
+   policies. Check hashes against build/index.html. Run npm run build
+   before npm test. */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';

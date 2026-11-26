@@ -1,4 +1,4 @@
-/* The arithmetic under the Journal's month picker (ticket 281), kept out of
+/* The arithmetic under the Journal's month picker, kept out of
    MonthJump.svelte so the node tier can hold it: which months of a year
    have entries, and where an arrow key takes the cursor. */
 import { epochDayFromLocalDate, localDateFromEpochDay } from '../data/epochDay';

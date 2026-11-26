@@ -1,39 +1,16 @@
-/* How long Today's and Look back's tiles take to arrive (phase 12 ux-carpet
-   ticket 200).
+/* Measure the median time until Today and Look back release their tiles.
+   Warm runs start at the nav click (250ms budget). Cold runs start at boot
+   ready (300ms budget). Today is ready when its lower ReadReserve body mounts.
+   Look back is ready when its reading grid drops is-held.
 
-   The tiles on both screens wait for their reads, and on Android every read
-   used to wait for the one before it to cross the Capacitor bridge and come
-   back: 1.3-1.6 s for a warm Today on the Pixel against 20-37 ms of SQL. The
-   Android driver pipelines its calls now (ADR-0089). This is the budget that
-   keeps the read path short, measured where CI can measure it:
+   CI measures fan-out and read waterfalls above the web worker's driver.
+   For Android bridge measurements, see ADR-0089. Every run is printed.
+   Failed warm cases save diagnostic replays in ci-logs/. --diagnostics
+   captures both warm routes even on success. --read-delay 40 adds controlled
+   worker latency to expose serial reads.
 
-   - warm: the app is open on the other tab and the nav link is clicked; the
-     time from the click to the first frame the tiles are on screen. Budget
-     WARM_MS.
-   - cold: a full load of the screen; the time from the first frame the
-     screen's shell is up (boot ready) to the first frame with the tiles.
-     Budget COLD_MS.
-
-   "Tiles on screen" is Home's lower ReadReserve body existing, and Look
-   back's reading grid dropping `is-held` - the moments ReadReserve and
-   ReadGroup let them paint.
-
-   What this does not cover: the Android bridge itself. This is the web
-   tier, a worker that has always taken statements back to back, so it holds
-   the fan-out, the waterfalls and the gates above the driver - the part a
-   screen change can make slower on both platforms - and says nothing about
-   round trips. The device numbers live in the ticket and ADR-0089; the
-   device bench is `.claude/scratch/bench.mjs` on the ticket branch, not
-   something CI can drive. Each case runs RUNS times and is judged on its
-   median, since a shared runner's one slow frame is noise rather than a
-   regression; every run is printed.
-
-   Run against a demo build:
      VITE_DEMO=1 npm run build
-     node tests/tile-arrival-timing.mjs [--runs 5] [--root <built tree>]
-   Failed warm cases save a diagnostic replay in ci-logs/. --diagnostics
-   captures both warm routes even when the measured guard passes.
-   --read-delay 40 adds controlled worker round trips to expose waterfalls. */
+     node tests/tile-arrival-timing.mjs [--runs 5] [--root <built tree>] */
 import { dirname, resolve } from 'node:path';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

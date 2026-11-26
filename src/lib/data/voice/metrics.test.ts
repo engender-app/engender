@@ -1,5 +1,4 @@
-/* The metric registry's own invariants (phase 8 features ticket 27,
-   ADR-0060).
+/* The metric registry's own invariants (ADR-0060).
 
    What this file is for: the registry decides which figure is Referenced
    and which is read only against the person's own earlier takes. No figure

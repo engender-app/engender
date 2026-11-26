@@ -8,7 +8,7 @@ type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
 /** The figure's own name, which is the label the summary and the compare
     view print beside the number. One name in one place: renaming a figure
-    and explaining it were the same edit (ticket 27), and a second copy of
+    and explaining it were the same edit, and a second copy of
     the name is how the link and the label drift apart. */
 const NAME: Record<VoiceMetricKey, Message> = {
   pitch: m.vb_pitch,

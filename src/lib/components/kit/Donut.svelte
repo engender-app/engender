@@ -1,49 +1,15 @@
 <script lang="ts">
-  /* Parts of a whole where the parts have no order (phase 8 UX ticket 04,
-     ADR-0058): share by tag, share by presentation, share by injection
-     site. The question is what proportion, and nothing about a tag comes
-     before another tag.
+  /* Use this ring for unordered shares (ADR-0058). Ordered scales use
+     OrderedStrip so the endpoints stay apart. Slices sort from largest
+     to smallest and share one flag hue (ADR-0012). Each smaller arc
+     uses a lighter tint, so adjacency stays legible and length and
+     intensity tell the same story.
 
-     A ring is the wrong drawing for anything on a scale, which is the
-     other half of the rule: a donut destroys order, so mood's five steps
-     in a ring cannot show mostly-the-middle-two - the shape somebody
-     most often wants off a mood distribution. That case is
-     OrderedStrip.svelte.
-
-     Single hue (ADR-0012), like every other mark in the kit: the section's
-     own stripe, the largest arc at full strength and each smaller one a
-     further step diluted into the card. The ladder descends with the arcs
-     rather than against them, so intensity says nothing length has not
-     already said - which is the objection BarRows records against tinting
-     its bars, answered here by the sort rather than ignored. What the
-     ladder does buy is the one thing a bar chart never needs: a segment
-     that can be told from the segment beside it, and matched to its own
-     name.
-
-     Because it needs that match, this is the kit's second legend, and the
-     first one that is not the area chart's. The rule it is arguing with
-     (tests/kit-surfaces.test.ts) refuses a legend on a chart whose marks
-     carry their own values - and an arc cannot. There is nowhere on a
-     segment to write "estradiol, 34%" that stays inside it at every
-     share, so the names sit beside the ring and the swatch is what joins
-     them to it. The alternative was labels around the ring on leader
-     lines, which at phone width collide as soon as two small shares land
-     next to each other.
-
-     The centre carries the total rather than being decorative, which is
-     the other thing a ring has that bars do not: a hole.
-
-     Hover/tap highlights a slice and pops its arc out slightly, and
-     reveals the count its share was worked out from beside the legend's
-     own percentage (ticket 09). Either the arc or its legend row can
-     start it - the legend for a target no thinner than a touch, the arc
-     for whoever is already pointing at it - and both answer to the one
-     `active` key. The legend row is the keyboard path in (a real button,
-     unlike the ring, which the outer svg already marks aria-hidden and
-     which stays that way: the count is new information nothing else
-     carries, so unlike ChartAnnotations' own hover this one earns a
-     tabbable control rather than pointer-only sugar over a reading
-     already written out in full elsewhere). */
+     The centre shows the total. A swatch links each arc to its
+     legend label and percentage. Hover or tap highlights the slice
+     and reveals its count. The legend button gives that count a
+     keyboard path. The ring stays aria-hidden and both targets share
+     the active key. */
   import { MAX_SLICES, arcs, slices, type Part } from '$lib/charts/parts';
 
   let {
@@ -67,27 +33,12 @@
   const R = 40;
   const CIRC = 2 * Math.PI * R;
 
-  /* The tint ladder, one step per arc, largest first: how much of the
-     stripe each arc keeps before the rest of it is the ground behind the
-     ring.
+  /* Tint arcs largest first with five steps across the heat-ramp range.
+     The faintest matches --heat-1. Closer weights can merge on a light
+     stripe and surface.
 
-     The app's own heat ramp spacing (theme/roles.ts's HEAT_STEPS, which
-     palettes.css writes as --heat-0..4 and the calendar and the week strip
-     both shade with), five stops across the same range instead of four.
-     So an arc and a calendar cell are the same scale in the flag's hue,
-     which is the agreement ticket 20's review asked for, and the faintest
-     arc lands where --heat-1 does rather than somewhere new.
-
-     A narrower ladder was the first attempt and it did not survive the
-     first look: 86/72/58 of a light stripe mixed into a light card are the
-     same colour three times, so trans's light theme drew a five-part ring
-     as one blue band.
-
-     `satisfies` rather than a comment saying there are five: raising the
-     cap without adding a step here would hand the last arc a
-     --slice-weight of undefined, which is an invalid color-mix() and an
-     arc that paints nothing. This is the pair the ladder and the cap make,
-     held by the compiler. */
+     Keep the ladder sized to the slice cap with satisfies. Missing
+     weights would produce invalid color-mix() and invisible arcs. */
   const WEIGHTS = ['100%', '78%', '58%', '38%', '22%'] satisfies {
     length: typeof MAX_SLICES;
   } & string[];
@@ -368,7 +319,7 @@
     min-width: 0;
   }
 
-  /* The row's own control (ticket 09): a button rather than the `<li>`
+  /* The row's own control: a button rather than the `<li>`
      itself, since a list item cannot be one and stay valid inside the
      `<ul>` above it. Out to the legend's own edge and back, the same
      "cover the whole reading" reasoning .kit-bar.is-open gives for a

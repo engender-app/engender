@@ -52,8 +52,8 @@ public class ScreenCapturePlugin extends Plugin {
         exception is Android 12 and older, where the flag is also the only way
         to blank the Recents card, so disguise keeps it there (ADR 0101). From
         Android 13 disguise hides the card with its own call and a person who
-        has left "Block screenshots" off can still take a screenshot of a disguised app
-        (tester report 02, ticket 01). */
+        has left "Block screenshots" off can still take a screenshot of a disguised app.
+*/
     public static boolean windowSecure(int sdk, boolean allowed, boolean disguised) {
         return !allowed || (disguised && sdk < Build.VERSION_CODES.TIRAMISU);
     }

@@ -18,7 +18,7 @@ export interface ExposureCounters {
   routeDays: RouteDays[];
   regimenDays: RegimenDays[];
   /** Doses left out of doseTotals because concurrent regimen episodes for
-      different drugs made attribution ambiguous (phase 5 ticket 38). */
+      different drugs made attribution ambiguous. */
   excludedDoses: number;
 }
 

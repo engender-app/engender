@@ -1,21 +1,7 @@
-/* The waveform's bars (ticket 46).
-
-   A recording's scrub track is a waveform because a person looking for the
-   moment they said something scans a shape, not a bar. The shape has to be
-   the recording's own: a decorative waveform that does not move with the
-   audio is worse than a plain bar, because it says something and the thing
-   it says is false.
-
-   So a bar is the root-mean-square amplitude of the slice of the recording
-   it stands over, normalised to the loudest bar. Normalised, because a
-   recording made at arm's length would otherwise draw as a flat line and a
-   waveform nobody can read is the same as no waveform; relative heights
-   inside one recording are untouched by the scaling, so the shape stays
-   this recording's shape. Two recordings are not comparable to each other
-   by bar height, which is not a reading anyone takes off a scrub track.
-
-   The samples come from `decodeToMono` (audio/decode.ts) at the peaks rate,
-   which is where the cost is - see the measurement in the ticket. */
+/* Build scrub bars from root-mean-square amplitude of decoded mono
+   slices. Normalize to the loudest bar so quiet recordings still show
+   their shape. Heights represent relative amplitude within one
+   recording. decodeToMono does the decode at the peaks rate. */
 
 import { forgetOnLock } from '../lock/forget-content';
 
@@ -178,7 +164,7 @@ export async function peaksFor(
 }
 
 /** Drops everything remembered: a lock takes the bars with the rest of
-    the journal (after-release ticket 10), and the tests start clean. */
+    the journal, and the tests start clean. */
 export function forgetPeaks(): void {
   cached.clear();
   inFlight.clear();

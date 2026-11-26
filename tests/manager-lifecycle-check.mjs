@@ -63,7 +63,7 @@ try {
   await closed();
   const entry = '/entry/new/20000';
   const openManager = async () => {
-    // A new entry's modes are on its marks step (tester report 02, ticket 09).
+    // A new entry's modes are on its marks step.
     await toEntryStepWith(page, '[data-manage-presentations]');
     await page.locator('[data-manage-presentations]').click();
     await page.getByRole('dialog', { name: 'Modes', exact: true }).waitFor();

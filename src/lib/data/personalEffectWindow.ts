@@ -1,52 +1,14 @@
-/* The literature's onset/completion windows for the personal effects
-   timeline's tier-1 markers, and the pure arithmetic that turns them into
-   epoch-day bands against a given anchor. No journal, no clock, no
-   paraglide (ADR-0016): a window is a fixed fact about the literature,
-   and converting one to a concrete band needs only the anchor day it is
-   asked about - not a live read of anything.
+/* Turn WPATH SOC8 Appendix C, Table 1 (p. S254) into dated onset and
+   completion bands. Convert years to months and leave an open upper
+   bound for "more than five years." ADR-0096 records SOC8's departures
+   from Hembree 2017 and the shared guideline lineage.
 
-   Every window follows WPATH Standards of Care 8, Appendix C, Table 1
-   (p. S254), cell for cell (functional audit ticket 22). SOC8's table says
-   it is adapted from Hembree et al. 2017, the Endocrine Society tables the
-   first eight windows were read from, and the other nine came from
-   GenderGP's reproduction of SOC7. Neither is an independent check on
-   SOC8: one guideline lineage, four authors shared between Hembree 2017 and
-   SOC8, and both tables call their figures clinical observation. SOC8
-   departs from Hembree in nine cells without a stated reason (voice onset
-   1-6 months, the 1-2 year maximum for cessation of menses, the unknown
-   maximum for decreased libido among them). ADR-0096
-   names all nine, and
-   docs/research/onset-bands-soc8.md has the sources and the independence
-   check.
-
-   Following SOC8 exactly moved ten bands. Hair loss ceasing on estradiol
-   left tier 1 because SOC8 gives it "variable" for both figures, and scalp
-   hair loss on testosterone joined it with 6-12 months and more than five
-   years. Years are written as months here: 2-5 y is 24-60, and "> 5 y" is
-   an open completion from 60.
-
-   Each window carries its source and the day it was last read against
-   that source, so the release-time guard (functional audit ticket 40) can
-   say when the figures are older than its 24-month limit and what to
-   re-check.
-
-   Which of the two tables a window came from is recorded per effect and
-   gates the band (phase 5 ticket 27). Both tables are keyed to a drug -
-   the feminizing one describes estradiol therapy and the masculinizing one
-   testosterone therapy - so a band only means anything when the anchoring
-   regimen episode names that drug. Until this gate existed the screen drew
-   all eight for everyone, which told someone on testosterone alone when to
-   expect their breast development to be complete, and cited the Endocrine
-   Society underneath it.
-
-   Every window here is a claim about the literature, never a target for
-   anyone's own experience - the acceptance criterion this file exists to
-   keep honest. Tier 2 and tier 3 effects carry no entry here at all:
-   `literatureCovers`/`literatureWindow` answer "no band" for any key this
-   record does not list, which is the ordinary case once the catalogue is
-   open. Which tier an effect is is derived from that same
-   record, by `effectTier` at the foot of this file - there is no stored
-   tier anywhere, on the catalogue row or off it (ADR-0010). */
+   Each window carries its source and review date for the 24-month
+   freshness check. Draw a band only when the anchoring regimen matches
+   the source table's drug, estradiol or testosterone. The figures
+   describe the literature. An effect without a source-backed window
+   gets no band, and effectTier derives its tier from this registry.
+   The arithmetic takes an anchor day and needs no journal or clock. */
 
 import { epochDayMonthsAgo } from './epochDay';
 import { resolveHormoneDrug, type HormoneDrug } from './hormoneDrug';
@@ -154,7 +116,7 @@ const EFFECT_LITERATURE_WINDOW: Partial<Record<PersonalEffectType, EffectLiterat
 };
 
 /** Every band's source and reviewed-on day, one row per tier-1 effect: what
-    the release-time staleness guard reads (functional audit ticket 40). */
+    the release-time staleness guard reads. */
 export function literatureReviews(): { effect: PersonalEffectType; source: LiteratureSourceKey; reviewedOn: string }[] {
   return (Object.entries(EFFECT_LITERATURE_WINDOW) as [PersonalEffectType, EffectLiteratureWindow][]).map(
     ([effect, window]) => ({ effect, source: window.source, reviewedOn: window.reviewedOn })
@@ -186,7 +148,7 @@ const DIRECTION_DRUG: Record<EffectDirection, HormoneDrug> = {
 
     Also answers false for any key with no tier-1 window at all - a tier 2
     or tier 3 effect, or a custom one - which is the ordinary case once
-    the catalogue is open past twenty (ticket 41). */
+    the catalogue is open past twenty. */
 /* literatureCovers stays exported only for its own test (AU-09 test-only
    review). */
 export function literatureCovers(effect: PersonalEffectType, drug: string): boolean {
@@ -231,26 +193,17 @@ function afterAnchor(anchorEpochDay: number, months: number): number {
     episode so a single episode still passes as one. */
 export type HrtAnchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpochDay'>;
 
-/** What the effects timeline, its onset bands and the hair anchor count
-    from. Only episodes whose class is HRT take part: until ticket 18 the
-    earliest episode of any drug anchored, so an SSRI started before
-    estradiol moved every band to the SSRI's start and, since sertraline
-    names no literature table, took the bands away.
-
-    - The start is `hrtStartEpochDay` when the person set one (a portable
-      preference), else the earliest HRT episode's start.
-    - The drug is the first HRT episode that names a hormone with a table
-      (estradiol or testosterone), else the first HRT episode at all. An
-      antiandrogen started a month before estradiol starts the clock, and
-      estradiol's table still draws the bands.
-    - The end is the last HRT episode's end once every one has ended, and
-      null while any is still running. A switch from oral estradiol to gel
-      is two episodes and one stretch of HRT, so the first episode's end no
-      longer clips bands the second one carries on.
-
-    Null when there is neither an HRT episode nor a date. A date with no HRT
-    episode anchors with no drug: months are counted, no band is drawn.
-    `episodes` must be sorted by start day, the order getEpisodes returns. */
+/**
+ * Anchor effect timelines to HRT episodes in start-day order.
+ * Use the portable hrtStartEpochDay override, or the earliest HRT
+ * start. Choose the first HRT episode with an estradiol or testosterone
+ * table, falling back to the first HRT episode. An earlier antiandrogen
+ * can start the clock.
+ *
+ * Keep the anchor open while any HRT episode runs. Otherwise use
+ * the last end day. A date without an episode anchors elapsed time
+ * without a drug band. Return null when both are absent.
+ */
 export function hrtAnchor(episodes: readonly RegimenEpisode[], hrtStartEpochDay: number | null): HrtAnchor | null {
   const hrt = episodes.filter((episode) => episode.drugClass === 'hrt');
   if (hrt.length === 0 && hrtStartEpochDay === null) return null;
@@ -263,31 +216,14 @@ export function hrtAnchor(episodes: readonly RegimenEpisode[], hrtStartEpochDay:
   };
 }
 
-/** `effect`'s onset and completion as concrete epoch-day ranges counted
-    forward from `anchor` (`hrtAnchor` above) - what a screen draws its
-    background bands from - or null when `anchor`'s drug is not the one this
-    effect's table describes and there is no band to draw.
-
-    All three parts of the answer come from the anchor: its start day is
-    where the bands are counted from, its drug is what decides whether they
-    exist, and its end day is where they stop.
-
-    Nothing is drawn past `endEpochDay` (phase 8 features ticket 49). Every
-    window here is a claim about a body on the drug the table describes, so
-    it says nothing about the days after that drug stopped, and the gate
-    fails closed the same way `resolveHormoneDrug`'s does rather than hedging:
-
-    - an episode that ended before the onset could even begin gets null, not
-      a band whose every day is unreachable,
-    - a completion window the episode never reached is dropped rather than
-      drawn with both ends in the past,
-    - anything the episode ran into stops at its end day, including
-      hair_changes' open end, which was only ever open for a body still on
-      the hormone.
-
-    Until this, a five-year masculinizing completion band kept drawing years
-    past a stopped regimen, citing the Endocrine Society underneath it for a
-    body no longer on what the table describes. */
+/**
+ * Convert an effect's onset and completion to epoch days relative to
+ * the anchor's start. Return null if the anchor drug does not match
+ * the source table or the episode ended before onset.
+ *
+ * Clip each band at the episode end, including open completion
+ * bounds. Omit a completion window the episode never reached.
+ */
 export function literatureWindowDays(
   effect: PersonalEffectType,
   anchor: Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpochDay'>

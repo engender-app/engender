@@ -1,5 +1,4 @@
-/* What a stored recording is, for the player that has to declare it
-   (phase 7 ticket 09).
+/* What a stored recording is, for the player that has to declare it.
 
    Every recording this app makes itself is `audio/webm;codecs=opus`
    (stores/voiceRecording.ts), so until now the player could name that and

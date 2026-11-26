@@ -1,4 +1,4 @@
-/* Domain types (ticket 07): the shape the journal speaks, not the demo
+/* Domain types: the shape the journal speaks, not the demo
    store's and not the schema's. Storage details stay behind the journal
    seam - uuid columns, updated_at, the join tables. Built-ins are
    addressed by their seeded key and user rows by a minted uuid
@@ -73,7 +73,7 @@ export interface VoiceBenchmark {
   snrDb: number | null;
   note: string | null;
   /** The passage's pitch over time, downsampled and encoded by
-      audio/track.ts (phase 8 features ticket 09). Null on every benchmark
+      audio/track.ts. Null on every benchmark
       taken before schema v58, which kept only the figures - a screen with
       one of those in hand draws no take rather than an empty chart. */
   pitchTrack: string | null;
@@ -86,8 +86,8 @@ export interface VoiceBenchmark {
   resonanceScale: number | null;
 }
 
-/** A practice take: how a session went with nothing to compare it against
-    (phase 8 features ticket 10). `minHz`/`maxHz` are true extremes, not the
+/** A practice take: how a session went with nothing to compare it against.
+    `minHz`/`maxHz` are true extremes, not the
     percentile span VoiceBenchmark reports - see audio/practiceTake.ts for
     why that is the honest figure here and not there. `feltSense` is the
     app's own five-level mood scale (moodFace.ts) and is optional. No
@@ -135,7 +135,7 @@ export interface Entry {
       dims and tags - ticket 09 does not require ticket 02's "physical"
       dysphoria tag to be present to log a region. A region's value is one
       position on the shared 0-100 scale (bodyMap.ts), dysphoria below the
-      midpoint and euphoria above it (ticket 39, ADR-0081); a region is
+      midpoint and euphoria above it (ADR-0081); a region is
       present here only when it has something to say, so one left at the
       midpoint is dropped on save rather than stored blank. */
   bodyRegions: Record<string, number>;
@@ -237,25 +237,23 @@ export interface Milestone {
   id: string;
   name: string;
   epochDay: number;
-  /** What happened, in the person's own words (ticket 15). Empty rather
+  /** What happened, in the person's own words. Empty rather
       than null - every read treats an unwritten description the same as
       the milestones that predate this field. */
   description: string;
   templateKey: string | null;
   roadmapGoalKey?: string | null;
-  /** Linked surgical procedure uuid (phase 5 ticket 12, ADR-0045). */
+  /** Linked surgical procedure uuid (ADR-0045). */
   procedureId?: string | null;
-  /** Linked tryout uuid, set on adoption (phase 5 deepening ticket 22,
-      ADR-0045). Nulled out the same way procedureId is when the tryout it
+  /** Linked tryout uuid, set on adoption (ADR-0045). Nulled out the same way procedureId is when the tryout it
       names is deleted. */
   tryoutId?: string | null;
   /** False when the person asked for no celebration on Home, on the day
-      and on every anniversary (functional audit ticket 32). Absent reads as
+      and on every anniversary. Absent reads as
       true, the resting state of every milestone. */
   celebrate?: boolean;
   photo: Photo | null;
-  /** Resolved alongside the row for the provenance line (phase 5 deepening
-      ticket 22): a linked procedure's or tryout's own name, and a custom
+  /** Resolved alongside the row for the provenance line: a linked procedure's or tryout's own name, and a custom
       roadmap goal's own text where roadmapGoalKey names one. Never stored
       and never archived - a built-in goal's title is a compiled string
       resolved by key in code instead (provenance.ts), and everything here
@@ -287,33 +285,19 @@ export interface Reminder {
       even one that started out managed - clears it: that is the handoff
       this field exists to record. */
   autoSource: string | null;
-  /** The drug a medication reminder is for, in the regimen's own words
-      (functional audit ticket 20), or null for any other reminder. Its
+  /** The drug a medication reminder is for, in the regimen's own words,
+      or null for any other reminder. Its
       notification opens that drug's dose log and offers Taken and Skip. */
   drug: string | null;
 }
 
-/* Where a draw fell relative to dosing (phase 4 ticket 03, CONTEXT: "Lab
-   draw context"). Two figures rather than one, because "how long since
-   dosing" means different things by pharmacokinetics: hours for oral,
-   sublingual, patch and gel; day-of-interval for IM and SC, where a
-   single-digit-hour figure says nothing about a depot with a
-   days-to-weeks half-life.
+/* Record lab draw timing by route. Oral, sublingual, patch and gel
+   use hours. IM and SC use day of interval. A discriminated union
+   selects the value for each route.
 
-   A union on route the way DoseEvent is, for the same reason: which figure
-   a context carries is decided by its route and nothing else, so no screen
-   should have to remember which of two numbers is the null one.
-
-   This is stored, not derived on read, and it is the one place in this
-   schema that stores a figure computable from other rows - which is what
-   ADR-0010 exists to prevent. The exception is deliberate and argued at
-   the column definitions (schema.ts). In short: ADR-0010's case is
-   about columns that drift out of agreement with their inputs, and this
-   one cannot, because its input is the dose log as it stood at the moment
-   of the draw and that is not recoverable later. It is a recorded
-   observation, like the value beside it, not a cache of a live
-   computation. Recomputing it would let a dose corrected months later
-   silently rewrite the context on a result someone already reviewed. */
+   The stored context is an ADR-0010 exception. It preserves the dose
+   log as known at the draw. Later dose corrections must not change
+   a reviewed result's context. See schema.ts. */
 export type LabTiming =
   | { route: 'oral' | 'sublingual' | 'rectal' | 'patch' | 'gel'; hoursSinceDose: number }
   | { route: 'im' | 'sc' | 'implant'; dayOfInterval: number };
@@ -384,7 +368,7 @@ export interface Tryout {
   endEpochDay: number | null;
 }
 
-/** One dated tryout photo (phase 5 ticket 13). Its own shape rather than
+/** One dated tryout photo. Its own shape rather than
     ProcedurePhoto's, though the same reasoning: it is the only other photo
     in the app that carries both an owner and a date, because when during
     the tryout it was taken is the whole point of it, the same argument
@@ -415,7 +399,7 @@ export interface FeltSenseEntry {
 }
 
 /* An episode's end is a stored, explicit day, set only by the "end this
-   episode" action (phase 5 ticket 38) - not inferred from another episode
+   episode" action - not inferred from another episode
    starting. Before ticket 38 the end was never stored (ADR-0010): the day
    before the next episode's start, or "ongoing" for the latest one. That
    derivation stops holding once two episodes for different drugs can
@@ -439,7 +423,7 @@ export interface RegimenEpisode {
   startEpochDay: number;
   endEpochDay: number | null;
   /** Why the episode ended, set only alongside `endEpochDay` by the "end
-      this episode" action (ticket 43) - never editable on its own, and
+      this episode" action - never editable on its own, and
       never assignable while `endEpochDay` is null, the same way the day
       itself cannot be. Null on every episode ended before this ticket, and
       cleared again if the end day is ever reopened, because a reason with
@@ -459,7 +443,7 @@ export type DrugClass = 'hrt' | 'other';
 
 export type EpisodeEndReason = 'switchedDrugOrRoute' | 'pausedForNow' | 'decidedToStop';
 
-/* The routes a dose can be taken by (phase 4 ticket 02). A closed set,
+/* The routes a dose can be taken by. A closed set,
    unlike a regimen episode's free-text `route`: what fields a dose carries
    depends on which route it was, so the app has to know the answer rather
    than carry whatever was typed. */
@@ -477,7 +461,7 @@ export type DoseStatus = 'taken' | 'skipped' | 'changed';
 
 /** Who wrote the row. `person` is every dose logged by hand and every dose
     that existed before auto-logging did; `schedule` is one a schedule the
-    person switched on wrote on their behalf (phase 11 ticket 11, ADR-0086).
+    person switched on wrote on their behalf (ADR-0086).
 
     A field of its own rather than a fourth `DoseStatus`, because it answers a
     different question: status is what happened to the dose, source is who
@@ -516,7 +500,7 @@ interface DoseEventFields {
       records its time; this identity keeps its schedule slot through travel. */
   autoLogSlot?: { episodeId: string; epochDay: number; indexInDay: number };
   /** Which drug this dose was, in the dose's own words - optional, and null
-      on almost every dose (phase 5 ticket 38). Attribution still resolves
+      on almost every dose. Attribution still resolves
       from the episode history first (regimenEpisode.ts's attributeDose);
       this only breaks a tie when more than one episode is active at the
       dose's timestamp and names a different drug, which cannot happen
@@ -536,7 +520,7 @@ interface DoseEventFields {
    episode underneath it - changes the answer with no stored link to
    rewrite (ADR-0010) for the common case of one episode active at a time.
    `drug` exists only to break the tie once concurrent episodes for
-   different drugs make that resolution ambiguous (ticket 38).
+   different drugs make that resolution ambiguous.
 
    A union rather than one interface with nullable fields, because which
    fields a dose has is decided by its route and nothing else: an oral dose
@@ -598,7 +582,7 @@ export interface DoseSchedule {
   doseAmounts: DoseScheduleAmount[] | null;
   /** The day the person switched auto-logging on for this schedule, or null
       for off - the standing instruction "assume I took it unless I say
-      otherwise" (phase 11 ticket 11, ADR-0086).
+      otherwise" (ADR-0086).
 
       One nullable day rather than a boolean beside a day, because the pair
       has a state that means nothing: switched on with no day to start from.
@@ -655,11 +639,10 @@ export interface SideEffect {
   id: string;
   name: string;
   /** 1 (barely noticeable) to 5 (severe), or null: the sheet asks for a
-      grade and does not require one (phase 8 features ticket 23). */
+      grade and does not require one. */
   severity: number | null;
   epochDay: number;
-  /** The day it resolved, or null while it is ongoing (functional audit
-      ticket 23). Never before `epochDay`. */
+  /** The day it resolved, or null while it is ongoing. Never before `epochDay`. */
   resolvedEpochDay: number | null;
 }
 
@@ -684,7 +667,7 @@ export interface CycleEvent {
    is a separate row this area manages by an auto_source marker
    (wearSessions.ts), the same handoff medication_stock's run-out prompt
    uses. */
-/* Which practice the session was (phase 8 features ticket 50, ADR-0064).
+/* Which practice the session was (ADR-0064).
    Closed to three and staying closed: each one carries its own wording and
    its own safety facts, so a fourth value would be a set of strings nobody
    wrote rather than a row the app could still draw. */
@@ -707,7 +690,7 @@ export interface WearSession {
 }
 
 /* Preferences are not here: they live in SQLite's `pref` table and are
-   described by prefs/catalogue.ts (ticket 06). Neither is a whole-journal
+   described by prefs/catalogue.ts. Neither is a whole-journal
    type: the `DB` object the demo store held went with it in ticket 08, and
    what an archive carries is the archive module's own shape. */
 
@@ -719,8 +702,7 @@ export interface WearSession {
     orders a picker so whichever matches the active preset sorts first. */
 export type Lean = 'femme' | 'masc' | 'neutral';
 
-/** A milestone the app suggests by name. No lean (functional audit ticket
-    32): every milestone template names a kind of event rather than a
+/** A milestone the app suggests by name. No lean: every milestone template names a kind of event rather than a
     direction, so all eight were neutral and ranking them did nothing. */
 export interface MilestoneTemplate {
   key: string;
@@ -812,7 +794,7 @@ export interface PersonalEffect {
   firstNoticedEpochDay: number;
 }
 
-/** A hair-removal session's method (phase 5 ticket 08): a small closed set
+/** A hair-removal session's method: a small closed set
     rather than free text, so `hairRemovalMethodName` can give it a
     translated label the way a hair-staging grade does - 'other' is the
     escape hatch for anything the two named methods do not cover. */
@@ -901,10 +883,9 @@ export interface MedicationStock {
       types one. Feeds `reorderByEpochDay` (stockProjection.ts) alongside the
       run-out day; never folded into the run-out projection itself. */
   leadTimeDays: number | null;
-  /** How many doses one unit holds - five to a vial, say (after-release
-      ticket 01). Null means one dose per unit (stockProjection.ts). */
+  /** How many doses one unit holds - five to a vial, say. Null means one dose per unit (stockProjection.ts). */
   dosesPerUnit: number | null;
-  /** The day the supply held now expires (functional audit ticket 47).
+  /** The day the supply held now expires.
       Logged and shown, never advised on: nothing reads it to warn. Null
       until a person types one. */
   expiryEpochDay: number | null;
@@ -916,7 +897,7 @@ export interface MedicationStock {
   cost: Cost;
 }
 
-/** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind
+/** A checklist's owner reference: `kind` names what kind
     of record owns it and `id` is that record's own travelling identity
     (ADR-0002). Not a closed union like PhotoOwner (photos.ts) - no owner
     table ships with this ticket, so the pair is what lets a future owner
@@ -941,7 +922,7 @@ export interface ChecklistItem {
 }
 
 /** An ordered list of checklist items, standalone or scoped to one owner
-    record (phase 5 ticket 05). Ticket 07's recovery checklist and ticket
+    record. Ticket 07's recovery checklist and ticket
     11's appointment prep list are both this same shape - the owner is what
     differs between the two call sites, not the item. */
 export interface Checklist {
@@ -964,8 +945,7 @@ export type RoadmapGoalStatus = 'unchecked' | 'checked' | 'not-my-path';
     rather than named by a pack and a key the way a bundled goal is, and
     never translated or reseeded - the split CONTEXT already draws between
     Custom and Built-in. `track` says where it sits: 'legal' for the Polish
-    legal steps, or the uuid of one of the person's categories (functional
-    audit ticket 34). Appended to the end of its group; the roadmap already
+    legal steps, or the uuid of one of the person's categories. Appended to the end of its group; the roadmap already
     refuses ordering between goals (roadmap.ts), so creation order is all
     there is to keep. */
 export interface CustomRoadmapGoal {
@@ -976,14 +956,14 @@ export interface CustomRoadmapGoal {
 }
 
 /** An institution the person added to the roadmap's list of name and
-    document changes (functional audit ticket 35), beside the built-in ones
+    document changes, beside the built-in ones
     roadmap.ts names. */
 export interface RoadmapInstitution {
   id: string;
   name: string;
 }
 
-/** One dated change at an institution (functional audit ticket 35):
+/** One dated change at an institution:
     submitted, waiting or done on `epochDay`, with an optional line of the
     person's own ("sent on to the kuratorium"). `institution` is a built-in
     institution's key or the uuid of one the person added. `status` is a
@@ -999,7 +979,7 @@ export interface InstitutionChange {
   note: string | null;
 }
 
-/** A category the person made on the roadmap (functional audit ticket 34),
+/** A category the person made on the roadmap,
     to hold goals of their own beside the Polish legal steps. `name` is
     empty only on a category migration 111 made from a cut track, whose uuid
     is that track's key (roadmap.ts, LEGACY_ROADMAP_TRACKS). */
@@ -1008,7 +988,7 @@ export interface RoadmapCategory {
   name: string;
 }
 
-/** What kind of surgery a procedure is (phase 9 carpet ticket 17): a
+/** What kind of surgery a procedure is: a
     compiled-in set of the trans surgeries the app can name, or `custom` for
     anything else, which keeps the record's free-text `name` as its only
     identity. The set gates which sub-modules a procedure's kind unlocks -
@@ -1065,7 +1045,7 @@ export interface Procedure {
 }
 
 /** One consult on the way to a procedure, as the procedure's own screen
-    reads it (phase 5 ticket 07): a date, and the minted id that lets one
+    reads it: a date, and the minted id that lets one
     mistyped date be dropped on its own (ADR-0002).
 
     Since phase 8 features ticket 57 this is a projection of `Appointment`
@@ -1101,12 +1081,12 @@ export interface Appointment {
   kind: string | null;
   place: string | null;
   note: string | null;
-  /** The day somebody was referred on, where this began as a wait
-      (functional-audit ticket 26), or null. Kept once the day is given, so
+  /** The day somebody was referred on, where this began as a wait,
+      or null. Kept once the day is given, so
       the referral stays on its own day in the day view. */
   referredEpochDay: number | null;
   /** The time of day as `HH:MM` on a 24-hour clock, or null for a day with
-      no time given (functional-audit ticket 27). Only ever on a visit with
+      no time given. Only ever on a visit with
       a day: a wait has no time to keep. */
   time: string | null;
   /** Who it is with, the person's own `Provider` record, or null. */
@@ -1115,13 +1095,13 @@ export interface Appointment {
   cost: Cost;
 }
 
-/** How a provider was with trans care, in the person's own judgement
-    (functional-audit ticket 27). Stored as the key; a key this build does
+/** How a provider was with trans care, in the person's own judgement.
+    Stored as the key; a key this build does
     not know reads as not said. */
 export type ProviderCompetence = 'good' | 'mixed' | 'poor';
 
 /** Somebody the person sees - a doctor, a psychologist, a clinic - as the
-    person's own notes on them (functional-audit ticket 27): how to reach
+    person's own notes on them: how to reach
     them, how trans-competent they were, what they made of them. Attached
     to appointments as the "who". Never shared and never rated anywhere but
     here. */
@@ -1134,7 +1114,7 @@ export interface Provider {
 }
 
 /** An appointment still waiting for its day: a referral to a clinic, an NFZ
-    queue, a surgery list (functional-audit ticket 26). The same record as
+    queue, a surgery list. The same record as
     `Appointment`, before it has a day. */
 export type WaitingAppointment = Omit<Appointment, 'epochDay'> & { epochDay: null };
 
@@ -1168,8 +1148,7 @@ export interface BodyRegion {
     next stage takes over. Typed in from the person's own surgeon's plan,
     never a default this app ships (out of scope, ticket 12).
 
-    `timesPerDay` makes it "N times a day for D days" instead (functional
-    audit ticket 25), which is how post-vaginoplasty schedules are given. A
+    `timesPerDay` makes it "N times a day for D days" instead, which is how post-vaginoplasty schedules are given. A
     stage carrying it is saved with `everyNDays: 1`, so a build that does
     not know the field reads it as a daily stage rather than as nothing.
     Absent means one session on each expected day. */
@@ -1179,7 +1158,7 @@ export interface TaperStage {
   timesPerDay?: number;
 }
 
-/** The dilation schedule the person has typed in (ticket 12). One per
+/** The dilation schedule the person has typed in. One per
     journal: `startEpochDay` is when the stage sequence begins, which is
     usually a few days after the procedure's own surgery date rather than
     the same day.
@@ -1202,7 +1181,7 @@ export interface Taper {
   stages: TaperStage[];
 }
 
-/** One dilation session actually done (ticket 12). Nothing required beyond
+/** One dilation session actually done. Nothing required beyond
     the day it took place - this is a logging surface, not an adherence
     tool, and a session with nothing to add still counts. */
 export interface TaperSession {
@@ -1211,12 +1190,11 @@ export interface TaperSession {
   note: string;
 }
 
-/** The four kinds of thing a document can link to (phase 8 features ticket
-    56, ADR-0065). Closed rather than `ChecklistOwner`'s open `kind: string`:
+/** The four kinds of thing a document can link to (ADR-0065). Closed rather than `ChecklistOwner`'s open `kind: string`:
     the ticket refuses a fifth kind, so the type refuses one too. */
 export type DocumentTargetKind = 'goal' | 'milestone' | 'procedure' | 'episode';
 
-/** A document's own link (ticket 56): at most one, to a roadmap goal, a
+/** A document's own link: at most one, to a roadmap goal, a
     milestone, a procedure or a regimen episode. `id` is that thing's own
     uuid for three of the four kinds, and for 'goal' is either a pack-and-key
     string or a custom goal's uuid - the same duality
@@ -1226,41 +1204,18 @@ export interface DocumentTarget {
   id: string;
 }
 
-/** One piece of paper the person keeps (phase 8 features ticket 52,
-    ADR-0065, CONTEXT: "Document"): an opinion, a diagnosis, a court ruling,
-    a referral. The app never reads it - no OCR, no text extraction, no
-    search over what it says - so the fields beside the file are the whole
-    record, and `title` is the person's own summary and the only handle
-    search has on it.
+/** Journal file with a user-supplied title (ADR-0065). Search indexes the
+    title. epochDay dates the document itself. JournalDocument also keeps
+    this type distinct from the DOM Document.
 
-    `JournalDocument` rather than `Document`, which is the DOM's own global:
-    a screen importing this type would shadow it, and a type that means one
-    thing in `data/` and another everywhere else is not worth the shorter
-    name.
+    Store a normalized image as <uuid>.jpg or the unchanged PDF as
+    <uuid>.pdf. The image thumbnail comes from normalization and the PDF
+    thumbnail from its first page. documents.ts resolves file kind and names.
 
-    `epochDay` is the day the paper is *from*, not the day it was scanned in,
-    which is what makes a shoebox of prints from 1994 importable.
-
-    `fileName` is opaque either way, but not one shape: an image document
-    goes through the existing normalisation and carries the same `<uuid>.jpg`
-    a photo does (photos/names.ts); a PDF cannot be normalised and is stored
-    as it arrived, as `<uuid>.pdf` (ticket 53, ADR-0065). Both have a
-    thumbnail beside them - an image's from normalisation, a PDF's its first
-    page drawn once at import (ticket 55) - and
-    `isPdfDocument`/`documentThumbName`/`documentFilesOf`
-    (journal/documents.ts) are what tell the two apart from the name alone.
-
-    `targetKind`/`targetId` are the checklist owner pair (`ChecklistOwner`)
-    over the fixed `DocumentTargetKind` set instead of that type's open
-    string, kept as two flat fields rather than one nested `DocumentTarget`
-    because `flatArea` (this area's own writer, documents.ts) maps one
-    domain field to one column and has no join to offer; `documentTarget()`
-    (documents.ts) is the combined read a caller wants instead. Both null
-    until the person files this under something (ticket 56), both set
-    together (schema CHECK). Deleting a milestone, a procedure or a custom
-    roadmap goal nulls them (documents.ts); a regimen episode has no delete
-    to null them from (regimen.ts) and a built-in goal has no row to delete
-    (roadmap.ts), so a link to either cannot dangle in practice today. */
+    targetKind and targetId are flat columns, either both set or both null.
+    Call documentTarget() for the combined owner. Removing a milestone,
+    procedure or custom roadmap goal clears its links. Regimen episodes and
+    built-in goals have no deletable row here. */
 export interface JournalDocument {
   id: string;
   epochDay: number;

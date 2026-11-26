@@ -1,5 +1,4 @@
-/* A deleted entry's note leaves the database with it (functional audit
-   ticket 09).
+/* A deleted entry's note leaves the database with it.
 
    Counterevidence snapshots used to copy a good-moment entry's day, mood
    and note into a table of their own, with no link back. Trashing the entry

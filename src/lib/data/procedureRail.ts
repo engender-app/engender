@@ -1,36 +1,9 @@
-/* Where a procedure's own phases fall against each other in time (phase 10
-   redesign ticket 52, DIRECTION.md rule 16). Pure, and kept above the
-   journal seam beside recoveryDay.ts and careSpine.ts for the same reason
-   those two are: nothing here is stored, which day is "today" is a local
-   calendar question the data layer has no business answering, and the
-   arithmetic of putting several days on one line wants one home with tests
-   while the wording stays with the screen.
-
-   This is careSpine.ts's shape, anchored differently. The care rail is read
-   out from today in both directions, so today sits in its middle. A
-   procedure is read out from its surgery date - the consults happened
-   before it, the healing happens after it, and "day N" counts from it - so
-   the date is what sits in the middle here and today is a mark like any
-   other. That is the whole of the difference, and it is why this is its own
-   module rather than an option on that one.
-
-   Nothing here judges, and one omission is deliberate rather than
-   incidental: the rail draws no healing horizon, no expected duration and
-   no share of anything completed. The stretch it draws between the date and
-   today is the distance already travelled, which is what "day N of healing"
-   already says in words. A band running from the date to a 90-day cutoff
-   with today's tick somewhere along it would be a progress bar through a
-   recovery, which ticket 52 rules out in as many words and which
-   recoveryDay.ts has refused since it was written - "no expected duration,
-   no phase, nothing about being ahead of or behind anything".
-   SURGERY_RECOVERY_CUTOFF_DAYS keeps deciding which phase a procedure is in
-   and decides nothing about this drawing.
-
-   Ticket 52 cites ADR-0012 for the day-N rule and that citation does not
-   check out: ADR-0012 is native units, normalized values for colour and no
-   worst-to-best legend. It is the neighbouring principle - no end of a
-   scale is the good end - rather than this one, and the rule this module
-   actually keeps is recoveryDay.ts's own. */
+/* Position a procedure's phases on a date rail. Surgery is the anchor.
+   Consults fall before it, healing days after it, and today is one mark.
+   The interval from surgery to today represents elapsed time. The rail
+   has no expected recovery duration or completion percentage, matching
+   recoveryDay.ts. SURGERY_RECOVERY_CUTOFF_DAYS classifies phases only.
+   The caller supplies the current day and owns wording. */
 
 /** How far back of the surgery date the rail will reach for a consult.
 
@@ -95,22 +68,10 @@ export interface ProcedureRailFacts {
   consults: readonly { id: string; epochDay: number }[];
 }
 
-/** A day as a signed distance from the anchor under a square root.
-
-    Square root of the distance rather than the distance itself, careSpine's
-    scale and for careSpine's reason: a procedure consulted twice in the
-    fortnight before the operation and now four days out from it is the
-    ordinary arrangement, and under a linear scale against a first consult a
-    year back those three marks share four percent of the line. Under a root
-    scale the near days get the room and the far ones compress towards the
-    ends, which is the shape of the question.
-
-    Signed and monotonic across zero, so the two sides are one scale rather
-    than two halves stretched to fit. That matters here in a way it does not
-    on the care rail: the date is what this line is about, so where it falls
-    along the line has to be a fact about the journey. Half of a rail either
-    side would pin the date to the middle and today to whichever end, and
-    every procedure past its date would then draw the same right half. */
+/** Use a signed square root of days from the anchor. Near dates
+    gain space and distant dates compress, preserving order across
+    zero. Both sides share one scale. This lets the operation's rail
+    position reflect the journey instead of pinning it to the centre. */
 const scaled = (epochDay: number, anchor: number): number =>
   Math.sign(epochDay - anchor) * Math.sqrt(Math.abs(epochDay - anchor));
 

@@ -1,5 +1,5 @@
 /* Port constructors for the journal: SQLite driver and photo files store.
-   Decoupled so photo file store creation never instantiates an unmanaged SQLite connection (ticket 128). */
+   Decoupled so photo file store creation never instantiates an unmanaged SQLite connection. */
 
 import { JOURNAL_DATABASE } from '../data/legacy-journal';
 import { createAndroidSqlite } from '../data/sqlite/android-driver';

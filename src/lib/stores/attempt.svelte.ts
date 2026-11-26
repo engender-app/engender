@@ -1,4 +1,4 @@
-/* The toast-bound half of writeOutcome.ts (after-release ticket 06): a
+/* The toast-bound half of writeOutcome.ts: a
    write that fails says so in a toast, and a button that writes can hold
    itself disabled while its write is in flight. A write that failed because
    storage is full says that instead of the caller's message, since freeing

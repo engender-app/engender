@@ -1,33 +1,7 @@
-/* What a tryout is, right now (phase 10 redesign ticket 53, DIRECTION.md
-   rule 16). Pure, and kept above the journal seam beside procedureRail.ts
-   and careSpine.ts for those modules' reason: nothing here is stored, which
-   day is "today" is a local calendar question the data layer has no
-   business answering, and putting several days on one line is arithmetic
-   that wants one home with tests while the wording stays with the screen.
-
-   A tryout has no pivot. A procedure is read out from its date - consults
-   behind it, healing after it - so procedureRail anchors on that date and
-   compresses the far days under a root scale. A tryout is a stretch with
-   one end still open, and every day inside it is the same kind of day, so
-   the scale here is linear from the first day to the last and a length
-   along it is a length of time. That is the whole of the difference from
-   that module, and it is why this is its own rather than an option on it.
-
-   ## What this refuses to compute
-
-   No average, no score, no verdict (ADR-0012: a felt-sense reading is
-   drawn, never averaged into a verdict). The app does not decide whether a
-   name suited somebody, so there is nothing here that reduces several
-   readings to one, nothing that calls a direction good, and no trend line
-   fitted through them. The reference sweep for this ticket found all three
-   in the wild - two journals smooth a fortnight of moods into one curve,
-   one prints a "dominant mood", one opens on a completion rate - and each
-   is a claim about days nobody wrote anything on.
-
-   What it does compute is where each reading falls in time and where it
-   falls on the scale it was chosen from, which is the reading itself and
-   nothing added to it. Joining consecutive marks is the screen's business
-   (TryoutFeltSenseArc.svelte says what that line may and may not mean). */
+/* Plot a tryout's recorded felt-sense readings on a linear timeline.
+   Each day's distance represents elapsed time. Use supplied calendar days
+   and the selected scale. The result has no score, average, forecast or
+   verdict (ADR-0012). TryoutFeltSenseArc.svelte owns how marks are joined. */
 
 import type { FeltSenseEntry, Tryout } from './types';
 

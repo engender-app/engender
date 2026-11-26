@@ -1,19 +1,7 @@
-/* Bringing a section into view while it opens (phase 15 after-release
-   ticket 04, audit UX-05).
-
-   The entry editor's chip row is the last thing on its screen, so with the
-   page scrolled to the end there is no room left to scroll when a chip is
-   tapped. The section then grows from 0 under `disclose`, and a single
-   smooth scroll asked for on the first frame was clamped by the browser to
-   the room that existed at that moment: the opened Photos section ended
-   92px under the foot and the tap looked like it did nothing.
-
-   So the region follows the growth instead. Every frame of the disclosure,
-   it moves by however much of the section has grown past the region's
-   bottom, which is at most what the section grew that frame - exactly the
-   room that growth added - so the browser never has a reason to clamp it.
-   The section's bottom edge reads as pinned above the foot while the page
-   over it rises on the disclosure's own clock. */
+/* Follow the section as disclose opens. An initial scroll request
+   can clamp at the current content height and leave part of the
+   open section under the foot. On each frame scroll by the new
+   overflow below the viewport, using the room the growth added. */
 
 export interface RevealGeometry {
   sectionBottom: number;

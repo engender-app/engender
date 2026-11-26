@@ -1,5 +1,4 @@
-/* Where the finish control is, and where it is not (phase 8 features ticket
-   04).
+/* Where the finish control is, and where it is not.
 
    The ticket's own line: it appears on each finishable area's own screen and
    nowhere else. That is a claim about seven route files, and nothing else in

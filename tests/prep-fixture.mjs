@@ -1,5 +1,4 @@
-/* Shared fixture step for the prep screen's checks and its gallery (phase 8
-   features ticket 71). Both need the same state - a journal that has
+/* Shared fixture step for the prep screen's checks and its gallery. Both need the same state - a journal that has
    everything and a prep list ticked empty - and the loop that gets there is
    real logic rather than the per-file `goto` boilerplate every script here
    redeclares, so it lives in one place. */

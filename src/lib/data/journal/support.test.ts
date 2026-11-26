@@ -1,4 +1,4 @@
-/* The uuid fallback (ticket 11).
+/* The uuid fallback.
 
    Found on a device, not by reading: the API 26 emulator's WebView is
    Chrome 69, and crypto.randomUUID arrived in Chrome 92. Every journal write

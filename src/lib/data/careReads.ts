@@ -15,7 +15,7 @@ export async function readCare(
   today: number
 ) {
   const [recentDoses, episodes, schedules, pauses, stock, latestLab] = await Promise.all([
-    /* The totals window's doses, not the whole log (ux-carpet ticket 221).
+    /* The totals window's doses, not the whole log.
        Every lane asks for its last logged dose and doses that cover forward
        slots. The pairing window includes tolerance; the last-dose fact
        remains capped to today. The whole log was 593 KB of the 611 KB this read

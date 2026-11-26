@@ -54,8 +54,8 @@ test('opening Safe Space performs zero writes, across the pool, stats, letters a
   assert.equal(counting.roundTrips().run, 0, 'opening Safe Space must not run a single write statement');
 });
 
-/* What that same read hands back, which is the other half of the contract
-   (phase 11 ticket 15). The rule itself is proved over the query in
+/* What that same read hands back, which is the other half of the contract.
+The rule itself is proved over the query in
    `entries.test.ts`; it is proved again here, where Safe space stands - an
    opened journal, the limit the screen passes - because the pool is the one
    read on this screen whose answer a person takes as a claim about their

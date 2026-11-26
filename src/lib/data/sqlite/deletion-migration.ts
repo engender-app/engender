@@ -1,29 +1,11 @@
-/* Version 117 (functional audit ticket 48): what a deletion leaves behind,
-   so an archive Merge can carry it to another device.
+/* Version 117 records hard deletions so Archive Merge carries them to
+   other devices. Entries alone use soft deletion. Each trigger stores the
+   table, merge identity and SQLite epoch milliseconds, without content.
+   Keep markers indefinitely to prevent old Archives resurrecting rows.
 
-   Only an entry is soft-deleted, and the audit ruled out soft-delete
-   columns anywhere else (undoableDelete.ts), so every other deletion is a
-   hard delete that left nothing to export. `deletion` now keeps one row per
-   deleted record: the table, the record's merge identity (the value a Merge
-   matches it by, journal/archiveMerge.ts) and when it went. A trigger per
-   table writes it, so every delete path records one - an area's own
-   function, a cascade, the trash purge, a Merge applying another device's
-   deletion - without any of them having to remember to.
-
-   The list below is frozen with this migration, like any other migration's
-   SQL: a table added later gets its trigger in its own migration, and a
-   rebuilt table (which drops its triggers with it) recreates its own.
-   archiveMerge.test.ts fails on a table whose trigger is missing, so
-   neither can be forgotten.
-
-   No row is ever pruned. A row holds a table name, a uuid or key and a
-   time, never content (deleted-entry-leaves-no-copy.test.ts reads every
-   table for a deleted note), and a device that keeps it can still refuse
-   to resurrect a record an archive from long ago carries.
-
-   The clock is SQLite's, in milliseconds since the epoch: the same clock
-   every `updated_at` is written from (Date.now() reads the same system
-   time), and the only one a trigger can read. */
+   Keep this table list frozen. Later migrations add their own triggers
+   and recreate them on table rebuild. archiveMerge.test.ts checks trigger
+   coverage; deleted-entry-leaves-no-copy.test.ts checks for retained text. */
 
 /** The table and the expression its identity is read by, inside the
     trigger. Frozen with version 117; archiveMerge.ts keeps the live list. */

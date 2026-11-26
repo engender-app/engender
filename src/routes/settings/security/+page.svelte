@@ -80,8 +80,7 @@
              (screen-capture-guard/01). Replaces the isDebuggable() carve-out
              that used to hand this to any debug build. The row is a blocker,
              off until a person switches it on; the stored preference is the
-             allowance, turned round in screenshot-block.ts (tester report 02,
-             ticket 02). -->
+             allowance, turned round in screenshot-block.ts. -->
         <ListRow
           static
           key="screen-capture"

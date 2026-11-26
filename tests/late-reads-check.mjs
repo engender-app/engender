@@ -1,5 +1,4 @@
-/* The late-reads block of the browser tier on its own (last-audit UI
-   ticket 20): Good moments with its pool read held and Tryouts with its
+/* The late-reads block of the browser tier on its own: Good moments with its pool read held and Tryouts with its
    second read held, every animation frame sampled. Prints each check,
    then each run's tracked elements: the frame each first and last
    appeared on and the painted share (opacity times unclipped height) it

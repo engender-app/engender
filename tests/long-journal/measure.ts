@@ -1,4 +1,4 @@
-/* The measurement harness (phase 2 ticket 20).
+/* The measurement harness.
 
    Five places decide whether a decade of Journal works: the calendar, the
    stats screen, search, Archive export and the photo grid. Search is two
@@ -47,7 +47,7 @@ export interface Measurement {
   detail: string;
   /** How many statements crossed the driver seam, and how many bytes came
       back across it. Carried only by the screen-mount measurements, which
-      are budgeted on these rather than on time (phase 8 audit ticket 01):
+      are budgeted on these rather than on time:
       the crossing is what this architecture pays for, and on desktop it is
       the half a millisecond figure cannot see. */
   statements?: number;
@@ -55,7 +55,7 @@ export interface Measurement {
 }
 
 /** The cold-start measurements the probe takes around boot() itself, before
-    it hands the journal to the harness below (phase 5 audit ticket 02). They
+    it hands the journal to the harness below. They
     live in the probe rather than here because they need a real driver over
     real storage - what boot costs is the driver opening, not a fake one being
     constructed - and they are named here so budgets.json can be checked
@@ -325,25 +325,10 @@ export async function measureLongJournal(
     });
   }
 
-  /* Everything outside the entry note (phase 5 deepening ticket 24). One
-     statement across the whole registry - eighteen areas as branches of
-     one UNION ALL - plus its count, which is what the screen runs per search
-     beside the two entry queries above (textSearch.ts).
-
-     None of these areas has an index, so most of what this watches is what a
-     folded LIKE over every text column in the journal costs at decade scale.
-     But it is measured with a word the fixture's non-entry text actually
-     holds - the letters are addressed to a future self - rather than with the
-     Polish note word the three measurements above use, so the CASE that picks
-     the matched column, the ORDER BY over the union and the LIMIT are all on
-     the measured path instead of only the scan. That the word still matches
-     is asserted rather than assumed: a fixture that stops writing it would
-     otherwise quietly turn this into a scan with nothing to return.
-
-     If this ever grows out of budget, the strategy to reach for is the one
-     deliberately not taken here: search on submit rather than per keystroke.
-     Debouncing was not needed at these numbers and would have cost the live
-     feel the entry side has.
+  /* Measure non-entry search at decade scale, including its count and
+     the registry's UNION ALL, folded LIKE, matched-column CASE,
+     ordering and limit. Use a term in fixture letters and assert that
+     it still matches so the benchmark covers returning results.
   */
   await measure('search-everywhere', 'search, every area outside entries in one statement', async () => {
     const results = await journal.textSearch.search({
@@ -425,7 +410,7 @@ export async function measureLongJournal(
     return { result: bytes, detail: `${mb(bytes)} archive` };
   });
 
-  // --- phase 5 features (ticket 01) ---------------------------------------
+  // --- phase 5 features ---------------------------------------
   // Five features landed without a line here: this section checks the four
   // that turned out to be genuinely new reads. The fifth, regimen templates
   // (care/regimen/+page.svelte's vocabulary.regimenTemplates), is a
@@ -485,24 +470,11 @@ export async function measureLongJournal(
     };
   });
 
-  // Dose schedules (schema v38, ADR-0027, phase 5 ticket 40): the one call
-  // the dose log screen's schedule view makes, getComparison - four reads,
-  // the episode in effect, its schedule and pauses, the doses attributed to
-  // it, then expectedSlots and adherence over those, which is where the
-  // weekday recurrence and the doseAmounts cycle actually run. The same
-  // function the screen calls rather than a second copy of its steps: this
-  // block used to assemble them itself off episodes[0] with unattributed
-  // doses, so the figure below was not the screen's figure (phase 5
-  // deepening ticket 17).
-  //
-  // Its window ends on the fixture's last single-episode day rather than on
-  // `today`, and that is the fixture's own shape: its final stretch runs two
-  // concurrent episodes for different drugs, where the screen has nothing to
-  // compare and says so. Behind that day sit the fixture's richest
-  // schedule - three cycling dose amounts on a Monday/Wednesday/Friday
-  // recurrence. The reason is asserted rather than reported, so a fixture
-  // that stops meeting that precondition fails here instead of quietly
-  // measuring four reads and an early return.
+  // Measure the dose log's real getComparison (ADR-0027). It reads the
+  // active episode, schedule and pauses, and attributed doses, then runs
+  // expectedSlots and adherence. End on the last single-episode day.
+  // Assert the fixture has three cycling Monday/Wednesday/Friday
+  // amounts so the benchmark exercises recurrence beyond an early return.
   await measure('dose-schedule-adherence', 'dose log, 90 days against its schedule, single-episode window', async () => {
     const ADHERENCE_WINDOW_DAYS = 90;
     const toEpochDay = summary.lastSingleEpisodeEpochDay;
@@ -519,7 +491,7 @@ export async function measureLongJournal(
     };
   });
 
-  // --- phase 5 ticket 36 features (ticket 05) ------------------------------
+  // --- phase 5 ticket 36 features ------------------------------
   // Nine more More-hub areas ticket 36 seeded real content for, surveyed
   // against their actual data-layer calls and found genuinely uncovered.
   // sizes, wear and the overlapping-episode fan-out were surveyed too and
@@ -621,25 +593,10 @@ export async function measureLongJournal(
     };
   });
 
-  /* --- phase 8 UX ticket 02 -----------------------------------------------
-
-     The More hub, which is the screen this measurement was taken for rather
-     than against: the ticket's own instruction is that eighteen live lines on
-     one navigation surface has to fit what this benchmark measures, and that
-     the number is recorded before the screen is written.
-
-     Two reads, concurrently, which is what the hub issues on mount: every
-     registered area's last write in one assembled call (lastWrite.ts - one
-     bounded MAX per area, nineteen of them), and the area record that decides
-     which rows are hidden and which have been finished. The third read the
-     hub makes is the regimen episode list ADR-0043's cycle gate gets its
-     answer from, which is not new to this ticket and is measured nowhere
-     because it is one small unindexed table read.
-
-     Deliberately not eighteen `liveQuery` calls, and this is where that shows:
-     what a row's line costs is a share of one number here, so a row added to
-     the hub costs another MAX inside this measurement rather than another
-     round trip through the worker queue. */
+  /* Read registered areas' last writes and the area record concurrently.
+     One bounded MAX per area fits in the assembled last-write call.
+     The area record supplies hidden and finished state. The cycle
+     gate's small regimen lookup (ADR-0043) is outside this budget. */
   await measure('hub-last-writes', 'More hub, the last write in every area plus the area record', async () => {
     const [lastWrites, states] = await Promise.all([
       journal.lastWrite.getLastWrites(today),
@@ -652,37 +609,14 @@ export async function measureLongJournal(
     };
   });
 
-  /* --- screen mounts, in statements and bytes (phase 8 audit ticket 01) ---
+  /* Measure calls, payload bytes and elapsed time for the four screen
+     mounts. Payload matters across Android's JSON bridge even when SQL is
+     fast. Mirror default route, tile and child reads with their real
+     overlap and serial loops.
 
-     What the four screens the data audit measured cost in the metric this
-     architecture is actually priced in. Milliseconds are here too and are
-     the least of it: native SQLite answers almost all of this in single
-     figures, while one Home mount moves most of a megabyte across a
-     boundary that serialises everything. On desktop that is a same-process
-     `postMessage`; on the Capacitor bridge it is that payload as JSON. So
-     the budget these carry is a statement count and a byte count, and the
-     milliseconds are a footnote on the platform where they are cheap.
-
-     Each mount fires the reads its screen fires on arrival - the route's
-     own, its tile grid's, and those of every child component that mounts
-     unconditionally or behind a preference that ships on. Concurrently
-     where the screen's live queries overlap, serially where one of its
-     queries loops.
-
-     The read lists are restated here rather than imported, for the reason
-     `hub-last-writes` and every stats measurement above restate theirs: a
-     screen's reads live in `.svelte` and `.svelte.ts` files, and a
-     `liveQuery` is an effect that cannot be created outside a component.
-     What that costs is drift. A read added to a screen and not here shows
-     up as a gap between this budget and the device benchmark rather than as
-     a failure, and a read taken away leaves this measuring something nobody
-     asks for - which is the thing to check when one of the tickets below
-     lands.
-
-     Seeded at today's numbers on purpose. Tickets 13, 14, 16 and 19 each
-     state their acceptance as a reduction in one of these figures, so the
-     budget's job here is to be the ratchet they tighten, not a target
-     anybody has agreed to yet. */
+     liveQuery depends on a component effect, so this benchmark restates
+     its read lists. Update those lists when the screens' queries change.
+     The counts act as regression budgets. */
   const dimensionKeys = (await journal.dimensions.getDimensions()).map((dimension) => dimension.key);
 
   await mount('mount-home', 'Home, every read its tiles, panels and cards fire on arrival', async () => {
@@ -698,8 +632,7 @@ export async function measureLongJournal(
        bar, one statement per candidate. */
     const wrappedPeriod = offeredWrappedPeriod(today);
     const lookbackDays = onThisDayCandidates(today);
-    /* The debrief offer's own most-recent-past-appointment lookup (ticket
-       58) is a second, dependent read - Home's own liveQuery cannot ask
+    /* The debrief offer's own most-recent-past-appointment lookup is a second, dependent read - Home's own liveQuery cannot ask
        getDebriefState until this one has answered, the same reason it is
        not folded into `together` below. */
     const appointments = await journal.appointments.getAppointments();
@@ -770,7 +703,7 @@ export async function measureLongJournal(
          rather than the first two the vocabulary store calls active - which
          are the same two on a fixture that hides none. A budget for a
          screen is worth having at its widest mount, and this card's reveal
-         is the one animation the screen exists for (ticket 19). */
+         is the one animation the screen exists for. */
       constellation: journal.stats.constellationReadings(xKey, yKey, from, today)
     });
 
@@ -803,27 +736,12 @@ export async function measureLongJournal(
   });
 
   await mount('mount-coming-back', 'the return surface, the gap and everything waiting in it', async () => {
-    /* Two calls, and the screen makes them in this order for a reason of
-       its own: the gap is decided once and held, because backfilling a dose
-       writes a row inside the gap and a screen that re-derived it would
-       decide mid-visit that this was not a return after all.
-
-       The fixture journals nearly every day, so it has no real gap and
-       `readReturnGap` answers null - which is the cheap path almost every
-       boot takes and is worth counting on its own. What is waiting is then
-       asked about a gap chosen here rather than found, so this one figure
-       is a screen's cost on a fixture that cannot produce the screen: a
-       season away, which is the absence it was built for.
-
-       This budget cannot see phase 8 audit ticket 14's fix (a wasted
-       second run of `readWhatIsWaiting` when the live query watching it
-       discovered its tables late): calling these functions directly, as
-       this harness does everywhere, never goes through `liveQuery` at all,
-       so the doubled round trip that bug cost in the browser was never
-       reflected in this number to begin with, and there is nothing here
-       for that ticket to halve. Its fix is proved instead in
-       tests/browser-tier/live-reads-probe.svelte.ts, the layer that
-       actually runs the reactive `query()` machinery. */
+    /* Measure the two direct reads. The screen captures its return gap
+       once because backfilling a dose could close it mid-visit.
+       readReturnGap returns null on the dense fixture, and
+       readWhatIsWaiting uses a synthetic gap one season long.
+       Browser-tier live-reads-probe.svelte.ts covers reactive query
+       round trips that this budget bypasses. */
     const gap = await readReturnGap(journal, today);
     const since = today - RETURN_GAP_DAYS;
     const waiting = await readWhatIsWaiting(journal, today, since);
@@ -922,39 +840,17 @@ export async function measureLongJournal(
     };
   });
 
-  /* --- archive-restore, and where its time goes (ticket 17) ---------------
+  /* Attribute archive restore time without adding timing hooks to restore.ts.
+     replace drains and writes the photo stream, then installs all rows in one
+     transaction. first-paint measures the app's separate re-read.
 
-     `replace` does two things in sequence and nothing else (restore.ts): it
-     drains the photo stream, writing every file, and then it installs every
-     row in one transaction. Nothing runs after the commit, so those two
-     account for the whole number. There is no post-restore settle inside
-     `replace` to attribute; what the app does after a restore is a re-read,
-     which `first-paint` already measures.
+     -read accumulates time spent fetching photo bytes. -files measures the
+     streaming window, including overlapping writes with concurrency eight.
+     -db is the remaining time, mostly the transaction.
 
-     The stream is instrumented from here rather than from restore.ts, because
-     this side owns the async iterable it hands over and production code
-     should not grow a timing hook to be benchmarked. Three numbers come out,
-     and the first is nested inside the second rather than beside it:
-
-       -read   time inside the snapshot's `readFiles`, accumulated: the photo
-               bytes coming back out of the store.
-       -files  the whole streaming window - those reads and the writes they
-               feed, interleaved eight at a time (restore.ts's
-               FILE_WRITE_CONCURRENCY), so read and write overlap and only
-               the window itself is a wall-clock figure.
-       -db     what is left, which is the transaction.
-
-     Two things neither number can see, both of which err the same safe way.
-     `-db` carries whatever writes were still in flight when the stream ended,
-     because restore.ts awaits them before opening the transaction and this
-     side cannot see that await. And `-read` is wall clock around the read
-     while up to eight writes contend with it, on the same event loop and, on
-     Android, the same bridge - so it is the cost of reading under load rather
-     than the cost of reading. Both inflate the cheap half at the expensive
-     half's expense: `-db` looks worse than it is, `-read` looks worse than it
-     is, and the write cost the whole floor argument rests on is therefore
-     understated rather than flattered. At eight of several hundred files each
-     is around a percent. */
+     -db includes writes still in flight after the stream ends. -read includes
+     contention from concurrent writes on the event loop or Android bridge.
+     Both effects understate the cost attributed to writes. */
   let restoreStartedAt = 0;
   let streamEndedAt = 0;
   let fileReadMs = 0;

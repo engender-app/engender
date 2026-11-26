@@ -267,7 +267,7 @@ try {
   // 9. And Back returns to the map, where it was left.
   await page.goBack();
   await page.waitForFunction(() => !location.hash);
-  /* Back eases to the map now (ticket 278), so wait for it to arrive. */
+  /* Back eases to the map now, so wait for it to arrive. */
   await page
     .waitForFunction((y) => {
       const el = document.querySelector('[data-app-scroll-region]');

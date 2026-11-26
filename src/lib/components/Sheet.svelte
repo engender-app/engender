@@ -229,25 +229,14 @@
   }
 
   /* SF-001's background lock and focus trap live in overlayLock.ts now: the
-     letter arrival (redesign ticket 45) is the app's second surface that
+     letter arrival is the app's second surface that
      covers the whole shell, and it owes the screen behind it exactly what a
      sheet does. Their reasoning travelled with them. */
 
-  /* The scrim and the withdrawal blur it carries settle with the sheet, on
-     the sheet's own clock rather than on a duration of their own: with the
-     travel now the sheet's whole height (redesign ticket 38) a scrim that
-     finished first left the sheet still visibly moving over a page that had
-     already gone dark. Under reduced motion the sheet substitutes a
-     crossfade, so the scrim takes the same one - motionDuration() answers 0
-     there, and a scrim that cuts while the sheet fades is the same mismatch
-     the other way round.
-
-     The entrance and the exit are two curves now rather than one, so the
-     sheet is `in:`/`out:` rather than a bidirectional `transition:`. What
-     that costs is the reversal: a sheet closed while it is still rising
-     lands before it leaves instead of turning round where it got to. The
-     directions had to differ - only the way up runs past its mark - and a
-     sheet closed inside 380ms is a rarer thing to see than every close. */
+  /* Time the scrim and its fixed blur with the sheet, including
+     the reduced-motion crossfade when motionDuration() returns 0.
+     Separate in and out curves allow overshoot only on arrival.
+     Closing during that 380ms arrival lets it finish before exit. */
 
 </script>
 

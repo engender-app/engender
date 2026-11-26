@@ -1,22 +1,8 @@
-/* Browser-tier check for the pitch density and the figure blocks (redesign
-   ticket 42), the half no Node test can reach.
-
-   density.test.ts proves the arithmetic: that a tenth of the shape's area
-   lies below the p10 mark, and that a five-second read is not a comb. What
-   it cannot say is where any of that landed on a drawn figure, and four of
-   this ticket's claims are about exactly that:
-
-   - a take with no stored track draws its sentence and no empty shape,
-     which is the same rule a trackless take's trace already follows;
-   - a first benchmark draws six values and no history plot anywhere, so
-     there is no empty chart on the screen;
-   - a change of capture chain takes the history off every figure at once
-     (ADR-0061), not only off the ones the compare tab happens to draw;
-   - the density carries the ink rule 9 gives a series, the spine the ink it
-     gives a guide, and no population band appears on any figure.
-
-   Each of those is a question about the rendered tree or about a computed
-   style, so they live here. */
+/* Check rendered voice figures. A missing track gives a notice and
+   a first benchmark gives six values without history. A capture-chain
+   change clears history from every figure (ADR-0061). Density uses
+   series ink, its spine guide ink, and no figure shows population
+   bands. density.test.ts covers the calculations. */
 
 import { mount } from 'svelte';
 import '$lib/theme/fonts.css';

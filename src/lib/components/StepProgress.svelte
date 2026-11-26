@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Where a person is in a new entry's steps (tester report 02, ticket 09):
+  /* Where a person is in a new entry's steps:
      one segment per step they will see, filled up to the one they stand
      on. Segments rather than "2 of 4", so the walk reads as a short path
      and not a count of chores left; the count is the accessible name.

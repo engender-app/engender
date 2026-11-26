@@ -54,7 +54,7 @@ describe('asCount: which values count up', () => {
     expect(asCount('1204')).toBe(1204);
   });
 
-  /* A name, a duration and a date cut (ticket 25): "a value that is a
+  /* A name, a duration and a date cut: "a value that is a
      count counts up on arrival and on change; a value that is a name or a
      duration cuts". Anything that is not only digits is not a count. */
   it('leaves a name, a duration, a date and a decimal alone', () => {

@@ -20,7 +20,7 @@ export function platformImageSource(): OcrImageSource {
            lab wants one image and reports its own failures - but the step
            that turns a pick's token into bytes is theirs, so the OCR lab
            takes the message channel rather than a second base64 decode of
-           its own (phase 9 audit ticket 06). */
+           its own. */
         try {
           if (source === 'camera') {
             const { token } = await androidPhotos.captureImage();

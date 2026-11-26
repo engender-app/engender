@@ -1,4 +1,4 @@
-/* The ten-year run, in the browser (phase 2 ticket 20).
+/* The ten-year run, in the browser.
 
    Encryption is on, because that is what ships: the driver is the
    SQLite3MultipleCiphers one under a data key (ADR-0018/0020) and the photo
@@ -213,7 +213,7 @@ async function run(days: number) {
   }
   storage.operation = 'complete';
 
-  /* The second open is the one worth timing (phase 5 audit ticket 02). The
+  /* The second open is the one worth timing. The
      first one above migrated an empty database; this one is the boot every
      later one is - a decade of Journal already on the current schema - which
      is the sequence a person waits through before a screen can read anything.
@@ -286,8 +286,8 @@ async function run(days: number) {
   });
 
   /* The screen mounts are counted at the driver seam rather than timed, so
-     the journal they are measured over is opened on the recording adapter
-     (phase 8 audit ticket 01). It records only inside the windows the
+     the journal they are measured over is opened on the recording adapter.
+It records only inside the windows the
      harness opens, so nothing above pays for it. */
   const recorder = recordingDriver(reopened.driver);
   stage('measurements', days);

@@ -37,7 +37,7 @@
 <div class="disclosure {className}" {...rest}>
   <!-- A fold toggle is a full-width row: scaling it walked its far edge, chevron
        and all, out from under the finger, so the release missed the button and
-       the fold never moved (pre-release-human 18). It answers with the wash. -->
+       the fold never moved. It answers with the wash. -->
   <button
     type="button"
     class="disclosure-toggle"

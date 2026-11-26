@@ -1,20 +1,8 @@
-/* The decoded-size budget for picked media (security-scan ticket 07).
-
-   The ceilings that already existed count compressed file bytes, but what a
-   file costs is what it becomes once decoded: a 60-byte PNG can declare
-   65535 x 65535 pixels and ask for 16 GB of RGBA. So the image budget is read
-   from the file's own header, before any decoder or canvas sees it.
-
-   **Why 16384 x 16384.** 268 million pixels. The largest photo a phone
-   produces today is a 200 MP sensor frame at 16320 x 12240 (199.8 MP), and
-   a panorama stitched on a phone runs to about 100 MP, so the budget sits
-   above everything a camera makes while still refusing a declared size no
-   camera could have written. A user's real photo being refused is worse
-   than the denial of service this guards against, so the number is set
-   by the biggest real file, not by what is comfortable.
-
-   Orientation does not change a pixel count, so the EXIF rotation that
-   swaps width and height needs no handling here. */
+/* Check declared pixels before decoding. A compressed-byte limit
+   does not bound the decoded allocation. The 16384 × 16384 budget
+   (about 268 MP) accommodates a 200 MP phone frame and 100 MP stitched
+   panoramas. EXIF rotation can swap dimensions without changing
+   their product. */
 
 /** 16384 x 16384. */
 export const MAX_IMAGE_PIXELS = 16384 * 16384;

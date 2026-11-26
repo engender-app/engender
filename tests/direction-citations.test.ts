@@ -1,4 +1,4 @@
-/* The DIRECTION.md citation guard (functional audit ticket 55). Dev tier:
+/* The DIRECTION.md citation guard. Dev tier:
    DIRECTION.md lives in the private docs repo, so where it is not linked (CI)
    the repo-wide check skips with a notice and the parsing tests still run. */
 import { existsSync } from 'node:fs';

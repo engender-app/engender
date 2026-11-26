@@ -1,30 +1,10 @@
-/* How tall the journal book screen is, measured (phase 12 final-audit
-   ticket 20, audit finding U11).
+/* Measure the app scroll region with the demo bar removed. Compare
+   the default year's folded and expanded heights, and check the seventh
+   toggle is within two viewports. Print stays in view because
+   hostSaveBar pins it in the app column.
 
-   The audit's case is a number: 26,931px on the default one-year range, the
-   tallest screen in the app by a factor of four, because the whole chosen
-   range was laid out inline - every entry's date, mood word and text, and a
-   full-bleed block per photo. So the fix owes the same number back, measured
-   the same way.
-
-   Three readings, all off the scroll region rather than the document,
-   because the app frame is what scrolls (the walkthrough's own geometry
-   rule), and with the demo bar removed since it is review chrome:
-
-     closed     what the screen holds with the pages folded away, which is
-                what the acceptance is written against.
-     open       the same range with the fold open. That is the document this
-                ticket moved, so it stands for what the screen was before
-                it, give or take the summary line and the fold's own row.
-     toLastTick how far down the region the seventh switch sits, which is
-                what "the toggles are in the first two viewports" means.
-
-   Print is not measured: `hostSaveBar` moves the foot out of the scroll
-   region into the app column, so it is on screen at every scroll position.
-
-   Run: node tests/journal-book-height.mjs
-   Serves the `build/` in the current working directory, so it wants a
-   `VITE_DEMO=1 npm run build` first. */
+   VITE_DEMO=1 npm run build
+   node tests/journal-book-height.mjs */
 import assert from 'node:assert/strict';
 import { preview } from 'vite';
 import { fillDate, launchChromium, dateValue } from './browser-harness.mjs';

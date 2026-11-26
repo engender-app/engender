@@ -1,4 +1,4 @@
-/* The check-in rule (functional audit ticket 08). Every case lives in
+/* The check-in rule. Every case lives in
    src/lib/android/fixtures/check-in-rule.json, which
    CheckInRuleFixtureTest.java runs against ReminderPlanner, the side that
    actually schedules the alarm. The cases carry their own zone, so this file

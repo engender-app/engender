@@ -1,29 +1,13 @@
-/* How each archive section's rows are written back into the journal, wired
-   into the registry by archiveSections.ts and run inside restore.ts's single
-   transaction.
+/* Apply archive sections inside restore.ts's transaction. Flat sections use
+   applyFlatTable; this module handles multi-table writes, resolved owners and
+   built-in keys.
 
-   A flat area with one identity needs no function here: applyFlatTable() writes it
-   from the descriptor the registry declares (archiveTable.ts). What is left
-   is the sections with more than one table or an owner to resolve - a
-   child table walked in both modes, a rowid resolved against a section that
-   ran earlier, a built-in matched by key.
-
-   Which copy of a row wins is one rule for every table (archiveMerge.ts).
-   What stays each section's own is the rest, for reasons the individual
-   comments record - a roadmap check holds two facts in one row, a tag group
-   walks its tags in both modes, an episode may hold only one schedule and a
-   procedure one taper.
-
-   The rules every one of them follows are archiveMerge.ts's: each row the
-   archive carries asks a RowGate whether it is inserted, written over this
-   device's copy (the archive's is newer) or left out (this device's copy,
-   or its deletion of the row, is the newer), and a row written from the
-   archive keeps the archive's `updatedAt`. `ts`, this device's clock, only
-   stamps a row from an archive written before functional audit ticket 48,
-   which carries none. A row with its own identity is gated on its own,
-   nested or not (a photo, a status update, a checklist item); a join row
-   follows its parent and is rewritten only when the parent is. A child
-   whose parent this device has deleted is left out with it. */
+   Every independent row, including nested rows, asks archiveMerge.ts's
+   RowGate whether to insert, update or keep the local copy or deletion.
+   Preserve the Archive's updatedAt; use ts only for older files without a
+   clock. A join follows its parent's write and a child of a locally deleted
+   parent is skipped. Section rules still govern one schedule per episode,
+   one taper per procedure and the tags inside each group. */
 
 import { foldText } from '../fold';
 import { drugNameKey } from '../regimenEpisode';
@@ -783,7 +767,7 @@ export async function applyRoadmapChecks(restoring: Restoring): Promise<void> {
   /* An older archive's ticks go through the rules migrations 111 and 114
      applied to the journal (keptTick): a tick on a track ticket 34 cut or
      on the retired "bank, insurers, clinic" step is skipped, and one on a
-     step that became an institution (ticket 35) keeps only its hidden
+     step that became an institution keeps only its hidden
      flag, so nothing comes back as an invisible row. */
   const checks = journal.roadmapChecks.flatMap((check) => {
     const kept = keptTick({ ...check, hidden: check.hidden ?? false });
@@ -960,8 +944,7 @@ async function applyOwnedRows<Row extends ArchiveStamped & { id: string }>(
 }
 
 /* Resolves its tryout by uuid against what applyTryouts just wrote, and so
-   does a reading an older archive hung off a milestone (functional audit
-   ticket 32): it has no tryout to resolve, and is dropped. */
+   does a reading an older archive hung off a milestone: it has no tryout to resolve, and is dropped. */
 export async function applyFeltSenseEntries(restoring: Restoring): Promise<void> {
   await applyOwnedRows(
     restoring,
@@ -1353,7 +1336,7 @@ export async function applyTaper(restoring: Restoring): Promise<void> {
   }
 }
 
-/** Appointments (ticket 57, ADR-0066), by uuid like every other user-owned
+/** Appointments (ADR-0066), by uuid like every other user-owned
     row; the only things they resolve are the procedure and provider links,
     which travel as uuids and so need `procedures` and `providers` applied
     first (the section's `after`).
@@ -1370,7 +1353,7 @@ export async function applyAppointments(restoring: Restoring): Promise<void> {
     const fate = fateOf(gate, appointment.id, appointment, ts);
     if (fate !== 'keep') await writeAppointment(driver, appointment, fate, stampOf(appointment, ts));
 
-    /* A wait's updates (ticket 26), each by its own uuid and `updated_at`
+    /* A wait's updates, each by its own uuid and `updated_at`
        even under an appointment this journal already held: an update
        written on the other device since the last restore is a new fact
        about the same wait. Absent on archives written before the ticket. */
@@ -1405,7 +1388,7 @@ async function writeAppointment(
   const rows = appointment.procedureId
     ? await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [appointment.procedureId])
     : [];
-  // The provider (ticket 27) the same way. And a time only on a row with a
+  // The provider the same way. And a time only on a row with a
   // day, which is the only place appointments.ts ever writes one.
   const providers = appointment.providerId
     ? await driver.query<{ id: number }>('SELECT id FROM provider WHERE uuid = ?', [appointment.providerId])
@@ -1450,8 +1433,7 @@ export const IMPORT_LOG_COLUMNS = 'uuid, source, counts, imported_at, updated_at
 
 /** One import_log row for a commit that has just happened, direct rather
     than through the ordinary merge: this record is not content a device
-    might already have - it is a new fact every time, minted here the way any other user-owned row is
-    (phase 7 ticket 03).
+     might already have - it is a new fact every time, minted here the way any other user-owned row is.
 
     Called from inside the restore's own transaction (restore.ts) and from
     nowhere else, which is what makes the history and the rows it describes
@@ -1477,7 +1459,7 @@ export function importLogRow(
   return [record.id, record.source, JSON.stringify(record.counts), record.importedAt, ts];
 }
 
-/** The import log (phase 7 ticket 03), by uuid like every other user-owned
+/** The import log, by uuid like every other user-owned
     row. Every record already carries its own minted uuid and timestamp
     (journal/archive.ts writes it once, on commit), so `ts` here only stamps
     `updated_at` for an archive that carries none - never the moment the

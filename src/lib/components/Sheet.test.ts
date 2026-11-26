@@ -14,7 +14,7 @@ const overlayLockFile = readFileSync(root + '/src/lib/components/overlayLock.ts'
 describe('Sheet initial focus contract', () => {
   it('does not invoke focus synchronously upon attachment', () => {
     // Synchronous focus upon attachment flushes layout before CSS transition keyframes attach on Android WebView,
-    // causing a 434-607px entrance teleport (ticket 115).
+    // causing a 434-607px entrance teleport.
     expect(sheetFile).not.toMatch(/function focusInitial\(node[^{]*\{\s*sheetEl = node;\s*const field[^;]*;\s*\(field \?\? node\)\.focus\(\);/);
   });
 

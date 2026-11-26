@@ -1,22 +1,6 @@
-/* What the stats screen's three chart kinds are drawn from (phase 5 UX
-   ticket 23).
-
-   The seam answers one point per day per metric (journal/stats.ts). Two of
-   the charts on the hub ask a different question of the same answer - where
-   each scale sat over the period, and how many days landed on each mood -
-   and both are arithmetic over data the screen already has rather than a
-   read of its own. Kept here, away from the markup, because the awkward part
-   of both is a unit problem and a unit problem is worth a test.
-
-   The shape a calendar cell takes (phase 6 unprompted ticket 11) is here
-   for the same reason, though the calendar is not the stats screen: which
-   step each of a day's readings landed on is the same unit problem the bars
-   have, and the rule between split and whole is the half of that
-   cell a test can hold.
-
-   Nothing here names anything and nothing here formats anything: a metric's
-   own wording comes from the vocabulary and a value is written by the
-   screen in the metric's native units (ADR-0012). */
+/* Project daily stats points into scale distributions, mood counts
+   and calendar cell shapes. The screen owns reads, labels and
+   formatting in each metric's native units (ADR-0012). */
 
 import type { DayAverage, DaySpread } from './journal/stats';
 import { MOOD_RANGE, moodStep, normalize, type MetricRange } from './metricRange';
@@ -113,26 +97,13 @@ export function moodDistribution(days: DayAverage[]): MoodDay[] {
     lowest and highest, which have no order at all. */
 export type DayShape = { kind: 'one' } | { kind: 'split'; first: number; last: number };
 
-/** How a day that carried the metric is drawn, or null for a day that
-    carried none of it.
+/** Return null for a day without readings. Split a day only when the
+    first and last readings occupy different steps, with first on the
+    left. A dip that returns to the same step stays whole and is visible
+    on the Day screen. HeatMap draws a pip from the count.
 
-    Two shapes, and the rule between them is the one a person can state: a
-    day whose first and last readings landed on different steps is **split**
-    down the middle, first on the left and last on the right, however many
-    readings sat between them; anything else stays **whole**. That covers a
-    day of one reading, a day whose readings all shared a step, and a day
-    that dipped and came back (good, awful, good), whose two ends are one
-    face. The dip is the Day screen's to show (ticket 280, which also retired
-    the stack a same-step day used to draw: an offset card peeking out on the
-    left read as a rendering glitch). How many readings a day held is the
-    cell's pip, and HeatMap draws it from the day's own count.
-
-    `stepOf` is what a step means on the metric being drawn, and the caller
-    owns it because the two answers are different systems: a gender
-    dimension resolves through the heat ramp's four levels, and mood
-    resolves to one of its own five faces (ADR-0025). Daylio's rule is
-    "two of the same mood", and this is that rule wherever the app has a
-    notion of the same. */
+    The caller supplies `stepOf`. Gender dimensions use four heat levels
+    and mood uses five faces (ADR-0025). */
 export function dayShape(
   spread: DaySpread | undefined,
   stepOf: (value: number) => number

@@ -1,4 +1,4 @@
-/* The source registry (phase 7 ticket 02). Every external file this app can
+/* The source registry. Every external file this app can
    absorb declares itself once, here, instead of arriving as a bespoke
    importer with its own looser rules. `daylio.ts` already is the shape every
    source now follows - detect, parse, resolve, hand off to the ordinary
@@ -9,7 +9,7 @@
    (`ArchiveSourceName`), one array declaring an entry for each, and a
    compile-time check that nothing in the set is left out of the array.
 
-   A source is handed bytes rather than text (phase 7 ticket 09). Daylio's
+   A source is handed bytes rather than text. Daylio's
    own `.daylio` backup is a zip, so a registry that could only offer a
    string could not hold it; a text source
    decodes for itself - which is cheaper than it looks, because detection

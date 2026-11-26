@@ -27,7 +27,7 @@ import dev.engender.app.widgets.QuickLogWidgetProvider;
 @CapacitorPlugin(name = "Disguise")
 public class DisguisePlugin extends Plugin {
 
-    /** Every at-rest widget surface (tickets 26, 34) that must go
+    /** Every at-rest widget surface that must go
         neutral the moment disguise flips - adding a widget here is all
         DisguisePlugin needs to pick it up. These instances are only ever
         used to call updateAll; the system creates its own separate
@@ -92,7 +92,7 @@ public class DisguisePlugin extends Plugin {
             // closes briefly to switch". Only when the alias actually
             // flipped: prefs sync onto every boot, and a restart nobody
             // asked for is its own kind of leak. Already-placed quick-log
-            // and doubt-entry widgets (tickets 26, 34) are the
+            // and doubt-entry widgets are the
             // same category of exposure as the launcher icon, so they get
             // the same immediate refresh rather than waiting on their own
             // system-scheduled update.
@@ -106,25 +106,10 @@ public class DisguisePlugin extends Plugin {
             return;
         }
 
-        // A flag change flips an alias too, and it must not restart the app
-        // under somebody - hiding the app has to take effect now, wearing a
-        // different flag does not (ticket 50, ADR-0088). That's still true,
-        // but applying it immediately isn't the same thing as applying it
-        // without a restart: disabling an activity-alias tears down a task
-        // that's currently running under it even with DONT_KILL_APP, which
-        // only protects the process, not the window - Android does this
-        // itself, nothing here calls killProcess or finish(). Whenever the
-        // palette just picked happens to disable the alias this task is
-        // still live under, the running screen goes with it (ticket 245:
-        // reproduced on-device).
-        //
-        // So the flip waits for a moment nothing is watching: queued here,
-        // applied from handleOnStop(). The cost is exactly what this method
-        // already used to say out loud - "the launcher shows the new icon
-        // from the next cold start rather than the same second" - the code
-        // just wasn't keeping that promise. The widgets are not branded by
-        // the flag either (see above), so there is nothing of theirs to
-        // refresh here.
+        // Queue palette alias changes until handleOnStop() (ADR-0088).
+        // Disabling the running alias can remove its task even with
+        // DONT_KILL_APP. Apply disguise immediately. The next cold start
+        // shows the new flag, and widgets carry no flag branding.
         queuePendingPalette(disguised, palette, shape);
     }
 

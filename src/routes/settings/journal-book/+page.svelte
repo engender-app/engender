@@ -1,21 +1,8 @@
 <script lang="ts">
-  /* The journal book (phase 5 ticket 17): a print of a chosen range, made
-     of whatever record types the person ticked.
-
-     It borrows one thing from the clinician visit summary, deliberately
-     narrowly: the way that screen prints, which is a print dialog over a
-     `@media print` block and a `.no-print` class on everything that is
-     controls rather than content. Both of those now live in app.css and
-     print/print.ts, extracted when this screen became the second caller.
-     What it does not borrow is that screen's section registry (ticket 06):
-     a doctor's five sections and a keepsake's seven parts have nothing in
-     common but the word "section", and the difference that matters here
-     has no place in that registry at all - a book carries what was chosen,
-     not what the range holds.
-
-     Nothing is generated anywhere but here. The bytes of a photo come off
-     the local file store, the print dialog is the browser's own, and
-     nothing on this screen writes to the journal. */
+  /* Print the selected record types and date range using app.css's
+     print rules and the browser dialog in print/print.ts. Photos
+     come from local files. Building a book writes nothing to the
+     journal. */
   import { flushSync } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -364,38 +351,15 @@
   {/if}
   </div>
 
-  <!-- The pages, and the only part of this screen that prints. Its own
-       `.screen-part` beside the controls rather than inside them, for two
-       reasons: the wrapper above carries `resize`, which would animate the
-       screen's whole height against this fold's own travel, and
-       `.screen > .screen-part > *` (app.css) is what spaces the blocks
-       below, so they keep the spacing they had when they were that
-       wrapper's children.
+  <!-- The printable pages sit in their own screen-part to retain screen spacing.
+       The controls' resize action and disclose both animate height, so keep
+       resize off the pages to avoid oscillation. The pages stay still when the
+       range changes (ADR-0078).
 
-       No `use:resize` on it, which is the one stillness this ticket asks
-       ADR-0078 for. The box changes size when the range does, and `resize`
-       cannot share a node with `disclose` - the two fight over height and
-       it oscillates (kit/Notice.svelte's own finding). The pages are still
-       through a range change, and what moves then is the summary line
-       above.
-
-       `disclose` on a box this size is past the cap its own docstring sets
-       - "a group rather than a screen... a disclosure that opens half the
-       document is a screen, and belongs to tier 2 as a navigation
-       instead" - and that is a deviation rather than an oversight. The cap
-       is written against cost, and the cost was measured here: the box's
-       height travels 0 to 19,205px over 16 frames at a steady 17ms, no
-       frame dropped, because what is animated is one scalar and the pages
-       below the window are never painted. Making the fold a navigation is
-       the other reading of the same cap and is a bigger decision than this
-       ticket - the ticket asked for a disclosure - so it is named here for
-       whoever takes it.
-
-       What the travel does leave is a settle: `disclose` measures the box
-       at the frame it is created, the photos inside it are still being
-       read off the file store then, and the last 6,613px arrive in the one
-       frame the animation ends. All of it below the window, and the same
-       growth `main` shows while the same photos decode. -->
+       Disclosure exceeds its usual group-size cap here. Animating the one
+       height scalar from 0 to 19,205px took 16 frames at 17ms, with offscreen
+       pages unpainted. Photos still loading at measurement added the last
+       6,613px below the viewport when the animation ended. -->
   {#if previewShown && book}
     <div class="screen-part disclosed" data-book-preview transition:disclose={{ skip: printing }}>
       {#if opening}

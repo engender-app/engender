@@ -1,31 +1,11 @@
-/* Two questions about the same handful of routes, and they do not have the
-   same answer.
+/* Onboarding, In the room and the return moment hide the tab bar and rail.
+   screen-transition.ts uses the narrower set of gates, onboarding and In the
+   room to decide when the app gives way to a cut. The return moment stays
+   inside Today and gets its normal field transition from Home.
 
-   **Which routes the shell paints no chrome for** - no tab bar, no rail.
-   Onboarding, the in-the-room view of the prep list, and the return moment.
-
-   **Which routes render *instead of* the app rather than inside it.** That
-   is the narrower set, and it is what decides between a tier-2 movement and
-   an instant cut (screen-transition.ts): a gate or onboarding is not
-   somewhere the app navigated to, it is what is drawn when the app is not.
-   The return moment is not one of those. It is a step Home walks to
-   (+layout.svelte's own `goto`), and it lights the Today tab
-   (active-tab.ts), so it owes the movement every other step inside a tab
-   gets - the field's blind coming down from the sun's height to the step's.
-
-   Conflating the two is what Alicja caught on ticket 35's flipbooks: the
-   empty state arriving had "no animation at all, yank between frames 7 and
-   8", and the yank was one predicate answering both questions. Home sat
-   still for 107ms and then the whole screen cut.
-
-   The room is on the narrower list because it is read while somebody is
-   being spoken to and a floating tab bar would be four ways to leave by
-   accident mid-sentence; the screen's own header back control (carpet 27)
-   is a deliberate exception to that and does not put the bar back.
-
-   Here rather than in the layout for the reason active-tab.ts gives: the
-   rule is a table, the layout is where a table gets buried, and a rule
-   nobody can run in a test is one nobody can check. */
+   In the room retains its own back control. Hiding the tab bar there prevents
+   accidental exits while someone is speaking. Keep both route tables here so
+   the layout and tests use the same rules. */
 
 import { parseDayParam } from '../data/dayParam';
 
@@ -66,7 +46,7 @@ export function replacesAppNavigation(path: string): boolean {
 
 /** Renders without the shell's chrome, whoever is looking at it. */
 export function chromelessPath(path: string): boolean {
-  /* The return moment (ADR-0062, redesign ticket 35) is chromeless and
+  /* The return moment (ADR-0062) is chromeless and
      nothing more: it is a step in DIRECTION.md rule 15's sense - one
      purpose, no navigation - and its foot carries the one way off, so a bar
      over it would be both a second way and a claim that this is a place
@@ -75,8 +55,7 @@ export function chromelessPath(path: string): boolean {
 }
 
 /** Paints no tab bar, whoever is looking at it: the chromeless routes, and a
-    new entry. A new entry is a step in DIRECTION.md rule 15's sense (tester
-    report 02, ticket 03): one purpose, one way on and one way back, so the
+    new entry. A new entry is a step in DIRECTION.md rule 15's sense: one purpose, one way on and one way back, so the
     bar would be four more ways off it. It stays out of `chromelessPath`
     because that answer also decides whether Today's retained doors stay
     mounted, and a new entry is where the app goes from Today most often. */

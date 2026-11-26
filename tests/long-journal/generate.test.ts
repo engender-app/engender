@@ -1,4 +1,4 @@
-/* The ten-year generator's own tests (phase 2 ticket 20). Node tier, over
+/* The ten-year generator's own tests. Node tier, over
    node:sqlite, at a scale that runs in a second - the ten-year run itself
    belongs to the browser tier, where a real encrypted driver and real OPFS
    are what the measurements are worth taking against.

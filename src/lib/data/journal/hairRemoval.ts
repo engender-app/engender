@@ -59,7 +59,7 @@ export interface HairRemovalPhoto {
 export interface HairRemovalArea {
   /** Every session, oldest first. */
   getSessions(): Promise<HairRemovalSession[]>;
-  /** The sessions on one day (phase 5 deepening ticket 21). */
+  /** The sessions on one day. */
   getSessionsOnDay(epochDay: number): Promise<HairRemovalSession[]>;
   /** Returns the session's id. Updating an unknown id throws; an
       out-of-range pain rating, an invalid cost or an area outside the closed vocabulary

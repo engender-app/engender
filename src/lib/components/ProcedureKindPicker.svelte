@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The procedure kind picker (phase 9 carpet ticket 17): one flat list,
+  /* The procedure kind picker: one flat list,
      the compiled-in set in CONTEXT.md's order with `custom` last as the
      escape hatch, the same shape DocumentTargetPicker gives a single-select
      list living in a sheet. No sections and no icons per kind - the kind

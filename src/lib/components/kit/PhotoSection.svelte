@@ -1,20 +1,10 @@
 <script lang="ts" generics="TPhoto extends { id: string; fileName: string | null }">
-  /* The rows, the add control, the confirm sheet and the alignment review
-     every photo-owning screen assembled for itself (phase 5 audit
-     ticket 11) - the visual half of photoSection.svelte.ts, used by the
-     screens whose photos are a plain list under a thumbnail row. A
-     milestone's photo is a single one held in its own draft with its own
-     remove-and-replace markup, so it wires the logic module directly
-     rather than through this surface (milestones/+page.svelte).
+  /* PhotoSection renders the shared list, add and confirmation
+     controls over photoSection.svelte.ts. A single-photo draft
+     such as a milestone uses the logic directly.
 
-     The row's own handle and the delete button's come from `handle` via
-     recordHandles.ts (ADR-0029) - `data-${handle}` for the row, the same
-     literal every screen already wrote by hand, and `handles.delete` for
-     the trash action, which RecordSheet's confirm sheet already uses for
-     its own button. The add control's handle is not slug'd: it is the one
-     new walkthrough vocabulary this ticket adds, a single `data-add-photo`
-     literal shared by all five screens rather than five different names,
-     since only one add control is ever on screen at a time. */
+     recordHandles.ts derives row and delete handles from handle
+     (ADR-0029). Every caller shares the literal data-add-photo. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { collapse } from '$lib/motion/reveal';

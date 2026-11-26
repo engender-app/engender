@@ -1,4 +1,4 @@
-/* Trigger and visibility rules for Safe Space live tile nudge (ticket 50, ADR-0039, ADR-0040).
+/* Trigger and visibility rules for Safe Space live tile nudge (ADR-0039, ADR-0040).
    The nudge appears on Home after an entry that reads as a bad moment:
    - Mood at lowest scale step (mood === 1, on 1..5 scale)
    - Any dysphoria tag (g-soc-dys, g-body-dys, g-transphobia, g-misgendered, or any dt-* tag)

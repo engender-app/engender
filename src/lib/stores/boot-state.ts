@@ -13,8 +13,8 @@ type BootStatus =
   | 'schema-too-new'
   | 'error';
 
-/** Which failure a boot ended in, in the terms the failure screen speaks
-    (after-release ticket 09). The raw text stays in `error`, which the screen
+/** Which failure a boot ended in, in the terms the failure screen speaks.
+The raw text stays in `error`, which the screen
     shows only behind its bug-report control.
 
     - `unreadable`: the key does not read the journal file. SQLCipher reports a
@@ -102,7 +102,7 @@ type ReadyState = BootShape & {
   status: 'ready';
   error: null;
   recoverable: false;
-  /** Null while a web lock has the journal closed (after-release ticket 10). */
+  /** Null while a web lock has the journal closed. */
   journal: Journal | null;
   androidKey: null;
 };
@@ -254,7 +254,7 @@ function ready(state: BootState, payload: { journal: Journal }): ReadyState {
 }
 
 /** Swaps the journal handle a ready boot holds: null when a web lock closes
-    it, the reopened one after the unlock (after-release ticket 10). Any
+    it, the reopened one after the unlock. Any
     other state is left as it is. */
 function withJournal(state: BootState, journal: Journal | null): BootState {
   if (state.status !== 'ready') return state;

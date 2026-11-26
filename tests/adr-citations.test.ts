@@ -1,4 +1,4 @@
-/* The ADR citation guard (functional audit ticket 52). Dev tier: the ADRs
+/* The ADR citation guard. Dev tier: the ADRs
    live in the private docs repo, so where `docs/adr` is not linked (CI) the
    repo-wide check skips with a notice and the fixture tests still run. */
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';

@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Older code, newer Journal (ticket 04, ADR-0006).
+  /* Older code, newer Journal (ADR-0006).
 
      Reachable in practice rather than in theory: a stale service worker can
      serve the previous release after a newer one has already migrated the

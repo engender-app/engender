@@ -95,7 +95,7 @@ test('a reset takes the recovery key with everything else under the root', async
 
 test('a reset during an interrupted conversion takes the plaintext journal and the marker too', async () => {
   /* The one path where "everything under the root" is doing real work
-     rather than being tidy (ticket 10): mid-conversion the root holds the
+     rather than being tidy: mid-conversion the root holds the
      plaintext journal, the keystore for a journal that does not exist yet
      and the marker saying how far it got. Leaving any of them would hand
      the next boot either readable entries the person asked to be rid of,
@@ -126,7 +126,7 @@ test('storage that will not empty fails loudly, with the mirror left alone', asy
 });
 
 test('a platform with storage of its own has it wiped too, after the close', async () => {
-  /* Android (ticket 13): the journal and the Keystore-wrapped data key live
+  /* Android: the journal and the Keystore-wrapped data key live
      in app-private storage, which the OPFS root does not reach. A reset that
      emptied only OPFS would leave the whole journal behind. */
   const { deps, log } = targets({ platform: true });

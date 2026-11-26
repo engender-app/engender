@@ -39,7 +39,7 @@ describe('tesseractLabOcrEngine', () => {
   /* A Blob passed straight to the worker, not an object URL: the worker reads
      a Blob with FileReader, but fetches a URL string - and this document's
      CSP has no `blob:` in connect-src, so that fetch would be refused before
-     recognition ever ran (ticket 44). */
+     recognition ever ran. */
   test('passes the image as a Blob rather than an object URL', async () => {
     await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
     const [passedImage] = recognize.mock.calls[0];

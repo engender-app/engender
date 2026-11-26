@@ -1,5 +1,5 @@
 /* An entry's presentation as a name and an ink colour a row can draw
-   directly (phase 5 deepening ticket 17, ADR-0048), the same
+   directly (ADR-0048), the same
    already-resolved shape entryTags.ts hands a row.
 
    Needs both the vocabulary and the active flag, unlike a tag label: the
@@ -32,8 +32,7 @@ export function entryPresentation(entry: Entry): EntryPresentationLabel | undefi
 }
 
 /** A presentation's whole role rather than one colour already picked off it
-    - what the presentation chip's chart-side highlight needs (phase 8
-    features ticket 17), since a ring or a corner dot draws in `.mark`
+    - what the presentation chip's chart-side highlight needs, since a ring or a corner dot draws in `.mark`
     while the chip itself draws in `.ink`/`.draw`. `null` reads the same as
     an id naming nothing: undefined, not a role to fall back to. */
 export function presentationRole(presentationId: string | null): Role | undefined {

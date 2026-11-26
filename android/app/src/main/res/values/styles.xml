@@ -20,7 +20,7 @@
         <item name="android:background">@drawable/splash</item>
     </style>
 
-    <!-- The buttons of all three widgets (tickets 26, 33, 34): identical
+    <!-- The buttons of all three widgets: identical
          beyond the glyph each carries, so nothing about the layout itself
          reveals which is which - that's the button's own contentDescription
          at render time (DisguisableWidgetProvider), not this shared style.
@@ -40,7 +40,7 @@
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
     </style>
-    <!-- The check-in notification's faces (tester report 02, ticket 05).
+    <!-- The check-in notification's faces.
          Folded, a face is 32dp inside a 48dp-tall share of the row; unfolded
          it is 40dp over its name. Either way the share is the touch target,
          so the gaps between faces are part of a face rather than dead space

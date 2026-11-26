@@ -155,7 +155,7 @@ describe('the curve the settle is sampled from', () => {
 /* The sheet is the second thing to take this settle, and it is the one that
    cannot simply run past its mark: it stands on the bottom edge of the
    window, so the distance it lifts off that edge is a strip of the page
-   showing underneath it (redesign ticket 38). */
+   showing underneath it. */
 describe('the settle a sheet takes', () => {
   const components = readFileSync(new URL('../styles/components.css', import.meta.url), 'utf8');
 

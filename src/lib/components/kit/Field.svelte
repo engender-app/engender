@@ -1,30 +1,11 @@
 <script lang="ts">
-  /* The most-repeated shape in the app (phase 5 audit ticket 10): a
-     `.field` wrapper, a `.field-label`, and a hand-paired `for`/`id` naming
-     the control below it. 131 call sites wrote the three by hand; this is
-     the one place that writes them now.
+  /* Share one id between the label and control snippet, generated with
+     $props.id() when the caller supplies none. Use legend for self-labelled
+     controls and keep the id available for aria-labelledby.
 
-     Spike (the open question ticket 10 names): a `$state`-bearing field
-     object was tried against one screen (milestones' date field) and
-     rejected. A draft is already reactive at the record level
-     (recordEditor.svelte.ts / detailDraft.svelte.ts hold the `$state`), and
-     Svelte 5 tracks a plain `$state` read inside any template expression or
-     `$derived` with no wrapper needed - the four range screens already
-     prove this, wiring `min`/`max` straight off sibling `$state` locals.
-     Wrapping a date field's value in a class would only rename
-     `draft.date` to `field.value` and give `recordEditor`'s `TDraft` a
-     non-serializable member, for no reactivity this file doesn't already
-     have. Plain values, in the screen's own draft, is the shape.
-
-     What a hand-paired `for`/`id` actually risks - two literals typed once
-     each, free to drift - is a naming problem, not a state problem, so
-     that's what this component fixes: one id, minted with `$props.id()`
-     when a screen has no reason to name it, handed to both the label and
-     the control's snippet so there is only ever one string to agree with
-     itself. `legend`, for the controls that name themselves (Segmented's
-     `aria-label`, Switch's `label` prop) rather than taking a `for` - the
-     id is still minted and handed down, for the few of those that point an
-     `aria-labelledby` at it. */
+     Keep field values plain in the screen's reactive draft. Svelte tracks
+     the draft read already, and wrapping fields in a class would make the
+     draft non-serializable. */
   import type { Snippet } from 'svelte';
 
   let {

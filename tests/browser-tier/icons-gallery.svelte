@@ -1,6 +1,6 @@
 <script lang="ts">
   /* The two icon families the app is read through, at the sizes it draws
-     them, against the real tokens (phase 5 ticket 31).
+     them, against the real tokens.
 
      A fixture rather than a route, for the reason the kit's own gallery
      gives: a drawing nobody can look at is a drawing nobody has reviewed,

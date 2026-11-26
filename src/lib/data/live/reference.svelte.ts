@@ -1,29 +1,11 @@
-/* The mirrored half of ADR-0004: gender dimensions, tag groups, milestones
-   and the rest of the vocabulary, held in reactive state and read
-   synchronously.
+/* Mirror bounded reference data in reactive memory for synchronous reads
+   (ADR-0004). Editors, cards and Home need these few dozen rows without
+   putting a loading state on the whole app. Keep the rune-free journal
+   facade below the mirror (ADR-0017).
 
-   All of them are bounded at tens of rows, are never paginated, and are
-   needed by nearly every component - the entry editor wants the ticked
-   scales and the visible tag groups, every entry card wants tag labels,
-   Home wants milestones. Querying them asynchronously would put a loading
-   state on the whole app rather than on the four screens that read entry
-   data.
-
-   The mirror sits above the journal rather than inside it because the journal
-   is rune-free (ADR-0017): it returns plain async results, and every piece of
-   reactive state lives here.
-
-   It is a mirror, not a second source of truth. It is filled from SQLite at
-   boot and re-read from SQLite after any write that touches it, so a screen
-   cannot end up showing a tag the table does not have. The refresh is one
-   round trip behind the write it follows - a renamed tag is visibly stored
-   before it is visibly renamed - which is the same shape the preference
-   store's cache already has.
-
-   What things are *called* is not here: a built-in stores a key and its
-   wording comes from the message catalogue, which needs paraglide, which the
-   layer below cannot import (ADR-0016). This module answers "which rows" and
-   vocabulary.ts answers "called what". */
+   Fill the mirror from SQLite at boot and refresh it one round trip after
+   writes to its tables. vocabulary.ts resolves catalogue labels from keys
+   above the Paraglide boundary (ADR-0016). */
 
 import { metricKey } from '../prefs/catalogue';
 import { prefs } from '../prefs/store.svelte';
@@ -96,7 +78,7 @@ let hydrated = $state(false);
     mirror (rather than one reached by tapping through an already-booted
     app), the route's own component tree mounts and paints before this
     promise settles regardless: SvelteKit hydrates the shell on its own
-    schedule, not gated on `boot()`. `ready` (ticket 152/162) is the signal
+    schedule, not gated on `boot()`. `ready` is the signal
     a screen needs to tell "genuinely nothing here yet" apart from "still
     loading" during that window, the same distinction a `liveList` gets for
     free from its own query and this mirror does not. */
@@ -152,7 +134,7 @@ export async function hydrateReference(journal: Journal, current: () => void = (
   });
 }
 
-/** The lock's half (after-release ticket 10): tag and milestone
+/** The lock's half: tag and milestone
     names are journal content, and a locked web journal keeps none of it in
     the page. Nothing reads the mirror behind the lock - every screen that
     does is unmounted - and the unlock hydrates it again before the app
@@ -186,7 +168,7 @@ export const reference = {
       screen that reads an empty slice as "genuinely nothing here" (rather
       than putting it behind its own `liveList`) needs this to tell that
       state apart from "not hydrated yet" on a cold navigation straight to
-      it (ticket 152/162). */
+      it. */
   get ready(): boolean {
     return hydrated;
   },
@@ -242,8 +224,7 @@ export const reference = {
     );
   },
 
-  /** The milestone the journey anchor preference points at (phase 5 ticket
-      25), or null when no anchor is set or it names a milestone this install
+  /** The milestone the journey anchor preference points at, or null when no anchor is set or it names a milestone this install
       no longer has. Unset is a legitimate resting state here, not a gap to
       paper over - the same answer `activeDimensions` gives an empty tick
       list. */
@@ -251,8 +232,7 @@ export const reference = {
     return mirror.milestones.find((mi) => mi.id === prefs.journeyAnchorMilestoneId) ?? null;
   },
 
-  /** The scales the entry screen offers: the ticked ones (phase 5 ticket
-      35), in catalogue order, skipping keys no dimension carries.
+  /** The scales the entry screen offers: the ticked ones, in catalogue order, skipping keys no dimension carries.
 
       Filtered from the catalogue rather than mapped over the stored list, so
       the order sliders appear in is the order the scales are defined in and

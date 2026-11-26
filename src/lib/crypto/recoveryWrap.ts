@@ -1,24 +1,9 @@
-/* The recovery wrap's persisted form (ADR-0054, ticket sec-01): the same
-   sealed data key `keystore.ts` writes, in a file of its own.
+/* Persist the recovery wrap separately from the access keystore
+   (ADR-0054). Boot uses keystore `secretSource` to choose a gate;
+   a recovery wrap has a single secret kind and does not select a mode.
 
-   Its own file rather than a second entry in the keystore, and the reason
-   is not tidiness. `KeystoreMetadata` answers the one question boot asks
-   before anything has been typed - which gate to draw - and
-   `readKeystoreSource()` reads that straight off `secretSource`. A recovery
-   wrap is not an access mode, so a fourth member in that union would put a
-   value in a type whose whole job is to name the three real ones, and
-   `serializeKeystore`'s two refusals (a biometric keystore with no
-   credential id, a PIN keystore with no binding) would each need an
-   "unless this is the recovery entry" clause.
-
-   The separation also keeps revocation and access-mode changes out of each
-   other's way. A mode change rewrites or removes the keystore; revoking
-   touches only this file; and because a mode change rewraps the same data
-   key rather than minting a new one, a recovery key survives every one of
-   them by construction.
-
-   There is no `secretSource` here because there is nothing to ask: a
-   recovery wrap has exactly one kind of secret. */
+   Revocation touches only this file. Mode changes rewrap the same
+   data key in the keystore, so they preserve recovery access. */
 
 import { unwrapDataKey, wrapDataKey, type DataKeyWrap } from './keystore.ts';
 import { resolveCredentialProfile } from './credential-consumers.ts';

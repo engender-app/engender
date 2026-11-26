@@ -1,22 +1,10 @@
-/* Getting the Journal's data key out of Android Keystore (ticket 13,
-   ADR-0018).
+/* Use Android Keystore authentication to unwrap the data key
+   (ADR-0018). Return it only when the platform reports
+   authenticated and provides 64 hex characters. Every refusal
+   gets a way forward from biometric-outcome.ts.
 
-   On the web a passphrase unwraps the key (data/journal-passphrase.ts). On
-   Android nobody types anything: the key is wrapped by a Keystore key that
-   cannot be used until the platform says someone authenticated, so this
-   module asks, and reads the answer.
-
-   The reading is the whole job, and it is written to fail closed. A key
-   comes back only when the platform said `authenticated` AND handed over 64
-   hex characters; every other combination - including the ones a bridge bug
-   would produce, like a success with no key attached - is a refusal with
-   something to do next. `biometric-outcome.ts` owns that vocabulary.
-
-   One state is not a biometric state and is kept out of it: a Keystore key
-   is destroyed when the screen lock it was bound to is removed, and no
-   retry brings it back. Calling that a failed finger would loop somebody
-   round the prompt for ever, so it comes back as `invalidated` and the gate
-   offers the reset instead. */
+   Removing the bound screen lock destroys its Keystore key.
+   Report invalidated so the gate offers reset instead of retry. */
 
 import { interpretAuthentication, type AuthenticationResult } from './biometric-outcome.ts';
 

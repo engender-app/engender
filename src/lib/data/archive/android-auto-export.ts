@@ -27,8 +27,7 @@ interface AndroidAutoExportDeps {
   now?(): number;
   scheduled?: boolean;
   recordBackup(at: number): void;
-  /** How far the pack has got, and a way to stop it (phase 9 audit ticket
-      11). Passed by the export screen's "Back up now"; the scheduler
+  /** How far the pack has got, and a way to stop it. Passed by the export screen's "Back up now"; the scheduler
       leaves it out, since nobody is watching a background run. */
   watch?: PackWatch;
 }
@@ -91,7 +90,7 @@ async function nextArchivePiece(body: AsyncGenerator<Uint8Array>, signal?: Abort
 }
 
 /* Writes the file and says what happened. Whether a failure also reaches the
-   phone is not decided here any more (phase 6 ticket 04): it used to take a
+   phone is not decided here any more: it used to take a
    `trigger` argument whose only job was to gate `notifyFailure`, and the
    notice now answers to the unprompted registry - a preference, quiet hours
    and the disguise - which is the auto-export scheduler's business, since the

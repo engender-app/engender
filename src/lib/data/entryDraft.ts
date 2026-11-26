@@ -1,4 +1,4 @@
-/* The Entry editor's draft (ticket 29, ADR-0017): one rune-free module for
+/* The Entry editor's draft (ADR-0017): one rune-free module for
    the transition rules EntryEditor.svelte used to spread across five
    separate `$state` fields - draft content, the photo list, pending
    removed photo ids, isEmpty and the upsertEntry payload. The component
@@ -58,11 +58,11 @@ export interface EntryDraft {
   procedureRecovery: EntryProcedureRecoveryInput | null;
   effectMarkers: EntryEffectMarkerInput[];
   cycleEvent: EntryCycleEventInput | null;
-  /** The fluidity engine's chip (phase 5 deepening ticket 17, ADR-0048): a
+  /** The fluidity engine's chip (ADR-0048): a
       domain id or null, never pre-filled for a new entry - only an existing
       entry's own value seeds it, the same way `mood` does. */
   presentationId: string | null;
-  /** The chip whose section is open under the note (phase 11 ticket 19),
+  /** The chip whose section is open under the note,
       or null with every section folded. Editor state rather than entry
       content - `toUpsert()` never reads it - but it lives on the draft so
       the process-death mirror carries it: a return to a half-written entry
@@ -76,7 +76,7 @@ export interface EntryDraft {
   toggleTag(id: string): void;
   /** Puts a region's slider on screen, or takes it off. Nothing is seeded:
       a region picked and left at the midpoint carries nothing and is
-      dropped on save (ticket 31), so picking one is not itself content. */
+      dropped on save, so picking one is not itself content. */
   toggleBodyRegion(key: string): void;
   /** Writes one region's position on the shared 0-100 scale, the way the
       picker's slider produces it. */

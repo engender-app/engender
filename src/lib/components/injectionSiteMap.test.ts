@@ -17,7 +17,7 @@ import {
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
-/* The rotation map's geometry (phase 6 ticket 13).
+/* The rotation map's geometry.
 
    These coordinates used to live inside InjectionSiteMap.svelte, where
    nothing could check the claim its own comment made - that twelve touch

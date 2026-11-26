@@ -1,80 +1,20 @@
-/* Which areas search reaches, and what text each of them holds (phase 5
-   deepening ticket 24, ADR-0005, ADR-0027, CONTEXT: "Search").
+/* Declare which journal text is searchable beyond the entry-note index
+   (ADR-0005, ADR-0027, ADR-0031). Each entry supplies the hit kind, covered
+   archive sections, SQL read dependencies, source columns, traveling UUID
+   and date. Column order breaks ties within a hit. Context carries an
+   owner when the view needs one. The filter excludes sealed letters.
 
-   `/search` searched entries. That was right when the entry note was most of
-   the text in the app, and it is not any more: the journal now holds letters
-   to a future self, milestone names, procedure notes, appointment questions,
-   felt-sense reflections, roadmap goals, size fit notes and a
-   dozen other things somebody wrote in their own words. None of it was
-   findable. Somebody who remembers writing something and not where they
-   wrote it had nowhere to type it.
+   Fold short text inside SQLite and match substrings with LIKE. A
+   partial word can match a letter while entry-note FTS matches token
+   prefixes. Search has no ranking or secondary index and writes
+   nothing, including recent search history (ADR-0020).
 
-   A registry rather than a screen that names eighteen areas, for the reason
-   the two registries before it are (ADR-0027, ADR-0031): the alternative is
-   a list a new area is silently missing from, with no test able to notice.
-   An area declares what text it holds and how to reach it; adding one later
-   is a registration.
-
-   What one entry declares:
-
-     key      the hit's own kind, which is what the screen groups by and
-              what searchHitRows.ts gives words and an icon to
-     covers    which archive sections this one accounts for, which is what
-              makes "every area holding text is searchable" checkable rather
-              than remembered - see SEARCH_OPT_OUTS below
-     tables    the tables the read touches, so the live layer's dependency
-              list is derived from the registry rather than maintained beside
-              it (writes.ts, the same single-sourcing DAY_TABLES gets)
-     from      the table, or the join, the text lives in
-     uuid      the travelling id (ADR-0002), which is what a hit navigates by
-     date      the row's own day, and in what form - see SearchDate
-     columns   the text columns, in the order a hit prefers them when more
-              than one matched
-     context   one more column the presentation needs and cannot derive: a
-              checklist's owning procedure, a felt sense's tryout. Nothing else.
-     where     a restriction the area itself imposes, with its parameters.
-              One area has one: a sealed letter is not searchable.
-
-   **How the matching happens, and why it is not FTS5.** The entry note has a
-   contentless FTS index behind it because a decade of notes is the one text
-   in this app that is genuinely large (entries.ts). None of these areas is:
-   a person has tens of letters, hundreds of side effects, one or two
-   procedures. So they are matched by scanning, with the fold applied to the
-   column inside SQL (fold.ts's foldedSql) and LIKE over the folded query.
-   Two consequences worth stating rather than discovering:
-
-     - matching here is substring, not whole-token prefix. "erapy" finds
-       "therapy" in a letter and does not find it in a note. That is the
-       index's narrowing showing through, the same asymmetry tag labels have
-       always had (searchQuery.ts), and ADR-0005's folding is still the whole
-       matching rule - no stemming, no ranking, no score.
-     - nothing is indexed, so nothing has to be reindexed. There is no
-       second write path to keep in step, and no plaintext leaves the
-       encrypted database (ADR-0020): the scan happens inside SQLite, which
-       is also why the fold has a SQL spelling at all.
-
-   **The cost, and the strategy chosen for it.** One statement, not forty.
-   Every declared column of every area is a branch of one UNION ALL with a
-   uniform projection, the fold is applied once to that union's text
-   column, and the page and the count come out of the same pass - the
-   count as a window evaluated before the LIMIT, since a screen that says
-   how many results a query found cannot take that number off a page of
-   thirty. That matters most where a statement is a bridge call rather than
-   a function call (ADR-0020's Android driver): until ux-carpet ticket 220
-   this was two statements of 123 KB each, the fold spelled out once per
-   column per area, and preparing them cost more than the scan. Measured
-   against the ten-year fixture as `search-everywhere` in tests/long-journal,
-   which budgets.json carries the number for; entries stay on their own FTS
-   queries beside it, as the screen has always run them.
-
-   It is a pure read. Searching writes nothing - no recent-searches history,
-   no index, no counter - and textSearch.test.ts holds that against the
-   driver rather than leaving it to be noticed.
-
-   Wording is not here. A hit's area label, icon and destination live in
-   components/searchHitRows.ts, the same split day.ts keeps from dayRows.ts
-   and for the same reason: this file stays Node-tier safe by importing no
-   paraglide (ADR-0016). */
+   One UNION ALL supplies matching text in a uniform shape so the fold
+   is written once and Android makes one driver call. A window count
+   runs before LIMIT so the result total includes every page. The
+   search-everywhere benchmark in tests/long-journal measures this path.
+   searchHitRows.ts supplies labels and routes, keeping this module free
+   of localized copy (ADR-0016). */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { foldedSql } from '../fold';
@@ -207,8 +147,8 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'surgery_epoch_day' },
     columns: ['name', 'notes']
   }),
-  /* What the appointment was, where it was and what was noted afterwards
-     (ticket 57). The kind is a word this person chose, so it is matchable
+  /* What the appointment was, where it was and what was noted afterwards.
+     The kind is a word this person chose, so it is matchable
      the same way a tryout's name is; nothing here ships, so nothing here
      matches a query in a language nobody wrote in. */
   area({
@@ -300,7 +240,7 @@ const AREAS = [
     columns: ['name']
   }),
   /* An era's name is typed by the person too, the same reason presentations
-     is covered rather than opted out (phase 6 ticket 01) - nothing ships
+     is covered rather than opted out - nothing ships
      seeded, so there is no built-in wording living above this seam.
 
      `date: null` even though an era has two: a hit is the name of a span,
@@ -331,7 +271,7 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['note', 'analyte', 'provider']
   }),
-  /* A dilation session's own note (ticket 12). The schedule that expects it
+  /* A dilation session's own note. The schedule that expects it
      carries no text of its own - opted out below, the same reason
      doseSchedules is. */
   area({
@@ -440,8 +380,7 @@ const AREAS = [
     context: 'CAST(e.id AS TEXT)',
     where: { sql: 'e.trashed_at IS NULL', params: () => [] }
   }),
-  /* The title, and nothing else there is (phase 8 features ticket 52,
-     ADR-0065). The app never reads a document's contents - no OCR, no text
+  /* The title, and nothing else there is (ADR-0065). The app never reads a document's contents - no OCR, no text
      extraction - so `columns` here is not a shortened list but the whole of
      the text this area holds. Indexing what a diagnosis says would put its
      words behind a search box somebody might be looked at over. */
@@ -461,32 +400,13 @@ export type SearchAreaKey = (typeof AREAS)[number]['key'];
 /** Which archive sections the registry above accounts for. */
 type Covered = (typeof AREAS)[number]['covers'][number];
 
-/** Every area that holds no searchable text, and why.
-
-    This is the ticket's "registered nowhere" check, and it is a full
-    `Record` over whatever the registry does not cover: an area added to the
-    archive registry - which is what makes an area exist at all (ADR-0027) -
-    is a compile error here until somebody either registers it above or
-    writes down why it holds nothing to search. Nobody has to remember the
-    check; the only way past it is to state an answer.
-
-    The reasons, and each one is a rule rather than a case:
-
-    *Searched already.* Entries, whose note is the one text with an index
-    behind it, matched through it by the screen's own read (ADR-0005).
-
-    *Reference data whose words live above this seam.* A built-in tag,
-    dimension, body region or effect type stores a key,
-    and the words it was shown under only exist in the message catalogue
-    (ADR-0016) - which is exactly why tag labels have always been matched in
-    memory over the mirrored vocabulary rather than in SQL (searchQuery.ts).
-    Searching those is that mechanism's job, not this one's.
-
-    *No text of its own.* A row of numbers, days or picked vocabulary. A
-    cycle event is one of three kinds; a dose event's site and vehicle come
-    from closed lists.
-
-    *Its own reason*, for the two that need one. */
+/**
+ * Require each Archive section to have a search entry or an explicit
+ * opt-out (ADR-0027). Entry notes use their existing FTS index.
+ * Translated vocabulary labels match in memory because SQL stores only
+ * their keys (ADR-0005, ADR-0016). Rows containing only values, dates
+ * or closed vocabulary have no free text to search.
+ */
 /* SEARCH_OPT_OUTS stays exported only for its own test (AU-09 test-only
    review). */
 export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
@@ -530,25 +450,25 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // A template's name and note scaffold are the person's own words for an
   // authored one, but they name a creation aid rather than journal
   // content - nobody searching their journal is looking for the templates
-  // they write entries from (phase 6 ticket 07).
+  // they write entries from.
 
   // The same Safe Space artefact class as the row above, for a different
   // reason: a comfort item's text is not duplicated anywhere, but ticket 14
-  // (phase 6) built this list to be reached behind Safe Space's own single
+  // built this list to be reached behind Safe Space's own single
   // tap and nowhere else. An ordinary search result is exactly the kind of
   // unasked-for door the ticket rules out.
   comfortItems: 'a Safe Space artefact, kept behind its own single-tap door',
 
   // The source is a fixed registry key, not a word someone typed - the
   // settings screen that lists these is where "where did this come from"
-  // is answered, not an ordinary search result (phase 7 ticket 03).
+  // is answered, not an ordinary search result.
   importLog: 'no text of its own: a source key, a date and counts by kind',
   deletions: 'no text of its own: a table name, an identity and a time',
 
   // Deliberately not searchable rather than incidentally: a hidden or
   // finished area's own records stay searchable, because search finding
   // everything is what makes it trustworthy, and the row itself is an area
-  // key and a day (phase 8 deepening ticket 13).
+  // key and a day.
   areaStates: 'no text of its own: an area key, a flag and a day'
 };
 
@@ -575,7 +495,7 @@ interface Branch {
     same columns in the same order whatever the area's own table looks like,
     with the column's text as `text` and its declaration order as `col`.
 
-    One branch per column rather than per area (ux-carpet ticket 220): the
+    One branch per column rather than per area: the
     fold is then applied once, to `text`, outside the union, instead of once
     per column per area and again inside a CASE for the value. Spelled per
     column the statement was 123 KB of nested REPLACE() text, sent twice per
@@ -656,7 +576,7 @@ interface SearchResults {
 
 export interface TextSearchArea {
   /** Every registered area's text matched against one query, newest first.
-      Reads only (phase 5 deepening ticket 24) - searching writes nothing. */
+      Reads only - searching writes nothing. */
   search(request: SearchRequest): Promise<SearchResults>;
 }
 

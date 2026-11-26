@@ -1,4 +1,4 @@
-/* The arithmetic behind Progress.svelte (phase 9 audit ticket 11, ADR-0070):
+/* The arithmetic behind Progress.svelte (ADR-0070):
    how far along a run is, and how long its bar stays on screen at either
    end of it. Kept out of the component, and out of progress.svelte.ts with
    it, so the decisions that have a right answer are under the node tier

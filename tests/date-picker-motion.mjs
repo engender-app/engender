@@ -1,29 +1,16 @@
-/* The date picker's motion, recorded and measured (phase 12 pickers, ticket
-   01): every scene the ticket names - opening, closing, a month turned by
-   the arrow, by a finger past the threshold, a drag that springs back, a
-   stretch at a bound, Today across months, the month drum - as every frame
-   Chromium's screencast paints, with a rAF sampler reading the picker
-   beside it.
+/* Record screencast and rAF geometry for open, close, arrow and touch
+   paging, spring-back, bound, Today and month drum scenes. CDP touch
+   tests the real gesture arbitration and paging threshold.
 
-     VITE_DEMO=1 npm run build && node tests/date-picker-motion.mjs [--out /abs/dir] [--gate]
-     node tests/date-picker-motion.mjs --root /abs/other/checkout --gate
+   Flag a month moving over half a viewport per 16ms, a gap beyond the
+   gutter, a visible month missing from the adjacent frame's DOM, a
+   title appearing at its destination, or a surface moving over 45%
+   of itself in a frame.
 
-   The yank test is the mechanical one the spec states: nothing painted at
-   its destination before it travelled there, and no frame with the thing in
-   neither place. So, per sample: a month panel that moves more than half
-   the viewport per elapsed 16ms frame, a gap between months wider than the
-   gutter, a month that is on screen in one frame and not in the DOM in the frame
-   before or after, a title face painted where it lands, a surface that
-   arrives or leaves more than 45% of itself in one frame.
-
-   The finger is a real touch sequence (CDP touch events), so pointerType is
-   touch and the sheet's own drag gets the chance to steal it, as on the
-   phone. The swipe also asserts its outcome - the month turned past the
-   threshold, held under it and at a bound - which is the half that has to
-   fail on a build with the swipe disabled.
-
-   `--out` keeps frames and a manifest for tests/panel-motion-flipbook.mjs;
-   `--gate` exits non-zero on any yank or wrong outcome. */
+   VITE_DEMO=1 npm run build && node tests/date-picker-motion.mjs [--out /abs/dir] [--gate]
+   node tests/date-picker-motion.mjs --root /abs/other/checkout --gate
+   --out saves frames for tests/panel-motion-flipbook.mjs. --gate fails
+   on a yank or wrong result. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

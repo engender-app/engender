@@ -49,7 +49,7 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
 
     /* Twelve feet over ten files: the entry editor, two settings screens,
        the photo export, the compare tab, the two
-       print surfaces' scoped print actions (ticket 34), and two each in
+       print surfaces' scoped print actions, and two each in
        the two voice components, whose branches are exclusive. A thirteenth
        is a screen that has to be measured, which is why the number
        is written down rather than counted at read time. */

@@ -1,19 +1,8 @@
-/* A driver that is whichever database is open when a call is made, rather
-   than the one that was open when the journal over it was built.
-
-   A journal handle captures its driver once, in openJournal's closures, and
-   a write can hold that handle for as long as it likes: a save encrypts its
-   photos to storage before it opens its transaction, and that can outlast a
-   lock's wait for it. Built over one driver, the save then reached the
-   worker the lock had terminated, and failed after the unlock with "the
-   database worker was closed" - the entry was lost while the editor had
-   already let it go. Built over this, its transaction waits for the
-   reopened database and lands there, under the same key.
-
-   Each call is counted by the gate while it runs, so a lock waits for the
-   ones already in the worker before closing it (journal-session.ts). A
-   transaction or snapshot is one call: what runs inside it uses the scope
-   it is handed, which belongs to the driver the call started on. */
+/* Resolve the active driver per call. A save can prepare photos
+   through a lock and then wait for the reopened journal to start its
+   transaction. journal-session.ts holds each in-flight call until
+   it finishes before closing the driver. Transactions and snapshots
+   count once and use the scope they were given throughout. */
 
 import type { SqliteDriver } from '../sqlite/driver.ts';
 import type { SessionGate } from './sessionGate.ts';

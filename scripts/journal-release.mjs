@@ -1,4 +1,4 @@
-/* Deploy and roll back immutable web releases on the VPS (phase 2 ticket 05).
+/* Deploy and roll back immutable web releases on the VPS.
 
    Deploy copies one complete release directory under a stable name and then
    switches the `current` symlink with one rename, so no request can see a half

@@ -1,5 +1,4 @@
-/* Picking a document to file (phase 8 features tickets 53 and 54,
-   ADR-0065): one file, PDF or image, refused and reported the way
+/* Picking a document to file (ADR-0065): one file, PDF or image, refused and reported the way
    photoPicking.ts already does for photos - accepting happens here, before
    the import sheet is the thing in front of the user, so a file this app
    will not store never gets as far as asking for a title.

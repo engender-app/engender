@@ -1,24 +1,11 @@
-/* The one place the Daylio importers say how much input they will take.
+/* Bound both Daylio imports before allocation or parsing. Limits
+   allow headroom over a ten-year fixture with 10,950 entries and
+   about 1,500 photos: 3.2 MiB CSV, 6.2 MiB backup member, 2.7 KB
+   longest note and 858 MiB attachments.
 
-   Both routes read a file somebody else made: the `.daylio` backup (a ZIP,
-   zipReader.ts) and the CSV (daylio.ts). A hostile or corrupt file must be
-   refused cheaply, before it is read into memory or walked field by field,
-   and a real export must never be. So every number here is the measured size
-   of a realistic ten-year export times a generous factor, rather than the
-   biggest thing a phone could survive:
-
-     measured (test-support/daylio-ten-year.ts, 3 entries a day for ten
-     years, 10,950 entries, notes of up to 2.7 KB)
-       CSV                       3.2 MiB    10,951 lines
-       backup.daylio member      6.2 MiB    (base64 of 4.7 MiB of JSON)
-       longest note              2.7 KB
-       attachments               about 1500 photos at 600 KB, 858 MiB
-                                 (the 851.2 MiB estimate in ARCHITECTURE.md)
-
-   Photos do not compress, so the ZIP on disk is about as large as what it
-   holds; the file ceiling and the inflated total are the same 1 GiB.
-   Keep `dlb_file_too_large` (it quotes 1 GB) in sync with `backupFileBytes`
-   in both message catalogues. */
+   The ZIP and inflated total share a 1 GiB limit because photos
+   compress little. Keep dlb_file_too_large aligned with
+   backupFileBytes in both catalogues. */
 
 const MIB = 1024 * 1024;
 

@@ -250,7 +250,7 @@ test('the boot sweep leaves a benchmark its audio', async () => {
   assert.deepEqual((await files.list()).sort(), before);
 });
 
-/* The stored pitch track (phase 8 features ticket 09). Two cases, and the
+/* The stored pitch track. Two cases, and the
    second is the one the screen has to survive: every benchmark taken before
    schema v58 has no track at all, because the frames it would have come
    from were never kept. */

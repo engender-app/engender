@@ -1,5 +1,4 @@
-/* The public version name, and the only place it is worked out (phase 2
-   ticket 01). A signed version tag is the source: the build reads it, the
+/* The public version name, and the only place it is worked out. A signed version tag is the source: the build reads it, the
    About screen shows what the build read, and the release pipeline hands the
    same string to the release notes and the Android artifacts through
    ENGENDER_VERSION rather than each of them asking git a slightly
@@ -121,7 +120,7 @@ export function resolveAppVersion(env, facts) {
 
 /**
  * Whether a resolved version names a release. Two callers need the question
- * answered the same way (phase 2 ticket 06): the release pipeline refuses to
+ * answered the same way: the release pipeline refuses to
  * publish a development version, and the build only pins its build id - and
  * with it every chunk hash - when what it was given is reproducible.
  *
@@ -139,8 +138,8 @@ export function appVersion() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const version = appVersion();
-  /* `--release` is the release pipeline asking, and it wants to be told no
-     (ticket 06). Without it a tag that was never signed, or a tag on an edited
+  /* `--release` is the release pipeline asking, and it wants to be told no.
+Without it a tag that was never signed, or a tag on an edited
      tree, would be answered with a development version and only fail several
      steps later, inside the protected release environment, with a message
      about something else. */

@@ -1,23 +1,8 @@
 <script lang="ts">
-  /* Typing a PIN at a gate: the pad, the growing delay, and the one status
-     line the outcomes share (ticket 53).
-
-     Two surfaces ask for a PIN and both are places somebody could be
-     guessing at four digits: the cold start, where the journal has not been
-     opened yet, and the mid-session lock, where it has. The throttle has to
-     be on both. It was on neither for a moment during this ticket - the pad
-     went in first and the delay only came with the mid-session screen - which
-     is exactly the gap this component exists to make impossible.
-
-     What the throttle is and is not. Ten thousand candidates typed by hand is
-     what it prices out, and it does that well. It is worth nothing against
-     the offline attack, because that one never loads this code
-     (data/device-secret.ts explains what covers that instead). So this is a
-     real defence against a real attacker, and not the reason four digits are
-     allowed to encrypt.
-
-     Choosing a PIN does not come through here. Nothing is being guessed at
-     when a PIN is being picked, so AccessModeSetup mounts the bare pad. */
+  /* Share the PIN entry and throttle across cold boot and session
+     unlock. The delay slows hand-entered guesses. Offline protection
+     lives in data/device-secret.ts. AccessModeSetup uses the bare pad
+     when choosing a new PIN. */
 
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
@@ -39,8 +24,8 @@
   /** What the caller's attempt came to. `device-gone` is PIN mode's own
       failure: this browser has lost the key the PIN was bound to, so the PIN
       is not wrong and retyping will never help. `unopened`: the PIN was
-      right but the journal would not open again after a web lock
-      (after-release ticket 10); not counted as a guess either. `cancelled`:
+      right but the journal would not open again after a web lock;
+      not counted as a guess either. `cancelled`:
       a newer lock or departure superseded the attempt. Credential contention
       and unreadable access metadata are separate from a wrong guess too.
       `storage-full`: the device had no room to write the attempt record or
@@ -172,7 +157,7 @@
       if (outcome === 'ok') {
         /* The pad stays as it is, full and disabled, while the gate leaves:
            emptying it and enabling it again painted for a frame or two
-           before the opening took the screen (after-release ticket 10). */
+           before the opening took the screen. */
         opening = true;
         await throttle.reset();
         return;

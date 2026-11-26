@@ -1,33 +1,12 @@
-/* Two scales at once writes its dates clear of the drawn series and readable
-   (last-audit UI 49, audit U41).
+/* Check demo /stats/plane at 390px in light and dark, English and Polish,
+   and 100% and 200% text size, plus 1280px. Sample the final point and
+   two earlier readings. Labels must stay within the plot, clear of the
+   readout and each other, at least 1px from painted dots, ring and joins,
+   and at least 4.5:1 over the card after compositing opacity. Check dots,
+   scrub and play still work. Sample every frame during playback and 20
+   arrow steps to catch labels cutting in or out at full opacity.
 
-   On the demo journal the audit found "21 Sept" and "11 Oct" struck through
-   by dots and trail joins, and "17 Sept" at about 1.5:1 against the card.
-   The labels were placed against each other only, never against the marks
-   they sit among, and each one took its point's fading weight as its
-   opacity, down to 0.25.
-
-   What it holds, on the demo journal's /stats/plane at 390px (light and
-   dark, English and Polish, text at 100% and 200%) and at 1280px, with the
-   head at the end of the path and scrubbed back to two earlier readings:
-
-   - no date label's text box comes within 1px of a dot, of the head's ring
-     or of a trail join, each measured at its painted size (radius plus the
-     outer half of its stroke, a join's half-width);
-   - no two labels overlap, every label lies inside the plot it is clipped
-     to, and none sits under the readout box in the plot's corner;
-   - every label's ink, its opacity composited over the card it is drawn
-     on, reaches 4.5:1 (SCREENS.md's floor for body text);
-   - the plot still draws its dots, the scrub still moves the readout's
-     date, and the play control is there;
-   - with motion on, across a play sweep and twenty arrow-key steps, no
-     date arrives or leaves at full opacity in one frame: the days fade out
-     while the head moves and back in once it rests, sampled on every
-     animation frame.
-
-   Fails on fc8d8512 (labels on dots and joins, labels at 1.5:1, and 46
-   label arrivals in the sweep, each a cut). Run with
-   `node tests/plane-date-labels-clear.mjs`. */
+   Run node tests/plane-date-labels-clear.mjs. */
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
 import { launchChromium, setAppLanguage, settlePage } from './browser-harness.mjs';

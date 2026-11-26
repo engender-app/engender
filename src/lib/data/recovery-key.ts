@@ -1,31 +1,12 @@
-/* What a recovery key can be asked to do (ADR-0054, ticket sec-01), one
-   level above the wrap: mint, finish, open, discard, revoke.
+/* Recovery-key replacement uses active and pending wraps (ADR-0054).
+   Minting writes pending and leaves active usable if the process dies before
+   confirmation. Both keys work while pending exists. Confirming overwrites
+   active and then removes pending, retiring the old key.
 
-   The same shape `journal-passphrase.ts` has for the keystore - "the wrap
-   math plus where the bytes live" - so that the Settings screen and, later,
-   the gates share one spelling of each operation rather than each composing
-   the pieces itself.
-
-   Two slots since last-audit UI 42. `active` is the key the journal has;
-   `pending` is a new key that has been shown but not yet confirmed as
-   written down. Minting writes only `pending`, so the old key keeps opening
-   the journal until the person confirms they have the new one, and a
-   process that dies between minting and confirming leaves a key that works
-   rather than a key nobody saw. Confirming is the commit: the pending wrap
-   is written over the active one, which is the only moment the old key stops
-   working, and then the pending file goes. While a pending wrap exists both
-   keys open the journal; that window is the accepted cost.
-
-   Only wraps are stored. The characters of a key are never written
-   anywhere, sealed or not, which is why finishing an interrupted
-   replacement asks the person to type the new key rather than showing it.
-
-   Ports rather than a direct import of the file store, for the reason
-   `journal-pin.ts` has them: everything here is worth testing in the Node
-   tier, and OPFS does not exist there. The platform default is the OPFS
-   file on both web and Android - the recovery wrap is not a device-bound
-   secret, so unlike PIN mode's binding there is nothing platform-specific
-   to choose between. */
+   Store wraps only. To finish an interrupted replacement, ask for the new
+   key again because its characters were never stored. Inject storage ports
+   for Node tests; both web and Android default to OPFS because the recovery
+   wrap is independent of the device. */
 
 import { authenticateCredentials, changeCredentials, CredentialsBusyError } from './credential-ownership';
 import {

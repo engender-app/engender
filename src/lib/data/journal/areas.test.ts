@@ -1,5 +1,5 @@
 /* The dimensions, milestones, labs, and reminders areas,
-   exercised through the driver interface (ticket 07). */
+   exercised through the driver interface. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -346,7 +346,7 @@ test('lab results update by id, throw on unknown ids and delete idempotently', a
   assert.deepEqual(await journal.labs.getResults('estradiol'), []);
 });
 
-/* lab draw context (phase 4 ticket 03) */
+/* lab draw context */
 
 const DRAW_DAY = 20000;
 const drawn = (time: string) => timestampAtLocalTime(DRAW_DAY, time);
@@ -627,7 +627,7 @@ test('a side effect cannot resolve before it began', async () => {
   await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: null, epochDay: 100, resolvedEpochDay: 100 });
 });
 
-/* cycle events (phase 5 ticket 03) */
+/* cycle events */
 
 test('a cycle event round-trips with no episode reference, ordered by day', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -666,7 +666,7 @@ test('cycle events update by id, throw on unknown ids and delete idempotently', 
   assert.deepEqual(await journal.cycleEvents.getCycleEvents(), []);
 });
 
-/* personal effects timeline (phase 4 ticket 07) */
+/* personal effects timeline */
 
 test('no marker exists until an effect is set; getMarkers only returns what was marked', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -705,7 +705,7 @@ test('each of the eight effects keeps its own marker', async () => {
   );
 });
 
-/* masculinizing effects timeline pack (phase 5 ticket 02) */
+/* masculinizing effects timeline pack */
 
 test('masculinizing fat redistribution is a distinct marker from fat redistribution, not the same one read two ways', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -750,7 +750,7 @@ test('clearing a marker is the undo for a mistaken date, and is idempotent', asy
   assert.deepEqual(await journal.personalEffects.getMarkers(), []);
 });
 
-/* hair removal (phase 5 ticket 08) */
+/* hair removal */
 
 test('a hair-removal session round-trips with no episode reference, ordered by day', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -1038,7 +1038,7 @@ test('reminders update by id, toggle enabled, throw on unknown ids and delete id
   assert.deepEqual(await journal.reminders.getReminders(), []);
 });
 
-/* procedures (phase 5 ticket 07) */
+/* procedures */
 
 test('a procedure round-trips with a free-text name and an optional surgery date, ordered by that date', async () => {
   const { journal } = await journalWithBuiltIns();

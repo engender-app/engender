@@ -1,4 +1,4 @@
-/* A press held on a grid cell, and what it means (pre-release-human 12):
+/* A press held on a grid cell, and what it means:
    a finger kept still on a photograph for HOLD_MS starts picking
    photographs to delete; a finger that travels more than HOLD_SLOP_PX
    first is a scroll and picks nothing.

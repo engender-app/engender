@@ -1,24 +1,11 @@
-/* Version 121 (pre-release-human 12): the 'genital_sexual' effect category
-   splits into 'genital' and 'sexual', so a person can show one without the
-   other (Alicja, 2026-11-05).
+/* Schema 121 splits `genital_sexual` into `genital` and `sexual`.
+   Both inherit the old selection and `updated_at` to avoid an apparent
+   edit on Merge. Built-ins follow the frozen catalogue mapping;
+   the migration test checks it. Custom effects move to Genital and
+   can be recategorized in Changes.
 
-   Both new categories start in the state the old one was in, with its
-   `updated_at`, so a Merge reads the split as no edit of anybody's. Each
-   built-in effect moves to the category the catalogue now gives it
-   (builtins.ts; the lists below are frozen with this migration, and the
-   migration test holds the two to the same answer). A custom effect a
-   person filed under the old category goes to 'genital': the catalogue is
-   one of body changes a person notices, and a custom row added beside
-   "Clitoral enlargement" and "Vaginal dryness" is more often one of those
-   than a change in desire. It stays editable from the Changes screen.
-
-   On a journal that never had 'genital_sexual' (a fresh one, before the
-   reconcile seeds it) every statement here matches nothing, and the
-   reconcile seeds both new categories off.
-
-   An archive written before the split still names 'genital_sexual'; restore
-   reads it through `splitArchivedEffectCategories` below, which maps it the
-   same way. The version number lives here and nowhere else in the chain. */
+   A fresh journal leaves both categories for reconcile to seed off.
+   `splitArchivedEffectCategories` applies the same mapping to old Archives. */
 
 export const EFFECT_CATEGORY_SPLIT_VERSION = 121;
 

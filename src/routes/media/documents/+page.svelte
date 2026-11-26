@@ -2,49 +2,19 @@
   import { collapse } from '$lib/motion/reveal';
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
-  /* The paper somebody keeps (phase 8 features ticket 52, ADR-0065; phase
-     10 redesign ticket 58).
+  /* The documents index shows the total, then groups by filing target
+     kind (ADR-0065). Reuse the four picker groups and put unfiled
+     documents last. documentTargets.svelte.ts shares the target reads
+     and supplies the attached record's name.
 
-     A row draws the page's own thumbnail since audit item 9. ADR-0065 had
-     said it never would - a list of scanned diagnoses is the most
-     glanceable screen in the app, and disguise is branding only with no
-     per-document hide flag (ADR-0063), so layout was carrying what the
-     branding could not. What the audit measured is that it was not
-     carrying it: paper is what this screen holds, every row wore the same
-     glyph, and telling two of them apart meant opening both - which is the
-     one thing the rule was there to avoid a person doing in a waiting
-     room. The ADR's own note carries the reversal. The full page still
-     lives a deliberate tap away; what a row shows is a 48px crop of its
-     top. What changed under ticket 58: a row also carries the kind (a PDF and a
-     photograph wear different marks, `documents`/`image` from the existing
-     icon set - no new glyph, ADR-0065's ban is on the page, not on saying
-     which file format it is) and, where the paper is filed under
-     something, that thing's own name rather than just its kind - the
-     picker's own four live reads (documentTargets.svelte.ts), reused here
-     rather than re-wired, since resolving one target and forty are the
-     same four queries.
+     A row shows a 48px crop from the top of the document and the
+     documents or image icon. The full page requires an explicit tap.
+     Disguise changes branding and has no per-document visibility
+     switch (ADR-0063).
 
-     Grouped by kind rather than by the specific record: the picker's own
-     four sections (Milestones / Surgery journey / Regimen / Roadmap) are
-     already the vocabulary a person filing a document sees, reusing them
-     here needs no new copy, and it keeps the group count bounded at five
-     however many milestones or goals somebody has - a "which one" question
-     the row's own attachment line already answers. Unfiled papers get
-     their own group, last.
-
-     DIRECTION.md rule 16 ("an area screen opens by saying what is true
-     now"): a plain present-reading row - how many documents there are -
-     opens the screen, above the groups. It used to add how much room they
-     took ("2 documents · 4 KB"), which is the payload talking rather than
-     the paperwork (audit UI-14); sizes are Export's business.
-
-     Importing is two steps and the order matters: the file is chosen
-     first, and the sheet that asks for a title and a date only opens once
-     there is something to file. Backing out of the picker leaves no
-     half-filled sheet behind. The title is required because a document has
-     no other handle - search matches it and nothing else - and there is no
-     honest default: a scan is called `scan_0142.jpg` and "Document 3" is
-     worse than asking. */
+     Choose the file before opening the metadata sheet. Cancelling the
+     picker leaves no draft. Require a title because search uses it
+     to identify the document. */
   import { onDestroy, onMount } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';

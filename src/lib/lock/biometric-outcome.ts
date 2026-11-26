@@ -1,4 +1,4 @@
-/* What the platform said, and what it means (ticket 13, ADR-0018).
+/* What the platform said, and what it means (ADR-0018).
 
    The Journal's data key is held by Android Keystore under a key that cannot
    be used until someone authenticates (ADR-0018: "Android protects that key

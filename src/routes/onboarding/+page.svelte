@@ -1,36 +1,14 @@
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { paletteNameFit } from '$lib/components/paletteNameFit';
-  /* The first run (F16), rebuilt for phase 5 ticket 26.
+  /* onboarding/steps.ts owns the order and skip rules. Each setting can be
+     skipped without writing over its stored default. Every step offers direct
+     entry to the app. The permissions step mentions daily check-in
+     notifications, whose switch lives on the reminders screen.
 
-     Six settings, one pass. What a person had to leave here and go and find
-     afterwards was the flag, which is the app's whole look and something
-     someone decides in the first minute and almost never revisits. So the
-     flow is welcome, name, flag, scales, features, lock, permissions,
-     disguise, finish,
-     and the order and the skip rules live in $lib/onboarding/steps.ts rather
-     than in a run of `step === 3` comparisons here. The daily check-in used
-     to be the last question and is not asked here any more (phase 10
-     redesign ticket 31): the permissions step names it as one of the things
-     a notification is for, and the switch stays on the reminders screen.
-
-     Two rules the user set for this ticket, and they are why the foot of
-     every step looks the way it does. Every step that stores something
-     carries its own Skip, and skipping means the stored default is left
-     exactly as it was rather than overwritten with nothing. And every step
-     carries a way straight into the app, because someone who opened a diary
-     to write in it should never have to answer six questions first.
-
-     The sun (DIRECTION.md, tier 0). Home's flag is the app's one authored
-     moment, and this screen is where it is assembled: it starts as a small
-     quarter in the corner and grows by one step's worth per step, arriving
-     at exactly the size Home draws it a moment later. Picking a flag redraws
-     it, ring by ring, in the new stripes. That is the whole of this screen's
-     tier-0 budget and it is spent on the one element that carries identity,
-     which is the same argument the sun already made on Home.
-
-     This screen appears before unlock. Under disguise it keeps the neutral
-     field and no sun, as the other pre-unlock screens do. */
+     The sun grows to Home's exact size over the flow and redraws its rings
+     when the flag changes (DIRECTION.md, tier 0). Onboarding runs before
+     unlock, so disguise keeps the neutral field and hides the sun. */
 
   import { afterNavigate, pushState } from '$app/navigation';
   import { page } from '$app/state';
@@ -100,7 +78,7 @@
   import { changePalette, isAppearancePending } from '$lib/motion/paletteChange';
 
   const restoreOnEntry = untrack(() => page.url.searchParams.get('restore') === '1');
-  /* Settings' "Delete everything" lands here (phase 14 ticket 15). The
+  /* Settings' "Delete everything" lands here. The
      wipe cannot be undone, so its result stays on the welcome as a line
      rather than a toast that fades. */
   const erasedOnEntry = untrack(() => page.url.searchParams.get('erased') === '1');
@@ -180,7 +158,7 @@
      nothing and so leaves the restart. */
   let lockAfter = $state<LockAfter | null>('one-minute');
 
-  /* Setup's last answer (ADR-0079, phase 10 redesign ticket 32). Held like
+  /* Setup's last answer (ADR-0079). Held like
      every other one and never read back off `prefs`, which matters more
      here than anywhere else in the flow: assigning `prefs.disguise` is what
      flips the Android launcher alias, and that closes the app. So this
@@ -222,7 +200,7 @@
      visit would otherwise "restore" the pick made on the first. */
   const paletteOnEntry = prefs.palette;
 
-  /* Somebody on a new phone who already has an archive (ticket 36). The
+  /* Somebody on a new phone who already has an archive. The
      restore's own working state: which file, which password, whether it has
      been proved to open, and what to say if it has not.
 
@@ -258,7 +236,7 @@
   let index = $derived(stepIndex(steps, step));
   let growth = $derived(stepSun(step, steps));
 
-  /* The welcome is the hero (pre-release-human ticket 19): the field most of
+  /* The welcome is the hero: the field most of
      a phone tall with the sun large in its corner and the wordmark on it,
      and "Set up the app" collapses it into the first question. */
   let hero = $derived(step === 'welcome');
@@ -303,8 +281,8 @@
     return playOpening(frame, { reduced: isReducedMotion() });
   });
 
-  /* Whether this step is the forced choice rather than the toggle under it
-     (ticket 54): true from the moment the flow reaches the lock step until
+  /* Whether this step is the forced choice rather than the toggle under it:
+     true from the moment the flow reaches the lock step until
      a mode is actually set up, which is the one stretch with no Skip, no
      back arrow and no "leave setup" - the same hard-gate rule JournalGate
      already holds a returning install to, here because reading `bootState`
@@ -643,7 +621,7 @@
       moduleChoices = null;
     } else if (step === 'lock') lockAfter = null;
     /* The permissions step is not in this list, and that is the whole of
-       what skipping it does (ticket 31). Its answers live in the OS rather
+       what skipping it does. Its answers live in the OS rather
        than in `prefs`, so there is no stored default for a Skip to protect:
        nothing was granted, nothing is revoked, and every row is still there
        under /settings/permissions. */
@@ -657,7 +635,7 @@
      writing them as one function is what stops the two drifting apart the
      way a second copy of this would.
 
-     Reachable only once the access mode is settled (ticket 54): that step
+     Reachable only once the access mode is settled: that step
      is what creates the keystore this function's writes need, so an early
      "leave setup" cannot call this directly - leave() below routes it
      through the lock step first, the same way the old app-lock toggle used
@@ -733,8 +711,7 @@
   }
 
   /* "Leave setup", from any step before the finish. Detours through the
-     lock step first when the access mode has not been chosen yet (ticket
-     54): complete()'s writes need the keystore that step is the only place
+     lock step first when the access mode has not been chosen yet: complete()'s writes need the keystore that step is the only place
      that creates, so there is nowhere else for an early leave to go. Once a
      mode is chosen boot leaves this state on its own, and a second "leave
      setup" from the lock step reaches complete() directly. */
@@ -761,7 +738,7 @@
      scroll (rule 14). Before this ticket setup was a plain column inside
      the app's own scroll region, so a step with nine rows on it carried the
      question and the foot off the top of the window with them - measured at
-     571px of overflow on the permissions step (ticket 31). Now the screen
+     571px of overflow on the permissions step. Now the screen
      is exactly the window, the answers have their own region, and the
      question and the foot cannot move at all. -->
 <div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`} bind:this={frame}>
@@ -871,13 +848,13 @@
           <!-- NAV-006: onboarding had no way back between steps at all, so
                a typo in the name could only be finished past. Absent while
                awaitingAccessMode for the same reason Skip and "leave setup"
-               are (ticket 54): a step back from here would be a way past
+               are: a step back from here would be a way past
                choosing an access mode, and there is none. -->
           <!-- A step back off the restore step is giving up on the restore,
                not walking to the step before it: the step before it is the
                welcome, and arriving there still in the restore flow would
                leave its primary button pointing back at the file picker
-               instead of at a new setup (ticket 36). -->
+               instead of at a new setup. -->
           <button
             class="icon-btn press"
             data-back
@@ -907,8 +884,8 @@
                it is the two transitions below that move it - one mechanism
                per kind of change, both reading one set of numbers.
 
-               The welcome prints the wordmark instead of its question
-               (ticket 19): "Welcome!" stays the heading a screen reader
+               The welcome prints the wordmark instead of its question:
+               "Welcome!" stays the heading a screen reader
                lands on, and the name of the app is what the eye does. -->
           <div
             class="setup-ask-part"
@@ -1117,13 +1094,13 @@
                     <div class="setup-lock-part" in:fieldPart out:fieldPart>
                       {#if awaitingAccessMode}
                         <!-- The app-lock toggle that used to head this list is
-                             gone with the gate it turned on (ticket 53): how the
+                             gone with the gate it turned on: how the
                              journal opens is now one choice made in the security
                              module, and a PIN is one of its access modes rather
                              than a switch here.
 
                              On a brand new install this module is what a person
-                             meets on reaching this step (ticket 54) - the same
+                             meets on reaching this step - the same
                              AccessModeSetup component Settings uses, wired in at
                              this one point in the flow because this is the one
                              step that actually creates the keystore.
@@ -1159,8 +1136,7 @@
                   {/key}
                 </div>
               {:else if step === 'permissions'}
-                <!-- Where the daily check-in used to be asked about (ticket
-                     31). The nudge is not a question setup asks any more: it
+                <!-- Where the daily check-in used to be asked about. The nudge is not a question setup asks any more: it
                      is one of the reasons under the notification row here,
                      and the switch itself stays on the reminders screen.
                      What this step does instead is name everything the app
@@ -1204,7 +1180,7 @@
                     {/snippet}
                   </ListRow>
                 </ListCard>
-                <!-- Settings' block, not a second one (ticket 32): a preview
+                <!-- Settings' block, not a second one: a preview
                      of the launcher that disagreed with the launcher would
                      be worse than none, and two copies is how that
                      happens. -->
@@ -1323,27 +1299,12 @@
 </div>
 
 <style>
-  /* Setup wears the field (DIRECTION.md rules 12 to 14, redesign ticket
-     33). What stood here was chrome from before the kit existed: a column
-     inside the app's own scroll region, a bespoke `.setup-head` reserving
-     room for a sun that hung off the window's corner behind the text, a
-     title on the page rather than on a field, and steps that crossed on a
-     shared axis nothing else in the app uses any more.
+  /* Setup uses the field with a fixed footer (DIRECTION.md rules 12–14).
+     Only the answer region scrolls. Field height follows the sun and
+     question at each step, with its contents riding the edge.
 
-     Three things are true of every step now. The screen is exactly the
-     window and cannot scroll; the answers have a region of their own and
-     are the only thing in the frame that can. The field's height is the
-     sun's reach at this step plus the question, so the edge comes down one
-     step's worth per step and everything printed on it or standing under it
-     rides down with it. And the foot is outside the ride, so it is in the
-     same place on all nine steps.
-
-     `--blind-edge` is where the field's bottom edge is, in pixels. It is
-     registered rather than left as a plain custom property for the reason
-     every var()-driven animation in this app has to be: an unregistered
-     property has no type, so it cannot be interpolated, and a transition
-     naming it would jump. Registered as a length, it animates, and the
-     clip below reads it per frame. */
+     Register --blind-edge as a length so it interpolates and the clip
+     can follow it each frame. An untyped custom property would jump. */
   .screen-setup {
     height: 100%;
     min-height: 0;
@@ -1388,22 +1349,10 @@
   }
   /* ---------- the field ---------- */
 
-  /* Picking a flag changes what colour the field is, and a state change
-     moves (ADR-0078). Measured on the first flipbook: the whole field went
-     from trans pink to agender green between two frames while the sun was
-     still redrawing ring by ring underneath, so the loudest surface on the
-     screen was the one thing that teleported.
-
-     What moves is the flag being left: it lies over the flag arriving and
-     wipes off towards the far corner, so the new colour is uncovered from
-     the sun's corner outwards on the sun's own clock. First in the paint's
-     DOM order and so under the sun, which keeps drawing over both.
-
-     The rest of the palette still arrives in one frame - a tick's fill, a
-     row's icon block (Skip's words fade, see .setup-outs) - because `--accent` and the
-     role colours are published on <html> and nothing in the app transitions
-     them. That is the cohesion sweep's to answer (ticket 20) rather than a
-     step's; what this rule owns is the surface this step is about. */
+  /* Lay the outgoing flag paint over its replacement and wipe
+     toward the far corner on the sun's clock (ADR-0078). Put it
+     before the sun in the DOM so the rings remain above both.
+     Accent and role tokens on html still switch immediately. */
   .setup-paint-was {
     position: absolute;
     inset: 0;
@@ -1452,22 +1401,10 @@
     transition-timing-function: var(--ease-out-soft);
   }
 
-  /* The sun's room, which is also the back control's row. Reserved as the
-     sun's reach at this step rather than at full size: the reserve is what
-     the field's height is made of, so reserving the finish's 175px from the
-     first step would make every step's field the tallest one's.
-
-     Home gained --space-7 of room under its disc in carpet ticket 154 and
-     this did not, though the ticket first added it here too. The two are
-     not the same shape: Home's field bottom edge *is* this reserve, with
-     the wordmark sitting on it, so without the room the innermost ring
-     lands 6px off that edge and touches it at the breathing loop's
-     midpoint. Here the question sits below the reserve, so the disc never
-     reaches the field's own bottom edge and there is nothing to hold it
-     off. Adding it anyway cost a step 32px of a budget rule 14 measures:
-     the walkthrough caught the disguise step's foot intercepting clicks
-     on the switch above it, because a step may not scroll and the
-     answers had nowhere left to go. */
+  /* Reserve only this step's sun reach because it sets the field
+     height. The question below it already clears the disc. Home's
+     additional --space-7 would take 32px from the answers and can
+     push the disguise switch under the fixed foot. */
   .setup-head {
     position: relative;
     /* Keep Back above questions that cross its target during a step change. */
@@ -1503,7 +1440,7 @@
     color: var(--field-ink);
     text-wrap: balance;
     /* A 48px word is wider than a 195px window at 200% zoom, which is where
-       every title in the app took this rule (ticket 35). */
+       every title in the app took this rule. */
     overflow-wrap: break-word;
   }
 
@@ -1543,7 +1480,7 @@
     font-weight: var(--weight-medium);
     color: var(--text-2);
   }
-  /* What a wipe from Settings left behind (phase 14 ticket 15): a result
+  /* What a wipe from Settings left behind: a result
      rather than a description, so it reads in the text colour above the
      welcome's own muted lines. */
   .setup-line.is-result {
@@ -1559,7 +1496,7 @@
     max-width: 60ch;
   }
 
-  /* ---------- the welcome (pre-release-human ticket 19) ----------
+  /* ---------- the welcome ----------
 
      The app's first screen, so the field is its hero: most of a phone
      tall, the sun large in its corner (steps.ts, WELCOME_SUN) and the
@@ -1684,21 +1621,11 @@
     text-wrap: pretty;
   }
 
-  /* PL / EN, top left where the back control is on every other step: one
-     pill with a stroke in the field's ink, the language in use filled with
-     that ink and lettered in the field's colour (sign-off round 1: "make
-     the language chooser a little bit more visible, maybe a stroke over the
-     button?"). The ink is what the field's text is measured in, so the
-     stroke and the fill hold the text's own contrast against the field,
-     well over the 3:1 a control's edge owes (9.59:1 on trans, light and
-     dark). 2px rather than the kit's 1.5px input edge, which Chromium
-     snaps to 1px at a 2x density and which read as faint on the flag.
-
-     The stroke is an inset shadow rather than a border, so it takes no
-     room: as a border it left each half 44px tall inside a 48px pill,
-     under the touch floor the walkthrough's setup no-scroll flow measures
-     every button against. Each half is now the full 48 by at least 48,
-     and the pill looks the same. */
+  /* Use a 2px inset stroke in field ink for the first step's
+     language pill. The ink clears the 3:1 boundary floor and
+     measured 9.59:1 on trans in both themes. A border would
+     reduce the two controls' height to 44px. The inset stroke
+     preserves each half's minimum 48px square. */
   .setup-lang {
     display: flex;
     border-radius: 999px;
@@ -1856,7 +1783,7 @@
      34: the gates ask for a passphrase on the same shape, and rule 13 says
      they are one drawing. */
 
-  /* ---------- the restore step (ticket 36) ---------- */
+  /* ---------- the restore step ---------- */
 
   /* The block. An outline while it is empty and a solid surface once it
      holds a file, so the tap has something to answer with beyond a filename
@@ -1928,7 +1855,7 @@
 
   /* The module carries its own intro paragraph, its own forward control and
      its own way back, because those drive a state machine four screens
-     share (ticket 30). Inside setup the intro is the step's line and is
+     share. Inside setup the intro is the step's line and is
      rendered there, so the module's copy of it is not drawn twice; the
      controls keep the foot's drawing, which is the one place on the flow
      where the way on is not in the foot itself. Named in the ticket. */

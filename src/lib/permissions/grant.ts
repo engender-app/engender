@@ -1,5 +1,4 @@
-/* The acts behind the permissions list's buttons (phase 10 redesign ticket
-   31): reading what the OS currently says, and asking it for something.
+/* The acts behind the permissions list's buttons: reading what the OS currently says, and asking it for something.
 
    Split from the component because these are four platform calls with four
    different shapes, and from `catalogue.ts` because that module is the pure

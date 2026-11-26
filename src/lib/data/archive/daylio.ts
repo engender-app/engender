@@ -65,7 +65,7 @@ const MOODS = new Map<string, number>([
   ['świetnie', 5]
 ]);
 
-/** Exported for the source registry (ticket 02): what `detectDaylio` sniffs
+/** Exported for the source registry: what `detectDaylio` sniffs
     for and what `parseRows` below still enforces on the real parse. */
 export const REQUIRED_COLUMNS = ['full_date', 'time', 'mood', 'activities', 'note_title', 'note'] as const;
 
@@ -158,7 +158,7 @@ function parseRows(csv: string): DaylioRow[] {
   });
 }
 
-/** The source registry's own sniff (ticket 02): does the header look like
+/** The source registry's own sniff: does the header look like
     Daylio's, with no commitment to the rest of the file parsing. Reads only
     the first line, not the whole file through `csvRows`, so a file that is
     unmistakably Daylio by its header still detects as Daylio even when a

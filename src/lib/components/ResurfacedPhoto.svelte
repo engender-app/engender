@@ -1,22 +1,8 @@
 <script lang="ts">
-  /* A photo shown by a resurfacing surface - on-this-day, Wrapped - covered
-     until a deliberate tap reveals it (phase 6 ticket 05, ADR-0049,
-     CONTEXT: "Resurfacing consent"). Separate from muting an era: someone
-     may be fine with old words and not old images, so this applies
-     regardless of any mute.
-
-     Local `$state`, nothing written: scrolling away and back covers the
-     photo again, and nothing here remembers that a person opened it. The
-     cover is the whole point, so PhotoThumb - which reads the file the
-     moment it comes near the viewport - does not mount until revealed.
-     A blur over an already-decoded image would still put the bytes in
-     memory before anyone asked; not mounting is the only cover that is
-     actually one.
-
-     Revealing it takes the focus to the photo (after-release 21, audit
-     L05-08): the button that had it is gone, and focus left on a removed
-     node drops to the top of the page. The cover fades out over the photo
-     fading in, in the same cell, so the tile never stands empty. */
+  /* Require a deliberate reveal for resurfaced photos regardless
+     of era mute (ADR-0049). Keep consent local and mount PhotoThumb
+     only after reveal so the bytes stay unread. Transfer focus
+     from the removed cover button to the photo. Crossfade in one cell. */
   import { tick } from 'svelte';
   import { fade } from 'svelte/transition';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';

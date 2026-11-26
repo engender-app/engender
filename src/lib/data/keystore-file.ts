@@ -114,7 +114,7 @@ export async function writeKeystoreFile(metadata: KeystoreMetadata, current: () 
 }
 
 /** Which kind of secret opens this journal, or null on a first run. What
-    boot's survey asks (ticket 53): the mode is a property of the keystore
+    boot's survey asks: the mode is a property of the keystore
     rather than something tracked beside it, so there is nothing to drift. */
 export async function readKeystoreSource(): Promise<JournalSecretSource | null> {
   return (await readKeystoreFile())?.secretSource ?? null;

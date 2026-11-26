@@ -1,29 +1,17 @@
-/* Body regions (ticket 09, widened to a reference-data area by ticket 30,
-   given a second axis by ticket 31, collapsed back to one value by ticket
-   39, ADR-0081): every body region an entry can log against shares this
-   one 0-100 intensity scale, rather than a per-region range the way a
-   gender dimension has - dysphoria below the midpoint, euphoria above it,
-   the same shape the day-level euphoria_dysphoria dimension already takes.
+/* All body regions share a 0–100 intensity scale (ADR-0081).
+   Below midpoint is dysphoria, above is euphoria. builtins.ts and
+   journal/bodyRegions.ts own the region keys.
 
-   The region keys themselves became a stored reference-data area in ticket
-   30 (CONTEXT: "Reference data" - amended) - builtins.ts holds the built-in
-   key list now, and journal/bodyRegions.ts the area a custom row is added
-   to. What is left here is only the shared intensity scale, which is not a
-   "vocabulary" concept the way a key list is and so was never part of that
-   move.
-
-   No default value: neither side is pre-filled when a region is picked, so
-   there is nothing to seed a slider with. An untouched region sits at the
-   midpoint, which is what lets "at peace with this" and "I said nothing
-   about this" stay different statements - the CHECK (schema.ts) excludes
-   the midpoint from storage for exactly that reason. */
+   Start an untouched region at the midpoint with no value selected.
+   schema.ts excludes the midpoint from storage to preserve the
+   difference between no report and a reported feeling. */
 
 import type { BodyRegionAxis } from './types';
 
 export const BODY_REGION_INTENSITY_MIN = 0;
 export const BODY_REGION_INTENSITY_MAX = 100;
 
-/** "Picked but not answered" (ticket 31): a region sitting here carries
+/** "Picked but not answered": a region sitting here carries
     nothing and is dropped on save, the same rule the v81 CHECK enforces on
     a stored row. */
 export const BODY_REGION_MIDPOINT = (BODY_REGION_INTENSITY_MIN + BODY_REGION_INTENSITY_MAX) / 2;
@@ -51,7 +39,7 @@ export interface RegionSides {
   euphoriaMean: number | null;
 }
 
-/** What the body map paints for one region (phase 10 redesign ticket 40).
+/** What the body map paints for one region.
 
     `side` is null for a region with no readings in the range, which the
     figure draws as an outline and no fill - "undrawn" and "the faintest
@@ -112,23 +100,13 @@ export function regionReading(sides: RegionSides): RegionSideReading {
   };
 }
 
-/** What one region's range reading says, as the words beside the figure need
-    it (phase 11 pre-production UI/UX ticket 30).
-
-    `count` is the dominant side's own, not the region's: the sentence pairs
-    a number of readings with their mean, and a region that went both ways
-    has a mean of the side that won and a count of everything. Saying "5
-    readings, averaging dysphoria 70" of four dysphoria readings and one
-    euphoria one is an average of four called an average of five.
-
-    Three states rather than a nullable reading, because the sentence has to
-    be honest about the difference and a caller branching on three nulls will
-    eventually get one of them wrong: a region the range never mentions is
-    absent from `bodyRegionMap`'s rows entirely, one that is present with no
-    side says the same nothing, and neither may be shown as a value. Rounded
-    here, so the scale a person reads is settled in one place - the intensity
-    is native and whole (ADR-0012, ADR-0081) and a mean of four readings is
-    not. */
+/**
+  * Pair the dominant side's count with its own mean. Counting
+  * both sides would assign readings to a mean they never contributed
+  * to. Distinguish an absent region, one without either side, and a
+  * value. Round intensity here for display in native units
+  * (ADR-0012, ADR-0081).
+  */
 export type RegionSummary =
   | { kind: 'none' }
   | { kind: 'reading'; axis: BodyRegionAxis; value: number; mixed: boolean; count: number };

@@ -1,5 +1,5 @@
 /* Milestone status, which four screens read and none of them may compute
-   for itself (ticket 08). Days are epoch days, so every case is arithmetic
+   for itself. Days are epoch days, so every case is arithmetic
    against a fixed "today" rather than against the clock. */
 
 import assert from 'node:assert/strict';
@@ -48,7 +48,7 @@ test('the anniversary day itself is flagged, and counts the year it completes', 
 test('a 29 February milestone reads its first anniversary as one year, not zero', () => {
   // The gap to 28 February 2027 is 364 days, so measuring years off the gap
   // rather than off the anniversary reported "0 years" on the day this flags
-  // as the first one (ticket 10).
+  // as the first one.
   const status = milestoneStatus({ epochDay: day(2024, 2, 29) }, day(2025, 2, 28));
   assert.deepEqual(status, { type: 'anniversary', years: 1, inDays: 0, isAnnivToday: true });
 });

@@ -1,5 +1,5 @@
 /* What the app says after it writes a kept Taken or Skip tap into the
-   journal (functional audit ticket 20). One toast per tap, longer than the
+   journal. One toast per tap, longer than the
    default four seconds because it arrives on unlock, while the person is
    still finding their place, and a logged dose offers its record: an
    injection logged from a notification has no site yet. */

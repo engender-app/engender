@@ -1,28 +1,13 @@
-/* Keeping a segmented control's active segment inside its own strip.
-
-   Segmented.svelte used to do this with
-   `target.scrollIntoView({ inline: 'nearest', block: 'nearest' })`, and its
-   comment said that never touches the page's own scroll. That is true only
-   while the control is already on screen. `block: 'nearest'` on an element
-   below the fold scrolls every scrollable ancestor the minimum needed to
-   bring it into view, and the app's scroll region is one of those - so
-   arriving on a screen whose switcher sits under a long list scrolled the
-   whole screen down to the switcher, on mount, before the person had
-   touched anything (found by phase 8 features ticket 66, whose batched list
-   then read that scroll as "they are at the end already" and rendered
-   everything).
-
-   Moving the strip's own `scrollLeft` is what the control actually wanted,
-   and it cannot move an ancestor at all. Here rather than in the component
-   so the arithmetic has tests: what went wrong the first time was a claim
-   about behaviour that nothing checked. */
+/* Adjust the segmented strip's own scrollLeft. scrollIntoView can
+   scroll all ancestors, even with block: 'nearest'. A mount below
+   a long list could scroll the page and trigger extra list
+   batches before someone interacts. */
 
 /** How much of the strip each chevron hint covers (`.segmented-hint` in
     components.css, whose width a test holds to this number). The hint is a
     fade with its own ground, and on Wrapped's cadence tabs at 390px that
     ground covered the last letter of a selected "Last year" that this
-    function had brought "into view" flush against the edge (last-audit UI
-    ticket 26). */
+    function had brought "into view" flush against the edge. */
 export const SCROLL_HINT_WIDTH = 26;
 
 /** The horizontal position the strip should be at for `segment` to be fully

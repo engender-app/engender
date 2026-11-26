@@ -1,29 +1,14 @@
-/* Nothing on the field paints past the field (ticket 285).
+/* Sample the field edge and contents on every frame. Fail when ink
+   paints below the field, jumps relative to its edge or cuts in or out.
+   Check door transitions at top, middle and bottom scroll, interruptions,
+   push/back, gear, Polish, reduced motion, resize, setup and cold load.
+   Compare geometry with the screencast's blue field and green ink
+   (field-text-core.mjs). Use pixels to decide what painted.
 
-   "Text on the field sometimes paints outside the coloured field, over the
-   page background behind it" - and the field is one object that only moves
-   up or down, with whatever is printed on it moving as it does. This probe
-   drives every change that moves a field and reads, on every animation
-   frame, where the field's painted edge is and where every text, control and
-   ring on it is. It fails when any of them is below the edge, and when one
-   teleports relative to the edge or appears or vanishes in a single frame.
-
-   Scenes: the four doors both ways from the top, the middle and the bottom
-   of the screen, there-and-back and interrupted by a second navigation, the
-   deep push and back, the gear into a screen with no field and back out,
-   Polish, reduced motion, a window resize, the setup steps forward and back
-   and setup's handover to Today, and the door field's height at rest on a
-   cold load. Widths 390 and 1440.
-
-   Two instruments (field-text-core.mjs says why): a per-frame geometry
-   sampler, and the pixels of the screencast with the field forced pure blue
-   and its ink pure green, which is the authority on what was painted.
-
-   Run: node tests/field-text-probe.mjs [--widths 390,1440] [--only text]
+   VITE_DEMO=1 npm run build
+   node tests/field-text-probe.mjs [--widths 390,1440] [--only text]
         [--runs 3] [--json file] [--frames dir] [--report]
-   Needs a demo build on disk (VITE_DEMO=1 npm run build); it serves build/.
-   Exits 1 on any finding unless --report is given, which prints the same
-   table for a before/after record. */
+   Serve build/. Exit 1 on findings unless --report is set. */
 import { createServer, preview } from 'vite';
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';

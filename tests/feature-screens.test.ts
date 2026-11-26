@@ -1,25 +1,8 @@
-/* The feature screens, after the rebuild onto the surface kit (phase 5 UX
-   ticket 25), at the level a screen's source can be held to - the same
-   shape as home-contracts.ts and more-surfaces.test.ts, which is where
-   this kind of test started.
-
-   This is the grind ticket, so the thing worth watching is not any one
-   screen but that none of them was quietly left on the old vocabulary.
-   The list below is the More hub's own rows, read off `hubRows.ts`, plus
-   the handful of screens reached only from inside another one. It was a
-   third hand-written screen list until phase 8 audit ticket 22; a screen
-   that joins the hub now joins every assertion in this file with it, which
-   is the half of the problem a written-out list could never solve - and the
-   half it did solve stays, because the screens below the hub are still
-   written out rather than globbed, and a screen dropped from a glob and a
-   screen dropped from the redesign look identical to a glob.
-
-   Greps by design (ticket 08). The question this file asks 26 times is
-   whether a screen still reaches for the old vocabulary, which is a
-   negative over its source and has no call form. Where one of these
-   screens held a rule instead of markup it has since moved out: the
-   archive failure kinds, the chart's padded scale and the personal
-   effect's source tier are all called from their own tests now. */
+/* Check feature screens use current surface kit classes. Read hub routes
+   from hubRows.ts so additions join the assertions automatically. List
+   routes reachable only from another screen explicitly so missing
+   files fail. These are source-level absence checks. Archive failure,
+   chart padding and personal-effect source rules have their own tests. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -64,40 +47,39 @@ const REACHED_FROM_INSIDE = [
   /* One appointment (prh12), reached from a row on /health/appointments,
      from a day's context list, from Today and from a search hit. */
   'health/appointments/[id]',
-  /* The metric reference (phase 8 features ticket 27) held this place
+  /* The metric reference held this place
      until phase 11 ticket 17 folded it into a sheet over the voice screen
      itself - its markup is `VoiceMetricSection.svelte` and
      `voice/+page.svelte` now (all-four-doors ticket 21 moved it off the
      retired Practice prefix), both already reached the ordinary way, and
      `practice/voice/metrics` is a redirect stub with nothing on it to
      hold to the kit. */
-  /* Two views over the unprompted registry (phase 6 ticket 04). The
+  /* Two views over the unprompted registry. The
      notifications view joins the list because its own milestone spec says so
      ("feature-screens.test.ts covers /transition/eras and the notifications
      view"); its sibling /settings/live-tiles predates that line and is not
      on it. */
   'settings/notifications',
   /* Reached from the shell rather than from a hub row, and deliberately
-     linked from nowhere (phase 8 features ticket 05, ADR-0062): the return
+     linked from nowhere (ADR-0062): the return
      surface opens itself once per gap and is a moment rather than a place.
      Still a feature screen in every way this file asks about, and on the
      list for the reason the note above the list gives - a screen that is
      not here escapes every assertion in it. */
   'coming-back',
   'media/photos/export',
-  /* One document (phase 8 features ticket 52). Reached from a row on
+  /* One document. Reached from a row on
      /media/documents, from a day's context list and from a search hit,
      never from the hub - the hub row is the list. */
   'media/documents/[id]',
-  /* The prep list read one question at a time (phase 8 features ticket 60).
+  /* The prep list read one question at a time.
      Chromeless, reached from the visit screen's own verb row and nowhere
      else since phase 11 all-four-doors ticket 12, never from the hub. On
      this list for the reason the note above it gives: chromeless is about
      the shell around a screen, and says nothing about whether the screen
      itself is built on the kit. */
   'health/appointments/in-the-room',
-  /* Everything the app can ask this device for, listed in one place (phase
-     10 redesign ticket 31). Reached from a row beside security in Settings,
+  /* Everything the app can ask this device for, listed in one place. Reached from a row beside security in Settings,
      and from setup's permissions step, which draws the same component. On
      this list for the reason the note above it gives: it is a feature screen
      in every way this file asks about, and a screen that is not here escapes
@@ -125,8 +107,7 @@ const REACHED_FROM_INSIDE = [
      Still built on the kit, so it stays on this list for the reason the
      note above it gives. */
   'health/clinician-summary',
-  /* One reading of the Look back door on a screen of its own (phase 11
-     ticket 07): four readings share the route, each reached from its
+  /* One reading of the Look back door on a screen of its own: four readings share the route, each reached from its
      tile on /stats and from nowhere in the hub. Built on the kit and holds
      a loading state on the recap it reads for the floor, so it stays on
      this list for the reason the note above it gives. */
@@ -152,8 +133,7 @@ const ROUTES = [...HUB_ROUTES, ...REACHED_FROM_INSIDE];
     `/settings/permissions` is a ScreenHeader and `<PermissionList />`, and
     that is the point of it: setup's permissions step draws the same
     component, so "you can grant this later" leads to the same list rather
-    than to a second one written to look like it (phase 10 redesign ticket
-    31). A screen built that way is still on the kit; it is on the kit one
+    than to a second one written to look like it. A screen built that way is still on the kit; it is on the kit one
     file along. */
 const KIT_VIA_COMPONENT: Record<string, string> = {
   'settings/permissions': 'PermissionList'
@@ -173,28 +153,9 @@ const markupOf = new Map(
 
 describe('every feature screen', () => {
   it('is the hub, plus the screens reached only from inside another', () => {
-    /* The count that was here covered all 36 routes and had been raised ten
-       times since it was written as 26, twice by two branches that each
-       thought they were adding the 28th. The hub's own rows no longer need
-       one - they arrive from `hubRows.ts`, and a row with no screen behind
-       it throws in `sourceOf` above before any assertion runs.
-
-       The fourteen below it still do, for the reason the note at the top of
-       the file gives: a screen quietly dropped from a hand-written list and
-       a screen quietly dropped from the redesign look identical. Nineteen
-       since phase 11 all-four-doors ticket 12 took `health/appointment-prep`
-       off this list (the appointments screen's own verb row reaches it now),
-       eighteen since phase 11 ticket 17 took the metric reference off it too
-       - its markup moved to screens the hub already reaches - and sixteen
-       since audit item 6 turned modes into a sheet
-       raised over Settings: it has no +page.svelte of its own left at
-       its route for this file to read (feature-screens.test.ts's own
-       NOT_A_FEATURE_SCREEN equivalent for a non-hub route is simply not
-       listing it at all) - and fifteen since functional audit ticket 12
-       cut the Words reading and its `settings/words` ignore list, and
-       sixteen again since prh12 bug 20 gave each procedure its own
-       screen at `health/surgery/[id]`, and seventeen since prh12 gave each
-       appointment its own at `health/appointments/[id]`. */
+    /* Pin the count of explicitly listed non-hub screens so removing a path
+       also changes an assertion. Hub routes are discovered from hubRows.ts
+       and sourceOf fails if their files are missing. */
     expect(REACHED_FROM_INSIDE.length).toBe(17);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
@@ -334,7 +295,7 @@ describe('what the worker is still fetching', () => {
         'settings/permissions',
         /* Safe space's breath and fixed rows never wait on a journal read.
            Its optional Good moments row stays absent until the bounded
-           visibility read finds an entry (tester report ticket 18). */
+           visibility read finds an entry. */
         'doubt',
         /* Reads nothing at all: the notices arrive in the screen's own
            chunk, generated by the build. */
@@ -347,9 +308,9 @@ describe('what the worker is still fetching', () => {
        hands its read to ReadGate, which owns the placeholder and the branch
        around it, or it draws a Skeleton against a `.loading` of its own where
        what it is waiting on is not a list. What must not happen is neither.
-       A ReadGroup (ux-carpet ticket 190) is a gate over several reads at
-       once and owns its placeholder the same way, and so does a ReadReserve
-       (tickets 183, 205), which holds the body's room at its last height. */
+       A ReadGroup is a gate over several reads at
+       once and owns its placeholder the same way, and so does a ReadReserve,
+       which holds the body's room at its last height. */
     for (const route of ENTRY_DATA) {
       const source = sourceOf.get(route)!;
       const gated =
@@ -413,7 +374,7 @@ describe('the two print surfaces', () => {
     /* And what print hides is the app around the page, not the page. The
        header and the settings row that opens the range picker carry
        `no-print` themselves; the range picker now lives in the controls
-       sheet (ticket 08), screen-only under the sheet's own `no-print`
+       sheet, screen-only under the sheet's own `no-print`
        wrap rather than its own - print-parity.test.ts holds that one.
        The print heading that replaces the header carries the range in
        words. */

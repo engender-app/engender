@@ -1,5 +1,5 @@
 // @ts-nocheck
-/* The field-text probe's arithmetic on synthetic frames (ticket 285). A
+/* The field-text probe's arithmetic on synthetic frames. A
    probe that has only ever passed proves nothing, so these pin the shapes it
    must flag - text below the painted edge, a part that jumps against the
    edge, a part that appears in one frame, ink below the field in a frame's

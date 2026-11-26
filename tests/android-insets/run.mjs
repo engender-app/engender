@@ -216,7 +216,7 @@ try {
         await navigate('/entry/new/today');
         await page.locator('[data-entry-step="today"]').waitFor();
         await capture(`${name}-editor-first`, ['[data-screen-title="entry"]', '[data-screen-back]', '[data-entry-finish]', '[data-entry-continue]', '[data-first-step-moods] [data-mood]']);
-        // The note is on a new entry's last step, past a face (ticket 09).
+        // The note is on a new entry's last step, past a face.
         await page.locator('[data-entry-step="today"] [data-mood="3"]').click();
         await toEntryStepWith(page, '#ed-note');
         await page.locator('#ed-note').waitFor();

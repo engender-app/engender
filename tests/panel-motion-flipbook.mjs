@@ -1,29 +1,9 @@
-/* Turns one or two directories of panel-motion frames into one JSON bundle
-   small enough to embed in a review page (phase 9 carpet ticket 04).
+/* Crop screencast frames to the band that moves and re-encode in a
+   browser canvas. Keep every third frame after motion to show settling.
+   A scene's manifest crop overrides the default crop. Its trace is
+   carried into the bundle. An optional pattern filters scene names.
 
-   The frames come off Chromium's screencast at the viewport's full height,
-   which is deliberately taller than a phone so the rows below a panel are in
-   shot. That is the right recording and the wrong payload: at 390x1340 and
-   205 frames a before-and-after pair is 16MB of JPEG before base64 gets near
-   it. So this crops each frame to the band that actually moves and
-   re-encodes it, in the one runtime already on hand that can - a canvas in
-   the browser this repo already drives.
-
-   Frames after the motion has finished are thinned rather than dropped: a
-   flipbook that stops the instant the animation does cannot show that it
-   settled, and every third frame is enough to show stillness.
-
-   Run: node tests/panel-motion-flipbook.mjs <outFile.json> <label>=<dir>[:pattern] ...
-   e.g. node tests/panel-motion-flipbook.mjs .claude/panel-motion.json \
-          before=.claude/panel-motion-before:light after=.claude/panel-motion-after
-   `pattern` keeps only the scenes whose name contains it, which is how a
-   before-and-after pair stays inside a page's size budget: the defect a
-   before recording is showing is the same defect in either theme.
-
-   A scene in the manifest may carry its own `crop` ({left, top, width,
-   height}) and its own `trace` of per-frame measurements; both override or
-   ride past the CLI's one crop, for a run whose scenes are not all the same
-   band of the same screen. */
+   node tests/panel-motion-flipbook.mjs <outFile.json> <label>=<dir>[:pattern] ... */
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchChromium } from './browser-harness.mjs';
@@ -41,7 +21,7 @@ const MOTION_MS = 620;
 
 /* Another ticket's scenes are another band and another duration - the
    Journal door's month is the top of the screen and runs at --dur-slow
-   (redesign ticket 10) - so both are overridable, with Home's own numbers
+    - so both are overridable, with Home's own numbers
    as the defaults:
      --crop <top>,<height>   --motion <ms> */
 const argv = process.argv.slice(2);
@@ -110,8 +90,8 @@ for (const pair of pairs) {
     if (pattern && !scene.name.includes(pattern)) continue;
     /* A scene may name its own crop, which is what a run whose scenes are
        not all the same band needs: the nav's two shapes are a strip along
-       the bottom of a phone and a column down the left of a desktop
-       (redesign ticket 26), and one crop for the run would carry most of a
+       the bottom of a phone and a column down the left of a desktop,
+       and one crop for the run would carry most of a
        screen that never moves to fit both. The CLI's crop stays the default
        for every scene that says nothing. */
     const box = { left: 0, width: null, top: cropTop, height: cropHeight, ...(scene.crop ?? {}) };

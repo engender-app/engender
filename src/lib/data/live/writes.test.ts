@@ -1,6 +1,6 @@
 /* The half of the reactive layer that has no runes in it, so it can be
    tested at all: which tables a journal mutation writes, and the wrapper
-   that announces them (ticket 08). */
+   that announces them. */
 
 import assert from 'node:assert/strict';
 import { expect, test } from 'vitest';
@@ -48,7 +48,7 @@ test('hiding or finishing an area announces it, and a read of the states announc
   /* The features spec reads these states on the hub and on Home, so a hide
      that announced nothing would leave the row it hid on screen until the
      next unrelated write - the class of staleness this whole module exists
-     for (phase 8 deepening ticket 13). */
+     for. */
   await journal.areaStates.setAreasHidden(['personalEffects'], true);
   await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 19900);
   assert.deepEqual(announced, [['areaState'], ['areaState']]);
@@ -282,7 +282,7 @@ test('a Daylio preview commits through the observed journal the screen uses', as
   assert.deepEqual(announced, [TABLE_NAMES]);
 });
 
-/* The update guard hangs off the same wrapper (ticket 04). The reason it is
+/* The update guard hangs off the same wrapper. The reason it is
    here rather than at the call sites is that this is the one place that knows
    what a write is: a journal operation added next month is covered by
    classifying it, and a service worker cannot activate under it. */
@@ -386,7 +386,7 @@ test('a whole area this module does not know about is rejected too', async () =>
 
 test('tablesWrittenBy answers with the classified tables, and refuses anything else', () => {
   // Boot's trash purge reads this rather than carrying its own copy of
-  // deleteEntry's tables (phase 5 audit ticket 02).
+  // deleteEntry's tables.
   expect(tablesWrittenBy('entries', 'deleteEntry')).toEqual(['entry', 'photo', 'voiceRecording', 'videoNote']);
   expect(() => tablesWrittenBy('entries', 'getEntry')).toThrow(/not a classified write/);
   expect(() => tablesWrittenBy('nosuchArea', 'deleteEntry')).toThrow(/not a classified write/);
@@ -394,7 +394,7 @@ test('tablesWrittenBy answers with the classified tables, and refuses anything e
 
 test('tablesReadBy answers with the tables a read depends on, and refuses anything else', () => {
   // What a liveQuery resolves its dependencies from, instead of asking the
-  // screen to name tables (phase 5 audit ticket 03).
+  // screen to name tables.
   expect(() => tablesReadBy('entries', 'upsertEntry')).toThrow(/not a classified read/);
   expect(() => tablesReadBy('nosuchArea', 'getEntry')).toThrow(/not a classified read/);
 });
@@ -418,20 +418,10 @@ test('editing a regimen episode re-runs the stock projection, the run-out date t
   }
 });
 
-/* The class of stale copy the audit found next, and the reason "at least one
-   table" below cannot catch it: several areas answer out of other areas'
-   reads rather than out of SQL of their own, and each one retyped the union
-   of their tables by hand. A hand-typed union goes wrong in both directions.
-   Short of a table, the composing read never re-runs on a write to the area
-   it composes and the screen holding it shows its old answer forever. Long of
-   one, it carries a dependency nothing behind it reads any more, which is a
-   re-query on every unrelated write and a lie about what the read does.
-
-   So the rule is equality rather than overlap: a composing read declares
-   exactly the tables of the reads it performs. That is also what makes the
-   list in test-support/composing-reads.ts unforgettable - a section added to one of the registries brings
-   a table with it, and the union here is short of that table until somebody
-   adds the read that brought it. */
+/* Require composing reads to declare exactly the union of tables they
+   read. Too few dependencies leave stale results and extras re-query
+   on unrelated writes. test-support/composing-reads.ts records the
+   reads supplying each union. */
 
 /** The read-only areas that answer out of SQL of their own rather than out
     of another area's read, and so have nothing to compose. Written down for

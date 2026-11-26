@@ -55,30 +55,16 @@ export class RecoveryKeyMistypedError extends Error {
   }
 }
 
-/* The check symbol makes the whole written key, read as a base-32 number
-   over all 25 of its symbols, divisible by 37. Two properties follow, and
-   both are why 37 rather than a sum or a smaller modulus:
+/* The full 25-symbol base-32 key is divisible by 37. A substitution
+   changes it by d × 32^i, with 1 ≤ |d| ≤ 31, so prime 37 cannot divide it.
+   A transposition of different symbols changes it by
+   (b − a) × (32^i − 32^j). The second factor vanishes modulo 37 only
+   when positions differ by a multiple of 36, beyond the key's length.
 
-   A single wrong symbol shifts the total by d x 32^i where d is at most 31
-   in either direction. 37 is prime and larger than 31, so that can never
-   land back on a multiple of 37. Every one-symbol slip is caught.
-
-   Swapping two symbols shifts it by (b - a) x (32^i - 32^j). The first
-   factor is never zero modulo 37 for the same reason; the second is zero
-   only when the positions are 36 apart, and a key is 25 long. So every
-   transposition is caught too, which a summed checksum catches none of.
-
-   The check symbol has to be inside the run for that second property to
-   hold at every position. Computing it over the 24 data symbols alone -
-   Crockford's own framing, and the first thing this module did - leaves
-   exactly one hole, because 32^18 is congruent to -1 modulo 37: swapping
-   the symbol at that one position with the check symbol always produced a
-   key that validated. The transposition test found it.
-
-   The remainder can be any of 37 values and the alphabet has 32, so
-   generation redraws when it cannot be written (`generateRecoveryKey`).
-   That conditions the key on a public property of itself and costs about a
-   fifth of one bit. */
+   Checking only the 24 data symbols left one undetected swap with the
+   check symbol because 32^18 ≡ −1 (mod 37). Cover all positions. Generation
+   redraws when one of the 37 remainders cannot fit the 32-symbol alphabet,
+   costing about a fifth of an entropy bit. */
 const CHECK_MODULUS = 37n;
 
 /** The symbols, read as one base-32 number, modulo 37. */

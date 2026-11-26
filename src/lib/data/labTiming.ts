@@ -1,19 +1,8 @@
-/* Where a lab draw fell relative to dosing (phase 4 ticket 03, CONTEXT:
-   "Lab draw context"), and whether a chart's points were drawn under
-   comparable conditions. Pure, and kept above the journal seam beside
-   regimenEpisode.ts and doseSchedule.ts for the same reason: this is a
-   question about a draw and a dose, not a row anyone stores. Nothing here
-   reads a clock or a database - selectTimingDose (phase 8 features ticket
-   37) does lean on regimenEpisode.ts and hormoneDrug.ts as real
-   dependencies rather than peers, since picking which dose a draw's timing
-   comes from is inseparable from whose drug that dose was.
-
-   Purely descriptive throughout. This module answers "how long after which
-   dose was this drawn" and stops: it names no draw time as better than
-   another, no target value, and nothing about a result as favourable. The
-   draw-timing helper that would have advised one was rejected outright at
-   the phase 4 grilling session (Q15); this records what it would have had
-   to know, without the advice. */
+/* Describe when a lab draw occurred relative to dosing and whether
+   chart points come from comparable conditions. Resolve the timing
+   dose through regimen and hormone attribution. Keep the logic
+   free of clocks and persistence. Report timing without suggesting
+   draw times, target values or judgments about results. */
 
 import { epochDayFromTimestamp, startOfDayTimestamp, timestampAtLocalTime } from './epochDay';
 import { resolveHormoneDrug } from './hormoneDrug';
@@ -110,28 +99,11 @@ export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming 
     ordered latest first. */
 export type CandidateDose = TimingDose & { drug: string | null };
 
-/** The candidate that supplies `analyte`'s timing, or null when none does.
-    `analyte` must itself resolve to estradiol or testosterone
-    (hormoneDrug.ts) - prolactin and any custom analyte resolve to none and
-    always get null here, exactly as when there is no dose at all.
-
-    Otherwise a candidate is skipped over, as if it weren't there, only when
-    `attributeDrug` (regimenEpisode.ts) resolves it to a drug and that drug
-    is not this analyte's hormone - a concurrent dose for an unrelated
-    drug, the case this exists for. A dose `attributeDrug` has nothing to
-    resolve at all (`drug: null, ambiguous: false` - no episode covers it and
-    it names no drug of its own) is not the same as one resolved to a
-    different drug: it counts, exactly as every dose did before this existed,
-    so a journal that has never logged a regimen episode keeps stamping
-    timing the way it always has. Only a dose `attributeDrug` could not tell
-    apart from another (`ambiguous: true` - concurrent episodes for
-    different drugs, neither named on the dose) is excluded on that same
-    "nothing to attribute" footing, because there is no honest attribution
-    to fall back on for those either.
-
-    `doses` must already be in the order a match should be picked from -
-    latest first - since this returns the first one that qualifies rather
-    than choosing among several. */
+/** Pick the first eligible dose from newest to oldest. Only estradiol
+    and testosterone get timing. Skip doses attributed to another drug
+    and doses ambiguous across concurrent episodes. Doses with no
+    attribution and no ambiguity still qualify, preserving timing for
+    journals without regimen episodes. */
 export function selectTimingDose(
   analyte: string,
   doses: readonly CandidateDose[],

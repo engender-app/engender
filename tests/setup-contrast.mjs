@@ -1,25 +1,11 @@
-/* Every piece of type on every step of setup, measured against what is
-   actually behind it (phase 10 redesign ticket 33, DIRECTION.md rule 11).
+/* Measure each setup step in every palette and theme. Resolve the
+   painted background and text size from the DOM to choose the contrast
+   floor, including 3:1 for large text. Report the worst element per
+   step using the same contrast-walk.mjs helper as the gates.
 
-   Rule 11 computes the eight field/ink pairs from the hexes, and
-   palette-contrast.test.ts holds them at the 3:1 large-text floor. That is
-   the palette's arithmetic; this is the screen's. A step draws the question
-   on a flag colour and everything else on the page, and the two things a
-   table cannot answer are what an element's effective background really is
-   once a fill, a wash or a role has been resolved, and which of the two
-   floors applies once a browser has laid the type out at whatever size the
-   cascade actually gave it.
-
-   So this walks the real DOM of every step in every palette and both
-   themes and reports the worst ratio per step with the element that owns it.
-   The measurement itself - resolving what is behind a piece of type, the
-   field's paint included - is tests/contrast-walk.mjs, shared with the
-   gates' own walker since redesign ticket 34 gave the two surfaces one
-   field.
-
-   Run: VITE_DEMO=1 npm run build   first, then
-        node tests/setup-contrast.mjs [--palettes trans,agender] [--themes light,dark]
-   Writes .claude/setup-contrast.json and prints the worst ratio per step. */
+   VITE_DEMO=1 npm run build
+   node tests/setup-contrast.mjs [--palettes trans,agender] [--themes light,dark]
+   Writes .claude/setup-contrast.json. */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
