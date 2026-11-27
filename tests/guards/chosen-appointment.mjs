@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { launchChromium } from '../browser-harness.mjs';
+import { continueToTheRest, launchChromium } from '../browser-harness.mjs';
 import { PALETTES } from '../palettes.mjs';
 
 const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
@@ -35,10 +35,22 @@ async function choose(id) {
 }
 async function checkDebrief(id, answer, excluded) {
   await page.locator('[data-room-done]').click();
+  // The debrief opens on the first step; its scaffold is with the note on the last.
+  await continueToTheRest(page);
   await page.waitForFunction((answer) => document.querySelector('#ed-note')?.value.includes(answer), answer);
   assert.equal(new URL(page.url()).searchParams.get('debriefFor'), id);
   assert.ok(!(await page.locator('#ed-note').inputValue()).includes(excluded));
-  await page.goBack();
+  // Each step of the new entry is its own history entry, so Back walks them first;
+  // leaving the first step asks to discard the face continueToTheRest picked.
+  for (let step = 0; step < 6 && !(await page.locator('[data-room-answer]').count()); step++) {
+    await page.goBack();
+    await page.waitForFunction(() => document.querySelector('[data-room-answer], [data-discard-record]') || document.querySelectorAll('[data-entry-step]').length === 1);
+    if (await page.locator('[data-discard-record]').count()) {
+      // Discard finishes the Back that asked for it; wait for it rather than pressing another.
+      await page.locator('[data-discard-record]').click();
+      await page.locator('[data-room-answer]').waitFor();
+    }
+  }
   await page.locator('[data-room-answer]').waitFor();
   assert.equal(await page.locator('[data-room-answer]').inputValue(), answer);
 }
