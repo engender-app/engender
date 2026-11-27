@@ -4,7 +4,7 @@
 
    Adjust the stripe's lightness to produce ink at 4.5:1 on each supported
    surface while preserving hue. kit.css mixes a bare --role towards
-   --text when no theme supplies the ink. tests/kit-roles.test.ts checks
+   --text when no theme supplies the ink. tests/node/ui/kit-roles.test.ts checks
    both contrast paths. */
 
 import { chromaOf, colorMixOklab, contrast, lightnessOf, washOver, withLightness } from './colour';
@@ -73,7 +73,7 @@ const MARK_FLOOR = 3;
     role paints behind itself - the icon disc, and the wash under a pressed
     row. Declared here rather than only in the CSS because the ink has to
     clear its floor against those fills, and it cannot do that without
-    knowing them. tests/kit-roles.test.ts holds kit.css to these. */
+    knowing them. tests/node/ui/kit-roles.test.ts holds kit.css to these. */
 /* ROLE_TINT_PCT stays exported only for kit-roles.test.ts, which cross-checks
    against it (AU-09 test-only review). */
 export const ROLE_TINT_PCT = 15;
@@ -232,7 +232,7 @@ export function flagRoles(
 /** What a chart can paint under one of its lines, on top of the surface
     itself: a wash of the line's own stripe, at most 18% (an area chart's
     fill is 16%), and the 7% of --text an annotation band lays across the
-    plot. tests/palette-contrast.test.ts measures the edge against both. */
+    plot. tests/node/ui/palette-contrast.test.ts measures the edge against both. */
 const CHART_WASH_PCT = 18;
 const ANNOTATION_PCT = 7;
 
@@ -400,7 +400,7 @@ function readStripes(doc: Document): string[] {
     light orange, and Polish white in light mode and red in dark mode.
 
     Pick near-black or white for higher contrast. Use large text only.
-    Nonbinary purple with white is 4.41:1. tests/palette-contrast.test.ts
+    Nonbinary purple with white is 4.41:1. tests/node/ui/palette-contrast.test.ts
     pins the field/ink pairs and 3:1 floor. */
 const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF', bisexual: '#0038A8', lesbian: '#FF9A56' };
 

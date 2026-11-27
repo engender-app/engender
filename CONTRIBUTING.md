@@ -30,6 +30,8 @@ signed by a key listed in `.github/release-signers`.
 
 ## Test conventions
 
+See [Running tests](tests/README.md) for the suites and commands.
+
 The walkthrough (`tests/walkthrough.test.mjs`) finds every element by a
 `data-*` attribute, an id or an ARIA role or state, never by a CSS class and
 never by rendered copy, so a screen can be restyled and reworded without
@@ -37,8 +39,8 @@ touching it. Where a component already has an identity (a tag's id, a goal's
 key, a toast's kind), the handle carries that identity rather than the label.
 Copy is allowed in two cases, a localisation check and a value the test typed
 itself, and each is marked with a trailing `// text-under-test` comment.
-`tests/walkthrough-locators.test.ts` fails on a class selector or an unmarked
-copy match, and `tests/walkthrough-handles-exist.test.ts` fails on a handle
+`tests/node/tooling/walkthrough-locators.test.ts` fails on a class selector or an unmarked
+copy match, and `tests/node/tooling/walkthrough-handles-exist.test.ts` fails on a handle
 no source file carries.
 
 Read source text in a test only for an invariant a rendered check cannot
@@ -93,6 +95,6 @@ and adds to the one `History:` line at the end, rather than stacking a
 section. The decision itself is 150 words or fewer, the record about 600 and
 1,000 at most. Name things instead of quoting values that rot: no hex
 colours, frame counts, or counts of areas, tables, sections or palettes.
-`tests/adr-citations.test.ts` checks citations, headers, the 1,000-word ceiling
+`tests/node/tooling/adr-citations.test.ts` checks citations, headers, the 1,000-word ceiling
 and tombstones. It also checks that readers can follow public references in
 a clone. Count the decision paragraph when you review the record.

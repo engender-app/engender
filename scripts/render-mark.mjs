@@ -3,7 +3,7 @@
    as Mark.svelte. Read stripes from `palettes.css` to include new palettes.
 
    Run `npm run render:mark` to regenerate tracked output with Chromium
-   after a palette or geometry change. `tests/mark-assets.test.ts` checks
+   after a palette or geometry change. `tests/node/ui/mark-assets.test.ts` checks
    that the assets are current. Keep the full review set out of web and
    APK bundles. */
 import { chromium } from 'playwright-core';

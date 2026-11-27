@@ -53,7 +53,7 @@ InsetsState section of an API 35 dump supplied by the runtime owner on
 first API 33 run. `api33-ime-insets.txt` preserves API 33's additional
 `visibleFrame` field with the keyboard shown. `api33-landscape-ime-insets.txt` also covers an IME bounded by the display cutout.
 `api35-landscape-ime-insets.txt` records an IME listed before the side navigation
-that limits its width. These fixtures test parsing, not the screen matrix. `tests/safe-area.test.ts`
+that limits its width. These fixtures test parsing, not the screen matrix. `tests/node/ui/safe-area.test.ts`
 continues to check viewport-fit and CSS inset declarations; those checks do not
 establish Android window or keyboard behavior. A Play Console notice requires
 separate external evidence. This probe cannot establish warning removal or

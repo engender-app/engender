@@ -1,0 +1,217 @@
+/* Safe space surface and contract tests. /doubt offers
+   personal support before the breath, with good moments, comfort and
+   resources on their own routes. Letters and starred photos live on
+   their own screens. tests/settings-route-redirects.test.ts covers
+   legacy addresses. Snapshots were removed because copied notes
+   outlived their entries. */
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { LIVE_TILE_ORDER } from '../../../src/lib/data/liveTiles.ts';
+import { UNPROMPTED_ROWS } from '../../../src/lib/unprompted/registry.ts';
+import { HUB_ROWS } from '../../../src/lib/data/hubRows.ts';
+import { SAFE_SPACE_WAYS } from '../../../src/lib/data/safeSpaceWays.ts';
+import { COUNTEREVIDENCE_LIMIT, COUNTEREVIDENCE_PREVIEW } from '../../../src/lib/data/counterevidence.ts';
+
+const root = fileURLToPath(new URL('../../..', import.meta.url));
+const read = (path: string) => readFileSync(root + path, 'utf8');
+
+const doubt = read('src/routes/doubt/+page.svelte');
+const comfort = read('src/routes/doubt/comfort/+page.svelte');
+const evidence = read('src/routes/doubt/evidence/+page.svelte');
+const letters = read('src/routes/transition/letters/+page.svelte');
+const more = read('src/routes/more/+page.svelte');
+
+const strip = (source: string) => source.replace(/<script[\s\S]*?<\/script>/g, '');
+const markup = strip(doubt);
+const evidenceMarkup = strip(evidence);
+const lettersMarkup = strip(letters);
+
+/** Safe space as one thing, for the assertions that only care that the app
+    still holds a surface somewhere behind that row. */
+const safeSpace = [doubt, comfort, evidence].join('\n');
+
+describe('what Safe Space is built from', () => {
+  it('takes its surfaces from the kit and does not reach for pre-kit SectionTitle or EmptyState', () => {
+    expect(safeSpace).not.toContain("from '$lib/components/SectionTitle.svelte'");
+    expect(safeSpace).not.toContain("from '$lib/components/EmptyState.svelte'");
+    expect(safeSpace).not.toMatch(/<SectionTitle/);
+    expect(safeSpace).not.toMatch(/<EmptyState/);
+    expect(safeSpace).toContain("from '$lib/components/kit/Notice.svelte'");
+    expect(evidence).toContain("from '$lib/components/kit/ReadGate.svelte'");
+    expect(doubt).toContain("from '$lib/components/BreathingExercise.svelte'");
+  });
+
+  it('keeps the breathing tool available without a separate heading', () => {
+    expect(markup).toContain('<BreathingExercise');
+    // No section heading over it: the field says where this is.
+    expect(doubt).not.toContain("from '$lib/components/kit/SectionHeading.svelte'");
+  });
+
+  it('puts every way down one tap from the breath, in the order the module states', () => {
+    expect(doubt).toContain("from '$lib/data/safeSpaceWays'");
+    expect(markup).toMatch(/{#each SAFE_SPACE_WAYS as way[\s\S]*?<ListRow/);
+    for (const way of SAFE_SPACE_WAYS) expect(doubt).toContain(`${way.key}:`);
+  });
+
+  /* Release audit U11: "Things that help" was both the button above the
+     breath and a row under it. Said once, by the button. */
+  it('reaches the comfort list once, from the button above the breath', () => {
+    expect(markup.match(/href="\/doubt\/comfort"/g)).toHaveLength(1);
+    expect(SAFE_SPACE_WAYS.map((w) => w.href)).not.toContain('/doubt/comfort');
+  });
+
+  it('names the More hub as where back falls back to', () => {
+    /* CARPET-05: the href is the fallback rather than the destination now,
+       and ScreenHeader is what turns it into a return to whichever screen
+       the person actually came from. */
+    expect(doubt).toContain('back="/more"');
+  });
+
+  it('renders a breathing exercise calming tool', () => {
+    expect(markup).toContain('<BreathingExercise');
+  });
+
+  it('reads the counterevidence pool live and keeps no copy of it (FA 09)', () => {
+    expect(evidence).toContain('j.entries.counterevidencePool');
+    expect(safeSpace).not.toMatch(/doubtJournal|saveSnapshot|getSnapshots/);
+    expect(evidenceMarkup).not.toContain('data-confirm-delete-doubt-snapshot');
+  });
+
+  it('offers no row that leaves for another door (FA 09)', () => {
+    expect(doubt).not.toMatch(/safe_space_moments|safe_space_readings/);
+    expect(SAFE_SPACE_WAYS.map((w) => w.key)).toEqual(['resources', 'evidence']);
+  });
+
+  it('reads section colors from activeFlag shell roles', () => {
+    for (const source of [doubt, comfort]) {
+      expect(source).toContain("from '$lib/theme/activeFlag.svelte'");
+      expect(source).toContain("from '$lib/theme/roles'");
+    }
+  });
+
+  /* Ticket 15's bound. Twenty entry cards ran this screen to 3990px. Six
+     is what fits in a viewport. */
+  it('opens on six of the pool and holds the rest behind one control', () => {
+    // Split by whole days since phase 14 ticket 18 (previewWholeDays has
+    // its own test in counterevidence.test.ts).
+    expect(evidence).toContain('previewWholeDays(entryDayGroups(counterevidence))');
+    expect(COUNTEREVIDENCE_PREVIEW).toBeLessThan(COUNTEREVIDENCE_LIMIT);
+    expect(evidenceMarkup).toMatch(/<EntryDays groups={shown} level=\{2\} \/>[\s\S]*?data-evidence-see-all/);
+  });
+
+  it('discloses the rest in place rather than sending anyone to a second screen', () => {
+    expect(evidenceMarkup).toContain('data-evidence-see-all');
+    expect(evidenceMarkup).not.toMatch(/data-evidence-see-all[^>]*href=/);
+    expect(evidence).toContain('m.safe_space_evidence_see_all({ count: counterevidence.length })');
+    /* The rows it reveals clip
+       open from their own left edge and the control itself collapses,
+       rather than either cutting into place. */
+    expect(evidence).toContain('out:disclose');
+    // The held days arrive through EntryDays' own `arrive`.
+    expect(evidence).toContain('<EntryDays groups={held} arrive level={2} />');
+    expect(read('src/lib/components/EntryDays.svelte')).toContain('animation: kit-block-in');
+  });
+
+  /* Ticket 15 again: the subtitle is the qualification rule in the
+     person's own words, and entries.ts is what keeps it. The two moved
+     together and a screen promising more than the query delivers is the
+     defect the ticket was written for. */
+  it('says what qualifies in terms the query actually holds to', () => {
+    expect(evidence).toContain('m.safe_space_counterevidence_sub()');
+    const entries = read('src/lib/data/journal/entries.ts');
+    expect(entries).toContain('DYSPHORIA_TAG_KEYS.map(() => \'?\').join');
+    expect(entries).toContain('BODY_REGION_MIDPOINT');
+  });
+});
+
+describe('letters on the letters screen (ticket 14, widened by 21, moved by 15)', () => {
+  /* Ticket 14 showed one letter under Safe space; ticket 21 widened that to
+     every unlocked one, capped, with the rest a tap away. Ticket 15 noticed
+     that the tap went to `/transition/letters`, which was already showing
+     the same two letters in its Open section - so the capped list and its
+     overflow row are gone, and the screen they handed over to is the one
+     surface. What is pinned now is that the seal rule is still the only
+     thing deciding which letters are readable, and that the starred
+     photographs came across with their bound. */
+  it('decides which letters are open by the seal rule and nothing else', () => {
+    expect(letters).toContain("from '$lib/data/letterStatus'");
+    expect(letters).toContain('isLetterSealed(letter, today)');
+    /* No second, looser idea of "open" anywhere on the screen: a letter is
+       readable when its unlock day has passed, and that answer is
+       letterStatus.ts's - the rule letterRetrospective.ts takes for every
+       retrospective surface. */
+    expect(letters).not.toMatch(/unlockEpochDay\s*[<>]=?\s*today/);
+  });
+
+  it('names the Open section for the ready-letters jump', () => {
+    expect(lettersMarkup).toMatch(/<SectionHeading[^>]*id="opened"/);
+  });
+
+  it('keeps the letter preview a preview, cut in code as well as in CSS', () => {
+    // The retrospective surfaces still draw the shared row, and the row
+    // still asks letterOpening for its text rather than carrying the whole
+    // letter into a link's accessible name.
+    const card = read('src/lib/components/LookBackLetterCard.svelte');
+    expect(card).toContain('href={`/transition/letters/${letter.id}`}');
+    expect(card).toContain('letterOpening(letter.text, LETTER_OPENING_LIMIT)');
+    expect(card).not.toMatch(/title=\{letter\.text\}|subtitle=\{letter\.text\}/);
+    /* Ticket 15 removed the row's `lead`: Safe Space's list was its only
+       caller, and a prop with one arrangement left is not a choice. */
+    expect(card).not.toContain('data-lead');
+    expect(read('src/lib/styles/kit.css')).not.toContain("[data-lead='text']");
+  });
+
+  it('runs no query against voice_benchmark - ticket 15/16 have not shipped that table to read', () => {
+    // The comment explaining the deferral is allowed to name the table;
+    // no call or query string may reach for it.
+    expect(safeSpace).not.toMatch(/\bj\.voiceBenchmark\b/);
+    expect(safeSpace).not.toMatch(/FROM\s+voice_benchmark/i);
+    expect(safeSpace).not.toContain('voiceBenchmarkQuery');
+  });
+
+});
+
+describe('the support directory panel', () => {
+  it('renders as its own ListCard/ListRow panel, not a heading action link, pointing at the existing directory', () => {
+    expect(doubt).toContain("from '$lib/components/kit/ListRow.svelte'");
+    expect(markup).not.toContain('kit-heading-action');
+    /* Its own row in the run of ways down now, rather than a
+       panel of its own above the rest of a dashboard - and still the first
+       of them, which is where it already sat and which ticket 63 is the
+       ticket that gets to move. */
+    expect(SAFE_SPACE_WAYS[0]).toMatchObject({ key: 'resources', href: '/support/resources' });
+    /* Title alone: "Helplines and organisations" only restated "Support
+       and resources" (subtext audit, 2026-11-05). */
+    expect(doubt).toContain('resources: { title: m.resources_title }');
+  });
+});
+
+describe('More hub row for Safe Space', () => {
+  it('points to /doubt, and its title is the one the screen uses', () => {
+    /* The row list moved into `hubRows.ts` with phase 8 UX ticket 02, and the
+       titles with it into `vocabulary/hubLabels.ts`, so this asks the module
+       for the row and the label module for the key it draws the title from. */
+    expect(HUB_ROWS.find((row) => row.key === 'doubt')).toMatchObject({ href: '/doubt', icon: 'shelter' });
+    expect(read('src/lib/data/vocabulary/hubLabels.ts')).toContain('doubt: m.safe_space_title');
+  });
+});
+
+describe('Home live tile for Safe Space nudge (ticket 50)', () => {
+  /* The tile left the route with the rest of the grid. What it says, where it goes and what its dismiss does are
+     `liveTiles.grid.test.ts`'s now, through `composeHomeTiles`; what is
+     still a grep is which module holds the read, and that Home does not
+     hold it twice. */
+  it('reads the bad-moment entry from the module that owns the grid', () => {
+    expect(read('src/lib/data/liveTiles.svelte.ts')).toContain('j.entries.latestBadMomentEntry');
+    expect(read('src/routes/+page.svelte')).not.toContain('latestBadMomentEntry');
+    expect(read('src/lib/data/liveTiles.ts')).toContain('shouldShowSafeSpaceNudge');
+  });
+
+  it('keeps the nudge in the registry both settings views read', () => {
+    const row = UNPROMPTED_ROWS.find((r) => r.key === 'safe-space-nudge');
+    expect(row?.surface?.defaultOn).toBe(true);
+    expect(LIVE_TILE_ORDER as readonly string[]).toContain('safe-space-nudge');
+  });
+});

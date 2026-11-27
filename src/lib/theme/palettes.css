@@ -371,7 +371,7 @@
      text on a page background in some palettes - 4.10:1 on trans light. This
      is the same hue pulled 28% toward --text until it clears the floor on
      bg, surface and surface-2 in all 16 palettes x 2 themes, guarded in
-     tests/palette-contrast.test.ts. The heat ramp keeps raw --accent. */
+     tests/node/ui/palette-contrast.test.ts. The heat ramp keeps raw --accent. */
   --accent-ink: color-mix(in oklab, var(--accent) 72%, var(--text));
 
   /* Lines. The app separates with a line and never with a shadow, and the
@@ -390,7 +390,7 @@
      all 16 palettes x 2 themes; demiboy light is the tightest at 3.1:1.
      Alicja approved an input-only token rather than a stronger rule 4
      (pre-release-human 03 item 18, after-release 21); guarded in
-     tests/palette-contrast.test.ts. */
+     tests/node/ui/palette-contrast.test.ts. */
   --input-edge: color-mix(in oklab, var(--text) 53%, transparent);
 }
 

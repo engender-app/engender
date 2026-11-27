@@ -23,7 +23,7 @@ const version = appVersion();
     before the first paint, which is why it is inline at all, and which also
     gives the build's held module hints back (src/hooks.server.ts) - is the
     script the policy blocks. The template copies these through verbatim, so hashing
-    the source is hashing what ships; `tests/csp.test.ts` hashes the built
+    the source is hashing what ships; `tests/node/security/csp.test.ts` hashes the built
     document instead and fails if that ever stops being true. */
 function appHtmlScriptHashes() {
   const html = readFileSync('src/app.html', 'utf8');
@@ -63,7 +63,7 @@ const config = {
 
        The header stays as it is. It still covers responses that carry no
        document - the service worker, the manifest, the fonts - and the two
-       lists are cross-checked in tests/csp.test.ts so they cannot drift apart
+       lists are cross-checked in tests/node/security/csp.test.ts so they cannot drift apart
        again.
 
        frame-ancestors is the one directive that cannot come along: a browser

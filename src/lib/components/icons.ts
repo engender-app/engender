@@ -3,7 +3,7 @@
 
    Keep the optical center within 0.75 units of (12, 12). It is the
    midpoint of the ink bounding-box center and the arc-length-weighted
-   ink centroid. tests/icon-geometry.test.ts holds this rule, including
+   ink centroid. tests/node/ui/icon-geometry.test.ts holds this rule, including
    marks whose ink sits off center to balance its weight.
 
    The five navigation icons share round 2-unit strokes and corners.

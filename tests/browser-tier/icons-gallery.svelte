@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Show navigation glyphs and mood faces at production sizes. Draw each
-     optical centre from tests/icon-ink.ts. Run tests/icon-gallery.mjs across
+     optical centre from tests/icon-ink.ts. Run tests/tools/icon-gallery.mjs across
      all palettes and both themes. */
   import Icon from '$lib/components/Icon.svelte';
   import MoodFace from '$lib/components/MoodFace.svelte';

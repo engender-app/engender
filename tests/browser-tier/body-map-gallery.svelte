@@ -2,7 +2,7 @@
   /* Mount BodyRegionMap against the real tokens. Empty shows outlines
      only. Single needs visibly different fill for a faint reading.
      Mixed checks dashed edges at levels 1 and 4. Saturated checks the
-     edge against deep fill. tests/body-map-gallery.mjs captures each
+     edge against deep fill. tests/tools/body-map-gallery.mjs captures each
      reading set across palettes and themes. */
   import BodyRegionMap from '$lib/components/BodyRegionMap.svelte';
   import type { RegionSideReading } from '$lib/data/bodyMap';

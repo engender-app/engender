@@ -989,7 +989,7 @@ html[data-blind-hold='short'] {
    ring is its own group, and they close outermost first on --stagger-ring,
    which is the entrance's 110ms beat compressed into the door's clock.
    Agender is the longest flag at seven rings, so the last one starts at
-   180ms and lands at 330, inside --dur-slow; tests/motion-system.test.ts
+   180ms and lands at 330, inside --dur-slow; tests/node/ui/motion-system.test.ts
    fails if a palette is ever given more stripes than there are steps
    written here. Coming back to Today is the same run the other way.
 

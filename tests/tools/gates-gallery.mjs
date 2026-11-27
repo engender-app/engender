@@ -1,0 +1,374 @@
+/* Screenshots of the chromeless screens: the five
+   pre-unlock gates, the security module on both platforms, and every step of
+   the first run (tests/setup-flow.mjs holds the order).
+
+   Two sources, because the screens come from two places. Four of the five
+   gates are boot states rather than URLs, so those are driven through
+   tests/browser-tier/gates.html, which mounts the real components and moves
+   `bootState` with the same transitions boot uses. Onboarding is a route, so
+   that half drives the app's own production build - which has to be a demo
+   build (VITE_DEMO=1) or every screen renders as the passphrase gate.
+
+   Run: npm run test:walkthrough  (or any VITE_DEMO=1 build) first, then
+        node tests/tools/gates-gallery.mjs [outDir]
+   Default outDir is .claude/gate-shots, which is gitignored and durable. */
+import { createServer, preview } from 'vite';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { SETUP_STEPS } from '../setup-flow.mjs';
+import { launchChromium } from '../browser-harness.mjs';
+import { PALETTES } from '../palettes.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const argv = process.argv.slice(2);
+/* The gates alone, which is what a gate ticket's sign-off shows: the first
+   run has its own galleries since it became a step machine, and a review page
+   that also carries ten setup steps is a review page nobody can find the
+   change in (Alicja, on redesign ticket 07: "only showcase the things that
+   actually changed in this ticket"). */
+const gatesOnly = argv.includes('--gates-only');
+const themeAt = argv.indexOf('--themes');
+/* The first bare argument, skipping any that is a flag's own value: `node
+   tests/tools/gates-gallery.mjs --themes light` names a theme, not a directory. */
+const flagValues = new Set(themeAt >= 0 ? [argv[themeAt + 1]] : []);
+const outDir = resolve(
+  argv.find((a) => !a.startsWith('--') && !flagValues.has(a)) ?? resolve(here, '../../.claude/gate-shots')
+);
+
+const THEMES = themeAt >= 0 ? argv[themeAt + 1].split(',') : ['dark', 'light'];
+
+/* Rule 14's sizes: the two a phone has at rest, the two big ones, and a
+   window shortened to what a raised keyboard leaves. A gate's frame is
+   `overflow: clip`, which draws no scrollbar and still reports what it is
+   hiding, so a gate that stopped fitting would cut its own way out off the
+   bottom in silence. Measured here rather than asserted in the stylesheet.
+*/
+const FLOOR_SIZES = [
+  { width: 320, height: 568 },
+  { width: 360, height: 640 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 390, height: 360 }
+];
+
+/* Every state the eleven scenes cover. Shot on the default flag in both
+   themes: what changes between palettes on a gate is one accent, one soft
+   tint and, on an unlock, Today's sun on the field (tester-report-02
+   ticket 07) - so the palette sweep below is one scene across all of them
+   rather than eleven scenes across all of them, which would be 176 pictures
+   nobody looks at. tests/guards/gate-flag-check.mjs holds the flag on every
+   palette. */
+const SCENES = [
+  'access-choice',
+  'access-change',
+  'unlock-pin',
+  'unlock-passphrase',
+  'unlock-biometric',
+  'session-pin',
+  'session-passphrase',
+  'session-biometric',
+  'legacy-refused',
+  'android-key',
+  'android-key-no-lock',
+  'android-key-invalidated',
+  'device-recovery',
+  'schema-too-new',
+  /* The recovery key's screens (ADR-0054, ticket sec-02). Four of these five
+     are a screen that already existed, shown again with a recovery wrap on
+     disk: the PIN gate grows a way out, the two dead ends grow an action,
+     and the fixture writes the wrap so the difference is real rather than a
+     prop. The fifth pair - the entry itself and the module a recovery unlock
+     is held on - have no other address. */
+  'recovery-entry',
+  'post-recovery',
+  'unlock-pin-with-key',
+  'device-recovery-with-key',
+  'android-key-invalidated-with-key'
+];
+
+/* The security module is the one surface whose *content* differs by
+   platform, not just its frame: device-bound is labelled as the
+   screen lock on Android and cannot be moved to there at all, and the web's
+   biometric row is there only where the browser can do PRF.
+   Three lists, so these scenes are shot on each of the other two as well. */
+const PLATFORM_SCENES = ['access-choice', 'access-change'];
+const OTHER_PLATFORMS = ['android', 'web-no-prf'];
+
+/* Each mode's own screen, which is where its consequence is stated - the
+   thing ADR-0041 made the condition of allowing a 4-digit PIN to encrypt at
+   all. Reached by clicking the row, from the script rather than from the
+   fixture, so the fixture stays a state selector and nothing there has to
+   drive a step it also renders. */
+const MODE_ROWS = ['device-bound', 'biometric', 'pin', 'passphrase'];
+
+await mkdir(outDir, { recursive: true });
+const browser = await launchChromium();
+const shots = [];
+
+async function shoot(page, name, fullPage = false) {
+  /* Headless Chromium never grants persistent storage, so the app's own
+     "export backups regularly" toast sits over the foot of every screen
+     here. It is a true notice about this browser and it is not what these
+     pictures are of. */
+  await page.evaluate(() => {
+    for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
+  });
+  const file = `${outDir}/${name}.png`;
+  await page.screenshot({ path: file, fullPage });
+  shots.push(name);
+}
+
+/* ---------- the gates, from the fixture ---------- */
+const fixture = await createServer({
+  configFile: `${here}/browser-tier/browser-tier.vite.config.ts`,
+  server: { port: 0 }
+});
+await fixture.listen();
+
+{
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  await page.goto(`http://localhost:${fixture.config.server.port}/gates.html`, {
+    waitUntil: 'networkidle'
+  });
+  await page.waitForSelector('body[data-gates-ready]', { state: 'attached' });
+
+  const select = async (label, value) => {
+    await page.selectOption(`select[aria-label="${label}"]`, value);
+    // The gates have no entrance, so this is the press spring settling on
+    // whatever was last touched rather than anything arriving.
+    await page.waitForTimeout(250);
+  };
+
+  for (const scene of SCENES) {
+    await select('Scene', scene);
+    for (const theme of THEMES) {
+      await select('Theme', theme);
+      await shoot(page, `gate-${scene}-trans-${theme}`);
+    }
+  }
+
+  /* The module's per-mode screens, on both platforms: device-bound's copy is
+     the half that differs, and the PIN screen carries the brute-force figure
+     that has to be readable rather than merely present. */
+  for (const platform of ['web', 'android']) {
+    await select('Platform', platform);
+    for (const row of MODE_ROWS) {
+      for (const theme of THEMES) {
+        /* Off the scene and back, because the stage is keyed on the scene
+           name: re-selecting the one already chosen changes nothing, so the
+           module would still be showing the previous row's detail screen and
+           every row after the first would look absent. */
+        await select('Scene', 'unlock-passphrase');
+        await select('Scene', 'access-choice');
+        await select('Theme', theme);
+        const target = page.locator(`[data-list-row="${row}"]`);
+        /* The biometric row arrives one await later than the other three -
+           the browser is asked whether it can do PRF - so a bare count()
+           here would race it and quietly skip the row on every run. */
+        await target.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+        if (!(await target.count())) continue;
+        await target.click();
+        await page.waitForSelector(`[data-access-chosen="${row}"]`);
+        await page.waitForTimeout(250);
+        await shoot(page, `gate-access-${row}-${platform}-${theme}`, true);
+      }
+    }
+  }
+  await select('Platform', 'web');
+
+  for (const platform of OTHER_PLATFORMS) {
+    await select('Platform', platform);
+    for (const scene of PLATFORM_SCENES) {
+      await select('Scene', scene);
+      for (const theme of THEMES) {
+        await select('Theme', theme);
+        await shoot(page, `gate-${scene}-${platform}-${theme}`);
+      }
+    }
+  }
+  await select('Platform', 'web');
+
+  await page.evaluate(async (modulePath) => {
+    const { setupJournalPin } = await import(modulePath);
+    await setupJournalPin('1234');
+  }, `/@fs${resolve(here, '../../src/lib/data/journal-pin.ts')}`);
+
+  /* The PIN pad's two answers to a wrong PIN, which are the only motion on
+     any of these screens that leaves a visible resting state: the row has
+     shaken and cleared, the wait is counting down and the rail beside it is
+     draining. */
+  for (const theme of THEMES) {
+    await select('Scene', 'unlock-pin');
+    await select('Theme', theme);
+    await page.waitForSelector('[data-pin-pad]');
+    for (const digit of ['9', '9', '9', '9']) await page.locator(`[data-key="${digit}"]`).click();
+    /* The real wrap is bound to 1234, so 9999 exercises wrong-PIN feedback
+       through production decryption. */
+    await page.waitForSelector('[data-pin-status="wrong"], [data-pin-status="throttled"]');
+    await page.waitForTimeout(400);
+    await shoot(page, `gate-wrong-pin-trans-${theme}`);
+  }
+
+  // One gate across all eight flags, for the accent and the soft tint.
+  await select('Scene', 'access-choice');
+  for (const palette of PALETTES) {
+    await select('Palette', palette);
+    for (const theme of THEMES) {
+      await select('Theme', theme);
+      await shoot(page, `gate-access-choice-${palette}-${theme}`);
+    }
+  }
+  await select('Palette', 'trans');
+
+  /* Rule 14, measured rather than asserted: every gate
+     at every size, reading what the frame is hiding. Two reads, because they
+     answer different questions - the frame says the gate did not grow past
+     the window, and the page inside it is the one region that may scroll and
+     on the long gates does. A gate whose frame reports overflow has carried
+     its own way out off the bottom edge with nothing on screen to say so. */
+  const floor = {};
+  for (const size of FLOOR_SIZES) {
+    await page.setViewportSize(size);
+    for (const scene of SCENES) {
+      /* Off the scene and back, for the reason the per-mode loop above gives:
+         the stage is keyed on the scene name, so re-selecting the one already
+         chosen changes nothing and the module would still be showing whatever
+         screen the last click left it on. Measured without this, the first
+         size reported 5px hidden on `access-choice` that belonged to a
+         passphrase detail screen left standing from the loop before it. */
+      await select('Scene', scene === 'legacy-refused' ? 'schema-too-new' : 'legacy-refused');
+      await select('Scene', scene);
+      const read = await page.evaluate(() => {
+        const frame = document.querySelector('.screen-gate');
+        const region = document.querySelector('.gate-page');
+        const of = (el) => (el ? el.scrollHeight - el.clientHeight : null);
+        return { frame: of(frame), page: of(region) };
+      });
+      floor[`${scene}-${size.width}x${size.height}`] = read;
+      if (read.frame > 0) {
+        console.log(
+          `OVER THE FLOOR  ${scene} at ${size.width}x${size.height}: the frame hides ${read.frame}px`
+        );
+      }
+    }
+  }
+  await writeFile(`${outDir}/floor.json`, JSON.stringify(floor, null, 2));
+  const breaches = Object.entries(floor).filter(([, r]) => r.frame > 0);
+  console.log(
+    breaches.length
+      ? `${breaches.length} of ${Object.keys(floor).length} gate/size pairs breach rule 14`
+      : `every gate clears rule 14 at all ${FLOOR_SIZES.length} sizes`
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await page.close();
+}
+
+await fixture.close();
+
+/* ---------- the first run, from the app's own build ---------- */
+if (!gatesOnly) {
+const app = await preview({ preview: { port: 0 } });
+const address = app.httpServer.address();
+const base = `http://localhost:${address.port}`;
+
+{
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+
+  /* A browser profile this script has just created has no journal, so the
+     demo build's own first load lands on the first run rather than on the
+     app. Out of it before anything else, or every locator below is looking
+     at step one. */
+  const settle = async (path) => {
+    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-app-root][data-boot="ready"]');
+    if (await page.locator('[data-leave-setup]').count()) {
+      await page.locator('[data-leave-setup]').click();
+      await page.waitForSelector('[data-home-hello]');
+      await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-app-root][data-boot="ready"]');
+    }
+  };
+
+  /* The flag is the whole point of this screen's motion, so the first run is
+     shot on more than one of them: the default, the one whose stripes are
+     nearly the page on a light theme, and the one whose stripes are nearly
+     the page on a dark one. */
+  for (const [palette, theme] of [
+    ['trans', 'dark'],
+    ['trans', 'light'],
+    ['nonbinary', 'light'],
+    ['agender', 'dark']
+  ]) {
+    await settle('/settings');
+    await page.locator(`[data-palette-pick="${palette}"]`).click();
+    await page.locator(`[data-segment="${theme}"]`).click();
+    await page.waitForFunction(
+      (want) => document.documentElement.dataset.theme === want,
+      theme
+    );
+
+    await settle('/');
+    await page.selectOption('#demo-jump', 'first-run');
+    await page.waitForSelector('[data-next]');
+
+    for (const [i, step] of SETUP_STEPS.entries()) {
+      // The sun grows on --dur-slow and the step crosses on --dur-med; both
+      // are well inside this, and what is wanted is the resting frame.
+      await page.waitForTimeout(600);
+      await shoot(page, `setup-${i}-${step}-${palette}-${theme}`);
+      if (step === 'name') await page.locator('#ob-name').fill('Alicja');
+      if (step === 'lock') {
+        /* The timing question after the module (lock-timing ticket 01),
+           shot again with another answer than the one offered. */
+        await page.locator('[data-lock-after-choice="immediately"]').click();
+        await page.waitForTimeout(400);
+        await shoot(page, `setup-${i}-${step}-on-${palette}-${theme}`);
+      }
+      // Tick one more than the default set, so the shot shows a mix of
+      // ticked and unticked rows rather than a uniform column.
+      if (step === 'scales') await page.locator('[data-list-row^="scale-"][aria-checked="false"]').first().click();
+      if (step !== 'done') await page.locator('[data-next]').click();
+    }
+  }
+
+  /* Disguise on, which is the ticket's own check: nothing on any of these
+     screens may identify the app. On the first run that means no sun. */
+  await settle('/settings');
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => {
+    const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
+    return boot.disguise === true;
+  });
+
+  await settle('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+
+  /* Every step, not one. The spec says "verify with prefs.disguise set, on
+     every one of them", and shooting only the welcome is what let the flag
+     step - eight pride flags with their names under them - through the
+     first time. One step fewer than the flow: the flag step is not hidden
+     under disguise, it is not in the flow. */
+  const disguisedSteps = SETUP_STEPS.filter((step) => step !== 'flag');
+  for (const [i, step] of disguisedSteps.entries()) {
+    await page.waitForTimeout(600);
+    await shoot(page, `setup-disguised-${i}-${step}`);
+    if (step === 'scales') {
+      const unticked = page.locator('[data-list-row^="scale-"][aria-checked="false"]');
+      if (await unticked.count()) await unticked.first().click();
+    }
+    if (step !== 'done') await page.locator('[data-next]').click();
+  }
+
+  await page.close();
+}
+
+await app.close();
+}
+await browser.close();
+
+console.log(`${shots.length} shots in ${outDir}`);

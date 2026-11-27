@@ -4945,7 +4945,7 @@ try {
   /* Gripped on a handle that is still alive in src - the trace polyline the
      record summary draws - rather than on the one the removed component
      carried, which would make this absence check pass for having nothing to
-     find (tests/walkthrough-handles-exist.test.ts). */
+     find (tests/node/tooling/walkthrough-handles-exist.test.ts). */
   if ((await page.locator('[data-pitch-trace]').count()) !== 0) {
     throw new Error('the pair view still draws each take its own time plot');
   }

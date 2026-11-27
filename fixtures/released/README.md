@@ -1,7 +1,7 @@
 # Released formats
 
 Each non-alpha `v*` tag needs a directory named after its version, without the
-`v`. Run `tests/released-formats.test.ts` with `WRITE_RELEASED_FORMAT=<version>`
+`v`. Run `tests/node/release/released-formats.test.ts` with `WRITE_RELEASED_FORMAT=<version>`
 in that release's checkout to write its Archive, populated SQLite journal and
 row counts. The writer refuses to overwrite an existing directory. Fetch tags
 before testing; the Node CI job uses `fetch-depth: 0` and `fetch-tags: true`.
@@ -16,7 +16,7 @@ The released writer accepts only a stable version string. In a temporary,
 detached checkout, run `npm ci`, `npx svelte-kit sync`, then:
 
 ```sh
-WRITE_RELEASED_FORMAT=1.0.0 npx vitest run tests/released-formats.test.ts \
+WRITE_RELEASED_FORMAT=1.0.0 npx vitest run tests/node/release/released-formats.test.ts \
   -t 'writes the release candidate fixtures once'
 ```
 

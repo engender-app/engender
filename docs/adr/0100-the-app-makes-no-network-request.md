@@ -21,13 +21,13 @@ this record replaces it.
 - **The manifest.** `android/app/src/main/AndroidManifest.xml` declares no
   `android.permission.INTERNET`, with a comment saying why. It also opts out of
   WebView diagnostic uploads (`android.webkit.WebView.MetricsOptOut`).
-- **The source test.** `tests/android-manifest-permissions.test.ts` fails if
+- **The source test.** `tests/node/android/android-manifest-permissions.test.ts` fails if
   `INTERNET` comes back into the source manifest and lists every declared
   permission with its reason.
 - **The packaged APK.** A dependency can add a permission through manifest
   merging, which the source test never sees. `scripts/check-release-artifacts.mjs`
   reads the built APK's permissions through aapt2 and refuses anything outside
-  its expected list; `tests/check-release-artifacts.test.ts` checks that it
+  its expected list; `tests/node/release/check-release-artifacts.test.ts` checks that it
   rejects a dependency-added `INTERNET` or `ACCESS_NETWORK_STATE`.
 - **The content security policy.** `svelte.config.js` sets `connect-src 'self'`
   and `default-src 'self'` in the document's own policy, so it applies inside

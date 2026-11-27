@@ -3,7 +3,7 @@
    as a label (see roles.ts).
 
    The palette itself is authored by hand and checked by
-   tests/palette-contrast.test.ts, which reads these same functions, so the
+   tests/node/ui/palette-contrast.test.ts, which reads these same functions, so the
    arithmetic that decides a colour at runtime and the arithmetic that
    guards the stylesheet are one implementation rather than two that agree
    until they do not.
@@ -127,7 +127,7 @@ export function chromaOf(hex: string): number {
 }
 
 /** Which hue a colour is, 0 to 360 in OKLab. Exported for
-    tests/palette-contrast.test.ts, which holds mood's two-hue ramp to a
+    tests/node/ui/palette-contrast.test.ts, which holds mood's two-hue ramp to a
     minimum travel and to one direction round the wheel: "two
     colours, not one tinted" is a claim about hue, so it is measured as one
     rather than eyeballed off a render. */

@@ -352,7 +352,7 @@
 
   /* Named rather than written inline. An arrow in an attribute is also an
      arrow to anything reading this markup with a regex, and
-     tests/kit-surfaces.test.ts strips tags with one. */
+     tests/node/ui/kit-surfaces.test.ts strips tags with one. */
   const scrubTo = (event: PointerEvent) => (scrub = nearest(event));
   const scrubIfHeld = (event: PointerEvent) => {
     if (scrub !== null || event.pointerType === 'mouse') scrub = nearest(event);

@@ -13,7 +13,7 @@ A third list, `BOOT_KEYS`, is mirrored into localStorage (`boot-cache.ts`): them
 
 An archive promises "everything, including settings", but restoring device security state would lock a user out of an app with no recovery channel. Lock secrets are not preferences at all: the PIN, passphrase and biometric live in the key wrapping (ADR-0041), so nothing in `pref` can bring an old lock back. Auto-export configuration has a milder version of the problem: a restored folder URI may not exist on the new device. The check-in is portable although it is inert on web, so a new phone keeps the ritual.
 
-Preferences sit inside SQLite so an import is one transaction. A second store outside it could leave `activePreset` pointing at a preset that no longer exists. The boot set exists because theme, palette and language must apply on first paint, and OPFS plus WASM SQLite is not instant. `src/app.html` reads the same key and shape before any module loads; `tests/app-html-chrome.test.ts` fails if the two sides drift.
+Preferences sit inside SQLite so an import is one transaction. A second store outside it could leave `activePreset` pointing at a preset that no longer exists. The boot set exists because theme, palette and language must apply on first paint, and OPFS plus WASM SQLite is not instant. `src/app.html` reads the same key and shape before any module loads; `tests/node/ui/app-html-chrome.test.ts` fails if the two sides drift.
 
 ## Consequences
 

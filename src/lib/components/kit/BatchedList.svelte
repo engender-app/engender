@@ -81,7 +81,7 @@
   });
 
   /* Built here rather than in the markup so the kit's own rule can see it:
-     tests/kit-surfaces.test.ts reads a component's markup for bare copy and
+     tests/node/ui/kit-surfaces.test.ts reads a component's markup for bare copy and
      cannot tell a message call carrying an argument object from a string. */
   let moreLabel = $derived(m.list_more({ count: nextCount(batches, items.length) }));
 

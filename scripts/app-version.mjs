@@ -10,7 +10,7 @@
    support request, a release note and a store listing.
 
    Run it directly - `node scripts/app-version.mjs` - to print what this
-   checkout would build as. tests/app-version.test.ts has the rules. */
+   checkout would build as. tests/node/release/app-version.test.ts has the rules. */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 

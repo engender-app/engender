@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Screenshot the real gates by driving bootState through the app's transitions.
-     tests/gates-gallery.mjs runs the fixture across palettes and themes.
+     tests/tools/gates-gallery.mjs runs the fixture across palettes and themes.
 
      Stub window.Capacitor.getPlatform() and PublicKeyCredential to show
      Android and both web mode lists. Headless Chromium has no platform

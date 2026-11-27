@@ -9,7 +9,7 @@
    kit/role.ts already makes: the drawing is the component's, what a share is
    of is not. The length itself, `share`, is charts/share.ts - two callers
    here in the kit and one in the ring's arithmetic, and none of the three
-   wants what tests/chart-library-graph.test.ts keeps out of their way. */
+   wants what tests/node/ui/chart-library-graph.test.ts keeps out of their way. */
 
 import { share } from '../../charts/share';
 

@@ -250,7 +250,7 @@ function buildArguments(packageId = APP_PACKAGE) {
 
 function buildIdentity() {
   if (OPTIMIZED) {
-    const guard = run('node', ['tests/android-r8-artifact.mjs',
+    const guard = run('node', ['tests/tools/android-r8-artifact.mjs',
       `android/app/build/outputs/mapping/${BUILD_TYPE}/mapping.txt`], { cwd: repo });
     if (guard.status !== 0 || guard.error || guard.signal) throw new Error('optimized Android artifact guard failed');
     writeFileSync(join(evidenceDir, `${activeRun.avd}-r8-${Date.now()}.json`), guard.stdout);

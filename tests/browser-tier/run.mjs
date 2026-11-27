@@ -98,12 +98,12 @@ await block('cold unlock focuses the arrived screen', 1, async () => {
 });
 
 await block('layout managers follow navigation and gates', 1, async () => {
-  await import('../manager-lifecycle-check.mjs');
+  await import('../tools/manager-lifecycle-check.mjs');
   ok('navigation, Back, legacy links, focus, chooser cleanup and lock/unlock');
 });
 
 await block('old addresses land on the unknown-address screen', 1, async () => {
-  await import('../old-addresses-check.mjs');
+  await import('../tools/old-addresses-check.mjs');
   ok('every removed route id renders not-found at its own address');
 });
 

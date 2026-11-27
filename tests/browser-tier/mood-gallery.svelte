@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Render the actual mood picker and chip row across four presets and
-     both themes (tests/mood-gallery.mjs). Check the two-colour ramp
+     both themes (tests/tools/mood-gallery.mjs). Check the two-colour ramp
       and distinct faces at 28px. Use the app's reduced-motion
      option to hold the expressions steady for screenshots. */
   import MoodChips from '$lib/components/kit/MoodChips.svelte';

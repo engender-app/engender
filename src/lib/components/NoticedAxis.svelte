@@ -48,7 +48,7 @@
      and a node taken out and put back loses the transition that was about
      to run on it. Measured: a mark re-dated from July to the May before it
      went 235px between two frames with the list in day order, and travels
-     over --dur-med in key order (tests/noticed-axis-motion.mjs, scene
+     over --dur-med in key order (tests/tools/noticed-axis-motion.mjs, scene
      mark-travel). Nothing on screen depends on the paint order - every mark
      is absolutely positioned and the lanes keep them from overlapping. */
   let drawn = $derived([...axis.marks].sort((a, b) => (a.key < b.key ? -1 : 1)));
@@ -299,7 +299,7 @@
        the specified value is the same token either side of the edit and no
        transition is ever set up. Measured, not reasoned about - the first
        spelling moved a re-dated mark 235px between two frames
-       (tests/noticed-axis-motion.mjs, scene mark-travel). The stem under a
+       (tests/tools/noticed-axis-motion.mjs, scene mark-travel). The stem under a
        stacked mark grows with `--lane` for the same reason. */
     translate: calc(var(--na-inset) + var(--at) * (100cqw - 2 * var(--na-inset)))
       calc(var(--lane) * var(--lane-h) * -1);

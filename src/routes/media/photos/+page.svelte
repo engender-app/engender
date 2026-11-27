@@ -135,7 +135,7 @@
 
   /* Whether the grid has been painted once. A tile that comes with the grid
      gets no entrance of its own, because the skeleton is already fading out
-     over it (ReadGate, tests/feature-screens.test.ts); a tile that arrives
+     over it (ReadGate, tests/node/ui/feature-screens.test.ts); a tile that arrives
      afterwards - a chip widening, a photograph added while this screen is
      open - fades in. The effect runs after the flush that created those
      first tiles, so they read false and everything later reads true. */

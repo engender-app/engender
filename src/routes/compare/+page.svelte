@@ -347,7 +347,7 @@
      empty line, or the days-by-mood card for a period with no mood, opens
      or closes its height and fades with it, so the rows under it move with the height rather than
      jumping when a row is inserted or taken out of flow. Height, a layout
-     property, so it is listed in tests/motion-system.test.ts's
+     property, so it is listed in tests/node/ui/motion-system.test.ts's
      LAYOUT_EXEMPT with its bound and its measurement. Under reduced motion
      the duration is 0 and the result's own fade covers the swap. */
   function rowFold(node: Element) {

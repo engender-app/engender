@@ -1,0 +1,172 @@
+import { spawnSync } from 'node:child_process';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { CI_CHECKS, runChecks } from '../../../scripts/run-ci-checks.mjs';
+
+describe('CI check collection', () => {
+  it('runs every independent check after failures and returns every failure', async () => {
+    const calls: string[] = [];
+    const output: string[] = [];
+    const checks = [
+      { id: 'build', name: 'Build', command: 'npm', args: ['build'] },
+      { id: 'types', name: 'Types', command: 'npm', args: ['types'], requires: ['build'] },
+      { id: 'node', name: 'Node', command: 'npm', args: ['node'], requires: ['build'] },
+      { id: 'copy', name: 'Copy', command: 'npm', args: ['copy'], requires: ['build'] }
+    ];
+    const results = await runChecks(checks, {
+      run: async (_command: string, args: string[]) => {
+        calls.push(args[0]);
+        return ['types', 'node'].includes(args[0]) ? 1 : 0;
+      }, log: (line: string) => output.push(line)
+    });
+    expect(calls).toEqual(['build', 'types', 'node', 'copy']);
+    expect(results.map((result) => result.outcome)).toEqual(['passed', 'failed', 'failed', 'passed']);
+    expect(output.join('\n')).toContain('FAIL Types');
+    expect(output.join('\n')).toContain('FAIL Node');
+    expect(output.join('\n')).toContain('PASS Copy');
+  });
+
+  it('runs Warsaw after a UTC failure and records both durations', async () => {
+    const zones: string[] = [];
+    const output: string[] = [];
+    const results = await runChecks(CI_CHECKS.node, {
+      run: async (_command: string, _args: string[], env: NodeJS.ProcessEnv) => {
+        if (env.TZ) zones.push(env.TZ);
+        return env.TZ === 'UTC' ? 1 : 0;
+      }, log: (line: string) => output.push(line)
+    });
+    expect(zones).toEqual(['UTC', 'Europe/Warsaw']);
+    expect(results.find((result) => result.id === 'node')?.outcome).toBe('failed');
+    expect(results.find((result) => result.id === 'node-warsaw')?.outcome).toBe('passed');
+    expect(output.join('\n')).toMatch(/FAIL Node tier \(UTC\) \| \d+\.\d{2}s/);
+    expect(output.join('\n')).toMatch(/PASS Node tier \(Europe\/Warsaw\) \| \d+\.\d{2}s/);
+  });
+
+  it('reports source check failures even when the production build fails', async () => {
+    const calls: string[] = [];
+    const output: string[] = [];
+    const results = await runChecks(CI_CHECKS.node, {
+      run: async (_command: string, args: string[]) => { calls.push(args.join(' ')); return 1; },
+      log: (line: string) => output.push(line)
+    });
+    expect(calls).toEqual(['run check:ai-directories', 'run build', 'run check:copy', 'run check:comments', 'run check:licences', 'run check:screens-classes', 'run check:progressive-release']);
+    expect(results.filter((result) => result.outcome === 'failed').map((result) => result.id))
+      .toEqual(['ai-directories', 'build', 'copy', 'comments', 'licences', 'classes', 'progressive-release']);
+    expect(results.filter((result) => result.outcome === 'blocked').map((result) => result.id))
+      .toEqual(['types', 'node', 'node-warsaw', 'budget']);
+    expect(output.join('\n')).toContain('FAIL Message catalogues and user-facing literals');
+    expect(output.join('\n')).toContain('FAIL Dependency licences');
+    expect(output.join('\n')).toContain('FAIL screens.css single-consumer classes');
+    expect(results).toHaveLength(CI_CHECKS.node.length);
+  });
+
+  it('runs the AI directory guard through its local npm command without build prerequisites', async () => {
+    const manifest = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
+    expect(manifest.scripts['check:ai-directories']).toBe('node scripts/check-ai-directories.mjs');
+    const results = await runChecks(CI_CHECKS.node, {
+      run: async (_command: string, args: string[]) => args.includes('check:ai-directories') ? 1 : 0,
+      log: () => {}
+    });
+    expect(results.find((result) => result.id === 'ai-directories')?.outcome).toBe('failed');
+  });
+
+  it('validates release evidence independently of build prerequisites', async () => {
+    const results = await runChecks(CI_CHECKS.node, {
+      run: async (_command: string, args: string[]) => args.includes('check:progressive-release') ? 1 : 0,
+      blocked: false, log: () => {}
+    });
+    expect(results.find((result) => result.id === 'progressive-release')?.outcome).toBe('failed');
+    expect(CI_CHECKS.node.find((check) => check.id === 'progressive-release')?.requires).toBeUndefined();
+  });
+
+  it('keeps the collected debug APK after F-Droid removes Gradle build output', async () => {
+    const preserve = CI_CHECKS.android.find((check) => check.id === 'preserve-apk');
+    expect(preserve).toBeDefined();
+    const root = mkdtempSync(join(tmpdir(), 'ci-apk-'));
+    const bytes = [80, 75, 3, 4, 1, 2, 3, 4];
+    try {
+      const checks = CI_CHECKS.android.filter((check) => ['apk', 'preserve-apk', 'fdroid'].includes(check.id)).map((check) => {
+        if (check.id === 'apk') return { ...check, command: process.execPath, cwd: root, requires: [],
+          args: ['--input-type=module', '-e', `import { mkdirSync, writeFileSync } from 'node:fs'; mkdirSync('android/app/build/outputs/apk/debug', {recursive:true}); writeFileSync('android/app/build/outputs/apk/debug/app-debug.apk', Buffer.from(${JSON.stringify(bytes)}));`] };
+        if (check.id === 'preserve-apk') return { ...check, command: process.execPath,
+          args: [fileURLToPath(new URL('../../../scripts/preserve-debug-apk.mjs', import.meta.url))], cwd: root };
+        return { ...check, command: process.execPath, cwd: root, requires: [],
+          args: ['--input-type=module', '-e', "import { rmSync } from 'node:fs'; rmSync('android/app/build', {recursive:true,force:true});"] };
+      });
+      const results = await runChecks(checks, { log: () => {} });
+      expect(results.every((result) => result.outcome === 'passed')).toBe(true);
+      expect(existsSync(join(root, 'android/app/build/outputs/apk/debug/app-debug.apk'))).toBe(false);
+      expect([...readFileSync(join(root, 'ci-logs/app-debug.apk'))]).toEqual(bytes);
+      const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+      expect(workflow).toContain('path: ci-logs/app-debug.apk');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the APK and F-Droid checks running after an Android policy failure', async () => {
+    const calls: string[] = [];
+    const results = await runChecks(CI_CHECKS.android, {
+      run: async (_command: string, args: string[]) => {
+        calls.push(args.join(' '));
+        return args[0] === 'scripts/check-android-dependencies.mjs' ? 1 : 0;
+      }, log: () => {}
+    });
+    expect(calls).toContain(':app:assembleDebug');
+    expect(calls).toContain('scripts/fdroid-rebuild-report.mjs');
+    expect(results.filter((result) => result.outcome === 'failed').map((result) => result.id)).toEqual(['policy']);
+  });
+
+  it('exits nonzero and lists every blocked check when job setup never finishes', () => {
+    const result = spawnSync(process.execPath, ['scripts/run-ci-checks.mjs', '--tier', 'node', '--blocked'], { encoding: 'utf8', env: { ...process.env, GITHUB_STEP_SUMMARY: '' } });
+    expect(result.status).toBe(1);
+    for (const check of CI_CHECKS.node) expect(result.stdout).toContain(`BLOCKED ${check.name}`);
+  });
+});
+
+describe('Android release gates', () => {
+  it('runs the JVM suite after sync and reports its failure', async () => {
+    const calls: string[] = [];
+    const results = await runChecks(CI_CHECKS.android, {
+      run: async (_command: string, args: string[]) => {
+        calls.push(args.join(' '));
+        return args.includes(':app:testDebugUnitTest') ? 1 : 0;
+      }, log: () => {}
+    });
+    expect(calls.indexOf(':app:testDebugUnitTest')).toBeGreaterThan(calls.indexOf('cap sync android'));
+    expect(results.find((result) => result.id === 'jvm')?.outcome).toBe('failed');
+    expect(calls).toContain('scripts/fdroid-rebuild-report.mjs');
+  });
+
+  for (const fails of [true, false]) {
+    it(fails ? 'fails CI when assembleRelease fails and still writes its report' : 'reports non-reproducibility without failing a completed rebuild attempt', () => {
+      const root = mkdtempSync(join(tmpdir(), 'fdroid-report-'));
+      try {
+        writeFileSync(join(root, 'package.json'), '{"type":"commonjs"}\n');
+        mkdirSync(join(root, 'android'));
+        const gradlew = join(root, 'android/gradlew');
+        writeFileSync(gradlew, `#!/usr/bin/env node
+const fs = require('node:fs');
+if (process.argv.includes(':app:assembleRelease')) {
+  if (${fails}) process.exit(37);
+  const count = fs.existsSync('count') ? Number(fs.readFileSync('count', 'utf8')) + 1 : 1;
+  fs.writeFileSync('count', String(count));
+  fs.mkdirSync('app/build/outputs/apk/release', {recursive: true});
+  fs.writeFileSync('app/build/outputs/apk/release/app-release-unsigned.apk', String(count));
+}
+`);
+        chmodSync(gradlew, 0o755);
+        const result = spawnSync(process.execPath, [fileURLToPath(new URL('../../../scripts/fdroid-rebuild-report.mjs', import.meta.url))], {cwd: root, encoding: 'utf8'});
+        expect(result.status).toBe(fails ? 1 : 0);
+        const report = readFileSync(join(root, 'ci-logs/fdroid-rebuild.md'), 'utf8');
+        expect(report).toContain(fails ? 'Status: attempt-failed' : 'Status: not-reproducible');
+        expect(report).toContain('First build SHA256:');
+      } finally {
+        rmSync(root, {recursive: true, force: true});
+      }
+    });
+  }
+});

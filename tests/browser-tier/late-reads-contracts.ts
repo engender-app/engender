@@ -226,7 +226,7 @@ export async function lateReadsContracts(theme: 'light' | 'dark' = 'light'): Pro
     return arrivals.length === 4 && firsts.size === 1 && arrivals.every(arrivedSmoothly);
   });
   await screen.remove();
-  /* Each run's tracks, for tests/late-reads-check.mjs to print. */
+  /* Each run's tracks, for tests/tools/late-reads-check.mjs to print. */
   (window as unknown as { __lateReadsFrames?: unknown }).__lateReadsFrames = Object.fromEntries(
     Object.entries(runs).map(([name, run]) => [
       name,
