@@ -1,7 +1,6 @@
 <script lang="ts" generics="TRecord extends { id: string }, TDraft extends { id?: string }">
-  /* RecordSheet combines recordEditor state, edit controls and a
-     delete confirmation. Callers provide fields and wording.
-     recordHandles.ts owns test handles (ADR-0029). A delete-only
+  /* RecordSheet combines recordEditor state, edit controls and a delete confirmation.
+     Callers provide fields and wording. recordHandles.ts owns test handles. A delete-only
      caller supplies confirm without fields to skip the editor. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';

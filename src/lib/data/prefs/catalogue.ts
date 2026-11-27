@@ -1,11 +1,9 @@
 /* The import-free preference catalogue serves both tiers and early boot.
 
-   `PORTABLE_KEYS` is the Archive allowlist. New preferences stay
-   device-local by default (ADR-0003). The independent boot set mirrors
-   first-paint settings and gate flags in plaintext localStorage
-   (ADR-0009). Keep secrets such as the PIN hash behind encryption
-   (ADR-0018). catalogue.test.ts checks that each preference is classified
-   as portable or device-local. */
+   `PORTABLE_KEYS` is the Archive allowlist. New preferences stay device-local by default
+   (ADR-0003). The independent boot set mirrors first-paint settings and gate flags in
+   plaintext localStorage. Keep secrets such as the PIN hash behind encryption (ADR-0018).
+   catalogue.test.ts checks that each preference is classified as portable or device-local. */
 
 import type { Acknowledgements } from '../acknowledgements';
 
@@ -106,11 +104,10 @@ export interface PreferenceValues {
       place and a kind added later needs no key here. A key this build has no kind for is
       left alone.
 
-      A switch is a kind-level yes or no, never a way to hide one running session
-      (ADR-0039's amendment). Portable, like `pinnedRows` beside it: which tiles somebody
-      turned off is a statement about the front page they arranged, and a restore that
-      switched them all back on would be the app forgetting an answer. Notifications keep
-      their own switches. */
+      A switch is a kind-level yes or no, never a way to hide one running session. Portable,
+      like `pinnedRows` beside it: which tiles somebody turned off is a statement about the
+      front page they arranged, and a restore that switched them all back on would be the
+      app forgetting an answer. Notifications keep their own switches. */
   surfaceOverrides: Partial<Record<string, boolean>>;
   /** Whether reminder alarms are scheduled at all. The
       kind-level switch the notifications view draws, one level above each
@@ -219,10 +216,10 @@ export interface PreferenceValues {
       Keep it device-local so a restore can show the return on a new
       installation. */
   comingBackSeenSince: number | null;
-  /** Which drugs a person has turned off the clinician summary's regimen,
-      dose-history and exposure sections, keyed by drug name (ADR-0031). On (absent or false) by default. Device-
-      local: which drug a printout leaves out is a choice about a specific
-      visit on this installation, not portable journal data (ADR-0003). */
+  /** Which drugs a person has turned off the clinician summary's regimen, dose-history and
+      exposure sections, keyed by drug name. On (absent or false) by default. Device- local:
+      which drug a printout leaves out is a choice about a specific visit on this
+      installation, not portable journal data (ADR-0003). */
   clinicianSummaryDrugExcluded: Partial<Record<string, boolean>>;
   /** Which drug's schedule /doses' "against the schedule" view compares
       against, while more than one regimen episode is active at once.
@@ -405,14 +402,13 @@ export const DEVICE_LOCAL_KEYS = [
   'layoutReserves'
 ] as const satisfies readonly PreferenceKey[];
 
-/** Mirrored outside SQLite because it is needed before the database opens
-    (ADR-0009). `language` has no pre-paint reader of its own: paraglide
-    resolves the locale from its own localStorage strategy (vite.config.ts)
-    before any of this runs, and setLocale() reloads the page. This is the
-    app's own record of the choice, which is what makes it portable in an
-    archive - paraglide's copy is not. After durable preference attachment,
-    boot reconciles that strategy with SQLite so an interrupted Replace
-    cannot leave a restored choice beside the previous locale. */
+/** Mirrored outside SQLite because it is needed before the database opens. `language` has
+    no pre-paint reader of its own: paraglide resolves the locale from its own localStorage
+    strategy (vite.config.ts) before any of this runs, and setLocale() reloads the page.
+    This is the app's own record of the choice, which is what makes it portable in an
+    archive - paraglide's copy is not. After durable preference attachment, boot reconciles
+    that strategy with SQLite so an interrupted Replace cannot leave a restored choice
+    beside the previous locale. */
 export const BOOT_KEYS = [
   'theme',
   'palette',

@@ -1,11 +1,9 @@
-/* Collect Home tile queries, preferences, snoozes and writes here.
-   liveTiles.ts owns the pure composition, ordering and contents
-   (ADR-0016, ADR-0017). Call homeTiles() once while Home initializes to
-   create the liveQuery and liveList effects.
+/* Collect Home tile queries, preferences, snoozes and writes here. liveTiles.ts owns the
+   pure composition, ordering and contents (ADR-0017). Call homeTiles() once while Home
+   initializes to create the liveQuery and liveList effects.
 
-   Read only the fact each tile displays. Eighteen narrow reads cross
-   the worker boundary with fewer bytes than the previous sixteen wide
-   reads (tests/long-journal, mount-home). */
+   Read only the fact each tile displays. Eighteen narrow reads cross the worker boundary
+   with fewer bytes than the previous sixteen wide reads (tests/long-journal, mount-home). */
 
 import { liveList, liveQuery, liveQueryWhen, journal } from './live/journal.svelte';
 import { AREA_STATES_BEFORE_READ } from './areaState';

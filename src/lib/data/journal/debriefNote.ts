@@ -6,9 +6,9 @@
    cards). A descriptive list, not an interpretation, so a severity stays the raw number out
    of 5 rather than a word like "moderate".
 
-   Node-tier safe: no paraglide (ADR-0016). The date on each line and the line-joining
-   happen in EntryEditor.svelte, which is where the wording and the locale-aware formatting
-   already live for everything else this module's caller writes into a note. */
+   Node-tier safe: no paraglide. The date on each line and the line-joining happen in
+   EntryEditor.svelte, which is where the wording and the locale-aware formatting already
+   live for everything else this module's caller writes into a note. */
 
 import type { ChecklistItem, LabResult, SideEffect } from '../types';
 

@@ -1,13 +1,11 @@
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
-  /* The row draws five rounded-square mood faces with labels underneath.
-     The mood ramp clears 4.5:1 against --text. The faces also
-     distinguish adjacent steps at 22px through mouth shape and eyelids,
-     so the picker does not rely on hue alone.
+  /* The row draws five rounded-square mood faces with labels underneath. The mood ramp
+     clears 4.5:1 against --text. The faces also distinguish adjacent steps at 22px through
+     mouth shape and eyelids, so the picker does not rely on hue alone.
 
-     Selection lifts the face and draws a ring outside it. Read the labels
-     from the mood vocabulary and use data-mood, the entry editor's picker
-     handle (ADR-0029). */
+     Selection lifts the face and draws a ring outside it. Read the labels from the mood
+     vocabulary and use data-mood, the entry editor's picker handle. */
   import { m } from '$lib/paraglide/messages';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { moodMagnifier } from '../moodMagnifier.svelte';

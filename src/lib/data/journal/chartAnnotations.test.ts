@@ -329,9 +329,9 @@ test('a row fronting two areas marks suspended once, and not at all until both a
 });
 
 /* A tick carries what the record behind it says, raw. The words are
-   kit/chartAnnotation.ts's - this tier imports no paraglide (ADR-0016) - so what is
-   asserted here is which field reached the annotation, and that a record with nothing
-   written on it carries nothing. */
+   kit/chartAnnotation.ts's - this tier imports no paraglide - so what is asserted here is
+   which field reached the annotation, and that a record with nothing written on it carries
+   nothing. */
 
 test('a milestone, a procedure and an appointment carry their own text', async () => {
   const journal = await journalWith();

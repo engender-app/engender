@@ -39,9 +39,8 @@ interface SqliteBridge {
 
 const Sqlite = registerPlugin<SqliteBridge>('Sqlite');
 
-/** The reset path's wipe on Android (ADR-0014). The journal's files live in app-private
-    storage, so emptying the OPFS root - which is all the web's reset has to do - does not
-    touch them.
+/** The reset path's wipe on Android. The journal's files live in app-private storage, so
+    emptying the OPFS root - which is all the web's reset has to do - does not touch them.
 
     Unnumbered, and safely so: the plugin holds one connection for the whole app, and the
     caller has already awaited the close that let go of it (data/reset.ts closes before it

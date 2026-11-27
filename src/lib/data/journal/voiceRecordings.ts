@@ -37,13 +37,12 @@ export interface VoiceArea {
       Built for voice compare picker, which was cut before shipping - this is its first
       caller. */
   inJournal(): Promise<DatedRecording[]>;
-  /** The day of the most recent memo, at or before `todayEpochDay`, or null
-      where there is none. Its own method rather than a
-      `journal/lastWrite.ts` entry: a memo is entry content with no archive
-      section of its own (ADR-0036), so it has no `ArchiveSectionName` to be
-      registered under there - `hubRows.ts`'s `voice-benchmark` row is this
-      read's only caller, folding it in beside the benchmark's own last
-      write to report whichever is later. */
+  /** The day of the most recent memo, at or before `todayEpochDay`, or null where there is
+      none. Its own method rather than a `journal/lastWrite.ts` entry: a memo is entry
+      content with no archive section of its own, so it has no `ArchiveSectionName` to be
+      registered under there - `hubRows.ts`'s `voice-benchmark` row is this read's only
+      caller, folding it in beside the benchmark's own last write to report whichever is
+      later. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 

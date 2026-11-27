@@ -378,7 +378,7 @@ describe('the tag card draws one section per scale as diverging bars', () => {
 });
 
 /* The on-this-day tile opens in place, and the route it used to open still renders the same
-   block for the notification deep link (ADR-0028). */
+   block for the notification deep link. */
 describe('the resurfacing block', () => {
   it('opens the day under the pair without leaving the door, and keeps the route on the same block', () => {
     expect(stats).toMatch(/onOpen=\{\(event\) => \{\s*event\.preventDefault\(\);\s*dayOpen = !dayOpen;/);

@@ -74,11 +74,10 @@ const ROUTES = [
   { path: '/search' },
   {
     path: '/settings',
-    /* Rule 7's third case (ADR-0076, carpet 25): chrome, which shows the
-       field and shows a back control on the phone - which is the width this
-       walk runs at - and none in the 1024px shell, where the rail's fifth
-       row is the way in. The desktop half of that answer is the
-       walkthrough's, at step 14b. */
+    /* Rule 7's third case (carpet 25): chrome, which shows the field and shows a back
+       control on the phone - which is the width this walk runs at - and none in the 1024px
+       shell, where the rail's fifth row is the way in. The desktop half of that answer is
+       the walkthrough's, at step 14b. */
     chrome: true,
     /* The disguise rows are drawn inside a sheet, so no walk that only
        loads the address had ever seen them - `.card.spread` counted 0 while
@@ -690,11 +689,10 @@ const seed = async () => {
 };
 await seed();
 
-/* Doors show a field without Back. Deep screens show both. Chrome
-   shows a field and Back on phones only (ADR-0076). This sweep checks
-   390px and walkthrough step 14b checks 1024px. /coming-back and
-   /onboarding are documented exceptions. Judge the underlying screen
-   the same way with a sheet open. */
+/* Doors show a field without Back. Deep screens show both. Chrome shows a field and Back on
+   phones only. This sweep checks 390px and walkthrough step 14b checks 1024px. /coming-back
+   and /onboarding are documented exceptions. Judge the underlying screen the same way with
+   a sheet open. */
 const CASES = {
   door: { field: true, back: false },
   deep: { field: true, back: true },

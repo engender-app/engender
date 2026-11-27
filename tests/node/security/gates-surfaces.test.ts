@@ -297,10 +297,9 @@ describe('the first run', () => {
   });
 
   it('offers one flow whatever disguise says, and reads it off the model', () => {
-    /* ADR-0079: the flag step used to leave the flow under disguise, which
-       guarded a state no real install can reach. One list now, and the
-       route still asks steps.ts for it rather than counting for itself,
-       which is what keeps a change to the list correct everywhere at
+    /* The flag step used to leave the flow under disguise, which guarded a state no real
+       install can reach. One list now, and the route still asks steps.ts for it rather than
+       counting for itself, which is what keeps a change to the list correct everywhere at
        once. */
     expect(onboardingSteps.length).toBe(0);
     expect(onboardingSteps()).toContain('flag');

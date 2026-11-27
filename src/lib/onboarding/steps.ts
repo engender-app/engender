@@ -30,13 +30,12 @@ export type OnboardingStep =
   | 'disguise'
   | 'done';
 
-/* Setup picks the greeting, flag, scales, optional screens and lock.
-   Permissions show what the OS lets the app access. The daily reminder
-   stays on the reminders screen.
+/* Setup picks the greeting, flag, scales, optional screens and lock. Permissions show what
+   the OS lets the app access. The daily reminder stays on the reminders screen.
 
-   Disguise changes what appears outside the app (ADR-0079). Keep it last
-   because enabling it on Android swaps the launcher alias and closes the
-   app. complete() must persist the setup answers before the flip. */
+   Disguise changes what appears outside the app. Keep it last because enabling it on
+   Android swaps the launcher alias and closes the app. complete() must persist the setup
+   answers before the flip. */
 const ALL_STEPS: readonly OnboardingStep[] = [
   'welcome',
   'name',
@@ -49,15 +48,13 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'done'
 ];
 
-/** The flow. One list for everybody: setup does not vary by disguise
-    (ADR-0079). This used to take a `disguised` flag and drop the flag step
-    under it, guarding a state no person can be in - `prefs.disguise` lives
-    inside the encrypted journal and is only settable from Settings, which
-    sits behind `prefs.onboarded`, so the only way to reach setup disguised
-    is the demo's own first-run control. Disguise is now the last question
-    setup asks rather than a state it has to survive. The
-    disguise choice affects outside identity after setup, not the unlocked
-    app. */
+/** The flow. One list for everybody: setup does not vary by disguise. This used to take a
+    `disguised` flag and drop the flag step under it, guarding a state no person can be in -
+    `prefs.disguise` lives inside the encrypted journal and is only settable from Settings,
+    which sits behind `prefs.onboarded`, so the only way to reach setup disguised is the
+    demo's own first-run control. Disguise is now the last question setup asks rather than a
+    state it has to survive. The disguise choice affects outside identity after setup, not
+    the unlocked app. */
 export function onboardingSteps(): readonly OnboardingStep[] {
   return ALL_STEPS;
 }
@@ -84,11 +81,11 @@ const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
      there is nothing here for an archive to have carried. That is the same
      reason it survives a restore - device state is not journal state. */
   permissions: [],
-  /* `disguise` is a preference, and a device-local one (ADR-0079): what a person is hiding on this phone is not a fact about
-     their journal, so it does not travel and this step runs after a restore
-     like any other. Listed rather than left empty, because the honest entry
-     is the key it writes - if `disguise` ever became portable this map is
-     where that would show up, and the step would stop being asked. */
+  /* `disguise` is a preference, and a device-local one: what a person is hiding on this
+     phone is not a fact about their journal, so it does not travel and this step runs after
+     a restore like any other. Listed rather than left empty, because the honest entry is
+     the key it writes - if `disguise` ever became portable this map is where that would
+     show up, and the step would stop being asked. */
   disguise: ['disguise'],
   done: []
 };

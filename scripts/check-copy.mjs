@@ -1,16 +1,14 @@
-/* Check catalogue order, translated keys, unlocalized copy, Polish
-   reader forms and caller coverage. Paraglide falls back to the base
-   language for a missing Polish translation. A missing generated
-   accessor is already a type error.
+/* Check catalogue order, translated keys, unlocalized copy, Polish reader forms and caller
+   coverage. Paraglide falls back to the base language for a missing Polish translation. A
+   missing generated accessor is already a type error.
 
-   Message calls use named accessors in shipped source, including
-   vocabulary labels (ADR-0024). DEAD_ALLOW lists callers the source
-   scan cannot see. The Polish check catches second-person gendered
-   verb endings and a short list of known predicate adjectives.
+   Message calls use named accessors in shipped source, including vocabulary labels.
+   DEAD_ALLOW lists callers the source scan cannot see. The Polish check catches
+   second-person gendered verb endings and a short list of known predicate adjectives.
 
-   The literal count is kept per file in messages/untranslated-literals.txt.
-   Run npm run check:copy -- --update after localizing a literal, and
-   npm run check:copy -- --fix to restore catalogue order. */
+   The literal count is kept per file in messages/untranslated-literals.txt. Run npm run
+   check:copy -- --update after localizing a literal, and npm run check:copy -- --fix to
+   restore catalogue order. */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';

@@ -3,9 +3,9 @@ import { prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
 import { toast } from '$lib/stores/toasts.svelte';
 import { isAndroid } from '$lib/platform';
 import { m } from '$lib/paraglide/messages';
-/* Relative, not `$lib`: auto-export-scheduler.test.ts runs on the Node
-   tier, where the alias does not resolve (ADR-0016), and this rule is pure
-   enough that mocking it out would only hide what the notice actually says. */
+/* Relative, not `$lib`: auto-export-scheduler.test.ts runs on the Node tier, where the
+   alias does not resolve, and this rule is pure enough that mocking it out would only hide
+   what the notice actually says. */
 import { notificationText } from '../../unprompted/notificationText';
 import { quietHoursOf } from '../../unprompted/quietHours';
 import { androidAutoExport, type AutoExportStatus } from './android-auto-export-bridge';

@@ -1,9 +1,7 @@
-/* Which tab was lit before the person stepped into settings chrome
-   (ADR-0076, audit item 4). Module state, the same shape as smart-back.ts's
-   own depth counter: a fact this app owns about its own navigation, kept
-   out of active-tab.ts so that module stays a pure table its own tests can
-   call directly without one test's path leaking into the next one's
-   answer. */
+/* Which tab was lit before the person stepped into settings chrome (audit item 4). Module
+   state, the same shape as smart-back.ts's own depth counter: a fact this app owns about
+   its own navigation, kept out of active-tab.ts so that module stays a pure table its own
+   tests can call directly without one test's path leaking into the next one's answer. */
 
 let lastTabKey = '';
 

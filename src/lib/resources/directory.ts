@@ -1,15 +1,12 @@
-/* Bundle the resource directory so it opens offline. List trans
-   services first. Poland's general crisis lines extend coverage
-   outside limited hours and for minors. Their labels identify them
-   as general services.
+/* Bundle the resource directory so it opens offline. List trans services first. Poland's
+   general crisis lines extend coverage outside limited hours and for minors. Their labels
+   identify them as general services.
 
-   Keep names, phone numbers and addresses here. labels.ts owns
-   the translated description and hours. The const key list makes
-   label coverage a type check (ADR-0016).
+   Keep names, phone numbers and addresses here. labels.ts owns the translated description
+   and hours. The const key list makes label coverage a type check.
 
-   Set RESOURCES_REVIEWED_ON only after checking numbers and opening
-   hours against each provider's own publications. Hours can change
-   while numbers stay the same. */
+   Set RESOURCES_REVIEWED_ON only after checking numbers and opening hours against each
+   provider's own publications. Hours can change while numbers stay the same. */
 
 export type ResourceRegion = 'pl' | 'int';
 

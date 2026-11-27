@@ -1,17 +1,15 @@
 /* How a re-keyed axis is written.
 
-   The rule for what axis is on offer and what it keys by is in
-   $lib/charts/dayAxis.ts, which stays Node-tier safe and so imports no
-   paraglide (ADR-0016). The words are here, beside the components that draw
-   them, which is the same split chartAnnotation.ts keeps from
+   The rule for what axis is on offer and what it keys by is in $lib/charts/dayAxis.ts,
+   which stays Node-tier safe and so imports no paraglide. The words are here, beside the
+   components that draw them, which is the same split chartAnnotation.ts keeps from
    charts/annotations.ts.
 
-   Two screens draw a day series and both can re-key it, so the labels are
-   written once. Descriptive only: a position label says which day and stops.
-   Nothing here says a reading rose, fell or responded, and nothing puts the
-   anchoring event and a value in the same phrase - "day 4 since surgery"
-   names a day, "dysphoria down by day 4" would be the causal claim the
-   ticket rules out, made by a label rather than by the data. */
+   Two screens draw a day series and both can re-key it, so the labels are written once.
+   Descriptive only: a position label says which day and stops. Nothing here says a reading
+   rose, fell or responded, and nothing puts the anchoring event and a value in the same
+   phrase - "day 4 since surgery" names a day, "dysphoria down by day 4" would be the causal
+   claim the ticket rules out, made by a label rather than by the data. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';

@@ -61,13 +61,11 @@ function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | n
   return isPastInUseWindow(window, asOfEpochDay) ? m.stock_window_past({ date }) : m.stock_window_until({ date });
 }
 
-/** Choose Home's stock notice title and body together. Counts at zero
-    or below are already out, regardless of lead time. Otherwise use
-    the reorder-by date when lead time is set, or projected run-out
-    date when it is absent. Dates avoid a misleading countdown.
+/** Choose Home's stock notice title and body together. Counts at zero or below are already
+    out, regardless of lead time. Otherwise use the reorder-by date when lead time is set,
+    or projected run-out date when it is absent. Dates avoid a misleading countdown.
 
-    The caller formats the date so these branches stay testable in
-    Node without Paraglide (ADR-0016). */
+    The caller formats the date so these branches stay testable in Node without Paraglide. */
 export function stockNotice(
   row: { projection: { remaining: number }; entry: { drug: string; leadTimeDays: number | null } },
   date: string

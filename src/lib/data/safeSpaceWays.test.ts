@@ -51,10 +51,9 @@ describe('the ways down from Safe space', () => {
   });
 
   it('lands each way on the screen itself rather than on a redirect to it', () => {
-    /* A `+page.ts` beside no `+page.svelte` is this repo's redirect stub
-       (ADR-0036). The row on the screen a person opens on their worst day
-       is the one place in the app that should not spend a navigation on
-       one, so the ways are held to the destination rather than to the
+    /* A `+page.ts` beside no `+page.svelte` is this repo's redirect stub. The row on the
+       screen a person opens on their worst day is the one place in the app that should not
+       spend a navigation on one, so the ways are held to the destination rather than to the
        address that used to reach it. */
     for (const way of SAFE_SPACE_WAYS) {
       const route = routeOf(way.href);

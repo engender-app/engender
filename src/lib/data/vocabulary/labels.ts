@@ -1,15 +1,14 @@
-/* Display names for the built-in vocabulary, looked up by key at display
-   time (F25, and CONTEXT: Built-in). builtins.ts stores no text at all, so
-   this is where a built-in gets its wording - and where it changes when the
-   language does.
+/* Display names for the built-in vocabulary, looked up by key at display time (F25, and
+   CONTEXT: Built-in). builtins.ts stores no text at all, so this is where a built-in gets
+   its wording - and where it changes when the language does.
 
-   Each map is typed against the key union builtins.ts derives from its own
-   `as const` list, so adding a built-in without adding its message is a
-   typecheck failure rather than a raw key on screen.
+   Each map is typed against the key union builtins.ts derives from its own `as const` list,
+   so adding a built-in without adding its message is a typecheck failure rather than a raw
+   key on screen.
 
-   This file imports paraglide, so nothing the Node tier touches may import
-   it (ADR-0016). The seam is exact: builtins.ts is the data, this is the
-   wording, and vocabulary.ts joins them for the screens. */
+   This file imports paraglide, so nothing the Node tier touches may import it. The seam is
+   exact: builtins.ts is the data, this is the wording, and vocabulary.ts joins them for the
+   screens. */
 
 import { m } from '$lib/paraglide/messages';
 import type { BodyRegionAxis } from '$lib/data/types';

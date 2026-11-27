@@ -1,14 +1,11 @@
-/* Select what is waiting after time away (ADR-0039, ADR-0045).
-   Keep gaps in the journal and report available items without counting
-   missed doses, absent entries or elapsed days. A letter or milestone
-   appears before housekeeping. Ask about only the latest dose slot.
-   The layout reads this once per return, so logging it cannot promote
-   another missed slot.
+/* Select what is waiting after time away (ADR-0045). Keep gaps in the journal and report
+   available items without counting missed doses, absent entries or elapsed days. A letter
+   or milestone appears before housekeeping. Ask about only the latest dose slot. The layout
+   reads this once per return, so logging it cannot promote another missed slot.
 
-   Read existing rows and the last-write registry through
-   comingBackReads.ts. Only comingBackSeenSince records that the return
-   was shown. This selection receives today and uses no clock, journal
-   handle or localized copy, so it runs on the Node tier. */
+   Read existing rows and the last-write registry through comingBackReads.ts. Only
+   comingBackSeenSince records that the return was shown. This selection receives today and
+   uses no clock, journal handle or localized copy, so it runs on the Node tier. */
 
 import { mostRecentPassedSlot } from './doseSchedule';
 import { epochDayFromTimestamp } from './epochDay';
@@ -89,9 +86,8 @@ export type WaitingItem =
       doseUnit: string;
     };
 
-/** Stable item key for dismissals during this visit and for walkthrough
-    handles (ADR-0029). Combine the kind with its row ID. A dose uses its
-    slot ID because it has no row yet. */
+/** Stable item key for dismissals during this visit and for walkthrough handles. Combine
+    the kind with its row ID. A dose uses its slot ID because it has no row yet. */
 export function waitingItemKey(item: WaitingItem): string {
   switch (item.kind) {
     case 'letter':

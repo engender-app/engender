@@ -233,7 +233,7 @@ describe('the surfaces', () => {
     expect(stripped).not.toMatch(/gradient\(/);
   });
 
-  it('gives every interactive element a data-* handle (ADR-0029)', () => {
+  it('gives every interactive element a data-* handle', () => {
     for (const file of components) {
       const html = markup(file);
       const interactive = /<(a|button)\b/.test(html);

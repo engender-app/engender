@@ -286,10 +286,9 @@ test('a hidden area cannot be added', () => {
 });
 
 test('the cycle log is offered only where its own gate is already open', () => {
-  /* ADR-0043 one-directionally: pinning it is the person asking for it, so
-     the pin resolves either way, but a list that offered it cold would be
-     the app putting a cycle prompt in front of somebody who will never
-     have one. */
+  /* Pinning it is the person asking for it, so the pin resolves either way, but a list that
+     offered it cold would be the app putting a cycle prompt in front of somebody who will
+     never have one. */
   assert.ok(!addable(arranged([])).includes('cycle-events'));
   assert.ok(addable(arranged([]), {}, true).includes('cycle-events'));
 });

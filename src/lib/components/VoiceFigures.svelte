@@ -1,15 +1,13 @@
 <script lang="ts">
-  /* Pitch keeps an absolute hertz scale across takes (ADR-0060). Its
-     note sits on the page colour beneath the pitch block. Each other
-     figure shows the current measurement against the person's own
-     history, with a ring on this take. ownSeries.ts breaks the line
-     when the passage or microphone changes (ADR-0061).
+  /* Pitch keeps an absolute hertz scale across takes. Its note sits on the page colour
+     beneath the pitch block. Each other figure shows the current measurement against the
+     person's own history, with a ring on this take. ownSeries.ts breaks the line when the
+     passage or microphone changes (ADR-0061).
 
-     Use the metric registry for names and the reference link. The
-     figures state units and what the history compares and leave
-     interpretation to the reference screen (ADR-0012, ADR-0060).
-     History lines reveal from the left ahead of their values.
-     Measurements appear directly without a count-up. */
+     Use the metric registry for names and the reference link. The figures state units and
+     what the history compares and leave interpretation to the reference screen (ADR-0012).
+     History lines reveal from the left ahead of their values. Measurements appear directly
+     without a count-up. */
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
   import type { PassageFigures } from '$lib/audio/benchmark';

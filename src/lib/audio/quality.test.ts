@@ -181,7 +181,7 @@ test('the floor scales with the passage, and per language', () => {
   // 82 Polish words and 98 English ones are the two bundled passages, and
   // Polish asks for more voice per word because its words are longer.
   assert.ok(readingFloorSeconds(1, 'pl') > readingFloorSeconds(1, 'en'));
-  // The measured numbers themselves, pinned: ADR-0082 has where they came
+  // The measured numbers themselves, pinned: quality.ts explains where they came
   // from, and a change to either is a change to what the app accepts.
   assert.ok(Math.abs(readingFloorSeconds(98, 'en') - 8.134) < 0.001);
   assert.ok(Math.abs(readingFloorSeconds(82, 'pl') - 9.184) < 0.001);

@@ -744,12 +744,11 @@ Unit likewise: a set preferred unit wins, then the
     title={ocrSheetTitle}
     onClose={closeOcrSheet}
   >
-    <!-- The tag itself, not just its wording, so a walkthrough can grip the
-         state directly (ADR-0029) rather than matching translated copy.
-         What is drawn rather than the raw tag, because the bar's hold at
-         full outlives the pass by design: a handle that said `review`
-         while the screen still showed the scan running would send a
-         walkthrough clicking a row that is not there yet. -->
+    <!-- The tag itself, not just its wording, so a walkthrough can grip the state directly
+         rather than matching translated copy. What is drawn rather than the raw tag,
+         because the bar's hold at full outlives the pass by design: a handle that said
+         `review` while the screen still showed the scan running would send a walkthrough
+         clicking a row that is not there yet. -->
     <div data-ocr-state={showRecognizing ? 'recognizing' : ocrState.tag}>
     {#if ocrState.tag === 'picking'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>

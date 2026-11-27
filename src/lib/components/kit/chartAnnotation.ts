@@ -1,15 +1,14 @@
 /* How an annotation is written.
 
-   The selection rule is in $lib/charts/annotations.ts, which stays Node-tier
-   safe and so imports no paraglide (ADR-0016). The words are here, beside the
-   component that draws them, which is the same split day.ts keeps from
-   vocabulary/dayLabels.ts and BarRows.svelte from barRow.ts.
+   The selection rule is in $lib/charts/annotations.ts, which stays Node-tier safe and so
+   imports no paraglide. The words are here, beside the component that draws them, which is
+   the same split day.ts keeps from vocabulary/dayLabels.ts and BarRows.svelte from
+   barRow.ts.
 
-   An annotation names a thing and a date.
-   None of these strings says a reading moved, rose, fell or responded, and
-   none of them puts an event and a value in the same sentence: a label that
-   read "estradiol started, dysphoria down" would be the causal claim the
-   ticket rules out, written by the label rather than by the data. */
+   An annotation names a thing and a date. None of these strings says a reading moved, rose,
+   fell or responded, and none of them puts an event and a value in the same sentence: a
+   label that read "estradiol started, dysphoria down" would be the causal claim the ticket
+   rules out, written by the label rather than by the data. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
@@ -44,15 +43,14 @@ function kindWord(kind: ChartAnnotationKind): string {
   return KIND_WORD[kind]();
 }
 
-/** What the record calls itself, with the one kind whose `name` is a key
-    rather than a name resolved here.
+/** What the record calls itself, with the one kind whose `name` is a key rather than a name
+    resolved here.
 
-    A finished area's `name` is its group key, because journal/chartAnnotations.ts
-    is Node-tier and cannot reach paraglide (ADR-0016). The chart
-    resolves its body-region keys on the screen instead; that works there
-    because exactly one screen draws those markers, and this kind reaches
-    every chart that opted into annotations at all. Five screens each keeping
-    their own lookup is the second list this file exists not to need. */
+    A finished area's `name` is its group key, because journal/chartAnnotations.ts is
+    Node-tier and cannot reach paraglide. The chart resolves its body-region keys on the
+    screen instead; that works there because exactly one screen draws those markers, and
+    this kind reaches every chart that opted into annotations at all. Five screens each
+    keeping their own lookup is the second list this file exists not to need. */
 function recordName(annotation: ChartAnnotation): string | undefined {
   const name = annotation.name?.trim();
   if (!name) return undefined;

@@ -1,9 +1,9 @@
-/* Add labels, icons and destinations to textSearch.ts results (ADR-0016).
-   Use the owning screen's icon from the More hub and name the record kind
-   in its subtitle. Keep results in one newest-first list across all areas.
+/* Add labels, icons and destinations to textSearch.ts results. Use the owning screen's icon
+   from the More hub and name the record kind in its subtitle. Keep results in one
+   newest-first list across all areas.
 
-   Link to the individual record if it has a route. Otherwise, link to the
-   screen that owns it. The search registry owns reads and tables. */
+   Link to the individual record if it has a route. Otherwise, link to the screen that owns
+   it. The search registry owns reads and tables. */
 
 import { m } from '$lib/paraglide/messages';
 import { photoCaptionDate } from '$lib/data/dates';
@@ -16,7 +16,7 @@ import { iconOf } from './rowIcon';
 
 /** One hit as a row: where it goes, and what it says. */
 interface SearchHitRow extends Pick<HubRow, 'icon'> {
-  /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
+  /** The row's own walkthrough handle - stable, never the copy. */
   key: string;
   /** The registered area's key, for the walkthrough's handle on the row. */
   area: SearchAreaKey;

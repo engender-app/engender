@@ -71,9 +71,9 @@
     states === undefined
       ? []
       : drawn()
-          /* `cycle-events` reads `rowHidden` as always false (ADR-0043), so
-             the gate that decides it exists - `cycleTrackingVisible` - is the
-             caller's: Meds passes the key only behind it. */
+          /* `cycle-events` reads `rowHidden` as always false, so the gate that decides it
+             exists - `cycleTrackingVisible` - is the caller's: Meds passes the key only
+             behind it. */
           .filter((row) => !rowHidden(row, states))
           /* No last write and nothing forward: a hosted row is drawn beside
              the very records it would report on (dilation on the surgery

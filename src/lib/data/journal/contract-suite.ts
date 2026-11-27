@@ -524,10 +524,9 @@ export async function runJournalContract(
     r.equal('the sweep removes orphan thumbnails', await files.read('orphan-photo-thumb.jpg').then((v) => v == null), true);
   });
 
-  /* ADR-0009: preferences live in SQLite and the boot cache mirrors them.
-     Asked here because the pref table is the first thing the app reads on a
-     phone, and a driver that mangled the round trip would surface as a
-     device that quietly forgot its theme. */
+  /* Preferences live in SQLite and the boot cache mirrors them. Asked here because the pref
+     table is the first thing the app reads on a phone, and a driver that mangled the round
+     trip would surface as a device that quietly forgot its theme. */
   await r.section('preferences', async () => {
     const preferences = await openPreferences(driver);
     await preferences.set('theme', 'dark');

@@ -54,10 +54,10 @@ describe('the step list', () => {
     expect(ONBOARDING_STEPS).not.toContain('checkin');
   });
 
-  /* ADR-0079 and. Disguise is asked last because turning it on closes the app on Android,
-     and setup holds every answer in memory until complete writes them - so anywhere earlier
-     in the flow the alias flip would take the rest of setup down with it. The finish still
-     follows it: the question is last, the screen that says setup is over is not. */
+  /* Disguise is asked last because turning it on closes the app on Android, and setup holds
+     every answer in memory until complete writes them - so anywhere earlier in the flow the
+     alias flip would take the rest of setup down with it. The finish still follows it: the
+     question is last, the screen that says setup is over is not. */
   it('asks about disguise last, with only the finish after it', () => {
     expect(stepAfter(ONBOARDING_STEPS, 'disguise')).toBe('done');
     expect(stepBefore(ONBOARDING_STEPS, 'done')).toBe('disguise');
@@ -77,10 +77,9 @@ describe('the step list', () => {
 });
 
 describe('under disguise', () => {
-  /* ADR-0079: setup does not vary by disguise. The flag step used to leave
-     the flow under it, which guarded a state no real install can reach and
-     kept a second flow alive that nothing rendered or tested. One list,
-     whatever the preference says, and the flag step is in it. */
+  /* Setup does not vary by disguise. The flag step used to leave the flow under it, which
+     guarded a state no real install can reach and kept a second flow alive that nothing
+     rendered or tested. One list, whatever the preference says, and the flag step is in it. */
   it('is the same flow, and takes nothing that could make it differ', () => {
     expect(onboardingSteps.length).toBe(0);
     expect(onboardingSteps()).toEqual(ONBOARDING_STEPS);

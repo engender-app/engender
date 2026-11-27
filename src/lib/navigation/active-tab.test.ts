@@ -35,13 +35,11 @@ describe('activeTabKey', () => {
   it('lights more, but borrows its origin for settings chrome (audit item 4)', () => {
     expect(activeTabKey('/more')).toBe('settings');
     expect(activeTabKey('/care/regimen')).toBe('settings');
-    /* Settings is chrome (ADR-0076), reached from a persistent gear rather
-       than a tab of its own - lighting the fourth tab for it read as
-       having left whichever tab the gear was pressed from. With nothing
-       to borrow (a cold load) it lights Today, where the gear lives, and
-       with an origin it borrows exactly
-       that, whatever it is - the caller (chrome-tab-origin.ts) decides
-       which tab counts as "came from", not this table. */
+    /* Settings is chrome, reached from a persistent gear rather than a tab of its own -
+       lighting the fourth tab for it read as having left whichever tab the gear was pressed
+       from. With nothing to borrow (a cold load) it lights Today, where the gear lives, and
+       with an origin it borrows exactly that, whatever it is - the caller
+       (chrome-tab-origin.ts) decides which tab counts as "came from", not this table. */
     expect(activeTabKey('/settings')).toBe('home');
     expect(activeTabKey('/settings/security')).toBe('home');
     expect(activeTabKey('/settings', 'home')).toBe('home');

@@ -471,15 +471,14 @@ const RESET_DESTINATION = {
   erased: '/onboarding?erased=1'
 } as const;
 
-/** The forgotten-PIN escape hatch (ADR-0014): wipes what this device holds
-    and comes back up at onboarding. Reloads rather than resetting the
-    modules in place - boot() has already run, the journal is attached, and
-    unwinding all of that in the browser is a far bigger surface than
-    starting the page again.
+/** The forgotten-PIN escape hatch: wipes what this device holds and comes back up at
+    onboarding. Reloads rather than resetting the modules in place - boot() has already run,
+    the journal is attached, and unwinding all of that in the browser is a far bigger
+    surface than starting the page again.
 
-    `erased` is the same wipe asked for from Settings rather than from a
-    gate: setup's welcome then says what happened,
-    since nobody there forgot anything and the result cannot be undone. */
+    `erased` is the same wipe asked for from Settings rather than from a gate: setup's
+    welcome then says what happened, since nobody there forgot anything and the result
+    cannot be undone. */
 export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
   invalidateCredentialApprovals();
   recoveryApproval = null;
@@ -1220,12 +1219,11 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
     },
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
     shouldSweepOrphans,
-    /* The standing instruction, carried out (ADR-0086).
-       Through the journal rather than the driver, unlike the two passes
-       above: this one is an ordinary area operation, so it takes the write
-       guard and the write recorder on the way like every other write does.
-       It announces what it wrote for the same reason the purge does - the
-       dose log and Today are live while this runs. */
+    /* The standing instruction, carried out. Through the journal rather than the driver,
+       unlike the two passes above: this one is an ordinary area operation, so it takes the
+       write guard and the write recorder on the way like every other write does. It
+       announces what it wrote for the same reason the purge does - the dose log and Today
+       are live while this runs. */
     autoLogDueDoses: async () => {
       const { ROUTE_OPTIONS } = await import('../data/vocabulary/doseLabels');
       await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);

@@ -426,15 +426,13 @@
         snrDb: vowelTake?.snrDb ?? null,
         note: note.trim() || null,
         pitchTrack: passageTake.pitchTrack,
-        /* The vowel's chain where there is a vowel, and the passage's
-           otherwise. One column, and every figure it gates is the vowel
-           take's: the resonances and the room reading come from the held
-           note, while pitch, its spread and the rate are device-proof and
-           compare across everything (ADR-0060, ADR-0061). The two steps
-           are seconds apart on one phone in every ordinary case; where
-           somebody plugged a headset in between them, this is the chain
-           that makes the resonance refuse rather than the one that would
-           let it through. */
+        /* The vowel's chain where there is a vowel, and the passage's otherwise. One
+           column, and every figure it gates is the vowel take's: the resonances and the
+           room reading come from the held note, while pitch, its spread and the rate are
+           device-proof and compare across everything (ADR-0061). The two steps are seconds
+           apart on one phone in every ordinary case; where somebody plugged a headset in
+           between them, this is the chain that makes the resonance refuse rather than the
+           one that would let it through. */
         captureChain: vowelTake?.captureChain ?? passageTake.captureChain,
         resonanceScale
       });

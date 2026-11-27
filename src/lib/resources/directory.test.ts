@@ -1,10 +1,10 @@
-/* The bundled directory is the one place in this app where being out of date
-   is a safety problem rather than a cosmetic one: a crisis line that moved
-   number reads as help and gives none. So the invariants here are about what
-   makes an entry usable at all - something to dial or open, a key that can
-   carry its wording, and a review date that says when a person last checked.
+/* The bundled directory is the one place in this app where being out of date is a safety
+   problem rather than a cosmetic one: a crisis line that moved number reads as help and
+   gives none. So the invariants here are about what makes an entry usable at all -
+   something to dial or open, a key that can carry its wording, and a review date that says
+   when a person last checked.
 
-   Node tier, so this imports directory.ts and never labels.ts (ADR-0016). */
+   Node tier, so this imports directory.ts and never labels.ts. */
 
 import { test, expect } from 'vitest';
 import { RESOURCES, RESOURCES_REVIEWED_ON, resourcesFor } from './directory.ts';

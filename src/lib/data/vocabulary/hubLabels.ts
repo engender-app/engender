@@ -1,12 +1,11 @@
-/* Localize hub titles, group headings and row descriptions here.
-   hubRows.ts stays independent of Paraglide for Node tests (ADR-0016).
-   Exhaustive Records require wording for every row and group.
+/* Localize hub titles, group headings and row descriptions here. hubRows.ts stays
+   independent of Paraglide for Node tests. Exhaustive Records require wording for every row
+   and group.
 
-   A reading replaces a row's description once there is data. Ten rows
-   always use their description. The three reading templates interpolate
-   no noun because Polish case would depend on the frame. The interpolated
-   duration stays nominative in both languages, and the title supplies
-   the noun. */
+   A reading replaces a row's description once there is data. Ten rows always use their
+   description. The three reading templates interpolate no noun because Polish case would
+   depend on the frame. The interpolated duration stays nominative in both languages, and
+   the title supplies the noun. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay, fmtDuration } from '$lib/data/dates';
@@ -42,18 +41,15 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   documents: m.documents_title
 };
 
-/** What every row says about what is behind it: the whole of a row that never
-    reads, and the standing line of one that does until it has a reading.
+/** What every row says about what is behind it: the whole of a row that never reads, and
+    the standing line of one that does until it has a reading.
 
-    Total over the row keys, so a row added here without one does not compile.
-    A row whose title already says what is behind it holds null and draws no
-    line.
-    Each is earned by a title that does not say what the screen is
-    on its own. "Eras", "Care" and "Safe space" name
-    something the app invented - and, on the reading rows, by a fresh journal
-    otherwise leaving thirteen rows mute. Each is a short form of that
-    screen's own intro rather than new copy, so the row and the screen behind
-    it say the same thing (ADR-0024). */
+    Total over the row keys, so a row added here without one does not compile. A row whose
+    title already says what is behind it holds null and draws no line. Each is earned by a
+    title that does not say what the screen is on its own. "Eras", "Care" and "Safe space"
+    name something the app invented - and, on the reading rows, by a fresh journal otherwise
+    leaving thirteen rows mute. Each is a short form of that screen's own intro rather than
+    new copy, so the row and the screen behind it say the same thing. */
 const ROW_LINE: Record<HubRowKey, (() => string) | null> = {
   'hair-removal': m.hub_sub_hair_removal,
   care: m.hub_sub_care,

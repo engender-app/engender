@@ -1,5 +1,5 @@
 /* What the entry editor's noticed-effects sheet lists. Pure, above the journal seam and
-   free of paraglide (ADR-0016): the words arrive as arguments.
+   free of paraglide: the words arrive as arguments.
 
    The direction filter is read off the regimen and stored nowhere - types.ts says the app
    has no gender or direction field and this does not become the first one. A drug that

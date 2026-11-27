@@ -1,8 +1,7 @@
-/* The default title for a calendar-handoff event: neutral wording naming nothing about a transition, for a file that
-   may land on somebody else's shared calendar (ADR-0067). It belongs on
-   this side of the seam because it speaks paraglide, which calendarFile.ts
-   may not import (ADR-0016) - that module stays pure so its own test can
-   assert on the text it builds. */
+/* The default title for a calendar-handoff event: neutral wording naming nothing about a
+   transition, for a file that may land on somebody else's shared calendar (ADR-0067). It
+   belongs on this side of the seam because it speaks paraglide, which calendarFile.ts may
+   not import - that module stays pure so its own test can assert on the text it builds. */
 
 import { m } from '$lib/paraglide/messages';
 import type { CalendarEventKind } from '../calendarFile';

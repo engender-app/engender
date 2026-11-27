@@ -1,13 +1,13 @@
 /* An entry's tags as the words a row shows.
 
-   Beside the other label lookups rather than beside the grouping in
-   recentEntries.ts, and the seam is ADR-0016's: this reads the vocabulary,
-   which imports paraglide, so nothing the Node tier touches may import it.
-   recentEntries.ts is Node-testable and stays that way.
+   Beside the other label lookups rather than beside the grouping in recentEntries.ts, and
+   the test boundary matters. this reads the vocabulary, which imports paraglide, so nothing
+   the Node tier touches may import it. recentEntries.ts is Node-testable and stays that
+   way.
 
-   Here rather than at the surface that draws them, though, for ADR-0024's
-   reason: which tags exist and what they are called is the vocabulary's, and
-   a component that looked them up would be a second place asking. */
+   Here rather than at the surface that draws them, though, because which tags exist and
+   what they are called is the vocabulary's, and a component that looked them up would be a
+   second place asking. */
 
 import type { Entry } from '../types';
 import { vocabulary } from './vocabulary';

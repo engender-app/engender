@@ -145,13 +145,12 @@ test('un-suspending an area leaves hiding and a resting finish day alone, and hi
   });
 });
 
-test('a cycle row an archive carried in is not readable back out (ADR-0043)', async () => {
+test('a cycle row an archive carried in is not readable back out', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  /* No setter in this build can write this - `cycleEvents` is not a key of
-     the record - but an area_state row travels, so an archive written
-     somewhere else is a way in. ADR-0043's rule is one-directional, and an
-     imported row must not be what reverses it. */
+  /* No setter in this build can write this - `cycleEvents` is not a key of the record - but
+     an area_state row travels, so an archive written somewhere else is a way in. rule is
+     one-directional, and an imported row must not be what reverses it. */
   await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['cycleEvents', 1_700_000_000_000]);
   await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['wearSessions', 1_700_000_000_000]);
 

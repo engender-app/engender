@@ -3,9 +3,9 @@
   import { offerUndo, undoable } from '$lib/stores/deleteUndo';
   import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
-  /* Render a dated, indented margin note below its entry. The caller reads
-     notes for a page in one batch. The component writes through the journal,
-     where marginNotes.add validates its insert (ADR-0044). */
+  /* Render a dated, indented margin note below its entry. The caller reads notes for a page
+     in one batch. The component writes through the journal, where marginNotes.add validates
+     its insert. */
   import { m } from '$lib/paraglide/messages';
   import { deleter, writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';

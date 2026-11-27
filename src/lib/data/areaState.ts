@@ -24,13 +24,12 @@ interface AreaState {
 
 /** Every area a person can hide, which is every area but one.
 
-    `cycleEvents` is out, and structurally rather than by convention. Cycle
-    tracking's visibility is ADR-0043's own one-directional question: a
-    preference or a testosterone regimen can add the row back, and no
-    preference is what hides it, because read cold an unconditional cycle row
-    is a dysphoria trigger. A uniform flag defaulting to shown would delete
-    both the asymmetry and the data-driven unhide, so `cycleTrackingVisible`
-    stays cycle's gate and this record cannot be asked about it. */
+    `cycleEvents` is out, and structurally rather than by convention. Cycle tracking's
+    visibility is one-directional question: a preference or a testosterone regimen can add
+    the row back, and no preference is what hides it, because read cold an unconditional
+    cycle row is a dysphoria trigger. A uniform flag defaulting to shown would delete both
+    the asymmetry and the data-driven unhide, so `cycleTrackingVisible` stays cycle's gate
+    and this record cannot be asked about it. */
 export type HideableArea = Exclude<ArchiveSectionName, 'cycleEvents'>;
 
 /** Every area that has said anything, sparse on purpose: a key with no entry
@@ -167,12 +166,11 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   personalEffectTypes: 'reference data, not a series (CONTEXT: "Reference data")'
 };
 
-/** Whether an area is out of the navigation. Nothing here hides data: a
-    hidden area keeps its records, its direct URL and its place in search,
-    the same as ADR-0043's own hiding does.
+/** Whether an area is out of the navigation. Nothing here hides data: a hidden area keeps
+    its records, its direct URL and its place in search, the same as hiding does.
 
-    Takes no day, unlike `areaQuiet` below - hiding an area is not a dated
-    statement, and finishing one does not hide it. */
+    Takes no day, unlike `areaQuiet` below - hiding an area is not a dated statement, and
+    finishing one does not hide it. */
 /* areaHidden stays exported for its own test, and cross-checked in
    areaStates.test.ts (AU-09 test-only review). */
 export function areaHidden(area: HideableArea, states: AreaStates): boolean {
@@ -190,7 +188,10 @@ export function areaStateResting(state: Pick<AreaState, 'hidden' | 'finishedEpoc
 }
 
 /**
- * Hide a surface only if it fronts at least one area and all those areas are hidden. `cycleEvents` is outside `HideableArea`, so a surface for it alone stays visible (ADR-0043). `hubRows.ts` uses this rule so a hub row and the screen it opens agree.
+ * Hide a surface only if it fronts at least one area and all those areas are
+ * hidden. `cycleEvents` is outside `HideableArea`, so a surface for it alone
+ * stays visible. `hubRows.ts` uses this rule so a hub row and the screen it
+ * opens agree.
  */
 export function areasHidden(areas: readonly ArchiveSectionName[], states: AreaStates): boolean {
   if (areas.length === 0) return false;

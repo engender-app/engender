@@ -24,9 +24,9 @@ import dev.engender.app.launch.AppLaunch;
  */
 public abstract class DisguisableWidgetProvider extends AppWidgetProvider {
 
-    /** One button's view id, its real label, and the route its tap deep-links
-        to. Route shapes are cases in the shared launch-route fixture
-        (src/lib/android/fixtures/launch-routes.json, ADR-0028). */
+    /** One button's view id, its real label, and the route its tap deep-links to. Route
+        shapes are cases in the shared launch-route fixture
+        (src/lib/android/fixtures/launch-routes.json). */
     static final class ButtonSpec {
         final int viewId;
         final String label;

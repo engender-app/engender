@@ -509,7 +509,7 @@ test('a row that fronts no area is a screen, and nothing hides it', () => {
   assert.equal(rowHidden(spec('care'), { personalEffects: hidden, sideEffects: hidden }), false);
 });
 
-test('nothing in the area record can hide the cycle row (ADR-0043)', () => {
+test('nothing in the area record can hide the cycle row', () => {
   /* One-directional by construction rather than by a special case: the row
      fronts `cycleEvents` alone, `cycleEvents` is outside `HideableArea`, so
      the every-section test cannot pass for it. A `hidden` row for it cannot
@@ -714,9 +714,8 @@ test('a hosted row states the day its area ended, like any other match', () => {
   );
 });
 
-/* ADR-0043 through the hub and the box: the cycle row exists only where a
-   screen has said cycle tracking is visible, and a search cannot type it
-   into being either. */
+/* The cycle row exists only where a screen has said cycle tracking is visible, and a search
+   cannot type it into being either. */
 test('the cycle row is on the hub and in search only while cycle tracking is visible', () => {
   const titles = (key: string): string => (key === 'cycle-events' ? 'Cycle events' : titleOf(key));
   const onHub = (over: Partial<HubReading>) =>

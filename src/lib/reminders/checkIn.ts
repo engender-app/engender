@@ -6,9 +6,8 @@
    WebView exists and cannot import this file. This side answers the same question for the
    reminders screen, which says when a paused check-in comes back. The two are held to the
    same answers by src/lib/android/fixtures/check-in-rule.json, which both suites iterate
-   (ADR-0028's shape, the one reminderRule.ts follows). Quiet hours are not applied here:
-   QuietHours.java holds the delivery, and the screen names the day, not the minute it
-   lands. */
+   (the one reminderRule.ts follows). Quiet hours are not applied here: QuietHours.java
+   holds the delivery, and the screen names the day, not the minute it lands. */
 
 import { epochDayFromLocalDate, timestampAtLocalTime } from '../data/epochDay';
 

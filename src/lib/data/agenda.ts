@@ -38,12 +38,11 @@ export const AGENDA_DAYS = 30;
     Tuesday's. Seven is still the week a person can hold in their head. */
 export const AGENDA_PASSED_DAYS = 7;
 
-/** The first `AGENDA_CAP` at their own weight, the rest folded. Three
-    because a first screen that opens on four dated rows is a list rather
-    than a glance, which is also how the tile grid arrived at its own three
-    (`HOME_TILE_CAP`, ADR-0039). Its own constant and not that one: the two
-    bands answer to the same reasoning, not to one number, and either could
-    be argued to a different figure without dragging the other with it. */
+/** The first `AGENDA_CAP` at their own weight, the rest folded. Three because a first
+    screen that opens on four dated rows is a list rather than a glance, which is also how
+    the tile grid arrived at its own three (`HOME_TILE_CAP`). Its own constant and not that
+    one: the two bands answer to the same reasoning, not to one number, and either could be
+    argued to a different figure without dragging the other with it. */
 export const AGENDA_CAP = 3;
 
 /** Which appointment today's appointment row is about. `title` is the appointment's own kind, or its procedure's
@@ -66,9 +65,8 @@ interface AgendaAppointment {
     useful thing about it, and that row is where the appointment-today tile
     folded to. */
 export interface AgendaItem {
-  /** The row's own walkthrough handle (ADR-0029) - stable, never the copy.
-      Keyed by kind *and* day, since a weekly injection earns one mark per
-      slot inside the window. */
+  /** The row's own walkthrough handle - stable, never the copy. Keyed by kind *and* day,
+      since a weekly injection earns one mark per slot inside the window. */
   key: string;
   kind: DayAheadMarkKind;
   epochDay: number;

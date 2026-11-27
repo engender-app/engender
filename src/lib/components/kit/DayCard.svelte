@@ -22,8 +22,8 @@
     /** The bar's words: the day, or on a day's own screen the count. */
     heading: string;
     role?: Role;
-    /** The day this card is for, for the walkthrough's handle (ADR-0029):
-        an epoch day rather than the date as written. */
+    /** The day this card is for, for the walkthrough's handle: an epoch day rather than the
+        date as written. */
     key?: string;
     /** Half the room between the bar and the first entry, for a list whose first entry has
         to start high on the screen. */

@@ -1,13 +1,11 @@
 <script lang="ts">
-  /* A tile names its destination, shows a reading when it has one and puts
-     any small note on the page-coloured foot. A tight grid uses the flag
-     bar in place of the foot, with actual stripes and proportions from
-     --flag-fill.
+  /* A tile names its destination, shows a reading when it has one and puts any small note
+     on the page-coloured foot. A tight grid uses the flag bar in place of the foot, with
+     actual stripes and proportions from --flag-fill.
 
-     Cards are the two-up default. A row takes the whole width and stacks
-     its title and value beside its control. Forward attributes to the
-     anchor. data-tile identifies the slot and a capability handle stays
-     with the action across layouts (ADR-0029). */
+     Cards are the two-up default. A row takes the whole width and stacks its title and
+     value beside its control. Forward attributes to the anchor. data-tile identifies the
+     slot and a capability handle stays with the action across layouts. */
   import { untrack } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
@@ -55,7 +53,7 @@
         weight is the tile's own layout, so it belongs here rather than as
         an override reaching in from a screen. */
     weight?: 'card' | 'row';
-    /** An optional in-place control for the tile (ADR-0039). */
+    /** An optional in-place control for the tile. */
     action?: TileAction;
     /** An optional dismiss control for the tile. */
     dismiss?: TileDismiss;

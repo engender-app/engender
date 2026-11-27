@@ -1,9 +1,8 @@
 /* Keep the TypeScript launch-route allowlist in step with
-   `ReminderScheduler.sanitizeLaunchRoute` so taps land in both
-   runtimes (ADR-0028). Both suites read `fixtures/launch-routes.json`.
-   Add accepted cases and rejected near-misses before changing both
-   lists. Reminder rules, check-in and quiet hours use the same
-   shared-fixture pattern. */
+   `ReminderScheduler.sanitizeLaunchRoute` so taps land in both runtimes. Both suites read
+   `fixtures/launch-routes.json`. Add accepted cases and rejected near-misses before
+   changing both lists. Reminder rules, check-in and quiet hours use the same shared-fixture
+   pattern. */
 
 export function isValidAndroidLaunchRoute(route: string): boolean {
   return (

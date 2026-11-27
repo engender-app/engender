@@ -1,10 +1,10 @@
 /* Browser-tier check. Two things can only be proved here:
 
    Normalize() needs a real decoder and a real canvas, and the claims it makes are about
-   bytes a canvas produced - that no EXIF survives (ADR-0015), that the rotation the EXIF
-   described survived instead, and that a big photo comes back at 2048px. A Node-tier test
-   could only assert against a stub encoder, which would prove nothing about the one that
-   actually runs.
+   bytes a canvas produced - that no EXIF survives, that the rotation the EXIF described
+   survived instead, and that a big photo comes back at 2048px. A Node-tier test could only
+   assert against a stub encoder, which would prove nothing about the one that actually
+   runs.
 
    The OPFS file store is the other: write/read/list/remove against real OPFS, plus the one
    that matters for safety - that it works in a subdirectory of its own, so the orphan sweep
@@ -77,7 +77,7 @@ async function run() {
   const small = await normalizePhoto(await sourceJpeg(300, 200));
   result.smallFull = await sizeOf(small.full);
 
-  // --- normalize: metadata and orientation (ADR-0015) ---------------------
+  // --- normalize: metadata and orientation ---------------------
   const tagged = withExifOrientation(await sourceJpeg(100, 50), 6);
   // The fixture really does carry EXIF going in, or the assertion below
   // would pass against an input that never had any.

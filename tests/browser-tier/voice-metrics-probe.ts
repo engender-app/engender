@@ -1,10 +1,8 @@
-/* Mount the summary and all seven VoiceMetricSection entries with
-   figure: null, as on an unread journal. The summary links to the
-   reference sheet and the compare labels link to individual sections.
-   Check every query metricHref emits names a mounted section ID. The
-   isolated harness has no SvelteKit router to exercise the sheet's
-   opening effect. Check pitch and spread explain distinct measurements
-   without population ranges (ADR-0060). */
+/* Mount the summary and all seven VoiceMetricSection entries with figure: null, as on an
+   unread journal. The summary links to the reference sheet and the compare labels link to
+   individual sections. Check every query metricHref emits names a mounted section ID. The
+   isolated harness has no SvelteKit router to exercise the sheet's opening effect. Check
+   pitch and spread explain distinct measurements without population ranges. */
 
 import { mount } from 'svelte';
 import '$lib/theme/fonts.css';

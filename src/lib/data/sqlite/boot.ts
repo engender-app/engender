@@ -26,12 +26,11 @@ interface BootDeps {
   purgeExpiredTrash?: (driver: SqliteDriver) => Promise<void>;
   sweepOrphanPhotos?: (driver: SqliteDriver) => Promise<void>;
   shouldSweepOrphans?: () => boolean;
-  /** The auto-log pass (ADR-0086): each schedule the
-      person switched on gets a `taken` dose per slot it still owes, up to
-      yesterday. Last of the three, and here rather than on a clock of its
-      own, because a standing instruction has to be carried out on a device
-      that was closed for a week just as much as on one opened every day, and
-      boot is when the app finds out how long that was. */
+  /** The auto-log pass: each schedule the person switched on gets a `taken` dose per slot
+      it still owes, up to yesterday. Last of the three, and here rather than on a clock of
+      its own, because a standing instruction has to be carried out on a device that was
+      closed for a week just as much as on one opened every day, and boot is when the app
+      finds out how long that was. */
   autoLogDueDoses?: (driver: SqliteDriver) => Promise<void>;
   /** When to run the housekeeping passes, given the work to run. The app
       passes an idle callback (whenIdle, ../../idle.ts); leave it out and they

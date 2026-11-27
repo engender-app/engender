@@ -321,10 +321,9 @@ try {
   const kinds = await page.$$eval('[data-span-fact]', (els) => [...new Set(els.map((el) => el.dataset.spanFact))].sort());
   assert.deepEqual(kinds, ['era', 'milestone', 'regimen', 'surgery', 'tryout'], 'the list holds every kind the rail draws');
 
-  /* Bounded before anything scrolls it: forty-one milestones and a handful
-     of stretches, rendered a batch at a time. Asked first because the list
-     grows as it is scrolled (ADR-0069) and the measuring below scrolls
-     every row into view. */
+  /* Bounded before anything scrolls it: forty-one milestones and a handful of stretches,
+     rendered a batch at a time. Asked first because the list grows as it is scrolled and
+     the measuring below scrolls every row into view. */
   const shown = await page.locator('[data-span-fact]').count();
   assert.ok(shown <= 30, `the list renders one batch (${shown} rows) rather than every fact`);
   assert.equal(await page.locator('[data-batched-more="lookback-facts"]').count(), 1, 'and says how to see more');

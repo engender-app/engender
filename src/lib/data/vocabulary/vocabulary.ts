@@ -1,13 +1,12 @@
 /* What screens read the vocabulary through.
 
-   Storage holds built-ins as bare keys (builtins.ts) and the wording lives
-   in the message catalogue (labels.ts); this joins the two on the way out,
-   leaving custom rows - which carry the user's own words - untouched.
+   Storage holds built-ins as bare keys (builtins.ts) and the wording lives in the message
+   catalogue (labels.ts); this joins the two on the way out, leaving custom rows - which
+   carry the user's own words - untouched.
 
-   It sits above the mirror rather than inside it because the layer below
-   has to stay free of paraglide: ADR-0016 keeps the Node tier away from it,
-   and every journal area is under Node-tier tests. So the mirror answers
-   "which rows", and this answers "called what". */
+   It sits above the mirror rather than inside it because the layer below has to stay free
+   of paraglide: Node tests avoid Paraglide, and every journal area is under Node-tier
+   tests. So the mirror answers "which rows", and this answers "called what". */
 
 import { m } from '$lib/paraglide/messages';
 import { MOOD_RANGE, type MetricRange } from '../metricRange';

@@ -1,14 +1,13 @@
 /* Reading JPEG segment structure, for tests only.
 
-   ADR-0015 says a normalized photo carries no EXIF - no GPS, no device
-   identifiers, nothing. That is a claim about bytes, so proving it needs
-   something that walks the segments of the output and reports what it
-   finds. Production never asks this question: normalize() re-encodes
-   through a canvas, which cannot emit metadata in the first place. The
-   check exists to catch the day that stops being true.
+   A normalized photo carries no EXIF - no GPS, no device identifiers, nothing. That is a
+   claim about bytes, so proving it needs something that walks the segments of the output
+   and reports what it finds. Production never asks this question: normalize() re-encodes
+   through a canvas, which cannot emit metadata in the first place. The check exists to
+   catch the day that stops being true.
 
-   Both tiers use it - the Node tier over synthetic JPEGs built by
-   jpegWith(), the browser tier over what a real canvas actually produced. */
+   Both tiers use it - the Node tier over synthetic JPEGs built by jpegWith(), the browser
+   tier over what a real canvas actually produced. */
 
 /** Metadata-bearing segments found before the compressed data starts.
     APP0/JFIF is structural (density and thumbnail geometry, no camera or
@@ -121,14 +120,13 @@ export function withFakeIccProfile(jpeg: Uint8Array): Uint8Array {
 
 /** The same JPEG with an EXIF Orientation tag spliced in after the SOI.
 
-    A camera writes this instead of rotating the pixels, and it is the tag
-    ADR-0015 says must not survive normalize() - while the rotation it
-    describes must. Testing that needs a real one, and no canvas will
-    produce it, so the segment is built by hand: TIFF header, one IFD entry
-    (tag 0x0112, SHORT, value `orientation`), no next IFD.
+    A camera writes this instead of rotating the pixels, and it is the tag that must not
+    survive normalize() - while the rotation it describes must. Testing that needs a real
+    one, and no canvas will produce it, so the segment is built by hand: TIFF header, one
+    IFD entry (tag 0x0112, SHORT, value `orientation`), no next IFD.
 
-    Orientation 6 means "rotate 90 degrees clockwise to display", which is
-    what a phone held upright writes. */
+    Orientation 6 means "rotate 90 degrees clockwise to display", which is what a phone held
+    upright writes. */
 export function withExifOrientation(jpeg: Uint8Array, orientation: number): Uint8Array {
   const tiff = [
     0x49, 0x49, 0x2a, 0x00, // "II", little-endian, magic 42

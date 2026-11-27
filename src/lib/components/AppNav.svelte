@@ -1,7 +1,7 @@
 <script lang="ts">
-  /* Render the bottom bar and rail from one destination table. The container
-     query in app.css chooses which is visible. Keep /more paired with the
-     settings key (ADR-0036). Measure label wrapping only for the bar. */
+  /* Render the bottom bar and rail from one destination table. The container query in
+     app.css chooses which is visible. Keep /more paired with the settings key. Measure
+     label wrapping only for the bar. */
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
@@ -36,8 +36,8 @@
     { href: '/', key: 'home', icon: 'home', label: () => m.today() },
     { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_journal() },
     { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_lookback() },
-    /* ADR-0036: the tab opens More while its internal key stays settings.
-       Disguise changes the launcher and tab, not this unlocked label. */
+    /* The tab opens More while its internal key stays settings. Disguise changes the
+       launcher and tab, not this unlocked label. */
     {
       href: '/more',
       key: 'settings',
@@ -387,10 +387,10 @@
       ><span>{item.label()}</span>
     </a>
   {/each}
-  <!-- Preferences are chrome, not content (ADR-0076): a fifth row, sunk to the rail's foot
-       by its own margin and set apart from the four doors by a rule, since the rail has
-       room to say "Settings" where the bar does not. Not one of `NAV`'s four, so it carries
-       no `data-rail-item`, but it takes the pill on every /settings route: it lit nothing
+  <!-- Preferences are chrome, not content: a fifth row, sunk to the rail's foot by its own
+       margin and set apart from the four doors by a rule, since the rail has room to say
+       "Settings" where the bar does not. Not one of `NAV`'s four, so it carries no
+       `data-rail-item`, but it takes the pill on every /settings route: it lit nothing
        there before, while the rail lit Today, so the one row naming the page was the one
        row that never said so. -->
   <a

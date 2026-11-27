@@ -1,14 +1,11 @@
-/* Pure epoch-day arithmetic — no imports, so the TZ round-trip check
-   (epochDay.test.ts) can run under plain Node with no build step. Every
-   module that needs epoch-day arithmetic imports straight from here;
-   dates.ts (the paraglide-bound layer above it) only formats what this
-   module computes (ADR-0016) — it does not re-export this file's
-   functions as a pass-through.
+/* Pure epoch-day arithmetic. no imports, so the TZ round-trip check (epochDay.test.ts) can
+   run under plain Node with no build step. Every module that needs epoch-day arithmetic
+   imports straight from here; dates.ts (the paraglide-bound layer above it) only formats
+   what this module computes. it does not re-export this file's functions as a pass-through.
 
-   An epoch day is the local calendar day (ADR-0001): days since 1970-01-01
-   counted from a Date's local year/month/day, never from its UTC clock
-   time. Date.UTC(y, m, d) is used only to count days between two calendar
-   dates — it never represents a real instant here. */
+   An epoch day is the local calendar day (ADR-0001): days since 1970-01-01 counted from a
+   Date's local year/month/day, never from its UTC clock time. Date.UTC(y, m, d) is used
+   only to count days between two calendar dates. it never represents a real instant here. */
 
 const DAY = 86400000;
 
@@ -338,12 +335,11 @@ export function customInclusiveRange(
 
 /** Whether two epoch days fall in different calendar years, locally.
 
-    The question a chart's gutter asks before it decides whether to write
-    the year on its ends: "22 Jun" on the left and "17 Jun" on the right is
-    a chart that appears to run backwards when the two are a year apart.
-    Here rather than in dates.ts because it is arithmetic on a local date
-    and nothing about how a date is written, so it is testable under the
-    Node tier - dates.ts imports paraglide and is not (ADR-0016). */
+    The question a chart's gutter asks before it decides whether to write the year on its
+    ends: "22 Jun" on the left and "17 Jun" on the right is a chart that appears to run
+    backwards when the two are a year apart. Here rather than in dates.ts because it is
+    arithmetic on a local date and nothing about how a date is written, so it is testable
+    under the Node tier - dates.ts imports paraglide and is not. */
 export function crossesCalendarYear(fromEpochDay: number, toEpochDay: number): boolean {
   return localDateFromEpochDay(fromEpochDay).getFullYear() !== localDateFromEpochDay(toEpochDay).getFullYear();
 }
@@ -354,13 +350,11 @@ export type RelativeDay =
   | { kind: 'in'; days: number }
   | { kind: 'passed'; days: number };
 
-/** How far `epochDay` is from `onEpochDay`, named the way a reminder's
-    schedule reads it (audit item 2: "in 0 days" and "in 1 days" said
-    nothing a person says). Today and tomorrow are their own words rather
-    than the general case of "in n days", and a day already gone is named
-    as passed instead of clamped to zero - the arithmetic alone, with
-    `reminderLabel.ts`'s paraglide layer above it supplying the words
-    (ADR-0016). */
+/** How far `epochDay` is from `onEpochDay`, named the way a reminder's schedule reads it
+    (audit item 2: "in 0 days" and "in 1 days" said nothing a person says). Today and
+    tomorrow are their own words rather than the general case of "in n days", and a day
+    already gone is named as passed instead of clamped to zero - the arithmetic alone, with
+    `reminderLabel.ts`'s paraglide layer above it supplying the words. */
 export function relativeDayFromToday(epochDay: number, onEpochDay: number): RelativeDay {
   const days = epochDay - onEpochDay;
   if (days === 0) return { kind: 'today' };

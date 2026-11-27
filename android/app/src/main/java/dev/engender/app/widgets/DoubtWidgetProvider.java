@@ -35,10 +35,9 @@ public class DoubtWidgetProvider extends DisguisableWidgetProvider {
         return Collections.singletonList(new ButtonSpec(R.id.widget_doubt_button, label, doubtRoute(), "widget-doubt", 300));
     }
 
-    /** The route the widget's PendingIntent deep-links to - the existing
-        /doubt route itself, unchanged. Pinned against
-        src/lib/android/launch-routes.ts by the shared fixture at
-        src/lib/android/fixtures/launch-routes.json (ADR-0028). */
+    /** The route the widget's PendingIntent deep-links to - the existing /doubt route
+        itself, unchanged. Pinned against src/lib/android/launch-routes.ts by the shared
+        fixture at src/lib/android/fixtures/launch-routes.json. */
     static String doubtRoute() {
         return "/doubt";
     }

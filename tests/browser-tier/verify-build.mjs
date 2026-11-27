@@ -28,12 +28,11 @@ const UNUSED_WORKER = /^\/_app\/immutable\/workers\/sqlite3-worker1-bundler-frie
 
 /** Any screen, from whatever state the page is in.
 
-    Loaded by URL rather than walked to. Both would be fair - the walkthrough
-    suite is what covers the taps that get a person there, and ADR-0036 moved
-    Settings behind a More hub since these checks were written - but a load is
-    the one that works from a page that has just started cold offline, which is
-    where half the calls below are made. A load is a reload, and a reload ends
-    the unlocked session (ADR-0018), so the gate is met again on the way in. */
+    Loaded by URL rather than walked to. Both would be fair - the walkthrough suite is what
+    covers the taps that get a person there, and More hosts feature navigation - but a load
+    is the one that works from a page that has just started cold offline, which is where
+    half the calls below are made. A load is a reload, and a reload ends the unlocked
+    session (ADR-0018), so the gate is met again on the way in. */
 async function openScreen(page, origin, path) {
   await page.goto(`${origin}${path}`);
   await page.waitForSelector('#journal-passphrase', { timeout: 30000 }).catch(() => {});

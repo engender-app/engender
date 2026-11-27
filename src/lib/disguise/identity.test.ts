@@ -24,8 +24,8 @@ describe('the wordmark a surface prints', () => {
   });
 
   it('is the app name the caller was given otherwise', () => {
-    /* The name is a parameter because it is a catalogue lookup and this
-       tier may not import paraglide (ADR-0016). */
+    /* The name is a parameter because it is a catalogue lookup and this tier may not import
+       paraglide. */
     expect(appWordmark(false, 'engender', 'Notatki')).toBe('engender');
   });
 });

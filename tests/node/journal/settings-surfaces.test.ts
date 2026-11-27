@@ -41,9 +41,9 @@ describe('what Settings is built from', () => {
     expect(header).toContain('title={m.nav_settings()}');
     expect(header).not.toContain('titleHidden');
     expect(header).toContain('chrome');
-    /* Today, because the phone's gear is in Today's foot (ADR-0076). A
-       string, so ScreenHeader's smartBack answers the rail and every deep
-       link into the screen and keeps this as the fallback. */
+    /* Today, because the phone's gear is in Today's foot. A string, so ScreenHeader's
+       smartBack answers the rail and every deep link into the screen and keeps this as the
+       fallback. */
     expect(header).toContain('back="/"');
   });
 

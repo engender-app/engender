@@ -1,9 +1,8 @@
-/* Register searchable text beyond entry notes (ADR-0005, ADR-0027, ADR-0031).
-   Each source declares its archive sections, read dependencies, columns, UUID,
-   date and owner context. Exclude sealed letters. Fold text inside SQLite and
-   match substrings with LIKE, without any stored search history (ADR-0020).
-   One UNION ALL and a count before LIMIT keep results and totals in one query.
-   searchHitRows.ts adds localized copy and routes (ADR-0016). */
+/* Register searchable text beyond entry notes (ADR-0005, ADR-0027). Each source declares
+   its archive sections, read dependencies, columns, UUID, date and owner context. Exclude
+   sealed letters. Fold text inside SQLite and match substrings with LIKE, without any
+   stored search history (ADR-0020). One UNION ALL and a count before LIMIT keep results and
+   totals in one query. searchHitRows.ts adds localized copy and routes. */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { foldedSql } from '../fold';
@@ -385,11 +384,11 @@ export type SearchAreaKey = (typeof AREAS)[number]['key'];
 type Covered = (typeof AREAS)[number]['covers'][number];
 
 /**
- * Require each Archive section to have a search entry or an explicit
- * opt-out (ADR-0027). Entry notes use their existing FTS index.
- * Translated vocabulary labels match in memory because SQL stores only
- * their keys (ADR-0005, ADR-0016). Rows containing only values, dates
- * or closed vocabulary have no free text to search.
+ * Require each Archive section to have a search entry or an explicit opt-out
+ * (ADR-0027). Entry notes use their existing FTS index. Translated vocabulary
+ * labels match in memory because SQL stores only their keys (ADR-0005). Rows
+ * containing only values, dates or closed vocabulary have no free text to
+ * search.
  */
 /* SEARCH_OPT_OUTS stays exported only for its own test (AU-09 test-only
    review). */

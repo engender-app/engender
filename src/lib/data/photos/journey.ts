@@ -1,18 +1,15 @@
 /* What a photo journey export is made of, before any pixels exist.
 
-   The whole export is two steps the user takes separately: generate, then
-   share. This module is everything the first step can decide without a
-   canvas - which photos are in, how big the collage has to be, how long
-   the timelapse will run, what the file ends up called - so the screen can
-   show a count and a duration before anything is encoded, and so the
-   geometry is under Node-tier tests rather than only visible in a picture
-   somebody has to look at. journey-render.ts is the half that needs a
-   browser.
+   The whole export is two steps the user takes separately: generate, then share. This
+   module is everything the first step can decide without a canvas - which photos are in,
+   how big the collage has to be, how long the timelapse will run, what the file ends up
+   called - so the screen can show a count and a duration before anything is encoded, and so
+   the geometry is under Node-tier tests rather than only visible in a picture somebody has
+   to look at. journey-render.ts is the half that needs a browser.
 
-   Nothing here reads or writes a photo file. The bytes it works out
-   dimensions for are the ones normalize() already produced on import
-   (ADR-0008: JPEG, 2048px on the long edge), which is all the export ever
-   consumes - there is no original left to go back to (ADR-0015). */
+   Nothing here reads or writes a photo file. The bytes it works out dimensions for are the
+   ones normalize() already produced on import (ADR-0008: JPEG, 2048px on the long edge),
+   which is all the export ever consumes - there is no original left to go back to. */
 
 import { dateInputValueFromEpochDay, todayEpochDay } from '../epochDay';
 import { nameSlug } from '../fold';

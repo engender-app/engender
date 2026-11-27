@@ -40,18 +40,18 @@
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let statesQuery = liveQuery(async (j) => dilationGated(await j.areaStates.getAreaStates(), await j.procedures.getProcedures()));
-  /* The cycle row's positive gate (ADR-0043): an active testosterone regimen
-     or the explicit opt-in, so it needs the episodes. Read with the others,
-     so the row is not drawn and then taken back. */
+  /* The cycle row's positive gate: an active testosterone regimen or the explicit opt-in,
+     so it needs the episodes. Read with the others, so the row is not drawn and then taken
+     back. */
   let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   /* The forward half: what is running and what is next, which is what nine of this door's
      rows were getting wrong by reporting a gap over a screen full of dated plans. One
      assembled call, `rowForwardReads.ts`, the shape the last-write read next to it already
      has. */
   let forwardQuery = liveQuery((j) => readRowForward(j, today));
-  /* voice-benchmark's own second read: a memo has no last write
-     in the registry the other three rows draw on (ADR-0036), so this joins
-     the other three reads rather than being folded into one of them. */
+  /* voice-benchmark's own second read: a memo has no last write in the registry the other
+     three rows draw on, so this joins the other three reads rather than being folded into
+     one of them. */
   let voiceMemoLastWriteQuery = liveQuery((j) => j.voice.lastWriteEpochDay(today));
 
   /* All four reads or none, which is a correctness rule and not only a
@@ -295,19 +295,17 @@
         <div transition:disclose={{ skip: leaving }}>
         <ListCard role={matchesRole}>
           {#each matches as row (row.spec.key)}
-            <!-- Which section the row was drawn in and which kind of line it
-                 carries, both on the row rather than on wrappers of their own:
-                 a finished row is the same row under a different heading, and
-                 the line itself is the kit's `.kit-row-sub`, a class and so
-                 something the walkthrough may not grip (ADR-0029). Naming the
-                 kind rather than the element also lets a flow tell a reading
-                 apart from the line about what is behind the row, which the
-                 element could not.
+            <!-- Which section the row was drawn in and which kind of line it carries, both
+                 on the row rather than on wrappers of their own: a finished row is the same
+                 row under a different heading, and the line itself is the kit's
+                 `.kit-row-sub`, a class and so something the walkthrough may not grip.
+                 Naming the kind rather than the element also lets a flow tell a reading
+                 apart from the line about what is behind the row, which the element could
+                 not.
 
-                 A searched row keeps `data-hub-section`, which here says
-                 where the row is drawn - one of the hub's sections, or the
-                 screen that hosts it - since in this list there is no
-                 heading above it to say so. -->
+                 A searched row keeps `data-hub-section`, which here says where the row is
+                 drawn - one of the hub's sections, or the screen that hosts it - since in
+                 this list there is no heading above it to say so. -->
             <!-- The wrapper is the row's own height, and giving it back is
                  how a row leaves (rule 10): the rows under it close up with
                  it instead of jumping. `.rows-divide` is the kit's opt-in for

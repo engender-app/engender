@@ -1,9 +1,8 @@
-/* Stamp palette, mood, theme, accessibility attributes, icon and
-   manifest (ADR-0009). The layout applies these once running.
-   src/app.html duplicates the rule before first paint to avoid a theme
-   flash or exposing the flag while disguised. Update both adapters
-   and fixtures/document-chrome.json together. The layout supplies
-   reactivity, so this function stays rune-free for Node tests. */
+/* Stamp palette, mood, theme, accessibility attributes, icon and manifest. The layout
+   applies these once running. src/app.html duplicates the rule before first paint to avoid
+   a theme flash or exposing the flag while disguised. Update both adapters and
+   fixtures/document-chrome.json together. The layout supplies reactivity, so this function
+   stays rune-free for Node tests. */
 
 import { DISGUISED_PALETTE } from './catalogue.ts';
 import type { BootPreferences } from './preferences.ts';

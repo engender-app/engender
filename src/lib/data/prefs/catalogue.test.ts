@@ -34,9 +34,9 @@ test('the allowlists name only real preferences', () => {
 });
 
 test('the boot set is exactly the pre-database preferences', () => {
-  /* The boot mirror is plaintext localStorage, read before the database is open (ADR-0009).
-     What may live there is what a first paint needs - theme, palette, text size - and
-     nothing that would be a secret sitting beside the encrypted journal.
+  /* The boot mirror is plaintext localStorage, read before the database is open. What may
+     live there is what a first paint needs - theme, palette, text size - and nothing that
+     would be a secret sitting beside the encrypted journal.
 
      This test named `pinHash` as the thing that must never be here. That preference is gone
      with the gate it served, so the rule is stated as the rule instead: every boot key is a

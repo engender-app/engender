@@ -108,18 +108,16 @@
     panelMotion?.cancel();
   });
 
-  /* The metric reference, as a sheet over whichever tab is open rather than
-     a screen of its own (ADR-0060).
+  /* The metric reference, as a sheet over whichever tab is open rather than a screen of its
+     own.
 
-     Kept in sync with `?metric=` rather than read once the way `tab` is:
-     a figure's own link (`metricHref`) is a real navigation to this same
-     route with a new query, which is what actually changes `page.url` -
-     shallow routing would not (`replaceState` writes the address bar and
-     `page.state`, never `page.url`, see the memo on that trap). Closing
-     the sheet only clears the local flag and never writes the query back,
-     the same asymmetry a sheet opened from a query is supposed to have:
-     it is state the query can open but the back gesture and this close
-     both just forget locally. */
+     Kept in sync with `?metric=` rather than read once the way `tab` is: a figure's own
+     link (`metricHref`) is a real navigation to this same route with a new query, which is
+     what actually changes `page.url` - shallow routing would not (`replaceState` writes the
+     address bar and `page.state`, never `page.url`, see the memo on that trap). Closing the
+     sheet only clears the local flag and never writes the query back, the same asymmetry a
+     sheet opened from a query is supposed to have: it is state the query can open but the
+     back gesture and this close both just forget locally. */
   let metricSheetKey = $state<VoiceMetricKey | null>(null);
   $effect(() => {
     const requested = page.url.searchParams.get('metric');
@@ -494,12 +492,10 @@
               <ChartEmpty>{m.vc_trend_too_little()}</ChartEmpty>
             {/if}
           </ChartCard>
-          <!-- Own-series figures, each against the
-               person's own earlier takes (ADR-0060). Under
-               the pitch trend, which is the one figure with a published
-               range to read against, and above the picking list, because
-               both cards answer "what has my own history been" while the
-               list is where a pair gets chosen. -->
+          <!-- Own-series figures, each against the person's own earlier takes. Under the
+               pitch trend, which is the one figure with a published range to read against,
+               and above the picking list, because both cards answer "what has my own
+               history been" while the list is where a pair gets chosen. -->
           <VoiceOwnSeries
             benchmarks={anchors}
             marked={pair ? [pair.left, pair.right] : []}
@@ -583,10 +579,10 @@
     </div>
   {/if}
 
-  <!-- The metric reference (ADR-0060). Reference data like `/support/resources`: the table
-       is compiled in, so there is nothing to wait for and nothing that can be empty - only
-       the figure each section opens with reads the journal, through `anchors`, already
-       fetched for the compare tab above. -->
+  <!-- The metric reference. Reference data like `/support/resources`: the table is compiled
+       in, so there is nothing to wait for and nothing that can be empty - only the figure
+       each section opens with reads the journal, through `anchors`, already fetched for the
+       compare tab above. -->
   <Sheet
     open={metricSheetKey !== null}
     title={m.vm_title()}

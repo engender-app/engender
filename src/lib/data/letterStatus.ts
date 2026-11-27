@@ -1,7 +1,6 @@
-/* A letter unlocks when the supplied local day reaches unlockEpochDay
-   (ADR-0001). Resolve that state on read (ADR-0010). Read and write tile
-   acknowledgements and 24h snoozes through the encrypted AcknowledgementStore
-   (ADR-0039). */
+/* A letter unlocks when the supplied local day reaches unlockEpochDay (ADR-0001). Resolve
+   that state on read (ADR-0010). Read and write tile acknowledgements and 24h snoozes
+   through the encrypted AcknowledgementStore. */
 
 import { isSealedUntil } from './sealedUntil';
 import { isTileSnoozed, snoozeTile, clearSnooze } from './liveTilesSnooze';

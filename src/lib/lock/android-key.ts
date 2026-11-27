@@ -40,10 +40,10 @@ export interface KeystoreBridge {
   wrap(options: { hexKey: string; authRequired?: boolean }): Promise<{ outcome: 'wrapped' | 'noDeviceCredential' }>;
   /** Every later run: the prompt (or direct unwrap if unlocked), then the unwrap behind it. */
   unlock(request: UnlockRequest): Promise<{ outcome: string; hexKey?: string }>;
-  /** The same prompt with no key behind it, for the app-lock screen reached
-      mid-session, where the key is already in memory (ADR-0014). */
+  /** The same prompt with no key behind it, for the app-lock screen reached mid-session,
+      where the key is already in memory. */
   confirm(request: UnlockRequest): Promise<{ outcome: string }>;
-  /** The reset path (ADR-0014): both wrapped keys go with the Journal. */
+  /** The reset path: both wrapped keys go with the Journal. */
   erase(): Promise<void>;
 }
 
@@ -94,9 +94,8 @@ export async function openAndroidDataKey(
 
 /** The app-lock screen's biometric key. No data key is involved and none should be: by then
     the Journal is open and its key is in memory, and app lock is a casual-access layer
-    rather than an encryption credential (ADR-0014). Only `authenticated` unlocks;
-    everything else is a state the screen can name, with the PIN pad still there behind it
-    either way. */
+    rather than an encryption credential. Only `authenticated` unlocks; everything else is a
+    state the screen can name, with the PIN pad still there behind it either way. */
 export async function confirmWithBiometrics(
   bridge: KeystoreBridge,
   request: UnlockRequest

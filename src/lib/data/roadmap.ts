@@ -1,11 +1,11 @@
-/* The roadmap ships two independent packs: Polish legal and paperwork steps,
-   and social and presentation steps. Each has its own visibility switch.
-   Packs are synchronous bundled content with no network dependency or seeded
-   rows. journal/roadmap.ts stores personal status and visibility.
+/* The roadmap ships two independent packs: Polish legal and paperwork steps, and social and
+   presentation steps. Each has its own visibility switch. Packs are synchronous bundled
+   content with no network dependency or seeded rows. journal/roadmap.ts stores personal
+   status and visibility.
 
-   This file holds stable keys; vocabulary/roadmapLabels.ts supplies localized
-   wording (ADR-0002, ADR-0016). Goals can be checked independently, and their
-   order follows the usual procedure for display. */
+   This file holds stable keys; vocabulary/roadmapLabels.ts supplies localized wording
+   (ADR-0002). Goals can be checked independently, and their order follows the usual
+   procedure for display. */
 
 import type { InstitutionChange, RoadmapGoalStatus } from './types';
 

@@ -1,16 +1,13 @@
-/* Declare which rows the More hub shows and what each row reports
-   (ADR-0036, ADR-0052, ADR-0043, ADR-0027). A read row uses the
-   latest write for its areas and falls back to the same description
-   as a written row. vocabulary/hubLabels.ts supplies the descriptions.
+/* Declare which rows the More hub shows and what each row reports (ADR-0052, ADR-0027). A
+   read row uses the latest write for its areas and falls back to the same description as a
+   written row. vocabulary/hubLabels.ts supplies the descriptions.
 
-   Each row maps to the Archive sections behind it. A row counts as
-   finished only when all its contributing areas are finished. It
-   disappears only when all its sections can be hidden and are hidden.
-   The cycle row is additionally gated by HubReading.cycleVisible.
+   Each row maps to the Archive sections behind it. A row counts as finished only when all
+   its contributing areas are finished. It disappears only when all its sections can be
+   hidden and are hidden. The cycle row is additionally gated by HubReading.cycleVisible.
 
-   The registry chooses the home group and finished date. Its functions
-   take today as input and run without the clock, journal driver, runes
-   or localized copy. */
+   The registry chooses the home group and finished date. Its functions take today as input
+   and run without the clock, journal driver, runes or localized copy. */
 
 import {
   FINISH_SUGGESTION_QUIET_DAYS,
@@ -47,8 +44,8 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
 /** One row, as declared. */
 /* HubRowSpec stays exported only for its own test (AU-09 test-only review). */
 export interface HubRowSpec {
-  /** The row's own identity: the walkthrough's handle and the key
-      `areaGroups.ts` named its groups after (ADR-0029). */
+  /** The row's own identity: the walkthrough's handle and the key `areaGroups.ts` named its
+      groups after. */
   key: string;
   /** A name from `$lib/components/icons.ts`. No two rows share one - see
       `hubRows.test.ts`, which refuses a duplicate anywhere on the hub rather
@@ -103,11 +100,10 @@ const ROWS = [
     line: 'written'
   },
   {
-    /* ADR-0043: the one row that has to be able to not exist, and the one area no `hidden`
-       flag may reach. Its absence is `cycleTrackingVisible`'s to decide - an active
-       testosterone regimen or the explicit opt-in - which is a positive gate rather than a
-       hide, and `cycleEvents` being outside `HideableArea` is what stops this file
-       reversing it.
+    /* The one row that has to be able to not exist, and the one area no `hidden` flag may
+       reach. Its absence is `cycleTrackingVisible`'s to decide - an active testosterone
+       regimen or the explicit opt-in - which is a positive gate rather than a hide, and
+       `cycleEvents` being outside `HideableArea` is what stops this file reversing it.
 
        It has been on the hub, off it, hosted by two screens and, on the hub again ("cycle
        and dilation should be appearing in care"), in Health beside Meds. What makes that
@@ -223,9 +219,9 @@ const ROWS = [
     /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them together - but
        only the benchmarks have a last write here, since a practice take is sealed until the
        day after it was taken. The recordings the Media group's own `voice` row used to
-       front have no archive section of their own to register either (ADR-0036: a memo is
-       entry content) - `voiceMemoLastWriteEpochDay` on `HubReading` is the second,
-       non-registry read this row alone asks, and `rowLine` folds it in below. */
+       front have no archive section of their own to register either (a memo is entry
+       content) - `voiceMemoLastWriteEpochDay` on `HubReading` is the second, non-registry
+       read this row alone asks, and `rowLine` folds it in below. */
     areas: ['voiceBenchmarks', 'voicePracticeTakes'],
     finishes: 'voice',
     line: 'read'
@@ -491,9 +487,9 @@ export type HubLine =
 
 /** Everything the hub reads, so nothing below asks for itself.
 
-    ADR-0043's positive gate is `cycleVisible`: the cycle row is a row on the hub that has
-    to be able to not exist, so the screen that draws the hub answers `cycleTrackingVisible`
-    and hands it in. once took that row off the hub and the gate with it; put both back.
+    The gate is `cycleVisible`: the cycle row is a row on the hub that has to be able to not
+    exist, so the screen that draws the hub answers `cycleTrackingVisible` and hands it in.
+    once took that row off the hub and the gate with it; put both back.
 
     Read by the front page too since a pinned row asks the same three questions a hub row
     does, off the same one assembled read (`pinnedRows.ts`). */
@@ -510,22 +506,21 @@ export interface HubReading {
       question is a compile error rather than a door that quietly goes back
       to reporting gaps. */
   forward: RowForwardMap;
-  /** The most recent voice memo, at or before today, or null where there is
-      none - `voice-benchmark`'s own second read.
+  /** The most recent voice memo, at or before today, or null where there is none -
+      `voice-benchmark`'s own second read.
 
-      Not in `lastWrites`: a memo is entry content with no archive section
-      of its own (ADR-0036), so it has no `LastWriteKey` to be registered
-      under, the same reason `voicePracticeTakes` opts out of the registry
-      rather than joining it with a made-up one. This is the one row that
-      also asks a fact the registry cannot answer, so it is its own field
-      rather than a `LastWriteKey` that would misrepresent what memos are.
-      Optional, and read with `?? null`, so a caller that has not asked this
-      question yet (every existing `HubReading` literal, every test) keeps
-      compiling rather than being forced to state "nothing landed" by hand. */
+      Not in `lastWrites`: a memo is entry content with no archive section of its own, so it
+      has no `LastWriteKey` to be registered under, the same reason `voicePracticeTakes`
+      opts out of the registry rather than joining it with a made-up one. This is the one
+      row that also asks a fact the registry cannot answer, so it is its own field rather
+      than a `LastWriteKey` that would misrepresent what memos are. Optional, and read with
+      `?? null`, so a caller that has not asked this question yet (every existing
+      `HubReading` literal, every test) keeps compiling rather than being forced to state
+      "nothing landed" by hand. */
   voiceMemoLastWriteEpochDay?: number | null;
-  /** ADR-0043's positive gate, answered by the screen: whether
-      `cycleTrackingVisible` says the cycle row may exist. Absent means no,
-      so a caller that never asked cannot draw or search up a cycle row. */
+  /** The gate, answered by the screen: whether `cycleTrackingVisible` says the cycle row
+      may exist. Absent means no, so a caller that never asked cannot draw or search up a
+      cycle row. */
   cycleVisible?: boolean;
 }
 

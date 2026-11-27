@@ -29,17 +29,14 @@
     <link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
     <script>
-      /* Stamps the user's theme, palette and tab icon before first paint
-         (ADR-0009).
-         The attributes on <html> above are only what a first-ever visit,
-         or a visit where this throws, falls back to; SQLite is still
-         hundreds of milliseconds from opening at this point, which is why
-         these preferences are mirrored outside it at all.
+      /* Stamps the user's theme, palette and tab icon before first paint. The attributes on
+         <html> above are only what a first-ever visit, or a visit where this throws, falls
+         back to; SQLite is still hundreds of milliseconds from opening at this point, which
+         is why these preferences are mirrored outside it at all.
 
-         Inline and dependency-free because it has to run before any module
-         is parsed, so it cannot import the key or the shape - both are
-         owned by src/lib/data/prefs/boot-cache.ts and have to be changed
-         in the two places together. */
+         Inline and dependency-free because it has to run before any module is parsed, so it
+         cannot import the key or the shape - both are owned by
+         src/lib/data/prefs/boot-cache.ts and have to be changed in the two places together. */
       try {
         let boot = {};
         try {
@@ -68,8 +65,8 @@
               ? 'dark'
               : 'light'
             : boot.theme;
-        /* Under disguise the first frame carries no mark, the same rule every
-           surface that draws it follows (ADR-0014): the ground alone. */
+        /* Under disguise the first frame carries no mark, the same rule every surface that
+           draws it follows: the ground alone. */
         if (boot.disguise) root.dataset.disguised = '';
         root.dataset.a11yTextSize = boot.a11yTextSizeBoost ? 'boost' : 'normal';
         root.dataset.a11yLegibility = boot.a11yLegibilityBoost ? 'boost' : 'normal';

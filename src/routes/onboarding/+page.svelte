@@ -157,14 +157,12 @@
      writes nothing and so leaves the restart. */
   let lockAfter = $state<LockAfter | null>('one-minute');
 
-  /* Setup's last answer (ADR-0079). Held like
-     every other one and never read back off `prefs`, which matters more
-     here than anywhere else in the flow: assigning `prefs.disguise` is what
-     flips the Android launcher alias, and that closes the app. So this
-     starts at false rather than at the stored value - a first run has
-     nothing stored to disagree with, and the demo's own first-run control
-     is the only way to reach setup with it already on, where the answer
-     someone gives here is still the answer. complete() applies it, last. */
+  /* Setup's last answer. Held like every other one and never read back off `prefs`, which
+     matters more here than anywhere else in the flow: assigning `prefs.disguise` is what
+     flips the Android launcher alias, and that closes the app. So this starts at false
+     rather than at the stored value - a first run has nothing stored to disagree with, and
+     the demo's own first-run control is the only way to reach setup with it already on,
+     where the answer someone gives here is still the answer. complete() applies it, last. */
   let disguise = $state(false);
 
   /* The access-mode module's own working state. Local to this step rather than read off the
@@ -223,8 +221,8 @@
   let setupError = $state('');
   const archiveProgress = createProgress();
 
-  /* One flow for everybody (ADR-0079): setup does not vary by disguise, and steps.ts says
-     why the shorter flow it used to offer went. It does vary by whether a journal is being
+  /* One flow for everybody: setup does not vary by disguise, and steps.ts says why the
+     shorter flow it used to offer went. It does vary by whether a journal is being
      restored, which is a different axis and the one thing an archive can actually answer
      for a person: the steps whose answers it carries are dropped rather than asked and
      overwritten (steps.ts). */

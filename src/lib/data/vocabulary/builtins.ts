@@ -1,17 +1,16 @@
-/* The built-in vocabulary every install gets: six gender dimensions, eight
-  presets, five tag groups and eight milestone templates.
+/* The built-in vocabulary every install gets: six gender dimensions, eight presets, five
+  tag groups and eight milestone templates.
 
-   Keys only, no display text. A built-in is the same concept on any
-   device, so it is identified by a stable key and its name is looked up at
-   display time (ADR-0002, and CONTEXT: Built-in). Storing "Femininity"
-   would make a Polish install's archive disagree with an English one about
-   what is the same dimension, and would freeze the wording at seed time.
-   labels.ts holds the lookups; this file takes nothing but types, so the
-   Node tier can read it without dragging in paraglide (ADR-0016).
+  Keys only, no display text. A built-in is the same concept on any device, so it is
+  identified by a stable key and its name is looked up at display time (ADR-0002, and
+  CONTEXT: Built-in). Storing "Femininity" would make a Polish install's archive disagree
+  with an English one about what is the same dimension, and would freeze the wording at seed
+  time. labels.ts holds the lookups; this file takes nothing but types, so the Node tier can
+  read it without dragging in paraglide.
 
-   `as const` throughout, so each key list also produces the union type
-   labels.ts has to cover exhaustively - a built-in added here without a
-   message fails the typecheck rather than showing a raw key to someone. */
+  `as const` throughout, so each key list also produces the union type labels.ts has to
+  cover exhaustively - a built-in added here without a message fails the typecheck rather
+  than showing a raw key to someone. */
 
 import type { GenderDimension, GenderPreset, Tag, TagGroup } from '../types.ts';
 import { BUILT_IN_DIMENSIONS } from './builtinTemplates.ts';

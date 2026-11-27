@@ -1,6 +1,6 @@
-/* Read route sources to check that each finishable area has its control
-   on its owning screen. Match the registry to routes so a new area cannot
-   ship with no way to finish it. Node cannot mount these files (ADR-0016). */
+/* Read route sources to check that each finishable area has its control on its owning
+   screen. Match the registry to routes so a new area cannot ship with no way to finish it.
+   Node cannot mount these files. */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

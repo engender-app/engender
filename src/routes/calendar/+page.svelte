@@ -1,17 +1,15 @@
 <script lang="ts">
-  /* Journal leads with recent entries. Earlier entries grows the read five days
-     at a time (ADR-0069). recentDayMonths puts the first month's name under the
-     heading and inserts dividers at later month boundaries. Search opens from
-     the header and contains the starred filter.
+  /* Journal leads with recent entries. Earlier entries grows the read five days at a time.
+     recentDayMonths puts the first month's name under the heading and inserts dividers at
+     later month boundaries. Search opens from the header and contains the starred filter.
 
-     The field carries the month label and controls. The label opens the month
-     picker and slides in the direction of travel. The compact strip and expanded
-     grid share the same HeatMap read and metric picker. Opening the month is
-     local state, so Back leaves the door. motion/regroup.ts moves each day
-     between its bar and cell.
+     The field carries the month label and controls. The label opens the month picker and
+     slides in the direction of travel. The compact strip and expanded grid share the same
+     HeatMap read and metric picker. Opening the month is local state, so Back leaves the
+     door. motion/regroup.ts moves each day between its bar and cell.
 
-     Both forms use role 0 for the date values, since every flag palette gives
-     that role a colour. Day cards use the same role as Home. */
+     Both forms use role 0 for the date values, since every flag palette gives that role a
+     colour. Day cards use the same role as Home. */
   import { flushSync, untrack } from 'svelte';
   import { onNavigate } from '$app/navigation';
   import { navigating } from '$app/state';
@@ -101,8 +99,8 @@
      than one holds its own timeline rather than a bare count over a truncated one
      (recentEntries.ts). Growing rather than fixed since five more days at a tap, the whole
      read regrown at the wider limit each time rather than a second page appended, which is
-     what keeps the days already on screen from ever being asked for twice (ADR-0069's
-     "batch" is the DOM's; this is still one bounded read per render). */
+     what keeps the days already on screen from ever being asked for twice (this is still
+     one bounded read per render). */
   const RECENT_DAYS_STEP = 5;
   let recentDaysLimit = $state(restored?.recentDaysLimit ?? RECENT_DAYS_STEP);
   let recent = liveList((j) => j.entries.recentDays(recentDaysLimit));

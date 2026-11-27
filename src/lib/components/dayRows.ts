@@ -1,7 +1,6 @@
-/* Localized rows for the day registry. `day.ts` owns keys and reads
-   without Paraglide (ADR-0016). Each row uses its destination's More
-   hub icon and the owning screen's figures (ADR-0010). Rows never write.
-   Group photos with the first thumbnail and a count. Keep other records
+/* Localized rows for the day registry. `day.ts` owns keys and reads without Paraglide. Each
+   row uses its destination's More hub icon and the owning screen's figures (ADR-0010). Rows
+   never write. Group photos with the first thumbnail and a count. Keep other records
    individual, including repeated doses. */
 
 import { m } from '$lib/paraglide/messages';
@@ -25,7 +24,7 @@ import { appointmentDayRow } from './appointmentDayRow';
 /** A line in the day's context list. Supply a subtitle when the title
     needs more context. */
 export interface DayRow extends Pick<HubRow, 'icon'> {
-  /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
+  /** The row's own walkthrough handle - stable, never the copy. */
   key: string;
   title: string;
   subtitle?: string;

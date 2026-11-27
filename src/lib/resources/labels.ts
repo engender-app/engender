@@ -1,6 +1,5 @@
-/* Localize directory.ts resources here. Both maps cover the full key union.
-   Null hours mean none were published. Keep this Paraglide module out of
-   Node imports (ADR-0016). */
+/* Localize directory.ts resources here. Both maps cover the full key union. Null hours mean
+   none were published. Keep this Paraglide module out of Node imports. */
 
 import { m } from '$lib/paraglide/messages';
 import type { ResourceKey } from './directory';

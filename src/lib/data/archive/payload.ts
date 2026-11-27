@@ -570,8 +570,8 @@ interface ArchiveDoseEvent extends ArchiveStamped {
       existed, read as null the same way any other field a pre-ticket
       build never wrote is. */
   drug: string | null;
-  /** Who wrote the row - 'person' or 'schedule' (ADR-0086). Absent on an archive from before auto-logging existed, read
-      back as 'person', which is what every row in one was. */
+  /** Who wrote the row - 'person' or 'schedule'. Absent on an archive from before
+      auto-logging existed, read back as 'person', which is what every row in one was. */
   source: string;
   /** Automatic-slot provenance, absent in released format-2 Archives. */
   autoLogEpisodeId?: string | null;
@@ -598,8 +598,8 @@ export interface ArchiveDoseSchedule extends ArchiveStamped {
   weekdays: number[] | null;
   dosesPerDay: number;
   doseAmounts: { dose: number; doseUnit: string }[] | null;
-  /** The day auto-logging went on, or null for off (ADR-0086). Absent on an archive from before the switch existed, read
-      back as null, which is off - importing a journal must never start
+  /** The day auto-logging went on, or null for off. Absent on an archive from before the
+      switch existed, read back as null, which is off - importing a journal must never start
       writing doses on the person's behalf without them saying so. */
   autoLogFromEpochDay: number | null;
 }

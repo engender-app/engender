@@ -1,7 +1,6 @@
-/* Surfaces opt into cross-block spacing by attribute to avoid a
-   second list of component class names (ADR-0038). Keep the preceding
-   control side class-based because it has no common owning component.
-   Check stylesheet selectors and surface attributes in source. */
+/* Surfaces opt into cross-block spacing by attribute to avoid a second list of component
+   class names. Keep the preceding control side class-based because it has no common owning
+   component. Check stylesheet selectors and surface attributes in source. */
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';

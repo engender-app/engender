@@ -181,10 +181,9 @@
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
 
-  /** What an auto-logged dose says about itself on its second line, or null
-      for one the person logged (ADR-0086). A skipped one says
-      both things at once rather than wearing the status chip beside the
-      marker: "skipped" and "was logged from your schedule" are one sentence
+  /** What an auto-logged dose says about itself on its second line, or null for one the
+      person logged. A skipped one says both things at once rather than wearing the status
+      chip beside the marker: "skipped" and "was logged from your schedule" are one sentence
       about the same row. */
   const sourceNoteOf = (dose: DoseEvent): string | null => {
     if (dose.source !== 'schedule') return null;
@@ -253,8 +252,8 @@
      back or reloading never reopens the editor over an entry that was just saved - the same
      shape Home uses for its own one-shot params.
 
-     Not a launch route: /doses is not in launch-routes.json (ADR-0028) and this is reached
-     from inside the app only. */
+     Not a launch route: /doses is not in launch-routes.json and this is reached from inside
+     the app only. */
   $effect(() => {
     if (loading) return;
     const adding = page.url.searchParams.get('add') === '1';

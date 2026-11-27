@@ -1,10 +1,10 @@
 <script lang="ts" generics="TPhoto extends { id: string; fileName: string | null }">
-  /* PhotoSection renders the shared list, add and confirmation
-     controls over photoSection.svelte.ts. A single-photo draft
-     such as a milestone uses the logic directly.
+  /* PhotoSection renders the shared list, add and confirmation controls over
+     photoSection.svelte.ts. A single-photo draft such as a milestone uses the logic
+     directly.
 
-     recordHandles.ts derives row and delete handles from handle
-     (ADR-0029). Every caller shares the literal data-add-photo. */
+     recordHandles.ts derives row and delete handles from handle. Every caller shares the
+     literal data-add-photo. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { collapse } from '$lib/motion/reveal';

@@ -1,11 +1,10 @@
-/* Read the clinician summary through the journal areas that own its rows
-   (ADR-0010). Each section filters to the requested range without
-   introducing a stored or interpreted result.
+/* Read the clinician summary through the journal areas that own its rows (ADR-0010). Each
+   section filters to the requested range without introducing a stored or interpreted
+   result.
 
-   The registry fixes print order, section keys and include switches
-   (ADR-0031). A section declares its area's read and tables. Their union
-   is CLINICIAN_SUMMARY_TABLES, the live dependency list. Localized names
-   live in vocabulary/clinicianSummaryLabels.ts (ADR-0016). */
+   The registry fixes print order, section keys and include switches. A section declares its
+   area's read and tables. Their union is CLINICIAN_SUMMARY_TABLES, the live dependency
+   list. Localized names live in vocabulary/clinicianSummaryLabels.ts. */
 
 import type { TableName } from '../live/writes';
 import { finishedGroups, type AreaGroupKey } from '../areaGroups';

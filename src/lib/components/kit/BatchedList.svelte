@@ -1,13 +1,12 @@
 <script lang="ts" generics="T">
-  /* Render the log in batches so the scrollbar reflects the rows present
-     (ADR-0069). The sentinel adds rows without an entrance animation.
-     Keep the end control for keyboard use and lists with autoGrow=false.
-     Find-in-page and print see only mounted rows. Restore the batch count
-     for the path and list key before restoring scroll.
+  /* Render the log in batches so the scrollbar reflects the rows present. The sentinel adds
+     rows without an entrance animation. Keep the end control for keyboard use and lists
+     with autoGrow=false. Find-in-page and print see only mounted rows. Restore the batch
+     count for the path and list key before restoring scroll.
 
-     The caller owns row markup and keys. Keep the animation wrapper outside
-     the card. Adjacent rows need to remain siblings for .kit-row + .kit-row
-     to draw the hairline, even across batches. */
+     The caller owns row markup and keys. Keep the animation wrapper outside the card.
+     Adjacent rows need to remain siblings for .kit-row + .kit-row to draw the hairline,
+     even across batches. */
   import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';

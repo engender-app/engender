@@ -1,7 +1,7 @@
-/* The paraglide binding module: it's the one place that calls getLocale()
-   and turns what epochDay.ts computes into localized display strings. Not
-   a pass-through for epochDay.ts — it imports paraglide, which is why it
-   has no Node-tier tests (ADR-0016) and why the split exists at all. */
+/* The paraglide binding module: it's the one place that calls getLocale() and turns what
+   epochDay.ts computes into localized display strings. Not a pass-through for epochDay.ts.
+   it imports paraglide, which is why it has no Node-tier tests and why the split exists at
+   all. */
 
 import { formatNumber } from './numbers';
 import { getLocale } from '$lib/paraglide/runtime';

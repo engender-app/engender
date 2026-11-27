@@ -678,10 +678,9 @@ test('countConsumingDosesByDrug refuses overlapping ranges and backwards ones', 
   );
 });
 
-/* Auto-logging (ADR-0086). The slot walk itself is
-   doseSchedule.test.ts's; what these cover is the area around it - which
-   schedules it visits, what the rows it writes say, and that running it
-   again writes nothing. */
+/* Auto-logging. The slot walk itself is doseSchedule.test.ts's; what these cover is the
+   area around it - which schedules it visits, what the rows it writes say, and that running
+   it again writes nothing. */
 
 async function autoLogging(
   journal: Journal,

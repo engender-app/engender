@@ -1,9 +1,8 @@
-/* A margin note has its own table and day (ADR-0010, ADR-0027).
-   Use the local entry rowid (ADR-0002); only archiveRead.ts and
-   archiveApply.ts resolve UUIDs for transfer.
+/* A margin note has its own table and day (ADR-0010, ADR-0027). Use the local entry rowid
+   (ADR-0002); only archiveRead.ts and archiveApply.ts resolve UUIDs for transfer.
 
-   forEntries batches a page in one query. add validates the owner before
-   a single atomic INSERT (ADR-0044), independent of any entry write. */
+   forEntries batches a page in one query. add validates the owner before a single atomic
+   INSERT, independent of any entry write. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { MarginNote } from '../types';

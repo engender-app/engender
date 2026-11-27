@@ -1,6 +1,6 @@
-/* Execute the dependency-free pre-paint script from src/app.html (ADR-0009)
-   against the layout's documentChrome fixtures. The sandbox supplies the
-   boot cache, media queries, document dataset and icon links. */
+/* Execute the dependency-free pre-paint script from src/app.html against the layout's
+   documentChrome fixtures. The sandbox supplies the boot cache, media queries, document
+   dataset and icon links. */
 
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';

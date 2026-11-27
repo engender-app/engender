@@ -1,10 +1,9 @@
-/** The stored vocabularies: the one module Archive validation, ordinary writes
-    and the label lookups all read (FA 04). SQL holds structural invariants
-    only, so a word outside one of these sets can be stored (an archive from a
-    newer build, a row an older build wrote); the write path refuses it and
-    the screen renders it as "other".
+/** The stored vocabularies: the one module Archive validation, ordinary writes and the
+    label lookups all read (FA 04). SQL holds structural invariants only, so a word outside
+    one of these sets can be stored (an archive from a newer build, a row an older build
+    wrote); the write path refuses it and the screen renders it as "other".
 
-    Node-tier safe: no paraglide import (ADR-0016). */
+    Node-tier safe: no paraglide import. */
 export { HAIR_REMOVAL_AREAS } from './hairRemovalAreas';
 
 export function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {

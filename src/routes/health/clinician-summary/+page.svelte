@@ -1,9 +1,8 @@
 <script lang="ts">
   import { journalTextAutocomplete } from '$lib/platform';
-  /* The clinician summary: a range, the registered
-     sections (clinicianSummary.ts, ADR-0031) and the drugs to print, set in
-     the sheet, over a preview that is the printed page. Each section has a
-     switch, so a part can be left off before printing or saving to PDF. */
+  /* The clinician summary: a range, the registered sections (clinicianSummary.ts) and the
+     drugs to print, set in the sheet, over a preview that is the printed page. Each section
+     has a switch, so a part can be left off before printing or saving to PDF. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -89,10 +88,9 @@
   /* A shortcut for the two fields below, nothing else: it fills the same start/end inputs
      any other pair of dates fills, so it changes no read downstream. Two of
      clinicianSummary.ts's sections (procedures, appointmentPrep) are already unfiltered by
-     design (ADR-0031) - this range does not change that, and does not special-case it
-     either, which is the "written decision" asks for: applying it uniformly would change
-     what those two sections mean, exactly what ADR-0031's own comment there already rules
-     out. */
+     design - this range does not change that, and does not special-case it either, which is
+     the "written decision" asks for: applying it uniformly would change what those two
+     sections mean, which the section registry forbids. */
   function useSinceLastAppointment() {
     if (appointmentDate === null) return;
     startInput = dateInputValueFromEpochDay(appointmentDate);

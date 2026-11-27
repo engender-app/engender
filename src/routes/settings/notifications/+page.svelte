@@ -1,13 +1,12 @@
 <script lang="ts">
-  /* Draw one RegistryRow per registered kind with separate Show and Notify
-     controls (ADR-0039). isLiveTileKind keeps Today's live tiles in the
-     Today editor. The writing prompt below the list is a single preference
-     and has no registry kind of its own.
+  /* Draw one RegistryRow per registered kind with separate Show and Notify controls.
+     isLiveTileKind keeps Today's live tiles in the Today editor. The writing prompt below
+     the list is a single preference and has no registry kind of its own.
 
-     Web keeps Show and the prompts. It omits Notify, the permission notice
-     and the notification-only cards because a closed browser cannot deliver
-     these scheduled notifications. Put the platform notice above the rows
-     to explain the controls available there. */
+     Web keeps Show and the prompts. It omits Notify, the permission notice and the
+     notification-only cards because a closed browser cannot deliver these scheduled
+     notifications. Put the platform notice above the rows to explain the controls available
+     there. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -120,7 +119,7 @@
      A named shape rather than an inline one, the way the registry names
      `UnpromptedRow`: the four fields travel together everywhere they go. */
   interface PromptRow {
-    /** The walkthrough's handle (ADR-0029), never the title, which is copy. */
+    /** The walkthrough's handle, never the title, which is copy. */
     key: string;
     prefKey: BooleanPrefKey;
     title: () => string;

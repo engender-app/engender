@@ -237,7 +237,7 @@ describe('what a first-run journal sees', () => {
     }
   });
 
-  it('gives every notice a handle to grip (ADR-0029)', () => {
+  it('gives every notice a handle to grip', () => {
     for (const route of WITH_EMPTY_STATE) {
       const notices = markupOf.get(route)!.match(/<Notice\b[\s\S]*?\/>/g) ?? [];
       expect(notices.length, `${route} renders no Notice`).toBeGreaterThan(0);

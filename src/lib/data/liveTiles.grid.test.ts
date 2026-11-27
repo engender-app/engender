@@ -545,12 +545,11 @@ describe('what each tile says', () => {
 
 describe('the dismiss controls', () => {
   it('gives no dismiss to the three that close nothing', () => {
-    /* Wear, dose and surgery each resolve themselves - a running session
-       cannot be hidden while it runs (ADR-0039's amendment), and the other
-       two are facts about the day rather than nudges.
+    /* Wear, dose and surgery each resolve themselves - a running session cannot be hidden
+       while it runs, and the other two are facts about the day rather than nudges.
 
-       Safe space and the ready letter both offer a close action. The
-       letter opens Home's sheet. Safe space forgets the entry it was about. */
+       Safe space and the ready letter both offer a close action. The letter opens Home's
+       sheet. Safe space forgets the entry it was about. */
     for (const kind of ['wear-timer', 'dose-panel', 'surgery-countdown'] as const) {
       expect(tileNamed(kind)!.dismiss).toBeUndefined();
     }

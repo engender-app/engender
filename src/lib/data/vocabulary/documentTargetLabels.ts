@@ -1,14 +1,11 @@
-/* What the four things a document can be filed under are called, and which
-   glyph stands for each (ADR-0065). Here rather
-   than beside the area for the reason its neighbours give: the wording
-   speaks paraglide, and nothing the Node tier touches may import that
-   (ADR-0016).
+/* What the four things a document can be filed under are called, and which glyph stands for
+   each (ADR-0065). Here rather than beside the area for the reason its neighbours give: the
+   wording speaks paraglide, and nothing the Node tier touches may import that.
 
-   Two `Record`s, both total over `DocumentTargetKind`, which is a closed
-   four. The list screen labels a row by its kind because resolving the
-   target's own name there would mean fetching all four kinds' lists to put
-   one line on each row; the picker and the document's own screen have the
-   name already and use the icon alone. */
+   Two `Record`s, both total over `DocumentTargetKind`, which is a closed four. The list
+   screen labels a row by its kind because resolving the target's own name there would mean
+   fetching all four kinds' lists to put one line on each row; the picker and the document's
+   own screen have the name already and use the icon alone. */
 
 import { m } from '$lib/paraglide/messages';
 import type { DocumentTargetKind } from '$lib/data/types';

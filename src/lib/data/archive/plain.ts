@@ -10,8 +10,7 @@
 
    Built-in rows are stored as bare keys with no wording at all (builtins.ts), so the names
    have to come from the message catalogue. They arrive as functions rather than as an
-   import: labels.ts is paraglide, and nothing the Node tier touches may import it
-   (ADR-0016). */
+   import: labels.ts is paraglide, and nothing the Node tier touches may import it. */
 
 import { dateInputValueFromEpochDay } from '../epochDay';
 import { ARCHIVE_FORMAT_VERSION } from './container';

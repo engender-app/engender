@@ -1,6 +1,6 @@
-/* Localize archive failures by kind (ADR-0016). Keep diagnostics out of
-   user copy. Import and verify have separate exhaustive maps because verify
-   only reads the file and has no journal change to report. */
+/* Localize archive failures by kind. Keep diagnostics out of user copy. Import and verify
+   have separate exhaustive maps because verify only reads the file and has no journal
+   change to report. */
 
 import { m } from '$lib/paraglide/messages';
 import type { RestoreFailureKind, RestoreGuardKind } from '$lib/data/journal/restoreFlow';

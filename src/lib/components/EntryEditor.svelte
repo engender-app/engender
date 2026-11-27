@@ -285,16 +285,15 @@
     void prepareDraft(() => fillDebriefPrefill(debriefForAppointment));
   }
 
-  /* Prefill the debrief with answers from the room, paired with their
-     questions, then dated labs and side effects since the visit.
-     Read the in-room state without consuming it so a discarded draft can
-     be started again. Resolve the visit date from its ID. If it is missing,
-     keep the answers and omit the dated list. debriefNote.ts merges the
-     list without locale dependencies (ADR-0016).
+  /* Prefill the debrief with answers from the room, paired with their questions, then dated
+     labs and side effects since the visit. Read the in-room state without consuming it so a
+     discarded draft can be started again. Resolve the visit date from its ID. If it is
+     missing, keep the answers and omit the dated list. debriefNote.ts merges the list
+     without locale dependencies.
 
-     Append both sections in one write only while the note still matches
-     the scaffold. Preserve typing and restored drafts. With no answers or
-     dated items, leave the scaffold alone. */
+     Append both sections in one write only while the note still matches the scaffold.
+     Preserve typing and restored drafts. With no answers or dated items, leave the scaffold
+     alone. */
   async function fillDebriefPrefill(appointmentId: string) {
     // Awaited first, deterministically: a restored process-death draft is
     // the person's own unsaved work and always wins the race against this
@@ -425,7 +424,7 @@
     followReveal(sectionEl, region, chipRow);
   }
 
-  /* Contextual Inline Cards (ADR-0044) */
+  /* Contextual Inline Cards */
   let tryoutsQuery = liveQuery((j) => j.tryouts.getTryouts());
   let activeTryout = $derived(
     (tryoutsQuery.value ?? []).find((t) => t.endEpochDay == null && (t.kind === 'name' || t.kind === 'pronouns'))
@@ -476,17 +475,15 @@
 
   let isHrtActive = $derived(activeEpisodes.length > 0);
 
-  /* ADR-0043's gate, asked rather than re-derived. This screen read the cycle preference directly, which was the
-     one surface of three that did - so somebody on a testosterone regimen who
-     never flipped the switch got the More row and the side-effects section
-     and not this, which is the reader the automatic half of the rule exists
-     for.
+  /* The gate, asked rather than re-derived. This screen read the cycle preference directly,
+     which was the one surface of three that did - so somebody on a testosterone regimen who
+     never flipped the switch got the More row and the side-effects section and not this,
+     which is the reader the automatic half of the rule exists for.
 
-     `Date.now()` and not this entry's own day, which is what the other two
-     surfaces pass: the question is whether cycle tracking is surfaced for
-     this person, not whether it was surfaced on a day they are backdating
-     to. A regimen that has since ended does not take the chips off an entry
-     written last spring. */
+     `Date.now()` and not this entry's own day, which is what the other two surfaces pass:
+     the question is whether cycle tracking is surfaced for this person, not whether it was
+     surfaced on a day they are backdating to. A regimen that has since ended does not take
+     the chips off an entry written last spring. */
   let cycleTrackingActive = $derived(
     cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingChoice)
   );
@@ -1448,9 +1445,8 @@
   {/snippet}
 
   {#snippet cards()}
-  <!-- Contextual Inline Cards (ADR-0044). Offers rather than
-       questions, so they stay where they were - after what the person
-       chose to open, before the foot - and take no chip. -->
+  <!-- Contextual Inline Cards. Offers rather than questions, so they stay where they were -
+       after what the person chose to open, before the foot - and take no chip. -->
   {#if activeTryout}
     <!-- All three contextual cards open their own height rather than appearing at full size
          in one frame. None of them is on screen when the editor mounts - each waits on a
@@ -2144,7 +2140,7 @@
      and add tiles sat flush on the chips. */
   .entry-step > .editor-chips + .editor-section { margin-top: var(--space-5); }
 
-  /* Contextual Inline Cards (ADR-0044) */
+  /* Contextual Inline Cards */
   .contextual-panel {
     background: var(--surface);
     border: 1px solid var(--outline);

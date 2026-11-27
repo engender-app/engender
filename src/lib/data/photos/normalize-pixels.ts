@@ -1,8 +1,7 @@
-/* Normalize bytes to JPEG and thumbnail (ADR-0008, ADR-0015).
-   Cap the long edge at 2048 px without upscaling. Decode with
-   `imageOrientation: 'from-image'` before re-encoding through canvas
-   so orientation stays in the pixels while EXIF, GPS and identifiers
-   drop out. Test the pure helpers in Node and the decoder in Chromium. */
+/* Normalize bytes to JPEG and thumbnail (ADR-0008). Cap the long edge at 2048 px without
+   upscaling. Decode with `imageOrientation: 'from-image'` before re-encoding through canvas
+   so orientation stays in the pixels while EXIF, GPS and identifiers drop out. Test the
+   pure helpers in Node and the decoder in Chromium. */
 
 import type { NormalizedPhoto } from '../journal/photos';
 import { judgeImage } from '../media/budget';

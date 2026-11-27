@@ -7,14 +7,13 @@
   import { takeLegacyCareDrug } from '$lib/navigation/journalTextParams';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { navigating, page } from '$app/state';
-  /* Care is a feature surface in the More hub (ADR-0036). Read draw timing,
-     exposure and stock from their existing modules. careSpine.ts only
-     positions dates on the shared axis.
+  /* Care is a feature surface in the More hub. Read draw timing, exposure and stock from
+     their existing modules. careSpine.ts only positions dates on the shared axis.
 
-     Each active drug gets a lane with last dose, next dose and run-out.
-     Today and the latest draw cross the shared axis. Stripes distinguish
-     drugs without ranking them (ADR-0012). Report dates and projections
-     without judging schedules or interpreting lab values. */
+     Each active drug gets a lane with last dose, next dose and run-out. Today and the
+     latest draw cross the shared axis. Stripes distinguish drugs without ranking them
+     (ADR-0012). Report dates and projections without judging schedules or interpreting lab
+     values. */
   import { m } from '$lib/paraglide/messages';
   import { scrollToHash } from '$lib/navigation/scroll-region';
   import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
@@ -88,9 +87,9 @@
      says nothing about a day that long ago. */
   const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* The link to cycle events is gated here (ADR-0043): an active testosterone
-     regimen or the explicit opt-in. The card waits for the episodes, so the
-     row never arrives after the rows around it. */
+  /* The link to cycle events is gated here: an active testosterone regimen or the explicit
+     opt-in. The card waits for the episodes, so the row never arrives after the rows around
+     it. */
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingChoice));
   /* The three most recent cycle events, drawn at the head of that link's card. */
@@ -802,11 +801,11 @@
       <ListRow key="stock" icon="package" title={m.stock_title()} subtitle={m.care_row_stock_none()} onclick={openStockList} />
     {/if}
     <!-- The summary is an export over these readings, not one of its own, so it joins the
-         card that already reads them. Written by hand rather than through HostedRows
-         (ADR-0072) - that registry is for an *area* moved off the hub, and the summary
-         fronts no area (`hubRows.ts` never gave it one). It states the range and the
-         section count it would print by default, read off the same two modules its own
-         screen reads them from. -->
+         card that already reads them. Written by hand rather than through HostedRows - that
+         registry is for an *area* moved off the hub, and the summary fronts no area
+         (`hubRows.ts` never gave it one). It states the range and the section count it
+         would print by default, read off the same two modules its own screen reads them
+         from. -->
     <ListRow
       key="clinician-summary"
       icon="share"
@@ -816,14 +815,13 @@
     />
   </ListCard>
 
-  <!-- A link to the cycle log, only behind
-       `cycleTrackingVisible` (ADR-0043), with the last three events under
-       it. The module itself is on the More hub, in Health. The events are
-       static rows (the shape regimen's pause rows use): they name nothing to
-       press, and the link row heading them is the way in. No icon disc on
-       them, since a disc is what marks a row as one to press, and the cycle
-       screen has no address for one event to link them to. They sit in the
-       link's own reserve, so the card waits for their read and arrives whole. -->
+  <!-- A link to the cycle log, only behind `cycleTrackingVisible`, with the last three
+       events under it. The module itself is on the More hub, in Health. The events are
+       static rows (the shape regimen's pause rows use): they name nothing to press, and the
+       link row heading them is the way in. No icon disc on them, since a disc is what marks
+       a row as one to press, and the cycle screen has no address for one event to link them
+       to. They sit in the link's own reserve, so the card waits for their read and arrives
+       whole. -->
   <HostedRows
     host="care"
     keys={cycleShown ? ['cycle-events'] : []}

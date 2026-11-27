@@ -1,11 +1,10 @@
-/* Keep a local recovery mirror for an in-progress entry (ADR-0009).
-   Clear it when a save commits or the editor exits normally. A process
-   death or privacy lock during a pending save keeps the draft available.
+/* Keep a local recovery mirror for an in-progress entry. Clear it when a save commits or
+   the editor exits normally. A process death or privacy lock during a pending save keeps
+   the draft available.
 
-   Encrypt the draft with the session data key so the note, mood, tags and
-   region ratings do not appear in localStorage plaintext. Both read and
-   write are asynchronous. Unreadable snapshots and snapshots under an
-   old key, including after a reset, are discarded. */
+   Encrypt the draft with the session data key so the note, mood, tags and region ratings do
+   not appear in localStorage plaintext. Both read and write are asynchronous. Unreadable
+   snapshots and snapshots under an old key, including after a reset, are discarded. */
 
 import { open, seal } from '../crypto/aesGcm';
 import type { PersistedEntryDraft } from './entryDraftPersistence';

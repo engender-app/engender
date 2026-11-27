@@ -62,9 +62,8 @@ export type CompareStretchState =
 
 type CompareStretchOfferedState = Exclude<CompareStretchState, { status: 'hidden' }>;
 
-/** The words a screen supplies - its own message-key prefix, already bound
-    to `m`, so this file stays free of paraglide and testable under the
-    Node tier (ADR-0016 draws that same line at dates.ts). */
+/** The words a screen supplies - its own message-key prefix, already bound to `m`, so this
+    file stays free of paraglide and testable under the Node tier. */
 interface CompareStretchNoticeCopy {
   title: () => string;
   openHint: () => string;

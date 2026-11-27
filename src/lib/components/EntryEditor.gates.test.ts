@@ -1,18 +1,15 @@
-/* Which of the entry editor's contextual cards show, and on whose say-so
-   (ADR-0043, ADR-0052).
+/* Which of the entry editor's contextual cards show, and on whose say-so (ADR-0052).
 
-   Two claims, and both are about the editor asking a shared question rather
-   than answering it for itself. The questions themselves are pure and tested
-   next door (cycleTracking.test.ts, areaState.test.ts); what a test can only
-   check here is that this screen reaches them, because a `.svelte` file has
-   no node-tier mount (ADR-0016) and the defect being fixed was precisely a
-   screen that asked nobody.
+   Two claims, and both are about the editor asking a shared question rather than answering
+   it for itself. The questions themselves are pure and tested next door
+   (cycleTracking.test.ts, areaState.test.ts); what a test can only check here is that this
+   screen reaches them, because a `.svelte` file has no node-tier mount and the defect being
+   fixed was precisely a screen that asked nobody.
 
-   A source contract, the same shape ClinicianSummaryDossier.test.ts and the
-   clinician summary's print-parity test already use for components this
-   suite cannot render. It is weaker than a rendered assertion and it fails
-   the moment somebody puts the preference back, which is the regression it
-   is here for. */
+   A source contract, the same shape ClinicianSummaryDossier.test.ts and the clinician
+   summary's print-parity test already use for components this suite cannot render. It is
+   weaker than a rendered assertion and it fails the moment somebody puts the preference
+   back, which is the regression it is here for. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -39,7 +36,7 @@ const testosterone: RegimenEpisode = {
   endReason: null
 };
 
-describe("the editor's cycle affordance (ADR-0043)", () => {
+describe("the editor's cycle affordance", () => {
   it('asks the shared gate rather than reading the preference', () => {
     expect(editor).toContain('cycleTrackingVisible(');
     expect(editor).not.toContain('$derived(prefs.cycleTrackingChoice)');

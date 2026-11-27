@@ -1,4 +1,4 @@
-/* Snooze engine for Home live tiles (ADR-0039 amendment).
+/* Snooze engine for Home live tiles.
 
    Allows dismissing any state-dependent live tile for a temporary duration (default 24h)
    without flipping its global kind toggle in Settings.

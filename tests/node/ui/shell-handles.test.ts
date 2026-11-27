@@ -2,10 +2,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/* Check shell handles in source (ADR-0029) so the walkthrough keeps
-   selectors for tabs, rail, quick add, back and sheets. Home's header
-   and hero and More's rows also expose handles for safe-area geometry.
-   Other screen controls have their own checks. */
+/* Check shell handles in source so the walkthrough keeps selectors for tabs, rail, quick
+   add, back and sheets. Home's header and hero and More's rows also expose handles for
+   safe-area geometry. Other screen controls have their own checks. */
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -35,11 +34,10 @@ function untagged(source: string): string[] {
   const offenders: string[] = [];
   for (const match of withoutExpressions(source).matchAll(INTERACTIVE)) {
     const attrs = match[2] ?? '';
-    /* An id counts, because ADR-0029's vocabulary is "a data-* attribute,
-       an id, or an ARIA role/state" - the rule is against class names and
-       rendered copy, not against ids. The backdate field is the case: the
-       walkthrough grips it as #backdate, and its label needs that id
-       anyway, so a data-* beside it would be a second name for one thing. */
+    /* An id counts, because test handles use "a data-* attribute, an id, or an ARIA
+       role/state" - the rule is against class names and rendered copy, not against ids. The
+       backdate field is the case: the walkthrough grips it as #backdate, and its label
+       needs that id anyway, so a data-* beside it would be a second name for one thing. */
     if (!/\bdata-[a-z-]+/.test(attrs) && !/\bid="/.test(attrs)) {
       offenders.push(match[0].replace(/\s+/g, ' ').slice(0, 90));
     }

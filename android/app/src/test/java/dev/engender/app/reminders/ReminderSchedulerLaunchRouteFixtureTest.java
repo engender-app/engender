@@ -13,11 +13,11 @@ import org.json.JSONObject;
 import org.junit.Test;
 
 /**
- * Reads launch-routes.json - src/lib/android/fixtures/launch-routes.json,
- * put on this module's test classpath by build.gradle's sourceSets.test
- * addition - the same file launch-routes.test.ts reads on the TypeScript
- * side (ADR-0028). A route shape accepted by one adapter and rejected by
- * the other fails here rather than as a silent tap.
+ * Reads launch-routes.json - src/lib/android/fixtures/launch-routes.json, put
+ * on this module's test classpath by build.gradle's sourceSets.test addition
+ * - the same file launch-routes.test.ts reads on the TypeScript side. A route
+ * shape accepted by one adapter and rejected by the other fails here rather
+ * than as a silent tap.
  */
 public class ReminderSchedulerLaunchRouteFixtureTest {
 

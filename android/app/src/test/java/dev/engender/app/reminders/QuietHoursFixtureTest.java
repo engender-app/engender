@@ -17,7 +17,7 @@ import org.junit.Test;
 /**
  * Reads quiet-hours.json - src/lib/android/fixtures/quiet-hours.json, put on
  * this module's test classpath by build.gradle's sourceSets.test addition -
- * the same file quietHours.test.ts reads on the TypeScript side (ADR-0028).
+ * the same file quietHours.test.ts reads on the TypeScript side.
  *
  * <p>A window the settings screen draws one way and the scheduler applies
  * another fails here rather than as an alarm that wakes somebody at three in

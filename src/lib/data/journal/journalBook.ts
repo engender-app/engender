@@ -1,10 +1,9 @@
-/* Assemble the chosen Journal book sections for one date range.
-   Read only the selected types and strip excluded photos and tags
-   before rendering. The book stores nothing and uses the owning
-   areas' calculations (ADR-0010).
+/* Assemble the chosen Journal book sections for one date range. Read only the selected
+   types and strip excluded photos and tags before rendering. The book stores nothing and
+   uses the owning areas' calculations (ADR-0010).
 
-   The selection UI reads labels from `vocabulary/journalBookLabels.ts`
-   so this layer stays free of locale code (ADR-0016). */
+   The selection UI reads labels from `vocabulary/journalBookLabels.ts` so this layer stays
+   free of locale code. */
 
 import type { Entry, Milestone, Photo, SideEffect } from '../types';
 import type { EntriesArea } from './entries';
@@ -82,8 +81,8 @@ interface JournalBookEntry {
   note: string;
   /** Empty unless photos were included. */
   photos: Photo[];
-  /** Tag ids, empty unless tags were included. Named at display time, the
-      way every other screen names a built-in tag (ADR-0016). */
+  /** Tag ids, empty unless tags were included. Named at display time, the way every other
+      screen names a built-in tag. */
   tags: string[];
 }
 

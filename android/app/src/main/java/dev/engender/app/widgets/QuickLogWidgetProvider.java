@@ -48,13 +48,12 @@ public class QuickLogWidgetProvider extends DisguisableWidgetProvider {
         return specs;
     }
 
-    /** The route a mood button's PendingIntent deep-links to - "today"
-        rather than a computed epoch day, so a PendingIntent built now still
-        lands on the right day no matter how long it sits on the home
-        screen before being tapped; the [day] route resolves "today" live,
-        at navigation time. Pinned against src/lib/android/launch-routes.ts
-        by the shared fixture at src/lib/android/fixtures/launch-routes.json
-        (ADR-0028). */
+    /** The route a mood button's PendingIntent deep-links to - "today" rather than a
+        computed epoch day, so a PendingIntent built now still lands on the right day no
+        matter how long it sits on the home screen before being tapped; the [day] route
+        resolves "today" live, at navigation time. Pinned against
+        src/lib/android/launch-routes.ts by the shared fixture at
+        src/lib/android/fixtures/launch-routes.json. */
     static String moodRoute(int mood) {
         return "/entry/new/today?seedMood=" + mood;
     }

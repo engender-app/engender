@@ -1,14 +1,13 @@
-/* Register everything the app can show or send unprompted. Today
-   edits live tiles, and Settings handles other surface switches and
-   notifications. Each switch applies to the whole kind. A running
-   session keeps its real-time surface (ADR-0039).
+/* Register everything the app can show or send unprompted. Today edits live tiles, and
+   Settings handles other surface switches and notifications. Each switch applies to the
+   whole kind. A running session keeps its real-time surface.
 
-   Only a scheduled time or a failure can prompt a notification.
-   Reminders, check-in and wear-elapsed are scheduled. Export failure
-   reports an error. Insights and offers wait inside the app.
+   Only a scheduled time or a failure can prompt a notification. Reminders, check-in and
+   wear-elapsed are scheduled. Export failure reports an error. Insights and offers wait
+   inside the app.
 
-   Quiet hours delay notifications until the window ends. Disguise
-   hides titles for every notification kind, enforced by its type. */
+   Quiet hours delay notifications until the window ends. Disguise hides titles for every
+   notification kind, enforced by its type. */
 /* Relative rather than $lib: registry.test.ts imports this file on the node
    tier, where no $lib alias exists - the one svelte-kit-ism the tests can't
    follow (see vitest.config.ts). */
@@ -44,22 +43,21 @@ export type UnpromptedKind =
 type NotificationChannel = 'reminders' | 'checkIn' | 'exportFailure';
 
 export interface UnpromptedRow {
-  /** Stable handle for the walkthrough (ADR-0029) - never the title, which
-      is copy. */
+  /** Stable handle for the walkthrough - never the title, which is copy. */
   key: UnpromptedKind;
   /** What the kind is. Shared by both views: a row on one screen and a row
       on the other are the same kind, and calling it two things would be the
       "two registries" this file exists not to be. */
   title: () => string;
   /**
-   * Name the area whose hidden or finished state quiets this kind
-   * (ADR-0052). Use null for kinds that concern the journal as a whole,
-   * such as export failure or the retrospectives. The field is required
-   * so every new kind makes that choice.
+   * Name the area whose hidden or finished state quiets this kind (ADR-0052).
+   * Use null for kinds that concern the journal as a whole, such as export
+   * failure or the retrospectives. The field is required so every new kind
+   * makes that choice.
    *
    * unpromptedQuiet applies the area rule on top of each kind's own
-   * preference. Hiding an area does not change its surfaceOverrides
-   * or notification switch (ADR-0039).
+   * preference. Hiding an area does not change its surfaceOverrides or
+   * notification switch.
    */
   area: HideableArea | null;
   /** Present when this kind shows something in the app of its own, carrying a subtitle

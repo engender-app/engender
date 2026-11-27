@@ -1,16 +1,14 @@
 <script lang="ts">
-  /* The day card's hairline, mood faces and timestamps form the entry
-     timeline. Tags arrive as labels and media marks as icon names. Render
-     them beside the note so a media-only entry still shows what it holds.
+  /* The day card's hairline, mood faces and timestamps form the entry timeline. Tags arrive
+     as labels and media marks as icon names. Render them beside the note so a media-only
+     entry still shows what it holds.
 
-     A missing note has its own labelled placeholder. Reserve
-     data-entry-note for actual notes and data-entry-card for the row
-     (ADR-0029). The row owns the placeholder's copy.
+     A missing note has its own labelled placeholder. Reserve data-entry-note for actual
+     notes and data-entry-card for the row. The row owns the placeholder's copy.
 
-     A caller that supplies a destination makes the row a link. A printed
-     day card stays presentational. When the row opens, its measured box
-     is the source of the container transform. Navigation and
-     motion/container.svelte decide when the transform runs. */
+     A caller that supplies a destination makes the row a link. A printed day card stays
+     presentational. When the row opens, its measured box is the source of the container
+     transform. Navigation and motion/container.svelte decide when the transform runs. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import Icon from '../Icon.svelte';

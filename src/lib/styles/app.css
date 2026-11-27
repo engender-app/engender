@@ -34,12 +34,11 @@ body {
   user-select: none;
 }
 
-/* Enable selection for journal and book notes, open letters,
-   lab values, clinician summaries and text fields. Leave computed
-   captions with the app chrome.
+/* Enable selection for journal and book notes, open letters, lab values, clinician
+   summaries and text fields. Leave computed captions with the app chrome.
 
-   Use classes for styling. ADR-0029 reserves data-entry-note and
-   other walkthrough locators for test handles. */
+   Use classes for styling. Reserve data-entry-note and other walkthrough locators for test
+   handles. */
 :is(
   .kit-entry-note,
   .book-note,
@@ -1281,9 +1280,9 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
 /* The fill is .nav-pill's now, the same shape the bar uses, travelling down
    instead of across. What stays here is the colour and the weight. */
 .rail-item.is-active { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
-/* Pushed to the rail's foot by the flex column's own auto margin, and cut
-   off from the four doors above it by a hairline rather than a gap alone -
-   a gap reads as spacing, a rule reads as a different kind of row (ADR-0076). */
+/* Pushed to the rail's foot by the flex column's own auto margin, and cut off from the four
+   doors above it by a hairline rather than a gap alone - a gap reads as spacing, a rule
+   reads as a different kind of row. */
 /* The rule is drawn outside the row's box since after-release 17, when
    the row started taking the pill on /settings: drawn as the row's own
    border-top with the padding above the label, the lit shape covered the

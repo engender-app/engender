@@ -279,19 +279,17 @@ export async function measureLongJournal(
 
   /* --- search -------------------------------------------------------------
 
-     Three questions, because they take different plans. A term in a third
-     of the notes pages 30 hits out of thousands; a term in a handful reads
-     the index and finds almost nothing; and a term that is also a tag's
-     label unions a second query over `entry_tag` onto the FTS clause
-     (entries.ts), which is the one a note-only word never reaches.
+     Three questions, because they take different plans. A term in a third of the notes
+     pages 30 hits out of thousands; a term in a handful reads the index and finds almost
+     nothing; and a term that is also a tag's label unions a second query over `entry_tag`
+     onto the FTS clause (entries.ts), which is the one a note-only word never reaches.
 
-     Every one of them goes through `tagIdsMatching` rather than being
-     handed an empty list, because that is what the screen does - it never
-     passes `[]`, it passes whatever the typed text matched. The labels
-     reachable here are the custom ones: a built-in tag stores a key and its
-     wording comes from the message catalogue above this seam (ADR-0016), so
-     a fixture below the seam sees an empty label. The count is its own
-     query beside the page, as the screen runs it. */
+     Every one of them goes through `tagIdsMatching` rather than being handed an empty list,
+     because that is what the screen does - it never passes `[]`, it passes whatever the
+     typed text matched. The labels reachable here are the custom ones: a built-in tag
+     stores a key and its wording comes from the message catalogue above this seam, so a
+     fixture below the seam sees an empty label. The count is its own query beside the page,
+     as the screen runs it. */
   const knownTags = (await journal.tags.getTagGroups()).flatMap((group) => group.tags);
 
   for (const [name, word, expected] of [
@@ -580,10 +578,9 @@ export async function measureLongJournal(
     };
   });
 
-  /* Read registered areas' last writes and the area record concurrently.
-     One bounded MAX per area fits in the assembled last-write call.
-     The area record supplies hidden and finished state. The cycle
-     gate's small regimen lookup (ADR-0043) is outside this budget. */
+  /* Read registered areas' last writes and the area record concurrently. One bounded MAX
+     per area fits in the assembled last-write call. The area record supplies hidden and
+     finished state. The cycle gate's small regimen lookup is outside this budget. */
   await measure('hub-last-writes', 'More hub, the last write in every area plus the area record', async () => {
     const [lastWrites, states] = await Promise.all([
       journal.lastWrite.getLastWrites(today),
@@ -703,11 +700,10 @@ export async function measureLongJournal(
   });
 
   await mount('mount-more-hub', 'the More hub, every row it draws a live line for', async () => {
-    /* `hub-last-writes` above times the two reads that answer the rows;
-       this counts what the whole screen crosses for, which is those two
-       plus the regimen episode list ADR-0043's cycle gate reads. Both are
-       worth having: one says which read is slow, this says what the screen
-       costs. */
+    /* `hub-last-writes` above times the two reads that answer the rows; this counts what
+       the whole screen crosses for, which is those two plus the regimen episode list cycle
+       gate reads. Both are worth having: one says which read is slow, this says what the
+       screen costs. */
     const reads = await together({
       episodes: journal.regimen.getEpisodes(),
       lastWrites: journal.lastWrite.getLastWrites(today),

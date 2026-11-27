@@ -279,10 +279,10 @@ final class SqliteConnection {
     }
 
     /**
-     * Close the open connection, then delete the Android database,
-     * side files and pre-migration copy (ADR-0014, ADR-0006).
-     * Locate files by name even on a cold locked boot. Reset must
-     * remove the ciphertext before a fresh key is minted.
+     * Close the open connection, then delete the Android database, side files
+     * and pre-migration copy (ADR-0006). Locate files by name even on a cold
+     * locked boot. Reset must remove the ciphertext before a fresh key is
+     * minted.
      */
     void deleteDatabaseFiles(Context context, String name) throws IOException {
         close();

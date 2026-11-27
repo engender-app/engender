@@ -1,18 +1,17 @@
 /* The foot belongs to the frame (carpet 26).
 
-   What this holds is the mechanism, because the mechanism is the fix. A
-   sticky footer at the end of the content column covers whatever the column
-   happens to have at its height and no arithmetic inside the column can
-   move it: padding pushes the sticky box down with it, a margin buys scroll
-   travel and changes nothing at rest. The answer is that the foot is not in
-   the scroll region at all - it is the region's flex sibling, so the region
-   is a foot shorter and nothing is ever under it. The measurement lives in
-   `tests/tools/savebar-clearance-gallery.mjs` and in carpet 28's occlusion pass;
-   what a source scan can hold is that the parts are still wired that way,
-   which is what would rot first.
+   What this holds is the mechanism, because the mechanism is the fix. A sticky footer at
+   the end of the content column covers whatever the column happens to have at its height
+   and no arithmetic inside the column can move it: padding pushes the sticky box down with
+   it, a margin buys scroll travel and changes nothing at rest. The answer is that the foot
+   is not in the scroll region at all - it is the region's flex sibling, so the region is a
+   foot shorter and nothing is ever under it. The measurement lives in
+   `tests/tools/savebar-clearance-gallery.mjs` and in carpet 28's occlusion pass; what a
+   source scan can hold is that the parts are still wired that way, which is what would rot
+   first.
 
-   These are `.svelte` files and the node tier cannot mount one (ADR-0016),
-   so this reads them, as the other shape contracts in this directory do. */
+   These are `.svelte` files and the node tier cannot mount one, so this reads them, as the
+   other shape contracts in this directory do. */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';

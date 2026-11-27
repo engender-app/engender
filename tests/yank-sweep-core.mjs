@@ -1,16 +1,14 @@
 // @ts-nocheck
-/* The yank sweep's shared half: the scene table, the
-   thresholds and the arithmetic that turns sampled frames into findings,
-   and the page-side sampler and proof injection as expression strings, so
-   the desktop sweep (`yank-sweep.mjs`, Playwright against a preview
-   server) and the device sweep (`yank-sweep-device.mjs`, CDP over the
-   WebView's devtools socket on a real Android phone) run the same
-   instruments rather than two copies drifting apart.
+/* The yank sweep's shared half: the scene table, the thresholds and the arithmetic that
+   turns sampled frames into findings, and the page-side sampler and proof injection as
+   expression strings, so the desktop sweep (`yank-sweep.mjs`, Playwright against a preview
+   server) and the device sweep (`yank-sweep-device.mjs`, CDP over the WebView's devtools
+   socket on a real Android phone) run the same instruments rather than two copies drifting
+   apart.
 
-   Nothing here imports anything app-side: this module stays reachable
-   from the Node tier (ADR-0016) and loadable without a build. The
-   imports are node:fs/promises and plain data and plain decoding from
-   the same tier (`tests/setup-flow.mjs`, `tests/png-decode.mjs`). */
+   Nothing here imports anything app-side: this module stays reachable from the Node tier
+   and loadable without a build. The imports are node:fs/promises and plain data and plain
+   decoding from the same tier (`tests/setup-flow.mjs`, `tests/png-decode.mjs`). */
 
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { SETUP_STEPS } from './setup-flow.mjs';
@@ -2074,7 +2072,7 @@ const HYDRATION_SCENES = [
   { name: 'voice-record', at: '/voice?tab=record', is: 'the benchmark record tab' },
   { name: 'voice-metrics', at: '/voice?metric=pitch', is: 'the metric reference' },
   { name: 'voice-memos', at: '/media/recordings', is: 'the memo browser' },
-  /* Support group (ADR-0072) */
+  /* Support */
   { name: 'resources', at: '/support/resources', is: 'organisations and helplines' },
   /* Media */
   { name: 'photos', at: '/media/photos', is: 'progress photos, then and now' },

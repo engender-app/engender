@@ -105,9 +105,8 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
         dispatch({ type: 'device-key-unavailable' });
         return;
       }
-      /* Nobody authenticated for this one - the browser handed the key over
-         because the device is the device. App lock still has its question to
-         ask (ADR-0014). */
+      /* Nobody authenticated for this one - the browser handed the key over because the
+         device is the device. App lock still has its question to ask. */
       dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound', unlocked: false });
       return;
     }

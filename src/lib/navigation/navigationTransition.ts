@@ -69,10 +69,9 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
        leaving is the app opening. The table says which is which. */
     isChromeless:
       replacesApp || cutsInsteadOfMoving(navigation.from?.url.pathname ?? null, navigation.to.url.pathname),
-    /* Read whether a modal is open before the outgoing screen unmounts.
-       Pass that state to the pure transition rule. Use role and
-       aria-modal so every accessible modal is covered. data-sheet
-       is a walkthrough handle with no effect on behavior (ADR-0029). */
+    /* Read whether a modal is open before the outgoing screen unmounts. Pass that state to
+       the pure transition rule. Use role and aria-modal so every accessible modal is
+       covered. data-sheet is a walkthrough handle with no effect on behavior. */
     fromSheet: document.querySelector('[role="dialog"][aria-modal="true"]') !== null,
     chromeOrigin: chromeTabOrigin()
   });

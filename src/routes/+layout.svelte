@@ -274,10 +274,9 @@
        before Care carried episode ids - is replaced as it lands. */
     const clean = navigation.to && arriveWithoutJournalText(navigation.to.url);
     if (clean) void replaceRoute(clean, { noScroll: true, keepFocus: true });
-    /* What the gear will borrow next time it opens settings chrome
-       (ADR-0076, audit item 4) - noted from every settled navigation, not
-       only ones into a tab, since a screen already inside settings can
-       still carry the tab it borrowed forward (chrome-tab-origin.ts). */
+    /* What the gear will borrow next time it opens settings chrome (audit item 4) - noted
+       from every settled navigation, not only ones into a tab, since a screen already
+       inside settings can still carry the tab it borrowed forward (chrome-tab-origin.ts). */
     if (navigation.to) noteTabVisit(litTabKey(navigation.to.url.pathname, chromeTabOrigin()));
     /* A borrowing page opened cold has no onNavigate to key it, so it keeps
        the tab it just resolved to here: back to it from Today, it lights

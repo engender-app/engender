@@ -86,7 +86,7 @@ const FTS5_SHADOW_TABLE_REASON = "an FTS5 shadow table SQLite manages itself; ap
 /* UNMAPPED_TABLES stays exported only for its own test (AU-09 test-only
    review). */
 export const UNMAPPED_TABLES: Record<string, string> = {
-  // Preferences (ADR-0009): its own store, outside the journal's write
+  // Preferences use their own store, outside the journal's write
   // registry - nothing in writes.ts classifies a pref write or read.
   pref: 'preferences live outside the journal (ADR-0009); writes.ts never classifies a pref read or write',
   // SQLite's own autoincrement bookkeeping table, never named in app SQL.

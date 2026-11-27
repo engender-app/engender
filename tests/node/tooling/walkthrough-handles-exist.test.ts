@@ -5,11 +5,10 @@ import { describe, expect, it } from 'vitest';
 
 import { recordHandleSlug } from '../../../src/lib/components/kit/recordHandles.ts';
 
-/* walkthrough-locators.test.ts polices the *shape* of a handle - never a
-   CSS class, never bare copy. This polices the other half ADR-0029 names:
-   a selector that stops matching does not fail loudly either, so every
-   handle the walkthrough greps for has to be checked against src/ once,
-   here, rather than found out thirty seconds into a Chromium timeout. */
+/* walkthrough-locators.test.ts polices the *shape* of a handle - never a CSS class, never
+   bare copy. This polices stale test handles. a selector that stops matching does not fail
+   loudly either, so every handle the walkthrough greps for has to be checked against src/
+   once, here, rather than found out thirty seconds into a Chromium timeout. */
 
 const rootPath = fileURLToPath(new URL('../../../', import.meta.url));
 const walkthroughPath = join(rootPath, 'tests/walkthrough.test.mjs');

@@ -1,4 +1,4 @@
-/* Entry Editor Unified Logging Hub structural and integration verification (ADR-0044). */
+/* Entry Editor Unified Logging Hub structural and integration verification. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -12,10 +12,10 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
 
   it('discloses contextual sections after the chip row and its sections, before the save bar', () => {
     /* Put the note first and folded every structured question - body map included - into a
-       chip row under it. The cards are offers rather than questions (ADR-0044), so they
-       take no chip and sit where they did relative to the foot: after whatever the person
-       opened, before Save. Until this asserted "between Note and Body Map"; body map is now
-       a chip's section above the cards. */
+       chip row under it. The cards are offers rather than questions, so they take no chip
+       and sit where they did relative to the foot: after whatever the person opened, before
+       Save. Until this asserted "between Note and Body Map"; body map is now a chip's
+       section above the cards. */
     const notePos = editor.indexOf('name="note"');
     const chipsPos = editor.indexOf('data-editor-chips');
     const bodyMapPos = editor.indexOf('data-editor-section="body"');

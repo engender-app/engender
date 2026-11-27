@@ -16,7 +16,7 @@ import dev.engender.app.screencapture.ScreenCapturePlugin;
 
 /**
  * What this app leaves on a phone that is neither the journal nor in the
- * WebView's storage (ADR-0014).
+ * WebView's storage.
  *
  * <p>{@code src/lib/data/reset.ts} already had the two halves that are the
  * journal - the database file and the Keystore-wrapped data key - and nothing

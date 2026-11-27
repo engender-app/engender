@@ -1,14 +1,12 @@
 <script lang="ts">
-  /* A notice sits between hairlines with a 40px icon square. The separate
-     action row keeps the icon aligned with the text, even when the action
-     is a 48px button. Render a link for a destination and a button for
-     an action. Use the text action for ordinary notices and the primary
-     button when the notice is the screen's empty state.
+  /* A notice sits between hairlines with a 40px icon square. The separate action row keeps
+     the icon aligned with the text, even when the action is a 48px button. Render a link
+     for a destination and a button for an action. Use the text action for ordinary notices
+     and the primary button when the notice is the screen's empty state.
 
-     The props require a title or body. A title-only notice keeps the
-     main text weight. Body text uses --text-2. Forward attributes to
-     the root so a caller can add its walkthrough handle beside
-     data-notice (ADR-0029). */
+     The props require a title or body. A title-only notice keeps the main text weight. Body
+     text uses --text-2. Forward attributes to the root so a caller can add its walkthrough
+     handle beside data-notice. */
   import { focusAfterRemoval } from '$lib/navigation/arrivalFocus';
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';

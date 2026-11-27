@@ -1,7 +1,6 @@
-/* ADR-0043's one question, at the level a pure module can be held to: is
-   cycle tracking surfaced for this journal right now. The two ways in -
-   a testosterone regimen, or the explicit preference - and the default
-   answer out, which is no. */
+/* Cycle visibility, at the level a pure module can be held to: is cycle tracking surfaced
+   for this journal right now. The two ways in - a testosterone regimen, or the explicit
+   preference - and the default answer out, which is no. */
 
 import { describe, expect, it } from 'vitest';
 import { timestampAtLocalTime } from './epochDay';

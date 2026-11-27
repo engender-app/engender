@@ -1,9 +1,8 @@
-/* Commit setup answers before changing the Android launcher alias
-   (ADR-0079). The alias flip can kill the process, so flipping first
-   can discard every answer and start setup again.
+/* Commit setup answers before changing the Android launcher alias. The alias flip can kill
+   the process, so flipping first can discard every answer and start setup again.
 
-   Keep the four injected steps rune-free so Node tests can verify
-   ordering without preferences, SQLite or Capacitor. */
+   Keep the four injected steps rune-free so Node tests can verify ordering without
+   preferences, SQLite or Capacitor. */
 
 export interface SetupCompletion {
   /** Every answer setup has been holding, `onboarded` among them. */

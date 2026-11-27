@@ -5,10 +5,10 @@ import { describe, expect, it } from 'vitest';
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
-/* The recency rows lead somewhere: a route `.svelte` file cannot mount on this tier
-   (ADR-0016), so the contract is read off the source the same way the clinician summary's
-   print-parity and AreaFinish tests read theirs. The real-browser half of the ticket's
-   verification lives in hair-removal-recency-handoff-check.mjs. */
+/* The recency rows lead somewhere: a route `.svelte` file cannot mount on this tier, so the
+   contract is read off the source the same way the clinician summary's print-parity and
+   AreaFinish tests read theirs. The real-browser half of the ticket's verification lives in
+   hair-removal-recency-handoff-check.mjs. */
 
 const hairRemoval = read('src/routes/body/hair-removal/+page.svelte');
 

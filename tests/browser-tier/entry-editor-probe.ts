@@ -3,8 +3,7 @@
    Each case mounts the real editor, drives the real controls, saves, and reads the entry
    back from SQLite. What is published is what the database holds - not what the markup
    says. The draft is component-local `$state` with no handle out, so the save is the only
-   way to see it at all, and the save is ADR-0044's nine-area transaction, so a break in
-   *that* would surface here as a case that saved nothing.
+   way to see it at all, and one transaction saves all nine areas. A failed save writes none of them.
 
    The editor's draft mirror uses this fixture's data key through the boot stub. The fixture
    opens below the keystore, so the real boot store has no session key to release. Waiting

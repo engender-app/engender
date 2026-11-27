@@ -1,9 +1,9 @@
 <script lang="ts">
   /* The clinician summary as the page it prints. One snippet per registered section
-     (clinicianSummary.ts, ADR-0031), drawn in the registry's order by walking its keys; a
-     section switched off arrives as null and draws nothing. `SECTION_SNIPPETS` is a full
-     record over the keys, so registering a part with no rows to draw is a typecheck failure
-     here, the way a part with no name is one in clinicianSummaryLabels.ts.
+     (clinicianSummary.ts), drawn in the registry's order by walking its keys; a section
+     switched off arrives as null and draws nothing. `SECTION_SNIPPETS` is a full record
+     over the keys, so registering a part with no rows to draw is a typecheck failure here,
+     the way a part with no name is one in clinicianSummaryLabels.ts.
 
      Every regimen and dose row links back to its own record across a hash - `.dossier-
      row-link` in clinician-print.css keeps that plain text once actually printed, since a
@@ -335,12 +335,11 @@
                 </td>
                 <td data-label={m.status_label()}>
                   {dose.status !== 'taken' ? statusLabel(dose.status) : m.dose_status_taken()}
-                  <!-- The footnote marker for a dose a schedule wrote
-                       rather than the person (ADR-0086). In the status cell, because what it
-                       qualifies is the status: "taken" on this row is the
-                       schedule's word for it. aria-hidden, with the
-                       legend under the table carrying the meaning in
-                       words - a dagger read aloud is noise. -->
+                  <!-- The footnote marker for a dose a schedule wrote rather than the
+                       person. In the status cell, because what it qualifies is the status:
+                       "taken" on this row is the schedule's word for it. aria-hidden, with
+                       the legend under the table carrying the meaning in words - a dagger
+                       read aloud is noise. -->
                   {#if dose.source === 'schedule'}<span
                       class="dossier-footnote-mark"
                       data-dose-auto-logged

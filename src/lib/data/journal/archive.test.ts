@@ -721,11 +721,10 @@ test('a photo row whose file is gone keeps its row and leaves the manifest alone
   assert.equal(snapshot.journal.entries.flatMap((e) => e.photos).filter((p) => p.id === photo).length, 1);
 });
 
-/* ADR-0027 is what makes an area travel, and an area's finished state has to
-   travel for the same reason ADR-0043 made its own preference portable: a
-   stream that reads as unfinished again on the new phone makes having
-   finished it a lie. The date is the part worth pinning by hand - a flag
-   would survive a boolean round trip that silently dropped the day. */
+/* ADR-0027 is what makes an area travel, and an area's finished state has to travel like
+   the cycle preference: a stream that reads as unfinished again on the new phone makes
+   having finished it a lie. The date is the part worth pinning by hand - a flag would
+   survive a boolean round trip that silently dropped the day. */
 test('an area\'s hidden, finished and suspended state travels, and a restore keeps the days it names', async () => {
   const { journal } = await populated();
   await journal.areaStates.setAreasHidden(['wearSessions'], true);

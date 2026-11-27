@@ -1,8 +1,7 @@
-/* Register offers that write records (ADR-0045, ADR-0044). Screens choose
-   when to ask and the owning area commits the write. Links that open a
-   prefilled era editor leave saving to that editor.
-   Tryout adoption can create a milestone in the same transaction. Each
-   source uses its existing milestone or end day to suppress repeats. */
+/* Register offers that write records (ADR-0045). Screens choose when to ask and the owning
+   area commits the write. Links that open a prefilled era editor leave saving to that
+   editor. Tryout adoption can create a milestone in the same transaction. Each source uses
+   its existing milestone or end day to suppress repeats. */
 
 import { m } from '../paraglide/messages';
 import type { FinishableArea, SuspendableArea } from './areaState';

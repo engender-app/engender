@@ -52,12 +52,11 @@ export interface LongJournalSummary {
   commonWordEntries: number;
   rareWord: string;
   rareWordEntries: number;
-  /** A word that is a tag's label rather than note text. The search screen
-      always hands `searchEntries` the ids of tags whose label matches what
-      was typed, and a non-empty list unions a second query over `entry_tag`
-      onto the FTS clause - a different plan from the one a note-only word
-      takes. A custom tag, because a built-in stores a key and its wording
-      comes from the message catalogue above this seam (ADR-0016). */
+  /** A word that is a tag's label rather than note text. The search screen always hands
+      `searchEntries` the ids of tags whose label matches what was typed, and a non-empty
+      list unions a second query over `entry_tag` onto the FTS clause - a different plan
+      from the one a note-only word takes. A custom tag, because a built-in stores a key and
+      its wording comes from the message catalogue above this seam. */
   tagWord: string;
   tagWordEntries: number;
   /** Entries carrying a body-region feeling whose euphoria clears
@@ -374,7 +373,7 @@ export async function generateLongJournal(
       const attachRecordings = random() < 0.005 ? [demoAudioBytes(random)] : undefined;
       if (attachRecordings) summary.voiceRecordings++;
 
-      // A video note on about one entry in a hundred (ADR-0034) - raw webm bytes,
+      // A video note on about one entry in a hundred - raw webm bytes
       // ensuring all photo library sources are exercised.
       const attachVideos =
         (summary.videoNotes === 0 && day === firstEpochDay + 20) || random() < 0.01

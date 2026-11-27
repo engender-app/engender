@@ -1,17 +1,15 @@
-/* The growing delay after wrong PIN attempts (ADR-0014). Deliberately not
-   an attempt limit: nothing here ever wipes anything, because the only way
-   to lose the journal has to be one the user chose (the reset action on
-   the lock screen), not one a bored kid can trip into.
+/* The growing delay after wrong PIN attempts. Deliberately not an attempt limit: nothing
+   here ever wipes anything, because the only way to lose the journal has to be one the user
+   chose (the reset action on the lock screen), not one a bored kid can trip into.
 
-   Epoch time labels a pending wait but cannot prove that it was paid.
-   A reload owes the full delay unless a monotonic mirror can prove what
-   remains. performance.now() measures elapsed time within the session.
+   Epoch time labels a pending wait but cannot prove that it was paid. A reload owes the
+   full delay unless a monotonic mirror can prove what remains. performance.now() measures
+   elapsed time within the session.
 
-   The count outlives the page, through the injected store. In memory it
-   would not have raised the cost of guessing at all: the guesser is
-   holding the device the lock screen is on, and reloading it is a gesture
-   away. What no store can defend against is someone editing storage by
-   hand, which is beside the point - that person can read the journal
+   The count outlives the page, through the injected store. In memory it would not have
+   raised the cost of guessing at all: the guesser is holding the device the lock screen is
+   on, and reloading it is a gesture away. What no store can defend against is someone
+   editing storage by hand, which is beside the point - that person can read the journal
    without ever meeting the lock screen (PRD). */
 
 const FIRST_DELAY_MS = 1000;

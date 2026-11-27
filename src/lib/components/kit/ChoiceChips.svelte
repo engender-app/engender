@@ -1,7 +1,6 @@
 <script lang="ts">
-  /* Wrap choices so all labels fit at 320px. Use the tag-chip transition for
-     selection and keep data-segment on each option as a stable walkthrough
-     handle (ADR-0029). */
+  /* Wrap choices so all labels fit at 320px. Use the tag-chip transition for selection and
+     keep data-segment on each option as a stable walkthrough handle. */
   import { rovingRadio } from '$lib/components/rovingRadio';
 
   let {
@@ -16,7 +15,7 @@
     options: { value: string; label: string }[];
     value: string;
     onChange: (next: string) => void;
-    /** The group's own walkthrough handle (ADR-0029). */
+    /** The group's own walkthrough handle. */
     key?: string;
   } = $props();
 </script>

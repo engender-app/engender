@@ -395,9 +395,9 @@
     selectedGoal !== null && !selectedGoal.builtin && goalRewording !== '' && goalRewording !== selectedTitle
   );
 
-  /* On the confirm button as a handle rather than left for a test to read
-     out of the sentence: the walkthrough has to be able to check the count
-     without gripping the plural copy that carries it (ADR-0029). */
+  /* On the confirm button as a handle rather than left for a test to read out of the
+     sentence: the walkthrough has to be able to check the count without gripping the plural
+     copy that carries it. */
   let unfiledByDelete = $derived(goalDocuments.rows.length);
 
   const visibilityWrite = writer();

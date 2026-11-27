@@ -144,21 +144,21 @@ export interface EntryInput {
   /** Stored video notes removed in this edit, committed with the rest of the
       save. */
   removeVideoIds?: string[];
-  /** Contextual tryout felt-sense reflection (ADR-0044). */
+  /** Contextual tryout felt-sense reflection. */
   tryoutFeltSense?: EntryTryoutFeltSenseInput;
-  /** Contextual scheduled dose quick-log (ADR-0044). */
+  /** Contextual scheduled dose quick-log. */
   doseLog?: EntryDoseLogInput;
-  /** Contextual post-op procedure recovery note and wound photo (ADR-0044). */
+  /** Contextual post-op procedure recovery note and wound photo. */
   procedureRecovery?: EntryProcedureRecoveryInput;
-  /** Contextual HRT physical effects noticed (ADR-0044), several per entry. */
+  /** Contextual HRT physical effects noticed, several per entry. */
   effectMarkers?: EntryEffectMarkerInput[];
-  /** Contextual cycle event (ADR-0044). */
+  /** Contextual cycle event. */
   cycleEvent?: EntryCycleEventInput;
-  /** The presentation this entry is filed under (ADR-0048), a domain id or null to clear it. Undefined leaves the
-      entry's current presentation alone, the same `undefined` vs. explicit
-      `null` rule `mood` and `note` already answer to - a save that never
-      touched the chip must not silently unset it. Commits with the rest of
-      the entry in this one transaction (ADR-0044). */
+  /** The presentation this entry is filed under (ADR-0048), a domain id or null to clear
+      it. Undefined leaves the entry's current presentation alone, the same `undefined` vs.
+      explicit `null` rule `mood` and `note` already answer to - a save that never touched
+      the chip must not silently unset it. Commits with the rest of the entry in this one
+      transaction. */
   presentationId?: string | null;
 }
 
@@ -695,17 +695,15 @@ export function makeEntriesArea(
     await driver.run('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)', [entryId, foldText(note)]);
   };
 
-  /* Contextual cards (tryout felt-sense, dose log, procedure recovery note,
-     HRT effect markers, cycle event) each add a second write beside the
-     entry. The entry and that row describe one moment, so they commit
-     together or not at all: a crash or a thrown error between two commits
-     would leave a felt-sense row with no entry, or an entry claiming a dose
-     that never reached the dose log. resolveContextual does every check that
-     needs a read, and stages files, before the transaction, so a bad card
-     blocks the save with nothing written. commitContextual only writes,
-     inside the same driver.transaction as the entry insert or update, and
-     anything it throws rolls the entry back too. A new contextual card
-     follows the same two steps. (This comment is where ADR-0044 lives now.) */
+  /* Contextual cards (tryout felt-sense, dose log, procedure recovery note, HRT effect
+     markers, cycle event) each add a second write beside the entry. The entry and that row
+     describe one moment, so they commit together or not at all: a crash or a thrown error
+     between two commits would leave a felt-sense row with no entry, or an entry claiming a
+     dose that never reached the dose log. resolveContextual does every check that needs a
+     read, and stages files, before the transaction, so a bad card blocks the save with
+     nothing written. commitContextual only writes, inside the same driver.transaction as
+     the entry insert or update, and anything it throws rolls the entry back too. A new
+     contextual card follows the same two steps. */
   const resolveContextual = async (input: EntryInput) => {
     let tryoutRowId: number | null = null;
     if (input.tryoutFeltSense) {

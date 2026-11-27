@@ -4,9 +4,9 @@
    take is closed properly and stays analysable and saveable.
 
    A source contract, the same shape EntryEditor.gates.test.ts and
-   BodyRegionInspectorSheet.test.ts already use: a `.svelte` file has no node-tier mount
-   (ADR-0016), and proving the auto-stop by real elapsed time would mean waiting out the
-   ceiling itself - the fake microphone is a real oscillator on a real AudioContext clock
+   BodyRegionInspectorSheet.test.ts already use: a `.svelte` file has no node-tier mount,
+   and proving the auto-stop by real elapsed time would mean waiting out the ceiling itself
+   - the fake microphone is a real oscillator on a real AudioContext clock
    (tests/fake-microphone.mjs), with no way to run it faster than real time. */
 
 import { readFileSync } from 'node:fs';

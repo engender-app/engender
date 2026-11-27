@@ -462,7 +462,7 @@ await block('ticket 11 browser tier', 23, async () => {
   if (r.inputMarkers.includes('APP1/Exif')) ok('the orientation fixture really does carry EXIF going in');
   else fail('the orientation fixture really does carry EXIF going in', JSON.stringify(r.inputMarkers));
 
-  // ADR-0015's claim, segment by segment: EXIF and XMP ride in APP1,
+  // Segment by segment: EXIF and XMP ride in APP1
   // Photoshop/IPTC in APP13, free text in COM. None may survive.
   const carried = [...r.outputMarkers, ...r.thumbMarkers].filter((name) => !name.startsWith('APP2/ICC_PROFILE'));
   if (carried.length === 0)
@@ -2411,9 +2411,8 @@ await block('ticket 29 browser tier', 7, async () => {
     ok(`the break between them names the phone as the reason ("${figures[registered[0]].breaks[0].text.slice(0, 48)}...")`);
   else fail('the break between them names the phone as the reason', JSON.stringify(registered.map((key) => [key, figures[key].breaks])));
 
-  /* ADR-0060's negative, checked on the rendered card rather than in the
-     arithmetic: the pitch figure next door draws bands out of this same
-     kit, so what stops one appearing here is the markup. */
+  /* Checked on the rendered card rather than in the arithmetic: the pitch figure next door
+     draws bands out of this same kit, so what stops one appearing here is the markup. */
   const banded = registered.filter((key) => figures[key].bandLike > 0);
   if (banded.length === 0) ok('no band, target region or heat ramp is drawn on any of the six');
   else fail('no band, target region or heat ramp is drawn on any of the six', JSON.stringify(banded));

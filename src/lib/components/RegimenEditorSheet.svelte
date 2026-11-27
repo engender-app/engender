@@ -388,12 +388,11 @@
   });
   let scheduleCanSave = $derived(scheduleValues !== null && scheduleRequirements.length === 0);
 
-  /* Whether the auto-log switch is offered at all (ADR-0086):
-     only where the fields in front of the person add up to something
-     definite to write - a rhythm, an amount, and a route the dose log can
-     record. Read off the schedule draft and the committed episode route, so the
-     switch appears as soon as an amount is typed rather than one save later,
-     and so it goes away again the moment the last amount is deleted. */
+  /* Whether the auto-log switch is offered at all: only where the fields in front of the
+     person add up to something definite to write - a rhythm, an amount, and a route the
+     dose log can record. Read off the schedule draft and the committed episode route, so
+     the switch appears as soon as an amount is typed rather than one save later, and so it
+     goes away again the moment the last amount is deleted. */
   let autoLogOffered = $derived(
     scheduleValues !== null && scheduleCanSave && canAutoLog(scheduleValues, episodeBaseline?.route ?? '', ROUTE_OPTIONS)
   );
@@ -760,13 +759,12 @@
                 <span>{m.save_schedule()}</span>
               </button>
 
-              <!-- The standing instruction (ADR-0086). Under the
-                   save button rather than among the fields above it: those
-                   describe the rhythm and are saved together, this one is a
-                   decision about what the app does with that rhythm and takes
-                   effect the moment it is flipped. Absent entirely where the
-                   schedule has nothing definite to write, the same way the
-                   whole block is absent on an unsaved episode. -->
+              <!-- The standing instruction. Under the save button rather than among the
+                   fields above it: those describe the rhythm and are saved together, this
+                   one is a decision about what the app does with that rhythm and takes
+                   effect the moment it is flipped. Absent entirely where the schedule has
+                   nothing definite to write, the same way the whole block is absent on an
+                   unsaved episode. -->
               {#if autoLogOffered}
                 <div class="disclosed" data-auto-log-switch transition:disclose>
                   <Field label={m.regimen_auto_log_label()} legend spread>

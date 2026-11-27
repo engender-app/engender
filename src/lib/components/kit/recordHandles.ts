@@ -1,16 +1,15 @@
-/* The walkthrough vocabulary a record sheet stamps (ADR-0029).
+/* The walkthrough vocabulary a record sheet stamps.
 
-   Twenty-nine save-and-delete button pairs across sixteen screens carried
-   twenty-two distinct save handles, each spelled out by hand beside its
-   button, and the confirm handle a third time in the delete sheet's props.
-   Three of them had drifted off the pattern the other nineteen followed.
-   A screen names its record once now - `handle="wear-session"` - and the
-   three attributes come from here.
+   Twenty-nine save-and-delete button pairs across sixteen screens carried twenty-two
+   distinct save handles, each spelled out by hand beside its button, and the confirm handle
+   a third time in the delete sheet's props. Three of them had drifted off the pattern the
+   other nineteen followed. A screen names its record once now - `handle="wear-session"` -
+   and the three attributes come from here.
 
-   Rune-free and node-tested for the reason readGate.ts and recordEditor.ts
-   are: this is the rule, RecordSheet.svelte is the rendering of it.
-   `recordHandleSlug` is the way back, so tests/walkthrough-handles-exist.ts
-   can resolve a generated handle to the slug a screen wrote. */
+   Rune-free and node-tested for the reason readGate.ts and recordEditor.ts are: this is the
+   rule, RecordSheet.svelte is the rendering of it. `recordHandleSlug` is the way back, so
+   tests/walkthrough-handles-exist.ts can resolve a generated handle to the slug a screen
+   wrote. */
 
 /* Longest first, so `data-confirm-delete-lab` is never read as a delete
    handle for a record called `confirm`. */

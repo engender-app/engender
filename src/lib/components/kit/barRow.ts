@@ -1,15 +1,15 @@
-/* One row of the horizontal bar chart, and the rule for what its length is
-   measured against.
+/* One row of the horizontal bar chart, and the rule for what its length is measured
+   against.
 
    The type lived here already - the rows are built by the screens and by
-   $lib/data/wrappedDisplay, and a `.ts` file cannot import a type out of a
-   `.svelte` one. The denominator moved in beside it: it used to sit inside BarRows.svelte and Distribution.svelte, reachable
-   only by an eye on a gallery render (ADR-0016, the Node tier cannot reach a
-   component), and it had already been got wrong twice that way. Same split
-   kit/role.ts already makes: the drawing is the component's, what a share is
-   of is not. The length itself, `share`, is charts/share.ts - two callers
-   here in the kit and one in the ring's arithmetic, and none of the three
-   wants what tests/node/ui/chart-library-graph.test.ts keeps out of their way. */
+   $lib/data/wrappedDisplay, and a `.ts` file cannot import a type out of a `.svelte` one.
+   The denominator moved in beside it: it used to sit inside BarRows.svelte and
+   Distribution.svelte, reachable only by an eye on a gallery render (the Node tier cannot
+   reach a component), and it had already been got wrong twice that way. Same split
+   kit/role.ts already makes: the drawing is the component's, what a share is of is not. The
+   length itself, `share`, is charts/share.ts - two callers here in the kit and one in the
+   ring's arithmetic, and none of the three wants what
+   tests/node/ui/chart-library-graph.test.ts keeps out of their way. */
 
 import { share } from '../../charts/share';
 

@@ -1,11 +1,9 @@
-/* Mirror bounded reference data in reactive memory for synchronous reads
-   (ADR-0004). Editors, cards and Home need these few dozen rows without
-   putting a loading state on the whole app. Keep the rune-free journal
-   facade below the mirror (ADR-0017).
+/* Mirror bounded reference data in reactive memory for synchronous reads (ADR-0004).
+   Editors, cards and Home need these few dozen rows without putting a loading state on the
+   whole app. Keep the rune-free journal facade below the mirror (ADR-0017).
 
-   Fill the mirror from SQLite at boot and refresh it one round trip after
-   writes to its tables. vocabulary.ts resolves catalogue labels from keys
-   above the Paraglide boundary (ADR-0016). */
+   Fill the mirror from SQLite at boot and refresh it one round trip after writes to its
+   tables. vocabulary.ts resolves catalogue labels from keys above the Paraglide boundary. */
 
 import { metricKey } from '../prefs/catalogue';
 import { prefs } from '../prefs/store.svelte';

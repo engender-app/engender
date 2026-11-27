@@ -303,10 +303,9 @@
     const value = await readRowForward(j, today, pinReads.forward);
     return { key, value };
   });
-  /* voice-benchmark's own second read: the pinned row draws the
-     same line its hub row does, so it asks the same fold - a memo has no
-     last write in the registry the other three reads above already answer
-     (ADR-0036). */
+  /* voice-benchmark's own second read: the pinned row draws the same line its hub row does,
+     so it asks the same fold - a memo has no last write in the registry the other three
+     reads above already answer. */
   let voiceMemoLastWriteQuery = liveQuery(async (j) => {
     const key = pinReadKey;
     const value = pinReads.rows.includes('voice-benchmark') ? await j.voice.lastWriteEpochDay(today) : null;
@@ -1429,14 +1428,13 @@
     margin-top: var(--space-2);
   }
 
-  /* The fold. A row rather than a link, because it discloses in place and
-     goes nowhere - ADR-0039's amendment is that overflow folds and never
-     becomes a route, and a chevron pointing right would promise the
-     opposite. It names what it holds so you can tell whether to open it.
+  /* The fold. A row rather than a link, because it discloses in place and goes nowhere -
+     overflow folds and never becomes a route, and a chevron pointing right would promise
+     the opposite. It names what it holds so you can tell whether to open it.
 
-     Full width and the touch floor tall: it is the control for everything
-     the cap left out, and the floor applies to it like any other row. It
-     was 44px under a comment calling that the floor (after-release 18). */
+     Full width and the touch floor tall: it is the control for everything the cap left out,
+     and the floor applies to it like any other row. It was 44px under a comment calling
+     that the floor (after-release 18). */
   .home-fold {
     display: flex;
     align-items: center;

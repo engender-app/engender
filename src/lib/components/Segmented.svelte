@@ -46,7 +46,7 @@
     compact?: boolean;
     /** Disable when a selection changes context, such as a language reload. */
     selectOnArrow?: boolean;
-    /** The group's own identity for the walkthrough's handle (ADR-0029). */
+    /** The group's own identity for the walkthrough's handle. */
     key?: string;
     /** For a set the person edits while the screen is up: a segment added, removed or
         renamed opens or closes its own width rather than landing in one frame and shoving

@@ -1,12 +1,10 @@
 <script lang="ts">
-  /* This tab reads entry-attached memos via journal.voice.inJournal().
-     Recording and deletion stay with the entry. The tab owns no records
-     or archive section (ADR-0036).
+  /* This tab reads entry-attached memos via journal.voice.inJournal(). Recording and
+     deletion stay with the entry. The tab owns no records or archive section.
 
-     Keep VoicePlayer and the entry link as siblings to avoid nesting a
-     button inside an anchor. The tab starts with count and total duration.
-     Sum durations as players load file metadata
-     because duration is derived from the file (ADR-0010). */
+     Keep VoicePlayer and the entry link as siblings to avoid nesting a button inside an
+     anchor. The tab starts with count and total duration. Sum durations as players load
+     file metadata because duration is derived from the file (ADR-0010). */
   import { page } from '$app/state';
   import { withListReturn } from '$lib/navigation/sourceRecord';
   import { m } from '$lib/paraglide/messages';

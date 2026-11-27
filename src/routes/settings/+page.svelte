@@ -137,10 +137,10 @@
      and new share one grid cell and crossfade, so neither is cut. */
   const swapFade = (_node: Element) => fadeOnly(crossfadeDuration());
 
-  /* The gates' reset (ADR-0014), reached from here too: a journal in a mode with no gate - device-bound on the web,
-     Unlocked on Android - had no way to be erased inside the app at all.
-     resetApp reloads into setup, which states the result; it only returns
-     here if the wipe failed. */
+  /* The gates' reset, reached from here too: a journal in a mode with no gate -
+     device-bound on the web, Unlocked on Android - had no way to be erased inside the app
+     at all. resetApp reloads into setup, which states the result; it only returns here if
+     the wipe failed. */
   async function confirmErase() {
     erasing = true;
     eraseError = '';
@@ -201,10 +201,10 @@
        shape every deep screen in the app already draws, and this screen was the one
        arriving with no top at all.
 
-       Back to Today, since the phone's gear is in Today's foot (ADR-0076), and through
-       smartBack for the rail and for every deep link that reaches here. On the 1024px shell
-       the control is dropped by components.css: from a fifth row at the rail's foot there
-       is nothing for it to point at. -->
+       Back to Today, since the phone's gear is in Today's foot, and through smartBack for
+       the rail and for every deep link that reaches here. On the 1024px shell the control
+       is dropped by components.css: from a fifth row at the rail's foot there is nothing
+       for it to point at. -->
   <ScreenHeader title={m.nav_settings()} back="/" chrome class="settings-sun-header">
     {#snippet blindContent()}
       {#key activeFlag.dark}<FlagSun />{/key}

@@ -99,7 +99,7 @@ CREATE INDEX idx_milestone_epoch_day ON milestone(epoch_day);
 -- already depends on.
 --
 -- \`epoch_day_override\` is the only day a photo can carry: normalization
--- strips EXIF/XMP/IPTC on import (ADR-0015), so a photo's day is read off its
+-- strips EXIF/XMP/IPTC on import, so a photo's day is read off its
 -- owner unless this says otherwise. photos.ts's reads put it first in their
 -- COALESCE; nothing derives from it and it derives from nothing.
 CREATE TABLE photo (
@@ -166,7 +166,7 @@ CREATE INDEX idx_margin_note_entry_id ON margin_note(entry_id);
 -- entry_dimension_value.value has: below 50 leans dysphoric, above it
 -- euphoric. It replaced two independent nullable intensities. The CHECK
 -- excludes 50, unlike entry_dimension_value's: for a region the midpoint means
--- "nothing said" (phase 5 ticket 31), so a row at 50 would be a picked but
+-- "nothing said", so a row at 50 would be a picked but
 -- unanswered region, and that case is an absent row rather than a stored one.
 --
 -- Whole-set replace on write, like entry_tag rather than
@@ -276,7 +276,7 @@ CREATE TABLE body_region (
 -- because either can be the row's only identity.
 --
 -- \`presentation_id\` is free text with no REFERENCES clause at all - not
--- because a presentation might be deleted (it hides, ADR-0057) but because the
+-- because a presentation might be deleted (it can be hidden) but because the
 -- two travel in separate archive sections (ADR-0027) and restore
 -- independently, so an archive whose templates outlive its modes still has to
 -- apply. Applying a template resolves the id against what this install
@@ -576,8 +576,7 @@ CREATE INDEX idx_regimen_episode_start ON regimen_episode(start_epoch_day);
 --
 -- \`source\` says who wrote the row - 'person' for a dose logged by hand,
 -- 'schedule' for one an auto-logging schedule wrote on the person's behalf
--- (phase 11 ticket 11, ADR-0086). It is a column of its own rather than a
--- fourth \`status\` because it answers a different question, and a
+-- with their consent. It is a separate column from \`status\` because it answers a different question, and a
 -- schedule-written dose the person then marks skipped has to say both things
 -- at once. Defaulted rather than nullable, so nothing reads a null source as
 -- a third state. No CHECK: doses.ts is the one writer, and a CHECK would
@@ -622,9 +621,8 @@ CREATE INDEX idx_dose_pause_episode ON dose_pause(episode_id);
 -- discriminated union DoseScheduleRecurrence gives in code, enforced again here
 -- so a row cannot claim one shape while carrying the other's data.
 --
--- \`auto_log_from_epoch_day\` is the standing instruction "assume I took it
--- unless I say otherwise" (phase 11 ticket 11, ADR-0086): the day the person
--- switched it on, or null for off. One column rather than a flag beside a
+-- \`auto_log_from_epoch_day\` is the day the person opted into auto-logging,
+-- or null for off. One column rather than a flag beside a
 -- day, because a flag set with no day has nothing to walk from, and the walk
 -- never writes before it, so a schedule switched on today reaches back over
 -- nothing.
@@ -682,14 +680,13 @@ CREATE TABLE dose_schedule_dose_amount (
 -- say.
 --
 -- \`lead_time_days\` is how many days ahead of running out a person wants to
--- reorder (redesign phase 10 ticket 01). Nullable, and null means none typed:
+-- reorder. Nullable, and null means none typed:
 -- the app assumes no figure rather than guessing one. It lives here because
 -- this is already one row per drug (ADR-0046), and it feeds
 -- reorderByEpochDay (stockProjection.ts) beside the run-out day the projection
 -- computes anyway.
 --
--- \`doses_per_unit\` is how many doses one unit of stock holds (after-release
--- ticket 01): two vials of injectable estradiol are not two doses. Null keeps
+-- \`doses_per_unit\` is how many doses one unit of stock holds. Two vials of injectable estradiol are not two doses. Null keeps
 -- the one-dose-per-unit reading, which is right for stock counted in pills or
 -- doses. REAL because a quantity is REAL already.
 CREATE TABLE medication_stock (
@@ -1082,7 +1079,7 @@ CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day);
 -- never stored (ADR-0010). Its recovery checklist is an ordinary \`checklist\`
 -- owned by the (kind, uuid) pair, which is why no checklist column is here.
 --
--- \`kind\` says what surgery it is (phase 9 carpet ticket 17), so Dilation's
+-- \`kind\` says what surgery it is, so Dilation's
 -- gate can read it. It defaults to 'custom', what the editor shows for an
 -- unset kind, so nothing reads a null kind as a fourth state. No CHECK, for
 -- the reason dose_event.source has none: procedures.ts is the one writer, and
@@ -1095,7 +1092,7 @@ CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day);
 -- nullable one scoped to 'custom', the "one flag, most rows leave it at the
 -- default" shape wear_session's booleans use.
 --
--- \`archived\` is the person's own organising choice (phase 11 ticket 37), not
+-- \`archived\` is the person's own organising choice, not
 -- a conclusion drawn from an old surgery date: a procedure stays ongoing until
 -- its owner moves it.
 CREATE TABLE procedure (
@@ -1158,7 +1155,7 @@ CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day);
 -- of its own because the standalone checklist already is the appointment prep
 -- list, so the date belongs to the record that is that list's home. Null on
 -- every owned checklist - a procedure's recovery list has no appointment of
--- its own - and read rather than written since ticket 58.
+-- its own. The checklist only reads this day.
 --
 -- The four debrief columns are device-local bookkeeping and deliberately not
 -- part of what a checklist travels in an archive: they name a row this device
@@ -1205,7 +1202,7 @@ CREATE INDEX idx_checklist_item_checklist ON checklist_item(checklist_id);
 -- one handle it has. \`epoch_day\` is the day the paper is from, which for a
 -- diagnosis from 1994 is nothing to do with when it was scanned in.
 -- \`file_path\` holds the same opaque name a photo row does, because an image
--- document goes through the same normalisation and metadata strip (ADR-0015).
+-- document goes through the same normalization and metadata removal.
 --
 -- \`target_kind\`/\`target_id\` are the optional link: at most one, to a
 -- roadmap goal, milestone, procedure or regimen episode, both set or both null.
@@ -1418,9 +1415,8 @@ CREATE INDEX idx_revisit_target_epoch_day ON revisit(target_epoch_day);
 -- \`ArchiveSectionName\`, so it is a wire key already - the natural-key
 -- identity personal_effect.effect travels by.
 --
--- \`hidden\` and not \`visible\`, because a positive flag defaulting to shown is
--- what would reverse ADR-0043, and because hidden is already the column name on
--- tag, gender_dimension and measurement_type.
+-- \`hidden\` matches tag, gender_dimension and measurement_type. This flag
+-- cannot override the cycle tracker's visibility gate.
 --
 -- The two day columns are nullable and dated rather than flags (ADR-0010: the
 -- day is the person's own assertion and is not derivable), and sparse - there

@@ -1010,11 +1010,11 @@ try {
 } catch (e) { fail('today faces forward', e); }
 });
 
-/* Editing Today (ADR-0073, ADR-0067, ADR-0043). The last row of the pinned block opens the
-   edit mode, a row is added from the registry, moved with the keyboard, kept across a
-   reload, and the reset puts the default set and the five switches back. Right after the
-   flow that reads the pinned rows, and for the same reason: this is about the screen while
-   the journal is still the persona's. */
+/* Editing Today (ADR-0073, ADR-0067). The last row of the pinned block opens the edit mode,
+   a row is added from the registry, moved with the keyboard, kept across a reload, and the
+   reset puts the default set and the five switches back. Right after the flow that reads
+   the pinned rows, and for the same reason: this is about the screen while the journal is
+   still the persona's. */
 await flow('editing Today', async () => {
 try {
   await fresh('/');
@@ -1028,8 +1028,8 @@ try {
   if (await page.locator('[data-pinned-row="doubt"]').count()) {
     throw new Error('the counterevidence check is pinned before anybody asked for it');
   }
-  /* And the cycle log is not offered cold - ADR-0043's gate is closed for a
-     persona with no testosterone regimen and no opt-in. */
+  /* And the cycle log is not offered cold - gate is closed for a persona with no
+     testosterone regimen and no opt-in. */
   if (await page.locator('[data-edit-add="cycle-events"]').count()) {
     throw new Error('the add list offered the cycle log with its own gate shut');
   }
@@ -1209,10 +1209,9 @@ try {
 } catch (e) { fail('duplicate tag labels survive saving', e); }
 });
 
-/* 4c. a margin note: added, rendered as a layer, edited, deleted - and the
-   entry's own note untouched by any of it.
-   Grip handles only, per ADR-0029: data-margin-note-* rather than anything
-   read off the rendered date or text. */
+/* 4c. a margin note: added, rendered as a layer, edited, deleted - and the entry's own note
+   untouched by any of it. Grip handles only, data-margin-note-* rather than anything read
+   off the rendered date or text. */
 await flow('margin note', async () => {
 try {
   await fresh('/entry/new/today');
@@ -1358,10 +1357,9 @@ try {
   const milestoneHit = page.locator('[data-search-hit="milestones"]').first();
   const href = await milestoneHit.getAttribute('href');
   if (href !== '/transition/milestones') throw new Error(`a milestone hit went to ${href}`);
-  /* The ticket's own condition: a hit says what kind of thing it is. Read as
-     "the row states two things" rather than by gripping the kit's own class
-     or the label's wording (ADR-0029) - the excerpt on one line, the area it
-     came from on the next. */
+  /* The ticket's own condition: a hit says what kind of thing it is. Read as "the row
+     states two things" rather than by gripping the kit's own class or the label's wording -
+     the excerpt on one line, the area it came from on the next. */
   const lines = (await milestoneHit.innerText()).split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length < 2) throw new Error(`a hit did not say what kind of thing it is: ${JSON.stringify(lines)}`);
 
@@ -3021,15 +3019,14 @@ try {
 } catch (e) { fail('onboarding restore abandoned', e); }
 });
 
-/* 13b1. turning the disguise on during setup leaves a finished install
-   rather than a setup that died halfway (ADR-0079).
+/* 13b1. turning the disguise on during setup leaves a finished install rather than a setup
+   that died halfway.
 
-   The web half of the ticket's acceptance. On Android the alias flip closes
-   the app and the proof is that the journal opens after the restart; there
-   is no restart here, so what this can show is the other half of the same
-   claim - the disguise is in force, every answer was written, and the first
-   run is over rather than waiting at step one. complete()'s ordering is
-   held to in the Node tier (onboarding/complete.test.ts) and on a device. */
+   The web half of the ticket's acceptance. On Android the alias flip closes the app and the
+   proof is that the journal opens after the restart; there is no restart here, so what this
+   can show is the other half of the same claim - the disguise is in force, every answer was
+   written, and the first run is over rather than waiting at step one. complete()'s ordering
+   is held to in the Node tier (onboarding/complete.test.ts) and on a device. */
 await flow('onboarding disguise', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -3105,9 +3102,9 @@ try {
   await page.getByRole('button', { name: /Gender scales/i }).click();
 
   const rows = page.locator('[data-list-row^="scale-"]');
-  /* Read off the row rather than a title element inside it: a row carries
-     its name and its line in one node, and gripping the inner class would
-     be gripping structure (ADR-0029, walkthrough-locators.test.ts). */
+  /* Read off the row rather than a title element inside it: a row carries its name and its
+     line in one node, and gripping the inner class would be gripping structure
+     (walkthrough-locators.test.ts). */
   const rowTexts = await rows.allTextContents();
   const expected = [
     ['euphoria_dysphoria', 'dysphoria - euphoria'],
@@ -3339,12 +3336,11 @@ try {
   await page.waitForURL((url) => new URL(url).pathname === '/');
   ok("/settings on the phone: the field, and back to Today");
 
-  /* The rail's chrome is expected everywhere (ADR-0076); what "no other
-     screen header does" actually means is ScreenHeader's own root, which
-     every deep screen and every door but Today renders. `attached`, not
-     the default `visible`: More's header has a hidden title and nothing
-     else to hold, so it collapses to nothing on screen - true
-     of its content, not of whether a link exists in the DOM. */
+  /* The rail's chrome is expected everywhere; what "no other screen header does" actually
+     means is ScreenHeader's own root, which every deep screen and every door but Today
+     renders. `attached`, not the default `visible`: More's header has a hidden title and
+     nothing else to hold, so it collapses to nothing on screen - true of its content, not
+     of whether a link exists in the DOM. */
   for (const path of ['/calendar', '/stats', '/more']) {
     await page.goto(BASE + path, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-screen-header]', { state: 'attached' });
@@ -4458,9 +4454,8 @@ try {
   await booted();
   await page.locator('[data-book-preview-toggle]').click();
   await page.waitForSelector('[data-book-entry]');
-  /* By part, not by position: the picker's order is a list in journalBook.ts
-     and gripping nth() would silently assert the wrong switch the day that
-     list is reordered (ADR-0029). */
+  /* By part, not by position: the picker's order is a list in journalBook.ts and gripping
+     nth() would silently assert the wrong switch the day that list is reordered. */
   const part = (key) => page.locator(`[data-inclusion="${key}"] [role="switch"]`);
 
   if (await page.locator('[data-book-opening]').count()) throw new Error('the opening page is on before anyone asks for it');
@@ -5119,12 +5114,11 @@ try {
 });
 
 
-/* Fill every feature supplies data for the running, upcoming, latest
-   body value, latest write and undated summary row cases. A finished
-   wear row must win over the running session in this seed. The empty
-   reading row is covered earlier on the persona because the filled
-   seed now writes every reading. Assert data-hub-line per ADR-0029 so
-   copy and markup can change independently. */
+/* Fill every feature supplies data for the running, upcoming, latest body value, latest
+   write and undated summary row cases. A finished wear row must win over the running
+   session in this seed. The empty reading row is covered earlier on the persona because the
+   filled seed now writes every reading. Assert data-hub-line so copy and markup can change
+   independently. */
 await flow('the hub reads its own data', async () => {
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
@@ -5222,14 +5216,14 @@ try {
 }
 });
 
-/* The reorganised tree, tapped rather than asserted. Seven rows left the hub for the screen that owns them, and the whole
-   claim of the ticket's last acceptance line is that each is still reachable
-   from exactly one place. `more-surfaces.test.ts` holds that each host screen
-   links to its rows; what only a walk can say is that following those links
-   actually arrives.
+/* The reorganised tree, tapped rather than asserted. Seven rows left the hub for the screen
+   that owns them, and the whole claim of the ticket's last acceptance line is that each is
+   still reachable from exactly one place. `more-surfaces.test.ts` holds that each host
+   screen links to its rows; what only a walk can say is that following those links actually
+   arrives.
 
-   Handles, not headings: every step is a `data-list-row` click and a URL
-   wait, so rewording any of these rows leaves the flow alone (ADR-0029). */
+   Handles, not headings: every step is a `data-list-row` click and a URL wait, so rewording
+   any of these rows leaves the flow alone. */
 await flow('the reorganised hub tree', async () => {
 try {
   // Health > Meds opens its own screen; Changes you've noticed is a Body
@@ -5281,21 +5275,20 @@ try {
 }
 });
 
-/* Cutting through the door with the search box in its field. Twenty-seven rows is only a list somebody can get
-   through if a word narrows it, and what a word reaches is both halves of
-   what is behind the door: the areas by name, and the records inside them.
+/* Cutting through the door with the search box in its field. Twenty-seven rows is only a
+   list somebody can get through if a word narrows it, and what a word reaches is both
+   halves of what is behind the door: the areas by name, and the records inside them.
 
-   The queries are chosen for what the demo persona actually holds rather
-   than for what reads well - "wear" names an area, "endo" is inside a
-   consult and a reminder - and both halves are asserted by their handles,
-   never by the copy (ADR-0029). */
+   The queries are chosen for what the demo persona actually holds rather than for what
+   reads well - "wear" names an area, "endo" is inside a consult and a reminder - and both
+   halves are asserted by their handles, never by the copy. */
 await flow("the Transition door's search", async () => {
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-hub-index] [data-list-row="wear"]', { timeout: 8000 });
 
   // The row that used to point at preferences, and the pointer with it, are
-  // gone from this door for good (ADR-0036).
+  // absent from More.
   if (await page.locator('[data-list-row="settings"]').count()) {
     throw new Error('the fourth door still holds a Settings row');
   }
@@ -5327,12 +5320,11 @@ try {
   await page.locator('[data-hub-results] [data-list-row="dilation"]').click();
   await page.waitForURL('**/health/dilation');
 
-  /* ADR-0043 through the box: the one row whose existence is a screen's call
-     and not the registry's cannot be typed into being. The demo persona has
-     no testosterone regimen and has not opted in, so nothing here may
-     answer "cycle events" - and the query is one that does match, since
-     `cycleEvents` records exist in the seed and the record half finds them
-     under their own area's name. */
+  /* The one row whose existence is a screen's call and not the registry's cannot be typed
+     into being. The demo persona has no testosterone regimen and has not opted in, so
+     nothing here may answer "cycle events" - and the query is one that does match, since
+     `cycleEvents` records exist in the seed and the record half finds them under their own
+     area's name. */
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-hub-search]').fill('cycle');
   await page.waitForTimeout(1200);
@@ -5366,11 +5358,9 @@ try {
 }
 });
 
-/* Replace the filled journal with one five weeks stale, then restore
-   it before later flows. Run before PIN and access-mode flows that
-   make fresh('/') land on a gate. Use handles (ADR-0029) to check
-   Home opens the return surface once and dismissal persists across
-   reload. */
+/* Replace the filled journal with one five weeks stale, then restore it before later flows.
+   Run before PIN and access-mode flows that make fresh('/') land on a gate. Use handles to
+   check Home opens the return surface once and dismissal persists across reload. */
 await flow('coming back', async () => {
 try {
   await fresh('/');
@@ -6519,19 +6509,18 @@ try {
 
 await flow('cycle tracking opt-in', async () => {
 try {
-  /* Cycle tracking stays out of sight until it is asked for (ADR-0043). The demo journal is transfemme by
-     construction - estradiol, no testosterone - so by default not one
-     surface names the cycle log, while the log itself keeps its records
-     and its direct URL. Two ways in, walked one after the other: the
-     explicit opt-in switch in Settings, and an active testosterone
-     episode, which surfaces it with the switch back off. */
+  /* Cycle tracking stays out of sight until it is asked for. The demo journal is transfemme
+     by construction - estradiol, no testosterone - so by default not one surface names the
+     cycle log, while the log itself keeps its records and its direct URL. Two ways in,
+     walked one after the other: the explicit opt-in switch in Settings, and an active
+     testosterone episode, which surfaces it with the switch back off. */
   /* No step on /more any more: took the cycle row off the hub entirely and hosted it under
      the side effects screen - moved it again, onto the merged changes screen, with the rest
      of what that screen drew - so "the hub does not name it" is now structural and an
      absence check there would pass whatever this gate did. What is left to walk is the
      surface that does name it behind the gate, and `cycle-events` is a handle this flow
-     goes on to wait for - so its absence here means something (ADR-0029, and a deleted
-     handle cannot assert it is gone). */
+     goes on to wait for - so its absence here means something (and a deleted handle cannot
+     assert it is gone). */
   await fresh('/care');
   if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="cycle-events"]').count())) {
     throw new Error('the changes screen named the cycle log with no testosterone and no opt-in');
@@ -6541,7 +6530,7 @@ try {
   }
 
   // The direct URL still answers, records intact - hiding a row never
-  // closes a screen (ADR-0043). `data-cycle-event` only names a row inside
+  // closes a screen. `data-cycle-event` only names a row inside
   // the strip's current week now, and the
   // fixture's events land roughly monthly, so a week can hold none by
   // chance; `data-cycle-events-today` is the row the non-empty branch
@@ -7428,10 +7417,9 @@ try {
   await page.locator(`[data-open-goal="${goalId}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.locator('[data-delete-goal]').click();
-  /* The count is the whole reason this confirmation says more than "this
-     cannot be undone", and it is read off the button's own handle rather
-     than out of the sentence: gripping the plural copy would let a rewording
-     of it pass this flow for free (ADR-0029). */
+  /* The count is the whole reason this confirmation says more than "this cannot be undone",
+     and it is read off the button's own handle rather than out of the sentence: gripping
+     the plural copy would let a rewording of it pass this flow for free. */
   await page.waitForSelector('[data-confirm-delete-goal]');
   const unfiles = await page.locator('[data-confirm-delete-goal]').getAttribute('data-unfiles');
   if (unfiles !== '1') {
@@ -7474,9 +7462,9 @@ try {
 } catch (e) { fail('a roadmap goal reworded and removed', e); }
 });
 
-/* Test choosing, skipping and later editing a photo's journal day. The image
-   metadata is stripped (ADR-0015). Run before device-bound access, which
-   requires a WebAuthn PRF unlock headless Chromium cannot complete. */
+/* Test choosing, skipping and later editing a photo's journal day. The image metadata is
+   stripped. Run before device-bound access, which requires a WebAuthn PRF unlock headless
+   Chromium cannot complete. */
 await flow("a photo's day, on screen", async () => {
 try {
   const skipPhoto = await tinyPhoto(page, '#c94f7c');
@@ -7579,17 +7567,16 @@ finally {
 }
 });
 
-/* The photo library: one grid over all six tables that
-   hold a photograph, and the wipe over any two of them.
+/* The photo library: one grid over all six tables that hold a photograph, and the wipe over
+   any two of them.
 
-   On the full fixture, which is the only journal that has all six - the
-   persona writes entry and milestone photographs only, which is why the
-   flow near the top of this file sees no chip row and should not.
+   On the full fixture, which is the only journal that has all six - the persona writes
+   entry and milestone photographs only, which is why the flow near the top of this file
+   sees no chip row and should not.
 
-   Gripped by `data-photo-source` rather than by the words on the tiles
-   (ADR-0029). One assertion does read a label, because the label carrying
-   the source is the thing the ticket asks for and a handle cannot say
-   whether it says anything. */
+   Gripped by `data-photo-source` rather than by the words on the tiles. One assertion does
+   read a label, because the label carrying the source is the thing the ticket asks for and
+   a handle cannot say whether it says anything. */
 await flow('the photo library', async () => {
 try {
   /* Seeded here rather than relying on the "Fill every feature" run near the
@@ -7761,10 +7748,9 @@ try {
   await page.locator('#current-protection-secret').fill('demo');
   await page.locator('[data-confirm-current-protection]').click();
 
-  /* The key itself, gripped by its handle rather than by its copy
-     (ADR-0029). Its shape is the assertion: five groups of five from the
-     Crockford alphabet, which is what recoveryKey.ts guarantees and what
-     somebody has to be able to read off the screen. */
+  /* The key itself, gripped by its handle rather than by its copy. Its shape is the
+     assertion: five groups of five from the Crockford alphabet, which is what
+     recoveryKey.ts guarantees and what somebody has to be able to read off the screen. */
   const shown = (await page.locator('[data-recovery-key]').innerText()).trim();
   if (!/^[0-9A-Z]{5}(-[0-9A-Z]{5}){4}$/.test(shown)) {
     throw new Error('the key on screen is not five groups of five: ' + shown);

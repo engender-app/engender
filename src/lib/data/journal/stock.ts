@@ -319,8 +319,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
               await scopedReminders.upsertReminder({
                 // Just the drug's own name: a Reminder's title is ordinarily
                 // whatever a person types, and echoing the drug name back
-                // needs no copy of its own to translate (ADR-0016 keeps
-                // paraglide out of this tier anyway).
+                // needs no translation. Node tests import this module without Paraglide.
                 title: entry.drug,
                 time: '09:00',
                 recurrence: null,

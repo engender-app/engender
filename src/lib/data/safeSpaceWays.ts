@@ -1,10 +1,10 @@
-/* Order the links below Safe Space's breathing exercise. The resource
-   directory comes first and is also reachable through More. Good
-   moments stays within Safe Space. Keep the Comfort list button above
-   the exercise so a person can open it without starting the animation.
+/* Order the links below Safe Space's breathing exercise. The resource directory comes first
+   and is also reachable through More. Good moments stays within Safe Space. Keep the
+   Comfort list button above the exercise so a person can open it without starting the
+   animation.
 
-   Use the registry to test the order. The screen supplies translated
-   labels so this module can run in the Node tier (ADR-0016). */
+   Use the registry to test the order. The screen supplies translated labels so this module
+   can run in the Node tier. */
 
 export type SafeSpaceWayKey = 'resources' | 'evidence';
 

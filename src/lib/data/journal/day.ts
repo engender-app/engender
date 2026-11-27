@@ -1,13 +1,11 @@
-/* Read every registered area for a single epoch day (ADR-0001).
-   Each registry entry names its DayRecords key, the Archive sections
-   it covers, the SQL tables it reads and the area's own read method.
-   The declaration order also sets screen order.
+/* Read every registered area for a single epoch day (ADR-0001). Each registry entry names
+   its DayRecords key, the Archive sections it covers, the SQL tables it reads and the
+   area's own read method. The declaration order also sets screen order.
 
-   The coverage assertion catches dated areas absent from the registry
-   or DAY_OPT_OUTS. SQL dependencies come from the same declarations.
-   A day reads individual records, including photos and felt sense,
-   while the clinician summary has its own disclosure rules (ADR-0031).
-   getDay writes nothing. vocabulary/dayLabels.ts supplies headings. */
+   The coverage assertion catches dated areas absent from the registry or DAY_OPT_OUTS. SQL
+   dependencies come from the same declarations. A day reads individual records, including
+   photos and felt sense, while the clinician summary has its own disclosure rules. getDay
+   writes nothing. vocabulary/dayLabels.ts supplies headings. */
 
 import type { TableName } from '../live/writes';
 import type {

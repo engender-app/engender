@@ -1,7 +1,6 @@
-/* Evaluate live tile triggers and compose Home's ordered grid (ADR-0039,
-   ADR-0036). liveTiles.svelte.ts supplies reads, preferences and snoozes.
-   Keep this module rune-free with relative imports and format callbacks so
-   Node tests can exercise it without Paraglide (ADR-0016). */
+/* Evaluate live tile triggers and compose Home's ordered grid. liveTiles.svelte.ts supplies
+   reads, preferences and snoozes. Keep this module rune-free with relative imports and
+   format callbacks so Node tests can exercise it without Paraglide. */
 
 import { m } from '../paraglide/messages';
 import type {
@@ -108,9 +107,8 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'ready-letter': 'moment'
 };
 
-/** How many tiles Home draws at their own weight. The rest fold into one
-    collapsed row in place - never a route, and never a true tile dropped
-    (ADR-0039's amendment). */
+/** How many tiles Home draws at their own weight. The rest fold into one collapsed row in
+    place - never a route, and never a true tile dropped. */
 /* HOME_TILE_CAP stays exported only for liveTiles.grid.test.ts, which
    cross-checks against it (AU-09 test-only review). */
 export const HOME_TILE_CAP = 3;
@@ -155,12 +153,11 @@ type EveryLiveTileHasASurface = AssertKindsHaveASurface<LiveTileKind>;
     is the component's rather than a choice made here. */
 type TileHandles = Record<string, true>;
 
-/** An in-place control on a tile (ADR-0039). Structurally what
-    `Tile.svelte` takes; declared here rather than imported from it because
-    a `.svelte` file is unreachable from the Node tier. The two staying in
-    step is not a convention - Home passes `action={tile.action}` straight
-    into the component, so a field that drifts is a `svelte-check` error at
-    that line. */
+/** An in-place control on a tile. Structurally what `Tile.svelte` takes; declared here
+    rather than imported from it because a `.svelte` file is unreachable from the Node tier.
+    The two staying in step is not a convention - Home passes `action={tile.action}`
+    straight into the component, so a field that drifts is a `svelte-check` error at that
+    line. */
 interface HomeTileAction {
   icon?: string;
   text?: string;
@@ -178,8 +175,7 @@ interface HomeTileDismiss {
 
 /** One tile, ready to draw. */
 export interface HomeTile {
-  /** The registry's own key, which is also the walkthrough's handle
-      (ADR-0029) and the `{#each}` key. */
+  /** The registry's own key, which is also the walkthrough's handle and the `{#each}` key. */
   key: LiveTileKind;
   /** `LIVE_TILE_TIER[key]`, carried on the tile so the screen draws the
       weight off what it is rendering rather than looking the kind up a
@@ -397,11 +393,10 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
          dose can cover today, while another episode's dose cannot. */
       const [lead, ...others] = panelDoses(input, active);
       const { episode, next } = lead;
-      /* What the app did on the person's behalf yesterday, which the panel
-         states ahead of the next day it expects (ADR-0086). Ahead, not beside: the line holds one sentence, and on
-         the morning after an auto-logged slot the fact worth reading is the
-         row that was written without them, not a date they can work out
-         from the schedule they wrote. */
+      /* What the app did on the person's behalf yesterday, which the panel states ahead of
+         the next day it expects. Ahead, not beside: the line holds one sentence, and on the
+         morning after an auto-logged slot the fact worth reading is the row that was
+         written without them, not a date they can work out from the schedule they wrote. */
       const autoLoggedYesterday = reads.yesterdayDoses.some(
         (dose) =>
           dose.source === 'schedule' && attributeDose(reads.episodes, dose).episode?.id === episode.id

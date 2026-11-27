@@ -66,10 +66,9 @@
   let lettersQuery = liveList((j) => j.letters.getLetters(HISTORY_LIMIT));
   let letters = $derived(lettersQuery.rows);
 
-  /* Which letters have been read, and which arrivals have been met. Both
-     live in the encrypted acknowledgements preference rather than in the
-     journal's tables (ADR-0039), read through the reactive store so opening
-     a letter re-draws its card without a reload. */
+  /* Which letters have been read, and which arrivals have been met. Both live in the
+     encrypted acknowledgements preference rather than in the journal's tables, read through
+     the reactive store so opening a letter re-draws its card without a reload. */
   let readIds = $derived(getReadLetterIds(acknowledgementStore));
   let greetedIds = $derived(getGreetedLetterIds(acknowledgementStore));
 

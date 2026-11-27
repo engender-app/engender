@@ -49,18 +49,16 @@ const TAB_ROUTES: TabRoute[] = [
   }
 ];
 
-/* Settings is chrome (ADR-0076): reached from Today's gear, not a tab of
-   its own. Every path under /settings, the hub and each subpage alike,
-   lights the tab that was lit before it was opened, which the caller
-   carries in `chromeOrigin` (chrome-tab-origin.ts) so this function stays
-   pure. Opened cold, with nothing to borrow, it lights Today: the gear lives
+/* Settings is chrome: reached from Today's gear, not a tab of its own. Every path under
+   /settings, the hub and each subpage alike, lights the tab that was lit before it was
+   opened, which the caller carries in `chromeOrigin` (chrome-tab-origin.ts) so this
+   function stays pure. Opened cold, with nothing to borrow, it lights Today: the gear lives
    in Today's foot and the hub's back arrow goes there.
 
-   The body map sits in Look back's group above, apart from the /body/*
-   screens in the fourth door's, by the same rule the rest of this table
-   follows: a screen lights the door it is reached from. The body map is
-   one of Look back's readings (BodyMapTile on /stats), its back arrow goes
-   to /stats, and nothing in the fourth door links to it. Lighting the
+   The body map sits in Look back's group above, apart from the /body/* screens in the
+   fourth door's, by the same rule the rest of this table follows: a screen lights the door
+   it is reached from. The body map is one of Look back's readings (BodyMapTile on /stats),
+   its back arrow goes to /stats, and nothing in the fourth door links to it. Lighting the
    fourth door there would move the tab under the person on every visit. */
 const CHROME_PREFIX = '/settings';
 const CHROME_FALLBACK = 'home';
@@ -95,9 +93,9 @@ export function borrowsTab(path: string): boolean {
 /** The rail's own key for its Settings row. */
 export const RAIL_SETTINGS = 'rail-settings';
 
-/* The rail has room for a Settings row the bar does not (ADR-0076 keeps it
-   chrome on the bar), so on every /settings route the rail lights that row
-   and borrows nothing (after-release 17, L04-07). */
+/* The rail has room for a Settings row the bar does not (the bar uses a separate Settings
+   control), so on every /settings route the rail lights that row and borrows nothing
+   (after-release 17, L04-07). */
 export function railTabKey(path: string, origin = ''): string {
   if (path.startsWith(CHROME_PREFIX)) return RAIL_SETTINGS;
   return litTabKey(path, origin);

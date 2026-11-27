@@ -1,11 +1,10 @@
 /* The recency rows lead to their own area. Real-browser half of the ticket's verification:
    the node tier reads the contract off the source
-   (tests/node/journal/hair-removal-recency-handoff.test.ts, ADR-0016); this one proves the
-   three acceptance behaviours on the real screen - two areas with different histories open
-   their own prefilled context, nothing saves until Save, and closing returns to the
-   overview where it was. The custom-area fixture is rejected at the data seam: the closed
-   vocabulary is the rule an imported key meets, so no custom row can ever join the
-   overview.
+   (tests/node/journal/hair-removal-recency-handoff.test.ts); this one proves the three
+   acceptance behaviours on the real screen - two areas with different histories open their
+   own prefilled context, nothing saves until Save, and closing returns to the overview
+   where it was. The custom-area fixture is rejected at the data seam: the closed vocabulary
+   is the rule an imported key meets, so no custom row can ever join the overview.
 
    Run: node tests/guards/hair-removal-recency-handoff-check.mjs (a throwaway dev server;
    screenshots land in.claude/hair-removal-recency-shots, gitignored). */

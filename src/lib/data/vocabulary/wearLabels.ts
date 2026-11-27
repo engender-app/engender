@@ -1,9 +1,9 @@
-/* Localize each WearKind. Exhaustive records make a missing
-   kind a type error. Use whole messages because Polish noun forms vary
-   across contexts. Keep wearSessions.ts free of Paraglide (ADR-0016).
+/* Localize each WearKind. Exhaustive records make a missing kind a type error. Use whole
+   messages because Polish noun forms vary across contexts. Keep wearSessions.ts free of
+   Paraglide.
 
-   Shared surfaces, the tile switch and empty state use generic wording.
-   rem provenance sees only autoSource, so its hint also stays generic. */
+   Shared surfaces, the tile switch and empty state use generic wording. rem provenance sees
+   only autoSource, so its hint also stays generic. */
 
 /* Relative rather than `$lib`, unlike doseLabels.ts beside it: liveTiles.ts
    reads this file for the wear tile's title, and liveTiles.grid.test.ts

@@ -1,16 +1,16 @@
-/* Display wording for the dose log's closed vocabularies, alongside reminderLabel.ts for the same reason it is there: the
-   wording speaks paraglide, and nothing the Node tier touches may import
-   that (ADR-0016). doseSchedule.ts holds the vocabularies themselves and
-   stays free of it; this is where they get their words.
+/* Display wording for the dose log's closed vocabularies, alongside reminderLabel.ts for
+   the same reason it is there: the wording speaks paraglide, and nothing the Node tier
+   touches may import that. doseSchedule.ts holds the vocabularies themselves and stays free
+   of it; this is where they get their words.
 
-   Each record is typed against a union derived from those `as const` lists,
-   the rule labels.ts sets out: adding a site or a route without adding its
-   message is then a typecheck failure rather than a raw key on screen.
+   Each record is typed against a union derived from those `as const` lists, the rule
+   labels.ts sets out: adding a site or a route without adding its message is then a
+   typecheck failure rather than a raw key on screen.
 
-   Keyed one message per member rather than composed from parts. Polish
-   inflects a side with its region's gender ("udo lewe" but "pośladek lewy"),
-   so a "{region}, {side}" template would be wrong in half the injection
-   sites, and the same trap waits in any language with agreement. */
+   Keyed one message per member rather than composed from parts. Polish inflects a side with
+   its region's gender ("udo lewe" but "pośladek lewy"), so a "{region}, {side}" template
+   would be wrong in half the injection sites, and the same trap waits in any language with
+   agreement. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';

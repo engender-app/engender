@@ -48,10 +48,10 @@ describe('what the More hub is built from', () => {
 
   it('holds no Settings row and no pointer to preferences', () => {
     /* A door named Transition cannot hold a row about appearance and data: preferences are
-       chrome, not part of anybody's transition (ADR-0036, ADR-0076). They are reached from
-       the gear in Today's header and the rail's fifth row, which owns. `/settings` stopped
-       being a *host* (ADR-0084): modes is a plain row on that screen now, not one this
-       file's registry still owns. */
+       chrome, not part of anybody's transition. They are reached from the gear in Today's
+       header and the rail's fifth row, which owns. `/settings` stopped being a *host*
+       (ADR-0084): modes is a plain row on that screen now, not one this file's registry
+       still owns. */
     expect(more).not.toContain('/settings');
     expect(more).not.toContain('nav_settings');
   });
@@ -86,7 +86,7 @@ describe('what the More hub is built from', () => {
     expect(more).not.toContain('readFlagRoles(');
   });
 
-  it('answers the cycle gate before it draws the cycle row (ADR-0043)', () => {
+  it('answers the cycle gate before it draws the cycle row', () => {
     /* The cycle row is a hub row again, so the hub screen is the one that asks
        `cycleTrackingVisible`, reads the episodes with its other reads, and hands the answer
        to the registry, which leaves the row out of the list and of search until it is true.
@@ -98,10 +98,9 @@ describe('what the More hub is built from', () => {
   });
 
   it('issues three live reads for twenty rows, not one per row', () => {
-    /* Pin six hub reads. Last writes and upcoming items each use one
-       assembled call. The other reads provide area records, typed
-       search, the last memo write outside the archive registry
-       (ADR-0036), and regimen episodes for the cycle gate (ADR-0043).
+    /* Pin six hub reads. Last writes and upcoming items each use one assembled call. The
+       other reads provide area records, typed search, the last memo write outside the
+       archive registry, and regimen episodes for the cycle gate.
        tests/long-journal/budgets.json holds last-write cost. */
     const reads = more.match(/live(?:Query|List)\(/g) ?? [];
 

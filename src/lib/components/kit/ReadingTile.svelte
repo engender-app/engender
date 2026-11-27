@@ -28,7 +28,7 @@
     name: string;
     /** The reading's screen, carrying the span (lookBackReadings.ts). */
     href: string;
-    /** The walkthrough's handle (ADR-0029): which reading this is. */
+    /** The walkthrough's handle: which reading this is. */
     key: string;
     /** The one figure for the span, already formatted. Absent on a tile
         whose drawing is the reading. */
