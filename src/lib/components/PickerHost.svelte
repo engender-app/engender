@@ -11,7 +11,8 @@
      motion it crossfades instead. */
   import type { Snippet } from 'svelte';
   import type { TransitionConfig } from 'svelte/transition';
-  import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { cubicOut } from 'svelte/easing';
+  import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { playAfterPaint } from '$lib/motion/screenArrival';
   import Sheet from './Sheet.svelte';
   import { registerOverlayRegion } from './overlayLock';
@@ -67,9 +68,13 @@
     if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     const edge = above ? 'top' : 'bottom';
     const dir = above ? 1 : -1;
+    /* Cubic, not the app's quint ease-out, and the close at --dur-med too: quint moves
+       30% of the roll in its first frame and 53% in two (45% and 71% at --dur-fast), so
+       one late frame on a slow device showed the popover half open. Cubic moves 19%, and
+       36% across two. */
     return {
-      duration: motionDuration(closing ? '--dur-fast' : '--dur-med'),
-      easing: EASE_OUT,
+      duration: motionDuration('--dur-med'),
+      easing: cubicOut,
       css: (_t, u) => {
         const shut = Number((u * 100).toFixed(2));
         const inset = edge === 'bottom' ? `0 0 ${shut}% 0` : `${shut}% 0 0 0`;
