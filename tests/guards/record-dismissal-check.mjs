@@ -263,7 +263,7 @@ try {
   await page.locator('[data-delete-dose]').click();
   const confirmation = page.locator('[data-sheet]').last();
   assert.match(await confirmation.innerText(), /7.5 proof-unit/);
-  assert.match(await confirmation.innerText(), /permanently deleted/);
+  assert.match(await confirmation.innerText(), /Only this dose will be deleted/);
   await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   await navigate('/care/labs');
