@@ -28,6 +28,20 @@ commit the tag names, and its `build` job has `needs: checks`. The workflow star
 (`gh workflow run release.yml --ref main -f tag=v1.2.3`); the tag must be
 signed by a key listed in `.github/release-signers`.
 
+Create that tag with the tag script, not by hand. Before tagging, run
+`npm run test:android` on the clean candidate and commit the record it writes
+to `scripts/progressive-release-record.json`, and add the version's section to
+[CHANGELOG.md](CHANGELOG.md). The script refuses a dirty main, Android evidence
+that doesn't match the candidate, or a version with no notes:
+
+```sh
+npm run release:tag -- 1.2.3 --dry-run
+npm run release:tag -- 1.2.3
+```
+
+[Candidate evidence before publication](deploy/README.md#candidate-evidence-before-publication)
+explains what the record must hold for each kind of release.
+
 ## Test conventions
 
 See [Running tests](tests/README.md) for the suites and commands.
