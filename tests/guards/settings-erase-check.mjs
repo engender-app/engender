@@ -14,7 +14,7 @@
      npm run build && node tests/guards/settings-erase-check.mjs */
 import assert from 'node:assert/strict';
 import { preview } from 'vite';
-import { launchChromium } from '../browser-harness.mjs';
+import { continueToTheRest, launchChromium } from '../browser-harness.mjs';
 import { tinyPhoto } from '../photo-fixture.mjs';
 
 const NOTE = 'erase-proof-7f3a';
@@ -101,6 +101,7 @@ async function finishSetup(page) {
 async function writeEntry(page) {
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
+  await continueToTheRest(page);
   await page.locator('#ed-note').fill(NOTE);
   /* A saved attachment makes the photo directory part of the fixture before
      boot's deferred orphan sweep can create it during a later reload. */

@@ -3,7 +3,7 @@ import { realpathSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { PALETTES } from '../palettes.mjs';
 import { createServer, preview } from 'vite';
-import { launchChromium } from '../browser-harness.mjs';
+import { continueToTheRest, launchChromium } from '../browser-harness.mjs';
 
 const server = await createServer({
   configFile: 'tests/browser-tier/browser-tier.vite.config.ts',
@@ -125,6 +125,7 @@ try {
   await realPage.locator('[data-home-hello]').waitFor();
   await realPage.locator('[data-nav-fab]').click();
   await realPage.locator('[data-fan-target="mood-3"]').click();
+  await continueToTheRest(realPage);
   await realPage.locator('#ed-note').fill('Recovered from the saved archive.');
   await realPage.locator('[data-save]').click();
   await realPage.locator('[data-home-log]').waitFor();

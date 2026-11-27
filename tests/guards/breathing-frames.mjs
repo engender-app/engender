@@ -208,7 +208,9 @@ try {
     await page.goto(BASE + PATH);
     await page.waitForSelector(`${ROOT} svg`, { timeout: 60000 });
     await page.evaluate(async () => {
+      const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
       const { setLocale } = await import('/src/lib/paraglide/runtime.js');
+      prefs.language = 'pl';
       setLocale('pl', { reload: false });
     });
     await page.waitForTimeout(500);

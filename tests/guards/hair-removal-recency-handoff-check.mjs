@@ -126,7 +126,8 @@ try {
 
   // The all-area overview is retained: one row per closed-vocabulary area,
   // and the untouched area still says nothing is logged.
-  assert.equal(await page.locator('[data-recency]').count(), 10, 'all ten areas keep their recency row');
+  // HAIR_REMOVAL_AREAS has fourteen areas since the four added on 2026-10-22.
+  assert.equal(await page.locator('[data-recency]').count(), 14, 'all fourteen areas keep their recency row');
   assert.match(
     await page.locator('[data-recency="upper_lip"]').innerText(),
     /no sessions logged/i,

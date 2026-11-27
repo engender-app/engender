@@ -42,7 +42,8 @@ try {
       await settlePage(page, base, '/voice', 'light');
       await page.waitForSelector('[data-vb-passage]');
       const segments = await segmentFit();
-      assert.equal(segments.length, 4, `${language} at ${width}px: the chooser lost a task`);
+      // Three tasks since recordings moved to their own Media row.
+      assert.equal(segments.length, 3, `${language} at ${width}px: the chooser lost a task`);
       for (const segment of segments) {
         assert.ok(
           segment.words <= segment.box + 1,
@@ -89,14 +90,14 @@ try {
     await journal.voiceBenchmarks.deleteBenchmark(uuid);
   }, id);
 
-  console.log('PASS: four task labels fit their own segments at 320/390/430 in both languages');
+  console.log('PASS: three task labels fit their own segments at 320/390/430 in both languages');
   console.log('PASS: the task distinction is there with no benchmark and gone with one');
 
   /* The same rule over every compact control the app renders on the demo
      persona. Routes rather than a registry, because a compact control is a
      choice a screen makes and nothing collects them. */
   const COMPACT_ROUTES = [
-    '/media/photos', '/settings', '/transition/roadmap', '/compare'
+    '/settings', '/settings/eras', '/body/wear', '/entry/new/today'
   ];
   let swept = 0;
   for (const width of [320, 390]) {
@@ -127,7 +128,9 @@ try {
   }
   /* Found at all, so a route that stops rendering its control cannot make
      the sweep pass by having nothing to look at. */
-  assert.ok(swept >= 20, `the sweep found only ${swept} compact controls across ${COMPACT_ROUTES.length} routes at two widths`);
+  // Three compact controls per width on these routes; the redesigns took
+  // photos', the roadmap's and compare's away.
+  assert.ok(swept >= 6, `the sweep found only ${swept} compact controls across ${COMPACT_ROUTES.length} routes at two widths`);
   console.log(`PASS: ${swept} compact controls across the app keep every label inside its own segment at 320 and 390`);
 } finally {
   await browser.close();

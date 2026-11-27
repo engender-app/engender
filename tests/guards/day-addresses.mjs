@@ -51,7 +51,7 @@ try {
   }
   for (const path of [
     '/entry/abc', '/transition/letters/zzz',
-    '/transition/tryouts/zzz', '/stats/zzz', '/wrapped/zzz', '/media/documents/zzz'
+    '/transition/tryouts/zzz', '/stats/zzz', '/media/documents/zzz'
   ]) {
     await check(path, async () => {
       await load(path);
@@ -60,6 +60,14 @@ try {
       assert.ok((await page.locator('[data-app-scroll-region]').innerText()).trim().length > 0, 'screen is not blank');
     });
   }
+  // An unknown Wrapped cadence is a 404 since the range view went: the shared
+  // not-found screen keeps the chrome and offers its way home instead of Back.
+  await check('/wrapped/zzz', async () => {
+    await load('/wrapped/zzz');
+    await page.locator('[data-error-screen="not-found"]').waitFor({ timeout: 3000 });
+    assert.ok(await page.locator('[data-nav-item="calendar"]').isVisible(), 'app chrome remains visible');
+    assert.ok(await page.locator('[data-error-home]').isVisible(), 'the way home remains visible');
+  });
   await check('ISO day and epoch day show the same date', async () => {
     await load('/day/2026-10-05');
     const isoTitle = await page.locator('h1').innerText();
@@ -71,7 +79,8 @@ try {
     await load('/entry/new/2026-10-05?seedMood=4');
     await page.locator('[data-entry-step="today"]').waitFor({ timeout: 3000 });
     assert.equal(await page.locator('[data-mood="4"]').getAttribute('aria-checked'), 'true');
-    assert.match(await page.locator('[data-app-scroll-region]').innerText(), /5 October/);
+    // The stepped editor writes the day short: "Mon 5 Oct".
+    assert.match(await page.locator('[data-app-scroll-region]').innerText(), /5 Oct/);
   });
   await check('today new entry remains writable', async () => {
     await load('/entry/new/today');

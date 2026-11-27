@@ -68,11 +68,9 @@ try {
       let route;
       let link;
       if (source === 'Voice') {
-        // Switching from the default tab must also survive the return.
-        await go('/voice');
-        await page.locator('[data-segment="recordings"]').click();
-        await page.locator('[data-open-entry]').first().waitFor();
         route = '/media/recordings';
+        await go(route);
+        await page.locator('[data-open-entry]').first().waitFor();
         link = page.locator(`[data-open-entry][href^="/entry/${id}?"]`);
       } else if (source === 'Search' || source === 'Margin') {
         route = '/search?starred=1';
