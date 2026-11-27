@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * (the test starts from a cleared mirror): allowed leaves FLAG_SECURE off,
  * not allowed keeps it on. With a lock set, API 26-32 turns it on for the leave. Android 13+ keeps the
  * Recents half on the system's activity record, which has no getter;
- * tests/android-manifest-recents.test.ts holds that line instead.
+ * tests/node/android/android-manifest-recents.test.ts holds that line instead.
  * The preference is mirrored through the same public bridge as Settings.
  */
 @RunWith(AndroidJUnit4.class)

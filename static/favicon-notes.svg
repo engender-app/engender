@@ -3,7 +3,7 @@
      Fixed colours rather than palette tokens: a favicon gets no CSS.
 
      The path is a copy of `book` in src/lib/components/icons.ts and
-     tests/favicon.test.ts is what keeps the two the same drawing. It earned
+     tests/node/ui/favicon.test.ts is what keeps the two the same drawing. It earned
      its keep in phase 5 ticket 31: the optical-centring sweep moved `book`
      0.62 of a unit up, and this file was the only other place that path
      existed. -->

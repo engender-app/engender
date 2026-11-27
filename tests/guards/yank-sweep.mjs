@@ -3,7 +3,7 @@
    pseudo-elements while the outgoing DOM is removed. Read actual elements
    on a settled screen. Skip one-frame runs and intentional reduced-motion cuts.
 
-   Run VITE_DEMO=1 npm run build, then node tests/yank-sweep.mjs. --prove tests
+   Run VITE_DEMO=1 npm run build, then node tests/guards/yank-sweep.mjs. --prove tests
    synthetic defects and --gate fails style findings. Pixel diffs are advisory
    because withdrawal blur can resemble a dropout.
    --scenes, --themes and --out set coverage and output. --reduced-motion

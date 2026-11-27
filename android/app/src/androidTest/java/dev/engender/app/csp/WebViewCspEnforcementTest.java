@@ -36,7 +36,7 @@ public class WebViewCspEnforcementTest {
      * Every directive the document has to carry. frame-ancestors is absent on
      * purpose: a browser parses it in a meta policy and ignores it, so the
      * nginx header stays its only home and nothing frames this WebView.
-     * tests/csp.test.ts pins the sources; this pins that they arrive here.
+     * tests/node/security/csp.test.ts pins the sources; this pins that they arrive here.
      */
     private static final List<String> REQUIRED_DIRECTIVES = Arrays.asList(
         "default-src", "base-uri", "object-src", "frame-src", "form-action",

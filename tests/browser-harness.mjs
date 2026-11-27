@@ -262,7 +262,7 @@ export async function setAppLanguage(page, locale) {
 }
 
 /** Collect compositor frames while `fn` runs, via CDP Page.startScreencast.
- *  Shared between tests/tools/hydration-sweep.mjs and tests/yank-sweep.mjs. */
+ *  Shared between tests/tools/hydration-sweep.mjs and tests/guards/yank-sweep.mjs. */
 /** @template T
  * @param {import('playwright-core').Page} page
  * @param {(frames: {data: string, at: number}[]) => Promise<T>} fn */
