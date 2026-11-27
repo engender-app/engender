@@ -311,7 +311,7 @@
   {
     "name": "update-notice-check",
     "tier": "dev",
-    "holds": "the waiting-update notice sits 12px under the screen's field at the width of its content, at 390px, 1024px and 1280px, with the rail and column keeping their places and widths; it opens and closes over several frames with the line under it travelling instead of jumping; a navigation carries it as one object from under one field to under the next, and on one side of a transition it fades; it is announced once, not by every screen that draws it; a dismissal survives lock and unlock without a second announcement, a fresh page offers the release again, unlock remounts Home and preserves an unsaved editor note on its route, Update now still hands over, and reduced motion cuts it in at the same place"
+    "holds": "the waiting-update notice sits 12px under the field at the inset phone width at 390px and at the full 680px header width at 1024px and 1280px, with the rail and column keeping their places and widths; it opens and closes over several frames with the line under it travelling instead of jumping; a navigation carries it as one object from under one field to under the next, and on one side of a transition it fades; it is announced once, not by every screen that draws it; a dismissal survives lock and unlock without a second announcement, a fresh page offers the release again, unlock remounts Home and preserves an unsaved editor note on its route, Update now still hands over, and reduced motion cuts it in at the same place"
   },
   {
     "name": "device-bound-writes",
