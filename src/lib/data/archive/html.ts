@@ -1,20 +1,5 @@
-/* HTML to text, for imported note bodies.
-
-   Daylio stores an entry's note as HTML, and only a small minority of
-   notes contain any markup - which is exactly why this exists. A reader
-   that treated the field as plain text would look right on almost every
-   note in a journal and quietly mangle the handful someone bothered to
-   format, so the conversion is not optional and the tests for it are not
-   theoretical.
-
-   Deliberately not a parser and deliberately not the DOM. Node-tier tests
-   have no `DOMParser`, and `innerHTML` on a detached element would run an
-   HTML parser over a stranger's file to recover text this handles with a
-   few substitutions. Nothing here executes, loads or resolves anything.
-
-   The order matters: tags come out before entities go in. Decoding first
-   would turn a note whose author wrote "&lt;b&gt;" into a tag that the
-   next step then strips, deleting the person's own words. */
+/* Convert Daylio note HTML to text in Node or the browser without building
+   a DOM. Strip tags before decoding entities so a literal &lt;b&gt; survives. */
 
 /** Named entities Daylio's editor actually emits. Numeric forms are
     handled separately, and anything else is left as the person typed it -

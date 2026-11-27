@@ -1,20 +1,7 @@
-/* The hair-removal session area (phase 5 ticket 08, CONTEXT: pending). A
-   session is not an Entry: no mood, dimension values, tags or note, and no
-   regimen-episode reference - the same reasoning SideEffect and CycleEvent
-   give for standing alone.
-
-   A session's photos are their own table (hair_removal_photo) rather than a
-   third owner arm on `photo` (schema.ts explains why: SQLite cannot widen
-   that table's exactly-one-owner CHECK without a full rebuild). A session
-   photo genuinely belongs to one session - a before/after picture of that
-   treatment, not an independently dated series - so hair_removal_photo
-   carries a session_id foreign key and is read and applied as the
-   session's own nested children (archiveRead.ts/archiveApply.ts, modeled on
-   checklist/checklist_item). The shared pipeline
-   is still reused exactly as the ticket asks: stagePhoto (photos.ts) writes
-   the same normalized, metadata-stripped bytes through the same
-   file-before-row order, and removeFilesOf reclaims them the same way on
-   delete. */
+/* A hair-removal session owns its photos through hair_removal_photo.session_id.
+   This keeps photos nested in archives and avoids rebuilding photo's owner
+   constraint. Use stagePhoto for normalized, metadata-stripped files before
+   writing rows. Use removeFilesOf on delete. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { assertOneOf, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS } from '../rowValues';

@@ -788,23 +788,9 @@
               </div>
             {/if}
 
-            <!-- One value, one control. The amount and its unit were two
-                 full-width fields side by side for a figure nobody reads as
-                 two things; the unit sits inside the box now, right after
-                 the number, so the pair reads as "4 mg" rather than as two
-                 answers to two questions.
-
-                 No visible label, which is the one place this sheet drops
-                 one. The line directly above the open group already states
-                 this exact value, and where there is nothing to state it
-                 states the word "Dose" instead - so a label here would be
-                 the third time the same word appeared in four lines. Both
-                 inputs carry it as an accessible name, which is what a
-                 field without a visible label owes.
-
-                 Left hand-written rather than moved onto Field.svelte:
-                 Field is one label naming one control, and
-                 this wrapper holds two, each already named its own way. -->
+            <!-- Show the unit inside the amount box. The line above already names the dose.
+                 Give both inputs accessible names. Field.svelte serves one control, so
+                 this pair has its own wrapper. -->
             <div class="field">
               <div class="dose-amount">
                 <input

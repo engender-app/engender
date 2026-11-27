@@ -1,21 +1,11 @@
 <script lang="ts">
-  /* ScreenHeader owns the field, its ink and its bleed. Doors supply their
-     own content through the field snippet. Use display type on the field.
-     Smaller controls, such as the search input, sit on the page colour with
-     page ink. tests/browser-tier/direction-contracts.ts checks these rules.
-
-     A back href stays a real anchor for modified clicks and browser affordances.
-     A plain click calls smartBack with that href as fallback when the history
-     has no previous app entry. Pass a callback for a local mode such as an
-     editor that closes in place.
-
-     Use titleHidden when the tab already names the screen. The heading stays
-     in the document for assistive technology. A field with only door content
-     uses 16px above and below. The 40px top inset is for a visible title.
-
-     Settings is chrome (ADR-0076). Its phone back control returns to Today.
-     The 1024px shell container query hides that control when Settings has its
-     own row in the rail. */
+  /* ScreenHeader owns the field, its ink and bleed. Use display type there and
+     put smaller controls on page colours. A normal back click calls smartBack
+     and falls back to its href. Keep the anchor for modified clicks and use a
+     callback for local editor state.
+     titleHidden keeps the heading accessible. A field with only door content
+     has 16px padding. Visible titles use 40px above. Settings is chrome
+     (ADR-0076). The 1024px rail replaces its phone back control. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { smartBack } from '$lib/navigation/smart-back';

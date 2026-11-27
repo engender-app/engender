@@ -1,21 +1,6 @@
-/* The stats area (ADR-0012): every aggregate the stats screen,
-   the calendar and the recap read, computed in SQL and returned in native
-   units.
-
-   Native units is the rule this module is built around. Mood comes back on
-   1 to 5 because that is what was logged; a dimension comes back within its
-   own range. Nothing here rescales anything to make two metrics look alike -
-   that job belongs to metricRange.ts, whose output drives colour and is
-   never shown as a number. The demo store mixed the two and ended up
-   answering "the metric's average" with mood, with mood x 20, and with mood
-   x 20 again from three different functions.
-
-   Ranges arrive as two epoch days rather than a length in days: the journal
-   never reads the clock for a domain answer, so every case here is a plain
-   deterministic fixture.
-
-   Nothing is stored. A recap is recomputed from entries, tags, milestones
-   and dimension values every time it is opened (ADR-0010). */
+/* Aggregate in SQL and return native units (ADR-0012). metricRange.ts only
+   normalizes values for drawing. Callers supply both epoch-day bounds so the
+   journal never reads the clock. Recaps are derived on read (ADR-0010). */
 
 import { epochDayFromTimestamp, startOfDayTimestamp, weekdayOfEpochDay } from '../epochDay';
 import type { ConstellationReading } from '../constellationData';
@@ -193,24 +178,10 @@ export interface StatsArea {
       `presentationId` is ticket 18's same filter, forwarded to
       getRegionSomaticBreakdown. */
   bodyRegionBreakdown(region: string, presentationId?: string | null): Promise<RegionSomaticBreakdown>;
-  /** What the body map paints: one reading per region that has any in the
-      range, both ends inclusive.
-
-      Not `bodyRegionTrend` twice per region. That answers "how did this one
-      region go over time", one point per day per axis, and the figure asks
-      the opposite question - every region at once, each collapsed to one
-      reading - so it would be two calls times however many regions somebody
-      has, which is unbounded since ticket 30 (a custom region is an
-      ordinary reference-data row). One grouped statement instead, and the
-      side rule applied to its rows in `regionReading` (bodyMap.ts).
-
-      A region with no readings in the range is **absent** rather than
-      present at zero, so the figure can draw undrawn and faintest
-      differently - the same distinction the injection map's never-used dot
-      carries. The caller has the region list; this only says which of them
-      the range has anything to say about.
-
-      `presentationId` is ticket 18's same three-state filter (ADR-0048). */
+  /** Query the inclusive range once for all body regions and apply bodyMap.ts's
+      regionReading rule. Omit regions without readings so the figure can separate
+      an outline from its faintest fill. presentationId uses the three-state filter
+      (ADR-0048). */
   bodyRegionMap(
     fromEpochDay: number,
     toEpochDay: number,
@@ -292,23 +263,9 @@ function goodDaysBetween(fromEpochDay: number, toEpochDay: number): { sql: strin
   };
 }
 
-/* Which rows carry "the metric", as a subquery plus its parameters. Mood
-   is a column on the entry and a dimension value is a row in a join table,
-   so the two cannot be parameterised into one statement - but everything
-   downstream only wants (entry, day, value), which is what this hands
-   back. A dimension key that matches nothing simply selects no rows.
-
-   The fragment's own parameter comes first in every statement that embeds
-   it, because the fragment opens the statement: callers pass
-   `[...params, ...their own]` and must keep it that way round.
-
-   `ordinal` is the entry's own clock, and only `spreadByDay` reads it: the
-   calendar draws a two-reading day chronologically, earliest half on the
-   left (Alicja, 2026-09-02), which is a question about order and not about
-   size. Ties break on the entry id, the same pair `constellationReadings`
-   orders by, so two entries stamped the same second still have one
-   answer. `bodyRegionValues` below carries no ordinal because nothing asks
-   a body region for its order. */
+/* Return a SQL fragment with entry, day and value for mood or a dimension.
+   Bind the fragment's parameters before the caller's. The calendar orders
+   by ordinal then entry ID so tied timestamps still give a stable split. */
 export function metricValues(metric: string): { sql: string; params: (string | number)[] } {
   if (metric === 'mood') {
     return {

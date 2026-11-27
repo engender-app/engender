@@ -10,22 +10,10 @@
 import { parseDayParam } from '../data/dayParam';
 
 /**
- * Whether one navigation is a cut rather than a movement.
- *
- * `from` is null on a cold start, which has nothing to come from.
- *
- * Setup is the one route on the narrow list above whose two legs are not
- * the same question, and redesign ticket 33 is where that showed. Arriving
- * is not a navigation: there is no app yet, and the shell redirects here
- * because `prefs.onboarded` is false. Leaving is - somebody pressed "Start
- * writing" and the app opened, which is the moment the whole flow is for,
- * and rule 12 already says the sun's handover to Home is one object at one
- * size rather than two suns. Cut, it was the app's largest surface changing
- * in a single frame at the end of setup's moving steps.
- *
- * This is ticket 35's lesson one route further on: one predicate answering
- * two questions is what produced that ticket's own yank, and the fix each
- * time is another question rather than a wider answer.
+ * A cold start cuts because from is null. Arrival at setup is a redirect
+ * before the app opens. Leaving setup moves so its sun hands over to Home
+ * at the same size. This predicate describes the transition, separately from
+ * whether a route shows chrome.
  */
 export function cutsInsteadOfMoving(from: string | null, to: string): boolean {
   if (from === null) return true;

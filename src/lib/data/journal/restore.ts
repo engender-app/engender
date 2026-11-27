@@ -1,23 +1,12 @@
-/* Restore an Archive through the journal facade (ADR-0011, ADR-0017).
-   Validate row identities, values and references before consuming files.
-   Stage attachments first and assign fresh names to replacements,
-   including thumbnails, so a failed restore leaves the old files usable.
-
-   Then open one transaction. Reconcile built-ins first so imported rows
-   can reference them. archiveSections.ts orders the writes, and Replace
-   deletes rows in reverse order (ADR-0027). Full Replace applies
-   validated portable preferences. Device-local settings stay in place,
-   and row-only imports omit preferences (ADR-0003).
-
-   Merge matches user rows by UUID and built-ins by key. The latest
-   edit or deletion wins, with ties going to the destination (ADR-0098).
-   The destination keeps its preferences.
-
-   External imports measure counts and record import_log inside the
-   same transaction. After commit, resolve without fallible database
-   work so the write registry can announce a successful import.
-   Cleanup removes only proven-unowned staged files. The orphan sweep
-   handles interrupted cleanup after the transaction. */
+/* Restore validated rows through the journal facade (ADR-0011, ADR-0017).
+   Stage files under fresh names before the transaction. Reconcile built-ins
+   first and order writes through archiveSections.ts (ADR-0027). Replace deletes
+   in reverse order and applies portable prefs only on full restore (ADR-0003).
+   Merge matches UUIDs or built-in keys. Latest edit or deletion wins. Keep
+   timestamp ties and preferences on the destination (ADR-0098).
+   Record external import counts in the transaction. Return success without
+   further database work. Remove only proven-unowned staged files, and leave
+   interrupted cleanup to the orphan sweep. */
 
 import { CorruptArchiveError, UnsupportedArchiveError } from '../archive/container';
 import { openArchive } from '../archive/pack';

@@ -1,24 +1,6 @@
-/* The pitch track a benchmark stores, so the take can be drawn again
-   afterwards.
-
-   Before this the tracker's output was summarized into six figures and
-   dropped, which is why no benchmark taken before schema v58 can be
-   redrawn. Two rejected alternatives:
-
-     every frame        3000 floats for a thirty-second passage at the 10 ms
-                        hop, which is more than any phone-width chart can
-                        resolve and a hundred times what the picture needs.
-     recompute on read  decoding the stored audio and re-running YIN on
-                        every render is exactly what storing the figures was
-                        chosen to avoid.
-
-   So: four points a second, each the median of the frames beneath it. A
-   thirty-second passage is about 120 points, which is roughly one per two
-   pixels at the 390px floor - the resolution the drawing can actually use.
-
-   Pure arithmetic over frames, like the rest of $lib/audio: no clock, no
-   database, nothing from paraglide, so the Node tier proves it without a
-   browser. */
+/* Store four median pitch points per second. That gives a 30-second take about
+   120 points, enough to redraw the phone chart without decoding audio again.
+   Benchmarks from before schema v58 lack a track. Keep the math runnable in Node. */
 
 import type { PitchFrame } from './pitch';
 import { median } from './series';

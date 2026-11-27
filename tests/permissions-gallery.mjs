@@ -1,21 +1,6 @@
-/* Renders for the permissions step and its screen.
-
-   Two sources, because the ticket has two kinds of thing to look at.
-
-   The row states come from tests/browser-tier/permissions.html, which mounts
-   the shipped `PermissionRow` against the app's real tokens and fonts and
-   hands it every state `grantRows` can produce. A screenshot of the built
-   web app cannot show four of those: a desktop browser has no notification
-   permission and no exact alarms, so those two rows are permanently "Android
-   only" there.
-
-   The step and the screen come from the built demo app, driven the way
-   setup-shape-gallery.mjs drives it - through the demo bar's first-run jump
-   for setup, and by navigating for Settings.
-
-   Run: VITE_DEMO=1 npm run build   first, then
-        node tests/permissions-gallery.mjs
-   Shots land in .claude/permission-shots/, gitignored and durable. */
+/* Render each PermissionRow state in the browser fixture, including states
+   available only on Android. Capture setup and Settings from the demo build.
+   Run VITE_DEMO=1 npm run build, then node tests/permissions-gallery.mjs. */
 import { createServer, preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

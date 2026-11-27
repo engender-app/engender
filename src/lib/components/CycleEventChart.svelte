@@ -1,20 +1,6 @@
-<!-- The cycle event chart (phase 5 ticket 03, CONTEXT: "Cycle event"): cycle
-     events plotted as points on a day axis, with the person's regimen
-     episode history drawn as background bands behind them - so a period's
-     retreat (or continuation) after a regimen episode starts is something
-     the axis shows on its own, with no forecast or fertility framing added
-     on top. The same single-track shape EffectsTimeline uses, scaled to one
-     row: a baseline, bands (here: episode ranges instead of literature
-     windows) and discrete markers (here: one per logged event, kind told
-     apart by color rather than by which of several rows it sits on, since
-     there is no fixed set of rows the way personal effects has one per
-     marker).
-
-     Purely a renderer, the same philosophy EffectsTimeline
-     states for itself: the caller resolves every label via
-     cycleEventKindName, and this file adds only its own fixed legend
-     wording. Decorative only - the textual list the caller renders
-     alongside this is what a screen reader needs. -->
+<!-- Plot logged cycle events on a day axis over regimen bands. Colour labels
+     kind and the caller supplies each event name. Keep the figure decorative
+     because the accompanying list carries the information for assistive tech. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { scaleLinear } from 'd3-scale';

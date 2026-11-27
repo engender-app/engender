@@ -1,21 +1,8 @@
-/* Declare each offer that can write a record (ADR-0045, ADR-0044).
-   Screens decide when to ask. The registry describes the trigger,
-   identifies the single offered record, supplies copy and delegates a
-   confirmed write to the area that owns it.
-
-   The surgery-day milestone belongs here because accepting writes a
-   record. The day view's Start an era link and Look back's naming offer
-   open an editor with dates filled in. The editor alone saves the era.
-
-   Tryout adoption can close the tryout with or without a milestone.
-   Pass createMilestone: false for adoption without the offered record.
-   adoptTryout commits the closure and optional milestone together.
-
-   Each source checks for a prior result before offering again. Goals
-   look up a milestone by roadmapGoalKey, procedures use their linked
-   milestone, and adopted tryouts already have an end day. This module
-   uses relative imports and types for the journal areas so its tests
-   can run in Node. */
+/* Register offers that write records (ADR-0045, ADR-0044). Screens choose
+   when to ask and the owning area commits the write. Links that open a
+   prefilled era editor leave saving to that editor.
+   Tryout adoption can create a milestone in the same transaction. Each
+   source uses its existing milestone or end day to suppress repeats. */
 
 import { m } from '../paraglide/messages';
 import type { FinishableArea, SuspendableArea } from './areaState';

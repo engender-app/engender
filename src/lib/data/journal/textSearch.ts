@@ -1,20 +1,9 @@
-/* Declare which journal text is searchable beyond the entry-note index
-   (ADR-0005, ADR-0027, ADR-0031). Each entry supplies the hit kind, covered
-   archive sections, SQL read dependencies, source columns, traveling UUID
-   and date. Column order breaks ties within a hit. Context carries an
-   owner when the view needs one. The filter excludes sealed letters.
-
-   Fold short text inside SQLite and match substrings with LIKE. A
-   partial word can match a letter while entry-note FTS matches token
-   prefixes. Search has no ranking or secondary index and writes
-   nothing, including recent search history (ADR-0020).
-
-   One UNION ALL supplies matching text in a uniform shape so the fold
-   is written once and Android makes one driver call. A window count
-   runs before LIMIT so the result total includes every page. The
-   search-everywhere benchmark in tests/long-journal measures this path.
-   searchHitRows.ts supplies labels and routes, keeping this module free
-   of localized copy (ADR-0016). */
+/* Register searchable text beyond entry notes (ADR-0005, ADR-0027, ADR-0031).
+   Each source declares its archive sections, read dependencies, columns, UUID,
+   date and owner context. Exclude sealed letters. Fold text inside SQLite and
+   match substrings with LIKE, without any stored search history (ADR-0020).
+   One UNION ALL and a count before LIMIT keep results and totals in one query.
+   searchHitRows.ts adds localized copy and routes (ADR-0016). */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { foldedSql } from '../fold';

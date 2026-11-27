@@ -642,24 +642,12 @@ function sharesItsLine(node: Element): boolean {
 }
 
 /**
- * Release a panel's space along the axis its neighbors use. A flex row
- * animates its width and gap so the next panel grows before the outgoing
- * node leaves the DOM. A stacked panel uses disclose. Read the current
- * layout because the same pair stacks below 390px.
- *
- * A promotion into a capped grid fills the slot immediately. The list
- * calls markSlotReplacement because the DOM cannot tell a promoted panel
- * from an ordinary panel on the next row. Remove the old panel and fade
- * in the replacement without collapsing an extra row.
- *
- * Fix horizontal width with flex: 0 0 <width>px so siblings cannot
- * renegotiate it mid-animation. Both enter and leave cut during screen
- * arrival, before checking for replacement. Late reads can displace a
- * panel while the screen is still settling.
- *
- * Use skip for a caller that can see navigation in progress. For stacked
- * replacements, after delays the new panel in milliseconds and holds it
- * clipped at zero until the outgoing panel has collapsed.
+ * Release a panel's space on the current layout axis. Fix a horizontal
+ * panel's width so siblings can grow during its exit. Use disclose when stacked.
+ * markSlotReplacement tells a capped grid to fill a slot without collapsing
+ * an extra row. Enter and leave cut during screen arrival. A caller can also
+ * pass skip. For stacked replacements, after (ms) holds the entering panel at zero
+ * until the exit has collapsed.
  */
 export function collapse(
   node: Element,

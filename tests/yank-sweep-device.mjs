@@ -1,35 +1,17 @@
 // @ts-nocheck
-/* Run the shared yank detector against an Android WebView over CDP. Its
-   rAF sampler starts the gesture on the second frame. Page.startScreencast
-   also records compositor frames because a painted defect may leave the
-   computed styles intact. A transient differs from both neighbours while
-   those neighbours agree. The style trace annotates the pixel finding.
+/* Sample Android WebView styles and compositor frames over CDP. Start the
+   gesture on the second rAF. A transient differs from two matching neighbours.
 
-   Use JDK 21, USB debugging and a demo APK whose applicationId starts with
-   dev.engender.app.test. Build it in a disposable checkout. The runner
-   installs, force-stops and launches only the isolated package, and rejects
-   the production ID before invoking adb.
-     VITE_DEMO=1 npm run build
-     npx cap sync android
-     android/gradlew -p android :app:assembleDebug
-     node tests/yank-sweep-device.mjs <serial> --package dev.engender.app.test.<name> [path/to/app-debug.apk]
+   Use JDK 21, USB debugging and a demo APK with a dev.engender.app.test
+   package. The runner rejects the production ID before adb. Build in a
+   disposable checkout, then pass the serial, --package and APK path.
 
-   Both themes and three passes are the gesture defaults. Any pass can catch
-   a one-frame defect. --hydration walks every screen cold, once per scene
-   by default, in the persona and empty profiles. Capture starts at
-   navigation and DOM sampling starts at boot ready, each for three seconds.
-
-   --scenes a,b, --themes light,dark, --passes N and --profiles persona,empty
-   narrow the run. --out <dir> sets the report directory. --port N selects
-   the single devtools forward this run removes (default 9341).
-   --compare <report.json> compares desktop results. --reduced-motion
-   records the cut control. --prove requires both detectors to catch the
-   synthetic defects. --dump writes all style frames as JSON.
-   --cast-scenes a,b saves every compositor frame for those scenes.
-
-   Selected findings save three PNGs named
-   <scene>-<profile>-<theme>-p<pass>-<index>-f<finding>{a,b,c}.png.
-   The report gives each triple or its reason for omission. */
+   Gestures default to both themes and three passes. --hydration observes
+   cold mounts and samples for three seconds after boot ready. Use --scenes,
+   --themes, --passes, --profiles and --out to set coverage and output.
+   --port defaults to 9341. --compare reads desktop results. --reduced-motion
+   runs the cut control and --prove checks both detectors.
+   --dump retains style frames. --cast-scenes retains named compositor casts. */
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

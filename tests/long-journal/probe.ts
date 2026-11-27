@@ -1,20 +1,7 @@
-/* The ten-year run, in the browser.
-
-   Encryption is on, because that is what ships: the driver is the
-   SQLite3MultipleCiphers one under a data key (ADR-0018/0020) and the photo
-   files go through the encrypting store, so every number below includes the
-   cost of decrypting to answer.
-
-   The generator and the harness know nothing about either. They speak
-   `openJournal(driver, files)` (ADR-0017), which is the same contract
-   ticket 11's native SQLite driver satisfies - so the Android half of this
-   measurement is a different twenty lines of setup here and nothing else.
-
-   Photo bytes are supplied from this side because a representative photo
-   needs a canvas: real JPEG bytes at the sizes ADR-0008 normalizes to, with
-   enough high-frequency detail that they compress like a photograph rather
-   than like a gradient. The size of the file is most of what the photo grid
-   and the Archive export are measuring. */
+/* Run the ten-year probe on encrypted browser SQLite and files
+   (ADR-0018, ADR-0020). The generator and harness use openJournal
+   (ADR-0017), shared with Android. Use canvas JPEGs at the stored size
+   limits (ADR-0008) so grid and archive measurements include photo costs. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';

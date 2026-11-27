@@ -1,20 +1,8 @@
-/* Store journal documents under the same data key as photos (ADR-0065).
-   The flat row holds a date, title, file and optional targetKind/targetId.
-   documentTarget joins those two fields for callers. Removing a milestone,
-   procedure or custom goal clears linked targets first. Regimen episodes
-   persist, and built-in goals have no row to delete.
-
-   Search indexes the title only. A document's contents are neither
-   extracted nor searched here. Normalize images to strip metadata
-   (ADR-0015), and store PDFs as received. The importer assigns the opaque
-   UUID and extension from the detected kind.
-
-   Write files before adding the row, and delete the row before removing
-   its files. The orphan sweep handles a crash between those steps.
-   Image normalization produces its thumbnail. A PDF thumbnail renders
-   the first page during import. documentThumbName is shared by the
-   screen, archive and sweep. A PDF the renderer cannot open has no
-   thumbnail. */
+/* Store documents under the photo data key (ADR-0065). Search titles only.
+   Normalize images to remove metadata (ADR-0015). Keep original PDF bytes
+   and render a first-page thumbnail when possible. Share documentThumbName.
+   Write files before inserting rows and delete rows before removing files.
+   The orphan sweep handles interruptions. Clear links before deleting targets. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';

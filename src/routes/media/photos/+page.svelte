@@ -429,24 +429,9 @@
 </div>
 
 <style>
-  /* The day-edit affordance on a browse cell: a sibling of
-     .photo-cell rather than a change to it, so export/+page.svelte's own
-     .photo-cell button - screens.css's shared class - keeps meaning
-     exactly what it always has there.
-
-     Sized and lifted the same way .starred-photo-unstar already solves
-     the identical problem (screens.css): a real button here needs the
-     full --touch-target hit area, but a 44px disc would swallow half the
-     104px cell, so the tap target and the visual circle are two
-     differently-sized boxes - the outer button transparent and centred
-     on the corner, the smaller ::before disc carrying the surface fill
-     and the edge that separates it from whatever the photo underneath
-     happens to be.
-
-     On the photograph's top-left corner. It was the bottom-left corner
-     until last-audit UI 52: that corner is the date caption's row, and
-     the disc covered the caption's first letter while the 48px target
-     took taps meant for the tile (audit U44). */
+  /* Put the day edit on the photo's top-left corner, clear of its date caption.
+     Use a full touch target with a smaller visible disc. Keep it a sibling of
+     .photo-cell so export can keep using that class for its own button. */
   .photo-cell-controls { position: relative; }
   /* While picking, the day button steps back (a tap there would open a
      sheet over the picking) and a video note's tile dims, since a note is

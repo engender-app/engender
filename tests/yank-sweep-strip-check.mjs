@@ -1,20 +1,8 @@
-// The status-strip check over a sweep's saved casts (motion-regressions 01,
-// kept by 02).
-//
-// Every scene a sweep runs leaves its whole compositor cast in
-// <out>/<scene>-<profile>-<theme>-p<pass>-cast/NNN-<ms>.png. The strip is
-// `.app-strip`: `--inset-top` minus `--field-bleed-top` tall, painted in
-// `--bg`. A screencast carries only web content, never the system icons, so
-// in every frame of every gesture that band has to be exactly `--bg`. This
-// reads each frame's band and names the first frame that leaves it.
-//
-// usage: node tests/yank-sweep-strip-check.mjs <sweep out dir> [--css-width 411]
-//        [--strip 49] [--json <file>]
-// The casts come from a sweep that can see the strip: the device sweep, or
-// the desktop sweep with --force-inset 58. --css-width is the page's CSS
-// width (the cast is scaled from it; read from the report's viewport when
-// omitted); --strip is the band height in CSS px (58 - 9 on the Pixel 10a
-// and the forced inset). Exits 1 when any cast's strip leaves --bg.
+// Check that .app-strip stays at --bg in every saved cast frame. Its height
+// is --inset-top minus --field-bleed-top. Casts contain web content only.
+// Run node tests/yank-sweep-strip-check.mjs <out> from a device sweep or one
+// with --force-inset 58. --css-width defaults to the reported viewport width.
+// --strip sets the height in CSS px and --json writes the result. Exit 1 on a bad frame.
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { decodePng } from './png-decode.mjs';

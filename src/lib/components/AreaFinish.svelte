@@ -1,21 +1,9 @@
 <script lang="ts">
-  /* Finish or pause an area on its own screen (ADR-0052, ADR-0045). Voice and
-     hair removal can pause. journal/areaStates.ts enforces one state at a
-     time. Finished and paused states each describe the change and offer a
-     labelled action to reverse it.
-
-     The confirmation spells out what changes. Records remain searchable,
-     prompts stop, and the change can be undone. The date appears in charts
-     and the clinician summary, so the sheet says that before the person
-     confirms. This action uses the primary button.
-
-     offers.ts can offer to finish an area after six months without a write.
-     Accepting opens the same sheet with the last write's date. answerOffer
-     handles the write after confirmation. A decline stays in
-     areaFinishOfferDeclined for that area for the life of the journal.
-
-     Keep the card mounted so resize can carry the height between states.
-     The offer collapses through Notice's disclose. */
+  /* Finish an area or pause voice and hair removal in place (ADR-0052, ADR-0045).
+     The confirmation explains search, prompts and timeline effects. Both states
+     can be reversed. An offer uses the same sheet with the last-write day, and
+     a decline stays recorded for the journal's life.
+     Keep the card mounted for resize and disclose the offer on exit. */
   import { m } from '$lib/paraglide/messages';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
   import { announce } from '$lib/stores/announcer.svelte';

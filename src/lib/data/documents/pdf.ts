@@ -33,23 +33,10 @@ function pdfjs(): Promise<PdfjsModule> {
   return loading;
 }
 
-/** A worker of this app's own, for one document.
-
-    Constructed here rather than left to `GlobalWorkerOptions.workerSrc` so
-    that Vite bundles the app's entry (pdf-worker.ts) - which is what puts
-    the floor patch inside the worker's realm and the worker's bytes in the
-    offline shell.
-
-    One each, rather than one shared port, because two documents open at
-    once would fight over it (`PDFWorker.fromPort` refuses a port already
-    claimed). `PDFWorker.destroy()` does not terminate this `port` itself,
-    though - it only reaches `_webWorker`, which `fromPort` never sets - so
-    the raw `Worker` comes back too, and this module is the one that has to
-    call `terminate()` on it.
-
-    The worker is not in the offline shell's install (shell-assets.ts): the
-    first one built here asks the service worker to keep it and its fonts.
-    Repeated asks retry a failed cache fill and are cheap for cached assets. */
+/** Bundle pdf-worker.ts to apply its compatibility patch in the worker.
+    PDFWorker.fromPort claims one port per document. destroy() leaves it live.
+    Keep the raw Worker so the owner can terminate it. Ask the service worker
+    to cache the worker and fonts on demand, including retries after a failure. */
 function workerFor(module: PdfjsModule) {
   const port = new Worker(new URL('./pdf-worker.ts', import.meta.url), { type: 'module' });
   void navigator.serviceWorker

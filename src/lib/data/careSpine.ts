@@ -310,23 +310,9 @@ export function railEpisodes(activeEpisodes: readonly RegimenEpisode[]): Regimen
   return [...activeEpisodes].sort((a, b) => a.startEpochDay - b.startEpochDay);
 }
 
-/** One episode's own last and next dose, scoped so a second, unrelated
-    concurrent schedule cannot bleed into either reading - the bug ticket
-    38 is named for.
-
-    Last reads by drug name (attributeDrug) rather than by this exact
-    episode row: a dose logged under an earlier episode of the same drug,
-    before a dose change split it into a new row, still counts, the same
-    continuity nextExpectedSlot already gets from anchoring on the
-    episode's own startEpochDay rather than the schedule's edit day. A
-    concurrent episode for a different drug resolves to its own name
-    instead (attributeDose/attributeDrug, regimenEpisode.ts) and so never
-    counts here, which is the fix itself - the whole-log scan this
-    replaced could not tell the two apart.
-
-    Next reads by this exact episode's own id, using the dose owner's
-    tolerance-aware pairing. `doses` covers the forward reach and tolerance
-    on either side; the last-dose fact only reads logged days through today. */
+/** Read the last dose through today by drug so an earlier episode of that drug
+    still counts. Read the next slot by episode ID. The dose range includes
+    forward reach and tolerance on either side for pairing. */
 export function scheduleDoseFacts(
   episode: RegimenEpisode,
   episodes: readonly RegimenEpisode[],

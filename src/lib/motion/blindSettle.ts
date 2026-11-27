@@ -124,21 +124,10 @@ function settleCurve(peak: number, base: Bezier): (t: number) => number {
 }
 
 /**
- * The settle for a thing travelling `travel` px, ready to hand to a Svelte
- * transition. `closes` is the direction that does not run past its mark:
- * the blind's edge rising, and a sheet going back down past the bottom edge
- * it stands on.
- *
- * --ease-out-soft in both directions, and that is where this parts company
- * with `blindSettle` above. The blind takes plain --ease-out on the way down
- * because it is covering content travelling on that curve and may never fall
- * behind it. A sheet covers nothing, so all that is left of --ease-out is its
- * start, and that start is four times its own average speed: measured on the
- * built app, the first painted pair of a 733px rise moved 140px on --ease-out
- * and 31px on --ease-out-soft ("there is a yank between the 1st and 2nd
- * frame", Alicja, redesign ticket 38). --ease-out-soft is the same
- * deceleration with the instant off the front, which is what ticket 28
- * already reaches for wherever lagging is the safe side.
+ * Use --ease-out-soft for both sheet directions. The blind's stronger curve
+ * keeps up with covered content, while the sheet can start slower. On a 733px
+ * rise the first painted pair moved 31px instead of 140px. closes marks the
+ * motion that must stop at its target.
  */
 export function travelSettle(
   travel: number,

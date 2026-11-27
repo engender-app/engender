@@ -1,20 +1,6 @@
-/* What each bundled resource offers, and when it answers. directory.ts holds
-   no wording at all, so this is where an entry gets its sentence and where it
-   changes when the language does (the same split as vocabulary/labels.ts).
-
-   Both maps are typed against the key union directory.ts derives from its own
-   `as const` list, so adding a resource without describing it is a typecheck
-   failure. HOURS is deliberately `Message | null` rather than a partial map:
-   an entry with no published hours has to say so explicitly here, which is
-   the difference between "answers whenever" and "nobody wrote it down".
-
-   Both maps are indexed straight, with no cast and no fallback to the raw
-   key: `Resource.key` is the union rather than `string`, so there is no
-   missing-message case to handle and nothing that could put "pl-lambda" on
-   screen where a sentence belongs.
-
-   This file imports paraglide, so nothing the Node tier touches may import
-   it (ADR-0016). */
+/* Localize directory.ts resources here. Both maps cover the full key union.
+   Null hours mean none were published. Keep this Paraglide module out of
+   Node imports (ADR-0016). */
 
 import { m } from '$lib/paraglide/messages';
 import type { ResourceKey } from './directory';

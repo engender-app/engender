@@ -8,24 +8,10 @@
   import Icon from './Icon.svelte';
   import MediaTransport from './MediaTransport.svelte';
 
-  /* Plays a video note directly from the entry view/editor - no separate
-     screen. The transport is MediaTransport.svelte, the same one
-     a recording wears: the same play control, the same scrub,
-     the same materials. Place the controls below the frame to keep
-     the image clear.
-
-     What the frame adds over a recording's row is the picture itself, a
-     centre control over it (the gesture everyone has for a video), and full
-     screen, which takes the whole player and not just the picture so the
-     transport is still there to scrub with.
-
-     `preload="metadata"` rather than a stored poster frame: the first frame
-     the browser decodes is the still it shows, and a poster would be derived
-     state the schema does not keep (ADR-0010).
-
-     The object-URL lifecycle mirrors VoicePlayer's: load once per
-     `fileName`/`bytes` change, revoke on cleanup so a long list does not
-     leak one blob per row. */
+  /* Play the video inline with MediaTransport below the picture. Full screen
+     keeps the controls available. Use the first decoded frame as its still
+     (ADR-0010). Create an object URL per fileName/bytes change and revoke it
+     on cleanup. */
   let {
     fileName,
     bytes,

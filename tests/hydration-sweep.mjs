@@ -1,21 +1,10 @@
-/* Cold-mount each screen with an empty journal and the populated persona.
-   The gesture sweep settles before sampling, so hydration has its own
-   window and a 24px teleport threshold. Both use yank-sweep-core.mjs for
-   scenes, profiles, thresholds and detection.
+/* Cold-mount each scene with both journal profiles. Keep the CDP screencast
+   across navigation. Start the new DOM sampler at boot ready and watch three
+   seconds with a 24px teleport threshold from yank-sweep-core.mjs.
 
-   CDP screencast spans navigation because page.goto destroys the old page
-   and its DOM sampler. Start the new sampler at boot ready and observe for
-   three seconds. The casts catch paint flashes across load. The sampler
-   identifies which element moved once the shell is ready.
-
-     VITE_DEMO=1 npm run build
-     node tests/hydration-sweep.mjs [--prove]
-
-   --scenes a,b narrows the run. --profiles persona,empty selects journal
-   states. --themes light,dark overrides the light default. --out <dir>
-   sets the report directory. --pin sets the fixture PIN for the lock-gate
-   check (default 1111). --dump writes style frames for every scene. Scenes
-   with a style finding save those frames automatically. */
+   Run VITE_DEMO=1 npm run build, then node tests/hydration-sweep.mjs. Use
+   --scenes, --profiles, --themes, --out, --pin or --dump to configure the run.
+   --prove checks the detector. Scenes with style findings save their trace. */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

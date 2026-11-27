@@ -1,21 +1,7 @@
-/* State-dependent live tile trigger predicates (ADR-0039, ADR-0036), and - since phase 8 deepening ticket 07 - what Home's
-   grid is made of.
-
-   Pure functions evaluating when Home's live tiles qualify to mount.
-   Free of UI and platform dependencies so the Node tier tests them 100%.
-
-   The second half is `composeHomeTiles`, which turns the predicates above
-   plus the reads behind them into the ordered list Home draws. It lives here
-   rather than in the `.svelte.ts` beside it for the reason ADR-0016 gives:
-   the rule wants a Node test, and a rune module cannot have one. So the
-   split is reads there, composition here - `liveTiles.svelte.ts` runs the
-   queries, resolves the preferences and the snoozes, and hands the answers
-   to this file.
-
-   Relative imports rather than $lib for the same reason registry.ts uses
-   them: this file is read by the Node tier, where no alias exists. That is
-   also why the display formats arrive as callbacks - `fmtDay` reaches
-   paraglide through `$lib`. */
+/* Evaluate live tile triggers and compose Home's ordered grid (ADR-0039,
+   ADR-0036). liveTiles.svelte.ts supplies reads, preferences and snoozes.
+   Keep this module rune-free with relative imports and format callbacks so
+   Node tests can exercise it without Paraglide (ADR-0016). */
 
 import { m } from '../paraglide/messages';
 import type {

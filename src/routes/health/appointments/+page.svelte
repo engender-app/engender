@@ -1,24 +1,11 @@
 <script lang="ts">
   import type { TransitionConfig } from 'svelte/transition';
-  /* Each visit or wait has one appointment record and its own editor
-     (ADR-0066). The header's add action opens a sheet. Both forms use
-     AppointmentFields.
-
-     The nearest visit opens the screen, followed by waits. Later visits
-     sort soonest first and past visits sort newest first. A visit today
-     stays upcoming until the day ends. Dated visits keep their time on
-     the opening, the rows and the calendar hand-off. This screen and
-     the hub row use gapTo. Calendar marks omit countdowns (ADR-0067).
-
-     An appointment without a day is a wait. waitingSince measures time
-     from referral to today. Updates carry dates, and the app leaves the
-     remaining wait unknown.
-
-     The prep list is standing and unowned, so it stays usable with no
-     upcoming appointment. The debrief opens in EntryEditor with labs
-     and side effects already filled in. Providers can be picked or created
-     during editing. Contact details, competence notes and impressions stay
-     in the journal. */
+  /* Appointments use one record and shared fields for visits and waits (ADR-0066).
+     Show the nearest visit first, then waits. Later visits sort soonest first and
+     past visits newest first. Today stays upcoming through the day. Use gapTo on
+     the visit and hub, and omit countdowns from calendar marks (ADR-0067).
+     Waits lack a date and show time since referral. Prep is available without a
+     visit. Debrief opens EntryEditor with lab and side-effect context. */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';

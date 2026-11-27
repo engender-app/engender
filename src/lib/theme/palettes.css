@@ -1,21 +1,7 @@
-/* ============================================================
-   Colour tokens — 16 flag palettes × light/dark.
-   Selected via [data-palette] + [data-theme] on <html>.
-
-   Model (binding for the app):
-   - Each palette×theme block sets the SEMANTIC tokens:
-     bg, surface, surface-2, text, text-2, accent,
-     accent-2, and the flag's motif stripes.
-   - Everything else (containers, heat-map ramp, charts, focus ring) is
-     DERIVED from those via color-mix, so switching palette recolours the
-     whole app for free.
-   - Colour never judges: the heat-map uses a single-hue intensity ramp of
-     the palette accent, never red→green. Mood is the one
-     exception to "derived from the palette": it keeps its own fixed
-     5-step intensity ramp, selected independently via [data-mood-preset]
-     at the bottom of this file, so a mood dot is never the same colour
-     system as a gender heat cell.
-   ============================================================ */
+/* Each flag palette defines base surfaces, ink, accents and motif stripes
+   for light and dark. Derive chart, container and focus colours from those
+   tokens. Heat maps use one hue for intensity. Mood uses its own five-step
+   ramp selected by data-mood-preset. */
 
 /* ---------- Transgender (default) ----------
    Ticket 17: the accent was #0F7DAE, a cold clinical blue, which was doing

@@ -1,21 +1,7 @@
-/* Milestones: a celebration the person controls, against real routes on a dev server.
-
-   1. The add sheet lists every milestone template, in one order, with no
-      shuffle control.
-   2. Creating a milestone asks for no felt-sense reading: it saves and says
-      so, and the screen offers no anniversary reading either.
-   3. The editor's "Celebrate it" switch is on for a new milestone, and
-      turning it off is saved with the milestone.
-   4. Today throws no confetti for an anniversary inside a muted era, and
-      does once the era is unmuted.
-   5. Today throws no confetti for a milestone set not to be celebrated, and
-      does once it is set to be celebrated again.
-
-   Every block runs even when an earlier one fails, so one run against the
-   old code shows each of them red. A dev server is a demo build as far as
-   `?celebrate=1` goes, so that half of the ticket is verify-build's.
-
-   Run: node tests/milestone-celebration-check.mjs */
+/* On a dev server, check template order and the new milestone's celebration
+   default. Verify the editor saves a change and that muting either the era or
+   the milestone suppresses Home confetti. Run every case even after a failure.
+   Run node tests/milestone-celebration-check.mjs. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

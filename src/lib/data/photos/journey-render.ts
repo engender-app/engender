@@ -1,20 +1,6 @@
-/* Turning a photo journey into one file.
-
-   The browser half of journey.ts: it needs a decoder, a canvas and - for
-   the timelapse - MediaRecorder, so it is tested against a real Chromium in
-   the browser tier rather than stubbed in Node, the same split normalize.ts
-   already lives under.
-
-   Both outputs read one photo at a time and let it go before the next. A
-   three-year journey can be hundreds of photos and every stored one is up
-   to 2048px on the long edge (ADR-0008), which is 16MB of bitmap each -
-   decoding them all first would be the export that runs out of memory on
-   the phone it matters on.
-
-   Nothing here writes a file anywhere. It hands back a Blob and the screen
-   decides what happens to it, which is the whole point of the ticket: the
-   generated picture only leaves the device when a person does something
-   about it. */
+/* Render a photo journey on canvas, using MediaRecorder for timelapse.
+   Decode and release one photo at a time. At the 2048px stored limit
+   (ADR-0008), a bitmap can take 16MB. Return a Blob to the caller. */
 
 import { fixWebmDuration } from '@fix-webm-duration/fix';
 import {

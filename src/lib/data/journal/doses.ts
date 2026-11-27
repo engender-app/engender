@@ -267,25 +267,10 @@ export interface DosesArea {
   /** A pause is a plain row: nothing is attributed to one, and adherence
       reads it rather than storing anything derived from it (ADR-0032). */
   deletePause(id: string): Promise<void>;
-  /** The dose log over `[fromEpochDay, toEpochDay]` against what the
-      schedule expected of it, assembled here rather than at the caller: the
-      episode in effect, its schedule, its pauses, the doses attributed to it,
-      and expectedSlots/adherence over those.
-
-      Which episode counts as the one in effect is the last day of the range,
-      because that is the day a reader is asking about - and since an episode
-      is in effect for whole days (regimenEpisode.ts), asking on `toEpochDay`
-      is the same question the screen asked with `Date.now()` while its range
-      ended today.
-
-      The slots are anchored on the episode's own start day, so an
-      every-N-days rhythm belongs to the episode rather than shifting with
-      the range.
-
-      `drug` narrows which of several concurrently active episodes counts as
-      the one in effect - omitted or matching
-      none of them, the comparison falls back to its original rule: the sole
-      active episode, or `multipleEpisodes` when more than one qualifies. */
+  /** Compare recorded doses with schedule slots for the inclusive range. Pick
+      the episode active on toEpochDay and anchor its schedule to its start day.
+      An optional drug narrows concurrent episodes. If it matches none, fall
+      back to the sole active episode or return multipleEpisodes. */
   getComparison(params: { fromEpochDay: number; toEpochDay: number; drug?: string }): Promise<DoseScheduleComparison>;
   /** Write one `taken` dose per outstanding auto-log slot, oldest first
       (ADR-0086). Skip disabled schedules, dates before opt-in, today,

@@ -1,32 +1,15 @@
-/* Sample navigation and settled-screen changes frame by frame for jumps,
-   disappearances, missing intermediate frames and single-frame expansion.
-   Scene definitions, thresholds and detectors live in yank-sweep-core.mjs.
-   The Android sweep also checks compositor frames for defects hidden from
-   the style trace.
+/* Sample frames for jumps, dropouts and expansions with yank-sweep-core.mjs.
+   Both samplers share one rAF loop. The startViewTransition wrapper selects
+   pseudo-elements while the outgoing DOM is removed. Read actual elements
+   on a settled screen. Skip one-frame runs and intentional reduced-motion cuts.
 
-   During navigation, sample view-transition pseudo elements. The outgoing
-   screen leaves the DOM before the new capture, so DOM sampling would count
-   its planned removal as a disappearance. Both samplers run in one rAF loop.
-   A wrapper around document.startViewTransition selects transition frames
-   because getComputedStyle returns identity values even outside a transition.
-   On a settled screen, read element bounds, opacity and presence directly.
-   Skip the intentionally removed outgoing screen and one-frame runs. Reduced
-   motion uses cuts by design.
-
-   Run with a demo build.
-     VITE_DEMO=1 npm run build
-     node tests/yank-sweep.mjs
-
-   --prove requires the detector to catch a synthetic 200px jump, a dropout
-   during a fade and a one-frame expansion to window height.
-   --gate fails on style findings. Pixel findings stay informational because
-   the sheet scrim's withdrawal blur can look like a dropout.
-
-   --scenes a,b limits scenes. --themes light,dark overrides the light default.
-   --out <dir> holds the report and frames. --reduced-motion runs the cut control.
-   --force-inset <px> enables retained Android doors and verifies a status strip
-   of inset minus 9px after each settle. Use 58 for the Pixel 10a profile.
-   tests/yank-sweep-strip-check.mjs reads those saved casts. */
+   Run VITE_DEMO=1 npm run build, then node tests/yank-sweep.mjs. --prove tests
+   synthetic defects and --gate fails style findings. Pixel diffs are advisory
+   because withdrawal blur can resemble a dropout.
+   --scenes, --themes and --out set coverage and output. --reduced-motion
+   checks the cut control. --force-inset enables retained doors and checks the
+   strip at inset minus 9px. Use 58px for Pixel 10a and check saved casts with
+   yank-sweep-strip-check.mjs. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

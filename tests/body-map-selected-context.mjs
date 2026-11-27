@@ -1,21 +1,8 @@
-/* Real-browser check for the body map's selected-region context (phase 11
-   pre-production UI/UX ticket 30), on the real route with a real journal.
-
-   What it proves:
-   - the figure and the elsewhere cluster select the same region, and the
-     words beside the figure name whichever one is pressed;
-   - a recorded region, one the range never mentions, one that went both
-     ways and a region somebody added themselves each get an honest
-     sentence, and the unrecorded one carries no number at all;
-   - the jump reaches the charts, keeps the span in the query and the region
-     on the screen, and Back returns to the map where it was left;
-   - the jump is a 48px target and is reachable from the keyboard.
-
-   Run against a dev server (no build needed):
-     node tests/body-map-selected-context.mjs [--gallery]
-
-   With --gallery it also writes the sign-off crops - the figure card in the
-   four data states, default palette, light and dark - to .claude/ticket30. */
+/* Check that map targets and the context cluster select the same region.
+   Verify the recorded, unrecorded, mixed and custom region descriptions.
+   The charts link keeps the span and focus region. Back restores the map.
+   Check the link's 48px target and keyboard access.
+   Run node tests/body-map-selected-context.mjs on a dev server. --gallery saves crops. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';

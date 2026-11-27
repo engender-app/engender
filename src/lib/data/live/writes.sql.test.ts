@@ -1,23 +1,9 @@
-/* Run declared journal operations against the recording SQL driver.
-   Validate both sides of the coarse names mapped by SQL_TABLES.
-
-   Each operation's SQL may touch only tables covered by its declaration.
-   Missing dependencies leave Svelte reads stale. For each coarse name,
-   the union of observed tables across its declaring operations must cover
-   the mapping. For example, dose includes events, schedules and pauses,
-   while one upsert may touch only the event table.
-
-   READS_THE_JOURNAL and WIPES_THE_JOURNAL exclude whole-journal operations
-   from the union because a snapshot or wipe would cover unrelated tables.
-   They still count for the per-operation check and for coverage. Reads
-   must write nothing. Both directions have explicit opt-outs.
-
-   The union can miss an unnecessary declaration on one operation if
-   another covers it. Fixtures reach only the branches they exercise,
-   including weekday schedules and a first built-in reconciliation.
-   The driver cannot see trigger bodies or tables behind views.
-   writes.test.ts checks composition rules for reads that drop part of
-   a result. The Daylio ZIP importer has its own integration test. */
+/* Record SQL for declared operations. Each operation may touch only tables
+   covered by its declaration. Each coarse mapping must also cover the union
+   of observed tables for that name. Exclude whole-journal reads and wipes from
+   the union and check their own operation limits separately. Reads write nothing.
+   Fixtures cover exercised branches only. The driver sees neither trigger bodies
+   nor the tables behind views. See writes.test.ts for composition checks. */
 
 import assert from 'node:assert/strict';
 import { beforeAll, describe, test } from 'vitest';

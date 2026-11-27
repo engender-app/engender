@@ -781,23 +781,9 @@
           {/snippet}
         </SectionHeading>
         <ListCard role={roleAt(activeFlag.roles, 1)}>
-          <!-- Every row below is hand-rolled rather than ListRow:
-               .roadmap-box is a three-state control (checked/not-my-path/
-               unchecked, two different glyphs), which ListRow's binary
-               `checked` has no room for, and the done/skip title styling needs
-               a class ListRow's plain `title` string can't carry.
-
-               The split shape (ADR-0068) is still ListRow's own,
-               borrowed for its classes rather than the component: the tap that
-               cycles the tick is `.kit-row-main`, and `.kit-row-act` opens the
-               goal's own sheet, on every row whether ticked or not. The glyph
-               on it is a chevron rather than the paper one: the sheet holds the
-               tick, the milestone and the documents, and an icon naming one of
-               the three reads as though it were all of it.
-
-               A single row hidden or put back discloses on its own, and
-               `rows-divide` keeps the hairline between the pack's rows and
-               the first goal of the person's own under them. -->
+          <!-- Use a split row (ADR-0068). The main control cycles three goal states and
+               the chevron opens the goal sheet with its milestone and documents. Animate
+               a single row's visibility and keep the divider at the end of the pack. -->
           {#if list.goals.length > 0}
             <div class="rows-divide" data-roadmap-pack-goals>
               {#each shownGoals as goal (goal.key)}

@@ -1,21 +1,11 @@
 <script lang="ts">
-  /* This shell draws the field and heading shared by the pre-unlock gates and
-     the mid-session lock. Each gate supplies the body and controls through its
-     snippet, so it can place status roles, live announcements and test handles
-     on the elements they describe.
-
-     An undisguised unlock draws Today's sun at rest, with room for every ring.
-     It keeps the wordmark as a visually hidden heading. appOpening.ts holds the
-     sun in place while the field opens around it. Other gates draw a 48px title.
-
-     Under disguise, gateFlag suppresses the sun and the field uses --surface-2
-     and --text. Callers use appWordmark to select the decoy name or
-     m.app_name(). A chosen name can identify someone to a person
-     who sees the lock screen.
-
-     Arrival is a cut on every gate. The field edge travels
-     on later state changes. Keep controls, status and the exit under the field.
-     Only that region can scroll. */
+  /* GateScreen draws the field and heading. Each gate supplies the body and
+     controls, including any live status. Undisguised unlock shows Today's sun
+     with a visually hidden wordmark. appOpening.ts holds the sun on unlock.
+     Under disguise, suppress the sun. appWordmark selects the decoy name
+     or m.app_name() according to the disguise state.
+     Arrival is a cut on every gate. Later state changes can move the field.
+     Keep controls, status and exit in the scrollable region below. */
 
   import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import type { Snippet } from 'svelte';

@@ -20,24 +20,9 @@ import { holdUntilPainted } from '$lib/motion/paintHold';
 const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
 let currentTransition: ViewTransition | null = null;
 
-/* Tier 2: one screen becoming another.
-
-   Driven by the View Transitions API rather than by a keyed block with
-   Svelte transitions on it. A keyed block is the usual way to get an
-   outgoing and an incoming screen on screen together, and it would have
-   cost a remount of every page component on every navigation - including
-   the ones SvelteKit deliberately reuses across a parameter change. The
-   view transition captures the old frame as an image instead, so nothing
-   unmounts, nothing re-queries, and the whole pair composites off the
-   main thread, which is the performance contract on a mid-range phone.
-
-   Where the API is missing the guard below returns immediately and the
-   navigation is an instant cut, which is a fair substitute and the same
-   one reduced motion asks for.
-
-   The pattern itself is chosen by screen-transition.ts and lands on
-   <html> as a data attribute for app.css to read - the decision is a
-   table, and this is only the wiring. */
+/* Use View Transitions to capture the old frame without remounting SvelteKit
+   pages, including routes reused across parameter changes. screen-transition.ts
+   chooses data-nav for app.css. Without the API, navigation cuts. */
 export function navigateWithTransition(navigation: OnNavigate, replacesApp: boolean): Promise<void> | void {
   const releasePrevious = finishAndroidTab(navigation.complete);
   /* SvelteKit can still mount a superseded route after its onNavigate

@@ -1,25 +1,15 @@
-/* Verify 48px touch targets and complete navigation labels on a demo build.
+/* Check 48px touch targets and full nav labels on a demo build. Include
+   pseudo-element hit extensions. Sample elementFromPoint in 0.25px steps
+   up to 60px on each axis. Adjust bounds for discrepancies over 1px.
+   The 47px proof must fail and the 48px proof must pass.
 
-   Measure the control's layout box plus any absolutely positioned hit
-   extension from ::before or ::after. Chromium can snap hit-test coordinates
-   by one pixel. Walk elementFromPoint from the centre on four axes in 0.25px
-   steps up to 60px per side. A discrepancy beyond 1px adjusts the measured
-   side for occlusion or an extension layout did not find. A planted 47px
-   button must fail and a planted 48px button must pass before scenes run.
+   Test 320px and 390px at 100% and 200% text, with nav labels also at 130%.
+   Use 195px to simulate 200% zoom on a 390px phone. Check English and Polish,
+   clipping ancestors and control overlap. Calendar dates at 320px report
+   only, since seven 48px columns need 336px.
 
-   Check targets at 320px and 390px with 100% and 200% text. Navigation tabs
-   must remain at least 48px with complete words at 100%, 130% and 200%.
-   Narrow scenes also run at 195px with 100% text in English and Polish,
-   simulating a 390px screen at 200% zoom. For whole scenes, text ranges must
-   fit the viewport and every horizontally clipping ancestor. For apart
-   scenes, listed controls must not overlap.
-
-   Report calendar date links at 320px without gating. Seven 48px columns
-   need 336px. calendar-month-a11y-check.mjs checks them at 360px and wider.
-
-     VITE_DEMO=1 npm run build
-     node tests/a11y-targets-large-text.mjs [--root <built tree>] [--url <server>]
-       [--out <results dir>] [--only <scene,scene>] */
+   Run VITE_DEMO=1 npm run build, then node tests/a11y-targets-large-text.mjs.
+   Use --root, --url, --out or --only to select inputs and results. */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';

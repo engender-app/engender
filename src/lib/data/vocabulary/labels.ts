@@ -28,24 +28,9 @@ import type { HairRemovalAreaKey } from '../hairRemovalAreas';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
-/* Two shapes of name, and which one a scale gets follows from its
-   endpoints rather than from taste:
-
-     poles      a scale running between two named ends is called "low <->
-                high" - "Dysphoria <-> euphoria", "Binary <-> nonbinary",
-                "Agender <-> gendered", "Unseen <-> recognised", "Steady
-                <-> shifting". The name is the two words a person is
-                choosing between, so the slider needs no gloss to be read.
-     an amount  a scale running "not at all" to "very" is called after the
-                thing being measured - "Femininity", "Masculinity". An
-                arrow name here would say "Not at all <-> very", which
-                names the ends and not the subject.
-
-   `euphoria_dysphoria` was "Gender feeling" until this rule was written
-   down. That name was the only one that said neither its poles nor its
-   subject, and once there were six scales it also over-claimed: all
-   six are gender feelings, so the vague one read as the general case.
-   The key keeps its original spelling; only the display name moved. */
+/* Name a scale with two named poles after its endpoints, such as Dysphoria
+   <-> euphoria. Name an amount scale after its subject, such as Femininity.
+   Changing the display name leaves the stored key intact. */
 const DIMENSION_NAME: Record<BuiltInDimensionKey, Message> = {
   euphoria_dysphoria: m.dim_euphoria_dysphoria,
   femininity: m.dim_femininity,
