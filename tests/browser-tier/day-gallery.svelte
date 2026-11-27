@@ -64,8 +64,7 @@
     entries: [entry(1, 21, 4, 'Long walk after work. Quiet head for once.', ['g-calm'])]
   };
 
-  /* Typical: a day someone logged properly - two entries, the dose, the
-     binder, one measurement. Four rows under the card. */
+  /* Typical: two entries, then a dose and a wear session under the card. */
   const typical: DayRecords = {
     ...empty(),
     entries: [
@@ -183,7 +182,9 @@
       { id: 'pp2', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() }
     ],
     tryoutPhotos: [
-      { id: 'tp1', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() }
+      { id: 'tp1', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() },
+      { id: 'tp2', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() },
+      { id: 'tp3', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() }
     ],
     // A row of title and date and no page image at all, which is what
     // ADR-0065 asks every list to be.

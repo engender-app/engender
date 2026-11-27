@@ -21,6 +21,7 @@ import Wrapped from '../../src/routes/wrapped/[cadence]/+page.svelte';
 import OnThisDay from '../../src/routes/on-this-day/+page.svelte';
 import Care from '../../src/routes/care/+page.svelte';
 import Milestones from '../../src/routes/transition/milestones/+page.svelte';
+import ProgressPhotos from '../../src/routes/transition/progress-photos/+page.svelte';
 import Tryouts from '../../src/routes/transition/tryouts/+page.svelte';
 import SafeSpace from '../../src/routes/doubt/+page.svelte';
 import GoodMoments from '../../src/routes/doubt/evidence/+page.svelte';
@@ -56,6 +57,7 @@ function componentFor(route: string): Component {
     '/doubt': SafeSpace,
     '/doubt/evidence': GoodMoments,
     '/transition/milestones': Milestones,
+    '/transition/progress-photos': ProgressPhotos,
     '/transition/tryouts': Tryouts
   };
   if (routes[path]) return routes[path];
