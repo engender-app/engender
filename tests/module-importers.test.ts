@@ -1,19 +1,7 @@
-/* Every module under src/lib has a caller.
-
-   The export-name scan the architecture audit used reads names as text, so it
-   cannot see a whole file nothing imports: LineChart.svelte, MilestoneCard.svelte,
-   weekStripDayCount.ts and stores/videoFiles.ts all sat in the tree after their
-   last importer was gone. This walks the real import specifiers instead. A
-   module counts as used when some other file under src, or a test or script,
-   imports it by relative path or by `$lib/`. A module's own test does not
-   count: one that only `foo.test.ts` reaches is dead, and the test goes with
-   it. Another module's test does, which keeps test-support files in.
-
-   Left out on purpose: routes and workers (entry points the framework or the
-   bundler reaches by path), tests and their support, declaration files, the
-   generated paraglide output, and `*.typecheck.ts` files (compile-time probes
-   that nothing imports). A new module with no caller fails here; delete it or
-   wire it in. */
+/* Check real import specifiers for callers of modules under src/lib. A
+   module's own test does not count. Other modules, tests and scripts do.
+   Exclude framework entry points, test support, generated Paraglide code,
+   declarations and standalone typecheck probes. */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';

@@ -1,19 +1,6 @@
-/* A screen's subtitle is a sentence, not a row's fragment (phase 11 ticket
-   20, audit item 14).
-
-   The two are written differently on purpose. A row subtitle continues its
-   title - "Security · passphrase, PIN and biometrics" - and a lowercase
-   fragment is right there. A screen subtitle sits alone under a 48px title
-   with nothing before it, so the same fragment reads as a sentence somebody
-   forgot to finish: the Look back door carried "put two ranges side by
-   side" and "track one spot's dysphoria and euphoria over time" under
-   Compare and Body map until the audit named them.
-
-   A grep rather than a render, the same call `change-lines.test.ts` makes:
-   the rule lives in a catalogue and has no interface to call, and the
-   failure mode is somebody reusing a row's string on a header later. Both
-   catalogues, since a sentence fixed in one language only is how the two
-   screens stop agreeing. */
+/* Check that screen subtitles stand alone as sentences in both catalogues.
+   Row subtitles can be fragments because they follow a title. Checking the
+   strings catches reuse of a row fragment in a screen header. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

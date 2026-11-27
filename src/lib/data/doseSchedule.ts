@@ -275,22 +275,11 @@ export function isExpectedDosesPerDay(count: number): boolean {
   return Number.isInteger(count) && count >= 1 && count <= MAX_DOSES_PER_DAY;
 }
 
-/** The slots `schedule` expects between `fromEpochDay` and `toEpochDay`
-    inclusive. An every-N-days recurrence steps from `anchorEpochDay` - the
-    episode's start day, so the progression belongs to the episode and does
-    not shift when the schedule is edited or the range scrolls. A weekdays
-    recurrence needs no anchor to hold that guarantee - a Monday is a Monday
-    regardless of when the schedule was written - so `anchorEpochDay` only
-    keeps it from generating slots before the episode began.
-
-    Either way, `doseAmounts` (when the schedule has any) cycles across the
-    slots in chronological order, counting from the anchor rather than from
-    `fromEpochDay`, so which amount lands on which day does not shift when
-    the range scrolls either.
-
-    A schedule with a non-positive dose count, a non-positive step, or an
-    empty weekday set expects nothing: it describes no rhythm, and treating
-    it as daily would invent one. So does one over MAX_DOSES_PER_DAY. */
+/** Return expected slots in the inclusive range. Anchor every-N-days steps
+    to the episode start. Weekday slots also start no earlier than that day.
+    Cycle doseAmounts from the anchor so scrolling cannot shift a dose's amount.
+    Return no slots for invalid counts, steps or weekday sets, including counts
+    above MAX_DOSES_PER_DAY. */
 export function expectedSlots(
   schedule: DoseSchedule,
   anchorEpochDay: number,

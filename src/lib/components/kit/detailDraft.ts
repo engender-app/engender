@@ -49,22 +49,10 @@ export function draftFor<TRecord, TDraft>(
     asked nothing. */
 export type TaggedAnswer<T> = { readonly for: string | null; readonly value: T | undefined };
 
-/** Whether a dependent read's answer is the one this screen should be
-    showing.
-
-    This is what the tryout entries race turned on. A read whose closure
-    needs the record has nothing to look up while the record is undefined,
-    so it answers at once and answers with nothing. The record then arrives
-    and the read runs again - but a live query deliberately keeps showing
-    its previous answer across a re-run rather than flashing a placeholder
-    on every write, so for one round trip the screen holds an empty answer
-    that was computed without the record. Rendered as-is, that is "no
-    entries in this range" over a tryout with ninety of them.
-
-    An answer read for a different id, or for no record at all, is still
-    loading. An answer read for this id is the answer, including when the
-    id names nothing stored: an empty state is right there, and a spinner
-    that never resolves is not. */
+/** Treat a dependent read as loading until its response carries the current
+    record ID. A live query can retain an empty answer from before the record
+    loaded. Once the IDs match, an empty answer is valid, even for a missing
+    record. */
 export function answersFor<T>(answer: TaggedAnswer<T> | undefined, id: string): boolean {
   return answer !== undefined && answer.for === id;
 }

@@ -9,23 +9,10 @@
 </script>
 
 <script lang="ts">
-  /* Rows of one scale, each a bar out of a zero line: left where the tag
-     went with a lower average, right where it went with a higher one
-     (ticket 20, "Tagi a zmiany na skali").
-
-     The caller sizes the bars (tagScaleGroups.ts): `share` is signed, -1 to
-     1, the row's gap over the largest gap in its group, so a bar is only
-     ever measured against rows on the same scale. Nothing here knows what a
-     scale is.
-
-     No colour says which way. Both directions are the section's own stripe
-     (ADR-0012, F15): lower is not worse than higher. The direction is the
-     side of the zero line, and the numbers on the row's own line carry the
-     rest.
-
-     A bar stops at `--div-limit` of its half of the track. A filled bar that runs to
-     its container's edge reads as progress, and the longest bar in a group
-     is by construction the full length it can be. */
+  /* Plot signed shares from tagScaleGroups.ts around zero. Each share is the
+     gap relative to the largest on that scale. Use the same stripe on both
+     sides so colour carries no judgment (ADR-0012). Cap each half at --div-limit
+     so the longest bar leaves room before the edge. */
   type Row = { key: string; name: string; note: string; share: number };
 
   let {

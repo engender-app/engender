@@ -1,20 +1,7 @@
 <script lang="ts">
-  /* The app's navigation, both of its shapes.
-
-     One component rather than two blocks in +layout.svelte, which is what
-     the layout carried before: a bottom bar and a left rail, each with its
-     own copy of the same four destinations and its own `activeKey ===` test
-     against the same table. Two copies of a list is how the fourth tab's
-     href and its internal key drift apart, and ADR-0036 is specifically
-     about those two disagreeing on purpose - `href` is /more and `key` is
-     'settings' - which is exactly the kind of deliberate oddity a second
-     copy quietly normalises away.
-
-     Which shape renders is a container query in app.css, not a branch here.
-     Both are in the DOM at every width and one of them is display:none, so
-     there is no flash of the wrong navigation on a slow first paint. What
-     is measured is only whether the bar's four names fit one row of it
-     (`rows` below). */
+  /* Render the bottom bar and rail from one destination table. The container
+     query in app.css chooses which is visible. Keep /more paired with the
+     settings key (ADR-0036). Measure label wrapping only for the bar. */
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
@@ -96,22 +83,10 @@
     if (ui.chooserOpen && !(event.target as Element).closest('[data-nav-fab]')) ui.chooserOpen = false;
   }
 
-  /* Quick add opens on the way down, not on click, because the press and
-     the tap are the same gesture: holding it and sliding onto a target is
-     one continuous move, and a fan that waited for the click would not be
-     under the finger yet when the finger started moving. QuickAdd.svelte
-     listens on the window from there and resolves whatever the pointer is
-     over when it comes up.
-
-     The click that follows a pointer sequence is then swallowed, or the
-     control would toggle twice per tap. A keyboard Enter fires a click with
-     no pointer sequence in front of it, which is why the click handler is
-     still what opens the fan for a keyboard.
-
-     A press that slides onto a target and lets go there never clicks the
-     button, so the flag outlived its gesture and swallowed the next
-     keyboard Enter (audit L04-15). A keyboard click says so itself with
-     `detail` 0, and is never the click a pointer sequence owes. */
+  /* Open Quick add on pointerdown so a held press can slide onto a target.
+     QuickAdd resolves it on window pointerup. Ignore the follow-up pointer
+     click to avoid toggling twice. Accept a keyboard click with detail 0 even
+     if the last pointer gesture never clicked the button. */
   let openedByPointer = false;
 
   function addPointerDown() {

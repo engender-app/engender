@@ -1,19 +1,9 @@
-/* Check that a failed web migration can restore its pre-migration journal
-   after boot has closed the worker. Recovery must check the copy and restore
-   it without depending on that dead connection.
-
-   Wrap the real worker to report schema 0 on its first read. This takes a real
-   VACUUM INTO copy and enters migration even when old schemas lack an upgrade
-   path. After the copy, stamp the live file with unsupported schema 1 and
-   refuse the first migration statement. Remove the wrapper before Restore.
-   A retry without restore must fail, proving the stamped file could not boot.
-
-   Restore must boot from the copy and remove the offer. The probe also
-   checks silent completion of interrupted restore with schema 0 and a
-   readable copy, and five immediate Retry clicks against a slower control.
-
-     VITE_DEMO=1 npm run build
-     node tests/restore-previous-journal.mjs [--root <built tree>] */
+/* Exercise restore after a failed migration closes its worker. Report schema
+   0 on the first read to force a real pre-migration copy, then stamp the live
+   file with schema 1 and fail the first write. Remove the wrapper before
+   retrying. Retry must fail and Restore must open the copy and clear its offer.
+   Also check interrupted restore and rapid Retry clicks.
+   Run node tests/restore-previous-journal.mjs on a demo build. */
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, previewBuild } from './browser-harness.mjs';

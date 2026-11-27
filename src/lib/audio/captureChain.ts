@@ -92,22 +92,10 @@ export function sameCaptureChain(a: string | null, b: string | null): boolean {
   return a !== null && b !== null && a === b;
 }
 
-/** Why two chains are not one, for the sentence that breaks an own series.
-
-    `device` covers the microphone as well as the phone, because a headset
-    plugged into one handset is as much a change of equipment as a second
-    handset: what the person did is swap what the sound went through, and
-    the app cannot say which of the two parts mattered. `processing` is the
-    same equipment that stopped granting unprocessed capture, or started
-    reporting nothing about a constraint - the take is still a take, and
-    it is not on the same chain.
-
-    `unrecorded` is either side having no chain at all, and it names no
-    equipment on purpose: a row from before capture chains were tracked is
-    not evidence of one phone or of two, so the only honest sentence is
-    that the app does not
-    know what recorded it. Null where the two match, which is the caller's
-    signal that the series carries on. */
+/** A phone or microphone change is a device break. Changed or missing
+    reported capture constraints on the same equipment are a processing
+    break. If either chain is absent, report unrecorded. Return null when
+    both match. */
 export type ChainBreak = 'device' | 'processing' | 'unrecorded';
 
 export function captureChainBreak(a: string | null, b: string | null): ChainBreak | null {

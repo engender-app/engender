@@ -1,19 +1,6 @@
-/* What the Look back span cost: the Cost
-   reading's arithmetic, kept out of the component so it is tested as
-   arithmetic.
-
-   It stands on ticket 30's seam: `journal.costs.getCosts()` hands over
-   every costed record with its day, and every figure here is made by
-   costTotalsByCurrency, which totals inside one currency and rounds to two
-   places. So a currency is the outer grouping and nothing below it ever
-   meets another currency: the split by area and the split by refunded
-   state are both splits of one currency's total (ADR-0097, never summed
-   across currencies).
-
-   A record belongs to the span by its own day. One with no day - a wait
-   that has none yet, a procedure with no date - has no place in any span,
-   so it is left out and counted, and the screen says how many. A refund
-   noted without an amount carries no money and adds nothing. */
+/* Group the span's costs and refunds by currency (ADR-0097). Each record's
+   own day places it in the span. Count undated records separately and omit
+   them from totals. A refund with no amount contributes zero. */
 
 import { costTotalsByCurrency } from './cost';
 import type { CostRecord, CostSource } from './journal/costs';

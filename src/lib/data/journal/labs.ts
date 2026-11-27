@@ -174,22 +174,9 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
     return rows.map(toLabResult);
   };
 
-  /** The draw's dosing context, measured now against the dose log and
-      regimen episode history as they stand now. Reads `dose_event` from
-      inside the labs area on purpose: every path that creates a lab result
-      then gets a context without knowing it needs one, where a
-      caller-supplied figure would go missing the first time someone added a
-      second creation path (the OCR import is already the second).
-
-      A skipped dose is passed over. It is a dose that was expected and not
-      taken, so hours since it would be hours since nothing happened; taken
-      and changed both mean something went in.
-
-      Candidates are also filtered to the ones that attribute, through
-      episodes, to the draw analyte's hormone (selectTimingDose,
-      hormoneDrug.ts) - a concurrent dose of an unrelated drug is skipped
-      over exactly as if it weren't there, rather than reported as this
-      draw's context. */
+  /** Resolve each lab draw's timing from current dose and regimen history so
+      all creation paths get the same context. selectTimingDose uses doses
+      actually taken and matches the draw analyte's hormone. */
   const deriveTiming = async (draw: LabDraw, analyte: string): Promise<LabTiming | null> => {
     const hormoneDrug = resolveHormoneDrug(analyte);
     if (hormoneDrug === null) return null;

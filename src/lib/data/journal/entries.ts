@@ -601,22 +601,10 @@ export function makeEntriesArea(
      Deletes are not here: migration v3's trigger drops the index row with
      the entry row, so paths that delete entries without knowing about the
      index - ticket 14's Replace import - stay correct. */
-  /* Which entries a search matches, as one WHERE clause plus its parameters -
-     shared by the page of hits and the count of all of them, so the two can
-     never disagree about what matched.
-
-     One clause rather than two lookups unioned in JS, so ordering and
-     de-duplication are the database's job: an entry whose note and tag both
-     match has to appear once.
-
-     Either half can be absent - a query of pure punctuation yields no match
-     expression, a query matching no label yields no tag ids - so the halves
-     are assembled rather than parameterised away, and null means "do not go
-     to the database at all". An unused half cannot be left in the SQL and
-     disarmed with a parameter: an empty FTS5 expression is a syntax error,
-     not an empty result, and whether SQLite evaluates a guard before the
-     MATCH beside it is not something to depend on across three different
-     SQLite builds. */
+  /* Share one SQL filter between entries and their result count. Let SQLite
+     order and deduplicate note and tag matches. Omit empty branches because
+     FTS5 rejects an empty MATCH expression. Return null when neither branch
+     can match. */
   const searchMatches = (
     query: string,
     matchingTagIds: string[],

@@ -1,20 +1,7 @@
 <script lang="ts">
-  /* One of a set, drawn as chips that wrap (phase 15 release-blockers
-     ticket 05). For a choice whose labels do not fit a Segmented's equal
-     shares: a new tryout's kinds, where the scrolling track cut
-     "Garment" to "Gar" at 390px.
-
-     The row wraps the way the photo library's chips do (PhotoChipRow), so
-     every option is on screen and readable at 320px. A second line costs
-     one row of height; a hidden option costs the choice.
-
-     The selection moves by colour alone, on `.tag-chip`'s own transition
-     (components.css), so a pick crossfades the old chip out and the new one
-     in rather than repainting either in one frame.
-
-     `data-segment` on each option is the handle Segmented gave the same
-     choices, kept so the walkthrough and the screen checks grip the option
-     and not the control drawing it (ADR-0029). */
+  /* Wrap choices so all labels fit at 320px. Use the tag-chip transition for
+     selection and keep data-segment on each option as a stable walkthrough
+     handle (ADR-0029). */
   import { rovingRadio } from '$lib/components/rovingRadio';
 
   let {

@@ -34,22 +34,10 @@ const LINEAR = (t: number) => t;
     motion: the same crossfade, none of the movement. */
 const crossfadeOnly = (): TransitionConfig => fadeOnly(crossfadeDuration());
 
-/** A tier-2 transition over the shared easing, or its reduced-motion
-    substitute. Every primitive is this plus one line of geometry, which is
-    the whole point of the tier being a tier.
-
-    The screen being left goes on --dur-fast and the one arriving on
-    --dur-med, because an exit that takes as long as an entrance reads as
-    the app hesitating before it answers. Material's fade-through is
-    asymmetric for the same reason - it fades the outgoing screen out in
-    roughly 90ms and the incoming one in over roughly 210ms, rather than
-    crossfading both over one duration.
-
-    `timing` is for the primitive that cannot take that pair: a sheet travels
-    its own height rather than a token's worth, and both its duration and its
-    curve answer to that. It overrides rather than adds a tier, so the
-    reduced-motion substitute and the one place durations are read stay
-    shared. */
+/** Use shared easing with --dur-fast for exit and --dur-med for entrance.
+    A shorter exit makes room for the response. A caller such as a sheet can
+    override timing for distance-based travel while keeping the same reduced
+    motion substitute. */
 function tier2(
   css: (t: number, u: number) => string,
   direction?: Direction,

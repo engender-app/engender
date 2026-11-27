@@ -150,22 +150,10 @@
     return el.matches('[contenteditable="true"]');
   }
 
-  /* Focus the field a sheet exists to fill; otherwise the sheet itself,
-     which is where a dialog's focus belongs anyway - the label is read out
-     and Tab walks in from the top. Never the first button: on the sheets
-     that ask something irreversible that button is "yes", and a sheet that
-     opens with "yes" under the cursor is one stray Enter from doing the
-     thing it opened to warn about (ticket 15, F22).
-
-     A sheet whose body is a composite control names the one element that
-     holds its cursor with `data-sheet-focus` - the date picker's chosen
-     day - and that wins over the first control in document order.
-
-     Ticket 115: calling .focus() synchronously upon DOM attachment forces
-     layout flushes on Android Chromium before CSS transition keyframes attach,
-     teleporting the sheet from translateY(0) to translateY(travel). Defer
-     initial focus until the entrance transition settles (`introend`), with
-     preventScroll: true. */
+  /* Focus an explicitly marked data-sheet-focus target, then the field the
+     sheet opens to fill, then the dialog itself. An irreversible action must
+     never receive initial focus. Wait for introend and use preventScroll so
+     Android Chromium does not force layout before the entrance attaches. */
   function focusInitial(node: HTMLElement) {
     sheetEl = node;
     let fallback: ReturnType<typeof setTimeout> | undefined;

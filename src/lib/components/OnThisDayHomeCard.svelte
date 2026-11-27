@@ -1,20 +1,7 @@
 <script lang="ts">
-  /* Home's link into on-this-day.
-
-     One card for however many lookbacks qualify today - the
-     ticket does not ask for exactly one, and ranking them the way wrapped
-     ranks cadences would invent an ordering rule this feature has no use
-     for. The good-day check for each lookback is the only thing this card
-     needs to know before deciding whether to show itself at all.
-
-     Rendered only when on-this-day is on: Home gates on the preference
-     before mounting this, so the query below does not exist while the
-     feature is off - the same split wrapped's own card makes.
-
-     Home's second look-back tile since phase 5 ticket 21. It used to be a
-     full-width card carrying the same gradient wash as wrapped's, on
-     purpose, so the two read as siblings; the tiles say that by sitting in
-     one grid instead, which is a thing the eye reads without a wash. */
+  /* Home mounts this card only when on-this-day is enabled. Show one tile
+     when any eligible good-day lookback exists. The card covers all qualifying
+     lookbacks for today. */
   import { m } from '$lib/paraglide/messages';
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';

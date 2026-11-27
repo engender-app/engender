@@ -1,20 +1,6 @@
-/* The rules Settings keeps after the rebuild, at the
-   level a screen's source can be held to - mirrors home-contracts.ts and
-   more-surfaces.test.ts.
-
-   Sheets are not a surface (home-contracts.ts's own note): the about
-   sheet keeps the old `.list-group`/`.list-row`/`.card`
-   vocabulary inside <Sheet>, so this file's "no card of its own" check
-   strips every <Sheet>...</Sheet> block first, the same way the script
-   block is stripped. The scales sheet is the exception and is on the kit
-   already - phase 5 ticket 35 put the checklist there, and it is the same
-   component the first run draws.
-
-   Greps by design: every assertion here is a class that may
-   not appear or a component that has to, which is a negative or a wiring
-   over a file rather than a rule with a return value. Anything on this
-   screen that decides something lives in a module with a test that calls
-   it. */
+/* Check Settings' component and class contracts in source. Strip Sheet bodies
+   before checking the screen's surfaces because the About sheet still uses
+   legacy classes. The scales sheet shares the setup checklist. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

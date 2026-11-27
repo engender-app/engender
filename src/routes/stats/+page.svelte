@@ -364,22 +364,9 @@
 
   let shown = $derived(shownMetric(metricChoices()));
 
-  /* ---------------------------------------------------------------------
-     The span's facts, all of one read. `entryCount` is the
-     floor every summary panel on this door is held to - WRAPPED_ENTRY_FLOOR,
-     the same bar a retrospective clears - and `biggestDimensionChange`
-     feeds the span's facts. One read answers both,
-     and the tiles that hold to the floor are handed its answer rather than
-     asking again (ADR-0010).
-
-     The active scale's average rides the same query rather than one of
-     its own (ux-carpet 234): the recap and the series used to be two live
-     queries, and on a span commit they answered a beat apart, so the
-     average row could start collapsing on its own and the card then close
-     over it mid-flight - the two rows read as sliding into each other
-     rather than the list closing from below. One query lands both answers
-     in one flush, so `enoughEntries`, the average and the scale arc all
-     change together and the card's own close is the one motion left. */
+  /* Read the recap and selected scale's average together (ADR-0010). Share
+     entryCount with panels that use WRAPPED_ENTRY_FLOOR. One result updates
+     the floor, average and scale arc together so the card closes once. */
   let factsQuery = liveQuery(async (j) => {
     const readSpan = { start: from, end: to };
     /* No span yet and the rail still loading: the span is not known, so

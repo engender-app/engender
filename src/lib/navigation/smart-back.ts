@@ -14,20 +14,9 @@ let depth = 0;
 let replacing = false;
 
 /**
- * Called by the shell for every settled navigation.
- *
- * `enter` is the app arriving on its first entry, which is the floor: from
- * there, back leaves the app. Anything that pushes an entry adds one, and a
- * popstate moves by its own delta - negative going back, positive going
- * forward again. A navigation that replaced the current entry instead of
- * pushing one adds nothing, which is what `replaceRoute` is for: SvelteKit
- * reports it as an ordinary `goto`, so the app has to say so itself.
- *
- * Clamped at zero because the browser's history holds entries from before
- * the app was opened, so a back gesture can walk off the bottom of what this
- * has counted. Left negative, the next navigation would climb back to zero
- * without having pushed anything and the app would think it had somewhere to
- * return to.
+ * Track history depth after each settled navigation. Enter sets the floor.
+ * Push adds one, popstate applies its delta and replaceRoute adds nothing.
+ * Clamp to zero when navigation goes back past the app's first entry.
  */
 export function recordNavigation(type: string, delta?: number | null, sameUrl = false): void {
   depth = depthAfter(type, delta, sameUrl);

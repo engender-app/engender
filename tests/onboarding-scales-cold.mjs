@@ -1,19 +1,8 @@
-/* The scales step never paints an empty list (Pixel report, 2026-09-30).
-
-   A first run on a fresh phone showed "How do you want to track gender?"
-   with its heading, caption and Continue, and nothing between the two
-   rules. Flaky: the next run, after a reset, drew the seven rows.
-
-   Probe: reach the scales step as fast as a finger can, with the journal
-   worker's answers held back by DELAY ms so the mirror is still filling
-   when the step mounts, and count the `scale-` rows on every frame from
-   the moment the step's question is on screen until the rows settle.
-   Red if any frame shows the step with zero rows and nothing standing in
-   for them (a skeleton, `[data-read-reserve]`).
-
-   Against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/onboarding-scales-cold.mjs [--root <built tree>] [--delay 1500] [--runs 5] */
+/* Delay journal reads and enter the scales step before the mirror fills.
+   Sample each frame until the rows settle. Every visible frame needs either
+   a scale row or a data-read-reserve placeholder. Run
+   node tests/onboarding-scales-cold.mjs on a demo build. --delay defaults to
+   1500ms and --runs to five. */
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, previewBuild } from './browser-harness.mjs';

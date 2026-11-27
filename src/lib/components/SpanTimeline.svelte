@@ -1,20 +1,12 @@
 <script lang="ts">
-  /* The Look back rail bounds the span that the readings use. It runs from
-     historyStart to today, with milestones and surgery days as marks. The
-     history bands sit at 10px. A full-height copy clipped to the selected span
-     shares a frame with the handles. Flag colours identify eras. Solid
-     secondary ink marks regimen episodes, hollow ink marks tryouts, and full
-     ink marks the span and milestones.
-
-     A dragged handle tracks the pointer's day within the span bounds. On
-     release, it settles to its grain or a nearby magnet. Taps on marks, eras or lanes and keyboard
-     moves also animate. The handle, frame and clip share --dur-med, clamped to
-     1ms under reduced motion. onLive updates the label during a drag. Commit
-     on release because the readings requery when the span changes.
-
-     The legend and span length sit under the rail. The one-time drag hint
-     fades after the first handle move and its preference keeps it dismissed.
-     The span length counts on moves that do not follow a pointer. */
+  /* The Look back rail runs from historyStart to today and clips its full-height
+     copy to the selected span. Flag colours mark eras, solid secondary ink
+     marks episodes, and hollow ink marks tryouts. Full ink marks the span
+     and milestones.
+     During a drag, onLive updates the label. Settle to a grain or magnet and
+     commit on release so readings requery once. Taps and keys animate too.
+     The handle, frame and clip share --dur-med, clamped to 1ms for reduced
+     motion. Save dismissal of the first-drag hint. */
   import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
@@ -797,22 +789,9 @@
     --grip: 14px;
     --rail-h: 52px;
     --low-h: 8px;
-    /* One lane per history kind this journal has, stacked off the axis.
-       Zero lanes leaves every measurement below exactly where it was
-       before the history layer existed.
-
-       The gutter is the marks' own room: a milestone or a surgery day is a
-       12px block standing on the axis, so the rows start above where those
-       blocks reach and no row is ever drawn under one. The rule keeps the
-       eras' strip off the rows, so the two registers read as two.
-
-       Two heights rather than one repeated: four bands of the same weight
-       was what made the first build unreadable, and a solid bar and an
-       outlined one do not need the same room to be told apart. Each row's
-       presence is a 0 or a 1 from the component, since CSS cannot make a
-       height conditional on what a journal holds - and with both at 0 every
-       measurement below lands exactly where it did before the rows
-       existed. */
+    /* Stack one lane per present history kind. Leave room for 12px axis marks
+       and keep the era strip separate. Solid and outlined lanes have different
+       heights. Presence flags reserve zero height when a lane is absent. */
     --row-regimen: 8px;
     --row-tryout: 6px;
     --mark-gutter: 7px;

@@ -1,19 +1,6 @@
-/* End-to-end check of what the visit screen shows when the prep list is
-   empty (phase 8 features ticket 71, rewritten onto one screen by phase 11
-   all-four-doors ticket 12), driving the real demo build rather than
-   trusting the markup's shape.
-
-   The claim a unit test cannot reach: a journal with an appointment on
-   record showed none of it to somebody who had not yet typed a question.
-   Ticket 12 answers it structurally rather than by a gate - the next visit
-   is the screen's opening and the verbs are their own section, so neither
-   can be hidden behind the list - and this is what holds that. The fixture
-   is a full journal whose prep list is then emptied one row at a time
-   through the screen's own delete control: the state a person is in the day
-   they tick the last thing off.
-
-   Runs in the built guard tier. Expects a VITE_DEMO=1 build in build/.
-   Run: node tests/prep-context-check.mjs */
+/* Empty the prep list through the real delete controls in a populated demo
+   journal. The upcoming visit and its actions must stay visible after the
+   last deletion. Run node tests/prep-context-check.mjs on a demo build. */
 import { preview } from 'vite';
 import { resolve } from 'node:path';
 import { fillDate, launchChromium } from './browser-harness.mjs';
