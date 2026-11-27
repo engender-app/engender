@@ -52,8 +52,7 @@
 <style>
   /* Fixed at the switch's own touch target, not the switch's content width, so every switch
      on the screen sits the same distance from the edge. A slot is drawn only for a switch
-     the row has: an empty one held 48px and pushed a lone switch in from the edge
-     (sign-off). */
+     the row has: an empty one held 48px and pushed a lone switch in from the edge. */
   .kit-row-toggle {
     flex: 0 0 var(--touch-target);
     display: flex;

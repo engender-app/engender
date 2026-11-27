@@ -59,7 +59,7 @@
      would put every band hard against the left edge. */
   const MIN_SPAN_DAYS = 730;
 
-  /* Item 21: real pixels per day rather than every span squeezed into one
+  /* Use real pixels per day rather than every span squeezed into one
      320px viewBox. 0.6px/day puts two years at ~440px - a horizontal scroll
      on a phone, a wide-but-contained strip on desktop - and keeps five years
      under 1100px so the scroll stays a gesture rather than a journey. */

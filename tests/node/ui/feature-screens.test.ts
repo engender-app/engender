@@ -34,7 +34,7 @@ const REACHED_FROM_INSIDE = [
   /* One procedure, reached from a card on /health/surgery and from anything filed against
      it; the hub row is the list. */
   'health/surgery/[id]',
-  /* One appointment (prh12), reached from a row on /health/appointments,
+  /* One appointment, reached from a row on /health/appointments,
      from a day's context list, from Today and from a search hit. */
   'health/appointments/[id]',
   /* The metric reference held this place folded it into a sheet over the voice screen

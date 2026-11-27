@@ -145,7 +145,7 @@ async function run() {
   result.bootCachePresent = localStorage.getItem(BOOT_CACHE_KEY) !== null;
 
   /* The one writer that puts journal text in localStorage: the entry-draft
-     mirror an open editor keeps (sec-audit 02, finding G-01). Driven through
+     mirror an open editor keeps. Driven through
      the same store the editor uses rather than by mounting the editor, which
      would drag the whole component tree into a storage probe; what matters
      to the scan is the value the store leaves behind. Left in place on

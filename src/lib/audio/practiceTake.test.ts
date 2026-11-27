@@ -28,7 +28,7 @@ test('one creaky frame is exactly what a true minimum is for', () => {
   // The whole reason a benchmark reports p10/p90 instead: a single low
   // outlier moves a true min the way it would not move a percentile. A
   // practice take reports the true value anyway, because the person knows
-  // what they just did .
+  // what they just did.
   const stats = practiceTakeStats([frame(150), frame(148), frame(80), frame(152)]);
   assert.equal(stats?.minHz, 80);
 });

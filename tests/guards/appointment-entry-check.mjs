@@ -24,8 +24,7 @@ async function close() {
   await page.locator('[data-close-record]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
 }
-/* Each appointment opens its own screen (prh12); back leaves it for the
-   list. */
+/* Each appointment opens its own screen. Back returns to the list. */
 async function openScreen(row) {
   await row.click();
   await page.waitForSelector('[data-appointment-screen]');

@@ -2,8 +2,7 @@
   /* An appointment's own facts as fields: what it is for and the kinds this
      journal has used, who it is with, where, what it cost, its day and
      time, and a wait's referred-on day. Shared by the new-appointment sheet
-     on the list and the appointment's own screen (prh12, the screen per
-     appointment), so the two ask the same way and cannot drift.
+     on the list and the appointment's own screen so both use the same fields.
 
      The kind is a free text field with no list of its own. What sits under
      it is the kinds this journal has already used, as chips, because a

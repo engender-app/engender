@@ -20,7 +20,7 @@ const config: CapacitorConfig = {
   appName: 'engender',
   webDir: 'build',
   android: {
-    /* Zoom is a web capability and only a web capability (audit U2). The
+    /* Pinch zoom is a web capability. The
        bridge maps this to setBuiltInZoomControls(false), the WebView
        setting pinch input actually answers to, so two-finger gestures
        stay with the app's own surfaces (photo wipe, timeline drag) rather
@@ -77,9 +77,7 @@ const config: CapacitorConfig = {
      quiet. */
   loggingBehavior: 'none',
   /* Left unset, `cap sync` writes res/xml/config.xml with a wildcard
-     <access origin="*" />, a Cordova-compat leftover no plugin here reads
-     (audit finding G-07). Empty skips the tag instead of
-     narrowing it, since nothing needs it at all. */
+     <access origin="*" />, a Cordova-compat leftover no plugin here reads. An empty list omits the tag. */
   cordova: {
     accessOrigins: []
   }

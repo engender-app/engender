@@ -180,7 +180,7 @@
      means a closure reading it re-runs once a keystroke too - every one of the entry half's
      seven statements and the elsewhere union's two, per character typed. Clearing the field
      is the one case that is not waited out: an empty query drops the pending timer and
-     lands on `debouncedQuery` at once, so clearing clears the results without the wait . */
+     lands on `debouncedQuery` at once, so clearing clears the results without the wait. */
   let debouncedQuery = $state('');
   $effect(() => {
     const typed = query.trim();

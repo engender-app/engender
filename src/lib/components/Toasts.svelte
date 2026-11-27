@@ -4,8 +4,7 @@
   import { motionDistance, motionDuration } from '$lib/motion/tokens';
   import { measureTops, travelFrom, type RowTop } from '$lib/motion/reorder.svelte';
 
-  /* Two toasts up at once each keep their place and their action (UI 47,: a second delete
-     laid its toast exactly over the first one's Restore). They stack away from the edge
+  /* Two toasts up at once each keep their place and their action. They stack away from the edge
      they rise from, so the one already up never moves while somebody is reaching for it: at
      the bottom the newest goes above, at the top (a failure over a sheet) it goes below.
      Each stack is in the order it is drawn, top to bottom, so Tab and a screen reader meet

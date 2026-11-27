@@ -275,7 +275,7 @@ test('every tier-1 window has a shape that is not none, and no other key does', 
   }
 });
 
-/* Item 1: the anchoring episode's end day.
+/* Use the anchoring episode’s end day.
 
    A band is a claim about a body on the hormone the table describes, so it has nothing to
    say about the days after that hormone stopped. Before this, `literatureWindowDays` read

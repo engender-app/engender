@@ -2,8 +2,7 @@
   /* "What to raise": the standing appointment prep list (ADR-0066), with its add, tick, carry-forward flag and delete. The list
      is standing and unowned - nothing ticks itself off when a visit ends -
      so the appointments list and each upcoming appointment's own screen
-     draw the same one list (prh12, the screen per appointment). Its own
-     component so those two cannot drift.
+     draw the same list through this component.
 
      The read is handed in rather than made here: the list screen holds this
      read at "loading" until its visit read has answered too, and that gate is the list's business. */
@@ -46,7 +45,7 @@
   }
 
   /* One item per tap, and the sheet stays up with its text and a toast
-     when the add fails (UI 17). */
+     when the add fails. */
   const itemWrite = writer();
   async function addItem() {
     const content = newItemText.trim();
@@ -56,7 +55,7 @@
   }
 
   /* A row's tick and flag each take one write at a time, read off the row
-     as it stands, so a double tap flips once (UI 17). */
+     as it stands, so a double tap flips once. */
   const checkWrite = rowWriter();
   const flagWrite = rowWriter();
   function toggleChecked(item: ChecklistItem) {

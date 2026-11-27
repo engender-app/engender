@@ -24,8 +24,7 @@ export function makePdf(lines) {
   return pdfFromStreams(lines.map((line) => `BT /F1 48 Tf 60 700 Td (${line}) Tj ET`));
 }
 
-/** A page that looks like paper somebody was handed, for the screenshots a
-    sign-off is done on: a letterhead, a rule under it, a date, and body
+/** A page that looks like paper somebody was handed, for screenshots: a letterhead, a rule under it, a date, and body
     text as grey bars - legible as a page, unreadable as words, which is
     what a screenshot of somebody's diagnosis should be. The same shape
     documents-gallery.mjs draws for an imported scan, in PDF operators.

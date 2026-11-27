@@ -199,7 +199,7 @@ await block('release blockers 03 duplicate display values', 10, async () => {
   }
 });
 
-await block('functional-audit 39 clinician summary headings and changes noticed', 2, async () => {
+await block('clinician summary headings and changes noticed', 2, async () => {
   const result = await load('/clinician-summary-dossier.html', 'clinician-summary-dossier');
   for (const item of result.cases) {
     if (item.passed) ok(item.name);
@@ -720,7 +720,7 @@ await block('journal encryption at rest', 10, async () => {
 
   /* Both mirrors have to be on the scan's plate for a clean scan to mean
      anything: the boot cache, and the entry-draft mirror an editor leaves
-     behind mid-edit (sec-audit 02, finding G-01) - the one writer that puts
+     behind mid-edit - the one writer that puts
      journal text in localStorage at all. */
   const dirtyKeys = r.localStorageScan.filter((k) => k.found.length > 0);
   if (r.bootCachePresent && r.draftMirrorPresent && dirtyKeys.length === 0)
@@ -1354,7 +1354,7 @@ await block('mood chips keyboard nav', 5, async () => {
     ok('only the picked mood (4) is a tab stop');
   else fail('only the picked mood is a tab stop', JSON.stringify(tabindexes));
 
-  /* Release blockers 08 (audit A11Y-02): Today's pick opens the editor, so an
+  /* Today's pick opens the editor, so an
      arrow moves focus and the one tab stop without picking anything, and
      Enter or Space is the pick. */
   const four = faces.nth(3);
@@ -1387,7 +1387,7 @@ await block('mood chips keyboard nav', 5, async () => {
   else fail('Enter on the picked face clears it', cleared);
 });
 
-// --- Release blockers 09: a switch states one thing, once ------------------
+// --- A switch states one thing, once ------------------
 /* Axe flagged every switch for carrying aria-pressed beside role="switch"
    and aria-checked (Melt's Toggle trigger added it), and a ListRow holding a
    switch for being a button with a button inside it. Both are facts about
@@ -2728,8 +2728,8 @@ await block('the lock step splits in two', 2, async () => {
   }
 });
 
-// --- Ticket U08: the gate's own prompt only where authentication is viable -
-await block('ticket U08 browser tier', 7, async () => {
+// --- The gate's own prompt only where authentication is viable -
+await block('Android biometric prompt and recovery gates', 7, async () => {
   /* 7 ok/fail calls: three states, the gate-held invariant, no sheet anywhere, no-lock
      silence then one fire after repair, and the three outcomes staying distinguishable.
      Lock-timing removed the consent question, so the prompt fires on its own wherever it

@@ -1,4 +1,4 @@
-/* Sign-off render for the journal book shows a summary, not the whole book. Only the
+/* The screenshot for the journal book shows a summary, not the whole book. Only the
    changed surface - the "What goes in" block, the counts line this ticket puts under it and
    the fold that now holds the pages - not the pages themselves, which are unchanged and
    which tests/tools/journal-book-print-diff.mjs is what actually proves.

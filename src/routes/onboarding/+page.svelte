@@ -394,8 +394,7 @@
      past its box (components.css, overflow-clip-margin), which is room for
      every other step's close. The welcome's is 355px on a phone, so for the
      first frames the paint, the sun and the wordmark were cut at 367px: the
-     field's edge jumped 235px and the wordmark vanished in one frame
-     (sign-off round 1, frame 20 of the collapse). For the length of this
+     field's edge jumped 235px and the wordmark vanished in one frame. For the length of this
      close the margin is the hero's own height, which is more than the close
      can travel. Written from here in pixels because Chromium takes no calc()
      in overflow-clip-margin. */
@@ -429,7 +428,7 @@
   }
 
   /* Each step's question takes focus as it arrives, so a screen reader says the new step
-     and a keyboard starts from it (audit A11Y-12). Focus used to stay on Continue, which
+     and a keyboard starts from it. Focus used to stay on Continue, which
      said nothing, and on the two steps whose Continue is a different button it fell to the
      body.
 
@@ -581,7 +580,7 @@
     go(stepAfter(steps, 'restore'));
   }
 
-  /* The same bloom out of the sun as a flag picked in Settings (prh12): the
+  /* The same bloom out of the sun as a flag picked in Settings. The
      new colours grow from this field's sun with its rings on the edge,
      where writing the preference alone cut the whole screen in one frame.
      Skip's reset below stays a plain write, since it leaves the step. */

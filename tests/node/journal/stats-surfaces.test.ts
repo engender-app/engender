@@ -62,7 +62,7 @@ describe('the summary panels wait for the floor', () => {
     expect(readings.dayByDay).toContain('{#if withData.length > 1 && plotted.points.length}');
   });
 
-  /* The sheet and the link that opened it went item 26. The gate did not: the series is
+  /* The series is
      still written out for a screen reader, and an empty list under an empty chart would be
      as wrong as an empty sheet was. tests/node/ui/accessibility-audit.test.ts holds the
      other half. */
@@ -71,8 +71,6 @@ describe('the summary panels wait for the floor', () => {
   });
 });
 
-/* The area index - a row per area in the More hub's own four groups - was removed item 36.
-   What survives it is the rule the index was held to, which outlives the block itself. */
 describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
   it('asks for no per-area read at all', () => {
     for (const call of ['getMeasurementsInRange', 'getMostRecentAnalyte', 'weeklyWearHours']) {
@@ -213,7 +211,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).not.toMatch(/<ReadReserve ready=\{factsRevealed\}[^>]*>\s*<div class="screen-part">\s*\{#if enoughEntries\}/);
   });
 
-  /* Ux-, item 2: the average and scale-arc rows used to gate their own
+  /* The average and scale-arc rows used to gate their own
      `transition:collapse` on the live `activeAverage`/`dimChange`, which flips false in the
      same reactive flush as `enoughEntries` when a span narrows under the floor - so a row's
      own collapse ran concurrently with the card's, and the two read as sliding into each

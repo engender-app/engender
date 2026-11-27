@@ -72,10 +72,8 @@ describe("kit.css's cross-block spacing", () => {
   });
 
   it('no longer enumerates the full surface set anywhere', () => {
-    // The two rules replaced each carried the whole set by name
-    // in three places between them. closed the last one - the
-    // chip-row/photo-strip-under-a-surface rule above - so no spacing
-    // selector in kit.css names a surface class on its lead side any more.
+    // Spacing selectors use the shared surface attribute, even when a chip
+    // row or photo strip follows a surface.
     const fullSet = /\.kit-chart,\s*\.kit-list,\s*\.kit-tiles,\s*\.kit-notice/;
     expect(kit).not.toMatch(fullSet);
     const tagRowLead = /\.kit-chart,\s*\.kit-list,\s*\.kit-day,\s*\.wrapped-figure-list/;

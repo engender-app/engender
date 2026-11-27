@@ -207,7 +207,7 @@ test('dose-panel coverage changes project the same facts without another read', 
   assert.deepEqual(asked, ['dayAhead', 'doses', 'appointments']);
 });
 
-/* prh12: today's one appointment opens its own screen; two on the day
+/* Today's one appointment opens its own screen; two on the day
    leave the row on the list, since it names only the first. */
 test("today's appointment row opens that appointment, or the list when the day holds two", async () => {
   const marks: DayAheadMark[] = [{ kind: 'appointment', epochDay: TODAY }, { kind: 'appointment', epochDay: TODAY + 3 }];

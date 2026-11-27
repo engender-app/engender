@@ -85,8 +85,7 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
     /* Out of a sheet it is a fade-through whatever screen the sheet was over. The tag
        insights on /stats open a sheet of the entries carrying a tag, and those cards are a
        correct source by the rule above - so the card's box grew out of an open modal into
-       the whole screen while the sheet sat behind it, which is item 23's complaint arriving
-       on a second surface. A sheet is not a place a screen grows out of: what happened is
+       the whole screen while the sheet sat behind it. The navigation instead reflects
        that a modal was dismissed and a screen replaced the one underneath it, and the
        transform says the card became the screen instead.
 

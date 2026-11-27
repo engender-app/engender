@@ -107,7 +107,7 @@ test('the Polish legal steps stay closed until somebody answers the switch', () 
 
 const CATEGORIES = [
   { id: 'k1', name: 'Coming out' },
-  /* A category migration 111 made from a track cut before round two: its
+  /* A category migration 111 made from a retired track: its
      uuid is the old track key and its name is empty until somebody gives it
      one, so the screen says the old track's name in the current language. */
   { id: 'medical', name: '' },
@@ -161,7 +161,7 @@ test('steps left counts the legal group, built-ins and own goals, and not-my-pat
   expect(ownStepsLeft(list.categories[2].goals)).toBe(0);
 });
 
-test('a track cut before round two is a legacy category key, and nothing else is', () => {
+test('only retired track keys become legacy category keys', () => {
   expect([...LEGACY_ROADMAP_TRACKS]).toEqual(['social', 'presentational', 'medical']);
 });
 

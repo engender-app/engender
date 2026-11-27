@@ -178,8 +178,7 @@ test('twelve rows can report a reading and seven never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   // Version 124 folded hair progress into progress photos, leaving 12
-  // reading rows. Seven written since
-  // item 70 gave voice memos back a Media row, `recordings`.
+  // reading rows. The seven non-reading rows include voice memos.
   assert.equal(reads.length, 12);
   assert.equal(HUB_ROWS.length - reads.length, 7);
 });
@@ -231,7 +230,7 @@ test('a whole quiet window with nothing written reads as quiet', () => {
   assert.equal(rowLine(spec('wear'), reading({ lastWrites: { wearSessions: quiet } })).kind, 'quiet');
 });
 
-/* (UX-18): "Nothing logged for 2 years 1 month" on the Documents row read as a nag about a
+/* "Nothing logged for 2 years 1 month" on the Documents row read as a nag about a
    paperwork vault. Quiet is the observation the finish offer is made from, so a row with
    nothing to finish never turns quiet: it keeps saying when it was last written. */
 test('a row with nothing to finish never reads as quiet', () => {

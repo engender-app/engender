@@ -114,7 +114,7 @@ describe('activeTabKey', () => {
   });
 });
 
-/* (UX-18): the editor is reached from every door, and the tab bar used to answer Journal
+/* The editor is reached from every door, and the tab bar used to answer Journal
    whichever one it was. What the bar lights now borrows the door the editor was opened
    from; the table above, which screen transitions read, keeps calendar for /entry. */
 describe('litTabKey', () => {
@@ -135,7 +135,7 @@ describe('litTabKey', () => {
   });
 });
 
-/* (L04-07, UI-07): the desktop rail has a Settings row of its own, so on every /settings
+/* The desktop rail has a Settings row of its own, so on every /settings
    route the rail lights that row rather than borrowing a door, and the doors light nothing. */
 describe('railTabKey', () => {
   it('lights the Settings row on the hub and every subpage', () => {

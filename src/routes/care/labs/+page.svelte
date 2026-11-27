@@ -460,7 +460,7 @@ Unit likewise: a set preferred unit wins, then the
   }
 
   /* Other entry point into the appointment prep list: a one-tap add, seeded from the
-     analyte already on screen. One add per tap, and a failed one says so (UI 17); a later
+     analyte already on screen. One add per tap, and a failed one says so; a later
      tap is a second add on purpose. */
   const prepWrite = writer();
   async function addToAppointmentPrep(draft: LabDraft) {

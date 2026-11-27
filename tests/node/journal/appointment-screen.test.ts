@@ -1,4 +1,4 @@
-/* prh12: each appointment opens its own screen rather than an editor sheet
+/* Each appointment opens its own screen rather than an editor sheet
    over the list, and everything about it is edited there in place. Read off
    the source the way surgery-hub.test.ts holds the procedure screen; the
    browser half is tests/guards/appointment-entry-check.mjs. */

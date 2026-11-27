@@ -266,8 +266,7 @@
      mark and a pseudo reads its originating element's properties by
      inheritance. Registered `inherits: false`, `var(--lane)` in
      `.na-mark::after` resolves to the initial 0 instead of the mark's own
-     lane and every stem draws at no height - which is how this was found,
-     in the sign-off crop, with three marks floating over the line. */
+     lane and every stem has zero height, leaving marks floating above the line. */
   @property --lane {
     syntax: '<number>';
     inherits: true;

@@ -49,9 +49,8 @@ try {
   // an empty prep list produces no offer whatever the appointments say.
   await page.waitForSelector('[data-appointment-item]');
 
-  // The demo persona already has a past appointment with its debrief written
-  // , so the resting state is a journal whose most recent
-  // past appointment is settled - which is the state that must stay quiet.
+  // The demo persona already has a past appointment with its debrief written.
+  // The most recent past appointment is therefore settled and should stay quiet.
   await settle('/');
   check(
     'no offer when the most recent past appointment already has its debrief',

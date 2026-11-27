@@ -73,7 +73,7 @@ describe('the foot\'s way on', () => {
     expect(css(0.5, 0.5)).toContain('opacity: 0.5');
   });
 
-  it('opens its width in a row after the finish control, taking the gap before it (item 84)', () => {
+  it('opens its width in a row after the finish control, taking the gap before it', () => {
     /* A new entry's foot Save entry first, the way on after it, and the foot's live region
        after that, which is no control and must not decide the side. */
     const node = foot('row', { width: 200, height: 48 }) as unknown as { previousElementSibling: object; nextElementSibling: object };

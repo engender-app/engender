@@ -304,7 +304,7 @@ try {
 
   if (gallery) {
     // Back to the phone and to English: the checks above leave the page at
-    // 320px in Polish, and the sign-off renders are neither.
+    // 320px in Polish, but the saved screenshots use English at 390px.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/settings`, { waitUntil: 'networkidle' });
     await page.locator('[data-segment="en"]').click();

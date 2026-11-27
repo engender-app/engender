@@ -127,9 +127,7 @@ describe('where the decoy name is allowed to appear', () => {
 
   it('is asked by every surface that says the app name out loud', () => {
     /* The other half of the check above: nobody hardcodes the decoy name, and the outside
-       surfaces do print a name, so they have to be getting it from here. removed the in-app
-       reads (AppNav, the home hero), so only surfaces a person can see before unlocking, or
-       on paper, remain: a disguise that stopped reaching a lock screen would show the real
+       surfaces do print a name, so they have to be getting it from here. Only surfaces visible before unlock or on paper need the displayed name: a disguise that stopped reaching a lock screen would show the real
        name to the person it was hiding from, and ship green. */
     for (const path of [
       'src/lib/components/PrintLetterhead.svelte',

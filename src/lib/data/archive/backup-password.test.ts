@@ -26,7 +26,7 @@ const status = (hasPassword: boolean): AutoExportStatus => ({
   lastFailureReason: null
 });
 
-/* . "Back up now" used to save whatever was in the export password field as the backup
+/* "Back up now" used to save whatever was in the export password field as the backup
    password before every run, so a typo or an autofill re-keyed every later backup with
    nobody told. */
 describe('checkBackupNow', () => {

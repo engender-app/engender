@@ -588,7 +588,7 @@ export async function restorePreviousJournal(): Promise<void> {
      handles so the next boot's worker can acquire them (ADR-0020's one connection per
      origin). Caught, because on the web the failed boot has usually closed it already, and
      a closed driver refuses a second close - the restore then ran on a worker of its own
-     and let the pool go itself (219). A refusal here is not the restore failing. */
+     and let the pool go itself. A refusal here is not the restore failing. */
   await openDriver?.close().catch(() => {});
   await closeActiveDriver();
   location.reload();
@@ -1086,7 +1086,7 @@ async function perform(effect: BootEffect): Promise<void> {
        or an earlier one got as far as taking one, and a driver too broken to
        answer is a driver that cannot restore either. Said in the log when
        that happens: on Android this check was refused by a closed session
-       for every failed migration, and the silence hid it (ui 33). */
+       for every failed migration, and the silence hid it. */
     case 'check-pre-migration-copy': {
       const askedFor = machine.boot;
       const usable =

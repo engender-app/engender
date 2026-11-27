@@ -484,7 +484,7 @@ describe('findYanks', () => {
 
   describe('colour shape', () => {
     it('persistent abrupt change: reports a mark whose colour jumps between two still frames and stays', () => {
-      /* Resting at #888, then jumps to #e00 and stays - the redesign-07 defect shape */
+      /* Resting at #888, then jumps to #e00 and stays - a persistent colour jump */
       const frames = [
         ...still(6, { bg: '#888' }),
         frame(mark({ bg: '#e00' }), 96),

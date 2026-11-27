@@ -1,4 +1,4 @@
-/* The Capacitor end of the StepBack plugin; what it does is in./step-preview.ts. */
+/* Capacitor bridge for StepBack. ./step-preview.ts owns the transition. */
 
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 import type { StepBackBridge } from './step-preview';

@@ -5,8 +5,7 @@
    The kit gallery next door holds one tile grid of two plain tiles, which
    is what it needs to show the surface exists. What this ticket changes is
    the tile's shape across five of them - plain, action, dismiss, both, and
-   the row weight - plus the tight pair, and a page carrying only those is
-   what a sign-off can be read off. */
+   the row weight - plus the tight pair, on one page for comparison. */
 import { mountInto, publishFixture } from './mount.ts';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';

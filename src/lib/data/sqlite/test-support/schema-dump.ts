@@ -16,8 +16,7 @@ import type { DatabaseSync } from 'node:sqlite';
 
     Whitespace around brackets and commas goes entirely rather than collapsing
     to one space, because `ALTER TABLE ... ADD COLUMN` appends its column after
-    whatever whitespace the last one ended on - `updated_at INTEGER NOT NULL ,
-    trashed_at INTEGER` - and no hand-written column list would have that. */
+    whatever whitespace the last one ended on - `updated_at INTEGER NOT NULL, trashed_at INTEGER` - and no hand-written column list would have that. */
 function normalizeSql(sql: string): string {
   const pieces: string[] = [];
   let plain = '';

@@ -1465,9 +1465,7 @@ try {
 
    The handles moved with rebuild: the period is the header's subtitle rather than half of
    its title, the values open from their own control instead of by pressing a chart, and a
-   tag insight is a bar rather than a list row. The values control itself went item 26; what
-   it used to open is a hidden list now. replaced the segmented range with the span on the
-   rail: the range is whatever the two handles bound, so the flow widens the span from the
+   tag insight is a bar rather than a list row. The values are available in a visually hidden list. The rail chooses the span: the range is whatever the two handles bound, so the flow widens the span from the
    keyboard - ten steps back on the start handle - and reads the subtitle change with it. */
 await flow('stats', async () => {
 try {
@@ -1502,8 +1500,7 @@ try {
   }
   if (!hrefs.some((h) => h?.includes(startIso))) throw new Error(`no tile carries the span's start ${startIso}: ${hrefs.join(' ')}`);
   /* Day by day opens at the span: the chart with its picker, the scales card under it, and
-     the series still readable as text - a visually hidden list item 26 removed the "All
-     values" link. */
+     the series still readable as a visually hidden list. */
   await page.locator('[data-reading="day-by-day"]').click();
   await page.waitForURL('**/stats/day-by-day?**');
   await page.waitForSelector('[data-chart-card="day-by-day"]');
@@ -1516,7 +1513,7 @@ try {
   }
   /* How the days fell: five mood steps, always - a step nothing landed on holds its place
      at zero width rather than sliding the rest under the wrong part of the scale. Drawn on
-     the door itself sign-off, with no tile of its own. */
+     the door itself, with no tile of its own. */
   await fresh('/stats');
   await page.waitForSelector('[data-chart-card="mood-days"] [data-strip-step]', { state: 'attached' });
   if ((await page.locator('[data-chart-card="mood-days"] [data-strip-step]').count()) !== 5) {
@@ -1634,8 +1631,7 @@ try {
    thumbnail-backed photo comparison with both sides step-able, and the on-demand recap
    sequence with its Rive fallback.
 
-   The first of them is no longer a screen: merged the rail into /transition/milestones. The
-   rail's own handles have to answer there. */
+   The milestone rail uses its own handles on /transition/milestones. */
 await flow('view-only milestone, photo and recap screens', async () => {
 try {
   await fresh('/transition/milestones');
@@ -1667,8 +1663,7 @@ try {
 await flow('lab results', async () => {
 try {
   await fresh('/care/labs');
-  /* The kit's area chart, not LineChart: moved the four charted feature screens onto the
-     chart kit, and the handle moved with the component the way list-row handles did. */
+  /* Charted feature screens use the kit’s area-chart handle. */
   if (!(await page.locator('[data-chart="area"]').count())) throw new Error('the selected analyte has no trend chart');
 
   await page.locator('[data-add]').click();
@@ -2376,7 +2371,7 @@ try {
   await page.locator('[data-next]').click(); // lock -> permissions
 
   /* Where the check-in switch used to be, the step that names what the app can ask this
-     device for. (UX-07, UX-10) it draws only the asks that apply on this platform: on the
+     device for. It draws only the asks that apply on this platform: on the
      web that is the microphone and the camera, with no "Android only" rows and none of the
      no-permission explanations, which stay on /settings/permissions. */
   await page.waitForSelector('[data-permission-list]');
@@ -4097,7 +4092,7 @@ await flow('background/process-death draft restore', async () => {
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="4"]').click();
-  /* The mirror is ciphertext under the session data key now (sec-audit 02),
+  /* The mirror is ciphertext under the session data key now,
      so what can be read from outside the app is that a value was written and
      that the note is not sitting in it. Taken away first, or the mood click's
      own write would satisfy the wait and the reload could beat the note into
@@ -4903,7 +4898,7 @@ try {
   /* The entries section reads a range keyed off the tryout the route names, which is a
      round trip away. It used to be read beside that one, so it could answer with nothing
      before the tryout arrived and leave its empty state up for good - this wait carried a
-     reload-and-recheck around that. made the read wait for the record it reads for
+     reload-and-recheck around that. The read now waits for the owning record
      (detailDraft.ts, tests/browser-tier/detail-draft-probe.svelte.ts), so one look is
      enough now and an empty section here is a real failure. */
   await page.waitForFunction(
@@ -6170,8 +6165,7 @@ try {
   await booted();
   await page.waitForSelector('[data-appointment-item]');
 
-  /* Editing opens on what is stored, on the appointment's own screen
-     (prh12), and the kind just used is offered as a chip - the only
+  /* Editing opens on what is stored, on the appointment's own screen, and the kind just used is offered as a chip - the only
      suggestion the app is entitled to make, since nothing ships in either
      language. Tapping one fills the field rather than storing anything of
      its own. */
@@ -6509,9 +6503,7 @@ try {
      cycle log, while the log itself keeps its records and its direct URL. Two ways in,
      walked one after the other: the explicit opt-in switch in Settings, and an active
      testosterone episode, which surfaces it with the switch back off. */
-  /* No step on /more any more: took the cycle row off the hub entirely and hosted it under
-     the side effects screen - moved it again, onto the merged changes screen, with the rest
-     of what that screen drew - so "the hub does not name it" is now structural and an
+  /* Cycle tracking is hosted on Changes instead of having a row on More, so "the hub does not name it" is now structural and an
      absence check there would pass whatever this gate did. What is left to walk is the
      surface that does name it behind the gate, and `cycle-events` is a handle this flow
      goes on to wait for - so its absence here means something (and a deleted handle cannot

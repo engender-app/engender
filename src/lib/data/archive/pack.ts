@@ -72,8 +72,7 @@ export interface PackWatch {
 
 /* An archive may be exported with the password left empty, and hash-wasm refuses an empty
    Argon2 password. Such a file is meant to open for anyone, so it is sealed under this
-   fixed phrase instead, and an empty field opens it again. Every password typed before item
-   80 was non-empty, so no existing archive derives differently. */
+   fixed phrase instead, and an empty field opens it again. Older archives required non-empty passwords and derive as before. */
 const NO_PASSWORD = 'engender archive without a password';
 
 function archiveSecret(password: string): string {

@@ -121,7 +121,7 @@ async function run() {
 
   const stored = (await journal.tags.getTagGroups()).flatMap((g) => g.tags.map((tag) => tag.label));
 
-  /* L02-09: the mirror's refresh after a write has to read the journal open
+  /* The mirror's refresh after a write has to read the journal open
      now, not the one the first hydrate was handed. */
   await journal.tags.addTag(group, 'after the reopen');
   let mirrorFollowed: string | null = null;
@@ -131,7 +131,7 @@ async function run() {
     mirrorFollowed = (error as Error).message;
   }
 
-  /* More rounds for the timing, which is what the sign-off reports. */
+  /* Repeat to sample lock and reopen times. */
   const rounds: { lockMs: number; reopenMs: number }[] = [{ lockMs, reopenMs }];
   for (let round = 0; round < 4; round++) {
     await journal.tags.addTag(group, `round ${round}`);

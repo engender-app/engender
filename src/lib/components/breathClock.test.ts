@@ -79,7 +79,7 @@ describe('the breath clock', () => {
   /* A frame's rAF timestamp is when the frame began, which can be a few ms
      before the click handler that started the clock stamped its start. A
      negative elapsed wrapped to the cycle's last moment and flashed "Hold"
-     on the first frames of the very first inhale (the sign-off flipbook). */
+     on the first frames of the very first inhale. */
   it('never reads before its own start', () => {
     const c = startClock(restingClock(), 1000);
     expect(clockElapsed(c, 996)).toBe(0);

@@ -70,7 +70,7 @@
      gives up, which is a mistake this codebase has already made once
      (boot.svelte.ts).
 
-     But only on a path the platform can honor (ticket U08, UX22). The two
+     But only on a path the platform can honor. The two
      states below are recovery states - the cliff and a device with no
      screen lock to bind a key to - and on either, firing the prompt can
      only cover the one screen that says what to do. Returning without

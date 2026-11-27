@@ -35,8 +35,8 @@ describe('the reminders screens carry no web branch', () => {
 describe('the reminders list on Android', () => {
   it('keeps the denied and battery explanations, one notice per permission', () => {
     /* Moves nothing on Android: each denied permission keeps its own request action, and
-       the battery note keeps its own link. split the one shared notice in two, so each says
-       only what its own refusal costs and leaves with the collapse kit Notice owns. The
+       the battery note keeps its own link. Each notice explains its own permission
+       and collapses through Notice. The
        slice starts at the check-in block. */
     const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
     expect(android).toContain("{#if status === 'unreadable'}");

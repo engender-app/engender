@@ -437,7 +437,7 @@
     toast(m.saved(), { kind: 'record-saved' });
   }
 
-  /* The person's categories (round two). A new one is a name and nothing
+  /* The person's categories. A new one is a name and nothing
      else; renaming and removing live in its own sheet, opened from the
      pencil on its heading, the place a control for the area as a whole
      goes (SectionHeading's `action`). */

@@ -28,6 +28,27 @@ const value = (/* functional audit */ 1); // .scratch/example
     expect(countReferences('example.css', 'a { background: url(https://example.invalid) /* ticket 6 */ }')).toBe(1);
   });
 
+  it('finds internal review labels in comments and architecture prose', () => {
+    const labels = [
+      'prh18', 'item 90', 'sign-off crop', 'audit U2', 'L08-01',
+      'after-release 28', 'carpet 30', 'UX-07', 'sec-audit 02'
+    ];
+    expect(countReferences('example.ts', labels.map((label) => '// ' + label).join('\n')))
+      .toBe(labels.length);
+    expect(countReferences('ARCHITECTURE.md', 'Use shared controls (after-release 28).'))
+      .toBe(1);
+  });
+
+  it('checks full-line comments in the SQL baseline', () => {
+    const source = 'const schema = `\n-- Audit L08-01\nSELECT 1;`';
+    expect(countReferences('src/lib/data/sqlite/schema.ts', source)).toBe(1);
+  });
+
+  it('leaves technical numbers and identifiers alone', () => {
+    const source = '// Track item-2 at 195px. WebView (76), schema (78), ADR-0023.';
+    expect(countReferences('example.ts', source)).toBe(0);
+  });
+
   it('finds wrapped ticket citations and permits public ADR paths', () => {
     const source = '/** Phase 4 tickets\n * CARPET-07 and 12. See docs/adr/0045-example.md and docs/\x69nternal/notes.md. */';
     expect(countReferences('example.ts', source)).toBe(3);

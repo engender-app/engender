@@ -1,7 +1,7 @@
 /* Look back, rendered over a real journal: the constellation plots with no mode, Tags
    carries the share ring with an "on good days" filter, Words and Highest days are gone,
    Look back offers one way into Wrapped and none while Wrapped is off, and the two "is off"
-   notices open the screen where their switches live. Since sign-off note, the mood strip
+   notices open the screen where their switches live. The mood strip
    draws on the door itself rather than behind a "Mood across days" tile, which leaves five
    tiles on a journal with no cost. Cost reading, a sixth tile when the span holds a cost,
    is checked last, absent and then present. */

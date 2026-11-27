@@ -41,10 +41,8 @@ describe('the day after today', () => {
     expect(day).toContain('j.dayAhead.getDayAhead(epochDay, epochDay, currentDay())');
   });
 
-  /* The future branch itself: everything between `{#if isFuture}` and the `{:else}` that
-     hands the screen to a past day. turned the old `{#if !isFuture}` guard around so a
-     future day can draw the records it does hold - an appointment, a milestone - so the
-     rule is stated over that branch's own contents rather than over the order of the file. */
+  /* Check only the future branch. It can show scheduled records, such as
+     appointments and milestones, without exposing past-day entry actions. */
   const futureBranch = markupOf(day).split('{#if isFuture}')[1]?.split('{:else}')[0] ?? '';
 
   it('never lets the entries gate, the add-entry button or the era link past the future guard', () => {

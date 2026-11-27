@@ -11,7 +11,7 @@
    Update the stamp when either changes to reconcile once on the next boot. */
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
 
-export const BUILT_INS_FINGERPRINT = '14211b067f622817';
+export const BUILT_INS_FINGERPRINT = '41e805df947e9ec3';
 
 /** The value a journal reconciled by this build carries in its header: the
     catalogue's fingerprint and the schema version, since a migration may

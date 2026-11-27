@@ -501,9 +501,7 @@ CREATE TABLE word_frequency_ignore (
   updated_at INTEGER NOT NULL
 );
 
--- \`starred\` keeps the Starred filter with the question (after-release ticket
--- 16, audit L08-01): without it a question saved with Starred on came back
--- answering with unstarred entries too. 0 is off.
+-- \`starred\` preserves the question’s Starred filter when reopened. 0 is off.
 CREATE TABLE saved_question (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid            TEXT NOT NULL UNIQUE,
@@ -1225,8 +1223,7 @@ CREATE INDEX idx_document_epoch_day ON document(epoch_day);
 
 -- The dilation schedule names the procedure it follows and reads that
 -- record's surgery day, rather than keeping a second copy of the date that
--- can drift (audit item 7: the taper said 27 February 2026 while the procedure
--- hosting it said 11 August 2025). At most one row (getTaper's own
+-- can drift. At most one row (getTaper's own
 -- "ORDER BY id LIMIT 1"). \`procedure_id\` is NOT NULL because a schedule is
 -- typed in against a procedure, and one whose surgery day belongs to nothing
 -- says nothing on its own.

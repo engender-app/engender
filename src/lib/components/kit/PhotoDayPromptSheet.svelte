@@ -27,7 +27,7 @@
     fieldId: string;
     /** What Skip falls back to, in the caller's own terms. Required: a
         shared line had to name both owners, which read oddly inside an
-        entry and inside a milestone alike (audits UX-05 and UX-13). */
+        entry and inside a milestone alike. */
     hint: string;
     /** Whatever the caller's own day means: bake it into the picked photo,
         write it to a stored one, whichever the flow this sheet interrupts

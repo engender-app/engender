@@ -246,7 +246,7 @@
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
   /* One reading per tap, and a failed one keeps the mood and note and says
-     so (UI 17). Only what was sent is cleared: a mood or note changed while
+     so. Only what was sent is cleared: a mood or note changed while
      the write ran is the next reading, not this one. */
   const feelingWrite = writer();
   async function addFeeling() {

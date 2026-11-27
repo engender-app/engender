@@ -3,8 +3,7 @@
    validation is discarded, which costs one unsaved screen, while a draft
    that is wrongly accepted reaches the editor half-shaped.
 
-   The second half covers the encryption the mirror now carries (sec-audit
-   02, finding G-01): what lands in localStorage is ciphertext under the
+   The second half covers the encryption the mirror now carries: what lands in localStorage is ciphertext under the
    session data key, and everything that will not decrypt back into a draft
    takes the same discard path a malformed one always took. */
 

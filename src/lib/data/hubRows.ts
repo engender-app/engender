@@ -486,7 +486,6 @@ export type HubLine =
 
     The gate is `cycleVisible`: the cycle row is a row on the hub that has to be able to not
     exist, so the screen that draws the hub answers `cycleTrackingVisible` and hands it in.
-    once took that row off the hub and the gate with it; put both back.
 
     Read by the front page too since a pinned row asks the same three questions a hub row
     does, off the same one assembled read (`pinnedRows.ts`). */

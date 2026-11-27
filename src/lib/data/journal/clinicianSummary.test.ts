@@ -449,7 +449,7 @@ test('preserves saved exclusions under alternate spellings after deduplication',
   assert.deepEqual(excluded, { ' ESTRADIOL VALERATE ': true, 'Estradiol Valerate': true, 'estradiol valerate': true, Progesterone: true });
 });
 
-/* (L04-06): the regimen cell read "Estradiol valerate (valerate)", naming the ester twice. */
+/* The regimen cell read "Estradiol valerate (valerate)", naming the ester twice. */
 test('names an ester beside the drug only when the drug name does not already, by whole words', () => {
   assert.equal(regimenEsterNote('Estradiol', 'valerate'), 'valerate');
   assert.equal(regimenEsterNote('Testosterone', 'cypionate'), 'cypionate');

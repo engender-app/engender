@@ -129,7 +129,7 @@
   );
   let scheduleCanSave = $derived(selectedProcedureId !== null && stagesToSave !== null);
 
-  /* One save per tap (UI 17): a first schedule has no id yet, so a double
+  /* One save per tap: a first schedule has no id yet, so a double
      tap used to store two. A failed save keeps the editor open and says so,
      and so does a save the fields changed under while it ran, so the newer
      values are still there to save. */

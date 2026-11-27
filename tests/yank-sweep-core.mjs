@@ -81,7 +81,7 @@ export const HYDRATION_PX = 24;
 /** The colour difference threshold in OKLab space. OKLab Euclidean distance
  *  is perceptual: 0.02 is a just-noticeable difference, 0.05 is a subtle shift,
  *  0.10-0.14 is a distinct step, and the yellow-to-olive contrast-floor defect
- *  caught by eye in redesign-07 measures ~0.39. Red-to-green hue flips measure ~0.38.
+ *   measures ~0.39. Red-to-green hue flips measure ~0.38.
  *  At 0.14, normal sub-pixel antialiasing and smooth easing transitions remain well
  *  below the threshold, while true sudden colour flips are caught.
  *  OKLab rather than sRGB because sRGB euclidean distance distorts perceived differences
@@ -252,7 +252,7 @@ const SCENES = [
   { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the milestone template picker sheet rising' },
   /* The recorded list is disclosed before measuring the edit action. */
   { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone] .kit-row-main', prepare: ['[data-ms-log-toggle]'], when: 'persona', after: {"selector": "[data-sheet]"}, is: 'an existing milestone edit sheet opening' },
-  { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a mark on the rail opening the same editor (redesign 43)' },
+  { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a mark on the rail opening the same editor' },
   { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '[data-goal] .kit-row-main', when: 'persona', after: {"selector": "[data-goal]", "attribute": "data-status"}, is: 'a goal check state cycled' },
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a goal details sheet opening' },
   { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
@@ -993,7 +993,7 @@ export const INJECT_PROOF_EXPRESSION =
            the field-blind's own shape, on a mark built to have it. */
         bloat.style.height = phase === 9 ? '520px' : '24px';
         /* Eight frames at resting #888, then sudden flip to #000 and stays -
-           the redesign-07 colour defect shape. */
+           a persistent colour jump. */
         colour.style.background = phase <= 8 ? '#888' : '#000';
         /* Eight frames at resting 0px, one frame displaced 200px, then returned. */
         thereAndBack.style.translate = phase === 8 ? '0 200px' : '0 0px';

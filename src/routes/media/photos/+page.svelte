@@ -180,7 +180,7 @@
   }
 
   /* The scrubber appears once the grid is taller than the screen, which is the point at
-     which scrolling to a year stops being something a thumb can do . Measured rather than
+     which scrolling to a year stops being something a thumb can do. Measured rather than
      counted: how many thumbnails a screen holds depends on the width, the text size and
      whether the grid is narrowed. */
   let gridTall = $state(false);

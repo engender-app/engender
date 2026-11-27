@@ -35,7 +35,7 @@ test('a visit with no kind falls back to its journey, then to the plain word', (
   );
 });
 
-/* prh12: each appointment has its own screen, and every row about one -
+/* Each appointment has its own screen, and every row about one -
    its visit, its referral, an update on its wait - opens that screen. */
 test("every row opens its own appointment's screen", () => {
   const records: AppointmentDayRecord[] = [

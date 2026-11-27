@@ -340,7 +340,7 @@
     }
   }
 
-  /* Item 11: a year is twelve taps of the chevron away, which is the whole of the reason
+  /* A year is twelve taps of the chevron away, which is the whole of the reason
      nobody lands on last August on purpose. The month label itself is the way in - it
      already says where you are, so it is the thing that offers to move you - and the sheet
      it opens is a year and its twelve months (MonthJump.svelte). The month transition's

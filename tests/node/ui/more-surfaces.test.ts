@@ -2,9 +2,8 @@
    held to - mirrors home-contracts.ts, which is where this shape of test started.
 
    Greps for the questions that are genuinely about what is and is not in the file: which
-   surfaces the screen reaches for, and how many reads it issues. took the row list out of
-   the grep's hands - it lives in `hubRows.ts` now and is asserted against below as a value,
-   which is what a grep over four const arrays was standing in for. */
+   surfaces the screen reaches for and how many reads it issues. Check the row
+   list as values from `hubRows.ts`. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -238,7 +237,7 @@ describe('every row the hub carries', () => {
        snippet of the same HostedRows card, so it sits in the link's own ReadReserve and
        fades in with it, and the card's `ready` waits for the events' read when the gate is
        open. A preview drawn beside the card, or released before its read, would arrive
-       after the link. The link row heads the card and the events follow it (prh12): the
+       after the link. The link row heads the card and the events follow it, so the
        card is named before what is in it. */
     const hosted = read('src/lib/components/HostedRows.svelte');
     const rowsAt = hosted.indexOf('{@render hostedRows()}', hosted.indexOf('<ListCard>'));

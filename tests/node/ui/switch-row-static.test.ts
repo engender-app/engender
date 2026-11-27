@@ -1,4 +1,4 @@
-/* A ListRow that holds a switch has to be static (release blockers 09, accessibility).
+/* A ListRow that holds a switch has to be static.
 
    ListRow renders a button unless it is told it is a link, a checkbox or static, and Switch
    is a button too. A switch in the trailing slot of a default row is a button inside a

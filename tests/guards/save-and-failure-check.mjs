@@ -1,7 +1,6 @@
 /* Every save says it worked, every failure says so, and a double tap writes once. One check
    per class of save rather than one per screen: a save that leaves the screen (a reminder),
-   surgery's notes, and Today's acknowledgement of an entry saved today. Then the eight
-   action sites UI 17 brought under the same rule, each failing once and then double tapped
+   surgery's notes, and Today's acknowledgement of an entry saved today. Then the eight actions held to the same rule, each failing once and then double tapped
    while held. Failures come from a journal operation replaced in the page with one that
    rejects, the same seam letter-composition-check uses; nothing may end as an unhandled
    rejection. */
@@ -174,7 +173,7 @@ try {
   await page.waitForURL(/\/entry\/new\/today\?seedMood=4/);
   console.log('PASS Today rings the latest mood saved today, says when, and the ringed face still adds another');
 
-  // UI 17: a custom effect type, the appointment prep list's own add and its two toggles.
+  // A custom effect type, the appointment prep list's own add and its two toggles.
   await navigate('/care/changes');
   await page.locator('[data-manage-effects]').click();
   await page.locator('#new-effect-type').fill('Probe effect type');
@@ -232,7 +231,7 @@ try {
   assert.equal(await calls(), beforeFlag + 1, 'a double tap on the flag writes once');
   console.log('PASS appointment prep flag: failure says so, double tap writes once');
 
-  // UI 17: Add to appointment prep from a side effect and from a lab result.
+  // Add to appointment prep from a side effect and from a lab result.
   // Unseen: raised since failsThenRetries marked the toasts already up.
   const prepAdded = () => page.locator('[data-toast]:not([data-seen])').filter({ hasText: 'Added to appointment prep list' });
   for (const [path, open] of [
@@ -267,7 +266,7 @@ try {
     console.log(`PASS ${path} Add to appointment prep: failure says so, double tap adds one, a later tap adds again`);
   }
 
-  // UI 17: a dilation schedule.
+  // A dilation schedule.
   const procedureId = await seed('procedure');
   await navigate('/health/dilation');
   await page.locator('[data-notice="dilation-schedule-empty"]').getByRole('button', { name: 'Add your schedule' }).click();
@@ -296,7 +295,7 @@ try {
   await seed('no procedure', procedureId);
   console.log('PASS dilation schedule: failure keeps the editor, double tap saves one');
 
-  // UI 17: a felt-sense reading on a tryout.
+  // A felt-sense reading on a tryout.
   const tryoutId = await seed('tryout');
   await navigate(`/transition/tryouts/${tryoutId}`);
   await page.locator('[data-mood="4"]').first().click();
