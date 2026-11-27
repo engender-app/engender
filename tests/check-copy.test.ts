@@ -8,7 +8,7 @@
    absent in Polish, since the runtime falls back to the base locale and
    prints English at a Polish reader. Hence the parity half. */
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { catalogueOrderProblems, catalogueProblems, coverageProblems, fixCatalogues, findLiterals, ratchetProblems } from '../scripts/check-copy.mjs';
@@ -49,12 +49,17 @@ describe('catalogueOrderProblems', () => {
   });
 
   it('passes once fixCatalogues, which --fix runs, has rewritten the file', () => {
-    const file = join(mkdtempSync(join(tmpdir(), 'catalogue-')), 'en.json');
-    writeFileSync(file, unsorted);
-    fixCatalogues([file]);
-    const fixed = readFileSync(file, 'utf8');
-    expect(catalogueOrderProblems({ [file]: fixed })).toEqual([]);
-    expect(Object.keys(JSON.parse(fixed))).toEqual(['$schema', 'a', 'b']);
+    const directory = mkdtempSync(join(tmpdir(), 'catalogue-'));
+    try {
+      const file = join(directory, 'en.json');
+      writeFileSync(file, unsorted);
+      fixCatalogues([file]);
+      const fixed = readFileSync(file, 'utf8');
+      expect(catalogueOrderProblems({ [file]: fixed })).toEqual([]);
+      expect(Object.keys(JSON.parse(fixed))).toEqual(['$schema', 'a', 'b']);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
 
