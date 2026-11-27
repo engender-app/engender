@@ -61,7 +61,13 @@ try {
   await page.locator('#presentation-name').waitFor({ state: 'detached' });
   await page.keyboard.press('Escape');
   await closed();
-  const entry = '/entry/new/20000';
+  const newEntry = '/entry/new/20000?seedMood=3';
+  await route(newEntry);
+  await page.locator('[data-save]').click();
+  await page.waitForURL(url => url.pathname === '/');
+  await route('/day/20000');
+  const entry = await page.locator('a[data-entry-card]').getAttribute('href');
+  assert(entry, 'a saved entry keeps browser Back separate from the new-entry steps');
   const openManager = async () => {
     // A new entry's modes are on its marks step.
     await toEntryStepWith(page, '[data-manage-presentations]');
@@ -73,7 +79,6 @@ try {
     for (const back of [false, true]) {
       await route('/calendar');
       await route(entry);
-      await continueToTheRest(page);
       await openManager();
       await page.evaluate(() => {
         const sheet = document.querySelector('[role="dialog"]');
@@ -104,7 +109,7 @@ try {
   }
 
   // Ordinary dismissal still returns focus to the actual launcher.
-  await route(entry);
+  await route(newEntry);
   await continueToTheRest(page);
   await openManager();
   if (serial) adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');

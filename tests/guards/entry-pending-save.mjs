@@ -3,7 +3,7 @@
    against delayed encrypted attachment writes without replacing storage. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { continueToTheRest, launchChromium, previewBuild, settlePage } from '../browser-harness.mjs';
+import { continueToTheRest, launchChromium, previewBuild, settlePage, toEntryStepWith } from '../browser-harness.mjs';
 import { INIT_HIDE_DEMO_SCRIPT, STUB_PERSIST_SCRIPT } from '../yank-sweep-core.mjs';
 import { tinyPhoto } from '../photo-fixture.mjs';
 
@@ -99,25 +99,28 @@ try {
     await page.goto(base + '/settings/access-mode', { waitUntil: 'networkidle' });
     await page.locator('[data-lock-after-choice="immediately"]').click();
     await page.goto(base + '/entry/new/today?seedMood=4', { waitUntil: 'networkidle' });
-    // The scales are on the first step, the note and the tags on the second.
+    // Fill the scales, marks, body and writing on their own steps.
     const scale = page.getByRole('slider').first();
     await scale.focus();
     await page.keyboard.press('Home');
     await page.keyboard.press('ArrowRight');
     assert.equal(await scale.getAttribute('aria-valuenow'), '5');
-    await continueToTheRest(page);
-    const note = page.locator('#ed-note');
-    await note.fill(`Pending entry ${locale}`);
-    await page.locator('[data-tag="g-body-eu"]').click();
-    await page.locator('[data-section-chip="body"]').click();
+    const tag = page.locator('[data-tag="g-body-eu"]');
+    await toEntryStepWith(page, '[data-entry-step="marks"]');
+    await tag.click();
+    await toEntryStepWith(page, '[data-entry-step="body"]');
     const body = page.locator('[data-editor-section="body"]');
     await body.locator('button').first().click();
     await body.getByRole('slider').focus();
     await page.keyboard.press('End');
     await page.keyboard.press('ArrowLeft');
     assert.equal(await body.getByRole('slider').getAttribute('aria-valuenow'), '95');
+    await continueToTheRest(page);
+    const note = page.locator('#ed-note');
+    await note.fill(`Pending entry ${locale}`);
     await attachPhoto(page);
-    if (locale === 'pl') await page.locator('[data-section-chip="body"]').click();
+    if (locale === 'pl') await toEntryStepWith(page, '[data-entry-step="body"]');
+    const savingStep = locale === 'en' ? 'writing' : 'body';
     await page.evaluate(() => { window.entryWrite.armed = true; });
     await page.locator('[data-app-savebar]').evaluate(async (node) => {
       await Promise.all(node.getAnimations().map((animation) => animation.finished.catch(() => {})));
@@ -140,10 +143,10 @@ try {
         return false;
       }
     }), false, 'OPFS receives encrypted bytes that cannot be decoded as a photo');
-    await note.focus();
-    await page.keyboard.type(' Later text');
-    assert.equal(await note.inputValue(), `Pending entry ${locale}`, 'pending editor refuses keyboard edits');
     if (locale === 'en') {
+      await note.focus();
+      await page.keyboard.type(' Later text');
+      assert.equal(await note.inputValue(), `Pending entry ${locale}`, 'pending editor refuses keyboard edits');
       await page.locator('.photo-remove').click({ force: true });
       assert.equal(await page.locator('.photo-view').count(), 1);
     } else {
@@ -153,9 +156,9 @@ try {
       await body.locator('button').first().click({ force: true });
       assert.equal(await body.locator('button').first().getAttribute('aria-pressed'), 'true');
     }
-    // Tags are open on the second step, so a tag is what a pending save must keep still.
-    await page.locator('[data-tag="g-body-eu"]').click({ force: true });
-    assert.equal(await page.locator('[data-tag="g-body-eu"]').getAttribute('aria-pressed'), 'true');
+    await page.locator('[data-screen-back]').dispatchEvent('click');
+    assert.equal(await page.locator('[data-entry-step]').getAttribute('data-entry-step'), savingStep, 'pending save prevents step Back');
+    if (locale === 'pl') assert.equal(await page.locator('[data-entry-continue]').isDisabled(), true, 'pending save prevents the next step');
     // A new entry has no tab bar to leave by, so the departure is an in-app link, which is how any screen is left.
     await page.evaluate(() => {
       const link = document.createElement('a');
@@ -179,7 +182,7 @@ try {
     await page.evaluate(() => {
       document.querySelector('.editor')?.removeAttribute('inert');
     });
-    assert.equal(await note.isEditable(), false);
+    if (locale === 'en') assert.equal(await note.isEditable(), false);
     // The scales are one step back and cannot be reached while the save is pending; the body's still can be tried.
     if (locale === 'pl') {
       await body.getByRole('slider').focus();
@@ -205,21 +208,22 @@ try {
     await page.locator('[data-section-chip="photos"]').click();
     assert.equal(await page.locator('.photo-view').count(), 1);
     await page.goto(base + '/entry/new/today?seedMood=4', { waitUntil: 'networkidle' });
+    await toEntryStepWith(page, '[data-entry-step="marks"]');
+    await tag.click();
     await continueToTheRest(page);
     assert.equal(await note.inputValue(), '', 'reopening has no unsaved accepted edits');
 
     await note.fill(`Retry entry ${locale}`);
     await page.waitForFunction((note) => window.entryMirror.lastNote === note, `Retry entry ${locale}`);
     await attachPhoto(page);
-    await page.locator('[data-tag="g-body-eu"]').click();
     await page.evaluate(() => { window.entryMirror.armed = true; });
     await note.fill(`Retry after mirror delay ${locale}`);
     await page.waitForFunction(() => window.entryMirror.entered);
     await page.evaluate(() => { Object.assign(window.entryWrite, { armed: true, entered: false, fail: true }); });
     await page.locator('[data-save]').click();
     await page.waitForFunction(() => window.entryWrite.entered);
-    await page.locator('[data-tag="g-body-eu"]').click({ force: true });
-    assert.equal(await page.locator('[data-tag="g-body-eu"]').getAttribute('aria-pressed'), 'true');
+    await page.locator('[data-screen-back]').dispatchEvent('click');
+    assert.equal(await page.locator('[data-entry-step]').getAttribute('data-entry-step'), 'writing', 'failing save also prevents step Back');
     await page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
       document.dispatchEvent(new Event('visibilitychange'));
@@ -241,6 +245,8 @@ try {
     }
     await page.waitForFunction(() => document.querySelector('[data-save]')?.disabled === false);
     // The remounted editor opens on its first step with the draft read back under it.
+    await toEntryStepWith(page, '[data-entry-step="marks"]');
+    assert.equal(await tag.getAttribute('aria-pressed'), 'true', 'lock and failed storage retain marks from the earlier step');
     await continueToTheRest(page);
     assert.equal(await note.inputValue(), `Retry after mirror delay ${locale}`);
     assert.ok(await page.evaluate(() => localStorage.getItem('engender-entry-draft')), 'failure retains recovery');

@@ -85,10 +85,11 @@ const layout = () => page.evaluate(() => {
   };
 });
 const near = (a, b, tolerance = 0.5) => Math.abs(a - b) <= tolerance;
-/** Under the field, in its header, 12px below its edge, at the content's width. */
+/** The desktop header spans the gutters. On the phone the notice keeps them. */
+const inset = (l) => l.rail ? 0 : 20;
 const underField = (l) => !!l.notice && !!l.field && l.inHeader && near(l.notice.top - l.field.bottom, 12, 1) &&
-  near(l.notice.left, l.screen.left + 20, 1) && near(l.notice.right, l.screen.right - 20, 1);
-const where = (l) => l.notice ? `notice ${l.notice.left}-${l.notice.right} x ${l.notice.top}-${l.notice.bottom}, field to ${l.field?.bottom}, content ${l.screen.left + 20}-${l.screen.right - 20}` : 'no notice';
+  near(l.notice.left, l.screen.left + inset(l), 1) && near(l.notice.right, l.screen.right - inset(l), 1);
+const where = (l) => l.notice ? `notice ${l.notice.width}px wide at ${l.notice.left}-${l.notice.right} x ${l.notice.top}-${l.notice.bottom}, field to ${l.field?.bottom}, expected edges ${l.screen.left + inset(l)}-${l.screen.right - inset(l)}` : 'no notice';
 
 /* Every animation frame: how much of the notice's band is painted (its box
    less the clip covering it from the top) and its opacity, and where Home's
@@ -181,7 +182,7 @@ try {
     await page.setViewportSize({ width, height: 768 });
     await settled();
     const shown = await layout();
-    ok(underField(shown), `${width}px: the notice is under the field at the content's full width (${where(shown)})`);
+    ok(underField(shown) && near(shown.notice.width, 680, 1), `${width}px: the notice spans the 680px header (${where(shown)})`);
     ok(near(shown.rail.left, shown.frame.left) && near(shown.rail.width, quiet.rail.width) &&
       near(shown.column.left, shown.rail.right) && near(shown.column.right, shown.frame.right),
       `${width}px: rail ${shown.rail.left}-${shown.rail.right} and column ${shown.column.left}-${shown.column.right} keep their places with an update waiting`);

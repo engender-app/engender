@@ -8037,7 +8037,7 @@ try {
      a key that belongs to another journal. */
   await page.fill('[data-recovery-key-input]', written.slice(0, -1) + (written.endsWith('0') ? '1' : '0'));
   await page.locator('[data-submit-recovery-key]').click();
-  await page.locator('[data-recovery-key-error]').filter({ hasText: /\S/ }).waitFor();
+  await page.waitForFunction(() => document.querySelector('[data-recovery-key-error]')?.textContent?.trim());
   if (!(await page.locator('[data-recovery-key-input]').count())) {
     throw new Error('a mistyped key left no field to correct');
   }

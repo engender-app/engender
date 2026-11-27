@@ -153,7 +153,8 @@ try {
   // tier's evidence, not a browser's.)
   const scroll = page.locator('[data-app-scroll-region]');
   const legs = page.locator('[data-recency="legs"]');
-  await legs.scrollIntoViewIfNeeded();
+  // Put the row above the floating navigation before measuring the opener's position.
+  await legs.evaluate((row) => row.scrollIntoView({ block: 'center', behavior: 'instant' }));
   const before = await scroll.evaluate((el) => el.scrollTop);
   assert.ok(before > 0, 'the area handoff starts from a scrolled screen');
   await legs.click();
