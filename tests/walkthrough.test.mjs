@@ -5159,14 +5159,12 @@ try {
   if ((await page.locator('[data-list-row="hair-removal"][data-hub-line="last"]').count()) === 0) {
     throw new Error('a row with only a last write stopped reporting it');
   }
-  // Photos and documents live together now, and Body keeps the rest.
-  // Documents joined; voice memos left in
-  // folded into the voice screen's own Recordings tab.
+  // Media holds photos, voice recordings and documents; Body keeps the rest.
   const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
     rows.map((row) => row.getAttribute('data-list-row'))
   );
-  if (mediaRows.join(',') !== 'photos,documents') {
-    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos and documents`);
+  if (mediaRows.join(',') !== 'photos,recordings,documents') {
+    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos, recordings and documents`);
   }
 
   /* An area declared finished leaves its group for the finished set, keeps
