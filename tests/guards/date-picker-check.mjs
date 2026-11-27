@@ -148,9 +148,11 @@ try {
       await page.locator('[data-own]').click();
       const optionalEnd = page.locator('#regimen-end');
       await optionalEnd.click();
-      await enterDate(page, '2020-09-30');
+      // The end may not precede the start, which a new regimen sets to today.
+      const laterEnd = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      await enterDate(page, laterEnd);
       await closed(page);
-      assert.equal(await dateValue(optionalEnd), '2020-09-30');
+      assert.equal(await dateValue(optionalEnd), laterEnd);
       await optionalEnd.click();
       await page.locator(`${PICKER} [data-date-picker-clear]`).click();
       await closed(page);
