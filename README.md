@@ -6,15 +6,18 @@
 </h1>
 
 enGender is a private journal for exploring your gender or keeping a record of
-your transition. A trans person built it for other trans people. You might jot
-down how it felt when a barista called out your new name, mark the day on a
-scale you named, then come back a month later to see how other days felt.
+your transition. A trans person built it for other trans people. Your privacy
+comes first. That’s why the Android app doesn’t even ask for internet access.
+
+You might jot down how it felt when a barista called out your new name, mark
+the day on a scale you named, then come back a month later to see how other
+days felt.
 
 **[Open the web app](https://journal.engender.app/)** · [Read the getting-started guide](https://engender.app/en/guide/)
 
 The journal is free, works in English and Polish, and needs no account.
 You can install the web app from your browser and use it offline after the
-first load. There is also an Android app.
+first load.
 
 <p>
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03-new-entry.png" width="30%" alt="A journal entry about trying a new name, with a dysphoria-to-euphoria scale and a mood picker.">
@@ -34,10 +37,20 @@ Track & Graph and Pixels.
 
 ## Privacy and backups
 
-Your journal and its media stay encrypted on your device. The web app stores
-them in this browser's storage for the site. The host counts page openings
-without receiving your entries. The Android app has no internet permission.
-You can lock the journal and use disguise mode for a neutral name and icon.
+**On Android, the operating system enforces that choice.** Without the
+`INTERNET` permission, enGender can’t open a network connection of its own,
+even in the background. You can check that for yourself in the
+[app’s permission list](android/app/src/main/AndroidManifest.xml). If you
+choose to share a file, you pick the app that receives it. That app can use
+its own internet connection.
+
+**On the web,** your browser contacts the host to load enGender and check
+for updates. The host counts online page openings without building visitor
+profiles. Your entries and photos stay in your browser’s storage for this
+site.
+
+Both versions encrypt your journal and media on your device. You can lock
+the journal or turn on disguise mode for a neutral name and icon.
 [Privacy policy in English](PRIVACY.md) · [Polityka prywatności](PRIVACY.pl.md)
 
 **Before clearing app data or moving devices, export an encrypted Archive.**
