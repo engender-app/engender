@@ -1295,22 +1295,10 @@ export async function applyProcedures(restoring: Restoring): Promise<void> {
   }
 }
 
-/** The dilation taper schedule (ticket 12; schema v83 gave it the procedure
-    link), resolving that link the way `applyAppointments` below does and
-    needing `procedures` applied first for the same reason.
-
-    A taper naming a procedure this journal does not hold is dropped rather
-    than kept link-less: `procedure_id` is NOT NULL, and the schedule says
-    nothing on its own - its whole reading is days since that procedure's
-    surgery.
-
-    One taper per procedure (functional audit ticket 25, schema v112's
-    UNIQUE index): a merge that brings a second schedule for a procedure
-    this journal already has one for keeps the one already here, newer or
-    not; only the same taper's newer copy is written over it. An archive
-    written before v112 can itself carry two for a procedure; the export
-    lists them in row order, so the later one stands for the newer and is
-    the one offered, the survivor the v112 migration picks too. */
+/** Apply procedures before their taper schedules. Drop schedules whose
+    procedure link cannot resolve. Merge keeps the local schedule when an
+    incoming schedule has another identity for the same procedure. For
+    pre-v112 duplicates within one archive, use the last row as v112 does. */
 export async function applyTaper(restoring: Restoring): Promise<void> {
   const { driver, journal, ts } = restoring;
   const gate = await rowGate(restoring, 'taper');

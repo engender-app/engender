@@ -1,19 +1,7 @@
-/* A tap made while the appearance bloom runs, replayed when it ends (prh12;
-   Alicja chose "replay the tap after").
-
-   While a view transition runs, Chromium hit-tests every point to the root,
-   so a tap during the bloom reaches nothing: a Continue pressed straight
-   after a flag on setup's flag step, or a row tapped straight after Dark in
-   Settings, was simply lost. `pointer-events: none` on the overlay does not
-   change that (tried and measured). So the tap is remembered instead - the
-   last one, where the finger lifted - and when the bloom finishes it is
-   delivered to whatever is under that point then, once, the way the tap
-   would have landed.
-
-   Pointer events only, so a keyboard is untouched. A finger that moved
-   further than TAP_SLOP is a drag or a scroll and replays nothing. A tap is
-   dropped if the page navigated in the meantime or the point is no longer
-   inside the window. */
+/* Chromium sends taps to the root during the appearance transition. Keep
+   the last pointer tap and replay it once at its release point after the
+   transition. Drop it after navigation, outside the viewport, or if it moved
+   past TAP_SLOP. Keyboard events are unaffected. */
 
 /** How far a finger may travel between down and up and still be a tap. */
 /** How far a finger may travel and still count as a tap rather than a drag

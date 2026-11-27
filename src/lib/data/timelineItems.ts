@@ -1,19 +1,7 @@
-/* What the timeline draws, in order.
-
-   The screen shows milestones past and future on one rail, with the long
-   empty stretches compressed and a marker for where today falls between
-   them. All three of those are calendar arithmetic over a list that is
-   already sorted, which is exactly the kind of rule that is easy to get
-   almost right in markup and never notice - the version this replaces
-   inserted the today marker only between two milestones, so a journal whose
-   milestones are all still ahead drew a timeline of the future with no
-   present on it.
-
-   Milestones are mirrored (ADR-0004), so this takes them as an array and
-   there is no query here. Today arrives as an argument, the same rule the
-   rest of the date arithmetic follows. Nothing here formats anything: a
-   gap's duration and a milestone's status are written against the active
-   locale by the screen. */
+/* Build the timeline from sorted milestones and an explicit today. Include
+   today even when every milestone is in the future. Compress long empty
+   spans. Milestones arrive from the mirror (ADR-0004) and the screen formats
+   the results for the locale. */
 
 import type { Milestone } from './types';
 

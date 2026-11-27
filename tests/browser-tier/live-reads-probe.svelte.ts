@@ -1,19 +1,7 @@
-/* Browser-tier check for the phase 5 audit's deepening ticket 03: a live
-   query resolves its own dependencies, so a screen the audit found showing
-   a stale number updates when the data behind it changes.
-
-   Here rather than in the Node tier because `liveQuery` is the rune-bearing
-   half of the reactive layer (ADR-0017): what has to be proved is that the
-   effect re-runs, which needs a real Svelte scheduler over a real journal.
-   The registry side - which tables each read declares - is covered in
-   writes.test.ts, and this is the other end of the same claim.
-
-   The query is the one the screen makes, copied verbatim from Care's own
-   stock sheet, so this fails if that read stops resolving what it reads.
-   The audit's other defect was settings/streak-goal, which phase 8
-   UX ticket 01 deleted along with the streak. Rune-bearing, hence the
-   .svelte.ts name: the plugin in browser-tier.vite.config.ts compiles
-   this. */
+/* Exercise Care's stock query against a real journal and Svelte scheduler
+   (ADR-0017). It must rerun when data it reads changes. writes.test.ts checks
+   the registry declarations separately. Use .svelte.ts so the plugin compiles
+   the runes. */
 
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';

@@ -260,22 +260,9 @@ try {
     await page.waitForSelector('[data-span-timeline]');
     const at = `at ${viewport.width}px`;
 
-    /* Who owns the middle of each band and each mark. Three answers are
-       allowed and the rest are the defect this ticket is about:
-
-       - itself, which is the point;
-       - a range handle, which owns 48px at each end of the span by design
-         and which the audit asked to be left exactly as it is;
-       - another fact whose own drawing lies over it, which is two regimens
-         running at once in one row, or two milestones a fortnight apart
-         where a fortnight is three pixels. A drawing that overlaps is not
-         an invisible region that does, and nothing a hit box can do
-         separates them; the list under the rail is the way to the one
-         underneath.
-
-       What is left is the defect: a fact taken by something that does not
-       draw where it took it, which is what the fixed 36x48px mark target
-       did to every band and every neighbouring mark near it. */
+    /* A band's or mark's centre may hit itself, a 48px range handle or a visible
+       overlap. Flag invisible targets that take a neighbour's centre. Use the list
+       below the rail to reach an obscured fact. */
     const owners = await page.evaluate(() => {
       const facts = [...document.querySelectorAll('[data-span-band], [data-span-milestone], [data-span-surgery]')];
       const overlaps = (a, b) =>

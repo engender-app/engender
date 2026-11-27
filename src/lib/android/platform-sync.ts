@@ -147,22 +147,10 @@ export function coalescing(run: () => Promise<void>, onError: (error: unknown) =
   return start;
 }
 
-/** Which reminder rows may actually be scheduled, given the unprompted
-    registry's two switches. The rows themselves are untouched by either:
-    this is the one choke point every reminder alarm
-    passes through, native side included, so filtering here is what makes
-    "off" mean off for the whole path rather than for whichever caller
-    remembered to check.
-
-    A wear session's elapsed prompt is an ordinary Reminder row on a `wear:`
-    marker, which is why `wearElapsedEnabled` is a filter over
-    the same list rather than a producer of its own.
-
-    Finishing the wear log takes those prompts with it. Applied here rather
-    than at the call site for the reason
-    above: this is where "off" is made to mean off for the native side too,
-    and an area that has gone quiet is off. Which area the prompt belongs to
-    is the unprompted registry's answer, not this file's. */
+/** Filter schedulable reminders here so the native path respects both
+    unprompted switches. Keep the stored rows. The wear-elapsed switch and a
+    quiet wear area suppress reminders with a wear: marker. The registry maps
+    reminders to areas. */
 /* schedulableReminders stays exported only for its own test (AU-09 test-only
    review). */
 export function schedulableReminders(

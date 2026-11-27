@@ -1,20 +1,7 @@
-/* A new entry's steps.
-
-   A new entry walks these steps in this order, each with one purpose, so
-   each can be answered at a glance without scrolling: the quick answer
-   (mood and the scales), what marked the day (mode and tags), the body and
-   the cards the day offers, and last what is written and attached. Marking
-   comes before writing (Alicja, 2026-11-10). Two steps became four on
-   2026-11-25, when every step was asked to fit the screen.
-
-   A step with nothing to show is not drawn: no modes and no tags means no
-   marks step, no body regions and no cards means no body step. The first
-   and the last always have something. The step a person is standing on
-   stays in the walk even if what it held goes away under them, so the walk
-   never jumps from under the person.
-
-   Rune-free, so it is tested under the Node tier; the words are the
-   component's. */
+/* New entries step through mood and scales, marks, body and cards, then
+   writing and attachments. Omit marks and body steps with no content. Keep
+   the current step mounted if its content disappears. Keep the step logic
+   rune-free for Node tests and the copy in the component. */
 
 import type { EntrySection } from './entrySections';
 

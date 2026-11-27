@@ -1,20 +1,8 @@
 <script lang="ts">
-  /* The person's own pose list on Progress photos,
-     opened by the pencil beside the pose control.
-
-     The rows are the managed-list rows Settings draws for body regions and
-     tags (screens.css, .managed-tag): the name, "hidden" when it is, and
-     icon buttons for rename, hide and - on a pose of the person's own -
-     delete. Front, Side and Back rename and hide but never go
-     (progressPhotos.ts). Naming happens in one field under the list rather
-     than in a second sheet, as body regions does: a sheet opened from a
-     sheet would close this one first, and the list is what the person is
-     looking at while they name. The pencil puts that pose's name in the
-     field; the button says which of the two the field is doing.
-
-     Deleting a pose that holds photographs asks first, on the screen's own
-     confirm sheet (the caller's `onDelete`); an empty one just goes, with
-     the usual undo. */
+  /* Manage poses inline in the Progress photos sheet so naming keeps the
+     list visible. Built-in poses can be renamed or hidden. Custom poses can
+     also be deleted. Ask before deleting a pose with photos. An empty pose
+     uses the usual undo. */
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { journalTextAutocomplete } from '$lib/platform';

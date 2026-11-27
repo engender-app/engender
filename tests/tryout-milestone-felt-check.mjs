@@ -1,20 +1,7 @@
-/* What a tryout and a milestone say about how they felt (phase 15
-   after-release ticket 15), against real routes on a dev server.
-
-   1. Each row of a tryout's "How it's felt" log names the mood it holds,
-      with its face, and keeps the day as the line under it. The rows used
-      to be dates and nothing else.
-   2. Adopting a name tryout with "use this name" on sets the app's name to
-      the tryout's stored name, even after the milestone was renamed in the
-      sheet and the label field holds an unsaved edit.
-   A third block, the anniversary felt-sense offer on Milestones, went with
-   functional audit ticket 32, which cut milestone readings; what replaced
-   it is tests/milestone-celebration-check.mjs.
-
-   Every block runs even when an earlier one fails, so one run against the
-   old code shows each of them red.
-
-   Run: node tests/tryout-milestone-felt-check.mjs */
+/* Check that tryout readings show the mood, face and date. Name adoption
+   uses the stored tryout name even after edits to the milestone or draft.
+   Run each case independently with node tests/tryout-milestone-felt-check.mjs
+   against a dev server. Milestone celebration has its own check. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

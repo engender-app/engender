@@ -39,22 +39,9 @@ export function epochDayFromTimestamp(ts: number): number {
   return epochDayFromLocalDate(new Date(ts));
 }
 
-/** The earliest day anything in this journal can be dated to, and what
-    "all history" means as a `from` bound.
-
-    `Number.MIN_SAFE_INTEGER` is the convention where a read compares an
-    `epoch_day` column, which is a plain integer comparison that a sentinel
-    survives (stats.ts's interval folds read all history this way). It is
-    wrong for any read that
-    turns the bound back into an instant: `startOfDayTimestamp` builds a
-    `Date` from it, `new Date(1970, 0, 1 + MIN_SAFE_INTEGER)` is an Invalid
-    Date, and `timestamp >= NaN` matches every row out. `doses.getDoses` is
-    such a read, and a caller reaching for the sentinel there gets an empty
-    log rather than an error.
-
-    Zero is not a sentinel at all - it is the real floor, because an epoch
-    day is never negative (ADR-0001) - so it is exact for both kinds of read
-    and cannot go NaN in either. */
+/** Use epoch day zero as the start of all history (ADR-0001). Integer
+    comparisons can use MIN_SAFE_INTEGER, but reads that convert the bound to
+    a Date need a real day. An invalid date can silently empty the dose log. */
 export const FIRST_EPOCH_DAY = 0;
 
 /** How far past today a stored day may sit: a century covers a letter to a

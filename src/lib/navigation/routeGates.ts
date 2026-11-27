@@ -1,19 +1,9 @@
-/* Choose the route gate from boot and navigation facts. The layout
-   owns side effects, including redirects and closing quick add.
-
-   A fresh install goes straight to onboarding for all of needs-setup.
-   Onboarding owns access-mode setup because the layout's gate would
-   unmount the route and discard its local answers. Returning journals
-   check prefs.onboarded only after SQLite attaches, while unlocked.
-
-   A recovery unlock must finish the access-mode screen before opening
-   the route or considering the return moment (ADR-0054). Close quick
-   add when entering that gate because it sits outside the gate chain.
-
-   Consider the return moment only on Home. Explicit links,
-   notifications and Android launch routes keep their destinations.
-   The layout reads the journal to decide whether there is anything to
-   show. */
+/* Choose gates from boot and navigation state. Send needs-setup straight
+   to onboarding and let it own access setup so local answers survive. Read
+   prefs.onboarded only after unlock. Handle the recovery access gate before
+   the route or return prompt (ADR-0054) and have the layout close Quick add.
+   Only Home can prompt a return. Preserve linked, notification and Android
+   launch destinations. */
 
 export interface RouteGateFacts {
   path: string;

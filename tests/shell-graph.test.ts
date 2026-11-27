@@ -1,19 +1,6 @@
-/* What the shell may carry.
-
-   The root layout is in every first load whatever the address, and in front
-   of a locked journal it is the only thing on screen. The screens' wording
-   layer, vocabulary/vocabulary.ts, is not something it needs: it joins the
-   mirror's rows to catalogue wording for screens to draw. Until ticket 40
-   +layout.svelte imported it for one Android callback that read affirmation
-   ids and the person's own lines, neither of which needed catalogue wording,
-   and that one import put vocabulary.ts, doseLabels.ts,
-   entryTemplates.ts and lean.ts in the shell: 4 of 108 first-load files and
-   4195B gzip of the Polish graph. The screens that draw wording import it
-   themselves and still get it with their own route.
-
-   Static imports only, like chart-library-graph.test.ts: a dynamic import()
-   is already off the shell. The bundle side is
-   scripts/check-first-load-budget.mjs. */
+/* Keep vocabulary/vocabulary.ts out of the shell's static import graph.
+   Routes can load localized vocabulary with their own screens. This check
+   covers static imports. check-first-load-budget.mjs checks emitted bundles. */
 
 import { expect, test } from 'vitest';
 import { reach, sources } from './source-graph';

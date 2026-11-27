@@ -1,19 +1,7 @@
-/* The mood row's magnifier wiring, shared by the two plain rows - the
-   entry editor's picker and Home's chips. The scales live here so the
-   rows carry only handlers; the cell math itself is magnifier.ts's
-   (magnifyRow, gazeRow), and the fan keeps its own loop because it also arms
-   a target mid-gesture.
-
-   It carries the gaze as well as the scale now.
-   The two are one gesture read two ways: the scale says which face the finger
-   is on, which only one face can answer, and the gaze says the row is being
-   crossed, which all five can. Both come off the same pointermove and both
-   rest together, so a row can never be left half-answering.
-
-   `moodGaze` is null while nothing is happening, which is not the same as
-   zero: null is "carry on looking around", zero is "look straight at the
-   finger, it is on you". MoodFace's two nested groups are what keep those
-   apart. */
+/* Share magnifier and gaze state between the entry editor and Home mood
+   rows. Both update on the same pointer move and reset together. A null gaze
+   keeps the ambient look. Zero aims a face straight at the pointer. Quick
+   add handles its own gesture because it also arms a target. */
 import { isReducedMotion } from '$lib/motion/tokens';
 import { gazeRow, gazeToCell, magnifyRow } from '$lib/motion/magnifier';
 

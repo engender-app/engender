@@ -1,19 +1,7 @@
-/* Getting an exported file off the device (ticket 13, PRD F14; ticket 15
-   for the plain formats).
-
-   Android uses its native save picker. Browsers try the share sheet first,
-   then a plain download. A cancelled share sheet is its own answer rather than a
-   failure - the screen must not claim a backup was made.
-
-   In browsers the archive is packed as a stream (pack.ts) and handed to
-   one Blob, which is the limit of what the format's bounded memory buys at
-   the last step: chunking means the bytes are never encrypted and held a
-   second time, which is what single-shot AES-GCM costs, but both a File to
-   share and an object URL to download need the whole archive to exist
-   somewhere. A Blob is the least bad somewhere - the browser owns it,
-   large ones spill to disk rather than sitting in the renderer's heap.
-   Android streams into app-private native staging before its save picker
-   opens, then verifies the destination before reporting delivery. */
+/* Android streams to private staging and verifies the save destination.
+   Browsers try sharing, then downloading. A cancelled share means the
+   backup was not delivered. Browser packing streams into one Blob because
+   both a share File and a download URL require the finished archive. */
 
 import { isAndroid } from '../../platform';
 import { nameSlug } from '../fold';

@@ -1,19 +1,7 @@
-/* The source registry. Every external file this app can
-   absorb declares itself once, here, instead of arriving as a bespoke
-   importer with its own looser rules. `daylio.ts` already is the shape every
-   source now follows - detect, parse, resolve, hand off to the ordinary
-   merge - and this file is what lets the next source be one entry beside it
-   rather than a second subsystem.
-
-   Follows archiveSections.ts's own pattern: a closed set of names
-   (`ArchiveSourceName`), one array declaring an entry for each, and a
-   compile-time check that nothing in the set is left out of the array.
-
-   A source is handed bytes rather than text. Daylio's
-   own `.daylio` backup is a zip, so a registry that could only offer a
-   string could not hold it; a text source
-   decodes for itself - which is cheaper than it looks, because detection
-   reads a header rather than a whole file. */
+/* Register every external source once with detect, parse and resolve
+   before the ordinary merge. Check that the declarations cover the closed
+   ArchiveSourceName set. Pass bytes so a source can read a ZIP or decode
+   text itself. Detection can inspect the header. */
 
 import { daylioPreview, REQUIRED_COLUMNS as DAYLIO_REQUIRED_COLUMNS, detectDaylio, type DaylioNaming } from './daylio';
 import { REQUIRED_FIELDS as DAYLIO_BACKUP_REQUIRED_FIELDS, daylioBackupPreview, detectDaylioBackup } from './daylioBackup';

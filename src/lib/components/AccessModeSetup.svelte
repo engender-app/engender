@@ -482,22 +482,9 @@
     min-height: 0;
   }
 
-  /* The module's own notice surface: one outline, an icon, and as many lines
-     as the consequence being stated actually needs. Local rather than in
-     screens.css because this is its only consumer
-     (scripts/check-screens-classes.mjs enforces that), and named for the
-     module rather than the gate frame because it appears inside a settings
-     card too.
-
-     It replaces .gate-modes, the passphrase gate's old "here are your
-     options" block. The options are rows now; what this carries is one
-     mode's consequence.
-
-     Left, as everything on a gate is since redesign ticket 34: four or five
-     lines of prose that has to be read once and understood does not go in a
-     centred column. The gate frame used to centre everything by default and
-     the first build of this screen inherited it, which is what looking at
-     the render caught. */
+  /* Show one mode's consequence as a left-aligned notice with an icon and
+     outline. Keep the style local to the access-mode module, which is also
+     used inside Settings. */
   .am-notice {
     display: flex;
     gap: var(--space-3);

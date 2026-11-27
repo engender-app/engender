@@ -1,19 +1,7 @@
-/* Leaving changed work asks first (CONTEXT: "Draft", interaction-language
-   spec rule on deliberate discard).
-
-   Four screens used to carry their own copy of the same `beforeNavigate`
-   sequence: cancel, keep the departure, replay it on Discard with
-   `history.go(delta)` or `goto`. The copies drifted. Only the tryouts copy
-   learned (2acb6196) that a replay can fail, and that a guard which
-   switches itself off before replaying stays off for good when it does;
-   the other three still fired the replay and forgot it. And the screens
-   built on detailDraft had no copy at all, so a reminder or a document
-   rename vanished on Back.
-
-   This is the decision, rune-free so it can be node-tested against a fake
-   navigation the way readGate.ts and recordEditor.ts are.
-   leaveGuard.svelte.ts registers it with SvelteKit and DiscardSheet.svelte
-   is the question it asks. */
+/* Cancel navigation away from a dirty draft and keep it for a confirmed
+   discard. Replay through history.go or goto and re-arm the guard if replay
+   fails. leaveGuard.svelte.ts wires SvelteKit and DiscardSheet asks the
+   question. This module stays runnable in Node. */
 
 /** The part of SvelteKit's `BeforeNavigate` the guard reads. */
 export type Departure = {

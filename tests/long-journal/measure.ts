@@ -1,20 +1,7 @@
-/* The measurement harness.
-
-   Five places decide whether a decade of Journal works: the calendar, the
-   stats screen, search, Archive export and the photo grid. Search is two
-   questions since phase 5 deepening ticket 24: the entry index, and one
-   scan across every other area that holds text. Each one below
-   asks the journal exactly what its screen asks it, over the same
-   `openJournal(driver, files)` handle (ADR-0017) - so what runs against
-   SQLocal over OPFS today runs against ticket 11's native SQLite driver
-   with nothing here reshaped.
-
-  `today` arrives as an epoch day rather than from a clock, because the
-  journal never reads it for a domain answer and a benchmark whose numbers
-  move with the date is not a baseline.
-
-   Nothing here optimizes anything, and nothing here decides whether a
-   number is acceptable. It reports; budgets.json judges. */
+/* Measure calendar, stats, entry and cross-area search, Archive export and
+   photo reads through openJournal(driver, files) (ADR-0017). The same calls
+   run against web and Android drivers. Pass a fixed epoch day for repeatable
+   results. budgets.json sets the acceptance limits. */
 
 import type { Journal, PhotoFileStore } from '../../src/lib/data/journal/journal.ts';
 import { mostRecentPastAppointment } from '../../src/lib/data/journal/appointments.ts';

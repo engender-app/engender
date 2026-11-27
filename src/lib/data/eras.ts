@@ -1,19 +1,6 @@
-/* Pure logic for the Era (phase 6 ticket 01, ADR-0049, CONTEXT: "Era") - a
-   named stretch of the person's own timeline, carrying a name and two
-   bounds either of which may be absent.
-
-   Kept apart from journal/eras.ts (the CRUD area): the two
-   invariants below have to be answerable by the editor while someone is
-   still typing, and by the area before it writes, and those are the same
-   rule rather than two copies of it drifting apart.
-
-   The invariants are enforced here rather than as a schema constraint, the
-   way assertValidRule guards a reminder rule: neither of them is expressible
-   as a CHECK over one row, and a constraint violation surfacing from the
-   driver names a table rather than the era it collided with.
-
-   eraCoversDay delegates to span.ts's spanCoversDay - a domain name reads better than spanCoversDay(era, day) at
-   this file's call sites, but the arithmetic lives once. */
+/* Validate era bounds and overlap in one place for the editor and journal
+   (ADR-0049). Those rules need context beyond a row-local CHECK. Use span.ts
+   for coverage arithmetic. */
 
 import { spanCoversDay, spanOverlapsRange } from './span';
 

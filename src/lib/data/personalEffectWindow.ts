@@ -132,23 +132,10 @@ const DIRECTION_DRUG: Record<EffectDirection, HormoneDrug> = {
   masculinizing: 'testosterone'
 };
 
-/** Whether the literature's window for `effect` is a claim about someone on
-    `drug` at all - the gate on every band this file produces.
-
-    Fails closed. `resolveHormoneDrug` answers
-    null for a free-text drug this app cannot classify, for an antiandrogen
-    and for progesterone alone, and null matches neither direction, so those
-    episodes get no band rather than a hedged one. That is the whole point:
-    without this gate someone whose only episode is testosterone was told,
-    sourced on screen to the Endocrine Society, when to expect their breast
-    development to be complete.
-
-    Built on hormoneDrug.ts so the effects timeline and labs use the same
-    drug names.
-
-    Also answers false for any key with no tier-1 window at all - a tier 2
-    or tier 3 effect, or a custom one - which is the ordinary case once
-    the catalogue is open past twenty. */
+/** Show a band only when resolveHormoneDrug classifies the drug and the
+    literature supplies a tier-1 window for that direction. Unknown names,
+    antiandrogens and progesterone alone match neither direction. Custom and
+    later-tier effects without a window get no band. */
 /* literatureCovers stays exported only for its own test (AU-09 test-only
    review). */
 export function literatureCovers(effect: PersonalEffectType, drug: string): boolean {

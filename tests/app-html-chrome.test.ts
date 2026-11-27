@@ -1,19 +1,6 @@
-/* The pre-paint half of the document chrome (ADR-0009): the inline script
-   at the top of src/app.html, run here against the same cases
-   documentChrome.test.ts runs the layout's rule against.
-
-   The script is executed rather than grepped. It cannot be imported - it is
-   inline text in an HTML file, deliberately dependency-free because it runs
-   before any module is parsed - so this reads it out of the document and
-   runs it in a sandbox holding the smallest browser it touches: a boot
-   cache, two media queries, the <html> element's own dataset and the two
-   links. What the script leaves behind is the document a cold start paints
-   with.
-
-   Before this, the only thing asserting any of it was a check that both
-   files mention both favicon filenames, and a grep for three dataset writes
-   in the layout. Neither could tell the two adapters apart when they
-   disagreed. */
+/* Execute the dependency-free pre-paint script from src/app.html (ADR-0009)
+   against the layout's documentChrome fixtures. The sandbox supplies the
+   boot cache, media queries, document dataset and icon links. */
 
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';

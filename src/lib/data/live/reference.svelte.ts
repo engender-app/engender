@@ -250,22 +250,9 @@ export const reference = {
     return mirror.dimensions.filter((d) => ticked.has(d.key));
   },
 
-  /** What Home, the calendar and the stats screen colour by: the stored
-      metric, or mood when it names a scale that is not ticked.
-
-      Resolved on the way out rather than corrected on the way in, which is
-      `journeyAnchor`'s rule directly above and for the same reason: a
-      preference naming something this install does not offer is answered
-      with the resting state, not rewritten. Unticking the scale Home was
-      coloured by therefore drops Home back to mood, and ticking it again
-      brings the choice back rather than having quietly spent it.
-
-      Without this the metric could name a scale its own picker did not
-      list, since every picker offers `activeDimensions` and only this read
-      knew otherwise. A narrower version of that predates ticket 35 -
-      switching to a preset that dropped your metric did it too - but
-      unticking every scale makes it certain rather than possible, and
-      "it must not read as broken" is that ticket's floor. */
+  /** Use the stored metric when its scale is active. Fall back to mood on read
+      when that scale is unticked. Keep the preference so reticking it restores
+      the same metric to Home, calendar and Look back. */
   get activeMetric(): string {
     const key = metricKey(prefs);
     return this.activeDimensions.some((d) => d.key === key) ? key : 'mood';
