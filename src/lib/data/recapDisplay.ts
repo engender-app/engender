@@ -12,7 +12,7 @@ import type { WrappedTagInsight } from './wrappedSections';
 
 export interface RecapDimChange {
   /** The gender dimension that moved furthest, already named - the screens
-      say "scale" for it (CONTEXT: Gender dimension). */
+      say "scale" for it. */
   name: string;
   from: number;
   to: number;

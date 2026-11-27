@@ -1,8 +1,8 @@
-/* FA 30: version 115 gives the five records that cost money an amount, a
-   currency and a refunded flag, and reads hair removal's free-text cost by
-   the recorded rule (cost.ts, parseLegacyCostText): a clean parse becomes
-   the amount, anything else moves into the session's note, and the old
-   column is left null for FA 50 to drop (version 119, migration-hygiene.test.ts). */
+/* version 115 gives the five records that cost money an amount, a currency and a refunded
+   flag, and reads hair removal's free-text cost by the recorded rule (cost.ts,
+   parseLegacyCostText): a clean parse becomes the amount, anything else moves into the
+   session's note, and the old column is left null for to drop (version 119,
+   migration-hygiene.test.ts). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

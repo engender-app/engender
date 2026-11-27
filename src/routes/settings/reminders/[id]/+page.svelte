@@ -91,9 +91,8 @@
     }).format(nextOccurrence(ruleFromDraft(), new Date())!);
   });
 
-  /* Leaves only once the reminder is stored (after-release 06): it used to
-     navigate before the write settled, so a failed one vanished with the
-     screen. */
+  /* Leaves only once the reminder is stored: it used to navigate before the write settled,
+     so a failed one vanished with the screen. */
   const saving = writer();
   async function saveReminder() {
     const saved = await saving.run(
@@ -152,9 +151,8 @@
       />
     </div>
   {:else}
-  <!-- Inert while the save runs (after-release 06): what is sent is what
-       is stored, so nothing can be typed in the meantime and lost when the
-       screen leaves. -->
+  <!-- Inert while the save runs: what is sent is what is stored, so nothing can be typed in
+       the meantime and lost when the screen leaves. -->
   <div class="screen-part" in:crossfade inert={saving.busy}>
   {#if origin}
     <!-- Editing and saving clears autoSource (reminders.ts), so this notice

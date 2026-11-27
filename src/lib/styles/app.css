@@ -187,8 +187,7 @@ body {
      disappearing in one frame. `.return-foot` says the same thing for the same reason
      ("opaque, or the rows scroll through it").
 
-     The ground is the page's, so nothing here is a surface (rule 4). No hairline over it
-     found the line clutter, and the foot's buttons already say where the column ends. */
+     The ground is the page's, so nothing here is a surface (rule 4). The buttons mark where the column ends. */
   background: var(--bg);
 }
 .app-savebar .btn { width: 100%; }
@@ -224,9 +223,7 @@ body {
   --nav-clearance: calc(
     var(--nav-bar-height, var(--bottom-nav-height)) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
   );
-  /* Trimmed from --space-3/5px for the four tab labels grew, and every px reclaimed from
-     the bar's own margins is a px the five equal columns (below) can give the label instead
-     of the ellipsis. */
+  /* Narrow margins give each tab label more room before it truncates. */
   --nav-float-gap: var(--space-2);
   --nav-bar-pad: 4px;
 }
@@ -366,10 +363,9 @@ body {
   justify-self: stretch;
   min-width: 0;
   min-height: var(--touch-target);
-  /* No inline padding: the name gets the whole fifth of the bar. At 320px
-     that is 58.8px, and "Look back" (56.8) and "Transition" (56.2) fit it
-     with none taken off the sides (after-release 18). The lit pill is the
-     tab's own box, so it keeps its size. */
+  /* No inline padding: the name gets the whole fifth of the bar. At 320px that is 58.8px,
+     and "Look back" (56.8) and "Transition" (56.2) fit it with none taken off the sides.
+     The lit pill is the tab's own box, so it keeps its size. */
   padding: var(--space-1) 0;
   border-radius: var(--r-block);
   color: var(--text-2);
@@ -400,12 +396,11 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Two rows of two tabs, the add button between them across both rows, for
-   names too wide for a fifth of the bar: large text, or a narrow phone in a
-   long language (after-release 18). Each tab gets half of what the add
-   button leaves, which at 320px and 200% text is 119px against the widest
-   name's 114. The tabs keep their order: the first two on the top row, the
-   last two under them. */
+/* Two rows of two tabs, the add button between them across both rows, for names too wide
+   for a fifth of the bar: large text, or a narrow phone in a long language. Each tab gets
+   half of what the add button leaves, which at 320px and 200% text is 119px against the
+   widest name's 114. The tabs keep their order: the first two on the top row, the last two
+   under them. */
 .app-nav.is-two-rows {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   grid-template-rows: auto auto;
@@ -632,14 +627,12 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 /* Tier 2 navigation. screen-transition.ts selects data-nav. These rules animate
    the captured scroll region while the chrome crossfades in the root group.
    Use the same duration and easing tokens as the Svelte transitions. */
-/* The column rather than the scroll region inside it, since carpet 26 put
-   the foot beside the region: a group holds one box for both sides of a
-   transition, so naming the region would hand the browser a box a foot
-   shorter on a screen that has one than on the screen being left, and a
-   tween of the box is a scale of the picture in it. The column is the same
-   size on every screen, foot or no foot, and the foot rides inside its
-   snapshot exactly as it did when it was a block at the end of the
-   column. */
+/* The column rather than the scroll region inside it, since put the foot beside the region:
+   a group holds one box for both sides of a transition, so naming the region would hand the
+   browser a box a foot shorter on a screen that has one than on the screen being left, and
+   a tween of the box is a scale of the picture in it. The column is the same size on every
+   screen, foot or no foot, and the foot rides inside its snapshot exactly as it did when it
+   was a block at the end of the column. */
 .app-column { view-transition-name: screen; }
 
 /* Android tab changes animate this flat field paint in the live screen. */
@@ -805,11 +798,10 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 }
 ::view-transition-old(*.sun-shared-ring) { opacity: 0; animation: none; }
 ::view-transition-new(*.sun-shared-ring) { opacity: 1; animation: none; }
-/* A scrolled side names no rings, so the other side's sun is a group of one
-   image that never moves. Painted where it rests, it stood on the page from
-   the first frame while its blue travelled in from above the window
-   (prh12 bug 10, Settings scrolled to Today). It rides the blind instead,
-   in with it or out with it. */
+/* A scrolled side names no rings, so the other side's sun is a group of one image that
+   never moves. Painted where it rests, it stood on the page from the first frame while its
+   blue travelled in from above the window (Settings scrolled to Today). It rides the blind
+   instead, in with it or out with it. */
 html[data-blind-scroll='enter']::view-transition-new(*.sun-shared-ring) {
   animation: blind-scroll-in var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
@@ -921,9 +913,9 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
     field-part-out var(--dur-fast) var(--ease-in-out) both,
     blind-lead var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
-/* The arrival eases in and out, like the leave: on --ease-out the first
-   painted frame already carried 70% of the fade (0.004 to 0.719 between two
-   frames at 1280, carpet 15 row 51), which read as the words popping in. */
+/* The arrival eases in and out, like the leave: on --ease-out the first painted frame
+   already carried 70% of the fade (0.004 to 0.719 between two frames at 1280), which read
+   as the words popping in. */
 ::view-transition-new(*.field-part) {
   animation:
     field-part-in var(--dur-fast) var(--ease-in-out) var(--dur-fast) both,
@@ -973,12 +965,8 @@ html[data-blind-hold='short'] {
    element cannot read a custom property off the element it was taken from.
    Both sides in one rule: the outgoing ring closes on the same beat the
    incoming one opens on. */
-/* Closing rides with the blind - the sun is one of the things printed on the field, and as
-   the field hides, what's on it goes with it. Opening does not: "make the sun appearing NOT
-   move with the blind - we don't want it to overshoot like the blind - we just want it to
-   appear independently. but when the blind HIDES, the sun SHOULD follow it". The arriving
-   sun draws where it will rest and only scales there; nothing about a blind's own settle
-   (the overshoot --blind-ease can carry) touches it. */
+/* The closing sun follows the blind. The arriving sun scales where it
+   will rest, independently of the blind's overshoot. */
 ::view-transition-old(*.sun-ring) {
   animation:
     sun-ring-close var(--dur-fast) var(--ease-in-out) both,
@@ -1041,12 +1029,8 @@ html[data-nav='shared-axis-back']::view-transition-old(screen) {
 html[data-nav='shared-axis-back']::view-transition-new(screen) {
   animation-name: screen-axis-back-in, blind-follow;
 }
-/* The incoming screen holds at nil opacity for the first 25% of its --dur-med (60ms) and
-   fades up after, while its slide runs the whole way. The outgoing screen's --dur-fast
-   ease-out is at 0.13 by then and 0.06 when the new one shows, so no frame holds two
-   legible screens and only one holds neither: the calendar and a day sat over each other at
-   0.56/0.29 and 0.28/0.52 for two frames (pre-release 18, item 54), the already took out of
-   the reduced-motion crossfade. */
+/* Delay the incoming fade by 60ms so two screens never read over each
+   other. The incoming slide runs throughout. */
 @keyframes screen-axis-out { to { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
 @keyframes screen-axis-in {
   from { opacity: var(--nil-opacity); transform: translateX(var(--motion-distance-md)); }
@@ -1063,12 +1047,11 @@ html[data-nav='shared-axis-back']::view-transition-new(screen) {
    Use --dur-slow for the combined travel and
    resize. height: 100% and object-fit: cover crop each snapshot
    instead of stretching a short card into the editor. */
-/* Out, then in, for what is left of the screen (pre-release 18, item 54).
-   The outgoing screen ran the crossfade in reverse, and an ease-out
-   reversed starts slow: the calendar stayed at 0.99 to 0.72 while the
-   editor came up to 0.96 over it, six frames of two whole screens on top
-   of each other under the travelling card. It fades away on the forward
-   curve now, and the editor waits for it the way the shared axis does. */
+/* Out, then in, for what is left of the screen. The outgoing screen ran the crossfade in
+   reverse, and an ease-out reversed starts slow: the calendar stayed at 0.99 to 0.72 while
+   the editor came up to 0.96 over it, six frames of two whole screens on top of each other
+   under the travelling card. It fades away on the forward curve now, and the editor waits
+   for it the way the shared axis does. */
 html[data-nav='container']::view-transition-old(screen) {
   animation-name: screen-fade-away;
 }
@@ -1208,9 +1191,9 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   /* The rail has taken the left inset, so the scroll region beside it only
      owes the right one. */
   .app-main { flex: 1; padding-left: 0; }
-  /* The centred column's own width, named once: the screen and the foot
-     under it are two boxes that have to be the same width to line up, and
-     carpet 26 is what made that two rules instead of one. */
+  /* The centred column's own width, named once: the screen and the foot under it are two
+     boxes that have to be the same width to line up, and is what made that two rules
+     instead of one. */
   .app { --column-max: calc(var(--content-max) + 2 * var(--space-5)); }
   .app-main, .app-savebar { --screen-inset: 0px; }
   .screen {
@@ -1273,8 +1256,8 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
    painted --surface-2 straight over the pink - so the rail's highlight settled cool
    grey-blue where the bar's settles in the accent, and the two shapes of the same
    navigation disagreed on what a lit tab looks like. The bar never had this
-   because.nav-item:hover only ever changed the ink. The lit row's own ink already survives
-   hover, since.rail-item.is-active is declared after it; the fill is the whole of what was
+   because .nav-item:hover only ever changed the ink. The lit row's own ink already survives
+   hover, since .rail-item.is-active is declared after it; the fill is the whole of what was
    wrong. */
 .rail-item.is-active:hover { background: none; }
 /* The fill is .nav-pill's now, the same shape the bar uses, travelling down
@@ -1283,10 +1266,9 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
 /* Pushed to the rail's foot by the flex column's own auto margin, and cut off from the four
    doors above it by a hairline rather than a gap alone - a gap reads as spacing, a rule
    reads as a different kind of row. */
-/* The rule is drawn outside the row's box since after-release 17, when
-   the row started taking the pill on /settings: drawn as the row's own
-   border-top with the padding above the label, the lit shape covered the
-   hairline and sat 8px taller than the four doors' rows. */
+/* The rule is drawn outside the row's box since, when the row started taking the pill on
+   /settings: drawn as the row's own border-top with the padding above the label, the lit
+   shape covered the hairline and sat 8px taller than the four doors' rows. */
 .rail-settings {
   margin-top: auto;
 }

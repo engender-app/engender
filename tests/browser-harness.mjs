@@ -26,10 +26,9 @@ const NO_CRASH_REPORTER = ['--disable-crash-reporter', '--disable-breakpad'];
     seven times on 2026-09-24, and each core dump raised a notification on
     the desktop. Neither flag touches rendering. A caller's own `args`
     are kept after them. */
-/** Chromium puts its singleton socket under TMPDIR, and a Unix socket path
-    stops at 108 bytes, so a long TMPDIR kills it at launch with only
-    "Target page, context or browser has been closed" on the first line
-    (re-check carpet 05: a 130-character TMPDIR turned 32 matrix rows into
+/** Chromium puts its singleton socket under TMPDIR, and a Unix socket path stops at 108
+    bytes, so a long TMPDIR kills it at launch with only "Target page, context or browser
+    has been closed" on the first line (a 130-character TMPDIR turned 32 matrix rows into
     silent not-runs). This names the cause on the first line instead. */
 /** @param {unknown} error
  * @returns {never} */
@@ -124,9 +123,9 @@ export async function newCapabilityContext(browser, options = {}) {
   return context;
 }
 
-/** The `yyyy-mm-dd` a DatePicker field holds. The field itself shows the
-    day written out ("3 Oct 2026", after-release 28), so its `inputValue()`
-    is what a person reads; the stored value rides on `data-date-value`. */
+/** The `yyyy-mm-dd` a DatePicker field holds. The field itself shows the day written out
+    ("3 Oct 2026"), so its `inputValue()` is what a person reads; the stored value rides on
+    `data-date-value`. */
 /** @param {import('playwright-core').Locator} locator */
 export async function dateValue(locator) {
   return locator.getAttribute('data-date-value');
@@ -205,12 +204,14 @@ export async function continueToTheRest(page) {
   await page.waitForSelector('#ed-note');
 }
 
-/** A screen at rest, the yank sweep's own settle: the page navigated, boot waited ready, a
- first run left if it was in the way, and the page-side settle stamped - toasts gone, demo
- bar hidden, theme on <html> the way +layout.svelte stamps it.
-
- @param {import('playwright-core').Page} page @param {string} base @param {string} path
- @param {string} theme */
+/**
+ * Navigate, wait for boot and leave setup if needed. Clear toasts, hide the
+ * demo bar and apply the theme before taking measurements.
+ * @param {import('playwright-core').Page} page
+ * @param {string} base
+ * @param {string} path
+ * @param {string} theme
+ */
 export async function settlePage(page, base, path, theme) {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
   /* Attached, not visible: at a 200%-zoom width the demo bar wraps taller
@@ -224,9 +225,8 @@ export async function settlePage(page, base, path, theme) {
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
   }
   await untilSplashLets(page);
-  /* The demo bar is hidden rather than setup's own scenes reach the flow through the demo's
-     first-run control, and a removed bar takes the control with it. Nothing measures the
-     bar either way - it is out of the frame and out of the flow. */
+  /* Hide the demo bar without removing its first-run control. Setup
+     scenes use that control to enter the flow. */
   await page.evaluate(SETTLE_PAGE_EXPRESSION(theme));
 }
 

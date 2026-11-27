@@ -25,7 +25,7 @@ export interface PreferenceValues {
       editor draws its sliders in catalogue order (`reference.activeDimensions`),
       so which box was ticked first cannot move a slider. */
   activeScales: string[];
-  /** Which quantity colours the Home strip and the calendar (CONTEXT: Metric). */
+  /** Which quantity colours the Home strip and the calendar. */
   metricKind: 'mood' | 'dimension';
   /** The gender dimension's key when metricKind is 'dimension', otherwise null. */
   metricDimension: string | null;
@@ -184,8 +184,8 @@ export interface PreferenceValues {
   /** Epoch milliseconds, not an epoch day. */
   lastBackupAt: number | null;
   backupNoticeDismissed: boolean;
-  /** Home's "this browser may clear your journal" notice, put away
-      (after-release 17). Device-local: it is about this browser. */
+  /** Home's "this browser may clear your journal" notice, put away. Device-local: it is
+      about this browser. */
   storageNoticeDismissed: boolean;
   /** When a dry-run restore drill last decrypted, parsed and validated a
       chosen archive without error. Epoch
@@ -365,8 +365,8 @@ export const PORTABLE_KEYS = [
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
-/* DEVICE_LOCAL_KEYS stays exported for its own test, and cross-checked in
-   pack.test.ts, roadmap-milestone-sync.test.ts (AU-09 test-only review). */
+/* DEVICE_LOCAL_KEYS stays exported for its own test, and cross-checked in pack.test.ts,
+   roadmap-milestone-sync.test.ts. */
 export const DEVICE_LOCAL_KEYS = [
   'onboarded',
   'a11yTextSizeBoost',

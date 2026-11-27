@@ -3,10 +3,10 @@
   /* Procedures, dates and your own recovery log, on the surface kit.
 
      The index of procedures: the ones still running, then the ones the person archived.
-     Each card opens the procedure's own screen (`[id]/+page.svelte`, prh12 bug 20), which
-     lays out its five phases, its log and its own facts. Tapping a card used to slide that
-     whole log open under the list, a thousand pixels below the card on a phone, with the
-     name, type and date editable only in a sheet behind a pencil. */
+     Each card opens the procedure's own screen (`[id]/+page.svelte`), which lays out its
+     five phases, its log and its own facts. Tapping a card used to slide that whole log
+     open under the list, a thousand pixels below the card on a phone, with the name, type
+     and date editable only in a sheet behind a pencil. */
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { dilationEligible } from '$lib/data/taperSchedule';
@@ -71,8 +71,8 @@
     Procedure,
     { id?: string; name: string; date: string; kind: ProcedureKind | null; dilationOptIn: boolean; archived: boolean; cost: CostDraft }
   >({
-    /* No kind until one is picked (prh12 bug 18): a default of Custom read
-       as an answer already given, so nobody saw a type was being asked for. */
+    /* No kind until one is picked: a default of Custom read as an answer already given, so
+       nobody saw a type was being asked for. */
     blank: () => ({ name: '', date: '', kind: null, dilationOptIn: false, archived: false, cost: blankCostDraft(deviceDefaultCurrency()) }),
     async upsert(draft) {
       const name = draft.name.trim();
@@ -131,8 +131,8 @@
   </ReadGate>
 
   <!-- Dilation, hosted here. It was a top-level Health row, which put a dilation log in
-       front of everyone who opened More whatever their surgery was or was not. The gate is
-       's: a vaginoplasty, or a custom procedure whose own dilation toggle is on.
+       front of everyone who opened More. Show it after vaginoplasty or when
+       the person enables dilation on a custom procedure.
        Vulvoplasty is deliberately not in this OR - there is no canal to keep. Directly
        under the cards. -->
   {#if procedures.some(dilationEligible)}

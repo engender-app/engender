@@ -145,10 +145,9 @@ test('creation saves the star and appointment debrief with the entry', async () 
   assert.equal(await journal.checklists.getDebriefEntryId(appointment2), null);
 });
 
-/* `?debriefFor=` is an address anyone can send (security scan GD-048): the
-   save links the entry only to the appointment the offer could be naming
-   on that day - the most recent past one, or one on the entry's own day
-   (In the room) - and never takes over a debrief already on file. */
+/* `?debriefFor=` is an address anyone can send: the save links the entry only to the
+   appointment the offer could be naming on that day - the most recent past one, or one on
+   the entry's own day (In the room) - and never takes over a debrief already on file. */
 test('a debrief link to a missing, stale or already-debriefed appointment changes no association', async () => {
   const { journal } = await journalWithBuiltIns();
   const older = await appointmentOn(journal, 90);
@@ -819,7 +818,7 @@ test('setEntryStarred toggles the flag and throws on an unknown id', async () =>
   await assert.rejects(journal.entries.setEntryStarred(999, true), /unknown entry/);
 });
 
-test('starring alone cannot rescue an otherwise-empty entry (CONTEXT: "Entry")', async () => {
+test('starring alone cannot rescue an otherwise-empty entry', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'leaving' });
   await journal.entries.setEntryStarred(id, true);

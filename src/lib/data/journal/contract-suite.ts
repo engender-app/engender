@@ -674,9 +674,9 @@ export async function runBootHousekeepingContract(driver: SqliteDriver, files: P
       for (const file of incomingFiles) yield file;
     })() });
     await driver.run('UPDATE entry SET trashed_at = ? WHERE uuid = ?', [Date.now() - 31 * 86400000, expiredRow.uuid]);
-    /* Trash travels with its files (FA 48): the expired entry's row still
-       owns them, so the archive carries them and only the purge below
-       removes them. They are the old media boot housekeeping must clear. */
+    /* Trash travels with its files: the expired entry's row still owns them, so the archive
+       carries them and only the purge below removes them. They are the old media boot
+       housekeeping must clear. */
     const [expiredPhoto] = await driver.query<{ file_path: string }>(
       'SELECT p.file_path FROM photo p JOIN entry e ON e.id = p.entry_id WHERE e.uuid = ?', [expiredRow.uuid]
     );

@@ -361,7 +361,7 @@ export async function seedFullFixture(
   await journal.procedures.addPhoto(procedureId, today - 390, await demoPhoto(7000));
 
   // Dilation: names the same procedure above rather than carrying its own
-  // surgery day (audit item 7, schema v83) - a daily stage easing to every
+  // surgery day (schema v83) - a daily stage easing to every
   // third day, and most - not all - of the expected sessions actually
   // logged, so the gap rendering has something real to show.
   const taperStart = today - 400 + 5;

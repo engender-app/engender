@@ -91,8 +91,8 @@ test('stopping closes microphone tracks before recorder completion arrives', asy
   expect(await result).toBeNull();
 });
 
-/* GD-017: the importer had only a byte ceiling, so a small low-bitrate file
-   that is hours long went straight to storage and to the waveform decoder. */
+/* The importer had only a byte ceiling, so a small low-bitrate file that is hours long went
+   straight to storage and to the waveform decoder. */
 test('an imported recording longer than the duration limit is refused with its own message', async () => {
   const bytes = webm({ seconds: 4 * 3600 });
   vi.mocked(chooseFiles).mockResolvedValue([

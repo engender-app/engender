@@ -1,4 +1,4 @@
-/* The journal (ADR-0017, CONTEXT: "Journal"): everything this device holds
+/* The journal (ADR-0017): everything this device holds
    about the user's transition, reached through one handle bound to a
    database driver. A factory takes a SqliteDriver and a photo file store
    and composes eleven area modules behind that handle. The interface is
@@ -70,7 +70,7 @@ import type { UndoableDelete } from './undoableDelete';
 
 /** Every write below that addresses a row by id answers the unknown-id
     case the same way, in every area, and the answer differs by operation
-    rather than by area (ADR-0053, CONTEXT: "Unknown id"). An **update**
+    rather than by area (ADR-0053). An **update**
     naming an id the journal does not hold throws: the caller acted on
     something stale, and the write it intended cannot be performed at all.
     A **delete** naming one succeeds and changes nothing: the state it asked

@@ -45,8 +45,8 @@ test('rc.1 archive without a writer stamp still verifies and restores', async ()
     await driver.close();
   }
 });
-/* Tables the 's cuts drop before 1.0 (spec: "cut means removed"). Their rows go with the
-   migration, so a released fixture's count for them is checked as gone rather than kept. */
+/* The migration drops these tables and their rows. Expect them to be absent
+   after updating a released fixture. */
 const DROPPED_TABLES = new Set(['saved_question', 'doubt_snapshot', 'doubt_snapshot_entry', 'measurement', 'measurement_type', 'size_record', 'affirmation', 'revisit', 'word_frequency_ignore', 'journaling_pause', 'roadmap_track', 'entry_template', 'entry_template_tag', 'entry_template_dimension_value', 'tally_event', 'hair_stage', 'hair_photo']);
 
 interface ReleasedCounts {

@@ -74,7 +74,7 @@ test('the boot set cuts across the portable split rather than following it', () 
 
 /* The eight per-surface booleans are one map, `surfaceOverrides`, whose defaults live in
    the unprompted registry. It travels in an archive, like the front-page pins. */
-test('the per-surface booleans are gone, replaced by one portable map (FA 44)', () => {
+test('the per-surface booleans are gone, replaced by one portable map', () => {
   for (const key of [
     'wearTimerEnabled',
     'dosePanelEnabled',
@@ -112,7 +112,7 @@ test('the cut tiles and the agenda kind switches leave no preference behind', ()
 /* Dead and legacy keys leave the catalogue. The entry editor's four cards always show,
    nothing ever wrote their switches, and the two legacy read-acrosses were migrated by
    version 117. */
-test('dead and legacy keys are not preferences any more (FA 44)', () => {
+test('dead and legacy keys are not preferences any more', () => {
   for (const key of [
     'entryTryoutPromptEnabled',
     'entryDoseQuickLogEnabled',

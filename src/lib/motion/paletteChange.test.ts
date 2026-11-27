@@ -170,9 +170,9 @@ describe('palette change', () => {
     expect(isAppearancePending('palette')).toBe(false);
   });
 
-  /* prh12 bug 9: the new colours bloom from the sun's own centre, and the
-     circle has to cover the farthest corner of the window wherever the sun
-     is, including partly off screen above a scrolled Settings. */
+  /* The new colours bloom from the sun's own centre, and the circle has to cover the
+     farthest corner of the window wherever the sun is, including partly off screen above a
+     scrolled Settings. */
   it('reaches the farthest window corner from the sun centre', () => {
     const corner = bloomGeometry({ x: 390, y: 0 }, 390, 844);
     expect(corner.reach).toBeCloseTo(Math.hypot(390, 844), 5);

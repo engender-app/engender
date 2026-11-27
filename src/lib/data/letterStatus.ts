@@ -13,7 +13,7 @@ export function isLetterSealed(letter: Pick<Letter, 'unlockEpochDay'>, todayEpoc
 }
 
 /* getReadLetterIds stays exported for its own test, and cross-checked in
-   ready-letter-tile.test.ts (AU-09 test-only review). */
+   ready-letter-tile.test.ts. */
 export function getReadLetterIds(store: AcknowledgementStore): Set<string> {
   return new Set(store.read().readLetterIds);
 }

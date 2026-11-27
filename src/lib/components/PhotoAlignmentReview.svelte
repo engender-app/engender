@@ -79,9 +79,8 @@
         referenceUrl = objectUrl;
       },
       (error) => {
-        /* A tampered or missing reference throws (PhotoThumb says so too).
-           The review still works without the overlay; it says why the
-           overlay is not there (after-release 06, L05-06). */
+        /* A tampered or missing reference throws (PhotoThumb says so too). The review still
+           works without the overlay; it says why the overlay is not there. */
         console.error('the alignment reference could not be read', error);
         if (!stale) toast(m.photo_unreadable(), { kind: 'failed' });
       }

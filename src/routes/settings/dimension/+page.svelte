@@ -84,7 +84,7 @@
   const listEstimate = readReserve('custom-scales');
   const listRemember = (px: number) => rememberReserve('custom-scales', px);
 
-  /* Hiding also unticks (CONTEXT: "Hidden" - out of every place a person
+  /* Hiding also unticks (out of every place a person
      picks), so a hidden scale is never drawn on the entry screen while the
      checklist that could untick it no longer lists it. Showing it again
      leaves it unticked: it comes back to the checklist, and ticking it is

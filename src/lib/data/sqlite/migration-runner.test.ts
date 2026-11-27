@@ -453,8 +453,8 @@ test('a clean boot opens a journal with an orphan and logs the foreign key viola
   assert.equal(fileOps.cleanupCalls, 0, 'an orphan does not prove a recovery copy safe to retire');
 });
 
-/* Re-check carpet 12, row 15: the guard against a journal that sits
-   between two steps of the chain, at each of its edges. */
+/* row 15: the guard against a journal that sits between two steps of the chain, at each of
+   its edges. */
 const steppedChain: Migration[] = [
   { version: 10, baseline: true, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' },
   { version: 12, sql: 'CREATE TABLE gadget (id INTEGER PRIMARY KEY);' }

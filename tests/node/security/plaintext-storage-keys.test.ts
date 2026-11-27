@@ -108,7 +108,7 @@ describe('plaintext storage keys', () => {
     expect(stray).toEqual([]);
   });
 
-  it('keeps the three FA 51 sweep keys out of the portable acknowledgements', () => {
+  it('keeps the three sweep keys out of the portable acknowledgements', () => {
     const acknowledgements = readFileSync(join(root, 'src/lib/data/acknowledgements.ts'), 'utf8');
     expect(acknowledgements).not.toContain('orphan-sweep');
     expect(readFileSync(join(root, 'src/lib/data/sqlite/orphan-sweep-schedule.ts'), 'utf8')).toContain(

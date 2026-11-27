@@ -80,9 +80,9 @@
 {/snippet}
 
 {#if entries.length > 0}
-  <!-- The bar counts the entries and leaves the date to the screen's own
-       header, one line above it (release audit U17: "1 October 2026 · 1
-       entry this day" under a header that already said 1 October). -->
+  <!-- The bar counts the entries and leaves the date to the screen's own header, one line
+       above it (release: "1 October 2026 · 1 entry this day" under a header that already
+       said 1 October). -->
   <DayCard
     key={String(epochDay)}
     role={entriesRole}

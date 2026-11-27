@@ -9,21 +9,18 @@
  * nothing else on the page.
  */
 export const MEASURE = (rootSelector) => {
-  /* Resolved by painting it, not by reading it (carpet 30). This matched
-     `rgba?(...)` and answered null for anything else, and `behind()` treats
-     null as "this element paints nothing" - so every ground written as a
-     `color-mix` was skipped and its text measured against whatever opaque
-     ancestor sat further back. `getComputedStyle` hands a `color-mix` back
-     unresolved, as `oklab(0.97 -0.012 -0.013)`, which is what every
-     `--role-tint`, `--role-wash` and `--accent-soft` surface in the app
-     computes to. Found on /doubt's breathing core, whose whole ground is one:
-     the walk read its 21px phase word against the page rather than against
-     the tint it is drawn on.
+  /* Resolved by painting it, not by reading it. This matched `rgba?(...)` and answered null
+     for anything else, and `behind()` treats null as "this element paints nothing" - so
+     every ground written as a `color-mix` was skipped and its text measured against
+     whatever opaque ancestor sat further back. `getComputedStyle` hands a `color-mix` back
+     unresolved, as `oklab(0.97 -0.012 -0.013)`, which is what every `--role-tint`,
+     `--role-wash` and `--accent-soft` surface in the app computes to. Found on /doubt's
+     breathing core, whose whole ground is one: the walk read its 21px phase word against
+     the page rather than against the tint it is drawn on.
 
-     A 1x1 readback resolves any colour the browser can paint, in the same
-     units the old regex produced, and it is the browser's own answer rather
-     than a second implementation of the colour spec. Same numbers as before
-     for an `rgb()`/`rgba()` input. */
+     A 1x1 readback resolves any colour the browser can paint, in the same units the old
+     regex produced, and it is the browser's own answer rather than a second implementation
+     of the colour spec. Same numbers as before for an `rgb()`/`rgba()` input. */
   const swatch = document.createElement('canvas');
   swatch.width = swatch.height = 1;
   const brush = swatch.getContext('2d', { willReadFrequently: true });

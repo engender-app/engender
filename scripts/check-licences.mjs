@@ -26,8 +26,10 @@ import { fileURLToPath } from 'node:url';
     - BlueOak-1.0.0 is OSI-approved and permissive, adding an explicit patent grant over
     what MIT says. It came in under @capacitor/cli, through the npm-maintained tooling
     packages: glob, minimatch, lru-cache, minipass, path-scurry, rimraf, tar, chownr,
-    yallist, package-json-from-dist. - Unlicense is a public-domain dedication the FSF lists
-    as GPL compatible. Same subtree: big-integer and stream-buffers. */
+    yallist, package-json-from-dist.
+
+    - Unlicense is a public-domain dedication the FSF lists as GPL compatible.
+      Same subtree: big-integer and stream-buffers. */
 const ALLOWED = new Set([
   'MIT',
   'ISC',
@@ -58,18 +60,11 @@ export const READ_BY_HAND = {
   // node_modules/sqlite-wasm-kysely/LICENSE: "MIT License", Opral US Inc.
   'sqlite-wasm-kysely': 'MIT',
 
-  /* The four native builds of @lix-js/sdk, which arrives under paraglide and declares MIT
-     itself. Each of these is the same version, 0.12.3, published from the same monorepo,
-     and each ships exactly two files - the.node binary and a package.json with no `license`
-     field and no licence text beside it. github.com/opral/lix, the repository all four
-     name, is "MIT License", Copyright (c) 2026 Opral US Inc. which is the same holder
-     sqlite-wasm-kysely's own file names above; the SDK they are built from lives in it at
-     packages/js-sdk. Read on 2026-09-06, which is when check:licences first ran on main
-     after the bump that introduced them - it had been failing behind check:copy in the same
-     job, unreported.
-
-     Npm records all four in the lockfile whatever the platform, so all four are checked
-     here even though a Linux install unpacks only one. */
+  /* The four @lix-js/sdk 0.12.3 native packages ship a .node binary and a
+     package.json without a licence field. The MIT licence is in their
+     source repository, github.com/opral/lix (packages/js-sdk), copyright
+     Opral US Inc. npm records all platforms in the lockfile even though an
+     install unpacks only one. */
   '@lix-js/sdk-darwin-arm64': 'MIT',
   '@lix-js/sdk-linux-arm64': 'MIT',
   '@lix-js/sdk-linux-x64': 'MIT',

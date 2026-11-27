@@ -6,7 +6,7 @@ import { parse } from 'svelte/compiler';
 import ts from 'typescript';
 
 const EXTENSIONS = new Set(['.css', '.html', '.java', '.js', '.mjs', '.svelte', '.ts', '.xml']);
-const INTERNAL_REFERENCE = /\b(?:tickets?[\s-]+#?(?:[a-z]+-)*\d+|phase[\s-]+\d+|(?:bug|interactive)[\s-]+session|(?:functional|final|last)[\s-]+audit|pre-release-human|ux-carpet|tester[\s-]+report|Alicja)\b|\.scratch\/|\b(?:CONTEXT|DIRECTION|PRODUCT|SCREENS)\.md\b|\bdocs\/(?:agents\/|internal\/|research\/|ui-copy\.md)/gi;
+const INTERNAL_REFERENCE = /\b(?:tickets?[\s-]+#?(?:[a-z]+-)*\d+|phase[\s-]+\d+|(?:bug|interactive)[\s-]+session|(?:functional|final|last)[\s-]+audit|pre-release-human|ux-carpet|tester[\s-]+report|(?:after-release|pre-release|after-rc1|final-audit|(?:re-check[ -])?carpet|audit item|bug|issue)[\s-]+\d+|(?:CARPET|AU|FA|GD)[ -]\d+|audit\s+(?:finding\s+)?(?:(?:UI|A11Y)[\s-]+)?[A-Z]+-?\d+|Alicja)\b|\.scratch\/|\b(?:CONTEXT|DIRECTION|PRODUCT|SCREENS|DESIGN)\.md\b|\bdocs\/(?:agents\/|internal\/|research\/|ui-copy\.md)/gi;
 
 /** @typedef {{ start: number, end: number }} Range */
 

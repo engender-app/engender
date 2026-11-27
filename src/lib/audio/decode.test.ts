@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { decodeToMono, decodeToPeaks } from './decode';
 import { webm } from '../data/media/audio-fixtures';
 
-/* GD-017: the decoder was handed whatever bytes arrived and decoded the
-   full duration before anything looked at it. These stand in for the
-   OfflineAudioContext and assert whether decoding was reached at all. */
+/* The decoder was handed whatever bytes arrived and decoded the full duration before
+   anything looked at it. These stand in for the OfflineAudioContext and assert whether
+   decoding was reached at all. */
 
 const decodeAudioData = vi.fn();
 const contexts = vi.fn();

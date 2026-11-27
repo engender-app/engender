@@ -1425,12 +1425,11 @@ try {
 } catch (e) { fail('clearing search does not wait out the debounce', e); }
 });
 
-/* 5g. search opens with something: the opening state's tag chips and this
-   device's own recent searches both run a search on a tap.
-   `fresh()` reloads the page, which drops recentSearches.ts's history -
-   session memory now (pre-production audit S1), not the journal's - so
-   this flow makes its own recent search rather than assuming an earlier
-   flow's survived the reset. */
+/* 5g. search opens with something: the opening state's tag chips and this device's own
+   recent searches both run a search on a tap. `fresh()` reloads the page, which drops
+   recentSearches.ts's history - session memory now (pre-production), not the journal's - so
+   this flow makes its own recent search rather than assuming an earlier flow's survived the
+   reset. */
 await flow('search opening state', async () => {
 try {
   await fresh('/search');
@@ -1637,7 +1636,7 @@ try {
 
    The first of them is no longer a screen: merged the rail into /transition/milestones. The
    rail's own handles have to answer there. */
-await flow('ticket 18 view-only screens', async () => {
+await flow('view-only milestone, photo and recap screens', async () => {
 try {
   await fresh('/transition/milestones');
   await page.waitForSelector('[data-milestone-rail]');
@@ -1661,7 +1660,7 @@ try {
   // Comparing moved to Progress photos; the wipe's
   // controls are walked there, in the photo library flow below.
   ok('timeline and photo library thumbnails');
-} catch (e) { fail('ticket 18 view-only screens', e); }
+} catch (e) { fail('view-only milestone, photo and recap screens', e); }
 });
 
 /* 6c. lab result CRUD and per-analyte chart */
@@ -1750,7 +1749,7 @@ try {
    flow is for. Picks a real slip image through a real file dialog and runs it through the
    app's own Tesseract engine - no mocks - because a mocked recognizer would prove the
    wiring works without proving the sheet that wiring lives in ever opens. */
-await flow('lab scanner import (ticket 44)', async () => {
+await flow('lab scanner import', async () => {
 try {
   await fresh('/care/labs');
   await page.locator('[data-import-lab]').click();
@@ -1802,7 +1801,7 @@ try {
     await page.waitForSelector('[data-ocr-state]', { state: 'detached' });
     ok('the scanner opens, uses its installed engine, and a picked slip reaches review, save-validation-failed and saved in turn');
   }
-} catch (e) { fail('lab scanner import (ticket 44)', e); }
+} catch (e) { fail('lab scanner import', e); }
 });
 
 /* 6f. no-rows, driven deterministically: a blank slip has nothing for the
@@ -2230,7 +2229,7 @@ try {
 
   // Backup health (F21): the plain path counts, so the screen it was
   // started from says so without a reload.
-  /* Found by its own row title rather than by position under.card. This assertion silently
+  /* Found by its own row title rather than by position under .card. This assertion silently
      stopped running once split the single `card spread` element into a card wrapping four
      spread rows, because `.card.spread` wants both classes on one element and matched
      nothing, so the predicate could never settle and the flow died on the timeout. Position
@@ -3231,8 +3230,8 @@ try {
   // Untouched, then skipped: the stored default has to survive both.
   await page.locator('[data-skip-step]').click(); // scales -> features
 
-  /* The feature choices are their own step since after-release 17: a
-     choice made and then skipped is not kept. */
+  /* The feature choices are their own step since: a choice made and then skipped is not
+     kept. */
   const cycleChoice = page.getByRole('checkbox', { name: 'Cycle tracking' });
   if (await cycleChoice.getAttribute('aria-checked') !== 'false') throw new Error('new journal offered cycle tracking by default');
   await cycleChoice.focus();
@@ -3323,11 +3322,10 @@ try {
   await page.waitForSelector('[data-settings-list]');
   ok("Today's gear reaches Settings");
 
-  /* Rule 7's chrome case, the phone half (carpet 25). The screen arrives on
-     a field like every other screen in the app, and it shows a back
-     control, because the gear that led here is in Today's foot. Both are
-     read as painted rather than as attached: the whole finding this closes
-     was a screen whose header was in the DOM and drew nothing. */
+  /* Rule 7's chrome case, the phone half. The screen arrives on a field like every other
+     screen in the app, and it shows a back control, because the gear that led here is in
+     Today's foot. Both are read as painted rather than as attached: the whole finding this
+     closes was a screen whose header was in the DOM and drew nothing. */
   if (!(await page.locator('[data-field-blind]').first().isVisible()))
     throw new Error('/settings draws no field on the phone');
   if (!(await page.locator('[data-screen-back]').isVisible()))
@@ -3380,14 +3378,12 @@ try {
   await page.waitForSelector('[data-settings-list]');
   ok('rail settings row reaches Settings, four doors stay four');
 
-  /* Rule 7's chrome case, the desktop half (carpet 25): the same field, and
-     no back control, because the way in is a row in the rail and there is
-     nothing behind it to go back to. The control is dropped by
-     components.css inside this shell's own container query, the same way
-     the bottom bar is, so it stays in the markup and `display: none` is
-     what takes it out of the paint, the tab order and the accessibility
-     tree - which is why this counts visible matches rather than attached
-     ones. */
+  /* Rule 7's chrome case, the desktop half: the same field, and no back control, because
+     the way in is a row in the rail and there is nothing behind it to go back to. The
+     control is dropped by components.css inside this shell's own container query, the same
+     way the bottom bar is, so it stays in the markup and `display: none` is what takes it
+     out of the paint, the tab order and the accessibility tree - which is why this counts
+     visible matches rather than attached ones. */
   if (!(await page.locator('[data-field-blind]').first().isVisible()))
     throw new Error('/settings draws no field in the 1024px shell');
   const backOnDesktop = await page.locator('[data-screen-back]:visible').count();
@@ -4650,7 +4646,7 @@ try {
   const onScreen = await page.locator('[data-permission]').evaluateAll((els) =>
     els.map((el) => el.dataset.permission)
   );
-  /* Only what the web can do (after-release 17): no "Android only" rows. */
+  /* Only what the web can do: no "Android only" rows. */
   const expected = [
     'microphone',
     'camera',
@@ -5244,7 +5240,7 @@ try {
   await page.waitForURL('**/health/dilation');
 
   // Modes are a Settings row now (ADR-0084), never on
-  // the hub at all. It stopped being a screen of its own (audit item 6): the
+  // the hub at all. It stopped being a screen of its own: the
   // row raises a sheet over Settings rather than navigating, so the URL
   // settles back on /settings and the manager's own content is what proves
   // the row worked.
@@ -5556,8 +5552,8 @@ try {
   // depends on the ~50 flows already run against this journal, so both
   // outcomes are legitimate and both are checked.
   await page.goto(BASE + '/health/surgery', { waitUntil: 'networkidle' });
-  /* By phase, not position: a procedure past its recovery window is listed
-     under the archive now (after-release 05), below the ongoing ones. */
+  /* By phase, not position: a procedure past its recovery window is listed under the
+     archive now, below the ongoing ones. */
   await page.locator('[data-procedure][data-phase="archived"]').first().click();
   const procedureNotice = page.locator('[data-notice="surgery-compare"]');
   await procedureNotice.waitFor();
@@ -6147,8 +6143,7 @@ try {
   const row = page.locator('[data-appointment]', { hasText: 'ortopeda' }); // text-under-test
   if ((await row.count()) !== 1) throw new Error('the appointment that was just written is not on the list');
 
-  /* The room's field and back control (carpet 27): the verb row opens it and its own back
-     returns here.
+  /* The room's field and back control: the verb row opens it and its own back returns here.
 
      Took the second way in with it. The room used to be offered by the prep list as well,
      and pressing back from there was what told smartBack apart from a hardcoded link to
@@ -6722,10 +6717,9 @@ try {
 
 await flow('changes noticed axis', async () => {
 try {
-  /* The effects axis on "changes you've noticed". Quick add's effects row
-     went with FA 16, so what is left of this flow is the axis, which needs
-     a bare persona with one estradiol episode far enough back for a change
-     to be marked against it. */
+  /* The effects axis on "changes you've noticed". Quick add's effects row went with, so
+     what is left of this flow is the axis, which needs a bare persona with one estradiol
+     episode far enough back for a change to be marked against it. */
   const localIso = (daysAgo = 0) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -7160,9 +7154,9 @@ try {
   await paperRows.nth(filed).click();
   await page.waitForSelector('[data-document-page]', { timeout: 15000 });
 
-  /* Audit item 9 allows a 48px thumbnail in each row. Wait for the uploaded
-     scan to decode so this check cannot pass before its preview arrives.
-     Full pages still belong behind the row's deliberate tap. */
+  /* allows a 48px thumbnail in each row. Wait for the uploaded scan to decode so this check
+     cannot pass before its preview arrives. Full pages still belong behind the row's
+     deliberate tap. */
   await page.goBack({ waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row]');
   await page.waitForFunction(() => {
@@ -7229,7 +7223,7 @@ try {
   await page.waitForSelector('[data-document-unreadable]');  if (await page.locator('[data-document-page]').count()) {
     throw new Error('a PDF nothing could draw is showing a page image');
   }
-  // No byte size on the screen (after-release 26): sizes are Export's.
+  // No byte size on the screen: sizes are Export's.
   if (/\b\d+(?:[.,]\d+)?\s?(?:KB|MB)\b/.test(await page.locator('main').innerText())) {
     throw new Error('the document screen shows a byte size');
   }
@@ -7287,10 +7281,9 @@ try {
   // give: the persona's own paper is already in this list.
   await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length > before, readableBefore);
 
-  /* The list draws each document's own page since audit item 9 - ADR-0065's
-     amendment, which the audit asked for after measuring what a column of
-     identical paper glyphs cost. A PDF's thumbnail is its first page, drawn
-     once at import, so a filed PDF has one waiting. */
+  /* The list draws each document's own page since - ADR-0065's amendment, which the audit
+     asked for after measuring what a column of identical paper glyphs cost. A PDF's
+     thumbnail is its first page, drawn once at import, so a filed PDF has one waiting. */
   await page.waitForSelector('[data-list-row] img', { timeout: 15000 });
 
   const opinionRows = page.locator('[data-list-row]');

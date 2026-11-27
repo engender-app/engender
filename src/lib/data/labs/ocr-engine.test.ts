@@ -47,8 +47,8 @@ describe('tesseractLabOcrEngine', () => {
     expect(typeof passedImage).not.toBe('string');
   });
 
-  /* GD-008: Tesseract decodes the image whole, so a tiny file declaring
-     65535 x 65535 pixels is refused before a worker exists. */
+  /* Tesseract decodes the image whole, so a tiny file declaring 65535 x 65535 pixels is
+     refused before a worker exists. */
   test('refuses an image declaring over-budget dimensions before Tesseract is loaded', async () => {
     await expect(tesseractLabOcrEngine().recognize(pngHeader(65535, 65535))).rejects.toMatchObject({
       name: 'MediaBudgetError',

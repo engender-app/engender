@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-/** GD-030: the URI a save handler returns is another app's answer, checked before it is opened. */
+/** The URI a save handler returns is another app's answer, checked before it is opened. */
 @RunWith(AndroidJUnit4.class)
 public class FileDeliveryDestinationTest {
     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();

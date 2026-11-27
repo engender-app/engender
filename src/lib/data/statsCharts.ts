@@ -6,7 +6,7 @@ import type { DayAverage, DaySpread } from './journal/stats';
 import { MOOD_RANGE, moodStep, normalize, type MetricRange } from './metricRange';
 
 /** The average of a day series, or null where nothing was logged. */
-/* seriesAverage stays exported only for its own test (AU-09 test-only review). */
+/* seriesAverage stays exported only for its own test. */
 export function seriesAverage(points: DayAverage[]): number | null {
   if (!points.length) return null;
   return points.reduce((sum, point) => sum + point.value, 0) / points.length;
@@ -62,7 +62,7 @@ export interface MoodDay {
 /** How many days of the period landed on each mood step.
 
     Days rather than entries, which is what the seam hands back: a day's
-    mood is its entries averaged (CONTEXT: Day average), and a day with a
+    mood is its entries averaged, and a day with a
     1 and a 5 on it belongs at 3 rather than in two places at once.
 
     Every step is present even at zero, because the distribution is read
@@ -106,7 +106,7 @@ export function dayShape(
   return first !== last ? { kind: 'split', first, last } : { kind: 'one' };
 }
 
-/** Whether a day ran between two different values at all (CONTEXT: Spread).
+/** Whether a day ran between two different values at all.
 
     The one rule behind "a day with one entry says nothing extra" and "a day
     whose entries all said the same thing says nothing extra", so that the

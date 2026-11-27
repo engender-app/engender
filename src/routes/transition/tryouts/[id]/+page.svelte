@@ -567,8 +567,7 @@
     <SectionHeading text={m.tryout_entries_title()} />
     <ReadGate read={entriesInRangeRead} variant="card" count={2}>
       {#snippet rows()}
-        <!-- Days of entries, the drawing every list of entries uses (release
-             audit U9). -->
+        <!-- Days of entries, the drawing every list of entries uses (release). -->
         <EntryDays groups={entryDayGroups(entriesInRange)} />
       {/snippet}
       {#snippet empty()}

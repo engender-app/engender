@@ -72,8 +72,7 @@ const MARK_FLOOR = 3;
     row. Declared here rather than only in the CSS because the ink has to
     clear its floor against those fills, and it cannot do that without
     knowing them. tests/node/ui/kit-roles.test.ts holds kit.css to these. */
-/* ROLE_TINT_PCT stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* ROLE_TINT_PCT stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export const ROLE_TINT_PCT = 15;
 export const ROLE_WASH_PCT = 12;
 
@@ -84,8 +83,7 @@ export const ROLE_WASH_PCT = 12;
     stripes around the middle. Both collapse to the colours the flag
     actually has, in the order they are first seen, so role 1 is always the
     outermost stripe. */
-/* stripeRoles stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* stripeRoles stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function stripeRoles(stripes: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -112,8 +110,7 @@ export function stripeRoles(stripes: string[]): string[] {
     colour is the answer: an area with no colour reads as an area with no
     colour, which is worse than the flag and better than a label nobody can
     read. */
-/* legibleInk stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* legibleInk stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function legibleInk(
   stripe: string,
   text: string,
@@ -162,8 +159,7 @@ export const HEAT_STEPS = [0, 22, 45, 70, 100];
     Keep theme text where it reaches 4.5:1, else choose black or white,
     whichever contrasts more. At their crossover both still reach
     4.58:1. The accent ramp's hand-tuned pairs live in palettes.css. */
-/* heatRamp stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* heatRamp stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function heatRamp(stripe: string, text: string, ground: string): HeatStep[] {
   return HEAT_STEPS.map((pct) => {
     const fill = pct === 0 ? ground : pct === 100 ? stripe : colorMixOklab(stripe, pct, ground);
@@ -193,8 +189,7 @@ const ACHROMATIC = 0.02;
     stripe still gets a turn - the shades follow the colours rather than
     being dropped - which keeps the white band a part of the palette without
     letting it be the first thing anyone sees of it. */
-/* flagRoles stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* flagRoles stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function flagRoles(
   stripes: string[],
   text: string,

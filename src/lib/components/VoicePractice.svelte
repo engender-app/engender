@@ -33,7 +33,7 @@
   /** Two seconds of trace on screen, at the tracker's 10 ms frame. */
   const TRACE_FRAMES = 200;
   /** The ordinary use of this tab runs five to ten minutes, and nothing bounded a single
-      take before this. The poll no longer costs more the longer the take runs (issue 05),
+      take before this. The poll no longer costs more the longer the take runs,
       so this is not holding the gauge up any more - it is here because an unbounded take is
       an unbounded recording, and two minutes cuts off only the excess of an ordinary
       session, not the practising. */
@@ -141,9 +141,8 @@
     review = practiceTakeStats(track.frames);
   }
 
-  /* Confirms the way the benchmark's save does, and a failed write leaves
-     the take in review with a toast instead of both buttons disabled for
-     good (after-release 06, L05-06). */
+  /* Confirms the way the benchmark's save does, and a failed write leaves the take in
+     review with a toast instead of both buttons disabled for good. */
   async function saveTake() {
     const take = review;
     if (!take) return;
@@ -239,7 +238,7 @@
 </div>
 
 <style>
-  /* The screen's own 20 under the panel, which sits a level too deep for the.screen floor
+  /* The screen's own 20 under the panel, which sits a level too deep for the .screen floor
      to reach. It held 96px here, a reserve for a foot that floated over the content; the
      foot is the column's flex sibling now and covers nothing. */
   .vp-body {

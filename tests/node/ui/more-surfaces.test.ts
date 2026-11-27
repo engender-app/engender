@@ -114,14 +114,12 @@ describe('what the More hub is built from', () => {
   });
 
   it('leaves every word of every row to the vocabulary module', () => {
-    /* A title or a line written inline here is one `hubLabels.ts`'s full
-       `Record` over the row keys cannot see missing. So every `m.` call left
-       in the screen is named, and none of them is a row's own words: the
-       hidden screen title, the search box's own label, the strings the
-       results share with the search screen, which reads the same registry,
-       and the row that hands a record query over to
-       that screen (audit item 11). `m.list_more` went with the paging
-       button the same item deleted. */
+    /* A title or a line written inline here is one `hubLabels.ts`'s full `Record` over the
+       row keys cannot see missing. So every `m.` call left in the screen is named, and none
+       of them is a row's own words: the hidden screen title, the search box's own label,
+       the strings the results share with the search screen, which reads the same registry,
+       and the row that hands a record query over to that screen. `m.list_more` went with
+       the paging button the same item deleted. */
     const paraglide = [...new Set(more.match(/\bm\.[a-z_]+\(/g) ?? [])];
 
     expect(paraglide.sort()).toEqual([

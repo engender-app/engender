@@ -1,7 +1,7 @@
 /** The unit as a series key. Surrounding whitespace is an artefact of typing,
     so it goes. Nothing else does: deciding that `ng/dl` and `ng/dL` name the
     same unit is an interpretation this app does not make, and the one after
-    that would be converting between them (CONTEXT: "Analyte"). */
+    that would be converting between them. */
 export function normalizeUnit(unit: string): string {
   return unit.trim();
 }
@@ -47,16 +47,14 @@ function canonicalUnitFor(analyte: PreferredUnitAnalyte, unit: string): string |
   return ALLOWED_PREFERRED_UNITS[analyte].find((allowed) => allowed.toLowerCase() === normalized) ?? null;
 }
 
-/* normalizePreferredUnitSelection stays exported only for its own test (AU-09
-   test-only review). */
+/* normalizePreferredUnitSelection stays exported only for its own test. */
 export function normalizePreferredUnitSelection(analyte: string, selectedUnit: string): string | null {
   const known = asAnalyte(analyte);
   if (!known) return null;
   return canonicalUnitFor(known, selectedUnit);
 }
 
-/* sanitizePreferredLabUnits stays exported only for its own test (AU-09
-   test-only review). */
+/* sanitizePreferredLabUnits stays exported only for its own test. */
 export function sanitizePreferredLabUnits(input: PreferredLabUnits): PreferredLabUnits {
   const sanitized: PreferredLabUnits = {};
   for (const analyte of PREFERRED_UNIT_ANALYTES) {

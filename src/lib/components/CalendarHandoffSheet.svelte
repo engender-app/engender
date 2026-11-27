@@ -4,11 +4,11 @@
      dated thing worth a mark: the appointment editor, the surgery editor and a sealed
      letter's row.
 
-     A disclosure surface (the ticket's own words), so the copy leads with what a shared
-     calendar exposes rather than with the control: whatever lands there is readable by
-     whoever else sees that calendar, and the title is the one thing the app hands over, so
-     the person decides it rather than the app. The default text is prefilled, never blank,
-     so what would be shared is visible before anything is typed.
+     A disclosure surface , so the copy leads with what a shared calendar exposes rather
+     than with the control: whatever lands there is readable by whoever else sees that
+     calendar, and the title is the one thing the app hands over, so the person decides it
+     rather than the app. The default text is prefilled, never blank, so what would be
+     shared is visible before anything is typed.
 
      Declining is every dismissal but Share - the backdrop, Escape, the drag - and writes
      nothing, the same as every other sheet in this app that holds no record of its own. */

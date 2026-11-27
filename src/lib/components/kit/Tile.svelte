@@ -123,7 +123,7 @@
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     </a>
-    <!-- Its own row rather than inside.kit-tile-main: the note used to make.kit-tile-main a
+    <!-- Its own row rather than inside .kit-tile-main: the note used to make .kit-tile-main a
          two-line block, which is-split's align-items: center then centred as a whole - so
          the value, which actually reads on the first of those two lines, sat visibly above
          the action button's true centre. Out here, the title/value line and the action

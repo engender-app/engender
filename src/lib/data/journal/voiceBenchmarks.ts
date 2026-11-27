@@ -21,7 +21,7 @@ import { mintUuid, now } from './support';
 interface NewVoiceBenchmark {
   epochDay: number;
   /** Which passage was read. A benchmark is comparable only to others from
-      the same passage (CONTEXT: "Benchmark passage"), which is why the row
+      the same passage, which is why the row
       says rather than the surface guessing. */
   passageKey: string;
   passageAudio: Uint8Array;

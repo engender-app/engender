@@ -1,4 +1,4 @@
-/* What each of a benchmark's two takes is worth (CONTEXT: "Voice benchmark").
+/* What each of a benchmark's two takes is worth.
 
    The engine's three modules answer three separate questions; this is the
    one place that says which questions get asked of which take, so the

@@ -1,5 +1,4 @@
-/* Display names for the built-in vocabulary, looked up by key at display time (F25, and
-   CONTEXT: Built-in). builtins.ts stores no text at all, so this is where a built-in gets
+/* Display names for the built-in vocabulary, looked up by key at display time. builtins.ts stores no text. This is where a built-in gets
    its wording - and where it changes when the language does.
 
    Each map is typed against the key union builtins.ts derives from its own `as const` list,
@@ -209,8 +208,8 @@ const HAIR_REMOVAL_AREA_NAME: Record<HairRemovalAreaKey, Message> = {
   genital_surgical_site: m.hair_removal_area_genital_surgical_site
 };
 
-/** The name of a hair-removal treatment area, or "other" for a stored key
-    this build's vocabulary does not list (FA 04). */
+/** The name of a hair-removal treatment area, or "other" for a stored key this build's
+    vocabulary does not list. */
 export const hairRemovalAreaName = (area: string): string =>
   (HAIR_REMOVAL_AREA_NAME as Record<string, Message | undefined>)[area]?.() ?? m.hair_removal_area_other();
 
@@ -359,7 +358,7 @@ const TAG_LABEL: Record<BuiltInTagKey, Message> = {
 };
 
 /* Dysphoria types only: the seven category names are not self-explanatory
-   on their own (CONTEXT: Dysphoria type - "societal" vs "social"), so each
+   on their own ("societal" vs "social"), so each
    carries a longer description an info affordance surfaces on demand.
    Nothing else has one, so this is a partial map rather than a Record over
    the full tag key union, and tagDescription() returns null rather than

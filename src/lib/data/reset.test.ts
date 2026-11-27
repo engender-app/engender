@@ -210,10 +210,9 @@ test('a completed reset leaves no key of this app behind in localStorage', async
 });
 
 test('the sweep takes every key the app actually writes, boot mirror excepted', () => {
-  /* Audit finding S3: stock_notice_snooze_until matched neither the
-     engender- prefix nor the letter_tile_snooze_until exception, so it
-     rode out a reset. Named here by the five keys the app is known to
-     write to localStorage, so a future stray write fails this the same
+  /* stock_notice_snooze_until matched neither the engender- prefix nor the
+     letter_tile_snooze_until exception, so it rode out a reset. Named here by the five keys
+     the app is known to write to localStorage, so a future stray write fails this the same
      way stock_notice_snooze_until did. */
   const storage = fakeStorage({
     'engender-entry-draft': '{"note":"first day on the patch"}',

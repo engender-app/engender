@@ -775,10 +775,9 @@ test('a regimen episode\'s end reason travels, and a restore keeps it', async ()
   assert.equal(restored?.endReason, 'pausedForNow');
 });
 
-/* After-release 07: an episode put away stays put away across a backup.
-   Hidden is the person's own statement that the row was a mistake, so a
-   restore that brought it back into Care and the curve would undo it. An
-   archive from before the field existed reads as shown. */
+/* an episode put away stays put away across a backup. Hidden is the person's own statement
+   that the row was a mistake, so a restore that brought it back into Care and the curve
+   would undo it. An archive from before the field existed reads as shown. */
 test('a hidden regimen episode travels hidden, and a restore keeps it hidden', async () => {
   const { journal, episode } = await populated();
   await journal.regimen.setEpisodeHidden(episode, true);
@@ -976,7 +975,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   progress_pose: ['uuid', 'key', 'name', 'hidden'],
   // Owns a child (hair_removal_photo) below.
   // The old free-text `cost` is left behind: version 115 emptied it into the
-  // cost columns or the note (FA 30), and FA 50 drops it.
+  // cost columns or the note, and drops it.
   hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'minutes', 'provider', 'note',
     'cost_amount', 'cost_currency', 'cost_refunded'],
   // session_id travels as the session's own uuid, the way dose_pause's

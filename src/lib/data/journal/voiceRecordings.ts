@@ -23,7 +23,7 @@ type RecordingRow = { uuid: string; file_path: string };
 export type StagedRecording = { id: string; fileName: string };
 
 /** A recording placed in time, for the memo browser. Entry-only
-    (CONTEXT: "Voice recording"), so unlike DatedPhoto there is no owner name
+, so unlike DatedPhoto there is no owner name
     to carry - a recording's date is always its entry's epoch day, no
     COALESCE needed. `entryId` is the way through to it (a memo is entry
     content and owns no screen of its own). */

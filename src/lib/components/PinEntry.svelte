@@ -74,9 +74,8 @@
     countdown = null;
   }
 
-  /* The line under the pad redraws the seconds every tick and is not a live
-     region; only the wait starting and the wait ending are said, as an
-     interruption and then politely (after-release 21). */
+  /* The line under the pad redraws the seconds every tick and is not a live region; only
+     the wait starting and the wait ending are said, as an interruption and then politely. */
   function setWait(remaining: number) {
     const said = pinWaitSpeech(waitMs, remaining);
     waitMs = remaining;

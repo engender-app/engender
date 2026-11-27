@@ -123,8 +123,8 @@ const LEGACY_GREETED_KEY = 'engender-greeted-letter-ids';
 const LEGACY_HAS_ENTRIES_KEY = 'engender-has-entries';
 const LEGACY_LETTER_SNOOZE_KEY = 'letter_tile_snooze_until';
 const LEGACY_SNOOZE_PREFIX = 'engender-tile-snooze-';
-/* Home's low-stock notice kept its snooze apart from the tiles', under two names (audit
-   finding S3 renamed it); it is the `stock-notice` tile's snooze now. */
+/* Home's low-stock notice kept its snooze apart from the tiles', under two names (renamed
+   it); it is the `stock-notice` tile's snooze now. */
 const LEGACY_STOCK_SNOOZE_KEYS = ['engender-stock-notice-snooze-until', 'stock_notice_snooze_until'];
 
 type LegacyStorage = Pick<Storage, 'getItem' | 'removeItem' | 'key' | 'length'>;

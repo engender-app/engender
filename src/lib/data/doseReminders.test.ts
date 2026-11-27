@@ -94,7 +94,7 @@ test('an older hand-made reminder is about a drug when it names no drug and is t
   assert.ok(!isHandMadeReminderFor(reminder({ title: 'Progesterone', autoSource: 'stock:progesterone' }), 'Progesterone'));
 });
 
-// Re-check carpet 12, row 14: the half-hour spacing and the count guards.
+// row 14: the half-hour spacing and the count guards.
 test('default times land on the half hour where the spacing does', () => {
   assert.deepEqual(defaultReminderTimes(6), ['08:00', '10:30', '13:00', '15:00', '17:30', '20:00']);
 });

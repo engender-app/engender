@@ -215,10 +215,9 @@
       <!-- The act of sending the page lives in the frame's foot (SaveBar), beside the scope
            it would send - the preview runs for many sections, and an action at its end is
            one every scroll has to finish before it can be reached. The foot is the column's
-           flex sibling rather than a bar floating over it (carpet 26), so the one verb this
-           screen has stays reachable at every scroll position and covers nothing - and its
-           scope line includes the range alongside the same item choices the settings row
-           reads. -->
+           flex sibling rather than a bar floating over it, so the one verb this screen has
+           stays reachable at every scroll position and covers nothing - and its scope line
+           includes the range alongside the same item choices the settings row reads. -->
       <SaveBar arrange="stack">
         <p class="small muted summary-scope no-print" role="status">{scopeText}</p>
         <button class="btn btn-primary no-print" data-summary-print onclick={printSummary}>

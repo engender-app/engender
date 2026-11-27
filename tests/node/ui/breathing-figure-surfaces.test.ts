@@ -43,7 +43,7 @@ describe('one clock', () => {
 });
 
 describe('the tide', () => {
-  /* "those weird handles on the right and below". Each tick was rotated with an SVG
+  /* Each tick was rotated with an SVG
      rotate(angle cx cy) attribute while a blanket CSS transform-origin also put the pivot
      at the centre, so the pivot was applied twice and three of the four ticks landed off
      the ring - one beside it, one under the button, one on the list below. Placed by

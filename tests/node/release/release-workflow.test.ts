@@ -258,7 +258,7 @@ describe('the job that holds the signing key', () => {
   });
 });
 
-describe('pinned actions (GD-055)', () => {
+describe('pinned actions', () => {
   const files = ['release.yml', 'ci.yml'];
   it.each(files)('pins every non-local action in %s to a full commit SHA', (file) => {
     const text = readFileSync(new URL(`../../../.github/workflows/${file}`, import.meta.url), 'utf8');

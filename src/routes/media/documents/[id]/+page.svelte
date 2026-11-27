@@ -406,10 +406,9 @@
 </script>
 
 <div class="screen">
-  <!-- Titled by the paper itself (audit UI-15). The screen used to say
-       "Document" up here and then the name, the date and the link once at
-       the top and again in the fields below; the fields are where those
-       live now, and the link has one row. -->
+  <!-- Titled by the paper itself. The screen used to say "Document" up here and then the
+       name, the date and the link once at the top and again in the fields below; the fields
+       are where those live now, and the link has one row. -->
   <ScreenHeader title={stored?.title ?? m.document_title()} back={DOCUMENTS} />
 
   {#if detail.loading}

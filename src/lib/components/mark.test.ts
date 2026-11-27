@@ -136,8 +136,8 @@ describe('the monochrome mark', () => {
   });
 
   it('keeps its square, in the same ink, and drops the ground', () => {
-    /* "THE STROKE IS AN INTEGRAL PART OF THE LOGO! THERE IS NO LOGO WITHOUT THE STROKE!".
-       One ink means the edge is that ink too, not a second colour, and paper is the ground,
+    /* The stroke is part of the mark. Use the same ink for the stroke and
+       the rings. Paper is the ground,
        so nothing is painted under it. */
     const svg = markSvg(flags.trans, 'tile', 512, { ink: '#1E1B16' });
     expect(svg).toMatch(/<rect x="1\.5"[^>]*stroke="#1E1B16"/);
@@ -155,8 +155,7 @@ describe('the tile belongs to the icon, not to the app', () => {
   });
 
   it('keeps the black edge whatever mask a launcher cuts, by drawing small', () => {
-    /* "no stroke around the square, or its white - its supposed to be black always". A
-       launcher picks its own mask, so the only arrangement where that is true is the whole
+    /* The edge stays black. A launcher picks its own mask, so the whole
        stroked tile inside the circle every mask keeps - ground to the corners, tile in the
        middle at MARK_SAFE_TILE. */
     const svg = markSvg(flags.trans, 'bleed', 512);
@@ -229,7 +228,7 @@ describe('markSvg cannot emit markup from its arguments', () => {
 });
 
 describe('the mark never moves', () => {
-  /* "the logos ARE NOT SUPPOSED TO MOVE AT ALL". No entrance, no breathing, no hover, no
+  /* No entrance, breathing, hover or
      view-transition name, on any surface. Home's sun keeps its 700ms entrance and its 7s
      loop, because that is the motif on a screen and not the mark - which is why the two
      must not share a module. */

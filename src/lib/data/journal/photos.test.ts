@@ -415,7 +415,7 @@ test("a trashed entry's photo drops out of inJournal; a milestone's is unaffecte
 });
 
 /* Saving an entry is one action (PRD F1), and a photo on its own is enough
-   content for one (CONTEXT: "Entry"). So the photos picked in the editor
+   content for one. So the photos picked in the editor
    arrive with the save rather than in a second call after it - otherwise a
    photo-only entry is rejected as empty on the way to being given its
    photo. */

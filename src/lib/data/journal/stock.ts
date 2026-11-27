@@ -51,9 +51,8 @@ interface StockEntryInput {
       clears them. Blank text is stored as null. */
   expiryEpochDay?: number | null;
   pharmacyNote?: string | null;
-  /** What the supply held now cost (FA 30). Optional and defaulted to none;
-      like the expiry, a count that leaves it out clears it. Throws if
-      invalid. */
+  /** What the supply held now cost. Optional and defaulted to none; like the expiry, a
+      count that leaves it out clears it. Throws if invalid. */
   cost?: CostInput;
 }
 

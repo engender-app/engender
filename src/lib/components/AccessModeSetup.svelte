@@ -299,7 +299,7 @@
 
 <!-- One step in three states, and a state change moves. The module's screens used to swap
      in a single frame: the four modes were there and then the chosen one's consequence was,
-     with nothing in between - "a mode picked inside the gate, yank between frame 1 and 2".
+     with nothing in between.
      They cross now, on the same crossfade setup's own steps take, over a grid cell that
      holds both so the two overlap rather than stacking and doubling the page's height while
      they do. The field's edge is already travelling underneath, since the gate's title

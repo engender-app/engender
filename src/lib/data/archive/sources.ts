@@ -9,7 +9,7 @@ import type { ArchiveJournal } from './payload';
 
 type ArchiveSourceName = 'daylio' | 'daylio-backup';
 
-/* ArchiveSource stays exported only for its own test (AU-09 test-only review). */
+/* ArchiveSource stays exported only for its own test. */
 export interface ArchiveSource {
   name: ArchiveSourceName;
   /** The fields or columns this source's file must carry, for a caller that
@@ -75,12 +75,10 @@ type Unregistered = Exclude<ArchiveSourceName, (typeof SOURCES)[number]['name']>
 type AssertNoneUnregistered<Missing extends never> = Missing;
 type EverySourceRegistered = AssertNoneUnregistered<Unregistered>;
 
-/* ARCHIVE_SOURCES stays exported only for its own test (AU-09 test-only
-   review). */
+/* ARCHIVE_SOURCES stays exported only for its own test. */
 export const ARCHIVE_SOURCES: readonly ArchiveSource[] = SOURCES;
 
-/* UnrecognizedArchiveSourceError stays exported only for its own test (AU-09
-   test-only review). */
+/* UnrecognizedArchiveSourceError stays exported only for its own test. */
 export class UnrecognizedArchiveSourceError extends Error {
   constructor() {
     super('no known source recognises this file');
@@ -102,7 +100,7 @@ export function recognizeSource(
 /** `recognizeSource`, declined by name rather than by returning null - no
     source's `preview` is ever reached for a file nothing detects ("no
     fallback to guessing"). */
-/* requireSource stays exported only for its own test (AU-09 test-only review). */
+/* requireSource stays exported only for its own test. */
 export function requireSource(file: Uint8Array, sources: readonly ArchiveSource[] = ARCHIVE_SOURCES): ArchiveSource {
   const found = recognizeSource(file, sources);
   if (!found) throw new UnrecognizedArchiveSourceError();

@@ -98,8 +98,7 @@ final class SqliteConnection {
 
     /**
      * SQLCipher reads {@code x'<hex>'} as a raw key and runs no KDF over it.
-     * An absent key opens a plain, unencrypted database - which is where
-     * leaves the app, since the Keystore that produces the real key is.
+     * An absent key opens an unencrypted database.
      */
     private static String rawKeyPassword(String hexKey) {
         if (hexKey == null || hexKey.isEmpty()) return "";

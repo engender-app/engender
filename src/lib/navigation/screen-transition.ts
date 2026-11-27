@@ -2,7 +2,7 @@
 
    The primitives themselves were built and live in $lib/motion/navigation.ts. What was
    missing was the decision: nothing in the app chose between them, so every navigation was
-   the same 6px slide from.screen's own entrance animation whether it crossed the four tabs,
+   the same 6px slide from .screen's own entrance animation whether it crossed the four tabs,
    opened a detail, or went back.
 
    It is a pure function and it lives here rather than in the layout for the same reason
@@ -13,8 +13,7 @@ import { activeTabKey } from './active-tab';
 
 type ScreenTransition = 'none' | 'fade-through' | 'shared-axis' | 'shared-axis-back' | 'container';
 
-/* NavigationFacts stays exported only for its own test (AU-09 test-only
-   review). */
+/* NavigationFacts stays exported only for its own test. */
 export interface NavigationFacts {
   from: string | null;
   to: string;
@@ -27,11 +26,10 @@ export interface NavigationFacts {
   /** Whether a sheet was open over the screen the navigation left from, so
       whatever was tapped was inside a modal rather than on the screen. */
   fromSheet: boolean;
-  /** What settings chrome (`/settings`) borrows to light a tab (audit item
-      4, chrome-tab-origin.ts) - threaded in rather than read here so this
-      stays a pure table its own test can call directly. `''` where nothing
-      has lit a tab yet, which reads as a tab change like any other unknown
-      route. */
+  /** What settings chrome (`/settings`) borrows to light a tab (chrome-tab-origin.ts) -
+      threaded in rather than read here so this stays a pure table its own test can call
+      directly. `''` where nothing has lit a tab yet, which reads as a tab change like any
+      other unknown route. */
   chromeOrigin: string;
 }
 

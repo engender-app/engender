@@ -104,8 +104,7 @@ export const WEAR_KINDS: readonly WearKind[] = ['binder', 'tucking', 'compressio
     binding's four and is already exceeded by 44.8% of daily tuckers (Malik
     et al. 2024), and no source of any kind gives a compression figure, so
     neither kind gets a threshold rather than getting a borrowed one. */
-/* BINDER_CUE_HOURS stays exported only for its own test (AU-09 test-only
-   review). */
+/* BINDER_CUE_HOURS stays exported only for its own test. */
 export const BINDER_CUE_HOURS = 8;
 
 /** The day the wear screen's safety facts (wearLabels.ts) and the figure

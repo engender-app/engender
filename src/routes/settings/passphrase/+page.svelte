@@ -22,9 +22,8 @@
   let next = $state('');
   let confirmation = $state('');
   let error = $state('');
-  /** Which field the error is about, so that field is marked invalid and
-      points at the sentence (after-release 21, audit A11Y-14). Null for a
-      failure that is nobody's typing. */
+  /** Which field the error is about, so that field is marked invalid and points at the
+      sentence. Null for a failure that is nobody's typing. */
   let errorAt = $state<'current' | 'next' | 'confirmation' | null>(null);
   let busy = $state(false);
   /* Whether a recovery key already covers this journal (ADR-0054). A changed passphrase
@@ -127,8 +126,8 @@
           readonly={busy}
         />
       </div>
-      <!-- The fields above go read-only rather than disabled while the change
-           runs, so the one that had the focus keeps it (after-release 21). -->
+      <!-- The fields above go read-only rather than disabled while the change runs, so the
+           one that had the focus keeps it. -->
       <p class="pin-status small" role="alert" id="passphrase-status" data-passphrase-status>{error}</p>
       <button class="btn btn-primary" type="submit" data-change-passphrase disabled={busy}>
         <span>

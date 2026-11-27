@@ -58,9 +58,7 @@ describe('the routes that render instead of the app rather than inside it', () =
 
   it('is not the return moment, which Home navigates to', () => {
     /* It has no bar, so it is chromeless; it is still a step the app walks to from Home, so
-       it owes the movement every other step gets. the empty state arriving had "no
-       animation at all, yank between frames 7 and 8" - the yank was this predicate
-       answering both questions at once. */
+       it uses the same transition as the other steps. */
     expect(chromelessPath('/coming-back')).toBe(true);
     expect(replacesAppNavigation('/coming-back')).toBe(false);
   });

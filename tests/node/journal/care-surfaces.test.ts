@@ -50,9 +50,9 @@ describe('the spine draws one lane per running regimen', () => {
     expect(care).toContain('data-care-log={lane.episode.drug}');
   });
 
-  /* prh12 bug 16: a medication's own header opens its episode's editor
-     over Care rather than sending the reader to the regimen list to tap
-     it a second time. The full screen stays one link away inside it. */
+  /* A medication's own header opens its episode's editor over Care rather than sending the
+     reader to the regimen list to tap it a second time. The full screen stays one link away
+     inside it. */
   it('opens the regimen editor sheet in place from a block, with the whole list still reachable', () => {
     expect(care).toContain('onclick={() => regimenSheet.open(lane.episode)}');
     expect(care).toContain('<RegimenEditorSheet bind:this={regimenSheet} allEpisodesLink />');

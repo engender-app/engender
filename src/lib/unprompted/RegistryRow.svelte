@@ -3,7 +3,7 @@
      on Home" and "does this notify" - so it takes up to two switches, each in its own slot;
      a kind that doesn't fire gets no second slot rather than a dead control.
 
-     A plain.kit-row div rather than ListRow: ListRow renders an <a> or a <button>, and a
+     A plain .kit-row div rather than ListRow: ListRow renders an <a> or a <button>, and a
      switch inside either would be a control nested in a control, which is the line
      settings-surfaces.test.ts holds.
 
@@ -50,10 +50,10 @@
 </div>
 
 <style>
-  /* Fixed at the switch's own touch target, not the switch's content width,
-     so every switch on the screen sits the same distance from the edge. A
-     slot is drawn only for a switch the row has: an empty one held 48px and
-     pushed a lone switch in from the edge (FA 08 sign-off). */
+  /* Fixed at the switch's own touch target, not the switch's content width, so every switch
+     on the screen sits the same distance from the edge. A slot is drawn only for a switch
+     the row has: an empty one held 48px and pushed a lone switch in from the edge
+     (sign-off). */
   .kit-row-toggle {
     flex: 0 0 var(--touch-target);
     display: flex;

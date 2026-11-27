@@ -163,10 +163,10 @@ describe('the flag is the flag', () => {
 describe("Home's header reserves room for the sun at its breathing size", () => {
   /* 12: the reserve held only the resting radius, so the breathing loop's outermost ring
      grew past its own room for half of every 7s cycle and overflow: hidden shaved it flat
-     along the header's bottom edge. CSS cannot read SUN_OUTER, so.home-header keeps its own
+     along the header's bottom edge. CSS cannot read SUN_OUTER, so .home-header keeps its own
      175px literal - this is what holds that literal to SUN_OUTER/2 rather than trusting a
      comment to notice it drifted. Read from +page.svelte's own <style> block rather than
-     screens.css, where.home-header lived. */
+     screens.css, where .home-header lived. */
   const home = readFileSync(join(root, 'src/routes/+page.svelte'), 'utf8');
   const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
   const components = readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8');

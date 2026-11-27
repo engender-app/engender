@@ -135,7 +135,7 @@ describe('deleting a reminder, from its editor on Android', () => {
   });
 });
 
-describe('the old reminder copy the phone could not lock (GD-031)', () => {
+describe('the old reminder copy the phone could not lock', () => {
   /* A reminders payload written by an older build is rewrapped on first read.
      When that fails the native side stops scheduling from it, and this screen
      is the only place that says so and offers the two ways out. */

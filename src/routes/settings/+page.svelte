@@ -195,11 +195,11 @@
 </script>
 
 <div class="screen">
-  <!-- Rule 7's third case, chrome (carpet 25). The title was hidden here until the field
-       existed: a visible "Settings" sitting on the page directly above "Appearance" was two
-       headers stacked, which a title on a block of the flag's colour is not - it is the
-       shape every deep screen in the app already draws, and this screen was the one
-       arriving with no top at all.
+  <!-- Rule 7's third case, chrome. The title was hidden here until the field existed: a
+       visible "Settings" sitting on the page directly above "Appearance" was two headers
+       stacked, which a title on a block of the flag's colour is not - it is the shape every
+       deep screen in the app already draws, and this screen was the one arriving with no
+       top at all.
 
        Back to Today, since the phone's gear is in Today's foot, and through smartBack for
        the rail and for every deep link that reaches here. On the 1024px shell the control

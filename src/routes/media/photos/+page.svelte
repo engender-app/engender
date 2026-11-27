@@ -96,16 +96,14 @@
     }
   }
 
-  /* Batches of the grid rendered into the DOM, so a journal with thousands
-     of photos paints as fast as one with a few hundred (this ticket, audit
-     finding P3). The same arithmetic and remembered-count store the dose
-     log's BatchedList uses (batchedList.ts, scroll-region.ts) - inlined
-     here rather than wrapped in that component, because BatchedList wraps
-     its rows in ListCard, a bordered list surface with a row hairline, and
-     this screen is a CSS grid of square tiles. What is bounded is the DOM
-     alone: `library` and `shown` stay full reads, so the source chips
-     (chipsFor, over `library`) keep seeing every photo regardless of what
-     the grid has painted. */
+  /* Batches of the grid rendered into the DOM, so a journal with thousands of photos paints
+     as fast as one with a few hundred (this ticket). The same arithmetic and
+     remembered-count store the dose log's BatchedList uses (batchedList.ts,
+     scroll-region.ts) - inlined here rather than wrapped in that component, because
+     BatchedList wraps its rows in ListCard, a bordered list surface with a row hairline,
+     and this screen is a CSS grid of square tiles. What is bounded is the DOM alone:
+     `library` and `shown` stay full reads, so the source chips (chipsFor, over `library`)
+     keep seeing every photo regardless of what the grid has painted. */
   const photosPath = page.url.pathname;
   let batches = $state(restoredBatches(photosPath, 'photos'));
   let rendered = $derived(shown.slice(0, shownCount(batches, shown.length)));
@@ -181,10 +179,9 @@
     });
   }
 
-  /* The scrubber appears once the grid is taller than the screen, which is
-     the point at which scrolling to a year stops being something a thumb
-     can do (the ticket's own rule). Measured rather than counted: how many
-     thumbnails a screen holds depends on the width, the text size and
+  /* The scrubber appears once the grid is taller than the screen, which is the point at
+     which scrolling to a year stops being something a thumb can do . Measured rather than
+     counted: how many thumbnails a screen holds depends on the width, the text size and
      whether the grid is narrowed. */
   let gridTall = $state(false);
   $effect(() => {
@@ -203,15 +200,13 @@
     };
   });
 
-  /* The rail shows while the page is moving and for a moment after, and
-     fades away at rest (release audit U12): standing over the grid's last
-     column all the time, its pills covered x 313 to 360 of every third
-     photograph at 390px. A scrubber that answers a scroll is the shape the
-     photo apps use, and it is the scroll the rail is for - the ticket's
-     own rule above only offers it once the grid outgrows a screen. Hover
-     and keyboard focus hold it (CSS, :hover and :focus-within), so a mouse
-     on its way to a year and a Tab through them never chase a fading
-     target. */
+  /* The rail shows while the page is moving and for a moment after, and fades away at rest
+     (release): standing over the grid's last column all the time, its pills covered x 313
+     to 360 of every third photograph at 390px. A scrubber that answers a scroll is the
+     shape the photo apps use, and it is the scroll the rail is for - the ticket's own rule
+     above only offers it once the grid outgrows a screen. Hover and keyboard focus hold it
+     (CSS, :hover and :focus-within), so a mouse on its way to a year and a Tab through them
+     never chase a fading target. */
   const RAIL_REST_MS = 1500;
   let railAwake = $state(false);
   $effect(() => {
@@ -285,8 +280,8 @@
     <ReadGate read={libraryQuery} variant="block" count={2}>
       {#snippet rows()}
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
-        <!-- The number changes with a chip, so it crossfades rather than
-             swapping in the frame of the press (carpet 15 row 49). -->
+        <!-- The number changes with a chip, so it crossfades rather than swapping in the
+             frame of the press. -->
         <div class="photo-count-row">
           <p class="photo-count" data-photo-count>
             {#key shown.length}<span in:countIn out:crossfade>{m.ph_count({ count: shown.length })}</span>{/key}
@@ -470,7 +465,7 @@
   .photo-library { position: relative; }
 
   /* The gap the grid and the card below it would have had as siblings of the screen
-     (screens.css's own.screen-part rhythm), now that this control sits between them
+     (screens.css's own .screen-part rhythm), now that this control sits between them
      instead. */
   .photo-grid-more { margin-top: var(--space-3); }
 
@@ -535,10 +530,9 @@
     width: 100%;
     aspect-ratio: 1;
   }
-  /* The label in the text colour on a solid strip of the card. The shared
-     .photo-label is a 35% black scrim made for a photograph, and over this
-     flat tile it left "Video note" at 1.9:1 (after-release 21, audit
-     A11Y-10). */
+  /* The label in the text colour on a solid strip of the card. The shared .photo-label is a
+     35% black scrim made for a photograph, and over this flat tile it left "Video note" at
+     1.9:1. */
   .photo-video-thumb .photo-label {
     background: var(--surface);
     color: var(--text);

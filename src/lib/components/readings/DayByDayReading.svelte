@@ -226,9 +226,8 @@
     </ReadingTile>
   {/if}
 {:else}
-  <!-- Its own heading rather than the screen's title a second time
-       (release audit U14): this card is one scale across the days, and the
-       card under it is every scale across the period. -->
+  <!-- Its own heading rather than the screen's title a second time (release): this card is
+       one scale across the days, and the card under it is every scale across the period. -->
   <ChartCard level={2} heading={m.stats_scale_each_day()} kind="day-by-day" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     {#snippet control()}
       <ChartPicker

@@ -143,9 +143,9 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect((timeline.match(/answerHint\(\);/g) ?? []).length).toBe(3);
   });
 
-  /* Release audit U14: on the rail, the hint sat over the lanes at rest.
-     It is a line under the rail's reading now, faded where it stands and
-     latched for the visit, so answering it moves nothing under it. */
+  /* Release: on the rail, the hint sat over the lanes at rest. It is a line under the
+     rail's reading now, faded where it stands and latched for the visit, so answering it
+     moves nothing under it. */
   it('puts the hint under the rail, and fades it without taking its line away', () => {
     const rail = timeline.slice(timeline.indexOf('class="span-tl-rail"'), timeline.indexOf('data-span-state-line'));
     expect(rail).not.toContain('data-span-hint');

@@ -42,8 +42,7 @@
     attempt(() => journal.tags.reorder(g.key, ids), m.write_failed());
   }
 
-  /* Each sheet closes once its write lands, and stays open with a toast
-     when it does not (after-release 06). */
+  /* Each sheet closes once its write lands, and stays open with a toast when it does not. */
   const sheetWrite = writer();
   async function saveFromSheet(write: (() => unknown) | null, close: () => void) {
     if (write && !(await sheetWrite.run(write, m.write_failed()))) return;

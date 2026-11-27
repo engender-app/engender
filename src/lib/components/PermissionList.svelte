@@ -23,12 +23,11 @@
   import { openSystemSettings, readGrantStates, requestGrant } from '$lib/permissions/grant';
   import { watchStatus } from '$lib/permissions/watchStatus';
 
-  /* Setup draws the asks and nothing else (after-release 17, UX-10): the
-     rows explaining the print dialog, the file picker and the clipboard are
-     about how the app works, which a person setting it up has not asked,
-     and they stay on /settings/permissions. Android keeps its closer there
-     too, because "no internet permission" is the claim this step makes; the
-     web's closer is an explanation, and goes. */
+  /* Setup draws the asks and nothing else: the rows explaining the print dialog, the file
+     picker and the clipboard are about how the app works, which a person setting it up has
+     not asked, and they stay on /settings/permissions. Android keeps its closer there too,
+     because "no internet permission" is the claim this step makes; the web's closer is an
+     explanation, and goes. */
   let { asksOnly = false }: { asksOnly?: boolean } = $props();
 
   let platform = $derived(isAndroid() ? ('android' as const) : ('web' as const));
@@ -69,7 +68,7 @@
       states = { ...states, [key]: answer };
       if (answer === 'granted') justChanged = key;
     } catch (error) {
-      // A plugin that throws instead of answering (after-release 06, L05-06).
+      // A plugin that throws instead of answering.
       console.error('a permission request failed', error);
       toast(m.permission_request_failed(), { kind: 'failed' });
     } finally {

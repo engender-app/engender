@@ -13,8 +13,7 @@
    dots for handles and day-count marks. */
 
 /* PATHS stays exported only for hubRows.test.ts, icons-gallery.svelte,
-   icon-geometry.test.ts, which cross-check against it (AU-09 test-only
-   review). */
+   icon-geometry.test.ts, which cross-check against it. */
 export const PATHS: Record<string, string> = {
   home: '<path d="M4 9.5 12 3.1l8 6.4"/><path d="M6 8.1V19.1h12V8.1"/><path d="M9.6 19.1v-5h4.8v5"/>',
   calendar: '<rect x="4" y="5.6" width="16" height="14.4" rx="2"/><path d="M8.5 4v3.2M15.5 4v3.2"/><path d="M4 10.6h16"/>',
@@ -31,11 +30,11 @@ export const PATHS: Record<string, string> = {
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/>',
   lock: '<rect x="4" y="10.49" width="16" height="10" rx="3"/><path d="M8 10.49V6.49a4 4 0 0 1 8 0v4"/>',
   shield: '<path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z"/>',
-  /* The open padlock: the Unlocked access mode (after-release 28). It drew
-     the key, which is also the recovery key's mark. */
+  /* The open padlock: the Unlocked access mode. It drew the key, which is also the recovery
+     key's mark. */
   unlock: '<rect x="4" y="10.49" width="16" height="10" rx="3"/><path d="M8 10.49V6.49a4 4 0 0 1 7.8-1.25"/>',
-  /* Medication, wherever a dose or a regimen is drawn (after-release 28).
-     Regimen drew the lab's flask, Dose log a clock and Reminders a heart. */
+  /* Medication, wherever a dose or a regimen is drawn. Regimen drew the lab's flask, Dose
+     log a clock and Reminders a heart. */
   pill: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/>',
   /* A routine kept up on a schedule: dilation, which drew the lab's flask. */
   repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',

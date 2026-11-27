@@ -103,10 +103,9 @@ describe('the surfaces', () => {
          owns its copy the way PhotoDayPromptSheet does. A screen may say
          more about what is lost in its body line, and nothing else. */
       'DiscardSheet.svelte',
-      /* The app's one fold (after-release 28): a full-width row with its
-         chevron at the far edge and the block it opens growing under it.
-         Not a surface. It replaced native <details> on the managed lists,
-         whose triangle and one-frame opening matched no other fold. */
+      /* The app's one fold: a full-width row with its chevron at the far edge and the block
+         it opens growing under it. Not a surface. It replaced native <details> on the
+         managed lists, whose triangle and one-frame opening matched no other fold. */
       'Disclosure.svelte',
       'Distribution.svelte',
       /* A bar out of a zero line, left for lower and right for higher, in the section's one
@@ -199,9 +198,7 @@ describe('the surfaces', () => {
          list. In the kit beside the grid it reads, because the pair is one chart - the
          picture for the eye, the list for everybody the picture leaves out. */
       'YearDaysList.svelte',
-      /* A year of days, because twelve bars said where a year's shape went and a
-         retrospective wanted what the year was. made the days shaded cells in twelve rows
-         rather than a face each. */
+      /* The overview draws a shaded cell for each day, grouped by month. */
       'YearRows.svelte'
     ]);
   });

@@ -1,8 +1,7 @@
-/* Archives whose rows contradict themselves or this journal, which no device
-   writes but a hand-edited file can carry (re-check carpet 11, findings F2
-   to F6). Each one used to stop a Merge with a raw SQLite or lookup error
-   that the import screen could only call "failed"; now each is either
-   merged by the rule in archiveMerge.ts or refused as a damaged archive. */
+/* Archives whose rows contradict themselves or this journal, which no device writes but a
+   hand-edited file can carry (findings F2 to F6). Each one used to stop a Merge with a raw
+   SQLite or lookup error that the import screen could only call "failed"; now each is
+   either merged by the rule in archiveMerge.ts or refused as a damaged archive. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';

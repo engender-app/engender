@@ -5,11 +5,10 @@
 
 /* ---------- Entry editor and friends ---------- */
 
-/* The entry editor's save bar and every other screen's foot left screens.css
-   with carpet 26: a foot is the frame's now, drawn as `.app-savebar` in
-   app.css and written as `<SaveBar>` by the screen that owns its buttons.
-   What was here was `position: sticky` with a negative offset, which is
-   what put it over the column rather than under it. */
+/* The entry editor's save bar and every other screen's foot left screens.css with: a foot
+   is the frame's now, drawn as `.app-savebar` in app.css and written as `<SaveBar>` by the
+   screen that owns its buttons. What was here was `position: sticky` with a negative
+   offset, which is what put it over the column rather than under it. */
 
 .photo-row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 .photo-wrap { position: relative; }
@@ -522,11 +521,10 @@
 [data-up] svg { transform: rotate(90deg); }
 
 /* ---------- Reminders ---------- */
-/* `.checkin-card` retired here (carpet 30). Its 1.5px `--accent-border` edge and the
-   `--surface` ground under it were the group claiming to be featured, which rule 4 has no
-   treatment for; the rows are flush on the page now and the screen's own markup carries the
-   shape. The 8px the time row needed under the sentence above it comes from `.stack-3`'s
-   12px instead. */
+/* `.checkin-card` retired here. Its 1.5px `--accent-border` edge and the `--surface` ground
+   under it were the group claiming to be featured, which rule 4 has no treatment for; the
+   rows are flush on the page now and the screen's own markup carries the shape. The 8px the
+   time row needed under the sentence above it comes from `.stack-3`'s 12px instead. */
 .next-preview {
   display: flex; align-items: center; gap: 6px;
   font-size: var(--text-sm); color: var(--on-accent-soft);
@@ -857,11 +855,10 @@
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
   .palette-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-  /* Eight across gives a name 69.5px at 1280, and the widest one on a line
-     is 75.2px ("Panseksualna"), so overflow-wrap: anywhere broke
-     "Genderqueer" as "Genderquee/r" (after-release 17, UI-07). A name is
-     one word or two, so it wraps between words or not at all, and the
-     longest steps its type down to fit (pre-publish 03, above). */
+  /* Eight across gives a name 69.5px at 1280, and the widest one on a line is 75.2px
+     ("Panseksualna"), so overflow-wrap: anywhere broke "Genderqueer" as "Genderquee/r". A
+     name is one word or two, so it wraps between words or not at all, and the longest steps
+     its type down to fit (pre-publish 03, above). */
   .palette-grid .swatch-name,
   .palette-grid .palette-swatch.is-active .swatch-name { overflow-wrap: normal; }
   /* With the text-size boost a name is 12.5% wider and the longest would

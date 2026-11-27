@@ -62,10 +62,9 @@ function doseWords(episode: RegimenEpisode, amount: DoseScheduleAmount | null): 
   return route ? `${what}, ${route}` : what;
 }
 
-/** The episode a reminder is about: its schedule's, for a reminder the
-    schedule made, or else the one regimen for its drug running today. Two
-    running for the same drug is the person's call (as FA 20's Taken is), so
-    neither is guessed at. */
+/** The episode a reminder is about: its schedule's, for a reminder the schedule made, or
+    else the one regimen for its drug running today. Two running for the same drug is the
+    person's call (as Taken is), so neither is guessed at. */
 function episodeOf(reminder: Reminder, context: ReminderWordsContext): RegimenEpisode | null {
   if (reminder.autoSource?.startsWith(DOSE_PREFIX)) {
     const id = reminder.autoSource.slice(DOSE_PREFIX.length);

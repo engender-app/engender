@@ -45,17 +45,15 @@
     level?: 2 | 3;
   } = $props();
 
-  /* A day heads its card the way the day screen heads itself: weekday,
-     day and month, and the year only when it is not this one. The year on
-     every heading brought a comma with it in English ("Thursday, 1
-     October 2026") that no other day heading in the app carries (audit
-     UX-11). */
+  /* A day heads its card the way the day screen heads itself: weekday, day and month, and
+     the year only when it is not this one. The year on every heading brought a comma with
+     it in English ("Thursday, 1 October 2026") that no other day heading in the app
+     carries. */
   const today = $derived(currentDay());
 
-  /* Entries take the days' stripe unless the screen names another, the
-     same stripe Calendar gives its days. Good moments named none, so its
-     tags fell back to the accent and read magenta beside every other
-     screen's cyan (after-release 28, audit UI-08). */
+  /* Entries take the days' stripe unless the screen names another, the same stripe Calendar
+     gives its days. Good moments named none, so its tags fell back to the accent and read
+     magenta beside every other screen's cyan. */
   const role = $derived(givenRole ?? roleAt(activeFlag.roles, HOME_AREA_ROLE.days));
 </script>
 

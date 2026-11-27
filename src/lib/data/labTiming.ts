@@ -150,7 +150,7 @@ const positionKey = (timing: LabTiming): string =>
     timing and no provider, and a flag that fired on their absence would be
     permanently on. Providers are compared as typed, trimmed of surrounding
     whitespace and otherwise left alone - the same rule an analyte's unit
-    follows (CONTEXT: "Analyte"), so two spellings of one lab are two
+    follows, so two spellings of one lab are two
     providers and nothing matches them up. */
 export function seriesComparability(results: readonly LabResult[]): ComparabilityAxis[] {
   const values: Record<ComparabilityAxis, Set<string>> = {

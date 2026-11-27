@@ -433,9 +433,8 @@ test(`crossesCalendarYear is true for the lab range that found it under TZ=${tz}
   expect(crossesCalendarYear(from, to)).toBe(true);
 });
 
-/* Audit item 20.2: "in 0 days" and "in 1 days" - a reminder due today or
-   tomorrow, or one already gone by, each got its own case instead of the
-   general "in n days" clamped at zero. */
+/* .2: "in 0 days" and "in 1 days" - a reminder due today or tomorrow, or one already gone
+   by, each got its own case instead of the general "in n days" clamped at zero. */
 test(`relativeDayFromToday is today at zero days under TZ=${tz}`, () => {
   expect(relativeDayFromToday(100, 100)).toEqual({ kind: 'today' });
 });

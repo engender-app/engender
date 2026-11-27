@@ -21,7 +21,7 @@ export const BASELINE_SCHEMA = `
 -- (entries.ts's purgeExpiredTrash).
 --
 -- \`starred\` is curation metadata, the same category the identity fields are -
--- not one of Entry's seven content fields (CONTEXT: "Entry"), so it never
+-- not one of Entry's seven content fields, so it never
 -- enters entryContent.ts's closure check and starring an entry can never be
 -- what keeps an otherwise-empty one from counting as deleted.
 --
@@ -275,12 +275,9 @@ CREATE TABLE body_region (
 -- a uuid, authored ones the reverse, and neither column is ever NOT NULL
 -- because either can be the row's only identity.
 --
--- \`presentation_id\` is free text with no REFERENCES clause at all - not
--- because a presentation might be deleted (it can be hidden) but because the
--- two travel in separate archive sections (ADR-0027) and restore
--- independently, so an archive whose templates outlive its modes still has to
--- apply. Applying a template resolves the id against what this install
--- currently shows and drops it when it does not resolve.
+-- \`presentation_id\` has no REFERENCES clause. Templates and presentations
+-- travel in separate archive sections (ADR-0027), so restore can apply either
+-- independently. Applying a template ignores hidden or missing presentations.
 --
 -- Tags and dimension values are child tables mirroring entry_tag and
 -- entry_dimension_value down to the FK shape, because a template's tag list is

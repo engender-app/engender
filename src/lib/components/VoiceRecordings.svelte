@@ -98,7 +98,7 @@
      them across the row's whole width. The leading mic square this row used to carry went -
      the play control says what the row holds, and 36px of icon was 36px the waveform
      wanted. The row's main span is still a static container rather than a link: the entry
-     link and the player are the two real controls (kit.css's own note on.kit-row.is-split
+     link and the player are the two real controls (kit.css's own note on .kit-row.is-split
      makes the same split for a different pair). */
   .memo-row-body {
     flex: 1;

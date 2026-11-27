@@ -32,9 +32,9 @@ test('a backup made today is nought days old, not one', () => {
   assert.equal(backupAgeDays(startOfDayTimestamp(20676) + 13 * 3_600_000, 20676), 0);
 });
 
-/* After-release 17 (U2): the browser's refusal to keep storage used to be a
-   toast over the Welcome screen on every cold load. It is a Home notice
-   now, and only while it asks for something the person has not done. */
+/* (U2): the browser's refusal to keep storage used to be a toast over the Welcome screen on
+   every cold load. It is a Home notice now, and only while it asks for something the person
+   has not done. */
 test('other browsers show the storage notice only after persistence refusal and before a first backup', () => {
   const recent = startOfDayTimestamp(20676 - 3);
   assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: null }), true);

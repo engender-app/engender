@@ -1,12 +1,11 @@
-/* One case per archiveApply.ts export, driven alone against a small fixture
-   through the Restoring driver it already takes (audit finding A5) - so a
-   wrong merge fails by naming its own section rather than as "the golden
-   archive differs" (archive-golden.test.ts's whole-journal round trip).
+/* One case per archiveApply.ts export, driven alone against a small fixture through the
+   Restoring driver it already takes - so a wrong merge fails by naming its own section
+   rather than as "the golden archive differs" (archive-golden.test.ts's whole-journal round
+   trip).
 
-   `applyFlatTable` has its own tests in archiveTable.test.ts. The
-   `Restoring` type is not a runtime export a test can drive - every function below is
-   checked against it by the type checker on every call, which is the whole
-   of what testing a type means. */
+   `applyFlatTable` has its own tests in archiveTable.test.ts. The `Restoring` type is not a
+   runtime export a test can drive - every function below is checked against it by the type
+   checker on every call, which is the whole of what testing a type means. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';

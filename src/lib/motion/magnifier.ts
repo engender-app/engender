@@ -11,8 +11,7 @@
 const PEAK = 1.24;
 
 /** The plain rows' peak. The fan's 1.24 rides on a small face in a card that frames it; the
-    same number on a bare row read as barely anything - "still no sliding zoom animation
-    like in quick add" survived 1.4 for the same reason. 1.6 under the finger, on the sweep
+    same scale on a bare row is hard to see. 1.6 under the finger, on the sweep
     the fan's slide already answers, is what makes the row read as the same control. */
 const ROW_PEAK = 1.6;
 

@@ -65,7 +65,7 @@ test('dimensions hide rather than delete, and their logged values survive hiding
   await assert.rejects(journal.dimensions.setDimensionHidden('nope', true), /unknown dimension/);
 });
 
-test('a custom dimension renames its name and both ends; a built-in or unknown key throws (FA 41)', async () => {
+test('a custom dimension renames its name and both ends; a built-in or unknown key throws', async () => {
   const { journal, db } = await journalWithBuiltIns();
   const voice = await journal.dimensions.addCustomDimension({ name: 'Vocie', low: 'strianed', high: 'easy', min: 0, max: 10 });
   db.raw.prepare('UPDATE gender_dimension SET updated_at = 1 WHERE key = ?').run(voice.key);
@@ -833,8 +833,8 @@ test('a pain rating outside the 1-5 scale is refused before it reaches the schem
   );
 });
 
-/* The cost is a typed amount since FA 30 (costs.test.ts); the provider is
-   still the person's own text. */
+/* The cost is a typed amount since (costs.test.ts); the provider is still the person's own
+   text. */
 test('provider is stored as typed, with no list and no normalization', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.hairRemoval.upsertSession({

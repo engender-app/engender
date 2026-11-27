@@ -92,12 +92,11 @@ public class AutoExportPlugin extends Plugin {
     private static final String FAILURE_CHANNEL = "backup_failures";
     private static final int FAILURE_NOTIFICATION_ID = 1601;
 
-    /** The archive profile, pinned here rather than read off the
-        bridge call. A page that can reach {@code deriveKey} - it never
-        should, but audit finding G-04 assumed it could - gets this cost or
-        nothing: it cannot ask for a cheaper derivation to grind offline, or
-        a larger one to crash the app. The salt stays a call argument
-        because it is per-archive and random; the cost is not. */
+    /** The archive profile, pinned here rather than read off the bridge call. A page that
+        can reach {@code deriveKey} - it never should, but assumed it could - gets this cost
+        or nothing: it cannot ask for a cheaper derivation to grind offline, or a larger one
+        to crash the app. The salt stays a call argument because it is per-archive and
+        random; the cost is not. */
     private static final int ARCHIVE_KDF_MEMORY_SIZE = 65536;
     private static final int ARCHIVE_KDF_ITERATIONS = 3;
     private static final int ARCHIVE_KDF_PARALLELISM = 1;
@@ -183,11 +182,10 @@ public class AutoExportPlugin extends Plugin {
     }
 
     /**
-     * Whether a typed password is the saved backup password (FA 56). "Back up
-     * now" asks this instead of saving whatever is in the field, so a typo
-     * is refused rather than becoming the password every later backup is
-     * sealed with. Answers a boolean; the saved password never crosses the
-     * bridge.
+     * Whether a typed password is the saved backup password. "Back up now"
+     * asks this instead of saving whatever is in the field, so a typo is
+     * refused rather than becoming the password every later backup is sealed
+     * with. Answers a boolean; the saved password never crosses the bridge.
      */
     @PluginMethod
     public void checkPassword(PluginCall call) {
@@ -206,16 +204,16 @@ public class AutoExportPlugin extends Plugin {
 
     /**
      * Derives an archive encryption key from the saved backup password,
-     * without ever exposing the password to the WebView (audit finding F-04).
+     * without ever exposing the password to the WebView.
      *
      * <p>Argon2id derivation runs native behind the bridge. The scheduler
-     * sends a fresh random salt, and receives a single derived key that
-     * opens only the archive about to be written. The password remains in
+     * sends a fresh random salt, and receives a single derived key that opens
+     * only the archive about to be written. The password remains in
      * Keystore-wrapped storage and never crosses into JavaScript.
      *
      * <p>The derivation cost is not read off the call (G-04): it is the
-     * archive profile pinned in {@link #deriveArchiveKey}, regardless of
-     * what the caller asks for.
+     * archive profile pinned in {@link #deriveArchiveKey}, regardless of what
+     * the caller asks for.
      */
     @PluginMethod
     public void deriveKey(PluginCall call) {
@@ -607,9 +605,8 @@ public class AutoExportPlugin extends Plugin {
      * side because this plugin never sees a preference. An empty body is
      * posted as no body at all rather than as a blank line.
      */
-    /** Folder sync's switch (FA 49). Per device, like the folder itself:
-        it lives here rather than among the journal's preferences, so an
-        archive never carries it to another phone. */
+    /** Folder sync's switch. Per device, like the folder itself: it lives here rather than
+        among the journal's preferences, so an archive never carries it to another phone. */
     @PluginMethod
     public void configureFolderSync(PluginCall call) {
         synchronized (BackupWork.OWNER) {
@@ -693,7 +690,7 @@ public class AutoExportPlugin extends Plugin {
      * rather than on every open; the same file written again later is newer
      * and is tried again. {@code no-space} is recorded for the settings line
      * but leaves the position alone: the archive was fine, the device was
-     * full, and it merges once space is freed (re-check carpet 13).
+     * full, and it merges once space is freed.
      */
     @PluginMethod
     public void finishFolderArchive(PluginCall call) {

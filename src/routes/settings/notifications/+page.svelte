@@ -41,7 +41,7 @@
 
   let isWeb = $derived(!isAndroid());
   let visibleRows = $derived(isWeb ? ROWS.filter((row) => row.surface) : ROWS);
-  // No row carries both switches since FA 13, so Home switches and
+  // No row carries both switches since, so Home switches and
   // notification switches get a card each rather than a column each.
   let homeRows = $derived(visibleRows.filter((row) => row.surface));
   let notifyRows = $derived(visibleRows.filter((row) => !row.surface));

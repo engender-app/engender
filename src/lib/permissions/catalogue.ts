@@ -151,9 +151,8 @@ export function grantRows(
   states: GrantStates,
   asked: ReadonlySet<GrantKey>
 ): GrantRow[] {
-  /* Only what this platform has (after-release 17): the web used to keep
-     Notifications and Exact timing as rows marked "Android only", which a
-     person there could do nothing with. */
+  /* Only what this platform has: the web used to keep Notifications and Exact timing as
+     rows marked "Android only", which a person there could do nothing with. */
   return GRANT_KEYS.filter((key) => availableOn(key, platform)).map((key) => {
     const state = states[key];
     const settingsTarget = settingsTargetFor(key, platform);

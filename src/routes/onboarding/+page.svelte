@@ -1599,9 +1599,8 @@
      scroll (rule 14). It bleeds to the screen's edges and pads back in: a
      region that scrolls clips on both axes, so a block reaching past the
      content edge inside it would be cut. */
-  /* 4px of the 20 above moved inside the scroller (after-release 17,
-     U16): the name field sits at the region's very top, and its focus
-     ring - 2px drawn 2px out - was cut off along its top edge by the
+  /* 4px of the 20 above moved inside the scroller: the name field sits at the region's very
+     top, and its focus ring - 2px drawn 2px out - was cut off along its top edge by the
      scroller's own clip. The content lands where it did. */
   .setup-answers {
     flex: 1 1 0;
@@ -1813,11 +1812,10 @@
     justify-content: space-between;
     gap: var(--space-2);
   }
-  /* Colour joins .btn's list here because picking a flag changes
-     --accent-ink under these words: without it Skip and "straight to the
-     app" changed colour in one frame while the field beside them wiped
-     (carpet 15 row 51). Text, so the sRGB mix the field avoids is not
-     visible at this size. */
+  /* Colour joins .btn's list here because picking a flag changes --accent-ink under these
+     words: without it Skip and "straight to the app" changed colour in one frame while the
+     field beside them wiped. Text, so the sRGB mix the field avoids is not visible at this
+     size. */
   .setup-outs .btn {
     padding: 0 var(--space-3);
     transition-property: transform, background, filter, opacity, color;

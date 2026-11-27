@@ -62,15 +62,13 @@
     findById: (id) => comfortItems.find((item) => item.id === id)
   });
 
-  /* **Arranging** (release audit U10). The list used to carry a "move up"
-     control on every row: a chevron turned on its side, which read as a
-     row that folds open, and sat disabled but visible on the first row.
-     Now a row opens its editor (the chevron says so, as on every other
-     list that opens something) and the order is its own mode, with a
-     handle per row - the shape the Today editor already uses, and the
-     shape the report's references (Evernote, Beli) use. Pointer events
-     on the handle rather than the whole row, so the list still scrolls
-     under a thumb; the arrow keys on the handle are the keyboard's whole
+  /* **Arranging** (release). The list used to carry a "move up" control on every row: a
+     chevron turned on its side, which read as a row that folds open, and sat disabled but
+     visible on the first row. Now a row opens its editor (the chevron says so, as on every
+     other list that opens something) and the order is its own mode, with a handle per row -
+     the shape the Today editor already uses, and the shape the report's references
+     (Evernote, Beli) use. Pointer events on the handle rather than the whole row, so the
+     list still scrolls under a thumb; the arrow keys on the handle are the keyboard's whole
      equivalent, one place per press. */
   let arranging = $state(false);
 

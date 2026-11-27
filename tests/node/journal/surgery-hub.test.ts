@@ -151,8 +151,8 @@ describe('Procedure Care & Recovery Hub', () => {
     expect(JSON.parse(read('messages/en.json')).surgery_checklist_title).toBe('Checklist');
   });
 
-  /* prh12 bug 18: the kind used to default to Custom and sit in a static
-     row with a small pencil, so nothing said a type was to be chosen. */
+  /* The kind used to default to Custom and sit in a static row with a small pencil, so
+     nothing said a type was to be chosen. */
   it('asks for a procedure type on a new procedure and will not save without one', () => {
     const pageCode = read('src/routes/health/surgery/+page.svelte');
     expect(pageCode).toMatch(/blank: \(\) => \(\{[^}]*kind: null/);
@@ -165,8 +165,8 @@ describe('Procedure Care & Recovery Hub', () => {
     }
   });
 
-  /* prh12 bug 20: a procedure opens its own screen rather than sliding its
-     log open under the list, and its facts are edited there in place. */
+  /* A procedure opens its own screen rather than sliding its log open under the list, and
+     its facts are edited there in place. */
   it('opens each procedure on its own screen, with its facts editable there', () => {
     const cardCode = read('src/lib/components/ProcedureRecoveryCard.svelte');
     expect(cardCode).toMatch(/<a\s+class="proc-face"\s+href="\/health\/surgery\/\{procedure\.id\}"/);

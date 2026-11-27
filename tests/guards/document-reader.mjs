@@ -74,8 +74,8 @@ try {
   }, [...pdf]);
   await visit(`/media/documents/${fixture.first}`);
   await page.locator('[data-document-page-canvas="drawn"]').waitFor();
-  /* The screen is titled by the document (after-release 26): the name,
-     date and link are said once, in the fields under the page. */
+  /* The screen is titled by the document: the name, date and link are said once, in the
+     fields under the page. */
   const heading = page.locator('[data-screen-title]');
   assert.equal(await heading.innerText(), fixture.title);
   assert.equal(await dateValue(page.locator('#document-day')), '2024-10-04');

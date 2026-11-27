@@ -127,10 +127,9 @@
       last, same as the dataset-arrives sweep it shares its one mechanism with. */
   let replay = $state(0);
 
-  /** True while the sweep below draws the head across, which rewrites the
-      readout every frame. The readout is an <output>, a live region, and
-      would be read out at every reading it passes (after-release 21, audit
-      L04-13); it is muted until the head comes to rest. */
+  /** True while the sweep below draws the head across, which rewrites the readout every
+      frame. The readout is an <output>, a live region, and would be read out at every
+      reading it passes; it is muted until the head comes to rest. */
   let sweeping = $state(false);
 
   $effect(() => {

@@ -192,7 +192,7 @@
   });
 
   /* Drag to scroll, for the pointer that has no flick. A touch pans the track natively; a
-     mouse had nothing - "i cannot click and slide nor scroll on web" - so pressing and
+     mouse needs drag scrolling. Pressing and
      sliding now moves the track itself, and the press only becomes a selection if it never
      turned into a drag. The moved flag is what keeps those two honest: a release after a
      real drag suppresses the click the browser still fires at the segment under the

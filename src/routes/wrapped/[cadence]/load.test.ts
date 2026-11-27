@@ -1,6 +1,6 @@
-/* The wrapped route's only guard: FA 13 removed the share and range views, so
-   an old address must land on the unknown-address page rather than render a
-   recap for a cadence that no longer exists. */
+/* The wrapped route's only guard: removed the share and range views, so an old address must
+   land on the unknown-address page rather than render a recap for a cadence that no longer
+   exists. */
 import { describe, expect, it, vi } from 'vitest';
 
 /* The node tier has no $lib alias; the guard only needs the cadence list. */

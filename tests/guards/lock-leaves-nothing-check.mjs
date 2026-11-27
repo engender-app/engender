@@ -89,7 +89,7 @@ try {
     prefs.palette = 'nonbinary';
   });
 
-  /* ---- Web Storage after the lock (GD-035, GD-038, GD-041, GD-014) ---- */
+  /* Web Storage after the lock ---- */
   await page.evaluate(async ({ tiles, letter }) => {
     const { acknowledgementStore } = await import('/src/lib/data/prefs/acknowledgementStore.svelte.ts');
     const { snoozeTile } = await import('/src/lib/data/liveTilesSnooze.ts');
@@ -163,7 +163,7 @@ try {
   check(moved.patch && moved.stock && moved.letters, `legacy snoozes, stock notice and letters land in the journal (${JSON.stringify(moved)})`);
   check(moved.expired, 'an expired legacy snooze is dropped, not carried');
 
-  /* ---- Disguise: neutral before unlock, real after (GD-043) ---- */
+  /* Disguise: neutral before unlock, real after ---- */
   await page.evaluate(async () => {
     (await import('/src/lib/data/prefs/store.svelte.ts')).prefs.disguise = true;
   });
@@ -185,7 +185,7 @@ try {
   });
   await page.waitForFunction(() => document.title === 'engender');
 
-  /* ---- Quick add across the lock (GD-040) ---- */
+  /* Quick add across the lock ---- */
   await page.evaluate(async () => {
     const { onTablesWritten } = await import('/src/lib/data/live/tableVersions.svelte.ts');
     window.lockWrites = [];
@@ -241,7 +241,7 @@ try {
     await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 90000 });
   }
 
-  /* ---- Feedback after a failed unlock and a reset (GD-023) ---- */
+  /* Feedback after a failed unlock and a reset ---- */
   const leaked = () =>
     page.evaluate(() =>
       [...document.querySelectorAll('[data-toast], [data-announce], [data-announce-urgent]')]

@@ -36,9 +36,8 @@
   let playing = $state(false);
   let player = $state<HTMLDivElement>();
   let full = $state(false);
-  /* A file that cannot be read says so inside the frame, PhotoViewer's
-     `failed`; it used to leave the black frame up for good (after-release
-     06, L05-06). */
+  /* A file that cannot be read says so inside the frame, PhotoViewer's `failed`; it used to
+     leave the black frame up for good. */
   let failed = $state(false);
 
   $effect(() => {

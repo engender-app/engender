@@ -204,9 +204,8 @@ describe('ClinicianSummaryDossier preview truncation', () => {
   });
 });
 
-/* After-release 22, the 5 October audit's follow-up on the summary a
-   person hands their doctor. */
-describe('ClinicianSummaryDossier says only what the person told it (after-release 22)', () => {
+/* the 5 October audit's follow-up on the summary a person hands their doctor. */
+describe('ClinicianSummaryDossier says only what the person told it', () => {
   /* L04-02: every summary printed "Pronouns: Not specified", and nothing
      in the app could change it. */
   it('draws the pronouns row only when pronouns were given', () => {
@@ -235,11 +234,10 @@ describe('ClinicianSummaryDossier says only what the person told it (after-relea
   });
 });
 
-/* After-release 22 (UI-11): at phone width a wide table reads as stacked
-   rows, and paper keeps the table. The rendered check (every column on
-   screen at 320 and 390, dates on one line) is the ticket's browser probe;
-   this pins the parts a later edit could quietly break. */
-describe('stacked rows at phone width (after-release 22)', () => {
+/* (UI-11): at phone width a wide table reads as stacked rows, and paper keeps the table.
+   The rendered check (every column on screen at 320 and 390, dates on one line) is the
+   ticket's browser probe; this pins the parts a later edit could quietly break. */
+describe('stacked rows at phone width', () => {
   const screenBlock = printCss.slice(printCss.indexOf('@media screen'));
 
   it('labels every table cell with its column header', () => {

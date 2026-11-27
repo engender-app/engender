@@ -1022,7 +1022,6 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 - **Form errors.** A control is marked `aria-invalid` only once focus has left it or a submit has been refused; `Field` hands its control the first as a third snippet argument. An error names the field it is about through `aria-describedby`.
 - **Reduced motion** is described in section 8.5.
 - **Visible text first.** `aria-label` doesn't replace a card's visible reading.
-- **Audit records.** `docs/accessibility-audit-2026-09-30*` holds the latest audit.
 
 Setup keeps one empty SvelteKit shallow-history entry while mounted.
 Browser Back consumes that entry, calls the same previous-step function as

@@ -83,7 +83,7 @@ test('a chain nothing recorded breaks the series without naming equipment', () =
   assert.equal(series.runs.length, 2);
 });
 
-/* CONTEXT: "Capture chain" - changing phone breaks a series the way
+/* Capture chain. changing phone breaks a series the way
    changing the passage does, and the passage is the wider break: two
    passages leave nothing to compare at all. */
 test('a different passage breaks the series, and says so even when the phone changed as well', () => {

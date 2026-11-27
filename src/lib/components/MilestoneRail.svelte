@@ -104,21 +104,19 @@
       that took 20px of it. */
   const CHAR_HEIGHT_PX = 8;
   const LABEL_PADDING_PX = 16;
-  /** Never under the touch floor either (`floor`, the --touch-target
-      token): a band is a button, and a three-letter name ("HRT") would
-      otherwise draw a 40px one (after-release 18). */
+  /** Never under the touch floor either (`floor`, the --touch-target token): a band is a
+      button, and a three-letter name ("HRT") would otherwise draw a 40px one. */
   const minLabelHeight = (name: string, floor: number) =>
     Math.max(floor, name.length * CHAR_HEIGHT_PX + LABEL_PADDING_PX);
 
   let bandRects = $state<BandRect[]>([]);
 
-  /* Deleting or restoring a milestone changes the bands under the rows
-     while those rows are still collapsing or opening (carpet 15 row 48):
-     a band whose era lost its last row was gone at full opacity in one
-     frame, and a name whose biggest dot-free stretch moved jumped there,
-     101px in one frame. A band leaving fades where it stood, one arriving
-     after the rail first placed its bands fades in, and a name that is
-     placed somewhere else within its band travels there. */
+  /* Deleting or restoring a milestone changes the bands under the rows while those rows are
+     still collapsing or opening: a band whose era lost its last row was gone at full
+     opacity in one frame, and a name whose biggest dot-free stretch moved jumped there,
+     101px in one frame. A band leaving fades where it stood, one arriving after the rail
+     first placed its bands fades in, and a name that is placed somewhere else within its
+     band travels there. */
   let nameEls: Record<string, HTMLElement | undefined> = {};
   let bandsPlaced = false;
   const bandFade = () => ({ duration: bandsPlaced ? motionDuration('--dur-fast') : 0 });
@@ -263,11 +261,10 @@
       </div>
     {:else if item.kind === 'gap'}
       {@const label = gapLabel(item.fromEpochDay, item.toEpochDay)}
-      <!-- The axis runs behind this rather than being interrupted by it,
-           so the label is the only thing here: two dashed rules either
-           side of it were what broke the line into pieces. The fuller
-           sentence is hidden text rather than an aria-label, which a plain
-           div does not have read (after-release 21, audit L04-14). -->
+      <!-- The axis runs behind this rather than being interrupted by it, so the label is
+           the only thing here: two dashed rules either side of it were what broke the line
+           into pieces. The fuller sentence is hidden text rather than an aria-label, which
+           a plain div does not have read. -->
       <div class="tl-gap" data-tl-gap bind:this={itemEls[index]} transition:collapse|global>
         <span class="tl-gap-label" aria-hidden="true">{m.tl_gap_label({ duration: label })}</span>
         <span class="visually-hidden">{m.tl_gap_aria({ duration: label })}</span>
@@ -350,20 +347,17 @@
     left: 15px;
   }
 
-  /* An era's band: centred on the thread and the dots
-     rather than beside them, the way the ticket's own reference draws it,
-     over the bare thread and under the dots (a dot's own ring still cuts a
-     clean gap through a band or a name behind it, the way it always has
-     through the thread). Every band wears an edge, the reason
-     SpanTimeline's own bands do - a black or white flag leaves no other
-     way for two adjacent bands to read as separate objects.
+  /* An era's band: centred on the thread and the dots rather than beside them, the way the
+     ticket's own reference draws it, over the bare thread and under the dots (a dot's own
+     ring still cuts a clean gap through a band or a name behind it, the way it always has
+     through the thread). Every band wears an edge, the reason SpanTimeline's own bands do -
+     a black or white flag leaves no other way for two adjacent bands to read as separate
+     objects.
 
-     The drawn band is 20px; its target is the 48px floor (.hit-floor in
-     components.css), 14px out each side. That is exactly the room there
-     is: the band's centre is 16px into the rail, so the target runs from
-     8px into the screen's own gutter to the 40px where the milestone cards
-     begin, and covers nothing that is pressable (after-release 18; it
-     was 20px wide). */
+     The drawn band is 20px; its target is the 48px floor (.hit-floor in components.css),
+     14px out each side. That is exactly the room there is: the band's centre is 16px into
+     the rail, so the target runs from 8px into the screen's own gutter to the 40px where
+     the milestone cards begin, and covers nothing that is pressable (it was 20px wide). */
   .tl-era-band {
     position: absolute;
     left: 6px;
@@ -423,12 +417,10 @@
     margin-bottom: var(--space-4);
   }
 
-  /* The point on the axis, centred on the line and cut out of it by a ring in
-     the page colour, so the line appears to pass behind rather than through.
-     Not a control, and it paints over an era's band, so it lets presses
-     through: a press on the dot used to fall to nothing, and the band's
-     target had a 20px hole wherever a milestone sat on it (after-release
-     18). */
+  /* The point on the axis, centred on the line and cut out of it by a ring in the page
+     colour, so the line appears to pass behind rather than through. Not a control, and it
+     paints over an era's band, so it lets presses through: a press on the dot used to fall
+     to nothing, and the band's target had a 20px hole wherever a milestone sat on it. */
   .tl-dot {
     pointer-events: none;
     position: absolute;

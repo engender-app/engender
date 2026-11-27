@@ -51,9 +51,8 @@ const androidPluginRegistry = [
   { name: 'App', owner: androidPluginOwners.backNavigation },
 ] as const satisfies readonly AndroidPluginRegistryEntry[];
 
-/* requiredAndroidPluginNames stays exported for its own test, and
-   cross-checked in android-back-navigation-wiring.test.ts (AU-09 test-only
-   review). */
+/* requiredAndroidPluginNames stays exported for its own test, and cross-checked in
+   android-back-navigation-wiring.test.ts. */
 export const requiredAndroidPluginNames = androidPluginRegistry.map((entry) => entry.name);
 
 const pluginNameByOwner = new Map<AndroidPluginOwner, string>(
@@ -68,8 +67,7 @@ export function registerAndroidPlugin<Bridge>(owner: AndroidPluginOwner): Bridge
   return registerPlugin<Bridge>(pluginName);
 }
 
-/* assertRequiredAndroidPluginsRegistered stays exported only for its own test
-   (AU-09 test-only review). */
+/* assertRequiredAndroidPluginsRegistered stays exported only for its own test. */
 export function assertRequiredAndroidPluginsRegistered(
   plugins: Record<string, unknown> | null | undefined
 ): void {

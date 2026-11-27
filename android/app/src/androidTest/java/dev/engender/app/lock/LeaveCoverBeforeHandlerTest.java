@@ -22,9 +22,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * GD-018: a handler the app opens for a result is another app. The cover is
- * up before it can draw, stays up for as long as it is in front, and a
- * handler that is not a system component gets no lock grace.
+ * A handler the app opens for a result is another app. The cover is up before
+ * it can draw, stays up for as long as it is in front, and a handler that is
+ * not a system component gets no lock grace.
  */
 @RunWith(AndroidJUnit4.class)
 public class LeaveCoverBeforeHandlerTest {

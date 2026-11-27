@@ -54,12 +54,10 @@
     children: Snippet<[string, string | undefined, boolean]>;
   } = $props();
 
-  /* Set the first time focus leaves the field. A control marks itself
-     `aria-invalid` only once this is true: an empty field nobody has
-     reached yet is not a mistake, and a screen reader that says "invalid"
-     on every field of a fresh form is crying wolf (after-release 21, audit
-     A11Y-14). Lives as long as the field does, so a sheet opened again
-     starts clean. */
+  /* Set the first time focus leaves the field. A control marks itself `aria-invalid` only
+     once this is true: an empty field nobody has reached yet is not a mistake, and a screen
+     reader that says "invalid" on every field of a fresh form is crying wolf. Lives as long
+     as the field does, so a sheet opened again starts clean. */
   let touched = $state(false);
 
   const mintedId = $props.id();

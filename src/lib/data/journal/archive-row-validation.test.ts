@@ -133,9 +133,9 @@ for (const mode of ['merge', 'replace'] as const) {
     }
   });
 
-  /* Re-check carpet 12, row 13: each primitive check and each row-shape
-     and reference refusal below survived its own mutants, because no row
-     reached it with the wrong value. One case per check, named. */
+  /* row 13: each primitive check and each row-shape and reference refusal below survived
+     its own mutants, because no row reached it with the wrong value. One case per check,
+     named. */
   test(`${mode} refuses a wrong value at each check, one check at a time`, async () => {
     const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
     const cases: [string, (journal: ArchiveJournal) => void][] = [
@@ -280,7 +280,7 @@ for (const mode of ['merge', 'replace'] as const) {
     }
   });
 
-  // Re-check carpet 11, F4: the first Merge stored such an id, and the second
+  // the first Merge stored such an id, and the second
   // could no longer match it and failed on a raw UNIQUE constraint.
   test(`${mode} refuses an id or key holding a NUL character`, async () => {
     const nul = String.fromCharCode(0);
@@ -315,10 +315,9 @@ for (const mode of ['merge', 'replace'] as const) {
   });
 }
 
-/* Re-check carpet 15, row 13 after the Stryker rerun: the row-shape checks
-   still let single-condition mutants through, because each shape was only
-   ever handed rows its own refusal caught. Each case below changes one
-   field of a golden row: the edges a check allows must pass, and each
+/* row 13 after the Stryker rerun: the row-shape checks still let single-condition mutants
+   through, because each shape was only ever handed rows its own refusal caught. Each case
+   below changes one field of a golden row: the edges a check allows must pass, and each
    other shape must be refused, so no one condition can be dropped. */
 test('each row-shape check accepts its edges and refuses each half-shape', () => {
   type Row = Record<string, unknown>;

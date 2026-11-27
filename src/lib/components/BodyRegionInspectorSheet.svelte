@@ -187,9 +187,8 @@
     margin: 0;
     font-size: var(--text-lg);
   }
-  /* Sentence case from lowercase vocabulary: the first letter only.
-     `capitalize` title-cased every word ("Face And Jaw"), Polish too
-     (audit L04-17). */
+  /* Sentence case from lowercase vocabulary: the first letter only. `capitalize`
+     title-cased every word ("Face And Jaw"), Polish too (17). */
   .inspector-title::first-letter {
     text-transform: uppercase;
   }

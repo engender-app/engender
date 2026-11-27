@@ -55,17 +55,16 @@ describe('what Safe Space is built from', () => {
     for (const way of SAFE_SPACE_WAYS) expect(doubt).toContain(`${way.key}:`);
   });
 
-  /* Release audit U11: "Things that help" was both the button above the
-     breath and a row under it. Said once, by the button. */
+  /* Release: "Things that help" was both the button above the breath and a row under it.
+     Said once, by the button. */
   it('reaches the comfort list once, from the button above the breath', () => {
     expect(markup.match(/href="\/doubt\/comfort"/g)).toHaveLength(1);
     expect(SAFE_SPACE_WAYS.map((w) => w.href)).not.toContain('/doubt/comfort');
   });
 
   it('names the More hub as where back falls back to', () => {
-    /* CARPET-05: the href is the fallback rather than the destination now,
-       and ScreenHeader is what turns it into a return to whichever screen
-       the person actually came from. */
+    /* the href is the fallback rather than the destination now, and ScreenHeader is what
+       turns it into a return to whichever screen the person actually came from. */
     expect(doubt).toContain('back="/more"');
   });
 
@@ -73,13 +72,13 @@ describe('what Safe Space is built from', () => {
     expect(markup).toContain('<BreathingExercise');
   });
 
-  it('reads the counterevidence pool live and keeps no copy of it (FA 09)', () => {
+  it('reads the counterevidence pool live and keeps no copy of it', () => {
     expect(evidence).toContain('j.entries.counterevidencePool');
     expect(safeSpace).not.toMatch(/doubtJournal|saveSnapshot|getSnapshots/);
     expect(evidenceMarkup).not.toContain('data-confirm-delete-doubt-snapshot');
   });
 
-  it('offers no row that leaves for another door (FA 09)', () => {
+  it('offers no row that leaves for another door', () => {
     expect(doubt).not.toMatch(/safe_space_moments|safe_space_readings/);
     expect(SAFE_SPACE_WAYS.map((w) => w.key)).toEqual(['resources', 'evidence']);
   });
@@ -114,8 +113,7 @@ describe('what Safe Space is built from', () => {
   });
 
   /* Again: the subtitle is the qualification rule in the person's own words, and entries.ts
-     is what keeps it. The two moved together and a screen promising more than the query
-     delivers is the defect was written for. */
+     enforces it. The wording and the query must agree. */
   it('says what qualifies in terms the query actually holds to', () => {
     expect(evidence).toContain('m.safe_space_counterevidence_sub()');
     const entries = read('src/lib/data/journal/entries.ts');

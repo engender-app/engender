@@ -182,7 +182,7 @@ export const reference = {
   /** Every body region an entry can log an intensity against, hidden ones
       included - what an entry card or the trend chart resolves a logged
       region's key against, so a region hidden after being logged still
-      shows and charts (CONTEXT: "Hidden"). */
+      shows and charts. */
   get bodyRegions(): BodyRegion[] {
     return mirror.bodyRegions;
   },
@@ -202,7 +202,7 @@ export const reference = {
 
   /** Every personal-effect catalogue entry, hidden ones and every tier
       included - what the effects settings screen manages
-      (CONTEXT: "Hidden", "Personal effect"). */
+. */
   get personalEffectTypes(): PersonalEffectCatalogEntry[] {
     return mirror.personalEffectTypes;
   },
@@ -277,7 +277,7 @@ export const reference = {
 
   /** Every presentation, most-recently-used first (presentations.ts),
       hidden ones included - what the management screen under /more offers
-      (CONTEXT: "Hidden"). */
+. */
   get presentations(): Presentation[] {
     return mirror.presentations;
   },

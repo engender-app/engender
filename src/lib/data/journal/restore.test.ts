@@ -671,7 +671,7 @@ test('replace applies the state the archive put on built-in rows; merge takes th
   assert.equal(mergedActivities.tags.find((t) => t.id === 'a-therapy')?.label, 'my own wording', "the target's rename is the newer");
 });
 
-test('a renamed, hidden custom scale travels as it now reads, by replace and by merge (FA 41)', async () => {
+test('a renamed, hidden custom scale travels as it now reads, by replace and by merge', async () => {
   const source = await device();
   const voice = await source.journal.dimensions.addCustomDimension({ name: 'Vocie', low: 'off', high: 'mine', min: 0, max: 10 });
   await source.journal.dimensions.renameCustomDimension(voice.key, { name: 'Voice', low: 'strained', high: 'at ease' });
@@ -687,9 +687,9 @@ test('a renamed, hidden custom scale travels as it now reads, by replace and by 
   assert.deepEqual((await merged.journal.dimensions.getDimensions()).find((d) => d.key === voice.key), expected);
 });
 
-test('an archive from a journal that shows the duplicate built-ins restores them shown (FA 41)', async () => {
+test('an archive from a journal that shows the duplicate built-ins restores them shown', async () => {
   const source = await device();
-  // A journal seeded before FA 41 holds all three visible.
+  // A journal seeded before holds all three visible.
   await source.journal.tags.setTagHidden('g-body-dys', false);
   await source.journal.tags.setTagHidden('g-soc-dys', false);
   await source.journal.bodyRegions.setRegionHidden('whole_body', false);
@@ -973,7 +973,7 @@ test('an array instead of a journal is refused before anything is written', asyn
   assert.deepEqual((await target.journal.archive.snapshot()).journal, before.journal);
 });
 
-/* A lab row written has no draw time, no provider and no timing columns. The payload type
+/* An older lab row lacks draw time, no provider and no timing columns. The payload type
    says otherwise, but it is a cast over JSON.parse output, so the importer has to survive
    the fields being absent rather than binding undefined at the driver. */
 test('a lab result from an archive written before the dosing context existed still imports', async () => {
@@ -993,7 +993,7 @@ test('a lab result from an archive written before the dosing context existed sti
   assert.equal(restored.timing, null);
 });
 
-/* A milestone row written has no description column. The payload type says otherwise, but
+/* Older milestone rows omit the description. The payload type says otherwise, but
    it is a cast over JSON.parse output, so the importer has to survive the field being
    absent rather than binding undefined at the driver. */
 test('a milestone from an archive written before descriptions existed still imports', async () => {

@@ -34,7 +34,7 @@ describe('testosteroneActive', () => {
     expect(testosteroneActive([episode({ drug: 'TESTOSTERONE UNDECANOATE' })], NOON)).toBe(true);
   });
 
-  it('reads the Polish name and a bare T, and not methyltestosterone (after-release 01, L03-06)', () => {
+  it('reads the Polish name and a bare T, and not methyltestosterone', () => {
     expect(testosteroneActive([episode({ drug: 'Testosteron' })], NOON)).toBe(true);
     expect(testosteroneActive([episode({ drug: 'cypionian testosteronu' })], NOON)).toBe(true);
     expect(testosteroneActive([episode({ drug: 'T' })], NOON)).toBe(true);

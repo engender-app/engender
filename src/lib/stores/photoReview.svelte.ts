@@ -26,10 +26,9 @@ interface PhotoReview {
   /** Opens the native camera; sets `photo` (and freezes `reference`) if it
       returns a shot. Also what a retake re-invokes. */
   capture(): Promise<void>;
-  /** Commits whatever's under review and closes it once that lands. An
-      `onAccept` that answers `false` (its write failed and said so) leaves
-      the shot under review, so it can be accepted again rather than lost
-      (after-release 06). */
+  /** Commits whatever's under review and closes it once that lands. An `onAccept` that
+      answers `false` (its write failed and said so) leaves the shot under review, so it can
+      be accepted again rather than lost. */
   accept(photo: NormalizedPhoto): void | Promise<void>;
   /** Discards whatever's under review without storing anything. */
   cancel(): void;

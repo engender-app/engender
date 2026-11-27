@@ -119,9 +119,8 @@ test('version 117 resets the stamp a seeding batch left on built-ins, and keeps 
   ]);
 });
 
-/* The decision matrix in the header, one boundary at a time (re-check
-   carpet 12: equal stamps and the tombstone rules had no test, so their
-   mutants survived). */
+/* The decision matrix in the header, one boundary at a time (equal stamps and the tombstone
+   rules had no test, so their mutants survived). */
 async function letters(rows: [string, number][], deletions: [string, number][] = []) {
   const db = await migratedDb();
   for (const [uuid, at] of rows) {

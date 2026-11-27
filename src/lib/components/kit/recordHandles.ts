@@ -55,7 +55,7 @@ export const discardHandles = {
 /** The slug behind a generated handle, or null if no record sheet could
     have produced it. */
 /* recordHandleSlug stays exported for its own test, and cross-checked in
-   walkthrough-handles-exist.test.ts (AU-09 test-only review). */
+   walkthrough-handles-exist.test.ts. */
 export function recordHandleSlug(handle: string): string | null {
   for (const prefix of PREFIXES) {
     if (!handle.startsWith(prefix)) continue;

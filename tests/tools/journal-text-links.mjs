@@ -1,9 +1,7 @@
-/* Old links that name a medication or a search (security scan GD-016,
-   GD-025): opened cold, followed in-app, or left in the address when the
-   journal locks, the address ends up holding no journal text, and the
-   screen still does what the old link asked for - the drug resolved to its
-   episode UUID, the query handed to the search box. Run against the dev
-   server; one browser, one journal. */
+/* Old links that name a medication or a search: opened cold, followed in-app, or left in
+   the address when the journal locks, the address ends up holding no journal text, and the
+   screen still does what the old link asked for - the drug resolved to its episode UUID,
+   the query handed to the search box. Run against the dev server; one browser, one journal. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -140,9 +138,8 @@ try {
   assertClean('after unlock');
   });
 
-  /* GD-039: a malformed fragment used to throw a URIError inside these
-     three screens' setup. Opened the way a sent link is, each must still
-     draw its header and raise no page error. */
+  /* A malformed fragment used to throw a URIError inside these three screens' setup. Opened
+     the way a sent link is, each must still draw its header and raise no page error. */
   await step('a malformed fragment leaves the dose, lab and regimen screens usable', async () => {
     for (const path of ['/care/doses#%', '/care/labs#%ZZ', '/care/regimen#%E2%82']) {
       const before = errors.length;

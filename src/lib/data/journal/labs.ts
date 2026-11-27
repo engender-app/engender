@@ -1,5 +1,5 @@
 /* The labs area (PRD F30). An analyte is free text carried with a
-   free-text unit, never converted or interpreted (CONTEXT: "Analyte"). */
+   free-text unit, never converted or interpreted. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DoseRoute, LabResult, LabTiming } from '../types';
@@ -35,8 +35,8 @@ export interface LabResultInput {
       known, and no hours figure is derived. */
   drawTime?: string | null;
   provider?: string;
-  /** What the test cost (FA 30). Absent or null is none, like `note`; the
-      editor always resubmits it. Throws if invalid. */
+  /** What the test cost. Absent or null is none, like `note`; the editor always resubmits
+      it. Throws if invalid. */
   cost?: CostInput;
 }
 

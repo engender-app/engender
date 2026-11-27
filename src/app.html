@@ -5,11 +5,10 @@
     <!-- viewport-fit=cover makes the browser report the safe-area insets and
          lets the page extend behind the system bars. app.css uses the
          insets to pad the scroll region on all four sides. -->
-    <!-- No maximum-scale, no user-scalable: the browser's zoom belongs to
-         the person using the app (WCAG 1.4.4, audit U2). The Android shell
-         is the exception - it turns pinch off in the WebView itself, via
-         capacitor.config.ts's zoomEnabled - so this markup serves the web
-         release only where zoom is wanted. tests/node/ui/zoom-policy.test.ts holds
+    <!-- No maximum-scale, no user-scalable: the browser's zoom belongs to the person using
+         the app (WCAG 1.4.4). The Android shell is the exception - it turns pinch off in
+         the WebView itself, via capacitor.config.ts's zoomEnabled - so this markup serves
+         the web release only where zoom is wanted. tests/node/ui/zoom-policy.test.ts holds
          both halves of that policy to their sources. -->
     <meta
       name="viewport"
@@ -143,7 +142,7 @@
          says how.
 
          The mark never moves. The handover is opacity only, on the blind's soft ease-out:
-         lib/splash.ts adds.is-leaving and.is-answered once boot has answered and its screen
+         lib/splash.ts adds .is-leaving and .is-answered once boot has answered and its screen
          is showing, and takes the element out when the fade is done. It is fixed and inert,
          so nothing under it can be missed or blocked, and the ground is the app's own --bg
          so no frame of the fade shows a different one. */

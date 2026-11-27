@@ -27,7 +27,7 @@ const svelteFiles = globSync('src/**/*.svelte', { cwd: root });
    /settings/live-tiles left it with a redirect is a `+page.ts` stub now and has no
    component at all, so there is nothing here to exempt. */
 const WITHOUT = new Map([
-  ['src/routes/+page.svelte', 'Home wears the flag sun as its header (ticket 19)'],
+  ['src/routes/+page.svelte', 'Home uses the flag sun as its header'],
   ['src/routes/entry/[id]/+page.svelte', 'renders EntryEditor, which carries the header'],
   ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow']
 ]);
@@ -43,11 +43,10 @@ describe('every screen gets its header from one component', () => {
   });
 
   it('leaves the back control to the header too', () => {
-    /* CARPET-05 put "back goes to the last screen you were actually on"
-       inside this one component, where a href becomes the fallback rather
-       than the destination. A screen that draws its own arrow gets none of
-       that, and the header's grep above would not notice, because it is
-       looking at the title and the block around it. */
+    /* put "back goes to the last screen you were actually on" inside this one component,
+       where a href becomes the fallback rather than the destination. A screen that draws
+       its own arrow gets none of that, and the header's grep above would not notice,
+       because it is looking at the title and the block around it. */
     const offenders = svelteFiles.filter(
       (file) => file !== 'src/lib/components/ScreenHeader.svelte' && read(file).includes('data-screen-back')
     );

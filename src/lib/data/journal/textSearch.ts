@@ -303,10 +303,9 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['provider']
   }),
-  /* The drug and the ester somebody typed for an episode (regimen.ts's own
-     text fields), dated by the day the episode started. The dose, the unit
-     and the route are picked from closed vocabularies and are not text. An
-     episode that was put away is not found (after-release 07). */
+  /* The drug and the ester somebody typed for an episode (regimen.ts's own text fields),
+     dated by the day the episode started. The dose, the unit and the route are picked from
+     closed vocabularies and are not text. An episode that was put away is not found. */
   area({
     key: 'regimenEpisodes',
     covers: ['regimenEpisodes'],
@@ -344,14 +343,14 @@ const AREAS = [
   }),
   /* A margin note. Dated by the entry it annotates rather than by the day the note itself
      was written: an entry has no name a person would recognise it by besides its own day,
-     and "a hit needs to say which entry it belongs to" (the ticket's own condition) is what
-     the visible date on a hit row already draws for every other area - so this is the one
-     place that date names the owner rather than the row. `context` carries the entry's own
-     id (its rowid, the same identity `/entry/[id]` already opens by) for the href, the way
-     `feltSense`'s `context` carries its owning tryout's id - `CAST` to TEXT because
-     `context` is a string column in every other area (each of them a uuid) and an entry's
-     id is the one integer identity this registry ever hands back through it. Excludes a
-     trashed entry's notes, the same reason `photos.ts`'s own reads do. */
+     and "a hit needs to say which entry it belongs to"  is what the visible date on a hit
+     row already draws for every other area - so this is the one place that date names the
+     owner rather than the row. `context` carries the entry's own id (its rowid, the same
+     identity `/entry/[id]` already opens by) for the href, the way `feltSense`'s `context`
+     carries its owning tryout's id - `CAST` to TEXT because `context` is a string column in
+     every other area (each of them a uuid) and an entry's id is the one integer identity
+     this registry ever hands back through it. Excludes a trashed entry's notes, the same
+     reason `photos.ts`'s own reads do. */
   area({
     key: 'marginNotes',
     covers: ['marginNotes'],
@@ -390,8 +389,7 @@ type Covered = (typeof AREAS)[number]['covers'][number];
  * containing only values, dates or closed vocabulary have no free text to
  * search.
  */
-/* SEARCH_OPT_OUTS stays exported only for its own test (AU-09 test-only
-   review). */
+/* SEARCH_OPT_OUTS stays exported only for its own test. */
 export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   entries: 'searched through the entry FTS index, by the screen’s own read (ADR-0005)',
 
@@ -455,13 +453,12 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   areaStates: 'no text of its own: an area key, a flag and a day'
 };
 
-/* SEARCH_AREAS stays exported only for its own test (AU-09 test-only review). */
+/* SEARCH_AREAS stays exported only for its own test. */
 export const SEARCH_AREAS: readonly SearchArea[] = AREAS;
 
 /** Every area's key, in the order they are declared - which is the order
     hits are grouped in on the screen, so it never names an area itself. */
-/* SEARCH_AREA_KEYS stays exported for its own test, and cross-checked in
-   measure.ts (AU-09 test-only review). */
+/* SEARCH_AREA_KEYS stays exported for its own test, and cross-checked in measure.ts. */
 export const SEARCH_AREA_KEYS: readonly SearchAreaKey[] = AREAS.map((a) => a.key);
 
 /** Every table any area reads, de-duplicated: what `textSearch.search`

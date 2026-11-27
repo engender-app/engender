@@ -63,8 +63,7 @@ interface DayAheadReading extends DayAheadAreas {
     over its own area dependency, the same reason `DaySection` and
     `LastWriteEntry` are: the list holds every kind at once, and a test
     registers a kind this file has never named. */
-/* DayAheadSection stays exported only for its own test (AU-09 test-only
-   review). */
+/* DayAheadSection stays exported only for its own test. */
 export interface DayAheadSection {
   key: string;
   covers: readonly string[];
@@ -225,8 +224,7 @@ type Covered = (typeof SECTIONS)[number]['covers'][number];
     with no day at all has no day already passed to report. Where a reason
     is this registry's own rather than a restatement, a comment says so -
     the six the ADR spends a paragraph on each get one. */
-/* DAY_AHEAD_OPT_OUTS stays exported only for its own test (AU-09 test-only
-   review). */
+/* DAY_AHEAD_OPT_OUTS stays exported only for its own test. */
 export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   dimensions: 'reference data, not a day still to come',
   presets: 'reference data, not a day still to come',
@@ -290,8 +288,7 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   marginNotes: 'drawn beside the entry it annotates, not a day still to come of its own'
 };
 
-/* DAY_AHEAD_SECTIONS stays exported only for its own test (AU-09 test-only
-   review). */
+/* DAY_AHEAD_SECTIONS stays exported only for its own test. */
 export const DAY_AHEAD_SECTIONS: readonly DayAheadSection[] = SECTIONS;
 
 /** Every table any section reads, de-duplicated - the same single-sourcing

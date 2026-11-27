@@ -51,13 +51,12 @@ describe('what the tab says', () => {
 });
 
 describe('the Recents preview', () => {
-  /* FA 43 hid the Recents card under disguise by making the whole window
-     secure, which also refused screenshots with the capture switch on.
-Disguise now hides only the card; the
-     window flag follows the capture choice. Both are decided natively before
-     the first frame, so the read has to be the native one: the live launcher
-     alias, the same read the widgets and notifications make.
-     CaptureDecisionTest holds the decision, DisguiseCaptureTest the window. */
+  /* hid the Recents card under disguise by making the whole window secure, which also
+     refused screenshots with the capture switch on. Disguise now hides only the card; the
+     window flag follows the capture choice. Both are decided natively before the first
+     frame, so the read has to be the native one: the live launcher alias, the same read the
+     widgets and notifications make. CaptureDecisionTest holds the decision,
+     DisguiseCaptureTest the window. */
   const java = (path: string) =>
     readFileSync(fileURLToPath(new URL(`../../../android/app/src/main/java/dev/engender/app/${path}`, import.meta.url)), 'utf8');
 
@@ -127,13 +126,11 @@ describe('where the decoy name is allowed to appear', () => {
   });
 
   it('is asked by every surface that says the app name out loud', () => {
-    /* The other half of the check above: nobody hardcodes the decoy name,
-       and the outside surfaces do print a name, so they have to be getting
-       it from here. FA 42 removed the in-app reads (AppNav, the home
-       hero), so only surfaces a person can see before unlocking, or on
-       paper, remain: a disguise that stopped reaching a lock screen would
-       show the real name to the person it was hiding from, and ship
-       green. */
+    /* The other half of the check above: nobody hardcodes the decoy name, and the outside
+       surfaces do print a name, so they have to be getting it from here. removed the in-app
+       reads (AppNav, the home hero), so only surfaces a person can see before unlocking, or
+       on paper, remain: a disguise that stopped reaching a lock screen would show the real
+       name to the person it was hiding from, and ship green. */
     for (const path of [
       'src/lib/components/PrintLetterhead.svelte',
       'src/lib/components/JournalGate.svelte',
@@ -163,10 +160,9 @@ describe('catalogued app names', () => {
       : /\.(svelte|ts)$/.test(entry.name) && !entry.name.endsWith('.test.ts') ? [`${dir}/${entry.name}`] : []);
   const sources = files(`${root}src`).map(path => ({ path, text: readFileSync(path, 'utf8') }));
 
-  /* Unlocked screens print the plain name since FA 42 (the in-app
-     disguise reads are gone); these are the only files allowed to. Any
-     other file, a gate or a printed page included, goes through
-     appWordmark or tabIdentity. */
+  /* Unlocked screens print the plain name since (the in-app disguise reads are gone); these
+     are the only files allowed to. Any other file, a gate or a printed page included, goes
+     through appWordmark or tabIdentity. */
   const inApp = new Set([
     `${root}src/lib/components/AppNav.svelte`,
     `${root}src/lib/components/PermissionList.svelte`,

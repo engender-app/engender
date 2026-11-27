@@ -69,10 +69,9 @@
   }
 
   let active = $state<string | null>(null);
-  /* The row a tap or a key toggled on, which is what aria-pressed says
-     (after-release 18, L06-04). Hover shows the same amount but is not a
-     press, so a pointer passing over a row never announces one; leaving a
-     row hands the display back to whatever is pressed. */
+  /* The row a tap or a key toggled on, which is what aria-pressed says. Hover shows the
+     same amount but is not a press, so a pointer passing over a row never announces one;
+     leaving a row hands the display back to whatever is pressed. */
   let pressed = $state<string | null>(null);
 
   function enter(e: PointerEvent, key: string) {
@@ -325,11 +324,10 @@
      "cover the whole reading" reasoning .kit-bar.is-open gives for a
      pressable bar row - half a legend row answering to a pointer and
      half not would read as an accident here too. */
-  /* Each row is the touch floor tall and the rows touch, so the legend's
-     rhythm is the rows themselves rather than a gap between 27px rows
-     (after-release 18, L06-04): 48px rows 8px apart would have spread the
-     legend for nothing, and 27px rows with an overlay could not reach the
-     floor without covering each other. */
+  /* Each row is the touch floor tall and the rows touch, so the legend's rhythm is the rows
+     themselves rather than a gap between 27px rows: 48px rows 8px apart would have spread
+     the legend for nothing, and 27px rows with an overlay could not reach the floor without
+     covering each other. */
   .kit-donut-item-btn {
     display: flex;
     align-items: center;

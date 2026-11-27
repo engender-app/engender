@@ -97,8 +97,8 @@ const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies readon
     not give - a kind absent from all of them would just never be drawn.
     Demonstrated by deleting a line: the object stops satisfying the
     `Record` and this file refuses to compile, naming the kind. */
-/* LIVE_TILE_TIER stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* LIVE_TILE_TIER stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'wear-timer': 'today',
   'dose-panel': 'moment',
@@ -109,8 +109,8 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
 
 /** How many tiles Home draws at their own weight. The rest fold into one collapsed row in
     place - never a route, and never a true tile dropped. */
-/* HOME_TILE_CAP stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* HOME_TILE_CAP stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export const HOME_TILE_CAP = 3;
 
 /** The order Home actually draws them in: the bands outside, `LIVE_TILE_ORDER`
@@ -197,8 +197,8 @@ export interface HomeTile {
 }
 
 /** What the reads answered. One field per query `liveTiles.svelte.ts` runs. */
-/* HomeTileReads stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* HomeTileReads stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export interface HomeTileReads {
   runningWear: WearSession | null;
   /** `prefs.wearDurationCueEnabled` - a preference rather than a read, the
@@ -228,8 +228,8 @@ export interface HomeTileReads {
 
 /** What a tile's controls do. Everything a tile can start except opening the
     letter tile's dismiss sheet, which is Home's own surface. */
-/* HomeTileActions stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* HomeTileActions stays exported only for liveTiles.grid.test.ts, which cross-checks
+   against it. */
 export interface HomeTileActions {
   stopWear: (session: WearSession) => void;
   dismissSafeSpace: (entryId: number) => void;
@@ -238,8 +238,8 @@ export interface HomeTileActions {
 
 /** The display formats, as callbacks: every one of them reaches
     paraglide through `$lib`, which the Node tier cannot resolve. */
-/* HomeTileFormat stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* HomeTileFormat stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export interface HomeTileFormat {
   number?: (value: number) => string;
   /** A full date - the day a letter unlocked. */
@@ -257,8 +257,8 @@ export interface HomeTileFormat {
   doseRoute: (route: RegimenEpisode['route']) => string;
 }
 
-/* HomeTilesInput stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* HomeTilesInput stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export interface HomeTilesInput {
   todayEpochDay: number;
   /** One clock for the whole grid: the wear timer's reading, every snooze

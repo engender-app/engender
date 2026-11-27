@@ -149,8 +149,8 @@ public class DisguiseAliasTest {
         assertEquals(0, info.flags & ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS);
     }
 
-    /** FA 43: the names apps listing launcher activities print say nothing
-        about the app, its flags or the disguise. */
+    /** the names apps listing launcher activities print say nothing about the app, its
+        flags or the disguise. */
     @Test
     public void noAliasNameSaysWhatItDraws() {
         Map<String, String> identities = DisguiseAlias.identities(context);

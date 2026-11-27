@@ -28,10 +28,9 @@
     /** Half the room between the bar and the first entry, for a list whose first entry has
         to start high on the screen. */
     tight?: boolean;
-    /** The bar's heading level, which is the placing screen's to say
-        (ChartCard's rule): 2 where the card sits straight under the
-        screen's h1, so a screen reader walking the headings finds no
-        skipped level (after-release 21, audit A11Y-13). */
+    /** The bar's heading level, which is the placing screen's to say (ChartCard's rule): 2
+        where the card sits straight under the screen's h1, so a screen reader walking the
+        headings finds no skipped level. */
     level?: 2 | 3;
     children: Snippet;
   } = $props();

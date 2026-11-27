@@ -21,13 +21,13 @@
   );
   let counterevidence = $derived(counterevidenceQuery.rows);
 
-  /* What the screen opens on, and what waits behind the control. Split here
-     rather than in the markup so the walkthrough can count each half.
+  /* What the screen opens on, and what waits behind the control. Split here rather than in
+     the markup so the walkthrough can count each half.
 
-     Drawn as days of entries, the same drawing Calendar, Search and a day
-     give an entry (release audit U9: this screen alone used the older
-     card). The split is by whole days (previewWholeDays), so a day the
-     pool returns two entries for never gets its date bar twice. */
+     Drawn as days of entries, the same drawing Calendar, Search and a day give an entry
+     (release: this screen alone used the older card). The split is by whole days
+     (previewWholeDays), so a day the pool returns two entries for never gets its date bar
+     twice. */
   let split = $derived(previewWholeDays(entryDayGroups(counterevidence)));
   let shown = $derived(split.shown);
   let held = $derived(split.held);

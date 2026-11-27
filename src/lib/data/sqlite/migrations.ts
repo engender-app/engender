@@ -429,7 +429,7 @@ function asOneStep(version: number, steps: Migration[]): Migration {
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
   asOneStep(119, POST_RC1_STEPS),
-  /* Bug 25: progress photos, a pose-by-pose record of shots taken on purpose
+  /* progress photos, a pose-by-pose record of shots taken on purpose
      (progress-photo-migration.ts). */
   { version: 120, sql: PROGRESS_PHOTOS },
   /* 'genital_sexual' splits into 'genital' and 'sexual'

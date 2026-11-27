@@ -33,7 +33,7 @@ type DraftPhoto = Omit<Photo, 'id'>;
 
 /** An in-app audio recording belonging to exactly one entry. Entry-only, unlike Photo: no
     milestone owner. One file per row, unlike Photo: nothing normalizes or thumbnails a
-    recording (out of scope by the ticket - no client-side audio effects), so `fileName`
+    recording, so `fileName`
     names the one file the entry's playback reads. */
 export interface VoiceRecording {
   id: string;
@@ -161,7 +161,7 @@ export interface Presentation {
       every presentation for free. `roleAt` resolves any stored value by
       modulo, so no stored index can dangle. */
   roleIndex: number;
-  /** Hides rather than deletes (CONTEXT: "Hidden") - a hidden presentation
+  /** Hides rather than deletes - a hidden presentation
       drops out of the entry editor's chip while every entry that already
       carries it keeps it. */
   hidden: boolean;
@@ -176,7 +176,7 @@ export interface GenderDimension {
   max: number;
   builtIn: boolean;
   /** Hidden dimensions leave presets, the editor and the charts; their
-      logged values survive (CONTEXT: "Hidden"). Dimensions hide, never
+      logged values survive. Dimensions hide, never
       delete - a delete would take every value ever logged on it. */
   hidden: boolean;
 }
@@ -194,7 +194,7 @@ export interface Tag {
   builtIn: boolean;
   hidden: boolean;
   /** Built-in only: what this category means, for tags whose name alone
-      does not say (CONTEXT: Dysphoria type). Surfaced via an info
+      does not say. Surfaced via an info
       affordance rather than shown inline. */
   description?: string;
   /** Own tags only: the name of the icon a person picked from tagIcons.ts,
@@ -296,7 +296,7 @@ export interface LabResult {
   drawTime: string | null;
   /** Which lab drew it. Free text, exactly as free as `unit`: no fixed
       list, no normalization, and no matching between two spellings of one
-      lab (CONTEXT: "Lab provider"). Blank when not recorded. */
+      lab. Blank when not recorded. */
   provider: string;
   /** Null when no dose preceded the draw, or when an hours figure would
       have needed a draw time nobody recorded. */
@@ -342,15 +342,13 @@ export interface TryoutPhoto {
   fileName: string;
 }
 
-/** One point in a tryout's running felt-sense history (CONTEXT:
-    "Felt-sense entry"). Watching that feeling change over the tryout's
+/** One point in a tryout's running felt-sense history. Watching that feeling change over the tryout's
     lifespan is the point of tracking it, so this is its own addressable
     row rather than a single rating fixed on the tryout at creation - the
-    same reasoning that gives DosePause its own uuid. `mood` reuses the app's one five-level mood scale (CONTEXT:
-    "Mood") rather than inventing a second one for the same kind of
+    same reasoning that gives DosePause its own uuid. `mood` reuses the app's one five-level mood scale rather than inventing a second one for the same kind of
     judgement.
 
-    Belongs to one Tryout (CONTEXT: "Felt-sense entry"), which never
+    Belongs to one Tryout, which never
     travels here, the same reasoning `Photo` carries no owner id of its
     own - the caller already knows which tryout it asked for. */
 export interface FeltSenseEntry {
@@ -574,7 +572,7 @@ export interface Era {
   endEpochDay: number | null;
 }
 
-/* No episode reference (CONTEXT: "Side effect"): this record stands alone
+/* No episode reference: this record stands alone
    and has to work before a regimen episode exists. */
 export interface SideEffect {
   id: string;
@@ -591,7 +589,7 @@ export interface SideEffect {
     loggable state here, not the absence of a row. */
 export type CycleEventKind = (typeof CYCLE_EVENT_KINDS)[number];
 
-/* No episode reference (CONTEXT: "Cycle event"): this record stands alone
+/* No episode reference: this record stands alone
    and has to work whether or not a regimen episode exists, the same
    reasoning SideEffect above gives. Not an Entry: no mood, dimension
    values, tags or note. Purely descriptive - no prediction, forecast or
@@ -602,7 +600,7 @@ export interface CycleEvent {
   epochDay: number;
 }
 
-/* Its own record type, not an Entry (CONTEXT: "Wear session"), and not a
+/* Its own record type, not an Entry, and not a
    Reminder either: the record is what happened, and its optional Reminder
    is a separate row this area manages by an auto_source marker
    (wearSessions.ts), the same handoff medication_stock's run-out prompt
@@ -620,7 +618,7 @@ export interface WearSession {
       is picked by it. */
   kind: WearKind;
   /** The one load-bearing timestamp, the same rule DoseEvent's carries
-      (CONTEXT: "Dose event timestamp"): when the session actually started. */
+: when the session actually started. */
   startTimestamp: number;
   /** Null while the session is still running - a live timer started and
       not yet stopped. Never null for a backfilled session: its day and

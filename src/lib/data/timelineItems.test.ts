@@ -80,9 +80,8 @@ describe('the compressed gaps', () => {
     expect(shape(items)).toEqual(['a', 'b', 'gap-c', 'c', 'today']);
   });
 
-  /* Today inside a long quiet stretch sits at its real place in it, not
-     before it (after-release 27, audit L03-15): the stretch splits at today,
-     and each side compresses only if it is long on its own. */
+  /* Today inside a long quiet stretch sits at its real place in it, not before it: the
+     stretch splits at today, and each side compresses only if it is long on its own. */
   it('splits a gap at today when today falls inside it', () => {
     const items = timelineItems([milestone('before', TODAY - 600), milestone('after', TODAY + 500)], TODAY);
     expect(shape(items)).toEqual(['before', 'gap-before-today', 'today', 'gap-after', 'after']);

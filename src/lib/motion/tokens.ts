@@ -93,8 +93,7 @@ export const DURATION_FALLBACK: Record<DurationToken, number> = {
   '--dur-bloom': 800
 };
 
-/* DISTANCE_FALLBACK stays exported only for its own test (AU-09 test-only
-   review). */
+/* DISTANCE_FALLBACK stays exported only for its own test. */
 export const DISTANCE_FALLBACK: Record<DistanceToken, number> = {
   '--motion-distance-sm': 10,
   '--motion-distance-md': 24

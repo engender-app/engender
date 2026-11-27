@@ -103,13 +103,12 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(SENSITIVE_TITLE, notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
     }
 
-    /* Audit finding F-05, corrected by a later audit pass. hideNotificationTitles
-       above is about the shade, where the OS shows everything whatever the
-       app asks for. The two tests below assert that VISIBILITY_PRIVATE is
-       set on the notification, not that a locked screen is actually empty -
-       see the comment beside .setVisibility in ReminderAlarmReceiver.java
-       for what that flag does and does not buy, and for the field that
-       hides a title on every default lock screen unconditionally. */
+    /* hideNotificationTitles above is about the shade, where the OS shows everything
+       whatever the app asks for. The two tests below assert that VISIBILITY_PRIVATE is set
+       on the notification, not that a locked screen is actually empty - see the comment
+       beside .setVisibility in ReminderAlarmReceiver.java for what that flag does and does
+       not buy, and for the field that hides a title on every default lock screen
+       unconditionally. */
 
     @Test
     public void reminderNotificationsAreHiddenOnALockedScreen() throws Exception {
@@ -469,10 +468,9 @@ public class ReminderNotificationPrivacyTest {
         assertNoActiveNotifications();
     }
 
-    /* GD-033: hiding titles used to protect only what came next. A reminder
-       already in the shade kept its title and its line of text on the lock
-       screen until the person swiped it away. The switch reaches the
-       notifications through the same sync that carries it. */
+    /* hiding titles used to protect only what came next. A reminder already in the shade
+       kept its title and its line of text on the lock screen until the person swiped it
+       away. The switch reaches the notifications through the same sync that carries it. */
     private JSONObject withBodyText(JSONObject payload) throws Exception {
         payload.getJSONArray("reminders").getJSONObject(0).put("text", "Patch: " + SENSITIVE_TITLE);
         return payload;

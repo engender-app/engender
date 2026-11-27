@@ -96,8 +96,8 @@ async function saveWithNavigationFailure(journal: Journal) {
   const epochDay = 19_003;
   const target = document.createElement('div');
   document.querySelector('#editor')!.replaceChildren(target);
-  /* A real appointment on the entry's own day: the save links a debrief
-     only to an appointment the offer could be naming (GD-048). */
+  /* A real appointment on the entry's own day: the save links a debrief only to an
+     appointment the offer could be naming. */
   const visit = await journal.appointments.upsertAppointment({ epochDay, procedureId: null, kind: null, place: null, note: null });
   const screen = mountInto(EntryEditor, { epochDay, seedMood: 4, debriefForAppointment: visit }, target);
   try {

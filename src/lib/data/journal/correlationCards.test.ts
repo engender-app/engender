@@ -121,7 +121,7 @@ test('batched metric inputs match independent reads with two statements regardle
 test('the cards ask for everything in one round, not the dimensions first', async () => {
   // Look back's tile grid waits for this read, and the worker answers one
   // query at a time: a second round after the dimensions came back put the
-  // cards' own two statements at the back of the queue (after-release 06
+  // cards' own two statements at the back of the queue (
   // follow-up, tile-arrival-timing).
   const { journal, db } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: DAY_0, mood: 3, dims: { femininity: 40 } });

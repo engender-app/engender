@@ -13,8 +13,7 @@ import { PENDING_RECOVERY_KEY_FILE, RECOVERY_KEY_FILE } from './recovery-key-fil
 import { BOOT_MIRROR_KEYS } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
-/* LocalDataTargets stays exported only for its own test (AU-09 test-only
-   review). */
+/* LocalDataTargets stays exported only for its own test. */
 export interface LocalDataTargets {
   /** Lets go of the database file; OPFS will not delete a file whose sync
       access handle is still open. */

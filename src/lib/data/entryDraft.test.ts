@@ -16,7 +16,7 @@ const photo = (n: number): NormalizedPhoto => ({ full: new Uint8Array([n]), thum
 
 test('a committed draft cannot repeat attachments or a contextual dose after navigation fails', async () => {
   const { journal } = await journalWithBuiltIns();
-  // A real appointment the day before: the save links only an offered one (GD-048).
+  // A real appointment the day before: the save links only an offered one.
   const appointment = await journal.appointments.upsertAppointment({ epochDay: 99, procedureId: null, kind: null, place: null, note: null });
   const draft = createEntryDraft(100, undefined, 4);
   draft.addPhoto(photo(1));

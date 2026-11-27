@@ -182,8 +182,8 @@
   let autoSnapshotAt = $state<number | null>(null);
   let autoStagedAt = $state<number | null>(null);
   let autoDeferredAt = $state<number | null>(null);
-  /* Folder sync (FA 49): this device's own switch, and how the last archive
-     from another device ended. */
+  /* Folder sync: this device's own switch, and how the last archive from another device
+     ended. */
   let autoFolderSync = $state(false);
   let autoFolderOutcome = $state<FolderSyncOutcome | null>(null);
   let autoFolderAt = $state<number | null>(null);
@@ -245,10 +245,10 @@
     }
   }
 
-  /* The backup password is set and changed here and nowhere else (FA 56).
-     It used to be taken from the export field by the switch and by "Back up
-     now", silently, so a typo became the password of every later backup.
-     Now it is typed twice in its own sheet and says when it has worked. */
+  /* The backup password is set and changed here and nowhere else. It used to be taken from
+     the export field by the switch and by "Back up now", silently, so a typo became the
+     password of every later backup. Now it is typed twice in its own sheet and says when it
+     has worked. */
   let passwordSheet = $state(false);
   let newBackupPass = $state('');
   let repeatBackupPass = $state('');
@@ -362,9 +362,8 @@
     if (!android || autoBusy || checkingPassword) return;
     checkingPassword = true;
     try {
-      /* The saved password is what the backup is sealed with. A password in
-         the export field is only compared with it: a mismatch is refused,
-         never saved over it (FA 56). */
+      /* The saved password is what the backup is sealed with. A password in the export
+         field is only compared with it: a mismatch is refused, never saved over it. */
       const check = await checkBackupNow(expPass);
       if (!check.ok) {
         if (check.problem === 'no-password') openPasswordSheet();
@@ -902,9 +901,9 @@ The rows stand from the first frame and only their
           <!-- Neither mark until the age is known: the tick was the half of the
                wrong answer that looked most sure of itself. -->
         {:else if standing === 'stale'}
-          <!-- The age beside it already says how long ago; the mark only says
-               that it is long enough to act on. It used to be a badge reading
-               "Over 30 days ago" under "34 days ago" (audit UX-11). -->
+          <!-- The age beside it already says how long ago; the mark only says that it is
+               long enough to act on. It used to be a badge reading "Over 30 days ago" under
+               "34 days ago". -->
           <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()} in:markFade out:markLeave><Icon name="alert" size={18} /></span>
         {:else if standing === 'recent'}
           <span class="backup-tick" data-backup-tick in:markFade out:markLeave><Icon name="check" size={20} /></span>
@@ -959,9 +958,8 @@ The rows stand from the first frame and only their
 
   <SectionHeading text={m.exp_encrypted_section()} />
   <p class="small" style="margin-bottom:var(--space-3)">{m.exp_encrypted_body()}</p>
-  <!-- autocomplete off here and on import: an archive's password is not
-       this site's login, and a password manager should not offer to save
-       it as one (after-release 21, audit A11Y-16). -->
+  <!-- autocomplete off here and on import: an archive's password is not this site's login,
+       and a password manager should not offer to save it as one. -->
   <Field label={m.backup_password_label()} id="exp-pass">
     {#snippet children(id)}
       <input class="input" type="password" {id} name="exp-pass" placeholder={m.exp_password_placeholder()}
@@ -1009,10 +1007,9 @@ The rows stand from the first frame and only their
       {autoDestination ?? (autoDestinationUri ? m.exp_auto_destination_chosen() : m.exp_auto_destination_missing())}
     </p>
 
-    <!-- The backup password's own row (FA 56): the one place it is set or
-         changed. Both wordings of the button and of the line under it are
-         always laid out in one grid cell and only their opacity moves, so
-         the row keeps its size when a password is first saved. -->
+    <!-- The backup password's own row: the one place it is set or changed. Both wordings of
+         the button and of the line under it are always laid out in one grid cell and only
+         their opacity moves, so the row keeps its size when a password is first saved. -->
     <div class="spread" data-backup-password-row>
       <span class="small muted">{m.backup_password_label()}</span>
       <button class="btn btn-soft" type="button" onclick={() => openPasswordSheet()} disabled={autoBusy}
@@ -1028,8 +1025,8 @@ The rows stand from the first frame and only their
       <span class:is-on={!autoHasPassword} aria-hidden={autoHasPassword}>{m.exp_auto_password_missing()}</span>
     </p>
 
-    <!-- Folder sync (FA 49): the folder above, read back. Always laid out,
-         so switching it moves nothing on the screen. -->
+    <!-- Folder sync: the folder above, read back. Always laid out, so switching it moves
+         nothing on the screen. -->
     <div class="spread" data-folder-sync-row>
       <span class="small muted">{m.exp_folder_title()}</span>
       <span class="folder-switch" class:is-loaded={autoFolderLoaded}>
@@ -1205,9 +1202,9 @@ The rows stand from the first frame and only their
     </div>
   </Sheet>
 
-  <!-- Typed twice, and it says when it worked (FA 56). The wording is fixed
-       when the sheet opens, so saving a first password does not rewrite the
-       title of a sheet that is on its way out. -->
+  <!-- Typed twice, and it says when it worked. The wording is fixed when the sheet opens,
+       so saving a first password does not rewrite the title of a sheet that is on its way
+       out. -->
   <Sheet bind:open={passwordSheet} title={sheetChanging ? m.exp_backup_password_change_title() : m.exp_backup_password_set_title()}>
     <h3>{sheetChanging ? m.exp_backup_password_change_title() : m.exp_backup_password_set_title()}</h3>
     <p class="small" style="margin-bottom:var(--space-4)">

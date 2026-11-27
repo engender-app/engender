@@ -110,8 +110,7 @@
 
   /* ?measure=1 runs the chart's re-tween against a transform-and-opacity baseline and
      prints the frame cadence on the page, so the number can be read off a phone over `adb
-     reverse` without a debugger attached. The rule it is judged by is 's, written before
-     any run: a material holds if at most 5% of frames land past 1.5x the baseline's median
+     reverse` without a debugger. The chart passes if at most 5% of frames land past 1.5x the baseline's median
      period and p95 is inside 1.25x it. */
   let report = $state('');
 

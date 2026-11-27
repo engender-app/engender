@@ -52,7 +52,7 @@ type EveryFinishableAreaGrouped = AssertNoneUngrouped<Ungrouped>;
 /** `AreaGroupKey` as a value, read off `AREA_GROUPS` rather than typed out a
     second time. */
 /* AREA_GROUP_KEYS stays exported for its own test, and cross-checked in
-   AreaFinish.mounted.test.ts, hubRows.test.ts (AU-09 test-only review). */
+   AreaFinish.mounted.test.ts, hubRows.test.ts. */
 export const AREA_GROUP_KEYS = Object.keys(AREA_GROUPS) as readonly AreaGroupKey[];
 
 /** The day a group finished, or null while it has not.
@@ -88,8 +88,7 @@ export function finishedGroups(states: AreaStates): { key: AreaGroupKey; epochDa
     Derived from `SUSPENDABLE_AREAS` rather than typed out a second time - the
     same reason this file's own header exists: one list, checked, instead of
     a screen and a rule quietly disagreeing about which groups these are. */
-/* SUSPENDABLE_GROUPS stays exported only for its own test (AU-09 test-only
-   review). */
+/* SUSPENDABLE_GROUPS stays exported only for its own test. */
 export const SUSPENDABLE_GROUPS = AREA_GROUP_KEYS.filter((key) =>
   AREA_GROUPS[key].every((area): area is SuspendableArea => (SUSPENDABLE_AREAS as readonly string[]).includes(area))
 );
@@ -195,7 +194,7 @@ interface FinishOfferInput {
     that an area somebody said no about stays said-no-about. Re-asking is the
     failure this whole preference exists to prevent, and a group reading as
     un-declined because it grew a new section would be exactly that. */
-/* groupDeclined stays exported only for its own test (AU-09 test-only review). */
+/* groupDeclined stays exported only for its own test. */
 export function groupDeclined(key: AreaGroupKey, declined: readonly string[]): boolean {
   return AREA_GROUPS[key].some((area) => declined.includes(area));
 }

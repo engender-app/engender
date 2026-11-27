@@ -839,7 +839,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   stock: classify<Journal['stock']>()({
     writes: {
-      // A rename drops the old name's run-out Reminder (after-release 01).
+      // A rename drops the old name's run-out Reminder.
       upsertEntry: ['stock', 'reminder'],
       deleteEntry: ['stock', 'reminder'],
       // Box 4: reconciling can create, move or clear the drug's run-out
@@ -852,7 +852,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
        date on screen. */
     reads: { getEntries: ['stock'], getProjections: ['stock', 'dose', 'regimen'] }
   }),
-  /* Read-only across the five areas that carry a cost (FA 30). */
+  /* Read-only across the five areas that carry a cost. */
   costs: classify<Journal['costs']>()({
     writes: {},
     reads: { getCosts: ['hairRemoval', 'appointment', 'procedure', 'lab', 'stock'] }
@@ -866,8 +866,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       /* 'areaState' since the day a stream ended draws beside the seven kinds above. */
       // 'appointment' because getProcedures reads it for a journey's
-      // consults, not because an appointment draws a mark of
-      // its own - that is 's.
+      // consults. Appointments do not draw their own marks here.
       getAnnotations: [
         'milestone',
         'regimen',

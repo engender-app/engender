@@ -1,8 +1,7 @@
-/* The boot mirror's read, and the Android shell's hand-over of the live
-   disguise (FA 43). The mirror lives in localStorage, which Chromium flushes
-   to disk after a delay; the disguise flip kills the process inside that
-   delay, so the first start after a flip reads the old answer unless the
-   shell's alias, written before the kill, outranks it. */
+/* The boot mirror's read, and the Android shell's hand-over of the live disguise. The
+   mirror lives in localStorage, which Chromium flushes to disk after a delay; the disguise
+   flip kills the process inside that delay, so the first start after a flip reads the old
+   answer unless the shell's alias, written before the kill, outranks it. */
 
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';

@@ -22,8 +22,7 @@
     onChange: (next: string[]) => void;
   } = $props();
 
-  // Only a dysphoria type tag carries a description (CONTEXT: Dysphoria
-  // type), so this stays null for every chip that has no info affordance.
+  // Only dysphoria type tags have a description and an info button.
   let infoTag = $state<Tag | null>(null);
 
   /* The family whose finer words are open. A closed family shows a

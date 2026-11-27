@@ -7,7 +7,7 @@
    is the rule an imported key meets, so no custom row can ever join the overview.
 
    Run: node tests/guards/hair-removal-recency-handoff-check.mjs (a throwaway dev server;
-   screenshots land in.claude/hair-removal-recency-shots, gitignored). */
+   screenshots land in .claude/hair-removal-recency-shots, gitignored). */
 
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
@@ -36,7 +36,7 @@ page.setDefaultTimeout(15000);
 const errors = [];
 page.on('pageerror', (err) => errors.push(err.message));
 
-/* CONTEXT: epoch day is the device's local day, never a UTC one - so the
+/* epoch. day is the device's local day, never a UTC one - so the
    fixture computes it here once and hands it to the page, rather than
    letting three evaluate blocks each derive (a possibly UTC) day. */
 const today = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);

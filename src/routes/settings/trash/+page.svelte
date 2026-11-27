@@ -130,8 +130,8 @@
       </div>
     {/snippet}
     {#snippet empty()}
-      <!-- Only after the list has closed: arriving from above while it
-           closed, the empty state came down over its last row (FA 46). -->
+      <!-- Only after the list has closed: arriving from above while it closed, the empty
+           state came down over its last row. -->
       <div transition:collapse={{ after: motionDuration('--dur-slow') }}>
         <EmptyState title={m.trash_empty_title()} text={m.trash_empty_body()} level={2} />
       </div>

@@ -56,10 +56,9 @@ export async function runFolderSync(status: AutoExportStatus, deps: FolderSyncDe
   try {
     staged = await androidAutoExport.stageFolderArchive();
   } catch (error) {
-    /* Copying the archive out of the folder can fill the device before
-       Merge starts (re-check carpet 13, finding 2), and that used to reach
-       only the console. Nothing was staged, so there is no position to
-       keep: the outcome is recorded for the settings line, at 0. */
+    /* Copying the archive out of the folder can fill the device before Merge starts
+       (finding 2), and that used to reach only the console. Nothing was staged, so there is
+       no position to keep: the outcome is recorded for the settings line, at 0. */
     if (spaceShortage(error) !== 'device') throw error;
     console.error('folder sync could not copy an archive', error);
     await androidAutoExport.finishFolderArchive({ modifiedAt: 0, outcome: 'no-space' })
@@ -98,8 +97,8 @@ async function mergeStaged(path: string, deps: FolderSyncDeps): Promise<FolderSy
        rather than reported and moved past while nobody was looking. */
     if ((error as Error)?.name === 'AbortError' || deps.signal?.aborted) throw error;
     console.error('folder sync could not merge an archive', error);
-    /* A full device is not the archive's fault: reported as what it is, and
-       left to be tried again (re-check carpet 13, finding 1). */
+    /* A full device is not the archive's fault: reported as what it is, and left to be
+       tried again (finding 1). */
     if (spaceShortage(error) === 'device') return 'no-space';
     return archiveFailureKind(error);
   }

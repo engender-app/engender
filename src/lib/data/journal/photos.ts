@@ -80,9 +80,9 @@ async function removePhotoFiles(files: PhotoFileStore, names: string[]): Promise
   for (const name of names) await files.remove(name);
 }
 
-/** The files of these photo rows that no committed row still names. Read
-    inside the deleting transaction, after the rows are gone, so a file two
-    rows share outlives the first delete (security scan GD-024). */
+/** The files of these photo rows that no committed row still names. Read inside the
+    deleting transaction, after the rows are gone, so a file two rows share outlives the
+    first delete. */
 const unownedPhotoFiles = (driver: SqliteDriver, rows: { file_path: string }[]) =>
   unownedNames(driver, rows.flatMap((row) => filesOf(row.file_path)));
 

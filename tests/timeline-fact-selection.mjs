@@ -202,11 +202,10 @@ try {
   const jump = page.locator('[data-care-lane-jump="Estradiol"]');
   const jumpBox = await jump.boundingBox();
   assert.ok(jumpBox.height >= FLOOR - SLACK, `the lane name is ${jumpBox.height.toFixed(1)}px tall`);
-  /* And it travels there (prh12 bug 14): the fragment's own jump covered
-     the whole distance in one frame. Every frame's scroll offset from the
-     tap until the region holds still, and no single frame may carry half
-     the trip. With motion allowed for this one check: under reduced motion
-     the trip is meant to be instant. */
+  /* And it travels there: the fragment's own jump covered the whole distance in one frame.
+     Every frame's scroll offset from the tap until the region holds still, and no single
+     frame may carry half the trip. With motion allowed for this one check: under reduced
+     motion the trip is meant to be instant. */
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await jump.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await page.evaluate(() => {

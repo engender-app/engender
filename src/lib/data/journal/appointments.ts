@@ -40,8 +40,8 @@ export interface AppointmentInput {
   kind: string | null;
   place: string | null;
   note: string | null;
-  /** What it cost (FA 30). Absent is none, on an update as on a create, like
-      `referredEpochDay`: the editor always passes it. Throws if invalid. */
+  /** What it cost. Absent is none, on an update as on a create, like `referredEpochDay`:
+      the editor always passes it. Throws if invalid. */
   cost?: CostInput;
 }
 

@@ -175,19 +175,16 @@ the route carries the reminder's id
             .setOnlyAlertOnce(replacing)
             .setSilent(replacing)
             .setAutoCancel(true)
-            /* Audit finding F-05, corrected by a later audit pass:
-               VISIBILITY_PRIVATE does not hide this title on a lock
-               screen by itself. It only asks the OS to conceal a
-               notification's content, and the OS only honours that where
-               the lock screen itself is set to hide sensitive content -
-               under Android's default "show all notification content", a
-               private notification still shows title and text in full. What
-               actually keeps a reminder's title off a locked phone's
-               screen is hideNotificationTitles, which resolveNotificationTitle
-               below applies unconditionally: it does not know whether the
-               screen is locked, so it hides the title whether it is or not.
-               This call is kept anyway, for the phones that do have
-               concealment configured. AutoExportPlugin makes the same call. */
+            /* VISIBILITY_PRIVATE does not hide this title on a lock screen by itself. It
+               only asks the OS to conceal a notification's content, and the OS only honours
+               that where the lock screen itself is set to hide sensitive content - under
+               Android's default "show all notification content", a private notification
+               still shows title and text in full. What actually keeps a reminder's title
+               off a locked phone's screen is hideNotificationTitles, which
+               resolveNotificationTitle below applies unconditionally: it does not know
+               whether the screen is locked, so it hides the title whether it is or not.
+               This call is kept anyway, for the phones that do have concealment configured.
+               AutoExportPlugin makes the same call. */
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1));
 

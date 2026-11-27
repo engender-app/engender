@@ -22,10 +22,10 @@
 </script>
 
 <script lang="ts">
-  /* One regimen episode's editor sheet: its details, schedule, pauses,
-     ending and hiding. Lifted out of the regimen screen so Care can open
-     the same sheet in place from a medication block (prh12 bug 16) rather
-     than sending the person to the list to tap the episode a second time. */
+  /* One regimen episode's editor sheet: its details, schedule, pauses, ending and hiding.
+     Lifted out of the regimen screen so Care can open the same sheet in place from a
+     medication block rather than sending the person to the list to tap the episode a second
+     time. */
   import { offerUndo, undoable } from '$lib/stores/deleteUndo';
   import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
@@ -97,8 +97,8 @@
     doseUnit: string;
     route: string;
     interval: string;
-    /** The interval as the loaded episode stores it, which the field above
-        shows through the catalogue (audit U50); null for a new episode. */
+    /** The interval as the loaded episode stores it, which the field above shows through
+        the catalogue; null for a new episode. */
     storedInterval: string | null;
     startDate: string;
     /** `''` while the episode is still ongoing (types.ts's null). */
@@ -173,10 +173,9 @@
       for this drug, which saving replaces. Said under the switch. */
   let adoptingReminders = $state(false);
   let newPause = $state<{ start: string; end: string; reason: PauseReason } | null>(null);
-  /* The dose amounts a person has been in and left, by amount, so an
-     amount row added empty is not announced as invalid before anybody has
-     typed in it (after-release 21, audit A11Y-14). Field.svelte does this
-     for every other field; these two inputs are hand-rolled (see below). */
+  /* The dose amounts a person has been in and left, by amount, so an amount row added empty
+     is not announced as invalid before anybody has typed in it. Field.svelte does this for
+     every other field; these two inputs are hand-rolled (see below). */
   const leftDose = new SvelteSet<object>();
   const leftUnit = new SvelteSet<object>();
   /** The reason chip picked before pressing "End episode" - not
@@ -441,11 +440,10 @@
     status = m.regimen_pause_saved();
   }
 
-  /* A pause goes back to expecting doses on its days once it is deleted,
-     so the trash button asks first, over the editor (after-release 07).
-     What it did is said in a toast rather than the editor's status line:
-     the line arrived at full height and full ink in one frame, while the
-     row above it was still closing. */
+  /* A pause goes back to expecting doses on its days once it is deleted, so the trash
+     button asks first, over the editor. What it did is said in a toast rather than the
+     editor's status line: the line arrived at full height and full ink in one frame, while
+     the row above it was still closing. */
   let pauseDeleteTarget = $state<DosePause | null>(null);
 
   async function deletePause() {
@@ -478,9 +476,9 @@
   {#if editor}
     <fieldset class="regimen-editor" disabled={saving} aria-busy={saving}>
       <section class="regimen-group">
-        <!-- No hint restating what Save episode does: the line under the
-             heading already says whether these details have unsaved
-             changes, and the button names what it saves (audit UX-13). -->
+        <!-- No hint restating what Save episode does: the line under the heading already
+             says whether these details have unsaved changes, and the button names what it
+             saves. -->
         <FieldGroupHeading legend={m.regimen_episode_legend()} />
         <p class="muted small" data-episode-dirty>{episodeChanged ? m.regimen_episode_unsaved() : m.regimen_episode_unchanged()}</p>
         <Field label={m.drug_label()} id="regimen-drug">

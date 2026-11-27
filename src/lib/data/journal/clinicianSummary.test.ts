@@ -449,8 +449,7 @@ test('preserves saved exclusions under alternate spellings after deduplication',
   assert.deepEqual(excluded, { ' ESTRADIOL VALERATE ': true, 'Estradiol Valerate': true, 'estradiol valerate': true, Progesterone: true });
 });
 
-/* After-release 22 (L04-06): the regimen cell read "Estradiol valerate
-   (valerate)", naming the ester twice. */
+/* (L04-06): the regimen cell read "Estradiol valerate (valerate)", naming the ester twice. */
 test('names an ester beside the drug only when the drug name does not already, by whole words', () => {
   assert.equal(regimenEsterNote('Estradiol', 'valerate'), 'valerate');
   assert.equal(regimenEsterNote('Testosterone', 'cypionate'), 'cypionate');
@@ -463,7 +462,7 @@ test('names an ester beside the drug only when the drug name does not already, b
 });
 
 /* The summary is the one thing made to leave the device, so a drug that is not HRT stays
-   off it until the person switches it on. The drug class is 's, stored on the episode. */
+   off it until the person switches it on. The episode stores the drug class. */
 test('a drug of class other is left out by default, and printed once switched on', async () => {
   const { journal } = await journalWithBuiltIns();
   await episode(journal, 19000, { drug: 'estradiol valerate' });
@@ -520,11 +519,10 @@ test('a change whose effect is hidden, or whose category is off, stays off the p
   assert.deepEqual(summary.sections.personalEffects, []);
 });
 
-/* The side-effects part reads FA 23's ongoing or resolved state. A side
-   effect that began before the range and is still going on was active in
-   it, so it prints; one resolved before the range began was not, so it
-   does not. Each carries its resolved day, for the page to file it under
-   ongoing or resolved. */
+/* The side-effects part reads ongoing or resolved state. A side effect that began before
+   the range and is still going on was active in it, so it prints; one resolved before the
+   range began was not, so it does not. Each carries its resolved day, for the page to file
+   it under ongoing or resolved. */
 test('side effects are the ones active at any point in the range, each with its resolved day', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.sideEffects.upsertSideEffect({ name: 'long ago, over', severity: 2, epochDay: 18800, resolvedEpochDay: 18850 });

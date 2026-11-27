@@ -37,7 +37,7 @@ import { androidPinAttempts } from '../lock/lock-timing-bridge';
 
 /** Where a PIN keystore's two halves live. Defaults to this platform's own;
     the tests hand in memory. */
-/* PinPorts stays exported only for its own test (AU-09 test-only review). */
+/* PinPorts stays exported only for its own test. */
 export interface PinPorts {
   journalExists(): Promise<boolean>;
   /** The key store a wrap written now binds to. */
@@ -87,7 +87,7 @@ const platformPorts = (): PinPorts =>
 /** Exactly four digits (crypto/params.ts states why four). A floor and a
     ceiling both, because the pad collects a fixed count and submits itself on
     the last one. */
-/* isValidPin stays exported only for its own test (AU-09 test-only review). */
+/* isValidPin stays exported only for its own test. */
 export function isValidPin(pin: string): boolean {
   return new RegExp(`^[0-9]{${PIN_LENGTH}}$`).test(pin);
 }

@@ -38,7 +38,7 @@ async function close() {
 async function fieldOrder(copy) {
   const method = page.getByRole('radiogroup', { name: copy.hair_removal_method_label, exact: true });
   const pain = page.getByRole('radiogroup', { name: copy.hair_removal_pain_label, exact: true });
-  // FA 30: the cost is an amount beside its currency, then a Refunded
+  // the cost is an amount beside its currency, then a Refunded
   // switch; the note follows the provider.
   const controls = [method, page.locator('#hair-removal-area'), page.locator('#hair-removal-minutes'), pain,
     page.locator('#hair-removal-cost'), page.locator('#hair-removal-cost-currency'),

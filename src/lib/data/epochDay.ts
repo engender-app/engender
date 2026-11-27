@@ -351,10 +351,10 @@ export type RelativeDay =
   | { kind: 'passed'; days: number };
 
 /** How far `epochDay` is from `onEpochDay`, named the way a reminder's schedule reads it
-    (audit item 2: "in 0 days" and "in 1 days" said nothing a person says). Today and
-    tomorrow are their own words rather than the general case of "in n days", and a day
-    already gone is named as passed instead of clamped to zero - the arithmetic alone, with
-    `reminderLabel.ts`'s paraglide layer above it supplying the words. */
+    ("in 0 days" and "in 1 days" said nothing a person says). Today and tomorrow are their
+    own words rather than the general case of "in n days", and a day already gone is named
+    as passed instead of clamped to zero - the arithmetic alone, with `reminderLabel.ts`'s
+    paraglide layer above it supplying the words. */
 export function relativeDayFromToday(epochDay: number, onEpochDay: number): RelativeDay {
   const days = epochDay - onEpochDay;
   if (days === 0) return { kind: 'today' };

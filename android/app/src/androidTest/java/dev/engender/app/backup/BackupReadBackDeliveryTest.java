@@ -17,11 +17,11 @@ import org.json.JSONObject;
 import org.junit.Test;
 
 /**
- * FA 56 on the real delivery path: an archive sealed under a password other
- * than the saved backup password is written to the folder, fails the
- * read-back, is deleted, and never joins the verified list retention counts.
- * Before FA 56 the read-back compared bytes only, so this delivery
- * succeeded and the file was listed as verified.
+ * on the real delivery path: an archive sealed under a password other than
+ * the saved backup password is written to the folder, fails the read-back, is
+ * deleted, and never joins the verified list retention counts. Before the
+ * read-back compared bytes only, so this delivery succeeded and the file was
+ * listed as verified.
  */
 public class BackupReadBackDeliveryTest extends BackupDeliveryTestSupport {
     @Test public void aBackupThatDoesNotOpenWithTheSavedPasswordIsNeitherListedNorCounted() throws Exception {

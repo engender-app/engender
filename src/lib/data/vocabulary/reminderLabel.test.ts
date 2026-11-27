@@ -1,13 +1,12 @@
-/* The reminder row's own schedule wording (audit item 2). The bug it is
-   written against: a one-off reminder printed "in 0 days" for today and
-   "in 1 days" for tomorrow, because the day count was clamped at zero and
-   the string carried no plural.
+/* The reminder row's own schedule wording. The bug it is written against: a one-off
+   reminder printed "in 0 days" for today and "in 1 days" for tomorrow, because the day
+   count was clamped at zero and the string carried no plural.
 
-   `relativeDayFromToday` has its own test in epochDay.test.ts - this is the
-   layer above it, where a classification becomes a sentence, and it is the
-   one the ticket names. The assertions are about the shape of the sentence
-   rather than its exact words, except where the words are the defect: a
-   label that ever contains "0 days" or "1 days" is the thing that shipped. */
+   `relativeDayFromToday` has its own test in epochDay.test.ts - this is the layer above it,
+   where a classification becomes a sentence, and it is the one the ticket names. The
+   assertions are about the shape of the sentence rather than its exact words, except where
+   the words are the defect: a label that ever contains "0 days" or "1 days" is the thing
+   that shipped. */
 
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';

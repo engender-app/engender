@@ -58,7 +58,7 @@ async function fieldOrder() {
   const controls = [page.locator('#appointment-kind'), ...await page.locator('[data-kind]').all(),
     ...await page.locator('[data-who]').all(), page.locator('[data-who-new]'),
     ...['appointment-place', 'appointment-note', 'appointment-cost', 'appointment-cost-currency'].map((id) => page.locator(`#${id}`)),
-    // The cost (FA 30) follows the note: an amount beside its currency, then Refunded.
+    // The cost follows the note: an amount beside its currency, then Refunded.
     page.locator('[data-sheet] [role="switch"]'),
     ...['appointment-date', 'appointment-time'].map((id) => page.locator(`#${id}`))];
   const positions = [];

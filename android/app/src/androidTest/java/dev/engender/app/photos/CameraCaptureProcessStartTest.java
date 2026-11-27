@@ -12,7 +12,7 @@ import java.nio.file.Files;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-/** GD-012: the plaintext capture is on disk only while the camera holds it. */
+/** The plaintext capture is on disk only while the camera holds it. */
 @RunWith(AndroidJUnit4.class)
 public class CameraCaptureProcessStartTest {
     private final Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();

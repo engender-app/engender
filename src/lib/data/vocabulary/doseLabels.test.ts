@@ -46,9 +46,9 @@ test('the three attribution states each have their own wording', () => {
   );
 });
 
-/* Audit U50: the Polish regimen row read "50 mg ·
-   Doustnie · daily · lut 2026 do trwa" - the stored interval went out raw,
-   and the ongoing word was dropped into the end of a from-to sentence. */
+/* the Polish regimen row read "50 mg · Doustnie · daily · lut 2026 do trwa" - the stored
+   interval went out raw, and the ongoing word was dropped into the end of a from-to
+   sentence. */
 test('the interval values the app itself stores read in the reader\'s language', () => {
   inLocale('pl', () => {
     assert.equal(regimenIntervalLabel('daily'), 'codziennie');

@@ -226,13 +226,12 @@
     let travelFrom = 0;
     const observer = new ResizeObserver(() => {
       if (!active || !painted) return;
-      /* The offer opening above and the readings swapping push the block
-         again on nearly every frame of its travel. Restarting the travel
-         each time put it back at the slow start of --ease-out-soft, so the
-         tiles stepped 22px on the first frame and then stood still for four
-         (carpet 15 row 51, span-offer-appear). The running travel keeps
-         its clock and its painted start; only its ends are measured again
-         against where the block now lies. */
+      /* The offer opening above and the readings swapping push the block again on nearly
+         every frame of its travel. Restarting the travel each time put it back at the slow
+         start of --ease-out-soft, so the tiles stepped 22px on the first frame and then
+         stood still for four (span-offer-appear). The running travel keeps its clock and
+         its painted start; only its ends are measured again against where the block now
+         lies. */
       if (current?.playState === 'running' && current.effect instanceof KeyframeEffect) {
         const top = node.getBoundingClientRect().top - new DOMMatrixReadOnly(getComputedStyle(node).transform).m42;
         if (Math.abs(top - previousTop) < 1) return;

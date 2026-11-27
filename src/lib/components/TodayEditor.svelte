@@ -211,8 +211,8 @@
     const handle = listEl?.querySelector<HTMLElement>(`[data-edit-grip="${key}"]`);
     handle?.focus();
     travelFrom(rowElements(), rowKey, before);
-    /* The row travels where it can be seen; this says where it went to
-       somebody who cannot see it (after-release 21, audit L05-08). */
+    /* The row travels where it can be seen; this says where it went to somebody who cannot
+       see it. */
     announce(m.home_edit_moved({ position: String(at + delta + 1), total: String(pinned.length) }));
   }
 

@@ -178,9 +178,9 @@ test("today's appointment row counts a second appointment on the same day", asyn
 });
 
 
-/* FA 26 put a wait's referral day and its dated updates into the same day
-   records. They are things that happened about an appointment, not a visit
-   booked for today, so today's row names neither and counts neither. */
+/* put a wait's referral day and its dated updates into the same day records. They are
+   things that happened about an appointment, not a visit booked for today, so today's row
+   names neither and counts neither. */
 test("today's appointment row skips a referral and an update logged today", async () => {
   const marks: DayAheadMark[] = [{ kind: 'appointment', epochDay: TODAY }];
   const referred: AppointmentDayRecord = { ...endo, id: 'wait-1', kind: 'Gender clinic', event: 'referred' };

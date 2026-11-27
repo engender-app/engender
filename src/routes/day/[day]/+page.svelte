@@ -59,18 +59,15 @@
     parsedDay === null ? Promise.resolve([]) : j.dayAhead.getDayAhead(epochDay, epochDay, currentDay())
   );
 
-  /* What the schedules expect on this day, which a mark cannot say
-     (audit item 12): a mark is a day and a kind, never an amount
-     (ADR-0067), so the row that says "Dose" and nothing else was the
-     Today agenda's row with less on it. Read here rather than folded into
-     `dayAhead`, the call `rowForward.ts` makes for the same reason - names
-     and amounts come off the records, and the registry keeps answering
-     only which days carry a mark.
+  /* What the schedules expect on this day, which a mark cannot say: a mark is a day and a
+     kind, never an amount (ADR-0067), so the row that says "Dose" and nothing else was the
+     Today agenda's row with less on it. Read here rather than folded into `dayAhead`, the
+     call `rowForward.ts` makes for the same reason - names and amounts come off the
+     records, and the registry keeps answering only which days carry a mark.
 
-     All three reads are issued before the first await, which is what makes
-     a liveQuery find its dependencies on the first run (journal.svelte.ts).
-     Bounded to a future day: a past day's doses are records, and `day.ts`
-     already draws them. */
+     All three reads are issued before the first await, which is what makes a liveQuery find
+     its dependencies on the first run (journal.svelte.ts). Bounded to a future day: a past
+     day's doses are records, and `day.ts` already draws them. */
   let expectedDosesRead = liveQuery(async (j) => {
     const asked = epochDay;
     if (parsedDay === null || asked <= currentDay()) return [];
@@ -83,15 +80,13 @@
   });
   let expectedDoses = $derived(expectedDosesRead.value ?? []);
 
-  /* The marks, less the ones the day's own records name better (audit item
-     12). An appointment and a milestone both put a row on this screen
-     through `day.ts` carrying what they are - a kind and a place, a name -
-     and the mark beside it would be the same fact drawn again with less on
-     it. A surgery day and a letter unlock have no such row: a procedure's
-     own record on a day is its recovery photos, and a letter that has not
-     opened deliberately carries no title anywhere (letters.ts's
-     `getUnlockDaysInRange`). The dose slot keeps its row and gains what the
-     schedule expects. */
+  /* The marks, less the ones the day's own records name better. An appointment and a
+     milestone both put a row on this screen through `day.ts` carrying what they are - a
+     kind and a place, a name - and the mark beside it would be the same fact drawn again
+     with less on it. A surgery day and a letter unlock have no such row: a procedure's own
+     record on a day is its recovery photos, and a letter that has not opened deliberately
+     carries no title anywhere (letters.ts's `getUnlockDaysInRange`). The dose slot keeps
+     its row and gains what the schedule expects. */
   let namedByRecords = $derived(
     new Set([
       // A visit only: a referral or an update on this day is not the visit
@@ -289,12 +284,11 @@
   {/if}
 
   {#if isFuture}
-    <!-- What this day already holds, in the words a past day uses for the
-         same records (audit item 12): an appointment says its kind and its
-         place, a milestone says its name. No gate and no empty state - the
-         notice above covers a day with nothing on it, and a skeleton in
-         front of a day that may hold nothing would flash on every future
-         day somebody opens. -->
+    <!-- What this day already holds, in the words a past day uses for the same records: an
+         appointment says its kind and its place, a milestone says its name. No gate and no
+         empty state - the notice above covers a day with nothing on it, and a skeleton in
+         front of a day that may hold nothing would flash on every future day somebody
+         opens. -->
     {#if hasRecords}
       <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} {doseDrugs} />
     {/if}

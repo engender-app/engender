@@ -102,7 +102,7 @@ test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async
 const hiddenOf = (db: Awaited<ReturnType<typeof migratedDb>>, table: string, key: string): number | undefined =>
   (db.raw.prepare(`SELECT hidden FROM ${table} WHERE key = ?`).get(key) as { hidden: number } | undefined)?.hidden;
 
-test('a new journal seeds the duplicate built-ins hidden and their counterparts visible (FA 41)', async () => {
+test('a new journal seeds the duplicate built-ins hidden and their counterparts visible', async () => {
   const db = await migratedDb();
   await openJournal(db, fakeFileStore()).reconcileBuiltIns();
 
@@ -117,7 +117,7 @@ test('a new journal seeds the duplicate built-ins hidden and their counterparts 
   assert.equal(hiddenOf(db, 'gender_dimension', 'euphoria_dysphoria'), 0);
 });
 
-test('a reconcile over an existing journal leaves its duplicate built-ins as they were (FA 41)', async () => {
+test('a reconcile over an existing journal leaves its duplicate built-ins as they were', async () => {
   const db = await migratedDb();
   const journal = openJournal(db, fakeFileStore());
   await journal.reconcileBuiltIns();

@@ -241,10 +241,9 @@ describe('the rail draws every dated history, not only the eras', () => {
     expect(railLegendKinds([], [], surgeryMarks(annotations), false)).toEqual(['surgery']);
   });
 
-  /* A milestone and a surgery day draw the same mark, so the legend gives
-     them one key and names what that key covers (after-release 27, audit
-     L05-12): it used to call every mark "Surgery" when both were there, and
-     name nothing when there were only milestones. */
+  /* A milestone and a surgery day draw the same mark, so the legend gives them one key and
+     names what that key covers: it used to call every mark "Surgery" when both were there,
+     and name nothing when there were only milestones. */
   it('names the marks by what they are: milestones, surgeries, or both under one key', () => {
     const milestone = [{ id: 'm1', name: 'HRT start', epochDay: 20200 }];
     expect(railLegendKinds([], milestone, [], false)).toEqual(['milestone']);

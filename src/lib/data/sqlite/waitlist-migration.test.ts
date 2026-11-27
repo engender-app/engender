@@ -1,7 +1,6 @@
-/* FA 26: an appointment can wait without a date. Version 100 rebuilds
-   `appointment` so `epoch_day` is nullable and the day somebody was referred
-   on has a column, and adds `appointment_status` for the dated updates a
-   wait collects. */
+/* an appointment can wait without a date. Version 100 rebuilds `appointment` so `epoch_day`
+   is nullable and the day somebody was referred on has a column, and adds
+   `appointment_status` for the dated updates a wait collects. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

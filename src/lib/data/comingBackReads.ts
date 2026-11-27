@@ -19,8 +19,7 @@ import { tablesReadBy, type TableName } from './live/writes';
 /** The areas the return surface reads. The ones `openJournal` already
     built, so every fact arrives through the same method its own screen
     would ask (the discipline `lastWrite.ts` and `offers.ts` both keep). */
-/* ComingBackAreas stays exported only for its own test (AU-09 test-only
-   review). */
+/* ComingBackAreas stays exported only for its own test. */
 export interface ComingBackAreas {
   lastWrite: LastWriteArea;
   letters: LettersArea;

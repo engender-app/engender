@@ -273,8 +273,8 @@
   let photoSheet = $state(false);
   let photoDate = $state('');
 
-  /* Every sheet below closes once its write lands and stays open with a
-     toast when it does not (after-release 06). */
+  /* Every sheet below closes once its write lands and stays open with a toast when it does
+     not. */
   const sheetWrite = writer();
 
   /** False when the write failed, which keeps a reviewed shot under review. */
@@ -295,8 +295,7 @@
     reference: () => lastPhotoReference(photos)
   });
 
-  /* A consult date asks before it goes and says that it went
-     (after-release 07). */
+  /* A consult date asks before it goes and says that it went. */
   const consultRecord = recordEditor<ProcedureConsult>({
     remove: (id) => undoable((j) => j.procedures.deleteConsult(id)),
     deleted: () => m.surgery_consult_deleted(),
@@ -321,7 +320,7 @@
     milestoneOffer = { procedureId: stored.id };
   }
 
-  /* Closed once the write lands (after-release 06). */
+  /* Closed once the write lands. */
   const offerWrite = writer();
   async function answerMilestoneOffer(given: OfferAnswer) {
     const subject = milestoneOffer;

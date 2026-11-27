@@ -714,9 +714,8 @@
     <span class="span-tl-today" aria-label={m.tl_you_are_here()} role="img"></span>
 
     {#each ['start', 'end'] as const as handle (handle)}
-      <!-- A div with the slider role rather than a button: slider is not a
-           role a button may take, and a button's own role wins in some
-           readers (after-release 21, audit L05-08). -->
+      <!-- A div with the slider role rather than a button: slider is not a role a button
+           may take, and a button's own role wins in some readers. -->
       <div
         tabindex="0"
         class="span-tl-handle"
@@ -748,14 +747,12 @@
     {#key spanDates}<span class="span-tl-reading" out:crossfade use:dateFadeIn>{spanDates}{`, ${m.n_days({ n: shownDays })}`}</span>{/key}
   </p>
 
-  <!-- The one-time hint, gone on the first move of either handle. Under
-       the rail's own reading rather than on the rail (release audit U14:
-       at rest it sat over the lanes it is about). In flow, and it fades
-       where it stands rather than leaving: its line stays for the rest of
-       this visit, so nothing under it moves, and the next visit never
-       draws it. Not a control and not announced: the handles already
-       carry their own names, and a slider that read out "drag the ends"
-       every time it took focus would be worse than silent. -->
+  <!-- The one-time hint, gone on the first move of either handle. Under the rail's own
+       reading rather than on the rail (release: at rest it sat over the lanes it is about).
+       In flow, and it fades where it stands rather than leaving: its line stays for the
+       rest of this visit, so nothing under it moves, and the next visit never draws it. Not
+       a control and not announced: the handles already carry their own names, and a slider
+       that read out "drag the ends" every time it took focus would be worse than silent. -->
   {#if hintDrawn}
     <p class="span-tl-hint" class:is-hidden={!showHint} data-span-hint aria-hidden="true">
       {m.lookback_drag_hint()}
@@ -982,11 +979,10 @@
   .is-active .span-tl-era-text {
     translate: 0 0;
   }
-  /* A name drawn while its band is already open - the part of the band the
-     span shows has just grown past NAME_MIN_PX - had no closed state to
-     travel from, so it was painted whole in one frame (carpet 15 row 51,
-     span-offer-appear, 0 to 0.9 between 51 and 68ms). It opens from closed
-     like one that opens with its band. */
+  /* A name drawn while its band is already open - the part of the band the span shows has
+     just grown past NAME_MIN_PX - had no closed state to travel from, so it was painted
+     whole in one frame (span-offer-appear, 0 to 0.9 between 51 and 68ms). It opens from
+     closed like one that opens with its band. */
   @starting-style {
     .is-active .span-tl-era-name {
       translate: 0 100%;
@@ -1227,16 +1223,14 @@
     scale: 1.25 1;
   }
 
-  /* The keyboard's ring goes round the grip, as a box of its own over the
-     grip's place at full height: drawn on the grip, it sat inside the
-     grip's clip and was never painted (carpet 15 row 51), and the grip's
-     box travels with the rise, so a ring on it would rise from below the
-     rail. Focus raises the rail, so the grip fills this box a moment
-     later. Instant, like every other control's ring in the kit. The 2px
-     between grip and ring is filled with the page's ground rather than
-     left open: in dark the ring is a light pink, and across the light
-     blue of an era band it measured 1.09:1, so the ground keeps it at
-     least 6:1 against what touches it on one side wherever it runs. */
+  /* The keyboard's ring goes round the grip, as a box of its own over the grip's place at
+     full height: drawn on the grip, it sat inside the grip's clip and was never painted,
+     and the grip's box travels with the rise, so a ring on it would rise from below the
+     rail. Focus raises the rail, so the grip fills this box a moment later. Instant, like
+     every other control's ring in the kit. The 2px between grip and ring is filled with the
+     page's ground rather than left open: in dark the ring is a light pink, and across the
+     light blue of an era band it measured 1.09:1, so the ground keeps it at least 6:1
+     against what touches it on one side wherever it runs. */
   .span-tl-handle:focus-visible {
     outline: none;
   }
@@ -1306,11 +1300,10 @@
     width: 14px;
     border: 1px solid var(--text-2);
   }
-  /* The eras are the one kind whose colour is plural - they run the flag,
-     one colour per era - so their key is the flag itself rather than any
-     one stripe, which is also what keeps it clear of everything else here.
-     The unlocked app always uses the flag, disguise or not (FA 42), so the
-     variable is set here; the outline alone is the fallback for a flag with
+  /* The eras are the one kind whose colour is plural - they run the flag, one colour per
+     era - so their key is the flag itself rather than any one stripe, which is also what
+     keeps it clear of everything else here. The unlocked app always uses the flag, disguise
+     or not, so the variable is set here; the outline alone is the fallback for a flag with
      no colour of its own. */
   .span-tl-chip[data-span-chip='era'] {
     height: var(--low-h);

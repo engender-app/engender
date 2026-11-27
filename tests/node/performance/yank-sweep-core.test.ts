@@ -943,9 +943,9 @@ describe('deviceTargetFromArgs', () => {
   });
 });
 
-/* Carpet 15 row 51: a clip travelling from a percentage to a length
-   computes to calc() while it runs, and the sampler read that as the whole
-   box, so every kit-block-in wipe looked like an arrival in one frame. */
+/* a clip travelling from a percentage to a length computes to calc() while it runs, and the
+   sampler read that as the whole box, so every kit-block-in wipe looked like an arrival in
+   one frame. */
 describe('clipInsetBox', () => {
   const box = { left: 100, top: 200, right: 124, bottom: 224, width: 24, height: 24 };
   it('reads plain lengths and percentages, and ignores the corner radius', () => {

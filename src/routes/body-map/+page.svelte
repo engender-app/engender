@@ -52,7 +52,7 @@
     if (regions.length && !regions.some((r) => r.id === region)) region = regions[0].id;
   });
   // A presentation hidden mid-session drops out of visiblePresentations
-  // (CONTEXT: "Hidden") without deleting anything it was ever logged
+  // without deleting anything it was ever logged
   // against - falling back to the unfiltered view rather than silently
   // keeping a filter nothing can any longer select or clear.
   $effect(() => {

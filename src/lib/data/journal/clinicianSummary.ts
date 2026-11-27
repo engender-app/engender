@@ -160,8 +160,7 @@ interface ClinicianSummaryReading extends ClinicianSummaryAreas {
 /** One part of the summary's declaration that it prints. Erased over what
     it reads, because the list holds every section at once and because a
     test registers sections `ClinicianSummary` has never heard of. */
-/* ClinicianSummarySection stays exported only for its own test (AU-09
-   test-only review). */
+/* ClinicianSummarySection stays exported only for its own test. */
 export interface ClinicianSummarySection {
   key: string;
   tables: readonly TableName[];
@@ -385,8 +384,7 @@ type Unregistered = Exclude<ClinicianSummarySectionKey, (typeof SECTIONS)[number
 type AssertNoneUnregistered<Missing extends never> = Missing;
 export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
-/* CLINICIAN_SUMMARY_SECTIONS stays exported only for its own test (AU-09
-   test-only review). */
+/* CLINICIAN_SUMMARY_SECTIONS stays exported only for its own test. */
 export const CLINICIAN_SUMMARY_SECTIONS: readonly ClinicianSummarySection[] = SECTIONS;
 
 /** Every part's key, in the order the parts print: what the screen walks to
@@ -515,10 +513,9 @@ export function withClinicianDrugIncluded(
 const spacedWords = (text: string) =>
   ` ${text.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ')} `;
 
-/** The ester a regimen row should name beside its drug, or null when there
-    is none or the drug's own name already says it ("Estradiol valerate"
-    with the ester "valerate" printed the ester twice, after-release 22).
-    Whole words only, so a name that merely starts with the ester still
+/** The ester a regimen row should name beside its drug, or null when there is none or the
+    drug's own name already says it ("Estradiol valerate" with the ester "valerate" printed
+    the ester twice). Whole words only, so a name that merely starts with the ester still
     gets it. */
 export function regimenEsterNote(drug: string, ester: string | null): string | null {
   const note = ester?.trim();

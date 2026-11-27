@@ -272,9 +272,9 @@
         {/if}
 
         <SectionHeading text={m.pj_range_title()} />
-        <!-- The date rows compare and the wrapped custom range draw (release
-             audit U13): the day in words, with the picker spread over the
-             row, where two read-only text boxes used to show "2024-09-18". -->
+        <!-- The date rows compare and the wrapped custom range draw (release): the day in
+             words, with the picker spread over the row, where two read-only text boxes used
+             to show "2024-09-18". -->
         <div>
           {#each [
             { id: 'pj-start', label: m.start_date_label(), value: startInput, min: undefined, max: dayRangeStartMax(endInput), set: (next: string) => (startInput = next) },
@@ -303,8 +303,8 @@
         </div>
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
 
-        <!-- The count is said once, in the bar with the button it counts
-             for (release audit U13: it was here as well). -->
+        <!-- The count is said once, in the bar with the button it counts for (release: it
+             was here as well). -->
         <p class="muted small">
           {#if photos.length === 0}
             {m.pj_none_in_range()}

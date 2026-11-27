@@ -30,13 +30,13 @@ describe('what Settings is built from', () => {
   });
 
   it("draws rule 7's chrome case: the field with its own title, and back to Today", () => {
-    /* Carpet 25. This screen hid its title until now, for a reason that stopped being true
-       when the field arrived: a visible "Settings" sitting on the page directly above
-       "Appearance" was two headers stacked, and a title on the field is not on the page at
-       all - it is on a block of the flag's colour, which is where every deep screen in the
-       app puts its own. Rule 7's third case decides both answers for chrome; `chrome` is
-       how a screen asks for them, and the back control it brings is hidden on the desktop
-       by components.css rather than by a second call here. */
+    /* This screen hid its title until now, for a reason that stopped being true when the
+       field arrived: a visible "Settings" sitting on the page directly above "Appearance"
+       was two headers stacked, and a title on the field is not on the page at all - it is
+       on a block of the flag's colour, which is where every deep screen in the app puts its
+       own. Rule 7's third case decides both answers for chrome; `chrome` is how a screen
+       asks for them, and the back control it brings is hidden on the desktop by
+       components.css rather than by a second call here. */
     const header = /<ScreenHeader[^>]*\/?>/s.exec(withoutScript)?.[0] ?? '';
     expect(header).toContain('title={m.nav_settings()}');
     expect(header).not.toContain('titleHidden');
@@ -144,7 +144,7 @@ describe('what Settings is built from', () => {
 
   it('gives rows that carry a switch instead of a chevron no interactive wrapper of their own', () => {
     /* A ListRow always renders as an <a> or a <button>; a row whose only job is to hold a
-       Switch would make that switch's own button a nested control. Those stay plain.kit-row
+       Switch would make that switch's own button a nested control. Those stay plain .kit-row
        divs. The wrapped and on-this-day rows moved to the unprompted registry's own screen,
        and the four prompt toggles followed them there - unprompted-view.test.ts holds all
        of them to the same rule. Cycle tracking is the switch row this screen has left.

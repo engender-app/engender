@@ -42,7 +42,7 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
    exactly those two. */
 
 /** One row, as declared. */
-/* HubRowSpec stays exported only for its own test (AU-09 test-only review). */
+/* HubRowSpec stays exported only for its own test. */
 export interface HubRowSpec {
   /** The row's own identity: the walkthrough's handle and the key `areaGroups.ts` named its
       groups after. */
@@ -161,10 +161,10 @@ const ROWS = [
   },
   // --- Body --------------------------------------------------------------
   {
-    /* Bug 25: shots taken on purpose, pose by pose, split off the photo library, which
-       keeps every photograph in the journal. `progressShot`, a portrait with the earlier
-       shot's head behind it; it drew `camera` as a placeholder. Not finishable
-       (areaState.ts's NOT_FINISHABLE says why). */
+    /* shots taken on purpose, pose by pose, split off the photo library, which keeps every
+       photograph in the journal. `progressShot`, a portrait with the earlier shot's head
+       behind it; it drew `camera` as a placeholder. Not finishable (areaState.ts's
+       NOT_FINISHABLE says why). */
     key: 'progress-photos',
     icon: 'progressShot',
     href: '/transition/progress-photos',
@@ -359,13 +359,11 @@ export type HubRowKey = (typeof ROWS)[number]['key'];
 /** One row as the list holds it: `HubRowSpec` with its key still narrow, so a
     consumer reaching for a row's title cannot be handed a `string` the label
     record has never heard of. */
-/* HubRow stays exported only for feature-screens.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* HubRow stays exported only for feature-screens.test.ts, which cross-checks against it. */
 export type HubRow = Omit<HubRowSpec, 'key'> & { key: HubRowKey };
 
-/* HUB_ROWS stays exported for its own test, and cross-checked in
-   feature-screens.test.ts, home-contracts.ts, more-surfaces.test.ts,
-   safe-space-contracts.ts (AU-09 test-only review). */
+/* HUB_ROWS stays exported for its own test, and cross-checked in feature-screens.test.ts,
+   home-contracts.ts, more-surfaces.test.ts, safe-space-contracts.ts. */
 export const HUB_ROWS: readonly HubRow[] = ROWS;
 
 /** The same rows people can hide later. Dilation is configured by an eligible
@@ -417,8 +415,7 @@ type EveryAreaGroupFrontedByARow = AssertNoneUnfronted<Unfronted>;
     Five of them, and none is a hub row's business: three are their own tab or
     screen, one sits behind `/care`, and one is content belonging to two other
     rows at once. */
-/* LAST_WRITE_WITHOUT_A_ROW stays exported only for its own test (AU-09
-   test-only review). */
+/* LAST_WRITE_WITHOUT_A_ROW stays exported only for its own test. */
 export const LAST_WRITE_WITHOUT_A_ROW: Record<Exclude<LastWriteKey, RowArea>, string> = {
   entries: 'the journal itself, which Home and the calendar are already about',
   doseEvents: 'behind the care row, whose own screen opens on the last dose',
@@ -603,9 +600,8 @@ export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   if (epochDay === null) return { kind: 'not-yet' };
 
   const daysAgo = reading.todayEpochDay - epochDay;
-  /* Quiet is the observation the finish offer is made from, so a row with
-     nothing to finish never turns quiet (after-release 17, UX-18): on
-     Documents it read as a nag about a paperwork vault. */
+  /* Quiet is the observation the finish offer is made from, so a row with nothing to finish
+     never turns quiet: on Documents it read as a nag about a paperwork vault. */
   const quiet = spec.finishes !== null && daysAgo >= FINISH_SUGGESTION_QUIET_DAYS;
   return { kind: quiet ? 'quiet' : 'last', epochDay, daysAgo };
 }
@@ -713,7 +709,7 @@ export function hubSectionRoleIndex(key: HubSection['key']): number {
     a coding error to fail a test on and not something to refuse to boot
     over. */
 /* AREA_GROUP_ROW_KEYS stays exported for its own test, and cross-checked in
-   AreaFinish.mounted.test.ts (AU-09 test-only review). */
+   AreaFinish.mounted.test.ts. */
 export const AREA_GROUP_ROW_KEYS: Record<AreaGroupKey, HubRowKey> = Object.fromEntries(
   ROWS.filter((spec) => spec.finishes !== null).map((spec) => [spec.finishes, spec.key])
 ) as Record<AreaGroupKey, HubRowKey>;

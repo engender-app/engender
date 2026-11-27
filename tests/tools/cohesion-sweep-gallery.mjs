@@ -31,13 +31,12 @@ const outDir = resolve(flag('out', resolve(here, '../../.claude/cohesion-shots')
    with the flag whenever a check is added that reads a role. */
 const PALETTES = flag('palettes', 'trans').split(',');
 
-/* Every route in src/routes, with the dynamic ones resolved to a real id by
-   `resolve` below. `door` marks the four doors, which rule 7 says never show
-   a back control; `chrome` marks the rule's third case (carpet 25), which is
-   Settings and nothing else so far; `exception` marks a screen rule 7 does
-   not reach, and holds the decision that put it outside - a route with no
-   reason written here is a route the rule judges. Everything unmarked is a
-   deep screen, which shows both. */
+/* Every route in src/routes, with the dynamic ones resolved to a real id by `resolve`
+   below. `door` marks the four doors, which rule 7 says never show a back control; `chrome`
+   marks the rule's third case, which is Settings and nothing else so far; `exception` marks
+   a screen rule 7 does not reach, and holds the decision that put it outside - a route with
+   no reason written here is a route the rule judges. Everything unmarked is a deep screen,
+   which shows both. */
 const ROUTES = [
   { path: '/', door: true, name: 'today' },
   { path: '/calendar', door: true, name: 'journal' },
@@ -74,20 +73,18 @@ const ROUTES = [
   { path: '/search' },
   {
     path: '/settings',
-    /* Rule 7's third case (carpet 25): chrome, which shows the field and shows a back
-       control on the phone - which is the width this walk runs at - and none in the 1024px
-       shell, where the rail's fifth row is the way in. The desktop half of that answer is
-       the walkthrough's, at step 14b. */
+    /* Rule 7's third case: chrome, which shows the field and shows a back control on the
+       phone - which is the width this walk runs at - and none in the 1024px shell, where
+       the rail's fifth row is the way in. The desktop half of that answer is the
+       walkthrough's, at step 14b. */
     chrome: true,
-    /* The disguise rows are drawn inside a sheet, so no walk that only
-       loads the address had ever seen them - `.card.spread` counted 0 while
-       carpet 30 was trying to decide about it, which is what this state was
-       added for. Carpet 29 has since taken that variant's ground and its
-       `.card` off it, and the state stays: a sheet's contents are three
-       rows, a segmented control and a switch that no other reading covers.
-       A state is read as its own reading rather than folded into the
-       screen's, so the base route stays a reading of the screen and the
-       sheet is a reading of the sheet. */
+    /* The disguise rows are drawn inside a sheet, so no walk that only loads the address
+       had ever seen them - `.card.spread` counted 0 while was trying to decide about it,
+       which is what this state was added for. has since taken that variant's ground and its
+       `.card` off it, and the state stays: a sheet's contents are three rows, a segmented
+       control and a switch that no other reading covers. A state is read as its own reading
+       rather than folded into the screen's, so the base route stays a reading of the screen
+       and the sheet is a reading of the sheet. */
     states: [{ name: 'disguise-sheet', open: ['[data-list-row="disguise"]'] }]
   },
   { path: '/settings/access-mode' },
@@ -141,10 +138,9 @@ const TOUCH_FLOOR = 48;
    its tag. `[tabindex]` is filtered to non-negative below: -1 is
    programmatically focusable and not a pointer target. */
 const INTERACTIVE = 'button, a, input, select, textarea, [role="slider"], [tabindex]';
-/* The surfaces whose variants the carpet counts. Matched elements are keyed
-   by their whole class list rather than by the base, so a variant nobody
-   predicted shows up as itself - which is how carpet 21 came to say four
-   when the source has six. */
+/* The surfaces whose variants the carpet counts. Matched elements are keyed by their whole
+   class list rather than by the base, so a variant nobody predicted shows up as itself -
+   which is how came to say four when the source has six. */
 const AUDITED = ['.card', '.app-savebar'];
 
 /* Run the Android reminders render separately, overriding only
@@ -153,8 +149,8 @@ const AUDITED = ['.card', '.app-savebar'];
    journal. Keep its findings separate until the main run writes its
    report, then merge them in. */
 const PIN_ANDROID = args.includes('--pin-android');
-/* `[data-checkin]` rather than a `.card` variant: carpet 30 took the box off
-   the check-in group, and the group is what this leg exists to photograph. */
+/* `[data-checkin]` rather than a `.card` variant: took the box off the check-in group, and
+   the group is what this leg exists to photograph. */
 const GATED = [{ path: '/settings/reminders', name: 'reminders', shoot: '[data-checkin]' }];
 const SCREEN = resolve(root, 'src/routes/settings/reminders/+page.svelte');
 const PINNED = '  let isWeb = $derived(false && !isAndroid()); // pinned by tests/tools/cohesion-sweep-gallery.mjs';
@@ -410,9 +406,9 @@ const read = () =>
         const hasOwnText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
         if (hasOwnText) {
           const px = Math.round(parseFloat(cs.fontSize) * 10) / 10;
-          /* The wrapped cover's year is a named exception (rule 2, carpet
-             23): the one screen that is a poster rather than a door, so its
-             64px title is legal by selector rather than added to the scale. */
+          /* The wrapped cover's year is a named exception (rule 2): the one screen that is
+             a poster rather than a door, so its 64px title is legal by selector rather than
+             added to the scale. */
           const isWrappedYear = el.classList.contains('wrapped-cover-year') && Math.round(px) === 64;
           if (!isWrappedYear && !sizeOk.has(Math.round(px))) note('type', el, `${px}px`);
         }
@@ -454,10 +450,9 @@ const read = () =>
       for (const base of AUDITED)
         for (const el of root.querySelectorAll(base)) {
           /* Without the compiler's scope class, which is not a variant:
-             `.card.breathing-card.svelte-k4blm0` was drawn on /doubt and
-             read as a gap against the source's `.card.breathing-card`
-             (both retired on carpet 30),
-             which is the instrument inventing the hole it exists to find. */
+             `.card.breathing-card.svelte-k4blm0` was drawn on /doubt and read as a gap
+             against the source's `.card.breathing-card` (both retired on), which is the
+             instrument inventing the hole it exists to find. */
           const key = `.${[...el.classList].filter((c) => !c.startsWith('svelte-')).join('.')}`;
           census[key] = (census[key] ?? 0) + 1;
         }
@@ -515,17 +510,15 @@ const read = () =>
          bottom of the back control while the two boxes do not intersect at
          all. Hit testing is the only thing that knows that, so hit testing
          is what measures it. */
-      /* Where the region actually paints. A control that runs past the fold
-         is clipped there rather than covered, whatever is painted beyond it,
-         and reading those points as coverage is a phantom of exactly the
-         kind this sweep found twelve of: after carpet 26 put the app's foot
-         *outside* the region, every long column filed its last control as
-         covered by the foot at rest, on five routes, when a scroll of the
-         column brings the whole control clear of it. The allowance the
-         `clipped` branch below already makes for a control scrolled out of
-         a scroller it lives in is the same allowance, read off the point
-         instead of off the tree. Both edges, since the region's top is a
-         fold too. */
+      /* Where the region actually paints. A control that runs past the fold is clipped
+         there rather than covered, whatever is painted beyond it, and reading those points
+         as coverage is a phantom of exactly the kind this sweep found twelve of: after put
+         the app's foot *outside* the region, every long column filed its last control as
+         covered by the foot at rest, on five routes, when a scroll of the column brings the
+         whole control clear of it. The allowance the `clipped` branch below already makes
+         for a control scrolled out of a scroller it lives in is the same allowance, read
+         off the point instead of off the tree. Both edges, since the region's top is a fold
+         too. */
       const outsidePort = (el, x, y) => {
         if (!region.contains(el) || region === root) return false;
         const port = region.getBoundingClientRect();
@@ -827,12 +820,11 @@ if (args.includes('--prove')) {
   });
   proof.push({ check: 'type', mark: '32px inside a display:none parent', want: false, got: hit('type', 'prove-hidden') });
 
-  /* Rule 7's verdict, on the screen the proof leg is already standing on
-     (carpet 25). The mark is worth having because this check reports a word
-     rather than a count, and a word that is always "pass" reads the same
-     whether the rule is being applied or ignored. So: the screen as it
-     ships, and then the same screen with its back control taken out of the
-     DOM, which has to come back as the finding it would be. */
+  /* Rule 7's verdict, on the screen the proof leg is already standing on. The mark is worth
+     having because this check reports a word rather than a count, and a word that is always
+     "pass" reads the same whether the rule is being applied or ignored. So: the screen as
+     it ships, and then the same screen with its back control taken out of the DOM, which
+     has to come back as the finding it would be. */
   proof.push({
     check: 'field',
     mark: '/settings as chrome, with the field and a back control',
@@ -849,16 +841,14 @@ if (args.includes('--prove')) {
   });
   await page.evaluate(() => document.querySelector('.prove-fixture')?.remove());
 
-  /* The seventh mark, and the one carpet 26 needed: a control that runs
-     past a fold with the app's foot painted beyond it. It has to be planted
-     on a screen that has a foot, because that is the only shell where any
-     strip of window lies outside the scroll region's own box at all - on
-     every other screen the region reaches the window's bottom edge and
-     there is nothing beyond the fold to paint. `.screen` is the region's
-     own height there, so a box at `bottom: -30px` straddles the region's
-     bottom edge with its lower half over the foot. A control clipped by its
-     own scroller is one scroll away rather than lost, so this must be left
-     alone - it is the exact shape five routes filed at rest when the foot
+  /* The seventh mark, and the one needed: a control that runs past a fold with the app's
+     foot painted beyond it. It has to be planted on a screen that has a foot, because that
+     is the only shell where any strip of window lies outside the scroll region's own box at
+     all - on every other screen the region reaches the window's bottom edge and there is
+     nothing beyond the fold to paint. `.screen` is the region's own height there, so a box
+     at `bottom: -30px` straddles the region's bottom edge with its lower half over the
+     foot. A control clipped by its own scroller is one scroll away rather than lost, so
+     this must be left alone - it is the exact shape five routes filed at rest when the foot
      moved out of the column. */
   await settle('/settings/dimension');
   await strip();
@@ -999,9 +989,9 @@ const coverage = [...new Set([...Object.keys(inSource), ...Object.keys(drawn)])]
   gap: !drawn[key] && !!inSource[key]
 }));
 
-/* Every finding, grouped by the rule and then by the selector chain, which
-   is how the carpet tickets are shaped: one shared component, the routes it
-   reaches. Carpet 26 needs the occlusion group to be able to size itself. */
+/* Every finding, grouped by the rule and then by the selector chain, which is how the
+   carpet tickets are shaped: one shared component, the routes it reaches. needs the
+   occlusion group to be able to size itself. */
 const groups = {};
 for (const reading of audit)
   for (const [bucket, items] of Object.entries(reading.found ?? {}))

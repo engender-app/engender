@@ -110,12 +110,11 @@ final class PhotoFiles {
     }
 
     /**
-     * The same rule as isStorableFileName in photos/names.ts, so a name
-     * means one file on every store. A name is refused rather than trimmed:
-     * a trimmed " target.jpg" used to land on the real target.jpg, which
-     * then never decrypted because its sealed name is the other one
-     * (security scan GD-010). Everything the app writes is
-     * "uuid.extension", which passes.
+     * The same rule as isStorableFileName in photos/names.ts, so a name means
+     * one file on every store. A name is refused rather than trimmed: a
+     * trimmed " target.jpg" used to land on the real target.jpg, which then
+     * never decrypted because its sealed name is the other one. Everything
+     * the app writes is "uuid.extension", which passes.
      */
     static boolean isCanonicalName(String name) {
         if (name == null || name.isEmpty() || !name.equals(name.trim()) || name.startsWith(".")) return false;

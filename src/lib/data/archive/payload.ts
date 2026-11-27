@@ -227,7 +227,7 @@ interface ArchiveSideEffect extends ArchiveStamped {
   name: string;
   severity: number | null;
   epochDay: number;
-  /** Absent in an archive written, which reads as ongoing. */
+  /** Omitted in older archives. Read as ongoing. */
   resolvedEpochDay?: number | null;
 }
 
@@ -355,8 +355,7 @@ export interface ArchiveProcedurePhoto extends ArchiveStamped {
     Consults became appointments, and travel in the `appointments` section naming this
     procedure.
 
-    `kind` and `dilationOptIn` are. Both are optional only so an archive written in older
-    versions parses - applying one reads an absent `kind` as `custom` and an absent
+    Older archives omit `kind` and `dilationOptIn`. Restore reads an absent `kind` as `custom` and an absent
     `dilationOptIn` as false, the same defaults `upsertProcedure` gives a write that names
     neither. */
 export interface ArchiveProcedure extends ArchiveCostFields, ArchiveStamped {
@@ -486,7 +485,7 @@ export interface ArchiveHairRemovalSession extends ArchiveCostFields, ArchiveSta
   area: string;
   method: string;
   painRating: number | null;
-  /** Absent in an archive written, which reads as no length. */
+  /** Omitted in older archives. Read as no length. */
   minutes?: number | null;
   /** The free-text cost an archive written carries. Never written now; restore reads it by
       cost.ts's rule into the cost fields, or into `note` where it does not parse. */
@@ -539,8 +538,8 @@ interface ArchiveRegimenEpisode extends ArchiveStamped {
       as null - no reason recorded, which is exactly what a pre-ticket
       ended episode has. */
   endReason: EpisodeEndReason | null;
-  /** Put away (after-release 07). Absent on an archive from before the
-      field existed, which a restore writes as shown. */
+  /** Put away. Absent on an archive from before the field existed, which a restore writes
+      as shown. */
   hidden: boolean;
 }
 
@@ -688,7 +687,7 @@ interface ArchiveDocument extends ArchiveStamped {
 /** What a person last reported having of one drug, plus box 4's reminder
     hand-off bookkeeping. Not the projection over it -
     that is derived from the dose log, and the importing device has its
-    own (CONTEXT: pending, stockProjection.ts). */
+    own (stockProjection.ts). */
 interface ArchiveMedicationStock extends ArchiveCostFields, ArchiveStamped {
   id: string;
   drug: string;
@@ -742,7 +741,7 @@ export interface ArchiveImportLogRecord extends ArchiveStamped {
   counts: Record<string, number>;
 }
 
-/** One area's hidden/finished state (ADR-0052, CONTEXT: "Finished"). Named
+/** One area's hidden/finished state (ADR-0052). Named
     by its area key rather than a uuid, the way ArchiveRoadmapCheck is named
     by its pack and its goal: an area key is an archive section name, so the
     same string means the same area on every device (ADR-0002). Why it
@@ -758,7 +757,7 @@ interface ArchiveAreaState extends ArchiveStamped {
   suspendedEpochDay: number | null;
 }
 
-/** Everything the journal holds (CONTEXT: "Journal"). */
+/** Everything the journal holds. */
 export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
   presets: ArchivePreset[];
@@ -1018,7 +1017,6 @@ export function applyMigrations(
   return migrated;
 }
 
-/* migratePayload stays exported only for its own test (AU-09 test-only
-   review). */
+/* migratePayload stays exported only for its own test. */
 export const migratePayload = (payload: ArchivePayload, fromVersion: number, toVersion: number): ArchivePayload =>
   applyMigrations(payload, fromVersion, toVersion, PAYLOAD_MIGRATIONS);

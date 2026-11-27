@@ -11,16 +11,15 @@
 import { LEAVING } from './foot';
 
 const SCREENS = '[data-app-scroll-region] .screen';
-/* The foot is in the app column rather than in the screen since carpet 26,
-   so a screen's remains are two nodes and not one. A foot on its way out
-   sits here for the same reason a tile does - its outro finishes on the
-   next rendering step, which never comes while rendering is paused - and a
-   dead foot photographed beside the incoming one is the same wrong picture
+/* The foot is in the app column rather than in the screen since, so a screen's remains are
+   two nodes and not one. A foot on its way out sits here for the same reason a tile does -
+   its outro finishes on the next rendering step, which never comes while rendering is
+   paused - and a dead foot photographed beside the incoming one is the same wrong picture
    as two screens stacked in the region.
 
-   Read off the mark the foot's own out-transition writes rather than off
-   document order: the screen being entered may have no foot at all, and
-   then every foot in the column is a leftover. */
+   Read off the mark the foot's own out-transition writes rather than off document order:
+   the screen being entered may have no foot at all, and then every foot in the column is a
+   leftover. */
 const FEET = `[data-app-column] [data-app-savebar][${LEAVING}]`;
 
 /** Removes every screen but the incoming one - the last in document order,

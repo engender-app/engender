@@ -9,8 +9,7 @@
 
 import { isTileSnoozed as snoozed, withSnooze, withoutSnooze, type AcknowledgementStore } from './acknowledgements';
 
-/* DEFAULT_SNOOZE_DURATION_MS stays exported only for its own test (AU-09
-   test-only review). */
+/* DEFAULT_SNOOZE_DURATION_MS stays exported only for its own test. */
 export const DEFAULT_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 /** Snoozes a specific tile for `durationMs` milliseconds from `now`. */

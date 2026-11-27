@@ -272,11 +272,10 @@ export function historyKindsPresent(bands: readonly RailBand[]): RailHistoryKind
   return HISTORY_ORDER.filter((kind) => present.has(kind));
 }
 
-/** What the legend names, in the rail's own order: the eras first, since
-    they are the layer that stands up, then the lanes bottom-up, then the
-    marks. Absent kinds are absent - a journal with no tryouts does not read
-    "Tryouts". The marks take one key whatever they are, since they look the
-    same, and the key says what it covers (after-release 27, audit L05-12). */
+/** What the legend names, in the rail's own order: the eras first, since they are the layer
+    that stands up, then the lanes bottom-up, then the marks. Absent kinds are absent - a
+    journal with no tryouts does not read "Tryouts". The marks take one key whatever they
+    are, since they look the same, and the key says what it covers. */
 export function railLegendKinds(
   bands: readonly RailBand[],
   milestones: readonly unknown[],

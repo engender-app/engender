@@ -43,9 +43,11 @@ const ISOLATION = {
   'Cross-Origin-Embedder-Policy': 'require-corp'
 };
 
-/** The request handler serveBuild runs, on its own so vite preview can serve the same files
-    (vite.config.ts). @param {string} root @returns {(req:
-    import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void} */
+/**
+ * Shared request handler for serveBuild and Vite preview.
+ * @param {string} root
+ * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void}
+ */
 export function buildRequestHandler(root) {
   const build = resolve(root, 'build');
   const documentPath = join(build, 'index.html');

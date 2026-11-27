@@ -291,7 +291,7 @@ describe('gutterLabels', () => {
   const round = (v: number) => String(Math.round(v));
 
   it('drops the mid label on a 0-to-1 count domain, where it rounds to the max', () => {
-    // "1, 1, 0" (audit item 1): a tally with at most one reading a day
+    // "1, 1, 0": a tally with at most one reading a day
     // rounds its 0.5 midpoint up to the same digits as the top of the
     // scale.
     expect(gutterLabels(0, 1, round)).toEqual({ max: '1', mid: null, min: '0' });

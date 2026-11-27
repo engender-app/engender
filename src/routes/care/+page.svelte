@@ -297,10 +297,9 @@
     if (stockEditor === editor) stockSavedId = id;
   }
 
-  /* Stopping tracking takes the automatic run-out reminder with it, so it
-     asks first, over the editor, and says it happened (after-release 07).
-     Named by the saved drug rather than the draft, which may already have
-     been retyped. */
+  /* Stopping tracking takes the automatic run-out reminder with it, so it asks first, over
+     the editor, and says it happened. Named by the saved drug rather than the draft, which
+     may already have been retyped. */
   let stockDeleteTarget = $state<{ id: string; drug: string } | null>(null);
 
   function askToDeleteStock() {
@@ -461,11 +460,10 @@
 
   let regimenSheet: ReturnType<typeof RegimenEditorSheet>;
 
-  /** The lane's name travels down to its block rather than taking the
-      fragment's own jump, which landed the whole way in one frame (prh12
-      bug 14, "should take you lower smoothly"). The eased scroll is
-      scroll-region.ts's, the same one a linked record lands with; the
-      focus still moves to the block, without a scroll of its own. */
+  /** The lane's name travels down to its block rather than taking the fragment's own jump,
+      which landed the whole way in one frame ("should take you lower smoothly"). The eased
+      scroll is scroll-region.ts's, the same one a linked record lands with; the focus still
+      moves to the block, without a scroll of its own. */
   function travelToBlock(event: MouseEvent, episodeId: string) {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
@@ -691,9 +689,8 @@
         tabindex="-1"
         data-care-regimen-block={lane.episode.drug}
       >
-        <!-- Opens this episode's own editor over Care (prh12 bug 16): the
-             same sheet the regimen screen opens, without the trip to that
-             screen to tap the episode a second time. -->
+        <!-- Opens this episode's own editor over Care: the same sheet the regimen screen
+             opens, without the trip to that screen to tap the episode a second time. -->
         <button type="button" class="care-regimen" data-care-regimen={lane.episode.drug} onclick={() => regimenSheet.open(lane.episode)}>
           <span class="care-regimen-lines">
             <span class="care-regimen-drug">{blockName(lane.episode)}</span>

@@ -16,7 +16,7 @@ export interface PhotoLibraryArea {
   /** Every photograph and video note in the journal, oldest first. */
   inJournal(): Promise<LibraryPhoto[]>;
   /** The starred ones, oldest first - the starred shelf's photo half
-      (CONTEXT: "Starred"), in the library's shape so the shelf can say
+, in the library's shape so the shelf can say
       where each one came from.
 
       The `photo` table alone, because `starred` is a column the `photo`

@@ -16,18 +16,17 @@ export interface AutoExportStatus {
   deferredAt?: number | null;
   lastFailureAt: number | null;
   lastFailureReason: string | null;
-  /** Folder sync (FA 49): whether this device merges other devices'
-      archives from the folder, and how the last one it tried ended. */
+  /** Folder sync: whether this device merges other devices' archives from the folder, and
+      how the last one it tried ended. */
   folderSync?: boolean;
   folderLastOutcome?: FolderSyncOutcome | null;
   folderLastAt?: number | null;
 }
 
 /** How a folder archive ended: merged, or the archive's own failure kind
-    (archive/failure.ts). `cancelled` leaves the folder's position alone.
-    `no-space`: this device ran out of room part way. Unlike the others it
-    leaves the folder's position where it was, so the same archive is tried
-    again once space is freed (re-check carpet 13). */
+    (archive/failure.ts). `cancelled` leaves the folder's position alone. `no-space`: this
+    device ran out of room part way. Unlike the others it leaves the folder's position where
+    it was, so the same archive is tried again once space is freed. */
 export type FolderSyncOutcome = 'merged' | 'wrong-password' | 'newer-version' | 'not-an-archive' | 'corrupt' | 'failed' | 'no-space';
 
 interface AndroidAutoExportBridge {
@@ -35,8 +34,8 @@ interface AndroidAutoExportBridge {
   pickDestination(): Promise<{ picked: boolean; destinationUri: string | null; destinationLabel: string | null }>;
   configure(options: { enabled: boolean; schedule: AutoExportSchedule }): Promise<AutoExportStatus>;
   setPassword(options: { password: string }): Promise<void>;
-  /** Whether a typed password is the saved backup password (FA 56). The
-      saved one never crosses the bridge; only the answer does. */
+  /** Whether a typed password is the saved backup password. The saved one never crosses the
+      bridge; only the answer does. */
   checkPassword(options: { password: string }): Promise<{ matches: boolean }>;
   /** Derives an archive encryption key from the saved backup password behind the bridge,
       returning a key for one archive rather than the cleartext password. */

@@ -35,9 +35,9 @@ export interface ArchiveSnapshot {
   readFiles?(names: string[]): Promise<(Uint8Array | null)[]>;
 }
 
-/** What a committed backup import added. Every commit below reports its
-    counts the same way - measured over the tables it writes, inside the
-    transaction that writes them (restore.ts's `commitImport`, audit A1). */
+/** What a committed backup import added. Every commit below reports its counts the same way
+    - measured over the tables it writes, inside the transaction that writes them
+    (restore.ts's `commitImport`). */
 interface DaylioBackupCommitResult {
   entriesAdded: number;
   milestonesAdded: number;
@@ -98,13 +98,12 @@ async function restoreArchive(
   return restore.restoreArchive(driver, files, mode, contents, onProgress);
 }
 
-/** The same wrapper for the other entry point: a Merge that measures what it
-    added and writes the import history inside the same transaction (audit
-    A1). Each commit below names the tables its own counts are measured over
-    - the only place in this area that spells a SQL table, and deliberately
-    so: these are the numbers the commit hands back, and a count of "entries"
-    that named a section rather than a table would be one indirection away
-    from the rows it is claiming to have written. */
+/** The same wrapper for the other entry point: a Merge that measures what it added and
+    writes the import history inside the same transaction. Each commit below names the
+    tables its own counts are measured over - the only place in this area that spells a SQL
+    table, and deliberately so: these are the numbers the commit hands back, and a count of
+    "entries" that named a section rather than a table would be one indirection away from
+    the rows it is claiming to have written. */
 async function commitImport(
   driver: SqliteDriver,
   files: PhotoFileStore,

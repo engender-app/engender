@@ -21,12 +21,11 @@ interface HairRemovalSessionInput {
   epochDay: number;
   area: string;
   method: HairRemovalMethod;
-  /** Left out or null when the person did not rate it: nothing is stored
-      in its place (FA 28). */
+  /** Left out or null when the person did not rate it: nothing is stored in its place. */
   painRating?: number | null;
   /** Whole minutes the session ran; left out or null when not written down. */
   minutes?: number | null;
-  /** Absent or null is no cost; the editor always resubmits it (FA 30). */
+  /** Absent or null is no cost; the editor always resubmits it. */
   cost?: CostInput;
   provider?: string;
   /** Blank is stored as null. */
@@ -96,8 +95,8 @@ export const toHairRemovalSession = (row: HairRemovalSessionRow): HairRemovalSes
   note: row.note
 });
 
-/** Area and method are vocabularies the code owns (rowValues.ts); SQL no
-    longer checks them (FA 04), so this is what keeps an unknown word out. */
+/** Area and method are vocabularies the code owns (rowValues.ts); SQL no longer checks
+    them, so this is what keeps an unknown word out. */
 function assertValidArea(area: string): void {
   assertOneOf(HAIR_REMOVAL_AREAS, 'hair-removal area', area);
 }

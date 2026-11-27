@@ -6,7 +6,7 @@ import { expect, it } from 'vitest';
    lock-on-leave inertness test, whose switch is gone from both screens that drew it.
 
    A source read, the same weak shape that test owned up to: the node tier cannot mount
-   a.svelte file, and what is guarded here is which screens mount which control under which
+   a .svelte file, and what is guarded here is which screens mount which control under which
    condition, which is what a grep sees. The walkthrough drives the real timing choice and
    the lock it causes. */
 

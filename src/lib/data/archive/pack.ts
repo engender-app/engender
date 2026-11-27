@@ -138,8 +138,8 @@ export async function openArchive(
   const reader = byteReader(source);
   const { header, headerBytes } = await readArchiveHeader(reader);
   const kdf = resolveCredentialProfile('archive-import', { persistedParams: header.kdf });
-  /* A derivation is the saved backup password behind the Android bridge
-     (folder sync, FA 49), the same door packing an auto-export uses. */
+  /* A derivation is the saved backup password behind the Android bridge (folder sync), the
+     same door packing an auto-export uses. */
   const key = typeof keyOrPassword === 'function'
     ? await keyOrPassword(header.salt, kdf)
     : await deriveKey(archiveSecret(keyOrPassword), header.salt, kdf, { mainThread: false });

@@ -22,8 +22,8 @@
   }: {
     row: GrantRow;
     title: string;
-    /** What the app does with the capability, in those terms rather than in
-        the OS's (the ticket's own rule). One line. */
+    /** What the app does with the capability, in those terms rather than in the OS's . One
+        line. */
     why: string;
     busy?: boolean;
     /** True on the row whose answer just changed, which is the one row that
@@ -89,11 +89,10 @@
     animation: perm-swap var(--dur-med) var(--ease-out) both;
   }
 
-  /* The app's secondary button, an outline block of the page.
-     It was a filled block of the area's stripe, a button drawn nowhere
-     else in the app (after-release 28, audit UI-08). Narrower than the
-     standing button, which spends var(--space-6) either side and would
-     leave a two-word label no room beside a reason. */
+  /* The app's secondary button, an outline block of the page. It was a filled block of the
+     area's stripe, a button drawn nowhere else in the app. Narrower than the standing
+     button, which spends var(--space-6) either side and would leave a two-word label no
+     room beside a reason. */
   .perm-grant {
     /* This button is the only target in the row. Keep it at least 48dp. */
     min-height: var(--touch-target);

@@ -108,7 +108,7 @@ const spokenTake = () =>
   );
 
 test('the room floor is read off dB bins, and the bin is all it costs', () => {
-  // AU-05 turned the two SNR ranks - the voiced median and the room's quiet
+  // turned the two SNR ranks - the voiced median and the room's quiet
   // quarter - from sorted lists into a 0.01 dB histogram, so that a poll
   // costs the same however long the take is. This is the one number in the
   // gate that moved, so it is pinned: the sorted lists answered 31.4608 dB

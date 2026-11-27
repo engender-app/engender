@@ -104,7 +104,7 @@ export const vocabulary = {
   get activeDimensions(): GenderDimension[] {
     return reference.activeDimensions.map(localizeDimension);
   },
-  /** Every dimension that has not been hidden (CONTEXT: "Hidden") - what a
+  /** Every dimension that has not been hidden - what a
       template's pre-fill may set, the same "not hidden" filter
       `visibleTagGroups` already applies to tags. */
   get visibleDimensions(): GenderDimension[] {
@@ -151,7 +151,7 @@ export const vocabulary = {
   },
   /** Every personal-effect catalogue entry, built-in and custom, hidden
       ones and every tier included - what the effects settings screen
-      manages (CONTEXT: "Hidden", "Personal effect"). */
+      manages. */
   get personalEffectTypes(): PersonalEffectCatalogEntry[] {
     return reference.personalEffectTypes.map(localizePersonalEffectType);
   },
@@ -188,7 +188,7 @@ export const vocabulary = {
     return reference.bodyRegions.map(localizeBodyRegion);
   },
   /** What the entry editor and the body-map picker offer: hidden regions
-      removed (CONTEXT: "Hidden"), the same "not hidden" filter
+      removed, the same "not hidden" filter
       `visibleTagGroups` already applies to tags. */
   get visibleBodyRegions(): BodyRegion[] {
     return reference.visibleBodyRegions.map(localizeBodyRegion);

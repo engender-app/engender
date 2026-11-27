@@ -44,9 +44,8 @@
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.rows);
-  /* Put away by mistake or as a duplicate (after-release 07): out of every
-     read but this one, which is the way back. Newest first, like the list
-     above it. */
+  /* Put away by mistake or as a duplicate: out of every read but this one, which is the way
+     back. Newest first, like the list above it. */
   let hiddenQuery = liveList((j) => j.regimen.getHiddenEpisodes());
   let hiddenEpisodes = $derived([...hiddenQuery.rows].reverse());
   /* Newest first, the same order the rows render in - and what
@@ -104,8 +103,7 @@
     deepLinkedEpisodeId ? orderedEpisodes.findIndex((episode) => episode.id === deepLinkedEpisodeId) : -1
   );
 
-  /* Offered above manual entry when adding a new episode (CONTEXT: "Regimen
-     template") - picking one only pre-fills drug/ester/route in the editor
+  /* Offered above manual entry when adding a new episode - picking one only pre-fills drug/ester/route in the editor
      below, never dose or interval. Editing an existing episode skips this
      and opens the editor directly. */
   let templatePicker = $state(false);
@@ -300,10 +298,9 @@
     margin-top: var(--space-6);
   }
 
-  /* Small enough to sit at the end of a row without pushing the reading
-     beside it around. Ink, not the warning treatment (audit U6, rule 4):
-     being on a regimen is a status, not a caution, and amber is reserved
-     for genuine warnings elsewhere (labs, eras, export). */
+  /* Small enough to sit at the end of a row without pushing the reading beside it around.
+     Ink, not the warning treatment (rule 4): being on a regimen is a status, not a caution,
+     and amber is reserved for genuine warnings elsewhere (labs, eras, export). */
   .regimen-badge {
     padding: 2px var(--space-2);
     border-radius: var(--r-block);

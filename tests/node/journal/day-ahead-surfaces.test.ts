@@ -41,11 +41,10 @@ describe('the day after today', () => {
     expect(day).toContain('j.dayAhead.getDayAhead(epochDay, epochDay, currentDay())');
   });
 
-  /* The future branch itself: everything between `{#if isFuture}` and the
-     `{:else}` that hands the screen to a past day. Audit item 12 turned the
-     old `{#if !isFuture}` guard around so a future day can draw the records
-     it does hold - an appointment, a milestone - so the rule is stated over
-     that branch's own contents rather than over the order of the file. */
+  /* The future branch itself: everything between `{#if isFuture}` and the `{:else}` that
+     hands the screen to a past day. turned the old `{#if !isFuture}` guard around so a
+     future day can draw the records it does hold - an appointment, a milestone - so the
+     rule is stated over that branch's own contents rather than over the order of the file. */
   const futureBranch = markupOf(day).split('{#if isFuture}')[1]?.split('{:else}')[0] ?? '';
 
   it('never lets the entries gate, the add-entry button or the era link past the future guard', () => {
@@ -77,10 +76,9 @@ describe('the day after today', () => {
   });
 
   it('says what a dose slot expects, which the mark itself may not carry', () => {
-    /* Audit item 12: the row said "Dose" and went to /doses, which is what
-       Today's agenda row already said. The amount comes off the schedule
-       through `expectedDosesOnDay`, never off the mark - ADR-0067's rule
-       that a mark is a day and a kind is what that split protects. */
+    /* the row said "Dose" and went to /doses, which is what Today's agenda row already
+       said. The amount comes off the schedule through `expectedDosesOnDay`, never off the
+       mark - ADR-0067's rule that a mark is a day and a kind is what that split protects. */
     expect(day).toContain('expectedDosesOnDay(episodes, schedules, pauses, asked)');
     expect(day).toContain('m.adherence_slot_amount(');
     // The mark's own row module still states the kind and nothing else: the

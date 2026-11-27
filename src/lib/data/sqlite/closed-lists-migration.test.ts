@@ -1,7 +1,7 @@
-/* FA 04: the closed lists leave SQL. Version 94 rebuilds the five tables whose
-   vocabularies were CHECKs, so a stored value the code does not know no longer
-   fails at the SQL level (it renders as "other"), and folds in the structural
-   changes the hair-removal and tally tickets need so no table is rebuilt twice. */
+/* the closed lists leave SQL. Version 94 rebuilds the five tables whose vocabularies were
+   CHECKs, so a stored value the code does not know no longer fails at the SQL level (it
+   renders as "other"), and folds in the structural changes the hair-removal and tally
+   tickets need so no table is rebuilt twice. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

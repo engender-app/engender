@@ -44,8 +44,7 @@ function csvField(value: string): string {
 const csvRow = (fields: string[]) => fields.map(csvField).join(',');
 
 /** Wall-clock local time, the same clock the entry was logged against - the
-    day it belongs to is the epoch day beside it, never this (CONTEXT:
-    Timestamp). */
+    day it belongs to is the epoch day beside it, never this. */
 function localTime(timestamp: number): string {
   const d = new Date(timestamp);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -54,8 +53,7 @@ function localTime(timestamp: number): string {
 /** One column per gender dimension anything was ever logged against, in the
     journal's own order. Custom and hidden dimensions are in it on the same
     terms as built-in ones: hiding a dimension removes it from the pickers
-    and changes nothing about the entries that already carry it (CONTEXT:
-    Hidden). A dimension nobody has used is left out rather than exported as
+    and changes nothing about the entries that already carry it. A dimension nobody has used is left out rather than exported as
     a column of blanks. */
 function dimensionColumns(journal: ArchiveJournal, naming: PlainNaming) {
   const used = new Set(journal.entries.flatMap((e) => Object.keys(e.dims)));

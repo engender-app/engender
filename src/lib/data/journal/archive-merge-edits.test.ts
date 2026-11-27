@@ -136,8 +136,8 @@ const EDITS: [string, string, string, string?][] = [
   ['voice_benchmark', 'note', "'edited'"],
   ['voice_practice_take', 'felt_sense', '3'],
   ['wear_session', 'note', "'edited'"],
-  // The columns added since the tables first travelled: FA 30's costs and
-  // FA 20's reminder drug.
+  // The columns added since the tables first travelled: costs and
+  // reminder drug.
   ['appointment', 'cost_refunded', '1 - cost_refunded'],
   ['hair_removal_session', 'cost_refunded', '1 - cost_refunded'],
   ['lab_result', 'cost_refunded', '1 - cost_refunded'],

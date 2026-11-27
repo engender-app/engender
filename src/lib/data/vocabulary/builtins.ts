@@ -2,9 +2,8 @@
   tag groups and eight milestone templates.
 
   Keys only, no display text. A built-in is the same concept on any device, so it is
-  identified by a stable key and its name is looked up at display time (ADR-0002, and
-  CONTEXT: Built-in). Storing "Femininity" would make a Polish install's archive disagree
-  with an English one about what is the same dimension, and would freeze the wording at seed
+  identified by a stable key and its name is looked up at display time (ADR-0002). Storing the label would make English and Polish archives disagree
+  about the same dimension, and would freeze the wording at seed
   time. labels.ts holds the lookups; this file takes nothing but types, so the Node tier can
   read it without dragging in paraglide.
 
@@ -76,7 +75,7 @@ export const BUILT_IN_TAG_GROUPS = [
     tags: []
   },
   {
-    // Named types of a hard day (CONTEXT: Dysphoria type), distinct from the
+    // Named types of a hard day, distinct from the
     // `euphoria_dysphoria` gender dimension above - a scale, not a tag group,
     // and never the same control. Bare category names, no "dysphoria" suffix,
     // matching how the emotions/activities groups above leave their own
@@ -307,8 +306,7 @@ function builtInDimension(key: string, min: number, max: number): GenderDimensio
   return { key, name: '', low: '', high: '', min, max, builtIn: true, hidden: false };
 }
 
-/* withBuiltInDimensions stays exported only for its own test (AU-09 test-only
-   review). */
+/* withBuiltInDimensions stays exported only for its own test. */
 export function withBuiltInDimensions(existing: GenderDimension[]): GenderDimension[] {
   const present = new Set(existing.map((d) => d.key));
   const missing = BUILT_IN_DIMENSIONS.filter((d) => !present.has(d.key)).map((d) =>
@@ -321,8 +319,7 @@ function builtInTag(id: string): Tag {
   return { id, label: '', builtIn: true, hidden: false };
 }
 
-/* withBuiltInTagGroups stays exported only for its own test (AU-09 test-only
-   review). */
+/* withBuiltInTagGroups stays exported only for its own test. */
 export function withBuiltInTagGroups(existing: TagGroup[]): TagGroup[] {
   const byKey = new Map(existing.map((g) => [g.key, g]));
 

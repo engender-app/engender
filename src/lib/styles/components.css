@@ -253,13 +253,12 @@
      there landed on the heading and did nothing (found by a11y-targets-large-text.mjs).
      Positioned, the control takes its whole 48px back; nothing is drawn differently. */
   position: relative;
-  /* Hung from the title rather than floating over it (prh12 bug 17, "awkward, especially in
-     relation to the text"). The arrow sat 26px of field above the title's cap line, a 16px
-     thin glyph over 34px caps set at 800, so it read as a stray mark. Lowered 8px, its ink
-     ends about 16px over the caps, near half their height, which ties it to the title as a
-     kicker; the field's own height is unchanged. That came back as too close to the title,
-     so it sits halfway between: 4px lowered, about 20px of field between its ink and the
-     caps. */
+  /* Hung from the title rather than floating over it ("awkward, especially in relation to
+     the text"). The arrow sat 26px of field above the title's cap line, a 16px thin glyph
+     over 34px caps set at 800, so it read as a stray mark. Lowered 8px, its ink ends about
+     16px over the caps, near half their height, which ties it to the title as a kicker; the
+     field's own height is unchanged. That came back as too close to the title, so it sits
+     halfway between: 4px lowered, about 20px of field between its ink and the caps. */
   top: var(--space-1);
 }
 /* A size up and a little heavier, so the arrow holds its own next to the
@@ -293,12 +292,11 @@
   margin: 0;
   min-height: 0;
 }
-/* A field holding only what the door put there - hidden title, no back
-   control, no actions - keeps the 16 under its contents and drops the 40
-   above them to match (audit item 10). That 40 is the room the 48px title
-   needs above it; with no title drawn it was 88px of empty colour above the
-   Transition door's search box, of a 155px field. The minimum goes with it,
-   or the band keeps the height a title's line would have taken. */
+/* A field holding only what the door put there - hidden title, no back control, no actions
+   - keeps the 16 under its contents and drops the 40 above them to match. That 40 is the
+   room the 48px title needs above it; with no title drawn it was 88px of empty colour above
+   the Transition door's search box, of a 155px field. The minimum goes with it, or the band
+   keeps the height a title's line would have taken. */
 .screen-header.is-field-only .screen-field {
   padding-top: var(--space-4);
   min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
@@ -441,15 +439,14 @@
    nothing else, and would be the one control on the screen under the touch
    floor. The field draws its own instead (the button beside the input). */
 .screen-field .search-input::-webkit-search-cancel-button { display: none; }
-/* On the web the field is a banner across the column rather than a block
-   meeting the window's edges, so it takes the radius on all four corners.
-   Rule 7's chrome case takes its one platform branch here too (carpet 25):
-   Settings is reached by a gear in Today's foot on the phone, where back
-   means Today, and by a fifth row at the rail's foot on the desktop, where
-   a back control would point at nothing. Dropped rather than hidden, so
-   the control is out of the tab order and out of the accessibility tree in
-   the shell that has no answer for it - the same thing this query already
-   does to the bottom bar the rail replaces (`.app-nav`, app.css). */
+/* On the web the field is a banner across the column rather than a block meeting the
+   window's edges, so it takes the radius on all four corners. Rule 7's chrome case takes
+   its one platform branch here too: Settings is reached by a gear in Today's foot on the
+   phone, where back means Today, and by a fifth row at the rail's foot on the desktop,
+   where a back control would point at nothing. Dropped rather than hidden, so the control
+   is out of the tab order and out of the accessibility tree in the shell that has no answer
+   for it - the same thing this query already does to the bottom bar the rail replaces
+   (`.app-nav`, app.css). */
 @container app (min-width: 1024px) {
   .screen > .screen-header > .screen-field { border-radius: var(--r-block); }
   .screen-header.is-chrome .screen-back { display: none; }
@@ -525,7 +522,7 @@
 }
 /* The wide depth itself - which is the 0.97 chosen on a Pixel 10a, after the stuck-hover
    bug below was fixed - is set in press.css, the one file allowed to name a depth token.
-   This file only says.btn presses; how deep is not this file's decision to restate. */
+   This file only says .btn presses; how deep is not this file's decision to restate. */
 /* What a control that cannot be pressed does instead, which until now was
    nothing: a disabled .btn was pixel-identical to a live one. Onboarding's
    Continue button is disabled until a preset is picked and looked pressable
@@ -604,9 +601,8 @@
   /* The browser's disabled-button colour is not drawn anywhere on a
      switch, but it changed in one frame with the opacity below. */
   color: inherit;
-  /* Opacity is the disabled state below. Without it a switch going
-     disabled while a sheet saves dropped to 0.45 in one frame (carpet 15
-     row 46), the yank .btn already fixed for itself. */
+  /* Opacity is the disabled state below. Without it a switch going disabled while a sheet
+     saves dropped to 0.45 in one frame, the yank .btn already fixed for itself. */
   transition-property: transform, opacity;
   transition-duration: var(--dur-press), var(--dur-fast);
   transition-timing-function: var(--ease-press), var(--ease-out);
@@ -775,7 +771,7 @@ a.segment {
 }
 /* The keyboard ring draws inside the segment, not 2px outside it. A segment sits flush
    against its neighbours inside a pill track, so the default offset ring drew around the
-   chosen label and out past the track's own rounded end - the "365d" ring of round 3 - and
+   chosen label and out past the track's rounded end. It
    hugged a small compact segment as a second ring inside the pill's, which read as two
    controls. Chromium marks a click on a role="radio" focus-visible (arrow keys are expected
    to work there), so this ring appeared for every mouse pick, not only keyboard ones.
@@ -1088,12 +1084,9 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 }
 /* Standalone scale/translate shipped in Chrome 104; the former WebView floor was Chrome 87
    (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same gap) - seventeen versions
-   short, so the whole magnifier silently did nothing there. No hover/press growth on any
-   device at or under that floor is items 1 and 2's report, round two of the same "" bug
-   above, this time in the property rather than the border. transform is the one form every
-   engine back to Chrome 1 reads, so the fallback trades that for losing composition
-   with.mood-btn.is-selected's own transform below - which only an engine this old would
-   ever notice. */
+   short, so the magnifier did nothing there. The transform fallback
+   works on older WebViews, at the cost of composing with the selected
+   face's transform. */
 @supports not (scale: 1) {
   .mood-face {
     transform: translateY(calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px))) scale(var(--mood-mag, 1));
@@ -1456,8 +1449,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   color: var(--text-2);
 }
 .step-part .kit-heading-action { margin-right: calc(-1 * var(--space-3)); }
-/* A group's name over its chips, in the field label's own type (after-release
-   28: one small-label style, sentence case, no letterspaced capitals). */
+/* A group's name over its chips, in the field label's own type (one small-label style,
+   sentence case, no letterspaced capitals). */
 .tag-group-name { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--text-2); display: block; margin-bottom: var(--space-2); }
 .tag-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 /* A region's slider slides in under the chip row it answers to;
@@ -1465,9 +1458,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    instead of appearing with it. */
 .body-region-feeling { margin-top: var(--space-4); }
 .tag-chip-wrap { display: inline-flex; align-items: center; }
-/* Shrunk from.icon-btn's 48px hover circle: a 14px glyph inline after a chip's label read
+/* Shrunk from .icon-btn's 48px hover circle: a 14px glyph inline after a chip's label read
    as an oversized highlight the moment the pointer neared it. 24px visual, 48px hit area
-   restored by::after the same way.tag-chip already extends past its own pill. */
+   restored by::after the same way .tag-chip already extends past its own pill. */
 .tag-chip-wrap .tag-info-btn {
   width: 24px; height: 24px;
   margin-left: -4px;
@@ -2076,7 +2069,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      breathe's keyframes put their scale first for the same reason. At rest the matrix is
      exactly what it was. */
   transform-origin: 0 0;
-  /* The ring's own copy of.home-field's overflow: hidden clip. A view transition promotes a
+  /* The ring's own copy of .home-field's overflow: hidden clip. A view transition promotes a
      named element into its own top-layer group, which is no longer a descendant of the
      field that clips it the rest of the time - so the full disc, up to 350px (flagSun.ts's
      SUN_OUTER) against the quarter normally visible, painted over whatever screen it was
@@ -2228,8 +2221,8 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
   letter-spacing: var(--display-track); color: var(--text);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  /* press.css's default names transform only; the dimmed lockout state
-     below fades rather than cutting (carpet 15 row 46). */
+  /* press.css's default names transform only; the dimmed lockout state below fades rather
+     than cutting. */
   transition-property: transform, opacity;
   transition-duration: var(--dur-press), var(--dur-fast);
   transition-timing-function: var(--ease-press), var(--ease-out);
@@ -2283,7 +2276,7 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      frame the scrim is fixed to, so a plain centre across the full inset put a sheet in the
      gap between rail and column - visually off-centre from what it is editing. The padding
      reserves the rail's own width, rail plus the left inset it has already taken from the
-     scroll region, and the sheet centres in what is left - the same strip.screen centres
+     scroll region, and the sheet centres in what is left - the same strip .screen centres
      in, so the two share one axis. */
   .sheet-scrim { align-items: center; }
   /* Only while there is a rail. A gate draws none and centres on the whole window, and a

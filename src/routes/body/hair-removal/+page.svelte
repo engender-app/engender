@@ -51,8 +51,7 @@
      achromatic band is a day drawn as nothing. */
   const SECTION_ROLE = { recency: 0, strip: 0, sessions: 1 };
 
-  /* '' is no rating: the draft opens unrated and an unrated session stores
-     none (FA 28). */
+  /* '' is no rating: the draft opens unrated and an unrated session stores none. */
   const PAIN_OPTIONS = [
     { value: '', label: m.hair_removal_pain_unrated() },
     ...[1, 2, 3, 4, 5].map((v) => ({ value: String(v), label: severityName(v) ?? String(v) }))

@@ -1,19 +1,16 @@
-/* Query parameters that can carry journal text, kept out of the address
-   (security scan GD-016, GD-025).
+/* Query parameters that can carry journal text, kept out of the address.
 
-   Care links have carried an episode UUID since ba7631d1e, and More hands
-   its search over in memory, but an address written before either - a
-   bookmark, a history entry, a link typed by hand - can still name a
-   medication in `drug` or `lane`, or a search in `q`. The browser keeps
-   whatever the address says in its history, and the lock screen keeps the
-   address it locked on, so these come out of the address on arrival and
-   again when the journal locks.
+   Care links have carried an episode UUID since ba7631d1e, and More hands its search over
+   in memory, but an address written before either - a bookmark, a history entry, a link
+   typed by hand - can still name a medication in `drug` or `lane`, or a search in `q`. The
+   browser keeps whatever the address says in its history, and the lock screen keeps the
+   address it locked on, so these come out of the address on arrival and again when the
+   journal locks.
 
-   What the old address asked for is not thrown away on arrival: a Care
-   medication name and a search are held here in memory, for the screen to
-   resolve once the journal is open (the name to its episode UUID, the
-   query into the search box), and a lock forgets them with the rest of
-   the journal's content. */
+   What the old address asked for is not thrown away on arrival: a Care medication name and
+   a search are held here in memory, for the screen to resolve once the journal is open (the
+   name to its episode UUID, the query into the search box), and a lock forgets them with
+   the rest of the journal's content. */
 
 import { forgetOnLock } from '../lock/forget-content';
 

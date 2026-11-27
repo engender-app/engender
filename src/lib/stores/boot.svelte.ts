@@ -97,8 +97,8 @@ let machine: BootMachine = initialBoot(readCachedAccessMode());
 
 export const bootState = $state<BootState>({ ...machine.boot });
 
-/** Whether the browser refused to keep this journal's storage, as this
-    boot heard it. Home's storage notice reads it (after-release 17). */
+/** Whether the browser refused to keep this journal's storage, as this boot heard it.
+    Home's storage notice reads it. */
 export const storageRisk = $state({ persistDenied: false });
 
 /** One event in, the reducer's answer mirrored out, and whatever it asked for
@@ -1106,7 +1106,7 @@ async function perform(effect: BootEffect): Promise<void> {
     }
 
     case 'warn-persist-denied':
-      // Recorded rather than said (after-release 17, U2): this was a toast,
+      // Recorded rather than said: this was a toast,
       // and on a first visit it covered the Welcome screen's two buttons
       // for four seconds. Home reads the flag and draws a notice that asks
       // for the one thing a person can do about it (storageNoticeShows).

@@ -18,8 +18,7 @@ import type { AcknowledgementStore } from './acknowledgements';
     estimated from, capped at how long the current stock entry has been in
     effect when that is shorter - there is nothing to estimate from before
     the count was recorded. */
-/* TRAILING_WINDOW_DAYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* TRAILING_WINDOW_DAYS stays exported only for its own test. */
 export const TRAILING_WINDOW_DAYS = 30;
 
 /** How many days before a projected run-out an Android prompt is dated
@@ -31,7 +30,7 @@ export const TRAILING_WINDOW_DAYS = 30;
     day the acceptance criteria describe. */
 export const RUN_OUT_LEAD_DAYS = 5;
 
-/* StockEntry stays exported only for its own test (AU-09 test-only review). */
+/* StockEntry stays exported only for its own test. */
 export interface StockEntry {
   drug: string;
   quantity: number;
@@ -142,8 +141,7 @@ function projectStockFromCounts(
     the ranges asked for. Declared structurally rather than imported from
     the doses area, so this module still depends on nothing below the
     journal seam: `DosesArea.countConsumingDosesByDrug` satisfies it. */
-/* DrugDoseCounter stays exported only for its own test (AU-09 test-only
-   review). */
+/* DrugDoseCounter stays exported only for its own test. */
 export type DrugDoseCounter = (
   ranges: readonly { fromEpochDay: number; toEpochDay: number }[]
 ) => Promise<readonly { drug: string | null; countsByRange: readonly number[] }[]>;
@@ -242,8 +240,7 @@ export async function projectEveryStock(
     For a caller holding the doses already. A caller that would have to
     fetch a decade of them to count three numbers should ask its area for
     the counts and use `projectStockFromCounts` instead (stock.ts). */
-/* projectStock stays exported for its own test, and cross-checked in
-   stock.test.ts (AU-09 test-only review). */
+/* projectStock stays exported for its own test, and cross-checked in stock.test.ts. */
 export function projectStock(
   stock: StockEntry,
   doses: readonly DoseEvent[],
@@ -284,8 +281,7 @@ export function reorderByEpochDay(runOutEpochDay: number | null, leadTimeDays: n
 }
 
 /** Threshold in days below which a medication stock triggers a low-stock notice. */
-/* STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS stays exported only for its own test
-   (AU-09 test-only review). */
+/* STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS stays exported only for its own test. */
 export const STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS = 7;
 /* The notice's 24-hour snooze is the `stock-notice` tile's snooze in the encrypted
    acknowledgements preference. It sat in plaintext localStorage before, where a key that
@@ -303,13 +299,13 @@ export function snoozeStockNotice(store: AcknowledgementStore, nowMs: number = D
 }
 
 /* clearStockNoticeSnooze stays exported for its own test, and cross-checked in
-   stock-notice.test.ts (AU-09 test-only review). */
+   stock-notice.test.ts. */
 export function clearStockNoticeSnooze(store: AcknowledgementStore): void {
   clearSnooze(STOCK_NOTICE_TILE, store);
 }
 
 /* isStockDepletingSoon stays exported for its own test, and cross-checked in
-   stock-notice.test.ts (AU-09 test-only review). */
+   stock-notice.test.ts. */
 export function isStockDepletingSoon(
   projection: StockProjection,
   asOfEpochDay: number,

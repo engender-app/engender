@@ -139,9 +139,8 @@ describe('runFolderSync', () => {
     assert.deepEqual(vi.mocked(androidAutoExport.finishFolderArchive).mock.calls, [[{ modifiedAt: 6000, outcome: 'wrong-password' }]]);
   });
 
-  /* Re-check carpet 13, finding 1: a Merge that filled the device was
-     recorded as "could not be read", and the folder moved past an archive
-     that would merge fine once space was freed. */
+  /* finding 1: a Merge that filled the device was recorded as "could not be read", and the
+     folder moved past an archive that would merge fine once space was freed. */
   test('a Merge that runs out of space is reported as such and left to be tried again', async () => {
     const { a } = await twoDevices();
     const read = folderHolds(await autoExport(a, SAVED_KEY), 6500);

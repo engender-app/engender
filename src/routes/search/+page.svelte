@@ -174,16 +174,13 @@
       selectedRegions.length > 0 ||
       scale !== null
   );
-  /* The typed query, waited out. The two
-     liveQuery closures below read `debouncedQuery`, never `query` itself:
-     `query` changes once a keystroke, and the reactivity contract
-     (journal.svelte.ts: a closure's dependency is whatever it reads before
-     its first await) means a closure reading it re-runs once a keystroke
-     too - every one of the entry half's seven statements and the elsewhere
-     union's two, per character typed. Clearing the field is the one case
-     that is not waited out: an empty query drops the pending timer and
-     lands on `debouncedQuery` at once, so clearing clears the results
-     without the wait (the ticket's own acceptance criterion). */
+  /* The typed query, waited out. The two liveQuery closures below read `debouncedQuery`,
+     never `query` itself: `query` changes once a keystroke, and the reactivity contract
+     (journal.svelte.ts: a closure's dependency is whatever it reads before its first await)
+     means a closure reading it re-runs once a keystroke too - every one of the entry half's
+     seven statements and the elsewhere union's two, per character typed. Clearing the field
+     is the one case that is not waited out: an empty query drops the pending timer and
+     lands on `debouncedQuery` at once, so clearing clears the results without the wait . */
   let debouncedQuery = $state('');
   $effect(() => {
     const typed = query.trim();
@@ -395,8 +392,7 @@
      found. */
   let hitsRole = $derived(roleAt(activeFlag.roles, 1));
 
-  /* The chip says the day the way the field above it does (after-release
-     28, audit L08-10: "From: 2026-09-18"). */
+  /* The chip says the day the way the field above it does ("From: 2026-09-18"). */
   const chipDate = (iso: string) => {
     const day = epochDayFromDateInputValue(iso);
     return day == null ? iso : fmtDateValue(day);
@@ -510,10 +506,9 @@
       aria-expanded={filtersOpen}
       onclick={() => (filtersOpen = true)}
     >
-      <!-- A word and, only once there is one, a count. With an icon and
-           "(0)" this button was 152px and left the field 118px to type in
-           (audit UX-11); the chips under the row already show which
-           filters are on. -->
+      <!-- A word and, only once there is one, a count. With an icon and "(0)" this button
+           was 152px and left the field 118px to type in; the chips under the row already
+           show which filters are on. -->
       <span>{activeFilterChips.length ? m.search_filters_count({ count: activeFilterChips.length }) : m.search_filters()}</span>
     </button>
   </div>

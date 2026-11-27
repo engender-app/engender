@@ -1,6 +1,6 @@
 /* RoleAttrs and the derivation it opts a surface into. A surface that calls the helper but
    never gets added to a list somewhere else was the whole bug - /timeline drew invisible
-   dots and rail because.timeline was missing from a hand-maintained selector in kit.css,
+   dots and rail because .timeline was missing from a hand-maintained selector in kit.css,
    and nothing here would have caught it: the CSS was valid, the tokens were spelled
    correctly, and the only symptom was that nothing drew. What's worth holding to a test is
    that opting in is one call now, and that kit.css has nothing left to hand-maintain.

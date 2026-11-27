@@ -268,9 +268,9 @@
       <!-- What is true now, before what was true before. The rail carries today's place among the milestones and the
            hollow marks ahead of it; the list under it is the same set as
            rows, which is where a milestone is opened, edited or deleted. -->
-      <!-- Wrapped so the whole of it can leave as one when the last
-           milestone is deleted, and the empty notice can arrive, instead of
-           one swapping for the other in a frame (carpet 15 row 48). -->
+      <!-- Wrapped so the whole of it can leave as one when the last milestone is deleted,
+           and the empty notice can arrive, instead of one swapping for the other in a
+           frame. -->
       <div out:crossfade>
       <MilestoneRail
         milestones={sorted}

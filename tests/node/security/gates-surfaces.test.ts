@@ -84,7 +84,7 @@ describe('the gates are one object, not six copies of one', () => {
   });
 
   it('keeps the classes the screens outside this ticket still use', () => {
-    /* Ob-text,.ob-dot and.ob-actions belong to recap and two settings screens, which owns.
+    /* Ob-text,.ob-dot and .ob-actions belong to recap and two settings screens, which owns.
        Deleting them with the rest of the onboarding vocabulary is the tempting mistake
        here. */
     const screens = read('src/lib/styles/screens.css');
@@ -310,8 +310,7 @@ describe('the first run', () => {
 
   it('counts its steps for a screen reader on the sun, not on a rail', () => {
     /* The sun is the only progress meter. The step count is its accessible name rather than
-       visible text, so the growing circle still says which step this is. moved the sun
-       inside the field's own paint, where the moving edge clips it. */
+       visible text. The field clips the sun as its edge moves. */
     expect(onboardingMarkup).not.toContain('role="progressbar"');
     expect(onboardingMarkup).toMatch(
       /class="setup-sun"[\s\S]*?role="img"[\s\S]*?aria-label=\{m\.ob_step_of/

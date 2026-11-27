@@ -124,10 +124,9 @@
   let note = $state('');
   let takeSaved = $state(false);
 
-  /* A recorded take lives only here until Save, so leaving the screen or
-     switching to another tab used to drop it without a word (audit
-     L05-02). Leaving asks first while a take is unsaved (leaveGuard.ts);
-     the page routes its tab switch through `leave`. */
+  /* A recorded take lives only here until Save, so leaving the screen or switching to
+     another tab used to drop it without a word (02). Leaving asks first while a take is
+     unsaved (leaveGuard.ts); the page routes its tab switch through `leave`. */
   const guard = leaveGuard({
     holding: () => passageTake !== null && !takeSaved,
     busy: () => saving,
@@ -156,7 +155,7 @@
   });
 
   /* The passage: whatever the person reads from, and the key their series is
-     filed under (CONTEXT: "Benchmark passage"). */
+     filed under. */
   let ownPassage = $derived(prefs.voiceBenchmarkPassage.trim());
   let passageText = $derived(ownPassage || m.vb_passage());
   let passageKey = $derived(ownPassage ? customPassageKey(ownPassage) : builtInPassageKey(getLocale()));
@@ -332,8 +331,8 @@
     stopPolling();
     phase = 'analysing';
 
-    /* A finish that throws (the recorder, the decoder) used to leave the
-       flow on "Reading the take" for good (after-release 06, L05-06). */
+    /* A finish that throws (the recorder, the decoder) used to leave the flow on "Reading
+       the take" for good. */
     let take: Awaited<ReturnType<typeof active.finish>>;
     try {
       take = await active.finish();
@@ -692,7 +691,7 @@
 </Sheet>
 
 <style>
-  /* The screen's own 20 under the panel, which sits a level too deep for the.screen floor
+  /* The screen's own 20 under the panel, which sits a level too deep for the .screen floor
      to reach. It held 96px here, a reserve for a foot that floated over the content; the
      foot is the column's flex sibling now and covers nothing. */
   .vb-body {

@@ -406,8 +406,7 @@
   <ScreenHeader title={m.nav_calendar()} titleHidden screen="calendar">
     <!-- The month on the field, at the section-heading size and in the field's ink (rule
          7). The live region is the <h2>, which stays put, and the slot inside it is what
-         the labels are keyed in and out of. keyed the heading itself; the key moved inward
-         for two reasons. A keyed <h2> puts two headings in the document outline for the
+         changes when the label does. A keyed <h2> puts two headings in the document outline for the
          length of the swap. And it puts the live region on the element being replaced, so a
          screen reader meets a brand-new region rather than a change inside a standing one,
          which several of them announce twice. Here the region stands still and only its
@@ -475,13 +474,12 @@
       </button>
     </div>
 
-    <!-- Folded, the whole strip opens the month (release audit U18). Its
-         days are 9x24 bars that take no pointer (HeatMap's own rule: a 7px
-         bar is not a tap target), so the strip was a 350px-wide surface a
-         thumb could land on and nothing happened. "Show month" above stays
-         the keyboard's and the screen reader's control - the strip is
-         aria-hidden - and this only widens where a pointer can ask for the
-         same thing. Open, the grid's own days are the targets. -->
+    <!-- Folded, the whole strip opens the month (release). Its days are 9x24 bars that take
+         no pointer (HeatMap's own rule: a 7px bar is not a tap target), so the strip was a
+         350px-wide surface a thumb could land on and nothing happened. "Show month" above
+         stays the keyboard's and the screen reader's control - the strip is aria-hidden -
+         and this only widens where a pointer can ask for the same thing. Open, the grid's
+         own days are the targets. -->
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <div
       class="cal-month-body"
@@ -772,12 +770,11 @@
     position: relative;
     cursor: pointer;
   }
-  /* The folded strip is 30px tall, and its 31 days cannot be wider than a
-     column of it. What the layout does allow is height: the strip's target
-     reaches 9px up into the gap under the controls and 9px down into the
-     margin under it, so a thumb landing anywhere on a day is at least 48px
-     of target (after-release 27, audit UX-19). Drawn as nothing, and only
-     while folded: open, the grid's own days are the targets. */
+  /* The folded strip is 30px tall, and its 31 days cannot be wider than a column of it.
+     What the layout does allow is height: the strip's target reaches 9px up into the gap
+     under the controls and 9px down into the margin under it, so a thumb landing anywhere
+     on a day is at least 48px of target. Drawn as nothing, and only while folded: open, the
+     grid's own days are the targets. */
   .cal-month-body.is-folded::before {
     content: '';
     position: absolute;

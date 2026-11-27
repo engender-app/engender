@@ -23,7 +23,7 @@ interface EncodedArchiveBody {
   body: AsyncGenerator<Uint8Array>;
 }
 
-/* ArchiveCodec stays exported only for its own test (AU-09 test-only review). */
+/* ArchiveCodec stays exported only for its own test. */
 export interface ArchiveCodec {
   formatVersion: number;
   encode(contents: ArchiveContents): Promise<EncodedArchiveBody>;

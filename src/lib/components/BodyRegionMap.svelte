@@ -440,13 +440,12 @@
     to { width: calc(var(--band-w) * 1px); }
   }
 
-  /* The cluster's pills are ordinary boxes, so they take the kit's own block
-     arrival rather than the figure's.
+  /* The cluster's pills are ordinary boxes, so they take the kit's own block arrival rather
+     than the figure's.
 
-     The wipe ends, and the pill rests, with half a touch target of room
-     around it rather than 3px. A clip-path clips hit testing as well as
-     paint, and 3px cut the pill's 48px target (its .tag-chip ::after) to 47
-     (after-release 18). Nothing the pill paints reaches past 3px, so the
+     The wipe ends, and the pill rests, with half a touch target of room around it rather
+     than 3px. A clip-path clips hit testing as well as paint, and 3px cut the pill's 48px
+     target (its .tag-chip ::after) to 47. Nothing the pill paints reaches past 3px, so the
      wider clip changes no pixel of the wipe. */
   .region-pill.region-arrive {
     clip-path: inset(calc(var(--touch-target) / -2) round var(--radius-pill));

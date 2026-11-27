@@ -60,12 +60,11 @@ export function travelCells(before: CellBox[], root: HTMLElement | undefined, at
   }
 }
 
-/** What stands under a narrowing grid: the "more" button and the links
-    after it. The grid reaches its new height in the frame the chip is
-    pressed, so without this they sit at their new place in that frame
-    (carpet 15 row 49: Starred brought "Make a collage or timelapse" up
-    from below the fold over the leaving tiles in one frame). Measured with
-    the cells, before the list changes. */
+/** What stands under a narrowing grid: the "more" button and the links after it. The grid
+    reaches its new height in the frame the chip is pressed, so without this they sit at
+    their new place in that frame (Starred brought "Make a collage or timelapse" up from
+    below the fold over the leaving tiles in one frame). Measured with the cells, before the
+    list changes. */
 export function measureFollowers(scope: HTMLElement | undefined): Map<HTMLElement, number> {
   const tops = new Map<HTMLElement, number>();
   for (const node of scope?.querySelectorAll<HTMLElement>('[data-narrow-follow]') ?? []) {

@@ -9,8 +9,7 @@
 import { epochDayFromTimestamp, todayEpochDay } from './epochDay';
 
 /** Older than this and Home says so (F21). */
-/* BACKUP_STALE_DAYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* BACKUP_STALE_DAYS stays exported only for its own test. */
 export const BACKUP_STALE_DAYS = 30;
 
 /** How many local days ago the last export was, or null if there has never
@@ -37,16 +36,14 @@ export function backupStanding(
   return backupIsStale(lastBackupAt, today) ? 'stale' : 'recent';
 }
 
-/** Whether Home says that this browser may clear the journal (after-release
-    17, U2). The browser refusing persistent storage is not news a person
-    can act on by itself; what they can do is keep a backup elsewhere, so
-    the notice is that ask, said once: it goes for good with the first
-    backup or a dismissal. After that the stale-backup notice is the
-    reminder, and two notices asking for one export would be one too many.
-    Safari also offers installation advice independently of the persistence
-    answer, with these same backup and dismissal gates.
-    It replaced a toast that covered the Welcome screen's buttons for four
-    seconds on every cold web load. */
+/** Whether Home says that this browser may clear the journal. The browser refusing
+    persistent storage is not news a person can act on by itself; what they can do is keep a
+    backup elsewhere, so the notice is that ask, said once: it goes for good with the first
+    backup or a dismissal. After that the stale-backup notice is the reminder, and two
+    notices asking for one export would be one too many. Safari also offers installation
+    advice independently of the persistence answer, with these same backup and dismissal
+    gates. It replaced a toast that covered the Welcome screen's buttons for four seconds on
+    every cold web load. */
 export function storageNoticeShows(state: {
   persistDenied: boolean;
   dismissed: boolean;

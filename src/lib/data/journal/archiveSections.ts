@@ -40,8 +40,7 @@ type Travel<Row> = 'none' | 'whole' | { fields: readonly (keyof Row & string)[] 
 /** One area's declaration that it travels. Erased over the row type, because
     the list holds every section at once and because a test registers
     sections `ArchiveJournal` has never heard of. */
-/* ArchiveSection stays exported only for its own test (AU-09 test-only
-   review). */
+/* ArchiveSection stays exported only for its own test. */
 export interface ArchiveSection {
   name: string;
   /** Sections that must be applied before this one. Empty for most. */
@@ -336,7 +335,7 @@ const SECTIONS = [
       title: 'title',
       file_path: 'fileName',
       // `whenAbsent: null` for the reason `passage_key`/`pitch_track` (v67,
-      // v74) have one: an archive written carries no
+      // v74) have one: an older archive carries no
       // target at all, and the CHECK the schema puts over the pair (schema
       // v77) is exactly "both or neither". No FK to resolve against another
       // section, and no `after` either - `target_id` is a plain uuid (or,
@@ -402,15 +401,13 @@ const SECTIONS = [
       ...COST_COLUMNS
     }
   }),
-  /* The dilation taper schedule - a plan the person typed in,
-     not a record of anything that happened to them, so `travels: 'none'`
-     the same way a dose schedule would if it were archive-registered at
-     all.
+  /* The dilation taper schedule - a plan the person typed in, not a record of anything that
+     happened to them, so `travels: 'none'` the same way a dose schedule would if it were
+     archive-registered at all.
 
-     Not `flat` since schema v83 (audit item 7), and after `procedures` for
-     the same reason `appointments` is both: the procedure it dilates for is
-     a rowid on this device and a uuid on the wire, and the rows it resolves
-     against have to be written first. */
+     Not `flat` since schema v83, and after `procedures` for the same reason `appointments`
+     is both: the procedure it dilates for is a rowid on this device and a uuid on the wire,
+     and the rows it resolves against have to be written first. */
   section({
     name: 'taper',
     after: ['procedures'],
@@ -616,8 +613,7 @@ const SECTIONS = [
   // No rule validation of its own: the schema's recurrence CHECK is the same
   // rule reminderRule.ts states, and the insert is inside the transaction.
   // `auto_source` declares what it is written from when absent, the way lab
-  // results' dosing columns do - an archive written has no
-  // such field at all.
+  // results' dosing columns do - older archives omit the field.
   {
     ...flat({
       name: 'reminders',
@@ -722,8 +718,7 @@ const SECTIONS = [
   // still ongoing, the same as every pre-existing episode's backfill (v40).
   // `end_reason` is absent the same way on an archive from -
   // read as no reason recorded, which is what every episode ended before
-  // this shipped actually has. `hidden` is absent before after-release 07
-  // and reads as shown, which is all an episode could be then. `drug_class`
+  // this shipped actually has. Older archives omit `hidden` and restore those episodes as shown. `drug_class`
   // is absent and is inferred from the
   // drug, the same rule the v93 migration applied to every stored episode.
   flat({
@@ -772,7 +767,7 @@ const SECTIONS = [
       scheduled_route: 'scheduledRoute',
       scheduled_timestamp: 'scheduledTimestamp',
       drug: { field: 'drug', whenAbsent: null },
-      /* `whenAbsent: 'person'`, not null: an archive written carries no source at all, and
+      /* `whenAbsent: 'person'`, not null: an older archive carries no source at all, and
          every row in one was logged by hand, because nothing else could write a dose then.
          The column's own default says the same thing (schema v82). */
       source: { field: 'source', whenAbsent: 'person' },
@@ -878,8 +873,8 @@ const SECTIONS = [
     orderBy: 'start_timestamp, id',
     columns: {
       uuid: 'id',
-      /* `whenAbsent` for the reason voiceBenchmarks' `passage_key` has one: no archive
-         written carries the field, and the flat writer binds an undefined as a raw driver
+      /* `whenAbsent` for the reason voiceBenchmarks' `passage_key` has one: older archives
+         omit the field, and the flat writer binds an undefined as a raw driver
          error rather than a null. The value matches the column's own v71 default, so a
          session restored from an older archive and one that was already in the journal end
          up saying the same thing. */
@@ -995,8 +990,7 @@ type Unregistered = Exclude<ArchiveSectionName, (typeof SECTIONS)[number]['name'
 type AssertNoneUnregistered<Missing extends never> = Missing;
 type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
-/* ARCHIVE_SECTIONS stays exported for its own test, and cross-checked in
-   archive.test.ts (AU-09 test-only review). */
+/* ARCHIVE_SECTIONS stays exported for its own test, and cross-checked in archive.test.ts. */
 export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 
 /** Every section's key, in wire order. */

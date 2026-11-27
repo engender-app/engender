@@ -7,7 +7,7 @@ type TabRoute = { key: string; prefixes: string[] };
 
 const TAB_ROUTES: TabRoute[] = [
   /* Doubt is reached from a persistent Home affordance, deliberately apart
-     from the normal entry flow (CONTEXT: "Doubt entry") - it stays with
+     from the normal entry flow - it stays with
      Home rather than joining Calendar's entries. Coming-back joins it for
      the same reason: the layout opens it on arriving at Home and links it
      from nowhere else (ADR-0045). */
@@ -69,14 +69,12 @@ export function activeTabKey(path: string, chromeOrigin = ''): string {
   return TAB_ROUTES.find((route) => route.prefixes.some((prefix) => path.startsWith(prefix)))?.key ?? '';
 }
 
-/* What the tab bar and the rail light, which is not quite the table above
-   (after-release 17, UX-18). The entry editor is opened from every door -
-   a mood on Today, a day in Journal, a reading in Look back, a milestone
-   in Transition - and lighting Journal for all of them moved the tab under
-   the person each time. It borrows the door it was opened from, the way
-   settings chrome does, and Journal only when opened cold. Screen
-   transitions keep reading activeTabKey, whose /entry answer the container
-   transform and the Home fade are built around. */
+/* What the tab bar and the rail light, which is not quite the table above. The entry editor
+   is opened from every door - a mood on Today, a day in Journal, a reading in Look back, a
+   milestone in Transition - and lighting Journal for all of them moved the tab under the
+   person each time. It borrows the door it was opened from, the way settings chrome does,
+   and Journal only when opened cold. Screen transitions keep reading activeTabKey, whose
+   /entry answer the container transform and the Home fade are built around. */
 const BORROWING_PREFIXES = ['/entry'];
 const BORROWING_FALLBACK = 'calendar';
 
@@ -94,8 +92,7 @@ export function borrowsTab(path: string): boolean {
 export const RAIL_SETTINGS = 'rail-settings';
 
 /* The rail has room for a Settings row the bar does not (the bar uses a separate Settings
-   control), so on every /settings route the rail lights that row and borrows nothing
-   (after-release 17, L04-07). */
+   control), so on every /settings route the rail lights that row and borrows nothing. */
 export function railTabKey(path: string, origin = ''): string {
   if (path.startsWith(CHROME_PREFIX)) return RAIL_SETTINGS;
   return litTabKey(path, origin);

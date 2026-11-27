@@ -161,9 +161,9 @@
 <div class="screen room">
   <!-- No actions: nothing lives beside the title. The back control returns to whichever
        screen led here, which is the appointment screen and nowhere else (smartBack),
-       falling back to it by name for a deep link or a reload (carpet 27). The title is
-       shown in the field like every other screen's: hidden, the field held only the back
-       arrow and read as a band with nothing in it above the question. -->
+       falling back to it by name for a deep link or a reload. The title is shown in the
+       field like every other screen's: hidden, the field held only the back arrow and read
+       as a band with nothing in it above the question. -->
   <ScreenHeader
     title={m.in_the_room_title()}
     screen="in-the-room"
@@ -366,7 +366,7 @@
        "spironolactone" at this size is wider than the 155px a 390px phone leaves at 200%
        zoom. As a flex item the question took that word's width as its own floor and ran off
        the right edge, cutting every line with it. It breaks inside the word instead, the
-       rule.screen-title takes for the same reason; a question whose words fit is untouched. */
+       rule .screen-title takes for the same reason; a question whose words fit is untouched. */
     min-width: 0;
     overflow-wrap: break-word;
   }

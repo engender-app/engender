@@ -141,10 +141,9 @@ export async function applyFlatTable<Row>(
   // A table with no column besides its key (era_mute) is written over by its stamp alone.
   const assignments = [...columns.filter((_, i) => written[i]).map((c) => `${c.column} = ?`), 'updated_at = ?'].join(', ');
 
-  /* A table matched by a natural key still holds each row's uuid as a
-     unique column. A row whose key is new here but whose uuid is not names
-     two rows at once, which only a hand-edited archive does (re-check
-     carpet 11, F6: a raw UNIQUE failure on personal_effect.uuid before). */
+  /* A table matched by a natural key still holds each row's uuid as a unique column. A row
+     whose key is new here but whose uuid is not names two rows at once, which only a
+     hand-edited archive does (a raw UNIQUE failure on personal_effect.uuid before). */
   const uuidAt = table.identity === 'uuid' ? -1 : columns.findIndex((c) => c.column === 'uuid');
   const uuids = new Set(uuidAt < 0 ? [] :
     (await driver.query<{ uuid: string }>(`SELECT uuid FROM ${table.table}`)).map((row) => row.uuid));
@@ -474,12 +473,11 @@ export async function applyBodyRegions(restoring: Restoring): Promise<void> {
   }
 }
 
-/** Rowids for names a column of `table` holds, for the names this device
-    still has; a name it has deleted (archiveMerge.ts) is left out rather
-    than failing the import, and any other name it cannot resolve throws,
-    the archive being unreadable then. Its own rows have passed
-    assertArchiveReferences, so that takes an archive whose own deletion
-    record kept out the group its tags hang from (re-check carpet 11, F3). */
+/** Rowids for names a column of `table` holds, for the names this device still has; a name
+    it has deleted (archiveMerge.ts) is left out rather than failing the import, and any
+    other name it cannot resolve throws, the archive being unreadable then. Its own rows
+    have passed assertArchiveReferences, so that takes an archive whose own deletion record
+    kept out the group its tags hang from. */
 async function resolveNames(
   driver: SqliteDriver,
   table: 'gender_dimension' | 'tag',
@@ -535,7 +533,7 @@ export async function applyEntries(restoring: Restoring): Promise<void> {
     // Absent on an archive written before this ticket - null, the same
     // resting state an unset presentation always reads (ADR-0010).
     entry.presentationId != null && presentations.has(entry.presentationId) ? entry.presentationId : null,
-    // Trash travels; absent before it, in the journal.
+    // Older archives omit Trash. Treat a missing timestamp as active.
     entry.trashedAt ?? null,
     stampOf(entry, ts)
   ];
@@ -688,8 +686,7 @@ export async function applyMilestones(restoring: Restoring): Promise<void> {
     const values = [
       milestone.name,
       milestone.epochDay,
-      // An archive written has no description key, so
-      // JSON.parse leaves it undefined rather than null.
+      // Older archives omit the description. Restore it as empty text.
       milestone.description ?? '',
       milestone.templateKey,
       milestone.roadmapGoalKey ?? null,
@@ -742,9 +739,9 @@ export async function applyMilestones(restoring: Restoring): Promise<void> {
    An unchecked row exists only to hold visibility, so it can take the
    Archive's status while keeping this device's hidden flag. Replace has
    already emptied the table before this runs. */
-/** After the custom goals land: an archive written round two has goals under the cut
-    social, presentational and medical tracks and no categories, so each such track gets the
-    nameless category migration 111 made for it, its uuid the track key. A category already
+/** After the custom goals land: Older archives can contain goals under retired social, presentational and
+    medical tracks. Create the same unnamed categories as migration 111 and
+    use each track key as its category UUID. A category already
     here keeps its name, on a merge as on a replace. */
 export async function adoptLegacyRoadmapTracks({ driver, ts }: Restoring): Promise<void> {
   await driver.run(
@@ -998,9 +995,7 @@ export async function applyDoseSchedules(restoring: Restoring): Promise<void> {
       schedule.recurrenceKind,
       schedule.everyNDays,
       schedule.dosesPerDay,
-      // `?? null` because an archive from has no such
-      // field: a restored schedule is switched off until the person says
-      // otherwise on this device.
+      // An older archive has no auto-log day. Restore with auto-log off.
       schedule.autoLogFromEpochDay ?? null,
       stampOf(schedule, ts)
     ];
@@ -1164,7 +1159,7 @@ function costValues(row: ArchiveCostFields): [number | null, string | null, numb
   return [row.costAmount ?? null, row.costCurrency ?? null, row.costRefunded ? 1 : 0];
 }
 
-/** A session's cost columns and note. An archive written carries the free-text `cost`
+/** A session's cost columns and note. Older archives carry the free-text `cost`
     instead, read by the rule version 115 used (cost.ts, cost-migration.ts): a clean parse
     is the amount, anything else joins the note, so a restore loses no text the migration
     would have kept. */
@@ -1248,8 +1243,7 @@ export async function applyProcedures(restoring: Restoring): Promise<void> {
       procedure.name,
       procedure.surgeryEpochDay,
       procedure.notes,
-      // Absent on an archive written, read the same
-      // way `upsertProcedure` defaults a write that names neither.
+      // Use the same defaults as upsertProcedure when an older archive omits them.
       procedure.kind ?? 'custom',
       procedure.dilationOptIn ? 1 : 0,
       procedure.archived ? 1 : 0,
@@ -1415,13 +1409,12 @@ async function writeAppointment(
     rather than two kept in sync by hand. */
 export const IMPORT_LOG_COLUMNS = 'uuid, source, counts, imported_at, updated_at';
 
-/** One import_log row for a commit that has just happened, direct rather
-    than through the ordinary merge: this record is not content a device
-     might already have - it is a new fact every time, minted here the way any other user-owned row is.
+/** One import_log row for a commit that has just happened, direct rather than through the
+    ordinary merge: this record is not content a device might already have - it is a new
+    fact every time, minted here the way any other user-owned row is.
 
-    Called from inside the restore's own transaction (restore.ts) and from
-    nowhere else, which is what makes the history and the rows it describes
-    one commit rather than two (audit A1). */
+    Called from inside the restore's own transaction (restore.ts) and from nowhere else,
+    which is what makes the history and the rows it describes one commit rather than two. */
 export async function recordImport(
   driver: SqliteDriver,
   source: string,

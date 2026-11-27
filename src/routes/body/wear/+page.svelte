@@ -284,9 +284,8 @@
       };
     },
     async upsert(draft) {
-      /* A running session's only save is Stop, which fills the duration in.
-         It goes through here, so the sheet's own busy state and leave guard
-         cover it like any other save (after-release 06). */
+      /* A running session's only save is Stop, which fills the duration in. It goes through
+         here, so the sheet's own busy state and leave guard cover it like any other save. */
       if (draft.isRunning) {
         await journal.wearSessions.upsertSession({
           id: draft.id,
@@ -331,10 +330,9 @@
     findById: (id) => sessions.find((s) => s.id === id) ?? (running?.id === id ? running : undefined)
   });
 
-  /* Stop on the running row itself, worded as Home's wear tile words it
-     (after-release 28, audit UI-08: a bare square here, a labelled Stop
-     there). The same write the tile makes, then the same confirmation the
-     sheet's Stop gives. */
+  /* Stop on the running row itself, worded as Home's wear tile words it (a bare square
+     here, a labelled Stop there). The same write the tile makes, then the same confirmation
+     the sheet's Stop gives. */
   const cardIn = (_node: Element) => fadeOnly(crossfadeDuration());
   const stopper = writer();
   async function stopRunning() {

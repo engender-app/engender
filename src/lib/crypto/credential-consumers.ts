@@ -33,8 +33,7 @@ interface CredentialConsumerRegistration {
   purpose: string;
 }
 
-/* CREDENTIAL_PROFILES stays exported only for its own test (AU-09 test-only
-   review). */
+/* CREDENTIAL_PROFILES stays exported only for its own test. */
 export const CREDENTIAL_PROFILES = {
   'archive-password': {
     purpose: 'Protects an archive that can leave the device.',
@@ -82,8 +81,7 @@ export const CREDENTIAL_PROFILES = {
   }
 } as const satisfies Record<CredentialProfile, CredentialProfileRegistration>;
 
-/* CREDENTIAL_CONSUMERS stays exported only for its own test (AU-09 test-only
-   review). */
+/* CREDENTIAL_CONSUMERS stays exported only for its own test. */
 export const CREDENTIAL_CONSUMERS = [
   {
     consumer: 'journal-passphrase-setup',
@@ -188,8 +186,7 @@ const consumersByName = new Map<string, CredentialConsumerRegistration>(
   CREDENTIAL_CONSUMERS.map((entry) => [entry.consumer, entry])
 );
 
-/* UnknownCredentialConsumerError stays exported only for its own test (AU-09
-   test-only review). */
+/* UnknownCredentialConsumerError stays exported only for its own test. */
 export class UnknownCredentialConsumerError extends Error {
   constructor(consumer: string) {
     super(`unknown credential consumer: ${consumer}`);
@@ -197,8 +194,7 @@ export class UnknownCredentialConsumerError extends Error {
   }
 }
 
-/* CredentialConsumerMismatchError stays exported only for its own test (AU-09
-   test-only review). */
+/* CredentialConsumerMismatchError stays exported only for its own test. */
 export class CredentialConsumerMismatchError extends Error {
   constructor(message: string) {
     super(message);
@@ -206,8 +202,7 @@ export class CredentialConsumerMismatchError extends Error {
   }
 }
 
-/* credentialConsumer stays exported only for its own test (AU-09 test-only
-   review). */
+/* credentialConsumer stays exported only for its own test. */
 export function credentialConsumer(consumer: string): CredentialConsumerRegistration {
   const entry = consumersByName.get(consumer);
   if (!entry) throw new UnknownCredentialConsumerError(consumer);

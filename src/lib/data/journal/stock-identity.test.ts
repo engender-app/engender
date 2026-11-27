@@ -112,7 +112,7 @@ for (const mode of ['merge', 'replace'] as const) {
       await sourceDb.exec(`CREATE TABLE roadmap_institution_change (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE,
         institution TEXT NOT NULL, status TEXT NOT NULL, epoch_day INTEGER NOT NULL, note TEXT, updated_at INTEGER NOT NULL)`);
       // v115: the three cost columns on each costed table, and the
-      // hair-removal note v94 added and FA 30 reads. v116 only drops a pref
+      // hair-removal note v94 added and reads. v116 only drops a pref
       // row, so it adds nothing here.
       await sourceDb.exec('ALTER TABLE hair_removal_session ADD COLUMN note TEXT');
       for (const table of ['hair_removal_session', 'appointment', 'procedure', 'lab_result', 'medication_stock']) {

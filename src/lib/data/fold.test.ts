@@ -1,4 +1,4 @@
-/* Folded text (CONTEXT: "Folded text", ADR-0005): lowercased and stripped
+/* Folded text (ADR-0005): lowercased and stripped
    of Polish letterforms, including ł - which is the case Unicode
    decomposition alone cannot handle, and the reason folding lives in app
    code rather than in FTS5's tokenizer. */

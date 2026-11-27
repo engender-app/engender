@@ -27,10 +27,9 @@
         that acts on it should only do so for a close it asked for. */
     onClosed?: () => void;
     children: Snippet;
-    /** A write the sheet is waiting on (after-release 06). The scrim, a drag,
-        Escape and Back leave it up until the write lands, so a sheet never
-        closes over a write that may yet fail and need what is in it, and its
-        contents are inert meanwhile. */
+    /** A write the sheet is waiting on. The scrim, a drag, Escape and Back leave it up
+        until the write lands, so a sheet never closes over a write that may yet fail and
+        need what is in it, and its contents are inert meanwhile. */
     busy?: boolean;
   } = $props();
 
@@ -203,10 +202,10 @@
     return registerOverlay(node, { dismiss: close });
   }
 
-  /* While a write runs (`busy`), everything in the sheet but its handle is
-     inert, so nothing can be typed or picked that the write already sent
-     without (after-release 06). Per child rather than one wrapper, because
-     `.sheet > * + *` spaces the children. Reruns when `busy` changes. */
+  /* While a write runs (`busy`), everything in the sheet but its handle is inert, so
+     nothing can be typed or picked that the write already sent without. Per child rather
+     than one wrapper, because `.sheet > * + *` spaces the children. Reruns when `busy`
+     changes. */
   function freezeWhileBusy(node: HTMLElement) {
     if (!busy) return;
     const frozen = [...node.children].filter((child): child is HTMLElement => child instanceof HTMLElement && !child.classList.contains('sheet-handle'));
@@ -283,17 +282,11 @@
 {/if}
 
 <style>
-  /* The tint and the withdrawal ride a layer of the scrim's own rather than the scrim
-     itself, and th rather than tidiness: an element's opacity applies to everything inside
-     it, and the sheet is inside the scrim. Fading the scrim faded the sheet with it, so a
-     sheet that had stopped fading in its own transition still arrived translucent -
-     measured on the flipbook, the list behind it legible through it halfway up its travel.
-     The fan's scrim (QuickAdd) has no such problem because the fan is its sibling; a
-     sheet's is its child.
+  /* Tint and blur use their own layer. Applying opacity to the scrim fades
+     its child sheet as well. QuickAdd avoids that because its scrim and fan
+     are siblings.
 
-     `pointer-events: none` keeps the layer out of the way of the tap that dismisses: the
-     scrim closes on a click whose target is the scrim itself, and a layer over it would be
-     that target instead. */
+     pointer-events: none lets the scrim itself receive dismissal clicks. */
   .sheet-scrim-tint {
     position: absolute;
     inset: 0;

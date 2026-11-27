@@ -752,12 +752,11 @@
         {#if openGroup === 'what'}
           <div class="disclosed" transition:disclose|local>
             {#if editorNeedsDrugPick}
-              <!-- No visible legend: the line that opened this group already
-                   asks "Which drug was this?", and a legend under it asked
-                   the same question a second time (audit UX-11). The group
-                   keeps the question as its accessible name. Picking one
-                   answers it, so the chips close their own height then
-                   rather than leaving in one frame. -->
+              <!-- No visible legend: the line that opened this group already asks "Which
+                   drug was this?", and a legend under it asked the same question a second
+                   time. The group keeps the question as its accessible name. Picking one
+                   answers it, so the chips close their own height then rather than leaving
+                   in one frame. -->
               <div class="field" transition:disclose|local>
                 <div class="tag-row" role="group" aria-label={m.dose_drug_label()}>
                   {#each activeDrugChoices as drug (drug)}
@@ -1006,10 +1005,9 @@
         </Field>
       {/if}
 
-      <!-- Beside Save whenever Save is refused, from the first frame: an
-           injection opens with no site picked and a dose that several
-           regimens could own opens with no drug, and a greyed button with
-           no reason was the whole of what those sheets said (audit UX-11).
+      <!-- Beside Save whenever Save is refused, from the first frame: an injection opens
+           with no site picked and a dose that several regimens could own opens with no
+           drug, and a greyed button with no reason was the whole of what those sheets said.
            The fields themselves only turn invalid once they have been left. -->
       {#if !editorCanSave}
         <div id="dose-requirements" class="muted small" aria-live="polite" transition:disclose|local>

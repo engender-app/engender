@@ -145,10 +145,9 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 2px;
-  /* A `<button>` carries this class too now (audit item 6's "manage"
-     links, which raise a sheet in place rather than navigating): harmless
-     resets for the `<a>` uses above, which already had none of these from
-     the user-agent sheet worth cancelling. */
+  /* A `<button>` carries this class too now ("manage" links, which raise a sheet in place
+     rather than navigating): harmless resets for the `<a>` uses above, which already had
+     none of these from the user-agent sheet worth cancelling. */
   background: none;
   border: none;
   font-family: inherit;
@@ -510,14 +509,13 @@ a.kit-entry:active {
   background: var(--role-wash);
 }
 
-/* The hour sits on the same 26px line the face does, so the two read as one
-   mark on the rail rather than as a label that slipped.
+/* The hour sits on the same 26px line the face does, so the two read as one mark on the
+   rail rather than as a label that slipped.
 
-   One width for every hour, right-aligned against the face (release audit
-   U8): the column was `auto` per row, so "9:24" sat 7px narrower than
-   "13:49" and its face, and the rail through it, moved left with it. Five
-   tabular digits' worth in the time's own type holds "23:59", the widest
-   time either locale writes (fmtTime is 24-hour in en-GB and pl-PL). */
+   One width for every hour, right-aligned against the face (release): the column was `auto`
+   per row, so "9:24" sat 7px narrower than "13:49" and its face, and the rail through it,
+   moved left with it. Five tabular digits' worth in the time's own type holds "23:59", the
+   widest time either locale writes (fmtTime is 24-hour in en-GB and pl-PL). */
 .kit-entry-time {
   display: flex;
   align-items: center;
@@ -800,7 +798,7 @@ a.kit-entry:active {
 }
 
 /* Named areas rather than relying on source order: the note is a DOM sibling
-   of.kit-tile-main so it can be its own row instead of stretching that row's height, but
+   of .kit-tile-main so it can be its own row instead of stretching that row's height, but
    auto-placement would otherwise slot the action button wherever the flow cursor lands
    after a full-width note, not necessarily beside main. Areas pin all three regardless of
    order.
@@ -950,8 +948,8 @@ a.kit-entry:active {
 }
 
 /* The note runs under both of them rather than under the title alone - a direct child of
-   the split tile now, not nested in.kit-tile-main, so it is its own grid row (card weight
-   and row weight alike) and never part of what.kit-tile.is-split centres against the action
+   the split tile now, not nested in .kit-tile-main, so it is its own grid row (card weight
+   and row weight alike) and never part of what .kit-tile.is-split centres against the action
    button. */
 .kit-tile.is-split > .kit-tile-note {
   grid-area: note;
@@ -1275,12 +1273,11 @@ button.kit-strip-day .kit-strip-cell {
   outline-offset: 2px;
 }
 
-/* CARPET-02: the desktop breakpoint app.css already switches the whole
-   shell on - the column the strip counts 1024px by is the same
-   640px `--content-max` this shrinks into. 14 cells at 44px plus their gaps
-   would overrun it (14 * 44 + 13 * 8 = 720px); 38px is the largest cap
-   that still fits (14 * 38 + 13 * 8 = 636px), and it only applies once
-   --strip-count says there is more than a week to draw. */
+/* the desktop breakpoint app.css already switches the whole shell on - the column the strip
+   counts 1024px by is the same 640px `--content-max` this shrinks into. 14 cells at 44px
+   plus their gaps would overrun it (14 * 44 + 13 * 8 = 720px); 38px is the largest cap that
+   still fits (14 * 38 + 13 * 8 = 636px), and it only applies once --strip-count says there
+   is more than a week to draw. */
 @container app (min-width: 1024px) {
   .kit-strip[data-strip-count='14'] {
     /* The row's own cap reads this, so the two agree by construction rather than by both

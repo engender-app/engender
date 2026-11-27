@@ -36,7 +36,7 @@ export interface PersonalEffectsArea {
   /** The minted uuid doubles as the key. `categoryKey`
       is optional - a custom effect may be left uncategorised. */
   addCustomEffectType(name: string, categoryKey?: string | null): Promise<PersonalEffectCatalogEntry>;
-  /** Built-in and custom alike hide, never delete (CONTEXT: "Hidden") -
+  /** Built-in and custom alike hide, never delete -
       a marker already recorded against a hidden effect survives and
       still shows on the timeline, it is only the picker that stops
       offering the effect. */
@@ -96,7 +96,7 @@ export function makePersonalEffectsArea(driver: SqliteDriver): PersonalEffectsAr
       // effect; this is that validation's replacement, reading the open
       // catalogue instead of a hardcoded union. A hidden effect still
       // validates - hiding removes it from the picker, not from what a
-      // marker may name (CONTEXT: "Hidden").
+      // marker may name.
       const known = await driver.query<{ key: string }>('SELECT key FROM personal_effect_type WHERE key = ?', [
         input.effect
       ]);

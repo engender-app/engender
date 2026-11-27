@@ -136,11 +136,10 @@
     --guide: var(--text-2);
   }
 
-  /* The plane fills what its row gives it rather than setting the row: a
-     square drawn at the column's width was the tallest thing on the door
-     and made every row as tall (after-release 27, audit UI-13). Taken out
-     of flow, it scales to the room the tile beside it leaves, with a floor
-     that keeps it a readable square on its own row. */
+  /* The plane fills what its row gives it rather than setting the row: a square drawn at
+     the column's width was the tallest thing on the door and made every row as tall. Taken
+     out of flow, it scales to the room the tile beside it leaves, with a floor that keeps
+     it a readable square on its own row. */
   .kit-reading-draw.is-whole {
     position: relative;
     flex: 1 1 0;

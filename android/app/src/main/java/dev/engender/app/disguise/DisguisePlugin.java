@@ -113,11 +113,10 @@ public class DisguisePlugin extends Plugin {
         queuePendingPalette(disguised, palette, shape);
     }
 
-    /** The window takes on the Recents state of the new identity before the
-        alias flips (GD-045). Capacitor calls this on its plugin thread and
-        window flags belong to the main one, so it waits, briefly: a window
-        that was never updated is only a missed cover, not a reason to hold
-        the switch up. */
+    /** The window takes on the Recents state of the new identity before the alias flips.
+        Capacitor calls this on its plugin thread and window flags belong to the main one,
+        so it waits, briefly: a window that was never updated is only a missed cover, not a
+        reason to hold the switch up. */
     private void coverWindowForIdentityChange(boolean disguised) {
         Activity activity = getActivity();
         if (activity == null) return;

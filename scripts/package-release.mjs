@@ -15,7 +15,7 @@ import { appVersion, isReleaseVersion } from './app-version.mjs';
 const SECRETS = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
   /-----BEGIN PGP PRIVATE KEY BLOCK-----/,
-  // Gradle's signing block, which will have the credentials for.
+  // Gradle signing properties can contain passwords.
   /storePassword\s*=/,
   /keyPassword\s*=/
 ];

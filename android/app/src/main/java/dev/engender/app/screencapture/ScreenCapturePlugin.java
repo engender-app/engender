@@ -58,10 +58,10 @@ public class ScreenCapturePlugin extends Plugin {
         return !allowed || (disguised && sdk < Build.VERSION_CODES.TIRAMISU);
     }
 
-    /** Whether Recents may keep a preview of the app (Android 13 and later).
-        Hidden when the person blocks capture, and when the launcher is disguised:
-        nothing is blocked by default, so a disguised app's card would otherwise show
-        "Notes" over a thumbnail of the journal (FA 43). */
+    /** Whether Recents may keep a preview of the app (Android 13 and later). Hidden when
+        the person blocks capture, and when the launcher is disguised: nothing is blocked by
+        default, so a disguised app's card would otherwise show "Notes" over a thumbnail of
+        the journal. */
     public static boolean recentsPreviewShown(boolean allowed, boolean disguised) {
         return allowed && !disguised;
     }

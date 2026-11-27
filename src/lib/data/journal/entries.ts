@@ -169,10 +169,10 @@ export interface EntrySearchFilters {
   endEpochDay?: number | null;
   hasNote?: boolean;
   hasPhoto?: boolean;
-  /** Starred entries only (CONTEXT: "Starred") - the starred shelf's own
+  /** Starred entries only - the starred shelf's own
       query, reached from search. */
   starred?: boolean;
-  /** Entries logged under any of these modes (CONTEXT: "Presentation"),
+  /** Entries logged under any of these modes,
       by presentation id. */
   presentationIds?: string[];
   /** Entries with a reading on any of these body regions, by domain id. */
@@ -276,7 +276,7 @@ export interface EntriesArea {
   /** Every trashed entry, most recently trashed first - the dedicated trash
       view's only read (out of scope: any other screen surfacing them). */
   trashedEntries(): Promise<TrashedEntry[]>;
-  /** Starred sits outside upsertEntry's input (CONTEXT: "Starred"): it is
+  /** Starred sits outside upsertEntry's input: it is
       curation metadata, not one of the seven content fields, so it gets
       its own toggle the way setTagHidden does rather than folding into a
       content save. Throws on an unknown id. */
@@ -303,14 +303,12 @@ type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: strin
 type RemovedRecordingRow = { uuid: string; entry_id: number; file_path: string };
 type RemovedVideoRow = { uuid: string; entry_id: number; file_path: string };
 
-/* Whether `?debriefFor=` still names the appointment a debrief offer could
-   be making on `epochDay` (security scan GD-048). The id arrives in an
-   address, and an address is something anyone can send: the save links
-   the entry only to the most recent appointment before that day (the
-   offer on Home and the appointment screens, appointments.ts's
-   `mostRecentPastAppointment`) or to one on that day itself (In the
-   room's way out), and only while it has no debrief on file. A missing,
-   stale or already-answered id saves the entry and links nothing. */
+/* Whether `?debriefFor=` still names the appointment a debrief offer could be making on
+   `epochDay`. The id arrives in an address, and an address is something anyone can send:
+   the save links the entry only to the most recent appointment before that day (the offer
+   on Home and the appointment screens, appointments.ts's `mostRecentPastAppointment`) or to
+   one on that day itself (In the room's way out), and only while it has no debrief on file.
+   A missing, stale or already-answered id saves the entry and links nothing. */
 async function debriefStillOffered(driver: SqliteDriver, appointmentId: string, epochDay: number): Promise<boolean> {
   const rows = await driver.query<{ offered: number }>(
     `SELECT 1 AS offered FROM appointment a

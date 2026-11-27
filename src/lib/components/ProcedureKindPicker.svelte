@@ -6,8 +6,7 @@
      checkmark, not fifteen glyphs invented to look busy.
 
      One of the list, so a radio group of rows with a bare check and not ListRow's
-     `checked`, which draws a checkbox's square - "this looks like multiple choice and it's
-     not". LockAfterChoice's shape: every row carries its check, only the chosen one shows
+     `checked`, whose checkbox implies multiple selection. LockAfterChoice's shape: every row carries its check, only the chosen one shows
      it. A pick closes the sheet, so the arrow keys move focus and Space or Enter picks. */
   import { m } from '$lib/paraglide/messages';
   import { PROCEDURE_KINDS, procedureKindName } from '$lib/data/vocabulary/labels';

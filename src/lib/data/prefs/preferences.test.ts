@@ -279,7 +279,7 @@ const ACKNOWLEDGED = {
   hasEntries: true
 };
 
-test('the boot mirror names the neutral palette while disguised, and the real one otherwise (FA 45, security-scan 08)', async () => {
+test('the boot mirror names the neutral palette while disguised, and the real one otherwise', async () => {
   const driver = await migratedDb();
   const { cache, current } = recordingCache();
   try {
@@ -300,7 +300,7 @@ test('the boot mirror names the neutral palette while disguised, and the real on
   } finally { await driver.close(); }
 });
 
-test('a reopen while disguised writes the neutral palette too (FA 45)', async () => {
+test('a reopen while disguised writes the neutral palette too', async () => {
   const driver = await migratedDb();
   try {
     const first = await openPreferences(driver);
@@ -312,7 +312,7 @@ test('a reopen while disguised writes the neutral palette too (FA 45)', async ()
   } finally { await driver.close(); }
 });
 
-test('acknowledgements survive a restart (FA 45)', async () => {
+test('acknowledgements survive a restart', async () => {
   const driver = await migratedDb();
   try {
     await (await openPreferences(driver)).set('acknowledgements', ACKNOWLEDGED);
@@ -320,7 +320,7 @@ test('acknowledgements survive a restart (FA 45)', async () => {
   } finally { await driver.close(); }
 });
 
-test('acknowledgements travel in a backup and come back sanitised on restore (FA 45)', async () => {
+test('acknowledgements travel in a backup and come back sanitised on restore', async () => {
   const source = await migratedDb();
   const target = await migratedDb();
   try {

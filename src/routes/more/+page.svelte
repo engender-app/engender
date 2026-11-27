@@ -106,11 +106,10 @@
   });
   let sections = $derived(hubSections(reading));
 
-  /** How many record hits the door shows at all. Twenty rather than the
-      search screen's thirty, and no second page since audit item 11: this is
-      a door, a query that answers with a screenful of records is a query
-      better finished on the search screen, and the row under the list goes
-      there rather than reading twenty more here. */
+  /** How many record hits the door shows at all. Twenty rather than the search screen's
+      thirty, and no second page since: this is a door, a query that answers with a
+      screenful of records is a query better finished on the search screen, and the row
+      under the list goes there rather than reading twenty more here. */
   const PAGE = 20;
   /** How long the record read waits after the last keystroke: long enough that typing at
       speed never fires a run per key, short enough that a pause reads as instant. The area

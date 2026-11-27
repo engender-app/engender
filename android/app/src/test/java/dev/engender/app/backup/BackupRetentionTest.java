@@ -60,7 +60,7 @@ public class BackupRetentionTest {
         assertTrue(documents.get(0).deleted);
     }
 
-    /* Automatic backups made are.ttbackup and still count towards the five kept, so they
+    /* Automatic backups made are .ttbackup and still count towards the five kept, so they
        age out instead of piling up. */
     @Test public void prunesAutomaticBackupsUnderEitherExtension() {
         List<String> verified = new ArrayList<>();

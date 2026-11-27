@@ -93,9 +93,9 @@ export function readGitFacts(run = git, verify = verifyTagSigner) {
   if (!sha) return { tag: null, signed: false, dirty: false, sha: null };
 
   const tag = run(['describe', '--tags', '--exact-match', 'HEAD']) || null;
-  /* A signature block alone proves nothing: anyone can sign with their own
-     key. The tag counts as signed only when verification against the
-     repository's allowed signers says so (GD-021). */
+  /* A signature block alone proves nothing: anyone can sign with their own key. The tag
+     counts as signed only when verification against the repository's allowed signers says
+     so. */
   const signature = tag ? verify(tag) : undefined;
   // Untracked files included: anything in static/ is copied into the release.
   const status = run(['status', '--porcelain']);

@@ -1,15 +1,14 @@
-/* After-release 19: the home-screen widgets' buttons are 48 x 48 dp touch
-   targets at their default size, and the drawing is the one they had at
-   40 dp. No launcher here, so this reads the layout XML and works out the
-   geometry the way a vertical LinearLayout lays it out: root padding, the
-   header's margins, the button row split by weight, and the background
-   inset that keeps the visible pill where it was.
+/* the home-screen widgets' buttons are 48 x 48 dp touch targets at their default size, and
+   the drawing is the one they had at 40 dp. No launcher here, so this reads the layout XML
+   and works out the geometry the way a vertical LinearLayout lays it out: root padding, the
+   header's margins, the button row split by weight, and the background inset that keeps the
+   visible pill where it was.
 
-   Widths are taken at the default portrait size Android documents for the
-   widget's targetCellWidth, (73n - 16) dp: 57 for one cell, 130 for two,
-   276 for four. A launcher with a denser grid gives less, and so does
-   resizing a widget below its default: the providers' minResizeWidth was
-   kept as it was, so quick-log at its 180dp minimum has 32dp buttons. */
+   Widths are taken at the default portrait size Android documents for the widget's
+   targetCellWidth, (73n - 16) dp: 57 for one cell, 130 for two, 276 for four. A launcher
+   with a denser grid gives less, and so does resizing a widget below its default: the
+   providers' minResizeWidth was kept as it was, so quick-log at its 180dp minimum has 32dp
+   buttons. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
@@ -80,9 +79,9 @@ const WIDGETS = [
   { layout: 'widget_doubt', info: 'doubt_widget_info', buttons: 1 }
 ];
 
-/* FA 09: the widget said "Log a doubt / Open a space to write" for a screen
-   with no composer since ADR-0037. It names the screen it opens, in the
-   screen's own words, and its picker line says what is there. */
+/* the widget said "Log a doubt / Open a space to write" for a screen with no composer since
+   ADR-0037. It names the screen it opens, in the screen's own words, and its picker line
+   says what is there. */
 it('names Safe space the way the screen does, with no writing promised', () => {
   const messages = (locale: string) =>
     JSON.parse(readFileSync(new URL(`../../../messages/${locale}.json`, import.meta.url), 'utf8')) as Record<string, string>;

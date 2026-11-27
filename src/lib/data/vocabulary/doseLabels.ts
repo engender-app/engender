@@ -151,13 +151,11 @@ export const regimenTemplateEster = (key: string): string | null =>
 export const regimenTemplateRoute = (key: string): string =>
   routeLabel(REGIMEN_TEMPLATE_ROUTE[key as RegimenTemplateKey] ?? 'oral');
 
-/* A regimen episode's interval is free text (types.ts): a person types
-   their own ("every 2 weeks", "co 10 dni") and that is shown as written.
-   The demo journal stores the two English words below, though, and they
-   went out raw on a Polish screen (audit U50). Those two, and only as
-   stored, read through the catalogue; anything else is somebody's own
-   words. A Map rather than a record, so a typed "constructor" is not a
-   key it already has. */
+/* A regimen episode's interval is free text (types.ts): a person types their own ("every 2
+   weeks", "co 10 dni") and that is shown as written. The demo journal stores the two
+   English words below, though, and they went out raw on a Polish screen. Those two, and
+   only as stored, read through the catalogue; anything else is somebody's own words. A Map
+   rather than a record, so a typed "constructor" is not a key it already has. */
 const REGIMEN_INTERVAL_LABELS = new Map<string, () => string>([
   ['daily', m.regimen_interval_daily],
   ['weekly', m.regimen_interval_weekly]
@@ -175,10 +173,9 @@ export const regimenIntervalToStore = (draft: string, stored: string | null): st
   return stored !== null && text === regimenIntervalLabel(stored) ? stored : text;
 };
 
-/** An episode's months on the regimen row: "Jan 2025 to Feb 2026", or
-    "from Feb 2026" while it has no end. The ongoing case is its own
-    sentence, not the word for ongoing dropped into the end of a range,
-    which in Polish read "lut 2026 do trwa" (audit U50). */
+/** An episode's months on the regimen row: "Jan 2025 to Feb 2026", or "from Feb 2026" while
+    it has no end. The ongoing case is its own sentence, not the word for ongoing dropped
+    into the end of a range, which in Polish read "lut 2026 do trwa". */
 export const regimenPeriodLabel = (startEpochDay: number, endEpochDay: number | null): string => {
   const month = (epochDay: number) => fmtDay(epochDay, { month: 'short', year: 'numeric' });
   return endEpochDay === null

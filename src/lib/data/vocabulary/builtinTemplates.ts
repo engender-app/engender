@@ -27,8 +27,7 @@ export const BUILT_IN_DIMENSIONS = [
 
 export type BuiltInDimensionKey = (typeof BUILT_IN_DIMENSIONS)[number]['key'];
 
-/** The three tags that count as a euphoria capture (CONTEXT: "Euphoria
-    capture") - general, social and body, read as equals by anything that
+/** The three tags that count as a euphoria capture - general, social and body, read as equals by anything that
     asks "did this day carry a euphoria capture" (the doubt journal's
     counterevidence pool, the good-day rule). Not narrowed to g-euphoria
     alone: someone whose euphoria is mostly social or body-specific tags
@@ -36,8 +35,7 @@ export type BuiltInDimensionKey = (typeof BUILT_IN_DIMENSIONS)[number]['key'];
     blind to it. */
 export const EUPHORIA_TAG_KEYS = ['g-euphoria', 'g-soc-eu', 'g-body-eu'] as const;
 
-/* MILESTONE_TEMPLATE_KEYS stays exported only for its own test (AU-09
-   test-only review). */
+/* MILESTONE_TEMPLATE_KEYS stays exported only for its own test. */
 export const MILESTONE_TEMPLATE_KEYS = [
   'hrt_start',
   'transition_start',
@@ -57,8 +55,7 @@ export type MilestoneTemplateKey = (typeof MILESTONE_TEMPLATE_KEYS)[number];
    drug, ester and route wording lives in doseLabels.ts, which is where the rest of a
    regimen episode's own closed vocabulary already lives. No dose or interval key exists to
    carry either one by accident. */
-/* REGIMEN_TEMPLATE_KEYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* REGIMEN_TEMPLATE_KEYS stays exported only for its own test. */
 export const REGIMEN_TEMPLATE_KEYS = [
   'estradiol_valerate_im',
   'estradiol_oral',
@@ -74,12 +71,11 @@ export const REGIMEN_TEMPLATE_KEYS = [
 
 export type RegimenTemplateKey = (typeof REGIMEN_TEMPLATE_KEYS)[number];
 
-/** CONTEXT: "Lean". This is where lean does its real
+/** Lean.. This is where lean does its real
     work: the estradiol templates are feminizing HRT, the testosterone ones
     masculinizing, so the split is the drug each one starts, not a judgment
     call. */
-/* REGIMEN_TEMPLATE_LEAN stays exported only for its own test (AU-09 test-only
-   review). */
+/* REGIMEN_TEMPLATE_LEAN stays exported only for its own test. */
 export const REGIMEN_TEMPLATE_LEAN: Record<RegimenTemplateKey, Lean> = {
   estradiol_valerate_im: 'femme',
   estradiol_oral: 'femme',

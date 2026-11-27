@@ -505,12 +505,11 @@ Unit likewise: a set preferred unit wins, then the
       key="labs-analyte"
     />
 
-    <!-- By position, not by unit (pre-release 18, item 57): estradiol in
-         pg/mL and prolactin in ng/mL are different keys, so switching
-         analyte built a second chart above the first while the old block,
-         held by its mixed-units notice's outro, stayed under it for 420ms
-         and pushed the list 240px down and back. Reused, the one chart
-         tweens to the new readings in place. -->
+    <!-- By position, not by unit: estradiol in pg/mL and prolactin in ng/mL are different
+         keys, so switching analyte built a second chart above the first while the old
+         block, held by its mixed-units notice's outro, stayed under it for 420ms and pushed
+         the list 240px down and back. Reused, the one chart tweens to the new readings in
+         place. -->
     {#each series as s}
         {@const chart = chartFor(s)}
         {@const mixed = comparabilityLabels(seriesComparability(s.results))}

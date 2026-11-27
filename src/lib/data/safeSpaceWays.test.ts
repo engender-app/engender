@@ -19,9 +19,9 @@ describe('the ways down from Safe space', () => {
   });
 
   it('never leaves Safe space for another door', () => {
-    /* FA 09: the letters row lit the Transition tab and the readings row
-       lit Look back. Every way down stays under /doubt or on the resource
-       directory, which Safe space already shares with the More hub. */
+    /* the letters row lit the Transition tab and the readings row lit Look back. Every way
+       down stays under /doubt or on the resource directory, which Safe space already shares
+       with the More hub. */
     for (const way of SAFE_SPACE_WAYS) {
       expect(way.href === '/support/resources' || way.href.startsWith('/doubt/'), `${way.key} -> ${way.href}`).toBe(true);
     }

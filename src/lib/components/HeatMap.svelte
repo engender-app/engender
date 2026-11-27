@@ -570,9 +570,8 @@
 {/snippet}
 
 <style>
-  /* Opening, the letters wait a beat like the dates under them, so they
-     arrive as the days spread into their columns rather than ahead of them
-     (prh12 bug 11). */
+  /* Opening, the letters wait a beat like the dates under them, so they arrive as the days
+     spread into their columns rather than ahead of them. */
   .cal-dows {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -591,9 +590,8 @@
      offset auto keeps its static position. */
   .cal-dows.is-compact {
     position: absolute;
-    /* Its own width kept: with every offset auto an absolute box shrinks
-       to its content, and the seven letters squeezed to the left edge in
-       the frame of the fold (prh12 bug 11). */
+    /* Its own width kept: with every offset auto an absolute box shrinks to its content,
+       and the seven letters squeezed to the left edge in the frame of the fold. */
     inset-inline: 0;
     opacity: 0;
     pointer-events: none;
@@ -791,10 +789,9 @@
   .cal-grid.is-compact .cal-highlight {
     transition: opacity 0s;
   }
-  /* The dates ride the travel unscaled, and at its start all of them stand
-     at 9px bars: faded in from the tap, the first frames drew thirty
-     numbers piled on one line (prh12 bug 11). They wait until the days have
-     spread. */
+  /* The dates ride the travel unscaled, and at its start all of them stand at 9px bars:
+     faded in from the tap, the first frames drew thirty numbers piled on one line. They
+     wait until the days have spread. */
   .cal-grid.is-opening .cal-date {
     transition: opacity var(--dur-med) var(--ease-out) var(--dur-fast);
   }

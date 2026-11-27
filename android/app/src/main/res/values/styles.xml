@@ -20,16 +20,15 @@
         <item name="android:background">@drawable/splash</item>
     </style>
 
-    <!-- The buttons of all three widgets: identical
-         beyond the glyph each carries, so nothing about the layout itself
-         reveals which is which - that's the button's own contentDescription
-         at render time (DisguisableWidgetProvider), not this shared style.
+    <!-- The buttons of all three widgets: identical beyond the glyph each carries, so
+         nothing about the layout itself reveals which is which - that's the button's own
+         contentDescription at render time (DisguisableWidgetProvider), not this shared
+         style.
 
-         The view is the touch target, 48dp tall and with no margins, so it
-         takes the whole slot it is given. The visible pill is 40dp, drawn
-         inside the background's inset, and the layouts' padding shrank by
-         the same amount, so the pills sit exactly where they did when the
-         view itself was 40dp (after-release 19). -->
+         The view is the touch target, 48dp tall and with no margins, so it takes the whole
+         slot it is given. The visible pill is 40dp, drawn inside the background's inset,
+         and the layouts' padding shrank by the same amount, so the pills sit exactly where
+         they did when the view itself was 40dp. -->
     <style name="WidgetMoodButton">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">48dp</item>

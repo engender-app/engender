@@ -174,11 +174,10 @@ export function lockBackground(
   const priorFocusIndex = previouslyFocused ? priorFocusOrder.indexOf(previouslyFocused) : -1;
   const restoreInert: HTMLElement[] = [];
   if (root) {
-    /* The hosted foot too (carpet 26 moved it into the column, which holds
-       the sheet and so is never one of the root's inert children): left
-       live it paints over a sheet whose screen is an isolated stacking
-       context - the entry editor's mood row drew over "Record a physical
-       change" - and its buttons stayed reachable behind a modal. */
+    /* The hosted foot too (moved it into the column, which holds the sheet and so is never
+       one of the root's inert children): left live it paints over a sheet whose screen is
+       an isolated stacking context - the entry editor's mood row drew over "Record a
+       physical change" - and its buttons stayed reachable behind a modal. */
     const withdrawn = [...root.children, ...root.querySelectorAll('[data-app-savebar]')] as HTMLElement[];
     for (const child of withdrawn) {
       if (child.contains(node) || keep.some((kept) => child.contains(kept))) continue;

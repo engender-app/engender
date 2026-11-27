@@ -1,9 +1,8 @@
-/* FA 50: migration hygiene before 1.0. Version 119 drops the columns nothing
-   writes, renames the uuid-holding `*_id` columns to `*_uuid`, moves the
-   device-local debrief state off `checklist` into `appointment_debrief`, and
-   adds the voice analyzer's version. Each assertion is made on a journal that
-   was on version 118 with rows in it, so a rebuild that loses a row, a
-   counter, an index or a deletion trigger fails here. */
+/* migration hygiene before 1.0. Version 119 drops the columns nothing writes, renames the
+   uuid-holding `*_id` columns to `*_uuid`, moves the device-local debrief state off
+   `checklist` into `appointment_debrief`, and adds the voice analyzer's version. Each
+   assertion is made on a journal that was on version 118 with rows in it, so a rebuild that
+   loses a row, a counter, an index or a deletion trigger fails here. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

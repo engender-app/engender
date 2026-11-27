@@ -127,10 +127,9 @@
     return transition;
   };
 
-  /* The arriving words fade in over the leaving ones. `crossfade` alone is
-     the leaving half, so with only that the new line was painted at full
-     opacity in the frame the words changed (carpet 15 row 51, Look back's
-     "Femininity, 3 to 7" line on a span change). */
+  /* The arriving words fade in over the leaving ones. `crossfade` alone is the leaving
+     half, so with only that the new line was painted at full opacity in the frame the words
+     changed (Look back's "Femininity, 3 to 7" line on a span change). */
   const lineIn = (node: Element) =>
     fadeSwap ? crossfade(node, undefined, { direction: 'in' }) : { duration: 0 };
 

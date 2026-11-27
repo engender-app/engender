@@ -331,8 +331,7 @@ test('depletingStocks gates and sorts on reorderByEpochDay when a row carries on
   const items = [
     {
       // Run-out is 50 days out, ample by itself - but a 45-day lead time
-      // pulls the reorder day inside the window, which is the whole point
-      // of.
+      // pulls the reorder day inside the warning window.
       entry: { id: 's-lead', drug: 'estradiol valerate', quantity: 100, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
       projection: { remaining: 50, dailyRate: 1, runOutEpochDay: asOf + 50, excludedDoses: 0 },
       reorderByEpochDay: asOf + 5

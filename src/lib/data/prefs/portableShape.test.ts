@@ -42,7 +42,7 @@ describe('importing the archive named in the audit (S6)', () => {
     expect(portablePreferencePatch({ cycleTrackingEnabled: false } as never).cycleTrackingChoice).toBe(null);
   });
 
-  test('an older archive with the legacy cycle opt-in on restores as an explicit yes (FA 44)', () => {
+  test('an older archive with the legacy cycle opt-in on restores as an explicit yes', () => {
     expect(portablePreferencePatch({ cycleTrackingEnabled: true } as never).cycleTrackingChoice).toBe(true);
     expect(portablePreferencePatch({ cycleTrackingEnabled: true, cycleTrackingChoice: false } as never).cycleTrackingChoice)
       .toBe(false);
@@ -53,7 +53,7 @@ describe('importing the archive named in the audit (S6)', () => {
   });
 });
 
-describe('the surface overrides map (FA 44)', () => {
+describe('the surface overrides map', () => {
   test('a map of booleans is accepted', () => {
     expect(portableValueForKey('surfaceOverrides', { 'wear-timer': false })).toEqual({ 'wear-timer': false });
   });
@@ -103,7 +103,7 @@ describe('a hostile or corrupted value, key by key', () => {
   });
 });
 
-describe('the acknowledgements (FA 45)', () => {
+describe('the acknowledgements', () => {
   test('an object is accepted and sanitised field by field', () => {
     expect(
       portableValueForKey('acknowledgements', { snoozes: { a: 1 }, readLetterIds: ['x'], hasEntries: 'maybe' })

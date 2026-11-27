@@ -162,10 +162,9 @@
 </script>
 
 <div class="screen">
-  <!-- No subtitle: the screen used to open on what it cannot do ("Search
-       finds titles only") before saying what it holds (release audit U17).
-       That line now sits under the summary row, where the pile it
-       qualifies is counted. -->
+  <!-- No subtitle: the screen used to open on what it cannot do ("Search finds titles
+       only") before saying what it holds (release). That line now sits under the summary
+       row, where the pile it qualifies is counted. -->
   <ScreenHeader title={m.documents_title()} back="/more">
     {#snippet actions()}
       <button
@@ -200,10 +199,9 @@
 
       {#each groups as group (group.kind)}
         <div class="screen-part" data-documents-group={group.kind}>
-          <!-- A heading names which pile this is, and with only one pile
-               there is nothing to tell apart - "Not linked to anything"
-               over the whole list read as a reprimand for filing paper
-               without attaching it (audit item 9). -->
+          <!-- A heading names which pile this is, and with only one pile there is nothing
+               to tell apart - "Not linked to anything" over the whole list read as a
+               reprimand for filing paper without attaching it. -->
           {#if groups.length > 1 || group.kind !== 'unattached'}
             <SectionHeading text={groupHeading(group.kind)} />
           {/if}
@@ -217,9 +215,8 @@
                   subtitle={[dayAndKind(document, kind.word), attachmentLine(document)]}
                   href={`/media/documents/${document.id}`}
                 >
-                  <!-- The page itself where there is one, and the kind mark
-                       the row used to draw where there is not (audit item 9;
-                       ADR-0065's own note carries the reversal). -->
+                  <!-- The page itself where there is one, and the kind mark the row used to
+                       draw where there is not (ADR-0065's own note carries the reversal). -->
                   {#snippet leading()}
                     <DocumentThumb fileName={document.fileName} title={document.title} />
                   {/snippet}

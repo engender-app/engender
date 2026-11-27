@@ -53,9 +53,9 @@
   const LEADING = NAV.slice(0, 2);
   const TRAILING = NAV.slice(2);
 
-  /* Per shape (after-release 17): the rail has a Settings row of its own
-     and lights it on every /settings route, where the bar, which has no
-     such row, keeps borrowing the door the gear was pressed from. */
+  /* Per shape: the rail has a Settings row of its own and lights it on every /settings
+     route, where the bar, which has no such row, keeps borrowing the door the gear was
+     pressed from. */
   let activeKey = $derived(litTabKey(page.url.pathname, chromeTabOrigin()));
   let railKey = $derived(railTabKey(page.url.pathname, chromeTabOrigin()));
   let litKey = $derived<Record<string, string>>({ bar: activeKey, rail: railKey });

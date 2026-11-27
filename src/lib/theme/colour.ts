@@ -19,8 +19,7 @@ interface Rgb {
   b: number;
 }
 
-/* toRgb stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* toRgb stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function toRgb(hex: string): Rgb {
   const raw = hex.trim().replace('#', '');
   return {

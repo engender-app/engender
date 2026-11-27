@@ -65,7 +65,7 @@ async function shot(page, name) {
   await page.locator('[data-app-root]').screenshot({ path: `${outDir}/${name}.png` });
 }
 
-await block('ticket 04 sheet focus', 13, async () => {
+await block('sheet focus', 13, async () => {
   const { context, page } = await freshPage();
 
   await openSheet(page, '/health/appointments');
@@ -207,6 +207,6 @@ await block('ticket 04 sheet focus', 13, async () => {
   await interrupted.context.close();
 });
 
-process.exitCode = finish('ticket 04 sheet focus checks passed') ? 1 : 0;
+process.exitCode = finish('sheet focus checks passed') ? 1 : 0;
 await browser.close();
 await app.httpServer.close();

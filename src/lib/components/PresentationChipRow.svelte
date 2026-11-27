@@ -56,9 +56,8 @@
         <span class="tag-group-name" id="presentation-highlight-label">
           {m.presentation_highlight_label()}
         </span>
-        <!-- Toggles rather than radios (after-release 21, audit L05-08):
-             pressing the chosen mode again clears the highlight, and a
-             radio group is one that cannot be emptied. -->
+        <!-- Toggles rather than radios: pressing the chosen mode again clears the
+             highlight, and a radio group is one that cannot be emptied. -->
         <div class="tag-row" role="group" aria-labelledby="presentation-highlight-label">
           {#each presentations as p (p.id)}
             {@const role = roleAt(activeFlag.roles, p.roleIndex)}

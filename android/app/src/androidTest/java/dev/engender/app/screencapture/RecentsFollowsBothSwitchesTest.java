@@ -21,8 +21,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * GD-045: the Recents card follows both switches. From Android 13 the card is
- * kept only when capture is allowed and the launcher is not disguised
+ * The Recents card follows both switches. From Android 13 the card is kept
+ * only when capture is allowed and the launcher is not disguised
  * (setRecentsScreenshotEnabled); FLAG_SECURE follows capture alone. Before 13
  * FLAG_SECURE is the only lever, so it is set when capture is off or disguise
  * is on. Run on an API 33+ image and on one below 33: each branch asserts the

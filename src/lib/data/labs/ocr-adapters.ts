@@ -42,7 +42,7 @@ export function platformImageSource(): OcrImageSource {
         capture: source === 'camera' ? 'environment' : undefined
       });
       if (!file) return null;
-      // By the size on disk, before any of it is read (GD-008).
+      // By the size on disk, before any of it is read.
       refuseLargePhoto(file.size);
       return new Uint8Array(await file.arrayBuffer());
     }

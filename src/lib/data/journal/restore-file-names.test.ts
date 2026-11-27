@@ -154,7 +154,7 @@ for (const mode of ['merge', 'replace'] as const) {
   });
 }
 
-test('deleting one of two rows that name the same file leaves the bytes (GD-024)', async () => {
+test('deleting one of two rows that name the same file leaves the bytes', async () => {
   const made = await device();
   const [photo] = (await made.journal.entries.entriesForDay(20_000))[0].photos;
   await made.db.run('INSERT INTO progress_photo(uuid, epoch_day, pose, file_path, updated_at) VALUES (?, ?, ?, ?, ?)',

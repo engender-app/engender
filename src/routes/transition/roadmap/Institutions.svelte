@@ -77,9 +77,8 @@
     changes: readonly InstitutionChange[];
     hiddenGoals: readonly string[];
     packKey: string;
-    /** The list arrives after the court steps have filled in (carpet 15
-        row 47): at once where it lands below the screen, opening where it
-        can be seen. */
+    /** The list arrives after the court steps have filled in: at once where it lands below
+        the screen, opening where it can be seen. */
     belowFold?: boolean;
   } = $props();
 

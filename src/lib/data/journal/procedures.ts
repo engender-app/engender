@@ -50,9 +50,8 @@ interface ProcedureInput {
   /** Only read for a `custom` kind (see `Procedure`). Defaults to false. */
   dilationOptIn?: boolean;
   archived?: boolean;
-  /** What it cost (FA 30). Absent leaves the stored cost as it is, like
-      `archived`, so an edit that is not about the cost cannot blank it; null
-      clears it. Throws if invalid. */
+  /** What it cost. Absent leaves the stored cost as it is, like `archived`, so an edit that
+      is not about the cost cannot blank it; null clears it. Throws if invalid. */
   cost?: CostInput;
 }
 

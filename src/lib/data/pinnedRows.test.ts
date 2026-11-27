@@ -351,8 +351,8 @@ test('a forward fact replaces the gap a pinned row used to report', () => {
     })
   );
 
-  /* 'last' rather than 'quiet' since after-release 17: milestones have
-     nothing to finish, so the gap is a plain last-written line. */
+  /* 'last' rather than 'quiet' since: milestones have nothing to finish, so the gap is a
+     plain last-written line. */
   assert.equal(backwards[0].line.kind, 'last');
   assert.equal(forwards[0].line.kind, 'next');
 });

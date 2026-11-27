@@ -15,10 +15,10 @@ import java.util.List;
 import org.junit.Test;
 
 /**
- * FA 56: a backup counts as verified only when the written file opens with
- * the saved backup password. Before, the read-back compared bytes with what
- * was meant to be written, so a file sealed under a mistyped password was
- * listed as verified and pushed good backups out of retention.
+ * a backup counts as verified only when the written file opens with the saved
+ * backup password. Before, the read-back compared bytes with what was meant
+ * to be written, so a file sealed under a mistyped password was listed as
+ * verified and pushed good backups out of retention.
  */
 public class BackupReadBackTest {
     /** src/lib/data/journal/golden-archive-fixture.ts */

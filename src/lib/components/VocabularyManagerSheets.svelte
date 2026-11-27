@@ -1,9 +1,8 @@
 <script lang="ts">
-  /* Modes, raised as a sheet over whatever screen is
-     showing (audit item 6) - mounted once here, at the app root beside
-     QuickAdd, rather than inside Settings, so the entry editor's own
-     "manage" links (EntryEditor.svelte) can raise the same sheet without
-     navigating anywhere. `ui.raisedManager` is the one flag both launchers drive. */
+  /* Modes, raised as a sheet over whatever screen is showing - mounted once here, at the
+     app root beside QuickAdd, rather than inside Settings, so the entry editor's own
+     "manage" links (EntryEditor.svelte) can raise the same sheet without navigating
+     anywhere. `ui.raisedManager` is the one flag both launchers drive. */
   import { onMount } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { ui } from '$lib/stores/ui.svelte';

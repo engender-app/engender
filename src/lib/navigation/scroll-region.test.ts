@@ -69,9 +69,9 @@ describe('hashRowId', () => {
     expect(hashRowId('#a%20b')).toBe('a b');
   });
 
-  /* A link anyone can send (security scan GD-039): a bare `%`, a bad escape
-     or a cut-off UTF-8 sequence made decodeURIComponent throw inside the
-     doses, labs and regimen screens' setup, and the screen failed to draw. */
+  /* A link anyone can send: a bare `%`, a bad escape or a cut-off UTF-8 sequence made
+     decodeURIComponent throw inside the doses, labs and regimen screens' setup, and the
+     screen failed to draw. */
   it('is null for a malformed escape rather than throwing', () => {
     expect(hashRowId('#%')).toBeNull();
     expect(hashRowId('#%ZZ')).toBeNull();

@@ -157,9 +157,9 @@
        envelope. Opening it puts the text under the mask below the folded edge, so it is
        uncovered by the same travel. -->
   {#if open || read}
-    <!-- The first line sits above the folded edge, so the mask uncovers
-         only what is under it: without a fade of its own that line was
-         painted whole in the frame the letter opened (carpet 15 row 51). -->
+    <!-- The first line sits above the folded edge, so the mask uncovers only what is under
+         it: without a fade of its own that line was painted whole in the frame the letter
+         opened. -->
     <span class="letter-text" class:is-folded={!open} data-letter-text={open ? '' : undefined} in:crossfade>{letter.text}</span>
   {/if}
 {/snippet}
@@ -278,11 +278,9 @@
     color: var(--text-2);
   }
 
-  /* The state marks - Sealed, and Ready while a letter is unlocked and
-     unread. The words take the role's ink, held to 4.5:1 as small text;
-     the glyphs keep its mark colour, which only owes a glyph's 3:1. The
-     words in --role-mark measured 3.53:1 on trans light (after-release
-     21, audit A11Y-09). */
+  /* The state marks - Sealed, and Ready while a letter is unlocked and unread. The words
+     take the role's ink, held to 4.5:1 as small text; the glyphs keep its mark colour,
+     which only owes a glyph's 3:1. The words in --role-mark measured 3.53:1 on trans light. */
   .letter-mark > span:not(.letter-when),
   .letter-ready {
     color: var(--role-ink);
@@ -386,10 +384,9 @@
     overflow: hidden;
   }
 
-  /* The two actions are the touch floor square (after-release 18; they
-     were 36px). The negative margin hands the extra height back to the
-     card's own vertical padding, so the first line of the letter keeps its
-     place beside them. */
+  /* The two actions are the touch floor square (they were 36px). The negative margin hands
+     the extra height back to the card's own vertical padding, so the first line of the
+     letter keeps its place beside them. */
   .letter-acts {
     display: flex;
     gap: var(--space-1);

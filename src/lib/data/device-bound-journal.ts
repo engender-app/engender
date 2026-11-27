@@ -188,8 +188,7 @@ export async function deleteDeviceKeyDatabase(): Promise<void> {
   await runRequest(indexedDB.deleteDatabase(DEVICE_BOUND_DB));
 }
 
-/* createDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* createDeviceBoundMetadata stays exported only for its own test. */
 export async function createDeviceBoundMetadata(
   slot: DeviceKeySlot
 ): Promise<{ dataKey: Uint8Array<ArrayBuffer>; metadata: DeviceBoundMetadata }> {
@@ -199,8 +198,7 @@ export async function createDeviceBoundMetadata(
   return { dataKey, metadata };
 }
 
-/* unlockDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* unlockDeviceBoundMetadata stays exported only for its own test. */
 export async function unlockDeviceBoundMetadata(
   metadata: DeviceBoundMetadata,
   slot: DeviceKeySlot
@@ -217,8 +215,7 @@ export async function unlockDeviceBoundMetadata(
   }
 }
 
-/* serializeDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* serializeDeviceBoundMetadata stays exported only for its own test. */
 export function serializeDeviceBoundMetadata(metadata: DeviceBoundMetadata): string {
   return JSON.stringify({
     version: metadata.version,
@@ -228,8 +225,7 @@ export function serializeDeviceBoundMetadata(metadata: DeviceBoundMetadata): str
   });
 }
 
-/* parseDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* parseDeviceBoundMetadata stays exported only for its own test. */
 export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadata {
   let raw: Record<string, unknown>;
   try {

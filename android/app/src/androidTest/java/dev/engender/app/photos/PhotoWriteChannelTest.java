@@ -97,9 +97,9 @@ public class PhotoWriteChannelTest {
         }
     }
 
-    /* GD-010: a name with a trailing space used to be trimmed by PhotoFiles and
-       land on the real file. Both transports must now refuse it, and the
-       original bytes must be exactly as they were. */
+    /* A name with a trailing space used to be trimmed by PhotoFiles and land on the real
+       file. Both transports must now refuse it, and the original bytes must be exactly as
+       they were. */
     @Test
     public void aTrailingSpaceNameNeverReachesTheFileItTrimsTo() throws Exception {
         File original = PhotoFiles.fileFor(InstrumentationRegistry.getInstrumentation().getTargetContext(),

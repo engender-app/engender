@@ -84,7 +84,7 @@
   const today = $derived(currentDay());
 
   /* The catalogue a hidden effect or a disabled category has already
-     removed (CONTEXT: "Hidden", "Effect category") - what the timeline and
+     removed - what the timeline and
      the "mark a change" list offer. A retired built-in is left
      out too unless it is already marked, which keeps its row and its mark.
      The fuller list lives only in the manage sheet below. */
@@ -103,8 +103,7 @@
 
   const directionOf = (e: PersonalEffectCatalogEntry): EffectDirectionGroup => e.direction ?? 'other';
 
-  /* Category, then direction, is the coarse control (CONTEXT: "Effect
-     category"); collapsed by default so a new journal's screen stays no
+  /* Category, then direction, is the coarse control; collapsed by default so a new journal's screen stays no
      longer than the eight-row screen this replaces - the acceptance
      criterion this file exists to keep. Keyed by direction and category
      together, since the same category groups separately under each

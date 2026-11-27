@@ -425,7 +425,7 @@ describe('tier 1, response', () => {
     }
   });
 
-  /* The depths used to be literals in four places, and.btn's 0.97 and the primitive's 0.94
+  /* The depths used to be literals in four places, and .btn's 0.97 and the primitive's 0.94
      disagreed with nothing to say which was right. They are three tokens now, one per size
      class, declared in press.css and nowhere else - so a control names the class it belongs
      to and cannot invent a fifth number. */
@@ -561,7 +561,7 @@ describe('tier 1, response', () => {
      button's edge several times as far as a 48px key's. The three depths are three size
      classes of one law - the bigger the control, the shallower the fraction.
 
-     Dropped.icon-btn,.switch and.pin-key from this list: they used to restate the compact
+     Dropped.icon-btn,.switch and .pin-key from this list: they used to restate the compact
      depth themselves and now take it from the default like any other plain control, so
      there is nothing of theirs left to check here - the "no second owner" test below covers
      their absence instead. Only the two deliberate exceptions remain. */
@@ -599,11 +599,11 @@ describe('tier 1, response', () => {
   });
 
   /* The shell declaring a depth of its own is the state replaced. This used to read only
-     app.css, which is why it never saw.icon-btn,.btn,.switch and.pin-key's own:active rules
+     app.css, which is why it never saw .icon-btn,.btn,.switch and .pin-key's own:active rules
      living one file over, in components.css - four owners the "shell" check was never
      pointed at. Every stylesheet, every component <style> block, everything but press.css
      itself: any:active rule elsewhere that names `transform` is a second owner come back,
-     whether it is app.css's old.nav-fab number or a class never heard of. */
+     whether it is app.css's old .nav-fab number or a class never heard of. */
   it('is the only stylesheet that presses a control with its own :active rule', () => {
     const restated: string[] = [];
     for (const { path, css } of [...sheets, ...svelteStyleBlocks()]) {
@@ -988,7 +988,7 @@ describe('the field is a blind over the content', () => {
   /* The blind and the rings are nested under the field's own group, so their z-index only
      orders them inside it, and the field group is what has to sit over the screen's. At
      auto it fell under the screen, and a screen whose snapshot is opaque (the entry
-     editor's.editor-bg) hid the whole field for the length of Home to a new entry. */
+     editor's .editor-bg) hid the whole field for the length of Home to a new entry. */
   it('paints the field group over the screen group, since the blind is nested inside it', () => {
     expect(zIndex('::view-transition-group(field)')).toBeGreaterThan(
       zIndex('::view-transition-group(screen)')
@@ -1009,10 +1009,10 @@ describe('the field is a blind over the content', () => {
     );
   });
 
-  /* carpet 15, cost-reading-open. The status strip was .app's ::before, so a
-     navigation left it in the root group under every named one, and a
-     scrolled screen's snapshot or a travelling field painted through the
-     band. It is an element with a group of its own, above all the others. */
+  /* cost-reading-open. The status strip was .app's ::before, so a navigation left it in the
+     root group under every named one, and a scrolled screen's snapshot or a travelling
+     field painted through the band. It is an element with a group of its own, above all the
+     others. */
   it('gives the status strip its own transition group above every other group', () => {
     const layout = readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8');
     expect(layout).toMatch(/<div class="app-strip" aria-hidden="true"><\/div>/);
@@ -1107,11 +1107,10 @@ describe('the field is a blind over the content', () => {
     }
   });
 
-  /* prh12 bug 10. Settings scrolled, then Today: the scrolled side names no
-     rings, so Today's shared sun was a new image with no old one, painted at
-     its resting place from the first frame while the blue it sits on was
-     still 213px above the window. The shared sun rides the travelling blind
-     on both legs instead. */
+  /* Settings scrolled, then Today: the scrolled side names no rings, so Today's shared sun
+     was a new image with no old one, painted at its resting place from the first frame
+     while the blue it sits on was still 213px above the window. The shared sun rides the
+     travelling blind on both legs instead. */
   it('carries the shared sun with a blind that travels in or out whole', () => {
     const enter = declarations(ruleOf(app, "html[data-blind-scroll='enter']::view-transition-new(*.sun-shared-ring)")?.body ?? '');
     const exit = declarations(ruleOf(app, "html[data-blind-scroll='exit']::view-transition-old(*.sun-shared-ring)")?.body ?? '');
@@ -1202,9 +1201,7 @@ describe('the field is a blind over the content', () => {
     expect(follow.at(-1)!.decls.translate, 'ends where the screen rests').toBe('0 0');
     /* Every pattern in the sheet, read off the sheet rather than listed here: a pattern is
        added by writing one of these rules, so a list of its own is a list that a new
-       pattern can be left out of. added the fifth - the app opening, which is a state
-       change rather than a navigation - and this is the shape that would have failed for
-       it. */
+       pattern can be left out of. App opening also counts, even though it is a state change. */
     const patterns = [
       ...new Set(
         [...app.matchAll(/html\[data-nav='([a-z-]+)'\]/g)].map((match) => match[1])
@@ -1591,11 +1588,10 @@ describe('the curves the tiers reach for', () => {
   });
 });
 
-/* Carpet 15 row 46. A control that dims when it goes disabled does so while
-   something else is moving (a sheet saving, a write in flight), and with no
-   transition on opacity it drops to its dimmed figure in one frame. .btn and
-   .icon-btn fade; the switch did not. Every `X:disabled` rule in the kit that
-   sets opacity needs X's own rule to transition opacity. */
+/* A control that dims when it goes disabled does so while something else is moving (a sheet
+   saving, a write in flight), and with no transition on opacity it drops to its dimmed
+   figure in one frame. .btn and .icon-btn fade; the switch did not. Every `X:disabled` rule
+   in the kit that sets opacity needs X's own rule to transition opacity. */
 describe('disabled dimming', () => {
   it('fades every control that dims when disabled', () => {
     const css = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
@@ -1616,9 +1612,9 @@ describe('disabled dimming', () => {
   });
 });
 
-/* Carpet 15 row 51: two one-frame changes found by the yank sweep and fixed
-   in CSS alone, guarded here so a later edit cannot quietly undo them. */
-describe('carpet 15 row 47, the legal group mounts in parts', () => {
+/* two one-frame changes found by the yank sweep and fixed in CSS alone, guarded here so a
+   later edit cannot quietly undo them. */
+describe('the legal group mounts in parts', () => {
   /* Mounting the whole 3000px group in the switch's frame held the phone's
      frame loop for 50 to 107ms. The steps mount a screen's worth first and
      the rest after the opening, opening only where they land on screen. */
@@ -1657,7 +1653,7 @@ describe('carpet 15 row 47, the legal group mounts in parts', () => {
   });
 });
 
-describe('carpet 15 row 51 colour and name arrivals', () => {
+describe('colour and name arrivals', () => {
   it("fades setup's Skip words with the field when a flag is picked, keeping .btn's list", () => {
     const source = stripComments(readFileSync(join(root, 'src/routes/onboarding/+page.svelte'), 'utf8'));
     const rule = source.match(/\.setup-outs \.btn \{([^}]*)\}/)?.[1] ?? '';
@@ -1740,11 +1736,10 @@ describe('carpet 15 row 51 colour and name arrivals', () => {
   });
 });
 
-/* prh12 bug 11, the Journal month opening and folding. Opening, the dates
-   faded in from the frame of the tap while every one of them still stood at
-   its 9px bar, so the first frames drew thirty numbers piled on one line.
-   Folding, the weekday letters went out of flow at full width's opacity and
-   shrank to their content, "MTWTFSS" squeezed to the left for the length of
+/* The Journal month opening and folding. Opening, the dates faded in from the frame of the
+   tap while every one of them still stood at its 9px bar, so the first frames drew thirty
+   numbers piled on one line. Folding, the weekday letters went out of flow at full width's
+   opacity and shrank to their content, "MTWTFSS" squeezed to the left for the length of
    their fade. */
 describe('the Journal month opens and folds without a smear or a squeeze', () => {
   const heatMap = readFileSync(join(root, 'src/lib/components/HeatMap.svelte'), 'utf8');

@@ -282,9 +282,8 @@
      the finger itself. */
   let readoutAt = $derived(at ? readoutCorner(at.x, scrubTop, plotBox.width, plotBox.height) : null);
 
-  /* The gutter's own three labels (audit item 1): the midpoint goes when it
-     rounds to the same text as either end, which is every count chart
-     whose domain is 0 to 1. */
+  /* The gutter's own three labels: the midpoint goes when it rounds to the same text as
+     either end, which is every count chart whose domain is 0 to 1. */
   let gutter = $derived(gutterLabels(min, max, formatValue));
 
   /* Laid out against the plot's own positions rather than against the

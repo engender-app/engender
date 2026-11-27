@@ -109,8 +109,7 @@ export function comfortBand(
     (quality.ts's MAX_F0_CV), which is about 1.4 semitones of spread - so a
     take about to fail is plainly off the middle without slamming into the
     edges. */
-/* STEADINESS_SEMITONES stays exported only for its own test (AU-09 test-only
-   review). */
+/* STEADINESS_SEMITONES stays exported only for its own test. */
 export const STEADINESS_SEMITONES = 3;
 
 /** The axis a held note is judged on: not absolute hertz but semitones around the note

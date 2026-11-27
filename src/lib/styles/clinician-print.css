@@ -144,19 +144,17 @@
   inset: 0 min(0px, calc((100% - var(--touch-target)) / 2));
 }
 
-/* Phone width (after-release 22, the audit's UI-11). Six tables 336 to
-   625px wide sat in a 306px region, so even with a scroll cue every header
-   past the edge read cut mid-word ("Rout", "Dose 48 m"), and dates broke a
-   word a line. Below 30rem of frame, a table with three or more columns
-   reads as stacked rows instead: each row a block, each cell its header
-   over its value. Every column is on
-   screen without scrolling, so there is nothing for the keyboard to reach
-   past. Two-column tables fit as tables once a long header may wrap.
+/* Phone width (the audit's UI-11). Six tables 336 to 625px wide sat in a 306px region, so
+   even with a scroll cue every header past the edge read cut mid-word ("Rout", "Dose 48
+   m"), and dates broke a word a line. Below 30rem of frame, a table with three or more
+   columns reads as stacked rows instead: each row a block, each cell its header over its
+   value. Every column is on screen without scrolling, so there is nothing for the keyboard
+   to reach past. Two-column tables fit as tables once a long header may wrap.
 
-   The headers stay in the table for screen readers, only clipped from
-   sight, and each cell's printed label is decoration (the empty
-   alternative text after the slash), so a cell is announced once with its
-   column header rather than twice. Screen only: paper keeps the tables. */
+   The headers stay in the table for screen readers, only clipped from sight, and each
+   cell's printed label is decoration (the empty alternative text after the slash), so a
+   cell is announced once with its column header rather than twice. Screen only: paper keeps
+   the tables. */
 @media screen {
   .dossier-date {
     white-space: nowrap;

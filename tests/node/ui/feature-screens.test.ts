@@ -31,8 +31,8 @@ const REACHED_FROM_INSIDE = [
   'care/regimen',
   'care/doses',
   'transition/tryouts/[id]',
-  /* One procedure (prh12 bug 20), reached from a card on /health/surgery
-     and from anything filed against it; the hub row is the list. */
+  /* One procedure, reached from a card on /health/surgery and from anything filed against
+     it; the hub row is the list. */
   'health/surgery/[id]',
   /* One appointment (prh12), reached from a row on /health/appointments,
      from a day's context list, from Today and from a search hit. */
@@ -247,13 +247,12 @@ describe('what a first-run journal sees', () => {
 });
 
 describe('what the worker is still fetching', () => {
-  /** Reference data is held in memory and read synchronously,
-      so a screen reading only that owes no loading state. Three here:
-      milestones reads the milestone catalogue, resources reads a directory
-      compiled into the bundle, and the notifications view reads nothing but
-      the preference store. Presentations read the same
-      mirrored vocabulary (reference.svelte.ts) rather than a live query, but
-      left this list with audit item 6 along with their route. */
+  /** Reference data is held in memory and read synchronously, so a screen reading only that
+      owes no loading state. Three here: milestones reads the milestone catalogue, resources
+      reads a directory compiled into the bundle, and the notifications view reads nothing
+      but the preference store. Presentations read the same mirrored vocabulary
+      (reference.svelte.ts) rather than a live query, but left this list with along with
+      their route. */
   const ENTRY_DATA = ROUTES.filter(
     (route) =>
       ![

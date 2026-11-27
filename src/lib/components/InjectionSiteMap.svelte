@@ -105,9 +105,8 @@
   {/each}
 </div>
 
-<!-- Opens its own height when the first site is picked, rather than
-     pushing the reason line and Save down 42px in one frame (after-release
-     26 measured it on the coming-back sheet). -->
+<!-- Opens its own height when the first site is picked, rather than pushing the reason line
+     and Save down 42px in one frame (measured it on the coming-back sheet). -->
 {#if value}
   <p class="muted small site-map-caption" transition:disclose|local>{injectionSiteLabel(value)}</p>
 {/if}

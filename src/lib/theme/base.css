@@ -141,10 +141,10 @@
      down, which nothing asked for. */
   --dur-sun-open: 900ms;
 
-  /* A theme or flag pick blooming out of the sun (paletteChange.ts, prh12 bug 9): long
-     enough for a circle from the field's corner to cross the whole window with the rings on
-     its edge. 800ms since asked for "a little longer" than the 600 it shipped at;
-     --dur-slow's 380ms threw it. */
+  /* A theme or flag pick blooming out of the sun (paletteChange.ts): long enough for a
+     circle from the field's corner to cross the whole window with the rings on its edge.
+     800ms since asked for "a little longer" than the 600 it shipped at; --dur-slow's 380ms
+     threw it. */
   --dur-bloom: 800ms;
 
   /* Duration of Progress.svelte's indeterminate sweep. It lasts only

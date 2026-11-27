@@ -62,8 +62,7 @@ describe('magnify', () => {
    1.7px of its exact centre, which on a 65px cell is about three per cent of it; the `cell`
    the function computed for the job went unused.
 
-   That is very likely the bug behind "still no sliding zoom animation like in quick add".
-   The answer at the time was to raise the bare rows' peak from 1.24 to 1.6, which made an
+   Raising the bare rows' peak from 1.24 to 1.6 made an
    effect that almost never ran bigger on the rare frames it did. */
 const ROW = { left: 100, width: 500 } as DOMRect;
 

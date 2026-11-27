@@ -41,7 +41,7 @@ describe('Tile component contract', () => {
   });
 
   /* The note sits in a foot of page colour along the bottom edge of the block, and a foot
-     reaches the block's edges. Inside.kit-tile-main it cannot: the link is one cell of the
+     reaches the block's edges. Inside .kit-tile-main it cannot: the link is one cell of the
      tile's grid and a foot drawn in it leaves a sliver of stripe down both sides. The
      action shape already had the note outside; the dismiss-only shape is the one this
      moves. */

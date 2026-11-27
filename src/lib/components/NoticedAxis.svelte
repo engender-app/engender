@@ -79,9 +79,9 @@
   const DIRECTION_ROLE: Record<EffectDirectionGroup, number> = { feminizing: 0, masculinizing: 1, other: 2 };
   const roleFor = (direction: EffectDirectionGroup) => roleAt(activeFlag.roles, DIRECTION_ROLE[direction]);
 
-  /* The legend names what the marks show: a filled dot per direction a
-     personal effect carries, and one hollow ring for side effects, which
-     are drawn by kind rather than by direction (after-release 05, L05-09). */
+  /* The legend names what the marks show: a filled dot per direction a personal effect
+     carries, and one hollow ring for side effects, which are drawn by kind rather than by
+     direction. */
   let directionsPresent = $derived(
     EFFECT_DIRECTIONS.filter((direction) =>
       axis.marks.some((mark) => mark.kind === 'personal-effect' && mark.direction === direction))

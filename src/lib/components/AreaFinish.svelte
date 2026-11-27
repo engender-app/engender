@@ -76,12 +76,10 @@
   let finishedOn = $derived(groupFinishedOn(group, states));
   let suspendedOn = $derived(groupSuspendedOn(group, states));
 
-  /* What the card says the area is, kept in a line that never leaves the
-     page. The rows below swap in and out of {#if} branches, and a row
-     inserted with aria-live already on it is not read (after-release 21,
-     audit L04-14); this line changing is. Going back to active empties
-     it, which says nothing, so picking an area back up is said through
-     the announcer instead. */
+  /* What the card says the area is, kept in a line that never leaves the page. The rows
+     below swap in and out of {#if} branches, and a row inserted with aria-live already on
+     it is not read; this line changing is. Going back to active empties it, which says
+     nothing, so picking an area back up is said through the announcer instead. */
   let stateLine = $derived(
     finishedOn !== null
       ? m.area_finish_done_title({ date: dayLong(finishedOn) })
@@ -135,15 +133,13 @@
     prefs.areaFinishOfferDeclined = [...prefs.areaFinishOfferDeclined, ...unrecorded];
   }
 
-  /* Closed once the write lands, with the button held while it runs so a
-     second tap writes nothing (after-release 06; it used to close first,
-     and a write that then failed went nowhere).
+  /* Closed once the write lands, with the button held while it runs so a second tap writes
+     nothing (it used to close first, and a write that then failed went nowhere).
 
-     Through `answerOffer` whichever moment opened the sheet, because the sheet
-     *is* the confirmation either way and ADR-0045's rule is that the write
-     happens on one path. A second call straight to `setAreasFinished` here
-     would be the "trigger that wanted to write directly" offers.ts's own
-     header exists to refuse. */
+     Through `answerOffer` whichever moment opened the sheet, because the sheet *is* the
+     confirmation either way and ADR-0045's rule is that the write happens on one path. A
+     second call straight to `setAreasFinished` here would be the "trigger that wanted to
+     write directly" offers.ts's own header exists to refuse. */
   const sheetWrite = writer();
   async function confirmFinish() {
     const subject: FinishedArea = {

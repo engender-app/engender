@@ -124,7 +124,7 @@ function assertNoLeftover(label, samples) {
   }
 }
 
-await block('ticket 242 sheet navigation leftover', 5, async () => {
+await block('sheet cleanup after navigation', 5, async () => {
   // Case 1: open a sheet on care/doses, leave by the tab bar.
   {
     const { context, page } = await freshPage();
@@ -193,6 +193,6 @@ await block('ticket 242 sheet navigation leftover', 5, async () => {
   }
 });
 
-process.exitCode = finish('ticket 242 sheet navigation leftover checks passed') ? 1 : 0;
+process.exitCode = finish('sheet cleanup after navigation checks passed') ? 1 : 0;
 await browser.close();
 await app.httpServer.close();

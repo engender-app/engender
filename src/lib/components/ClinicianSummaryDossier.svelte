@@ -163,10 +163,9 @@
   const isSummaryEmpty = $derived(CLINICIAN_SUMMARY_SECTION_KEYS.every((key) => summary.sections[key] === null));
 </script>
 
-<!-- A date in a table cell never breaks between its words on screen ("11 /
-     Jul / 2026" stacked one word a line at 390, after-release 22). Print
-     keeps its own wrapping: clinician-print.css scopes the rule to screen.
-     `after` keeps a list's comma on its date's line. -->
+<!-- A date in a table cell never breaks between its words on screen ("11 / Jul / 2026"
+     stacked one word a line at 390). Print keeps its own wrapping: clinician-print.css
+     scopes the rule to screen. `after` keeps a list's comma on its date's line. -->
 {#snippet date(epochDay: number, after = '')}<span class="dossier-date">{dayShort(epochDay)}{after}</span>{/snippet}
 
 {#snippet truncateNote(hidden: number)}
@@ -185,10 +184,9 @@
           {demographics.name.trim() || m.clinician_summary_not_set()}
         </span>
       </div>
-      <!-- Drawn only when given, like the date of birth under it: both
-           come from a field on this screen that is empty by default, and a
-           row reading "Not specified" told the doctor something the
-           person never said (after-release 22). -->
+      <!-- Drawn only when given, like the date of birth under it: both come from a field on
+           this screen that is empty by default, and a row reading "Not specified" told the
+           doctor something the person never said. -->
       {#if demographics.pronouns?.trim()}
         <div class="dossier-profile-item" data-profile-item="pronouns" in:profileArrive out:profileLeave>
           <span class="dossier-profile-label">{m.clinician_summary_pronouns_label()}</span>

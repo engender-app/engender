@@ -96,7 +96,7 @@ interface DayReading extends DayAreas {
 /** One area's declaration that its records show on a day. Erased over what
     it reads, because the list holds every section at once and because a
     test registers sections `DayRecords` has never heard of. */
-/* DaySection stays exported only for its own test (AU-09 test-only review). */
+/* DaySection stays exported only for its own test. */
 export interface DaySection {
   key: string;
   covers: readonly string[];
@@ -265,7 +265,7 @@ type Covered = (typeof SECTIONS)[number]['covers'][number];
  * Photos, voice recordings and video notes travel inside their
  * owner's Archive section and appear on that owner's day.
  */
-/* DAY_OPT_OUTS stays exported only for its own test (AU-09 test-only review). */
+/* DAY_OPT_OUTS stays exported only for its own test. */
 export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   dimensions: 'reference data',
   presets: 'reference data',
@@ -331,12 +331,12 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // it belongs to, it already is one - the entry's own row.
   marginNotes: 'drawn beside the entry it annotates, not as a section of its own',
 
-  // Bug 25: read pose by pose on its own timeline
+  // read pose by pose on its own timeline
   // and in the photo library, which is where a progress photo is looked at.
   progressPhotos: 'its own pose timeline and the photo library are where it is read'
 };
 
-/* DAY_SECTIONS stays exported only for its own test (AU-09 test-only review). */
+/* DAY_SECTIONS stays exported only for its own test. */
 export const DAY_SECTIONS: readonly DaySection[] = SECTIONS;
 
 /** Every section's key, in the order they read - what the screen walks to

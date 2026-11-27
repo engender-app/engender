@@ -43,11 +43,10 @@
     <figcaption class="muted small">{m.disguise_preview_lock()}</figcaption>
   </figure>
 </div>
-<!-- On Android the launcher alias switches at once, so there is nothing to
-     warn about there - but the system's own screens never get a disguised
-     variant, so the sheet names them plainly, along with the one thing
-     disguise turns off while it is on (FA 43). On web the manifest is the
-     browser's to refresh, and a promise the app cannot keep is worse than
+<!-- On Android the launcher alias switches at once, so there is nothing to warn about there
+     - but the system's own screens never get a disguised variant, so the sheet names them
+     plainly, along with the one thing disguise turns off while it is on. On web the
+     manifest is the browser's to refresh, and a promise the app cannot keep is worse than
      none. -->
 <p class="muted small">{isAndroid() ? m.disguise_android_gap_note() : `${m.disguise_installed_note({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })} ${m.disguise_web_gap_note({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}`}</p>
 

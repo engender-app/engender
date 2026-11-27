@@ -1,6 +1,6 @@
-/* FA 12: the Words reading is cut. Version 103 drops the list of words it was
-   told to skip, rows and the UNIQUE index on the word included. A cut removes
-   rather than converts, so nothing is carried anywhere. */
+/* the Words reading is cut. Version 103 drops the list of words it was told to skip, rows
+   and the UNIQUE index on the word included. A cut removes rather than converts, so nothing
+   is carried anywhere. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

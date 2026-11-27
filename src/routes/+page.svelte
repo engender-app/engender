@@ -428,12 +428,11 @@
   });
   const isCrossed = (key: string) => doneKeys.has(key) && !held.has(key);
 
-  /* Said once (release audit U17): an offer whose area is already a pinned
-     row above it is left out, so a new journal's default pins (care,
-     milestones, tryouts) do not put Milestones and Care on day one twice.
-     Settled once, when the section first lands, and held for the visit: a
-     pin changed in the edit mode while the section is up must not cut a
-     row into or out of a list nobody is looking at as it changes. */
+  /* Said once (release): an offer whose area is already a pinned row above it is left out,
+     so a new journal's default pins (care, milestones, tryouts) do not put Milestones and
+     Care on day one twice. Settled once, when the section first lands, and held for the
+     visit: a pin changed in the edit mode while the section is up must not cut a row into
+     or out of a list nobody is looking at as it changes. */
   let startOffers = $state<typeof GETTING_STARTED | null>(null);
   $effect.pre(() => {
     if (!doorActive()) { startOffers = null; return; }
@@ -474,10 +473,9 @@
         maxTouchPoints: navigator.maxTouchPoints
       })
     : null;
-  /* Safari installation advice also applies when persistence is granted.
-     Other browsers keep their persistence-refusal notice (after-release 17).
-     It shows only before the first backup, and the stale-backup notice
-     only after one, so the two never ask for an export together. */
+  /* Safari installation advice also applies when persistence is granted. Other browsers
+     keep their persistence-refusal notice. It shows only before the first backup, and the
+     stale-backup notice only after one, so the two never ask for an export together. */
   let showStorageNotice = $derived(
     storageNoticeShows({
       persistDenied: storageRisk.persistDenied,
@@ -582,10 +580,9 @@
     { i: 8, x: 95, d: 0.05, r: 180 }
   ];
 
-  /* Today's latest mood, ringed on the strip, and when it was logged, on the
-     heading's own line (after-release 06, UX-16): after a save, Today used
-     to ask "How is today?" with nothing picked, as if nothing had been
-     written. A face still opens a new entry, the ringed one included, so
+  /* Today's latest mood, ringed on the strip, and when it was logged, on the heading's own
+     line: after a save, Today used to ask "How is today?" with nothing picked, as if
+     nothing had been written. A face still opens a new entry, the ringed one included, so
      the strip stays the way to add another. */
   let todayEntriesQuery = liveQuery((j) => j.entries.entriesForDay(today));
   let latestToday = $derived(latestMood(todayEntriesQuery.value ?? []));
@@ -1015,11 +1012,10 @@
           </ListCard>
         {/if}
 
-        <!-- The fold opens and closes its own height (pre-release 18, item
-             53): a dismissal or a stopped wear session that promotes the
-             last folded tile takes the fold with it, and unmounted bare it
-             gave its 48px and the 8px above it back in one frame, pulling
-             Pinned up 56px under a tile that was still dissolving. -->
+        <!-- The fold opens and closes its own height: a dismissal or a stopped wear session
+             that promotes the last folded tile takes the fold with it, and unmounted bare
+             it gave its 48px and the 8px above it back in one frame, pulling Pinned up 56px
+             under a tile that was still dissolving. -->
         {#if tileSplit.folded.length > 0}
           <button
             type="button"
@@ -1421,9 +1417,9 @@
      Tighter between the blocks than Home's own rhythm between sections
      (--space-2 against --space-3): three weights of one thing sit closer
      together than two different things do. */
-  /* Block flow with a margin between rather than a grid gap (pre-release
-     18, item 53): a grid's gap goes in the frame the fold is removed, and
-     no margin on the fold can take it back first. A margin can travel. */
+  /* Block flow with a margin between rather than a grid gap: a grid's gap goes in the frame
+     the fold is removed, and no margin on the fold can take it back first. A margin can
+     travel. */
   .home-tiles > :global(* + *) {
     margin-top: var(--space-2);
   }
@@ -1434,7 +1430,7 @@
 
      Full width and the touch floor tall: it is the control for everything the cap left out,
      and the floor applies to it like any other row. It was 44px under a comment calling
-     that the floor (after-release 18). */
+     that the floor. */
   .home-fold {
     display: flex;
     align-items: center;

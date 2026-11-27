@@ -114,10 +114,10 @@ export async function seedCompleteArchiveJournal(
     unit: 'pmol/L',
     drawTime: '07:40',
     provider: 'Diagnostyka',
-    // A refund with no amount, the one cost shape the others below lack (FA 30).
+    // A refund with no amount, the one cost shape the others below lack.
     cost: { amount: null, currency: null, refunded: true }
   });
-  // Its own procedure (audit item 7, schema v83): the taper names which
+  // Its own procedure (schema v83): the taper names which
   // procedure it dilates for rather than carrying a surgery day of its
   // own, and the checklist's own procedure above is `chest_reconstruction`
   // - not dilation-eligible - so this is a second, minimal one.
@@ -179,7 +179,7 @@ export async function seedCompleteArchiveJournal(
     provider: 'Klinika Laserowa',
     note: 'numbing cream helped'
   });
-  // Unrated and untimed-pain, the shape FA 28 allows: no rating is stored.
+  // Unrated and untimed-pain, the shape allows: no rating is stored.
   await journal.hairRemoval.upsertSession({
     epochDay: 20007,
     area: 'genital_surgical_site',

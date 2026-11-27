@@ -15,10 +15,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * FA 43: the page reads the live alias, synchronously, under the name the
- * pre-paint script and boot-cache.ts look for. The disguise flip kills the
- * process before the WebView flushes its localStorage boot mirror, so this
- * is the only answer that is right on the first start after a flip.
+ * the page reads the live alias, synchronously, under the name the pre-paint
+ * script and boot-cache.ts look for. The disguise flip kills the process
+ * before the WebView flushes its localStorage boot mirror, so this is the
+ * only answer that is right on the first start after a flip.
  */
 @RunWith(AndroidJUnit4.class)
 public class DisguiseStateTest {

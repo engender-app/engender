@@ -359,7 +359,7 @@ export async function generateLongJournal(
       }
       if (tags.includes(tagWordId)) summary.tagWordEntries++;
 
-      /* An entry has to carry a mood (CONTEXT: Entry); dimensions, tags,
+      /* An entry has to carry a mood; dimensions, tags,
          note and photo are all still optional on top of it. */
       const mood = between(1, 5);
 
@@ -401,7 +401,7 @@ export async function generateLongJournal(
            Increasing within a day and across days, which is all the journal
            asks of it: a timestamp orders several entries on one epoch day
            and is never the source of which day an entry belongs to
-           (CONTEXT: Timestamp). Not a wall-clock moment, and not claimed as
+. Not a wall-clock moment, and not claimed as
            one - epoch day is local (ADR-0001) and this arithmetic is not. */
         timestamp: (day * 24 + 8 + i * 4.5) * 3_600_000 + 40 * 60_000,
         mood,

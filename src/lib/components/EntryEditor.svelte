@@ -629,10 +629,10 @@
     return last.photo.fileName ? { fileName: last.photo.fileName } : null;
   }
 
-  /* A photo taken with the camera just now was taken today, so on today's
-     entry there is nothing to ask (audit UX-05: Save and Skip did the same
-     thing). A picked file has had its date stripped and could be from any
-     day, so it is still asked; so is a capture on a backdated entry. */
+  /* A photo taken with the camera just now was taken today, so on today's entry there is
+     nothing to ask (Save and Skip did the same thing). A picked file has had its date
+     stripped and could be from any day, so it is still asked; so is a capture on a
+     backdated entry. */
   const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => {
     if (entryDraft.epochDay === todayEpochDay()) entryDraft.addPhoto({ ...photo, epochDayOverride: null });
     else queueForDayPrompt([photo]);
@@ -1045,12 +1045,11 @@
      Put the name on .editor-bg so only the fill grows from the tapped
      row. Keep text and fields outside that raster and crossfade them
      through the screen transition. -->
-<!-- The fieldset is the screen rather than a wrapper inside it. Its
-     `disabled` is what stops native fields taking edits during a save on a
-     WebView that predates `inert`, and as a `display: contents` wrapper it
-     hid every block from `.screen > *` and the header from the field's bleed
-     rule: the field drew 20px inset with no 20px between the blocks under
-     it (audit UI-01). As the screen, its children are the screen's again. -->
+<!-- The fieldset is the screen rather than a wrapper inside it. Its `disabled` is what
+     stops native fields taking edits during a save on a WebView that predates `inert`, and
+     as a `display: contents` wrapper it hid every block from `.screen > *` and the header
+     from the field's bleed rule: the field drew 20px inset with no 20px between the blocks
+     under it. As the screen, its children are the screen's again. -->
 <fieldset class="screen editor" inert={saving} disabled={saving} bind:this={stepScreen}>
   <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
   <!-- Back goes wherever you opened it from, not to the entry's own day. An entry is drawn
@@ -1139,7 +1138,7 @@
        viewports above the Save button. What a journal is for comes first
        now, grown to its text; every structured question is one tap away
        in the chip row under it; mood is asked where the saving happens.
-       Nothing about what an entry records changed (CONTEXT: "Entry"). -->
+       Nothing about what an entry records changed. -->
   <textarea autocomplete={journalTextAutocomplete()}
     class="input editor-note"
     id="ed-note"
@@ -1152,8 +1151,8 @@
   {/snippet}
 
   {#snippet manageModes()}
-    <!-- In place (audit item 6): raises the same sheet Settings' own
-         Tracking row opens, rather than navigating there and back. -->
+    <!-- In place: raises the same sheet Settings' own Tracking row opens, rather than
+         navigating there and back. -->
     <button
       type="button"
       class="kit-heading-action"
@@ -1281,14 +1280,12 @@
        not want the recorder. Each kind keeps its own two controls, pick and
        make, since "Record" on two buttons side by side did not say which one
        was which and the chip now says it instead. -->
-  <!-- One surface for the three media kinds (pre-release 18, item 76).
-       Each kind was a section of its own, so switching chips closed one
-       under the other while the next opened: two blocks travelling, the
-       extent dipping and rising again, and its 20px margin gone in one
-       frame at each end. The surface opens and closes with the chips as
-       any section does, and between kinds it only changes height
-       (`resize`) while the tiles cross: the old ones leave the flow as
-       they fade, the new ones come up once they have gone. -->
+  <!-- One surface for the three media kinds. Each kind was a section of its own, so
+       switching chips closed one under the other while the next opened: two blocks
+       travelling, the extent dipping and rising again, and its 20px margin gone in one
+       frame at each end. The surface opens and closes with the chips as any section does,
+       and between kinds it only changes height (`resize`) while the tiles cross: the old
+       ones leave the flow as they fade, the new ones come up once they have gone. -->
   {#if MEDIA_SECTIONS.some((kind) => sections.includes(kind) && entryDraft.openSection === kind)}
     <div class="editor-section" data-editor-media-surface transition:disclose>
       <!-- `resize` on a box of its own: on the section it fought
@@ -2163,8 +2160,8 @@
     align-items: center;
     justify-content: space-between;
   }
-  /* The field label's type, sentence case (after-release 28): "Tryout:
-     she/her" read as TRYOUT: SHE/HER and changed the name it quotes. */
+  /* The field label's type, sentence case: "Tryout: she/her" read as TRYOUT: SHE/HER and
+     changed the name it quotes. */
   .contextual-title {
     font-size: var(--text-sm);
     font-weight: var(--weight-bold);
@@ -2193,7 +2190,7 @@
     cursor: pointer;
     transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   }
-  /* The 48px target is the shared.hit-floor box (components.css), and only on the chips
+  /* The 48px target is the shared .hit-floor box (components.css), and only on the chips
      that are themselves a <button>. The one chip that is a <div> wrapping its own dismiss
      button must not carry it: an overlay with no handler, painted after its sibling button
      because a positioned pseudo-element with auto z-index paints in tree order, swallowed
@@ -2313,7 +2310,7 @@
 
   /* A video note is its picture plus the transport under it, so it is taller than a
      recording's row and its remove button sits at the top rather than centred against the
-     player. The list wrapper is.recording-list either way - the gap and the column are the
+     player. The list wrapper is .recording-list either way - the gap and the column are the
      same, and a second class with the same rules would only drift. */
   .video-row { display: flex; align-items: flex-start; gap: var(--space-2); }
   .video-hint { margin: 0 0 var(--space-3); color: var(--text-2); font-size: 0.85rem; }

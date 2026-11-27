@@ -61,11 +61,10 @@ async function reportFailure(failedNow: boolean, at: number, failureAt?: number)
   }
 }
 
-/* Folder sync (FA 49), on the same tick as the backup and ahead of it: on
-   open after unlock (the scheduler starts only on an unlocked, ready
-   journal) and again whenever the app comes back to the front. A merge
-   says so; so does an archive that would not open, once, since the plugin
-   moves past it either way. Nothing new in the folder says nothing. */
+/* Folder sync, on the same tick as the backup and ahead of it: on open after unlock (the
+   scheduler starts only on an unlocked, ready journal) and again whenever the app comes
+   back to the front. A merge says so; so does an archive that would not open, once, since
+   the plugin moves past it either way. Nothing new in the folder says nothing. */
 async function syncFromFolder(status: AutoExportStatus, signal: AbortSignal) {
   const { runFolderSync, folderSyncReady, localFileBytes } = await import('./folder-sync');
   if (!folderSyncReady(status)) return;

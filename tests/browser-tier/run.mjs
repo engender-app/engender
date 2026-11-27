@@ -281,7 +281,7 @@ await block('covered weekly dose slots agree across rendered screens', 2, async 
 });
 
 // --- FTS5 + OPFS mechanics, against a synthetic table -----------
-await block('ticket 03 browser tier', 5, async () => {
+await block('FTS5 and OPFS in the browser', 5, async () => {
   const first = await load('/', 'probe');
   if (first.error) throw new Error(first.error);
 
@@ -331,7 +331,7 @@ await block('Replace boot housekeeping on encrypted OPFS', 7, async () => {
 });
 
 // --- the real driver + boot() against the real schema -----------
-await block('ticket 04 browser tier', 9, async () => {
+await block('encrypted SQLite driver and boot', 9, async () => {
   const first = await load('/driver.html', 'driver-probe');
   if (first.error) throw new Error(first.error);
 
@@ -388,7 +388,7 @@ await block('ticket 04 browser tier', 9, async () => {
 });
 
 // --- folded search against the WASM SQLite, via the journal ----
-await block('ticket 09 browser tier', 12, async () => {
+await block('folded search through SQLite', 12, async () => {
   const r = await load('/search.html', 'search-probe');
   if (r.error) throw new Error(r.error);
 
@@ -418,7 +418,7 @@ await block('ticket 09 browser tier', 12, async () => {
 });
 
 // --- crypto primitives, and hash-wasm's no-network-fetch claim -
-await block('ticket 12 browser tier', 3, async () => {
+await block('crypto primitives and local WASM', 3, async () => {
   const requestUrls = [];
   const onRequest = (req) => requestUrls.push(req.url());
   page.on('request', onRequest);
@@ -439,7 +439,7 @@ await block('ticket 12 browser tier', 3, async () => {
 });
 
 // --- normalize() against a real canvas, and the OPFS store -----
-await block('ticket 11 browser tier', 23, async () => {
+await block('photo normalization and OPFS storage', 23, async () => {
   const r = await load('/photos.html', 'photos-probe');
   if (r.error) throw new Error(r.error);
 
@@ -466,10 +466,10 @@ await block('ticket 11 browser tier', 23, async () => {
   // Photoshop/IPTC in APP13, free text in COM. None may survive.
   const carried = [...r.outputMarkers, ...r.thumbMarkers].filter((name) => !name.startsWith('APP2/ICC_PROFILE'));
   if (carried.length === 0)
-    ok('normalize() leaves no EXIF, GPS, IPTC or comment metadata in the photo or its thumbnail (ADR-0015)');
+    ok('normalize() leaves no EXIF, GPS, IPTC or comment metadata in the photo or its thumbnail');
   else
     fail(
-      'normalize() leaves no EXIF, GPS, IPTC or comment metadata in the photo or its thumbnail (ADR-0015)',
+      'normalize() leaves no EXIF, GPS, IPTC or comment metadata in the photo or its thumbnail',
       JSON.stringify(carried)
     );
 
@@ -591,7 +591,7 @@ await block('ticket 11 browser tier', 23, async () => {
 });
 
 // --- the archive, packed on the real platform and downloaded --
-await block('ticket 13 browser tier', 10, async () => {
+await block('packing and downloading an archive', 10, async () => {
   const r = await load('/archive.html', 'archive-probe');
   if (r.error) throw new Error(r.error);
 
@@ -681,7 +681,7 @@ await block('ticket 13 browser tier', 10, async () => {
 });
 
 // --- at-rest encryption, gated by the closed-app scan -
-await block('ticket 09 (phase 2) browser tier', 10, async () => {
+await block('journal encryption at rest', 10, async () => {
   const r = await load('/encryption.html', 'encryption-probe');
   if (r.error) throw new Error(r.error);
 
@@ -773,7 +773,7 @@ await block('legacy storage refusal', 3, async () => {
 });
 
 // --- when a waiting release may take over ------------
-await block('ticket 04 (phase 2) update guard', 5, async () => {
+await block('release update guard', 5, async () => {
   const r = await load('/update.html', 'update-probe');
   if (r.error) throw new Error(r.error);
 
@@ -821,7 +821,7 @@ await block('ticket 04 (phase 2) update guard', 5, async () => {
 });
 
 // --- forward migration, refusal and the copy ---------
-await block('ticket 04 (phase 2) migration and rollback', 10, async () => {
+await block('release migration and rollback', 10, async () => {
   const r = await load('/migration.html', 'migration-probe');
   if (r.error) throw new Error(r.error);
 
@@ -911,7 +911,7 @@ await block('ticket 04 (phase 2) migration and rollback', 10, async () => {
 });
 
 // --- the photo journey export, against a real canvas and MediaRecorder ---
-await block('ticket 27 photo journey export', 20, async () => {
+await block('photo journey export', 20, async () => {
   const r = await load('/journey.html', 'journey-probe');
   if (r.error) throw new Error(r.error);
 
@@ -1030,7 +1030,7 @@ await block('ticket 27 photo journey export', 20, async () => {
 });
 
 // --- the video note re-encode ---------------------------
-await block('phase 5 ticket 22 video note re-encode', 9, async () => {
+await block('video note re-encode', 9, async () => {
   const r = await load('/video-notes.html', 'video-note-probe');
   if (r.error) throw new Error(r.error);
 
@@ -1099,7 +1099,7 @@ await block('phase 5 ticket 22 video note re-encode', 9, async () => {
    tall and 44px wide, and how the Gecko slider thumb ended up at 20px. So
    every control on the fixture page gets its rendered box read, and the
    pressed and held states get driven with a real pointer. */
-await block('phase 5 ticket 30 control kit', 23, async () => {
+await block('control kit', 23, async () => {
   await page.goto(`http://localhost:${port}/controls.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-controls-ready]', { state: 'attached' });
 
@@ -1302,7 +1302,7 @@ await block('phase 5 ticket 30 control kit', 23, async () => {
    two composite radiogroups Tab walked one stop per option rather than one
    stop for the group - this is the keyboard half a unit test can't see,
    since it needs a real DOM giving out real focus. */
-await block('phase 9 audit ticket 07 segmented keyboard nav', 4, async () => {
+await block('segmented keyboard nav', 4, async () => {
   const group = page.locator('[data-segmented="range"]');
   const week = group.locator('[data-segment="week"]');
   const month = group.locator('[data-segment="month"]');
@@ -1344,7 +1344,7 @@ await block('U03 radio selection and disabled choices', 2, async () => {
   ok('MoodPicker: Space, arrows, Tab re-entry and disabled choices');
 });
 
-await block('phase 9 audit ticket 07 mood chips keyboard nav', 5, async () => {
+await block('mood chips keyboard nav', 5, async () => {
   await page.goto(`http://localhost:${port}/kit.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-kit-ready]', { state: 'attached' });
 
@@ -1458,7 +1458,7 @@ await block('release blockers 09 switch semantics and keyboard', 5, async () => 
    Chromium has nothing to tap with. dispatchEvent gives pointerType: 'touch'
    directly rather than trying to coax a real touch out of the mouse, which
    is what a synthetic PointerEvent is for. */
-await block('ticket 09 chart hover interactivity', 10, async () => {
+await block('chart hover interactivity', 10, async () => {
   await page.goto(`http://localhost:${port}/kit.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-kit-ready]', { state: 'attached' });
 
@@ -1535,7 +1535,7 @@ await block('ticket 09 chart hover interactivity', 10, async () => {
 });
 
 // --- what a grid of photos actually reads ---------
-await block('phase 5 audit ticket 03 thumbnail grid', 5, async () => {
+await block('thumbnail grid', 5, async () => {
   await page.setViewportSize({ width: 400, height: 600 });
   const thumbs = await load('/thumbs.html', 'thumbs');
   if (thumbs.error) throw new Error(thumbs.error);
@@ -1637,10 +1637,10 @@ try {
           `latest day ${live.feltSense.latestDay} rather than ${live.feltSense.expectedDay}`
     );
 } catch (e) {
-  fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
+  fail('live reads', e.message ?? String(e));
 }
 
-// --- after-release 10: a web lock closes the database and lets go of the key ---
+// ---: a web lock closes the database and lets go of the key ---
 for (const cpu of [1, 4]) {
   const label = cpu === 1 ? 'web lock' : 'web lock, CPU throttled 4x';
   await block(label, 9, async () => {
@@ -1697,7 +1697,7 @@ try {
   if (afterLock.loading) ok('after a lock the first visit reads fresh');
   else fail('after a lock the first visit reads fresh', `painted ${afterLock.value}`);
 } catch (e) {
-  fail('ux-carpet 201 last answers', e.message ?? String(e));
+  fail('last answers', e.message ?? String(e));
 }
 
 // --- a seeded query declares its tables on the
@@ -1725,7 +1725,7 @@ try {
       `${live.seeding.compareRuns} run(s)`
     );
 } catch (e) {
-  fail('phase 8 audit ticket 14 seeded live reads', e.message ?? String(e));
+  fail('seeded live reads', e.message ?? String(e));
 }
 
 // --- search waits for the typist ------------------
@@ -1747,11 +1747,11 @@ try {
   else fail('clearing the query lands within a flush, without waiting out the debounce', 'debounced value was not cleared yet');
 
 } catch (e) {
-  fail('phase 8 audit ticket 15 search waits for the typist', e.message ?? String(e));
+  fail('search waits for the typist', e.message ?? String(e));
 }
 
 // --- a dependent read waits for its record
-await block('ticket 09 detail draft', 3, async () => {
+await block('detail draft', 3, async () => {
   const detail = await load('/detail-draft.html', 'detail-draft-probe');
   if (detail.error) throw new Error(detail.error);
 
@@ -1785,7 +1785,7 @@ await block('ticket 09 detail draft', 3, async () => {
 // without an association - Field.svelte mints the id when a screen has no
 // reason to name one, and hands the same string to the label and the
 // control either way.
-await block('phase 5 audit deepening ticket 10 field association', 5, async () => {
+await block('field association', 5, async () => {
   await page.goto(`http://localhost:${port}/controls.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-controls-ready]', { state: 'attached' });
 
@@ -1839,7 +1839,7 @@ await block('phase 5 audit deepening ticket 10 field association', 5, async () =
    about the real component rather than anything the node tier can see - dayRows.ts imports
    paraglide and $lib, neither of which resolves under vitest.config.ts. The gallery fixture
    already mounts DayRecords.svelte against the real cascade, so this drives it. */
-await block('phase 5 deepening ticket 21 day composition', 9, async () => {
+await block('day composition', 9, async () => {
   await page.goto(`http://localhost:${port}/day.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-day-ready]', { state: 'attached' });
 
@@ -1962,7 +1962,7 @@ await block('phase 5 deepening ticket 21 day composition', 9, async () => {
    the route resolves with attributeDrug and passes down; what this drives is the wording,
    which lives in dayRows.ts and is the part a node-tier test cannot reach (dayRows.ts
    imports paraglide and $lib). */
-await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
+await block('day dose rows name their drug', 3, async () => {
   await page.goto(`http://localhost:${port}/day.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-day-ready]', { state: 'attached' });
   await page.selectOption('select[aria-label="Day"]', 'concurrent');
@@ -2002,7 +2002,7 @@ await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
 });
 
 // --- the voice benchmark engine ---------------
-await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () => {
+await block('voice benchmark engine', 6, async () => {
   const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2043,7 +2043,7 @@ await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () =>
 });
 
 // --- the chain a take was recorded through ----
-await block('phase 8 features ticket 28 capture chain', 2, async () => {
+await block('capture chain', 2, async () => {
   const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2067,7 +2067,7 @@ await block('phase 8 features ticket 28 capture chain', 2, async () => {
 
 // --- the stored track, and the figure drawn on
 //     the absolute axis, both off a real recording -------------------------
-await block('phase 8 features ticket 09 voice figure', 7, async () => {
+await block('voice figure', 7, async () => {
   const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
   if (r.error) throw new Error(r.error);
   const f = r.figure;
@@ -2154,7 +2154,7 @@ await block('entry capture ownership', 14, async () => {
 });
 
 // --- closing the microphone when the screen goes -
-await block('phase 8 audit ticket 03 mic teardown', 7, async () => {
+await block('mic teardown', 7, async () => {
   const r = await load('/mic-teardown.html', 'mic-teardown-probe');
   if (r.error) throw new Error(r.error);
   const { teardown, throwingRecorder, practice, benchmark } = r;
@@ -2192,7 +2192,7 @@ await block('phase 8 audit ticket 03 mic teardown', 7, async () => {
 
 // --- the draft mirror's stale-removal repro,
 //     and that clearing it on save (EntryEditor.svelte's fix) closes it.
-await block('ticket 16 browser tier', 10, async () => {
+await block('stale draft mirror after save', 10, async () => {
   const r = await load('/draft-mirror.html', 'draft-mirror-probe');
   if (r.error) throw new Error(r.error);
   const { before, after } = r;
@@ -2241,7 +2241,7 @@ await block('ticket 16 browser tier', 10, async () => {
 
 /* --- the metric reference, and that the sentence under a figure lands on that figure's own
        section. --- */
-await block('ticket 27 browser tier', 7, async () => {
+await block('voice metric reference links', 7, async () => {
   const r = await load('/voice-metrics.html', 'voice-metrics-probe');
   if (r.error) throw new Error(r.error);
   const { registered, figures, landings, listLink, route, sections, reviewed } = r;
@@ -2300,7 +2300,7 @@ await block('ticket 27 browser tier', 7, async () => {
 });
 
 /* --- the pitch density, and the figure blocks that replaced the definition list. --- */
-await block('redesign ticket 42 browser tier', 9, async () => {
+await block('voice pitch density', 9, async () => {
   const r = await load('/voice-density.html', 'voice-density-probe');
   if (r.error) throw new Error(r.error);
   const { drawn, trackless, first, joined, broken } = r;
@@ -2368,7 +2368,7 @@ await block('redesign ticket 42 browser tier', 9, async () => {
 
 /* --- the own-series trends, and that a change of capture chain arrives as a break with a
        reason in it. --- */
-await block('ticket 29 browser tier', 7, async () => {
+await block('voice benchmark trends', 7, async () => {
   const r = await load('/voice-own-series.html', 'voice-own-series-probe');
   if (r.error) throw new Error(r.error);
   const { offered, registered, figures, single, neverMeasured, casing } = r;
@@ -2469,7 +2469,7 @@ await block('entry contextual text survives typing and clears before save', 1, a
    Everything else in this file drives a module or a gallery; the entry
    editor is a component that only runs mounted. See entry-editor-probe.ts on
    why the assertions are on rows in SQLite rather than on the markup. */
-await block('phase 8 audit ticket 25 entry editor', 10, async () => {
+await block('entry editor', 10, async () => {
   const r = await load('/entry-editor.html', 'entry-editor-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2531,7 +2531,7 @@ await block('phase 8 audit ticket 25 entry editor', 10, async () => {
    on its own page load (?skipBody=1) so the hidden regions cannot reach the cases above:
    the walk goes from the marks step straight to the note, and the progress has three
    segments. It fails on an editor that draws the body step regardless. */
-await block('tester report 02 ticket 09 a step with nothing to show is skipped', 2, async () => {
+await block('a step with nothing to show is skipped', 2, async () => {
   const r = await load('/entry-editor.html?skipBody=1', 'entry-editor-probe');
   if (r.error) throw new Error(r.error);
   const v = r.bodyStepEmpty;
@@ -2548,7 +2548,7 @@ await block('tester report 02 ticket 09 a step with nothing to show is skipped',
    phone-sized window, so unticking the scales cannot reach the cases above. It fails when
    the step draws the scales block regardless (a heading, a slider, a hint), and when the
    window pushes either control off the screen. */
-await block('tester report 02 ticket 03 first step with every scale hidden', 7, async () => {
+await block('first step with every scale hidden', 7, async () => {
   const previous = page.viewportSize();
   try {
     await page.setViewportSize({ width: 360, height: 640 });
@@ -2580,7 +2580,7 @@ await block('tester report 02 ticket 03 first step with every scale hidden', 7, 
    bytes, that its text comes out (which is a check on the local font directory, since the
    fixture names a standard face it does not carry), and that the two failures the screen
    has copy for really are the two the module produces. */
-await block('phase 8 features ticket 55 PDF renderer', 8, async () => {
+await block('PDF renderer', 8, async () => {
   const r = await load('/pdf.html', 'pdf');
   if (r.error) throw new Error(r.error);
 
@@ -2642,7 +2642,7 @@ await block('phase 8 features ticket 55 PDF renderer', 8, async () => {
 });
 
 // --- a long list renders a batch at a time ----
-await block('phase 8 features ticket 66 batched list', 8, async () => {
+await block('batched list', 8, async () => {
   const r = await load('/batched-list.html', 'batched-list');
   if (r.error) throw new Error(r.error);
 
@@ -2680,7 +2680,7 @@ await block('phase 8 features ticket 66 batched list', 8, async () => {
 });
 
 // --- the lock step splits choosing from typing --------
-await block('ticket redesign-30 the lock step splits in two', 2, async () => {
+await block('the lock step splits in two', 2, async () => {
   /* The gates fixture, not a probe page: this is the
      real JournalGate over the real stylesheets, moved into the same
      first-run "choosing a mode" state the screenshot script drives. */
@@ -2768,7 +2768,7 @@ await block('ticket U08 browser tier', 7, async () => {
 });
 
 // --- batching the demo seed's writes -----------------------
-await block('ticket 141 demo seed write batching', 3, async () => {
+await block('demo seed write batching', 3, async () => {
   const r = await load('/demo-seed-batching.html', 'demo-seed-batching-probe');
   if (r.error) throw new Error(r.error);
 

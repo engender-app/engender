@@ -1,7 +1,7 @@
-/* Which tab was lit before the person stepped into settings chrome (audit item 4). Module
-   state, the same shape as smart-back.ts's own depth counter: a fact this app owns about
-   its own navigation, kept out of active-tab.ts so that module stays a pure table its own
-   tests can call directly without one test's path leaking into the next one's answer. */
+/* Which tab was lit before the person stepped into settings chrome. Module state, the same
+   shape as smart-back.ts's own depth counter: a fact this app owns about its own
+   navigation, kept out of active-tab.ts so that module stays a pure table its own tests can
+   call directly without one test's path leaking into the next one's answer. */
 
 let lastTabKey = '';
 
@@ -20,12 +20,11 @@ export function chromeTabOrigin(): string {
   return lastTabKey;
 }
 
-/* The tab each borrowing page (settings chrome, the entry editor) was
-   opened from, per history entry (after-release 17 review). Without it,
-   history lied: Today, then the editor, then Journal, then browser Back lit
-   Journal over an editor opened from Today, since all that was remembered
-   was the last tab lit. The caller names the entry by its history depth
-   and path, so two visits to one page stay apart. */
+/* The tab each borrowing page (settings chrome, the entry editor) was opened from, per
+   history entry (review). Without it, history lied: Today, then the editor, then Journal,
+   then browser Back lit Journal over an editor opened from Today, since all that was
+   remembered was the last tab lit. The caller names the entry by its history depth and
+   path, so two visits to one page stay apart. */
 const keptOrigins = new Map<string, string>();
 
 /** Called before a borrowing page arrives. A forward visit keeps the tab

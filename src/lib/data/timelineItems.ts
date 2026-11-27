@@ -12,8 +12,7 @@ import type { Milestone } from './types';
     typical gaps - a few months between a first appointment and a first dose
     - stay as ordinary spacing. Carried over from the screen this replaces
     rather than re-chosen. */
-/* TIMELINE_GAP_DAYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* TIMELINE_GAP_DAYS stays exported only for its own test. */
 export const TIMELINE_GAP_DAYS = 420;
 
 export type TimelineItem =
@@ -39,11 +38,9 @@ export function timelineItems(milestones: Milestone[], todayEpochDay: number): T
   for (const milestone of milestones) {
     const future = milestone.epochDay > todayEpochDay;
     if (future && !markedToday) {
-      /* Today inside a long stretch splits it (after-release 27, audit
-         L03-15): the part already behind is drawn before the marker and
-         measured to today, so the marker is not put in front of a quiet
-         stretch it is in the middle of. Each side compresses on its own
-         length. */
+      /* Today inside a long stretch splits it: the part already behind is drawn before the
+         marker and measured to today, so the marker is not put in front of a quiet stretch
+         it is in the middle of. Each side compresses on its own length. */
       if (previousDay !== null) {
         if (todayEpochDay - previousDay > TIMELINE_GAP_DAYS) {
           out.push({ kind: 'gap', id: 'gap-before-today', fromEpochDay: previousDay, toEpochDay: todayEpochDay });
