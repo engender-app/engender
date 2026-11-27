@@ -1,9 +1,9 @@
 {
   "$comment": "Candidate stage1/stage2 checks precede tags; stable adds its matrix. Publish web and GitHub/Obtainium first, then record Play and F-Droid outcomes. Channel-live states are recorded only after publication. Reset evidence for each version, including hotfixes.",
   "releaseVersion": "1.0.0",
-  "candidateRevision": "4ac1807036f44c17f11651353267468d94aec6de",
+  "candidateRevision": "955ae520dda02de16be4f6a20c86be638f5c932e",
   "androidTier": {
-    "revision": "4ac1807036f44c17f11651353267468d94aec6de",
+    "revision": "955ae520dda02de16be4f6a20c86be638f5c932e",
     "startedAt": "2026-10-15T13:01:02.047Z",
     "passedAt": "2026-10-15T13:27:35.760Z",
     "runs": [
@@ -79,7 +79,7 @@
           "apkSha256": "a9ce200cd26b7c51b04c0561127fa8aea3606dd1080f5ab4788c2eeb08e7d10a",
           "testApkSha256": "4410f4388882cc64e083da16bab22a8c1b634aa7563f6b6383626ece1ebb2392"
         },
-        "revision": "4ac1807036f44c17f11651353267468d94aec6de",
+        "revision": "955ae520dda02de16be4f6a20c86be638f5c932e",
         "startedAt": "2026-10-15T13:01:02.047Z",
         "passedAt": "2026-10-15T13:27:35.760Z"
       },
@@ -335,7 +335,7 @@
             "testApkSha256": "eb516a1cfae4ead2222d722c06fb1309050d8672d9150d863ae4494331da0c5f"
           }
         },
-        "revision": "4ac1807036f44c17f11651353267468d94aec6de",
+        "revision": "955ae520dda02de16be4f6a20c86be638f5c932e",
         "startedAt": "2026-10-15T13:01:02.047Z",
         "passedAt": "2026-10-15T13:27:35.760Z"
       }
