@@ -79,6 +79,18 @@ async function fault(method, mode) {
         if (fault.mode[method] === 'pending') await new Promise(resolve => { fault.resolve = resolve; });
         return fault.originals[method](...args);
       };
+      /* Deleting a note runs through journal.undoable, which hands the
+         removal a transaction's own journal, so the patched method above is
+         never reached. The fault goes on undoable instead, for remove. */
+      if (method === 'remove') {
+        const undoable = bootState.journal.undoable.bind(bootState.journal);
+        bootState.journal.undoable = async (remove) => {
+          fault.calls.remove++;
+          if (fault.mode.remove === 'fail') throw new Error('injected margin note write failure');
+          if (fault.mode.remove === 'pending') await new Promise(resolve => { fault.resolve = resolve; });
+          return undoable(remove);
+        };
+      }
       attachJournal(bootState.journal);
       journalIsOpen();
     }
