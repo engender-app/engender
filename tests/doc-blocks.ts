@@ -65,7 +65,7 @@ export function renderTableNames(names: readonly string[]): string {
     '/* Generated from the migrated schema by `npm run features:tables`; edit a',
     '   migration, not this file. tests/node/tooling/features.test.ts fails while it differs',
     "   from the schema, and src/lib/features.ts types each feature's tables",
-    '   against it (functional audit ticket 54). */',
+    '   against it. */',
     'export const TABLE_NAMES = [',
     ...names.map((name, i) => `  '${name}'${i < names.length - 1 ? ',' : ''}`),
     '] as const;',

@@ -368,7 +368,7 @@ only that value in its own file.
 Click a text to edit it. Leaving the field saves it, Enter saves a one-line
 value and Esc puts the saved text back. Text that differs from `main` is
 tinted. Review checkboxes work per key or for the shown keys in a group.
-Progress is saved in `.scratch/copy-review.json`; changing either language
+Review progress stays in a local, untracked file. Changing either language
 makes that key need review again. A save that conflicts with a change on disk
 is refused without overwriting it: the edit stays in the field with the reason
 under it until **Reload from disk** brings in the newer text. A save that failed

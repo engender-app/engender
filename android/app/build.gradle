@@ -32,7 +32,7 @@ android {
             // TypeScript packer wrote rather than one Java framed itself.
             resources.srcDirs += ['../../src/lib/data/journal/fixtures']
             // Plain-Java helpers the instrumented tests use, so the JVM tier
-            // can test them without a device (ux-carpet 218).
+            // can test them without a device.
             java.srcDirs += ['src/sharedTest/java']
         }
         androidTest {

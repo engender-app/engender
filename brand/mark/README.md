@@ -1,15 +1,13 @@
 # The mark, rendered
 
-Every file here comes out of `scripts/render-mark.mjs`, which draws the geometry
-Alicja signed off on 2026-09-21 (ticket 38, round three) and reads the stripes
-from `src/lib/theme/palettes.css` rather than keeping a second copy of them.
+`scripts/render-mark.mjs` generates these files using the stripes in
+`src/lib/theme/palettes.css`.
 
 The 100-unit tile has a sun at X = 95, Y = 5, with radius 96.75 (96.75% of
 its original size). Black seams stay 3 units wide; the tile radius stays 30.
-These sun values come from Alicja's review on 2026-10-13. The mark stays still.
+The mark stays still.
 
-Last-audit UI ticket 38 changes the radius from 15 to 30 across app and landing
-logos so Google Play's corner mask preserves the black outline. The store PNG
+The 30-unit corner radius preserves the outline under Google Play's mask. The store PNG
 has an opaque square background; Play applies the outside mask and shadow.
 
 Regenerate with:
@@ -31,7 +29,7 @@ Regenerate with:
 - `png/trans-store-512.png` - the default tile on an opaque square ground,
   copied into both store locales by `scripts/store-listing-assets.mjs`.
 - `png/lockup-{light,dark}.png` - the mark beside the word, in the rail's proportions
-  (ticket 37), for the README. Transparent, dark ink on light and light on dark.
+  for the README. Transparent, dark ink on light and light on dark.
 - `png/<flag>-{round,maskable}-512.png`, `png/mark-mono{,-reversed}-512.png`.
 - `jpg/<flag>-tile-512.jpg` - for anything that will only take a jpeg. The tile
   is white and opaque, so nothing is lost.

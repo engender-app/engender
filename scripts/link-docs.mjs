@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, readlinkSync, rmSync, symlinkSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-// Each link in this checkout, and what it points at inside the docs checkout.
+// Local link paths and their targets in the docs checkout.
 const LINKS = { 'CONTEXT.md': 'CONTEXT.md', 'PRODUCT.md': 'PRODUCT.md', 'SCREENS.md': 'SCREENS.md', 'DIRECTION.md': 'DIRECTION.md', 'docs/internal': '' };
 
 function git(cwd, ...args) {
@@ -45,11 +45,10 @@ const blocked = Object.keys(LINKS).filter((name) => {
   try { return !lstatSync(join(top, name)).isSymbolicLink(); } catch { return false; }
 });
 if (blocked.length) {
-  fail(`${blocked.join(', ')} already exist here as real files or folders. Move them into the docs repo by hand first; this script never replaces them.`);
+  fail('Documentation link paths already exist as regular files or directories. Move them to the docs checkout before linking.');
 }
 
-// Before the ADRs moved into this repo, `docs` itself was the link. A link is
-// safe to drop: it only points at files in the docs repo.
+// Remove the old directory symlink before creating individual links.
 try {
   if (lstatSync(join(top, 'docs')).isSymbolicLink()) {
     rmSync(join(top, 'docs'));
@@ -84,11 +83,11 @@ for (const [name, target] of Object.entries(LINKS)) {
   try { stat = lstatSync(link); } catch { /* absent */ }
   if (!stat) plan.push({ link, want, replace: false });
   else if (readlinkSync(link) !== want) plan.push({ link, want, replace: true });
-  else console.log(`ok ${name}`);
+  else console.log('Documentation link already in place');
 }
 for (const { link, want, replace } of plan) {
   if (replace) rmSync(link);
   mkdirSync(dirname(link), { recursive: true });
   symlinkSync(want, link);
-  console.log(`linked ${link} -> ${want}`);
+  console.log('Linked documentation');
 }

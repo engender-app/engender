@@ -7,8 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-/* App checkouts link the private docs at docs/internal and the four context
-   files at their root. Tests run link-docs.mjs in temporary sibling repos. */
+/* Tests link optional documentation in temporary sibling repositories. */
 
 const script = fileURLToPath(new URL('../../../scripts/link-docs.mjs', import.meta.url));
 const LINKS = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md', 'docs/internal'];
@@ -56,7 +55,7 @@ beforeEach(() => {
 afterEach(() => rmSync(base, { recursive: true, force: true }));
 
 describe('primary checkout', () => {
-  it('links the five paths to the docs repo main checkout, docs/internal at its root', () => {
+  it('links all documentation paths to the main checkout', () => {
     const r = run(app);
     expect(r.status, r.stderr).toBe(0);
     for (const name of LINKS) {
@@ -74,7 +73,7 @@ describe('primary checkout', () => {
     const before = LINKS.map((n) => [readlinkSync(join(app, n)), lstatSync(join(app, n)).ctimeMs]);
     const r = run(app);
     expect(r.status, r.stderr).toBe(0);
-    expect(r.stdout).not.toMatch(/\blinked\b/);
+    expect(r.stdout).not.toMatch(/\blinked\b/i);
     expect(LINKS.map((n) => [readlinkSync(join(app, n)), lstatSync(join(app, n)).ctimeMs])).toEqual(before);
   });
 
@@ -86,7 +85,7 @@ describe('primary checkout', () => {
 });
 
 describe('the old docs symlink', () => {
-  it('is replaced by a real docs folder holding docs/internal, and the docs repo is untouched', () => {
+  it('is replaced by a regular directory with a link to the docs checkout', () => {
     rmSync(join(app, 'docs'), { recursive: true });
     symlinkSync(join(docs, 'docs'), join(app, 'docs'));
     const r = run(app);
@@ -126,7 +125,7 @@ describe('branch worktree', () => {
     const list = git(docs, 'worktree', 'list');
     const r = run(wt);
     expect(r.status, r.stderr).toBe(0);
-    expect(r.stdout).not.toMatch(/\b(linked|created)\b/);
+    expect(r.stdout).not.toMatch(/\b(linked|created)\b/i);
     expect(LINKS.map((n) => [readlinkSync(join(wt, n)), lstatSync(join(wt, n)).ctimeMs])).toEqual(before);
     expect(git(docs, 'worktree', 'list')).toBe(list);
   });
@@ -173,10 +172,10 @@ describe('refusals', () => {
     writeFileSync(join(app, 'docs', 'internal', 'keep.md'), 'precious\n');
     const r = run(app);
     expect(r.status).not.toBe(0);
-    expect(r.stderr).toMatch(/CONTEXT\.md, docs\/internal already exist here as real files or folders/);
+    expect(r.stderr).toContain('Documentation link paths already exist as regular files or directories.');
     expect(readFileSync(join(app, 'CONTEXT.md'), 'utf8')).toBe('precious\n');
     expect(readFileSync(join(app, 'docs', 'internal', 'keep.md'), 'utf8')).toBe('precious\n');
-    // Nothing is half-linked: and stay unlinked too.
+    // A refusal leaves the other links absent.
     expect(existsSync(join(app, 'PRODUCT.md'))).toBe(false);
   });
 
@@ -186,7 +185,7 @@ describe('refusals', () => {
     writeFileSync(join(wt, 'SCREENS.md'), 'precious\n');
     const r = run(wt);
     expect(r.status).not.toBe(0);
-    expect(r.stderr).toMatch(/docs:link: SCREENS\.md already exist here/);
+    expect(r.stderr).toContain('Documentation link paths already exist as regular files or directories.');
     expect(existsSync(join(docs, '.worktrees'))).toBe(false);
     expect(git(docs, 'branch', '--list', 'ticket-02-blocked')).toBe('');
   });

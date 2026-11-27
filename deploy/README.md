@@ -1,7 +1,6 @@
 # Production hosting and release switch
 
-Ticket 05 serves the Journal from one decided origin:
-`journal.engender.app`.
+The production Journal runs at `journal.engender.app`.
 
 The VPS keeps immutable release directories, a serving symlink and switch
 history:
@@ -337,12 +336,6 @@ exact config snippets, serves the build through it and checks:
 - cold install followed by offline launch
 - no runtime requests to other origins
 - `nginx -t` over the bare-nginx template in `deploy/self-host/engender.conf`
-
-## Local operator note
-
-If you keep a machine-specific runbook, store it in
-`.scratch/ticket-05-hosting-checklist.md` so it stays local and untracked.
-
 
 ## Candidate evidence before publication
 
