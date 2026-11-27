@@ -7,6 +7,7 @@
   import { m } from '$lib/paraglide/messages';
   import { ui } from '$lib/stores/ui.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
   import Sheet from './Sheet.svelte';
   import PresentationsManager from './PresentationsManager.svelte';
 
@@ -29,6 +30,7 @@
   open={modesOpen}
   title={m.presentations_title()}
   onClose={() => (ui.raisedManager = null)}
+  onClosed={() => focusArrivedScreen(document.getElementById('app-main'))}
 >
   <PresentationsManager />
 </Sheet>
