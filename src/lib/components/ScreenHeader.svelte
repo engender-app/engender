@@ -175,3 +175,15 @@
     {@render subtitleLine()}
   {/if}
 </header>
+
+<style>
+  .screen-subtitle-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+  .screen-subtitle-line > .screen-subtitle { margin: 0; min-width: 0; }
+  .screen-subtitle-aside { flex: none; display: flex; }
+</style>

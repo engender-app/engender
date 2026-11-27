@@ -74,6 +74,10 @@ const SHEETS = [
     file: 'src/lib/styles/components.css',
     baseline: 'src/lib/styles/components-classes-baseline.txt',
     shared: new Set([
+      /* +layout.svelte draws the one .app, but the rule that names it styles a sheet's
+         scrim while a rail is showing and belongs with the desktop container query's other
+         sheet rules, at their unscoped specificity. */
+      'app',
       /* Same icons.ts blind spot screens.css's SHARED documents - `.icon
          .muted`/`.icon.muted`/`.icon.is-starred` read a class every icon
          carries via a template literal, not a .svelte class= attribute. */

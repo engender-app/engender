@@ -34,3 +34,9 @@
     ></i>
   {/each}
 </div>
+
+<style>
+  /* A gate's sun: drawn whole from its first frame and still, at the scale Today's rests
+     at. Global so it keeps the specificity it had in components.css. */
+  :global(.sun.is-still i) { animation: none; }
+</style>

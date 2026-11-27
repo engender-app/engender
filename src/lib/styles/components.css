@@ -394,15 +394,6 @@
   min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
 }
 .screen-header.is-compact .screen-title { font-size: var(--text-3xl); }
-.screen-subtitle-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
-}
-.screen-subtitle-line > .screen-subtitle { margin: 0; min-width: 0; }
-.screen-subtitle-aside { flex: none; display: flex; }
 .header-action { display: flex; gap: var(--space-2); }
 /* What a door puts on the field under its title's line: the Transition door's search box,
    Journal's month label and controls. No margin of its own - both doors that fill the field
@@ -560,8 +551,6 @@
    text already existed and this rule was not using it. */
 .btn-ghost { background: none; color: var(--accent-ink); }
 .btn-danger { background: none; border: 1px solid var(--outline); color: var(--danger); }
-/* Beside a reversible delete, the irreversible one reads a deeper red. */
-.btn-danger-deep { color: var(--danger-deep); }
 .btn-block { width: 100%; }
 
 /* The ring, and nothing else. This used to also set
@@ -1436,7 +1425,6 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   gap: var(--space-3);
   min-height: var(--space-5);
 }
-.entry-step > .step-part { margin-bottom: var(--space-1); }
 .step-part-name {
   margin: 0;
   font-family: var(--font-body);
@@ -2108,8 +2096,6 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
    flicker instead of stillness. Stopped outright instead, same as the
    app's other four decorative loops - the rings rest at their own base
    rule (no scale term, i.e. scale(1)), fully drawn. */
-/* A gate's sun: drawn whole from its first frame and still, at the scale Today's rests at. */
-.sun.is-still i { animation: none; }
 html[data-a11y-motion='reduce'] .sun i { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .sun i { animation: none; }

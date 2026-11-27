@@ -1909,6 +1909,8 @@
 </fieldset>
 
 <style>
+  /* Beside a reversible delete, the irreversible one reads a deeper red. */
+  :global(.btn-danger-deep) { color: var(--danger-deep); }
   /* The container transform's own layer - a plain fill behind the real
      screen, carrying no text, the same fix as .entry-card-bg/.kit-entry-bg
      in components.css/kit.css. Those two sit inside a grid container, where
@@ -1954,6 +1956,8 @@
      same specificity as the rule it copies, so the editor's own block
      rules still win where they set a margin. */
   :global(.entry-step > *) { margin-bottom: var(--space-5); }
+  /* EntryFirstStep draws .step-part too, so this stays global. */
+  :global(.entry-step > .step-part) { margin-bottom: var(--space-1); }
   :global(.entry-step > .kit-heading) { margin-bottom: var(--space-3); }
   /* The foot marks its own edge, so the last block needs only a breath
      above it rather than the screen's 20. */
