@@ -11,7 +11,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
-import { newCapabilityContext, createReporter, launchBrowser, launchPersistentBrowser, browserEngine } from '../browser-harness.mjs';
+import { newCapabilityContext, createReporter, launchBrowser, launchPersistentBrowser, browserEngine, continueToTheRest } from '../browser-harness.mjs';
 import { serveBuild } from '../serve-build.mjs';
 import { observeBuildRequests } from '../build-requests.mjs';
 import { appVersion } from '../../scripts/app-version.mjs';
@@ -279,9 +279,8 @@ try {
   const cold = installed.pages()[0] ?? (await installed.newPage());
   await firstRun(cold, origin);
   await cold.locator('[data-mood="4"]').click();
-  // Quick Log now seeds the editor route; save once to create the entry
-  // this offline-start check is meant to read back.
-  await cold.waitForSelector('#ed-note');
+  // The seeded mood can be saved from the first step of a new entry.
+  await cold.locator('[data-entry-step="today"] [data-mood="4"][aria-checked="true"]').waitFor();
   await cold.locator('[data-save]').click();
   await cold.waitForSelector('[data-home-hello]');
   await cold.waitForSelector('[data-home-count]');
@@ -581,12 +580,13 @@ try {
     .waitForSelector('.app[data-boot="ready"]', { timeout: 30000 })
     .then(() => true)
     .catch(() => false);
-  if (deepBooted && (await deep.locator('#ed-note').count()) === 1)
+  const reachedNote = deepBooted && await continueToTheRest(deep).then(() => true, () => false);
+  if (reachedNote)
     ok('an offline start on a nested route opens that screen, not a shell missing its chunks');
   else
     fail(
       'an offline start on a nested route opens that screen',
-      deepBooted ? 'the entry editor did not render' : 'the app never booted - check the asset URLs in the cached document'
+      deepBooted ? 'the entry editor did not reach its note step' : 'the app never booted - check the asset URLs in the cached document'
     );
 
   /* Every OCR byte comes from the fresh installation's complete generation,

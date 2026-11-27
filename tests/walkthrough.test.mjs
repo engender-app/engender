@@ -6610,7 +6610,7 @@ try {
     const cyclePanel = page.locator('[data-contextual="cycle-event"]');
     if (Boolean(await cyclePanel.count()) !== shown) throw new Error(`${locale} entry cycle prompt visibility disagreed`);
     if (shown) {
-      const chipNames = locale === 'pl' ? ['Okres', 'Plamienie', 'Czysto'] : ['Period', 'Spotting', 'Clear'];
+      const chipNames = locale === 'pl' ? ['Krwawienie', 'Plamienie', 'Pusto'] : ['Period', 'Spotting', 'Clear'];
       for (const name of chipNames) {
         if (await cyclePanel.getByRole('button', { name, pressed: false }).count() !== 1) {
           throw new Error(`${locale} entry cycle control ${name} lost its announced name or state`);
@@ -6805,10 +6805,21 @@ try {
      the whole point of it being here is that a session started late is a
      session recorded wrong - so this checks it never leaves the screen, and
      that the row comes back saying the other thing. */
-  await openQuickAdd('/stats');
+  // Quick add repeats the last wear kind, so log a finished session first.
+  await fresh('/body/wear');
+  await page.locator('[data-add]').click();
+  await page.locator('[data-sheet] [data-segment="backfill"]').click();
+  await page.locator('#wear-duration').fill('1');
+  await page.locator('[data-save-wear-session]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-choose="wear"]:enabled', { timeout: 8000 });
   const startLabel = (await page.locator('[data-choose="wear"]').textContent()).trim();
   if (await page.locator('[data-choose="wear"][data-wear-running]').count()) {
-    throw new Error('a session was already running on a fresh journal');
+    throw new Error('Quick add offered Stop before this flow started a session');
   }
   await page.locator('[data-choose="wear"]').click();
   await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
@@ -7746,9 +7757,7 @@ try {
      acknowledging it leaves a screen with no key on it, and coming back to
      the screen fresh does not bring the characters back - the file holds a
      wrap and nothing else. */
-  if (await page.locator('[data-recovery-key]').count()) {
-    throw new Error('the key is still on screen after being acknowledged');
-  }
+  await page.locator('[data-recovery-key]').waitFor({ state: 'detached' });
   await page.locator('a[href="/settings/security"]').click();
   await page.waitForSelector('[data-security-list]');
   await page.locator('a[href="/settings/recovery-key"]').click();
@@ -7765,9 +7774,7 @@ try {
   await page.waitForSelector('[data-confirm-revoke]');
   await page.locator('[data-confirm-revoke]').click();
   await page.waitForSelector('[data-make-recovery-key]');
-  if (await page.locator('[data-list-row="remove-recovery-key"]').count()) {
-    throw new Error('the removed key still offers a remove row');
-  }
+  await page.locator('[data-list-row="remove-recovery-key"]').waitFor({ state: 'detached' });
 
   ok('a recovery key is made once, shown once, and removed from Settings');
 } catch (e) { fail('the recovery key', e); }
@@ -8030,8 +8037,7 @@ try {
      a key that belongs to another journal. */
   await page.fill('[data-recovery-key-input]', written.slice(0, -1) + (written.endsWith('0') ? '1' : '0'));
   await page.locator('[data-submit-recovery-key]').click();
-  const mistyped = await page.locator('[data-recovery-key-error]').innerText();
-  if (mistyped.trim() === '') throw new Error('a mistyped recovery key said nothing');
+  await page.locator('[data-recovery-key-error]').filter({ hasText: /\S/ }).waitFor();
   if (!(await page.locator('[data-recovery-key-input]').count())) {
     throw new Error('a mistyped key left no field to correct');
   }

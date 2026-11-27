@@ -434,6 +434,30 @@ export async function calendarContracts(): Promise<Result[]> {
     canvas.toBlob((value) => resolve(value!), 'image/jpeg')
   );
   const jpeg = new Uint8Array(await blob.arrayBuffer());
+  await check('Three Hair progress photos appear in their pose timeline, outside Day', async () => {
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      ids.push(await f.journal.progressPhotos.addPhoto(splitDay, 'hair', { full: jpeg, thumb: jpeg }));
+    }
+    screen = await mountScreen('/transition/progress-photos', f);
+    try {
+      (await until(() => root().querySelector<HTMLElement>('[data-segment="hair"]'), 'Hair pose')).click();
+      const grid = await until(() => root().querySelector('[data-progress-grid="hair"]'), 'Hair timeline');
+      const visibleIds = [...grid.querySelectorAll('[data-photo-key]')].map((photo) =>
+        photo.getAttribute('data-photo-key')
+      );
+      if (visibleIds.join() !== ids.join()) return false;
+    } finally {
+      await screen.remove();
+    }
+    screen = await mountScreen(`/day/${splitDay}`, f);
+    try {
+      await until(() => root().querySelector('[data-entry-card]'), 'day records');
+      return !root().querySelector('[data-day-row]');
+    } finally {
+      await screen.remove();
+    }
+  });
   const photoId = await f.journal.photos.attach(
     { entryId: entries[0].id },
     { full: jpeg, thumb: jpeg }

@@ -105,4 +105,8 @@
   /* Padding stays inside collapse's animated box, so the field's gap opens
      with the notice instead of adding 12px in its first frame. */
   .update-band { padding-top: var(--space-3); }
+
+  @container app (min-width: 1024px) {
+    .update-band { max-inline-size: var(--content-max); margin-inline: auto; }
+  }
 </style>

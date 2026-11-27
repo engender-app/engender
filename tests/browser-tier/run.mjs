@@ -134,9 +134,9 @@ await block('Archive after browser installation loss', 2, async () => {
   console.log(`RECOVERY ${JSON.stringify({ revision: execFileSync('git', ['-C', resolve(here, '../..'), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), runtime: browser.version(), source: 'web', destination: 'web', producer: 'manual', sourceIdentity: source.identity, destinationIdentity: destination.identity, sourceDestroyed: true, ...destination })}`);
 });
 
-await block('rendered screen contracts', 176, async () => {
+await block('rendered screen contracts', 175, async () => {
   const result = await load('/screen-mount.html', 'screen-mount');
-  for (const [suite, expected] of Object.entries({ direction: 58, home: 58, calendar: 60 })) {
+  for (const [suite, expected] of Object.entries({ direction: 58, home: 56, calendar: 61 })) {
     const cases = result[suite];
     if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
     if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
@@ -1899,9 +1899,7 @@ await block('day composition', 9, async () => {
       JSON.stringify(typical)
     );
 
-  /* Three rows on the typical day, which is under the cap, so it is not
-     truncated and offers nothing to expand. */
-  if (typical.rows === 3 && typical.more === 0)
+  if (typical.keys.join() === 'dose-d1,wear-w1' && typical.more === 0)
     ok('a day inside the cap shows every row it has and offers no overflow');
   else fail('a day inside the cap shows every row it has and offers no overflow', JSON.stringify(typical));
 
@@ -1918,10 +1916,12 @@ await block('day composition', 9, async () => {
   await page.waitForTimeout(320);
   const opened = await page.evaluate(() => {
     const sheet = document.querySelector('[data-sheet]');
+    const photoGroup = sheet?.querySelector('[data-day-row="tryout-photos-ty1"]');
     return {
       open: !!sheet,
       rows: sheet ? sheet.querySelectorAll('[data-day-row]').length : 0,
-      keys: sheet ? [...sheet.querySelectorAll('[data-day-row]')].map((r) => r.getAttribute('data-day-row')) : []
+      keys: sheet ? [...sheet.querySelectorAll('[data-day-row]')].map((r) => r.getAttribute('data-day-row')) : [],
+      tryoutPhotoCount: photoGroup?.querySelector('.day-count')?.textContent
     };
   });
   if (opened.open && opened.rows > maximal.rows)
@@ -1947,13 +1947,11 @@ await block('day composition', 9, async () => {
       `${maximal.moreLabel} against ${hidden} hidden of ${opened.rows}`
     );
 
-  /* Photographs collapse and records do not, checked on the full list now
-     that the card only carries the first five: three hair photos are one row,
-     two doses are two rows. */
-  const hairRows = opened.keys.filter((k) => k.startsWith('hair-photos')).length;
+  const photoRows = opened.keys.filter((k) => k.startsWith('tryout-photos-')).length;
   const doseRows = opened.keys.filter((k) => k.startsWith('dose-')).length;
-  if (hairRows === 1 && doseRows === 2) ok('three hair photos are one row and two doses are two rows');
-  else fail('three hair photos are one row and two doses are two rows', `${hairRows} photo rows, ${doseRows} dose rows`);
+  if (photoRows === 1 && opened.tryoutPhotoCount === '3' && doseRows === 2)
+    ok('three tryout photos are one row and two doses are two rows');
+  else fail('three tryout photos are one row and two doses are two rows', JSON.stringify(opened));
 });
 
 /* A dose row names the drug it carries, so concurrent regimens at the same amount and route

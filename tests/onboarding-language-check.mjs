@@ -55,8 +55,8 @@ try {
 
   await clientRoute(page, '/settings');
   await ready(page);
-  const row = (await page.locator('[data-list-row="language"]').innerText()).trim();
-  assert.ok(row.includes('English'), `Settings shows English, not "${row}"`);
+  const english = page.locator('[data-segmented="language"]').getByRole('radio', { name: 'English', exact: true });
+  assert.equal(await english.getAttribute('aria-checked'), 'true', 'Settings shows English selected');
   assert.deepEqual(errors, []);
   console.log('PASS A language picked on the welcome before there is a journal survives the reload and the journal opening');
 } finally {
