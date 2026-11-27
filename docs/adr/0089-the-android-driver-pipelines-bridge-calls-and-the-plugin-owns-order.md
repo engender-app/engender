@@ -31,6 +31,6 @@ Order still matters. A BEGIN must reach SQLite before the statements written aft
 
 **What does not change.** A transaction is still not isolated: an unrelated call made while one is open lands between its BEGIN and COMMIT, on both platforms. Two transactions still queue in `oneTransactionAtATime()`. The web driver already pipelined, since its worker takes messages in the order posted.
 
-**Tests.** `CallSequencerTest` (JVM) delivers interleaved calls, a transaction among them, out of order and reads back the order they ran in; it fails with the holding removed. `android-driver.test.ts` checks that every call crosses before any answers and is numbered in call order; it fails against the old serializer. `tests/tile-arrival-timing.mjs` holds the web tier's tile budgets in CI but cannot see the bridge, so the device numbers were the record.
+**Tests.** `CallSequencerTest` (JVM) delivers interleaved calls, a transaction among them, out of order and reads back the order they ran in; it fails with the holding removed. `android-driver.test.ts` checks that every call crosses before any answers and is numbered in call order; it fails against the old serializer. `tests/guards/tile-arrival-timing.mjs` holds the web tier's tile budgets in CI but cannot see the bridge, so the device numbers were the record.
 
 History: amended 2026-10-14 (closed sessions are forgotten and refused; file operations after close use their own session); before/after device timing table dropped 2026-11-02.

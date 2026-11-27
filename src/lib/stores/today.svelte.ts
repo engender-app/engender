@@ -12,7 +12,7 @@
 
    Reads outside any reactive context just return today. A write must read
    the day when it happens, so those keep calling `todayEpochDay()` inline
-   rather than a captured value (tests/today-capture.test.ts). */
+   rather than a captured value (tests/node/journal/today-capture.test.ts). */
 
 import { createSubscriber } from 'svelte/reactivity';
 import { msUntilNextLocalMidnight, todayEpochDay } from '../data/epochDay';

@@ -81,7 +81,7 @@ describe('tier 3, the wipe', () => {
     expect(frame(css!, 0)).not.toContain('.00');
   });
 
-  /* The same rule tests/motion-system.test.ts holds every CSS animation to,
+  /* The same rule tests/node/ui/motion-system.test.ts holds every CSS animation to,
      restated for a transition the stylesheet cannot reach: an animation that
      ends anywhere but its element's resting state strands it there. */
   it('ends uncovered, which is where the element rests', () => {

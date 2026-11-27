@@ -64,7 +64,7 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
        Plain 0 rather than 0% at the end, so the last frame is literally
        `inset(0 0 0 0)` - the element's resting geometry written the way the
        stylesheet would write it, rather than a value that only normalises to
-       it. tests/motion-system.test.ts has to do that normalising for CSS; a
+       it. tests/node/ui/motion-system.test.ts has to do that normalising for CSS; a
        transition can just not need it. */
     css: (_t, u) => `clip-path: inset(0 ${u === 0 ? '0' : `${Number((u * 100).toFixed(2))}%`} 0 0)`
   };

@@ -9,7 +9,7 @@
      the copy tickets' to decide, so these stand in without pretending to be
      decisions.
 
-     tests/kit-gallery.mjs drives this page across all 8 palettes and both
+     tests/tools/kit-gallery.mjs drives this page across all 8 palettes and both
      themes for the screenshot grid. */
   import { onMount } from 'svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';

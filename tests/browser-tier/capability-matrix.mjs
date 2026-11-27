@@ -34,10 +34,10 @@ const suites = tier === 'production' ? [
     'manual-archive-recovery', 'pending-persistence-request', 'missing-storage-api', 'uncaught-errors'
   ], mode: 'production', detailed: true },
   { path: 'tests/update-handover-check.mjs', capabilities: ['schema-recovery-update', 'update-during-write'], mode: 'real-driver lifecycle probe' },
-  { path: 'tests/pending-unlock-lock-check.mjs', capabilities: ['pending-unlock-later-lock'], mode: 'development demo' }
+  { path: 'tests/guards/pending-unlock-lock-check.mjs', capabilities: ['pending-unlock-later-lock'], mode: 'development demo' }
 ] : [
   { path: 'tests/browser-tier/splash-check.mjs', capabilities: ['splash-leaves', 'splash-first-tap', 'splash-blocks-input', 'splash-hidden-boot'], mode: 'built production; emulated hidden tab', detailed: true },
-  { path: 'tests/bfcache-journal-check.mjs', capabilities: ['actual-bfcache-return'], mode: 'built production' }
+  { path: 'tests/guards/bfcache-journal-check.mjs', capabilities: ['actual-bfcache-return'], mode: 'built production' }
 ];
 function capabilities(engine, suite) {
   return [...suite.capabilities, ...(engine === 'webkit' && suite.path.endsWith('built-capabilities.mjs') ? ['private-context-opfs'] : [])];

@@ -2,7 +2,7 @@
   /* Mount DayRecords with three day sizes. Photo placeholders use
      fileName: null so PhotoThumb draws its gradient. Measurement and
      change names show keys because the fixture has no booted reference
-     mirror. tests/day-gallery.mjs captures all three days across eight
+     mirror. tests/tools/day-gallery.mjs captures all three days across eight
      palettes and both themes. */
   import DayRecordsView from '$lib/components/DayRecords.svelte';
   import { DAY_SECTION_KEYS, type DayRecords } from '$lib/data/journal/day';

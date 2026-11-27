@@ -150,7 +150,7 @@
 <style>
   /* Its own block rather than kit.css, for the reason Donut.svelte's says:
      one consumer per class. The single-hue law still reaches it -
-     tests/kit-surfaces.test.ts reads the kit components' style blocks
+     tests/node/ui/kit-surfaces.test.ts reads the kit components' style blocks
      alongside the shared sheet. */
   .kit-ordered {
     /* The tooltip's own positioning context: it has to sit above the

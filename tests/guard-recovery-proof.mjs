@@ -13,7 +13,7 @@ writeFileSync(summaryPath, '');
 const revision = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
 assert.match(revision, /^[a-f0-9]{40}$/);
 try {
-  mkdirSync(join(fixture, 'tests'));
+  mkdirSync(join(fixture, 'tests/guards'), { recursive: true });
   mkdirSync(join(fixture, 'scripts'));
   mkdirSync(join(fixture, '.claude/recovery-shots'), { recursive: true });
   for (const path of ['tests/run-guards.mjs', 'scripts/check-process.mjs']) copyFileSync(path, join(fixture, path));
@@ -22,7 +22,7 @@ try {
     { name: 'synthetic-recovery', tier: 'dev', holds: 'synthetic failure recovers once', diagnostics: ['.claude/recovery-shots/*', 'ci-logs/synthetic-case.json'] },
     { name: 'synthetic-pass', tier: 'dev', holds: 'independent first-attempt pass' }
   ]));
-  writeFileSync(join(fixture, 'tests/synthetic-recovery.mjs'), `
+  writeFileSync(join(fixture, 'tests/guards/synthetic-recovery.mjs'), `
     import { existsSync, writeFileSync } from 'node:fs';
     const attempt = existsSync('attempted') ? 2 : 1;
     writeFileSync('attempted', 'yes');
@@ -32,7 +32,7 @@ try {
     console.error('Synthetic attempt ' + attempt + ' stderr');
     process.exit(attempt === 1 ? 1 : 0);
   `);
-  writeFileSync(join(fixture, 'tests/synthetic-pass.mjs'), 'console.log("PASS independent synthetic case");');
+  writeFileSync(join(fixture, 'tests/guards/synthetic-pass.mjs'), 'console.log("PASS independent synthetic case");');
   const result = spawnSync(process.execPath, ['tests/run-guards.mjs', '--tier', 'dev'], {
     cwd: fixture, encoding: 'utf8', env: { ...process.env, GITHUB_STEP_SUMMARY: summaryPath }
   });

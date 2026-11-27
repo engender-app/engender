@@ -84,10 +84,10 @@ after removes it. Two releases cover a person who skips one update, and a
 reminder alarm or widget that still carries the old route. A removed screen
 gets no redirect. No catch-all, ever: it would hide the next broken link.
 
-Checks: `tests/old-addresses-check.mjs` (browser tier) loads every route in
+Checks: `tests/tools/old-addresses-check.mjs` (browser tier) loads every route in
 `tests/old-addresses.json` and expects the unknown-address screen; a
 post-1.0 stub joins the list when its two releases end.
-`tests/internal-route-targets.test.ts` fails on any `href` or `goto` target
+`tests/node/ui/internal-route-targets.test.ts` fails on any `href` or `goto` target
 in `src/`, or route in `src/lib/android/fixtures/launch-routes.json`, with no
 `+page.svelte`; a redirect stub never counts as a target.
 

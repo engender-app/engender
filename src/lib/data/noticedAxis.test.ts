@@ -108,7 +108,7 @@ describe('several in the same month', () => {
      are two 24px targets side by side, so the gap has to be 24px of line on
      the narrowest screen. At 320px the plot is 280px wide and the marks are
      inset 12px from each end, which leaves a 256px line - measured in the
-     built app by tests/chart-a11y-check.mjs. */
+     built app by tests/guards/chart-a11y-check.mjs. */
   test('two marks in one lane stand 24px apart on a 320px screen', () => {
     const line = 256;
     const step = Math.ceil(730 * MARK_MIN_GAP);

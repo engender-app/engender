@@ -9,7 +9,7 @@
 
    The runtime list is `onboardingSteps()` in `$lib/onboarding/steps`, which
    is TypeScript inside the app and so cannot be imported by a plain script;
-   this is the one place that restates it, and `tests/gates-surfaces.test.ts`
+   this is the one place that restates it, and `tests/node/security/gates-surfaces.test.ts`
    is what holds the app's own list to what a screen may assume. */
 
 /** In order. `lock` is the access-mode step, which draws its own two screens

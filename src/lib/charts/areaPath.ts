@@ -4,11 +4,11 @@
 
    It sits apart from charts/geometry.ts, which holds the arithmetic and
    imports nothing, so that a caller after a number does not get a library
-   too - the rule and the reasoning are in tests/chart-library-graph.test.ts.
+   too - the rule and the reasoning are in tests/node/ui/chart-library-graph.test.ts.
    Everything here is still Node-testable, which is why it is a module rather
    than something inside AreaChart.svelte: the curve, the gaps and the
    clamping are worth a test without a DOM (ADR-0016), and
-   tests/chart-geometry.test.ts is where they have one.
+   tests/node/ui/chart-geometry.test.ts is where they have one.
 
    d3-shape only: the scale is the box's own arithmetic rather than
    d3-scale, which the charts that need an axis reach for themselves. */

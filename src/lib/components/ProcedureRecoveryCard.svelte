@@ -392,7 +392,7 @@
      written on the stripe itself. It is not large text by WCAG's measure -
      that needs 18.66px at weight 700 - so it owes 4.5:1 and gets it:
      `--role-fill-ink` is the heat ramp's deepest step, held to 4.5:1
-     against its own fill by tests/kit-roles.test.ts. */
+     against its own fill by tests/node/ui/kit-roles.test.ts. */
   .proc-unit {
     font-size: var(--text-block);
     font-weight: var(--weight-medium);

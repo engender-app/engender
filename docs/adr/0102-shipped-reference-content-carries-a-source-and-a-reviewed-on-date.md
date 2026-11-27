@@ -53,7 +53,7 @@ people towards bumping the date without reading anything.
 
 `src/lib/reviewedContent.test.ts` holds each limit on both sides of its edge
 and the month arithmetic (a review on the 31st falls due on the last day of a
-shorter month). `tests/reviewed-content-check.test.ts` runs the script itself:
+shorter month). `tests/node/tooling/reviewed-content-check.test.ts` runs the script itself:
 every entry warns on a far-future day, the run exits 0, and nothing warns on
 the day of the latest review pass.
 

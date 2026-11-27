@@ -270,7 +270,7 @@ html[data-palette][data-theme][data-a11y-legibility='boost'] {
      phone as the switch doing nothing. Secondary
      text clears WCAG's enhanced 7:1, an outline the 3:1 a non-text edge
      needs, a hairline 2:1, on bg, surface and surface-2 in all 16
-     palettes x 2 themes; tests/palette-contrast.test.ts holds the three.
+     palettes x 2 themes; tests/node/ui/palette-contrast.test.ts holds the three.
      --text-2 stays short of --text, so the two still read as two. --border,
      which this used to boost, retired with the ramp it belonged to. */
   --text-2: color-mix(in oklab, var(--text) 82%, var(--bg));

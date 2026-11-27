@@ -41,7 +41,7 @@ of two shapes, plus one disguised alias.
 `PackageManager` instead of holding a list. Adding a palette is its stripes in
 `palettes.css`, a generator run (`npm run render:mark`,
 `scripts/render-mark.mjs`) and two manifest entries with the next two numbers.
-`tests/mark-assets.test.ts` fails if an icon or an alias identity is missing;
+`tests/node/ui/mark-assets.test.ts` fails if an icon or an alias identity is missing;
 `DisguiseAliasTest.java` walks every alias on a device and holds the
 one-enabled invariant.
 

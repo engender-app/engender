@@ -1,6 +1,6 @@
 /* Per-frame measurement beside a screencast, shared by the motion
-   recorders (tests/noticed-axis-motion.mjs, tests/restore-gallery.mjs,
-   tests/return-motion-gallery.mjs).
+   recorders (tests/tools/noticed-axis-motion.mjs, tests/tools/restore-gallery.mjs,
+   tests/tools/return-motion-gallery.mjs).
 
    A recording shows that something moved; a rAF loop in the page reading
    the properties the movement animates says by how much and when. Both

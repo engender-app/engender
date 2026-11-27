@@ -173,7 +173,7 @@
      consumer, which is what scripts/check-screens-classes.mjs asks to live
      beside its component - an unused rule is then a compiler warning
      instead of dead text in a shared sheet. The mark rules are still held
-     to the kit's single-hue law; tests/kit-surfaces.test.ts reads the kit
+     to the kit's single-hue law; tests/node/ui/kit-surfaces.test.ts reads the kit
      components' own style blocks alongside kit.css for exactly this.
 
      Ring and legend side by side, wrapping to stacked where the names need

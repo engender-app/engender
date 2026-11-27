@@ -1,5 +1,5 @@
 /* Wear reminder hours on Android (last-audit UI 01). The field renders only
-   on Android, so tests/wear-entry-check.mjs cannot reach it.
+   on Android, so tests/guards/wear-entry-check.mjs cannot reach it.
 
    Run against a disposable emulator with a demo debug APK installed under a
    separate applicationId, never the real app:

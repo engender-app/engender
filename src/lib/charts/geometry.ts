@@ -7,7 +7,7 @@
    This module imports nothing, and that is a rule rather than an accident:
    its callers want arithmetic and should not have a charting library come
    with it. Path building is charts/areaPath.ts and the bar length is
-   charts/share.ts for that reason alone. tests/chart-library-graph.test.ts
+   charts/share.ts for that reason alone. tests/node/ui/chart-library-graph.test.ts
    holds the rule and carries the measurement behind it. */
 
 /** The plot's drawn height in CSS px, which every line chart in the kit

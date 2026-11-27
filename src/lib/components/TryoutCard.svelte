@@ -177,7 +177,7 @@
   /* 19px rather than the 15px a secondary line takes, because this one is
      written on the stripe itself. Not large text by WCAG's measure, so it
      owes 4.5:1 and gets it: --role-fill-ink is the heat ramp's deepest
-     step, held to 4.5:1 against its own fill by tests/kit-roles.test.ts.
+     step, held to 4.5:1 against its own fill by tests/node/ui/kit-roles.test.ts.
      Keep the label in normal case with default letter spacing. */
   .tc-kind {
     font-size: var(--text-block);

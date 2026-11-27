@@ -514,7 +514,7 @@ try {
      cannot prove is that the resolver itself is right, since both sides ask
      the same function. The walkthrough suite holds the other half - it
      builds under a ENGENDER_VERSION nobody derives and insists on seeing
-     exactly that string - and the rules live in tests/app-version.test.ts. */
+     exactly that string - and the rules live in tests/node/release/app-version.test.ts. */
   await openScreen(cold, origin, '/settings');
   /* Phase 5 ticket 24: the About row is a ListRow now, whose own handle is
      data-list-row="about" rather than a settings-specific attribute. */

@@ -1,5 +1,5 @@
 /* Generated from the migrated schema by `npm run features:tables`; edit a
-   migration, not this file. tests/features.test.ts fails while it differs
+   migration, not this file. tests/node/tooling/features.test.ts fails while it differs
    from the schema, and src/lib/features.ts types each feature's tables
    against it. */
 export const TABLE_NAMES = [

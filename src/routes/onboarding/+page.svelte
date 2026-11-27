@@ -956,7 +956,7 @@
                            the first pick, so the whole clip was dead on the
                            one tap it exists for. Caught by reading
                            clip-path per animation frame off the built app
-                           (`tests/restore-gallery.mjs`), which sampled `none`
+                           (`tests/tools/restore-gallery.mjs`), which sampled `none`
                            for the length of the scene. -->
                       <span class="setup-file-name" in:wipe|global data-restore-file>
                         {picked.name}

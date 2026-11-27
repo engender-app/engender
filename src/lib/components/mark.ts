@@ -102,7 +102,7 @@ function ringMarkup(stripes: string[], ink: string | undefined, launcherRound = 
     over the ground. The stroke's inner half covers the clipped boundary
     and its outer half draws the only silhouette edge.
 
-    tests/mark-edge-fringe.mjs checks four sizes for pixels brighter than the
+    tests/guards/mark-edge-fringe.mjs checks four sizes for pixels brighter than the
     page. Here bleed uses the tile crop at MARK_SAFE_TILE. */
 function cropMarkup(crop: 'tile' | 'round', ink: string): { clip: string; edge: string } {
   const inset = MARK_SEAM / 2;

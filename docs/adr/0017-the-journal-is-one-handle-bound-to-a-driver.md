@@ -15,7 +15,7 @@ The Node tier is the reason for the shape. `vitest.config.ts` runs plain Node wi
 
 The same split is why `src/lib/data/epochDay.ts` imports nothing and is fully tested, while `src/lib/data/dates.ts` binds `getLocale()` and formats, with no tests of its own. `dates.ts` looks like a pass-through and has been proposed for deletion by an outside reviewer (2026-08-11); it stays. Presentation logic that needs a test moves its arithmetic down into the core and returns numbers (years, months, days), and the i18n layer supplies the words. `setLocale()` reloads the page (`src/lib/data/prefs/store.svelte.ts`), so the locale is constant for a page's lifetime and binding it in one place loses nothing.
 
-Vocabulary has the same kind of seam. The `reference` mirror answers which rows exist and stays live with table writes. `vocabulary` answers what the user sees: localized built-in wording, custom wording unchanged, metric labels in step with preferences. Two routes to the same data invite copying row access into every new screen. `tests/vocabulary-seam.test.ts` fails if anything under `src/routes` or `src/lib/components` imports `reference.svelte`. A getter a screen needs is added to `vocabulary.ts` first.
+Vocabulary has the same kind of seam. The `reference` mirror answers which rows exist and stays live with table writes. `vocabulary` answers what the user sees: localized built-in wording, custom wording unchanged, metric labels in step with preferences. Two routes to the same data invite copying row access into every new screen. `tests/node/i18n/vocabulary-seam.test.ts` fails if anything under `src/routes` or `src/lib/components` imports `reference.svelte`. A getter a screen needs is added to `vocabulary.ts` first.
 
 ## Considered options
 

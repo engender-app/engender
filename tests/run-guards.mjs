@@ -62,7 +62,7 @@ export async function runGuards(guards, { run = execute, log = console.log, bloc
           writeFileSync(logFile, `${JSON.stringify({ name: guard.name, revision, attempt, startedAt })}\n`);
         }
         const attemptStart = performance.now();
-        const code = await run(process.execPath, [`tests/${guard.name}.mjs`, ...(guard.args ?? [])], {}, process.cwd(), logFile);
+        const code = await run(process.execPath, [`tests/guards/${guard.name}.mjs`, ...(guard.args ?? [])], {}, process.cwd(), logFile);
         const result = { name: guard.name, revision, attempt, code, startedAt, finishedAt: new Date().toISOString(), durationMs: performance.now() - attemptStart };
         if (directory && logFile) {
           for (const [path, signature] of diagnosticFiles(guard.diagnostics ?? [])) {

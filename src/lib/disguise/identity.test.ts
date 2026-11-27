@@ -115,7 +115,7 @@ describe('where the decoy name is allowed to appear', () => {
 
        `src/` only. The name is also in static/manifest-notes.webmanifest,
        which is the launcher entry rather than a surface and is held to the
-       catalogue by tests/web-manifest.test.ts. */
+       catalogue by tests/node/ui/web-manifest.test.ts. */
     const naming = sources('src')
       .filter((path) => !path.endsWith('.test.ts'))
       /* Demo seed prose, not a surface: fullFixture writes journal

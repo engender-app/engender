@@ -377,7 +377,7 @@
    paletteNameFit sets --word-em to the longest word's width in ems.
    Each swatch is an inline-size container and divides its width by that
    value, clamped to 0.75–1 times --text-xs (9–12px), to keep words whole.
-   tests/palette-name-wrap.mjs covers both languages and screens from
+   tests/tools/palette-name-wrap.mjs covers both languages and screens from
    320px to 430px and at 1280px. */
 .palette-grid {
   display: grid; position: relative;

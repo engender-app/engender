@@ -362,7 +362,7 @@
   /* The chip row and the section it opens. Nothing
      takes the focus on arrival, a new entry included: a focused note put
      the keyboard over half the editor before anyone asked to type
-     (tests/no-auto-keyboard.mjs). */
+     (tests/guards/no-auto-keyboard.mjs). */
   let moodsEl = $state<HTMLElement | undefined>();
 
   function sectionName(section: EntrySection): string {

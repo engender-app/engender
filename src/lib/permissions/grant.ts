@@ -28,7 +28,7 @@ import type { GrantKey, GrantState, GrantStates, SettingsTarget } from './catalo
     directly above it.
 
     Two calls with the constraints written out, rather than one call reading
-    them from a table. tests/permissions-policy.test.ts derives which
+    them from a table. tests/node/security/permissions-policy.test.ts derives which
     capabilities the app requires from every `getUserMedia` argument in the
     tree, resolving a literal object or a named helper and nothing else -
     which is what stops a capability shipping dark behind the deployed

@@ -65,7 +65,7 @@ export function sectionTables(section: (typeof ARCHIVE_SECTIONS)[number]): strin
 export function renderTableNames(names: readonly string[]): string {
   return [
     '/* Generated from the migrated schema by `npm run features:tables`; edit a',
-    '   migration, not this file. tests/features.test.ts fails while it differs',
+    '   migration, not this file. tests/node/tooling/features.test.ts fails while it differs',
     "   from the schema, and src/lib/features.ts types each feature's tables",
     '   against it (functional audit ticket 54). */',
     'export const TABLE_NAMES = [',

@@ -133,7 +133,7 @@ export function pinnedOut(node: Element, { opacityOnly = false } = {}): Transiti
     Gated on `when`, and the gate is the point. A screen's content gets no
     entrance of its own on the way in: the skeleton fades out over it and a
     second fade a moment later is the content arriving twice
-    (tests/feature-screens.test.ts). Pass
+    (tests/node/ui/feature-screens.test.ts). Pass
     false for the tiles that come with the grid and true for every tile
     after that, which it knows from whether its own grid has been painted
     yet.

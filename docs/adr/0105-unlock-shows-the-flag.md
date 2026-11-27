@@ -52,7 +52,7 @@ owner, and a sun in the flag's colours is recognisable from further away than
 one colour and a name. Disguise is the existing answer to that and stays the
 only one: with disguise on, every gate keeps ADR-0101's neutral `--surface-2`
 field at the title's height with the decoy's name, and no colour of the flag
-reaches it. `tests/gate-flag-check.mjs` checks that on every palette and both
+reaches it. `tests/guards/gate-flag-check.mjs` checks that on every palette and both
 themes, by the DOM and by the pixels of the field, and screenshots of the
 disguised gates match the base pixel for pixel. Disguise stays under one preference across the unlock screen and the in-app flag.
 
@@ -72,7 +72,7 @@ rides the field's capture, which is hidden by design.
 On bisexual and asexual the sun's outline against the field measures 2.13:1
 and 2.23:1, on Today and on the gate alike. The flag is not changed to pass
 (a stripe is used at its own value and never nudged to pass a ratio);
-`tests/palette-contrast.test.ts` pins the two so
+`tests/node/ui/palette-contrast.test.ts` pins the two so
 the shortfall cannot grow or spread unnoticed.
 
 ## Options considered
@@ -87,4 +87,4 @@ built one is Today's own sun, held.
 
 - The rules that the pride motif is Today-only and that an unlock shows no sun
   no longer hold.
-- `tests/gate-flag-check.mjs` is a dev-tier guard.
+- `tests/guards/gate-flag-check.mjs` is a dev-tier guard.

@@ -105,7 +105,7 @@ describe("the mark's signed-off numbers", () => {
        not clipped at all, and the clip stops on the edge's centre line so
        the stroke's inner half covers what it clipped.
 
-       tests/mark-edge-fringe.mjs is what measures the result; this is only
+       tests/guards/mark-edge-fringe.mjs is what measures the result; this is only
        the shape of the markup that produces it. */
     for (const crop of ['tile', 'round'] as const) {
       const svg = markSvg(flags.trans, crop, 512);

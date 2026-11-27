@@ -147,8 +147,8 @@ days. The counter locations write neither access nor error logs.
 
 Check both existing and new dashboard logins, private visibility, fixed
 counter labels, zero individual hits and bot rows for the new site, nginx
-configuration and the rotation timer. `node tests/page-count-hosting.mjs`
-checks the proxy with Podman; `node tests/page-load-browser.mjs` checks a
+configuration and the rotation timer. `node tests/tools/page-count-hosting.mjs`
+checks the proxy with Podman; `node tests/tools/page-load-browser.mjs` checks a
 production app build in Chromium. These commands send only synthetic data.
 
 Installing the endpoints does not publish an app build. The Journal counter

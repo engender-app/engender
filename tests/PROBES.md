@@ -1,6 +1,6 @@
 # Verification probes and focused regressions
 
-`npm run build && node tests/manager-lifecycle-check.mjs` opens both entry
+`npm run build && node tests/tools/manager-lifecycle-check.mjs` opens both entry
 managers, leaves through navigation and browser Back, and checks they stay
 closed. It also covers ordinary focus return, Quick add
 cleanup and web lock/unlock. Pass an emulator serial and an isolated
@@ -8,7 +8,7 @@ cleanup and web lock/unlock. Pass an emulator serial and an isolated
 APK, including Android Home/resume and hidden retained doors. The web check
 also runs in the browser tier.
 
-`node tests/old-addresses-check.mjs` opens all 52 retired route addresses in
+`node tests/tools/old-addresses-check.mjs` opens all 52 retired route addresses in
 the built app. After unlocking, each must render the unknown-address screen
 with a link to Today.
 
@@ -18,7 +18,7 @@ without reloading. Enter then applies Polish; Space applies English and a
 touch applies Polish. Each choice is checked again after the resulting reload.
 The check runs in `npm run test:browser`.
 
-`VITE_DEMO=1 npm run build && node tests/completed-history-check.mjs` drives
+`VITE_DEMO=1 npm run build && node tests/tools/completed-history-check.mjs` drives
 the built SPA through real links, saves, deletes and browser Back. It checks
 custom scales, existing and new reminders, new and edited tryouts and
 documents. Ordinary Back and draft discard retain their opener.
@@ -141,7 +141,7 @@ correction and new failures after success or destination changes.
 `preferences.test.ts` reopens real SQLite to verify the receipt and held flag;
 `catalogue.test.ts` keeps the receipt out of Archives and the boot mirror.
 
-`node tests/entry-capture-check.mjs` drives the real entry routes and lock
+`node tests/tools/entry-capture-check.mjs` drives the real entry routes and lock
 shell in Chromium with synthetic camera and microphone tracks. EN/PL keyboard
 activation, duplicate taps, navigation and actual visibility-triggered PIN
 concealment must leave no recorder, live track, preview or delayed feedback.
@@ -209,7 +209,7 @@ exact bytes. The optional shrinker cuts ciphertext and cannot meaningfully
 minimise encrypted targets. A future LAN receiver adds its damaged-frame target
 with the same refusal fingerprint rule when that receiver lands.
 
-`node tests/reset-restart-check.mjs` uses an isolated persistent Chromium
+`node tests/guards/reset-restart-check.mjs` uses an isolated persistent Chromium
 profile and SIGKILLs only its owned process group at testing-09 seeds
 6501 through 6530, within 160 ms of the reset action. Erased cuts must return
 to onboarding with no old app-owned mirrors or preference projection.
@@ -246,7 +246,7 @@ device-bound mode cannot pass as completed cleanup. `journal-pin.test.ts`
 checks that retrying the same published PIN verifies the active data key
 without replacing its binding or wrap. These run in `npm test`.
 
-`node tests/device-bound-cleanup-check.mjs` mounts the real Settings form in
+`node tests/guards/device-bound-cleanup-check.mjs` mounts the real Settings form in
 Chromium. Forced metadata removal failures must show the existing incomplete
 change notice and keep the passphrase or PIN retry available. A successful
 retry removes both records; a separate real cold boot sweeps a recreated
@@ -279,7 +279,7 @@ refusals through the production importers. `importer-infrastructure.test.ts` inj
 at decoder, parser and calendar boundaries and requires the original error to
 reach the caller. Both run in the Node tier.
 
-`tests/ai-directories.test.ts` plants synthetic root evidence in an isolated
+`tests/node/tooling/ai-directories.test.ts` plants synthetic root evidence in an isolated
 Git repository. It requires index refusal and verifies that an archive of the
 commit excludes evidence while retaining source, build inputs and intentional
 fixtures. Editing checkout attributes after commit cannot change that receipt.
@@ -322,33 +322,33 @@ results. Browser fixtures, walkthroughs, installed PWA and hosting run in
 separate jobs. The final required-checks job fails if any tier fails or is
 blocked.
 
-`journal-field-profile` (`tests/journal-field-profile.mjs`) types unique synthetic
+`journal-field-profile` (`tests/tools/journal-field-profile.mjs`) types unique synthetic
 canaries into the real entry note, tag and imported PDF title fields, closes
 each independent Chromium and Firefox profile, then checks that raw, UTF-16
 and base64 copies are absent. Firefox session files are decompressed before
-scanning. Run `node tests/journal-field-profile.mjs` after runtime generation;
+scanning. Run `node tests/tools/journal-field-profile.mjs` after runtime generation;
 `--expect-leak` requires positive detection on an unprotected source baseline.
 Profiles are removed after each field, including failures. This proves local
 profile behavior, not keyboard learning or browser sync. `profile-canaries.py`
 and `unmozlz4.py` are its scanner and Firefox decoder helpers.
 
-`care-history` (`tests/care-history.mjs`) keeps typed drug names out of browser
+`care-history` (`tests/tools/care-history.mjs`) keeps typed drug names out of browser
 history and session files. It drives the real Care screen, recorded-dose and
 schedule marks, Log and Back in separate persistent Chromium and Firefox
 profiles, then closes each browser and scans every profile file for raw,
 URL-encoded and UTF-16 canaries. A separate profile carrying the former drug
 URL must detect the canary, so an empty scan cannot pass by accident. Profiles
-are synthetic and removed after each engine. Run `node tests/care-history.mjs`
+are synthetic and removed after each engine. Run `node tests/tools/care-history.mjs`
 after build/runtime generation, or name one engine. This proves local profile
 behavior, not browser sync on another device.
 
-`journal-text-links` (`tests/journal-text-links.mjs`) covers the addresses
+`journal-text-links` (`tests/tools/journal-text-links.mjs`) covers the addresses
 written before that: an old Log link opened cold, an old lane link followed
 in-app, a return path nesting a drug name, a typed `/search?q=`, and a lock
 taken on an address that still names a drug. Each must leave no `drug`,
 `lane` or `q` in the address while still doing what the link asked (the drug
 resolved to its episode UUID, the query in the search box). Chromium against
-the dev server; run `node tests/journal-text-links.mjs`.
+the dev server; run `node tests/tools/journal-text-links.mjs`.
 
 `browser-tier/dose-slot-screens-probe.ts` runs through `test:browser` with a
 synthetic encrypted journal and the real Today, Care and Transition screens.
@@ -360,11 +360,11 @@ This proves rendered statements, not a physical-device session or a clinical
 outcome. Domain, migration, Archive and eight zone-switch regressions live in
 `src/lib/data/dose-slot-consistency.test.ts` and `sqlite/schema.test.ts`.
 
-`retained-client-check` (`tests/retained-client-check.mjs`) switches two actual
+`retained-client-check` (`tests/tools/retained-client-check.mjs`) switches two actual
 built releases under retained Chromium pages, online and offline. Run
 `node tests/retained-client/prepare.mjs <owned output>` to build A/B with
 throwaway deferred-screen and SQLite-worker markers, then
-`node tests/retained-client-check.mjs --a <output>/A --b <output>/B`.
+`node tests/tools/retained-client-check.mjs --a <output>/A --b <output>/B`.
 Source markers are restored even when a build fails; remove the output afterward.
 The check keeps admitted writes, drafts and failed-save recovery through A/B/A
 takeover, visits the old licence screen for the first time, reopens its real
@@ -393,7 +393,7 @@ resets from both pages, then restarts and verifies the original entries and
 encrypted attachment bytes. The dev app supplies synthetic demo data; credential
 storage and UI paths are real.
 
-`pin-credential-contention` (`tests/pin-credential-contention.mjs`) mounts the
+`pin-credential-contention` (`tests/guards/pin-credential-contention.mjs`) mounts the
 real cold-start, session and current-PIN Settings gates in English and Polish.
 It holds credential ownership, checks a correct PIN waits without changing the
 throttle, then verifies successful unlock and one genuine wrong guess. A peer
@@ -401,7 +401,7 @@ changes or removes the wrap through production credential/file helpers; the
 old gate must offer reopen guidance without another wrong attempt. Departure
 and lock cancel queued publication. Error copy and live feedback are checked
 at 390px and 200% CSS zoom. Run after build/runtime generation with
-`node tests/pin-credential-contention.mjs`. SQLite, OPFS, IndexedDB and crypto
+`node tests/guards/pin-credential-contention.mjs`. SQLite, OPFS, IndexedDB and crypto
 are real; visibility events and the held/faulted credential states are synthetic.
 This does not establish physical-phone overlap frequency.
 
@@ -526,7 +526,7 @@ allocation estimates, which can remain after readable files are removed.
 
 `android-r8-artifact` checks the release R8 mapping against the native plugin
 registry and source annotations. Run after an Android release build with
-`node tests/android-r8-artifact.mjs [mapping.txt]`. It rejects removed or renamed
+`node tests/tools/android-r8-artifact.mjs [mapping.txt]`. It rejects removed or renamed
 bridge methods, callbacks and runtime annotation interfaces. It also rejects
 renamed annotation members reported in the mapping; R8 omits unchanged abstract
 members. These interfaces must stay instantiable in R8 full mode: annotation
@@ -545,7 +545,7 @@ when a native test or AndroidX upgrade changes this contract.
 
 ## Walkthrough groups
 
-`search-return-privacy` (`tests/search-return-privacy.mjs`) runs after
+`search-return-privacy` (`tests/guards/search-return-privacy.mjs`) runs after
 `VITE_DEMO=1 npm run build`. Run it with Node for Chromium and with
 `BROWSER_ENGINE=firefox` for Firefox. It creates a synthetic note, opens an
 entry from search, verifies the restored query and refuses writes of that
@@ -556,13 +556,13 @@ the entry/search actions with device checks and also supports
 an initialized isolated Android test journal; pulling and scanning that
 package after background and force-stop remains a device check.
 
-`page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's
+`page-load-browser` (`tests/tools/page-load-browser.mjs`) checks the production app's
 empty counting request, document reload, internal navigation and offline behavior.
-Run after a production build: `node tests/page-load-browser.mjs`.
+Run after a production build: `node tests/tools/page-load-browser.mjs`.
 
-`page-count-hosting` (`tests/page-count-hosting.mjs`) checks the analytics privacy
+`page-count-hosting` (`tests/tools/page-count-hosting.mjs`) checks the analytics privacy
 boundary with real nginx and a capture server. Requires Podman:
-`node tests/page-count-hosting.mjs`. It checks both fixed labels, stripped headers
+`node tests/tools/page-count-hosting.mjs`. It checks both fixed labels, stripped headers
 and bodies, rejected input, and blocked direct collection on the dashboard.
 
 `walkthrough-groups` (`tests/walkthrough-groups.mjs`) assigns contiguous flow ranges to four hosted jobs.
@@ -610,7 +610,7 @@ The runner preserves roster order within each shard so demo guards finish
 before the production build replaces their bundle. Local npm scripts run the
 whole tier. Timing sources and the cost comparison are in [GUARD-TIMINGS.md](GUARD-TIMINGS.md).
 To run one on its own, use
-`node tests/<name>.mjs`, with the right build on disk first.
+`node tests/guards/<name>.mjs`, with the right build on disk first.
 
 ### `npm run test:guards` (dev server, no build)
 
@@ -751,15 +751,15 @@ seeded encrypted journals. The browser runner checks their DOM, computed
 styles, interactions and loading gates, then repeats the narrow layout checks
 at 230px. The screen contract suites run here rather than in Node. Safe space
 checks held reads, pool visibility, row motion and navigation departures.
-Run `node tests/safe-space-row-check.mjs` for its ten checks alone; the full
+Run `node tests/tools/safe-space-row-check.mjs` for its ten checks alone; the full
 browser tier runs the same suite. The late-reads suite holds Good moments'
 pool read and Tryouts' felt-sense readings, then samples every frame of the
 cold load: nothing paints before its read answers and nothing is whole on
 its first frame. It also checks that a refused pool read says so. Run
-`node tests/late-reads-check.mjs` for its six checks in light and dark and
+`node tests/tools/late-reads-check.mjs` for its six checks in light and dark and
 the per-frame tracks.
 
-`clinician-summary-print-layout` checks English and Polish summary previews and PDFs, long lab tables, printed values and caveats, and range, section and drug selections. Run after a demo build with Poppler installed: `node tests/clinician-summary-print-layout.mjs`; `--out` chooses the evidence directory.
+`clinician-summary-print-layout` checks English and Polish summary previews and PDFs, long lab tables, printed values and caveats, and range, section and drug selections. Run after a demo build with Poppler installed: `node tests/tools/clinician-summary-print-layout.mjs`; `--out` chooses the evidence directory.
 | `claim-address-check` | Dev-server check that the address a pick kept through a lock is claimed under (`location.pathname`) is unchanged across lock and unlock on the new-entry editor, with and without a query, and on `/media/documents`. Run by hand for now. |
 
 ## Galleries and measurements
@@ -793,14 +793,14 @@ available for the surface or device it measures.
 
 | Probe | Purpose |
 | --- | --- |
-| `palette-name-wrap` | every flag name in the palette picker wraps only between words and stays over its own flag, English and Polish, at 320, 360, 390 and 430px; dev server, run with `node tests/palette-name-wrap.mjs` |
-| `quick-add-mood-withdrawal` | check scrim withdrawal before mood navigation, chosen mood and heading focus for tap, keyboard and slide in both themes and motion preferences; requires a demo build, run with `node tests/quick-add-mood-withdrawal.mjs` |
+| `palette-name-wrap` | every flag name in the palette picker wraps only between words and stays over its own flag, English and Polish, at 320, 360, 390 and 430px; dev server, run with `node tests/tools/palette-name-wrap.mjs` |
+| `quick-add-mood-withdrawal` | check scrim withdrawal before mood navigation, chosen mood and heading focus for tap, keyboard and slide in both themes and motion preferences; requires a demo build, run with `node tests/tools/quick-add-mood-withdrawal.mjs` |
 | `android-tab-status-strip` | sample tab and system-icon backgrounds in an Android WebView; requires a demo build and attached device |
-| `yank-sweep-strip-check` | read a sweep's saved casts and check the status strip (`.app-strip`, inset minus 9 CSS px) against `--bg` in every frame, naming the first frame and millisecond that leaves it; a band a sheet's scrim dims evenly is not counted. Run `node tests/yank-sweep-strip-check.mjs <sweep out dir>` over a device sweep or a desktop `yank-sweep --force-inset 58` run; exits 1 when any cast moves. Seen failing on a demo build copy with `.app::before` transparent (the strip before carpet 15) (11 of 14 door and mood casts) before passing on the real build (`mood-pick` only, where the screen and editor field cover the band on both builds) |
+| `yank-sweep-strip-check` | read a sweep's saved casts and check the status strip (`.app-strip`, inset minus 9 CSS px) against `--bg` in every frame, naming the first frame and millisecond that leaves it; a band a sheet's scrim dims evenly is not counted. Run `node tests/tools/yank-sweep-strip-check.mjs <sweep out dir>` over a device sweep or a desktop `yank-sweep --force-inset 58` run; exits 1 when any cast moves. Seen failing on a demo build copy with `.app::before` transparent (the strip before carpet 15) (11 of 14 door and mood casts) before passing on the real build (`mood-pick` only, where the screen and editor field cover the band on both builds) |
 | `journal-book-height` | measure the journal book height against a demo build |
 | `journal-book-print-diff` | compare printed journal output between demo builds |
 | `journal-book-summary-gallery` | capture journal book summary crops |
-| `journal-book-entry-gallery` | check range and photo selection, capture entries across palettes and themes, and verify long English/Polish notes and photos in A4 PDFs; run `node tests/journal-book-entry-gallery.mjs` after a demo build; requires Poppler |
+| `journal-book-entry-gallery` | check range and photo selection, capture entries across palettes and themes, and verify long English/Polish notes and photos in A4 PDFs; run `node tests/tools/journal-book-entry-gallery.mjs` after a demo build; requires Poppler |
 | `settings-features-check` | checks the Features to Show manager's keyboard access, focus and scroll return, saved choices, reduced motion, palette/theme layouts, Polish disguise at 230px and actual 200% browser zoom; run after a demo build |
 | `screenshot-block-row-check` | the Android-only Block screenshots row in Settings > Security, mounted over a demo build with the platform answer swapped for that one navigation: named and off on a fresh journal in English and Polish, on survives a reload, and the thumb and track travel on every sampled frame in both themes. `--shots <dir>` writes row crops, `--frames <dir>` the painted frames of each flip with their milliseconds, `--before` captures a build from before the change without asserting |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
@@ -811,7 +811,7 @@ available for the surface or device it measures.
 and checks recovery, revision identity and retained evidence. The separate Guard
 recovery proof workflow uploads both attempts for seven days, including on success.
 
-`lookback-span-content-motion` (`tests/lookback-span-content-motion.mjs`) captures a one-day span changing to a populated history band in light and dark. Timestamped compositor frames and computed layout styles check reading tiles, summary facts, the thin-span explanation, Wrapped link, naming offer and resurfacing cards for overlap. The check accounts for inset clipping and bottom-navigation occlusion. Recorded transition keyframes reject height animation on the reading grid. Run after a demo build: `node tests/lookback-span-content-motion.mjs [output-directory] [built-root]`. Add `--matrix` for Polish, reduced motion, disguise, 195px layout and all 16 palettes.
+`lookback-span-content-motion` (`tests/tools/lookback-span-content-motion.mjs`) captures a one-day span changing to a populated history band in light and dark. Timestamped compositor frames and computed layout styles check reading tiles, summary facts, the thin-span explanation, Wrapped link, naming offer and resurfacing cards for overlap. The check accounts for inset clipping and bottom-navigation occlusion. Recorded transition keyframes reject height animation on the reading grid. Run after a demo build: `node tests/tools/lookback-span-content-motion.mjs [output-directory] [built-root]`. Add `--matrix` for Polish, reduced motion, disguise, 195px layout and all 16 palettes.
 
 `node tests/browser-tier/ocr-offline.mjs` uses the production service worker,
 then runs the real OCR engine after offline reload. It checks English/Polish
@@ -831,7 +831,7 @@ scans after activation. The asset recipe ships the frozen runtime under
 `scripts/vendor/legacy-ocr/`. Node regressions check cache retention, staged
 fallback, release-copy identity and missing/changed-byte refusal.
 
-`restore-preferences-check` (`node tests/restore-preferences-check.mjs`) uses
+`restore-preferences-check` (`node tests/guards/restore-preferences-check.mjs`) uses
 production Archive encryption and Replace against isolated persistent Chromium
 profiles. At seed 3204 it kills the recorded browser process before preference
 writes, between those writes, before COMMIT and after the real COMMIT reply.
@@ -847,7 +847,7 @@ The runner closes its own server and browsers and removes every profile.
 `pdf-retained-client-check` tests the first PDF in an old controlled page with
 no worker cache entry or earlier worker request. Prepare two actual releases
 with `node tests/pdf-retained-client/prepare.mjs <owned-directory>`, then run
-`node tests/pdf-retained-client-check.mjs --a <owned-directory>/A --b
+`node tests/tools/pdf-retained-client-check.mjs --a <owned-directory>/A --b
 <owned-directory>/B`. It uses the production renderer, each release's emitted
 worker and the real nginx snippets through Podman. `CONTAINER_RUNTIME` and
 `NGINX_IMAGE` select another container runtime or nginx image. The operator
@@ -918,7 +918,7 @@ The unlocked control also checks leave-lock on short, long and backwards
 clock changes. Playwright changes system time while elapsed time keeps its
 own course. The runner closes its browser and server in `finally`.
 
-`node tests/build-requests-check.mjs` checks the request observer used by
+`node tests/tools/build-requests-check.mjs` checks the request observer used by
 `verify-build.mjs`. A synthetic service worker fetches another local origin.
 Without CSP, the context observer records the request while the page observer
 misses it. With the nginx CSP header, the sink receives nothing. The build
@@ -1010,7 +1010,7 @@ optional-only evidence insufficient for the core release gate.
 
 ## First-load budget
 
-`tests/check-first-load-budget.test.ts` reads the committed budget and rejects
+`tests/node/release/check-first-load-budget.test.ts` reads the committed budget and rejects
 a 12-file startup graph or a 14,139-byte increase, the eager d3 regression
 from the audit. It also checks that the recorded byte allowance ends at
 1,024 bytes above the baseline. `npm run check:first-load-budget` measures
@@ -1055,7 +1055,7 @@ floor, reduced-motion and lock-concealment assertions.
 
 ## Release signing certificates
 
-`tests/check-release-artifacts.test.ts` generates disposable signing keys and
+`tests/node/release/check-release-artifacts.test.ts` generates disposable signing keys and
 signed APK/AAB fixtures. It runs `apksigner`, `jarsigner` and `keytool` through
 the release verifier, checks the expected certificate for each role, and rejects
 valid signatures from other certificates or an extra AAB signer. Existing
@@ -1070,7 +1070,7 @@ device is used. Temporary keys and artifacts are removed after the tests.
 
 ### App names after unlock and on gates
 
-`node tests/disguise-wordmark-check.mjs` checks the unchanged Settings footer,
+`node tests/tools/disguise-wordmark-check.mjs` checks the unchanged Settings footer,
 About and archive error labels in EN/PL, light/dark and both disguise states.
 Run again with `--gates` for both recovery bodies and the below-baseline
 boot notice. `WORDMARK_SHOTS` saves crops after fonts and animations settle;
@@ -1085,7 +1085,7 @@ phone enrollment or testing the native authentication mechanism. Its
 `session`; the session case presses the real unlock button. Run only in an
 isolated test package under the shared phone lease. Forward only that WebView's
 devtools socket, then run `WORDMARK_CDP=http://127.0.0.1:<port> node
-tests/disguise-wordmark-native-check.mjs`. It asserts 16 rendered outcomes and
+tests/tools/disguise-wordmark-native-check.mjs`. It asserts 16 rendered outcomes and
 prints the WebView version and full sentences.
 
 `journal-history-check.mjs` checks Journal month and recent-day restoration,
@@ -1106,11 +1106,11 @@ query and starred filter on return. It also checks that Search spends its
 in-memory snapshot and that typed queries stay out of return URLs, history
 state and Web Storage. The existing `entry-editor-return` guard also checks
 that reloading the editor drops the in-memory Search query while keeping its
-return route. Run with `node tests/entry-source-return-check.mjs`.
+return route. Run with `node tests/guards/entry-source-return-check.mjs`.
 
 ### Safari storage notice
 
-`node tests/safari-storage-notice-check.mjs` checks the built production app.
+`node tests/tools/safari-storage-notice-check.mjs` checks the built production app.
 Set `BROWSER_ENGINE=webkit` for WebKit and `NOTICE_RESULTS` for a JSON receipt.
 `NOTICE_SHOTS` saves notice-only trans light/dark crops; `--before` captures
 the generic notice on the dispatch base. Cases cover iOS/macOS Safari with
@@ -1134,7 +1134,7 @@ The package must be isolated; this probe does not seed or clear data.
 
 ### First-run setup Back
 
-After a production build, run `node tests/setup-back-check.mjs <evidence-dir>`.
+After a production build, run `node tests/tools/setup-back-check.mjs <evidence-dir>`.
 It types disposable answers, checks history Back against the setup arrow,
 walks restore cancellation and both access-mode screens, then finishes and
 checks Back from Today. `SETUP_ENTRY=/onboarding` checks direct entry;
@@ -1148,7 +1148,7 @@ checks Today after reopening. Take the shared phone lease before using a
 physical serial. A sleeping or locked physical display can pause WebView
 animations; that is a harness failure, not evidence about Back.
 
-`tests/ci-checks.test.ts` exercises the local F-Droid report with failed and
+`tests/node/tooling/ci-checks.test.ts` exercises the local F-Droid report with failed and
 different unsigned Gradle outputs. `scripts/fdroid-rebuild-report.mjs` reuses
 prepared web assets, so even identical unsigned APKs do not establish F-Droid
 reproducibility or installed-update compatibility. Those require the separate

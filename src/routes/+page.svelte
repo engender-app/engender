@@ -1422,7 +1422,7 @@
     border-radius: 1px;
     /* The resting state, which is also where the animation ends: past the
        bottom of the band and invisible. Declared so the 1ms clamp has
-       somewhere true to strand it (tests/motion-system.test.ts). */
+       somewhere true to strand it (tests/node/ui/motion-system.test.ts). */
     opacity: 0;
     transform: translateY(46px) rotate(var(--r));
     animation: cheer-fall calc(var(--dur-authored) * 2) linear var(--d) both;

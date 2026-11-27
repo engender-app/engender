@@ -1,7 +1,7 @@
 /* Put the splash markup and CSS in app.html so the browser paints before
    JavaScript loads. A slow phone otherwise stayed white for 3.4–3.7 s.
    npm run render:splash generates palette CSS between the app.html markers;
-   tests/splash.test.ts checks the generated block against palettes.css.
+   tests/node/ui/splash.test.ts checks the generated block against palettes.css.
 
    CSS gradients recreate mark.ts's corner sun using its radii and seams:
    one ring per flag stripe, a black outer seam, and a white tile with a black
@@ -41,7 +41,7 @@ export function readSplashPalettes(css: string): SplashPalette[] {
 
 /** The seam and the tile's edge. mark.ts writes it as a literal `#000` in
     markSvg and cropMarkup, with no constant to import, so it is stated once
-    here and tests/splash.test.ts reads mark.ts to hold the two together. */
+    here and tests/node/ui/splash.test.ts reads mark.ts to hold the two together. */
 export const SPLASH_INK = '#000';
 
 const num = (value: number) => String(+value.toFixed(2));

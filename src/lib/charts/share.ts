@@ -5,7 +5,7 @@
    is the ring's arithmetic (charts/parts.ts). It lived in charts/geometry.ts
    until phase 9 audit ticket 02, back when that module opened with a
    d3-shape import. Nothing is imported here, and that is the point -
-   tests/chart-library-graph.test.ts holds the rule and the reasoning. */
+   tests/node/ui/chart-library-graph.test.ts holds the rule and the reasoning. */
 
 /** A bar's width as a percentage of the largest value beside it. The bars
     carry their own values as text, so this is length only. */

@@ -18,11 +18,11 @@ const DOC_TOOLS = new Set([
   'scripts/adr-citations.mjs',
   'scripts/check-ai-directories.mjs',
   'scripts/link-docs.mjs',
-  'tests/adr-citations.test.ts',
-  'tests/ai-directories.test.ts',
-  'tests/doc-blocks.test.ts',
+  'tests/node/tooling/adr-citations.test.ts',
+  'tests/node/tooling/ai-directories.test.ts',
+  'tests/node/tooling/doc-blocks.test.ts',
   'tests/doc-blocks.ts',
-  'tests/link-docs.test.ts'
+  'tests/node/tooling/link-docs.test.ts'
 ]);
 
 /** @param {string} adrDir */

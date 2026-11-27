@@ -49,7 +49,7 @@ build and into the APK's assets, so the same run writes the subset the app
 actually serves straight into its own places instead: `static/favicon-<flag>.svg`
 for the tab, `static/icons/icon.svg` and `icon-maskable.svg` for the install,
 and one adaptive icon plus its vector foreground per palette under
-`android/app/src/main/res/`. `tests/mark-assets.test.ts` fails if a palette is
+`android/app/src/main/res/`. `tests/node/ui/mark-assets.test.ts` fails if a palette is
 missing any of them, which is what stops a run being forgotten.
 
 The drawing itself is not in the generator either: `src/lib/components/mark.ts`

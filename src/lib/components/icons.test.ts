@@ -5,7 +5,7 @@
    from being so, and a sink that is only safe because of who calls it needs
    a test rather than a habit.
 
-   The geometry of the marks themselves is tests/icon-geometry.test.ts. */
+   The geometry of the marks themselves is tests/node/ui/icon-geometry.test.ts. */
 import { describe, expect, test } from 'vitest';
 import { icon } from './icons';
 

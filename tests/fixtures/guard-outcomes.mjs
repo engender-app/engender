@@ -8,7 +8,7 @@ const fixture = import.meta.url;
 registerHooks({
   resolve(specifier, context, nextResolve) {
     if (/\/(care-lane-labels|debrief-offer-check)\.mjs$/.test(context.parentURL ?? '') &&
-      ['vite', './browser-harness.mjs', 'node:child_process'].includes(specifier)) {
+      ['vite', '../browser-harness.mjs', 'node:child_process'].includes(specifier)) {
       return { url: fixture, shortCircuit: true };
     }
     return nextResolve(specifier, context);

@@ -1,5 +1,5 @@
 /* Ink measurement for the icon set: what the optical-centring rule in
-   tests/icon-geometry.test.ts is computed from, and what the gallery in
+   tests/node/ui/icon-geometry.test.ts is computed from, and what the gallery in
    tests/browser-tier/icons-gallery.svelte draws its centre marks with.
 
    Separate from the test that holds the rule because it is a measurement,
