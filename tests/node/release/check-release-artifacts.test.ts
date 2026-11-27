@@ -158,6 +158,16 @@ describe('apksigner output', () => {
     expect(apkSignerFingerprints(output)).toEqual([a]);
   });
 
+  it('reads signers labelled by signing scheme, as build-tools on the CI runner print them', () => {
+    const output = [
+      'V3.0 Signer: certificate DN: CN=Disposable apk fixture',
+      `V3.0 Signer: certificate SHA-256 digest: ${a}`,
+      'V3.0 Signer: certificate SHA-1 digest: 82a4cb20c08f22bc6e29c13a97ca4830fa0b5461',
+      `V3.1 Signer: certificate SHA-256 digest: ${a}`,
+    ].join('\n');
+    expect(apkSignerFingerprints(output)).toEqual([a]);
+  });
+
   it('keeps two different certificates apart', () => {
     expect(apkSignerFingerprints(`Signer #1 certificate SHA-256 digest: ${a}\nSigner #2 certificate SHA-256 digest: ${b}\n`)).toEqual([a, b]);
   });
