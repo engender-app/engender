@@ -101,7 +101,7 @@ try {
   const noteValue = await page.locator('#ed-note').inputValue();
   check('the debrief template pre-filled the note', noteValue.length > 0);
 
-  await page.locator('[data-mood="3"]').click();
+  // The faces are on the first step; continueToTheRest picked face 3 on its way past.
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-hello]', { timeout: 5000 });
 
