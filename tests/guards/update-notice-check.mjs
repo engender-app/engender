@@ -205,11 +205,11 @@ try {
   await page.evaluate(() => {
     window.vtFrames = [];
     window.vtSampling = true;
-    const tick = () => {
+    const tick = (now) => {
       const pseudos = document.getAnimations().map((a) => a.effect?.pseudoElement ?? '');
       const transform = getComputedStyle(document.documentElement, '::view-transition-group(update-notice)').transform;
       const y = /matrix\(([^)]+)\)/.exec(transform)?.[1].split(',').map(Number)[5];
-      window.vtFrames.push({ crossing: pseudos.some((p) => p.includes('(screen)')), ownGroup: pseudos.includes('::view-transition-group(update-notice)'), y: y ?? null });
+      window.vtFrames.push({ crossing: pseudos.some((p) => p.includes('(screen)')), ownGroup: pseudos.includes('::view-transition-group(update-notice)'), y: y ?? null, t: now ?? performance.now() });
       if (window.vtSampling) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -220,14 +220,18 @@ try {
   await settled();
   const crossing = (await page.evaluate(() => { window.vtSampling = false; return window.vtFrames; })).filter((f) => f.crossing);
   const onJournal = await layout();
-  const ys = crossing.filter((f) => f.ownGroup && f.y !== null).map((f) => f.y);
+  const own = crossing.filter((f) => f.ownGroup && f.y !== null);
+  const ys = own.map((f) => f.y);
   const travelled = ys.length ? ys.at(-1) - ys[0] : 0;
-  const ySteps = steps(ys);
+  /* Per frame of elapsed time, as picker-motion-yanks.mjs measures: on a loaded
+     runner the main thread skips frames while the group keeps its clock, so a
+     sample 50ms after the last one is three frames of travel, not one. */
+  const ySteps = steps(ys).map((step, i) => step / Math.max(1, (own[i + 1].t - own[i].t) / 16.7));
   const monotone = ys.slice(1).every((y, i) => Math.sign(y - ys[i]) * Math.sign(travelled) >= 0);
   console.log('navigation', crossing.map((f) => f.y?.toFixed(1)).join(' '), 'home', fromHome.notice?.top, 'journal', onJournal.notice?.top);
   ok(crossing.length > 3 && ys.length > 3 && monotone &&
     near(travelled, onJournal.notice.top - fromHome.notice.top, 2) && Math.max(0, ...ySteps) <= Math.max(2, Math.abs(travelled) / 4) && underField(onJournal),
-    `a navigation carries the one notice from under Today's field (${fromHome.notice?.top}) to under Journal's (${onJournal.notice?.top}) over ${ys.length} frames, largest step ${Math.max(0, ...ySteps).toFixed(1)}px`);
+    `a navigation carries the one notice from under Today's field (${fromHome.notice?.top}) to under Journal's (${onJournal.notice?.top}) over ${ys.length} frames, largest step per frame ${Math.max(0, ...ySteps).toFixed(1)}px`);
   await page.locator('[data-rail-item="home"]').click();
   await page.waitForURL((url) => url.pathname === '/');
   await settled();
