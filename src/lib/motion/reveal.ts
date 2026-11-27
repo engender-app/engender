@@ -931,7 +931,13 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
   const animateTo = (oldHeight: number, newHeight: number, heldAt?: number) => {
     const from = heldAt ?? onScreen(oldHeight);
     const to = onScreen(newHeight);
-    if (Math.abs(to - from) < 1) {
+    /* A box that runs past the viewport's bottom either way, whose clamped edge moved a
+       few pixels only because what is above it settled, has nothing on screen to travel:
+       the change is a sliver at the screen's last pixels. A first door into the Journal
+       chained a 150ms, 2px travel here after the gate's reveal and finished it 31ms after
+       the field had stopped. */
+    const sliverAtBottom = newHeight > to + 0.5 && Math.abs(to - from) < 4;
+    if (Math.abs(to - from) < 1 || sliverAtBottom) {
       release();
       lastHeight = newHeight;
       return;
