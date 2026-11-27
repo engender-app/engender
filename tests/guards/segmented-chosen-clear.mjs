@@ -162,7 +162,7 @@ try {
       }
     }
   }
-  assert.equal(checked, 16, 'every cadence in both languages at both widths');
+  assert.equal(checked, CADENCES.length * WIDTHS.length * 2, 'every cadence in both languages at both widths');
 
   /* Pointer and keyboard, English at the narrow width. Week opens with the
      track at its start and Month running under the end chevron, so tapping
