@@ -73,6 +73,16 @@ async function newPage(width, theme, { reducedMotion } = {}) {
   return { context, page, cdp, theme };
 }
 
+async function doseTimeField(page, theme) {
+  /* New doses start at the current time. Keep the same 20:00 starting
+     point the reminder used, away from the drum bounds. */
+  await page.clock.setFixedTime('2026-11-20T19:00:00Z');
+  await settlePage(page, base, '/care/doses', theme);
+  await page.locator('[data-add]').click();
+  await page.locator('[data-dose-when]').click();
+  return page.locator('#dose-time');
+}
+
 /* The picker settled: open, focus inside it, no animation running, and
    no drum still scrolling. */
 async function pickerAtRest(page) {
@@ -188,12 +198,10 @@ const sheetTop = (page) => page.evaluate(() => document.querySelector('[data-tim
 
 try {
   for (const theme of themes) {
-    /* The phone: a sheet over the new-reminder screen, which always
-       stores a time. */
+    /* The phone: a picker sheet over the dose editor, which always stores a time. */
     const phone = await newPage(390, theme);
     const { page, cdp } = phone;
-    await settlePage(page, base, '/settings/reminders/new', theme);
-    const field = page.locator('#r-time');
+    const field = await doseTimeField(page, theme);
     const stored = await field.inputValue();
 
     await record(phone, `open-${theme}`, () => field.click(), { note: 'tap on the field: the sheet rises with the drums already on the stored time' });
@@ -287,7 +295,7 @@ try {
     await page.locator('[data-time-picker]').waitFor({ state: 'detached' });
     await check(`${theme}: Escape leaves the value and gives focus back to the field`, async () => {
       assert.equal(await field.inputValue(), '07:45');
-      await page.waitForFunction(() => document.activeElement?.id === 'r-time', null, { timeout: 2000 });
+      await page.waitForFunction(() => document.activeElement?.id === 'dose-time', null, { timeout: 2000 });
     });
     await check(`${theme}: Enter straight after an arrow commits the stepped time, not the one before`, async () => {
       await field.click();
@@ -355,8 +363,7 @@ try {
 
     /* The desktop: the popover, a wheel on the hour drum, Escape. */
     const desk = await newPage(1280, theme);
-    await settlePage(desk.page, base, '/settings/reminders/new', theme);
-    const deskField = desk.page.locator('#r-time');
+    const deskField = await doseTimeField(desk.page, theme);
     await record(desk, `popover-open-${theme}`, () => deskField.click(), { note: 'desktop: the popover unrolls from the field' });
     await pickerAtRest(desk.page);
     const deskCrop = await surfaceCrop(desk.page);
@@ -406,15 +413,15 @@ try {
     await desk.page.locator('[data-time-picker-drum="hour"]').focus();
     await record(desk, `popover-close-${theme}`, () => desk.page.keyboard.press('Escape'), { crop: deskCrop, note: 'desktop: Escape rolls it back up into the field' });
     await check(`${theme}: desktop Escape gives focus back to the field`, async () => {
-      await desk.page.waitForFunction(() => document.activeElement?.id === 'r-time', null, { timeout: 2000 });
+      await desk.page.waitForFunction(() => document.activeElement?.id === 'dose-time', null, { timeout: 2000 });
     });
     await desk.context.close();
   }
 
   /* Reduced motion: a turned drum fades out, moves, and fades back. */
   const reduced = await newPage(390, 'light', { reducedMotion: 'reduce' });
-  await settlePage(reduced.page, base, '/settings/reminders/new', 'light');
-  await reduced.page.locator('#r-time').click();
+  const reducedField = await doseTimeField(reduced.page, 'light');
+  await reducedField.click();
   await pickerAtRest(reduced.page);
   await record(reduced, 'typed-reduced-light', () => entry(reduced.page).fill('03:10'), { crop: await surfaceCrop(reduced.page), note: 'reduced motion: the drums fade to the typed time instead of travelling' });
   await entry(reduced.page).focus();
