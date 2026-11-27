@@ -55,7 +55,7 @@ const errors = [];
 /* The oscillator voice every voice gallery uses, read as text and injected:
    two of the ten feet only exist once a take has been recorded, and a
    headless microphone is silence (tests/fake-microphone.mjs). */
-const fakeMicrophoneSource = (await readFile(resolve(here, 'fake-microphone.mjs'), 'utf8')).replace(
+const fakeMicrophoneSource = (await readFile(resolve(here, '../fake-microphone.mjs'), 'utf8')).replace(
   /^export /gm,
   ''
 );

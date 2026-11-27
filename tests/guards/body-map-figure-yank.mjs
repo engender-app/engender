@@ -17,7 +17,7 @@ const outDir = resolve(at >= 0 ? args[at + 1] : resolve(here, '../../.claude/tic
 await mkdir(outDir, { recursive: true });
 
 const server = await createServer({
-  configFile: `${here}/browser-tier/browser-tier.vite.config.ts`,
+  configFile: `${here}/../browser-tier/browser-tier.vite.config.ts`,
   server: { port: 0 }
 });
 await server.listen();

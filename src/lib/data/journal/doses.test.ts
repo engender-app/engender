@@ -772,7 +772,8 @@ test('a repeated ten-year auto-log pass hydrates only a deleted slot window', as
   assert.equal(await doses.autoLogDueDoses(today, []), 0);
 });
 
-test('indexed auto-log candidates preserve pairing, attribution, pauses and amount cycles', async () => {
+// Sweeps every recurrence and pause shape: about 2 s locally, 5 s on a CI runner.
+test('indexed auto-log candidates preserve pairing, attribution, pauses and amount cycles', { timeout: 20_000 }, async () => {
   for (const recurrence of [
     ...[1, 2, 3, 7, 13].map((everyNDays) => ({ kind: 'everyNDays' as const, everyNDays })),
     ...[[1], [1, 4], [0, 2, 5]].map((weekdays) => ({ kind: 'weekdays' as const, weekdays }))

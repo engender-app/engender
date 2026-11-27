@@ -198,6 +198,16 @@ function commandExists(command) {
   }
 }
 
+/** Signer digests from `apksigner verify --print-certs`. Older build-tools
+ * number the signers (`Signer #1 ...`); newer ones may label each by the SDK
+ * range it covers (`Signer (minSdkVersion=26, maxSdkVersion=...) ...`), which
+ * can repeat one certificate, so the result holds each digest once.
+ * @param {string} output */
+export function apkSignerFingerprints(output) {
+  const lines = output.matchAll(/^Signer (?:#\d+|\([^)\n]*\)) certificate SHA-256 digest: ([a-f0-9]{64})\r?$/gm);
+  return [...new Set([...lines].map(match => match[1]))];
+}
+
 /** Verify signatures and require exactly the recorded certificate per artifact.
  * The optional pins let tests use disposable signing keys; the CLI always uses
  * RELEASE_SIGNERS and offers no environment override.
@@ -217,9 +227,9 @@ export function androidSignatureProblems({ apk, aab }, expected = RELEASE_SIGNER
   } else {
     try {
       const result = run('apksigner', ['verify', '--print-certs', apk]);
-      const fingerprints = [...result.matchAll(/^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$/gm)]
-        .map(match => match[1]);
+      const fingerprints = apkSignerFingerprints(result);
       checkSigner('APK', fingerprints, expected.apk);
+      if (!fingerprints.length) problems.push(`apksigner printed no signer digest: ${result.trim().split('\n').slice(0, 6).join(' | ')}`);
     } catch {
       problems.push(`APK signature verification failed: ${apk}`);
     }

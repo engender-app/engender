@@ -8,6 +8,7 @@ import { REVIEWED_CONTENT } from '../../../src/lib/reviewedContent';
 
 const script = fileURLToPath(new URL('../../../scripts/check-reviewed-content.mjs', import.meta.url));
 
+// Each run loads the content owners through Vite: about 2 s locally, 7 to 8 s on a CI runner.
 function run(today: string, env: NodeJS.ProcessEnv = {}): string {
   return execFileSync(process.execPath, [script, '--today', today], {
     encoding: 'utf8',
@@ -15,7 +16,7 @@ function run(today: string, env: NodeJS.ProcessEnv = {}): string {
   });
 }
 
-test('every registered entry warns, and the run still passes, once its limit is long past', () => {
+test('every registered entry warns, and the run still passes, once its limit is long past', { timeout: 20_000 }, () => {
   const output = run('2099-01-01');
   const warned = output.split('\n').filter((line) => line.startsWith('warning: '));
 
@@ -23,16 +24,16 @@ test('every registered entry warns, and the run still passes, once its limit is 
   expect(new Set(warned.map((line) => line.slice(9).split(',')[0]))).toEqual(new Set(REVIEWED_CONTENT.map((entry) => entry.area)));
 });
 
-test('in GitHub Actions each warning is an annotation on the run', () => {
+test('in GitHub Actions each warning is an annotation on the run', { timeout: 20_000 }, () => {
   const output = run('2099-01-01', { GITHUB_ACTIONS: 'true' });
 
   expect(output).toMatch(/^::warning title=Reviewed content past its limit::Resources, /m);
 });
 
-test('nothing warns on the day of the latest review pass', () => {
+test('nothing warns on the day of the latest review pass', { timeout: 20_000 }, () => {
   expect(run('2026-10-21')).not.toContain('warning');
 });
 
-test('a --today that is not a real day is refused rather than compared as text', () => {
+test('a --today that is not a real day is refused rather than compared as text', { timeout: 20_000 }, () => {
   expect(() => run('2026-02-30')).toThrow();
 });

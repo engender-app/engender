@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { androidOcrAssetProblems, androidPermissionSetProblems, androidSignatureProblems, RELEASE_SIGNERS, expectedArtifactNames, releaseArtifactProblems } from '../../../scripts/check-release-artifacts.mjs';
+import { androidOcrAssetProblems, androidPermissionSetProblems, androidSignatureProblems, apkSignerFingerprints, RELEASE_SIGNERS, expectedArtifactNames, releaseArtifactProblems } from '../../../scripts/check-release-artifacts.mjs';
 
 // ZIP fixtures have no binary manifest. Supply the platform tool's receipt;
 // candidate verification invokes real aapt2 against the actual APK.
@@ -140,6 +140,27 @@ describe('releaseArtifactProblems', () => {
     expect(androidOcrAssetProblems(apk, webBuildDir)).toContain(problem);
   });
 
+});
+
+describe('apksigner output', () => {
+  const a = 'a'.repeat(64);
+  const b = 'b'.repeat(64);
+
+  it('reads numbered signers', () => {
+    expect(apkSignerFingerprints(`Signer #1 certificate DN: CN=x\nSigner #1 certificate SHA-256 digest: ${a}\n`)).toEqual([a]);
+  });
+
+  it('reads signers labelled by SDK range, once per certificate', () => {
+    const output = [
+      `Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: ${a}`,
+      `Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: ${a}\r`,
+    ].join('\n');
+    expect(apkSignerFingerprints(output)).toEqual([a]);
+  });
+
+  it('keeps two different certificates apart', () => {
+    expect(apkSignerFingerprints(`Signer #1 certificate SHA-256 digest: ${a}\nSigner #2 certificate SHA-256 digest: ${b}\n`)).toEqual([a, b]);
+  });
 });
 
 describe('complete APK permission gate', () => {

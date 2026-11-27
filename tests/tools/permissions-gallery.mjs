@@ -24,7 +24,7 @@ const shots = [];
 
 /* ---------- the row states, from the browser-tier fixture ---------- */
 const fixtureServer = await createServer({
-  configFile: `${here}/browser-tier/browser-tier.vite.config.ts`,
+  configFile: `${here}/../browser-tier/browser-tier.vite.config.ts`,
   server: { port: 0 }
 });
 await fixtureServer.listen();

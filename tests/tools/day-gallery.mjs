@@ -27,7 +27,7 @@ const SHAPES = ['sparse', 'typical', 'maximal'];
 await mkdir(outDir, { recursive: true });
 
 const fixture = await createServer({
-  configFile: `${here}/browser-tier/browser-tier.vite.config.ts`,
+  configFile: `${here}/../browser-tier/browser-tier.vite.config.ts`,
   server: { port: 0 }
 });
 await fixture.listen();
